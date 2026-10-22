@@ -1,5 +1,33 @@
 <?php
 declare(strict_types=1);
+// A separate -n process exercises the real cURL branch with no extension or network.
+if (($argv[1] ?? '') === '--curl-diagnostics-fixture') {
+    if (function_exists('curl_init')) throw new RuntimeException('fixture requires PHP without cURL');
+    foreach (['CURLOPT_POST', 'CURLOPT_POSTFIELDS', 'CURLOPT_HTTPHEADER', 'CURLOPT_FOLLOWLOCATION',
+        'CURLOPT_CONNECTTIMEOUT', 'CURLOPT_TIMEOUT', 'CURLOPT_SSL_VERIFYPEER', 'CURLOPT_SSL_VERIFYHOST',
+        'CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_WRITEFUNCTION', 'CURLPROTO_HTTPS',
+        'CURLINFO_RESPONSE_CODE'] as $index => $constant) define($constant, $index + 1);
+    function curl_init($url) { return (object) ['url' => $url]; }
+    function curl_setopt_array($handle, $options) { $handle->options = $options; return true; }
+    function curl_exec($handle) {
+        ($handle->options[CURLOPT_WRITEFUNCTION])($handle, 'PRIVATE_PARTIAL_BODY');
+        return ($GLOBALS['argv'][2] ?? '') === 'timeout' ? false : true;
+    }
+    function curl_getinfo($handle, $option) { return ($GLOBALS['argv'][2] ?? '') === 'timeout' ? 0 : 401; }
+    function curl_errno($handle) { return ($GLOBALS['argv'][2] ?? '') === 'timeout' ? 28 : 0; }
+    function curl_close($handle) { ++$GLOBALS['qp_curl_closed']; }
+    require_once __DIR__ . '/../app/integrations/anex-package-quote-client.php';
+    $qp_curl_closed = 0;
+    $native = new ReflectionMethod(AnyTourAnexPackageQuoteClient::class, 'curlRequest');
+    $client = new AnyTourAnexPackageQuoteClient('PRIVATE_TOKEN', static function ($url, $fields, $headers) use (&$client, $native) {
+        return $native->invoke($client, $url, $fields, $headers);
+    });
+    try { $client->start('PRIVATE_CLAIM', '1234567890123', '3'); $error = null; }
+    catch (RuntimeException $failure) { $error = $failure->getMessage(); }
+    echo json_encode(['diagnostics' => $client->lastRequestDiagnostics(), 'error' => $error,
+        'closed' => $qp_curl_closed], JSON_THROW_ON_ERROR);
+    exit;
+}
 // Standalone endpoint import must load its GET receipt dependencies itself.
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
@@ -591,7 +619,8 @@ $before = serialize($session); $calls = count($f->calls);
 $receipt = anytour_anex_search3_quote_receipt($session);
 qp_assert($receipt === ['retained_only' => true, 'supplier_calls' => 0, 'records' => [[
     'status' => 'quote_failed', 'reason' => 'ANEX_QUOTE_HTTP_ERROR',
-    'stages' => [['stage' => 'start', 'state' => 'unknown', 'http_status' => 401, 'response_bytes' => 31]],
+    'stages' => [['stage' => 'start', 'state' => 'unknown', 'http_status' => 401, 'response_bytes' => 31,
+        'elapsed_ms' => $s['package_quotes'][$r['offer_ref']]['diagnostics']['start']['elapsed_ms'] ?? null]],
     'version' => 2, 'reserved_calls' => 1, 'sealed' => true,
 ]]], 'versioned retained receipt proves reserved budget, seal, original stage and HTTP without raw response');
 qp_assert(anytour_anex_search3_quote_receipt($session) === $receipt && serialize($session) === $before
@@ -600,6 +629,7 @@ foreach (['PRIVATE', 'private-catclaim', $r['offer_ref'], $s['package_quotes'][$
     qp_assert(strpos(json_encode($receipt), $private) === false, 'retained receipt redacts private context');
 }
 $legacyReceiptSession = $session;
+unset($legacyReceiptSession['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start']['elapsed_ms']);
 foreach (['version', 'context_digest', 'reserved_calls', 'pairs', 'active_pair', 'sealed'] as $field) {
     unset($legacyReceiptSession['offer_context']['package_quotes'][$r['offer_ref']][$field]);
 }
@@ -647,6 +677,45 @@ $safe = anytour_anex_search3_quote_receipt(['offer_context' => ['package_quotes'
 qp_assert(count($safe['records']) === 40 && $safe['records'][0] === ['status' => 'quote_unknown', 'reason' => null,
     'stages' => [['stage' => 'start', 'state' => 'complete']]], 'bounded allowlist handles malformed retained values');
 qp_assert(anytour_anex_search3_quote_receipt([])['records'] === [], 'missing session never triggers a fresh quote');
+foreach (['elapsed_ms' => 120000, 'curl_errno' => 999] as $field => $maximum) {
+    foreach ([0, $maximum, -1, $maximum + 1, null, true, '28', 28.5, ['PRIVATE']] as $value) {
+        $numericSession = $session;
+        $numericSession['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start'][$field] = $value;
+        $numericRow = anytour_anex_search3_quote_receipt($numericSession)['records'][0]['stages'][0];
+        $valid = is_int($value) && $value >= 0 && $value <= $maximum;
+        qp_assert(array_key_exists($field, $numericRow) === $valid && (!$valid || $numericRow[$field] === $value),
+            'receipt accepts only bounded typed transport diagnostic: ' . $field);
+    }
+}
+foreach (['http', 'timeout'] as $wireMode) {
+    $process = proc_open([PHP_BINARY, '-n', __FILE__, '--curl-diagnostics-fixture', $wireMode],
+        [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    qp_assert(is_resource($process), 'native diagnostic fixture starts without cURL/network');
+    fclose($pipes[0]); $raw = stream_get_contents($pipes[1]); $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]); $exit = proc_close($process);
+    qp_assert($exit === 0 && $stderr === '', 'native diagnostic fixture completes: ' . $stderr);
+    $wire = json_decode($raw, true, 64, JSON_THROW_ON_ERROR); $diag = $wire['diagnostics'];
+    qp_assert($wire['error'] === ($wireMode === 'timeout' ? 'ANEX_QUOTE_TRANSPORT_ERROR' : 'ANEX_QUOTE_HTTP_ERROR')
+        && $diag['action'] === 'start' && $diag['http_status'] === ($wireMode === 'timeout' ? 0 : 401)
+        && $diag['curl_errno'] === ($wireMode === 'timeout' ? 28 : 0) && $diag['response_bytes'] === 20
+        && is_int($diag['elapsed_ms']) && $diag['elapsed_ms'] >= 0 && $wire['closed'] === 1,
+        'real client preserves numeric facts and closes cURL on HTTP/transport failure');
+    qp_assert(strpos($raw, 'PRIVATE') === false, 'native diagnostics omit body/claim/token/URL');
+    $wireSession = $session;
+    $wireSession['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start'] = $diag;
+    $wireRow = anytour_anex_search3_quote_receipt($wireSession)['records'][0]['stages'][0];
+    qp_assert($wireRow['elapsed_ms'] === $diag['elapsed_ms'] && $wireRow['curl_errno'] === $diag['curl_errno']
+        && $wireRow['http_status'] === $diag['http_status'] && $wireRow['response_bytes'] === 20,
+        'native failure facts survive the existing retained receipt projection');
+}
+foreach ([null, 'transports', ['PRIVATE']] as $wrongAction) {
+    $wrongStage = $session;
+    $wrongStage['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start'] += ['curl_errno' => 28];
+    $wrongStage['offer_context']['package_quotes'][$r['offer_ref']]['diagnostics']['start']['action'] = $wrongAction;
+    $wrongRow = anytour_anex_search3_quote_receipt($wrongStage)['records'][0]['stages'][0];
+    qp_assert(!array_key_exists('elapsed_ms', $wrongRow) && !array_key_exists('curl_errno', $wrongRow),
+        'missing/different action cannot attribute transport facts to a stage');
+}
 // Read existing raw-page digests, never replay a search to distinguish empty/rejected.
 $pageContext = ['checkin_begin' => '2027-01-31', 'checkin_end' => '2027-02-06',
     'nights_from' => 7, 'nights_till' => 7, 'adults' => 2, 'children' => 1, 'child_ages' => [0]];

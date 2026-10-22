@@ -172,6 +172,27 @@ live acceptance. Installation must use the existing checked INT install-runtime
 and install-anex-preview mechanisms, each with its own reservation and receipt.
 
 
+## Retained quote transport diagnostics (23 October 2026)
+
+The existing package client records monotonic `elapsed_ms` around each actual
+transport invocation, on success or failure. This duration excludes token pacing,
+response parsing, session checkpoints and UI time; it is not a supplier timestamp.
+The native cURL branch also retains numeric HTTP status, received bytes and
+`curl_errno` before throwing on a failed/partial transfer. No response text,
+credential, URL, claim or passenger data is added to diagnostics.
+
+The existing own-session `quote_receipt` may project these retained stage fields:
+integer `elapsed_ms` in 0..120000 and `curl_errno` in 0..999, alongside the existing
+HTTP/byte bounds. Both new fields require the retained diagnostic action to match
+the projected stage. Missing, untyped or out-of-range values remain absent; old
+receipts are not backfilled with zero or reconstructed durations. The reader
+remains pure, bounded and supplier-call-free, with unchanged session/expiry and
+no-replay guards. `supplier_calls: 0` describes the receipt read only.
+
+Offline native-branch fixtures exercise HTTP401 and transport timeout28 without
+network access. Source/CI, stock installation and the next naturally justified
+live capture remain separate; no consumed search/quote is replayed for timing.
+
 ## First-page normalization diagnostics (21 October 2026)
 
 The existing own-session `quote_receipt.retained_first_page` may additionally contain
