@@ -2488,6 +2488,239 @@ class TourvisorChildPartyContinuationTest(unittest.TestCase):
             self.assertFalse(m.completed_result(self.command,changed))
 
 
+
+class PassiveFuelDiagnosticReadbackTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.ids=['1234567','7654321']
+        self.body=m.PREFIX+' '.join([self.p.DIAGNOSTIC_SOURCE,self.p.DIAGNOSTIC_MODE,self.p.DIAGNOSTIC_OPERATION,*self.ids])
+        self.command=m.parse_command(self.body)
+        self.now=self.p.DIAGNOSTIC_INSTALLED_AT+10
+
+    def fixture(self,directory,write=True):
+        root=Path(directory);home=root/'account';project=home/'www/anytoour.ru'
+        helper=project/'_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php'
+        helper.parent.mkdir(parents=True);helper.write_bytes(b'<?php throw new Exception("MUST_NOT_EXECUTE");')
+        store=home/'.anytoour-andromeda/searches';store.mkdir(parents=True,mode=0o700)
+        (store/'tourvisor-fuel-pending-v1-unrelated.json').write_text('RAW_MUST_NOT_READ')
+        (home/'.anytoour-andromeda/search3-preview.php').write_text('CONFIG_SECRET_MUST_NOT_READ')
+        def fail(reason):raise RuntimeError(reason)
+        ns={'home':home,'project':project,'fail':fail}
+        exec(self.p.diagnostic_reader(self.command),ns)
+        # Isolated fixture pin only, never a deployable/installed-source assertion.
+        ns['PD_HELPER_SHA']=hashlib.sha256(helper.read_bytes()).hexdigest()
+        paths=[]
+        for ordinal,tour_id in enumerate(self.ids):
+            for stage in ('tour','flights'):
+                path=store/('tourvisor-fuel-intake-receipt-v1-'+stage+'-'+hashlib.sha256(tour_id.encode()).hexdigest()+'.json')
+                paths.append(path)
+                if write:
+                    value=self.snapshot(tour_id,stage,ordinal)
+                    path.write_text(json.dumps(value));path.chmod(0o600)
+        return ns,home,helper,paths
+
+    def snapshot(self,tour_id,stage,ordinal=0):
+        observed=self.p.DIAGNOSTIC_INSTALLED_AT+1
+        return {'schema_version':1,'source':'tourvisor-operator-fuel-passive-intake-v1','stage':stage,
+            'outcome':'retained','code':'tour_retained' if stage=='tour' else 'created',
+            'observed_at':observed,'expires_at':observed+86400,'elapsed_ms':0,
+            'offer_ref_digest':hashlib.sha256(('tourvisor:tour:'+tour_id).encode()).hexdigest(),
+            'normalized_response_sha256':hashlib.sha256(b'normalized fixture').hexdigest(),
+            'observation_count':ordinal+1 if stage=='flights' else None,
+            'rule_confirmed':ordinal==1 if stage=='flights' else None}
+
+    def read(self,ns,now=None):
+        with patch.object(ns['time'],'time',return_value=self.now if now is None else now):
+            return ns['passive_fuel_diagnostic_readback']()
+
+    def outer(self,value):
+        value=copy.deepcopy(value)
+        # Completion contract unit uses the canonical production pin, not fixture evidence.
+        value['installed_helper_sha256']=self.p.DIAGNOSTIC_HELPER_SHA256
+        return {k:self.command[k] for k in ('source_sha','mode','operation_id')}|{
+            'schema_version':1,'status':'complete','runtime_changed':False,'production_unchanged':True,
+            'production_before':{'index.php':'a'*64},'production_after':{'index.php':'a'*64},
+            'supplier_calls':0,'database_reads':0,'database_writes':0,'runtime_writes':0,
+            'booking_calls':0,'lead_calls':0,'passive_fuel_diagnostics':value}
+
+    def test_fixed_source_operation_two_unique_ids_and_existing_install_unchanged(self):
+        self.assertEqual(self.ids,self.command['tour_ids'])
+        self.assertEqual('b980c347d2644dfa86f383d4652fd1b1d0727afb174fe6972efd0e2b18fbab42',
+            self.p.DIAGNOSTIC_HELPER_SHA256)
+        base=[self.p.DIAGNOSTIC_SOURCE,self.p.DIAGNOSTIC_MODE,self.p.DIAGNOSTIC_OPERATION]
+        for parts in ([SHA,*base[1:],*self.ids],[base[0],base[1],base[2]+'-alias',*self.ids],
+                      [*base],[*base,self.ids[0]],[*base,*self.ids,'9876543'],
+                      [*base,self.ids[0],self.ids[0]],[*base,'../../config.php',self.ids[1]],
+                      [*base,'01',self.ids[1]],[*base,True,self.ids[1]]):
+            with self.subTest(parts=parts),self.assertRaises(ValueError):self.p.parse(parts)
+        self.assertEqual('install-runtime',m.parse_command(m.PREFIX+SHA+' install-runtime int-anex-unrelated-install-v1')['mode'])
+        bad=copy.deepcopy(self.command);bad['path']='config.php'
+        with self.assertRaises(ValueError):self.p.policy(bad)
+
+    def test_new_created_owner_admission_binds_feature_and_exact_ci(self):
+        comment={'id':900,'body':self.body,'user':{'id':226193297},'author_association':'OWNER'}
+        event={'action':'created','repository':{'full_name':m.REPO},'issue':{'number':4709},'comment':comment}
+        checks={'total_count':2,'check_runs':[{'id':i,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}
+            for i in self.p.DIAGNOSTIC_CHECK_IDS]}
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+            'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        replies={'/issues/comments/900':comment,'/git/ref/heads/main':{'object':{'sha':'a'*40}},
+            '/git/ref/heads/'+m.FEATURE:{'object':{'sha':self.p.DIAGNOSTIC_SOURCE}},
+            '/commits/'+self.p.DIAGNOSTIC_CHECK_COMMIT+'/check-runs?per_page=100':checks,
+            '/issues/4709/comments?per_page=100&page=1':[comment]}
+        with patch.dict(os.environ,env),patch.object(m,'api_get',side_effect=lambda path,token:replies[path]) as api:
+            self.assertEqual(self.command,m.checked_event('fixture',event,'a'*40))
+            self.assertNotIn('/git/ref/heads/'+m.LOCAL_PROFILE_SOURCE,[c.args[0] for c in api.call_args_list])
+            for case in ('edited','rerun','dispatch','stale_feature','duplicate','failed_ci','foreign_app'):
+                changed=copy.deepcopy(event);reply=copy.deepcopy(replies);environment=dict(env)
+                if case=='edited':changed['action']='edited'
+                elif case=='rerun':environment['GITHUB_RUN_ATTEMPT']='2'
+                elif case=='dispatch':environment['GITHUB_EVENT_NAME']='workflow_dispatch'
+                elif case=='stale_feature':reply['/git/ref/heads/'+m.FEATURE]['object']['sha']='b'*40
+                elif case=='duplicate':reply['/issues/4709/comments?per_page=100&page=1'].append({**comment,'id':899})
+                elif case=='failed_ci':reply['/commits/'+self.p.DIAGNOSTIC_CHECK_COMMIT+'/check-runs?per_page=100']['check_runs'][0]['conclusion']='failure'
+                else:reply['/commits/'+self.p.DIAGNOSTIC_CHECK_COMMIT+'/check-runs?per_page=100']['check_runs'][0]['app']['slug']='foreign'
+                with self.subTest(case=case),patch.dict(os.environ,environment),patch.object(m,'api_get',side_effect=lambda path,token:reply[path]),self.assertRaises(ValueError):
+                    m.checked_event('fixture',changed,'a'*40)
+
+    def test_real_four_files_safe_counts_expiry_and_no_writes_or_enumeration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory)
+            before={p:(p.read_bytes(),p.stat().st_ino,p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+            read_paths=[];reader=ns['pf_read']
+            def tracked(path,*a,**kw):
+                read_paths.append(path);return reader(path,*a,**kw)
+            ns['pf_read']=tracked
+            with patch.object(Path,'glob',side_effect=AssertionError('no enumeration')),patch.object(Path,'rglob',side_effect=AssertionError('no enumeration')):
+                value=self.read(ns)
+            self.assertEqual([helper,*paths],read_paths)
+            self.assertEqual((4,4,False),(value['observed_files'],value['fresh_files'],value['final_price_verified']))
+            self.assertEqual([None,1,None,2],[r['snapshot']['observation_count'] for r in value['snapshots']])
+            self.assertEqual([None,False,None,True],[r['snapshot']['rule_confirmed'] for r in value['snapshots']])
+            text=json.dumps(value)
+            for secret in ('RAW_MUST_NOT_READ','CONFIG_SECRET_MUST_NOT_READ',str(home),*self.ids):
+                self.assertNotIn(secret,text)
+            expired=self.read(ns,self.now+90000)
+            self.assertEqual((4,0),(expired['observed_files'],expired['fresh_files']))
+            self.assertTrue(all(r['status']=='expired' for r in expired['snapshots']))
+            self.assertEqual(before,{p:(p.read_bytes(),p.stat().st_ino,p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()})
+
+    def test_missing_is_explicit_and_never_zero_rule_or_charge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory,write=False)
+            value=self.read(ns)
+            self.assertEqual((0,0),(value['observed_files'],value['fresh_files']))
+            self.assertTrue(all(row['status']=='missing' and row['snapshot'] is None and row['record_sha256'] is None
+                and row['record_bytes'] is None for row in value['snapshots']))
+            self.assertTrue(m.completed_result(self.command,self.outer(value)))
+
+    def test_schema_rejects_foreign_sensitive_fields_codes_types_digests_and_preinstall_time(self):
+        mutations=[('raw_payload','SECRET'),('code','DB_PASSWORD_SECRET'),('stage','other'),
+            ('source','foreign'),('offer_ref_digest','f'*64),('normalized_response_sha256','https://secret.invalid'),
+            ('schema_version',True),('elapsed_ms',-1),('observed_at',self.p.DIAGNOSTIC_INSTALLED_AT-1),
+            ('observed_at',self.now+61),('expires_at',1),('observation_count',True),('rule_confirmed',False)]
+        for key,bad in mutations:
+            with self.subTest(key=key,bad=bad),tempfile.TemporaryDirectory() as directory:
+                ns,home,helper,paths=self.fixture(directory)
+                value=json.loads(paths[0].read_text());value[key]=bad;paths[0].write_text(json.dumps(value))
+                original=paths[0].read_bytes()
+                with self.assertRaisesRegex(RuntimeError,'diagnostic_schema'):self.read(ns)
+                self.assertEqual(original,paths[0].read_bytes())
+
+    def test_rejected_and_skipped_keep_missing_count_and_unknown_error_redacted(self):
+        for outcome,code in (('rejected','TV_FUEL_FORWARD'),('rejected','unclassified_error'),
+                             ('skipped','offer_context_missing'),('skipped','tour_pair_expired')):
+            with self.subTest(code=code),tempfile.TemporaryDirectory() as directory:
+                ns,home,helper,paths=self.fixture(directory)
+                value=json.loads(paths[1].read_text());value.update(outcome=outcome,code=code,observation_count=None,rule_confirmed=None)
+                paths[1].write_text(json.dumps(value))
+                actual=self.read(ns)['snapshots'][1]['snapshot']
+                self.assertEqual((code,None,None),(actual['code'],actual['observation_count'],actual['rule_confirmed']))
+
+    def test_links_modes_size_and_duplicate_json_fail_without_raw_export(self):
+        for case in ('symlink','hardlink','parent_symlink','mode','oversize','duplicate_key','nan','helper_drift'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,helper,paths=self.fixture(directory)
+                outside=Path(directory)/'outside';outside.write_text('PRIVATE_OUTSIDE_MUST_NOT_READ')
+                if case=='symlink':paths[0].unlink();paths[0].symlink_to(outside)
+                elif case=='hardlink':paths[0].unlink();os.link(outside,paths[0])
+                elif case=='parent_symlink':
+                    store=paths[0].parent;store.rename(store.with_name('old-searches'));store.symlink_to(store.with_name('old-searches'))
+                elif case=='mode':paths[0].chmod(0o644)
+                elif case=='oversize':paths[0].write_bytes(b'x'*2049)
+                elif case=='duplicate_key':
+                    text=paths[0].read_text();paths[0].write_text('{"source":"PRIVATE_SECRET",'+text[1:])
+                elif case=='nan':paths[0].write_text(paths[0].read_text().replace('"elapsed_ms": 0','"elapsed_ms": NaN'))
+                else:helper.write_bytes(b'drifted')
+                with self.assertRaisesRegex(RuntimeError,'diagnostic_') as caught:self.read(ns)
+                self.assertNotIn(str(home),str(caught.exception));self.assertNotIn('PRIVATE_',str(caught.exception))
+                self.assertEqual('PRIVATE_OUTSIDE_MUST_NOT_READ',outside.read_text())
+
+    def test_replacement_during_or_after_read_is_detected(self):
+        for case in ('during','after','missing_appears'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,helper,paths=self.fixture(directory)
+                if case=='missing_appears':paths[0].unlink()
+                real=ns['pf_read']
+                def replaced(path,*a,**kw):
+                    value=real(path,*a,**kw)
+                    if (case=='during' and path==paths[0]) or (case!='during' and path==paths[-1]):
+                        target=paths[0];data=target.read_bytes() if target.exists() else b'{}'
+                        if target.exists():target.rename(target.with_name('replaced.json'))
+                        target.write_bytes(data);target.chmod(0o600)
+                    return value
+                ns['pf_read']=replaced
+                with self.assertRaisesRegex(RuntimeError,'diagnostic_(file_unreadable|snapshot_changed)'):self.read(ns)
+
+    def test_bundle_only_pins_helper_and_does_not_execute_source(self):
+        import tarfile
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);path=root/'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+            path.parent.mkdir(parents=True);path.write_bytes(b'<?php throw new Exception("DO_NOT_EXECUTE");')
+            (root/'config.php').write_text('SECRET')
+            digest=hashlib.sha256(path.read_bytes()).hexdigest()
+            with patch.object(self.p,'DIAGNOSTIC_HELPER_SHA256',digest):
+                raw,manifest=self.p.bundle_source(root,self.command)
+                self.assertEqual({str(path.relative_to(root)):digest},manifest)
+                with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+                    self.assertEqual([str(path.relative_to(root)),'manifest.json'],archive.getnames())
+                path.write_bytes(b'drift')
+                with self.assertRaisesRegex(ValueError,'passive_source_hash'):self.p.bundle_source(root,self.command)
+
+    def test_exact_generated_remote_and_completion_reject_extra_or_forged_authority(self):
+        generated=self.p.remote_program(m.REMOTE,self.command)
+        import ast
+        ast.parse(generated)
+        self.assertEqual(2,generated.count("if mode not in ('passive-fuel-diagnostic-readback','reconcile',"))
+        self.assertIn("payload.get('tour_ids')!="+repr(self.ids),generated)
+        self.assertIn("files!={'app/integrations/tourvisor-operator-fuel-passive-intake.php': '"+self.p.DIAGNOSTIC_HELPER_SHA256+"'}",generated)
+        self.assertNotIn('def pf_snapshot():',self.p.diagnostic_reader(self.command))
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory)
+            result=self.outer(self.read(ns))
+            self.assertTrue(m.completed_result(self.command,result))
+            for case in ('extra','drift','count','raw','false_zero','pin','final','code','missing_flag'):
+                bad=copy.deepcopy(result);value=bad['passive_fuel_diagnostics']
+                if case=='extra':bad['raw_payload']='SECRET'
+                elif case=='drift':bad['production_after']={}
+                elif case=='count':value['observed_files']=0
+                elif case=='raw':value['snapshots'][0]['raw']='SECRET'
+                elif case=='false_zero':bad['database_reads']=False
+                elif case=='pin':value['installed_helper_sha256']='b'*64
+                elif case=='final':value['final_price_verified']=True
+                elif case=='code':value['snapshots'][0]['snapshot']['code']='DB_PASSWORD_SECRET'
+                else:del value['snapshots'][0]['snapshot']['rule_confirmed']
+                with self.subTest(case=case):self.assertFalse(m.completed_result(self.command,bad))
+
+    def test_all_eleven_sealed_remote_profiles_are_byte_identical(self):
+        baselines=[{'source': '670245c83b8fd47429a51a5d079e5106125476f9', 'mode': 'passive-fuel-readiness', 'operation': 'int-anex-passive-fuel-readiness-20261020-v1', 'sha256': '52f6537a23e5fb5b91b8e0cd5ab7c551c85b71e16bfe887afbba48dad267e744'}, {'source': '266848221cc78b1299c675171d7fe53fbb7e0cce', 'mode': 'passive-fuel-private-readiness', 'operation': 'int-anex-passive-fuel-private-readiness-20261020-v1', 'sha256': 'd8abb6dd2feddc0bf53133a2e7779614cb1832b92f68c9e054ccac93bcfaa4a9'}, {'source': '199a570adbaa8de4957bdd84b30648bfaaee5fb5', 'mode': 'passive-fuel-activation-plan', 'operation': 'int-anex-passive-fuel-activation-plan-20261020-v1', 'sha256': 'e875518312714974e0aa9b5cf09a13765dc135039969ba4ddb1b2f53e9288d13'}, {'source': '0415fe57046a8929d1b857e13cd0d0d8824e904d', 'mode': 'passive-fuel-activate', 'operation': 'int-anex-passive-fuel-activate-20261020-v1', 'sha256': 'e21c435b6e8a6b52baaa31acb1b14b46053fa7e450a2fb73c78579b9f8b703e8'}, {'source': '0415fe57046a8929d1b857e13cd0d0d8824e904d', 'mode': 'passive-fuel-stock-activate', 'operation': 'int-anex-passive-fuel-stock-activate-20261020-v1', 'sha256': 'e3a698fb165a00b4303f93606bef1adb0cfdb8d4acacbfc1343a7db9e2ee1dd8'}, {'source': '57ff5ced11f3912b6b39dd9d271c110029459f07', 'mode': 'passive-fuel-current-activate', 'operation': 'int-anex-passive-fuel-current-activate-20261020-v1', 'sha256': 'cda41303286b4ee711c5034890040abedc133ceae07e85b150814295337adca5'}, {'source': '61415e679957acac285bc0aa2f9c870f677618ea', 'mode': 'publication-lock-metadata', 'operation': 'int-anex-publication-lock-metadata-20261020-v1', 'sha256': 'f9b063d1faa678e0a43f9d0ad010cca5e6b0893f6202fffa79beaf16cc5119a9'}, {'source': '61415e679957acac285bc0aa2f9c870f677618ea', 'mode': 'publication-lock-mode-repair', 'operation': 'int-anex-publication-lock-mode-repair-20261020-v1', 'sha256': 'aa35962bcc9b9cf06adb0071afa252166c9f2413e7a3f2f8610ef617a66ed3e2'}, {'source': '61415e679957acac285bc0aa2f9c870f677618ea', 'mode': 'passive-fuel-repaired-activate', 'operation': 'int-anex-passive-fuel-repaired-activate-20261021-v1', 'sha256': '4fb5731a667a11810ef66a2434ae3806306f89ad8bc4a1b16bdd99d156c130a9'}, {'source': 'd6f5afd6ed3dcf090afb9a7463c0bbc675c86780', 'mode': 'tourvisor-child-party-activate', 'operation': 'int-anex-tourvisor-child-party-20261021-v1', 'sha256': 'e68bc67d76602dec412b2d2fbeea05413583f095839e4750472c74f8561af67d'}, {'source': 'd6f5afd6ed3dcf090afb9a7463c0bbc675c86780', 'mode': 'tourvisor-child-party-continue', 'operation': 'int-anex-tourvisor-child-party-continue-20261021-v1', 'sha256': '93dc465855aaa7785ecfa40f5e6e82d5f0e936e78a1287dac08750e3ca54c2cb'}]
+        self.assertEqual(set(self.p.RELEASE_MODES),{item['mode'] for item in baselines})
+        for item in baselines:
+            command=self.p.parse([item['source'],item['mode'],item['operation']])
+            self.assertEqual(item['sha256'],hashlib.sha256(self.p.remote_program(m.REMOTE,command).encode()).hexdigest(),item['mode'])
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
