@@ -59,7 +59,15 @@ PARTY_CONTINUE_OPERATION = 'int-anex-tourvisor-child-party-continue-20261021-v1'
 PARTY_ROOT_DB_SHA256 = 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4'
 PARTY_HOLD_SHA256 = '7e1b4cf6b92f52b2645b50ef5ae5ea56507fbcba955eceb98f3d1179683a081f'
 PARTY_HOLD_BYTES = 7767
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE, PARTY_MODE, PARTY_CONTINUE_MODE)
+RELEASE_MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE, PARTY_MODE, PARTY_CONTINUE_MODE)
+DIAGNOSTIC_MODE = 'passive-fuel-diagnostic-readback'
+DIAGNOSTIC_SOURCE = 'f3c1328b1af5b38d4ffd4757f25b89e3ddf7c2bd'
+DIAGNOSTIC_OPERATION = 'int-anex-passive-fuel-diagnostic-readback-20261022-v1'
+DIAGNOSTIC_HELPER_SHA256 = 'b980c347d2644dfa86f383d4652fd1b1d0727afb174fe6972efd0e2b18fbab42'
+DIAGNOSTIC_CHECK_COMMIT = '80aa23987c8541a4c850436194f7c6ebec4d36a4'
+DIAGNOSTIC_CHECK_IDS = {119688289004,119688288755}
+DIAGNOSTIC_INSTALLED_AT = 1792654334
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -87,6 +95,13 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [DIAGNOSTIC_MODE]:
+        need(len(parts) == 5 and parts[:3] == [DIAGNOSTIC_SOURCE,DIAGNOSTIC_MODE,DIAGNOSTIC_OPERATION],
+             'diagnostic_fixed_scope')
+        ids = parts[3:]
+        need(all(isinstance(value,str) and re.fullmatch(r'[1-9][0-9]{5,19}',value) for value in ids)
+             and len(set(ids)) == 2, 'diagnostic_two_offers')
+        return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2],tour_ids=ids)
     need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION],
                   [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION],
                   [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION],
@@ -103,6 +118,12 @@ def parse(parts):
 
 def policy(command=None):
     command = parse([SOURCE, MODE, OPERATION]) if command is None else command
+    if command.get('mode') == DIAGNOSTIC_MODE:
+        ids = command.get('tour_ids')
+        need(isinstance(ids,list) and command == parse(
+            [command.get('source_sha'),command.get('mode'),command.get('operation_id'),*ids]),
+            'diagnostic_fixed_scope')
+        return command
     need(command == parse([command.get('source_sha'), command.get('mode'), command.get('operation_id')]),
          'passive_readiness_fixed_scope')
     return command
@@ -119,6 +140,8 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
     private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
+    if command['mode'] == DIAGNOSTIC_MODE:
+        check_commit,check_ids = DIAGNOSTIC_CHECK_COMMIT,DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -146,6 +169,8 @@ def bundle_source(source_root, command=None):
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
+    if command['mode'] == DIAGNOSTIC_MODE:
+        hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':DIAGNOSTIC_HELPER_SHA256}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -1111,6 +1136,7 @@ def publication_lock_mode_repair():
 
 def remote_program(remote, command=None):
     command = policy(command)
+    if command['mode'] == DIAGNOSTIC_MODE:return diagnostic_remote_program(remote,command)
     mode = command['mode']
     marker = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -1170,6 +1196,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == DIAGNOSTIC_MODE:return diagnostic_completed(command,result)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
@@ -1564,3 +1591,174 @@ def current_completed(command,result):
     original=parse([STOCK_SOURCE,STOCK_MODE,STOCK_OPERATION])
     return stock_completed(original,{**result,**original,'passive_fuel_activation':{**value,'preflight':preflight}})
 
+
+# The new scope exports already-safe receipts, never raw/pending/rule/config files.
+DIAGNOSTIC_ERROR_CODES = frozenset(["TV_PASSIVE_TOUR_ID","TV_PASSIVE_OPERATOR","TV_PASSIVE_OPERATOR_CONFLICT","TV_PASSIVE_DATE","TV_PASSIVE_DATE_CONFLICT","TV_PASSIVE_PARTY_CONFLICT","TV_PASSIVE_LOCK","TV_PASSIVE_PAYLOAD_INTEGRITY","TV_PASSIVE_CONTEXT_INTEGRITY","TV_PASSIVE_PARTY","TV_PASSIVE_CONTEXT_CONFLICT","TV_PASSIVE_PENDING_INVALID","TV_PASSIVE_FLIGHTS","TV_PASSIVE_MARKET","TV_PASSIVE_DIRECTORY","TV_PASSIVE_WRITE","TV_FUEL_TOUR","TV_FUEL_FLIGHTS","TV_FUEL_TOUR_ID","TV_FUEL_OPERATOR","TV_FUEL_PARTY","TV_FUEL_RESPONSE_ERROR","TV_FUEL_COMBINATIONS","TV_FUEL_DEFAULT","TV_FUEL_FORWARD","TV_FUEL_BACKWARD","TV_FUEL_DATE","TV_FUEL_AMOUNT","TV_FUEL_AMOUNT_CONFLICT","TV_FUEL_CURRENCY_CONFLICT","TV_FUEL_INFO","TV_FUEL_FLAGS","TV_FUEL_REQUIRED_CHARGES","TV_FUEL_SOURCE_DIGEST","TV_FUEL_TIME","TV_FUEL_MARKET","TV_FUEL_PERIOD","TV_FUEL_LEG","TV_FUEL_PORT","TV_FUEL_CARRIER","TV_FUEL_FLIGHT","TV_FUEL_CURRENCY","OPERATOR_FUEL_STORE_CONFLICT","OPERATOR_FUEL_STORE_SIZE","OPERATOR_FUEL_STORE_WRITE","OPERATOR_FUEL_STORE_READBACK","OPERATOR_FUEL_STORE_INVALID","OPERATOR_FUEL_STORE_ROOT","OPERATOR_FUEL_STORE_DIGEST"])
+DIAGNOSTIC_VALIDATOR = r'''
+def pd_validate(value,tour_id,stage,read_at):
+    fields={'schema_version','source','stage','outcome','code','observed_at','expires_at',
+            'elapsed_ms','offer_ref_digest','normalized_response_sha256','observation_count','rule_confirmed'}
+    if not isinstance(value,dict) or set(value)!=fields:raise ValueError('diagnostic_schema')
+    if (type(value['schema_version']) is not int or value['schema_version']!=1
+        or value['source']!='tourvisor-operator-fuel-passive-intake-v1'
+        or value['stage']!=stage or value['offer_ref_digest']!=hashlib.sha256(('tourvisor:tour:'+tour_id).encode()).hexdigest()
+        or not isinstance(value['normalized_response_sha256'],str)
+        or re.fullmatch(r'[a-f0-9]{64}',value['normalized_response_sha256']) is None):
+        raise ValueError('diagnostic_schema')
+    observed=value['observed_at'];expiry=value['expires_at'];elapsed=value['elapsed_ms']
+    if (type(observed) is not int or not PD_MIN_TIME<=observed<=read_at+60
+        or type(expiry) is not int or expiry!=observed+86400
+        or type(elapsed) is not int or not 0<=elapsed<=2147483647):
+        raise ValueError('diagnostic_schema')
+    outcome=value['outcome'];code=value['code']
+    if not isinstance(code,str):raise ValueError('diagnostic_schema')
+    if outcome=='retained':
+        allowed={'tour_retained'} if stage=='tour' else {'created','appended','unchanged'}
+    elif outcome=='skipped':
+        allowed={'operator_not_target','offer_context_missing','tour_pair_missing','tour_pair_expired'}
+    elif outcome=='rejected':
+        allowed=PD_ERROR_CODES|{'unclassified_error'}
+    else:raise ValueError('diagnostic_schema')
+    if code not in allowed:raise ValueError('diagnostic_schema')
+    count=value['observation_count'];confirmed=value['rule_confirmed']
+    if outcome=='retained' and stage=='flights':
+        if type(count) is not int or not 1<=count<=1000000 or type(confirmed) is not bool:
+            raise ValueError('diagnostic_schema')
+    elif count is not None or confirmed is not None:raise ValueError('diagnostic_schema')
+    return value
+'''
+
+DIAGNOSTIC_READER = r'''
+def pf_identity(s):
+    return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_uid,s.st_gid)
+
+def pd_read(path,limit):
+    try:
+        try:before=pf_identity(path.lstat())
+        except FileNotFoundError:before=None
+        data,record=pf_read(path,limit=limit)
+        identity=None if data is None else pf_identity(path.lstat())
+        if identity!=before:fail('diagnostic_snapshot_changed')
+        if data is not None and path.lstat().st_uid!=os.getuid():fail('diagnostic_file_owner')
+        return data,record,identity
+    except Exception:fail('diagnostic_file_unreadable')
+
+def pd_object(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value:raise ValueError('diagnostic_schema')
+        value[key]=item
+    return value
+
+def passive_fuel_diagnostic_readback():
+    helper=project/'_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php'
+    data,record,identity=pd_read(helper,65536)
+    if record is None or record['sha256']!=PD_HELPER_SHA:fail('diagnostic_helper_pin')
+    read_at=int(time.time());rows=[];identities={}
+    for tour_id in PD_IDS:
+        offer=hashlib.sha256(('tourvisor:tour:'+tour_id).encode()).hexdigest()
+        for stage in ('tour','flights'):
+            filename='tourvisor-fuel-intake-receipt-v1-'+stage+'-'+hashlib.sha256(tour_id.encode()).hexdigest()+'.json'
+            path=home/'.anytoour-andromeda/searches'/filename
+            data,record,file_identity=pd_read(path,2048)
+            identities[path]=file_identity
+            row={'offer_ref_digest':offer,'stage':stage,'status':'missing','snapshot':None,
+                 'record_sha256':None,'record_bytes':None}
+            if data is not None:
+                if record['mode']!=0o600:fail('diagnostic_file_mode')
+                try:
+                    value=json.loads(data.decode('utf-8'),object_pairs_hook=pd_object,
+                        parse_constant=lambda _:fail('diagnostic_schema'))
+                    pd_validate(value,tour_id,stage,read_at)
+                except Exception:fail('diagnostic_schema')
+                row.update(status='available' if value['expires_at']>read_at else 'expired',snapshot=value,
+                    record_sha256=record['sha256'],record_bytes=record['bytes'])
+            rows.append(row)
+    try:
+        if pf_identity(helper.lstat())!=identity:fail('diagnostic_snapshot_changed')
+        for path,expected in identities.items():
+            if expected is None:
+                if path.exists() or path.is_symlink():fail('diagnostic_snapshot_changed')
+            elif pf_identity(path.lstat())!=expected:fail('diagnostic_snapshot_changed')
+    except Exception:fail('diagnostic_snapshot_changed')
+    return {'schema_version':1,'source':'tourvisor-fuel-intake-diagnostic-readback-v1','status':'complete',
+            'installed_helper_sha256':PD_HELPER_SHA,'read_at':read_at,'snapshots':rows,
+            'observed_files':sum(row['status']!='missing' for row in rows),
+            'fresh_files':sum(row['status']=='available' for row in rows),'final_price_verified':False}
+'''
+
+
+def diagnostic_reader(command):
+    # Reuse only the descriptor-safe reader function; no legacy inventory/config reader runs.
+    functions=[node for node in ast.parse(REMOTE_READER).body if isinstance(node,ast.FunctionDef) and node.name=='pf_read']
+    need(len(functions)==1,'diagnostic_reader_registration')
+    common=ast.get_source_segment(REMOTE_READER,functions[0]).replace("anchor=home/'www'",'anchor=home',1)
+    reader=('import hashlib,json,os,pathlib,re,time\nimport stat as pf_stat\nPD_HELPER_SHA='+repr(DIAGNOSTIC_HELPER_SHA256)
+            +'\nPD_MIN_TIME='+repr(DIAGNOSTIC_INSTALLED_AT)+'\nPD_IDS='+repr(command['tour_ids'])
+            +'\nPD_ERROR_CODES=frozenset('+repr(sorted(DIAGNOSTIC_ERROR_CODES))+')\n'+common+'\n'
+            +DIAGNOSTIC_VALIDATOR+'\n'+DIAGNOSTIC_READER)
+    return reader
+
+
+def diagnostic_remote_program(remote,command):
+    reader=diagnostic_reader(command)
+    marker='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n"
+    exclusion="    if mode not in ('reconcile',";size="if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    gate="    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
+    need(remote.count(marker)==remote.count(dispatch)==remote.count(size)==remote.count(gate)==1
+         and remote.count(exclusion)==2,'diagnostic_registration_drift')
+    fixed="    if mode=="+repr(DIAGNOSTIC_MODE)+" and (source!="+repr(DIAGNOSTIC_SOURCE)+" or operation!="+repr(DIAGNOSTIC_OPERATION)+" or payload.get('tour_ids')!="+repr(command['tour_ids'])+"):fail('diagnostic_fixed_scope')\n"
+    registration="    if mode=="+repr(DIAGNOSTIC_MODE)+":\n"+"""        result['passive_fuel_diagnostics']=passive_fuel_diagnostic_readback()
+        result['production_after']=fingerprints()
+        result.update(status='complete',supplier_calls=0,database_reads=0,database_writes=0,
+            runtime_writes=0,booking_calls=0,lead_calls=0,runtime_changed=False,
+            production_unchanged=result['production_after']==before)
+"""
+    remote=remote.replace(marker,reader+'\n'+marker,1).replace(gate,fixed+gate,1)
+    remote=remote.replace(dispatch,registration+dispatch,1)
+    remote=remote.replace(exclusion,"    if mode not in ("+repr(DIAGNOSTIC_MODE)+",'reconcile',")
+    hashes={'app/integrations/tourvisor-operator-fuel-passive-intake.php':DIAGNOSTIC_HELPER_SHA256}
+    remote=remote.replace(size,"if not isinstance(files,dict) or files!="+repr(hashes)+": fail('diagnostic_manifest')",1)
+    ast.parse(remote)
+    return remote
+
+
+def diagnostic_completed(command,result):
+    counters=('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
+    value=result.get('passive_fuel_diagnostics')
+    fields={'schema_version','source','status','installed_helper_sha256','read_at','snapshots','observed_files',
+            'fresh_files','final_price_verified'}
+    outer={'schema_version','source_sha','mode','operation_id','status','runtime_changed',
+           'production_before','production_after','production_unchanged','passive_fuel_diagnostics',*counters}
+    if (set(result)!=outer or type(result.get('schema_version')) is not int or result['schema_version']!=1
+        or not all(result.get(k)==command[k] for k in ('source_sha','mode','operation_id'))
+        or result.get('status')!='complete' or result.get('runtime_changed') is not False
+        or result.get('production_unchanged') is not True
+        or not isinstance(result.get('production_before'),dict)
+        or result['production_before']!=result.get('production_after')
+        or any(type(result.get(k)) is not int or result[k]!=0 for k in counters)
+        or not isinstance(value,dict) or set(value)!=fields
+        or type(value['schema_version']) is not int or value['schema_version']!=1
+        or value['source']!='tourvisor-fuel-intake-diagnostic-readback-v1' or value['status']!='complete'
+        or value['installed_helper_sha256']!=DIAGNOSTIC_HELPER_SHA256 or value['final_price_verified'] is not False
+        or type(value['read_at']) is not int or not DIAGNOSTIC_INSTALLED_AT<=value['read_at']<=4102444800
+        or not isinstance(value['snapshots'],list) or len(value['snapshots'])!=4):return False
+    namespace=dict(hashlib=hashlib,re=re,PD_MIN_TIME=DIAGNOSTIC_INSTALLED_AT,PD_ERROR_CODES=DIAGNOSTIC_ERROR_CODES)
+    exec(DIAGNOSTIC_VALIDATOR,namespace)
+    observed=fresh=0
+    try:
+        for row,(tour_id,stage) in zip(value['snapshots'],[(i,s) for i in command['tour_ids'] for s in ('tour','flights')]):
+            if (not isinstance(row,dict) or set(row)!={'offer_ref_digest','stage','status','snapshot','record_sha256','record_bytes'}
+                or row['offer_ref_digest']!=hashlib.sha256(('tourvisor:tour:'+tour_id).encode()).hexdigest()
+                or row['stage']!=stage):return False
+            if row['status']=='missing':
+                if row['snapshot'] is not None or row['record_sha256'] is not None or row['record_bytes'] is not None:return False
+                continue
+            snapshot=namespace['pd_validate'](row['snapshot'],tour_id,stage,value['read_at'])
+            if (row['status']!=('available' if snapshot['expires_at']>value['read_at'] else 'expired')
+                or not isinstance(row['record_sha256'],str) or re.fullmatch('[a-f0-9]{64}',row['record_sha256']) is None
+                or type(row['record_bytes']) is not int or not 0<row['record_bytes']<=2048):return False
+            observed+=1;fresh+=row['status']=='available'
+    except (KeyError,TypeError,ValueError):return False
+    return (type(value['observed_files']) is int and value['observed_files']==observed
+            and type(value['fresh_files']) is int and value['fresh_files']==fresh)
