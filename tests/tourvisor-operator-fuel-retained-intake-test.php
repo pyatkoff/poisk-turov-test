@@ -5,14 +5,20 @@ require_once __DIR__ . '/../app/integrations/tourvisor-operator-fuel-retained-in
 
 function tvfi_ok(bool $value, string $message): void { if (!$value) throw new RuntimeException($message); }
 function tvfi_hash(string $value): string { return hash('sha256', $value); }
-function tvfi_reject(array $row, string $message): void {
+function tvfi_reject(array $row, string $message, ?string $code = null): void {
     try { AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($row); }
-    catch (InvalidArgumentException|DomainException $expected) { return; }
+    catch (InvalidArgumentException|DomainException $expected) {
+        tvfi_ok($code === null || $expected->getMessage() === $code, $message . ': wrong rejection code');
+        return;
+    }
     throw new RuntimeException($message);
 }
-function tvfi_search_reject(array $row, string $message): void {
+function tvfi_search_reject(array $row, string $message, ?string $code = null): void {
     try { AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($row); }
-    catch (InvalidArgumentException|DomainException $expected) { return; }
+    catch (InvalidArgumentException|DomainException $expected) {
+        tvfi_ok($code === null || $expected->getMessage() === $code, $message . ': wrong rejection code');
+        return;
+    }
     throw new RuntimeException($message);
 }
 
@@ -144,6 +150,29 @@ $unknownCharges = $base; $unknownCharges['flights']['info']['surcharges']=[['amo
 tvfi_reject($unknownCharges, 'overlapping required charges must reject');
 $twoDefaults = $base; $twoDefaults['flights']['flights'][]=$twoDefaults['flights']['flights'][0];
 tvfi_reject($twoDefaults, 'ambiguous default combination must reject');
+
+// UI choice of a concrete alternative does not establish the retained default.
+// Contract fixtures only: no private payload is reconstructed from UI text.
+$alternative = $base['flights']['flights'][0];
+$alternative['isDefault'] = false;
+foreach (['tour'=>$base, 'search'=>$searchBase] as $kind=>$input) {
+    $reject = $kind === 'tour' ? 'tvfi_reject' : 'tvfi_search_reject';
+    $input['flights']['flights'][] = $alternative;
+
+    $placeholder = $input;
+    $placeholder['flights']['flights'][0]['forward'] = [];
+    $placeholder['flights']['flights'][0]['backward'] = [];
+    $reject($placeholder, $kind . ' must not borrow nondefault legs', 'TV_FUEL_FORWARD');
+
+    $unmarked = $input;
+    $unmarked['flights']['flights'][0]['isDefault'] = false;
+    $reject($unmarked, $kind . ' must not guess a default', 'TV_FUEL_DEFAULT');
+
+    $missingFuel = $input;
+    $missingFuel['flights']['flights'][0]['fuelCharge'] = null;
+    $reject($missingFuel, $kind . ' must not borrow nondefault fuel', 'TV_FUEL_AMOUNT');
+}
+
 $differentFlight = $otherHotel; $differentFlight['flights']['flights'][0]['forward'][0]['number']='ZF9999';
 $obs3 = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($differentFlight);
 tvfi_ok($obs3['scope'] !== $obs['scope'], 'different flight must form different scope');
