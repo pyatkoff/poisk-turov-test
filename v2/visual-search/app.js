@@ -75,7 +75,8 @@ const aboutDisclosureHTML=()=>data.live
  ? `<p class="modal-intro">Версия v${prototypeVersion} получает актуальные предложения только из живого поиска Tourvisor и прямого ANEX. База не подменяет живую выдачу: ранее найденные цены используются только в календаре.</p><p class="modal-intro">Для конкретного предложения выполняется доступная поставщику актуализация цены, наличия и рейсов. Неподтверждённая или расчётная сумма показывается с явным статусом и не выдаётся за финально подтверждённую.</p><p class="modal-intro">Формы заявки доступны только для проверки сценария: данные не отправляются туроператору, бронирование и оплата отключены.</p>`
  : `<p class="modal-intro">Демонстрационный сценарий v${prototypeVersion} работает на сохранённых и учебных данных. Цены и наличие не обновляются, сценарии рейсов могут быть вымышленными.</p><p class="modal-intro">Формы заявки доступны только для проверки интерфейса: данные не отправляются, бронирование и оплата отключены.</p>`;
 const cachedPriceNote=o=>data.scenario==='live'?'Цена из базы AnyTour · наличие требует проверки':'Цена из снимка 23.09.2026 · наличие не проверяется';
-const priceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демонстрационная запись · не для бронирования':'Загруженная запись · не для бронирования'):o.provider==='fixture'?'Демонстрационная цена · не для бронирования':o.cached?cachedPriceNote(o):needsRefresh(o)?'Цена из текущего поиска · требует подтверждения':'Цена предложения · сборы уточняются';
+const unknownInfantCharge=o=>o?.provider==='anex'&&o.raw?.infantCharge?.status==='unknown';
+const priceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демонстрационная запись · не для бронирования':'Загруженная запись · не для бронирования'):o.provider==='fixture'?'Демонстрационная цена · не для бронирования':o.cached?cachedPriceNote(o):unknownInfantCharge(o)?'Цена из поиска · доплата за младенца уточняется':needsRefresh(o)?'Цена из текущего поиска · требует подтверждения':'Цена предложения · сборы уточняются';
 const cardPriceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демо · не для бронирования':'Запись · не для бронирования'):o.provider==='fixture'?'Демо · не для бронирования':o.cached?(data.scenario==='live'?'Цена из базы · требует проверки':'Снимок · цена требует проверки'):priceNote(o);
 const offerMetaNote=o=>needsRefresh(o)?priceNote(o):'Рейсы и багаж — при выборе';
 // Meal identities and names are provided by the data adapter; UI does not map supplier aliases.
@@ -896,15 +897,16 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
  });
  const total=$('#hotel-detail-min'),status=$('#hotel-detail-price-status'),button=$('#hotel-detail-offers');if(!total||!status||!button)return;
  if(selected){
-  total.textContent=money(selected.total);status.textContent=`${selected.room==='По запросу'?'Номер по запросу':selected.room} · ${mealLabel(selected)} · ${dateText(selected.day)} · ${selected.operator}`;
+   const infantUnknown=selected.provider==='anex'&&selected.raw?.infantCharge?.status==='unknown';
+   total.textContent=money(selected.total);status.textContent=infantUnknown?priceStatus:`${selected.room==='По запросу'?'Номер по запросу':selected.room} · ${mealLabel(selected)} · ${dateText(selected.day)} · ${selected.operator}`;
   button.disabled=false;button.dataset.action='continue-hotel-offer';button.dataset.key=selected.key;button.textContent=needsRefresh(selected)&&selected.provider!=='anex'?'Проверить условия':'К заявке';
-  status.textContent+=' · '+(selected.raw?.prototypeConditions?selectedPriceStatus(selected):priceStatus);
+   if(!infantUnknown)status.textContent+=' · '+(selected.raw?.prototypeConditions?selectedPriceStatus(selected):priceStatus);
   if(hotelOfferCheckActive(selected.key)){
    const current=selectedOffer,view=retainedProviderView(current);
    if(current.loading){status.textContent='Проверяем выбранный вариант…';button.disabled=true;button.textContent='Проверяем цену…';}
    else if(current.quoteError){status.textContent=offerQuoteErrorText(current,terminalOfferQuote(current),needsRefresh(current));button.disabled=terminalOfferQuote(current);button.textContent=button.disabled?'Тур недоступен':'Повторить проверку';}
    else if(view?.type==='anex-current'){
-    status.textContent=view.error|| (view.pending?'Уточняем обязательные доплаты…':'Цена из поиска ANEX · доплаты требуют проверки');
+     status.textContent=view.error|| (view.pending?'Уточняем обязательные доплаты…':current.raw?.infantCharge?.status==='unknown'?'Цена из поиска ANEX · доплата за младенца уточняется':'Цена из поиска ANEX · доплаты требуют проверки');
     button.disabled=!!view.error||!!view.pending;button.dataset.action='anex-additional-prices';button.textContent=view.pending?'Уточняем доплаты…':'Проверить доплаты и продолжить';
    }else if(view?.type==='anex-additional'&&anexApplicationDraft){
     total.textContent=money(anexApplicationDraft.price);status.textContent='Расчётная стоимость за всех · итог и рейсы подтвердит менеджер';button.dataset.action='anex-application-preview';button.textContent='К заявке по расчётной цене';
@@ -2318,7 +2320,7 @@ function openAnexConcreteCurrent(o,current){
  if(!h||!Number.isFinite(price)||price<=0){selectedOffer={...o,loading:false,quoteError:'ANEX не вернул корректную цену предложения.'};renderRealOffer();return;}
  rememberProviderView(o,'anex-current',current,retainedProviderView(o)?.error,retainedProviderView(o)?.pending);selectedOffer={...o,loading:false};anexApplicationDraft=null;anexCurrentDraft={offer:o,current};
  if(hotelOfferCheckActive(o.key)){renderOfferProgress();return;}
- showModal('anex-current','Предложение ANEX','ANEX · ТУР ИЗ ТЕКУЩЕГО ПОИСКА',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(roomLabel(o))} · ${esc(displayMealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">Предложение относится к текущему поиску. Это проверка контекста, а не пересчёт стоимости у ANEX. Показана цена из поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
+ showModal('anex-current','Предложение ANEX','ANEX · ТУР ИЗ ТЕКУЩЕГО ПОИСКА',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(roomLabel(o))} · ${esc(displayMealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">Предложение относится к текущему поиску. Это проверка контекста, а не пересчёт стоимости у ANEX. Показана цена из поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.${o.raw?.infantCharge?.status==='unknown'?' Доплата за младенца и её включение в цену пока неизвестны.':''}</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="anex-additional-prices">Уточнить обязательные доплаты</button>`;
  renderAnexFlightInventory();
 }

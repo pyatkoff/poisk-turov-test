@@ -1,6 +1,37 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),crypto=require('crypto'),{JSDOM}=require('jsdom');
 const source=fs.readFileSync(__dirname+'/../v2/visual-search/hotel-details-v1.js','utf8');
+function verifyInfantChargeStatus(appSource,hotelSource){
+ const start=appSource.indexOf('const cachedPriceNote='),end=appSource.indexOf('// Meal identities',start);
+ assert(start>=0&&end>start);
+ const q=vm.runInNewContext(appSource.slice(start,end)+';({priceNote,cardPriceNote});',{
+  data:{scenario:'live',preview:false},needsRefresh:o=>o.provider==='anex'});
+ const listing={key:'infant-base',hotelId:1,provider:'anex',raw:{infantCharge:Object.freeze({status:'unknown',amount:null,includedInSearchPrice:null})},
+  total:100000,adults:2,ages:[1,8],room:'Standard',meal:'AI',day:'2026-10-10',returnDay:'2026-10-17',nights:7,operator:'ANEX'};
+ assert.match(q.priceNote(listing),/доплата за младенца уточняется/i);
+ const ordinary={...listing,raw:{},ages:[]};
+ assert.equal(q.cardPriceNote(ordinary),'Цена из текущего поиска · требует подтверждения');
+ const rowStart=hotelSource.indexOf('function roomOfferChoiceHTML('),rowEnd=hotelSource.indexOf('function renderHotelRooms(',rowStart);
+ const helpers={context:{hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null},esc:v=>String(v),sameSelectedTourConditions:()=>false,
+  selectedPriceStatus:()=>'',cardPriceNote:q.cardPriceNote,displayMealLabel:o=>o.meal,operatorBadge:o=>o,flightLabel:()=>'',
+  dateText:v=>v,nightsText:v=>v+' ночей',guestsText:()=> '2 взрослых + дети 1, 8 лет',money:v=>v+' ₽'};
+ const rowContext=vm.createContext(helpers);vm.runInContext(hotelSource.slice(rowStart,rowEnd),rowContext);
+ const html=rowContext.roomOfferChoiceHTML(listing);
+ assert.match(html,/room-offer-price-status[^>]*>[^<]*доплата за младенца уточняется/i);
+ assert.match(html,/<strong>100000 ₽<\/strong>/);assert.equal(listing.raw.infantCharge.amount,null);assert.equal(listing.total,100000);
+ const footerStart=appSource.indexOf('function syncHotelOfferSelection('),footerEnd=appSource.indexOf('function observeHotelRoomChoices(',footerStart);
+ const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
+ const f={...helpers,hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null,
+  state:{search:{}},searchKey:()=>'',needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[],mealLabel:o=>o.meal};
+ vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i);
+ assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');assert.equal(nodes['#hotel-detail-offers'].dataset.key,listing.key);
+ f.hotelOfferCheckActive=()=>true;f.selectedOffer=listing;f.retainedProviderView=()=>({type:'anex-current'});f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i,'current-context check does not erase the unresolved component');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');
+ console.log('PASS actual infant price qualifiers: card/room/selected footer retain unknown/null and exact whole listing amount; ordinary copy unchanged');
+}
+verifyInfantChargeStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
 function records(code,baseline=false,requestPlaceholder=false){const output=[],checkInvocation=code===source&&!baseline&&!requestPlaceholder;
  for(const mode of ['empty','single','two','many','incomplete'])for(const long of [false,true])for(const meal of ['', 'BB']){
   const dom=new JSDOM('<div id="modal-body"></div><div id="modal-footer" hidden></div><dialog id="modal"></dialog>'),doc=dom.window.document;
