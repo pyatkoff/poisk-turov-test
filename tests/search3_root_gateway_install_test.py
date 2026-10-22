@@ -956,6 +956,186 @@ class TvDiagnosticInstall(unittest.TestCase):
    result,calls=self.execute(m,home,payload,m.tv_diagnostic_remote(),native=True)
    self.assertTrue(m.tv_diagnostic_safe_receipt(identity,result,complete=True),result);self.assertEqual(len(calls),3);self.assertEqual((project/'api-v2.php').read_bytes(),body)
 
+class ContextSenderInstall(unittest.TestCase):
+ module=CheckedInstall.module
+ execute=CheckedInstall.execute
+ def event(self,m):
+  event,env=CheckedInstall.event(self,m);event['issue']={'number':4709}
+  event['comment']['body']=f'{m.CONTEXT_SENDER_PREFIX} '+env['GITHUB_SHA']+' '+m.CONTEXT_SENDER_OPERATION
+  return event,env
+ def fixture(self,m,home,candidate=None):
+  import base64
+  project=home/'www';expected={}
+  for path in m.CONTEXT_SENDER_EXPECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True)
+   p.write_bytes(b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","old"); ?>' if path==m.CONTEXT_SENDER_PATH else b'fixture '+path.encode());p.chmod(0o644)
+   expected[path]=m.sha(p.read_bytes())
+  for path in m.CONTEXT_SENDER_PROTECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True)
+   if not p.exists():p.write_bytes(b'public fixture '+path.encode());p.chmod(0o644)
+  if candidate is None:candidate=b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","new"); ?>'
+  m.CONTEXT_SENDER_EXPECTED=expected;m.CONTEXT_SENDER_HASH=m.sha(candidate);m.CONTEXT_SENDER_BLOB=m.blob(candidate);m.CONTEXT_SENDER_BYTES=len(candidate)
+  event,env=self.event(m);identity=m.context_sender_event(event,env)
+  return project,candidate,identity,{**identity,'candidate_b64':base64.b64encode(candidate).decode()},m.context_sender_remote()
+ def test_exact_event_does_not_authorize_alias_target_or_old_operation(self):
+  import copy
+  m=self.module();event,env=self.event(m);self.assertEqual(m.context_sender_event(event,env)['command_comment_id'],987)
+  for key,value in {'GITHUB_REF':'refs/heads/other','GITHUB_SHA':'c'*40,'GITHUB_RUN_ATTEMPT':'2','GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_WORKFLOW_REF':'other'}.items():
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.context_sender_event(event,{**env,key:value})
+  for number in (4217,3419,2530,996):
+   bad=copy.deepcopy(event);bad['issue']['number']=number
+   with self.assertRaises(RuntimeError):m.context_sender_event(bad,env)
+  for body in (event['comment']['body']+' ',event['comment']['body']+' /tmp/helper.php',event['comment']['body'].replace(m.CONTEXT_SENDER_OPERATION,m.TV_DIAGNOSTIC_OPERATION)):
+   bad=copy.deepcopy(event);bad['comment']['body']=body
+   with self.assertRaises(RuntimeError):m.context_sender_event(bad,env)
+  bad=copy.deepcopy(event);bad['issue']['pull_request']={}
+  with self.assertRaises(RuntimeError):m.context_sender_event(bad,env)
+  self.assertEqual(m.CHECKED_OPERATION,'install-20261018-fcfe503e-v1')
+  self.assertEqual(m.DEPENDENCY_OPERATION,'install-20261019-dependency-reuse-v1')
+  self.assertEqual(m.TV_DIAGNOSTIC_OPERATION,'install-20261020-tv-diagnostics-v1')
+  with self.assertRaises(RuntimeError):m.tv_diagnostic_event(event,env)
+ def admission_api(self,m,event,identity,body):
+  import base64
+  def api(path):
+   if path=='/git/ref/heads/main':return {'object':{'sha':identity['control_source_sha']}}
+   if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.CONTEXT_SENDER_RELEASE}}
+   if path.startswith('/git/ref/heads/feature/'):return {'object':{'sha':m.CONTEXT_RECEIVER_FEATURE}}
+   if path=='/git/commits/'+m.CONTEXT_SENDER_RELEASE:return {'sha':m.CONTEXT_SENDER_RELEASE,'parents':[{'sha':m.CONTEXT_SENDER_PARENT},{'sha':m.CONTEXT_SENDER_SOURCE}],'tree':{'sha':m.CONTEXT_SENDER_TREE}}
+   if path=='/git/commits/'+identity['control_source_sha']:return {'sha':identity['control_source_sha'],'parents':[{'sha':'a'*40},{'sha':'d'*40}],'tree':{'sha':'e'*40}}
+   if path=='/git/commits/'+('d'*40):return {'sha':'d'*40,'tree':{'sha':'e'*40}}
+   if path=='/git/commits/'+('a'*40):return {'sha':'a'*40,'tree':{'sha':'e'*40},'parents':[]}
+   if path.startswith('/contents/'+m.CONTEXT_SENDER_PATH+'?'):return {'sha':m.CONTEXT_SENDER_BLOB,'content':base64.b64encode(body).decode()}
+   if path.startswith('/contents/'+m.CONTEXT_RECEIVER_PATH+'?'):return {'sha':m.CONTEXT_RECEIVER_BLOB}
+   if path.startswith('/contents/'):return {'type':'file','sha':'9'*40}
+   if '/check-runs?check_name=' in path:
+    name=path.split('check_name=',1)[1].split('&',1)[0];head=path.split('/')[2]
+    return {'total_count':1,'check_runs':[{'id':1,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
+   if '/check-runs?' in path:
+    head=path.split('/')[2];ids=m.CONTEXT_SENDER_CHECK_IDS if head==m.CONTEXT_SENDER_SOURCE else m.CONTEXT_RECEIVER_CHECK_IDS
+    return {'total_count':len(ids),'check_runs':[{'id':i,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in ids]}
+   if path.startswith('/issues/comments/'):return event['comment']
+   if path.startswith('/issues/4709/comments?'):return [event['comment']]
+   raise AssertionError(path)
+  return api
+ def test_admission_binds_both_sources_actual_merge_five_ci_and_single_command(self):
+  import copy
+  m=self.module();event,env=self.event(m);identity=m.context_sender_event(event,env)
+  body=b'<?php /* isolated source fixture */ ?>';m.CONTEXT_SENDER_BLOB=m.blob(body);m.CONTEXT_SENDER_HASH=m.sha(body);m.CONTEXT_SENDER_BYTES=len(body)
+  api=self.admission_api(m,event,identity,body)
+  with mock.patch.object(m,'checked_api',side_effect=api):self.assertEqual(m.context_sender_admission(identity),body)
+  for variant in ('main','release','receiver','merge','tree','candidate','receiverblob','cihead','ciapp','cistatus','missingcontrolci','comment','duplicate','incomplete'):
+   def bad(path):
+    value=copy.deepcopy(api(path))
+    if variant=='main' and path=='/git/ref/heads/main':value['object']['sha']='f'*40
+    if variant=='release' and '/heads/release/' in path:value['object']['sha']='f'*40
+    if variant=='receiver' and '/heads/feature/' in path:value['object']['sha']='f'*40
+    if path=='/git/commits/'+m.CONTEXT_SENDER_RELEASE:
+     if variant=='merge':value['parents'].reverse()
+     if variant=='tree':value['tree']['sha']='f'*40
+    if variant=='candidate' and path.startswith('/contents/'+m.CONTEXT_SENDER_PATH):value['sha']='f'*40
+    if variant=='receiverblob' and path.startswith('/contents/'+m.CONTEXT_RECEIVER_PATH):value['sha']='f'*40
+    if '/check-runs?' in path and 'check_name=' not in path:
+     if variant=='cihead':value['check_runs'][0]['head_sha']='f'*40
+     if variant=='ciapp':value['check_runs'][0]['app']['slug']='other'
+     if variant=='cistatus':value['check_runs'][0]['conclusion']='skipped'
+    if variant=='missingcontrolci' and 'check_name=context-sender-contracts' in path:value={'total_count':0,'check_runs':[]}
+    if variant=='comment' and path.startswith('/issues/comments/'):value['body']+=' '
+    if path.startswith('/issues/4709/comments?'):
+     if variant=='duplicate':value.append({**event['comment'],'id':988})
+     if variant=='incomplete':value=[{'id':i,'body':'ordinary'} for i in range(100)]
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),self.assertRaises(RuntimeError):m.context_sender_admission(identity)
+ def test_transaction_changes_only_existing_shared_helper_and_retains_exact_backup(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   before={p.relative_to(project).as_posix():p.read_bytes() for p in project.rglob('*') if p.is_file()}
+   result,calls=self.execute(m,home,payload,program)
+   self.assertTrue(m.context_sender_safe_receipt(identity,result,complete=True));self.assertEqual(len(calls),3)
+   self.assertEqual((project/m.CONTEXT_SENDER_PATH).read_bytes(),candidate)
+   self.assertFalse(list(project.rglob('MUST_NOT_EXECUTE')))
+   self.assertEqual((home/'.anytoour-search3-root-gateway'/m.CONTEXT_SENDER_OPERATION/'previous.php').read_bytes(),before[m.CONTEXT_SENDER_PATH])
+   after={p.relative_to(project).as_posix():p.read_bytes() for p in project.rglob('*') if p.is_file()}
+   self.assertEqual(set(before),set(after));self.assertEqual([p for p in before if before[p]!=after[p]],[m.CONTEXT_SENDER_PATH])
+   self.assertFalse((project/'anytoour.ru'/m.CONTEXT_SENDER_PATH).exists())
+ def test_missing_drift_links_unsafe_owner_parent_and_extra_payload_abort_without_lint(self):
+  for variant in ('missing','drift','symlink','hardlink','parent','owner','payload'):
+   m=self.module()
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);target=project/m.CONTEXT_SENDER_PATH
+    if variant=='missing':target.unlink()
+    if variant=='drift':target.write_bytes(b'foreign predecessor')
+    if variant=='symlink':target.unlink();target.symlink_to(project/'anytoour.ru/api-v2.php')
+    if variant=='hardlink':os.link(target,home/'other-link')
+    if variant=='parent':target.parent.chmod(0o777)
+    if variant=='payload':payload['target']='anytoour.ru/api-v2.php'
+    owner=mock.patch('os.getuid',return_value=os.getuid()+1) if variant=='owner' else contextlib.nullcontext()
+    with owner:result,calls=self.execute(m,home,payload,program)
+    self.assertEqual(calls,[]);self.assertEqual(result['file_writes'],0);self.assertEqual(result['root_write_attempts'],0)
+    self.assertEqual(m.context_sender_safe_receipt(identity,result),variant!='payload');self.assertFalse(m.context_sender_safe_receipt(identity,result,complete=True))
+ def test_replay_keeps_first_private_receipt_and_installed_bytes(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   first,_=self.execute(m,home,payload,program);path=home/'.anytoour-search3-root-gateway'/m.CONTEXT_SENDER_OPERATION/'result.json';saved=path.read_bytes()
+   second,calls=self.execute(m,home,payload,program)
+   self.assertEqual(second['reason'],'operation_exists_no_replay');self.assertEqual(calls,[])
+   self.assertEqual(path.read_bytes(),saved);self.assertEqual((project/m.CONTEXT_SENDER_PATH).read_bytes(),candidate)
+ def test_drift_during_lint_stops_and_failed_installed_lint_rolls_back_only_owned_inode(self):
+  for variant in ('dependency','public','rollback','foreign_inode'):
+   m=self.module()
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);target=project/m.CONTEXT_SENDER_PATH;old=target.read_bytes();foreign_id=[]
+    def callback(args,n):
+     if n==1 and variant=='dependency':(project/'anytoour.ru/api-v2.php').write_bytes(b'foreign dependency')
+     if n==1 and variant=='public':(project/'anytoour.ru/index.php').write_bytes(b'foreign public')
+     if n==3 and variant in ('rollback','foreign_inode'):
+      if variant=='foreign_inode':
+       other=target.with_suffix('.foreign');other.write_bytes(candidate);other.replace(target);foreign_id.append(target.stat().st_ino)
+      return mock.Mock(returncode=1)
+    result,calls=self.execute(m,home,payload,program,callback)
+    self.assertTrue(m.context_sender_safe_receipt(identity,result));self.assertFalse(m.context_sender_safe_receipt(identity,result,complete=True))
+    if variant in ('dependency','public'):self.assertEqual(result['root_write_attempts'],0);self.assertEqual(target.read_bytes(),old)
+    if variant=='rollback':self.assertEqual(result['status'],'rolled_back_no_replay');self.assertEqual(result['rollback_attempts'],1);self.assertEqual(target.read_bytes(),old)
+    if variant=='foreign_inode':self.assertEqual(result['status'],'unknown_no_replay');self.assertEqual(result['rollback_attempts'],0);self.assertEqual(target.stat().st_ino,foreign_id[0])
+ def test_receipt_cannot_claim_old_api_target_wrong_identity_extra_data_or_changed_public(self):
+  import copy
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);_,_,identity,payload,program=self.fixture(m,home);result,_=self.execute(m,home,payload,program)
+   for variant in ('target','source','extra','public','before','after'):
+    value=copy.deepcopy(result)
+    if variant=='target':value['written_files']=['api-v2.php']
+    if variant=='source':value['source_sha']='f'*40
+    if variant=='extra':value['raw']='private data'
+    if variant=='public':value['production_after']['anytoour.ru/index.php']='f'*64
+    if variant=='before':value['before_files'][m.CONTEXT_SENDER_PATH]['sha256']='f'*64
+    if variant=='after':value['after_files'][m.CONTEXT_SENDER_PATH]['bytes']+=1
+    with self.subTest(variant=variant):self.assertFalse(m.context_sender_safe_receipt(identity,value,complete=True))
+ def test_existing_transport_never_connects_on_admission_failure_and_cleans_keys(self):
+  m=self.module();event,env=self.event(m)
+  with tempfile.TemporaryDirectory() as td:
+   eventfile=pathlib.Path(td)/'event.json';eventfile.write_text(json.dumps(event));environment={**env,'GITHUB_EVENT_PATH':str(eventfile),'RUNNER_TEMP':td}
+   with mock.patch.dict(os.environ,environment),mock.patch.object(m,'context_sender_admission',side_effect=RuntimeError('private failure')),mock.patch.object(m,'run') as run,contextlib.redirect_stdout(io.StringIO()),self.assertRaises(RuntimeError):m.context_sender_install()
+   run.assert_not_called();work=pathlib.Path(td)/'search3-tv-context-sender';evidence=json.loads((work/'evidence.json').read_text())
+   self.assertFalse(evidence['ssh_started']);self.assertEqual(evidence['error_type'],'RuntimeError');self.assertNotIn('private failure',json.dumps(evidence));self.assertFalse((work/'key').exists());self.assertFalse((work/'known').exists())
+ def test_workflow_preserves_existing_lock_and_has_exact_new_gate_and_safe_artifact(self):
+  m=self.module();w=(R/'.github/workflows/search3-root-gateway-install.yml').read_text();job=w.split('  context-sender-install:',1)[1].split('  tv-diagnostic-install:',1)[0]
+  for guard in ('group: deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1','github.event.issue.number == 4709',"github.event.action == 'created'","github.actor == 'pyatkoff'","github.triggering_actor == 'pyatkoff'","github.event.comment.user.id == 226193297",m.CONTEXT_SENDER_OPERATION,m.CONTEXT_SENDER_SOURCE,'scripts/deploy/search3_root_gateway_install.py context_sender_install',"TV_CONTEXT_SENDER_NATIVE_CI: '1'"):
+   self.assertIn(guard,job)
+  paths=job.split('          path: |',1)[1].split('          if-no-files-found:',1)[0]
+  self.assertEqual(len(paths.strip().splitlines()),3);self.assertNotIn('*',paths);self.assertNotIn('/key',paths);self.assertNotIn('/known',paths)
+  self.assertIn('/tourvisor-anytour-offer-autosave.php',paths)
+ @unittest.skipUnless(os.environ.get('TV_CONTEXT_SENDER_NATIVE_CI')=='1','native reviewed sender PHP CI required')
+ def test_native_actual_sender_is_only_linted_without_execution_or_other_file_write(self):
+  m=self.module();body=(pathlib.Path(os.environ['TV_CONTEXT_SENDER_SOURCE_ROOT'])/m.CONTEXT_SENDER_PATH).read_bytes()
+  self.assertEqual(m.blob(body),m.CONTEXT_SENDER_BLOB);self.assertEqual(m.sha(body),m.CONTEXT_SENDER_HASH);self.assertEqual(len(body),21672)
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home,body)
+   result,calls=self.execute(m,home,payload,program,native=True)
+   self.assertEqual(len(calls),3);self.assertTrue(m.context_sender_safe_receipt(identity,result,complete=True));self.assertEqual((project/m.CONTEXT_SENDER_PATH).read_bytes(),body)
+   self.assertFalse(list(project.rglob('MUST_NOT_EXECUTE')))
+
 if __name__=='__main__':unittest.main()
 
 
