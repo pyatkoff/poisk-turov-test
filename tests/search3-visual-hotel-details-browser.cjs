@@ -37,6 +37,60 @@ async function galleryAcceptance(browser,width,port){
   photoCount=0;await page.reload();await page.locator('.hotel-card .hotel-photos.photo-unavailable').first().waitFor();await page.waitForFunction(()=>!document.querySelector('#modal').open);const cardEmpty=await checkCard('empty');assert.equal((await page.locator('.hotel-card .photo-count').first().textContent()).replace(/\s+/g,''),'0/0');const emptyTour=page.locator('.hotel-card [data-action="offer"][data-card-entry]').first();await emptyTour.click();await page.locator('.tour-hero>.tour-photo-missing:not([hidden])').waitFor();const tourPhotoEmpty=await checkTourPhoto('empty');assert.equal(tourPhotoEmpty.imagePresent,false);assert.match(tourPhotoEmpty.label,/Нет фото/);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);return{width,photo_count:24,cardFailed,cardPending,cardRecovered,cardEmpty,tourPhotoFailed,tourPhotoRecovered,tourPhotoText200,tourPhotoEmpty,selected_tour_key:selectedTourKey,failed,loaded,pending,history_index:7,exact_offer_key:offerKey,photo_back_exact_room:true,supplier_requests:0,lead_requests:0,physical_safari:false};
  }finally{releaseSecond();releaseLast();await context.close();}
 }
+
+async function roomPriceStatusAcceptance(browser,width,height,port){
+ const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),errors=[],forbidden=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ await page.route('**/*',async route=>{
+  const request=route.request(),url=new URL(request.url());
+  if(url.hostname!=='127.0.0.1'){if(request.resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
+  if(/\/api-|lead\.php|\/data\/.*\.php/.test(url.pathname)){forbidden.push(url.pathname);await route.abort();return;}
+  await route.continue();
+ });
+ try{
+  await page.goto('http://127.0.0.1:'+port+base+'visual-search/?scenario=snapshot&searched=1');
+  const card=page.locator('.hotel-card').first();await card.waitFor();
+  const listingNote=(await card.locator('.fuel-note').innerText()).trim();
+  assert.match(listingNote,/Снимок.*требует проверки/);
+  await card.locator('[data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();
+  await page.getByRole('button',{name:'Номера и цены',exact:true}).click();
+  const room=page.locator('.hotel-room-card').first();
+  if(await room.evaluate(el=>el.tagName==='DETAILS'))await room.locator(':scope > summary').click();
+  const row=room.locator('.room-offer-choice').first(),note=row.locator('.room-offer-price-status'),choice=row.locator('[data-action="select-hotel-offer"]');
+  await choice.scrollIntoViewIfNeeded();
+  const key=await choice.getAttribute('data-key'),price=await row.locator('.hotel-room-price>strong').innerText();
+  assert.equal(await note.innerText(),listingNote,'room comparison keeps the same source qualification as the card');
+  assert.match(await page.locator('#hotel-detail-price-status').innerText(),/Снимок.*требует проверки/,'minimum footer identifies the unverified price');
+  const inspect=async stage=>{
+   const geometry=await page.evaluate(()=>{
+    const footer=document.querySelector('#modal-footer'),button=document.querySelector('#hotel-detail-offers'),status=document.querySelector('#hotel-detail-price-status'),body=document.querySelector('#modal-body');
+    const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right};};
+    return {footer:box(footer),button:box(button),status:box(status),bodyOverflow:body.scrollWidth>body.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth+1,statusClipped:status.scrollWidth>status.clientWidth+1||status.scrollHeight>status.clientHeight+1,viewport:{width:innerWidth,height:innerHeight}};
+   });
+   assert.equal(geometry.documentOverflow,false);assert.equal(geometry.bodyOverflow,false);assert.equal(geometry.statusClipped,false);
+   assert(geometry.button.y>=0&&geometry.button.bottom<=height+1&&geometry.button.right<=width+1,'existing action stays in the viewport');
+   assert(geometry.status.y>=geometry.footer.y&&geometry.status.bottom<=geometry.footer.bottom+1,'price qualifier stays in the footer');
+   await page.screenshot({path:path.join(evidence,'room-price-'+stage+'-'+width+'x'+height+'.png')});
+   return geometry;
+  };
+  const minimum=await inspect('minimum');
+  await choice.click();assert.equal(await choice.getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('#hotel-detail-min').innerText(),price);
+  assert.match(await page.locator('#hotel-detail-price-status').innerText(),/Снимок.*требует проверки/);
+  const selected=await inspect('selected');
+  await page.locator('[data-action="continue-hotel-offer"]').click();
+  await page.getByRole('heading',{name:'Цена и рейсы пока не подтверждены',exact:true}).waitFor();
+  await page.getByRole('button',{name:'К отелю',exact:true}).click();await page.locator('#hotel-room-count').waitFor();
+  const same=page.locator('[data-action="select-hotel-offer"][data-key="'+key+'"]');
+  assert.equal(await same.getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('#hotel-detail-min').innerText(),price);
+  assert.match(await page.locator('#hotel-detail-price-status').innerText(),/Снимок.*требует проверки/);
+  const returned=await inspect('returned');
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  return {width,height,key,price,listingNote,minimum,selected,returned,supplier_requests:0,lead_requests:0,physical:false};
+ }finally{await context.close();}
+}
+
 const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://fixture');if(!url.pathname.startsWith(base)){res.writeHead(403).end();return;}
  const local=path.resolve(root,url.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -47,7 +101,7 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
- try{browser=await chromium.launch({headless:true});for(const width of [360,390,430,768,1280]){
+ try{browser=await chromium.launch({headless:true});const roomPriceReceipts=[];for(const [width,height] of [[430,900],[1280,900],[1280,720]])roomPriceReceipts.push(await roomPriceStatusAcceptance(browser,width,height,server.address().port));fs.writeFileSync(path.join(evidence,'room-price-status.json'),JSON.stringify(roomPriceReceipts,null,2)+'\n');for(const width of [360,390,430,768,1280]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{

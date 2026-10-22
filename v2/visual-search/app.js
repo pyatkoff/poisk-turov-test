@@ -885,7 +885,8 @@ function refreshOpenHotelRooms(){
 }
 function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id))){
  let selected=offers.find(o=>hotelOfferDraft?.hotelId===id&&hotelOfferDraft.key===o.key)||null;
- if(selected&&selected.raw===selectedOffer?.raw&&searchKey(selectedOffer?.search||{})===searchKey(state.search)&&!selectedOffer?.pricePending&&!['anex','andromeda'].includes(selectedOffer?.provider)&&selectedOffer?.key===selected.key&&sameSelectedTourConditions(selected,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===selected.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError)selected=selectedOffer;
+ let priceStatus=selected?cardPriceNote(selected):'';
+ if(selected&&selected.raw===selectedOffer?.raw&&searchKey(selectedOffer?.search||{})===searchKey(state.search)&&!selectedOffer?.pricePending&&!['anex','andromeda'].includes(selectedOffer?.provider)&&selectedOffer?.key===selected.key&&sameSelectedTourConditions(selected,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===selected.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError){selected=selectedOffer;priceStatus=selectedPriceStatus(selected);}
  $$('.room-offer-choice').forEach(row=>{
   const active=row.dataset.offerKey===selected?.key;row.classList.toggle('selected',active);
   if(active)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
@@ -896,9 +897,9 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
  if(selected){
   total.textContent=money(selected.total);status.textContent=`${selected.room==='По запросу'?'Номер по запросу':selected.room} · ${mealLabel(selected)} · ${dateText(selected.day)} · ${selected.operator}`;
   button.disabled=false;button.dataset.action='continue-hotel-offer';button.dataset.key=selected.key;button.textContent=selected.raw?.prototypeConditions?(selected.tour?'К деталям тура':'Проверить условия'):needsRefresh(selected)?'Проверить условия':'К рейсам и итогу';
-  if(selected.raw?.prototypeConditions)status.textContent+=' · '+selectedPriceStatus(selected);
+  status.textContent+=' · '+(selected.raw?.prototypeConditions?selectedPriceStatus(selected):priceStatus);
  }else{
-  total.textContent=offers.length?(offers.length>1?'от ':'')+money(offers[0].total):'Нет предложений';status.textContent=offers.length?'Выберите вариант из списка':'Измените даты или фильтры';
+  total.textContent=offers.length?(offers.length>1?'от ':'')+money(offers[0].total):'Нет предложений';status.textContent=offers.length?cardPriceNote(offers[0])+' · Выберите вариант из списка':'Измените даты или фильтры';
   button.disabled=!offers.length;button.dataset.action='hotel-section';button.dataset.target='hotel-rooms-heading';delete button.dataset.key;button.textContent=offers.length?'Выбрать номер':'Нет вариантов';
  }
 }
