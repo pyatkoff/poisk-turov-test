@@ -77,7 +77,17 @@ CONTEXT_DIAGNOSTIC_HELPER_SHA256 = '7ae4c385f49bf9e994a073d3405564054e9e503da1d1
 CONTEXT_DIAGNOSTIC_CHECK_COMMIT = '5d95ba40c32b7f6322a979cc8c9c74e2f53fb59e'
 CONTEXT_DIAGNOSTIC_CHECK_IDS = {119739791997,119739790960}
 CONTEXT_DIAGNOSTIC_MIN_TIME = 1792679137
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE)
+# The new completed case6346100352 uses the installed supplier-date helpers.
+# Old diagnostic reservations keep their original source, IDs and helper pins.
+DATE_DIAGNOSTIC_MODE = 'passive-fuel-date-diagnostic'
+DATE_DIAGNOSTIC_SOURCE = '9b55e8e8e2e5f095156da8ca89d7b24a8209b988'
+DATE_DIAGNOSTIC_OPERATION = 'int-anex-passive-date-diagnostic-20261022-v1'
+DATE_DIAGNOSTIC_IDS = ('18296733726725',)
+DATE_DIAGNOSTIC_HELPER_SHA256 = '82575d37e45cdb6ff7976ea3e779c06571d98e381d80b89b57ae5d1a6b1dc088'
+DATE_DIAGNOSTIC_CHECK_COMMIT = '6811734492a4983bf1ac8e31477f5245659831b1'
+DATE_DIAGNOSTIC_CHECK_IDS = {119936837769,119936838595,119936837359}
+DATE_DIAGNOSTIC_MIN_TIME = 1792686698
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -105,6 +115,11 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [DATE_DIAGNOSTIC_MODE]:
+        need(parts == [DATE_DIAGNOSTIC_SOURCE,DATE_DIAGNOSTIC_MODE,
+                       DATE_DIAGNOSTIC_OPERATION,*DATE_DIAGNOSTIC_IDS],
+             'date_diagnostic_fixed_case')
+        return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2],tour_ids=parts[3:])
     if parts[1:2] == [CONTEXT_DIAGNOSTIC_MODE]:
         need(parts == [CONTEXT_DIAGNOSTIC_SOURCE,CONTEXT_DIAGNOSTIC_MODE,
                        CONTEXT_DIAGNOSTIC_OPERATION,*CONTEXT_DIAGNOSTIC_IDS],
@@ -133,7 +148,7 @@ def parse(parts):
 
 def policy(command=None):
     command = parse([SOURCE, MODE, OPERATION]) if command is None else command
-    if command.get('mode') in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):
+    if command.get('mode') in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         ids = command.get('tour_ids')
         need(isinstance(ids,list) and command == parse(
             [command.get('source_sha'),command.get('mode'),command.get('operation_id'),*ids]),
@@ -159,6 +174,8 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
         check_commit,check_ids = DIAGNOSTIC_CHECK_COMMIT,DIAGNOSTIC_CHECK_IDS
     if command['mode'] == CONTEXT_DIAGNOSTIC_MODE:
         check_commit,check_ids = CONTEXT_DIAGNOSTIC_CHECK_COMMIT,CONTEXT_DIAGNOSTIC_CHECK_IDS
+    if command['mode'] == DATE_DIAGNOSTIC_MODE:
+        check_commit,check_ids = DATE_DIAGNOSTIC_CHECK_COMMIT,DATE_DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -167,7 +184,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
-    if command['mode'] == CONTEXT_DIAGNOSTIC_MODE:
+    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         rows=checks['check_runs']
         need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
              and all(c.get('head_sha')==check_commit for c in rows),
@@ -191,7 +208,7 @@ def bundle_source(source_root, command=None):
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
-    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
     root = Path(source_root).resolve()
     output = io.BytesIO()
@@ -1158,7 +1175,7 @@ def publication_lock_mode_repair():
 
 def remote_program(remote, command=None):
     command = policy(command)
-    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
     mode = command['mode']
     marker = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -1218,7 +1235,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
-    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
@@ -1712,6 +1729,10 @@ def passive_fuel_diagnostic_readback():
 
 def _diagnostic_profile(command):
     command=policy(command)
+    if command['mode']==DATE_DIAGNOSTIC_MODE:
+        return dict(mode=DATE_DIAGNOSTIC_MODE,source=DATE_DIAGNOSTIC_SOURCE,
+                    operation=DATE_DIAGNOSTIC_OPERATION,helper_sha256=DATE_DIAGNOSTIC_HELPER_SHA256,
+                    min_time=DATE_DIAGNOSTIC_MIN_TIME)
     if command['mode']==DIAGNOSTIC_MODE:
         return dict(mode=DIAGNOSTIC_MODE,source=DIAGNOSTIC_SOURCE,operation=DIAGNOSTIC_OPERATION,
                     helper_sha256=DIAGNOSTIC_HELPER_SHA256,min_time=DIAGNOSTIC_INSTALLED_AT)
@@ -1760,6 +1781,7 @@ def diagnostic_remote_program(remote,command):
 
 def diagnostic_completed(command,result):
     profile=_diagnostic_profile(command)
+    expected_rows=2 if command['mode']==DATE_DIAGNOSTIC_MODE else 4
     counters=('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
     value=result.get('passive_fuel_diagnostics')
     fields={'schema_version','source','status','installed_helper_sha256','read_at','snapshots','observed_files',
@@ -1778,7 +1800,7 @@ def diagnostic_completed(command,result):
         or value['source']!='tourvisor-fuel-intake-diagnostic-readback-v1' or value['status']!='complete'
         or value['installed_helper_sha256']!=profile['helper_sha256'] or value['final_price_verified'] is not False
         or type(value['read_at']) is not int or not profile['min_time']<=value['read_at']<=4102444800
-        or not isinstance(value['snapshots'],list) or len(value['snapshots'])!=4):return False
+        or not isinstance(value['snapshots'],list) or len(value['snapshots'])!=expected_rows):return False
     namespace=dict(hashlib=hashlib,re=re,PD_MIN_TIME=profile['min_time'],PD_ERROR_CODES=DIAGNOSTIC_ERROR_CODES)
     exec(DIAGNOSTIC_VALIDATOR,namespace)
     observed=fresh=0
