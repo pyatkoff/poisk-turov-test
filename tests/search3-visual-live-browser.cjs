@@ -2077,7 +2077,8 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   const movingOffer=movingRoom.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
   assert.equal(await movingOffer.evaluate(el=>Boolean(el.closest('.hotel-room-more'))),false,'chosen offer starts in the visible first two');
   await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();await movingOffer.click();await settledHotelScroll(page);
-  const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await movingRoom.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]').click();await page.locator('[data-action="start-tour-flights"]').click();
+  const movingDetails=movingRoom.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');await movingDetails.scrollIntoViewIfNeeded();await movingDetails.focus();await settledHotelScroll(page);
+  const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await movingDetails.click();await page.locator('[data-action="start-tour-flights"]').click();
   await page.waitForFunction(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена|Условия поиска изменились/.test(document.querySelector('#modal-body').textContent));
   releaseMovedOfferSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов'));
   await page.locator('#modal-back').click();
