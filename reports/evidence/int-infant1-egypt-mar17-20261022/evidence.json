@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "operation_id": "int-anex-infant1-egypt-20270317-20261022-v1",
+  "terminal": "CONSUMED_NO_REPLAY",
+  "case_ui_closed": true,
+  "source": {
+    "backend_feature": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+    "consumer_source": "1fdfddb3ed3d5f7fbe025443eb36ab48b5839559",
+    "release": "b2cebd5b4bed5db2524cc400a4ad919d3f0a238a",
+    "queue_terminal": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352193293"
+  },
+  "facts": {
+    "find_intents": 1,
+    "stop_intents": 0,
+    "continue_intents": 0,
+    "group_open_intents": 1,
+    "concrete_selected_intents": 1,
+    "inline_current_price_intents": 1,
+    "safe_quote_receipt_reads": 1,
+    "pair_choice_intents": 0,
+    "real_lead_submits": 0,
+    "booking_intents": 0,
+    "first_anex_offers": 131,
+    "final_visible_hotels": 193,
+    "final_visible_variants": 964,
+    "selected_hotel": "BEACH SAFARI NUBIAN RESORT",
+    "selected_room": "Standard Room",
+    "selected_dates": [
+      "2027-03-22",
+      "2027-03-29"
+    ],
+    "listing_rub": 149472,
+    "infant_charge": "unknown",
+    "whole_party_final_verified": false,
+    "quote_start_records": [],
+    "supplier_http_total": "NOT_MEASURED",
+    "apd_http_status_elapsed_body": "NOT_RETAINED"
+  },
+  "source_proven_block": "Ordinary inline current-price path calls APD; infant APD application remains unknown/null; client normalizer requires applied arithmetic. Existing whole-package quote is independent of APD. No supplier outage or zero infant fee inferred.",
+  "observations": [
+    {
+      "stage": "pre_submit",
+      "at": "2026-10-22T21:50:15.842Z",
+      "url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2027-03-17&to=2027-03-23&minNights=7&maxNights=7&adults=2&ages=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE",
+      "observed": {
+        "origin": "Москва",
+        "country": "Египет",
+        "from": "2027-03-17",
+        "to": "2027-03-23",
+        "nights": 7,
+        "adults": 2,
+        "childAges": [
+          1
+        ],
+        "meal": "AI",
+        "submitted": false
+      }
+    },
+    {
+      "stage": "initial_search_observation",
+      "elapsedMs": 17351,
+      "at": "2026-10-22T21:50:33.197Z",
+      "visible_summary": "- link \"Перейти к результатам\":\n  - /url: \"#results\"\n- banner:\n  - link \"AnyTour — начало\":\n    - /url: \"#search\"\n    - img \"AnyTour\"\n  - navigation \"Основная навигация\":\n    - link \"Подбор тура\":\n      - /url: \"#search\"\n  - generic: Версия для проверки\n- link \"AnyTour — изменить поиск\":\n  - /url: \"#search\"\n  - img \"AnyTour\"\n- strong: Москва → Египет\n- generic: Вылет 17 мар — 23 мар · 7 ночей · 2 взр. · 1 реб.\n- 'button \"Изменить поиск: Москва → Египет\"':\n  - generic: Изменить поиск\n- main:\n  - region \"Подберём ваш отдых\":\n    - generic: Маршрут\n    - strong:\n      - text: Москва\n      - generic: →\n      - text: Египет\n    - term: Даты вылета\n    - definition: 17 мар — 23 мар\n    - term: Отдых\n    - definition: 7 ночей\n    - term: Туристы\n    - definition: 2 взр. + 1 реб.\n    - 'button \"Изменить поиск: Москва → Египет\"':\n      - text: Изменить поиск\n    - generic \"ⓘ О данных поиска ⌄\"\n  - region \"Отели и туры\" [active]:\n    - heading \"Отели и туры\" [level=2]\n    - paragraph: 137 отелей · 405 вариантов тура\n    - text: Цена за всех туристов\n    - strong: уточняется при выборе\n    - 'button \"Показать: рейтинг от 4,5 — 50 отелей\"':\n      - generic: Рейтинг 4,5+\n      - generic: · 50\n    - generic: Сортировать\n    - combobox \"Сортировать\":\n      - option \"Рекомендуемые\" [selected]\n      - option \"Сначала дешевле\"\n      - option \"По рейтингу\"\n    - complementary \"Фильтры отелей\":\n      - heading \"Фильтры\" [level=3]\n      - button \"Сбросить выбранные фильтры\": Сбросить\n      - heading \"Название отеля или курорт\" [level=4]\n      - searchbox \"Название отеля или курорт\"\n      - heading \"Бюджет за всех туристов\" [level=4]\n      - text: От, ₽\n      - textbox \"От, ₽\":\n        - /placeholder: Не задан\n      - text: До, ₽\n      - textbox \"До, ₽\":\n        - /placeholder: Не задан\n    ",
+      "visible_sources": "generic \"Источники поиска\":\n        - strong: Tourvisor\n        - generic: \"Получаем предложения · Вариантов до фильтров: 274\"\n        - strong: ANEX\n        - generic: \"Порция получена · Вариантов до фильтров: 131\"\n      - button \"Остановить поиск\"\n      - button \"Изменить условия\"\n    - region \"Цены по датам вылета\":\n      - strong: Март 2027\n      - paragraph: От, тыс. ₽ · весь тур\n      - button \"Открыть календарь цен по датам вылета\":\n        - generic: Календарь\n      - button \"Вылет 17 марта 2027 г., от 106 099 ₽\":\n        - generic: \"17\"\n        - strong: 106,1\n      - button \"Вылет 18"
+    },
+    {
+      "stage": "initial_portion_received",
+      "elapsedMs": 57611,
+      "at": "2026-10-22T21:51:13.457Z",
+      "visible_summary": "- link \"Перейти к результатам\":\n  - /url: \"#results\"\n- banner:\n  - link \"AnyTour — начало\":\n    - /url: \"#search\"\n    - img \"AnyTour\"\n  - navigation \"Основная навигация\":\n    - link \"Подбор тура\":\n      - /url: \"#search\"\n  - generic: Версия для проверки\n- link \"AnyTour — изменить поиск\":\n  - /url: \"#search\"\n  - img \"AnyTour\"\n- strong: Москва → Египет\n- generic: Вылет 17 мар — 23 мар · 7 ночей · 2 взр. · 1 реб.\n- 'button \"Изменить поиск: Москва → Египет\"':\n  - generic: Изменить поиск\n- main:\n  - region \"Подберём ваш отдых\":\n    - generic: Маршрут\n    - strong:\n      - text: Москва\n      - generic: →\n      - text: Египет\n    - term: Даты вылета\n    - definition: 17 мар — 23 мар\n    - term: Отдых\n    - definition: 7 ночей\n    - term: Туристы\n    - definition: 2 взр. + 1 реб.\n    - 'button \"Изменить поиск: Москва → Египет\"':\n      - text: Изменить поиск\n    - generic \"ⓘ О данных поиска ⌄\"\n  - region \"Отели и туры\" [active]:\n    - heading \"Отели и туры\" [level=2]\n    - paragraph: 193 отеля · 964 варианта тура\n    - text: Цена за всех туристов\n    - strong: уточняется при выборе\n    - 'button \"Показать: рейтинг от 4,5 — 63 отеля\"':\n      - generic: Рейтинг 4,5+\n      - generic: · 63\n    - generic: Сортировать\n    - combobox \"Сортировать\":\n      - option \"Рекомендуемые\" [selected]\n      - option \"Сначала дешевле\"\n      - option \"По рейтингу\"\n    - complementary \"Фильтры отелей\":\n      - heading \"Фильтры\" [level=3]\n      - button \"Сбросить выбранные фильтры\": Сбросить\n      - heading \"Название отеля или курорт\" [level=4]\n      - searchbox \"Название отеля или курорт\"\n      - heading \"Бюджет за всех туристов\" [level=4]\n      - text: От, ₽\n      - textbox \"От, ₽\":\n        - /placeholder: Не задан\n      - text: До, ₽\n      - textbox \"До, ₽\":\n        - /placeholder: Не задан\n      -"
+    },
+    {
+      "stage": "own_group_observation",
+      "at": "2026-10-22T21:51:42.063Z",
+      "visible_dialog": "- dialog \"BEACH SAFARI NUBIAN RESORT\":\n  - paragraph: Марса Алам · 4 ★\n  - heading \"BEACH SAFARI NUBIAN RESORT\" [active] [level=2]\n  - button \"Закрыть окно\":\n  - navigation \"Разделы отеля\":\n    - button \"Фото\"\n    - button \"Об отеле\"\n    - button \"Услуги\"\n    - button \"Номера и цены\"\n  - region \"Фотографии\":\n    - heading \"Фотографии отеля\" [level=3]\n    - button \"Открыть фото 1 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 2 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 3 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Все фотографии · 30\":\n      - text: Все фотографии · 30\n  - heading \"Об отеле\" [level=3]\n  - generic: 5,0 / 5\n  - paragraph: \"Количество номеров: 60 Заселение после 14:00:00 Выезд до 12:00:00\"\n  - region \"Услуги и инфраструктура\":\n    - heading \"Услуги и инфраструктура\" [level=3]\n    - heading \"Адрес\" [level=4]\n    - paragraph: Al Quasir - Marsa Allam Rd, Марса Алам\n    - generic \"Расположение Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»… ⌄\":\n      - generic: Расположение\n      - generic: Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»…\n      - text: ⌄\n    - heading \"Территория\" [level=4]\n    - paragraph: Открытый бассейн\n    - generic \"Услуги в отеле Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф… ⌄\":\n      - generic: Услуги в отеле\n      - generic: Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф…\n      - text: ⌄\n    - heading \"В номере\" [level=4]\n    - paragraph: Телевизор Фен Сейф (в номере) Туалетные принадлежности\n    - heading \"Питание в отеле\" [level=4]\n    - paragraph: Бар Завтрак Кафе Ресторан Бутилированная вода\n  - region \"Номера и питание\":\n    - heading \"Номера и питание\" [level=3]\n    - paragraph: Даты вылета 17 мар — 23 мар · 7 ночей · 2 взр. + 1 реб.\n    - status: \"Номера: 4 · Туры: 16\"\n    - generic \"Standard Room Свернуть\":\n      - heading \"Standard Room\" [level=4]\n      - generic: Свернуть\n      - generic: ⌄\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 22 мар\n      - text: →\n      - time: 29 мар\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 149 472 ₽\n    - 'button \"Выбрать: Standard Room, Всё включено, 22 мар, ANEX, 149 472 ₽\"': Выбрать\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 22 мар\n      - text: →\n      - time: 29 мар\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 151 200 ₽\n    - 'button \"Выбрать: Standard Room, Всё включено, 22 мар, ANEX, 151 200 ₽\"': Выбрать\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - generic \"Ещё 2 тура\"\n    - generic \"Standard Pool View Room Всё включено от 149 472 ₽ 4 тура\":\n      - heading \"Standard Pool View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 149 472 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Standard Front Sea View Room Всё включено от 154 915 ₽ 4 тура\":\n      - heading \"Standard Front Sea View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 154 915 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Family Room Всё включено от 156 038 ₽ 4 тура\":\n      - heading \"Family Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 156 038 ₽\n      - generic: 4 тура\n      - generic: ⌄\n  - generic: За 2 взр. + 1 реб.\n  - strong: от 149 472 ₽\n  - generic: Цена из поиска · доплата за младенца уточняется · Выберите вариант из списка\n  - button \"Выбрать номер\""
+    },
+    {
+      "stage": "current_price_observation",
+      "at": "2026-10-22T21:52:34.830Z",
+      "visible_dialog": "- dialog \"BEACH SAFARI NUBIAN RESORT\":\n  - paragraph: Марса Алам · 4 ★\n  - heading \"BEACH SAFARI NUBIAN RESORT\" [level=2]\n  - button \"Закрыть окно\":\n  - navigation \"Разделы отеля\":\n    - button \"Фото\"\n    - button \"Об отеле\"\n    - button \"Услуги\"\n    - button \"Номера и цены\"\n  - region \"Фотографии\":\n    - heading \"Фотографии отеля\" [level=3]\n    - button \"Открыть фото 1 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 2 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 3 отеля BEACH SAFARI NUBIAN RESORT\":\n      - img \"Фото отеля\"\n    - button \"Все фотографии · 30\":\n      - text: Все фотографии · 30\n  - heading \"Об отеле\" [level=3]\n  - generic: 5,0 / 5\n  - paragraph: \"Количество номеров: 60 Заселение после 14:00:00 Выезд до 12:00:00\"\n  - region \"Услуги и инфраструктура\":\n    - heading \"Услуги и инфраструктура\" [level=3]\n    - heading \"Адрес\" [level=4]\n    - paragraph: Al Quasir - Marsa Allam Rd, Марса Алам\n    - generic \"Расположение Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»… ⌄\":\n      - generic: Расположение\n      - generic: Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»…\n      - text: ⌄\n    - heading \"Территория\" [level=4]\n    - paragraph: Открытый бассейн\n    - generic \"Услуги в отеле Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф… ⌄\":\n      - generic: Услуги в отеле\n      - generic: Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф…\n      - text: ⌄\n    - heading \"В номере\" [level=4]\n    - paragraph: Телевизор Фен Сейф (в номере) Туалетные принадлежности\n    - heading \"Питание в отеле\" [level=4]\n    - paragraph: Бар Завтрак Кафе Ресторан Бутилированная вода\n  - region \"Номера и питание\":\n    - heading \"Номера и питание\" [level=3]\n    - paragraph: Даты вылета 17 мар — 23 мар · 7 ночей · 2 взр. + 1 реб.\n    - status: \"Номера: 4 · Туры: 16\"\n    - generic \"Standard Room Свернуть\":\n      - heading \"Standard Room\" [level=4]\n      - generic: Свернуть\n      - generic: ⌄\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 22 мар\n      - text: →\n      - time: 29 мар\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 149 472 ₽\n    - 'button \"Выбрать: Standard Room, Всё включено, 22 мар, ANEX, 149 472 ₽\" [pressed]': Выбрано\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 22 мар\n      - text: →\n      - time: 29 мар\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 151 200 ₽\n    - 'button \"Выбрать: Standard Room, Всё включено, 22 мар, ANEX, 151 200 ₽\"': Выбрать\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - generic \"Ещё 2 тура\"\n    - generic \"Standard Pool View Room Всё включено от 149 472 ₽ 4 тура\":\n      - heading \"Standard Pool View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 149 472 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Standard Front Sea View Room Всё включено от 154 915 ₽ 4 тура\":\n      - heading \"Standard Front Sea View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 154 915 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Family Room Всё включено от 156 038 ₽ 4 тура\":\n      - heading \"Family Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 156 038 ₽\n      - generic: 4 тура\n      - generic: ⌄\n  - generic: За 2 взр. + 1 реб.\n  - strong: 149 472 ₽\n  - generic: ANEX не вернул применимый расчёт обязательных доплат. Для новой попытки повторите поиск.\n  - button \"Проверить доплаты и продолжить\" [disabled]"
+    },
+    {
+      "stage": "one_safe_receipt_after_terminal",
+      "at": "2026-10-22T21:54:05.182Z",
+      "url": "https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php?action=quote_receipt",
+      "receipt": {
+        "ok": true,
+        "data": {
+          "retained_only": true,
+          "supplier_calls": 0,
+          "records": []
+        }
+      },
+      "readCount": 1
+    }
+  ],
+  "files": {
+    "listing.jpg": {
+      "bytes": 88187,
+      "sha256": "13f0f6a5ed721239ac0575e90d2987b8a2c7a045c7c2808d2de033fe4194ce67",
+      "git_blob_sha1": "c1ba6e4217f6c49a6d08e4dc71a9ffd510457b04"
+    },
+    "quote-terminal.jpg": {
+      "bytes": 88744,
+      "sha256": "fae44a9c307199f5e353ff9848ecd3abc2de47ad3a4a0fb2fba5aa38ea5e44c3",
+      "git_blob_sha1": "1dded7ba1d8763ca8993492f72c4f2e7d4c8a166"
+    },
+    "receipt.json": {
+      "bytes": 103,
+      "sha256": "9a1c6b496cad1fc6b15955b7f64675f44d804fe3e04ecda249668d287ab27890",
+      "git_blob_sha1": "1d2159d5e2868de7e5e45a11bdf64dda86709e0d"
+    }
+  },
+  "install_receipts": {
+    "endpoint": {
+      "booking_calls": 0,
+      "database_writes": 0,
+      "install": {
+        "changed_files": 1,
+        "created_files": 0,
+        "dependency": {
+          "changed": false,
+          "sha256": "145eff807355b50bcd381c6b3d732eb5c8ac4350f2945fb77304c9fd50673ce6",
+          "source": "app/integrations/anex-initial-week-gate.php",
+          "target": "app/integrations/anex-initial-week-gate.php"
+        },
+        "endpoint": {
+          "changed": true,
+          "sha256": "c70b6a9273b9d39b9b73544d6a2c5d019a832764151904a6994d66012d8bd1ae",
+          "source": "v2/api-anex-search3-preview.php",
+          "target": "api-anex-search3-preview.php"
+        },
+        "files": 2,
+        "manifest_sha256": "c70974d5e65e205a80a0f5ee9f8647bd115da005dc86b2230d941b918cec2cba",
+        "source_sha": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+        "status": "installed"
+      },
+      "lead_calls": 0,
+      "mode": "install-anex-preview",
+      "operation_id": "int-anex-infant-listing-endpoint-install-20261022-v1",
+      "production_after": {
+        "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+        "v2/api-v2.php": null,
+        "v2/index.php": null,
+        "v2/lead-adapter-v2.php": null
+      },
+      "production_before": {
+        "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+        "v2/api-v2.php": null,
+        "v2/index.php": null,
+        "v2/lead-adapter-v2.php": null
+      },
+      "public_ui_entrypoints_unchanged": true,
+      "runtime_changed": true,
+      "schema_version": 1,
+      "source_sha": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+      "status": "installed",
+      "supplier_calls": 0
+    },
+    "runtime": {
+      "booking_calls": 0,
+      "database_writes": 0,
+      "install": {
+        "changed_files": 1,
+        "created_files": 0,
+        "files": 91,
+        "manifest_sha256": "c70974d5e65e205a80a0f5ee9f8647bd115da005dc86b2230d941b918cec2cba",
+        "source_sha": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+        "status": "installed"
+      },
+      "lead_calls": 0,
+      "mode": "install-runtime",
+      "operation_id": "int-anex-infant-listing-runtime-install-20261022-v1",
+      "production_after": {
+        "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+        "v2/api-v2.php": null,
+        "v2/index.php": null,
+        "v2/lead-adapter-v2.php": null
+      },
+      "production_before": {
+        "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+        "v2/api-v2.php": null,
+        "v2/index.php": null,
+        "v2/lead-adapter-v2.php": null
+      },
+      "public_ui_entrypoints_unchanged": true,
+      "runtime_changed": true,
+      "schema_version": 1,
+      "source_sha": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+      "status": "installed",
+      "supplier_calls": 0
+    }
+  }
+}
