@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "operation_id": "int-anex-infant1-package-egypt-20270407-20261022-v1",
+  "terminal": "VERIFIED_CONSUMED_NO_REPLAY",
+  "tab_closed": true,
+  "source": {
+    "backend": "5c72e8f1ddd099362961613b0482e2bc067a6863",
+    "consumer": "1fdfddb3ed3d5f7fbe025443eb36ab48b5839559",
+    "release": "b2cebd5b4bed5db2524cc400a4ad919d3f0a238a",
+    "terminal_url": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352400238"
+  },
+  "criteria": {
+    "origin": "Москва",
+    "country": "Египет",
+    "departure": [
+      "2027-04-07",
+      "2027-04-13"
+    ],
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [
+      1
+    ],
+    "meal": "AI"
+  },
+  "verified_tour": {
+    "hotel": "SHARM REEF",
+    "room": "Standard Garden View Room",
+    "stay": [
+      "2027-04-13",
+      "2027-04-20"
+    ],
+    "meal": "AI",
+    "provider": "direct_anex",
+    "operator": "ANEX",
+    "search_rub": 147744,
+    "supplier_whole_party_gross_rub": 157594,
+    "whole_party_final_verified": true,
+    "party_binding": "passed existing installed typed whole-party validation",
+    "infants_expected": 1,
+    "pair_ordinal": 1,
+    "outbound": [
+      "VF276",
+      "VF255"
+    ],
+    "inbound": [
+      "VF256",
+      "VF275"
+    ],
+    "price_delta_rub": 9850,
+    "delta_allocation": "NOT_EXPOSED",
+    "separate_infant_amount": null,
+    "separate_infant_status": "NOT_EXPOSED",
+    "separate_fuel_amount": null,
+    "separate_fuel_status": "NOT_EXPOSED"
+  },
+  "counts": {
+    "find_intents": 1,
+    "stop_intents": 0,
+    "continue_intents": 0,
+    "group_open_intents": 1,
+    "whole_quote_entry_intents": 1,
+    "pair_calc_intents": 1,
+    "completed_quote_http": 4,
+    "apd_intents": 0,
+    "safe_receipt_reads": 1,
+    "lead_submits": 0,
+    "booking_intents": 0,
+    "whole_search_http_total": "NOT_MEASURED",
+    "account_remaining": "NOT_MEASURED",
+    "ui_hotels": 105,
+    "ui_variants": 676,
+    "native_retained_offers": 170,
+    "expanded_ui_room_groups": 9,
+    "expanded_ui_mixed_source_variants": 26
+  },
+  "quote_http_duration": "NOT_EXPOSED_IN_SAFE_RECEIPT",
+  "quote_receipt": {
+    "ok": true,
+    "data": {
+      "retained_only": true,
+      "supplier_calls": 0,
+      "records": [
+        {
+          "status": "quote_verified",
+          "reason": null,
+          "stages": [
+            {
+              "stage": "start",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 13162
+            },
+            {
+              "stage": "transports",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 393985
+            },
+            {
+              "stage": "SetTransport",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 394338
+            },
+            {
+              "stage": "calcfull",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 395827
+            }
+          ],
+          "version": 2,
+          "reserved_calls": 4,
+          "sealed": false
+        }
+      ],
+      "retained_first_page": {
+        "raw_rows": "nonempty",
+        "retained_offers": 170,
+        "interpretation": "offers_retained"
+      }
+    }
+  },
+  "observations": [
+    {
+      "stage": "pre_submit",
+      "at": "2026-10-22T22:02:07.945Z",
+      "url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-07&to=2027-04-13&minNights=7&maxNights=7&adults=2&ages=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE",
+      "visible_summary": "- link \"Перейти к результатам\":\n  - /url: \"#results\"\n- banner:\n  - link \"AnyTour — начало\":\n    - /url: \"#search\"\n    - img \"AnyTour\"\n  - navigation \"Основная навигация\":\n    - link \"Подбор тура\":\n      - /url: \"#search\"\n  - generic: Версия для проверки\n- main:\n  - region \"Подберём ваш отдых\":\n    - heading \"Подберём ваш отдых\" [level=1]\n    - 'button \"Город вылета: Москва\"':\n      - generic: Откуда\n      - generic: Москва\n      - generic: ›\n    - 'button \"Направление: Египет\"':\n      - generic: Куда\n      - strong: Египет\n      - generic: Вся страна\n      - generic: ›\n    - button \"Даты вылета 7–13 апреля ›\":\n      - generic: Даты вылета\n      - generic: 7–13 апреля\n      - generic: ›\n    - button \"Ночей 7 ночей ›\":\n      - generic: Ночей\n      - generic: 7 ночей\n      - generic: ›\n    - button \"Туристы 2 взр. · 1 реб. 1 год ›\":\n      - generic: Туристы\n      - generic: 2 взр. · 1 реб.\n      - generic: 1 год\n      - generic: ›\n    - group \"Категория отеля\":\n      - generic: Категория отеля\n      - generic \"Категория отеля\":\n        - button \"Любая\" [pressed]\n        - button \"3★\"\n        - button \"4★\"\n        - button \"5★\"\n    - 'button \"Питание: Всё включено\"':\n      - generic: Питание\n      - strong: Всё включено\n      - generic: ⌄\n    - button \"Бюджет за всех Без ограничений ⌄\":\n      - generic: Бюджет за всех\n      - strong: Без ограничений\n      - generic: ⌄\n    - button \"Найти туры\"\n    - button \"Уточнить параметры\"\n    - paragraph: Цена за весь тур и всех туристов\n    - generic \"ⓘ О данных поиска ⌄\"\n  - region \"Ваш следующий отдых\":\n    - heading \"Ваш следующий отдых\" [level=2]\n    - paragraph: Задайте направление, даты и состав туристов — предложения появятся после поиска.\n    - text: Цена за всех туристов\n    - strong: уточняется при выборе\n    - heading \"Начн"
+    },
+    {
+      "stage": "initial_portion_observation",
+      "at": "2026-10-22T22:03:35.851Z",
+      "elapsedMs": 87901,
+      "visible_summary": "- link \"Перейти к результатам\":\n  - /url: \"#results\"\n- banner:\n  - link \"AnyTour — начало\":\n    - /url: \"#search\"\n    - img \"AnyTour\"\n  - navigation \"Основная навигация\":\n    - link \"Подбор тура\":\n      - /url: \"#search\"\n  - generic: Версия для проверки\n- link \"AnyTour — изменить поиск\":\n  - /url: \"#search\"\n  - img \"AnyTour\"\n- strong: Москва → Египет\n- generic: Вылет 7 апр — 13 апр · 7 ночей · 2 взр. · 1 реб.\n- 'button \"Изменить поиск: Москва → Египет\"':\n  - generic: Изменить поиск\n- main:\n  - region \"Подберём ваш отдых\":\n    - generic: Маршрут\n    - strong:\n      - text: Москва\n      - generic: →\n      - text: Египет\n    - term: Даты вылета\n    - definition: 7 апр — 13 апр\n    - term: Отдых\n    - definition: 7 ночей\n    - term: Туристы\n    - definition: 2 взр. + 1 реб.\n    - 'button \"Изменить поиск: Москва → Египет\"':\n      - text: Изменить поиск\n    - generic \"ⓘ О данных поиска ⌄\"\n  - region \"Отели и туры\" [active]:\n    - heading \"Отели и туры\" [level=2]\n    - paragraph: 105 отелей · 676 вариантов тура\n    - text: Цена за всех туристов\n    - strong: уточняется при выборе\n    - 'button \"Показать: рейтинг от 4,5 — 9 отелей\"':\n      - generic: Рейтинг 4,5+\n      - generic: · 9\n    - generic: Сортировать\n    - combobox \"Сортировать\":\n      - option \"Рекомендуемые\" [selected]\n      - option \"Сначала дешевле\"\n      - option \"По рейтингу\"\n    - complementary \"Фильтры отелей\":\n      - heading \"Фильтры\" [level=3]\n      - button \"Сбросить выбранные фильтры\": Сбросить\n      - heading \"Название отеля или курорт\" [level=4]\n      - searchbox \"Название отеля или курорт\"\n      - heading \"Бюджет за всех туристов\" [level=4]\n      - text: От, ₽\n      - textbox \"От, ₽\":\n        - /placeholder: Не задан\n      - text: До, ₽\n      - textbox \"До, ₽\":\n        - /placeholder: Не задан\n      - "
+    },
+    {
+      "stage": "concrete_rows_visible",
+      "at": "2026-10-22T22:04:51.020Z",
+      "visible_dialog": "- dialog \"SHARM REEF\":\n  - paragraph: Хадаба · 3 ★\n  - heading \"SHARM REEF\" [level=2]\n  - button \"Закрыть окно\":\n  - navigation \"Разделы отеля\":\n    - button \"Фото\"\n    - button \"Об отеле\"\n    - button \"Услуги\"\n    - button \"Номера и цены\"\n  - region \"Фотографии\":\n    - heading \"Фотографии отеля\" [level=3]\n    - button \"Открыть фото 1 отеля SHARM REEF\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 2 отеля SHARM REEF\":\n      - img \"Фото отеля\"\n    - button \"Открыть фото 3 отеля SHARM REEF\":\n      - img \"Фото отеля\"\n    - button \"Все фотографии · 44\":\n      - text: Все фотографии · 44\n  - heading \"Об отеле\" [level=3]\n  - generic: 4,5 / 5\n  - list:\n    - text: Балкон\n    - text: Кондиционер\n    - text: Свой пляж\n    - text: Бассейн\n    - text: Бассейн с подогревом\n    - text: Ресторан или кафе\n    - text: Анимация\n    - text: Wi-Fi\n  - paragraph: Отель состоит из комплекса 2-этажных корпусов. Всего 128 номеров.\n  - region \"Услуги и инфраструктура\":\n    - heading \"Услуги и инфраструктура\" [level=3]\n    - heading \"Адрес\" [level=4]\n    - paragraph: El Fanar St. Umm El Seed cliff, Sharm El Sheikh south Sinai, Egypt\n    - heading \"Расположение\" [level=4]\n    - paragraph: Отель находится в районе Ум Эль Сид, в 18 км от аэропорта города Шарм Эль Шейх и в 10 км от старого рынка.\n    - generic \"Пляж собственный песчано-каменистый пляж в 1 км от отеля заход в море — каменистый пляжные полотенца, шезлонги и… ⌄\":\n      - generic: Пляж\n      - generic: собственный песчано-каменистый пляж в 1 км от отеля заход в море — каменистый пляжные полотенца, шезлонги и…\n      - text: ⌄\n    - generic \"Территория 3 бассейна для детей и взрослых (1 бассейн с подогревом в зимний период) основной ресторан La Luna… ⌄\":\n      - generic: Территория\n      - generic: 3 бассейна для детей и взрослых (1 бассейн с подогревом в зимний период) основной ресторан La Luna…\n      - text: ⌄\n    - heading \"Услуги в отеле\" [level=4]\n    - paragraph: настольный теннис пляжный волейбол бильярд\n    - generic \"В номере ванная комната с душем фен косметические принадлежности кондиционер ТВ телефон мини-бар (пл.) сейф… ⌄\":\n      - generic: В номере\n      - generic: ванная комната с душем фен косметические принадлежности кондиционер ТВ телефон мини-бар (пл.) сейф…\n      - text: ⌄\n    - heading \"Для детей\" [level=4]\n    - paragraph: детский бассейн детские стулья в ресторане детская кроватка (по запросу)\n    - heading \"Развлечения\" [level=4]\n    - paragraph: анимационная программа живая музыка аэробика дартс вечернее шоу\n    - heading \"Бесплатные услуги\" [level=4]\n    - paragraph: Wi-Fi\n    - heading \"Платные услуги\" [level=4]\n    - paragraph: водные виды спорта дайвинг массаж врач прачечная\n    - heading \"Питание в отеле\" [level=4]\n    - paragraph: завтрак, обед, ужин закуски в дневные часы местные алкогольные и безалкогольные напитки в течение дня · AI — всё включено\n    - generic \"Номера отеля Standard Garden View (37 кв.м., одна комната с двуспальной или двумя односпальными кроватями, ванная комната,… ⌄\":\n      - generic: Номера отеля\n      - generic: Standard Garden View (37 кв.м., одна комната с двуспальной или двумя односпальными кроватями, ванная комната,…\n      - text: ⌄\n    - heading \"Год постройки\" [level=4]\n    - paragraph: \"1998\"\n    - heading \"Ремонт\" [level=4]\n    - paragraph: \"2020\"\n    - heading \"Площадь территории\" [level=4]\n    - paragraph: \"33000\"\n    - heading \"Питание\" [level=4]\n    - paragraph: AI — всё включено\n    - heading \"Об отеле\" [level=4]\n    - paragraph: завтрак, обед, ужин закуски в дневные часы местные алкогольные и безалкогольные напитки в течение дня\n    - heading \"Удобства\" [level=4]\n    - paragraph: Балкон · Кондиционер\n    - heading \"Пляж и расположение\" [level=4]\n    - paragraph: Свой пляж\n    - generic \"Услуги и территория Бассейн · Бассейн с подогревом · Ресторан или кафе · Анимация · Wi-Fi ⌄\":\n      - generic: Услуги и территория\n      - generic: Бассейн · Бассейн с подогревом · Ресторан или кафе · Анимация · Wi-Fi\n      - text: ⌄\n  - region \"Номера и питание\":\n    - heading \"Номера и питание\" [level=3]\n    - paragraph: Даты вылета 7 апр — 13 апр · 7 ночей · 2 взр. + 1 реб.\n    - status: \"Номера: 9 · Туры: 26\"\n    - generic \"Standard Garden View Room Свернуть\" [active]:\n      - heading \"Standard Garden View Room\" [level=4]\n      - generic: Свернуть\n      - generic: ⌄\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 13 апр\n      - text: →\n      - time: 20 апр\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 147 744 ₽\n    - 'button \"Выбрать: Standard Garden View Room, Всё включено, 13 апр, ANEX, 147 744 ₽\"': Выбрать\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - strong: Всё включено\n    - term: Даты\n    - definition:\n      - time: 13 апр\n      - text: →\n      - time: 20 апр\n      - text: · 7 ночей\n    - term: Перелёт\n    - definition: Регулярный\n    - generic: Туроператор\n    - 'button \"Туроператор: ANEX\"'\n    - button \"Условия и рейсы\"\n    - generic: Весь тур · 2 взр. + 1 реб.\n    - strong: 149 818 ₽\n    - 'button \"Выбрать: Standard Garden View Room, Всё включено, 13 апр, ANEX, 149 818 ₽\"': Выбрать\n    - generic: Цена из поиска · доплата за младенца уточняется\n    - generic \"Ещё 2 тура\"\n    - generic \"Standard Pool View Room Всё включено от 153 187 ₽ 4 тура\":\n      - heading \"Standard Pool View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 153 187 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Studio Garden View Room Всё включено от 164 074 ₽ 4 тура\":\n      - heading \"Studio Garden View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 164 074 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Studio Pool View Room Всё включено от 167 357 ₽ 4 тура\":\n      - heading \"Studio Pool View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 167 357 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Family Garden View Room Всё включено от 169 517 ₽ 4 тура\":\n      - heading \"Family Garden View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 169 517 ₽\n      - generic: 4 тура\n      - generic: ⌄\n    - generic \"Family Pool View Room Всё включено от 175 046 ₽ 2 тура\":\n      - heading \"Family Pool View Room\" [level=4]\n      - generic: Всё включено\n      - strong: от 175 046 ₽\n      - generic: 2 тура\n      - generic: ⌄\n    - generic \"room standard garden view Всё включено от 179 598 ₽ 2 тура\":\n      - heading \"room standard garden view\" [level=4]\n      - generic: Всё включено\n      - strong: от 179 598 ₽\n      - generic: 2 тура\n      - generic: ⌄\n    - generic \"standard room Всё включено от 199 554 ₽ 1 тур\":\n      - heading \"standard room\" [level=4]\n      - generic: Всё включено\n      - strong: от 199 554 ₽\n      - generic: 1 тур\n      - generic: ⌄\n    - generic \"standard room pool view Всё включено от 206 411 ₽ 1 тур\":\n      - heading \"standard room pool view\" [level=4]\n      - generic: Всё включено\n      - strong: от 206 411 ₽\n      - generic: 1 тур\n      - generic: ⌄\n  - generic: За 2 взр. + 1 реб.\n  - strong: от 147 744 ₽\n  - generic: Цена из поиска · доплата за младенца уточняется · Выберите вариант из списка\n  - button \"Выбрать номер\""
+    },
+    {
+      "stage": "existing_full_quote_entry",
+      "at": "2026-10-22T22:05:14.385Z",
+      "visible_dialog": "- dialog \"Ваш тур в деталях\":\n  - button \"К отелю\":\n  - paragraph: ПРОВЕРЬТЕ УСЛОВИЯ\n  - heading \"Ваш тур в деталях\" [active] [level=2]\n  - button \"Закрыть окно\":\n  - img \"Фото SHARM REEF\"\n  - heading \"SHARM REEF\" [level=3]\n  - generic \"3 звезды\": ★★★\n  - paragraph: Хадаба, Египет\n  - region \"Выбранные условия тура\":\n    - paragraph:\n      - strong: 13 апр — 20 апр · 7 ночей\n      - generic: \"2 взр. + 1 реб. · возраст ребёнка: 1 год\"\n    - term: Номер\n    - definition: Standard Garden View Room\n    - term: Питание\n    - definition: Всё включено\n    - term: Оператор\n    - definition: ANEX\n    - button \"Другие номера и питание\"\n  - paragraph: Предложение из текущего поиска. Проверьте цену, наличие и рейсы для этих условий.\n  - button \"Уточнить цену без выбора рейсов\"\n  - complementary \"Состав и стоимость тура\":\n    - heading \"Условия тура\" [level=3]\n    - generic \"Топливный сбор Сбор уточняется ⌄\":\n      - generic: Топливный сбор\n      - strong: Сбор уточняется\n      - text: ⌄\n  - generic: За всех туристов\n  - strong: 147 744 ₽\n  - generic: Цена из выдачи · требует проверки\n  - button \"Выбрать перелёт и уточнить цену\""
+    },
+    {
+      "stage": "full_quote_observation",
+      "at": "2026-10-22T22:05:44.300Z",
+      "visible_dialog": "- dialog \"Перелёт и цена тура\":\n  - button \"К деталям тура\":\n  - paragraph: ANEX · АКТУАЛИЗАЦИЯ\n  - heading \"Перелёт и цена тура\" [active] [level=2]\n  - button \"Закрыть окно\":\n  - generic \"SHARM REEF 13 апр — 20 апр · 7 ночей 2 взр. + 1 реб. · 1 год Всё включено · условия тура⌄\":\n    - strong: SHARM REEF\n    - generic: 13 апр — 20 апр · 7 ночей\n    - generic: 2 взр. + 1 реб. · 1 год\n    - generic: Всё включено · условия тура⌄\n  - heading \"Варианты перелёта\" [level=3]:\n    - text: Варианты перелёта\n  - paragraph: Выберите перелёт для расчёта полной цены тура.\n  - group \"Перелёт туда и обратно\":\n    - generic: Перелёт туда и обратно\n    - radio \"Вариант 1 Выбрано Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\" [checked]\n    - strong: Вариант 1\n    - emphasis: Выбрано\n    - strong: Туда\n    - generic: AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх\n    - strong: Обратно\n    - generic: AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково\n    - generic: Цена тура с этими рейсами требует расчёта\n    - radio \"Вариант 2 Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\"\n    - strong: Вариант 2\n    - strong: Туда\n    - generic: AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх\n    - strong: Обратно\n    - generic: AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково\n    - generic: Цена тура с этими рейсами требует расчёта\n    - radio \"Вариант 3 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\"\n    - strong: Вариант 3\n    - strong: Туда\n    - generic: AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх\n    - strong: Обратно\n    - generic: AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково\n    - generic: Цена тура с этими рейсами требует расчёта\n    - generic \"Другие варианты · 30\"\n  - status\n  - generic: За всех туристов\n  - strong: Цена уточняется\n  - generic: Цена требует подтверждения\n  - button \"Уточнить цену с этими рейсами\""
+    },
+    {
+      "stage": "package_calculation_result",
+      "at": "2026-10-22T22:06:07.408Z",
+      "visible_dialog": "- dialog \"Цена тура подтверждена\":\n  - button \"К деталям тура\":\n  - paragraph: ANEX · АКТУАЛИЗАЦИЯ\n  - heading \"Цена тура подтверждена\" [level=2]\n  - button \"Закрыть окно\":\n  - list \"Этапы выбора тура\":\n    - generic: \"1\"\n    - text: Номер и питание\n    - generic: \"2\"\n    - text: Перелёт\n    - generic: \"3\"\n    - text: Заявка\n  - img \"Фото SHARM REEF\"\n  - heading \"SHARM REEF\" [level=3]\n  - generic \"3 звезды\": ★★★\n  - paragraph: Хадаба, Египет\n  - status:\n    - strong: Цена изменилась после проверки\n    - generic: В выдаче 147 744 ₽ → после проверки 157 594 ₽ за всех туристов.\n  - region \"Выбранные условия тура\":\n    - paragraph:\n      - strong: 13 апр — 20 апр · 7 ночей\n      - generic: \"2 взр. + 1 реб. · возраст ребёнка: 1 год\"\n    - term: Номер\n    - definition: Standard Garden View Room\n    - term: Питание\n    - definition: Всё включено\n    - term: Оператор\n    - definition: ANEX\n  - heading \"Перелёт\" [level=3]:\n    - text: Перелёт\n  - paragraph:\n    - strong: Туда\n    - text: AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 01:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх\n  - paragraph:\n    - strong: Обратно\n    - text: AJet · VF 256 · 03:00 · 06:40 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково\n  - status\n  - complementary:\n    - heading \"Цена тура\" [level=3]\n    - paragraph: Подтверждённая стоимость этого тура.\n  - generic: За всех туристов\n  - strong: 157 594 ₽\n  - generic: Подтверждённая цена\n  - button \"Изменить рейсы\"\n  - button \"К заявке\""
+    },
+    {
+      "stage": "whole_party_price_verified",
+      "at": "2026-10-22T22:07:02.788Z",
+      "hotel": "SHARM REEF",
+      "room": "Standard Garden View Room",
+      "meal": "AI",
+      "stay": [
+        "2027-04-13",
+        "2027-04-20"
+      ],
+      "adults": 2,
+      "childAges": [
+        1
+      ],
+      "searchRub": 147744,
+      "verifiedRub": 157594,
+      "pair": {
+        "outbound": [
+          "VF276",
+          "VF255"
+        ],
+        "inbound": [
+          "VF256",
+          "VF275"
+        ]
+      },
+      "separateInfantAmount": "NOT_EXPOSED",
+      "screenshot": "int-infant1-package-egypt-apr07-20261022-verified.jpg"
+    },
+    {
+      "stage": "one_safe_quote_receipt_after_terminal",
+      "at": "2026-10-22T22:07:24.788Z",
+      "receipt": {
+        "ok": true,
+        "data": {
+          "retained_only": true,
+          "supplier_calls": 0,
+          "records": [
+            {
+              "status": "quote_verified",
+              "reason": null,
+              "stages": [
+                {
+                  "stage": "start",
+                  "state": "complete",
+                  "http_status": 200,
+                  "response_bytes": 13162
+                },
+                {
+                  "stage": "transports",
+                  "state": "complete",
+                  "http_status": 200,
+                  "response_bytes": 393985
+                },
+                {
+                  "stage": "SetTransport",
+                  "state": "complete",
+                  "pair_index": 1,
+                  "http_status": 200,
+                  "response_bytes": 394338
+                },
+                {
+                  "stage": "calcfull",
+                  "state": "complete",
+                  "pair_index": 1,
+                  "http_status": 200,
+                  "response_bytes": 395827
+                }
+              ],
+              "version": 2,
+              "reserved_calls": 4,
+              "sealed": false
+            }
+          ],
+          "retained_first_page": {
+            "raw_rows": "nonempty",
+            "retained_offers": 170,
+            "interpretation": "offers_retained"
+          }
+        }
+      },
+      "readCount": 1
+    }
+  ],
+  "proof": {
+    "file": "verified.jpg",
+    "bytes": 95541,
+    "sha256": "d5d229f1dc88f72c44750fb854d37c6e7bc2d0829034994896e711ba30d0912f"
+  },
+  "next_action": "Same SEARCH owner repairs ordinary inline infant APD prerequisite using existing whole-party packagequote; reuse this receipt, no supplier copy. No backend runtime change needed for this accepted fullquote path."
+}
