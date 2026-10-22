@@ -55,7 +55,44 @@ jobs:
       - env:
           TV_CONTEXT_SENDER_NATIVE_CI: '1'
           TV_CONTEXT_SENDER_SOURCE_ROOT: '${{ github.workspace }}/context-sender-source'
-        run: python3 tests/search3_root_gateway_install_test.py ContextSenderInstall
+        run: python3 tests/search3_root_gateway_install_test.py ContextSenderInstall ContextSenderContinue
+  context-sender-continuation:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4709 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == format('/continue-search3-tv-search-context {0} install-20261022-tv-search-context-verified-continuation-v1', github.sha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {contents: read, issues: read, checks: read, actions: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: 20e669cfbc7d99d9463a87fd9aee257f188df7ab, path: context-sender-source, persist-credentials: false}
+      - env:
+          TV_CONTEXT_SENDER_NATIVE_CI: '1'
+          TV_CONTEXT_SENDER_SOURCE_ROOT: '${{ github.workspace }}/context-sender-source'
+        run: python3 tests/search3_root_gateway_install_test.py ContextSenderInstall ContextSenderContinue
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_root_gateway_install.py context_sender_continue
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-tv-context-continuation-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: |
+            ${{ runner.temp }}/search3-tv-context-continuation/evidence.json
+            ${{ runner.temp }}/search3-tv-context-continuation/request.json
+            ${{ runner.temp }}/search3-tv-context-continuation/tourvisor-anytour-offer-autosave.php
+          if-no-files-found: warn
+          retention-days: 30
   context-sender-install:
     concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
     if: >-
