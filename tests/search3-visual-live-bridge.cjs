@@ -208,7 +208,7 @@ async function quoteReturnRegressions(){
    assert.equal(win.__retention().type,'offer');assert.equal(get('#modal-body').scrollTop,183);assert.equal(doc.activeElement.dataset.action,'change-room');releaseFlights();await until(()=>get('[data-action="apply-flight"]'));flights=null;
    assert.equal(win.__retention().type,'flights','intentional next step is distinct from same-offer updates');assert.equal(get('#modal-body').scrollTop,0);tap('[data-action="close-modal"]');await until(()=>!get('#modal').open);
    // Fresh hotel-rooms history captures the earlier listing. It is a passive view.
-   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');assert.equal(win.__retention().type,'offer');tap('[data-action="confirm-tour"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
+   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');tap('#modal-body '+exact);tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');assert.equal(win.__retention().type,'offer');tap('[data-action="confirm-tour"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
@@ -1037,8 +1037,8 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
  const priorRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');priorRoom.open=true;
- const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();click('[data-action="continue-hotel-offer"]');await continueToFlights();
- await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();click('[data-action="continue-hotel-offer"]');
+ await wait(()=>q('#prototype-lead-form'));
  releaseHotelBackSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  click('#modal-back');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3','Back renders current progressive rooms, not the stored snapshot');
@@ -1052,7 +1052,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="hotel-details"][data-id="501"]');
  const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
  const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
- const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
+ const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();nestedOffer.closest('.room-offer-choice').querySelector('[data-action="offer"]').click();click('[data-action="start-tour-flights"]');
  await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена/.test(q('#modal-body').textContent));click('#modal-back');
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);
@@ -1093,7 +1093,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="hotel-details"][data-id="501"]');
  const movingRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');movingRoom.open=true;
  const movingOffer=movingRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
- assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
+ assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();movingOffer.closest('.room-offer-choice').querySelector('[data-action="offer"]').click();click('[data-action="start-tour-flights"]');
  await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена|Условия поиска изменились/.test(q('#modal-body').textContent));
  releaseMovedOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
  click('#modal-back');

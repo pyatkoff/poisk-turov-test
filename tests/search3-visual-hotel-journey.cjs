@@ -5,6 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const app=fs.readFileSync(path.join(__dirname,'../v2/visual-search/app.js'),'utf8');
 function slice(from,to){const a=app.indexOf(from),b=app.indexOf(to,a+from.length);assert(a>=0&&b>a,from);return app.slice(a,b);}
 const owners=slice('function hotelOfferCheckActive(','async function openOffer(')
+ +slice('function restoreProviderView(','const flightPairFor=')
  +slice('function leadReadyOffer(','function quotePriceChangeHTML(')
  +slice('function openAnexConcreteCurrent(','function refreshHotel(');
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
@@ -12,7 +13,7 @@ function setup(provider='tourvisor',kind='concrete'){
  const search={origin:'Москва',country:'4',adults:2,ages:[0,8]},raw={anexKind:kind,anexSessionCurrent:true};
  const listing={key:'one',hotelId:1,provider,raw,search,total:198600,room:'Family',meal:'AI',day:'2027-04-18',nights:7,adults:2,ages:[0,8]};
  const hotel={id:1,offers:[listing]},calls={quote:0,flights:0,expand:0,verify:0,additional:0,contacts:0,offerScreens:0,lists:0,rooms:0},views=new Map();
- const nodes={'#modal':{open:true},'.hotel-section-nav':{dataset:{hotelId:'1'}},'#modal-footer':{hidden:false,innerHTML:''},'#anex-additional-error':{textContent:''}};
+ const nodes={'#modal':{open:true},'.hotel-section-nav':{dataset:{hotelId:'1'}},'#modal-footer':{hidden:false,innerHTML:''},'#hotel-detail-min':{textContent:''}};
  const c={console,Number,Set,Map,Promise,selectedOffer:{...listing},hotelOfferDraft:{hotelId:1,key:'one'},hotelDetailsView:{id:1,checkKey:'one'},modalType:'hotel-details',selectionGeneration:0,state:{search},anexCurrentDraft:null,anexApplicationDraft:null,anexFlightViews:new WeakMap(),hotels:[hotel],
   $:selector=>nodes[selector],data:{live:true,amount:v=>Number.isFinite(Number(v))&&Number(v)>0?Number(v):null,text:v=>String(v||''),meal:v=>v,quote:async()=>{calls.quote++;return {price:198600};},flights:async()=>{calls.flights++;throw Error('flight requests are optional');},verifyAnexConcrete:async()=>{calls.verify++;return {state:'current'};},verifyAnexAdditional:async()=>{calls.additional++;return {searchPrice:{amount:198600},partySurcharge:{amount:700},calculatedTotal:{amount:199300}};},expandAnexGroup:async()=>{calls.expand++;return {offers:[{...listing,key:'room',raw:{...raw,anexKind:'concrete'}}]};}},
   offerFromKey:key=>hotel.offers.find(o=>o.key===key),selectedTourHotel:()=>hotel,searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:(a,b)=>a.room===b.room&&a.meal===b.meal&&a.day===b.day&&a.adults===b.adults&&JSON.stringify(a.ages)===JSON.stringify(b.ages),needsRefresh:o=>o.provider==='anex',flightPairFor:o=>o.variants?.[Number(o.flightChoiceId)]||null,
@@ -35,8 +36,8 @@ async function run(){
  for(const interrupt of ['close','new-selection','new-generation']){
   const {c,calls,nodes}=setup(),gate=deferred();c.data.quote=()=>{calls.quote++;return gate.promise;};
   const pending=c.openLeadWithQuote('one');await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'double action shares the current pending intent');
-  if(interrupt==='close')nodes['#modal'].open=false;if(interrupt==='new-selection')c.hotelOfferDraft={hotelId:1,key:'other'};if(interrupt==='new-generation')c.selectionGeneration++;
-  gate.resolve({price:199000});await pending;assert.equal(calls.contacts,0,'late quote after '+interrupt+' cannot navigate');
+  if(interrupt==='close'){c.cancelHotelOfferCheck();nodes['#modal'].open=false;}if(interrupt==='new-selection')c.hotelOfferDraft={hotelId:1,key:'other'};if(interrupt==='new-generation')c.selectionGeneration++;
+  gate.resolve({price:199000});await pending;assert.equal(calls.contacts,0,'late quote after '+interrupt+' cannot navigate');if(interrupt==='close'){assert.equal(c.selectedOffer.loading,false);nodes['#modal'].open=true;c.data.quote=async()=>({price:199000});await c.openLeadWithQuote('one');assert.equal(calls.contacts,1,'explicit re-entry is usable after close');}
  }
  {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;throw Object.assign(Error('expired'),{code:'offer_expired',retryable:false});};await c.openLeadWithQuote('one');await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'terminal quote is not replayed');assert.equal(calls.contacts,0);assert.equal(calls.offerScreens,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);}
  {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;if(calls.quote===1)throw Error('temporary');return {price:199000};};await c.openLeadWithQuote('one');assert.equal(calls.contacts,0);await c.openLeadWithQuote('one');assert.equal(calls.contacts,1,'explicit retry recovers');assert.equal(calls.quote,2);}

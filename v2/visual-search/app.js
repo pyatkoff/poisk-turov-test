@@ -879,6 +879,7 @@ function refreshOpenHotelRooms(){
  const summaryMore=focused?.parentElement?.classList.contains('hotel-room-more');
  renderHotelRooms(id,$('#hotel-room-meal')?.value||'',openRooms);
  for(const room of body.querySelectorAll('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
+ body.querySelector('.room-offer-choice[aria-current="true"]')?.closest('.hotel-room-more')?.setAttribute('open','');
  if(summaryRoom!==null&&summaryRoom!==undefined){const room=[...body.querySelectorAll('.hotel-room-card[data-room]')].find(room=>room.dataset.room===summaryRoom);room?.querySelector(summaryMore?'.hotel-room-more>summary':':scope>summary')?.focus({preventScroll:true});}
  else if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#hotel-room-count'),body);
  body.scrollTop=scroll;
@@ -1294,6 +1295,7 @@ function restoreModalStepFocus(previous){
  if(Number.isFinite(previous.focus?.top)&&modalBody.contains(document.activeElement)){const top=document.activeElement.getBoundingClientRect().top-modalBody.getBoundingClientRect().top;modalBody.scrollTop+=top-previous.focus.top;}
 }
 function showModal(type,title,kicker,body,wide=false){
+ if(type!=='hotel-details')cancelHotelOfferCheck();
  hotelRoomObserver?.disconnect();hotelRoomObserver=null;const m=$('#modal'),newStep=!m.open||modalType!==type;
  if(!m.open){modalHistory.length=0;enterUIHistory();}
  else if(!restoringModal&&modalType!==type){modalHistory.push(captureModalStep(m));}
@@ -1301,11 +1303,13 @@ function showModal(type,title,kicker,body,wide=false){
  if(!m.open)m.showModal();document.body.style.overflow='hidden';m.scrollTop=0;$('#modal-body').scrollTop=0;delete m.dataset.quoteExpired;hydrate();syncDestinationViewport();if(newStep&&!restoringModal)$('#modal-title').focus({preventScroll:true});queueMicrotask(rememberUIRoute);queueMicrotask(refreshProviderQuoteExpiry);
 }
 function closeModal({fromHistory=false}={}){
+ cancelHotelOfferCheck();
  selectionGeneration++;calendarRequest?.abort();calendarObserver?.disconnect();hotelRoomObserver?.disconnect();hotelRoomObserver=null;cancelDestinationLookup();
  const m=$('#modal');if(!m.open)return;
  clearTimeout(providerQuoteExpiryTimer);leaveUIHistory(fromHistory);modalType='';hotelOfferDraft=null;formFiltersDraft=null;destinationPending=null;modalHistory.length=0;m.close();syncDestinationViewport();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';renderResultCards(renderedResultItems,{selectionOnly:true});restorePageReturn();
 }
 function modalBack(){
+ cancelHotelOfferCheck();
  if(modalType==='flights')uiRoute();
  let previous=modalHistory.pop();
  while(previous&&['andromeda-flights','anex-current'].includes(previous.type)&&retainedProviderView(previous.offer)?.type!==previous.type)previous=modalHistory.pop();
@@ -1682,7 +1686,7 @@ function restoreProviderView(o){
  if(view.type==='andromeda-verified')openAndromedaVerified(view.offer,view.result);
  if(view.type==='anex-current'){
   openAnexConcreteCurrent(view.offer,view.result);
-  if(view.error||view.pending){$('#anex-additional-error').textContent=view.error||'Уточняем обязательные доплаты…';const button=$('[data-action="anex-additional-prices"]');if(button)button.disabled=true;}
+  if(view.error||view.pending){const error=$('#anex-additional-error');if(error)error.textContent=view.error||'Уточняем обязательные доплаты…';const button=$('[data-action="anex-additional-prices"]');if(button)button.disabled=true;}
  }
  if(view.type==='anex-additional')openAnexAdditionalEstimate(view.offer,view.result);
  if(view.type==='anex-quote')openAnexPackageQuote(view.offer,view.result,view.error,view.pending);
@@ -1746,7 +1750,16 @@ function flightSummaryHTML(o,editing=false){
 function hotelOfferCheckActive(key){
  return modalType==='hotel-details'&&hotelDetailsView?.checkKey===key&&hotelOfferDraft?.key===key&&Number($('.hotel-section-nav')?.dataset.hotelId)===selectedOffer?.hotelId;
 }
-function renderOfferProgress(){if(hotelOfferCheckActive(selectedOffer?.key))syncHotelOfferSelection(selectedOffer.hotelId);else renderRealOffer();}
+function cancelHotelOfferCheck(){
+ if(!hotelOfferCheckActive(selectedOffer?.key)||!selectedOffer?.loading)return;
+ selectionGeneration++;
+ selectedOffer={...selectedOffer,loading:false,quoteError:'Проверка прервана. Нажмите «К заявке», чтобы продолжить.',quoteErrorCode:'interrupted',quoteErrorTerminal:false};
+}
+function renderOfferProgress(){
+ if(!hotelOfferCheckActive(selectedOffer?.key)){renderRealOffer();return;}
+ if(selectedOffer.provider==='tourvisor'&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError&&data.amount(selectedOffer.tour?.price)>0&&!needsRefresh(selectedOffer))rememberProviderView(selectedOffer,'tourvisor-selection');
+ syncHotelOfferSelection(selectedOffer.hotelId);
+}
 function isCurrentOfferRequest(run,key){
  return run===selectionGeneration&&$('#modal').open&&(modalType==='offer'||hotelOfferCheckActive(key))&&selectedOffer?.key===key;
 }
