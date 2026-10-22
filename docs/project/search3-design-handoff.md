@@ -1,6 +1,6 @@
 ## Site215 — current path reference and prepared NEXT handoff, 23 October 2026
 
-The owner reviewed the published candidate, requested the final flight-editor simplification, then asked whether the current path should be kept. After the recommendation to preserve this exact version as the basis, the owner replied **«давай дальше»**. Use Site215 as the next design basis. This entry prepares the receiver change; it does not assert that the new source is implemented, merged, published or accepted in NEXT.
+The final flight-editor simplification was published and presented to the owner. The owner then asked whether the current path was satisfactory. After the recommendation to preserve this exact version as the basis, the owner replied **«давай дальше»**. Use Site215 as the next design basis. This entry prepares the receiver change; it does not assert that the new source is implemented, merged, published or accepted in NEXT.
 
 **Donor:** same PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, Site215/package104/v240, source `57db3c55856b80ac5874b89d582005f4de58f260`. Native saved version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5e5360d7dec481918ec32ba273558f6e`; deployment `appgdep_6ada8fc443708191b9846f573dab816c` succeeded 22Oct22:36:03Z (23Oct00:36 Europe/Kaliningrad). [Open the whole path](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=430). [Exact publication/evidence receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352825331).
 
