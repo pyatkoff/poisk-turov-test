@@ -401,15 +401,18 @@ async function acceptKeyboard(page,row,product,screen){
   const popup=product.locator('[data-native-form-popup]');
   const modalCycle=async name=>{
     // Stable DOM indexes record one unmodified modal's actual Tab cycle.
-    const index=()=>page.evaluate(()=>{
+    const index=(inventory=false)=>page.evaluate(inventory=>{
       const popup=document.querySelector('dialog[data-native-form-popup]:modal');
       if(!popup)return{index:-1,total:0,modal:false,body:document.activeElement===document.body,documentHasFocus:document.hasFocus()};
-      const controls=[...popup.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(n=>!n.disabled&&n.tabIndex>=0&&n.getClientRects().length&&!n.closest('[hidden]'));
-      return{index:controls.indexOf(document.activeElement),total:controls.length,modal:true,body:document.activeElement===document.body,documentHasFocus:document.hasFocus()};
-    });
-    const start=await index();assert(start.index>=0&&start.total>1,name+' initial control');
+      const candidates=[...popup.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(n=>!n.matches(':disabled')&&n.tabIndex>=0&&n.getClientRects().length&&!n.closest('[hidden],[inert]'));
+      const controls=candidates.filter(n=>getComputedStyle(n).visibility==='visible');
+      const describe=n=>({tag:n.tagName,name:n.name||null,data:{...n.dataset},text:(n.getAttribute('aria-label')||n.innerText||'').trim().slice(0,120),visibility:getComputedStyle(n).visibility});
+      return{index:controls.indexOf(document.activeElement),total:controls.length,modal:true,body:document.activeElement===document.body,documentHasFocus:document.hasFocus(),
+        ...(inventory?{controls:controls.map(describe),excludedVisibility:candidates.filter(n=>getComputedStyle(n).visibility!=='visible').map(describe)}:{})};
+    },inventory);
+    const start=await index(true);assert(start.index>=0&&start.total>1,name+' initial control');
     const uaBoundaryTransitions=[];
-    row.proof.editors[name]={controls:start.total,uaBoundaryTransitions};
+    row.proof.editors[name]={controls:start.total,controlInventory:start.controls,excludedVisibility:start.excludedVisibility,uaBoundaryTransitions};
     const cycle=async value=>{
       const seen=new Set([start.index]);let returned=false,previous=start.index,boundaries=0;
       for(let n=0;n<=start.total+2;n++){
@@ -433,7 +436,7 @@ async function acceptKeyboard(page,row,product,screen){
       return seen.size;
     };
     const forward=await cycle('Tab'),reverse=await cycle('Shift+Tab');
-    return{controls:start.total,forwardReached:forward,reverseReached:reverse,tabWrap:true,reverseWrap:true,uaBoundaryTransitions};
+    return{controls:start.total,controlInventory:start.controls,excludedVisibility:start.excludedVisibility,forwardReached:forward,reverseReached:reverse,tabWrap:true,reverseWrap:true,uaBoundaryTransitions};
   };
   const editors=[['destination','[data-search-destination-toggle]'],['dates','[data-search-date-toggle]'],
     ['nights','[data-search-nights-toggle]'],['travelers','[data-search-travelers-toggle]'],
