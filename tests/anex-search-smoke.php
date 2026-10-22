@@ -314,9 +314,13 @@ search_check($zeroAgeCalls === 1 && $zeroAgeWire === ['action' => 'SearchTour_PR
     'CHILD' => '1', 'AGES' => '0', 'invented_infant_parameter' => false], 'age zero lost or party/request parameter invented');
 search_check($zeroAgeResult['search']['children'] === 1 && $zeroAgeResult['search']['child_ages'] === [0],
     'requested infant ages changed to fit supplier counters');
-search_check($zeroAgeResult['offers'] === [] && $zeroAgeResult['rejected_count'] === 174
-    && $zeroAgeResult['first_page_diagnostics'] === ['rows_seen' => 174, 'normalized_rows' => 0,
-        'rejected_rows' => 174, 'rejections' => ['infant' => 174], 'party_counts' => ['2/0/0' => 174],
-        'hotel_filtered_rows' => 0, 'retained_offers' => 0], 'explicit zero infant accepted as complete family or wrong boundary blamed');
-search_check($zeroAgeSearch->snapshot()['offers'] === [], 'unbound family acquired saved offer/quote authority');
-echo "ANEX_ZERO_AGE_WIRE_OK CHILD1/AGES0 preserved; explicit174 infant0 rows rejected; no live calls\n";
+search_check(count($zeroAgeResult['offers']) === 1 && $zeroAgeResult['rejected_count'] === 0
+    && $zeroAgeResult['first_page_diagnostics'] === ['rows_seen' => 174, 'normalized_rows' => 174,
+        'rejected_rows' => 0, 'rejections' => [], 'party_counts' => ['2/0/0' => 174],
+        'hotel_filtered_rows' => 0, 'retained_offers' => 1], 'base infant listing must survive normalization and ordinary deduplication');
+$zeroAgeOffer = $zeroAgeResult['offers'][0];
+search_check($zeroAgeOffer['children'] === 1 && $zeroAgeOffer['infants'] === 1 && $zeroAgeOffer['supplier_infants'] === 0
+    && $zeroAgeOffer['infant_charge'] === ['status' => 'unknown', 'amount' => null, 'included_in_search_price' => null]
+    && $zeroAgeOffer['final_price_verified'] === false && count($zeroAgeSearch->snapshot()['offers']) === 1,
+    'saved search reference is not verification of infant charge or whole-family price');
+echo "ANEX_ZERO_AGE_WIRE_OK CHILD1/AGES0 preserved; infant0 listing retained with unknown charge; no live calls\n";

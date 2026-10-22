@@ -694,7 +694,30 @@ foreach (['missing', 'continued', 'blocked', 'bad-digest', 'array-digest', 'extr
     unset($snap);
     qp_assert(!isset(anytour_anex_search3_quote_receipt($badSession)['retained_first_page']), 'unproved page remains unknown: ' . $badPage);
 }
-// Infant party fixtures exercise the inferred source contract, NOT live acceptance.
+// A seated-base listing cannot verify an adults-only package as a family total.
+foreach ([false, true] as $supplierBindsInfant) {
+    [$s, $r, , , , $f, $make, $save] = qp_fixture('', [1]);
+    $s['gateway']['saved_offers']['offers'][$r['offer_ref']]['offer'] += [
+        'supplier_infants' => 0,
+        'infant_charge' => ['status' => 'unknown', 'amount' => null, 'included_in_search_price' => null]];
+    if (!$supplierBindsInfant) $f->transform_doc = static function (array $doc): array {
+        array_pop($doc['peoples']['people']); $doc['infant'] = '0'; return $doc;
+    };
+    $inventory = qp_run($r, $s, $make, $save);
+    if (!$supplierBindsInfant) {
+        qp_unverified($inventory, 'listing acceptance never substitutes for quote family identity');
+        qp_assert($inventory['status'] === 'quote_failed' && $f->calls === ['start'], 'adults-only quote stops without later calls');
+        qp_run($r, $s, $make, $save);
+        qp_assert($f->calls === ['start'], 'adults-only failure cannot replay');
+    } else {
+        $pair = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $inventory['choices'][0]['choice_ref']]);
+        $priced = qp_run($pair, $s, $make, $save);
+        qp_assert($priced['status'] === 'quote_verified' && $priced['price']['amount'] === '123456.78',
+            'supplier whole-party gross is used once, without adding an estimated infant fee');
+    }
+}
+
+// Infant party fixtures exercise quote identity, NOT live acceptance.
 foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9], [2]] as $ages) {
     [$s, $r, , , , $f, $make, $save] = qp_fixture('', $ages);
     $inventory = qp_run($r, $s, $make, $save);
