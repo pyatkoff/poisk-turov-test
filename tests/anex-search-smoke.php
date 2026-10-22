@@ -293,3 +293,30 @@ search_reject(static function () use ($savedGateway, &$savedSession, $criteria):
 search_check(!isset($savedSession['saved_offers']) && !isset($savedSession['search']), 'failed replacement retained facts');
 search_check($savedCalls === 3 && $savedFactoryCalls === 0, 'saved read reached supplier or client factory');
 echo "ANEX_SAVED_OFFER_OK original-facts/current-identity/no-client/no-quote\n";
+
+// Sanitized live counter shape from22Oct:174 rows2/0/0 for requested2A+[0].
+// Synthetic transport verifies our complete Search->Client query boundary offline;
+// it cannot establish what the remote supplier does with that request.
+$zeroAgeCalls = 0; $zeroAgeWire = null;
+$zeroAgeClient = new AnyTourAnexClient('fixture-zero-age-secret', static function (string $url) use (&$zeroAgeCalls, &$zeroAgeWire, $baseRow): array {
+    ++$zeroAgeCalls;
+    parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+    $zeroAgeWire = ['action' => $query['action'], 'ADULT' => $query['ADULT'],
+        'CHILD' => $query['CHILD'], 'AGES' => $query['AGES'] ?? null,
+        'invented_infant_parameter' => array_key_exists('INFANT', $query)];
+    return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['prices' => array_fill(0, 174,
+        array_replace($baseRow, ['adult' => 2, 'child' => 0, 'infant' => 0]))]])];
+});
+$zeroAgeCriteria = array_replace($criteria, ['children' => 1, 'child_ages' => [0]]);
+$zeroAgeSearch = new AnyTourAnexSearch($zeroAgeClient);
+$zeroAgeResult = $zeroAgeSearch->search($zeroAgeCriteria, 1);
+search_check($zeroAgeCalls === 1 && $zeroAgeWire === ['action' => 'SearchTour_PRICES', 'ADULT' => '2',
+    'CHILD' => '1', 'AGES' => '0', 'invented_infant_parameter' => false], 'age zero lost or party/request parameter invented');
+search_check($zeroAgeResult['search']['children'] === 1 && $zeroAgeResult['search']['child_ages'] === [0],
+    'requested infant ages changed to fit supplier counters');
+search_check($zeroAgeResult['offers'] === [] && $zeroAgeResult['rejected_count'] === 174
+    && $zeroAgeResult['first_page_diagnostics'] === ['rows_seen' => 174, 'normalized_rows' => 0,
+        'rejected_rows' => 174, 'rejections' => ['infant' => 174], 'party_counts' => ['2/0/0' => 174],
+        'hotel_filtered_rows' => 0, 'retained_offers' => 0], 'explicit zero infant accepted as complete family or wrong boundary blamed');
+search_check($zeroAgeSearch->snapshot()['offers'] === [], 'unbound family acquired saved offer/quote authority');
+echo "ANEX_ZERO_AGE_WIRE_OK CHILD1/AGES0 preserved; explicit174 infant0 rows rejected; no live calls\n";

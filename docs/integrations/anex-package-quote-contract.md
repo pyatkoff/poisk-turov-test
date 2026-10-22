@@ -170,3 +170,73 @@ Existing family case6325407802 is consumed/no-replay; its missing historical fie
 cannot be reconstructed by this addition. Only a future justified new ordinary
 case can establish actual supplier counter semantics. Source, CI, independent
 review, stock installation and that future live acceptance remain separate stages.
+
+## Observed age-zero boundary — 22 October 2026
+
+PR4802 was independently reviewed, merged as5a703baf, and installed through the
+existing runtime and endpoint carriers (39685334326 and39685594872). In the one
+new ordinary Moscow→Egypt14–20Feb2027/7n/2A+[0]/AI case, the current-session receipt
+reported174 raw rows, all with parsed counters adult2/child0/infant0. Every row
+failed the existing `infant` predicate; normalized rows and requested-hotel
+filtered rows were both0. Thus the specific local rejection and the returned
+counter values are established. This is not an empty supplier page or a proved
+transport outage. The historical31Jan case still lacks these exact facts.
+
+The installed request path has no falsy-age filter: the existing real Client
+validates and serializes CHILD1 and AGES`0`. The focused offline Search→Client
+regression checks that complete query boundary and the observed rejection shape
+through an injected transport. It is source/offline evidence, not a capture of the
+actual live request URL or proof of the supplier's interpretation of age0.
+The public SearchTour contract documents CHILD/AGES and separate response counters;
+its zero-infant example supplies no supported nonzero-infant guarantee.
+
+Consequently live infant support remains UNCONFIRMED. Accepting returned infant0
+as the requested whole family, changing age0 to1, inventing an INFANT parameter,
+or treating a missing infant charge as0 would discard the unresolved binding.
+The next provider contract result must establish how the requested infant appears
+in the supported search/package claim and typed quote participants. Until then the
+current strict checks and unknown infant fee remain in force; no whole-family
+flight/final-price acceptance is claimed. The completed14Feb case is consumed and
+must not be rerun, repolled or varied as a fallback. Tourvisor remains independent.
+
+Evidence: #4709/6327863689 (single Find/one regular own-session receipt, no expand,
+quote, Continue or retry); retained DOM/receipt JSON SHA256
+`3b15c5c92b2e7ebc6555b2ab7d5175b0ea551b502b987f7a1c115b24963245ad`.
+
+### Official search-to-quote boundary inspected 22 October 2026
+
+The first two assets are linked by the official [agent search page](https://agent.anextour.ru/search/tour).
+The third is the previously retained official booking asset with the same pinned
+hash. They provide these narrower, independently checkable source facts:
+
+| Official asset / module | Observed behavior | Limit of this evidence |
+| --- | --- | --- |
+| [1h772e4nh6ahm.js](https://agent.anextour.ru/_next/static/chunks/1h772e4nh6ahm.js), people field | Adding age 0 increments CHILD and joins the unchanged age into AGES. Parsing excludes empty entries, preserving the string 0. The form distinguishes infants under 2 and restricts their count relative to accompanying adults. | Frontend form behavior, not a live SearchTour response contract. |
+| [1aecwlppxy2vn.js](https://agent.anextour.ru/_next/static/chunks/1aecwlppxy2vn.js), modules 64743/373098 | Search parameter preparation includes CHILD and extracts/sorts/joins age digits without discarding 0. The separate seated-tourist count is adults plus requested ages 2 and older. The tour-card mapper uses that count from search inputs. | A seated count is not the full party count or evidence that the returned infant 0 represents the requested infant. The mapper's display behavior does not establish server semantics. |
+| [3j9cb9-tia3ma.js](https://agent.anextour.ru/_next/static/chunks/3j9cb9-tia3ma.js), module 693655 | The official start request supplies cat_claim, id, currency and lang. It does not forward CHILD/AGES from the search form. | The inspected start function does not document how an infant absent from a claim is attached. This is not proof that the supplier has no supported mechanism elsewhere. |
+
+Content hashes (SHA256; respectively 771799, 38919, 380799 bytes):
+`b8b32aafa59c266b445a57a590ea306c020b6f2fcffc3cdea2d065e1448cc88b`,
+`6bbc3efd68ec2971e2656303ad5f8d46c43a7e2cb2a6d215c76dde640ea63ffc`,
+`3e66ab84677135c2d5c33a57a97de85247838ad723e348fe46696e31a8a5d143`.
+Assets were read as public static text, without executing the page or making a
+search, start, quote, receipt, booking or lead call. The bounded asset retrieval
+had two static-file timeouts; no claim of a complete frontend audit is made.
+
+Inference: the request age is preserved in both our client and the official
+frontend, while our current search-to-quote path still lacks evidence binding the
+requested infant to a returned claim. The 174 rejected rows alone cannot distinguish
+supplier search convention from an unsupported/omitted infant addition. Calling
+this a supplier outage, changing age 0, or merely removing the infant predicate
+would not establish that missing relationship.
+
+The minimal next contract evidence must identify the existing supported
+**quote-only** mechanism, if any, that binds one requested infant and an
+accompanying adult to the selected transient claim. It must establish its exact
+request fields, response identity and participant semantics, and whether it has
+booking/reservation side effects. Then the same bounded own-tour path can prove
+typed ADL/CHD/INF participants with distinct keys and supplier gross for the entire
+party across the existing quote stages. No live call is justified merely to guess
+a parameter or synthesize a participant. Booking/save or personal-data submission
+is outside this contract investigation. Infant fee remains unknown until explicitly
+returned; a listing or an adults-only calculation cannot become final_verified.
