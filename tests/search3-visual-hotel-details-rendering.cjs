@@ -60,3 +60,45 @@ const grown=inventory(growingInput(),'AI'),oldGrown=originalInventory(growingInp
 let reads=0;const work=Array.from({length:1000},(_,index)=>({key:'work:'+index,meal:'AI',get room(){reads++;return 'Room '+index%50;}}));
 originalInventory(work,'');const oldReads=reads;reads=0;const current=inventory(work,'');assert.equal(oldReads,51000);assert.equal(reads,1000);assert.equal(current.rooms.length,50);assert.equal(current.rooms.reduce((sum,group)=>sum+group.offers.length,0),1000);
 console.log('PASS hotel room inventory: '+inventoryCases+' original grouping cases; native sparse/inherited/initial-length, zero/NaN and raw identity/order; room reads '+oldReads+'→'+reads+'; supplier/lead HTTP 0');
+
+// Price-note regression: comparisons never silently promote listing money.
+function verifyRoomPriceStatus(appSource,hotelSource){
+ const rowStart=hotelSource.indexOf('function roomOfferChoiceHTML('),rowEnd=hotelSource.indexOf('function renderHotelRooms(',rowStart);
+ const footerStart=appSource.indexOf('function syncHotelOfferSelection('),footerEnd=appSource.indexOf('function observeHotelRoomChoices(',footerStart);
+ assert(rowStart>=0&&rowEnd>rowStart&&footerStart>=0&&footerEnd>footerStart);
+ const raw={},search={origin:'Москва',country:'4'},listing={key:'one',hotelId:1,raw,search,total:99938,room:'Standard',meal:'BB',day:'2026-10-05',returnDay:'2026-10-12',nights:7,operator:'FUN&SUN',provider:'tourvisor',cached:true};
+ const snapshot='Снимок · цена требует проверки',priced='Цена с выбранными рейсами · сбор включён';
+ const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const retained={...listing,cached:false,tour:{price:99938},quoteListingTotal:99938,flightChoiceId:'pair-2'};
+ const context={hotelOfferDraft:{hotelId:1,key:'one'},selectedOffer:null};
+ const same=(a,b)=>a.room===b.room&&a.meal===b.meal&&a.day===b.day;
+ const helpers={context,esc,sameSelectedTourConditions:same,selectedPriceStatus:o=>o.tour?priced:'Цена из выдачи · демо',cardPriceNote:()=>snapshot,displayMealLabel:o=>o.meal,operatorBadge:o=>o,flightLabel:()=>'',dateText:v=>v,nightsText:v=>v+' ночей',guestsText:()=> '2 взр.',money:v=>v+' ₽'};
+ const rowContext=vm.createContext(helpers);vm.runInContext(hotelSource.slice(rowStart,rowEnd),rowContext);
+ const row=o=>rowContext.roomOfferChoiceHTML(o);
+ const rowNote=html=>html.match(/<small class="room-offer-price-status">([^<]+)<\/small>/)?.[1];
+ assert.equal(rowNote(row(listing)),snapshot,'room comparison retains the listing source/status');
+ context.selectedOffer=retained;
+ assert.equal(rowNote(row(listing)),priced,'a matched retained choice keeps selected pair/fuel status');
+ context.selectedOffer={...retained,key:'another'};
+ assert.equal(rowNote(row(listing)),snapshot,'another offer cannot lend its verified status');
+ context.selectedOffer={...retained,pricePending:true};
+ assert.equal(rowNote(row(listing)),snapshot,'pending pair cannot lend its verified status');
+ context.selectedOffer=null;helpers.cardPriceNote=()=>'<unverified>';
+ assert.equal(rowNote(row(listing)),'&lt;unverified&gt;','price-note text stays escaped');
+ const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
+ const f={hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:null,selectedOffer:null,state:{search},searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:same,selectedPriceStatus:helpers.selectedPriceStatus,cardPriceNote:()=>snapshot,money:helpers.money,mealLabel:helpers.displayMealLabel,dateText:helpers.dateText,needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[]};
+ vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);
+ f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'minimum footer identifies listing price');
+ f.hotelOfferDraft={hotelId:1,key:'one'};f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'selected listing footer retains uncertainty');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'99938 ₽');
+ f.selectedOffer=retained;f.syncHotelOfferSelection(1);
+ assert(nodes['#hotel-detail-price-status'].textContent.endsWith(priced),'retained footer preserves the current pair/fuel status');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'99938 ₽','annotation cannot add fuel to the amount');
+ f.selectedOffer={...retained,search:{...search,origin:'Другой город'}};f.syncHotelOfferSelection(1);
+ assert(nodes['#hotel-detail-price-status'].textContent.endsWith(snapshot),'another search cannot lend its verified status');
+ assert.equal(nodes['#hotel-detail-offers'].dataset.key,'one','exact offer action stays unchanged');
+}
+verifyRoomPriceStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
+console.log('PASS room price status: listing/minimum/selected/current pair/pending/foreign identity/escaping; amounts unchanged');
