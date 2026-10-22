@@ -18,8 +18,10 @@ const MEAL_INSTALLED=Object.freeze({source:'4442cec9921d0888b43cc7a7137385f1e622
 const INSTALLED=currentInstalled?MEAL_INSTALLED:PRIOR_INSTALLED;
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
-assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
-assert.notEqual(out,path.resolve(process.env.SEARCH3_NATIVE_EVIDENCE),'Installed evidence is separate from compiled evidence');
+if(require.main===module){
+  assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
+  assert.notEqual(out,path.resolve(process.env.SEARCH3_NATIVE_EVIDENCE),'Installed evidence is separate from compiled evidence');
+}
 const origin=new URL(TARGET).origin;
 const forbidden=/\/(?:api(?:[^/]*)|lead-(?:adapter|bridge|receiver)[^/]*)\.(?:php|json)(?:$|\?)/i;
 const nativePrefix=base+'/visual-search/native-v2/';
@@ -332,7 +334,7 @@ async function acceptLeadFocus(page,row,product,screen){
 }
 // Finite core keyboard/focus measurement for the named 11.C1 gap. Every action
 // below uses actual Tab/Shift+Tab/Enter/Space/typing, with no DOM focus shortcut.
-async function acceptKeyboard(page,row,product,screen){
+async function acceptKeyboard(page,row,product,screen,{evidenceRoot=out,framePrefix='installed'}={}){
   let tabs=0;
   const trace=[];
   row.proof.trace=trace;
@@ -392,11 +394,11 @@ async function acceptKeyboard(page,row,product,screen){
   const activate=async(locator,label,value='Enter')=>{await reach(locator,label);await key(value);};
   const frame=async(name,locator)=>{
     assert.equal(await focused(locator),true,name+' focus before capture');await proof(name+' before capture');
-    const file='installed-'+name+'-'+row.width+'-text100.png';
-    await page.screenshot({path:path.join(out,file),fullPage:false,animations:'allow',caret:'initial'});
+    const file=framePrefix+'-'+name+'-'+row.width+'-text100.png';
+    await page.screenshot({path:path.join(evidenceRoot,file),fullPage:false,animations:'allow',caret:'initial'});
     assert.equal(await focused(locator),true,name+' focus after capture');await proof(name+' after capture');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
-    const bytes=fs.readFileSync(path.join(out,file));row.frames.push({file,bytes:bytes.length,sha256:hash(bytes)});
+    const bytes=fs.readFileSync(path.join(evidenceRoot,file));row.frames.push({file,bytes:bytes.length,sha256:hash(bytes)});
   };
   const popup=product.locator('[data-native-form-popup]');
   const modalCycle=async name=>{
@@ -449,7 +451,7 @@ async function acceptKeyboard(page,row,product,screen){
     row.proof.editors[name]=await modalCycle(name);
     if(name==='nights'){
       const selected=popup.locator('[data-native-night][aria-pressed="true"]').first();
-      await reach(selected,'Selected nights');await frame('keyboard-popup',selected);
+      await reach(selected,'Selected nights');
     }
     if(name==='travelers'){
       await activate(popup.locator('[data-search-add-child]'),'Add child');
@@ -518,6 +520,9 @@ async function acceptKeyboard(page,row,product,screen){
   await activate(product.locator('[data-native-tour-flight="0"]'),'Select flight');
   await activate(product.locator('[data-action="accept-price"]:visible').first(),'Accept selected price');
   await proof('Price acceptance retains a visible keyboard control');
+  const acceptedAction=screen('tour').locator('[data-action="lead"]:focus');
+  assert.equal(await acceptedAction.count(),1,'Accepted price focuses an existing continuation action');
+  assert.equal(await acceptedAction.isEnabled(),true);await frame('keyboard-price',acceptedAction);
   await activate(screen('tour').locator('[data-action="lead"]:visible').first(),'Continue to contact');await screen('lead').waitFor({state:'visible'});
   const form=product.locator('[data-lead-form]');
   await reach(form.locator('[name="name"]'),'Optional contact name');await page.keyboard.type('FICTIONAL KEYBOARD QA');
@@ -765,6 +770,8 @@ async function run(){
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
+module.exports={acceptKeyboard};
+if(require.main===module){
 if(process.argv.includes('--policy-only')){
   installGraph(compiledManifest);
   if(currentInstalled){
@@ -785,3 +792,4 @@ if(process.argv.includes('--policy-only')){
   assert.deepEqual(captureOptions('calendar-later'),{fullPage:false,animations:'allow',caret:'initial'});assert.deepEqual(captureOptions('results'),{fullPage:true,animations:'disabled',caret:'hide'});
   console.log('Installed native static policy PASS; no browser or network used.');
 }else run().then(()=>console.log('Installed native presentation acceptance PASS: 430/1280, controlled data only.')).catch(error=>{console.error(error.stack||error);process.exitCode=1;});
+}

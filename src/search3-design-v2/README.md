@@ -60,16 +60,28 @@ rendered-матрица, независимый просмотр кадров и
 
 ### Текущая точка и выполненная работа
 
-Конечный QA-only проход `native-keyboard-c1-20261022-v1` измеряет только11.C1
-keyboard/focus в существующем CIChromium430/1280@100;
+Пакет `native-keyboard-c1-20261022-v1` начат как конечное измерение11.C1
+в существующем CIChromium430/1280@100;
 [паспорт6334805270](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334805270).
-Шесть field editors: Tab/ShiftTab containment, Escape/EnterApply и opener focus;
-keyboardFind → local filters/calendar → hotel/gallery → exact offer/flight/price
-→ contact/Back. Только четыре новых keyboard-focus viewport PNG, без повторного
-полного аудита или прежних кадров. Все реальные API/supplier/lead/analytics —0;
-physical keyboard/Safari/assistive technology/delivery не принимаются этим проходом.
-Product4442/publish39518137791 неизменны; оценка11.C1 — лишь послеactualevidence
-и независимогоsource/visualreview; отсутствие полного доказательства остаётсяN.
+Actual installed430 проверка выявила существенный keyboard-дефект: после Enter
+на «Подтвердить новую цену» фокус остаётся на скрытой кнопке с rect0×0.
+112000/flight0 сохранены; цена/authority не повреждены. Подтверждение и точное
+расширение product scope в том же PR4812:
+[6335555725](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6335555725).
+Исправление переводит фокус исчезающей активной кнопки к существующему доступному
+действию продолжения после успешного принятия цены. Другой активный элемент
+и отказ не перехватываются; контакт открывается только явным действием.
+
+Проверки: существующая focused regression и обычный полный final source CI;
+тот же keyboard carrier дополнительно исполняется на compiled source без нового
+транспорта, его trace/четыре viewport кадра цены и контакта хранятся отдельно от
+неизменной обязательной rendered-матрицы publisher. Затем actual artifact semantic
+admission ДО product merge, отдельный trusted controller/exclusive publisher,
+одна новая changed-byte публикация и affected installed keyboard приёмка.
+QA-only skip не допускает изменённый runtime. До фактического terminal installed
+source4442/runtime43c6/publish39518137791 остаются текущими.11.C1 остаётся N до
+полной actual приёмки и независимого source/visual review. Реальные API/supplier/
+lead/analytics —0; physical keyboard/Safari/assistive technology/delivery не приняты.
 
 Точечный QA-only проход `native-lead-c2-20261022-v1` закрывает только заранее
 названное недостающее evidence10.C2 «понятное действие и фокус»;
@@ -82,7 +94,13 @@ Back/Forward, понятные labels/preview-action и сохранённый e
 delivery и refactor остаются отложенными/not_measured. Пометка full keyboard
 11.C1 как отложенного состояния не является отдельным запретом владельца на
 конечное измерение этого заранее названного критерия в существующем CI.
-Оценка10.C2 появится только после фактического CI и независимого review.
+Проход завершён: PR4809/source6cd29d41d07392a45f5578fc8dc1390459753369,
+receivingd11dda2e679bf95c7a585777da3325441114f601; все855runtime bytes равны4442.
+Actual4 viewport PNG и независимый source/visual review ACCEPT;
+[terminal6334420464](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334420464),
+[affected10.C2 N→2](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6334409239).
+Lead row10/10 только в названном controlled corpus, не новое продуктовое улучшение.
+Без новых bytes/evidence/дефекта этот проход и его кадры не повторять.
 
 Поручение владельца 21.10 — объединить питание в фильтрах через LOCAL;
 реализация опубликована одним пакетом. Его конечное закрытие определяется

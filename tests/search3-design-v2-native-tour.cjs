@@ -134,10 +134,43 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   await viewportRemount();
   await manyFlightChoices();
   await familyCopyChecks();
+  await acceptanceFocusChecks();
   await checkedMealPresentationChecks();
   await terminalDenialPresentationChecks();
   console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry; 24 family compositions use correct summary/price/contact cases');
 })().catch(error=>{console.error(error);owner.destroy();w.close();process.exitCode=1;});
+
+async function acceptanceFocusChecks(){
+  for(const scenario of ['keyboard','outside-focus','rejected']){
+    const other=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'});
+    const v=other.window,r=v.document.querySelector('[data-product]');
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../v2/lead-form-guard-v1.js'),'utf8'));
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+    let present={...offer,offer,tour,variants,flightChoiceId:1,total:112000,pricePending:false,priceAccepted:false},acceptCalls=0,quoteCalls=0;
+    const adapter={getSelection:()=>present,quoteOffer(){quoteCalls++;throw Error('Must retain the selected quote');},acceptPrice(){
+      acceptCalls++;if(scenario==='rejected')throw Error('FICTIONAL acceptance rejected');
+      present={...present,priceAccepted:true};return present;
+    }};
+    const view=v.AnyTourDesignV2Tour.mount({root:r,bridge:adapter});
+    try{
+      view.render({offer,hotel,screen:'tour'});r.hidden=false;r.querySelector('[data-screen="tour"]').hidden=false;
+      const accept=r.querySelector('[data-action="accept-price"]'),actions=[...r.querySelectorAll('[data-screen="tour"] [data-action="lead"]')];
+      // jsdom has no layout: model an offscreen upper CTA and a visible lower CTA.
+      actions.forEach((node,index)=>{node.getClientRects=()=>[{width:120,height:44}];node.getBoundingClientRect=()=>({left:20,right:140,top:index?100:1200,bottom:index?144:1244});});
+      const previous=scenario==='outside-focus'?r.querySelector('[data-screen="tour"] [data-action="hotel"]'):accept;
+      previous.focus();assert.strictEqual(v.document.activeElement,previous);accept.click();
+      assert.equal(acceptCalls,1);assert.equal(quoteCalls,0);assert.strictEqual(present.offer,offer);assert.equal(present.total,112000);assert.equal(present.flightChoiceId,1);
+      if(scenario==='keyboard'){
+        assert(accept.closest('[hidden]'),'Successful acceptance removes its old control');
+        assert.strictEqual(v.document.activeElement,actions[1],'Focus continues at the existing enabled CTA already in view');
+        assert(!v.document.activeElement.disabled&&!v.document.activeElement.closest('[hidden]'));
+      }else{
+        assert.strictEqual(v.document.activeElement,previous,'Other focus or a rejected acceptance is not intercepted');
+        if(scenario==='rejected')assert(actions.every(node=>node.disabled),'Rejection still blocks contact');
+      }
+    }finally{view.destroy();v.close();}
+  }
+}
 
 async function terminalDenialPresentationChecks(){
   for(const template of ['st-mobile','st-desktop'])for(const phase of ['quote','flights']){

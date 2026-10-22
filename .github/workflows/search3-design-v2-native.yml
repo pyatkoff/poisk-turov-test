@@ -67,7 +67,7 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           git merge-base --is-ancestor "$BASE_SHA" "$SOURCE_SHA"
           git diff --check "$BASE_SHA" "$SOURCE_SHA"
-          if [ "${{ github.head_ref }}" = test/design-v2-installed-lead-c2-20261022 ] || [ "${{ github.head_ref }}" = test/design-v2-installed-keyboard-20261022 ]; then
+          if [ "${{ github.head_ref }}" = test/design-v2-installed-lead-c2-20261022 ]; then
             # Skipping retained frames is valid only for this exact QA-only delta
             # from the installed product, never for a changed runtime/source.
             python3 - <<'PY'
@@ -170,7 +170,7 @@ jobs:
       - name: Render donor/native frame pairs and verify controlled journey
         # These QA-only branches measure the named installed gaps below;
         # unchanged product frames are retained, not replayed. All source checks stay.
-        if: github.head_ref != 'test/design-v2-installed-lead-c2-20261022' && github.head_ref != 'test/design-v2-installed-keyboard-20261022'
+        if: github.head_ref != 'test/design-v2-installed-lead-c2-20261022'
         shell: bash
         env:
           SEARCH3_NATIVE_ASSET_ROOT: ${{ runner.temp }}/search3-design-v2-native/payload
@@ -184,7 +184,7 @@ jobs:
       - name: Accept the fixed published native UI with controlled data
         # Finite installed-UI closeouts, not a new live supplier mode
         # or a publication prerequisite for future, not-yet-installed sources.
-        if: (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020' || github.head_ref == 'test/design-v2-installed-meals-20261021' || github.head_ref == 'test/design-v2-installed-lead-c2-20261022' || github.head_ref == 'test/design-v2-installed-keyboard-20261022')
+        if: (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020' || github.head_ref == 'test/design-v2-installed-meals-20261021' || github.head_ref == 'test/design-v2-installed-lead-c2-20261022')
         shell: bash
         env:
           SEARCH3_NATIVE_ASSET_ROOT: ${{ runner.temp }}/search3-design-v2-native/payload
@@ -193,10 +193,7 @@ jobs:
         run: |
           set -euo pipefail
           export NODE_PATH="$RUNNER_TEMP/native-tools/node_modules"
-          if [ "${{ github.head_ref }}" = test/design-v2-installed-keyboard-20261022 ]; then
-            node tests/search3-design-v2-native-installed.cjs --keyboard-only --policy-only
-            node tests/search3-design-v2-native-installed.cjs --keyboard-only
-          elif [ "${{ github.head_ref }}" = test/design-v2-installed-lead-c2-20261022 ]; then
+          if [ "${{ github.head_ref }}" = test/design-v2-installed-lead-c2-20261022 ]; then
             node tests/search3-design-v2-native-installed.cjs --lead-focus-only --policy-only
             node tests/search3-design-v2-native-installed.cjs --lead-focus-only
           elif [ "${{ github.head_ref }}" = test/design-v2-installed-meals-20261021 ]; then
@@ -207,7 +204,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Retain the new installed-UI evidence separately
-        if: always() && (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020' || github.head_ref == 'test/design-v2-installed-meals-20261021' || github.head_ref == 'test/design-v2-installed-lead-c2-20261022' || github.head_ref == 'test/design-v2-installed-keyboard-20261022')
+        if: always() && (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020' || github.head_ref == 'test/design-v2-installed-meals-20261021' || github.head_ref == 'test/design-v2-installed-lead-c2-20261022')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: search3-design-v2-installed-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}

@@ -395,7 +395,16 @@
       if(button.hasAttribute('data-native-expand-offer'))operation(async offer=>({navigate:'hotel',expandedOffers:await bridge.expandOfferGroup(offer.key,{expectedOffer:offer})}));
       if(button.dataset.action==='accept-price'){
         if(!context?.offer||!describePrice(context.offer,current(),{busy,error}).checkedPrice)return;
-        try{selection=bridge.acceptPrice();error='';review=null;renderDetails();emit();}catch(failure){error=failure.message;renderDetails();emit();}
+        const restoreFocus=document.activeElement===button;
+        try{
+          selection=bridge.acceptPrice();error='';review=null;renderDetails();emit();
+          if(restoreFocus&&button.closest('[hidden]')){
+            const actions=[...tourScreen.querySelectorAll('[data-action="lead"]')].filter(node=>!node.disabled&&!node.closest('[hidden]')&&node.getClientRects().length&&window.getComputedStyle(node).visibility==='visible');
+            const inView=node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=window.innerHeight&&r.left>=0&&r.right<=window.innerWidth;};
+            const target=actions.find(inView)||actions[0];
+            target?.focus();
+          }
+        }catch(failure){error=failure.message;renderDetails();emit();}
       }
     },{signal:controller.signal});
     root.addEventListener('toggle',event=>{

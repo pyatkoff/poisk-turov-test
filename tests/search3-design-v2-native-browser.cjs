@@ -586,6 +586,13 @@ async function referenceFrame(page,width,percent,screen,row) {
 // Importing it never launches the compiled browser matrix or local HTTP server.
 module.exports={fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest,sourceSHA,hash,base,retainedMedia,mediaByURL};
 if(require.main===module)(async()=>{
+  // The same bounded keyboard journey also exercises a changed source before
+  // publication. Its evidence is separate from the publisher's retained matrix.
+  const {acceptKeyboard}=require('./search3-design-v2-native-installed.cjs');
+  const keyboardEvidence=path.join(evidence,'keyboard');fs.mkdirSync(keyboardEvidence,{recursive:true});
+  const keyboardReport={schema:1,sourceSHA,compiledNativeManifest:manifest,fixture:fixture.label,
+    scope:'Controlled compiled keyboard/focus; not installed, physical device or supplier acceptance',
+    widths:requiredWidths,textPercent:100,cases:[],status:'running'};
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin='http://127.0.0.1:'+server.address().port;
   const browser=await chromium.launch({headless:true});
@@ -1669,6 +1676,29 @@ if(require.main===module)(async()=>{
         assert.deepEqual(finalDenials,{search:1,other:0,quote:3,flights:2});
         row.proof.permanentDenials={...denialProof,differentAllowedOfferReady:true,canonicalBridgeSHA256:manifest.files['bridge.js'],calls:finalDenials};
         row.checks.push('passive init 0 searches','form submit exactly one search','favorite state and keyboard focus retained locally with 0 searches','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
+        terminalJourney=false;failFirstMedia=false;holdSecondMedia=false;
+        const keyboardPage=await context.newPage();
+        const keyboardRow={width,height:900,textPercent:100,frames:[],proof:{},errors:[],status:'running'};
+        keyboardReport.cases.push(keyboardRow);
+        try{
+          keyboardPage.setDefaultTimeout(10000);keyboardPage.setDefaultNavigationTimeout(20000);
+          keyboardPage.on('pageerror',error=>keyboardRow.errors.push(error.message));
+          await keyboardPage.clock.setFixedTime(fixtureNow);
+          await keyboardPage.goto(origin+base+'/visual-search/',{waitUntil:'networkidle'});
+          const keyboardProduct=keyboardPage.locator('[data-product]:visible');
+          const keyboardScreen=name=>keyboardProduct.locator('[data-screen="'+name+'"]');
+          await keyboardScreen('search').waitFor({state:'visible'});
+          await acceptKeyboard(keyboardPage,keyboardRow,keyboardProduct,keyboardScreen,{evidenceRoot:keyboardEvidence,framePrefix:'native'});
+          assert.deepEqual(keyboardRow.errors,[]);assert.equal(keyboardRow.frames.length,2);keyboardRow.status='passed';
+        }catch(error){
+          keyboardRow.status='failed';keyboardRow.error=error.stack||String(error);
+          await keyboardPage.screenshot({path:path.join(keyboardEvidence,'failure-'+width+'-text100.png'),fullPage:false}).catch(()=>{});
+          throw error;
+        }finally{
+          keyboardReport.status=keyboardReport.cases.some(item=>item.status==='failed')?'failed':keyboardReport.cases.length===requiredWidths.length?'passed':'running';
+          fs.writeFileSync(path.join(keyboardEvidence,'acceptance.json'),JSON.stringify(keyboardReport,null,2)+'\n');
+          await keyboardPage.close();
+        }
       } catch(error) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}
