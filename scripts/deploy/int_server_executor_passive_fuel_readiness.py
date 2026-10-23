@@ -103,7 +103,16 @@ CAPTURE_RECONCILE_MODE = 'reconcile-tv-fuel-capture-install'
 CAPTURE_RECONCILE_OPERATION = 'int-anex-tv-fuel-capture-reconcile-20261024-v1'
 CAPTURE_RECONCILE_TARGET_SOURCE = '04c0647ac30e1fd195aaf78d3d538178dcd59ebb'
 CAPTURE_RECONCILE_TARGET_RESULT = '7b2c198b8f831605e0ee1c4c384b984095f6188e245367f46f3ec70855b4b3d5'
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE, CAPTURE_RECONCILE_MODE)
+CAPTURE_COMPLETE_MODE = 'complete-tv-fuel-capture'
+CAPTURE_COMPLETE_OPERATION = 'int-anex-tv-fuel-capture-complete-20261024-v1'
+CAPTURE_COMPLETE_ORIGINAL_RESERVATION = '7c23f85aacc4e7c2c708cdc1d8549b96f99c23ea3eb4d1395049d0375ca5e4b1'
+CAPTURE_COMPLETE_READ_RESULT = 'ff4e2670026497ef5ee8bfa595b1022bb6ebb209df848385105a3c4145044416'
+CAPTURE_COMPLETE_PUBLIC = {'index.php':{'state':'regular','sha256':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f'},
+    'v2/index.php':{'state':'absent'},'v2/api-v2.php':{'state':'absent'},'v2/lead-adapter-v2.php':{'state':'absent'}}
+CAPTURE_COMPLETE_RUNS = (
+    (40034325979,'1fddefb6ce28981ae44d6e57ea06a777a56d5c74','failure',12536421402,'7fc554c40b4bd1e38ee831e75a328b63ab98fa90a7ccae8448e2527104f65aee'),
+    (40037220184,'25f1eb0f68c22b955dd177b864715707619ca86d','success',12537746864,'bcdd4281e7d2a216dc1e13e16f40e31dadaf920497b1d30c019858c7b5994ba8'))
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE, CAPTURE_RECONCILE_MODE, CAPTURE_COMPLETE_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -131,6 +140,10 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [CAPTURE_COMPLETE_MODE]:
+        need(len(parts) == 3 and isinstance(parts[0],str) and re.fullmatch(r'[a-f0-9]{40}',parts[0])
+             and parts[2] == CAPTURE_COMPLETE_OPERATION,'capture_complete_fixed_scope')
+        return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2])
     if parts[1:2] == [CAPTURE_RECONCILE_MODE]:
         need(len(parts) == 3 and isinstance(parts[0], str) and re.fullmatch(r'[a-f0-9]{40}', parts[0])
              and parts[2] == CAPTURE_RECONCILE_OPERATION, 'capture_reconcile_fixed_scope')
@@ -202,7 +215,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
         check_commit,check_ids = DATE_DIAGNOSTIC_CHECK_COMMIT,DATE_DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
-    if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE):
+    if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE,CAPTURE_COMPLETE_MODE):
         check_commit, check_ids = CAPTURE_INSTALL_CHECK_COMMIT, CAPTURE_INSTALL_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
@@ -210,11 +223,29 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
-    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE):
+    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE,CAPTURE_COMPLETE_MODE):
         rows=checks['check_runs']
         need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
              and all(c.get('head_sha')==check_commit for c in rows),
              'context_diagnostic_source_ci')
+    if command['mode'] == CAPTURE_COMPLETE_MODE:
+        for run_id,control,conclusion,artifact_id,digest in CAPTURE_COMPLETE_RUNS:
+            prior=api_get('/actions/runs/'+str(run_id),token)
+            need(prior.get('id')==run_id and prior.get('head_sha')==control
+                 and prior.get('event')=='issue_comment' and prior.get('status')=='completed'
+                 and prior.get('conclusion')==conclusion and type(prior.get('run_attempt')) is int and prior['run_attempt']==1
+                 and prior.get('path')=='.github/workflows/int-server-executor.yml'
+                 and prior.get('actor',{}).get('login')==prior.get('triggering_actor',{}).get('login')=='pyatkoff',
+                 'capture_complete_prior_control')
+            artifacts=api_get('/actions/runs/'+str(run_id)+'/artifacts?per_page=100',token)
+            rows=artifacts.get('artifacts')
+            need(type(artifacts.get('total_count')) is int and artifacts['total_count']==1
+                 and isinstance(rows,list) and len(rows)==1,'capture_complete_prior_artifact')
+            item=rows[0]
+            need(item.get('id')==artifact_id and item.get('digest')=='sha256:'+digest
+                 and item.get('name')=='int-server-executor-'+str(run_id)+'-1'
+                 and item.get('workflow_run',{}).get('id')==run_id
+                 and item['workflow_run'].get('head_sha')==control,'capture_complete_prior_artifact')
     matched = []
     for page in range(1, 31):
         comments = api_get(f'/issues/{issue}/comments?per_page=100&page={page}', token)
@@ -236,7 +267,7 @@ def bundle_source(source_root, command=None):
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
-    if command['mode'] == CAPTURE_INSTALL_MODE: hashes = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
+    if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_COMPLETE_MODE): hashes = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
     if command['mode'] == CAPTURE_RECONCILE_MODE: hashes = {}
     root = Path(source_root).resolve()
     output = io.BytesIO()
@@ -1506,8 +1537,105 @@ def capture_install_completed(command, result):
         and all(type(result.get(k)) is int and result[k] == 0
                 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
 
+
+CAPTURE_COMPLETE_REMOTE = r'''
+def capture_complete_lineage():
+    original=capture_reconcile_original()
+    if original['reservation_sha256']!=CAPTURE_ORIGINAL_RESERVATION:
+        fail('capture_complete_original_reservation')
+    directory=private/CAPTURE_READ_OPERATION
+    if not directory.is_dir() or directory.is_symlink() or directory.resolve()!=directory:
+        fail('capture_complete_read_directory')
+    reservation_raw=capture_reconcile_file(directory/'reservation.json')
+    read_raw=capture_reconcile_file(directory/'result.json')
+    if hashlib.sha256(read_raw).hexdigest()!=CAPTURE_READ_RESULT:fail('capture_complete_read_result')
+    saved=json.loads(reservation_raw)
+    if (not isinstance(saved,dict) or set(saved)!={'operation_id','source_sha','mode','reserved_at'}
+            or saved['operation_id']!=CAPTURE_READ_OPERATION or saved['source_sha']!=CAPTURE_TARGET_SOURCE
+            or saved['mode']!='reconcile-tv-fuel-capture-install'
+            or type(saved['reserved_at']) is not int or saved['reserved_at']<1):
+        fail('capture_complete_read_reservation')
+    for name in ('install-plan.json','backup'):
+        path=directory/name
+        if path.exists() or path.is_symlink():fail('capture_complete_read_install_evidence')
+    return {'original_result_sha256':CAPTURE_TARGET_RESULT,'original_reservation_sha256':CAPTURE_ORIGINAL_RESERVATION,
+        'reconciliation_result_sha256':CAPTURE_READ_RESULT,'reconciliation_reservation_sha256':hashlib.sha256(reservation_raw).hexdigest(),
+        'original_control':'1fddefb6ce28981ae44d6e57ea06a777a56d5c74',
+        'reconciliation_control':'25f1eb0f68c22b955dd177b864715707619ca86d',
+        'original_status':'unknown_no_replay','original_write_started':False,
+        'original_operation_unchanged':True,'reconciliation_operation_unchanged':True}
+
+def capture_complete_prewrite():
+    if capture_complete_lineage()!=result['capture_install_completion']:
+        fail('capture_complete_closed_receipt_drift')
+    if capture_install_public_state()!=CAPTURE_EXPECTED_PUBLIC:fail('capture_complete_public_drift')
+    for relative,expected in CAPTURE_EXPECTED_RUNTIME.items():
+        if hashlib.sha256(capture_reconcile_file(runtime/relative,2*1024*1024)).hexdigest()!=expected:
+            fail('capture_complete_runtime_drift')
+'''
+
+
+def capture_complete_remote_program(remote,command):
+    """First previously unstarted write, using the sealed install implementation and two receipts."""
+    policy(command)
+    original_command=dict(command,mode=CAPTURE_INSTALL_MODE,operation_id=CAPTURE_INSTALL_OPERATION)
+    remote=capture_install_remote_program(remote,original_command)
+    need(remote.count(repr(CAPTURE_INSTALL_MODE))==6 and remote.count(repr(CAPTURE_INSTALL_OPERATION))==1,
+         'capture_complete_profile_drift')
+    remote=remote.replace(repr(CAPTURE_INSTALL_MODE),repr(CAPTURE_COMPLETE_MODE))
+    remote=remote.replace(repr(CAPTURE_INSTALL_OPERATION),repr(CAPTURE_COMPLETE_OPERATION))
+    definitions='def db_summary(provider):\n'
+    install="        result['install']=install_runtime(stage,files,op)\n"
+    prewrite='    install_started=True\n'
+    need(remote.count(definitions)==1 and remote.count(install)==2 and remote.count(prewrite)==2,
+         'capture_complete_stock_drift')
+    split='def capture_reconcile_public():\n'
+    need(CAPTURE_RECONCILE_REMOTE.count(split)==1,'capture_complete_reader_drift')
+    reader=CAPTURE_RECONCILE_REMOTE.split(split)[0]
+    constants=('CAPTURE_TARGET_OPERATION='+repr(CAPTURE_INSTALL_OPERATION)+'\n'
+        +'CAPTURE_TARGET_RESULT='+repr(CAPTURE_RECONCILE_TARGET_RESULT)+'\n'
+        +'CAPTURE_TARGET_SOURCE='+repr(CAPTURE_RECONCILE_TARGET_SOURCE)+'\n'
+        +'CAPTURE_ORIGINAL_RESERVATION='+repr(CAPTURE_COMPLETE_ORIGINAL_RESERVATION)+'\n'
+        +'CAPTURE_READ_OPERATION='+repr(CAPTURE_RECONCILE_OPERATION)+'\n'
+        +'CAPTURE_READ_RESULT='+repr(CAPTURE_COMPLETE_READ_RESULT)+'\n'
+        +'CAPTURE_EXPECTED_PUBLIC='+repr(CAPTURE_COMPLETE_PUBLIC)+'\n'
+        +'CAPTURE_EXPECTED_RUNTIME='+repr({**CAPTURE_INSTALL_DEPENDENCIES,CAPTURE_INSTALL_PATH:CAPTURE_INSTALL_PREDECESSOR})+'\n')
+    remote=remote.replace(definitions,constants+reader+'\n'+CAPTURE_COMPLETE_REMOTE+'\n'+definitions,1)
+    remote=remote.replace(install,
+        "        result['capture_install_completion']=capture_complete_lineage()\n"
+        "        if result['passive_capture_public_before']!=CAPTURE_EXPECTED_PUBLIC:fail('capture_complete_public_drift')\n"
+        "        capture_complete_prewrite()\n"+install+
+        "        if capture_complete_lineage()!=result['capture_install_completion']:fail('capture_complete_closed_receipt_drift')\n",1)
+    # Existing stock installer has prepared its backup/plan, but has not replaced a file yet.
+    remote=remote.replace(prewrite,'    capture_complete_prewrite()\n'+prewrite,1)
+    ast.parse(remote)
+    return remote
+
+
+def capture_complete_completed(command,result):
+    if result.get('operation_id')!=CAPTURE_COMPLETE_OPERATION or result.get('mode')!=CAPTURE_COMPLETE_MODE:return False
+    proof=result.get('capture_install_completion')
+    if not isinstance(proof,dict):return False
+    expected={'original_result_sha256':CAPTURE_RECONCILE_TARGET_RESULT,
+        'original_reservation_sha256':CAPTURE_COMPLETE_ORIGINAL_RESERVATION,
+        'reconciliation_result_sha256':CAPTURE_COMPLETE_READ_RESULT,
+        'reconciliation_reservation_sha256':proof.get('reconciliation_reservation_sha256'),
+        'original_control':CAPTURE_COMPLETE_RUNS[0][1],'reconciliation_control':CAPTURE_COMPLETE_RUNS[1][1],
+        'original_status':'unknown_no_replay','original_write_started':False,
+        'original_operation_unchanged':True,'reconciliation_operation_unchanged':True}
+    if (proof!=expected or not isinstance(proof.get('reconciliation_reservation_sha256'),str)
+            or not re.fullmatch(r'[a-f0-9]{64}',proof['reconciliation_reservation_sha256'])
+            or proof['original_write_started'] is not False or proof['original_operation_unchanged'] is not True
+            or proof['reconciliation_operation_unchanged'] is not True
+            or result.get('passive_capture_public_before')!=CAPTURE_COMPLETE_PUBLIC):return False
+    original_command=dict(command,mode=CAPTURE_INSTALL_MODE,operation_id=CAPTURE_INSTALL_OPERATION)
+    projected=dict(result,mode=CAPTURE_INSTALL_MODE,operation_id=CAPTURE_INSTALL_OPERATION)
+    return capture_install_completed(original_command,projected)
+
+
 def remote_program(remote, command=None):
     command = policy(command)
+    if command['mode'] == CAPTURE_COMPLETE_MODE:return capture_complete_remote_program(remote,command)
     if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_remote_program(remote,command)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_remote_program(remote, command)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
@@ -1570,6 +1698,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == CAPTURE_COMPLETE_MODE:return capture_complete_completed(command,result)
     if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_completed(command,result)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_completed(command, result)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)

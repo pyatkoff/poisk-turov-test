@@ -10,12 +10,28 @@ p=core.passive_fuel_readiness
 SOURCE='04c0647ac30e1fd195aaf78d3d538178dcd59ebb'
 COMMAND=core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_INSTALL_MODE+' '+p.CAPTURE_INSTALL_OPERATION)
 READ_COMMAND=core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_RECONCILE_MODE+' '+p.CAPTURE_RECONCILE_OPERATION)
+COMPLETE_COMMAND=core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_COMPLETE_MODE+' '+p.CAPTURE_COMPLETE_OPERATION)
 ORIGINAL_RESULT={'booking_calls':0,'database_writes':'unknown','lead_calls':0,
     'mode':'install-tv-fuel-capture','operation_id':p.CAPTURE_INSTALL_OPERATION,
     'production_before':{'index.php':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
         'v2/api-v2.php':None,'v2/index.php':None,'v2/lead-adapter-v2.php':None},
     'reason':'capture_install_protected_fingerprint','schema_version':1,'source_sha':SOURCE,
     'status':'unknown_no_replay','supplier_calls':'unknown'}
+READ_RESULT={'schema_version':1,'operation_id':p.CAPTURE_RECONCILE_OPERATION,'mode':p.CAPTURE_RECONCILE_MODE,
+    'source_sha':SOURCE,'status':'reconciled_read_only','supplier_calls':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+    'production_before':copy.deepcopy(ORIGINAL_RESULT['production_before']),
+    'production_after':copy.deepcopy(ORIGINAL_RESULT['production_before']),'production_unchanged':True,'runtime_changed':False,
+    'capture_install_reconciliation':{'target_operation':p.CAPTURE_INSTALL_OPERATION,'target_source':SOURCE,
+        'target_status':'unknown_no_replay','target_supplier_calls':'unknown','target_database_writes':'unknown',
+        'original':{'result_sha256':p.CAPTURE_RECONCILE_TARGET_RESULT,
+            'reservation_sha256':'7c23f85aacc4e7c2c708cdc1d8549b96f99c23ea3eb4d1395049d0375ca5e4b1','no_install_plan_or_backup':True},
+        'public_state':{'status':'measured','paths':copy.deepcopy(p.CAPTURE_COMPLETE_PUBLIC)},
+        'runtime_files':{n:{'status':'measured','sha256':v} for n,v in {**p.CAPTURE_INSTALL_DEPENDENCIES,p.CAPTURE_INSTALL_PATH:p.CAPTURE_INSTALL_PREDECESSOR}.items()},
+        'original_operation_unchanged':True,'installation_attempted':False,'installation_authorized':False,'historical_path_types_established':False}}
+# Real public index bytes are not in this repository. Only its synthetic HOME
+# fingerprint is injected; both actual closed receipt hashes remain fixed below.
+COMPLETE_PUBLIC_FIXTURE={**copy.deepcopy(p.CAPTURE_COMPLETE_PUBLIC),
+    'index.php':{'state':'regular','sha256':hashlib.sha256(b'sentinel index.php').hexdigest()}}
 
 class CaptureInstall(unittest.TestCase):
     @classmethod
@@ -34,10 +50,11 @@ class CaptureInstall(unittest.TestCase):
         cls.php=shutil.which('php')
         if not cls.php: raise RuntimeError('real_php_required')
 
-    def fixture(self,root,drift=None,fail_lint=False,payload_change=None,public_drift=False):
+    def fixture(self,root,drift=None,fail_lint=False,payload_change=None,public_drift=False,command=None):
+        command=COMMAND if command is None else command
         source=root/'source'; source.mkdir()
         f=source/p.CAPTURE_INSTALL_PATH;f.parent.mkdir(parents=True);f.write_bytes(self.new)
-        blob,pins=p.bundle_source(source,COMMAND)
+        blob,pins=p.bundle_source(source,command)
         archive=root/'source.tar.gz';archive.write_bytes(blob)
         home=root/'home';project=home/'www/anytoour.ru';runtime=project/'_preview/search3-anex-candidate'
         helper=runtime/p.CAPTURE_INSTALL_PATH;helper.parent.mkdir(parents=True)
@@ -46,9 +63,9 @@ class CaptureInstall(unittest.TestCase):
         for n in ['index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php']:
             target=project/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(('sentinel '+n).encode())
         unrelated=runtime/'app/integrations/unrelated.php';unrelated.write_bytes(b'UNRELATED')
-        payload=dict(COMMAND,archive=str(archive),manifest_sha256=hashlib.sha256(json.dumps(pins,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+        payload=dict(command,archive=str(archive),manifest_sha256=hashlib.sha256(json.dumps(pins,sort_keys=True,separators=(',',':')).encode()).hexdigest())
         payload.update(payload_change or {})
-        remote=root/'remote.py';remote.write_text(p.remote_program(core.REMOTE,COMMAND))
+        remote=root/'remote.py';remote.write_text(p.remote_program(core.REMOTE,command))
         env=dict(os.environ,HOME=str(home))
         if fail_lint or public_drift:
             bindir=root/'bin';bindir.mkdir()
@@ -61,6 +78,124 @@ class CaptureInstall(unittest.TestCase):
             self.assertEqual(run.returncode,0,run.stderr);self.assertEqual(run.stderr,'')
             return json.loads(run.stdout)
         return execute,helper,runtime,home,unrelated
+
+    def completion_fixture(self,root,**kwargs):
+        self.assertEqual(hashlib.sha256(json.dumps(READ_RESULT,sort_keys=True,separators=(',',':')).encode()).hexdigest(),p.CAPTURE_COMPLETE_READ_RESULT)
+        self.assertEqual(READ_RESULT['capture_install_reconciliation']['public_state']['paths'],p.CAPTURE_COMPLETE_PUBLIC)
+        with patch.object(p,'CAPTURE_COMPLETE_PUBLIC',COMPLETE_PUBLIC_FIXTURE):
+            execute,helper,runtime,home,other=self.fixture(root,command=COMPLETE_COMMAND,**kwargs)
+        shutil.rmtree(runtime.parents[1]/'v2')
+        closed={}
+        for command,row,timestamp in ((COMMAND,ORIGINAL_RESULT,1792794858),(READ_COMMAND,READ_RESULT,1792796561)):
+            directory=home/'.anytoour-int-executor'/command['operation_id'];directory.mkdir(parents=True,mode=0o700)
+            reservation=dict(command,reserved_at=timestamp)
+            (directory/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+            (directory/'result.json').write_text(json.dumps(row,sort_keys=True,separators=(',',':')))
+            closed[command['operation_id']]={f.name:f.read_bytes() for f in directory.iterdir()}
+        original=home/'.anytoour-int-executor'/p.CAPTURE_INSTALL_OPERATION
+        self.assertEqual(hashlib.sha256((original/'reservation.json').read_bytes()).hexdigest(),p.CAPTURE_COMPLETE_ORIGINAL_RESERVATION)
+        return execute,helper,runtime,home,closed
+
+    def completion_ok(self,result):
+        with patch.object(p,'CAPTURE_COMPLETE_PUBLIC',COMPLETE_PUBLIC_FIXTURE):return p.completed(COMPLETE_COMMAND,result)
+
+    def assert_closed_preserved(self,home,closed):
+        for name,files in closed.items():
+            self.assertEqual({f.name:f.read_bytes() for f in (home/'.anytoour-int-executor'/name).iterdir()},files)
+
+    def test_complete_first_write_preserves_both_closed_operations_and_own_no_replay(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,home,closed=self.completion_fixture(Path(td))
+            result=execute();self.assertTrue(self.completion_ok(result),result)
+            self.assertEqual(helper.read_bytes(),self.new);self.assert_closed_preserved(home,closed)
+            own=home/'.anytoour-int-executor'/p.CAPTURE_COMPLETE_OPERATION
+            self.assertEqual((own/'backup'/p.CAPTURE_INSTALL_PATH).read_bytes(),self.old)
+            saved=(own/'result.json').read_bytes();self.assertEqual(execute()['reason'],'operation_exists_no_replay')
+            self.assertEqual((own/'result.json').read_bytes(),saved);self.assert_closed_preserved(home,closed)
+            for mutate in (lambda r:r['capture_install_completion'].update(original_write_started=True),
+                lambda r:r['capture_install_completion'].update(original_operation_unchanged=1),
+                lambda r:r['capture_install_completion'].update(original_result_sha256='f'*64),
+                lambda r:r['capture_install_completion'].update(reconciliation_result_sha256='f'*64),
+                lambda r:r['capture_install_completion'].update(original_control='f'*40),
+                lambda r:r['capture_install_completion'].update(reconciliation_reservation_sha256=None),
+                lambda r:r.update(mode=p.CAPTURE_INSTALL_MODE),lambda r:r['install'].update(files=True)):
+                forged=copy.deepcopy(result);mutate(forged);self.assertFalse(self.completion_ok(forged))
+
+    def test_complete_phase_proof_and_current_drift_deny_before_first_write(self):
+        for kind in ('original_result','original_reservation','read_result','read_reservation','original_plan','read_backup','public','helper','dependency'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as td:
+                execute,helper,runtime,home,closed=self.completion_fixture(Path(td))
+                original=home/'.anytoour-int-executor'/p.CAPTURE_INSTALL_OPERATION
+                read=home/'.anytoour-int-executor'/p.CAPTURE_RECONCILE_OPERATION
+                if kind=='original_result':(original/'result.json').write_text('{}')
+                elif kind=='original_reservation':(original/'reservation.json').write_text('{}')
+                elif kind=='read_result':(read/'result.json').write_text('{}')
+                elif kind=='read_reservation':(read/'reservation.json').write_text('{}')
+                elif kind=='original_plan':(original/'install-plan.json').write_text('{}')
+                elif kind=='read_backup':(read/'backup').mkdir()
+                elif kind=='public':
+                    (runtime.parents[1]/'v2').mkdir();(runtime.parents[1]/'v2/index.php').write_bytes(b'new public file')
+                elif kind=='helper':helper.write_bytes(b'<?php /* current foreign */')
+                else:(runtime/next(iter(self.dependencies))).write_bytes(b'<?php /* drift */')
+                before=helper.read_bytes();result=execute();self.assertFalse(self.completion_ok(result),result)
+                self.assertEqual(helper.read_bytes(),before);self.assertNotIn('install',result)
+
+    def test_complete_late_drift_blocks_at_stock_publication_boundary(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,home,closed=self.completion_fixture(Path(td))
+            remote=Path(td)/'remote.py';target=runtime/next(iter(self.dependencies))
+            marker='    capture_complete_prewrite()\n    install_started=True\n'
+            self.assertEqual(remote.read_text().count(marker),1)
+            remote.write_text(remote.read_text().replace(marker,'    pathlib.Path('+repr(str(target))+').write_bytes(b"late drift")\n'+marker,1))
+            result=execute();self.assertEqual(result['reason'],'capture_complete_runtime_drift',result)
+            self.assertEqual(helper.read_bytes(),self.old);self.assert_closed_preserved(home,closed)
+
+    def test_complete_postwrite_lint_failure_uses_stock_rollback_and_preserves_lineage(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,home,closed=self.completion_fixture(Path(td),fail_lint=True)
+            result=execute();self.assertEqual(result['status'],'rolled_back',result)
+            self.assertEqual(helper.read_bytes(),self.old);self.assert_closed_preserved(home,closed)
+            self.assertFalse(self.completion_ok(result))
+
+    def test_complete_fixed_scope_bundle_and_phase_receipt_golden_pins(self):
+        for changed in ({'mode':p.CAPTURE_INSTALL_MODE},{'source_sha':'f'*40},{'operation_id':p.CAPTURE_COMPLETE_OPERATION+'x'}):
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as td:
+                execute,helper,*_=self.completion_fixture(Path(td),payload_change=changed)
+                result=execute();self.assertEqual(result['reason'],'capture_install_fixed_scope');self.assertEqual(helper.read_bytes(),self.old)
+        for tail in (p.CAPTURE_COMPLETE_OPERATION+' extra',p.CAPTURE_COMPLETE_OPERATION+'x'):
+            with self.assertRaises(ValueError):core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_COMPLETE_MODE+' '+tail)
+        self.assertNotIn(p.CAPTURE_COMPLETE_MODE,p.RELEASE_MODES)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);leaf=root/p.CAPTURE_INSTALL_PATH;leaf.parent.mkdir(parents=True);leaf.write_bytes(self.new)
+            blob,pins=p.bundle_source(root,COMPLETE_COMMAND);self.assertEqual(pins,{p.CAPTURE_INSTALL_PATH:p.CAPTURE_INSTALL_SHA256})
+            with tarfile.open(fileobj=io.BytesIO(blob)) as archive:self.assertEqual(archive.getnames(),[p.CAPTURE_INSTALL_PATH,'manifest.json'])
+
+    def test_complete_admission_requires_both_original_controls_and_artifacts(self):
+        event={'action':'created','repository':{'full_name':core.REPO},'comment':{'id':99}}
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':core.REPO,'GITHUB_REF':'refs/heads/main',
+             'GITHUB_WORKFLOW_REF':core.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+             'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        checks=[{'id':i,'head_sha':p.CAPTURE_INSTALL_CHECK_COMMIT,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in p.CAPTURE_INSTALL_CHECK_IDS]
+        history=[{'id':99,'body':core.PREFIX+SOURCE+' '+p.CAPTURE_COMPLETE_MODE+' '+p.CAPTURE_COMPLETE_OPERATION}]
+        records={}
+        for run,control,conclusion,artifact,digest in p.CAPTURE_COMPLETE_RUNS:
+            records['/actions/runs/'+str(run)]={'id':run,'head_sha':control,'event':'issue_comment','status':'completed','conclusion':conclusion,
+                'run_attempt':1,'path':'.github/workflows/int-server-executor.yml','actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+            records['/actions/runs/'+str(run)+'/artifacts?per_page=100']={'total_count':1,'artifacts':[{'id':artifact,'digest':'sha256:'+digest,
+                'name':'int-server-executor-'+str(run)+'-1','workflow_run':{'id':run,'head_sha':control}}]}
+        def api(path,token):return {'total_count':len(checks),'check_runs':checks} if '/check-runs' in path else history if '/comments?' in path else records[path]
+        p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,COMPLETE_COMMAND)
+        for run,*_ in p.CAPTURE_COMPLETE_RUNS:
+            path='/actions/runs/'+str(run);saved=copy.deepcopy(records[path])
+            for change in ({'head_sha':'f'*40},{'run_attempt':2},{'conclusion':'cancelled'},{'actor':{'login':'other'}}):
+                records[path]=dict(saved,**change)
+                with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,COMPLETE_COMMAND)
+            records[path]=saved;artifact_path=path+'/artifacts?per_page=100';digest=records[artifact_path]['artifacts'][0]['digest']
+            records[artifact_path]['artifacts'][0]['digest']='sha256:'+'f'*64
+            with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,COMPLETE_COMMAND)
+            records[artifact_path]['artifacts'][0]['digest']=digest
+        history.append(dict(history[0],id=100))
+        with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,COMPLETE_COMMAND)
 
     def reconciliation_fixture(self,root,payload_change=None):
         _,helper,runtime,home,other=self.fixture(root)
