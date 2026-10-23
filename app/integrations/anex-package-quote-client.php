@@ -61,11 +61,13 @@ final class AnyTourAnexPackageQuoteClient
         $fields += ['id' => $id, 'lang' => 'ru'];
         $headers = ['Accept: application/json', 'User-Agent: TourismPlus', 'Authorization: Bearer ' . $this->token];
         if ($this->transport === null) $this->rateSlot();
+        $started = hrtime(true);
         try {
             $response = $this->transport !== null
                 ? ($this->transport)(self::BASE . '/bron/' . $stage, $fields, $headers)
                 : $this->curlRequest(self::BASE . '/bron/' . $stage, $fields, $headers);
         } catch (Throwable $ignored) { throw new RuntimeException('ANEX_QUOTE_TRANSPORT_ERROR'); }
+        finally { $this->last['elapsed_ms'] = (int) round((hrtime(true) - $started) / 1000000); }
         if (!is_array($response) || !is_int($response['status'] ?? null) || !is_string($response['body'] ?? null)) {
             throw new RuntimeException('ANEX_QUOTE_INVALID_RESPONSE');
         }
@@ -150,6 +152,9 @@ final class AnyTourAnexPackageQuoteClient
             }]);
         try {
             $ok = curl_exec($curl); $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            // Preserve only numeric wire facts, including failed/partial responses.
+            $this->last += ['http_status' => $status, 'response_bytes' => strlen($body),
+                'curl_errno' => curl_errno($curl)];
             if ($ok === false) throw new RuntimeException('ANEX_QUOTE_TRANSPORT_ERROR');
             return ['status' => $status, 'body' => $body];
         } finally { curl_close($curl); }

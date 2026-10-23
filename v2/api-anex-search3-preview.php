@@ -1246,7 +1246,10 @@ function anytour_anex_search3_quote_receipt(array $session): array
             $row = ['stage' => $stage, 'state' => $state];
             if (isset($fact['pair_index'])) $row['pair_index'] = $fact['pair_index'];
             $diagnostics = is_array($fact['diagnostics']) ? $fact['diagnostics'] : [];
-            foreach (['http_status' => 599, 'response_bytes' => 2097152] as $field => $max) {
+            foreach (['http_status' => 599, 'response_bytes' => 2097152,
+                'elapsed_ms' => 120000, 'curl_errno' => 999] as $field => $max) {
+                if (in_array($field, ['elapsed_ms', 'curl_errno'], true)
+                    && ($diagnostics['action'] ?? null) !== $stage) continue;
                 $value = $diagnostics[$field] ?? null;
                 if (is_int($value) && $value >= 0 && $value <= $max) $row[$field] = $value;
             }
