@@ -24,6 +24,11 @@ $packageQuoteFile = is_file(__DIR__ . '/app/integrations/anex-package-quote-runt
     : __DIR__ . '/../app/integrations/anex-package-quote-runtime.php';
 require_once $packageQuoteFile;
 unset($packageQuoteFile);
+$handoffFile = is_file(__DIR__ . '/app/integrations/anex-package-quote-handoff.php')
+    ? __DIR__ . '/app/integrations/anex-package-quote-handoff.php'
+    : __DIR__ . '/../app/integrations/anex-package-quote-handoff.php';
+require_once $handoffFile;
+unset($handoffFile);
 
 $normalizerFile = is_file(__DIR__ . '/app/integrations/anex-normalizer.php')
     ? __DIR__ . '/app/integrations/anex-normalizer.php'
@@ -401,7 +406,10 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         'first_page_only' => ($result['first_page_only'] ?? true) === true];
     if ($state !== null) {
         $state = ['generation' => $request['generation'], 'params' => $params, 'gateway' => $session,
-            'expansions' => [], 'additional_prices' => []];
+            'expansions' => [], 'additional_prices' => [],
+            'handoff_context' => ['version' => 1, 'origin' => $names['departure_name'],
+                'countryUiId' => (string) $params['countryId'],
+                'hotels' => anytour_anex_handoff_catalog($metadata, (int) $params['countryId'])]];
         $data['search_ref'] = $searchRef;
         if (!$backgroundCollection) {
             $continuation = anytour_anex_search3_continuation_metadata($state);
@@ -824,6 +832,10 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     $metadata = $metadataReader([$offer]);
     if (anytour_anex_search3_project([$offer], $metadata, $state['params']) === []) {
         return array_replace($reply, ['status' => 'not_available']);
+    }
+    if (($state['handoff_context']['version'] ?? null) === 1) {
+        $state['handoff_context']['hotels'] = anytour_anex_handoff_catalog($metadata, (int) $state['params']['countryId'])
+            + ($state['handoff_context']['hotels'] ?? []);
     }
     if (in_array($request['action'], ['quote_start', 'quote_calculate'], true)) {
         if ($checkpoint === null || $quoteFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');

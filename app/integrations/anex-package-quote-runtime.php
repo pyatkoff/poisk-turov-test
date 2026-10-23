@@ -279,6 +279,18 @@ function anytour_anex_quote_reply(array $public, array $attempt, bool $healthy):
     return $public;
 }
 
+/** Shared exact context digest; no changed quote authority or arithmetic. */
+function anytour_anex_quote_context_digest(array $request, array $state, array $offer, array $known, array $savedEntry): string
+{
+    $key = $request['offer_ref'];
+    return hash('sha256', json_encode([
+        'generation' => $request['generation'], 'search_ref' => $request['search_ref'], 'offer_ref' => $key,
+        'offer' => $offer, 'supplier_offer_id' => $known['supplier_offer_id'] ?? null,
+        'currency_id' => $savedEntry['supplier_currency_id'] ?? null,
+        'child_ages' => $state['gateway']['search']['context']['child_ages'] ?? [],
+        ], JSON_THROW_ON_ERROR));
+}
+
 /** Called only after the existing gateway has validated live search/offer/local-hotel identity. */
 function anytour_anex_quote_run(array $request, array &$state, array $offer, array $known,
     array $savedEntry, callable $factory, callable $checkpoint, int $now, ?callable $clock = null): array
@@ -319,12 +331,7 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     $repeat = is_array($attempt) && ($attempt['version'] ?? null) === 2;
     $binding = null;
     if ($attempt === null || $repeat) {
-        $binding = hash('sha256', json_encode([
-            'generation' => $request['generation'], 'search_ref' => $request['search_ref'], 'offer_ref' => $key,
-            'offer' => $offer, 'supplier_offer_id' => $known['supplier_offer_id'] ?? null,
-            'currency_id' => $savedEntry['supplier_currency_id'] ?? null,
-            'child_ages' => $state['gateway']['search']['context']['child_ages'] ?? [],
-        ], JSON_THROW_ON_ERROR));
+        $binding = anytour_anex_quote_context_digest($request, $state, $offer, $known, $savedEntry);
     }
     if ($repeat) {
         if (($attempt['context_digest'] ?? null) !== $binding) {
@@ -487,4 +494,3 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     return anytour_anex_quote_reply($attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']), $attempt,
         $repeat && anytour_anex_quote_reprice_ready($attempt));
 }
-

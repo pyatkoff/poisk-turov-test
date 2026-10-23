@@ -316,3 +316,67 @@ a parameter or synthesize a participant. Booking/save or personal-data submissio
 is outside this contract investigation. Infant fee remains unknown until explicitly
 returned; a listing or an adults-only calculation cannot become final_verified.
 
+
+## Retained selected-pair handoff — 2026-10-23, source only
+
+Implements the bounded INT dependency in #2506/6371833166 for the accepted
+receiver1095 input at e9b725c64763fbf0882de1d254b7689b9f4c7496.
+This is not a new supplier or messenger transport and does not activate the bot.
+
+The existing search session retains canonical origin and hotel display labels
+already obtained by existing catalogue reads. Followup metadata refreshes only
+that same internal context. No extra lookup, DB/schema, file store, supplier
+parameter, public response or HTTP action is introduced. Old sessions lacking
+labels stay held; browser strings cannot repair them. The exact context digest
+used by quotes is factored unchanged and shared with the new adapter.
+
+Internal PHP API: anytour_anex_handoff_freeze(selector, state, checkpoint, now, clock?).
+Caller must hold the existing PHP session lock and select the current retained
+context through its canonical owner. Selector contains exactly generation,
+search_ref, offer_ref, local_hotel_id and choice_ref; no observation, amount,
+authority flag or caller record ID is accepted. This function is not registered
+as a public action. It never creates a client or calls a supplier/receiver.
+
+This delta supports ANEX concrete, complete version2 **selected pair** only.
+It rechecks current search/generation/exact saved offer/local ID, the original
+quote context digest and opaque selection-to-choice hash, all reservation/stage
+and sealed/UNKNOWN guards, observed timestamp and original quote expiry.
+There is no first-pair substitution. Manager-deferred, estimated, TV and Andromeda
+record owners are not implemented by this adapter and must remain unavailable.
+
+The record uses only retained names, exact room/meal/placement, ordered repeated
+child ages, supplied outward/inward labels and the chosen pair's RUB gross.
+A missing optional label remains empty; no operator is guessed from an ID.
+No flight label is parsed into invented structured segments. No fuel, infant,
+FX, markup or APD arithmetic is performed. Receiver bounds reject explicitly;
+names/prices are not truncated or converted into another tour.
+
+The existing at-most-three pair slot owns one immutable random record_id,
+revision1, original encoded observation and its digest. Same terms return the
+same record/bytes without another checkpoint. Changed terms cannot overwrite it.
+Private search/offer/choice/supplier identifiers stay outside the observation.
+The pair's existing context digest plus exact private selection, observation
+time and exported terms bind provenance inside that retained slot. There is
+no second database, queue or file ledger. Failed/uncertain checkpoint returns
+held with no record and never mints another record in that slot in memory;
+a foreign context from a session transition is never overwritten.
+The default clock reads live time; injected clocks must also remain live.
+The post-checkpoint clock check prevents crossing the original quote deadline
+from exporting a fresh-looking result.
+
+Successful output: status=ready, record={binding,observation}, record_sha256.
+Held output names the precise missing field and owner without returning private
+facts. The record is shaped like the accepted receiver's observation:
+finalPriceVerified=false, authority=browser-observation-only, checked observed
+whole-party amount, original expiry and selected-pair basis. These labels remain
+conservative even though its source is the server-retained pair; they do not
+change the quote's existing public authority or make a browser authoritative.
+
+Source/CI/merge, installation, loaded SEARCH invocation, dedicated signer/key
+custody and connected native receipt remain separate. This source-only packet
+is not installed or callable from HTTP. A normal reviewed installation must
+include the new helper before the changed API importer; existing carrier file
+allowlists are not expanded here. SEARCH owns subsequent producer invocation
+and UI lifecycle; the authorized deployment owner owns dedicated signing material.
+No secret is read/generated/installed, neighboring receiver code is unchanged,
+and no consumed search/quote/receipt is replayed to populate this record.
