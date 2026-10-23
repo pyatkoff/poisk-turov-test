@@ -36,6 +36,12 @@ $normalizerFile = is_file(__DIR__ . '/app/integrations/anex-normalizer.php')
 require_once $normalizerFile;
 unset($normalizerFile);
 
+$messengerHandoffFile = is_file(__DIR__ . '/app/integrations/search3-messenger-handoff.php')
+    ? __DIR__ . '/app/integrations/search3-messenger-handoff.php'
+    : __DIR__ . '/../app/integrations/search3-messenger-handoff.php';
+require_once $messengerHandoffFile;
+unset($messengerHandoffFile);
+
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
 {
@@ -1286,7 +1292,8 @@ function anytour_anex_search3_http(): void
     $enabled = getenv('ANYTOUR_ANEX_PREVIEW_ENABLED') === '1' || (defined('ANYTOUR_ANEX_PREVIEW_ENABLED')
         && in_array(ANYTOUR_ANEX_PREVIEW_ENABLED, [true, 1, '1'], true));
     if (!$enabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
-    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $_GET === ['action' => 'quote_receipt']) {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET'
+        && ($_GET === ['action' => 'quote_receipt'] || $_GET === ['action' => 'handoff_token'])) {
         if (!in_array(strtolower((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? 'same-origin')), ['same-origin', 'none'], true)
             || !is_string($_COOKIE['ANYTOUR_ANEX_SEARCH3'] ?? null) || $_COOKIE['ANYTOUR_ANEX_SEARCH3'] === '') {
             anytour_anex_search3_out(['ok' => false, 'error' => 'forbidden'], 403);
@@ -1295,7 +1302,15 @@ function anytour_anex_search3_http(): void
         ini_set('session.use_only_cookies', '1');
         session_name('ANYTOUR_ANEX_SEARCH3');
         session_set_cookie_params(['lifetime' => 0, 'path' => '/_preview/search3-anex-candidate/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
-        if (!session_start(['read_and_close' => true])) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        $handoffToken = $_GET['action'] === 'handoff_token';
+        if (!session_start(['read_and_close' => !$handoffToken])) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        if ($handoffToken) {
+            header('Cache-Control: private, no-store, max-age=0'); header('X-Robots-Tag: noindex, nofollow');
+            if (!is_string($_SESSION['search3_handoff_csrf'] ?? null)) $_SESSION['search3_handoff_csrf'] = bin2hex(random_bytes(32));
+            $token = $_SESSION['search3_handoff_csrf'];
+            if (!session_write_close()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+            anytour_anex_search3_out(['ok' => true, 'csrf' => $token], 200);
+        }
         anytour_anex_search3_out(['ok' => true, 'data' => anytour_anex_search3_quote_receipt($_SESSION)], 200);
     }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -1320,6 +1335,33 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
+        if (is_string($action) && str_starts_with($action, 'handoff_')) {
+            header('Cache-Control: private, no-store, max-age=0'); header('X-Robots-Tag: noindex, nofollow');
+            if (!AnyTourSearch3MessengerHandoff::authorize($_SERVER, $request, $_SESSION)) {
+                session_write_close(); anytour_anex_search3_out(['ok' => false, 'error' => 'forbidden'], 403);
+            }
+            if (!in_array($action, ['handoff_freeze', 'handoff_create', 'handoff_status', 'handoff_revoke'], true)) {
+                throw new InvalidArgumentException('invalid_request');
+            }
+            if ($action === 'handoff_freeze') {
+                $data = AnyTourSearch3MessengerHandoff::freeze($request, $_SESSION, time(), [AnyTourSearch3MessengerHandoff::class, 'checkpoint']);
+            } else {
+                if (!is_string($request['operation_id'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['operation_id'])) {
+                    throw new InvalidArgumentException('invalid_request');
+                }
+                $record = $_SESSION['search3_messenger_handoffs'][$request['operation_id'] ?? ''] ?? null;
+                $localOnly = is_array($record) && $record['state'] === 'prepared'
+                    && in_array($action, ['handoff_status', 'handoff_revoke'], true);
+                $signer = $localOnly ? [] : AnyTourSearch3MessengerHandoff::signer(
+                    defined('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE') ? ANYTOUR_SEARCH3_HANDOFF_KEY_FILE : null,
+                    (string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+                $data = AnyTourSearch3MessengerHandoff::transact($request, $_SESSION, time(), $signer,
+                    [AnyTourSearch3MessengerHandoff::class, 'checkpoint'],
+                    [AnyTourSearch3MessengerHandoff::class, 'httpTransport']);
+            }
+            if (!session_write_close()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+            anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
+        }
         if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch', 'flights', 'quote_start', 'quote_calculate'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         anytour_anex_search3_select_context($request, $_SESSION, time());
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
@@ -1406,6 +1448,18 @@ function anytour_anex_search3_http(): void
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
     } catch (Throwable $error) {
+        if (is_string($action ?? null) && str_starts_with($action, 'handoff_')) {
+            session_write_close();
+            if ($error instanceof AnyTourSearch3HandoffMissing) {
+                anytour_anex_search3_out(['ok' => false, 'error' => 'retained_fact_missing', 'field' => $error->field, 'owner' => $error->owner], 422);
+            }
+            $code = $error instanceof InvalidArgumentException ? 'invalid_request'
+                : (in_array($error->getMessage(), ['handoff_limit', 'handoff_missing', 'handoff_stale', 'signer_unavailable', 'handoff_session_changed'], true)
+                    ? $error->getMessage() : 'handoff_unavailable');
+            anytour_anex_search3_out(['ok' => false, 'error' => $code], match ($code) {
+                'invalid_request' => 400, 'handoff_limit' => 429, 'handoff_missing' => 404, 'handoff_stale', 'handoff_session_changed' => 409, default => 503,
+            });
+        }
         $last = isset($additionalClient) ? $additionalClient->lastRequestDiagnostics()
             : (isset($client) ? $client->lastRequestDiagnostics() : []);
         $extra = [];
