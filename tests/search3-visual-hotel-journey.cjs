@@ -40,7 +40,7 @@ async function run(width,lazy=false){
   w.matchMedia=q=>({matches:/max-width/.test(q)?width<=Number(q.match(/\d+/)?.[0]||0):/min-width/.test(q)?width>=Number(q.match(/\d+/)?.[0]||0):false,addEventListener(){},removeEventListener(){}});
   w.fetch=async input=>{const u=new URL(input,w.location.href);assert.equal(u.origin,'https://fixture.test');assert.equal(u.pathname,'/fixtures/live-search-2026-09-23.json');reads.push(u.pathname);return {ok:true,json:async()=>JSON.parse(fs.readFileSync(root+u.pathname,'utf8'))};};
   for(const f of ['fixture-data.js','local-db-parser.js','recorded-data.js','search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js'])w.eval(fs.readFileSync(root+'/'+f,'utf8'));
-  const data=w.AnyTourPrototypeData;w.AnyTourPrototypeData={...data,quote:async(...args)=>{counts.quote++;return data.quote(...args);},flights:async(...args)=>{counts.flights++;return data.flights(...args);}};
+  const data=w.AnyTourPrototypeData,emptyRetry=width===430&&!lazy;w.AnyTourPrototypeData={...data,quote:async(...args)=>{counts.quote++;return data.quote(...args);},flights:async(...args)=>{counts.flights++;if(emptyRetry&&counts.flights===1)return [];return data.flights(...args);}};
   w.eval(fs.readFileSync(root+'/app.js','utf8'));await pause();await pause();
   const get=s=>{const n=d.querySelector(s);assert(n,s);return n;},click=s=>get(s).click(),settle=async predicate=>{for(let i=0;i<100&&!predicate();i++)await pause();assert(predicate(),'asynchronous selection settled');};
   click('.hotel-card [data-action="hotel-details"]');await pause();
@@ -48,16 +48,19 @@ async function run(width,lazy=false){
   const key=get('.room-offer-choice.selected').dataset.offerKey;
   if(lazy){click('#hotel-detail-offers');await settle(()=>d.querySelector('#prototype-lead-form'));assert.equal(counts.flights,0,'ordinary manager path never fetches flights');}
   else{
-   click('.room-offer-choice.selected [data-action="hotel-flights"]');await settle(()=>d.querySelector('.hotel-flight-inline [name="flight-pair"]'));
+   click('.room-offer-choice.selected [data-action="hotel-flights"]');if(emptyRetry&&counts.flights===0){await settle(()=>counts.flights===1&&d.querySelector('.room-flight-preview [data-action="hotel-flights"]'));click('.room-flight-preview [data-action="hotel-flights"]');}await settle(()=>d.querySelector('.hotel-flight-inline [name="flight-pair"]'));
    assert.equal(get('#modal-title').textContent.includes('Ваш тур'),false,'inline flights do not insert another offer screen');
    assert.equal(d.querySelectorAll('.hotel-flight-inline [name="flight-pair"]:checked').length,0,'loading inventory never commits a default pair');
    click('.hotel-flight-inline [name="flight-pair"][value="23"]');assert.equal(get('#hotel-detail-offers').disabled,true,'unknown pair price cannot continue');assert.equal(get('#hotel-detail-min').textContent,'Цена уточняется');
+   click('[data-action="defer-hotel-flight"]');assert.equal(get('.room-offer-choice.selected .hotel-room-price>strong').textContent,get('#hotel-detail-min').textContent,'manager fallback restores the same checked amount in row and footer');
+   click('.room-offer-choice.selected [data-action="hotel-flights"]');await settle(()=>d.querySelector('.hotel-flight-inline [name="flight-pair"]'));
    click('.hotel-flight-inline [name="flight-pair"][value="1"]');const value=get('#hotel-detail-min').textContent;
    assert.equal(get('.room-offer-choice.selected').dataset.offerKey,key);click('#hotel-detail-offers');await settle(()=>d.querySelector('#prototype-lead-form'));
    assert(get('#modal-footer').textContent.includes(value),'same whole-tour pair amount reaches contacts');
   }
   const form=get('#prototype-lead-form'),phone=get('[name="phone"]');phone.value='70000001234';phone.dispatchEvent(new w.Event('input',{bubbles:true}));get('[name="consent"]').checked=true;get('[name="consent"]').dispatchEvent(new w.Event('input',{bubbles:true}));
   const previous=get('#modal-footer').textContent,requests={...counts};
+  if(lazy==='terminal'){w.AnyTourPrototypeData.flights=async()=>{counts.flights++;throw Object.assign(Error('expired'),{code:'offer_expired',retryable:false});};click('[data-action="contact-flights"]');await settle(()=>!d.querySelector('#prototype-lead-form')&&d.querySelector('#modal-body .error-text[role="alert"]'));assert.match(get('#modal-body .error-text[role="alert"]').textContent,/Срок предложения истёк/);assert.equal(d.querySelectorAll('[data-action="confirm-tour"],#modal [type="submit"]').length,0,'expired quote has no eligible application');assert.deepEqual(faults,[]);return {width,lazy,terminal_price_revoked:true,supplier_requests:0,lead_requests:0};}
   if(typeof lazy==='string'){
    let resolve;const gate=new Promise(r=>resolve=r);w.AnyTourPrototypeData.flights=async(...args)=>{counts.flights++;await gate;return data.flights(...args);};
    click('[data-action="contact-flights"]');assert.strictEqual(get('#prototype-lead-form'),form,'lazy loading preserves the same form nodes');assert.equal(get('[name="phone"]').value,'70000001234');assert.equal(get('#modal-footer').textContent,previous);
@@ -71,11 +74,11 @@ async function run(width,lazy=false){
   assert(get('#prototype-lead-form'),'Cancel returns straight to contacts');assert.equal(get('#modal-footer').textContent,previous);assert.equal(get('[name="phone"]').value,'70000001234');assert.equal(get('[name="consent"]').checked,true,'Cancel retains the original consent identity');
   click('[data-action="contact-flights"]');await settle(()=>d.querySelector('#tour-flight-options [name="flight-pair"]'));click('[name="flight-pair"][value="2"]');const changed=get('#flight-total').textContent;click('[data-action="apply-flight"]');
   assert(get('#prototype-lead-form'),'Apply returns straight to contacts without room confirmation');assert(get('#modal-footer').textContent.includes(changed));assert.equal(get('[name="phone"]').value,'70000001234');assert.equal(get('[name="consent"]').checked,false,'changed pair resets separate consent');
-  assert.equal(counts.quote,1);assert.equal(counts.flights,1);assert.deepEqual(faults,[]);assert.deepEqual(reads,['/fixtures/live-search-2026-09-23.json']);
+  assert.equal(counts.quote,1);assert.equal(counts.flights,1+Number(emptyRetry));assert.deepEqual(faults,[]);assert.deepEqual(reads,['/fixtures/live-search-2026-09-23.json']);
   return {width,lazy,key,counts,contact_apply_cancel:true,phone_retained:true,consent_reset:true,supplier_requests:0,lead_requests:0};
  }catch(error){console.error('JOURNEY FAILURE',width,lazy,error,faults);throw error;}finally{await pause();dom.window.close();}
 }
- const records=[];for(const width of [430,1280])for(const lazy of [false,true])records.push(await run(width,lazy));for(const lazy of ['late-back','late-close'])records.push(await run(430,lazy));
+ const records=[];for(const width of [430,1280])for(const lazy of [false,true])records.push(await run(width,lazy));for(const lazy of ['late-back','late-close','terminal'])records.push(await run(430,lazy));
  console.log('PASS actual Site215 UI boundary: '+JSON.stringify(records));
 }
 
