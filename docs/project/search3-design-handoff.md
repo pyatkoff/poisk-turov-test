@@ -1,3 +1,33 @@
+## Search3 messenger invocation — unloaded source, 24 October 2026
+
+Same browser continuation claim [6375641536](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6375641536), existing selector source2fc0e0a, actual producer4839/expiry successor4841 at FEATUREb1a69c57, receiver1095/current public-pin head956d8cf. This is one browser-owned invocation delta in the same preparation branch. The current receiver and bounded installer control remain with their existing owner. No runtime, page loading, UI composition, data.js transport, backend, key, lead, manifest, workflow or production change is made here.
+
+### Exact invocation API
+
+New `AnyTourSearch3MessengerFlowV1.createSession({selection, request})` consumes the actual existing context session. The injected `request(action, fields?)` is the future canonical same-origin data adapter: only `handoff_token` maps to GET `?action=handoff_token`; the other accepted actions map to JSON POST `{action, ...fields}` at the already-owned `/_preview/search3-anex-candidate/api-anex-search3-preview.php`. There is no caller URL, credential, alternative endpoint, fetch implementation or bot navigation in this module. The real dispatcher and page/controller integration are NOT implemented by this preparation.
+
+| Explicit operation | Result and lifetime |
+| --- | --- |
+| `prepare(snapshot)` | Existing exact selector only → token → canonical server freeze; returns the frozen server observation for review. Does not create a capability or send a message. A changed selection during token prevents freeze; a late freeze retains its operation only for status/revoke. |
+| `create(snapshot)` | Only a prepared current selection can make its first create call. Double clicks coalesce. Any attempted operation, including a lost response or server-restored UNKNOWN/ready operation, is status-only thereafter. |
+| `status(snapshot)` | Reads that original operation, including after selection changes. Missing/prepared/unknown never remint or replay create. No automatic poll/retry. |
+| `revoke(snapshot)` | Hides links immediately and serializes behind an outstanding call. A lost revoke or later ready response cannot reopen the links. Works for the old operation after selection changes. |
+| `view(snapshot)`, `link(snapshot, platform)` | Recheck the exact current snapshot before exposing links. The eventual UI must call `link` at the actual explicit click; a previously returned/rendered view is historical. No automatic window/open/start or user message. |
+
+The original operation ID and selector remain private to this invocation session. Reusing the same operation across fresh captures shares its attempted/revocation state; a conflicting selector or canonical observation for that operation fails closed. Only exact HTTPS t.me/max.ru links with no credentials/port/fragment and non-root path are exposed. Current-context mismatch, malformed/foreign operation/response or changed conditions never expose links for that snapshot. Ready links remain observed capabilities, not native identity or proof that a message/manager inquiry arrived.
+
+This consumes the first real ANEX selected-pair-only producer without expanding its coverage. Unsupported TV, manager-deferred, listing/estimate and other source paths keep their ordinary manager/phone routes; no forced pair or source fallback. «Продолжить» → Telegram/MAX/optional «По телефону» remains the product choice. Phone never gates messenger use.
+
+### Bounded source verification and activation boundary
+
+`node tests/search3-messenger-flow.cjs` executes the actual new module with the existing canonical context and UI receipt fixture constructors;15 new groups PASS, syntax PASS. The accepted27 context groups are registered but NOT executed. Queued producer responses cover token/freeze/create staleness, duplicate clicks, UNKNOWN/status/no-remint, lost/queued revocation, restored operations, foreign/malformed links/responses, exact expiry and a fresh-capture replay attempt. Network/DOM/storage traps report zero calls. These are offline client-boundary fixtures; no PHP, real endpoint, supplier, bot, native sender, customer or installed path is claimed.
+
+Limited independent review ACCEPTED this source/test/doc delta, independently ran all15 new groups and syntax, then accepted the final small UNKNOWN/coalescing amendments by exact-source review (final flow SHA25602a3279404e858df3f0cbaad4bdc5f630585ebf85d93476a756a020dc49a9462). A one-case in-memory negative control removing the current-view guard reached EXPECTED_FAIL: late ready was rejected where stale was required; no source file changed for that check. The existing producer/receiver full baselines and consumed supplier/browser cases were not replayed.
+
+Activation still requires the existing install owner to finish the normal accepted helper/API/receiver installation and provide exact runtime receipts. Then the existing browser owner implements the canonical data dispatcher, connects the approved current view, checks the captured snapshot after every awaited operation and again at the explicit link click, and verifies only the affected supported boundary. No client-only observation becomes the server's trusted tour record; native sender binding and manager visibility remain receiver-owned. No new roadmap, automation or score tracker.
+
+---
+
 ## Search3 messenger context — source preparation, 23 October 2026
 
 ### Retained ANEX selector for the server producer — 24 October 2026
