@@ -74,6 +74,8 @@ class CaptureInstall(unittest.TestCase):
             for mutate in [
                 lambda r:r['install'].update(files=True),lambda r:r.update(supplier_calls=True),
                 lambda r:r.update(passive_capture_install={}),lambda r:r.update(production_before={}),
+                lambda r:r.update(production_before=dict.fromkeys(r['production_before']),production_after=dict.fromkeys(r['production_after'])),
+                lambda r:r.update(production_before=dict.fromkeys(r['production_before'],'not-a-hash'),production_after=dict.fromkeys(r['production_after'],'not-a-hash')),
                 lambda r:r['install'].update(manifest_sha256='0'*64)]:
                 forged=copy.deepcopy(result);mutate(forged);self.assertFalse(p.completed(COMMAND,forged))
 
@@ -82,6 +84,13 @@ class CaptureInstall(unittest.TestCase):
             execute,helper,*_=self.fixture(Path(td),drift='target');before=helper.read_bytes()
             result=execute();self.assertEqual(result['reason'],'capture_install_predecessor_or_dependency_drift')
             self.assertEqual(helper.read_bytes(),before);self.assertFalse(p.completed(COMMAND,result))
+
+    def test_missing_public_sentinel_denies_before_write(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,*_=self.fixture(Path(td))
+            (runtime.parents[1]/'v2/lead-adapter-v2.php').unlink()
+            result=execute();self.assertEqual(result['reason'],'capture_install_protected_fingerprint')
+            self.assertEqual(helper.read_bytes(),self.old);self.assertFalse(p.completed(COMMAND,result))
 
     def test_dependency_drift_denies_without_write(self):
         for dependency in self.dependencies:

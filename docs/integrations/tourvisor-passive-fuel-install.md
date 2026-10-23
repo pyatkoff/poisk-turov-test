@@ -13,7 +13,9 @@ It requires the exact installed predecessor and three unchanged dependency hashe
 unknown drift blocks without replacing anything. Caller paths/hashes are rejected.
 The existing stock install_runtime stage, PHP lint, backup, replace, readback and
 rollback are reused for this one fixed manifest only. Other modes keep their original
-inventory and sealed source/operation rules. A repeated operation never changes its
+inventory. All four protected public fingerprints must be real SHA256 values before
+the helper write; missing/unsafe sentinels and malformed receipts cannot pass.
+Sealed source/operation rules remain. A repeated operation never changes its
 original receipt. Main/current FEATURE/owner/created4709/attempt1/exact4843CI,
 SSH, concurrency, reservation, protected fingerprints and no-replay remain required.
 

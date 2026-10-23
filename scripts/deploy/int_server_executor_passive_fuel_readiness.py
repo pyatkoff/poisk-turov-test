@@ -1208,6 +1208,8 @@ def capture_install_remote_program(remote, command):
     pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
     preflight = {**CAPTURE_INSTALL_DEPENDENCIES, CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_PREDECESSOR}
     registration = "    if mode==" + repr(CAPTURE_INSTALL_MODE) + ":\n" + (
+        "        if not all(isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) for v in before.values()):\n"
+        "            fail('capture_install_protected_fingerprint')\n"
         "        for relative,expected in " + repr(preflight) + ".items():\n"
         "            target=runtime/relative\n"
         "            if (not safe_file(target,2*1024*1024) or target.resolve()!=target\n"
@@ -1255,6 +1257,7 @@ def capture_install_completed(command, result):
         and result.get('runtime_changed') is True and result.get('public_ui_entrypoints_unchanged') is True
         and isinstance(result.get('production_before'),dict)
         and set(result['production_before']) == {'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        and all(isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) for v in result['production_before'].values())
         and result['production_before'] == result.get('production_after')
         and all(type(result.get(k)) is int and result[k] == 0
                 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
