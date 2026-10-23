@@ -14,6 +14,10 @@ on:
       - 'v2/search3-canonical-profiles-v1.js'
       - 'v2/search3-local-db-provider-v1.js'
       - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/messenger-context-v1.js'
+      - 'v2/prototype-search/messenger-flow-v1.js'
+      - 'tests/search3-messenger-context.cjs'
+      - 'tests/search3-messenger-flow.cjs'
       - 'v2/prototype-search/calendar-exact-hotel-v1.js'
       - 'v2/prototype-search/source-receipt-v1.js'
       - 'v2/prototype-search/search-lifecycle-v1.js'
@@ -47,6 +51,10 @@ jobs:
       - name: Verify affected presentation owners and CI restoration
         run: |
           export NODE_PATH="$RUNNER_TEMP/facet-tools/node_modules"
+          node tests/search3-messenger-context.cjs
+          node tests/search3-messenger-flow.cjs
+          node tests/search3-prototype-messenger-handoff.cjs
+          node tests/search3-visual-messenger-entry.cjs
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-formatting.cjs

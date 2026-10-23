@@ -1,3 +1,27 @@
+## Search3 messenger consumer — disabled source candidate, 24 October 2026
+
+Same consumer claim [6375866103](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6375866103), brief observed execution outage/narrowing6375899721 and recovered scope6375928177. Base release911e124e51eea89b21cd0d937a12a8499a30d72b / installed NEXT4b5 remains. Reviewed context/selector/flow sourceedb78bb is incorporated into this one candidate; existing receiver1095/public956d and installer4842 remain with their current owner.
+
+### Implemented source boundary
+
+The existing `AnyTourPrototypeData` owner exports `messengerHandoff(action, fields)`. It reuses the canonical fixed same-origin ANEX endpoint resolver, allows only token/freeze/create/status/revoke and exact accepted fields, validates identity/ref/token formats before I/O, and never accepts browser price/observation/destination/signing fields. Token is GET; other operations are JSON POST. Credentials stay same-origin, redirects are errors, referrer is suppressed, private no-store semantics and a local15s deadline apply. Unknown/failed response has one attempt and a fixed public code, never automatic retry/Find/quote/supplier work. This adds no parallel transport or state owner.
+
+The actual existing `app.js` provider application contact view consumes the reviewed context/flow. It offers Telegram, MAX and explicit optional phone only for the current verified ANEX selected-pair receipt; unsupported/deferred/listing paths retain their old contact owner. Contact entry freezes for canonical review without CREATE. A later explicit bot click creates once or checks the original UNKNOWN operation. Before navigation it checks the active modal, unchanged intent, exact current snapshot and platform link. Switching to phone and back or closing/changing conditions prevents a delayed navigation. The phone form and submit remain hidden until explicit choice; the same form nodes/draft and canonical lead owner survive method changes. The public server observation must match the shown hotel/trip/ordered ages/room/meal/price/flight labels before a bot can be enabled; no browser observation is promoted to server authority.
+
+The live `index.php` graph loads the two reviewed modules after current data/flight presentation owners. Existing component tokens/styles are reused; a scoped mobile rule places the new methods before the long review. No fixture transport, native sender, backend helper/API/key/config/schema/lead mechanism/Metrica or supplier arithmetic is changed.
+
+### Explicit activation and evidence limit
+
+**Activation defaults OFF.** The new view requires `V2_CONFIG.search3MessengerEnabled === true`; no config change or enabled runtime is made by this candidate. This presentation flag is not a trust/security boundary. Only the retained-server producer and existing native receiver establish their respective facts/identity. Normal current unsupported routes and lead handling remain usable. No enabled NEXT/Sites publication or working native path is claimed.
+
+Local actual-source checks PASS:27 context +15 flow groups (rerun because their loading/application owner changed),9 new dispatcher groups and10 new UI-function groups; changed JS syntax passes. UI tests use the actual source functions with handcrafted DOM nodes and intercept the navigation function. They are NOT browser frames, a full real DOM journey, installed PHP/HTTP or native/physical acceptance. No local Chromium binary is present. Original source/flow evidence and the finite negative controls remain in their existing prep receipts, without a second full supplier/receiver audit.
+
+The existing focused workflow runs the new tests and tracks both module paths. Existing required full/compiled/visual/security rules remain unchanged. Draft/current-head CI, independent limited source review, actual430/1280 frames and the accepted exact server installation receipts are required before enabling the flag or publishing a changed contact view. Other sizes/keyboard/physical remain under existing owner limits. No rubric score changes, new roadmap, automation or extra publisher.
+
+Next same owner: finish this coherent source/PR checkpoint and consume existing receiver+installer receipts. Then validate and enable this supported invocation boundary through the normal final-source/compiled/visual/stock NEXT sequence. ANEX selected-pair-only is not whole Search3/multi-source business completion; native sender/Manager2 visibility needs its actual receiver-owned receipt.
+
+---
+
 # Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
 ## Approved whole Site209 hotel-to-contact transfer — 22 October 2026
