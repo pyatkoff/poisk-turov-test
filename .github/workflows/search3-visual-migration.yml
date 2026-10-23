@@ -90,10 +90,23 @@ jobs:
           cp -a v2 "$RUNNER_TEMP/visual-compiled"
           node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
           node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Affected messenger flow on the exact compiled graph
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled
+        run: node tests/search3-visual-live-browser.cjs --messenger-only
+      - name: Retain affected messenger frames
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-messenger-${{ github.event.pull_request.head.sha }}
+          path: visual-live-evidence/messenger-entry/
+          compression-level: 0
+          if-no-files-found: error
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
-          SEARCH3_SOURCE_SHA="${{ github.event.pull_request.head.sha }}" SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs --messenger-only
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs

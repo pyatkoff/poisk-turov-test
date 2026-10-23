@@ -89,9 +89,13 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
    await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();await page.locator('[data-action="refresh-hotel"]').click();
    await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
-   await page.locator('[data-action="select-anex-tour"]').click();await page.locator('[data-action="anex-application-preview"]').click();
+   await page.locator('[data-action="select-anex-tour"]').click();
+   assert.equal(await page.locator('[data-action="anex-application-preview"]').textContent(),'Продолжить');
+   assert.match(await page.locator('.selection-steps li').last().textContent(),/Связь/);await capture('verified');
+   await page.locator('[data-action="anex-application-preview"]').click();
    await page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('[data-action="messenger-open"]')];return buttons.length===2&&buttons.every(button=>!button.disabled);});
    assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');
+   assert.match(await page.locator('.selection-steps li').last().textContent(),/Связь/);
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
    assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze']);assert.deepEqual(navigations,[]);
    await capture('choices',{methods:true});
