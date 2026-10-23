@@ -2,22 +2,22 @@
   "schema_version": 1,
   "source": "int-tv-fuel-retained-public-baseline",
   "analysed_on": "2026-10-23",
-  "scope": "Five immutable historical public contexts from22Oct plus one own ordinary UI context23Oct after4835 install; private cohort unmeasured.",
+  "scope": "Five immutable historical public contexts from22Oct plus two own ordinary UI contexts23Oct after4835; second after4837 consumer readiness. Private cohort unmeasured.",
   "source_commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
-  "unique_contexts": 6,
+  "unique_contexts": 7,
   "operator_families": 3,
   "counts": {
-    "any_fuel_displayed": 4,
+    "any_fuel_displayed": 5,
     "no_fuel_displayed": 2,
     "explicit_two_stage_pairs": 1,
     "paired_different": 1,
     "paired_matched": 0,
-    "flight_only": 1,
+    "flight_only": 2,
     "selected_summary_only": 2,
-    "comparisons_unavailable": 5,
-    "infant_contexts": 2,
+    "comparisons_unavailable": 6,
+    "infant_contexts": 3,
     "isolated_infant_fee_exposed": 0,
-    "numeric_fuel_contexts": 3,
+    "numeric_fuel_contexts": 4,
     "qualitative_no_surcharge_only": 1
   },
   "private_monitoring_cohort_size": null,
@@ -27,7 +27,7 @@
   "accuracy_limit": "No raw private cohort, independently retained supplier unit, prediction oracle or agreed hit metric. Stage-field difference is not prediction accuracy, a defect or a rejection gate.",
   "execution": {
     "new_supplier_http": null,
-    "supplier_http_measurement": "NOT_MEASURED; live action intents are recorded separately in observation6 case proof",
+    "supplier_http_measurement": "NOT_MEASURED; live action intents are recorded separately in observations6..7 case proofs",
     "offline_consolidation_additional_supplier_http": 0,
     "database_reads": 0,
     "database_writes": 0,
@@ -54,8 +54,8 @@
     {
       "operator_family": "biblio_globus",
       "destination_country": "Egypt",
-      "contexts": 1,
-      "any_fuel_displayed": 1,
+      "contexts": 2,
+      "any_fuel_displayed": 2,
       "explicit_stage_pairs": 0
     },
     {
@@ -381,14 +381,78 @@
           "git_blob": "c262a3ad4e47217cf3f384ce304cf2ce728b6efa"
         }
       }
+    },
+    {
+      "index": 7,
+      "operator_family": "biblio_globus",
+      "operator": "Библио-Глобус",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Egypt"
+      },
+      "hotel": "DREAM LAGOON & AQUA PARK RESORT",
+      "dates": {
+        "checkin": "2027-02-10",
+        "checkout": "2027-02-17"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": [
+          0,
+          0
+        ]
+      },
+      "room": "comfort room",
+      "meal": "AI",
+      "selected_flights": [
+        "SU420",
+        "SU423"
+      ],
+      "whole_party_displayed_total_rub": 174902,
+      "listing_displayed_total_rub": 161014,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": 13888,
+        "flight_qualification": "включение в цену уточняется",
+        "selected_summary_displayed_rub": 13888,
+        "selected_summary_qualification": "включён в цену; дополнительно прибавлять не нужно",
+        "comparison": "flight_only",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "monitoring_console_entries": 0,
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "path": "reports/evidence/int-tv-two-infants-egypt-20270210-20261023/trace.json",
+        "git_blob": "5704b08bfe6c2f59cf48715b02c1abc468e719e5",
+        "bytes": 200528,
+        "sha256": "79f177e9597afbaf7a6169d81be89c60e6553513aecdd29223af54ba026e38d4",
+        "capture_date": "2026-10-23",
+      "capture_time_utc": "2026-10-23T15:49:11.530Z",
+        "provenance": "own ordinary UI DOM snapshots/JPEG and one existing console read; not raw supplier JSON",
+        "selected_frame": {
+          "path": "reports/evidence/int-tv-two-infants-egypt-20270210-20261023/selected.jpg",
+          "git_blob": "9431df04cd48af4c2f83c6a68b7f4e19e9ae835a",
+          "bytes": 96549,
+          "sha256": "147c0387593414dd5d8962b27454861d8d40c605ba93ed4b77caa49985c269cc"
+        }
+      }
     }
   ],
-  "next_step": "Continue monitoring from justified new ordinary paths without replay. PR4835 is installed; its header was not observable through the supported browser API. Keep private population, post-fix persistence and80%accuracy unmeasured until authoritative facts are available.",
+  "next_step": "Observer4837 is installed; observation7 console read returned no monitoring entry. Keep wire header/private population/capture count/isolated infant fee/80% unknown. Consume authoritative natural facts without replay or extra coverage probe.",
   "historical_baseline_commit": "83bd1826748f38ac472ab48b71ab405c1f4113d0",
-  "source_commit_scope": "source_commit applies only to unchanged historical observations1..5; observation6 is pinned by actual Gitblobs/bytes/SHA in the same evidence tree.",
+  "source_commit_scope": "source_commit applies only to unchanged historical observations1..5; observations6..7 are pinned by actual Gitblobs/bytes/SHA in the same evidence tree.",
   "count_definitions": {
     "any_fuel_displayed": "numeric fuel or explicit qualitative no-surcharge label; never substitutes a numeric zero",
-    "selected_summary_only": "one historical numeric summary and one new qualitative-only summary; neither has two numeric stage amounts"
+    "selected_summary_only": "one historical numeric summary and one new qualitative-only summary; neither has two numeric stage amounts",
+    "flight_only": "Numeric flight amount with no numeric tour-stage amount, regardless of duplicate selected summary."
   },
-  "post_4835_ordinary_ui_contexts": 1
+  "post_4835_ordinary_ui_contexts": 2
 }

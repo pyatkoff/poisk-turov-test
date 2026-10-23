@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "operation": "int-tv-two-infants-egypt-20270210-20261023-v1",
+  "date": "2026-10-23",
+  "status": "COMPLETED_CONSUMED_NO_REPLAY",
+  "claim_comment_id": 6368790449,
+  "evidence_claim_comment_id": 6368909202,
+  "source": {
+    "release": "911e124e51eea89b21cd0d937a12a8499a30d72b",
+    "feature": "c4c4c51d1fd7b25ee42c6e2b1679c3da4e18f622",
+    "installed_consumer_handoff": 6366281263,
+    "installed_consumer_terminal": 6366269078,
+    "install_reaudited": false
+  },
+  "purpose": "One new ordinary whole-party path for two requested infants, not a header-only probe, outage retry or SEARCH UX acceptance.",
+  "criteria": {
+    "origin": "Moscow",
+    "country": "Egypt",
+    "departure_from": "2027-02-10",
+    "departure_to": "2027-02-16",
+    "min_nights": 7,
+    "max_nights": 7,
+    "adults": 2,
+    "child_ages": [
+      0,
+      0
+    ],
+    "meal": "AI",
+    "stars": "any",
+    "budget": null
+  },
+  "selected": {
+    "provider": "tourvisor",
+    "operator": "Библио-Глобус",
+    "hotel": "DREAM LAGOON & AQUA PARK RESORT",
+    "room": "comfort room",
+    "meal": "AI",
+    "checkin": "2027-02-10",
+    "checkout": "2027-02-17",
+    "nights": 7,
+    "requested_party": {
+      "adults": 2,
+      "child_ages": [
+        0,
+        0
+      ]
+    },
+    "displayed_party": "2 взр. + 2 реб. · возраст детей: до года, до года",
+    "listing_total_rub": 161014,
+    "returned_flight_options": 5,
+    "selected_option": 2,
+    "selected_flights": [
+      "SU420",
+      "SU423"
+    ],
+    "applied_whole_party_total_rub": 174902,
+    "displayed_price_change_rub": 13888,
+    "flight_fuel_displayed_rub": 13888,
+    "flight_fuel_qualification": "включение в цену уточняется",
+    "applied_fuel_displayed_rub": 13888,
+    "applied_fuel_qualification": "включён в цену",
+    "applied_fuel_disclosure": "Уже учтён в показанной стоимости тура. Дополнительно прибавлять его не нужно."
+  },
+  "evidence": {
+    "trace": {
+      "path": "reports/evidence/int-tv-two-infants-egypt-20270210-20261023/trace.json",
+      "git_blob": "5704b08bfe6c2f59cf48715b02c1abc468e719e5",
+      "bytes": 200528,
+      "sha256": "79f177e9597afbaf7a6169d81be89c60e6553513aecdd29223af54ba026e38d4",
+      "dom_snapshots": 12
+    },
+    "screenshot": {
+      "path": "reports/evidence/int-tv-two-infants-egypt-20270210-20261023/selected.jpg",
+      "git_blob": "9431df04cd48af4c2f83c6a68b7f4e19e9ae835a",
+      "bytes": 96549,
+      "sha256": "147c0387593414dd5d8962b27454861d8d40c605ba93ed4b77caa49985c269cc"
+    },
+    "search_terminal": {
+      "first_find_snapshot": "2026-10-23T15:47:16.735Z",
+      "terminal_snapshot": "2026-10-23T15:47:54.273Z",
+      "snapshot_span_ms": 37538,
+      "displayed_hotels": 106,
+      "displayed_variants": 782,
+      "continue_visible": true,
+      "continue_clicked": false,
+      "stop_attempt": "no_matching_control_no_click",
+      "limit": "Snapshot span is not upstream elapsed time; first portion had ended itself before Stop was attempted."
+    },
+    "monitoring": {
+      "surface": "existing dev.logs console",
+      "filter": "AnyTourFuelMonitoringV1",
+      "levels": [
+        "info"
+      ],
+      "reads": 1,
+      "entries": [],
+      "meaning": "No matching console output observed. Does not establish absence of a wire header, capture outcome or root cause."
+    },
+    "independent_review": {
+      "reviewer": "/root/review_4834",
+      "result": "ACCEPT",
+      "scope": "12 retained DOM snapshots/JPEG/hash consistency only; no supplier/browser/test/install replay."
+    }
+  },
+  "execution": {
+    "find_actions": 1,
+    "own_tv_offers_opened": 1,
+    "flight_clarification_actions": 1,
+    "pair_selection_actions": 1,
+    "pair_apply_actions": 1,
+    "continue_actions": 0,
+    "stop_successful_clicks": 0,
+    "extra_find_or_offer_or_retry_actions": 0,
+    "anex_quote_actions": 0,
+    "receipt_polls": 0,
+    "contact_actions": 0,
+    "lead_sends": 0,
+    "booking_actions": 0,
+    "source_or_runtime_changes": 0,
+    "installation_actions": 0,
+    "actual_supplier_http": null,
+    "upstream_status_codes": null,
+    "upstream_elapsed_ms": null,
+    "global_account_remainder": null,
+    "offline_consolidation_additional_supplier_http": 0
+  },
+  "limitations": {
+    "raw_supplier_monetary_values": "NOT_RETAINED",
+    "typed_supplier_infant_identity": "NOT_ESTABLISHED",
+    "isolated_infant_fee_rub": null,
+    "fuel_per_infant_rub": null,
+    "private_monitoring_cohort_size": null,
+    "post_fix_capture_count": null,
+    "pricing_accuracy_pct": null,
+    "eighty_percent_target_evaluated": false,
+    "global_final_price_verified": null,
+    "no_double_addition_scope": "Displayed final selection includes fuel once; no separate supplier fee or raw price arithmetic is independently established."
+  },
+  "next_step": "Use this same one receipt for SEARCH's affected boundary. Do not repeat this context to fill missing header/infant fields; consume authoritative natural facts only."
+}
