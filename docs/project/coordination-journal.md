@@ -61,3 +61,29 @@ UNKNOWN операциям и историческим журналам. Их ID
 До новой серверной команды подтвердить cutover, свежие ownership/pins/receipts.
 Решения о поставщиках,5000account/day HTTP, UNKNOWN, БД, цене/топливе,
 лидах/аналитике, production и визуальной приёмке остаются в исходных допусках.
+
+
+## Dedicated Search3 signing custody (23 October 2026)
+
+The owner's explicit narrow producer/signing authorization continues constructor1095;
+producer4839 SOURCE is merged at FEATURE5c83c4134f8f1c3aeec24be1713736cd058fc6d3.
+The existing main-only INT executor registers `search3-signing-provision` and
+`search3-signing-readback`, using its same owner/ref/source/SSH/reservation/no-replay guards.
+Command shape remains `/run-int-server-v1 <current-FEATURE-SHA> <mode> <operation>`;
+operation must start `int-anex-search3-signing-` and satisfy the existing versioned ID grammar.
+No caller path, key, URL, lifetime, provider budget or execution code is accepted.
+
+Provision creates one dedicated Ed25519 key only inside existing protected server custody,
+with0700 directory/0600 key file,90-day fixed validity and no silent rotation. It appends only
+an absolute key-file pointer to the existing protected ANEX config, after lint and exact
+before-byte checks; unrelated credentials and mode are retained. Backup/staged config remain
+outside the web root. Dynamic/conflicting/unreachable pointer configurations fail closed.
+Readback never creates/rotates a key or patches config. Repeated/UNKNOWN operation IDs retain
+stock no-replay; use a separately admitted readback to reconcile, not another create blindly.
+Only bounded public verification material appears in the receipt; private bytes never cross
+SSH stdout, artifact or repository. No supplier, model, DB, booking, bot or customer call occurs.
+
+Source/control CI does not provision a key or activate1095. After reviewed main cutover, perform
+one admitted custody operation, inspect the public key, pin it in receiver1095, and install the
+source dependencies/API through stock gates before connected owner-only native acceptance.
+This is an addition to the current4709/same existing package, not a new executor or roadmap.

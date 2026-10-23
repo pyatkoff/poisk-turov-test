@@ -132,6 +132,14 @@ match_retained = importlib.util.module_from_spec(match_retained_spec)
 match_retained_spec.loader.exec_module(match_retained)
 match_retained.register_parser(core)
 
+SEARCH3_SIGNING_SCRIPT = SCRIPT.with_name('int_server_executor_search3_signing.py')
+search3_signing_spec = importlib.util.spec_from_file_location('int_server_executor_search3_signing', SEARCH3_SIGNING_SCRIPT)
+if search3_signing_spec is None or search3_signing_spec.loader is None:
+    raise RuntimeError('search3_signing_registration_import')
+search3_signing = importlib.util.module_from_spec(search3_signing_spec)
+search3_signing_spec.loader.exec_module(search3_signing)
+search3_signing.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -290,6 +298,7 @@ def main() -> None:
     local_tv_content.activate(core, command)
     local_tv_capture.activate(core, command)
     match_retained.activate(core, command)
+    search3_signing.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES or (command['mode']=='local-tv-content-v1' and command['action']=='fill'):
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
