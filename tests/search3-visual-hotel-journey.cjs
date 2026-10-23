@@ -83,6 +83,7 @@ async function run(width,lazy=false){
 }
 
 async function run(){
+ {const {c,listing,views}=setup();vm.runInContext(slice('function selectHotelFlight(','function syncHotelOfferSelection('),c);c.syncHotelOfferSelection=()=>{};c.withFlightPair=(o,id)=>({...o,flightChoiceId:id,total:201000,pricePending:false});c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,variants:[{}]};c.selectHotelFlight('one','0');assert.equal(views.get('one').type,'tourvisor-selection');assert.equal(views.get('one').offer.total,201000,'explicit inline pair reaches the existing retained view used on reopen');c.deferHotelFlight('one');assert.equal(views.get('one').offer.total,198600);assert.equal(views.get('one').offer.flightChoiceId,null,'explicit manager choice replaces the retained priced pair without new quote');}
  {const {c,calls}=setup();await c.openLeadWithQuote('one');assert.equal(calls.quote,1);assert.equal(calls.flights,0);assert.equal(calls.offerScreens,0);assert.equal(calls.contacts,1);assert.equal(calls.contactOffer.total,198600);}
  {const {c,calls,listing}=setup();const pair={price:201000};c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,total:201000,variants:[pair],flightChoiceId:'0'};await c.openLeadWithQuote('one');assert.equal(calls.quote,0);assert.equal(calls.contacts,1);assert.equal(calls.contactOffer.total,201000,'reuse the exact selected pair total');}
  for(const mismatch of ['raw','search','room','party','price']){

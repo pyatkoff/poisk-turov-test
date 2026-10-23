@@ -907,12 +907,12 @@ function syncHotelFlightSelection(row,listing,preserve=false){
 function selectHotelFlight(key,id){
  if(!hotelOfferCheckActive(key)||selectedOffer.loading||selectedOffer.flightsLoading||terminalOfferQuote(selectedOffer))return;
  const next=withFlightPair(selectedOffer,id);if(!next)return;
- selectedOffer=next;syncHotelOfferSelection(next.hotelId,undefined,{preserveFlights:true});rememberUIRoute();
+ selectedOffer=next;if(next.provider==='tourvisor')rememberProviderView(next,'tourvisor-selection');syncHotelOfferSelection(next.hotelId,undefined,{preserveFlights:true});rememberUIRoute();
 }
 function deferHotelFlight(key){
  if(!hotelOfferCheckActive(key)||selectedOffer.loading||selectedOffer.flightsLoading||selectedOffer.quoteError||terminalOfferQuote(selectedOffer))return;
  const o=selectedOffer,ready=leadReadyOffer({...o,flightChoiceId:null,variants:[]});if(!ready)return;
- selectedOffer={...ready,variants:o.variants||[],hotelFlightPreview:false};syncHotelOfferSelection(o.hotelId);rememberUIRoute();
+ selectedOffer={...ready,variants:o.variants||[],hotelFlightPreview:false};if(selectedOffer.provider==='tourvisor')rememberProviderView(selectedOffer,'tourvisor-selection');syncHotelOfferSelection(o.hotelId);rememberUIRoute();
 }
 function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)),{preserveFlights=false}={}){
  let selected=offers.find(o=>hotelOfferDraft?.hotelId===id&&hotelOfferDraft.key===o.key)||null;
