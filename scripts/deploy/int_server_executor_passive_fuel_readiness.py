@@ -87,7 +87,19 @@ DATE_DIAGNOSTIC_HELPER_SHA256 = '82575d37e45cdb6ff7976ea3e779c06571d98e381d80b89
 DATE_DIAGNOSTIC_CHECK_COMMIT = '6811734492a4983bf1ac8e31477f5245659831b1'
 DATE_DIAGNOSTIC_CHECK_IDS = {119936837769,119936838595,119936837359}
 DATE_DIAGNOSTIC_MIN_TIME = 1792686698
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE)
+CAPTURE_INSTALL_MODE = 'install-tv-fuel-capture'
+CAPTURE_INSTALL_OPERATION = 'int-anex-tv-fuel-capture-install-20261024-v1'
+CAPTURE_INSTALL_PATH = 'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+CAPTURE_INSTALL_SHA256 = '5c0c0ba5a15517995b9241dc709e3d31ae663d0848e295e7e9bc6c8942462350'
+CAPTURE_INSTALL_PREDECESSOR = '686878efe2b13b212b5d6a01c3d7649221e9d9768960398d19d4fa01c9c84a75'
+CAPTURE_INSTALL_DEPENDENCIES = {
+    'app/integrations/tourvisor-operator-fuel-retained-intake.php': '6c233c9fc0fe64c1647941ccb22756e1cad4c17b9692998dbd1eb6b7eb04a3d0',
+    'app/integrations/operator-fuel-rule-store.php': 'a84468efc7953f50ee6fc25aaa77a40b97bd527ad9fbbe923d547dbe9db60fb9',
+    'app/integrations/operator-fuel-rule-evidence.php': '5205c275da1f71aa756aab6852664902a8ea0453a4a457673f0896737f11a6a4',
+}
+CAPTURE_INSTALL_CHECK_COMMIT = '5d61cc5a31defbb85fec480c58b9c2fa06ba368c'
+CAPTURE_INSTALL_CHECK_IDS = {120679633370, 120679633352, 120679632456}
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -115,6 +127,10 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [CAPTURE_INSTALL_MODE]:
+        need(len(parts) == 3 and isinstance(parts[0], str) and re.fullmatch(r'[a-f0-9]{40}', parts[0])
+             and parts[2] == CAPTURE_INSTALL_OPERATION, 'capture_install_fixed_scope')
+        return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
     if parts[1:2] == [DATE_DIAGNOSTIC_MODE]:
         need(parts == [DATE_DIAGNOSTIC_SOURCE,DATE_DIAGNOSTIC_MODE,
                        DATE_DIAGNOSTIC_OPERATION,*DATE_DIAGNOSTIC_IDS],
@@ -178,13 +194,15 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
         check_commit,check_ids = DATE_DIAGNOSTIC_CHECK_COMMIT,DATE_DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
+    if command['mode'] == CAPTURE_INSTALL_MODE:
+        check_commit, check_ids = CAPTURE_INSTALL_CHECK_COMMIT, CAPTURE_INSTALL_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
          and {c.get('id') for c in checks.get('check_runs', [])} == check_ids
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
-    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
+    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE):
         rows=checks['check_runs']
         need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
              and all(c.get('head_sha')==check_commit for c in rows),
@@ -210,6 +228,7 @@ def bundle_source(source_root, command=None):
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
+    if command['mode'] == CAPTURE_INSTALL_MODE: hashes = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -1173,8 +1192,76 @@ def publication_lock_mode_repair():
 '''
 
 
+def capture_install_remote_program(remote, command):
+    """Restrict the existing stock installer to one reviewed replacement; no new I/O lane."""
+    policy(command)
+    dispatch = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):\n"
+    inventory = "    if len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected):\n"
+    manifest = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    exclusion = "    if mode not in ('reconcile',"
+    rollback = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:\n"
+    gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
+    reservation = '    op=private/operation\n'
+    for marker in (dispatch, inventory, manifest, rollback, gate, reservation):
+        need(remote.count(marker) == 1, 'capture_install_stock_drift')
+    need(remote.count(exclusion) == 2, 'capture_install_stock_drift')
+    pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
+    preflight = {**CAPTURE_INSTALL_DEPENDENCIES, CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_PREDECESSOR}
+    registration = "    if mode==" + repr(CAPTURE_INSTALL_MODE) + ":\n" + (
+        "        for relative,expected in " + repr(preflight) + ".items():\n"
+        "            target=runtime/relative\n"
+        "            if (not safe_file(target,2*1024*1024) or target.resolve()!=target\n"
+        "                    or target.stat().st_nlink!=1 or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):\n"
+        "                fail('capture_install_predecessor_or_dependency_drift')\n"
+        "        result['install']=install_runtime(stage,files,op)\n"
+        "        result['production_after']=fingerprints()\n"
+        "        if result['production_after']!=before: fail('production_drift')\n"
+        "        result.update(status='installed',supplier_calls=0,database_writes=0,\n"
+        "            runtime_changed=True,public_ui_entrypoints_unchanged=True)\n"
+        "        result['passive_capture_install']=" + repr({'target':CAPTURE_INSTALL_PATH,
+            'sha256':CAPTURE_INSTALL_SHA256, 'previous_sha256':CAPTURE_INSTALL_PREDECESSOR,
+            'dependencies':CAPTURE_INSTALL_DEPENDENCIES}) + "\n"
+    )
+    fixed = "    if mode!=" + repr(CAPTURE_INSTALL_MODE) + " or operation!=" + repr(CAPTURE_INSTALL_OPERATION) + " or source!=" + repr(command['source_sha']) + ":fail('capture_install_fixed_scope')\n"
+    remote = remote.replace(dispatch, registration + dispatch, 1)
+    remote = remote.replace(inventory, "    if mode!=" + repr(CAPTURE_INSTALL_MODE)
+        + " and (len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected)):\n", 1)
+    remote = remote.replace(manifest, "if not isinstance(files,dict) or files!=" + repr(pins) + ": fail('capture_install_manifest')", 1)
+    remote = remote.replace(exclusion, "    if mode not in (" + repr(CAPTURE_INSTALL_MODE) + ",'reconcile',")
+    remote = remote.replace(rollback, rollback.replace("('install-runtime',", "(" + repr(CAPTURE_INSTALL_MODE) + ",'install-runtime',"), 1)
+    remote = remote.replace(gate, fixed + gate, 1)
+    # Do not let the stock finally block overwrite an earlier immutable receipt.
+    remote = remote.replace(reservation,
+        "    if (private/operation).exists() or (private/operation).is_symlink():\n"
+        "        result.update(status='blocked',reason='operation_exists_no_replay',supplier_calls=0,database_writes=0)\n"
+        "        print(json.dumps(result,separators=(',',':')));raise SystemExit(0)\n" + reservation, 1)
+    ast.parse(remote)
+    return remote
+
+
+def capture_install_completed(command, result):
+    pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
+    manifest = hashlib.sha256(json.dumps(pins, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    expected = {'target':CAPTURE_INSTALL_PATH,'sha256':CAPTURE_INSTALL_SHA256,
+                'previous_sha256':CAPTURE_INSTALL_PREDECESSOR,'dependencies':CAPTURE_INSTALL_DEPENDENCIES}
+    install = result.get('install')
+    return (type(result.get('schema_version')) is int and result['schema_version'] == 1
+        and result.get('operation_id') == CAPTURE_INSTALL_OPERATION
+        and result.get('mode') == CAPTURE_INSTALL_MODE and result.get('source_sha') == command['source_sha']
+        and result.get('status') == 'installed' and result.get('passive_capture_install') == expected
+        and isinstance(install,dict) and all(type(install.get(k)) is int for k in ('files','changed_files','created_files'))
+        and install == {'status':'installed','source_sha':command['source_sha'],
+            'files':1,'changed_files':1,'created_files':0,'manifest_sha256':manifest}
+        and result.get('runtime_changed') is True and result.get('public_ui_entrypoints_unchanged') is True
+        and isinstance(result.get('production_before'),dict)
+        and set(result['production_before']) == {'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        and result['production_before'] == result.get('production_after')
+        and all(type(result.get(k)) is int and result[k] == 0
+                for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
+
 def remote_program(remote, command=None):
     command = policy(command)
+    if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_remote_program(remote, command)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
     mode = command['mode']
     marker = 'def local_read(scopes):\n'
@@ -1235,6 +1322,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_completed(command, result)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
