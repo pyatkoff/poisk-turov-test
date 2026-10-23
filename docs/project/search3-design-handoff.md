@@ -1,3 +1,58 @@
+## Site215 — current path reference and prepared NEXT handoff, 23 October 2026
+
+The final flight-editor simplification was published and presented to the owner. The owner then asked whether the current path was satisfactory. After the recommendation to preserve this exact version as the basis, the owner replied **«давай дальше»**. Use Site215 as the next design basis. This entry prepares the receiver change; it does not assert that the new source is implemented, merged, published or accepted in NEXT.
+
+**Donor:** same PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, Site215/package104/v240, source `57db3c55856b80ac5874b89d582005f4de58f260`. Native saved version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5e5360d7dec481918ec32ba273558f6e`; deployment `appgdep_6ada8fc443708191b9846f573dab816c` succeeded 22Oct22:36:03Z (23Oct00:36 Europe/Kaliningrad). [Open the whole path](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=430). [Exact publication/evidence receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352825331).
+
+Donor app SHA256 `aa72ebc993033d4365654baaab233fc512ccf94afcc933121b74c120859c7a01`; styles `f0bc71c91e1559e8e8218c5550ae78fe98d6aa36e6b40a9d2ba17bf0bbdd3596`. Native archive SHA256 `fab3741c6e9fd70607868745173c30351e90e1fae7fe218f1117547d78217773`. Existing source/evidence are in `/workspace/sites/anytour-search3-simplicity`, `qa/quality51/simplicity-20261022/{README.md,evidence.json}` (whole_choice102, compact_flight103, flight_context104). Preserve the prior209/203 approval and publication history below.
+
+### One receiver and the current dependency
+
+Receiver ONLY: [existing ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/), repository `pyatkoff/poisk-turov-test`, `release/search3-production-ready-v1`. Preparation base `b2cebd5b4bed5db2524cc400a4ad919d3f0a238a`; installed source `1fdfddb3`. The active SEARCH owner [6352550419](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352550419) owns [PR4829](https://github.com/pyatkoff/poisk-turov-test/pull/4829), observed final head `a920e7d1ea796627ad223a85fab5427aa7dc3750`, before merge/publication. That same owner should consume this next packet after its current source and publisher claim is terminal. Do not take its app paths, create a parallel implementation or layer Site215 over its unmerged infant fix.
+
+The receiver mapping below was checked against that exact PR head. Its `app.js` blob is `6880b0eb860f0f652753c69ee18da93572fc757f`. Refresh the actual merged release before implementing; retain the current unknown-infant → existing whole-party ANEX package quote transition. Existing INT full-quote receipt [6352400238](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6352400238), durable evidence `26f7753a`, is consumed acceptance, not authority to rerun the supplier case.
+
+### Final product behavior to adapt
+
+Results → concrete room/meal and flight choice **inside the same hotel** → current whole-party price → contacts. Use one main continuation. Selecting or returning from flights must not require confirming the same room again. Contact flight editing opens directly above the retained application; Apply and Cancel return to those contacts. Keep the phone draft; changed conditions reset separate consent.
+
+Mobile flight cards compare the two directions side by side with full dates, stops, airports, allowances and whole-tour prices. In the flight editor, show compact full hotel/date/nights/party context, filters and local-time note. Full room/meal/operator/child ages and the committed listing-to-selected explanation stay in “О туре”. The existing live footer shows the candidate total and its delta. Keep the immutable current selection distinct from an unconfirmed candidate.
+
+| Donor presentation/interaction | Actual receiver owner | Required adaptation |
+| --- | --- | --- |
+| Same-hotel room → inline flights/current total | `renderHotelRooms`, `syncHotelOfferSelection`, `continueHotelOffer`; existing `hotel-details-v1.js` renderer | Extend the connected room owner, preserving exact offer/raw/search identity and current quote/load controller. No second offer-list stage or duplicate renderer. |
+| Compact paired choices | `flight-picker-v18.js` facade, lazy `flight-picker-ui-v1.js`, `renderFlightPicker` | Preserve receiver lazy loading, request guards, restored filters/page/scroll, original indices and callbacks. The donor's simpler bind signature is not a replacement. |
+| Compact editor context | `offerDetailBodyHTML(..., flightContent, checkedTotal)` and `tour-flight-editing` CSS | Keep receiver `displayMealLabel`, `tourHeroHTML`, supplied provider content and **checkedTotal** provenance; move the same price explanation into the existing disclosure. |
+| Direct contact Apply/Cancel | `openLeadPreview`, `applyFlightPair`, modal/history owner and canonical lead runtime | Adapt the current return target rather than copying the donor lead shim. The observed receiver Apply still returns to `renderRealOffer`; remove that loop while preserving provider-specific application eligibility. |
+| ANEX inventory/current total | `refreshLiveHotel`, `loadAnexPackageQuote`, `openAnexPackageQuote`, `anexFlightInventoryHTML` | Present the same flow through the existing provider controller. No generic TV picker, estimated arithmetic or donor quote state may supply ANEX verified-price authority. |
+
+Candidate implementation paths are the existing `v2/visual-search/app.js`, `styles.css`, `hotel-details-v1.js` or `flight-picker-ui-v1.js` only where their connected owner needs the adaptation, plus the migration manifest and affected existing tests. Declare the final exact subset when the SEARCH claim opens. Do not modify fixtures, provider adapters/backends, canonical lead transport, analytics or publication controllers for this UI packet.
+
+### Provider authority and price boundaries
+
+- TV quote-only, flight-pair and manager handoff keep their current distinct price qualifications. An explicit manager choice is eligible only where the receiver already permits it; never fabricate a priced pair from the quote.
+- ANEX unknown infant supplement stays unknown/null. Preserve PR4829's current-identity → existing whole-party package-quote route, original multi-pair explicit choice, sole-pair rules and provider application binding. Never use a child fee, zero, default fuel or donor total to fill the gap.
+- A new ANEX pair uses the existing bounded calculation/queue/receipt owner; a cached verified pair uses existing retained authority. Changing a radio is not permission for duplicate requests or background calculations of every visible pair. Preserve caps, UNKNOWN/noReplay, expiry, gross currency/party/identity, late-reply and consent guards.
+- No-flights/error/unknown-price states require an explicit eligible manager choice or another available path. Missing data is not zero or verified. Preserve terminal410 retention and all source-specific failure handling.
+- The design reduces navigation and repetition. It does **not** prove fewer supplier calls, lower supplier latency, final-price readiness or conversion growth. Required live work remains real.
+
+### Bounded implementation acceptance
+
+| Scenario | Required outcome |
+| --- | --- |
+| Same hotel → room/meal → flight/current total → contacts | Exact identity stays in one hotel owner; no extra offer screen or repeated room confirmation. |
+| Known inventory from contacts | Open directly, Apply returns the same application with exact pair/amount; Cancel retains the old pair/amount/consent. |
+| Lazy inventory, Back/Close or changed room | Retain the form/phone/current choice until Apply; reject late responses; no silent default pair or duplicate quote. |
+| Changed quote or unknown pair total | Keep explicit price acceptance and honest unknown/manager eligibility; no premature contacts or invented zero. |
+| TV and current ANEX infant/whole-party route | Preserve canonical authority, provider-specific application and all current4829 tests. Do not repeat the consumed INT supplier case. |
+| 430/1280 and short1280×720 | Inspect the affected choice/editor/contact/return frames once on the same corpus; compact context/details/filter layouts do not overlap the footer. |
+
+Reuse the affected existing actual-owner journey/price/late-response tests and the normal final-head compiled CI. Preserve every mandatory gate; extend only the changed boundary, not a second full-search audit. Keyboard/200%/other manual widths retain their current owner-deferred scope. Production, real lead delivery and physical Safari remain separate gates. Use the existing exclusive NEXT publisher/readback only after the changed source is reviewed and its exact-head checks pass.
+
+SEARCH-QUALITY-1 stays in its current audit with the same five criteria and evidence scopes. Donor213–215 has bounded fixture/source/browser acceptance, not a whole-search9.5/10 or an installed score. No source merge/publication is asserted by this documentation packet.
+
+---
+
 # Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
 ## Approved whole Site209 hotel-to-contact transfer — 22 October 2026
