@@ -109,21 +109,52 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         ?callable $emitHeader = null
     ): array {
         $header = null;
+        $started = hrtime(true);
         $observe = static function(array $rows) use (&$header, $now): void {
             $header = AnyTourOperatorFuelRuleStoreV1::monitoringHeader($rows, $now->getTimestamp());
         };
-        $receipt = self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
-            static fn(): array => self::retainFlights($tourId, $flights, $directory, $now, $observe));
-        // Emit only after successful capture, diagnostic and lock release. Never touch
-        // the supplier body/status, and never add fields to the private receipt schema.
-        if (($receipt['ok'] ?? false) === true && $header !== null) {
-            try {
-                $line = 'X-AnyTour-Fuel-Monitoring: ' . $header;
-                if ($emitHeader !== null) $emitHeader($line);
-                elseif (PHP_SAPI !== 'cli' && !headers_sent()) header($line, true);
-            } catch (Throwable $ignored) {}
+        try {
+            $receipt = self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
+                static fn(): array => self::retainFlights($tourId, $flights, $directory, $now, $observe));
+        } catch (Throwable $failed) {
+            $code = AnyTourTourvisorOperatorFuelRetainedIntakeV1::amountDiagnostic($failed) ?? $failed->getMessage();
+            self::emitMonitoringHeader(self::captureDiagnosticHeader('rejected', $code, $now, $started), $emitHeader);
+            throw $failed;
         }
+        // Successful aggregate bytes stay unchanged. Other helper outcomes are a
+        // distinct diagnostic envelope, never an empty population or pricing fact.
+        if (($receipt['ok'] ?? false) !== true || $header === null) {
+            $header = self::captureDiagnosticHeader(($receipt['ok'] ?? false) === true ? 'retained' : 'skipped',
+                ($receipt['ok'] ?? false) === true ? 'monitoring_summary_unavailable' : ($receipt['reason'] ?? ''), $now, $started);
+        }
+        self::emitMonitoringHeader($header, $emitHeader);
         return $receipt;
+    }
+
+    private static function captureDiagnosticHeader(string $outcome, string $code, DateTimeImmutable $now, int $started): ?string
+    {
+        try {
+            if (!in_array($code, self::DIAGNOSTIC_CODES, true)
+                && !in_array($code, ['tour_pair_missing', 'tour_pair_expired', 'monitoring_summary_unavailable'], true)) {
+                $code = 'unclassified_error';
+            }
+            $summary = ['schema_version'=>1, 'source'=>'tourvisor_passive_fuel_capture_diagnostic',
+                'stage'=>'flights', 'outcome'=>$outcome, 'code'=>$code, 'as_of'=>$now->getTimestamp(),
+                'elapsed_ms'=>max(0, (int)ceil((hrtime(true) - $started) / 1000000)),
+                'complete_population'=>false, 'accuracy_evaluated'=>false, 'final_price_verified'=>false];
+            $encoded = rtrim(strtr(base64_encode(json_encode($summary, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+            return strlen($encoded) <= 2048 ? $encoded : null;
+        } catch (Throwable $ignored) { return null; }
+    }
+
+    private static function emitMonitoringHeader(?string $value, ?callable $emitHeader): void
+    {
+        if ($value === null) return;
+        try {
+            $line = 'X-AnyTour-Fuel-Monitoring: ' . $value;
+            if ($emitHeader !== null) $emitHeader($line);
+            elseif (PHP_SAPI !== 'cli' && !headers_sent()) header($line, true);
+        } catch (Throwable $ignored) {}
     }
 
     private static function retainFlights(

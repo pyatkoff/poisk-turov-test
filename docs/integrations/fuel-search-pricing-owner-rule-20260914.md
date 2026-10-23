@@ -90,7 +90,7 @@ PR4824's rejected private snapshot reader remains closed and unexecuted.
 - Delivery is one optional base64url JSON header value, at most 2048 bytes,
   after successful normal flights capture and lock release. Supplier JSON body,
   status and money, existing receipt schema and default append return are unchanged.
-  Skipped/rejected/failed capture emits no header. CLI emits nothing unless a test
+  Other helper outcomes use the distinct capture diagnostic below. CLI emits nothing unless a test
   supplies an explicit sink; unavailable headers or exporter failure are inert.
 - Payload allowlist: `schema_version`, fixed `source`, `operator_family`,
   `as_of`, `window_limit`, `observed_from`, `observed_to`,
@@ -113,7 +113,8 @@ PR4824's rejected private snapshot reader remains closed and unexecuted.
   separately; no percentage is computed. Raw rows, amounts per customer, IDs,
   hashes, tokens, paths, private errors and response bodies are absent.
 - Invalid rows, duplicate evidence, mixed directions, future observations,
-  integer overflow or oversized output suppress the header. Observer failure
+  integer overflow or oversized output suppress the aggregate; only an unavailable
+  capture diagnostic may be emitted instead. Observer failure
   cannot affect successful persistence or the supplier response.
 - `complete_population=false`, `accuracy_evaluated=false`,
   `final_price_verified=false` always. Equality/difference describes stages,
@@ -141,8 +142,8 @@ accuracy remain NOT_MEASURED. Even a header reports only its bounded retained wi
 
 The existing passive-intake suite now exercises default PHP `header()` through
 one ephemeral localhost PHP server, in addition to the existing injected sink
-fixtures. Retained supplied zero emits exactly one bounded header; skipped and
-rejected capture emit none. All three preserve HTTP200 and byte-identical mock
+fixtures. Retained supplied zero emits exactly one bounded aggregate header;
+skipped and rejected capture emit one distinct capture diagnostic. All three preserve HTTP200 and byte-identical mock
 supplier JSON. The fixture keeps `allow_url_fopen=0`, uses only loopback sockets,
 and adds no supplier request, product endpoint or runtime change. Removing only
 the native emission branch must fail this regression; an injected sink alone
@@ -212,3 +213,42 @@ does not itself repeal that operational gate. Any future charter exception
 requires an explicit policy change and authoritative operator/offer/flight-type
 binding; neither is fabricated in this packet. No supplier probe, configuration
 change, fallback, transport change or guard relaxation follows from the reply.
+
+
+### Capture outcome diagnostics — 2026-10-23, source only
+
+The same optional header can now explain a normally executed helper's skipped or
+rejected capture without rereading a private file or issuing another request.
+The successful aggregate source/schema/encoded bytes above stay unchanged.
+A missing aggregate after successful capture has its own unavailable diagnostic;
+it never means an empty denominator.
+
+The distinct diagnostic source is tourvisor_passive_fuel_capture_diagnostic.
+Its exact keys are schema_version=1, source, stage=flights, outcome, code, as_of,
+elapsed_ms, complete_population=false, accuracy_evaluated=false and
+final_price_verified=false. Outcome is retained, skipped or rejected. Code is
+an existing allowlisted passive-intake/amount/store rejection, tour_pair_missing,
+tour_pair_expired or monitoring_summary_unavailable; any other error becomes
+unclassified_error. No counts/buckets, money, party, operator/direction/tour IDs,
+digests, private path/error text or supplier body are included. as_of is UTC Unix
+seconds. elapsed_ms measures local capture, lock and diagnostic processing only,
+never supplier HTTP latency.
+
+Delivery uses the existing base64url header limit of2048 bytes after lock release.
+It does not change the supplier response/body/status, successful capture return,
+original exception object, private receipt schema or persistence. An emitter or
+header failure is inert. Native HTTP fixtures verify success, skip and rejection
+alongside byte-identical mock supplier bodies; local tests cover expiry, suppressed
+aggregate, unclassified private error redaction and a failing emitter.
+
+The installed SEARCH observer forwards this existing header opaquely. A consumer
+must distinguish source before interpreting aggregate counters; a capture diagnostic
+has no population or accuracy denominator. No SEARCH runtime/UI/transport change
+is part of this packet. Failures before helper entry (bootstrap/config/DB/client or
+supplier HTTP) and unreadable headers still remain unavailable. Consumed empty
+console observations do not acquire a historical cause from this source change.
+
+Source/CI/merge, a separately admitted narrow installation and actual next ordinary
+capture remain separate. Do not use the broad install-runtime path to publish
+unrelated pending integration work. No new paid case/coverage probe, private reader,
+replay, supplier call or directory enumeration is authorized to obtain a diagnostic.

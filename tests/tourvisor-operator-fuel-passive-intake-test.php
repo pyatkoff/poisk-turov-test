@@ -36,6 +36,24 @@ function tvpf_segment(string $from, string $to, string $date, string $flight): a
     ];
 }
 
+function tvpf_capture_diagnostic(string $header, string $outcome, string $code): array
+{
+    $prefix = 'X-AnyTour-Fuel-Monitoring: ';
+    if (str_starts_with($header, $prefix)) $header = substr($header, strlen($prefix));
+    tvpf_ok(strlen($header) <= 2048 && preg_match('/\A[A-Za-z0-9_-]+\z/D', $header) === 1, 'bounded encoded capture diagnostic');
+    $value = json_decode(base64_decode(strtr($header, '-_', '+/'), true), true, 8, JSON_THROW_ON_ERROR);
+    $keys = array_keys($value); sort($keys);
+    $expected = ['schema_version','source','stage','outcome','code','as_of','elapsed_ms',
+        'complete_population','accuracy_evaluated','final_price_verified']; sort($expected);
+    tvpf_ok($keys === $expected && $value['schema_version'] === 1
+        && $value['source'] === 'tourvisor_passive_fuel_capture_diagnostic', 'distinct exact diagnostic schema without aggregate counts');
+    tvpf_ok($value['stage'] === 'flights' && $value['outcome'] === $outcome && $value['code'] === $code, 'allowlisted helper outcome');
+    tvpf_ok(is_int($value['as_of']) && is_int($value['elapsed_ms']) && $value['elapsed_ms'] >= 0, 'local processing time only');
+    tvpf_ok($value['complete_population'] === false && $value['accuracy_evaluated'] === false
+        && $value['final_price_verified'] === false, 'capture diagnostic cannot mint population or price authority');
+    return $value;
+}
+
 function tvpf_tour(string $id, int $hotel, int $nights): array
 {
     return [
@@ -486,15 +504,28 @@ tvpf_ok($emitFailed===$repeated && file_get_contents($monitorPath)===$monitorByt
     && $flights===$beforeFlights, 'header emitter failure leaves the normal result identical');
 $headerCount=count($monitorHeaders);
 $skip=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights('999999',tvpf_flights(),$monitorDirectory,$now,$captureHeader);
-tvpf_ok($skip['ok']===false && count($monitorHeaders)===$headerCount, 'no header for skipped capture');
+tvpf_ok($skip['ok']===false && count($monitorHeaders)===$headerCount+1, 'one diagnostic for skipped capture');
+tvpf_capture_diagnostic($monitorHeaders[$headerCount], 'skipped', 'tour_pair_missing');
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
 $invalidFlights=$flights; unset($invalidFlights['flights'][0]['fuelCharge']);
 try {
     AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$invalidFlights,$monitorDirectory,$now,$captureHeader);
     throw new RuntimeException('missing rejected capture');
 } catch (InvalidArgumentException $error) {
-    tvpf_ok(count($monitorHeaders)===$headerCount, 'no header for rejected capture');
+    tvpf_ok($error->getMessage()==='TV_FUEL_AMOUNT' && $error->getCode()===7101
+        && count($monitorHeaders)===$headerCount+2, 'rejection preserved with one diagnostic');
+    tvpf_capture_diagnostic($monitorHeaders[$headerCount+1], 'rejected', 'TV_FUEL_AMOUNT_FLIGHT_MISSING');
 }
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
+$expired=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now->modify('+900 seconds'),$captureHeader);
+tvpf_ok($expired['reason']==='tour_pair_expired' && count($monitorHeaders)===$headerCount+3, 'expiry is a diagnostic, not empty population');
+tvpf_capture_diagnostic($monitorHeaders[$headerCount+2], 'skipped', 'tour_pair_expired');
+// A clock earlier than retained observations suppresses the aggregate. Report
+// only that export is unavailable, without inventing zero rows or changing capture.
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
+$unavailable=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now->modify('-1 second'),$captureHeader);
+tvpf_ok($unavailable['ok']===true && count($monitorHeaders)===$headerCount+4, 'successful capture with suppressed aggregate stays successful');
+tvpf_capture_diagnostic($monitorHeaders[$headerCount+3], 'retained', 'monitoring_summary_unavailable');
 // Consume the fixture pending pair normally; this is local data, no supplier I/O.
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now);
 tvpf_ok(glob($monitorDirectory.'/tourvisor-fuel-pending-v1-*.json')===[]
@@ -502,6 +533,27 @@ tvpf_ok(glob($monitorDirectory.'/tourvisor-fuel-pending-v1-*.json')===[]
     'monitoring consumes pending pairs without DB writes');
 array_map('unlink',array_filter(glob($monitorDirectory.'/*')?:[], 'is_file'));
 rmdir($monitorDirectory);rmdir(dirname($monitorDirectory));
+
+// An arbitrary local failure and even a failing diagnostic emitter cannot replace
+// the original exception or expose its private message, path, response or tour ID.
+$failureDirectory=$root.'/capture-diagnostic/searches'; mkdir($failureDirectory,0700,true);
+$failureLock=$failureDirectory.'/tourvisor-fuel-passive-v1.lock'; mkdir($failureLock,0700);
+$privateFailure=new RuntimeException('private-intake-canary '.$id1.' '.$failureDirectory);
+$failureHeaders=[];
+set_error_handler(static function () use ($privateFailure): never { throw $privateFailure; });
+try {
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,['private_response'=>'private-intake-canary'], $failureDirectory,$now,
+        static function (string $line) use (&$failureHeaders): never { $failureHeaders[]=$line; throw new RuntimeException('private-emitter-canary'); });
+    throw new RuntimeException('missing expected local failure');
+} catch (RuntimeException $error) {
+    tvpf_ok($error===$privateFailure, 'same original exception survives failed diagnostic emitter');
+} finally { restore_error_handler(); rmdir($failureLock); }
+tvpf_ok(count($failureHeaders)===1, 'one header attempt for arbitrary local failure');
+$failureSummary=tvpf_capture_diagnostic($failureHeaders[0], 'rejected', 'unclassified_error');
+tvpf_ok(!str_contains(json_encode($failureSummary,JSON_THROW_ON_ERROR),'canary')
+    && !str_contains(json_encode($failureSummary,JSON_THROW_ON_ERROR),$id1), 'unclassified failure never exports private fields');
+array_map('unlink',array_filter(glob($failureDirectory.'/*')?:[], 'is_file'));
+rmdir($failureDirectory);rmdir(dirname($failureDirectory));
 
 // A supplier-reported zero is retained in the same private store, never replaced
 // by the positive nondefault option and never promoted to a reusable rule.
@@ -585,7 +637,11 @@ try {
             tvpf_ok($summary['retained_count']===1 && $summary['fresh_count']===1
                 && $summary['buckets'][0]['matched_count']===1 && $summary['buckets'][0]['zero_reference_count']===1
                 && $summary['buckets'][0]['absolute_difference_minor_sum']===0, 'native explicit-zero monitoring summary');
-        } else tvpf_ok($headers===[], 'no native header for '.$case);
+        } else {
+            tvpf_ok(count($headers)===1, 'one native capture diagnostic: '.$case);
+            tvpf_capture_diagnostic($headers[0], $case==='skipped' ? 'skipped' : 'rejected',
+                $case==='skipped' ? 'tour_pair_missing' : 'TV_FUEL_AMOUNT_VALUE_FORMAT');
+        }
     }
 } finally {
     proc_terminate($process); proc_close($process);
