@@ -206,6 +206,55 @@ mh_error(static function () use ($tx, &$blocked, $now, $signer, &$sent): void {
         static function () use (&$sent): void { $sent = true; });
 }, 'checkpoint_failed');
 mh_check(!$sent, 'failed durable checkpoint never invokes transport');
+// The later wire-intent checkpoint can outlive a still-valid canonical freezer result.
+[$wireSession, $wireRequest, $wireFacts, $wireInitial] = mh_fixture([], true, 1700000000);
+$wirePreview = mh_freeze($wireRequest, $wireSession, $wireInitial);
+$wireOperation = $wirePreview['operation_id']; $wireDeadline = $wirePreview['observation']['price']['expiresAt'];
+$wireStart = $wireDeadline - 2; $wireSupplierCalls = $wireFacts->calls;
+$wireSigner = array_replace($signer, ['not_before' => $wireStart - 1, 'not_after' => $wireDeadline + 86400]);
+$wireTx = ['action' => 'handoff_create', 'operation_id' => $wireOperation, 'csrf' => $wireRequest['csrf']];
+foreach ([$wireDeadline, $wireDeadline + 1, $wireStart - 1, 'invalid-clock'] as $afterSave) {
+    $wireCopy = unserialize(serialize($wireSession)); $wireNow = $wireStart; $wireSent = 0;
+    mh_error(static function () use ($wireTx, &$wireCopy, $wireStart, $wireSigner, &$wireNow, $afterSave, &$wireSent): void {
+        AnyTourSearch3MessengerHandoff::transact($wireTx, $wireCopy, $wireStart, $wireSigner,
+            static function (array &$unused) use (&$wireNow, $afterSave): void { $wireNow = $afterSave; },
+            static function () use (&$wireSent): array { ++$wireSent; return ['status' => 503, 'body' => '{}']; },
+            static function () use (&$wireNow) { return $wireNow; });
+    }, 'handoff_stale');
+    mh_check($wireSent === 0 && $wireCopy['search3_messenger_handoffs'][$wireOperation]['state'] === 'unknown',
+        'expired or invalid post-save clock has no CREATE and retains UNKNOWN');
+    if ($afterSave === $wireDeadline) $expiredWire = $wireCopy;
+}
+$expiredActions = [];
+$expiredReply = AnyTourSearch3MessengerHandoff::transact($wireTx, $expiredWire, $wireDeadline + 2, $wireSigner,
+    static function (array &$unused): void {},
+    static function ($url, $raw) use (&$expiredActions): array {
+        $expiredActions[] = json_decode($raw, true)['action']; return ['status' => 200, 'body' => '{"ok":true,"state":"missing"}'];
+    });
+mh_check($expiredActions === ['status'] && $expiredReply['state'] === 'missing'
+    && $expiredWire['search3_messenger_handoffs'][$wireOperation]['state'] === 'unknown',
+    'blocked post-save CREATE stays status-only after expiry, never replayed');
+
+$wireCopy = unserialize(serialize($wireSession)); $wireNow = $wireStart; $freshHeaders = []; $freshRaw = '';
+AnyTourSearch3MessengerHandoff::transact($wireTx, $wireCopy, $wireStart, $wireSigner,
+    static function (array &$unused) use (&$wireNow): void { ++$wireNow; },
+    static function ($url, $raw, $headers) use (&$freshHeaders, &$freshRaw): array {
+        $freshHeaders = $headers; $freshRaw = $raw; return ['status' => 503, 'body' => '{}'];
+    }, static function () use (&$wireNow): int { return $wireNow; });
+mh_check(in_array('X-Anytour-Search3-Timestamp: ' . ($wireStart + 1), $freshHeaders, true)
+    && $freshRaw === $wireSession['search3_messenger_handoffs'][$wireOperation]['raw'],
+    'still-live CREATE refreshes signature timestamp after save without changing immutable bytes');
+$wireCopy = unserialize(serialize($wireSession)); $wireNow = $wireStart; $wireSent = 0;
+mh_error(static function () use ($wireTx, &$wireCopy, $wireStart, $wireSigner, &$wireNow, &$wireSent): void {
+    AnyTourSearch3MessengerHandoff::transact($wireTx, $wireCopy, $wireStart,
+        array_replace($wireSigner, ['not_after' => $wireStart + 1]),
+        static function (array &$unused) use (&$wireNow): void { ++$wireNow; },
+        static function () use (&$wireSent): array { ++$wireSent; return ['status' => 503, 'body' => '{}']; },
+        static function () use (&$wireNow): int { return $wireNow; });
+}, 'signer_unavailable');
+mh_check($wireSent === 0 && $wireCopy['search3_messenger_handoffs'][$wireOperation]['state'] === 'unknown',
+    'key expiry during save prevents CREATE and preserves UNKNOWN');
+mh_check($wireFacts->calls === $wireSupplierCalls, 'post-save boundary cases make zero additional supplier calls');
 $rotated = $session;
 mh_error(static function () use ($tx, &$rotated, $now, $signer, $checkpoint, $transport): void {
     AnyTourSearch3MessengerHandoff::transact($tx, $rotated, $now, array_replace($signer, ['key_id' => 'another-key']), $checkpoint, $transport);

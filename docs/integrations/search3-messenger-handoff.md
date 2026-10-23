@@ -45,7 +45,12 @@ freeze/create/open. Equal canonical record/selector reuses the original operatio
 key order. Intent metadata/bytes/hash stay in the same PHP session across serialization. At most8 wire
 operations are retained per session;429 never silently evicts an issued/UNKNOWN operation.
 
-Create is durably checkpointed UNKNOWN before its only HTTP attempt. Further create clicks use
+Create is durably checkpointed UNKNOWN before its only HTTP attempt.
+After this later checkpoint, CREATE checks a live monotonic clock against
+the original quote deadline and revalidates signer validity with a fresh signature timestamp.
+Expired or invalid post-save time blocks transport; the durable UNKNOWN intent remains status-only,
+even when no CREATE was sent. No new operation or quote is minted to retry that intent.
+Further create clicks use
 signed status, never create again. Timeout/missing does not replay UNKNOWN. Prepared status/revoke
 are local; issued revocation is signed, and lost revoke never exposes ready links. Changed generation
 or stale selected record blocks a new create, while issued status/revoke remain available in the same
