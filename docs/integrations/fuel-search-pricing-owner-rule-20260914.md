@@ -70,3 +70,58 @@ All concrete offers are persisted, but with distinct money states:
 - regular: direct search amount, confirmation required.
 
 Base search money, APD rate evidence, computed party surcharge and later selected/actualized price remain separate facts. The current `anytour_offers` readiness contract therefore needs a follow-up extension for the regular/search-price state; this pricing rule does not silently overload `finalPriceReady`.
+
+## Proposed monitoring export — 2026-10-23 (NOT AUTHORIZED / NOT IMPLEMENTED)
+
+The retained five-context public baseline is evidence-only
+(`83bd1826748f38ac472ab48b71ab405c1f4113d0`); it does not measure the current
+private monitoring population or post-4834 captures. The existing ROOT gateway
+discards the return of passive capture and has no aggregate retrieval action.
+This proposal grants no read, export, endpoint, control or publication authority.
+
+### Exact proposed boundary
+
+- Producer: only the validated normalized observation envelope already loaded by
+  the existing successful `captureFlights` → `append` path for the current
+  operator/direction. No additional file, log, pending payload, config or DB read;
+  no directory enumeration, historical replay or replacement of the rejected
+  PR4824 reader. If the envelope is unavailable in that normal path, export is absent.
+- Scope: one current operator/direction; at most the existing 128 retained rows.
+  This is a bounded retained window, never the all-time population. Describe
+  fresh, expired and legacy/non-monitoring rows separately. Missing input/result
+  is unavailable, never numeric zero.
+- Proposed delivery: one optional `X-AnyTour-Fuel-Monitoring` HTTP response header
+  on the existing normal `flights` response, base64url JSON, at most 2048 bytes.
+  No new action/URL/polling endpoint, background worker, supplier call or UI flow.
+  The Tourvisor JSON body, status and money must remain byte-identical.
+- Payload allowlist: schema version, source marker, current operator family,
+  bounded window limit/from/to, retained/fresh/expired/legacy counts, and buckets
+  by currency plus unit. Each bucket contains sample/paired/matched/different/
+  unavailable counts and the sum of absolute stage differences in integer minor
+  units. No raw rows, tour/offer/hotel/flight IDs, hashes identifying customers,
+  tokens, paths, response bodies, per-customer amounts or private error text.
+- Amount differences compare the two validated facts of the SAME observation;
+  do not mix currencies/units or substitute a tour amount for missing flight fuel.
+  Zero reference amounts are counted separately for any later percentage analysis.
+  A missing bucket/header, invalid data, overflow or oversized result stays
+  unavailable. Export failure cannot change the successful supplier response.
+- Always report `complete_population=false`, `accuracy_evaluated=false` and
+  `final_price_verified=false`. Stage equality/difference is descriptive, not
+  predictive accuracy, a rejection gate, an automatic pricing rule or a 20% tolerance.
+  Infant fees and SAMO/Biblio policy remain outside this export.
+
+### Acceptance and authority still required
+
+Before implementation, explicitly review/authorize this exact data exposure and
+its existing ROOT gateway publication/auth boundary. Current standing supplier-check
+permission is not that authorization. ROOT/source/publisher gates must remain intact;
+do not add a privileged reader or widen a carrier to obtain this output.
+
+After that separate authority: one writer on the existing store/passive/gateway
+owners, narrow fixtures for mixed currencies/units, zero/missing/expiry/window bounds,
+redaction, overflow and observer failure, applicable exact-source CI and independent
+delta review; private runtime and ROOT installation are separate existing guarded
+stages. Reuse successful source/install evidence. The first justified new ordinary
+case may consume the header once; do not create a paid zero/outage/coverage probe.
+Until those stages complete, population size, post-fix persistence and 80% accuracy
+remain NOT_MEASURED. This document itself changes no application or access.
