@@ -136,3 +136,79 @@ The first justified ordinary new case may consume its header once; do not create
 a paid zero/outage/coverage probe or replay old receipts to fill this window.
 Until that capture, current population size, post-install persistence and 80%
 accuracy remain NOT_MEASURED. Even a header reports only its bounded retained window.
+
+### Native HTTP regression and observation handoff — 2026-10-23
+
+The existing passive-intake suite now exercises default PHP `header()` through
+one ephemeral localhost PHP server, in addition to the existing injected sink
+fixtures. Retained supplied zero emits exactly one bounded header; skipped and
+rejected capture emit none. All three preserve HTTP200 and byte-identical mock
+supplier JSON. The fixture keeps `allow_url_fopen=0`, uses only loopback sockets,
+and adds no supplier request, product endpoint or runtime change. Removing only
+the native emission branch must fail this regression; an injected sink alone
+cannot prove that branch.
+
+This automated transport fixture is separate from actual post-install evidence.
+The consumed JIVA case at `4f54d562255b5f7ac0c6c87b9190dc29872392cf`
+proves only its recorded ordinary UI path; the supported browser observation API
+did not expose response headers. It does not establish backend capture, raw
+supplier zero, an isolated infant fee, current private population or80%accuracy.
+
+The producer contract is already installed. The remaining minimal consumer
+handoff belongs to the existing SEARCH response-client owner: during an already
+justified ordinary successful TV flights response, forward the existing optional
+`X-AnyTour-Fuel-Monitoring` value (base64url, at most2048 bytes) to an existing
+diagnostic observation surface. Reuse that SAME response/case and retain the
+explicit false population/accuracy/final-verification flags. No new request,
+storage, polling, UI requirement, state/lifecycle change, alternate carrier or
+private reader is needed or authorized by this handoff. Missing/unreadable stays
+unavailable; do not repeat consumed JIVA or another paid case to fill it.
+The current `v2/runtime-v3.js` already exposes
+`V2Runtime.on(action, fn(data, response))`; its existing `observedFetch` passes
+the original response to listeners. The consumer therefore needs no runtime
+transport change. A concrete minimal registration for its existing observer is:
+
+```js
+V2Runtime.on('flights', (_data, response) => {
+  const value = response?.headers?.get('X-AnyTour-Fuel-Monitoring');
+  if (response?.ok && typeof value === 'string' && value.length <= 2048 &&
+      /^[A-Za-z0-9_-]+$/.test(value)) {
+    console.info('AnyTourFuelMonitoringV1', value);
+  }
+});
+```
+
+This forwards only the already-reviewed encoded header to a local diagnostic
+surface; it does not log response bodies, query URLs, IDs or raw errors.
+The observer is optional, has no product state/DOM writes, does not evaluate
+the payload, and must be registered once by the existing consumer owner.
+This is a concrete handoff example, not installed consumer code.
+INT does not edit the SEARCH-owned client through this test/document packet.
+
+### Tourvisor operator-side GDS availability — owner-forwarded support, 2026-10-23
+
+The owner forwarded a Tourvisor support reply in the current conversation,
+recorded in [INT queue6363730002](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6363730002).
+This is an owner-forwarded supplier-support statement, not an HTTP/log receipt
+or independently verified status page:
+
+- Coral Travel and Sunmar GDS tour actualization currently fails for technical
+  reasons on the operators' side. Support describes a general problem rather
+  than a particular hotel or API request.
+- Charter actualization may work; that does not verify a particular charter.
+- Tourvisor says changing API requests/settings is unnecessary and cannot
+  resolve the operator-side GDS issue.
+
+This establishes the reported availability boundary and supplier-side reason,
+not the historical HTTP code, curl errno, elapsed time or request correlation.
+Do not repair AnyTour transport/auth/parameters/timeouts for this reported cause
+or generalize the outage to all charters, other TV operators or direct ANEX.
+Unknown/regular flight type is not automatically a verified GDS/charter identity;
+do not borrow ANEX's classification or trust a caller-supplied URL flag.
+
+The existing explicit owner instruction6289177263 keeps Coral/Sunmar listing-only:
+no actualization, flights, final calculation or failure retry. The support reply
+does not itself repeal that operational gate. Any future charter exception
+requires an explicit policy change and authoritative operator/offer/flight-type
+binding; neither is fabricated in this packet. No supplier probe, configuration
+change, fallback, transport change or guard relaxation follows from the reply.

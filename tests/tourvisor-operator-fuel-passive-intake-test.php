@@ -91,6 +91,34 @@ $directory = $root.'/searches';
 mkdir($directory,0700,true);
 $now = new DateTimeImmutable('2026-09-22T20:00:00Z');
 
+// Only the isolated localhost server below enters this fixture. CI's CLI entry
+// always runs the full suite, even if the environment variable is inherited.
+if (PHP_SAPI === 'cli-server' && getenv('ANYTOUR_TEST_PASSIVE_FUEL_HTTP') === '1') {
+    tvpf_ok(!ini_get('allow_url_fopen'), 'URL fopen remains disabled');
+    $case = $_GET['case'] ?? '';
+    tvpf_ok(in_array($case, ['retained','skipped','rejected'], true), 'known HTTP fixture');
+    $tour = tvpf_tour($id1,1006,7); $tour['fuelCharge'] = '0.00';
+    $flights = tvpf_flights(); $flights['flights'][0]['fuelCharge']['value'] = '0.00';
+    if ($case !== 'skipped') AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$tour,$db,$directory,$now);
+    if ($case === 'rejected') $flights['flights'][0]['fuelCharge']['value'] = 'not-money';
+    $rejected = false;
+    try {
+        $receipt = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$flights,$directory,$now);
+        tvpf_ok($case === 'skipped' ? $receipt['ok'] === false : $receipt['ok'] === true, 'HTTP capture outcome');
+    } catch (InvalidArgumentException $error) {
+        tvpf_ok($case === 'rejected' && $error->getMessage() === 'TV_FUEL_AMOUNT' && $error->getCode() === 7104,
+            'expected malformed fixture');
+        $rejected = true;
+    }
+    tvpf_ok($case !== 'rejected' || $rejected, 'malformed fixture actually rejected');
+    array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
+    rmdir($directory); rmdir($root);
+    // Like the existing gateway, passive rejection cannot replace supplier JSON.
+    http_response_code(200); header('Content-Type: application/json');
+    echo json_encode($flights,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    return;
+}
+
 $tour1 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,tvpf_tour($id1,1006,7),$db,$directory,$now);
 tvpf_ok(($tour1['status']??null)==='tour_retained','first tour retained');
 $fuel1 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,tvpf_flights(),$directory,$now);
@@ -506,6 +534,64 @@ tvpf_ok($repeatZero['status']==='unchanged' && file_get_contents($zeroPath)===$z
 array_map('unlink',array_filter(glob($zeroDirectory.'/*')?:[], 'is_file'));
 rmdir($zeroDirectory);rmdir(dirname($zeroDirectory));
 
+// Exercise native header(), not the injected sink, without enabling URL fopen
+// or contacting a supplier. All HTTP stays on one ephemeral loopback server.
+$httpDirectory = $root.'/http'; mkdir($httpDirectory,0700,true);
+$router = $httpDirectory.'/router.php';
+file_put_contents($router,"<?php putenv('ANYTOUR_TEST_PASSIVE_FUEL_HTTP=1'); require ".var_export(__FILE__,true).';');
+$listener = stream_socket_server('tcp://127.0.0.1:0',$socketError,$socketMessage);
+tvpf_ok(is_resource($listener), 'loopback fixture listener');
+$address = stream_socket_get_name($listener,false); fclose($listener);
+tvpf_ok(is_string($address) && preg_match('/\A127\.0\.0\.1:[1-9][0-9]{1,4}\z/D',$address)===1, 'loopback address only');
+$command = [PHP_BINARY,'-n','-d','allow_url_fopen=0','-d','display_errors=0','-d','log_errors=1',
+    '-d','extension_dir='.ini_get('extension_dir')];
+foreach (['pdo','pdo_sqlite'] as $extension) {
+    if (is_file(ini_get('extension_dir').'/'.$extension.'.so')) array_push($command,'-d','extension='.$extension);
+}
+array_push($command,'-S',$address,$router);
+$process = proc_open($command,[0=>['pipe','r'],1=>['file',$httpDirectory.'/server.log','a'],
+    2=>['file',$httpDirectory.'/server.log','a']],$httpPipes);
+tvpf_ok(is_resource($process), 'native HTTP fixture starts'); fclose($httpPipes[0]);
+try {
+    $readyBy = microtime(true)+5;
+    do {
+        $connection = @stream_socket_client('tcp://'.$address,$socketError,$socketMessage,0.1);
+        if (is_resource($connection)) { fclose($connection); break; }
+        tvpf_ok(proc_get_status($process)['running'] && microtime(true)<$readyBy, 'native HTTP fixture ready');
+        usleep(20000);
+    } while (true);
+    foreach (['retained','skipped','rejected'] as $case) {
+        $connection = stream_socket_client('tcp://'.$address,$socketError,$socketMessage,1);
+        tvpf_ok(is_resource($connection), 'native HTTP fixture connection');
+        stream_set_timeout($connection,5);
+        fwrite($connection,"GET /?case=".$case." HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        $response = stream_get_contents($connection,262145);
+        $timedOut = stream_get_meta_data($connection)['timed_out']; fclose($connection);
+        tvpf_ok(!$timedOut && is_string($response) && strlen($response)<=262144, 'bounded native HTTP response');
+        $parts = explode("\r\n\r\n",$response,2);
+        tvpf_ok(count($parts)===2 && preg_match('/\AHTTP\/1\.[01] 200 /',$parts[0])===1,
+            'passive path preserves HTTP200: '.$case.' '.substr((string)file_get_contents($httpDirectory.'/server.log'),-4096));
+        $expected = tvpf_flights();
+        $expected['flights'][0]['fuelCharge']['value'] = $case==='rejected' ? 'not-money' : '0.00';
+        tvpf_ok($parts[1]===json_encode($expected,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),
+            'native HTTP body byte-identical: '.$case);
+        $headers = [];
+        foreach (explode("\r\n",$parts[0]) as $line) {
+            if (stripos($line,'X-AnyTour-Fuel-Monitoring:')===0) $headers[]=trim(substr($line,strlen('X-AnyTour-Fuel-Monitoring:')));
+        }
+        if ($case==='retained') {
+            tvpf_ok(count($headers)===1 && strlen($headers[0])<=2048, 'one native monitoring header');
+            $summary=json_decode(base64_decode(strtr($headers[0],'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
+            tvpf_ok($summary['retained_count']===1 && $summary['fresh_count']===1
+                && $summary['buckets'][0]['matched_count']===1 && $summary['buckets'][0]['zero_reference_count']===1
+                && $summary['buckets'][0]['absolute_difference_minor_sum']===0, 'native explicit-zero monitoring summary');
+        } else tvpf_ok($headers===[], 'no native header for '.$case);
+    }
+} finally {
+    proc_terminate($process); proc_close($process);
+    array_map('unlink',glob($httpDirectory.'/*')?:[]); rmdir($httpDirectory);
+}
+
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable native_http=retained_zero,skipped,rejected\n";
