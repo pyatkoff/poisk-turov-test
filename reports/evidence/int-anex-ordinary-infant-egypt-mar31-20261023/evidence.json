@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "operation": "int-anex-ordinary-infant-egypt-20270331-20261023-v1",
+  "claim": 6359832061,
+  "terminal": 6359923483,
+  "status": "FAILED_SEALED_CONSUMED_NO_REPLAY",
+  "installed_search_source": "a505991d878d265909dbe7aa82963b050497e944",
+  "release": "446938bd38f42c27d2dd461e29ea7efbfe6a3e52",
+  "publisher_terminal": 6359555174,
+  "backend_source": "6b5b3f2bb30a5a23e7ae8128c2eda8c4f3d50aa2",
+  "scope": {
+    "departure_city": "Moscow",
+    "destination": "Egypt",
+    "departure_window": [
+      "2027-03-31",
+      "2027-04-06"
+    ],
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [
+      1
+    ],
+    "meal": "AI"
+  },
+  "selected": {
+    "provider": "direct_anex",
+    "operator": "ANEX",
+    "hotel": "SHARM REEF",
+    "stay": [
+      "2027-04-06",
+      "2027-04-13"
+    ],
+    "room": "Standard Garden View Room",
+    "listing_rub": 151114,
+    "verified_total": null
+  },
+  "actions": {
+    "find": 1,
+    "ordinary_card": 1,
+    "ordinary_cta_group_expansion": 1,
+    "concrete_selection": 1,
+    "ordinary_selected_cta": 1,
+    "quote_start": 1,
+    "pair_calculation": 0,
+    "optional_flight_shortcut": 0,
+    "receipt_get": 1,
+    "retry": 0,
+    "continue": 0,
+    "second_find": 0,
+    "contact": 0,
+    "lead": 0,
+    "booking": 0
+  },
+  "facts": {
+    "reason": "ANEX_QUOTE_TRANSPORT_ERROR",
+    "start": "HTTP200 / 773ms / curl0",
+    "transports": "HTTP0 / bytes0 / 25004ms / curl28 / stateUNKNOWN",
+    "sealed": true,
+    "reserved_calls": 2,
+    "retained_anex_offers": 163,
+    "reader_supplier_calls": 0,
+    "global_http_and_remaining": "NOT_MEASURED"
+  },
+  "conclusion": "Ordinary infant path reaches existing full quote. Client transports invocation timed out at its existing 25-second cURL limit. No HTTP response observed; this does not prove supplier-wide outage, historical failure cause, absence of available flights, infant fee or need/sufficiency of a larger supplier timeout. UNKNOWN sealed context must not be replayed. Current quote frontend deadline is 65 seconds; start+transports run sequentially with independent existing 25-second client ceilings. No runtime or timeout edit performed.",
+  "next": "Use this one retained terminal for the INT transport boundary and SEARCH UI boundary; evaluate bounded transport-deadline correction only against current runtime constraints, without replaying this context or treating CI40min as supplier-timeout authority.",
+  "receipt": {
+    "ok": true,
+    "data": {
+      "retained_only": true,
+      "supplier_calls": 0,
+      "records": [
+        {
+          "status": "quote_failed",
+          "reason": "ANEX_QUOTE_TRANSPORT_ERROR",
+          "stages": [
+            {
+              "stage": "start",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 13164,
+              "elapsed_ms": 773,
+              "curl_errno": 0
+            },
+            {
+              "stage": "transports",
+              "state": "unknown",
+              "http_status": 0,
+              "response_bytes": 0,
+              "elapsed_ms": 25004,
+              "curl_errno": 28
+            }
+          ],
+          "version": 2,
+          "reserved_calls": 2,
+          "sealed": true
+        }
+      ],
+      "retained_first_page": {
+        "raw_rows": "nonempty",
+        "retained_offers": 163,
+        "interpretation": "offers_retained"
+      }
+    }
+  },
+  "observations": [
+    {
+      "stage": "pre_find",
+      "at": "2026-10-23T07:32:06.337Z",
+      "state": "Browser tab: 1, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 link Description: Перейти к результатам, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#results\n\t2 container\n\t\t3 link Description: AnyTour — начало, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t4 container Основная навигация\n\t\t\t5 link Description: Подбор тура, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t6 text Версия для проверки\n\t7 container\n\t\t8 container Подберём ваш отдых, ID: search\n\t\t\t9 heading Подберём ваш отдых, Value: 1, ID: page-title\n\t\t\t\t10 text Подберём ваш отдых\n\t\t\t11 container search-form\n\t\t\t\t12 pop up button Description: Город вылета: Москва, ID: departure-button\n\t\t\t\t\t13 text Откуда\n\t\t\t\t\t14 text Москва\n\t\t\t\t\t15 text ›\n\t\t\t\t16 button Description: Направление: Египет, Help: Египет, ID: country\n\t\t\t\t\t17 text Куда\n\t\t\t\t\t18 text Египет\n\t\t\t\t\t19 text Вся страна\n\t\t\t\t\t20 text ›\n\t\t\t\t21 button Даты вылета 31 мар — 6 апр ›\n\t\t\t\t\t22 text Даты вылета\n\t\t\t\t\t23 text 31 мар — 6 апр\n\t\t\t\t\t24 text ›\n\t\t\t\t25 button Ночей 7 ночей ›\n\t\t\t\t\t26 text Ночей\n\t\t\t\t\t27 text 7 ночей\n\t\t\t\t\t28 text ›\n\t\t\t\t29 button Туристы 2 взр. · 1 реб. 1 год ›\n\t\t\t\t\t30 text Туристы\n\t\t\t\t\t31 text 2 взр. · 1 реб.\n\t\t\t\t\t32 text 1 год\n\t\t\t\t\t33 text ›\n\t\t\t\t34 container Категория отеля\n\t\t\t\t\t35 text Категория отеля\n\t\t\t\t\t36 container Description: Категория отеля, ID: quick-stars\n\t\t\t\t\t\t37 checkbox Любая, Value: 1\n\t\t\t\t\t\t38 checkbox 3★, Value: 0\n\t\t\t\t\t\t39 checkbox 4★, Value: 0\n\t\t\t\t\t\t40 checkbox 5★, Value: 0\n\t\t\t\t41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal\n\t\t\t\t\t42 text Питание\n\t\t\t\t\t43 text Всё включено\n\t\t\t\t\t44 text ⌄\n\t\t\t\t45 button Бюджет за всех Без ограничений ⌄, ID: quick-budget\n\t\t\t\t\t46 text Бюджет за всех\n\t\t\t\t\t47 text Без ограничений\n\t\t\t\t\t48 text ⌄\n\t\t\t\t49 button Найти туры\n\t\t\t\t50 button Уточнить параметры\n\t\t\t\t51 text Цена за весь тур и всех туристов\n\t\t\t52 button (collapsed) ⓘ О данных поиска ⌄, Secondary Actions: Expand\n\t\t\t\t53 text ⓘ\n\t\t\t\t54 text О данных поиска\n\t\t\t\t55 text ⌄\n\t\t56 container Ваш следующий отдых, ID: results\n\t\t\t57 heading Ваш следующий отдых, Value: 2, ID: results-title\n\t\t\t\t58 text Ваш следующий отдых\n\t\t\t59 text Задайте направление, даты и состав туристов — предложения появятся после поиска.\n\t\t\t60 container\n\t\t\t\t61 text Цена за всех туристов\n\t\t\t\t62 text уточняется при выборе\n\t\t\t63 container cards\n\t\t\t\t64 heading Начните с параметров поездки, Value: 3\n\t\t\t\t\t65 text Начните с параметров поездки\n\t\t\t\t66 text Выберите направление, даты и туристов, затем нажмите «Найти туры».\n\t67 button (collapsed) Дизайн · пакет 91 Настройки и сценарии ⌄, Secondary Actions: Expand\n\t\t68 text Дизайн · пакет 91\n\t\t69 text Настройки и сценарии\n\t\t70 text ⌄\n\t71 container\n\t\t72 link Description: AnyTour — к поиску, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t73 text Отдых начинается с хорошего выбора.\n\t\t74 button О данных\n\t\t75 text Дизайн · пакет 91 · 14.10.2026 · исходник v227\n\nThe focused UI element is 41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal"
+    },
+    {
+      "stage": "ordinary_application_cta_once",
+      "state": "Browser tab: 1, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\nRemoved element IDs: 121-136\n~\t\t\t\t115 text Номера: 8 · Туры: 24\n~\t\t\t\t\t117 button (expanded) Secondary Actions: Collapse\n~\t\t\t\t\t\t118 heading 4\n~\t\t\t\t\t119 button\n~\t\t\t\t\t120 button\n+\t\t\t\t\t121 checkbox 0\n+\t\t\t\t\t122 button\n+\t\t\t\t\t123 button\n+\t\t\t\t\t124 checkbox 0\n+\t\t\t\t\t125 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t126 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t127 heading 4\n+\t\t\t\t128 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t129 heading 4\n+\t\t\t\t130 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t131 heading 4\n+\t\t\t\t132 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t133 heading 4\n+\t\t\t\t134 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t135 heading 4\n+\t\t\t\t136 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t137 heading 4\n+\t\t\t\t138 button (collapsed) Secondary Actions: Expand\n+\t\t\t\t\t139 heading 4\n+\t\t\t140 text от 151 114 ₽\n+\t\t\t141 text Цена из поиска · доплата за младенца уточняется · Выберите вариант из списка\n~\t\t\t54 button Выбрать номер, ID: hotel-detail-offers\nThe focused UI element is 0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE"
+    },
+    {
+      "stage": "ordinary_selected_cta",
+      "state": "Browser tab: 1, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\nThe following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.\n~\t\t\t199 text Проверяем выбранный вариант…\n~\t\t\t54 button (disabled) Проверяем цену…, ID: hotel-detail-offers\nThe focused UI element is 0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE"
+    },
+    {
+      "stage": "ordinary_quote_outcome",
+      "state": "Browser tab: 1, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-31&to=2027-04-06&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Перелёт и цена тура, ID: modal\n\t\t53 button Description: К отелю, Help: К отелю: SHARM REEF, ID: modal-back\n\t\t54 text ANEX · АКТУАЛИЗАЦИЯ\n\t\t3 heading Перелёт и цена тура, Value: 2, ID: modal-title\n\t\t\t55 text Перелёт и цена тура\n\t\t5 button Закрыть окно\n\t\t6 container modal-body\n\t\t\t56 content list Этапы выбора тура\n\t\t\t\t57 text Номер и питание\n\t\t\t\t58 text Перелёт\n\t\t\t\t59 text Заявка\n\t\t\t60 image Фото SHARM REEF\n\t\t\t61 heading SHARM REEF, Value: 3\n\t\t\t\t62 text SHARM REEF\n\t\t\t63 container 3 звезды\n\t\t\t\t64 text ★★★\n\t\t\t65 text Хадаба, Египет\n\t\t\t66 container Выбранные условия тура\n\t\t\t\t67 text 6 апр — 13 апр · 7 ночей\n\t\t\t\t68 text 2 взр. + 1 реб. · возраст ребёнка: 1 год\n\t\t\t\t69 definition list\n\t\t\t\t\t70 container Номер\n\t\t\t\t\t\t71 text Номер\n\t\t\t\t\t72 text Standard Garden View Room\n\t\t\t\t\t73 container Питание\n\t\t\t\t\t\t74 text Питание\n\t\t\t\t\t75 text Всё включено\n\t\t\t\t\t76 container Оператор\n\t\t\t\t\t\t77 text Оператор\n\t\t\t\t\t78 text ANEX\n\t\t\t79 container\n\t\t\t\t80 heading Перелёт, Value: 3\n\t\t\t\t\t81 text Перелёт\n\t\t\t\t82 text ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.\n\t\t\t83 container\n\t\t\t\t84 heading Цена тура, Value: 3\n\t\t\t\t\t85 text Цена тура\n\t\t\t\t86 text Полную стоимость получим для выбранного перелёта.\n\t\t52 container modal-footer\n\t\t\t87 text За всех туристов\n\t\t\t88 text Цена уточняется\n\t\t\t89 text Цена требует подтверждения\n\t\t\t90 button К вариантам\n\nThe focused UI element is 3 heading Перелёт и цена тура, Value: 2, ID: modal-title"
+    }
+  ],
+  "terminal.jpg": {
+    "bytes": 78070,
+    "sha256": "90f0dc4f3eafa5d5897a5bef8e470fab5ec18facc5183cfd9a3ff7b0731b7c67"
+  },
+  "receipt.json": {
+    "bytes": 882,
+    "sha256": "bfce70a19c7e833b515ab0d028b6d5a63d13a6167cc95bb4a0f522cfdffab4ea"
+  },
+  "trace.json": {
+    "bytes": 122662,
+    "sha256": "40d3e78804dad9a39adecf1eb8f7b9ccdffbfc85446f803d83396d1693094224"
+  }
+}

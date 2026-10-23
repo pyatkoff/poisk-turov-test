@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "data": {
+    "retained_only": true,
+    "supplier_calls": 0,
+    "records": [
+      {
+        "status": "quote_failed",
+        "reason": "ANEX_QUOTE_TRANSPORT_ERROR",
+        "stages": [
+          {
+            "stage": "start",
+            "state": "complete",
+            "http_status": 200,
+            "response_bytes": 13164,
+            "elapsed_ms": 773,
+            "curl_errno": 0
+          },
+          {
+            "stage": "transports",
+            "state": "unknown",
+            "http_status": 0,
+            "response_bytes": 0,
+            "elapsed_ms": 25004,
+            "curl_errno": 28
+          }
+        ],
+        "version": 2,
+        "reserved_calls": 2,
+        "sealed": true
+      }
+    ],
+    "retained_first_page": {
+      "raw_rows": "nonempty",
+      "retained_offers": 163,
+      "interpretation": "offers_retained"
+    }
+  }
+}
