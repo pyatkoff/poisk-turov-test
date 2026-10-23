@@ -7,6 +7,7 @@ on:
       - '.github/workflows/int-server-executor.yml'
       - 'scripts/deploy/int_server_executor.py'
       - 'scripts/deploy/int_server_executor_passive_fuel_readiness.py'
+      - 'tests/int_server_executor_passive_fuel_install_test.py'
       - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
       - 'scripts/deploy/int_server_executor_firstpage_readback.py'
       - 'scripts/deploy/int_server_executor_match_primary.py'
@@ -174,6 +175,17 @@ jobs:
           php -l match-retained-source/scripts/diagnostics/hotel_match_retained_current_v1.php
           php -l match-retained-source/scripts/diagnostics/hotel_match_retained_anex_write_v1.php
           python3 tests/int_server_executor_match_retained_test.py -v
+      - name: Exact passive fuel capture installation source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 04c0647ac30e1fd195aaf78d3d538178dcd59ebb
+          path: passive-fuel-install-source
+          fetch-depth: 2
+          persist-credentials: false
+      - name: One-helper passive fuel native stock install and rollback
+        env:
+          PASSIVE_FUEL_INSTALL_SOURCE_ROOT: ${{ github.workspace }}/passive-fuel-install-source
+        run: python3 tests/int_server_executor_passive_fuel_install_test.py -v
       - name: Validate permanent INT executor contract
         run: |
           set -euo pipefail
@@ -359,5 +371,3 @@ jobs:
           path: ${{ runner.temp }}/int-direction-store-readback/result.json
           if-no-files-found: warn
           retention-days: 30
-
-
