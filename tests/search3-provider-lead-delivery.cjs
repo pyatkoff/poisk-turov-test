@@ -27,11 +27,11 @@ const receipt=provider=>({provider,offerRef:provider==='anex'?'anex_online:'+'a'
 // browser/device or fresh-supplier acceptance run.
 function visualOwner(){
  const source=fs.readFileSync(path.join(root,'visual-search/app.js'),'utf8');
- const context=vm.createContext({Date,structuredClone,state:{search:{origin:'Москва'}},countryNames:{4:'Турция'},
+ const context=vm.createContext({Date,structuredClone,window:{V2_CONFIG:{}},data:{live:true},state:{search:{origin:'Москва'}},countryNames:{4:'Турция'},
   mealLabel:o=>o.meal,selectedTourHotel:o=>o.testHotel,rememberProviderView(){},retainedProviderView:()=>null,
   showModal(){},$:()=>({classList:{add(){}}}),providerTourBodyHTML:()=>'',offerDetailFooterHTML:()=>'',esc:String,dateText:String,nightsText:String,guestsText:()=>'',money:String,
   anexApplicationDraft:null,selectedOffer:null});
- for(const name of ['andromedaQuoteCurrent','andromedaApplicationReceipt','anexApplicationReceipt','openAnexPackageQuote']){
+ for(const name of ['andromedaQuoteCurrent','andromedaApplicationReceipt','anexApplicationReceipt','messengerAvailable','openAnexPackageQuote']){
   const marker='function '+name+'(',start=source.indexOf(marker);
   assert(start>=0&&source.indexOf(marker,start+marker.length)===-1,'one real visual owner for '+name);
   const next=source.slice(start+marker.length).search(/^\s*(?:async )?function /m);
@@ -57,6 +57,7 @@ async function visualHandoff(){
   legs:[{label:'ANEX SELECTED OUT'},{label:'ANEX SELECTED BACK'}]}};
  ui.openAnexPackageQuote(anexOffer,anexQuote);
  const anex=ui.anexApplicationDraft;assert(anex,'actual visual ANEX receipt is constructible');
+ assert.equal(ui.messengerAvailable(anex),false,'the real source helper keeps an unset messenger flag on the existing phone route');
  for(const [r,offer,expectedPrice,out,back] of [[samo,selected,137246.75,'SELECTED OUT','SELECTED BACK'],[anex,anexOffer,156789.25,'ANEX SELECTED OUT','ANEX SELECTED BACK']]){
   const f=fixture(),m=f.mount(r);m.form.elements.name.value='Тест';await m.fire('submit');
   assert.equal(f.requests.length,1,'actual receipt reaches exactly one intercepted controller transport');
