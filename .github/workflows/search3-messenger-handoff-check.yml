@@ -1,0 +1,53 @@
+name: Search3 retained messenger producer
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'app/integrations/search3-messenger-handoff.php'
+      - 'app/integrations/anex-package-quote-handoff.php'
+      - 'app/integrations/anex-package-quote-runtime.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'tests/search3-messenger-handoff-*.php'
+      - 'docs/integrations/search3-messenger-handoff.md'
+      - '.github/workflows/search3-messenger-handoff-check.yml'
+permissions:
+  contents: read
+concurrency:
+  group: search3-messenger-producer-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+jobs:
+  retained-producer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: e9b725c64763fbf0882de1d254b7689b9f4c7496
+          path: accepted-receiver
+          persist-credentials: false
+      - name: Exact source and actual frozen receiver interoperability
+        env:
+          SEARCH3_RECEIVER_SOURCE: ${{ github.workspace }}/accepted-receiver
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git -C accepted-receiver rev-parse HEAD)" = e9b725c64763fbf0882de1d254b7689b9f4c7496
+          php -l app/integrations/search3-messenger-handoff.php
+          php -l v2/api-anex-search3-preview.php
+          php -l tests/search3-messenger-handoff-test.php
+          php -l tests/search3-messenger-handoff-http-test.php
+          mkdir -p checked-search3-producer
+          php tests/search3-messenger-handoff-test.php | tee checked-search3-producer/retained-contract.txt
+          php tests/search3-messenger-handoff-http-test.php | tee checked-search3-producer/http-contract.txt
+          cp app/integrations/search3-messenger-handoff.php v2/api-anex-search3-preview.php checked-search3-producer/
+          (cd checked-search3-producer && sha256sum search3-messenger-handoff.php api-anex-search3-preview.php > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-retained-producer-${{ github.event.pull_request.head.sha }}
+          path: checked-search3-producer/
+          retention-days: 14
