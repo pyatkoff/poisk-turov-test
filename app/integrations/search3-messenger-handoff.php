@@ -85,6 +85,7 @@ final class AnyTourSearch3MessengerHandoff
     public static function transact(array $request, array &$session, int $now, array $signer, callable $checkpoint, callable $transport, ?callable $clock = null): array
     {
         self::exact($request, ['action', 'operation_id', 'csrf']);
+        $clock ??= static fn(): int => time();
         $operation = $request['operation_id']; $action = $request['action'];
         if (!in_array($action, ['handoff_create', 'handoff_status', 'handoff_revoke'], true)
             || !is_string($operation) || !preg_match('/\A[a-f0-9]{32}\z/D', $operation)) throw new InvalidArgumentException('invalid_request');
@@ -95,10 +96,17 @@ final class AnyTourSearch3MessengerHandoff
             || $now - $record['prepared_at'] > 900 || $now < $record['prepared_at']
             || $now - $record['provenance']['observed_at'] > 900)) throw new RuntimeException('handoff_stale');
         if ($creating) {
+            $latestTime = $now;
+            $readClock = static function () use ($clock, &$latestTime): int {
+                $readAt = $clock();
+                if (!is_int($readAt) || $readAt < $latestTime) throw new RuntimeException('handoff_stale');
+                $latestTime = $readAt;
+                return $readAt;
+            };
             $selector = $record['selector'];
             $slot = $session['anex_offer_contexts'][$selector['search_ref']]['package_quotes'][$selector['offer_ref']]['pairs'][$selector['choice_ref']]['handoff_record'] ?? null;
             if (!is_array($slot) || ($slot['json_sha256'] ?? null) !== $record['record_sha256']) throw new RuntimeException('handoff_stale');
-            $current = self::canonical($selector, $session, $checkpoint, $now, $clock ?? static fn(): int => time());
+            $current = self::canonical($selector, $session, $checkpoint, $now, $readClock);
             $record =& $session['search3_messenger_handoffs'][$operation];
             if ($current['record_sha256'] !== $record['record_sha256']) throw new RuntimeException('handoff_stale');
         }
@@ -116,6 +124,15 @@ final class AnyTourSearch3MessengerHandoff
         $record['state'] = $wireAction === 'revoke' ? 'revoke_unknown' : ($creating ? 'unknown' : $record['state']);
         $checkpoint($session);
         $record =& $session['search3_messenger_handoffs'][$operation];
+        if ($creating) {
+            // Saving/reacquiring the session may cross the retained quote or key deadline.
+            // Keep the durable UNKNOWN intent; never replay it as a fresh create.
+            $sendAt = $readClock();
+            if ($sendAt >= $record['provenance']['deadline']) {
+                throw new RuntimeException('handoff_stale');
+            }
+            $headers = self::headers($raw, $signer, $sendAt);
+        }
         try { $reply = $transport(self::RECEIVER, $raw, $headers); }
         catch (Throwable $ignored) { return ['operation_id' => $operation, 'state' => $record['state'], 'error' => 'receiver_unknown']; }
         $data = is_array($reply) && ($reply['status'] ?? null) === 200 && is_string($reply['body'] ?? null)
