@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "operation_id": "int-tv-family-turkey-20270409-20261023-v1",
+  "status": "CONSUMED_NO_REPLAY",
+  "date": "2026-10-23",
+  "claims": [
+    6362764047,
+    6362799364
+  ],
+  "terminal": 6362887978,
+  "unexecuted_draft": {
+    "dates": "2027-05-22..2027-05-28",
+    "reason": "outside observed current calendar horizon ending2027-04-22",
+    "supplier_execution": false
+  },
+  "request": {
+    "origin": "Moscow",
+    "destination_country": "Turkey",
+    "departure_from": "2027-04-09",
+    "departure_to": "2027-04-15",
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [
+      1
+    ],
+    "meal": "AI"
+  },
+  "observed_search": {
+    "stop_action": true,
+    "continued": false,
+    "bg_filtered_hotels": 43,
+    "bg_filtered_variants": 125,
+    "complete_supplier_population": false,
+    "find_to_bounded_snapshot_ms": 59786,
+    "timing_scope": "span of two browser snapshots, not measured supplier stage duration"
+  },
+  "selected_observation": {
+    "index": 6,
+    "operator_family": "biblio_globus",
+    "operator": "Библио-Глобус",
+    "provider": "tourvisor",
+    "direction": {
+      "origin": "Moscow",
+      "destination_country": "Turkey"
+    },
+    "hotel": "JIVA BEACH RESORT",
+    "dates": {
+      "checkin": "2027-04-10",
+      "checkout": "2027-04-17"
+    },
+    "party": {
+      "adults": 2,
+      "child_ages": [
+        1
+      ]
+    },
+    "room": "standart room land view plus",
+    "meal": "AI",
+    "selected_flights": [
+      "SU2122",
+      "SU2123"
+    ],
+    "whole_party_displayed_total_rub": 212106,
+    "fuel": {
+      "tour_displayed_rub": null,
+      "flight_displayed_rub": null,
+      "selected_summary_displayed_rub": null,
+      "display_label": "Без доплаты по сбору",
+      "qualification": "По данным предложения. Другие возможные доплаты требуют проверки.",
+      "comparison": "numeric_stage_comparison_unavailable",
+      "flight_minus_tour_rub": null,
+      "absolute_stage_difference_rub": null,
+      "flight_minus_tour_pct_of_tour": null,
+      "percent_denominator": null,
+      "supplier_unit_independently_retained": false,
+      "raw_supplier_numeric_zero_verified": false
+    },
+    "private_monitoring_persistence": "NOT_MEASURED",
+    "pricing_accuracy_eligible": false,
+    "final_price_verified": null,
+    "isolated_infant_fee_rub": null,
+    "source": {
+      "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/trace.json",
+      "git_blob": "bcd3cc1a3b635bb20a3fd66245120e4c2fd92122",
+      "bytes": 104060,
+      "sha256": "ca2023b6759cb221a7061490cc8f4a2230c7082e33b8275c44859a93201b54d6",
+      "capture_date": "2026-10-23",
+      "capture_time_utc": "2026-10-23T10:28:32.111Z",
+      "provenance": "own ordinary UI DOM snapshots and selected JPEG; not raw supplier JSON",
+      "selected_frame": {
+        "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/selected.jpg",
+        "bytes": 99936,
+        "sha256": "589dc1a2ef8f6a9429cd29fc53cf86391a3fa3435b50dd7ed69b2e9600e41682",
+        "git_blob": "c262a3ad4e47217cf3f384ce304cf2ce728b6efa"
+      }
+    }
+  },
+  "observations": {
+    "header": "NOT_OBSERVED_SUPPORTED_BROWSER_API_HAS_NO_RESPONSE_HEADERS",
+    "raw_supplier_numeric_fuel": "NOT_MEASURED",
+    "private_capture": "NOT_MEASURED",
+    "isolated_infant_fee": "NOT_EXPOSED",
+    "supplier_stage_http_codes": "NOT_MEASURED",
+    "supplier_stage_durations": "NOT_MEASURED",
+    "accuracy_80_percent": "NOT_MEASURED"
+  },
+  "author_recorded_actions": {
+    "find": 1,
+    "ordinary_tv_actualization_flows": 1,
+    "displayed_pair_confirmation": 1,
+    "retry": 0,
+    "continue": 0,
+    "second_offer": 0,
+    "anex_quote": 0,
+    "receipt_poll": 0,
+    "contacts": 0,
+    "real_lead": 0,
+    "booking": 0
+  },
+  "budget": {
+    "reserved_supplier_http_ceiling": 256,
+    "actual_supplier_http": null,
+    "owner_daily_ceiling": 5000,
+    "global_account_usage_and_remaining": "NOT_MEASURED",
+    "ui_actions_are_not_http_counts": true
+  },
+  "runtime": {
+    "release": "4586d2b47501c1eeee47b603cc62c02352f4947b",
+    "int_feature": "b1a727c5749cc3a59bfb72e77d305bbf72596a7c",
+    "existing_pr": 4835,
+    "existing_install_run": 39933434012,
+    "new_source_changes": 0,
+    "new_installs": 0
+  },
+  "evidence": {
+    "trace": {
+      "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/trace.json",
+      "records": 8,
+      "bytes": 104060,
+      "sha256": "ca2023b6759cb221a7061490cc8f4a2230c7082e33b8275c44859a93201b54d6",
+      "git_blob": "bcd3cc1a3b635bb20a3fd66245120e4c2fd92122"
+    },
+    "frame": {
+      "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/selected.jpg",
+      "bytes": 99936,
+      "sha256": "589dc1a2ef8f6a9429cd29fc53cf86391a3fa3435b50dd7ed69b2e9600e41682",
+      "git_blob": "c262a3ad4e47217cf3f384ce304cf2ce728b6efa"
+    }
+  },
+  "review": {
+    "role": "independent temporary reviewer /root/review_4834",
+    "conclusion": "ACCEPT",
+    "scope": "exact8DOMsnapshots+1JPEG consistency and hashes; no rawzero/isDefault/header/persistence/infantfee/HTTPcounts/globalfinal or renewedUXacceptance"
+  },
+  "tab_closed": true,
+  "next_step": "Reuse this one case/handoff. Do not issue another supplier request to observe its missing header; consume a header only on a later independently justified ordinary case through an already permitted response surface."
+}

@@ -1,21 +1,43 @@
-# Исторический срез сохранённых данных топлива Tourvisor
+# Tourvisor fuel — retained public monitoring slice, 23 October 2026
 
-Анализ 23.10.2026 пяти собственных контекстов, сохранённых 22.10.2026. Новых поисков, актуализаций, чтений БД или серверных операций нет. Это публичные сохранённые кадры, а не выгрузка приватного мониторинга и не новые наблюдения после PR4834.
+Six own contexts across three operators and four operator/country groups.
+Observations1–5 are unchanged from [83bd1826](https://github.com/pyatkoff/poisk-turov-test/blob/83bd1826748f38ac472ab48b71ab405c1f4113d0/reports/evidence/int-tv-fuel-retained-baseline-20261023/summary.json).
+Observation6 is the new ordinary case after PR4835 installation; its exact trace
+and frame are pinned in [the case proof](../int-tv-family-turkey-20270409-20261023/summary.json).
+This is a public evidence slice, not the private monitoring population.
 
-| Оператор / тур | Направление / вылет | Состав | Топливо тура, ₽ | Топливо рейса, ₽ | Что доступно |
-| --- | --- | --- | ---: | ---: | --- |
-| FUN&SUN / EMPIRE BEACH | Москва → Египет / 18.04.2027 | 2 взрослых | — | — | В сохранённом кадре поле не показано |
-| FUN&SUN / SUNNY DAYS MIRETTE | Москва → Египет / 18.04.2027 | 2 взрослых | — | — | В сохранённом кадре поле не показано |
-| Библио-Глобус / SWISS HEAVEN SHARMING INN | Москва → Египет / 26.04.2027 | 2 взрослых | — | 14 034 | Только поле рейса |
-| Интурист / BIENO CLUB SVS | Москва → Турция / 08.05.2027 | 2 взрослых | 31 418 | 25 562 | Два явно подписанных поля, разные суммы |
-| Библио-Глобус / KLEOPATRA RAMIRA | Москва → Турция / 19.04.2027 | 2 взрослых + ребёнок 1 года | — | — | В итоговой сводке показано 15 739 ₽, включено; отдельные стадии не раскрыты |
+| Context | Operator / country | Displayed fuel evidence | Numeric stage comparison |
+| --- | --- | --- | --- |
+| EMPIRE BEACH AQUA PARK | FUN&SUN / Egypt | Not shown | Unavailable |
+| SUNNY DAYS MIRETTE | FUN&SUN / Egypt | Not shown | Unavailable |
+| SWISS HEAVEN SHARMING INN | Biblio-Globus / Egypt | Flight14034 RUB only | Unavailable |
+| BIENO SVS | Intourist / Turkey | Tour31418; flight25562 RUB | Different: flight minus tour -5856 RUB (-18.64% of tour fuel) |
+| KLEOPATRA RAMIRA | Biblio-Globus / Turkey | Selected summary15739 RUB only | Unavailable |
+| JIVA BEACH RESORT | Biblio-Globus / Turkey | Qualitative “Без доплаты по сбору”; numeric amount not retained | Unavailable |
 
-Знак «—» означает отсутствие отдельно показанного поля в этом материале, а не нулевой сбор или отсутствие данных у поставщика.
+Fuel is described in4/6 contexts: three numeric and one qualitative-only.
+Two show no fuel. Only one has both explicit numeric stage amounts; five numeric
+comparisons remain unavailable. Two contexts include an infant; zero expose an
+isolated infant fee. “Zero exposed fees” is a count, never a fee amount.
 
-В 3 из 5 контекстов видно хотя бы одно значение топлива. В одном контексте видны оба поля: у Интуриста рейсовая сумма ниже суммы тура на **5 856 ₽ (18,64% от показанной суммы топлива тура)**. Это описание различия двух стадий в одном сохранённом контексте. Оно само по себе не доказывает ошибку итоговой цены, не отменяет актуализацию и не задаёт допуск.
+The new JIVA case selected10–17April2027,7n/AI/`standart room land view plus`,
+2adults plus child aged1, SU2122/SU2123,212106RUB for everyone, unchanged from listing.
+The disclosure also says other possible surcharges need checking. Preserve that
+qualification: the whole-party sum does not establish an isolated infant fee.
+The no-surcharge UI label does not prove raw supplier zero, a successful backend
+capture/header, or the SAMO/Biblio zero policy.
 
-Для остальных 4 контекстов сравнение стадий недоступно. Эти строки сохранены в срезе, а не отброшены. У детского контекста отдельная infant-доплата не раскрыта; разница полной цены тура не превращается в infant fee.
+The one observed stage difference remains descriptive. It is not prediction
+accuracy, a defect, a rejection threshold or a20% tolerance. No automatic pricing
+rule, FX conversion, borrowed amount, double addition or final_verified promotion.
 
-**Точность 80% пока не оценена.** Ни доля видимых полей 3/5, ни одна несовпавшая пара не являются оценкой точности расчёта. Численность приватной выборки, сохранение новых live-наблюдений после PR4834, исходная единица supplier-суммы и метрика попадания этим срезом не установлены. Политика БГ fuel=0 относится только к SAMO listing; здесь показаны фактические значения Tourvisor.
+PR4835 source/CI/review/stock installation are already closed and were not rerun.
+The supported browser API does not expose response headers; no replacement reader,
+endpoint, replay or extra supplier request was added. Private cohort size,
+post-install persistence count and80%accuracy remain NOT_MEASURED/null.
+Offline consolidation added0supplierHTTP. Actual live HTTP counts and global
+account remainder were not measured; UI action counts are not wire counts.
 
-Источники закреплены в `summary.json`: immutable commit, путь, Git blob, SHA256 и число байтов для каждой строки. Исходные файлы не изменены. Следующий шаг — новые авторитетные естественные наблюдения и разрешённый контракт агрегированной статистики, без переигрывания этих случаев или замены запрещённого privileged reader.
+Next: consume authoritative natural observations through existing permitted
+surfaces, with one INT owner and one handoff per case. Do not repeat this or the
+five historical cases to fill missing fields.

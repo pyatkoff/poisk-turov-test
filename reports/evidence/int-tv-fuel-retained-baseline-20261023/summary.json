@@ -2,21 +2,23 @@
   "schema_version": 1,
   "source": "int-tv-fuel-retained-public-baseline",
   "analysed_on": "2026-10-23",
-  "scope": "historical retained public evidence only; no new live monitoring capture",
+  "scope": "Five immutable historical public contexts from22Oct plus one own ordinary UI context23Oct after4835 install; private cohort unmeasured.",
   "source_commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
-  "unique_contexts": 5,
+  "unique_contexts": 6,
   "operator_families": 3,
   "counts": {
-    "any_fuel_displayed": 3,
+    "any_fuel_displayed": 4,
     "no_fuel_displayed": 2,
     "explicit_two_stage_pairs": 1,
     "paired_different": 1,
     "paired_matched": 0,
     "flight_only": 1,
-    "selected_summary_only": 1,
-    "comparisons_unavailable": 4,
-    "infant_contexts": 1,
-    "isolated_infant_fee_exposed": 0
+    "selected_summary_only": 2,
+    "comparisons_unavailable": 5,
+    "infant_contexts": 2,
+    "isolated_infant_fee_exposed": 0,
+    "numeric_fuel_contexts": 3,
+    "qualitative_no_surcharge_only": 1
   },
   "private_monitoring_cohort_size": null,
   "post_4834_live_capture_count": null,
@@ -24,11 +26,13 @@
   "eighty_percent_target_evaluated": false,
   "accuracy_limit": "No raw private cohort, independently retained supplier unit, prediction oracle or agreed hit metric. Stage-field difference is not prediction accuracy, a defect or a rejection gate.",
   "execution": {
-    "new_supplier_http": 0,
+    "new_supplier_http": null,
+    "supplier_http_measurement": "NOT_MEASURED; live action intents are recorded separately in observation6 case proof",
+    "offline_consolidation_additional_supplier_http": 0,
     "database_reads": 0,
     "database_writes": 0,
     "runtime_changes": 0,
-    "browser_actions": 0,
+    "browser_actions": null,
     "replayed_operations": 0
   },
   "invariants": [
@@ -36,7 +40,8 @@
     "No historical record is evidence of a new post-fix capture or current supplier state.",
     "One context has two explicit stage amounts; its difference does not invalidate actualization.",
     "Whole-tour change is not an isolated infant/fuel fee; supplier totals are not recalculated.",
-    "No SAMO/Biblio zero policy is applied to Tourvisor; no automatic rule or final-price promotion."
+    "No SAMO/Biblio zero policy is applied to Tourvisor; no automatic rule or final-price promotion.",
+    "An explicit UI no-surcharge label is retained qualitatively; it does not prove raw supplier numeric zero, infant fee or successful backend passive capture."
   ],
   "groups": [
     {
@@ -63,8 +68,8 @@
     {
       "operator_family": "biblio_globus",
       "destination_country": "Turkey",
-      "contexts": 1,
-      "any_fuel_displayed": 1,
+      "contexts": 2,
+      "any_fuel_displayed": 2,
       "explicit_stage_pairs": 0
     }
   ],
@@ -315,7 +320,75 @@
         "capture_time_utc": null,
         "provenance": "retained own public UI text, not raw supplier JSON"
       }
+    },
+    {
+      "index": 6,
+      "operator_family": "biblio_globus",
+      "operator": "Библио-Глобус",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Turkey"
+      },
+      "hotel": "JIVA BEACH RESORT",
+      "dates": {
+        "checkin": "2027-04-10",
+        "checkout": "2027-04-17"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": [
+          1
+        ]
+      },
+      "room": "standart room land view plus",
+      "meal": "AI",
+      "selected_flights": [
+        "SU2122",
+        "SU2123"
+      ],
+      "whole_party_displayed_total_rub": 212106,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": null,
+        "selected_summary_displayed_rub": null,
+        "display_label": "Без доплаты по сбору",
+        "qualification": "По данным предложения. Другие возможные доплаты требуют проверки.",
+        "comparison": "numeric_stage_comparison_unavailable",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false,
+        "raw_supplier_numeric_zero_verified": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/trace.json",
+        "git_blob": "bcd3cc1a3b635bb20a3fd66245120e4c2fd92122",
+        "bytes": 104060,
+        "sha256": "ca2023b6759cb221a7061490cc8f4a2230c7082e33b8275c44859a93201b54d6",
+        "capture_date": "2026-10-23",
+        "capture_time_utc": "2026-10-23T10:28:32.111Z",
+        "provenance": "own ordinary UI DOM snapshots and selected JPEG; not raw supplier JSON",
+        "selected_frame": {
+          "path": "reports/evidence/int-tv-family-turkey-20270409-20261023/selected.jpg",
+          "bytes": 99936,
+          "sha256": "589dc1a2ef8f6a9429cd29fc53cf86391a3fa3435b50dd7ed69b2e9600e41682",
+          "git_blob": "c262a3ad4e47217cf3f384ce304cf2ce728b6efa"
+        }
+      }
     }
   ],
-  "next_step": "Use new authoritative natural observations only. Current private monitoring population cannot be inferred from these frames; a separate permitted aggregate-data contract is needed before population accuracy evaluation. No replay or replacement privileged reader."
+  "next_step": "Continue monitoring from justified new ordinary paths without replay. PR4835 is installed; its header was not observable through the supported browser API. Keep private population, post-fix persistence and80%accuracy unmeasured until authoritative facts are available.",
+  "historical_baseline_commit": "83bd1826748f38ac472ab48b71ab405c1f4113d0",
+  "source_commit_scope": "source_commit applies only to unchanged historical observations1..5; observation6 is pinned by actual Gitblobs/bytes/SHA in the same evidence tree.",
+  "count_definitions": {
+    "any_fuel_displayed": "numeric fuel or explicit qualitative no-surcharge label; never substitutes a numeric zero",
+    "selected_summary_only": "one historical numeric summary and one new qualitative-only summary; neither has two numeric stage amounts"
+  },
+  "post_4835_ordinary_ui_contexts": 1
 }
