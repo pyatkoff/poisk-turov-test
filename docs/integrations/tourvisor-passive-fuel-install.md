@@ -76,3 +76,42 @@ never installation authority. The original supplier/DB counters stay unknown;
 the new read-only action has zero supplier/DB/booking/lead calls. No historical
 path-type conclusion, install success, retry or replacement install ID follows.
 No-replay preserves both the original receipt and this action's own terminal.
+
+## Completion of the never-started write
+
+Owner24October2026 explicitly continued the remaining normal admission step after
+the verified reconciliation. Claim4709/6376534689 adds one fixed
+complete-tv-fuel-capture profile in the same module/carrier. Independent bounded
+ARCH review accepts a first previously unstarted write only under this complete
+phase proof; it does not grant a generic UNKNOWN retry or reset either operation.
+
+The owner command, after source review/CI/normal main cutover, is:
+`/run-int-server-v1 <fresh-current-FEATURE-SHA> complete-tv-fuel-capture int-anex-tv-fuel-capture-complete-20261024-v1`.
+
+Admission pins original run40034325979/control1fddefb6/attempt1/failure and
+read run40037220184/control25f1eb0f/attempt1/success, their owner/workflow/event
+and immutable artifact12536421402/12537746864 ZIP digests. The original result's
+exact hash7b2c binds the guarded failure before install_runtime, not an inference
+from current absence. Its reservation hash7c23 and the reconciliation private
+canonical result ff4e2670026497ef5ee8bfa595b1022bb6ebb209df848385105a3c4145044416
+are required on the server, with reservation identity and no plan/backup evidence.
+Both closed operations remain byte-identical before and after; their UNKNOWN or
+consumed status and historical unknown counters are preserved.
+
+The profile composes the already reviewed one-helper installer. Exact predecessor,
+three dependencies and the accepted typed public state (root index80e993e8 and
+three absent v2 paths) are rechecked before publication, including after the stock
+backup/plan stage and immediately before its first replacement. New helper bytes,
+manifest and backup/lint/readback/rollback remain the same fixed stock mechanism.
+No new installer/transport, provider/DB/key/config/public/UI change is admitted.
+
+Only this completion gets its own one-time reservation. Failure or UNKNOWN closes
+it without automatic successor/alias. Prior operations cannot be reissued. A
+successful exact readback proves only helper installation, not actual future
+header capture, supplier recovery or population/accuracy/final-price authority.
+
+Native fixtures retain the two exact real receipt canonical hashes and original
+reservation hash. Production root index bytes are not in the repository, so only
+the expected root fingerprint is injected for the synthetic HOME; its actual
+no-follow classifier and public drift checks still execute. Golden receipt pins
+assert the real production expectation separately. This is not installed proof.
