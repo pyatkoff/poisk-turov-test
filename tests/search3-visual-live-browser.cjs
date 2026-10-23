@@ -1633,6 +1633,9 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
+   if(process.argv.includes('--messenger-only')){
+    await require('./search3-visual-messenger-browser.cjs')({browser,origin,base,evidence});return;
+   }
    await require('./search3-visual-hotel-journey.cjs')();
    await inlineContactFlightReturn(browser,origin,base,evidence);
    await inlineHotelContactJourney(browser,origin,base,evidence);
