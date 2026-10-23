@@ -52,7 +52,41 @@
     const direction=segments=>{const unknownTime=helpers.departureMinute(segments)===null;return segments.map(value=>leg(value,helpers,unknownTime));};
     return {ref:selected,amount:money(selected.price),value:{state:'selected',outward:direction(selected.forward),inward:direction(selected.backward)}};
   }
+  function readApplicationContext(input,capturedAt,now,helpers){
+    const o=input.offer,h=input.hotel,r=input.application,raw=o?.raw;
+    const invalid=()=>fail('invalid_application_context');
+    if(!r||o?.provider!=='anex'||r.provider!=='anex'||raw?.anexKind!=='concrete'||raw.anexSessionCurrent!==true
+      ||r.offerRef!==raw.offerRef||r.searchRef!==raw.searchRef||r.generation!==raw.anexGeneration
+      ||r.localHotelId!==Number(raw.anexLocalHotelId)||!Number.isSafeInteger(r.localHotelId)||r.localHotelId<1
+      ||!/^anex_online:[a-f0-9]{64}$/.test(r.offerRef)||!/^[a-f0-9]{32}$/.test(r.searchRef)
+      ||!Number.isSafeInteger(r.generation)||r.generation<1||r.hotel!==h?.name||r.day!==o.day||r.nights!==o.nights
+      ||r.adults!==o.adults||!Array.isArray(r.ages)||JSON.stringify(r.ages)!==JSON.stringify(o.ages)
+      ||r.room!==o.room||r.currency!=='RUB'||typeof r.price!=='number'||!Number.isFinite(r.price)||r.price<=0
+      ||o.flightChoiceId!==undefined&&o.flightChoiceId!==null)invalid();
+    const verified=r.priceKind==='verified'&&r.finalPriceVerified===true;
+    const estimated=r.priceKind==='estimate'&&r.finalPriceVerified===false;
+    if(!verified&&!estimated||!Array.isArray(r.flights))invalid();
+    if(verified){
+      if(typeof r.choiceRef!=='string'||!r.choiceRef||r.choiceRef.length>4096||!Number.isSafeInteger(r.expiresAt)||r.expiresAt<1
+        ||r.departure!==(o.origin||o.search?.origin)||r.flights.length!==2
+        ||r.flights.some((f,i)=>f?.direction!==String(i)||typeof f.name!=='string'||!f.name.trim()||f.name.length>1000))invalid();
+    }else if(r.flights.length||r.choiceRef!==undefined||r.expiresAt!==undefined)invalid();
+    // Reuse the original selected-row/party/date/namespace validation. The
+    // original terms also bind pending results when receipt labels are unchanged.
+    const base=readContext({...input,application:undefined,price:{state:'unknown',currency:'RUB',description:''}},capturedAt,now,helpers);
+    const binding=JSON.stringify([base.value,money(o.total),r.offerRef,r.searchRef,r.generation,r.localHotelId,r.choiceRef]);
+    const value=base.value;
+    value.stay={room:text(r.room,500),meal:text(r.meal,300),placement:text(o.placement,500),operator:text(r.operator,300)};
+    if(!value.stay.meal||!value.stay.operator)invalid();
+    value.flights=verified?{state:'selected',outward:[{label:text(r.flights[0].name,1000)}],inward:[{label:text(r.flights[1].name,1000)}]}
+      :{state:'manager-deferred',outward:[],inward:[]};
+    value.price={amount:money(r.price),currency:'RUB',state:verified?(r.expiresAt*1000<=now?'expired':'checked'):'estimated',
+      description:verified?'Подтверждённая цена выбранного тура':'Расчётная стоимость · требует подтверждения',
+      expiresAt:verified?r.expiresAt:null,basis:verified?'selected-pair':'shown-offer',finalPriceVerified:false,authority:'browser-observation-only'};
+    return {...base,value,pair:r,binding};
+  }
   function readContext(input,capturedAt,now,helpers){
+    if(input?.application!==undefined)return readApplicationContext(input,capturedAt,now,helpers);
     const o=input?.offer,h=input?.hotel,p=input?.price;
     if(!o||!h||!p||!Number.isSafeInteger(input.revision)||input.revision<0)fail('incomplete_selection_context');
     if(typeof o.key!=='string'||!o.key||o.key.length>4096)fail('invalid_selection_key');
@@ -98,7 +132,7 @@
         const saved=value&&typeof value==='object'?captures.get(value):null;if(!saved)return false;
         try{
           const current=readContext(read(),value.capturedAt,now(),presentation);
-          return saved.key===current.key&&saved.raw===current.raw&&saved.pair===current.pair&&saved.revision===current.revision&&saved.signature===JSON.stringify(current.value);
+          return saved.key===current.key&&saved.raw===current.raw&&saved.pair===current.pair&&saved.revision===current.revision&&saved.binding===current.binding&&saved.signature===JSON.stringify(current.value);
         }catch(error){return false;}
       }
     });

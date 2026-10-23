@@ -101,4 +101,59 @@ test('Lost current selection and reader failure reject without transport or stat
   let data=fixture();const session=api.createSession(()=>{if(data===false)throw Error('closed');return data;},()=>time),s=session.capture();data=null;assert.equal(session.isCurrent(s),false);data=false;assert.equal(session.isCurrent(s),false);
   assert.deepEqual(calls,[]);
 });
+// Exercise the installed UI's actual receipt constructors, not a second receipt
+// normalizer. The quote receipt intentionally exposes labels, not invented legs.
+const uiSource=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+const estimateStart=uiSource.indexOf('function anexApplicationReceipt('),estimateEnd=uiSource.indexOf('\nfunction openAnexApplicationPreview',estimateStart);
+const quoteStart=uiSource.indexOf("  const raw=o.raw;anexApplicationDraft=Object.freeze({provider:'anex'"),quoteEnd=uiSource.indexOf('\n }',quoteStart);
+assert.ok(estimateStart>=0&&estimateEnd>estimateStart&&quoteStart>=0&&quoteEnd>quoteStart,'canonical ANEX application builders exist');
+function applicationFixture(verified=false){
+  const input=fixture(),o=input.offer,h=input.hotel;
+  o.flightChoiceId=null;o.raw={anexKind:'concrete',anexSessionCurrent:true,offerRef:'anex_online:'+ 'a'.repeat(64),searchRef:'b'.repeat(32),anexGeneration:7,anexLocalHotelId:3634};
+  const result=verified?{state:'quote_verified',finalPriceVerified:true,finalPrice:{amount:231456,currency:'RUB'},expiresAt:time/1000+60,choice:{choiceRef:'PRIVATE_PAIR',legs:[{label:'VF 276 · Москва → Хургада · 29.03.2027'},{label:'VF 277 · Хургада → Москва · 05.04.2027'}]}}
+    :{state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,calculatedTotal:{amount:220000,currency:'RUB'}};
+  const scope=vm.createContext({o,h,result,state:{search:{origin:'Москва'}},countryNames:{2:'Египет'},mealLabel:()=> 'Всё включено'});
+  vm.runInContext(uiSource.slice(estimateStart,estimateEnd),scope);
+  input.application=verified?vm.runInContext('let anexApplicationDraft;'+uiSource.slice(quoteStart,quoteEnd)+';anexApplicationDraft;',scope):scope.anexApplicationReceipt(o,result,h);
+  assert.ok(input.application);return input;
+}
+test('Canonical ANEX estimate preserves calculated whole-party amount and manager-deferred flights',()=>{
+  const input=applicationFixture(),session=api.createSession(()=>input,()=>time),s=session.capture();
+  assert.equal(s.price.amount,'220000');assert.equal(s.price.state,'estimated');assert.equal(s.price.basis,'shown-offer');
+  assert.equal(s.flights.state,'manager-deferred');assert.deepEqual(plain(s.flights.outward),[]);assert.deepEqual(plain(s.trip.childAges),[0,0,8]);
+  assert.equal(s.stay.room,input.application.room);assert.equal(s.stay.meal,input.application.meal);assert.equal(session.isCurrent(s),true);
+});
+test('Canonical ANEX chosen pair preserves supplied direction labels without manufacturing parsed flight facts',()=>{
+  const input=applicationFixture(true),before=plain(input),session=api.createSession(()=>input,()=>time),s=session.capture();
+  assert.equal(s.price.amount,'231456');assert.equal(s.price.state,'checked');assert.equal(s.price.basis,'selected-pair');
+  assert.deepEqual(plain(s.flights),{state:'selected',outward:[{label:input.application.flights[0].name}],inward:[{label:input.application.flights[1].name}]});
+  assert.equal(s.price.finalPriceVerified,false);assert.equal(s.price.authority,'browser-observation-only');assert.equal(session.isCurrent(s),true);assert.deepEqual(plain(input),before);
+  assert.doesNotMatch(JSON.stringify(s),/PRIVATE_PAIR|anex_online:|offerRef|searchRef|choiceRef|generation|SECRET_|localHotelId/);
+});
+test('Application receipt replacement, source row, revision and original terms invalidate pending results',()=>{
+  for(const change of [d=>d.application={...d.application},d=>d.offer.raw={...d.offer.raw},d=>d.revision++,d=>d.offer.meal='BB',d=>d.offer.placement='Different',d=>d.offer.total++,d=>d.hotel.resort='Other']){
+    const input=applicationFixture(true),session=api.createSession(()=>input,()=>time),s=session.capture();change(input);assert.equal(session.isCurrent(s),false);
+  }
+  const input=applicationFixture(true);input.application={...input.application};const session=api.createSession(()=>input,()=>time),s=session.capture();
+  input.application.choiceRef='ANOTHER_PRIVATE_PAIR';assert.equal(session.isCurrent(s),false);
+});
+test('Foreign receipt identity, trip, party and hotel cannot borrow the selected row',()=>{
+  for(const change of [r=>r.provider='tourvisor',r=>r.offerRef+='0',r=>r.searchRef+='0',r=>r.generation++,r=>r.localHotelId++,r=>r.hotel='Other',r=>r.day='2027-03-30',r=>r.nights++,r=>r.adults++,r=>r.ages=[0,8,0],r=>r.room='Other',r=>r.currency='USD']){
+    const input=applicationFixture(true);input.application={...input.application,ages:[...input.application.ages]};change(input.application);
+    assert.throws(()=>api.createSession(()=>input,()=>time).capture(),/invalid_application_context/);
+  }
+});
+test('Incomplete or ambiguous application price/flight facts are rejected',()=>{
+  for(const change of [r=>r.price=null,r=>r.price=0,r=>r.priceKind='listing',r=>r.finalPriceVerified=false,r=>r.choiceRef='',r=>r.expiresAt=undefined,r=>r.flights=[],r=>r.flights=[r.flights[1],r.flights[0]],r=>r.flights=[{direction:'0',name:''},r.flights[1]]]){
+    const input=applicationFixture(true);input.application={...input.application};change(input.application);
+    assert.throws(()=>api.createSession(()=>input,()=>time).capture(),/invalid_application_context/);
+  }
+  const input=applicationFixture();input.application={...input.application,flights:[{direction:'0',name:'Not selected'}]};
+  assert.throws(()=>api.createSession(()=>input,()=>time).capture(),/invalid_application_context/);
+});
+test('ANEX application quote expires at its exact deadline without reviving the old snapshot',()=>{
+  const input=applicationFixture(true),session=api.createSession(()=>input,()=>time),s=session.capture();time=input.application.expiresAt*1000;
+  assert.equal(session.isCurrent(s),false);const historical=session.capture();assert.equal(historical.price.state,'expired');assert.equal(historical.price.amount,'231456');
+  assert.equal(historical.price.finalPriceVerified,false);assert.deepEqual(calls,[]);
+});
 console.log(JSON.stringify({cases:count,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));
