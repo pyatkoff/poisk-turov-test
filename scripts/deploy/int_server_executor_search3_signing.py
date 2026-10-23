@@ -7,8 +7,16 @@ from __future__ import annotations
 
 import ast
 
-MODES = ('search3-signing-provision', 'search3-signing-readback')
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer')
 KEY_ID = 'search3-anytour-v1'
+# Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
+PRODUCER_PINS = {
+    'app/integrations/anex-package-quote-runtime.php': 'bdc4b6737974935cf195f5db1477013ab95110108e2137aea684571bbd22af01',
+    'app/integrations/anex-package-quote-handoff.php': 'd3d134a43b6f19676e7d046de525fc7ac206d7781aaaaf9eee375334e237bb7d',
+    'app/integrations/search3-messenger-handoff.php': '48af409ca80523373e70dcb6b71089516b03b73961eb090e43d9e31115a87bb7',
+    'app/integrations/anex-initial-week-gate.php': '145eff807355b50bcd381c6b3d732eb5c8ac4350f2945fb77304c9fd50673ce6',
+    'v2/api-anex-search3-preview.php': '14cb8f11834ff576b941356d57a3d3d919ab8f6c4d57a1f1ad4317d1b457ec8e',
+}
 
 
 def need(value, reason):
@@ -28,8 +36,9 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
+        prefix = 'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-'
         need(core.OP_RE.fullmatch(operation) is not None
-             and operation.startswith('int-anex-search3-signing-'), 'search3_signing_operation')
+             and operation.startswith(prefix), 'search3_signing_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
 
     core.parse_command = parse
@@ -87,7 +96,30 @@ try {
         $definitions[]=$clean[$i+4][1];
     }
     if(count($definitions)>1||($definitions!==[]&&$definitions!==[$expected]))s3fail('custody_pointer_conflict');
-    $pointerReady=$definitions===[$expected];
+    $pointerReady=false;
+    if($definitions!==[]) {
+        // Textual presence is not execution: accept only our canonical top-level tail.
+        $guard="if (!defined('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE')) define('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE', ".$expected.");";
+        $canonical=[];
+        foreach(token_get_all('<?php '.$guard) as $t) {
+            if(is_array($t)&&in_array($t[0],[T_OPEN_TAG,T_WHITESPACE,T_COMMENT,T_DOC_COMMENT],true))continue;
+            $canonical[]=is_array($t)?[$t[0],$t[1]]:$t;
+        }
+        $normal=array_map(fn($t)=>is_array($t)?[$t[0],$t[1]]:$t,$clean);
+        $braces=0;$parens=0;
+        foreach($normal as $i=>$t) {
+            $previous=$normal[$i-1]??null;
+            if($braces===0&&$parens===0&&is_array($t)&&$t[0]===T_IF
+                &&($previous===';'||$previous==='}'||(is_array($previous)&&$previous[0]===T_OPEN_TAG))
+                &&array_slice($normal,$i,count($canonical))===$canonical) {
+                $tail=array_slice($normal,$i+count($canonical));
+                if($tail===[]||(count($tail)===1&&is_array($tail[0])&&$tail[0][0]===T_CLOSE_TAG))$pointerReady=true;
+            }
+            if($t==='{')$braces++;if($t==='}')$braces--;
+            if($t==='(')$parens++;if($t===')')$parens--;
+        }
+        if(!$pointerReady)s3fail('custody_pointer_conflict');
+    }
     if(!$create&&!$pointerReady)s3fail('custody_pointer_missing');
     if(!function_exists('sodium_crypto_sign_keypair'))s3fail('custody_sodium');
     $created=false;
@@ -162,6 +194,18 @@ def search3_signing_custody():
 '''
 
 DISPATCH = r'''
+    if mode=='install-search3-producer':
+        if any(files.get(p)!=sha for p,sha in SEARCH3_PRODUCER_PINS.items()): fail('search3_producer_source_pin')
+        dependency=runtime/'app/integrations/anex-initial-week-gate.php'
+        if (not safe_file(dependency,2*1024*1024)
+                or hashlib.sha256(dependency.read_bytes()).hexdigest()!=SEARCH3_PRODUCER_PINS['app/integrations/anex-initial-week-gate.php']):
+            fail('search3_producer_dependency_drift')
+        result['install']=install_anex_preview(stage,files,op)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['status']='installed';result['supplier_calls']=0;result['database_writes']=0
+        result['runtime_changed']=result['install']['changed_files']>0
+        result['public_ui_entrypoints_unchanged']=True
     if mode in ('search3-signing-provision','search3-signing-readback'):
         required=('app/integrations/search3-messenger-handoff.php','app/integrations/anex-package-quote-handoff.php','v2/api-anex-search3-preview.php')
         if any(relative not in files for relative in required): fail('search3_signing_source_dependencies')
@@ -184,10 +228,15 @@ def activate(core, command):
     definition = 'def db_summary(provider):\n'
     dispatch = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):\n"
     collector = "    if mode not in ('reconcile',"
+    selected = "    backup_root=op/'backup';backup_root.mkdir(mode=0o700)\n    changed=[]\n    endpoint_expected=None\n"
+    rollback = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:\n"
     need(remote.count(definition) == 1 and remote.count(dispatch) == 1
-         and remote.count(collector) == 2, 'search3_signing_stock_drift')
-    remote = remote.replace(definition, 'SEARCH3_SIGNING_PHP=' + repr(PHP) + '\n' + REMOTE + definition, 1)
+         and remote.count(collector) == 2 and remote.count(selected) == 1
+         and remote.count(rollback) == 1, 'search3_signing_stock_drift')
+    remote = remote.replace(definition, 'SEARCH3_SIGNING_PHP=' + repr(PHP) + '\nSEARCH3_PRODUCER_PINS=' + repr(PRODUCER_PINS) + '\n' + REMOTE + definition, 1)
+    remote = remote.replace(selected, "    if mode=='install-search3-producer':\n        selected=[(p,p) for p in SEARCH3_PRODUCER_PINS if p.startswith('app/integrations/') and not p.endswith('anex-initial-week-gate.php')]+selected\n" + selected, 1)
+    remote = remote.replace(rollback, rollback.replace("('install-runtime',", "('install-search3-producer','install-runtime',"), 1)
     remote = remote.replace(dispatch, DISPATCH + dispatch, 1)
-    remote = remote.replace(collector, "    if mode not in ('search3-signing-provision','search3-signing-readback','reconcile',")
+    remote = remote.replace(collector, "    if mode not in ('install-search3-producer','search3-signing-provision','search3-signing-readback','reconcile',")
     ast.parse(remote)
     core.REMOTE = remote

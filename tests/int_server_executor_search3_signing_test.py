@@ -37,11 +37,13 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            body = f'/run-int-server-v1 {SHA} {mode} int-anex-search3-signing-case-v1'
+            prefix = 'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-'
+            operation = prefix + 'case-v1'
+            body = f'/run-int-server-v1 {SHA} {mode} {operation}'
             parsed = c.parse_command(body)
-            self.assertEqual({'source_sha': SHA, 'mode': mode, 'operation_id': 'int-anex-search3-signing-case-v1'}, parsed)
+            self.assertEqual({'source_sha': SHA, 'mode': mode, 'operation_id': operation}, parsed)
             for invalid in [body + ' /tmp/key', body.replace(SHA, 'x' * 40),
-                            body.replace('int-anex-search3-signing-', 'int-andromeda-'),
+                            body.replace(prefix, 'int-andromeda-'),
                             body.replace('case-v1', 'case'), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
@@ -56,7 +58,7 @@ class Admission(unittest.TestCase):
         compile(c.REMOTE, '<registered stock remote>', 'exec')
         self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')", c.REMOTE)
         self.assertIn("result['status']='reserved'", c.REMOTE)
-        self.assertEqual(2, c.REMOTE.count("    if mode not in ('search3-signing-provision','search3-signing-readback','reconcile',"))
+        self.assertEqual(2, c.REMOTE.count("    if mode not in ('install-search3-producer','search3-signing-provision','search3-signing-readback','reconcile',"))
         self.assertEqual(1, c.REMOTE.count('def search3_signing_custody():'))
         self.assertLess(len(base64.b64encode(__import__('zlib').compress(c.REMOTE.encode(), 9))), 64000)
         with self.assertRaises(ValueError):
@@ -78,15 +80,18 @@ class NativeStockCustody(unittest.TestCase):
         self.inventory.update({p: b'<?php\n' for p in (
             'app/integrations/search3-messenger-handoff.php', 'app/integrations/anex-package-quote-handoff.php',
             'v2/api-anex-search3-preview.php')})
+        self.archive = self.home / 'source.tar.gz'
+        self.rebuild_archive()
+        self.c = core(); self.counter = 0
+
+    def rebuild_archive(self):
         hashes = {p: hashlib.sha256(raw).hexdigest() for p, raw in self.inventory.items()}
         self.manifest_hash = hashlib.sha256(json.dumps(hashes, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        self.archive = self.home / 'source.tar.gz'
         with tarfile.open(self.archive, 'w:gz') as tar:
             files = self.inventory | {'manifest.json': json.dumps({'schema_version': 1, 'files': hashes}).encode()}
             for name, raw in files.items():
                 info = tarfile.TarInfo(name); info.size = len(raw); info.mode = 0o600
                 tar.addfile(info, io.BytesIO(raw))
-        self.c = core(); self.counter = 0
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -97,6 +102,7 @@ class NativeStockCustody(unittest.TestCase):
         c = core()
         command = c.parse_command(f'/run-int-server-v1 {SHA} {mode} {operation}')
         signing.activate(c, command)
+        self.mutate_remote(c)
         script = self.home / 'stock-remote.py'; script.write_text(c.REMOTE)
         env = dict(os.environ, HOME=str(self.home))
         php_bin = os.environ.get('PHP_BIN')
@@ -112,6 +118,23 @@ class NativeStockCustody(unittest.TestCase):
         self.assertNotIn('secret_key_base64', run.stdout)
         self.assertEqual(operation, result['operation_id'])
         return result, run.stdout
+
+    def mutate_remote(self, c):
+        pass
+
+    def test_conditional_or_noncanonical_pointer_rejected_before_writes(self):
+        pointer = repr(str(self.keyfile))
+        direct = f"define('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE', {pointer});"
+        guard = f"if (!defined('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE')) {direct}"
+        for statement in [f'if (false) {direct}', f'if (false) {{ {direct} }}',
+                          f'function unused() {{ {direct} }}', f'if (false) {guard}', direct]:
+            with self.subTest(statement=statement):
+                self.config.write_text(self.original + statement + '\n')
+                before = self.config.read_bytes()
+                result, _ = self.execute()
+                self.assertEqual('custody_pointer_conflict', result['reason'])
+                self.assertFalse(self.keyfile.exists())
+                self.assertEqual(before, self.config.read_bytes())
 
     def test_native_provision_readback_and_no_rotation(self):
         provision, stdout = self.execute()
@@ -197,6 +220,92 @@ class NativeStockCustody(unittest.TestCase):
         result, _ = self.execute()
         self.assertEqual('custody_key_mode', result['reason'])
         self.assertTrue(self.keyfile.read_bytes() == original)
+
+
+class NativeStockProducerInstall(NativeStockCustody):
+    # Inherit fixture helpers, not custody cases (loaded explicitly below).
+    def setUp(self):
+        super().setUp()
+        self.inventory.update({p: ('<?php\n// reviewed synthetic ' + p + '\n').encode()
+                               for p in signing.PRODUCER_PINS})
+        self.rebuild_archive()
+        self.fixture_pins = {p: hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.PRODUCER_PINS}
+        integrations = self.runtime / 'app/integrations'; integrations.mkdir(parents=True)
+        self.initial = integrations / 'anex-initial-week-gate.php'
+        self.initial.write_bytes(self.inventory['app/integrations/anex-initial-week-gate.php'])
+        self.old_quote = b'<?php\n// old quote\n'; self.old_api = b'<?php\n// old api\n'
+        (integrations / 'anex-package-quote-runtime.php').write_bytes(self.old_quote)
+        (self.runtime / 'api-anex-search3-preview.php').write_bytes(self.old_api)
+        self.sentinel = integrations / 'unrelated.php'; self.sentinel.write_bytes(b'<?php // unchanged\n')
+        self.inject_failure = False
+
+    def mutate_remote(self, c):
+        # Synthetic fixture adaptation only; production pins have no caller override.
+        old = 'SEARCH3_PRODUCER_PINS=' + repr(signing.PRODUCER_PINS)
+        self.assertEqual(1, c.REMOTE.count(old))
+        c.REMOTE = c.REMOTE.replace(old, 'SEARCH3_PRODUCER_PINS=' + repr(self.fixture_pins), 1)
+        if self.inject_failure:
+            anchor = "        result['install']=install_anex_preview(stage,files,op)\n        result['production_after']=fingerprints()"
+            self.assertEqual(1, c.REMOTE.count(anchor))
+            c.REMOTE = c.REMOTE.replace(anchor, anchor.split('\n')[0] + "\n        fail('synthetic_postinstall_failure')\n        result['production_after']=fingerprints()", 1)
+
+    def install(self):
+        return self.execute('install-search3-producer', f'int-anex-search3-producer-install-native-{self.counter+1}-v1')[0]
+
+    def test_install_narrow_dependency_first_and_endpoint_last(self):
+        result = self.install()
+        self.assertEqual('installed', result['status'])
+        self.assertEqual(4, result['install']['changed_files']); self.assertEqual(2, result['install']['created_files'])
+        self.assertFalse(result['install']['dependency']['changed'])
+        for source, raw in self.inventory.items():
+            if source in signing.PRODUCER_PINS:
+                target = source if source.startswith('app/') else 'api-anex-search3-preview.php'
+                self.assertEqual(raw, (self.runtime / target).read_bytes())
+        operation = self.home / '.anytoour-int-executor/operations' / result['operation_id']
+        # Locate the stock private operation plan without assuming a second store.
+        plans = list(self.home.rglob('anex-preview-install-plan.json'))
+        self.assertEqual(1, len(plans))
+        plan = json.loads(plans[0].read_text())
+        self.assertEqual('api-anex-search3-preview.php', plan['changed_files'][-1])
+        self.assertEqual(5, len(plan['files']))
+        self.assertEqual(b'<?php // unchanged\n', self.sentinel.read_bytes())
+        self.assertEqual(self.original, self.config.read_text()); self.assertFalse(self.keyfile.exists())
+        self.assertEqual(0, result['supplier_calls']); self.assertEqual(0, result['database_writes'])
+
+    def test_install_source_pin_and_existing_dependency_drift(self):
+        for kind in ('source', 'target'):
+            with self.subTest(kind=kind):
+                pins = dict(self.fixture_pins)
+                if kind == 'source': self.fixture_pins['app/integrations/search3-messenger-handoff.php'] = '0' * 64
+                else: self.initial.write_bytes(b'<?php // drift\n')
+                result = self.install()
+                self.assertEqual('search3_producer_source_pin' if kind == 'source' else 'search3_producer_dependency_drift', result['reason'])
+                self.assertEqual(self.old_quote, (self.runtime / 'app/integrations/anex-package-quote-runtime.php').read_bytes())
+                self.assertEqual(self.old_api, (self.runtime / 'api-anex-search3-preview.php').read_bytes())
+                self.assertFalse((self.runtime / 'app/integrations/search3-messenger-handoff.php').exists())
+                self.fixture_pins = pins
+
+    def test_install_postwrite_failure_restores_and_removes(self):
+        self.inject_failure = True
+        result = self.install()
+        self.assertEqual('rolled_back', result['status']); self.assertEqual('complete', result['rollback']['status'])
+        self.assertFalse(result['runtime_changed'])
+        self.assertEqual(self.old_quote, (self.runtime / 'app/integrations/anex-package-quote-runtime.php').read_bytes())
+        self.assertEqual(self.old_api, (self.runtime / 'api-anex-search3-preview.php').read_bytes())
+        for name in ['anex-package-quote-handoff.php', 'search3-messenger-handoff.php']:
+            self.assertFalse((self.runtime / 'app/integrations' / name).exists())
+        self.assertEqual(b'<?php // unchanged\n', self.sentinel.read_bytes())
+        self.assertEqual(self.original, self.config.read_text()); self.assertFalse(self.keyfile.exists())
+
+
+def load_tests(loader, tests, pattern):
+    suite = unittest.TestSuite()
+    for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
+    for name in ('test_install_narrow_dependency_first_and_endpoint_last',
+                 'test_install_source_pin_and_existing_dependency_drift',
+                 'test_install_postwrite_failure_restores_and_removes'):
+        suite.addTest(NativeStockProducerInstall(name))
+    return suite
 
 
 if __name__ == '__main__':
