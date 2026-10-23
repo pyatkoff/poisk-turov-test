@@ -172,6 +172,32 @@ live acceptance. Installation must use the existing checked INT install-runtime
 and install-anex-preview mechanisms, each with its own reservation and receipt.
 
 
+## Bounded flight-list deadline (23 October 2026)
+
+The new ordinary infant case [6359923483](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6359923483)
+retained a successful start (HTTP200, 773ms), followed by transports timing out
+after25004ms (cURL28, HTTP0, zero received bytes). Its sealed UNKNOWN context is
+consumed/no-replay. This identifies the existing flat25s client ceiling, not a
+supplier-wide outage or evidence that a longer wait will necessarily succeed.
+
+Only transports now has a45s native cURL ceiling. Start, SetTransport and calcfull
+keep25s ceilings; connection setup stays capped at10s. One monotonic60s budget
+begins before pacing on the client's first request and is shared by all its
+sequential stages. Each native call uses the smaller of its stage ceiling and
+the remaining budget in milliseconds. An exhausted budget opens no cURL handle
+and does not invent HTTP status or cURL errno. The existing65s browser deadline
+is unchanged, leaving room for the response/checkpoint boundary.
+
+The existing runtime creates one client for start+transports and a new client for
+SetTransport+calcfull. The budget is per such browser operation, not refreshed
+per supplier call and not extended across user selections. Token pacing, fixed
+URLs/payload/auth/TLS/redirect policy, byte limits, request counts and sealed
+UNKNOWN/no-replay behavior are unchanged; there is no retry. Offline native-branch
+fixtures check the stage ceilings, remaining-budget clipping across public calls,
+zero new cURL after expiry, HTTP failures and handle closure without networking.
+Source/CI/review, stock install-runtime and a separately claimed new live case are
+distinct gates; no old failed or accepted quote may be replayed for this change.
+
 ## Retained quote transport diagnostics (23 October 2026)
 
 The existing package client records monotonic `elapsed_ms` around each actual
