@@ -1,0 +1,57 @@
+{
+  "ok": true,
+  "data": {
+    "retained_only": true,
+    "supplier_calls": 0,
+    "records": [
+      {
+        "status": "quote_verified",
+        "reason": null,
+        "stages": [
+          {
+            "stage": "start",
+            "state": "complete",
+            "http_status": 200,
+            "response_bytes": 12833,
+            "elapsed_ms": 774,
+            "curl_errno": 0
+          },
+          {
+            "stage": "transports",
+            "state": "complete",
+            "http_status": 200,
+            "response_bytes": 454246,
+            "elapsed_ms": 26302,
+            "curl_errno": 0
+          },
+          {
+            "stage": "SetTransport",
+            "state": "complete",
+            "pair_index": 1,
+            "http_status": 200,
+            "response_bytes": 454599,
+            "elapsed_ms": 914,
+            "curl_errno": 0
+          },
+          {
+            "stage": "calcfull",
+            "state": "complete",
+            "pair_index": 1,
+            "http_status": 200,
+            "response_bytes": 456086,
+            "elapsed_ms": 4119,
+            "curl_errno": 0
+          }
+        ],
+        "version": 2,
+        "reserved_calls": 4,
+        "sealed": false
+      }
+    ],
+    "retained_first_page": {
+      "raw_rows": "nonempty",
+      "retained_offers": 146,
+      "interpretation": "offers_retained"
+    }
+  }
+}

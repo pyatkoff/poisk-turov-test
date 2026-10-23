@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "operation": "int-anex-ordinary-infant-egypt-20270324-20261023-v1",
+  "claim": 6360303499,
+  "terminal": 6360412289,
+  "status": "VERIFIED_CONSUMED_NO_REPLAY",
+  "source": {
+    "pr": 4833,
+    "reviewed": "be6838a5e70a99bb243954a967cf16f027e0964e",
+    "merged_backend": "794dfc67a36fc1a43979234c9f32e6dd009bc6c7",
+    "tree": "c1583b2bcd4261c5638b6c78ea58320cea469f7f",
+    "review": 5625448054,
+    "ci": [
+      39920448411,
+      39920448478
+    ],
+    "client_sha256": "208f13e623c9021915af4f566cbb1492bc6d25248feb4b194595e0c31350b3b9",
+    "frontend": "a505991d878d265909dbe7aa82963b050497e944",
+    "frontend_release": "446938bd38f42c27d2dd461e29ea7efbfe6a3e52",
+    "frontend_publisher": 6359555174
+  },
+  "installation": {
+    "run": 39921102901,
+    "job": 120306262404,
+    "artifact": 12487416947,
+    "attempt": 1,
+    "zip_bytes": 565,
+    "zip_sha256": "f3b9be1f7848e55d662e54f61c2f45c26c9f41acf90313439b513c0e330c1dbb",
+    "json_bytes": 1045,
+    "json_sha256": "23743d8fbf67980a0344cca4d0988e7837696f02552e43983b15e6a423c0778b",
+    "crc": "PASS",
+    "actual_json_equals_job": true,
+    "preservation": "PASS",
+    "installed": true
+  },
+  "install_terminal": 6360294286,
+  "new_scope": {
+    "departure": "Moscow",
+    "country": "Egypt",
+    "departure_window": [
+      "2027-03-24",
+      "2027-03-30"
+    ],
+    "adults": 2,
+    "ages": [
+      1
+    ],
+    "nights": 7,
+    "meal": "AI",
+    "incidental_draft_resort": "cleared before Find; final all-Egypt form and canonical submitted URL verified; not supplier fallback"
+  },
+  "selected": {
+    "provider": "direct_anex",
+    "operator": "ANEX",
+    "hotel": "BEACH SAFARI NUBIAN RESORT",
+    "stay": [
+      "2027-03-29",
+      "2027-04-05"
+    ],
+    "room": "Standard Room",
+    "meal": "AI",
+    "listing_rub": 164246,
+    "verified_whole_party_rub": 200016,
+    "whole_total_change_rub": 35770,
+    "infant_charge": "NOT_EXPOSED",
+    "fuel": "NOT_EXPOSED",
+    "outbound": [
+      "VF276",
+      "VF251"
+    ],
+    "inbound": [
+      "VF252",
+      "VF277"
+    ],
+    "pair": 1,
+    "returned_pair_choices": 40
+  },
+  "safe_receipt": {
+    "ok": true,
+    "data": {
+      "retained_only": true,
+      "supplier_calls": 0,
+      "records": [
+        {
+          "status": "quote_verified",
+          "reason": null,
+          "stages": [
+            {
+              "stage": "start",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 12833,
+              "elapsed_ms": 774,
+              "curl_errno": 0
+            },
+            {
+              "stage": "transports",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 454246,
+              "elapsed_ms": 26302,
+              "curl_errno": 0
+            },
+            {
+              "stage": "SetTransport",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 454599,
+              "elapsed_ms": 914,
+              "curl_errno": 0
+            },
+            {
+              "stage": "calcfull",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 456086,
+              "elapsed_ms": 4119,
+              "curl_errno": 0
+            }
+          ],
+          "version": 2,
+          "reserved_calls": 4,
+          "sealed": false
+        }
+      ],
+      "retained_first_page": {
+        "raw_rows": "nonempty",
+        "retained_offers": 146,
+        "interpretation": "offers_retained"
+      }
+    }
+  },
+  "supplier_facts": {
+    "quote_http": 4,
+    "reserved_calls": 4,
+    "retained_anex_offers": 146,
+    "transport_invocation_spans_ms": [
+      774,
+      26302,
+      914,
+      4119
+    ],
+    "transport_span_sum_ms": 32109,
+    "transports_exceeds_old25s": true,
+    "reader_supplier_calls": 0,
+    "global_http_and_remaining": "NOT_MEASURED"
+  },
+  "ordinary_path": {
+    "find": 1,
+    "card": 1,
+    "room_selection": 1,
+    "ordinary_selected_cta": 1,
+    "optional_flights_shortcut": 0,
+    "pair_calculation": 1,
+    "contact_open": 2,
+    "back": 1,
+    "synthetic_name": "INT TEST",
+    "synthetic_comment": "Проверка возврата INT",
+    "phone_value": "EMPTY; visible number is placeholder",
+    "consent": false,
+    "submit": 0,
+    "retained_after_back": [
+      "party",
+      "dates",
+      "room",
+      "meal",
+      "operator",
+      "pair",
+      "whole_price",
+      "name",
+      "comment"
+    ],
+    "retry": 0,
+    "continue": 0,
+    "second_find": 0,
+    "second_pair": 0,
+    "receipt_get": 1,
+    "lead": 0,
+    "booking": 0,
+    "tabs_closed": [
+      4,
+      5
+    ]
+  },
+  "limits": "One new ordinary installed case, not replay of Mar31sealed/Apr07/Apr21. HTTP200 flights returned after26302ms: this invocation exceeds old25s ceiling and fits changed45s budget. All quoted times exclude pacing/checkpoints/parsing/UI and are not endpoint SLA/global supplier recovery. Whole35770 change is not isolated infantfee. No real delivery/physical/native430/allpairs/production/globalINT DONE proof. SEARCH receives same result only for its own boundary; no copied supplier series.",
+  "observations": [
+    {
+      "stage": "pre_find",
+      "state": "Browser tab: 4, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 link Description: Перейти к результатам, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#results\n\t2 container\n\t\t3 link Description: AnyTour — начало, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t4 container Основная навигация\n\t\t\t5 link Description: Подбор тура, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t6 text Версия для проверки\n\t7 container\n\t\t8 container Подберём ваш отдых, ID: search\n\t\t\t9 heading Подберём ваш отдых, Value: 1, ID: page-title\n\t\t\t\t10 text Подберём ваш отдых\n\t\t\t11 container search-form\n\t\t\t\t12 pop up button Description: Город вылета: Москва, ID: departure-button\n\t\t\t\t\t13 text Откуда\n\t\t\t\t\t14 text Москва\n\t\t\t\t\t15 text ›\n\t\t\t\t16 button Description: Направление: Египет, Help: Египет, ID: country\n\t\t\t\t\t17 text Куда\n\t\t\t\t\t18 text Египет\n\t\t\t\t\t19 text Вся страна\n\t\t\t\t\t20 text ›\n\t\t\t\t21 button Даты вылета 24–30 марта ›\n\t\t\t\t\t22 text Даты вылета\n\t\t\t\t\t23 text 24–30 марта\n\t\t\t\t\t24 text ›\n\t\t\t\t25 button Ночей 7 ночей ›\n\t\t\t\t\t26 text Ночей\n\t\t\t\t\t27 text 7 ночей\n\t\t\t\t\t28 text ›\n\t\t\t\t29 button Туристы 2 взр. · 1 реб. 1 год ›\n\t\t\t\t\t30 text Туристы\n\t\t\t\t\t31 text 2 взр. · 1 реб.\n\t\t\t\t\t32 text 1 год\n\t\t\t\t\t33 text ›\n\t\t\t\t34 container Категория отеля\n\t\t\t\t\t35 text Категория отеля\n\t\t\t\t\t36 container Description: Категория отеля, ID: quick-stars\n\t\t\t\t\t\t37 checkbox Любая, Value: 1\n\t\t\t\t\t\t38 checkbox 3★, Value: 0\n\t\t\t\t\t\t39 checkbox 4★, Value: 0\n\t\t\t\t\t\t40 checkbox 5★, Value: 0\n\t\t\t\t41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal\n\t\t\t\t\t42 text Питание\n\t\t\t\t\t43 text Всё включено\n\t\t\t\t\t44 text ⌄\n\t\t\t\t45 button Бюджет за всех Без ограничений ⌄, ID: quick-budget\n\t\t\t\t\t46 text Бюджет за всех\n\t\t\t\t\t47 text Без ограничений\n\t\t\t\t\t48 text ⌄\n\t\t\t\t49 button Найти туры\n\t\t\t\t50 button Уточнить параметры\n\t\t\t\t51 text Цена за весь тур и всех туристов\n\t\t\t52 button (collapsed) ⓘ О данных поиска ⌄, Secondary Actions: Expand\n\t\t\t\t53 text ⓘ\n\t\t\t\t54 text О данных поиска\n\t\t\t\t55 text ⌄\n\t\t56 container Ваш следующий отдых, ID: results\n\t\t\t57 heading Ваш следующий отдых, Value: 2, ID: results-title\n\t\t\t\t58 text Ваш следующий отдых\n\t\t\t59 text Задайте направление, даты и состав туристов — предложения появятся после поиска.\n\t\t\t60 container\n\t\t\t\t61 text Цена за всех туристов\n\t\t\t\t62 text уточняется при выборе\n\t\t\t63 container cards\n\t\t\t\t64 heading Начните с параметров поездки, Value: 3\n\t\t\t\t\t65 text Начните с параметров поездки\n\t\t\t\t66 text Выберите направление, даты и туристов, затем нажмите «Найти туры».\n\t67 button (collapsed) Дизайн · пакет 91 Настройки и сценарии ⌄, Secondary Actions: Expand\n\t\t68 text Дизайн · пакет 91\n\t\t69 text Настройки и сценарии\n\t\t70 text ⌄\n\t71 container\n\t\t72 link Description: AnyTour — к поиску, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t73 text Отдых начинается с хорошего выбора.\n\t\t74 button О данных\n\t\t75 text Дизайн · пакет 91 · 14.10.2026 · исходник v227\n\nThe focused UI element is 41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal",
+      "at": "2026-10-23T08:01:42.029Z"
+    },
+    {
+      "stage": "ordinary_card_loaded",
+      "state": "Browser tab: 4, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container BEACH SAFARI NUBIAN RESORT, ID: modal\n\t\t2 text Марса Алам · 4 ★\n\t\t3 heading BEACH SAFARI NUBIAN RESORT, Value: 2, ID: modal-title\n\t\t\t4 text BEACH SAFARI NUBIAN RESORT\n\t\t5 button Закрыть окно\n\t\t6 container modal-body\n\t\t\t7 container Разделы отеля\n\t\t\t\t8 button Фото\n\t\t\t\t9 button Об отеле\n\t\t\t\t10 button Услуги\n\t\t\t\t11 button Номера и цены\n\t\t\t12 container Фотографии\n\t\t\t\t13 heading Фотографии отеля, Value: 3, ID: hotel-photos-heading\n\t\t\t\t\t41 text Фотографии отеля\n\t\t\t\t14 button Открыть фото 1 отеля BEACH SAFARI NUBIAN RESORT\n\t\t\t\t\t15 image Фото отеля\n\t\t\t\t16 button Открыть фото 2 отеля BEACH SAFARI NUBIAN RESORT\n\t\t\t\t\t17 image Фото отеля\n\t\t\t\t18 button Открыть фото 3 отеля BEACH SAFARI NUBIAN RESORT\n\t\t\t\t\t19 image Фото отеля\n\t\t\t\t20 button Все фотографии · 30\n\t\t\t21 heading Об отеле, Value: 3, ID: hotel-about-heading\n\t\t\t\t42 text Об отеле\n\t\t\t22 text 5,0 / 5\n\t\t\t43 text Количество номеров: 60 Заселение после 14:00:00 Выезд до 12:00:00\n\t\t\t23 container Услуги и инфраструктура\n\t\t\t\t24 heading Услуги и инфраструктура, Value: 3, ID: hotel-services-heading\n\t\t\t\t\t44 text Услуги и инфраструктура\n\t\t\t\t25 heading Адрес, Value: 4\n\t\t\t\t\t45 text Адрес\n\t\t\t\t46 text Al Quasir - Marsa Allam Rd, Марса Алам\n\t\t\t\t26 button (collapsed) Secondary Actions: Expand, Расположение Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»… ⌄\n\t\t\t\t\t47 text Расположение\n\t\t\t\t\t48 text Наслаждаться отдыхом на протяжении всей поездки — здесь проще простого. Курорт «Beach Safari Nubian Resort»…\n\t\t\t\t\t49 text ⌄\n\t\t\t\t27 heading Территория, Value: 4\n\t\t\t\t\t50 text Территория\n\t\t\t\t51 text Открытый бассейн\n\t\t\t\t28 button (collapsed) Secondary Actions: Expand, Услуги в отеле Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф… ⌄\n\t\t\t\t\t52 text Услуги в отеле\n\t\t\t\t\t53 text Компьютер Кондиционер Места для курения Продажа билетов Телевизор в лобби Терраса Стойка регистрации Сейф…\n\t\t\t\t\t54 text ⌄\n\t\t\t\t29 heading В номере, Value: 4\n\t\t\t\t\t55 text В номере\n\t\t\t\t56 text Телевизор Фен Сейф (в номере) Туалетные принадлежности\n\t\t\t\t30 heading Питание в отеле, Value: 4\n\t\t\t\t\t57 text Питание в отеле\n\t\t\t\t58 text Бар Завтрак Кафе Ресторан Бутилированная вода\n\t\t\t31 container Номера и питание\n\t\t\t\t32 heading Номера и питание, Value: 3, ID: hotel-rooms-heading\n\t\t\t\t\t59 text Номера и питание\n\t\t\t\t60 text Даты вылета 24 мар — 30 мар · 7 ночей · 2 взр. + 1 реб.\n\t\t\t\t61 text Номера: 4 · Туры: 8\n\t\t\t\t62 container\n\t\t\t\t\t63 button (expanded) Standard Room Свернуть, Secondary Actions: Collapse\n\t\t\t\t\t\t64 heading Standard Room, Value: 4\n\t\t\t\t\t\t\t65 text Standard Room\n\t\t\t\t\t\t66 text Свернуть\n\t\t\t\t\t67 text Всё включено\n\t\t\t\t\t68 definition list\n\t\t\t\t\t\t69 container ДАТЫ\n\t\t\t\t\t\t\t70 text ДАТЫ\n\t\t\t\t\t\t71 container\n\t\t\t\t\t\t\t72 text 29 мар  →  5 апр  · 7 ночей\n\t\t\t\t\t\t73 container ПЕРЕЛЁТ\n\t\t\t\t\t\t\t74 text ПЕРЕЛЁТ\n\t\t\t\t\t\t75 text Регулярный\n\t\t\t\t\t76 text Туроператор\n\t\t\t\t\t77 button Туроператор: ANEX\n\t\t\t\t\t78 button Условия и рейсы\n\t\t\t\t\t79 text Весь тур · 2 взр. + 1 реб. 164 246 ₽\n\t\t\t\t\t80 checkbox Description: Выбрать: Standard Room, Всё включено, 29 мар, ANEX, 164 246 ₽, Value: 0\n\t\t\t\t\t81 text Цена из поиска · доплата за младенца уточняется Всё включено\n\t\t\t\t\t82 definition list\n\t\t\t\t\t\t83 container ДАТЫ\n\t\t\t\t\t\t\t84 text ДАТЫ\n\t\t\t\t\t\t85 container\n\t\t\t\t\t\t\t86 text 29 мар  →  5 апр  · 7 ночей\n\t\t\t\t\t\t87 container ПЕРЕЛЁТ\n\t\t\t\t\t\t\t88 text ПЕРЕЛЁТ\n\t\t\t\t\t\t89 text Регулярный\n\t\t\t\t\t90 text Туроператор\n\t\t\t\t\t91 button Туроператор: ANEX\n\t\t\t\t\t92 button Условия и рейсы\n\t\t\t\t\t93 text Весь тур · 2 взр. + 1 реб. 166 061 ₽\n\t\t\t\t\t94 checkbox Description: Выбрать: Standard Room, Всё включено, 29 мар, ANEX, 166 061 ₽, Value: 0\n\t\t\t\t\t95 text Цена из поиска · доплата за младенца уточняется\n\t\t\t\t96 button (collapsed) Standard Pool View Room Всё включено от 164 246 ₽ 2 тура, Secondary Actions: Expand\n\t\t\t\t\t97 heading Standard Pool View Room, Value: 4\n\t\t\t\t\t\t98 text Standard Pool View Room\n\t\t\t\t\t99 text Всё включено\n\t\t\t\t\t100 text от 164 246 ₽\n\t\t\t\t\t101 text 2 тура\n\t\t\t\t102 button (collapsed) Standard Front Sea View Room Всё включено от 169 690 ₽ 2 тура, Secondary Actions: Expand\n\t\t\t\t\t103 heading Standard Front Sea View Room, Value: 4\n\t\t\t\t\t\t104 text Standard Front Sea View Room\n\t\t\t\t\t105 text Всё включено\n\t\t\t\t\t106 text от 169 690 ₽\n\t\t\t\t\t107 text 2 тура\n\t\t\t\t108 button (collapsed) Family Room Всё включено от 170 726 ₽ 2 тура, Secondary Actions: Expand\n\t\t\t\t\t109 heading Family Room, Value: 4\n\t\t\t\t\t\t110 text Family Room\n\t\t\t\t\t111 text Всё включено\n\t\t\t\t\t112 text от 170 726 ₽\n\t\t\t\t\t113 text 2 тура\n\t\t38 container modal-footer\n\t\t\t39 text За 2 взр. + 1 реб.\n\t\t\t114 text от 164 246 ₽\n\t\t\t115 text Цена из поиска · доплата за младенца уточняется · Выберите вариант из списка\n\t\t\t40 button Выбрать номер, ID: hotel-detail-offers\n\nThe focused UI element is 3 heading BEACH SAFARI NUBIAN RESORT, Value: 2, ID: modal-title"
+    },
+    {
+      "stage": "quote_start_outcome",
+      "state": "Browser tab: 4, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Перелёт и цена тура, ID: modal\n\t\t39 button Description: К отелю, Help: К отелю: BEACH SAFARI NUBIAN RESORT, ID: modal-back\n\t\t40 text ANEX · АКТУАЛИЗАЦИЯ\n\t\t3 heading Перелёт и цена тура, Value: 2, ID: modal-title\n\t\t\t41 text Перелёт и цена тура\n\t\t5 button Закрыть окно\n\t\t6 container modal-body\n\t\t\t42 button (collapsed) Secondary Actions: Expand, BEACH SAFARI NUBIAN RESORT 29 мар — 5 апр · 7 ночей 2 взр. + 1 реб. · 1 год Всё включено · условия тура⌄\n\t\t\t\t43 text BEACH SAFARI NUBIAN RESORT\n\t\t\t\t44 text 29 мар — 5 апр · 7 ночей\n\t\t\t\t45 text 2 взр. + 1 реб. · 1 год\n\t\t\t\t46 text Всё включено · условия тура\n\t\t\t\t47 text ⌄\n\t\t\t48 container\n\t\t\t\t49 heading Варианты перелёта, Value: 3\n\t\t\t\t\t50 text Варианты перелёта\n\t\t\t\t51 text Выберите перелёт для расчёта полной цены тура.\n\t\t\t\t52 container Перелёт туда и обратно\n\t\t\t\t\t53 text Перелёт туда и обратно\n\t\t\t\t\t54 container\n\t\t\t\t\t\t55 radio button (settable, integer) Value: 1, Description: Вариант 1 Выбрано Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t56 text Вариант 1 Выбрано Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t57 container\n\t\t\t\t\t\t58 radio button (settable, integer) Value: 0, Description: Вариант 2 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t59 text Вариант 2 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t60 container\n\t\t\t\t\t\t61 radio button (settable, integer) Value: 0, Description: Вариант 3 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t62 text Вариант 3 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада Обратно AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t63 button (collapsed) Другие варианты · 37, Secondary Actions: Expand\n\t\t\t\t\t\t64 text Другие варианты · 37\n\t\t38 container modal-footer\n\t\t\t65 text За всех туристов\n\t\t\t66 text Цена уточняется\n\t\t\t67 text Цена требует подтверждения\n\t\t\t68 button Уточнить цену с этими рейсами\n\nThe focused UI element is 3 heading Перелёт и цена тура, Value: 2, ID: modal-title",
+      "at": "2026-10-23T08:03:37.595Z"
+    },
+    {
+      "stage": "pair1_outcome",
+      "state": "Browser tab: 4, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Цена тура подтверждена, ID: modal\n\t\t39 button Description: К отелю, Help: К отелю: BEACH SAFARI NUBIAN RESORT, ID: modal-back\n\t\t40 text ANEX · АКТУАЛИЗАЦИЯ\n\t\t3 heading Цена тура подтверждена, Value: 2, ID: modal-title\n\t\t\t41 text Цена тура подтверждена\n\t\t5 button Закрыть окно\n\t\t6 container modal-body\n\t\t\t42 content list Этапы выбора тура\n\t\t\t\t43 text Номер и питание\n\t\t\t\t44 text Перелёт\n\t\t\t\t45 text Заявка\n\t\t\t46 image Фото BEACH SAFARI NUBIAN RESORT\n\t\t\t47 heading BEACH SAFARI NUBIAN RESORT, Value: 3\n\t\t\t\t48 text BEACH SAFARI NUBIAN RESORT\n\t\t\t49 container 4 звезды\n\t\t\t\t50 text ★★★★\n\t\t\t51 text Марса Алам, Египет\n\t\t\t52 container\n\t\t\t\t53 text Цена изменилась после проверки В выдаче 164 246 ₽ → после проверки 200 016 ₽ за всех туристов.\n\t\t\t54 container Выбранные условия тура\n\t\t\t\t55 text 29 мар — 5 апр · 7 ночей\n\t\t\t\t56 text 2 взр. + 1 реб. · возраст ребёнка: 1 год\n\t\t\t\t57 definition list\n\t\t\t\t\t58 container Номер\n\t\t\t\t\t\t59 text Номер\n\t\t\t\t\t60 text Standard Room\n\t\t\t\t\t61 container Питание\n\t\t\t\t\t\t62 text Питание\n\t\t\t\t\t63 text Всё включено\n\t\t\t\t\t64 container Оператор\n\t\t\t\t\t\t65 text Оператор\n\t\t\t\t\t66 text ANEX\n\t\t\t67 container\n\t\t\t\t68 heading Перелёт, Value: 3\n\t\t\t\t\t69 text Перелёт\n\t\t\t\t70 text Туда\n\t\t\t\t71 text AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада\n\t\t\t\t72 text Обратно\n\t\t\t\t73 text AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково\n\t\t\t74 container\n\t\t\t\t75 heading Цена тура, Value: 3\n\t\t\t\t\t76 text Цена тура\n\t\t\t\t77 text Подтверждённая стоимость этого тура.\n\t\t38 container modal-footer\n\t\t\t78 text За всех туристов\n\t\t\t79 text 200 016 ₽\n\t\t\t80 text Подтверждённая цена\n\t\t\t81 button Изменить рейсы\n\t\t\t82 button К заявке\n\nThe focused UI element is 0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE",
+      "at": "2026-10-23T08:03:57.391Z"
+    },
+    {
+      "stage": "contact_draft_after_back",
+      "state": "Browser tab: 4, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-03-24&to=2027-03-30&minNights=7&maxNights=7&adults=2&ages=1&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Заявка на тур, ID: modal\n\t\t39 button Description: Назад, Help: Назад: Цена тура подтверждена, ID: modal-back\n\t\t40 text ПРОВЕРКА БЕЗ ОТПРАВКИ\n\t\t3 heading Заявка на тур, Value: 2, ID: modal-title\n\t\t\t41 text Заявка на тур\n\t\t5 button Закрыть окно\n\t\t6 container modal-body\n\t\t\t42 content list Этапы выбора тура\n\t\t\t\t43 text Номер и питание\n\t\t\t\t44 text Перелёт\n\t\t\t\t45 text Заявка\n\t\t\t46 container Выбранный тур\n\t\t\t\t47 heading BEACH SAFARI NUBIAN RESORT, Value: 3\n\t\t\t\t\t48 text BEACH SAFARI NUBIAN RESORT\n\t\t\t\t49 container\n\t\t\t\t\t50 text 29 мар — 5 апр · 7 ночей 2 взр. + 1 реб. · возраст ребёнка: 1 год\n\t\t\t\t\t51 definition list\n\t\t\t\t\t\t52 container Номер\n\t\t\t\t\t\t\t53 text Номер\n\t\t\t\t\t\t54 text Standard Room\n\t\t\t\t\t\t55 container Питание\n\t\t\t\t\t\t\t56 text Питание\n\t\t\t\t\t\t57 text Всё включено\n\t\t\t\t\t\t58 container Оператор\n\t\t\t\t\t\t\t59 text Оператор\n\t\t\t\t\t\t60 text ANEX\n\t\t\t\t61 button Другие туры этого отеля\n\t\t\t62 container\n\t\t\t\t63 button (expanded) Выбранные рейсы ⌄, Secondary Actions: Collapse\n\t\t\t\t\t64 text Выбранные рейсы\n\t\t\t\t\t65 text ⌄\n\t\t\t\t66 text Туда\n\t\t\t\t67 text AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 251 · 23:45 · 01:30+1 · Сабиха Гёкчен · Хургада\n\t\t\t\t68 text Обратно\n\t\t\t\t69 text AJet · VF 252 · 02:50 · 06:45 · Хургада · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково\n\t\t\t70 container prototype-lead-form\n\t\t\t\t71 text Проверьте контакты и выбранные условия. В версии для проверки заявка не отправляется.\n\t\t\t\t72 container\n\t\t\t\t\t73 text Имя (необязательно)\n\t\t\t\t\t74 text field (settable) Имя (необязательно), Value: INT TEST\n\t\t\t\t75 container\n\t\t\t\t\t76 text Телефон\n\t\t\t\t\t77 text field (settable) Телефон\n\t\t\t\t78 text Введите номер с кодом страны или города.\n\t\t\t\t79 container\n\t\t\t\t\t80 text Комментарий (необязательно)\n\t\t\t\t\t81 text entry area (settable) Комментарий (необязательно), Value: Проверка возврата INT\n\t\t\t\t82 container\n\t\t\t\t\t83 checkbox (settable, integer) Description: Согласен на обработку персональных данных, Value: 0\n\t\t\t\t\t84 text Согласен на обработку персональных данных\n\t\t38 container modal-footer\n\t\t\t85 text За всех туристов\n\t\t\t86 text 200 016 ₽\n\t\t\t87 text Подтверждённая цена выбранного тура\n\t\t\t88 button Проверить заявку\n\nThe focused UI element is 3 heading Заявка на тур, Value: 2, ID: modal-title"
+    }
+  ],
+  "verified.jpg": {
+    "bytes": 95444,
+    "sha256": "e1e5b5d0ef738c23dd2151db59c6fad969a140819fee4a6dc8453e9f11c930ff"
+  },
+  "draft.jpg": {
+    "bytes": 102810,
+    "sha256": "b01a73cdf6431c9b244651029a9dfa28c8e2ac5961d2407f557c7b3992fff1e7"
+  },
+  "receipt.json": {
+    "bytes": 1371,
+    "sha256": "1552f02fa89a59a3e96d029e70348300a471734681f53a65e53b0c6869d0aaaf"
+  },
+  "trace.json": {
+    "bytes": 136025,
+    "sha256": "b84e7022878b2a1d3ee815cdb6d053eb1ab803aa230a88921166af3e59f7afec"
+  }
+}

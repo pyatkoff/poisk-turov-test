@@ -1,0 +1,33 @@
+{
+  "booking_calls": 0,
+  "database_writes": 0,
+  "install": {
+    "changed_files": 1,
+    "created_files": 0,
+    "files": 91,
+    "manifest_sha256": "c57852e485c422292b8270c6c717034b0fa4199c3c31d34b59c89b034675a484",
+    "source_sha": "794dfc67a36fc1a43979234c9f32e6dd009bc6c7",
+    "status": "installed"
+  },
+  "lead_calls": 0,
+  "mode": "install-runtime",
+  "operation_id": "int-anex-transports-deadline-runtime-install-20261023-v1",
+  "production_after": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "production_before": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "public_ui_entrypoints_unchanged": true,
+  "runtime_changed": true,
+  "schema_version": 1,
+  "source_sha": "794dfc67a36fc1a43979234c9f32e6dd009bc6c7",
+  "status": "installed",
+  "supplier_calls": 0
+}
