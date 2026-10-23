@@ -105,17 +105,33 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         string $tourId,
         array $flights,
         string $directory,
-        DateTimeImmutable $now
+        DateTimeImmutable $now,
+        ?callable $emitHeader = null
     ): array {
-        return self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
-            static fn(): array => self::retainFlights($tourId, $flights, $directory, $now));
+        $header = null;
+        $observe = static function(array $rows) use (&$header, $now): void {
+            $header = AnyTourOperatorFuelRuleStoreV1::monitoringHeader($rows, $now->getTimestamp());
+        };
+        $receipt = self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
+            static fn(): array => self::retainFlights($tourId, $flights, $directory, $now, $observe));
+        // Emit only after successful capture, diagnostic and lock release. Never touch
+        // the supplier body/status, and never add fields to the private receipt schema.
+        if (($receipt['ok'] ?? false) === true && $header !== null) {
+            try {
+                $line = 'X-AnyTour-Fuel-Monitoring: ' . $header;
+                if ($emitHeader !== null) $emitHeader($line);
+                elseif (PHP_SAPI !== 'cli' && !headers_sent()) header($line, true);
+            } catch (Throwable $ignored) {}
+        }
+        return $receipt;
     }
 
     private static function retainFlights(
         string $tourId,
         array $flights,
         string $directory,
-        DateTimeImmutable $now
+        DateTimeImmutable $now,
+        callable $observe
     ): array {
         self::directory($directory);
         $tourId = self::tourId($tourId);
@@ -150,7 +166,8 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             $append = AnyTourOperatorFuelRuleStoreV1::append(
                 $directory,
                 $observation,
-                static fn(string $target, array $value): bool => self::atomicWrite($target, $value, 131072)
+                static fn(string $target, array $value): bool => self::atomicWrite($target, $value, 131072),
+                $observe
             );
             $default = self::defaultFlight($flights);
             $confirmed = AnyTourOperatorFuelRuleStoreV1::inputForTarget($directory, [
