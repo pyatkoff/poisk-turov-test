@@ -4,6 +4,41 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
 const resultRangeTo=new Date(Date.parse(day+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
+async function fuelMonitoringObservationRegressions(){
+ const vm=require('node:vm'),body=Object.freeze({ok:true,data:Object.freeze({total:212106,currency:'RUB'})}),encoded=Buffer.from(JSON.stringify({schema:1,zero_reference:true,complete_population:false,accuracy_evaluated:false,final_price_verified:false})).toString('base64url');
+ const cases=[
+  {name:'supplied zero',header:encoded,logged:true},
+  {name:'maximum bound',header:'A'.repeat(2048),logged:true},
+  {name:'missing',header:null},{name:'empty',header:''},{name:'oversize',header:'A'.repeat(2049)},
+  {name:'invalid characters',header:'private/raw?query=secret'},{name:'padding',header:encoded+'='},
+  {name:'unreadable',throws:true},{name:'not successful',header:encoded,ok:false},
+  {name:'other action',header:encoded,action:'tour'}
+ ];
+ for(const test of cases){
+  let calls=0,bodyReads=0,headerReads=0,registrations=0;const output=[],warnings=[],canonical=Object.freeze({sentinel:'same adapter'}),lead=Object.freeze({sentinel:'same lead'});
+  const response={ok:test.ok!==false,status:test.ok===false?502:200,headers:{get:name=>{headerReads++;assert.equal(name,'X-AnyTour-Fuel-Monitoring');if(test.throws)throw Error('private unreadable diagnostic');return test.header;}},json:async()=>{bodyReads++;return body;},clone(){return {json:this.json};}};
+  const win={AnyTourPrototypeData:canonical,AnyTourPrototypeLead:lead,fetch:async()=>{calls++;return response;}};
+  const box=vm.createContext({window:win,document:{getElementById:()=>null},location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/'},URL,URLSearchParams,Date,setTimeout,clearTimeout,AbortController,console:{info:(...args)=>output.push(args),warn:(...args)=>warnings.push(args)}});
+  vm.runInContext(source('runtime-v3.js'),box);
+  const runtime=win.V2Runtime,on=runtime.on;runtime.on=(action,listener)=>{registrations++;assert.equal(action,'flights');return on(action,listener);};
+  vm.runInContext(source('visual-search/live-bridge.js'),box);
+  assert.equal(registrations,1,'one observer registration in the connected bridge');
+  assert.equal(calls,0,'registering diagnostics makes no request');
+  let result,error;try{result=await runtime.api(test.action||'flights',{}, {timeout:0});}catch(e){error=e;}
+  await Promise.resolve();
+  if(test.ok===false){assert.equal(error?.code,'HTTP_ERROR');assert.strictEqual(error.data,body);}else{assert.ifError(error);assert.strictEqual(result,body,'the original parsed body is returned unchanged');}
+  assert.equal(calls,1,'only the independently requested fixture call is made');
+  assert.equal(bodyReads,2,'only the existing runtime parse and clone consume JSON');
+  assert.equal(headerReads,test.action==='tour'||test.ok===false?0:1);
+  assert.deepEqual(output,test.logged?[['AnyTourFuelMonitoringV1',test.header]]:[],test.name);
+  assert.deepEqual(warnings,[],'unavailable diagnostics never become a product warning or leak an error');
+  assert.strictEqual(Object.getPrototypeOf(win.AnyTourPrototypeData),canonical,'same canonical adapter owns product data');
+  assert.strictEqual(win.V2Runtime,runtime,'same transport owner retained');
+  assert.equal(JSON.stringify(body),'{"ok":true,"data":{"total":212106,"currency":"RUB"}}');
+ }
+ const scripts=source('visual-search/index.php'),runtimeIndex=scripts.indexOf("'../runtime-v3.js'"),bridgeIndex=scripts.indexOf("'./live-bridge.js'");assert(runtimeIndex>=0&&bridgeIndex>=0&&runtimeIndex<bridgeIndex,'the live consumer loads its existing runtime first');
+ console.log('PASS fuel monitoring observation: 10 actual-runtime response cases, bounded optional header only, one original request/body unchanged, no live HTTP');
+}
 function modalViewportRegressions(){
  const app=source('visual-search/app.js'),start=app.indexOf('function syncDestinationViewport(){'),end=app.indexOf('function lookupDestination(){',start);
  assert(start>0&&end>start,'use the connected modal viewport owner and its real listeners');
@@ -434,6 +469,7 @@ async function pickerRetainedDraftRegressions(){
  // Each complete matrix owns its windows, fixtures and errors. Keep the
  // retained corpus ordered and settle both before closing their shared CSS host.
  const completed=await Promise.allSettled([
+  fuelMonitoringObservationRegressions(),
   pickerRetainedDraftRegressions(),
   (async()=>{
  await terminalAnexExpansionRegressions();

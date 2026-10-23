@@ -3,6 +3,12 @@
 (() => {
  const canonical=window.AnyTourPrototypeData,lead=window.AnyTourPrototypeLead;
  if(!canonical||!lead)throw new Error('Не удалось загрузить поиск. Обновите страницу.');
+ const runtime=window.V2Runtime;
+ if(runtime&&typeof runtime.on==='function')runtime.on('flights',(_data,response)=>{
+  let value;
+  try{value=response?.ok?response.headers?.get('X-AnyTour-Fuel-Monitoring'):null;}catch{return;}
+  if(typeof value==='string'&&value.length<=2048&&/^[A-Za-z0-9_-]+$/.test(value))console.info('AnyTourFuelMonitoringV1',value);
+ });
  const today=new Date(),first=new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()+14)).toISOString().slice(0,10);
  const last=new Date(Date.parse(first+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
  const bridge=Object.create(canonical);
