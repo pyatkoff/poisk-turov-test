@@ -96,6 +96,38 @@ $searchTarget = [
 ];
 tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($searchTarget, [$searchObs,$searchObs2], 2000) === null, 'two search+flights observations await accuracy evaluation');
 
+// Explicit supplier zero belongs to monitoring; absent/invalid defaults stay rejected.
+foreach ([0, 0.0, '0', '0.00'] as $zero) {
+    foreach (['tour'=>$base, 'search'=>$searchBase] as $kind=>$zeroInput) {
+        $zeroInput['flights']['flights'][0]['fuelCharge']['value']=$zero;
+        $alternative=$base['flights']['flights'][0]; $alternative['isDefault']=false;
+        $zeroInput['flights']['flights'][]=$alternative;
+        $before=serialize($zeroInput);
+        $observed=$kind==='tour'
+            ? AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($zeroInput)
+            : AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($zeroInput);
+        tvfi_ok((float)$observed['amount']===0.0 && $observed['monitoring']['comparison']==='different'
+            && $observed['monitoring']['tour_amount']==='33748',
+            $kind.' retains explicit default zero without borrowing positive alternative');
+        tvfi_ok(serialize($zeroInput)===$before, 'zero observation does not alter supplier money');
+        if ($kind==='tour') $zeroInput['tour']['fuelCharge']=$zero;
+        else $zeroInput['search_row']['fuel_charge']=$zero;
+        $matched=$kind==='tour'
+            ? AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($zeroInput)
+            : AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($zeroInput);
+        tvfi_ok($matched['monitoring']['comparison']==='matched', $kind.' explicit zero at both stages is retained');
+        tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($searchTarget, [$observed,$matched], 2000)===null,
+            'zero monitoring cannot create reusable pricing authority');
+    }
+}
+$zeroSearch=$searchBase; $zeroSearch['search_row']['fuel_charge']=0;
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($zeroSearch)['monitoring']['comparison']==='different',
+    'explicit search zero retained with positive default fuel');
+$missingWithZero=$base; unset($missingWithZero['tour']['fuelCharge']);
+$missingWithZero['flights']['flights'][0]['fuelCharge']['value']=0;
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($missingWithZero)['monitoring']['comparison']==='unavailable',
+    'missing tour amount stays unavailable beside a supplied flight zero');
+
 $searchConflict = $searchBase;
 $searchConflict['search_row']['fuel_charge'] = 30000;
 $searchDifferent = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($searchConflict);
@@ -152,8 +184,7 @@ $amountCases = [
     'value-bool'=>[['value'=>false,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
     'value-negative'=>[['value'=>-1,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
     'value-precision'=>[['value'=>1.001,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
-    'value-zero'=>[['value'=>0,'currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
-    'value-string-zero'=>[['value'=>'0.00','currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
+    'value-string-negative'=>[['value'=>'-0.01','currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
     'tour-format'=>[$base['flights']['flights'][0]['fuelCharge'],7106,'TV_FUEL_AMOUNT_TOUR_VALUE'],
 ];
 foreach ($amountCases as $kind=>[$fuel,$tag,$diagnostic]) {

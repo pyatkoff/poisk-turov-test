@@ -3,6 +3,7 @@
 ## Owner clarification — 2026-10-22: monitor first, evaluate accuracy later
 
 - Retain Tourvisor tour/search-stage and default-flight fuel amounts separately, including differences. Exact equality is not an intake requirement. Missing tour fuel stays null; explicit zero remains a separate fact.
+- Explicit supplier zero is also retained from search rows and the default-flight amount, including `0.00`. It is not filled in for missing values and cannot be borrowed from a positive alternative pair. This only fixes monitoring selection; it does not apply the SAMO/Biblio-Globus zero policy to Tourvisor or change supplier totals.
 - New Tourvisor observations carry private `monitoring` facts in the existing direction store. They cannot automatically confirm a reusable pricing rule, even when two or more samples match. Legacy observations remain unchanged.
 - The 80% accuracy objective is evaluated later on the accumulated cohort, including differing samples. It is neither a 20% per-sample tolerance nor a requirement to discard disagreements. This change does not claim an achieved accuracy score or define a new error tolerance.
 - A differing fuel observation does not invalidate Tourvisor actualization. The existing tour/flights responses and money remain unchanged; no extra supplier requests are added. SAMO listing estimates, direct ANEX/APD and final-price verification remain separate.

@@ -31,7 +31,6 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
             throw new InvalidArgumentException('TV_FUEL_OPERATOR');
         }
         $fuel = self::money($row['fuel_charge'] ?? null);
-        if ((float)$fuel <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT');
         $currency = self::currency($row['currency'] ?? null);
         $date = self::date($row['date'] ?? null, 'TV_FUEL_DATE');
         $searchDigest = self::digest($retained['search_response_sha256'] ?? null, 'TV_FUEL_SOURCE_DIGEST');
@@ -107,7 +106,6 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
         } catch (InvalidArgumentException $error) {
             throw new InvalidArgumentException('TV_FUEL_AMOUNT', ($fuel['value'] ?? null) === null ? 7103 : 7104, $error);
         }
-        if ((float)$amount <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT', 7105);
         $currency = self::currency($fuel['currency'] ?? null);
 
         // Different stages may report different fuel. Keep both facts for monitoring;
