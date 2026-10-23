@@ -1192,6 +1192,73 @@ def publication_lock_mode_repair():
 '''
 
 
+CAPTURE_PUBLIC_PATHS = ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')
+
+CAPTURE_PUBLIC_REMOTE = r'''
+def capture_install_public_state():
+    import stat
+    def identity(s):return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink)
+    def version(s):return identity(s)+(s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    states={}
+    for relative in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+        descriptors=[];directories=[]
+        try:
+            parent=os.open(project,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+            descriptors.append(parent);directories.append((project,parent,os.fstat(parent)))
+            parts=relative.split('/');absolute=project
+            for position,name in enumerate(parts):
+                absolute=absolute/name
+                try:initial=os.stat(name,dir_fd=parent,follow_symlinks=False)
+                except FileNotFoundError:
+                    states[relative]={'state':'absent'};break
+                if position<len(parts)-1:
+                    if not stat.S_ISDIR(initial.st_mode):fail('capture_install_public_unsafe')
+                    child=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+                    descriptors.append(child)
+                    if identity(os.fstat(child))!=identity(initial):fail('capture_install_public_unsafe')
+                    directories.append((absolute,child,initial));parent=child
+                else:
+                    if not stat.S_ISREG(initial.st_mode) or initial.st_nlink!=1 or initial.st_size>4*1024*1024:
+                        fail('capture_install_public_unsafe')
+                    leaf=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=parent)
+                    descriptors.append(leaf)
+                    if version(os.fstat(leaf))!=version(initial):fail('capture_install_public_unsafe')
+                    chunks=[];size=0
+                    while True:
+                        chunk=os.read(leaf,min(65536,4*1024*1024+1-size))
+                        if not chunk:break
+                        chunks.append(chunk);size+=len(chunk)
+                        if size>4*1024*1024:fail('capture_install_public_unsafe')
+                    if (version(os.fstat(leaf))!=version(initial)
+                            or version(os.stat(name,dir_fd=parent,follow_symlinks=False))!=version(initial)):
+                        fail('capture_install_public_unsafe')
+                    states[relative]={'state':'regular','sha256':hashlib.sha256(b''.join(chunks)).hexdigest()}
+            for path,descriptor,initial in directories:
+                if (identity(os.fstat(descriptor))!=identity(initial)
+                        or identity(path.lstat())!=identity(initial) or path.resolve()!=path):
+                    fail('capture_install_public_unsafe')
+        except OSError:fail('capture_install_public_unavailable')
+        finally:
+            for descriptor in reversed(descriptors):os.close(descriptor)
+    if states['index.php']['state']!='regular':fail('capture_install_public_index_required')
+    return states
+'''
+
+
+def capture_public_fingerprints(states):
+    """Strict typed receipt: None is never accepted as evidence of absence."""
+    if not isinstance(states,dict) or set(states)!=set(CAPTURE_PUBLIC_PATHS):return None
+    values={}
+    for relative,state in states.items():
+        if not isinstance(state,dict):return None
+        if state=={'state':'absent'} and relative!='index.php':values[relative]=None
+        elif (set(state)=={'state','sha256'} and state['state']=='regular'
+                and isinstance(state['sha256'],str) and re.fullmatch(r'[a-f0-9]{64}',state['sha256'])):
+            values[relative]=state['sha256']
+        else:return None
+    return values
+
+
 def capture_install_remote_program(remote, command):
     """Restrict the existing stock installer to one reviewed replacement; no new I/O lane."""
     policy(command)
@@ -1202,22 +1269,24 @@ def capture_install_remote_program(remote, command):
     rollback = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:\n"
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     reservation = '    op=private/operation\n'
-    for marker in (dispatch, inventory, manifest, rollback, gate, reservation):
+    snapshot = "    before=fingerprints(); result['production_before']=before\n"
+    definitions = 'def db_summary(provider):\n'
+    for marker in (dispatch, inventory, manifest, rollback, gate, reservation, snapshot, definitions):
         need(remote.count(marker) == 1, 'capture_install_stock_drift')
     need(remote.count(exclusion) == 2, 'capture_install_stock_drift')
     pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
     preflight = {**CAPTURE_INSTALL_DEPENDENCIES, CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_PREDECESSOR}
     registration = "    if mode==" + repr(CAPTURE_INSTALL_MODE) + ":\n" + (
-        "        if not all(isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) for v in before.values()):\n"
-        "            fail('capture_install_protected_fingerprint')\n"
         "        for relative,expected in " + repr(preflight) + ".items():\n"
         "            target=runtime/relative\n"
         "            if (not safe_file(target,2*1024*1024) or target.resolve()!=target\n"
         "                    or target.stat().st_nlink!=1 or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):\n"
         "                fail('capture_install_predecessor_or_dependency_drift')\n"
         "        result['install']=install_runtime(stage,files,op)\n"
+        "        result['passive_capture_public_after']=capture_install_public_state()\n"
         "        result['production_after']=fingerprints()\n"
-        "        if result['production_after']!=before: fail('production_drift')\n"
+        "        if (result['production_after']!=before\n"
+        "                or result['passive_capture_public_after']!=result['passive_capture_public_before']): fail('production_drift')\n"
         "        result.update(status='installed',supplier_calls=0,database_writes=0,\n"
         "            runtime_changed=True,public_ui_entrypoints_unchanged=True)\n"
         "        result['passive_capture_install']=" + repr({'target':CAPTURE_INSTALL_PATH,
@@ -1226,6 +1295,9 @@ def capture_install_remote_program(remote, command):
     )
     fixed = "    if mode!=" + repr(CAPTURE_INSTALL_MODE) + " or operation!=" + repr(CAPTURE_INSTALL_OPERATION) + " or source!=" + repr(command['source_sha']) + ":fail('capture_install_fixed_scope')\n"
     remote = remote.replace(dispatch, registration + dispatch, 1)
+    remote = remote.replace(definitions, CAPTURE_PUBLIC_REMOTE + '\n' + definitions, 1)
+    remote = remote.replace(snapshot, snapshot + "    result['passive_capture_public_before']=capture_install_public_state()\n"
+        "    if before!={k:v.get('sha256') for k,v in result['passive_capture_public_before'].items()}:fail('production_drift')\n", 1)
     remote = remote.replace(inventory, "    if mode!=" + repr(CAPTURE_INSTALL_MODE)
         + " and (len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected)):\n", 1)
     remote = remote.replace(manifest, "if not isinstance(files,dict) or files!=" + repr(pins) + ": fail('capture_install_manifest')", 1)
@@ -1247,6 +1319,8 @@ def capture_install_completed(command, result):
     expected = {'target':CAPTURE_INSTALL_PATH,'sha256':CAPTURE_INSTALL_SHA256,
                 'previous_sha256':CAPTURE_INSTALL_PREDECESSOR,'dependencies':CAPTURE_INSTALL_DEPENDENCIES}
     install = result.get('install')
+    public_before=result.get('passive_capture_public_before')
+    public_fingerprints=capture_public_fingerprints(public_before)
     return (type(result.get('schema_version')) is int and result['schema_version'] == 1
         and result.get('operation_id') == CAPTURE_INSTALL_OPERATION
         and result.get('mode') == CAPTURE_INSTALL_MODE and result.get('source_sha') == command['source_sha']
@@ -1255,9 +1329,9 @@ def capture_install_completed(command, result):
         and install == {'status':'installed','source_sha':command['source_sha'],
             'files':1,'changed_files':1,'created_files':0,'manifest_sha256':manifest}
         and result.get('runtime_changed') is True and result.get('public_ui_entrypoints_unchanged') is True
-        and isinstance(result.get('production_before'),dict)
-        and set(result['production_before']) == {'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
-        and all(isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) for v in result['production_before'].values())
+        and public_fingerprints is not None
+        and public_before == result.get('passive_capture_public_after')
+        and result.get('production_before') == public_fingerprints
         and result['production_before'] == result.get('production_after')
         and all(type(result.get(k)) is int and result[k] == 0
                 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
