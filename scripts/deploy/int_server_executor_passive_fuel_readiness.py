@@ -99,7 +99,11 @@ CAPTURE_INSTALL_DEPENDENCIES = {
 }
 CAPTURE_INSTALL_CHECK_COMMIT = '5d61cc5a31defbb85fec480c58b9c2fa06ba368c'
 CAPTURE_INSTALL_CHECK_IDS = {120679633370, 120679633352, 120679632456}
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE)
+CAPTURE_RECONCILE_MODE = 'reconcile-tv-fuel-capture-install'
+CAPTURE_RECONCILE_OPERATION = 'int-anex-tv-fuel-capture-reconcile-20261024-v1'
+CAPTURE_RECONCILE_TARGET_SOURCE = '04c0647ac30e1fd195aaf78d3d538178dcd59ebb'
+CAPTURE_RECONCILE_TARGET_RESULT = '7b2c198b8f831605e0ee1c4c384b984095f6188e245367f46f3ec70855b4b3d5'
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE, CAPTURE_RECONCILE_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -127,6 +131,10 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [CAPTURE_RECONCILE_MODE]:
+        need(len(parts) == 3 and isinstance(parts[0], str) and re.fullmatch(r'[a-f0-9]{40}', parts[0])
+             and parts[2] == CAPTURE_RECONCILE_OPERATION, 'capture_reconcile_fixed_scope')
+        return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
     if parts[1:2] == [CAPTURE_INSTALL_MODE]:
         need(len(parts) == 3 and isinstance(parts[0], str) and re.fullmatch(r'[a-f0-9]{40}', parts[0])
              and parts[2] == CAPTURE_INSTALL_OPERATION, 'capture_install_fixed_scope')
@@ -194,7 +202,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
         check_commit,check_ids = DATE_DIAGNOSTIC_CHECK_COMMIT,DATE_DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
-    if command['mode'] == CAPTURE_INSTALL_MODE:
+    if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE):
         check_commit, check_ids = CAPTURE_INSTALL_CHECK_COMMIT, CAPTURE_INSTALL_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
@@ -202,7 +210,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
-    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE):
+    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE):
         rows=checks['check_runs']
         need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
              and all(c.get('head_sha')==check_commit for c in rows),
@@ -229,6 +237,7 @@ def bundle_source(source_root, command=None):
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):
         hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
     if command['mode'] == CAPTURE_INSTALL_MODE: hashes = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
+    if command['mode'] == CAPTURE_RECONCILE_MODE: hashes = {}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -1259,6 +1268,167 @@ def capture_public_fingerprints(states):
     return values
 
 
+CAPTURE_RECONCILE_REMOTE = r'''
+def capture_reconcile_file(path,limit=65536):
+    import stat
+    def version(s):return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    if path.resolve()!=path:fail('capture_reconcile_file_unsafe')
+    initial=path.lstat()
+    if not stat.S_ISREG(initial.st_mode) or initial.st_nlink!=1 or initial.st_size>limit:
+        fail('capture_reconcile_file_unsafe')
+    descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        if version(os.fstat(descriptor))!=version(initial):fail('capture_reconcile_file_drift')
+        chunks=[];size=0
+        while True:
+            chunk=os.read(descriptor,min(65536,limit+1-size))
+            if not chunk:break
+            chunks.append(chunk);size+=len(chunk)
+            if size>limit:fail('capture_reconcile_file_unsafe')
+        if version(os.fstat(descriptor))!=version(initial) or version(path.lstat())!=version(initial):
+            fail('capture_reconcile_file_drift')
+        return b''.join(chunks)
+    finally:os.close(descriptor)
+
+def capture_reconcile_original():
+    import stat
+    target=private/CAPTURE_TARGET_OPERATION
+    initial=target.lstat()
+    if not stat.S_ISDIR(initial.st_mode) or target.resolve()!=target:
+        fail('capture_reconcile_original_unsafe')
+    reservation_raw=capture_reconcile_file(target/'reservation.json')
+    result_raw=capture_reconcile_file(target/'result.json')
+    if hashlib.sha256(result_raw).hexdigest()!=CAPTURE_TARGET_RESULT:
+        fail('capture_reconcile_original_result')
+    saved=json.loads(reservation_raw)
+    if (not isinstance(saved,dict) or set(saved)!={'operation_id','source_sha','mode','reserved_at'}
+            or saved['operation_id']!=CAPTURE_TARGET_OPERATION or saved['source_sha']!=CAPTURE_TARGET_SOURCE
+            or saved['mode']!='install-tv-fuel-capture' or type(saved['reserved_at']) is not int or saved['reserved_at']<1):
+        fail('capture_reconcile_original_reservation')
+    for name in ('install-plan.json','backup'):
+        path=target/name
+        if path.exists() or path.is_symlink():fail('capture_reconcile_install_evidence')
+    final=target.lstat()
+    if (initial.st_dev,initial.st_ino,initial.st_mode)!=(final.st_dev,final.st_ino,final.st_mode):
+        fail('capture_reconcile_original_drift')
+    return {'result_sha256':hashlib.sha256(result_raw).hexdigest(),
+            'reservation_sha256':hashlib.sha256(reservation_raw).hexdigest(),
+            'no_install_plan_or_backup':True}
+
+def capture_reconcile_public():
+    try:return {'status':'measured','paths':capture_install_public_state()}
+    except (OSError,RuntimeError) as error:
+        code=str(error)
+        if code not in ('capture_install_public_unsafe','capture_install_public_unavailable','capture_install_public_index_required'):
+            code='capture_install_public_unavailable'
+        path=result.pop('_capture_public_cursor',None)
+        if code=='capture_install_public_index_required':path='index.php'
+        return {'status':'unavailable','code':code,'path':path}
+    finally:result.pop('_capture_public_cursor',None)
+
+def capture_reconcile_runtime():
+    out={}
+    for relative in CAPTURE_RUNTIME_PATHS:
+        try:
+            data=capture_reconcile_file(runtime/relative,2*1024*1024)
+            out[relative]={'status':'measured','sha256':hashlib.sha256(data).hexdigest()}
+        except (OSError,RuntimeError):out[relative]={'status':'unavailable'}
+    return out
+'''
+
+
+def capture_reconcile_remote_program(remote,command):
+    policy(command)
+    dispatch="    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):\n"
+    manifest="if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    exclusion="    if mode not in ('reconcile',"
+    gate="    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
+    reservation='    op=private/operation\n'
+    definitions='def db_summary(provider):\n'
+    for marker in (dispatch,manifest,gate,reservation,definitions):
+        need(remote.count(marker)==1,'capture_reconcile_stock_drift')
+    need(remote.count(exclusion)==2,'capture_reconcile_stock_drift')
+    cursor="    for relative in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):\n"
+    need(CAPTURE_PUBLIC_REMOTE.count(cursor)==1,'capture_reconcile_public_drift')
+    public=CAPTURE_PUBLIC_REMOTE.replace(cursor,cursor+"        result['_capture_public_cursor']=relative\n",1)
+    constants=('CAPTURE_TARGET_OPERATION='+repr(CAPTURE_INSTALL_OPERATION)+'\n'
+        +'CAPTURE_TARGET_RESULT='+repr(CAPTURE_RECONCILE_TARGET_RESULT)+'\n'
+        +'CAPTURE_TARGET_SOURCE='+repr(CAPTURE_RECONCILE_TARGET_SOURCE)+'\n'
+        +'CAPTURE_RUNTIME_PATHS='+repr((CAPTURE_INSTALL_PATH,*CAPTURE_INSTALL_DEPENDENCIES))+'\n')
+    registration="    if mode=="+repr(CAPTURE_RECONCILE_MODE)+":\n"+(
+        "        original=capture_reconcile_original()\n"
+        "        public_before=capture_reconcile_public()\n"
+        "        runtime_before=capture_reconcile_runtime()\n"
+        "        runtime_after=capture_reconcile_runtime()\n"
+        "        public_after=capture_reconcile_public()\n"
+        "        if capture_reconcile_original()!=original:fail('capture_reconcile_original_drift')\n"
+        "        result['production_after']=fingerprints()\n"
+        "        if (public_after!=public_before or runtime_after!=runtime_before\n"
+        "                or result['production_after']!=before):fail('capture_reconcile_read_drift')\n"
+        "        public_measured=public_before['status']=='measured'\n"
+        "        if public_measured and before!={k:v.get('sha256') for k,v in public_before['paths'].items()}:fail('production_drift')\n"
+        "        result['capture_install_reconciliation']={\n"
+        "            'target_operation':CAPTURE_TARGET_OPERATION,'target_source':CAPTURE_TARGET_SOURCE,\n"
+        "            'original':original,'target_status':'unknown_no_replay',\n"
+        "            'target_supplier_calls':'unknown','target_database_writes':'unknown',\n"
+        "            'public_state':public_before,'runtime_files':runtime_before,\n"
+        "            'original_operation_unchanged':True,'installation_attempted':False,\n"
+        "            'historical_path_types_established':False,'installation_authorized':False}\n"
+        "        result.update(status='reconciled_read_only',supplier_calls=0,database_writes=0,\n"
+        "            runtime_changed=False,production_unchanged=public_measured)\n"
+    )
+    fixed="    if mode!="+repr(CAPTURE_RECONCILE_MODE)+" or operation!="+repr(CAPTURE_RECONCILE_OPERATION)+" or source!="+repr(command['source_sha'])+":fail('capture_reconcile_fixed_scope')\n"
+    remote=remote.replace(definitions,constants+public+'\n'+CAPTURE_RECONCILE_REMOTE+'\n'+definitions,1)
+    remote=remote.replace(dispatch,registration+dispatch,1)
+    remote=remote.replace(manifest,"if not isinstance(files,dict) or files!={}:fail('capture_reconcile_manifest')",1)
+    remote=remote.replace(exclusion,"    if mode not in ("+repr(CAPTURE_RECONCILE_MODE)+",'reconcile',")
+    remote=remote.replace(gate,fixed+gate,1)
+    remote=remote.replace(reservation,
+        "    if (private/operation).exists() or (private/operation).is_symlink():\n"
+        "        result.update(status='blocked',reason='operation_exists_no_replay',supplier_calls=0,database_writes=0)\n"
+        "        print(json.dumps(result,separators=(',',':')));raise SystemExit(0)\n"+reservation,1)
+    ast.parse(remote)
+    return remote
+
+
+def capture_reconcile_completed(command,result):
+    record=result.get('capture_install_reconciliation')
+    keys={'target_operation','target_source','original','target_status','target_supplier_calls',
+          'target_database_writes','public_state','runtime_files','original_operation_unchanged',
+          'installation_attempted','historical_path_types_established','installation_authorized'}
+    if not isinstance(record,dict) or set(record)!=keys:return False
+    original=record['original'];public=record['public_state'];runtime_files=record['runtime_files']
+    if (not isinstance(original,dict) or set(original)!={'result_sha256','reservation_sha256','no_install_plan_or_backup'}
+            or original['result_sha256']!=CAPTURE_RECONCILE_TARGET_RESULT
+            or not isinstance(original['reservation_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',original['reservation_sha256'])
+            or original['no_install_plan_or_backup'] is not True):return False
+    if not isinstance(public,dict):return False
+    measured=public.get('status')=='measured'
+    if measured:
+        if set(public)!={'status','paths'} or capture_public_fingerprints(public['paths']) is None:return False
+        if result.get('production_before')!=capture_public_fingerprints(public['paths']):return False
+    elif (set(public)!={'status','code','path'} or public.get('status')!='unavailable'
+            or public['path'] not in CAPTURE_PUBLIC_PATHS
+            or public['code'] not in ('capture_install_public_unsafe','capture_install_public_unavailable','capture_install_public_index_required')):return False
+    if not isinstance(runtime_files,dict) or set(runtime_files)!={CAPTURE_INSTALL_PATH,*CAPTURE_INSTALL_DEPENDENCIES}:return False
+    for state in runtime_files.values():
+        if state=={'status':'unavailable'}:continue
+        if (not isinstance(state,dict) or set(state)!={'status','sha256'} or state['status']!='measured'
+                or not isinstance(state['sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',state['sha256'])):return False
+    return (type(result.get('schema_version')) is int and result['schema_version']==1
+        and result.get('operation_id')==CAPTURE_RECONCILE_OPERATION and result.get('mode')==CAPTURE_RECONCILE_MODE
+        and result.get('source_sha')==command['source_sha'] and result.get('status')=='reconciled_read_only'
+        and record['target_operation']==CAPTURE_INSTALL_OPERATION and record['target_source']==CAPTURE_RECONCILE_TARGET_SOURCE
+        and record['target_status']=='unknown_no_replay' and record['target_supplier_calls']==record['target_database_writes']=='unknown'
+        and record['original_operation_unchanged'] is True and record['installation_attempted'] is False
+        and record['historical_path_types_established'] is False and record['installation_authorized'] is False
+        and result.get('runtime_changed') is False and result.get('production_unchanged') is measured
+        and isinstance(result.get('production_before'),dict) and set(result['production_before'])==set(CAPTURE_PUBLIC_PATHS)
+        and all(v is None or isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) for v in result['production_before'].values())
+        and result['production_before']==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
+
+
 def capture_install_remote_program(remote, command):
     """Restrict the existing stock installer to one reviewed replacement; no new I/O lane."""
     policy(command)
@@ -1338,6 +1508,7 @@ def capture_install_completed(command, result):
 
 def remote_program(remote, command=None):
     command = policy(command)
+    if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_remote_program(remote,command)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_remote_program(remote, command)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
     mode = command['mode']
@@ -1399,6 +1570,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_completed(command,result)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_completed(command, result)
     if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)

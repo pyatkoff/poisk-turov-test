@@ -9,6 +9,13 @@ core=importlib.util.module_from_spec(spec);spec.loader.exec_module(core)
 p=core.passive_fuel_readiness
 SOURCE='04c0647ac30e1fd195aaf78d3d538178dcd59ebb'
 COMMAND=core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_INSTALL_MODE+' '+p.CAPTURE_INSTALL_OPERATION)
+READ_COMMAND=core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_RECONCILE_MODE+' '+p.CAPTURE_RECONCILE_OPERATION)
+ORIGINAL_RESULT={'booking_calls':0,'database_writes':'unknown','lead_calls':0,
+    'mode':'install-tv-fuel-capture','operation_id':p.CAPTURE_INSTALL_OPERATION,
+    'production_before':{'index.php':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
+        'v2/api-v2.php':None,'v2/index.php':None,'v2/lead-adapter-v2.php':None},
+    'reason':'capture_install_protected_fingerprint','schema_version':1,'source_sha':SOURCE,
+    'status':'unknown_no_replay','supplier_calls':'unknown'}
 
 class CaptureInstall(unittest.TestCase):
     @classmethod
@@ -54,6 +61,131 @@ class CaptureInstall(unittest.TestCase):
             self.assertEqual(run.returncode,0,run.stderr);self.assertEqual(run.stderr,'')
             return json.loads(run.stdout)
         return execute,helper,runtime,home,unrelated
+
+    def reconciliation_fixture(self,root,payload_change=None):
+        _,helper,runtime,home,other=self.fixture(root)
+        original=home/'.anytoour-int-executor'/p.CAPTURE_INSTALL_OPERATION
+        original.mkdir(parents=True,mode=0o700)
+        reservation={'operation_id':p.CAPTURE_INSTALL_OPERATION,'source_sha':SOURCE,
+                     'mode':p.CAPTURE_INSTALL_MODE,'reserved_at':1792794859}
+        (original/'reservation.json').write_text(json.dumps(reservation,sort_keys=True))
+        raw=json.dumps(ORIGINAL_RESULT,sort_keys=True,separators=(',',':')).encode()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),p.CAPTURE_RECONCILE_TARGET_RESULT)
+        (original/'result.json').write_bytes(raw)
+        before={f.name:f.read_bytes() for f in original.iterdir()}
+        blob,pins=p.bundle_source(root/'source',READ_COMMAND)
+        self.assertEqual(pins,{})
+        archive=root/'source.tar.gz';archive.write_bytes(blob)
+        payload=dict(READ_COMMAND,archive=str(archive),manifest_sha256=hashlib.sha256(b'{}').hexdigest())
+        payload.update(payload_change or {})
+        remote=root/'remote.py'
+        program=p.remote_program(core.REMOTE,READ_COMMAND)
+        # A successful actual stock-REMOTE read must never reach these write/DB lanes.
+        program=program.replace('def install_runtime(stage,files,op):\n',"def install_runtime(stage,files,op):\n    raise AssertionError('install_forbidden')\n",1)
+        program=program.replace('def db_summary(provider):\n',"def db_summary(provider):\n    raise AssertionError('db_forbidden')\n",1)
+        remote.write_text(program)
+        def execute():
+            run=subprocess.run(['python3',str(remote)],input=json.dumps(payload),capture_output=True,text=True,
+                               env=dict(os.environ,HOME=str(home)),timeout=30)
+            self.assertEqual(run.returncode,0,run.stderr);self.assertEqual(run.stderr,'')
+            return json.loads(run.stdout)
+        return execute,helper,runtime,original,before,remote
+
+    def test_reconcile_exact_original_without_install_or_db_and_no_replay(self):
+        for absent in (False,True):
+            with self.subTest(absent=absent),tempfile.TemporaryDirectory() as td:
+                execute,helper,runtime,original,before,_=self.reconciliation_fixture(Path(td))
+                if absent:shutil.rmtree(runtime.parents[1]/'v2')
+                result=execute();self.assertTrue(p.completed(READ_COMMAND,result),result)
+                self.assertEqual(helper.read_bytes(),self.old)
+                self.assertEqual({f.name:f.read_bytes() for f in original.iterdir()},before)
+                record=result['capture_install_reconciliation']
+                self.assertEqual(record['target_status'],'unknown_no_replay')
+                self.assertFalse(record['installation_authorized']);self.assertFalse(record['installation_attempted'])
+                self.assertFalse(record['historical_path_types_established'])
+                if absent:
+                    for name in p.CAPTURE_PUBLIC_PATHS[1:]:
+                        self.assertEqual(record['public_state']['paths'][name],{'state':'absent'})
+                own=original.parent/p.CAPTURE_RECONCILE_OPERATION/'result.json';saved=own.read_bytes()
+                self.assertEqual(execute()['reason'],'operation_exists_no_replay')
+                self.assertEqual(own.read_bytes(),saved);self.assertEqual((original/'result.json').read_bytes(),before['result.json'])
+                for mutate in [lambda r:r.update(supplier_calls=True),lambda r:r.update(production_unchanged=False),
+                    lambda r:r['capture_install_reconciliation'].update(installation_authorized=True),
+                    lambda r:r['capture_install_reconciliation'].update(target_supplier_calls=0),
+                    lambda r:r['capture_install_reconciliation']['original'].update(result_sha256='f'*64),
+                    lambda r:r['capture_install_reconciliation'].update(runtime_files={}),
+                    lambda r:r['capture_install_reconciliation'].update(public_state={'status':'measured','paths':{}})]:
+                    forged=copy.deepcopy(result);mutate(forged);self.assertFalse(p.completed(READ_COMMAND,forged))
+
+    def test_reconcile_rejects_original_drift_and_install_evidence(self):
+        for kind in ('result','missing_result','result_symlink','reservation_source','reservation_mode','reservation_extra','plan','backup','dangling_backup'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as td:
+                execute,helper,_,original,_,_=self.reconciliation_fixture(Path(td))
+                if kind=='result':(original/'result.json').write_text('{}')
+                elif kind in ('missing_result','result_symlink'):
+                    (original/'result.json').unlink()
+                    if kind=='result_symlink':(original/'result.json').symlink_to(original/'reservation.json')
+                elif kind.startswith('reservation'):
+                    path=original/'reservation.json';row=json.loads(path.read_text())
+                    row.update({'source_sha':'f'*40} if kind.endswith('source') else {'mode':'reconcile'} if kind.endswith('mode') else {'extra':True})
+                    path.write_text(json.dumps(row))
+                elif kind=='plan':(original/'install-plan.json').write_text('{}')
+                elif kind=='backup':(original/'backup').mkdir()
+                else:(original/'backup').symlink_to(original/'missing')
+                result=execute();self.assertFalse(p.completed(READ_COMMAND,result),result)
+                self.assertEqual(helper.read_bytes(),self.old);self.assertNotIn('install',result)
+
+    def test_reconcile_public_unsafe_is_current_unavailable_not_absent_or_unchanged(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,original,before,_=self.reconciliation_fixture(Path(td))
+            shutil.rmtree(runtime.parents[1]/'v2');(runtime.parents[1]/'v2').symlink_to(runtime.parents[1]/'missing')
+            result=execute();self.assertTrue(p.completed(READ_COMMAND,result),result)
+            self.assertEqual(result['capture_install_reconciliation']['public_state'],
+                {'status':'unavailable','code':'capture_install_public_unsafe','path':'v2/index.php'})
+            self.assertIs(result['production_unchanged'],False);self.assertEqual(helper.read_bytes(),self.old)
+            self.assertEqual({f.name:f.read_bytes() for f in original.iterdir()},before)
+
+    def test_reconcile_fixed_scope_and_current_runtime_hash_are_not_install_authority(self):
+        for changed in ({'mode':'install-tv-fuel-capture'},{'source_sha':'f'*40},{'operation_id':p.CAPTURE_RECONCILE_OPERATION+'x'}):
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as td:
+                execute,helper,*_=self.reconciliation_fixture(Path(td),changed)
+                result=execute();self.assertEqual(result['reason'],'capture_reconcile_fixed_scope');self.assertEqual(helper.read_bytes(),self.old)
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,*_=self.reconciliation_fixture(Path(td));helper.write_bytes(b'<?php /* foreign current helper */')
+            result=execute();self.assertTrue(p.completed(READ_COMMAND,result),result)
+            state=result['capture_install_reconciliation']['runtime_files'][p.CAPTURE_INSTALL_PATH]
+            self.assertEqual(state,{'status':'measured','sha256':hashlib.sha256(helper.read_bytes()).hexdigest()})
+            self.assertFalse(result['capture_install_reconciliation']['installation_authorized'])
+
+    def test_reconcile_changed_original_during_read_is_not_repaired(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,_,original,_,remote=self.reconciliation_fixture(Path(td))
+            injection="        runtime_before=capture_reconcile_runtime()\n"
+            remote.write_text(remote.read_text().replace(injection,injection+"        (private/CAPTURE_TARGET_OPERATION/'result.json').write_text('{}')\n",1))
+            result=execute();self.assertEqual(result['reason'],'capture_reconcile_original_result')
+            self.assertEqual((original/'result.json').read_text(),'{}');self.assertEqual(helper.read_bytes(),self.old)
+
+    def test_reconcile_parse_bundle_and_owner_event_keep_mode_no_replay(self):
+        for tail in (p.CAPTURE_RECONCILE_OPERATION+' extra',p.CAPTURE_RECONCILE_OPERATION+'x'):
+            with self.assertRaises(ValueError):core.parse_command(core.PREFIX+SOURCE+' '+p.CAPTURE_RECONCILE_MODE+' '+tail)
+        self.assertNotIn(p.CAPTURE_RECONCILE_MODE,p.RELEASE_MODES)
+        with tempfile.TemporaryDirectory() as td:
+            blob,pins=p.bundle_source(Path(td),READ_COMMAND)
+            self.assertEqual(pins,{})
+            with tarfile.open(fileobj=io.BytesIO(blob)) as archive:self.assertEqual(archive.getnames(),['manifest.json'])
+        event={'action':'created','repository':{'full_name':core.REPO},'comment':{'id':99}}
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':core.REPO,'GITHUB_REF':'refs/heads/main',
+             'GITHUB_WORKFLOW_REF':core.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+             'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        checks=[{'id':i,'head_sha':p.CAPTURE_INSTALL_CHECK_COMMIT,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in p.CAPTURE_INSTALL_CHECK_IDS]
+        history=[{'id':98,'body':core.PREFIX+SOURCE+' '+p.CAPTURE_INSTALL_MODE+' '+p.CAPTURE_INSTALL_OPERATION},
+                 {'id':99,'body':core.PREFIX+SOURCE+' '+p.CAPTURE_RECONCILE_MODE+' '+p.CAPTURE_RECONCILE_OPERATION}]
+        def api(path,token):return {'total_count':len(checks),'check_runs':checks} if '/check-runs' in path else history
+        p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,READ_COMMAND)
+        for changed in ({'GITHUB_RUN_ATTEMPT':'2'},{'GITHUB_ACTOR':'other'},{'GITHUB_EVENT_NAME':'workflow_dispatch'}):
+            with self.assertRaises(ValueError):p.admission(api,event,'fake',dict(env,**changed),core.REPO,4709,core.PREFIX,READ_COMMAND)
+        history.append(dict(history[-1],id=100))
+        with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,READ_COMMAND)
 
     def test_exact_native_install_backup_dependencies_and_completion(self):
         with tempfile.TemporaryDirectory() as td:
