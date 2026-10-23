@@ -27,7 +27,7 @@ class CaptureInstall(unittest.TestCase):
         cls.php=shutil.which('php')
         if not cls.php: raise RuntimeError('real_php_required')
 
-    def fixture(self,root,drift=None,fail_lint=False,payload_change=None):
+    def fixture(self,root,drift=None,fail_lint=False,payload_change=None,public_drift=False):
         source=root/'source'; source.mkdir()
         f=source/p.CAPTURE_INSTALL_PATH;f.parent.mkdir(parents=True);f.write_bytes(self.new)
         blob,pins=p.bundle_source(source,COMMAND)
@@ -43,10 +43,11 @@ class CaptureInstall(unittest.TestCase):
         payload.update(payload_change or {})
         remote=root/'remote.py';remote.write_text(p.remote_program(core.REMOTE,COMMAND))
         env=dict(os.environ,HOME=str(home))
-        if fail_lint:
+        if fail_lint or public_drift:
             bindir=root/'bin';bindir.mkdir()
             shim=bindir/'php'
-            shim.write_text('#!/usr/bin/env python3\nimport os,sys\nif sys.argv[-1]=='+repr(str(helper))+':sys.exit(1)\nos.execv('+repr(self.php)+',['+repr(self.php)+']+sys.argv[1:])\n')
+            action='sys.exit(1)' if fail_lint else 'open('+repr(str(project/'index.php'))+',"wb").write(b"changed public file")'
+            shim.write_text('#!/usr/bin/env python3\nimport os,sys\nif sys.argv[-1]=='+repr(str(helper))+':'+action+'\nos.execv('+repr(self.php)+',['+repr(self.php)+']+sys.argv[1:])\n')
             shim.chmod(0o755);env['PATH']=str(bindir)+os.pathsep+env['PATH']
         def execute():
             run=subprocess.run(['python3',str(remote)],input=json.dumps(payload),capture_output=True,text=True,env=env,timeout=30)
@@ -76,6 +77,11 @@ class CaptureInstall(unittest.TestCase):
                 lambda r:r.update(passive_capture_install={}),lambda r:r.update(production_before={}),
                 lambda r:r.update(production_before=dict.fromkeys(r['production_before']),production_after=dict.fromkeys(r['production_after'])),
                 lambda r:r.update(production_before=dict.fromkeys(r['production_before'],'not-a-hash'),production_after=dict.fromkeys(r['production_after'],'not-a-hash')),
+                lambda r:r.pop('passive_capture_public_before'),
+                lambda r:r.update(passive_capture_public_before=dict.fromkeys(p.CAPTURE_PUBLIC_PATHS),passive_capture_public_after=dict.fromkeys(p.CAPTURE_PUBLIC_PATHS)),
+                lambda r:r.update(passive_capture_public_before=dict.fromkeys(p.CAPTURE_PUBLIC_PATHS,{'state':'absent'}),passive_capture_public_after=dict.fromkeys(p.CAPTURE_PUBLIC_PATHS,{'state':'absent'})),
+                lambda r:r['passive_capture_public_after']['index.php'].update(sha256='f'*64),
+                lambda r:r['passive_capture_public_before']['index.php'].update(extra=True),
                 lambda r:r['install'].update(manifest_sha256='0'*64)]:
                 forged=copy.deepcopy(result);mutate(forged);self.assertFalse(p.completed(COMMAND,forged))
 
@@ -85,12 +91,62 @@ class CaptureInstall(unittest.TestCase):
             result=execute();self.assertEqual(result['reason'],'capture_install_predecessor_or_dependency_drift')
             self.assertEqual(helper.read_bytes(),before);self.assertFalse(p.completed(COMMAND,result))
 
-    def test_missing_public_sentinel_denies_before_write(self):
+    def test_missing_root_index_denies_before_write(self):
         with tempfile.TemporaryDirectory() as td:
             execute,helper,runtime,*_=self.fixture(Path(td))
-            (runtime.parents[1]/'v2/lead-adapter-v2.php').unlink()
-            result=execute();self.assertEqual(result['reason'],'capture_install_protected_fingerprint')
+            (runtime.parents[1]/'index.php').unlink()
+            result=execute();self.assertEqual(result['reason'],'capture_install_public_index_required')
             self.assertEqual(helper.read_bytes(),self.old);self.assertFalse(p.completed(COMMAND,result))
+
+    def test_proven_absent_v2_paths_are_typed_and_preserved(self):
+        for missing in ('one','files','directory'):
+            with self.subTest(missing=missing),tempfile.TemporaryDirectory() as td:
+                execute,helper,runtime,*_=self.fixture(Path(td));project=runtime.parents[1]
+                if missing=='one':(project/'v2/lead-adapter-v2.php').unlink()
+                elif missing=='files':
+                    for path in (project/'v2').iterdir():path.unlink()
+                else:shutil.rmtree(project/'v2')
+                result=execute();self.assertTrue(p.completed(COMMAND,result),result)
+                expected=['v2/lead-adapter-v2.php'] if missing=='one' else list(p.CAPTURE_PUBLIC_PATHS[1:])
+                for relative in expected:
+                    self.assertEqual(result['passive_capture_public_before'][relative],{'state':'absent'})
+                    self.assertFalse((project/relative).exists())
+                self.assertEqual(result['passive_capture_public_before'],result['passive_capture_public_after'])
+                self.assertEqual(helper.read_bytes(),self.new)
+
+    def test_unsafe_public_paths_deny_before_write(self):
+        for kind in ('symlink','dangling','ancestor_symlink','directory','fifo','hardlink','oversize'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as td:
+                execute,helper,runtime,*_=self.fixture(Path(td));project=runtime.parents[1]
+                leaf=project/'v2/api-v2.php';leaf.unlink()
+                if kind in ('symlink','dangling'):leaf.symlink_to(project/('index.php' if kind=='symlink' else 'missing.php'))
+                elif kind=='ancestor_symlink':
+                    shutil.rmtree(project/'v2');(project/'v2').symlink_to(project/'missing-directory')
+                elif kind=='directory':leaf.mkdir()
+                elif kind=='fifo':os.mkfifo(leaf)
+                elif kind=='hardlink':os.link(project/'index.php',leaf)
+                else:
+                    with leaf.open('wb') as stream:stream.truncate(4*1024*1024+1)
+                result=execute();self.assertEqual(result['reason'],'capture_install_public_unsafe',result)
+                self.assertEqual(helper.read_bytes(),self.old);self.assertFalse(p.completed(COMMAND,result))
+
+    def test_public_read_error_is_unavailable_not_absent(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,*_=self.fixture(Path(td))
+            def fail(reason):raise RuntimeError(reason)
+            scope={'project':runtime.parents[1],'os':os,'hashlib':hashlib,'fail':fail}
+            exec(p.CAPTURE_PUBLIC_REMOTE,scope)
+            with patch.object(os,'stat',side_effect=PermissionError()):
+                with self.assertRaisesRegex(RuntimeError,'^capture_install_public_unavailable$'):
+                    scope['capture_install_public_state']()
+            self.assertEqual(helper.read_bytes(),self.old)
+
+    def test_public_drift_after_install_uses_stock_rollback(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,*_=self.fixture(Path(td),public_drift=True)
+            result=execute();self.assertEqual(result['install_failure_class'],'production_drift',result)
+            self.assertEqual(result['status'],'rolled_back');self.assertEqual(helper.read_bytes(),self.old)
+            self.assertFalse(p.completed(COMMAND,result))
 
     def test_dependency_drift_denies_without_write(self):
         for dependency in self.dependencies:
