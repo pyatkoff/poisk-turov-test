@@ -1,0 +1,33 @@
+{
+  "booking_calls": 0,
+  "database_writes": 0,
+  "install": {
+    "changed_files": 2,
+    "created_files": 0,
+    "files": 91,
+    "manifest_sha256": "925a69582111302ec619b3165f8b51b55fb7ba486160a435942176230d7ed027",
+    "source_sha": "b1a727c5749cc3a59bfb72e77d305bbf72596a7c",
+    "status": "installed"
+  },
+  "lead_calls": 0,
+  "mode": "install-runtime",
+  "operation_id": "int-anex-tv-fuel-monitoring-header-runtime-install-20261023-v1",
+  "production_after": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "production_before": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "public_ui_entrypoints_unchanged": true,
+  "runtime_changed": true,
+  "schema_version": 1,
+  "source_sha": "b1a727c5749cc3a59bfb72e77d305bbf72596a7c",
+  "status": "installed",
+  "supplier_calls": 0
+}

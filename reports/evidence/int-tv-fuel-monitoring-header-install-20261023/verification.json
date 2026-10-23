@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "record_type": "int_tv_fuel_monitoring_header_source_install",
+  "source": {
+    "pull_request": 4835,
+    "source_sha": "1199a81cf6d7dbe90e5da0d0c8ddd76aa671a7be",
+    "merged_sha": "b1a727c5749cc3a59bfb72e77d305bbf72596a7c",
+    "tree_sha": "33315c636443ddc34a0c5d7d24e58d0ef5637bdd",
+    "files": [
+      {
+        "path": "app/integrations/operator-fuel-rule-store.php",
+        "git_blob": "1788464bf35bd698b4f852a9eb210e70d634bb4d"
+      },
+      {
+        "path": "app/integrations/tourvisor-operator-fuel-passive-intake.php",
+        "git_blob": "feb1f78fed6c2c31e0aeda6773cc1ec449158b24"
+      },
+      {
+        "path": "tests/operator-fuel-rule-evidence-test.php",
+        "git_blob": "fda4318f56f395d0864f7c526e7e37f93cdcf6dc"
+      },
+      {
+        "path": "tests/tourvisor-operator-fuel-passive-intake-test.php",
+        "git_blob": "6121340182fc9ba1c4f2e06269926965e1db5a04"
+      },
+      {
+        "path": "docs/integrations/fuel-search-pricing-owner-rule-20260914.md",
+        "git_blob": "9d200c7dcf4972b3ad2969fb695468880bb1854f"
+      }
+    ]
+  },
+  "reason": "Ordinary passive capture persisted a retained monitoring window but discarded its return at the existing gateway; no safe current-window output existed.",
+  "boundary": {
+    "producer": "validated normalized rows already in Store::append memory",
+    "new_private_reads": 0,
+    "new_db_reads": 0,
+    "new_supplier_http": 0,
+    "new_endpoints": 0,
+    "new_carriers": 0,
+    "root_source_changed": false,
+    "response_body_status_money_unchanged": true,
+    "private_diagnostic_schema_unchanged": true,
+    "retention_limit": 128,
+    "encoded_header_limit": 2048,
+    "missing_is_zero": false,
+    "automatic_pricing_rule": false,
+    "predictive_accuracy_claimed": false
+  },
+  "local_validation": {
+    "php_version": "8.3",
+    "store_evidence_suite": "PASS",
+    "passive_intake_suite": "PASS",
+    "native_http_fixture": {
+      "status": 200,
+      "header_count": 1,
+      "encoded_bytes": 731,
+      "supplier_body_byte_identical": true,
+      "supplier_calls": 0
+    }
+  },
+  "ci": [
+    {
+      "id": 120345822124,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/39933061272/job/120345822124"
+    },
+    {
+      "id": 120345821856,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/39933061284/job/120345821856"
+    },
+    {
+      "id": 120345821671,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/39933061314/job/120345821671"
+    },
+    {
+      "id": 120345821404,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/39933061294/job/120345821404"
+    },
+    {
+      "id": 120345821201,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/39933061250/job/120345821201"
+    }
+  ],
+  "independent_review": {
+    "review_id": 5626481546,
+    "reviewer": "temporary independent reviewer /root/review_4834",
+    "conclusion": "ACCEPT",
+    "exact_five_committed_blobs_matched": true,
+    "tests_independently_rerun": false
+  },
+  "preflight": {
+    "source_sha": "b1a727c5749cc3a59bfb72e77d305bbf72596a7c",
+    "source_tree": "33315c636443ddc34a0c5d7d24e58d0ef5637bdd",
+    "source_files": 121,
+    "runtime_count": 91,
+    "controller_blob": "d6b9b54d7b4a94c5e8d383546483b072a58d270b",
+    "changed_runtime_paths": [
+      "app/integrations/operator-fuel-rule-store.php",
+      "app/integrations/tourvisor-operator-fuel-passive-intake.php"
+    ],
+    "changed_runtime_sha256": {
+      "app/integrations/operator-fuel-rule-store.php": "a84468efc7953f50ee6fc25aaa77a40b97bd527ad9fbbe923d547dbe9db60fb9",
+      "app/integrations/tourvisor-operator-fuel-passive-intake.php": "686878efe2b13b212b5d6a01c3d7649221e9d9768960398d19d4fa01c9c84a75"
+    },
+    "manifest_sha256": "925a69582111302ec619b3165f8b51b55fb7ba486160a435942176230d7ed027",
+    "all_bundle_git_blobs_match_source": true,
+    "supplier_calls": 0,
+    "server_commands": 0
+  },
+  "install": {
+    "run_id": 39933434012,
+    "job_id": 120347069441,
+    "attempt": 1,
+    "zip_bytes": 572,
+    "zip_sha256": "340817d830d8ea6b4c7c0df76db304e156d38e45bc4a0cc333e18572bf04c73f",
+    "json_bytes": 1051,
+    "json_sha256": "871da4e1a05e1a7e4149c9cc5bfa75cb0ea248afe3764431ba76625f193bdaca",
+    "actual_artifact_crc_schema_job_source_manifest_preservation": "PASS",
+    "files": 91,
+    "changed_files": 2,
+    "created_files": 0,
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "post_install_real_capture": "NOT_MEASURED",
+    "accuracy_80_percent": "NOT_MEASURED"
+  },
+  "coordination": {
+    "claim": 6361744186,
+    "source_terminal_install_claim": 6361996421,
+    "command": 6361996696,
+    "terminal": 6362051706
+  },
+  "measurements": {
+    "current_retained_population": null,
+    "post_install_real_capture": "NOT_MEASURED",
+    "accuracy_80_percent": "NOT_MEASURED",
+    "owner_account_global_calls_remaining": "NOT_MEASURED"
+  },
+  "next_step": "Consume one optional header on the next justified ordinary successful TV flights capture under one INT case owner; reuse its handoff only. Do not replay old cases or acquire coverage-only supplier probes."
+}
