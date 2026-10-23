@@ -46,3 +46,33 @@ Original command6376052519/run40034325979/art12536421402 is CONSUMED_NO_REPLAY:
 capture_install_protected_fingerprint before install_runtime, helper not installed.
 Receipt nulls do not distinguish absent from unsafe. This typed-state correction
 does not reopen the failed operation, add a successor ID or authorize a new command.
+
+## Original-operation read-only reconciliation
+
+Owner continuation24October2026, claim4709/6376324290. The same registered passive
+module adds one fixed read-only profile, not another installer or log reader:
+`/run-int-server-v1 <fresh-current-FEATURE-SHA> reconcile-tv-fuel-capture-install int-anex-tv-fuel-capture-reconcile-20261024-v1`.
+Only after bounded review, mandatory CI and the normal main cutover, execute once.
+
+It binds the original private result's exact canonical SHA256
+7b2c198b8f831605e0ee1c4c384b984095f6188e245367f46f3ec70855b4b3d5,
+derived from verified artifact12536421402. Reservation identity/source/mode and
+positive integer timestamp are validated; its originally unrecorded byte hash is
+measured now, not claimed as historical proof. Both original metadata files must
+remain byte-identical during the read, with no install-plan or backup present.
+The original UNKNOWN reservation/result are never rewritten or reopened.
+
+The empty source bundle contains only its manifest. Through the same stock
+transport/concurrency/reservation mechanism, this action reads the four fixed
+public path states and hashes only the exact preview helper plus three dependencies.
+No install_runtime, generic reconcile, DB, supplier, PHP runner, config/key/session,
+logs, retained supplier files, inventory enumeration or new installed file is used.
+Its own private reservation/stage/sanitized receipt are ordinary carrier metadata.
+
+Current safe absence/regular files are explicitly typed. An unsafe or inaccessible
+public path returns a bounded unavailable code and fixed public path; this does
+not claim production unchanged. Unexpected/missing runtime hashes are observations,
+never installation authority. The original supplier/DB counters stay unknown;
+the new read-only action has zero supplier/DB/booking/lead calls. No historical
+path-type conclusion, install success, retry or replacement install ID follows.
+No-replay preserves both the original receipt and this action's own terminal.
