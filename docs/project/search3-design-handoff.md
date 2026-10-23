@@ -1,3 +1,40 @@
+## Search3 messenger context — source preparation, 23 October 2026
+
+Owner continuation and scope claim [6365444908](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6365444908), existing receiver request [55/6363854435](https://github.com/pyatkoff/max-search-bot/issues/55#issuecomment-6363854435). This is independent source preparation while the receiver's FUN&SUN1091 and SEARCH observer4837 remain with their current owners. No second product PR/build/publisher or receiver implementation is taken.
+
+The current product draft is Site218/package106/v242: «Продолжить» → Telegram / MAX / optional «По телефону». Source2022c21 is its evidence-only sync; published product1ed2e9af remains. Phone is chosen explicitly and never gates messenger use. Installed NEXT source3ff/release4586 remains unchanged. Bot1088/f4ef is installed for manager-published selections only; its installed native-entry owner does not yet accept arbitrary Search3 offers.
+
+### Prepared module and ownership
+
+`v2/prototype-search/messenger-context-v1.js` provides the internal browser API `AnyTourSearch3MessengerContextV1.createSession(read, clock, helpers?)`. It is **not loaded by any page**, not a producer endpoint, wire contract, configured bot link or permission to change an active receiver. No canonical data/quote/lead/price/transport/observer/controller, index, manifest, runtime or product UI is changed.
+
+The optional helper argument defaults to the existing canonical `AnyTourPrototypeData.text`, `AnyTourFlightDisplayV1.departureMinute` and `AnyTourFlightPickerV18.allowanceValue` presentation helpers. All three must be present; this module adds no parallel airline, airport, placeholder-schedule or baggage policy.
+
+The synchronous local `read()` returns `{revision, offer, hotel, price}`. The eventual UI owner supplies its current `selectionGeneration` as revision, the existing normalized chosen offer/hotel, and explicit shown price qualification `{state, currency, description, expiresAt?}`. The reader must not perform I/O. `capture()` returns a deeply frozen allowlisted browser observation; `isCurrent(snapshot)` checks that same session's exact snapshot against current revision, chosen identity/row, terms and quote-expiry boundary. This check qualifies a pending **producer request's selection binding**, never fare truth or a native sender's identity.
+
+| Kept in the observation | Exact semantics |
+| --- | --- |
+| Hotel and trip | Observed Search3 UI hotel ID/name/resort; UI country ID, origin, departure/nights, shown stay end with its explicit stay-end basis |
+| Party and stay | Adults, ordered child ages including repeated0; exact shown room/meal/placement/operator |
+| Flights | Explicit zero-based selected pair, both directions and supplied dates/times/ports/carrier/baggage; or explicit manager-deferred / not-selected. No automatic first pair |
+| Price | Shown whole-party amount/currency/stage description and observed deadline; unknown remains null, expired remains historical; `finalPriceVerified:false`, `authority:browser-observation-only` always |
+
+The `search3-ui` hotel namespace is deliberately an observation namespace, not newly accepted LOCAL/native identity or MATCH evidence. Shown stay end is not claimed as a confirmed return flight. A selected pair with absent price never borrows the base/listing amount. Known selected pair/whole-party amount or currency disagreement is rejected. No fuel/infant/markup arithmetic is introduced.
+
+Raw provider/search/quote/session refs, the opaque chosen key, customer identity, contacts, attribution and source URLs are excluded from the returned object. A non-null object `offer.raw` is required to establish an exact selected-row binding; missing, primitive or array values are rejected. The key/raw-row/pair-object/revision bindings stay in the session's private WeakMap. Cloned/forged/cross-session snapshots, changed terms, changed revision even after returning to identical terms, replaced rows, reader failure and expired pending results cannot complete that old request.
+
+This module is useful preparation for the existing browser owner. It does **not** provide the missing trusted server binding. The accepted future receiver must resolve exact retained supplier/quote facts through its canonical producer contract; browser observations and boolean flags can never become a verified fare, canonical hotel alias or native conversation identity. Capability storage/auth/input/response/family remain receiver-owned and unimplemented. Actual provider application-receipt adaptation, including ANEX, is not implemented here and remains with the canonical producer owner. The normalized ANEX-shaped test fixture is synthetic and proves neither supplier receipt acceptance nor a trusted provider binding. No raw context or private references may be encoded into a bot start URL.
+
+### Bounded preparation verification
+
+`node tests/search3-messenger-context.cjs` executes the actual module offline:15 groups cover full party/terms/directions, duplicate infant ages, deep immutability/no input mutation, private-field exclusion, no implicit pair, manager-deferred, unknown/expired qualification, price/currency mismatch, malformed/absent selected pair,16 changed-field/identity/revision cases, identical-terms newer revision, forged/cross-session objects and lost reader. Three review-driven groups also cover canonical localized/string carrier and airport labels, placeholder schedule/baggage versus real midnight/zero allowance, and missing/primitive selected-row rejection. Tests execute the repository's actual pure presentation helpers. Network/DOM/storage traps assert zero operations. Syntax passes. The initial VM cross-realm TypeError assertion was corrected to compare the error name; it was a fixture realm check, not a runtime workaround or waived immutability assertion.
+
+The first independent review requested the exact-row and presentation-helper corrections above. The limited follow-up review ACCEPTED both fixes, the three added groups and these documented limits; its independent offline run passed all15 groups. No remaining blocker was found within this preparation scope. Full product CI, page loading/integration, native TG/MAX receipt, manager visibility, installed NEXT, live supplier and physical acceptance are NOT claimed. Do not run a new supplier/UI corpus or replay consumed cases to validate this pure module.
+
+Next connected step remains the same: receiver owner completes its held package and supplies the accepted Search3 ingress with trusted source binding; browser owner integrates this module once into the existing three-choice view and validates only that shared boundary. No new roadmap/automation/score tracker is created.
+
+---
+
 # Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
 ## Approved whole Site209 hotel-to-contact transfer — 22 October 2026
