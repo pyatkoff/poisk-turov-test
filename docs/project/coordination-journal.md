@@ -87,3 +87,32 @@ Source/control CI does not provision a key or activate1095. After reviewed main 
 one admitted custody operation, inspect the public key, pin it in receiver1095, and install the
 source dependencies/API through stock gates before connected owner-only native acceptance.
 This is an addition to the current4709/same existing package, not a new executor or roadmap.
+
+## Bounded Search3 producer installation continuation (23 October 2026)
+
+Custody operation `int-anex-search3-signing-20261023-v1` is CONSUMED/RELEASED
+(#4709/6375455463); do not provision, rotate or replay it. Receiver1095 pins only
+its public material. INT4841 expiry correction is SOURCE/CI/MERGE complete at
+FEATURE `b1a69c5721697a8f8c1867a445e7f2292dbe1b93` (#4709/6375482102).
+
+Same constructor dependency, claims6375540628/6375591789, exact three CONTROL paths:
+`int_server_executor_search3_signing.py`, its existing native test, this journal.
+The registered `install-search3-producer` mode reuses `install_anex_preview` staging,
+backup, lint, dependency-first writes, hash readback and stock rollback. Fixed reviewed
+SHA256 pins admit only quote-runtime, canonical4838 freezer, producer4839+4841 and API;
+the initial-week gate must already match its reviewed source and is never rewritten.
+The API is last. Unrelated integrations, UI, key/config, DB, supplier and lead paths
+are excluded. No caller path/hash list or second installer/transport is accepted.
+Use existing command shape with current FEATURE SHA and an operation starting
+`int-anex-search3-producer-install-`; all main/owner/ref/source/SSH/concurrency and
+reservation/no-replay guards remain. A source/main merge does not prove installation.
+
+The independent conditional-pointer finding6375414688 is resolved in the same
+custody admission: an existing pointer counts only as the canonical generated
+top-level guarded tail; conditional/function/plain definitions fail before writes.
+The new native negative fails against original main, then passes with the fix.
+Actual provision receipt created=true/pointer_configured=true followed the append
+path; no production incident is inferred and no real custody operation is repeated.
+Native synthetic stock tests cover narrow install, existing dependency/source drift
+and postwrite failure restoring old files/removing new files. Current receiver CI,
+controlled runtime install and connected SEARCH/native acceptance remain separate gates.
