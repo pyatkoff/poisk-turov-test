@@ -10,7 +10,7 @@ final class AnyTourOperatorFuelRuleStoreV1
     private const MAX_BYTES = 262144;
     private const MAX_OBSERVATIONS = 128;
 
-    public static function append(string $directory, array $raw, callable $write): array
+    public static function append(string $directory, array $raw, callable $write, ?callable $observe = null): array
     {
         self::assertDirectory($directory);
         $obs = AnyTourOperatorFuelRuleEvidenceV1::observation($raw);
@@ -27,6 +27,7 @@ final class AnyTourOperatorFuelRuleStoreV1
         foreach ($rows as $row) $byEvidence[$row['evidence_sha256']] = $row;
         if (isset($byEvidence[$obs['evidence_sha256']])) {
             if ($byEvidence[$obs['evidence_sha256']] !== $obs) throw new DomainException('OPERATOR_FUEL_STORE_CONFLICT');
+            self::observe($observe, $rows);
             return ['status'=>'unchanged','written'=>false,'path'=>$path,'observationCount'=>count($rows)];
         }
         $rows[] = $obs;
@@ -39,7 +40,88 @@ final class AnyTourOperatorFuelRuleStoreV1
         $read = self::readEnvelope($path, false);
         self::assertEnvelope($read, $digest);
         if ($read !== $next) throw new RuntimeException('OPERATOR_FUEL_STORE_READBACK');
+        self::observe($observe, $read['observations']);
         return ['status'=>$current===null?'created':'appended','written'=>true,'path'=>$path,'observationCount'=>count($rows)];
+    }
+
+    /** Observe only the validated rows already in memory; observer failure is inert. */
+    private static function observe(?callable $observe, array $rows): void
+    {
+        if ($observe === null) return;
+        try { $observe($rows); } catch (Throwable $ignored) {}
+    }
+
+    /** Pure, allowlisted summary of one retained direction, never a population/price rule. */
+    public static function monitoringHeader(array $rows, int $now): ?string
+    {
+        try {
+            if ($now < 1 || !array_is_list($rows) || count($rows) < 1
+                || count($rows) > self::MAX_OBSERVATIONS) return null;
+            $direction = null;
+            $seen = $buckets = [];
+            $fresh = $expired = $legacy = 0;
+            $from = PHP_INT_MAX; $to = 0;
+            foreach ($rows as $row) {
+                if (!is_array($row) || AnyTourOperatorFuelRuleEvidenceV1::observation($row) !== $row
+                    || isset($seen[$row['evidence_sha256']]) || $row['observed_at'] > $now) return null;
+                $seen[$row['evidence_sha256']] = true;
+                $direction ??= $row['direction'];
+                if ($row['direction'] !== $direction) return null;
+                $from = min($from, $row['observed_at']); $to = max($to, $row['observed_at']);
+                if (!isset($row['monitoring'])) { $legacy++; continue; }
+                if ($row['expires_at'] <= $now) { $expired++; continue; }
+                $fresh++;
+                $key = $row['currency'] . ':' . $row['unit'];
+                $buckets[$key] ??= [
+                    'currency'=>$row['currency'], 'unit'=>$row['unit'], 'sample_count'=>0,
+                    'paired_count'=>0, 'matched_count'=>0, 'different_count'=>0,
+                    'unavailable_count'=>0, 'zero_reference_count'=>0,
+                    'absolute_difference_minor_sum'=>0,
+                ];
+                $bucket = &$buckets[$key];
+                $bucket['sample_count']++;
+                $monitor = $row['monitoring'];
+                $bucket[$monitor['comparison'] . '_count']++;
+                if ($monitor['tour_amount'] !== null) {
+                    $bucket['paired_count']++;
+                    $reference = self::minorUnits($monitor['tour_amount']);
+                    $amount = self::minorUnits($monitor['flight_amount']);
+                    if ($reference === 0) $bucket['zero_reference_count']++;
+                    $difference = max($reference, $amount) - min($reference, $amount);
+                    if ($bucket['absolute_difference_minor_sum'] > PHP_INT_MAX - $difference) return null;
+                    $bucket['absolute_difference_minor_sum'] += $difference;
+                }
+                unset($bucket);
+            }
+            ksort($buckets, SORT_STRING);
+            $summary = [
+                'schema_version'=>1, 'source'=>'tourvisor_passive_fuel_monitoring',
+                'operator_family'=>$direction['operator_family'],
+                'as_of'=>$now,
+                'window_limit'=>self::MAX_OBSERVATIONS, 'observed_from'=>$from, 'observed_to'=>$to,
+                'retained_count'=>count($rows), 'fresh_count'=>$fresh,
+                'expired_count'=>$expired, 'legacy_count'=>$legacy,
+                'buckets'=>array_values($buckets),
+                'complete_population'=>false, 'accuracy_evaluated'=>false, 'final_price_verified'=>false,
+            ];
+            $encoded = rtrim(strtr(base64_encode(json_encode($summary,
+                JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+            return strlen($encoded) <= 2048 ? $encoded : null;
+        } catch (Throwable $ignored) { return null; }
+    }
+
+    private static function minorUnits(string $amount): int
+    {
+        // observation() has already limited money to 12 integer and two decimal digits.
+        $parts = explode('.', $amount, 2);
+        $digits = ltrim($parts[0] . str_pad($parts[1] ?? '', 2, '0'), '0');
+        if ($digits === '') return 0;
+        $limit = (string)PHP_INT_MAX;
+        if (strlen($digits) > strlen($limit)
+            || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
+            throw new OverflowException('OPERATOR_FUEL_MONITORING_OVERFLOW');
+        }
+        return (int)$digits;
     }
 
     public static function inputForTarget(string $directory, array $target, int $now, ?array $exchange = null): ?array

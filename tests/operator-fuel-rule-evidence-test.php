@@ -195,6 +195,104 @@ $otherDirection['evidence_sha256']=fuel_h('ev-other');
 AnyTourOperatorFuelRuleStoreV1::append($dir,$otherDirection,$write);
 fuel_ok(count(glob($dir.'/operator-fuel-rule-v2-*.json') ?: []) === 2, 'different origin produces second file');
 
+// The observer sees only the already validated retained window, on success only.
+$observedRows = null;
+$observed = AnyTourOperatorFuelRuleStoreV1::append($dir, $b,
+    static function(): bool { throw new RuntimeException('idempotent append must not write'); },
+    static function(array $rows) use (&$observedRows): void { $observedRows = $rows; });
+$expectedRows=[$obsA,$obsB];
+usort($expectedRows,static fn(array $x,array $y): int=>[$x['observed_at'],$x['evidence_sha256']]<=>[$y['observed_at'],$y['evidence_sha256']]);
+fuel_ok($observed === $r3 && $observedRows === $expectedRows, 'unchanged observer preserves receipt and window');
+$observerRow=$a; $observerRow['evidence_sha256']=fuel_h('observer-success');
+$observerResult=AnyTourOperatorFuelRuleStoreV1::append($dir,$observerRow,$write,
+    static function(): void { throw new RuntimeException('observer unavailable'); });
+fuel_ok($observerResult['written']===true && $observerResult['observationCount']===3,
+    'observer failure cannot undo successful persistence');
+$observerRow['evidence_sha256']=fuel_h('observer-failed-write'); $observerCalls=0;
+try {
+    AnyTourOperatorFuelRuleStoreV1::append($dir,$observerRow,static fn(): bool=>false,
+        static function() use (&$observerCalls): void { $observerCalls++; });
+    throw new RuntimeException('missing write failure');
+} catch (RuntimeException $error) {
+    fuel_ok($error->getMessage()==='OPERATOR_FUEL_STORE_WRITE' && $observerCalls===0,
+        'failed persistence does not expose a summary');
+}
+
+$summaryRows=[];
+$summaryRow=static function(int $n, ?string $tour, string $flight, string $currency='EUR',
+    string $unit='party_roundtrip') use ($a): array {
+    $row=$a; $row['evidence_sha256']=fuel_h('summary-'.$n);
+    $row['amount']=$flight; $row['currency']=$currency; $row['unit']=$unit;
+    $row['monitoring']=['tour_amount'=>$tour,'flight_amount'=>$flight,'currency'=>$currency];
+    return AnyTourOperatorFuelRuleEvidenceV1::observation($row);
+};
+$summaryRows[]=$summaryRow(1,'0.00','0');
+$summaryRows[]=$summaryRow(2,'160.01','180.02');
+$summaryRows[]=$summaryRow(3,null,'180');
+$summaryRows[]=$summaryRow(4,'10','12','RUB');
+$summaryRows[]=$summaryRow(5,'5','6','EUR','route_reported_unknown');
+$expired=$summaryRow(6,'1','1'); $expired['expires_at']=2000; $summaryRows[]=$expired;
+$summaryRows[]=$obsB; // legacy Andromeda row must not enter TV comparison denominator.
+$encoded=AnyTourOperatorFuelRuleStoreV1::monitoringHeader($summaryRows,2000);
+fuel_ok(is_string($encoded) && strlen($encoded)<=2048 && preg_match('/\A[A-Za-z0-9_-]+\z/D',$encoded)===1,
+    'bounded base64url summary');
+$summary=json_decode(base64_decode(strtr($encoded,'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
+$summaryKeys=array_keys($summary); sort($summaryKeys);
+$allowed=['schema_version','source','operator_family','as_of','window_limit','observed_from','observed_to',
+    'retained_count','fresh_count','expired_count','legacy_count','buckets',
+    'complete_population','accuracy_evaluated','final_price_verified']; sort($allowed);
+fuel_ok($summaryKeys===$allowed && $summary['retained_count']===7 && $summary['fresh_count']===5
+    && $summary['expired_count']===1 && $summary['legacy_count']===1 && $summary['as_of']===2000
+    && $summary['observed_from']===1000 && $summary['observed_to']===1000, 'exact allowlist and separate freshness counts');
+fuel_ok($summary['buckets'][0]===['currency'=>'EUR','unit'=>'party_roundtrip','sample_count'=>3,
+    'paired_count'=>2,'matched_count'=>1,'different_count'=>1,'unavailable_count'=>1,'zero_reference_count'=>1,
+    'absolute_difference_minor_sum'=>2001], 'decimal arithmetic exact; unavailable and zero reference separate');
+fuel_ok(count($summary['buckets'])===3 && $summary['buckets'][1]['unit']==='route_reported_unknown'
+    && $summary['buckets'][1]['absolute_difference_minor_sum']===100
+    && $summary['buckets'][2]['currency']==='RUB' && $summary['buckets'][2]['absolute_difference_minor_sum']===200,
+    'currency and unit buckets never mix');
+fuel_ok($summary['complete_population']===false && $summary['accuracy_evaluated']===false
+    && $summary['final_price_verified']===false, 'summary never mints accuracy or price authority');
+foreach (['offer_ref_digest','evidence_sha256','operator_raw','scope','direction','tour_amount','flight_amount'] as $privateKey) {
+    fuel_ok(!str_contains(json_encode($summary),$privateKey), 'no private observation field: '.$privateKey);
+}
+foreach (['empty','future','mixed_direction','duplicate','invalid','over_cap','oversize'] as $case) {
+    $rows=$summaryRows;
+    if ($case==='empty') $rows=[];
+    if ($case==='future') $rows[0]['observed_at']=2001;
+    if ($case==='mixed_direction') $rows[0]['direction']['market']='departure:2';
+    if ($case==='duplicate') $rows[]=$rows[0];
+    if ($case==='invalid') $rows[0]['amount']='999999999999999999999.00';
+    if ($case==='over_cap') $rows=array_fill(0,129,$rows[0]);
+    if ($case==='oversize') {
+        $rows=[];
+        foreach (['AAA','BBB','CCC','DDD','EEE','FFF','GGG','HHH'] as $n=>$currency) {
+            $rows[]=$summaryRow(20+$n,'1','2',$currency);
+        }
+    }
+    fuel_ok(AnyTourOperatorFuelRuleStoreV1::monitoringHeader($rows,2000)===null,
+        'unsafe or oversized summary absent: '.$case);
+}
+// Exercise the real store cap; observer must not receive the discarded 129th row.
+$capDir=$root.'/cap/searches'; mkdir($capDir,0700,true); $capRows=[];
+for ($i=0;$i<129;$i++) {
+    $row=$summaryRow(100+$i,'1','2'); $row['observed_at']=1000+$i;
+    AnyTourOperatorFuelRuleStoreV1::append($capDir,$row,$write,
+        static function(array $rows) use (&$capRows): void { $capRows=$rows; });
+}
+$cap=json_decode(base64_decode(strtr(AnyTourOperatorFuelRuleStoreV1::monitoringHeader($capRows,2000),'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
+fuel_ok(count($capRows)===128 && $cap['window_limit']===128 && $cap['retained_count']===128
+    && $cap['observed_from']===1001 && $cap['observed_to']===1128 && $cap['buckets'][0]['sample_count']===128,
+    'only current bounded window is summarized');
+if (PHP_INT_SIZE>=8) {
+    $maximumRows=[];
+    for ($i=0;$i<128;$i++) $maximumRows[]=$summaryRow(300+$i,'0','999999999999.99');
+    $maximum=json_decode(base64_decode(strtr(AnyTourOperatorFuelRuleStoreV1::monitoringHeader($maximumRows,2000),'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
+    fuel_ok($maximum['buckets'][0]['absolute_difference_minor_sum']===12799999999999872,
+        'maximum valid bounded amounts remain exact integers without float overflow');
+}
+array_map('unlink',glob($capDir.'/*')?:[]); rmdir($capDir); rmdir(dirname($capDir));
+
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$a,$b], 6000) === null, 'expired evidence not reused');
 array_map('unlink', glob($dir.'/*') ?: []); rmdir($dir); rmdir($root);
 echo "PASS operator fuel direction evidence/store\n";

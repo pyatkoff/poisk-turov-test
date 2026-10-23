@@ -70,3 +70,69 @@ All concrete offers are persisted, but with distinct money states:
 - regular: direct search amount, confirmation required.
 
 Base search money, APD rate evidence, computed party surcharge and later selected/actualized price remain separate facts. The current `anytour_offers` readiness contract therefore needs a follow-up extension for the regular/search-price state; this pricing rule does not silently overload `finalPriceReady`.
+
+## Bounded monitoring export — 2026-10-23
+
+The five-context public baseline at `83bd1826748f38ac472ab48b71ab405c1f4113d0`
+is historical evidence, not a measurement of the current private population.
+The existing successful Tourvisor `captureFlights` path now prepares an optional
+`X-AnyTour-Fuel-Monitoring` response header from normalized retained observations
+already loaded in `Store::append`. It adds no file/log/pending/config/DB read,
+directory enumeration, endpoint, worker, supplier HTTP or ROOT gateway edit.
+PR4824's rejected private snapshot reader remains closed and unexecuted.
+
+### Exact boundary
+
+- One current operator/direction, at most the existing 128 retained rows.
+  The header is a bounded window, never the all-time population. The current
+  response provides the direction context; no direction/offer/customer identifier
+  or digest is exported.
+- Delivery is one optional base64url JSON header value, at most 2048 bytes,
+  after successful normal flights capture and lock release. Supplier JSON body,
+  status and money, existing receipt schema and default append return are unchanged.
+  Skipped/rejected/failed capture emits no header. CLI emits nothing unless a test
+  supplies an explicit sink; unavailable headers or exporter failure are inert.
+- Payload allowlist: `schema_version`, fixed `source`, `operator_family`,
+  `as_of`, `window_limit`, `observed_from`, `observed_to`,
+  `retained_count`, `fresh_count`, `expired_count`, `legacy_count`,
+  `buckets`, `complete_population`, `accuracy_evaluated`,
+  `final_price_verified`. Times are UTC Unix seconds.
+- Fresh/expired counts apply only to monitoring rows; legacy/non-monitoring rows
+  are separate, including Andromeda provenance. The three counts sum to retained.
+  Fresh means observed no later than `as_of` and expiry strictly later than it.
+  Window times include all retained rows; buckets include fresh monitoring only.
+- Each currency-plus-unit bucket contains only `currency`, `unit`,
+  `sample_count`, `paired_count`, `matched_count`, `different_count`,
+  `unavailable_count`, `zero_reference_count`,
+  `absolute_difference_minor_sum`. Paired = matched + different;
+  samples = paired + unavailable. The integer sum uses two decimal places of
+  the stored monetary representation, no FX, averaging, division or rounding.
+  Unknown units stay in their own bucket and acquire no pricing meaning.
+- Differences compare the two validated facts of the SAME observation.
+  Missing tour fuel is unavailable, not zero. A real zero reference is counted
+  separately; no percentage is computed. Raw rows, amounts per customer, IDs,
+  hashes, tokens, paths, private errors and response bodies are absent.
+- Invalid rows, duplicate evidence, mixed directions, future observations,
+  integer overflow or oversized output suppress the header. Observer failure
+  cannot affect successful persistence or the supplier response.
+- `complete_population=false`, `accuracy_evaluated=false`,
+  `final_price_verified=false` always. Equality/difference describes stages,
+  not prediction accuracy, a rejection gate, an automatic rule or a 20% tolerance.
+  Infant fees and SAMO/Biblio policy remain outside this export.
+
+### Source, installation and measurement
+
+This bounded implementation follows the owner's direct continuation and coordination
+claim #4709/6361744186. Existing source, independent-review, CI and stock runtime
+installation gates remain in force; no protected control or publication permission
+is widened. The two existing private helpers are installed by the existing runtime
+carrier. ROOT source/auth and supplier request contract remain unchanged.
+
+Narrow fixtures cover mixed currencies/units, zero/missing, expiry/legacy,
+128-row retention, exact integer arithmetic, redaction, idempotence, size limits,
+observer/emitter failures and response transparency. Source/test success,
+runtime installation and actual new capture are separate evidence stages.
+The first justified ordinary new case may consume its header once; do not create
+a paid zero/outage/coverage probe or replay old receipts to fill this window.
+Until that capture, current population size, post-install persistence and 80%
+accuracy remain NOT_MEASURED. Even a header reports only its bounded retained window.

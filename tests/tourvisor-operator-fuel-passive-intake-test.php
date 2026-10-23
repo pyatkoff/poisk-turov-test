@@ -402,6 +402,8 @@ rmdir($dateDirectory);rmdir(dirname($dateDirectory));
 // Four matches out of five do not themselves authorize a reusable price rule.
 $monitorDirectory=$root.'/monitor/searches'; mkdir($monitorDirectory,0700,true);
 $monitorIds=[$id1,$id2,$id3,'43282575574007','43282575574008'];
+$monitorHeaders=[];
+$captureHeader=static function(string $line) use (&$monitorHeaders): void { $monitorHeaders[]=$line; };
 $add($monitorIds[3]); $add($monitorIds[4]);
 $dbCount=(int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn();
 foreach ($monitorIds as $i=>$id) {
@@ -410,7 +412,7 @@ foreach ($monitorIds as $i=>$id) {
     if ($i===4) $tour['fuelCharge']=1;
     $beforeTour=$tour; $flights=tvpf_flights(); $beforeFlights=$flights;
     AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id,$tour,$db,$monitorDirectory,$now);
-    $captured=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id,$flights,$monitorDirectory,$now);
+    $captured=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id,$flights,$monitorDirectory,$now,$captureHeader);
     tvpf_ok($captured['observationCount']===$i+1 && $captured['ruleConfirmed']===false,
         'every valid comparison retained without automatic pricing authority');
     tvpf_ok($tour===$beforeTour && $flights===$beforeFlights, 'monitoring cannot change supplier response money');
@@ -418,6 +420,18 @@ foreach ($monitorIds as $i=>$id) {
 $monitorPath=(glob($monitorDirectory.'/operator-fuel-rule-v2-*.json'))[0];
 $monitorBytes=file_get_contents($monitorPath);
 $monitorRows=json_decode($monitorBytes,true,64,JSON_THROW_ON_ERROR)['observations'];
+tvpf_ok(count($monitorHeaders)===5 && str_starts_with($monitorHeaders[4],'X-AnyTour-Fuel-Monitoring: '),
+    'one safe header emitted per successful normal capture');
+$monitorEncoded=substr($monitorHeaders[4],strlen('X-AnyTour-Fuel-Monitoring: '));
+$monitorSummary=json_decode(base64_decode(strtr($monitorEncoded,'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
+tvpf_ok(strlen($monitorEncoded)<=2048 && $monitorSummary['retained_count']===5
+    && $monitorSummary['fresh_count']===5 && $monitorSummary['buckets'][0]['paired_count']===5
+    && $monitorSummary['buckets'][0]['matched_count']===4 && $monitorSummary['buckets'][0]['different_count']===1
+    && $monitorSummary['buckets'][0]['absolute_difference_minor_sum']===3374700,
+    'header derives the current retained denominator and exact stage difference');
+tvpf_ok($monitorSummary['accuracy_evaluated']===false && $monitorSummary['final_price_verified']===false
+    && !str_contains(json_encode($monitorSummary),$monitorIds[4])
+    && !str_contains(json_encode($monitorSummary),'private_marker'), 'aggregate header is redacted and descriptive');
 tvpf_ok(count($monitorRows)===5 && count(array_filter($monitorRows,
     static fn(array $row): bool=>$row['monitoring']['comparison']==='matched'))===4,
     'monitoring denominator retains both matches and differences');
@@ -431,9 +445,30 @@ $diagnostic=tvpf_diagnostic($monitorDirectory,'flights',$monitorIds[4]);
 tvpf_ok($diagnostic['outcome']==='retained' && $diagnostic['observation_count']===5
     && $diagnostic['rule_confirmed']===false, 'disagreement is a retained observation, not an error');
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
-$repeated=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now);
+$repeated=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now,$captureHeader);
 tvpf_ok($repeated['status']==='unchanged' && $repeated['observationCount']===5
     && file_get_contents($monitorPath)===$monitorBytes, 'same evidence does not inflate monitoring denominator');
+tvpf_ok(count($monitorHeaders)===6 && $monitorHeaders[4]===$monitorHeaders[5],
+    'idempotent observation emits the same bounded summary');
+// An unavailable exporter cannot change persistence, receipts or supplier money.
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
+$emitFailed=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now,
+    static function(): void { throw new RuntimeException('sink unavailable'); });
+tvpf_ok($emitFailed===$repeated && file_get_contents($monitorPath)===$monitorBytes
+    && $flights===$beforeFlights, 'header emitter failure leaves the normal result identical');
+$headerCount=count($monitorHeaders);
+$skip=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights('999999',tvpf_flights(),$monitorDirectory,$now,$captureHeader);
+tvpf_ok($skip['ok']===false && count($monitorHeaders)===$headerCount, 'no header for skipped capture');
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
+$invalidFlights=$flights; unset($invalidFlights['flights'][0]['fuelCharge']);
+try {
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$invalidFlights,$monitorDirectory,$now,$captureHeader);
+    throw new RuntimeException('missing rejected capture');
+} catch (InvalidArgumentException $error) {
+    tvpf_ok(count($monitorHeaders)===$headerCount, 'no header for rejected capture');
+}
+// Consume the fixture pending pair normally; this is local data, no supplier I/O.
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now);
 tvpf_ok(glob($monitorDirectory.'/tourvisor-fuel-pending-v1-*.json')===[]
     && (int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===$dbCount,
     'monitoring consumes pending pairs without DB writes');
