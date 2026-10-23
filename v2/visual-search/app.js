@@ -2474,7 +2474,7 @@ function refreshHotel(id,freshSearch=false,options={}){
 }
 function contactFlightSummaryHTML(o){
  const pair=flightPairFor(o);
- return `<section class="application-flight-overview" aria-label="Перелёт выбранного тура"><div class="application-flight-heading"><h3>Перелёт</h3><button type="button" class="text-button" data-action="contact-flights" data-key="${esc(o.key)}">${pair?'Изменить рейсы':'Посмотреть рейсы'}</button></div>${pair?finalFlightDetailsHTML(o):`<p role="status">${esc(o.flightsError||'Рейсы пока не выбраны — уточнит менеджер.')}</p>`}</section>`;
+ return `<section class="application-flight-overview" aria-label="Перелёт выбранного тура"><div class="application-flight-heading"><h3>Перелёт</h3><button type="button" class="text-button" data-action="contact-flights" data-key="${esc(o.key)}">${pair?'Изменить рейсы':'Посмотреть рейсы'}</button></div>${pair?finalFlightDetailsHTML(o):`<p role="status">${esc(o.flightsError||'Рейс уточнит менеджер. Выбранной пары пока нет.')}</p>`}</section>`;
 }
 function renderContactFlightProgress(){
  const section=$('.application-flight-overview');if(!section||modalType!=='selected-tour')return;
