@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "source": "int-tv-fuel-retained-public-baseline",
+  "analysed_on": "2026-10-23",
+  "scope": "historical retained public evidence only; no new live monitoring capture",
+  "source_commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+  "unique_contexts": 5,
+  "operator_families": 3,
+  "counts": {
+    "any_fuel_displayed": 3,
+    "no_fuel_displayed": 2,
+    "explicit_two_stage_pairs": 1,
+    "paired_different": 1,
+    "paired_matched": 0,
+    "flight_only": 1,
+    "selected_summary_only": 1,
+    "comparisons_unavailable": 4,
+    "infant_contexts": 1,
+    "isolated_infant_fee_exposed": 0
+  },
+  "private_monitoring_cohort_size": null,
+  "post_4834_live_capture_count": null,
+  "pricing_accuracy_pct": null,
+  "eighty_percent_target_evaluated": false,
+  "accuracy_limit": "No raw private cohort, independently retained supplier unit, prediction oracle or agreed hit metric. Stage-field difference is not prediction accuracy, a defect or a rejection gate.",
+  "execution": {
+    "new_supplier_http": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "runtime_changes": 0,
+    "browser_actions": 0,
+    "replayed_operations": 0
+  },
+  "invariants": [
+    "Missing displayed fuel is not zero; not_displayed describes this saved frame only.",
+    "No historical record is evidence of a new post-fix capture or current supplier state.",
+    "One context has two explicit stage amounts; its difference does not invalidate actualization.",
+    "Whole-tour change is not an isolated infant/fuel fee; supplier totals are not recalculated.",
+    "No SAMO/Biblio zero policy is applied to Tourvisor; no automatic rule or final-price promotion."
+  ],
+  "groups": [
+    {
+      "operator_family": "fun_and_sun",
+      "destination_country": "Egypt",
+      "contexts": 2,
+      "any_fuel_displayed": 0,
+      "explicit_stage_pairs": 0
+    },
+    {
+      "operator_family": "biblio_globus",
+      "destination_country": "Egypt",
+      "contexts": 1,
+      "any_fuel_displayed": 1,
+      "explicit_stage_pairs": 0
+    },
+    {
+      "operator_family": "intourist",
+      "destination_country": "Turkey",
+      "contexts": 1,
+      "any_fuel_displayed": 1,
+      "explicit_stage_pairs": 1
+    },
+    {
+      "operator_family": "biblio_globus",
+      "destination_country": "Turkey",
+      "contexts": 1,
+      "any_fuel_displayed": 1,
+      "explicit_stage_pairs": 0
+    }
+  ],
+  "observations": [
+    {
+      "index": 1,
+      "operator_family": "fun_and_sun",
+      "operator": "FUN&SUN",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Egypt"
+      },
+      "hotel": "EMPIRE BEACH AQUA PARK",
+      "dates": {
+        "checkin": "2027-04-18",
+        "checkout": "2027-04-25"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": []
+      },
+      "selected_flights": [
+        "SM944",
+        "SM945"
+      ],
+      "whole_party_displayed_total_rub": 166639,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": null,
+        "selected_summary_displayed_rub": null,
+        "comparison": "not_displayed",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+        "path": "reports/evidence/int-april18-20261022/int-april18-empire-final-20261022.txt",
+        "git_blob": "f8a49d2fbbbe78e11dd9758fec7641c73d33ba3d",
+        "bytes": 4395,
+        "sha256": "2d3ad37b34a9e40727ba89ac5703561b21ca2d63e33e02227d590475c4e89fce",
+        "capture_date": "2026-10-22",
+        "capture_time_utc": null,
+        "provenance": "retained own public UI text, not raw supplier JSON"
+      }
+    },
+    {
+      "index": 2,
+      "operator_family": "fun_and_sun",
+      "operator": "FUN&SUN",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Egypt"
+      },
+      "hotel": "SUNNY DAYS MIRETTE FAMILY AQUAPARK",
+      "dates": {
+        "checkin": "2027-04-18",
+        "checkout": "2027-04-25"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": []
+      },
+      "selected_flights": [
+        "SM944",
+        "SM945"
+      ],
+      "whole_party_displayed_total_rub": 185038,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": null,
+        "selected_summary_displayed_rub": null,
+        "comparison": "not_displayed",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+        "path": "reports/evidence/int-april18-20261022/int-april18-sunny-final-20261022.txt",
+        "git_blob": "f655fd06766818edf45e8e5b071ef684a198f135",
+        "bytes": 4326,
+        "sha256": "b82db3357b372aa2d69cc2f8f29e36e9faed12150c5e7765edb16fa7e1b0235a",
+        "capture_date": "2026-10-22",
+        "capture_time_utc": null,
+        "provenance": "retained own public UI text, not raw supplier JSON"
+      }
+    },
+    {
+      "index": 3,
+      "operator_family": "biblio_globus",
+      "operator": "Библио-Глобус",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Egypt"
+      },
+      "hotel": "SWISS HEAVEN SHARMING INN",
+      "dates": {
+        "checkin": "2027-04-26",
+        "checkout": "2027-05-03"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": []
+      },
+      "selected_flights": [
+        "SU426",
+        "SU427"
+      ],
+      "whole_party_displayed_total_rub": 166737,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": 14034,
+        "selected_summary_displayed_rub": null,
+        "comparison": "flight_only",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+        "path": "reports/evidence/int-april25-20261022/int-april25-bg-selected-20261022.txt",
+        "git_blob": "47e6cf19ed7bef3214daf83b6adddd9ec38acce2",
+        "bytes": 7589,
+        "sha256": "02032ddd2215eab858c1f939f7817c80ece22af655cb6881efaa557455074840",
+        "capture_date": "2026-10-22",
+        "capture_time_utc": null,
+        "provenance": "retained own public UI text, not raw supplier JSON"
+      }
+    },
+    {
+      "index": 4,
+      "operator_family": "intourist",
+      "operator": "Интурист",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Turkey"
+      },
+      "hotel": "BIENO CLUB HOTEL SVS",
+      "dates": {
+        "checkin": "2027-05-08",
+        "checkout": "2027-05-15"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": []
+      },
+      "selected_flights": [
+        "2S012",
+        "2S001"
+      ],
+      "whole_party_displayed_total_rub": 124276,
+      "fuel": {
+        "tour_displayed_rub": 31418,
+        "flight_displayed_rub": 25562,
+        "selected_summary_displayed_rub": null,
+        "comparison": "different",
+        "flight_minus_tour_rub": -5856,
+        "absolute_stage_difference_rub": 5856,
+        "flight_minus_tour_pct_of_tour": "-18.64",
+        "percent_denominator": "tour_displayed_rub",
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+        "path": "reports/evidence/int-may08-20261022/int-may08-intourist-selected-20261022.txt",
+        "git_blob": "afa7054209a46c4aaad0fc7d44a1b91bba77a85e",
+        "bytes": 6175,
+        "sha256": "9d3677de885f4dc03dad7a3399d461cc7c3b2c8ce0fc5b93dbbd8265f83a61f1",
+        "capture_date": "2026-10-22",
+        "capture_time_utc": null,
+        "provenance": "retained own public UI text, not raw supplier JSON"
+      }
+    },
+    {
+      "index": 5,
+      "operator_family": "biblio_globus",
+      "operator": "Библио-Глобус",
+      "provider": "tourvisor",
+      "direction": {
+        "origin": "Moscow",
+        "destination_country": "Turkey"
+      },
+      "hotel": "KLEOPATRA RAMIRA",
+      "dates": {
+        "checkin": "2027-04-19",
+        "checkout": "2027-04-26"
+      },
+      "party": {
+        "adults": 2,
+        "child_ages": [
+          1
+        ]
+      },
+      "selected_flights": [
+        "SU2124",
+        "SU2125"
+      ],
+      "whole_party_displayed_total_rub": 154146,
+      "fuel": {
+        "tour_displayed_rub": null,
+        "flight_displayed_rub": null,
+        "selected_summary_displayed_rub": 15739,
+        "comparison": "selected_summary_only",
+        "flight_minus_tour_rub": null,
+        "absolute_stage_difference_rub": null,
+        "flight_minus_tour_pct_of_tour": null,
+        "percent_denominator": null,
+        "supplier_unit_independently_retained": false
+      },
+      "private_monitoring_persistence": "NOT_MEASURED",
+      "pricing_accuracy_eligible": false,
+      "final_price_verified": null,
+      "isolated_infant_fee_rub": null,
+      "source": {
+        "commit": "cbede21af3323e89e6a2dc33af334dd6d657a469",
+        "path": "reports/evidence/int-infant-apr19-20261022/final.txt",
+        "git_blob": "70ed49016a3df15876e58e15ad2de3855fc381f6",
+        "bytes": 3280,
+        "sha256": "f81395135585b9de7db7f003b738d8183706d70fdd03f831acb9859a7404ea69",
+        "capture_date": "2026-10-22",
+        "capture_time_utc": null,
+        "provenance": "retained own public UI text, not raw supplier JSON"
+      }
+    }
+  ],
+  "next_step": "Use new authoritative natural observations only. Current private monitoring population cannot be inferred from these frames; a separate permitted aggregate-data contract is needed before population accuracy evaluation. No replay or replacement privileged reader."
+}
