@@ -153,7 +153,7 @@ foreach ([
     'flight-shape'=>[['private-amount-canary'],7102,'TV_FUEL_AMOUNT_FLIGHT_SHAPE'],
     'value-missing'=>[['currency'=>'RUB'],7103,'TV_FUEL_AMOUNT_VALUE_MISSING'],
     'value-format'=>[['value'=>'private-amount-canary','currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
-    'nonpositive'=>[['value'=>0,'currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
+    'negative'=>[['value'=>-1,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
     'tour-format'=>[tvpf_flights()['flights'][0]['fuelCharge'],7106,'TV_FUEL_AMOUNT_TOUR_VALUE'],
 ] as $kind=>[$fuel,$tag,$code]) {
     $tour = tvpf_tour($id3,1011,7);
@@ -439,6 +439,37 @@ tvpf_ok(glob($monitorDirectory.'/tourvisor-fuel-pending-v1-*.json')===[]
     'monitoring consumes pending pairs without DB writes');
 array_map('unlink',array_filter(glob($monitorDirectory.'/*')?:[], 'is_file'));
 rmdir($monitorDirectory);rmdir(dirname($monitorDirectory));
+
+// A supplier-reported zero is retained in the same private store, never replaced
+// by the positive nondefault option and never promoted to a reusable rule.
+$zeroDirectory=$root.'/zero/searches'; mkdir($zeroDirectory,0700,true);
+foreach ([$id1,$id2] as $i=>$id) {
+    $tour=tvpf_tour($id,1011,7); $tour['fuelCharge']=$i===0 ? 0 : 33748;
+    $flights=tvpf_flights(); $alternative=$flights['flights'][0]; $alternative['isDefault']=false;
+    $flights['flights'][]=$alternative; $flights['flights'][0]['fuelCharge']['value']='0.00';
+    $beforeTour=$tour; $beforeFlights=$flights;
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id,$tour,$db,$zeroDirectory,$now);
+    $captured=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id,$flights,$zeroDirectory,$now);
+    tvpf_ok($captured['observationCount']===$i+1 && $captured['ruleConfirmed']===false,
+        'explicit default zero captured without reusable authority');
+    $diagnostic=tvpf_diagnostic($zeroDirectory,'flights',$id);
+    tvpf_ok($diagnostic['outcome']==='retained' && $diagnostic['observation_count']===$i+1
+        && $diagnostic['rule_confirmed']===false, 'zero uses existing successful private diagnostic');
+    tvpf_ok($tour===$beforeTour && $flights===$beforeFlights, 'zero capture is response transparent');
+}
+$zeroPath=(glob($zeroDirectory.'/operator-fuel-rule-v2-*.json'))[0];
+$zeroBytes=file_get_contents($zeroPath);
+$zeroRows=json_decode($zeroBytes,true,64,JSON_THROW_ON_ERROR)['observations'];
+$zeroComparisons=array_column(array_column($zeroRows,'monitoring'),'comparison'); sort($zeroComparisons);
+tvpf_ok(count($zeroRows)===2 && $zeroComparisons===['different','matched']
+    && array_column($zeroRows,'amount')===['0.00','0.00'], 'both valid zero comparisons retained as supplied');
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id2,$tour,$db,$zeroDirectory,$now);
+$repeatZero=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,$flights,$zeroDirectory,$now);
+tvpf_ok($repeatZero['status']==='unchanged' && file_get_contents($zeroPath)===$zeroBytes
+    && (int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===$dbCount,
+    'zero repeat does not duplicate observations or write offer DB');
+array_map('unlink',array_filter(glob($zeroDirectory.'/*')?:[], 'is_file'));
+rmdir($zeroDirectory);rmdir(dirname($zeroDirectory));
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
