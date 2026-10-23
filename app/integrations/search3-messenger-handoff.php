@@ -96,10 +96,17 @@ final class AnyTourSearch3MessengerHandoff
             || $now - $record['prepared_at'] > 900 || $now < $record['prepared_at']
             || $now - $record['provenance']['observed_at'] > 900)) throw new RuntimeException('handoff_stale');
         if ($creating) {
+            $latestTime = $now;
+            $readClock = static function () use ($clock, &$latestTime): int {
+                $readAt = $clock();
+                if (!is_int($readAt) || $readAt < $latestTime) throw new RuntimeException('handoff_stale');
+                $latestTime = $readAt;
+                return $readAt;
+            };
             $selector = $record['selector'];
             $slot = $session['anex_offer_contexts'][$selector['search_ref']]['package_quotes'][$selector['offer_ref']]['pairs'][$selector['choice_ref']]['handoff_record'] ?? null;
             if (!is_array($slot) || ($slot['json_sha256'] ?? null) !== $record['record_sha256']) throw new RuntimeException('handoff_stale');
-            $current = self::canonical($selector, $session, $checkpoint, $now, $clock);
+            $current = self::canonical($selector, $session, $checkpoint, $now, $readClock);
             $record =& $session['search3_messenger_handoffs'][$operation];
             if ($current['record_sha256'] !== $record['record_sha256']) throw new RuntimeException('handoff_stale');
         }
@@ -120,8 +127,8 @@ final class AnyTourSearch3MessengerHandoff
         if ($creating) {
             // Saving/reacquiring the session may cross the retained quote or key deadline.
             // Keep the durable UNKNOWN intent; never replay it as a fresh create.
-            $sendAt = $clock();
-            if (!is_int($sendAt) || $sendAt < $now || $sendAt >= $record['provenance']['deadline']) {
+            $sendAt = $readClock();
+            if ($sendAt >= $record['provenance']['deadline']) {
                 throw new RuntimeException('handoff_stale');
             }
             $headers = self::headers($raw, $signer, $sendAt);

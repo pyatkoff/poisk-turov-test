@@ -225,6 +225,15 @@ foreach ([$wireDeadline, $wireDeadline + 1, $wireStart - 1, 'invalid-clock'] as 
         'expired or invalid post-save clock has no CREATE and retains UNKNOWN');
     if ($afterSave === $wireDeadline) $expiredWire = $wireCopy;
 }
+$wireCopy = unserialize(serialize($wireSession)); $wireNow = $wireStart + 1; $wireSent = 0;
+mh_error(static function () use ($wireTx, &$wireCopy, $wireStart, $wireSigner, &$wireNow, &$wireSent): void {
+    AnyTourSearch3MessengerHandoff::transact($wireTx, $wireCopy, $wireStart, $wireSigner,
+        static function (array &$unused) use (&$wireNow, $wireStart): void { $wireNow = $wireStart; },
+        static function () use (&$wireSent): array { ++$wireSent; return ['status' => 503, 'body' => '{}']; },
+        static function () use (&$wireNow): int { return $wireNow; });
+}, 'handoff_stale');
+mh_check($wireSent === 0 && $wireCopy['search3_messenger_handoffs'][$wireOperation]['state'] === 'unknown',
+    'post-save clock cannot roll back below a later canonical observation, even to request-entry time');
 $expiredActions = [];
 $expiredReply = AnyTourSearch3MessengerHandoff::transact($wireTx, $expiredWire, $wireDeadline + 2, $wireSigner,
     static function (array &$unused): void {},
