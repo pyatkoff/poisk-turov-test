@@ -83,7 +83,7 @@
     value.price={amount:money(r.price),currency:'RUB',state:verified?(r.expiresAt*1000<=now?'expired':'checked'):'estimated',
       description:verified?'Подтверждённая цена выбранного тура':'Расчётная стоимость · требует подтверждения',
       expiresAt:verified?r.expiresAt:null,basis:verified?'selected-pair':'shown-offer',finalPriceVerified:false,authority:'browser-observation-only'};
-    return {...base,value,pair:r,binding};
+    return {...base,value,pair:r,binding,application:r};
   }
   function readContext(input,capturedAt,now,helpers){
     if(input?.application!==undefined)return readApplicationContext(input,capturedAt,now,helpers);
@@ -123,17 +123,27 @@
     const presentation={text:helpers.text,departureMinute:helpers.departureMinute,allowanceValue:helpers.allowanceValue};
     const captures=new WeakMap();
     function now(){const value=clock();if(!Number.isSafeInteger(value)||value<0)fail('invalid_context_clock');return value;}
+    function currentCapture(value){
+      const saved=value&&typeof value==='object'?captures.get(value):null;if(!saved)return null;
+      try{
+        const current=readContext(read(),value.capturedAt,now(),presentation);
+        return saved.key===current.key&&saved.raw===current.raw&&saved.pair===current.pair&&saved.revision===current.revision&&saved.binding===current.binding&&saved.signature===JSON.stringify(current.value)?current:null;
+      }catch(error){return null;}
+    }
     return Object.freeze({
       capture(){
         const time=now(),snapshot=readContext(read(),time,time,presentation),value=freeze(snapshot.value);
         captures.set(value,{...snapshot,signature:JSON.stringify(value)});return value;
       },
-      isCurrent(value){
-        const saved=value&&typeof value==='object'?captures.get(value):null;if(!saved)return false;
-        try{
-          const current=readContext(read(),value.capturedAt,now(),presentation);
-          return saved.key===current.key&&saved.raw===current.raw&&saved.pair===current.pair&&saved.revision===current.revision&&saved.binding===current.binding&&saved.signature===JSON.stringify(current.value);
-        }catch(error){return false;}
+      isCurrent(value){return currentCapture(value)!==null;},
+      // Same-origin producer input only. The server resolves retained facts;
+      // these private selectors are never display context or bot URL payloads.
+      anexSelector(value){
+        const current=currentCapture(value),r=current?.application;
+        if(!r||current.value.source!=='anex'||current.value.flights.state!=='selected'||current.value.price.state!=='checked'
+          ||r.generation>2147483647||r.localHotelId>2147483647||!/^anex_quote:[a-f0-9]{64}$/.test(r.choiceRef))return null;
+        return Object.freeze({generation:r.generation,search_ref:r.searchRef,offer_ref:r.offerRef,
+          local_hotel_id:r.localHotelId,choice_ref:r.choiceRef});
       }
     });
   }

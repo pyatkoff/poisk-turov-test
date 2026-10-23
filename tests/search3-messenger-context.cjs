@@ -107,10 +107,10 @@ const uiSource=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.j
 const estimateStart=uiSource.indexOf('function anexApplicationReceipt('),estimateEnd=uiSource.indexOf('\nfunction openAnexApplicationPreview',estimateStart);
 const quoteStart=uiSource.indexOf("  const raw=o.raw;anexApplicationDraft=Object.freeze({provider:'anex'"),quoteEnd=uiSource.indexOf('\n }',quoteStart);
 assert.ok(estimateStart>=0&&estimateEnd>estimateStart&&quoteStart>=0&&quoteEnd>quoteStart,'canonical ANEX application builders exist');
-function applicationFixture(verified=false){
+function applicationFixture(verified=false,choiceRef='PRIVATE_PAIR'){
   const input=fixture(),o=input.offer,h=input.hotel;
   o.flightChoiceId=null;o.raw={anexKind:'concrete',anexSessionCurrent:true,offerRef:'anex_online:'+ 'a'.repeat(64),searchRef:'b'.repeat(32),anexGeneration:7,anexLocalHotelId:3634};
-  const result=verified?{state:'quote_verified',finalPriceVerified:true,finalPrice:{amount:231456,currency:'RUB'},expiresAt:time/1000+60,choice:{choiceRef:'PRIVATE_PAIR',legs:[{label:'VF 276 · Москва → Хургада · 29.03.2027'},{label:'VF 277 · Хургада → Москва · 05.04.2027'}]}}
+  const result=verified?{state:'quote_verified',finalPriceVerified:true,finalPrice:{amount:231456,currency:'RUB'},expiresAt:time/1000+60,choice:{choiceRef,legs:[{label:'VF 276 · Москва → Хургада · 29.03.2027'},{label:'VF 277 · Хургада → Москва · 05.04.2027'}]}}
     :{state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,calculatedTotal:{amount:220000,currency:'RUB'}};
   const scope=vm.createContext({o,h,result,state:{search:{origin:'Москва'}},countryNames:{2:'Египет'},mealLabel:()=> 'Всё включено'});
   vm.runInContext(uiSource.slice(estimateStart,estimateEnd),scope);
@@ -155,5 +155,53 @@ test('ANEX application quote expires at its exact deadline without reviving the 
   const input=applicationFixture(true),session=api.createSession(()=>input,()=>time),s=session.capture();time=input.application.expiresAt*1000;
   assert.equal(session.isCurrent(s),false);const historical=session.capture();assert.equal(historical.price.state,'expired');assert.equal(historical.price.amount,'231456');
   assert.equal(historical.price.finalPriceVerified,false);assert.deepEqual(calls,[]);
+});
+const exactChoice='anex_quote:'+'c'.repeat(64);
+test('ANEX server selector contains only the five retained identity pins, with one current read',()=>{
+  const input=applicationFixture(true,exactChoice),before=plain(input);let reads=0;
+  const session=api.createSession(()=>{reads++;return input;},()=>time),snapshot=session.capture(),selector=session.anexSelector(snapshot);
+  assert.deepEqual(plain(selector),{generation:7,search_ref:'b'.repeat(32),offer_ref:'anex_online:'+'a'.repeat(64),local_hotel_id:3634,choice_ref:exactChoice});
+  assert.equal(reads,2);assert.equal(Object.isFrozen(selector),true);assert.throws(()=>selector.generation++,error=>error.name==='TypeError');
+  assert.doesNotMatch(JSON.stringify(selector),/"(?:price|amount|currency|authority|observation|record_id|revision|phone|ages|hotel|room|meal|capturedAt)"\s*:|https?:\/\//i);
+  assert.doesNotMatch(JSON.stringify(snapshot),/anex_quote:|anex_online:|search_ref|offer_ref|choice_ref|searchRef|offerRef|generation/);
+  assert.equal(snapshot.price.finalPriceVerified,false);assert.deepEqual(plain(input),before);
+});
+test('Changed or replaced canonical selection cannot produce pins from an earlier snapshot',()=>{
+  for(const change of [d=>d.revision++,d=>d.offer.raw={...d.offer.raw},d=>d.application={...d.application},d=>d.offer.room='Suite',d=>d.offer.ages=[0,8,0],d=>{d.application={...d.application,choiceRef:'anex_quote:'+'d'.repeat(64)};}]){
+    const input=applicationFixture(true,exactChoice),session=api.createSession(()=>input,()=>time),snapshot=session.capture();change(input);
+    assert.equal(session.anexSelector(snapshot),null);
+  }
+  let input=applicationFixture(true,exactChoice);const session=api.createSession(()=>input,()=>time),snapshot=session.capture();input=null;
+  assert.equal(session.anexSelector(snapshot),null);
+});
+test('Copied or foreign observations never supply a server selector',()=>{
+  const input=applicationFixture(true,exactChoice),first=api.createSession(()=>input,()=>time),second=api.createSession(()=>input,()=>time),snapshot=first.capture();
+  for(const value of [plain(snapshot),null,'x',{},second.capture()])assert.equal(first.anexSelector(value),null);
+  assert.equal(second.anexSelector(snapshot),null);
+});
+test('Exact quote deadline also rejects newly captured historical observations',()=>{
+  const input=applicationFixture(true,exactChoice),session=api.createSession(()=>input,()=>time),snapshot=session.capture();time=input.application.expiresAt*1000;
+  assert.equal(session.anexSelector(snapshot),null);const expired=session.capture();assert.equal(session.isCurrent(expired),true);
+  assert.equal(session.anexSelector(expired),null);assert.equal(expired.price.amount,'231456');assert.equal(expired.price.state,'expired');
+});
+test('Estimate, manager-deferred and other source owners never receive an implicit selected-pair selector',()=>{
+  const deferred=applicationFixture();
+  const normalized=fixture();
+  const tv=fixture();tv.offer.provider='tourvisor';
+  for(const input of [deferred,normalized,tv]){const session=api.createSession(()=>input,()=>time),snapshot=session.capture();assert.equal(session.anexSelector(snapshot),null);assert.equal(session.isCurrent(snapshot),true);}
+  assert.equal(api.createSession(()=>deferred,()=>time).capture().flights.state,'manager-deferred');
+});
+test('Noncanonical private refs and out-of-range identity pins are unavailable without truncation or I/O',()=>{
+  for(const choice of ['PRIVATE_PAIR','0','anex_quote:'+'C'.repeat(64),exactChoice+'0',exactChoice+'\n']){
+    const input=applicationFixture(true,choice),session=api.createSession(()=>input,()=>time),snapshot=session.capture();
+    assert.equal(session.anexSelector(snapshot),null);
+  }
+  for(const field of ['generation','localHotelId']){
+    const input=applicationFixture(true,exactChoice);input.application={...input.application,[field]:2147483648};
+    if(field==='generation')input.offer.raw.anexGeneration=2147483648;
+    else{input.offer.raw.anexLocalHotelId=2147483648;input.offer.hotelId=2147483648;input.hotel.id=2147483648;}
+    const session=api.createSession(()=>input,()=>time),snapshot=session.capture();assert.equal(session.anexSelector(snapshot),null);
+  }
+  assert.deepEqual(calls,[]);
 });
 console.log(JSON.stringify({cases:count,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));
