@@ -10,6 +10,7 @@ final class AnyTourAnexPackageQuoteClient
     private $transport;
     private array $used = [];
     private array $last = [];
+    private ?int $deadlineNs = null;
 
     public function __construct(string $token, ?callable $transport = null)
     {
@@ -58,6 +59,9 @@ final class AnyTourAnexPackageQuoteClient
         if (isset($this->used[$stage])) throw new RuntimeException('ANEX_QUOTE_REQUEST_LIMIT');
         $this->used[$stage] = true;
         $this->last = ['action' => $stage];
+        // One client serves the sequential stages of one browser request (65s).
+        // Include pacing and earlier stages; never grant a fresh budget per call.
+        $this->deadlineNs ??= hrtime(true) + 60000000000;
         $fields += ['id' => $id, 'lang' => 'ru'];
         $headers = ['Accept: application/json', 'User-Agent: TourismPlus', 'Authorization: Bearer ' . $this->token];
         if ($this->transport === null) $this->rateSlot();
@@ -139,11 +143,14 @@ final class AnyTourAnexPackageQuoteClient
     private function curlRequest(string $url, array $fields, array $headers): array
     {
         if (!function_exists('curl_init')) throw new RuntimeException('ANEX_QUOTE_TRANSPORT_ERROR');
+        $remainingMs = (int) floor((($this->deadlineNs ?? 0) - hrtime(true)) / 1000000);
+        if ($remainingMs < 1) throw new RuntimeException('ANEX_QUOTE_TRANSPORT_ERROR');
+        $timeoutMs = min($this->last['action'] === 'transports' ? 45000 : 25000, $remainingMs);
         $curl = curl_init($url); $body = '';
         if ($curl === false) throw new RuntimeException('ANEX_QUOTE_TRANSPORT_ERROR');
         curl_setopt_array($curl, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields,
             CURLOPT_HTTPHEADER => $headers, CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 25,
+            CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT_MS => $timeoutMs,
             CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
             CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body): int {

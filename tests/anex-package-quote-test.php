@@ -1,15 +1,25 @@
 <?php
 declare(strict_types=1);
 // A separate -n process exercises the real cURL branch with no extension or network.
-if (($argv[1] ?? '') === '--curl-diagnostics-fixture') {
+if (in_array($argv[1] ?? '', ['--curl-diagnostics-fixture', '--curl-deadline-fixture'], true)) {
     if (function_exists('curl_init')) throw new RuntimeException('fixture requires PHP without cURL');
     foreach (['CURLOPT_POST', 'CURLOPT_POSTFIELDS', 'CURLOPT_HTTPHEADER', 'CURLOPT_FOLLOWLOCATION',
-        'CURLOPT_CONNECTTIMEOUT', 'CURLOPT_TIMEOUT', 'CURLOPT_SSL_VERIFYPEER', 'CURLOPT_SSL_VERIFYHOST',
+        'CURLOPT_CONNECTTIMEOUT', 'CURLOPT_TIMEOUT', 'CURLOPT_TIMEOUT_MS', 'CURLOPT_SSL_VERIFYPEER', 'CURLOPT_SSL_VERIFYHOST',
         'CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_WRITEFUNCTION', 'CURLPROTO_HTTPS',
         'CURLINFO_RESPONSE_CODE'] as $index => $constant) define($constant, $index + 1);
-    function curl_init($url) { return (object) ['url' => $url]; }
+    function curl_init($url) { ++$GLOBALS['qp_curl_opened']; return (object) ['url' => $url]; }
     function curl_setopt_array($handle, $options) { $handle->options = $options; return true; }
     function curl_exec($handle) {
+        $options = $handle->options;
+        $GLOBALS['qp_curl_options'][] = [
+            'stage' => basename($handle->url),
+            'timeout_ms' => $options[CURLOPT_TIMEOUT_MS] ?? ($options[CURLOPT_TIMEOUT] * 1000),
+            'connect_seconds' => $options[CURLOPT_CONNECTTIMEOUT],
+            'follow' => $options[CURLOPT_FOLLOWLOCATION],
+            'tls_peer' => $options[CURLOPT_SSL_VERIFYPEER], 'tls_host' => $options[CURLOPT_SSL_VERIFYHOST],
+            'https' => $options[CURLOPT_PROTOCOLS] === CURLPROTO_HTTPS
+                && $options[CURLOPT_REDIR_PROTOCOLS] === CURLPROTO_HTTPS,
+        ];
         ($handle->options[CURLOPT_WRITEFUNCTION])($handle, 'PRIVATE_PARTIAL_BODY');
         return ($GLOBALS['argv'][2] ?? '') === 'timeout' ? false : true;
     }
@@ -17,11 +27,45 @@ if (($argv[1] ?? '') === '--curl-diagnostics-fixture') {
     function curl_errno($handle) { return ($GLOBALS['argv'][2] ?? '') === 'timeout' ? 28 : 0; }
     function curl_close($handle) { ++$GLOBALS['qp_curl_closed']; }
     require_once __DIR__ . '/../app/integrations/anex-package-quote-client.php';
-    $qp_curl_closed = 0;
+    $qp_curl_closed = 0; $qp_curl_opened = 0; $qp_curl_options = [];
     $native = new ReflectionMethod(AnyTourAnexPackageQuoteClient::class, 'curlRequest');
     $client = new AnyTourAnexPackageQuoteClient('PRIVATE_TOKEN', static function ($url, $fields, $headers) use (&$client, $native) {
         return $native->invoke($client, $url, $fields, $headers);
     });
+    if (($argv[1] ?? '') === '--curl-deadline-fixture') {
+        $errors = [];
+        foreach (['start', 'transports', 'SetTransport', 'calcfull'] as $stage) {
+            try {
+                if ($stage === 'start') $client->start('PRIVATE_CLAIM', '1234567890123', '3');
+                elseif ($stage === 'transports') $client->transports('1234567890123');
+                elseif ($stage === 'SetTransport') $client->select('1234567890123', ['0' => 'PRIVATE_OUT', '1' => 'PRIVATE_BACK']);
+                else $client->calculate('1234567890123');
+            } catch (RuntimeException $error) { $errors[] = $error->getMessage(); }
+        }
+        $normal = $qp_curl_options;
+        $deadline = new ReflectionProperty(AnyTourAnexPackageQuoteClient::class, 'deadlineNs');
+        $remainingClient = new AnyTourAnexPackageQuoteClient('PRIVATE_TOKEN', static function ($url, $fields, $headers) use (&$remainingClient, $native) {
+            return $native->invoke($remainingClient, $url, $fields, $headers);
+        });
+        try { $remainingClient->start('PRIVATE_CLAIM', '1234567890123', '3'); }
+        catch (RuntimeException $error) {}
+        $initialRemaining = (int) floor(($deadline->getValue($remainingClient) - hrtime(true)) / 1000000);
+        $deadline->setValue($remainingClient, hrtime(true) + 12000000000);
+        // Public request must retain the budget already consumed by the preceding stage/pacing.
+        try { $remainingClient->transports('1234567890123'); }
+        catch (RuntimeException $error) { $remainingError = $error->getMessage(); }
+        $remaining = end($qp_curl_options);
+        $deadline->setValue($remainingClient, hrtime(true) - 1);
+        $before = [$qp_curl_opened, count($qp_curl_options), $qp_curl_closed];
+        try { $remainingClient->calculate('1234567890123'); $expired = null; }
+        catch (RuntimeException $error) { $expired = $error->getMessage(); }
+        echo json_encode(['normal' => $normal, 'errors' => $errors, 'remaining' => $remaining,
+            'initial_remaining_ms' => $initialRemaining, 'remaining_error' => $remainingError,
+            'expired_diagnostics' => $remainingClient->lastRequestDiagnostics(),
+            'expired' => $expired, 'no_new_curl' => $before === [$qp_curl_opened, count($qp_curl_options), $qp_curl_closed],
+            'all_closed' => $qp_curl_opened === $qp_curl_closed], JSON_THROW_ON_ERROR);
+        exit;
+    }
     try { $client->start('PRIVATE_CLAIM', '1234567890123', '3'); $error = null; }
     catch (RuntimeException $failure) { $error = $failure->getMessage(); }
     echo json_encode(['diagnostics' => $client->lastRequestDiagnostics(), 'error' => $error,
@@ -687,6 +731,34 @@ foreach (['elapsed_ms' => 120000, 'curl_errno' => 999] as $field => $maximum) {
             'receipt accepts only bounded typed transport diagnostic: ' . $field);
     }
 }
+$process = proc_open([PHP_BINARY, '-n', __FILE__, '--curl-deadline-fixture'],
+    [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+qp_assert(is_resource($process), 'native deadline fixture starts without supplier/network');
+fclose($pipes[0]); $raw = stream_get_contents($pipes[1]); $stderr = stream_get_contents($pipes[2]);
+fclose($pipes[1]); fclose($pipes[2]); $exit = proc_close($process);
+qp_assert($exit === 0 && $stderr === '', 'native deadline fixture completes: ' . $stderr);
+$wireBudget = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+foreach ($wireBudget['normal'] as $options) {
+    $ceiling = $options['stage'] === 'transports' ? 45000 : 25000;
+    qp_assert($options['timeout_ms'] <= $ceiling && $options['timeout_ms'] > $ceiling - 1000,
+        'native stage timeout leaves slow transports room beyond old25s without extending other stages');
+    qp_assert($options['connect_seconds'] === 10 && $options['follow'] === false
+        && $options['tls_peer'] === true && $options['tls_host'] === 2 && $options['https'] === true,
+        'deadline repair preserves connect/TLS/HTTPS/redirect guards');
+}
+qp_assert(count($wireBudget['normal']) === 4 && count($wireBudget['errors']) === 4,
+    'native bounded stages do not retry HTTP failures');
+qp_assert($wireBudget['initial_remaining_ms'] > 59000 && $wireBudget['initial_remaining_ms'] <= 60000,
+    'first public request establishes one60s operation budget');
+qp_assert($wireBudget['remaining']['timeout_ms'] <= 12000 && $wireBudget['remaining']['timeout_ms'] > 11000,
+    'earlier elapsed time clips transports to shared remaining budget');
+qp_assert($wireBudget['remaining_error'] === 'ANEX_QUOTE_HTTP_ERROR', 'remaining-budget request still uses ordinary HTTP failure path');
+qp_assert($wireBudget['expired'] === 'ANEX_QUOTE_TRANSPORT_ERROR' && $wireBudget['no_new_curl'] && $wireBudget['all_closed'],
+    'expired operation budget opens no cURL and every opened handle is closed');
+qp_assert(!array_key_exists('http_status', $wireBudget['expired_diagnostics'])
+    && !array_key_exists('curl_errno', $wireBudget['expired_diagnostics']),
+    'deadline exhausted before HTTP does not invent wire status or cURL timeout evidence');
+qp_assert(strpos($raw, 'PRIVATE') === false, 'deadline fixture exposes only numeric options and safe stage/error codes');
 foreach (['http', 'timeout'] as $wireMode) {
     $process = proc_open([PHP_BINARY, '-n', __FILE__, '--curl-diagnostics-fixture', $wireMode],
         [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
