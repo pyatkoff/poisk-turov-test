@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "operation_id": "int-anex-mixedparty-egypt-20270421-20261023-v1",
+  "terminal": "VERIFIED_CONSUMED_NO_REPLAY",
+  "tab_closed": true,
+  "source": {
+    "backend": "6b5b3f2bb30a5a23e7ae8128c2eda8c4f3d50aa2",
+    "consumer": "1fdfddb3ed3d5f7fbe025443eb36ab48b5839559",
+    "release": "b2cebd5b4bed5db2524cc400a4ad919d3f0a238a",
+    "source_pr": 4831,
+    "independent_review": 5622165811,
+    "endpoint_install_run": 39876814745,
+    "runtime_install_run": 39877080668
+  },
+  "claims": {
+    "case": 6354276095,
+    "pre_find_horizon_correction": 6354307983,
+    "terminal": 6354397442
+  },
+  "criteria": {
+    "departure": "Moscow",
+    "country": "Egypt",
+    "departure_from": "2027-04-21",
+    "departure_to": "2027-04-22",
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [
+      0,
+      8
+    ],
+    "meal": "AI",
+    "pre_find_change": "Original end27Apr unavailable in stock calendar; narrowed to enabled22Apr before any Find. Same operation; no supplier-failure date fallback."
+  },
+  "verified_tour": {
+    "hotel": "TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)",
+    "operator": "ANEX",
+    "supplier_channel": "direct_anex",
+    "checkin": "2027-04-22",
+    "checkout": "2027-04-29",
+    "room": "Standard Pool OR Sea View Room",
+    "meal": "AI",
+    "flight_type": "regular",
+    "party_size": 4,
+    "requested_child_ages": [
+      0,
+      8
+    ],
+    "typed_party_gross_guards_passed": true,
+    "listing_total_rub": 162864,
+    "whole_party_supplier_total_rub": 170640,
+    "whole_total_change_rub": 7776,
+    "outbound": [
+      "VF278",
+      "VF255"
+    ],
+    "inbound": [
+      "VF256",
+      "VF275"
+    ],
+    "infant_amount": "NOT_EXPOSED_IN_SAFE_RECEIPT",
+    "fuel_amount": "NOT_EXPOSED_IN_SAFE_RECEIPT",
+    "change_is_not_isolated_infant_fee": true
+  },
+  "counts": {
+    "find_ui_intents": 1,
+    "concrete_expand_ui_intents": 1,
+    "current_check_ui_intents": 1,
+    "quote_start_ui_intents": 1,
+    "pair_calculation_ui_intents": 1,
+    "quote_http_complete": 4,
+    "safe_receipt_get": 1,
+    "ui_hotels": 97,
+    "ui_mixed_variants": 605,
+    "retained_anex_offers": 39,
+    "concrete_modal_rows": 9,
+    "anex_concrete_rows": 6,
+    "tourvisor_rows": 3,
+    "returned_pair_choices": 40,
+    "calculated_pairs": 1,
+    "retry": 0,
+    "continue": 0,
+    "lead": 0,
+    "booking": 0,
+    "full_http_usage": "NOT_MEASURED",
+    "account_remaining": "NOT_MEASURED"
+  },
+  "quote_transport_timing": {
+    "per_stage_ms": {
+      "start": 793,
+      "transports": 18109,
+      "SetTransport": 698,
+      "calcfull": 2168
+    },
+    "sum_ms": 21768,
+    "definition": "Monotonic transport invocation spans, excluding pacing/parsing/checkpoints/UI. Not whole journey duration or historical outage evidence.",
+    "all_http_status": 200,
+    "all_curl_errno": 0
+  },
+  "quote_receipt": {
+    "ok": true,
+    "data": {
+      "retained_only": true,
+      "supplier_calls": 0,
+      "records": [
+        {
+          "status": "quote_verified",
+          "reason": null,
+          "stages": [
+            {
+              "stage": "start",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 10786,
+              "elapsed_ms": 793,
+              "curl_errno": 0
+            },
+            {
+              "stage": "transports",
+              "state": "complete",
+              "http_status": 200,
+              "response_bytes": 478496,
+              "elapsed_ms": 18109,
+              "curl_errno": 0
+            },
+            {
+              "stage": "SetTransport",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 478679,
+              "elapsed_ms": 698,
+              "curl_errno": 0
+            },
+            {
+              "stage": "calcfull",
+              "state": "complete",
+              "pair_index": 1,
+              "http_status": 200,
+              "response_bytes": 480168,
+              "elapsed_ms": 2168,
+              "curl_errno": 0
+            }
+          ],
+          "version": 2,
+          "reserved_calls": 4,
+          "sealed": false
+        }
+      ],
+      "retained_first_page": {
+        "raw_rows": "nonempty",
+        "retained_offers": 39,
+        "interpretation": "offers_retained"
+      }
+    }
+  },
+  "observations": [
+    {
+      "stage": "before_find",
+      "state": "Browser tab: 10, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 link Description: Перейти к результатам, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#results\n\t2 container\n\t\t3 link Description: AnyTour — начало, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t4 container Основная навигация\n\t\t\t5 link Description: Подбор тура, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t6 text Версия для проверки\n\t7 container\n\t\t8 container Подберём ваш отдых, ID: search\n\t\t\t9 heading Подберём ваш отдых, Value: 1, ID: page-title\n\t\t\t\t10 text Подберём ваш отдых\n\t\t\t11 container search-form\n\t\t\t\t12 pop up button Description: Город вылета: Москва, ID: departure-button\n\t\t\t\t\t13 text Откуда\n\t\t\t\t\t14 text Москва\n\t\t\t\t\t15 text ›\n\t\t\t\t16 button Description: Направление: Египет, Help: Египет, ID: country\n\t\t\t\t\t17 text Куда\n\t\t\t\t\t18 text Египет\n\t\t\t\t\t19 text Вся страна\n\t\t\t\t\t20 text ›\n\t\t\t\t21 button Даты вылета 21–22 апреля ›\n\t\t\t\t\t22 text Даты вылета\n\t\t\t\t\t23 text 21–22 апреля\n\t\t\t\t\t24 text ›\n\t\t\t\t25 button Ночей 7 ночей ›\n\t\t\t\t\t26 text Ночей\n\t\t\t\t\t27 text 7 ночей\n\t\t\t\t\t28 text ›\n\t\t\t\t29 button Туристы 2 взр. · 2 реб. До 1 года и 8 лет ›\n\t\t\t\t\t30 text Туристы\n\t\t\t\t\t31 text 2 взр. · 2 реб.\n\t\t\t\t\t32 text До 1 года и 8 лет\n\t\t\t\t\t33 text ›\n\t\t\t\t34 container Категория отеля\n\t\t\t\t\t35 text Категория отеля\n\t\t\t\t\t36 container Description: Категория отеля, ID: quick-stars\n\t\t\t\t\t\t37 checkbox Любая, Value: 1\n\t\t\t\t\t\t38 checkbox 3★, Value: 0\n\t\t\t\t\t\t39 checkbox 4★, Value: 0\n\t\t\t\t\t\t40 checkbox 5★, Value: 0\n\t\t\t\t41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal\n\t\t\t\t\t42 text Питание\n\t\t\t\t\t43 text Всё включено\n\t\t\t\t\t44 text ⌄\n\t\t\t\t45 button Бюджет за всех Без ограничений ⌄, ID: quick-budget\n\t\t\t\t\t46 text Бюджет за всех\n\t\t\t\t\t47 text Без ограничений\n\t\t\t\t\t48 text ⌄\n\t\t\t\t49 button Найти туры\n\t\t\t\t50 button Уточнить параметры\n\t\t\t\t51 text Даты или ночи изменены. Проверьте возраст детей на возвращение.\n\t\t\t\t52 text Цена за весь тур и всех туристов\n\t\t\t53 button (collapsed) ⓘ О данных поиска ⌄, Secondary Actions: Expand\n\t\t\t\t54 text ⓘ\n\t\t\t\t55 text О данных поиска\n\t\t\t\t56 text ⌄\n\t\t57 container Ваш следующий отдых, ID: results\n\t\t\t58 heading Ваш следующий отдых, Value: 2, ID: results-title\n\t\t\t\t59 text Ваш следующий отдых\n\t\t\t60 text Задайте направление, даты и состав туристов — предложения появятся после поиска.\n\t\t\t61 container\n\t\t\t\t62 text Цена за всех туристов\n\t\t\t\t63 text уточняется при выборе\n\t\t\t64 container cards\n\t\t\t\t65 heading Начните с параметров поездки, Value: 3\n\t\t\t\t\t66 text Начните с параметров поездки\n\t\t\t\t67 text Выберите направление, даты и туристов, затем нажмите «Найти туры».\n\t68 button (collapsed) Дизайн · пакет 91 Настройки и сценарии ⌄, Secondary Actions: Expand\n\t\t69 text Дизайн · пакет 91\n\t\t70 text Настройки и сценарии\n\t\t71 text ⌄\n\t72 container\n\t\t73 link Description: AnyTour — к поиску, Value: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-11-06&to=2026-11-12&minNights=7&maxNights=7&adults=2&ages=&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE#search\n\t\t74 text Отдых начинается с хорошего выбора.\n\t\t75 button О данных\n\t\t76 text Дизайн · пакет 91 · 14.10.2026 · исходник v227\n\nThe focused UI element is 41 button Description: Питание: Всё включено, Help: Всё включено, ID: quick-meal"
+    },
+    {
+      "stage": "exact_concrete_conditions",
+      "state": "Browser tab: 10, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Ваш тур в деталях, ID: modal\n\t\t6 button Description: К вариантам тура, Help: К вариантам тура: TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT), ID: modal-back\n\t\t7 text ПРОВЕРЬТЕ УСЛОВИЯ\n\t\t2 heading Ваш тур в деталях, Value: 2, ID: modal-title\n\t\t\t8 text Ваш тур в деталях\n\t\t4 button Закрыть окно\n\t\t5 container modal-body\n\t\t\t9 image Фото TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)\n\t\t\t10 heading TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT), Value: 3\n\t\t\t\t11 text TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)\n\t\t\t12 container 4 звезды\n\t\t\t\t13 text ★★★★\n\t\t\t14 text Нувейба, Египет\n\t\t\t15 container Выбранные условия тура\n\t\t\t\t16 text 22 апр — 29 апр · 7 ночей\n\t\t\t\t17 text 2 взр. + 2 реб. · возраст детей: до года, 8 лет\n\t\t\t\t18 definition list\n\t\t\t\t\t19 container Номер\n\t\t\t\t\t\t20 text Номер\n\t\t\t\t\t21 text Standard Pool OR Sea View Room\n\t\t\t\t\t22 container Питание\n\t\t\t\t\t\t23 text Питание\n\t\t\t\t\t24 text Всё включено\n\t\t\t\t\t25 container Оператор\n\t\t\t\t\t\t26 text Оператор\n\t\t\t\t\t27 text ANEX\n\t\t\t\t28 button Другие номера и питание\n\t\t\t29 text Предложение из текущего поиска. Проверьте цену, наличие и рейсы для этих условий.\n\t\t\t30 button Уточнить цену без выбора рейсов\n\t\t\t31 container Состав и стоимость тура\n\t\t\t\t32 heading Условия тура, Value: 3\n\t\t\t\t\t33 text Условия тура\n\t\t\t\t34 button (collapsed) Топливный сбор Сбор уточняется ⌄, ID: detail-fuel-summary, Secondary Actions: Expand\n\t\t\t\t\t35 text Топливный сбор\n\t\t\t\t\t36 text Сбор уточняется\n\t\t\t\t\t37 text ⌄\n\t\t38 container modal-footer\n\t\t\t39 text За всех туристов\n\t\t\t40 text 162 864 ₽\n\t\t\t41 text Цена из выдачи · требует проверки\n\t\t\t42 button Выбрать перелёт и уточнить цену\n\nThe focused UI element is 2 heading Ваш тур в деталях, Value: 2, ID: modal-title"
+    },
+    {
+      "stage": "quote_start_result",
+      "state": "Browser tab: 10, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Перелёт и цена тура, ID: modal\n\t\t6 button Description: К деталям тура, Help: К деталям тура: Ваш тур в деталях, ID: modal-back\n\t\t39 text ANEX · АКТУАЛИЗАЦИЯ\n\t\t2 heading Перелёт и цена тура, Value: 2, ID: modal-title\n\t\t\t40 text Перелёт и цена тура\n\t\t4 button Закрыть окно\n\t\t5 container modal-body\n\t\t\t41 button (collapsed) Secondary Actions: Expand, TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT) 22 апр — 29 апр · 7 ночей 2 взр. + 2 реб. · до года, 8 лет Всё включено · условия тура⌄\n\t\t\t\t42 text TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)\n\t\t\t\t43 text 22 апр — 29 апр · 7 ночей\n\t\t\t\t44 text 2 взр. + 2 реб. · до года, 8 лет\n\t\t\t\t45 text Всё включено · условия тура\n\t\t\t\t46 text ⌄\n\t\t\t47 container\n\t\t\t\t48 heading Варианты перелёта, Value: 3\n\t\t\t\t\t49 text Варианты перелёта\n\t\t\t\t50 text Выберите перелёт для расчёта полной цены тура.\n\t\t\t\t51 container Перелёт туда и обратно\n\t\t\t\t\t52 text Перелёт туда и обратно\n\t\t\t\t\t53 container\n\t\t\t\t\t\t54 radio button (settable, integer) Value: 1, Description: Вариант 1 Выбрано Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t55 text Вариант 1 Выбрано Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t56 container\n\t\t\t\t\t\t57 radio button (settable, integer) Value: 0, Description: Вариант 2 Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t58 text Вариант 2 Туда AJet · VF 276 · 01:45 · 06:00 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t59 container\n\t\t\t\t\t\t60 radio button (settable, integer) Value: 0, Description: Вариант 3 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t\t61 text Вариант 3 Туда AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх Обратно AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 277 · 00:40 · 04:50 · Сабиха Гёкчен · Внуково Цена тура с этими рейсами требует расчёта\n\t\t\t\t\t62 button (collapsed) Другие варианты · 37, Secondary Actions: Expand\n\t\t\t\t\t\t63 text Другие варианты · 37\n\t\t38 container modal-footer\n\t\t\t64 text За всех туристов\n\t\t\t65 text Цена уточняется\n\t\t\t66 text Цена требует подтверждения\n\t\t\t67 button Уточнить цену с этими рейсами\n\nThe focused UI element is 2 heading Перелёт и цена тура, Value: 2, ID: modal-title"
+    },
+    {
+      "stage": "pair_calculation_result",
+      "state": "Browser tab: 10, Title: \"AnyTour — найдите свой отдых\", URL: \"https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\".\n0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE\n\t1 container Цена тура подтверждена, ID: modal\n\t\t6 button Description: К деталям тура, Help: К деталям тура: Ваш тур в деталях, ID: modal-back\n\t\t39 text ANEX · АКТУАЛИЗАЦИЯ\n\t\t2 heading Цена тура подтверждена, Value: 2, ID: modal-title\n\t\t\t40 text Цена тура подтверждена\n\t\t4 button Закрыть окно\n\t\t5 container modal-body\n\t\t\t41 content list Этапы выбора тура\n\t\t\t\t42 text Номер и питание\n\t\t\t\t43 text Перелёт\n\t\t\t\t44 text Заявка\n\t\t\t45 image Фото TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)\n\t\t\t46 heading TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT), Value: 3\n\t\t\t\t47 text TIME CORAL NUWEIBA RESORT (EX. HILTON NUWEIBA CORAL RESORT)\n\t\t\t48 container 4 звезды\n\t\t\t\t49 text ★★★★\n\t\t\t50 text Нувейба, Египет\n\t\t\t51 container\n\t\t\t\t52 text Цена изменилась после проверки В выдаче 162 864 ₽ → после проверки 170 640 ₽ за всех туристов.\n\t\t\t53 container Выбранные условия тура\n\t\t\t\t54 text 22 апр — 29 апр · 7 ночей\n\t\t\t\t55 text 2 взр. + 2 реб. · возраст детей: до года, 8 лет\n\t\t\t\t56 definition list\n\t\t\t\t\t57 container Номер\n\t\t\t\t\t\t58 text Номер\n\t\t\t\t\t59 text Standard Pool OR Sea View Room\n\t\t\t\t\t60 container Питание\n\t\t\t\t\t\t61 text Питание\n\t\t\t\t\t62 text Всё включено\n\t\t\t\t\t63 container Оператор\n\t\t\t\t\t\t64 text Оператор\n\t\t\t\t\t65 text ANEX\n\t\t\t66 container\n\t\t\t\t67 heading Перелёт, Value: 3\n\t\t\t\t\t68 text Перелёт\n\t\t\t\t69 text Туда\n\t\t\t\t70 text AJet · VF 278 · 05:55 · 10:10 · Внуково · Сабиха Гёкчен / AJet · VF 255 · 23:40 · 02:20+1 · Сабиха Гёкчен · Шарм-Эль-Шайх\n\t\t\t\t71 text Обратно\n\t\t\t\t72 text AJet · VF 256 · 03:30 · 06:10 · Шарм-Эль-Шайх · Сабиха Гёкчен / AJet · VF 275 · 20:35 · 00:45+1 · Сабиха Гёкчен · Внуково\n\t\t\t73 container\n\t\t\t\t74 heading Цена тура, Value: 3\n\t\t\t\t\t75 text Цена тура\n\t\t\t\t76 text Подтверждённая стоимость этого тура.\n\t\t38 container modal-footer\n\t\t\t77 text За всех туристов\n\t\t\t78 text 170 640 ₽\n\t\t\t79 text Подтверждённая цена\n\t\t\t80 button Изменить рейсы\n\t\t\t81 button К заявке\n\nThe focused UI element is 0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2027-04-21&to=2027-04-22&minNights=7&maxNights=7&adults=2&ages=0%2C8&searched=1&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE"
+    }
+  ],
+  "proof": {
+    "verified": {
+      "file": "verified.jpg",
+      "bytes": 98294,
+      "sha256": "7e7bf37034ec81e5c0a9f1efb185ef4352d6617b358b3d82f6a201f71266fabc"
+    },
+    "receipt": {
+      "file": "receipt.json",
+      "bytes": 1370,
+      "sha256": "109dd80e2cc7ca42ee8ec49d90c5bd23aef8adc31a755237c881e1055c93a7b1"
+    }
+  },
+  "boundary": "Backend mixed-party whole-party result and installed diagnostic capture. Not ordinary infant/APD consumer acceptance, physical/responsive acceptance, separate infant/fuel amount, global account usage, or production release.",
+  "next_action": "Reuse this one completed receipt and frame. SEARCH4829 remains blocked by protected CI budget; ordinary installed path needs its own publisher terminal then a separately claimed one-owner case. No replay or timing/outage-only probe."
+}

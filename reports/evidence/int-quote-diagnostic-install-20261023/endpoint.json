@@ -1,0 +1,45 @@
+{
+  "booking_calls": 0,
+  "database_writes": 0,
+  "install": {
+    "changed_files": 1,
+    "created_files": 0,
+    "dependency": {
+      "changed": false,
+      "sha256": "145eff807355b50bcd381c6b3d732eb5c8ac4350f2945fb77304c9fd50673ce6",
+      "source": "app/integrations/anex-initial-week-gate.php",
+      "target": "app/integrations/anex-initial-week-gate.php"
+    },
+    "endpoint": {
+      "changed": true,
+      "sha256": "934925fd6b8a8d322c0f692da5f832023206e2dc1058d14f7c34532a7d8ac473",
+      "source": "v2/api-anex-search3-preview.php",
+      "target": "api-anex-search3-preview.php"
+    },
+    "files": 2,
+    "manifest_sha256": "41ad403c765c6bb6ee604fa128ebc7ac7fbe1fe0db05dddd692135442ac25416",
+    "source_sha": "6b5b3f2bb30a5a23e7ae8128c2eda8c4f3d50aa2",
+    "status": "installed"
+  },
+  "lead_calls": 0,
+  "mode": "install-anex-preview",
+  "operation_id": "int-anex-quote-diagnostic-endpoint-install-20261023-v1",
+  "production_after": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "production_before": {
+    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",
+    "v2/api-v2.php": null,
+    "v2/index.php": null,
+    "v2/lead-adapter-v2.php": null
+  },
+  "public_ui_entrypoints_unchanged": true,
+  "runtime_changed": true,
+  "schema_version": 1,
+  "source_sha": "6b5b3f2bb30a5a23e7ae8128c2eda8c4f3d50aa2",
+  "status": "installed",
+  "supplier_calls": 0
+}
