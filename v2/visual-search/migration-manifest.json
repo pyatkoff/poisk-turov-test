@@ -55,10 +55,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "9c5f87c1a077b036ff21353091f9d49e8d871e55dcd519537fbae6c59692fc08",
+    "app.js": "7d7114c7f900e5263cb367dcae680bd756ef82661d072226b43800952cbcd899",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "ec1fae2495784d93ce9ce1e52bb793f5eeae831ed238fa5c7c75a57df39cbf21",
-    "styles.css": "dd02691d24e221ba577c18b6dd017c9c9a86943770815506d6539b3eb2d9bfa5",
+    "styles.css": "eed60008eb6b9c1783bf9baee0909d6523f11a067a6733dbb00c8ad22007bce9",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "41c5ca87b9eae637356c6065fc046da5eab57a4b789d4f5d80369e243d626a48",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
@@ -278,6 +278,14 @@
     "publicationStatus": "not-published",
     "approvedSourceSha": "bf2f8f9b9108f36823c47457b0fb614c2c16f660",
     "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6347757208",
-    "scope": "approved whole hotel/group → rooms → inline exact-identity check → canonical contacts/return; conditions and flights optional; existing NEXT canonical data/price/pair/lead owners retained; ANEX estimate remains explicitly unverified"
+    "scope": "approved whole hotel/group → rooms → inline exact-identity check → canonical contacts/return; conditions and flights optional; existing NEXT canonical data/price/pair/lead owners retained; ANEX estimate remains explicitly unverified",
+    "nextDesignBasis": {
+      "site": 215,
+      "source": "57db3c55856b80ac5874b89d582005f4de58f260",
+      "preparedHandoff": "156fa983c361f27b01a22a1897b060052d0c0596",
+      "receiverClaim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6359640885",
+      "status": "SOURCE_CANDIDATE_PENDING_EXACT_HEAD_VISUAL_ACCEPTANCE",
+      "scope": "existing room owner optional inline flight picker, direct contact editing Apply/Cancel and compact paired comparison; canonical ANEX infant/whole-party controller retained; no donor fixture or lead shim transfer"
+    }
   }
 }

@@ -1581,9 +1581,60 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
  fs.writeFileSync(path.join(evidence,'filter-recovery-apply.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');
 };
 
+const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
+ const records=[];
+ for(const [width,height] of [[430,932],[1280,900],[1280,720]]){
+  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),errors=[],forbidden=[];
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const tag=width+'x'+height,amount=()=>page.locator('#modal-footer .footer-total>strong').textContent();
+  try{
+   await page.route('**/*',async route=>{
+    const r=route.request(),u=new URL(r.url());
+    if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
+    if(r.resourceType()==='image'){await route.abort();return;}
+    forbidden.push(u.pathname);await route.abort();
+   });
+   await page.goto(origin+base+'visual-search/?scenario=flights&searched=1');
+   await page.locator('.hotel-card [data-action="hotel-details"]').first().click();
+   await page.locator('.hotel-room-card').first().waitFor();
+   const room=page.locator('.hotel-room-card').first();
+   if(await room.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await room.locator(':scope>summary').click();
+   await room.locator('[data-action="select-hotel-offer"]:visible').first().click();
+   const row=page.locator('.room-offer-choice.selected'),key=await row.getAttribute('data-offer-key');
+   await row.locator('[data-action="hotel-flights"]').click();
+   await row.locator('.hotel-flight-inline [name="flight-pair"]').first().waitFor();
+   assert.equal(await row.locator('[name="flight-pair"]:checked').count(),0,'inventory alone cannot select a pair');
+   await row.locator('[name="flight-pair"][value="1"]').check();
+   const checked=await amount();
+   assert.equal(await row.locator('.hotel-room-price>strong').textContent(),checked,'row and footer show the same whole-tour pair amount');
+   await row.locator('.room-flight-preview').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(evidence,'site215-inline-'+tag+'.png')});
+   await page.locator('#hotel-detail-offers').click();await page.locator('#prototype-lead-form').waitFor();
+   assert.equal(await amount(),checked);assert.equal(await page.locator('#modal-title').textContent(),'Заявка на тур');
+   await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="consent"]').check();
+   const phone=await page.locator('[name="phone"]').inputValue();
+   await page.locator('[data-action="contact-flights"]').click();await page.locator('#tour-flight-options [name="flight-pair"]').first().waitFor();
+   await page.screenshot({path:path.join(evidence,'site215-editor-'+tag+'.png')});
+   await page.locator('[name="flight-pair"][value="2"]').check();await page.locator('[data-action="modal-back"]').click();
+   await page.locator('#prototype-lead-form').waitFor();assert.equal(await amount(),checked);assert.equal(await page.locator('[name="phone"]').inputValue(),phone);assert.equal(await page.locator('[name="consent"]').isChecked(),true);
+   await page.locator('[data-action="contact-flights"]').click();await page.locator('[name="flight-pair"][value="2"]').check();
+   const applied=await page.locator('#flight-total').textContent();await page.locator('[data-action="apply-flight"]').click();
+   await page.locator('#prototype-lead-form').waitFor();assert.equal(await amount(),applied);assert.equal(await page.locator('[name="phone"]').inputValue(),phone);assert.equal(await page.locator('[name="consent"]').isChecked(),false);
+   await page.screenshot({path:path.join(evidence,'site215-contact-'+tag+'.png')});
+   const geometry=await page.locator('#modal').evaluate(el=>{const body=el.querySelector('#modal-body'),footer=el.querySelector('#modal-footer'),b=body.getBoundingClientRect(),f=footer.getBoundingClientRect();return {dialogOverflow:el.scrollWidth>el.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,bodyBottom:b.bottom,footerTop:f.top,footerBottom:f.bottom,viewport:innerHeight};});
+   assert.equal(geometry.dialogOverflow,false);assert.equal(geometry.bodyOverflow,false);assert(geometry.footerBottom<=geometry.viewport+1);assert(geometry.bodyBottom<=geometry.footerTop+1);
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({width,height,key,checked,applied,directContactsApplyCancel:true,phoneRetained:true,changedConsentReset:true,geometry,supplier_HTTP:0,real_leads:0});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'site215-contact-return.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');
+};
+
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
+   await require('./search3-visual-hotel-journey.cjs')();
+   await inlineContactFlightReturn(browser,origin,base,evidence);
    await inlineHotelContactJourney(browser,origin,base,evidence);
    await infantChargeQualification(browser,origin,base,evidence);
    await localCivilDateJourney(browser,origin,base,evidence);
