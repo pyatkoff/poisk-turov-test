@@ -2254,7 +2254,7 @@ function openAnexPackageQuote(o,result,error='',pending=false){
 }
 async function loadAnexPackageQuote(calculate=false,{fromOffer=false}={}){
  const o=selectedOffer,view=retainedProviderView(o),repricing=view?.result?.repricing?.enabled===true;if(!o||o.provider!=='anex'||view?.sealed||view?.pending&&!repricing)return;
- if(calculate&&modalType!=='anex-quote'||!calculate&&!['anex-current','anex-additional'].includes(modalType)&&!(fromOffer&&modalType==='offer'))return;
+ if(calculate&&modalType!=='anex-quote'||!calculate&&!['anex-current','anex-additional'].includes(modalType)&&!(fromOffer&&(modalType==='offer'||hotelOfferCheckActive(o.key))))return;
  const choice=calculate?$('[name="anex-package-choice"]:checked')?.value:null;if(calculate&&!choice)return;
  let old=calculate?view?.result:null;openAnexPackageQuote(o,old,'',true);
  const requestedView=retainedProviderView(o),run=selectionGeneration;
@@ -2356,14 +2356,18 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
  if(terminalOfferQuote(o)){renderOfferProgress();return;}
- if(restoreProviderView(o)){if(selectFlights&&['anex-current','anex-additional'].includes(modalType))await loadAnexPackageQuote();return;}
+ if(restoreProviderView(o)){
+  if(selectFlights&&['anex-current','anex-additional'].includes(modalType)
+   ||unknownInfantCharge(o)&&hotelOfferCheckActive(o.key)&&retainedProviderView(o)?.type==='anex-current')await loadAnexPackageQuote(false,{fromOffer:true});
+  return;
+ }
  if(o.provider==='anex'&&o.raw?.anexKind==='concrete'&&o.raw?.anexSessionCurrent===true){
   const inline=hotelOfferCheckActive(o.key),run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderOfferProgress();
   try{
    const current=await data.verifyAnexConcrete(o);
    rememberProviderView(o,'anex-current',current);
    if(!isCurrentOfferRequest(run,o.key))return;
-   if(selectFlights){selectedOffer={...o,loading:false};await loadAnexPackageQuote(false,{fromOffer:true});}
+   if(selectFlights||inline&&unknownInfantCharge(o)){selectedOffer={...o,loading:false};await loadAnexPackageQuote(false,{fromOffer:true});}
    else{openAnexConcreteCurrent(o,current);if(inline&&hotelOfferCheckActive(o.key)&&anexCurrentDraft)await applyAnexAdditionalPrices();}
   }catch(error){
    if(isCurrentOfferRequest(run,o.key)){

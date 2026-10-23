@@ -133,3 +133,44 @@ function verifyRoomPriceStatus(appSource,hotelSource){
 }
 verifyRoomPriceStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
 console.log('PASS room price status: listing/minimum/selected/current pair/pending/foreign identity/escaping; amounts unchanged');
+
+async function verifyInfantInlineQuoteTransition(appSource){
+ const owner=(start,end)=>{const a=appSource.indexOf(start),b=appSource.indexOf(end,a);assert(a>=0&&b>a);return appSource.slice(a,b);};
+ const code=appSource.match(/^const unknownInfantCharge=.*$/m)[0]+'\n'
+  +owner('function isCurrentOfferRequest(','function terminalOfferQuote(')
+  +owner('function restoreProviderView(','const flightPairFor=')
+  +owner('async function refreshLiveHotel(','function refreshHotel(')
+  +owner('async function loadAnexPackageQuote(','function anexFlightInventoryHTML(');
+ function harness({infant=true,inline=true,count=2,currentGate=null,quoteError=false,retainedCurrent=false}={}){
+  const views=new Map(),calls=[],modal={open:true},offer={key:'exact-anex',hotelId:501,provider:'anex',total:147744,adults:2,ages:infant?[1]:[],raw:{anexKind:'concrete',anexSessionCurrent:true,...(infant?{infantCharge:{status:'unknown',amount:null,includedInSearchPrice:null}}:{})}};
+  const choices=Array.from({length:count},(_,i)=>({choiceRef:'pair-'+(i+1)}));
+  const c={selectedOffer:offer,selectionGeneration:0,modalType:inline?'hotel-details':'offer',calls,anexCurrentDraft:null,
+   $:s=>s==='#modal'?modal:s==='[name="anex-package-choice"]:checked'?{value:'pair-2'}:null,
+   selectedTourHotel:()=>({id:501}),needsRefresh:()=>true,terminalOfferQuote:()=>false,
+   hotelOfferCheckActive:key=>c.modalType==='hotel-details'&&key===c.selectedOffer?.key,
+   retainedProviderView:o=>views.get(o?.key),rememberProviderView:(o,type,result,error='',pending=false)=>views.set(o.key,{offer:o,type,result,error,pending}),
+   renderOfferProgress:()=>{},toast:()=>{},offerQuoteFailure:(o,e)=>({...o,loading:false,quoteError:e.message}),
+   openAnexConcreteCurrent:(o,current)=>{c.selectedOffer={...o,loading:false};c.anexCurrentDraft={offer:o,current};if(!inline)c.modalType='anex-current';},
+   applyAnexAdditionalPrices:async()=>{calls.push('APD');},
+   openAnexPackageQuote:(o,result,error='',pending=false)=>{c.selectedOffer={...o,loading:false};c.modalType='anex-quote';c.rememberProviderView(o,'anex-quote',result,error,pending);},
+   data:{verifyAnexConcrete:async()=>{calls.push('current');if(currentGate)await currentGate;return {state:'current',finalPriceReady:false};},
+    verifyAnexPackage:async(o,choice)=>{assert.strictEqual(o.raw,offer.raw,'exact current identity reaches existing quote owner');calls.push(choice?'calculate:'+choice:'quote_start');if(quoteError)throw Error('Whole-party quote unavailable');return choice?{state:'quote_verified',finalPriceVerified:true,finalPrice:{amount:157594,currency:'RUB'},choice:{choiceRef:choice}}:{state:'quote_choices',choices};}}
+  };
+  if(retainedCurrent)views.set(offer.key,{offer,type:'anex-current',result:{state:'current',finalPriceReady:false},error:'',pending:false});
+  vm.createContext(c);vm.runInContext(code,c);return {c,calls,offer,views};
+ }
+ const multi=harness();await multi.c.refreshLiveHotel(501);
+ assert.deepEqual(multi.calls,['current','quote_start'],'unknown infant component must enter full quote without an APD prerequisite');
+ assert.equal(multi.c.modalType,'anex-quote');assert.equal(multi.views.get(multi.offer.key).result.choices.length,2,'multiple pairs await explicit choice');
+ assert.equal(multi.offer.total,147744);assert.equal(multi.offer.raw.infantCharge.amount,null);
+ await multi.c.loadAnexPackageQuote(true);assert.deepEqual(multi.calls,['current','quote_start','calculate:pair-2']);
+ assert.equal(multi.views.get(multi.offer.key).result.finalPrice.amount,157594,'whole-party gross is retained without adding an infant amount');
+ const sole=harness({count:1});await sole.c.refreshLiveHotel(501);assert.deepEqual(sole.calls,['current','quote_start','calculate:pair-1'],'existing sole-pair continuation retained');
+ const ordinary=harness({infant:false});await ordinary.c.refreshLiveHotel(501);assert.deepEqual(ordinary.calls,['current','APD'],'ordinary manager-flight estimate path remains available');
+ const retained=harness({retainedCurrent:true});await retained.c.refreshLiveHotel(501);assert.deepEqual(retained.calls,['quote_start'],'retained exact current context enters full quote without repeating current or APD');
+ const explicit=harness({infant:false,inline:false});await explicit.c.refreshLiveHotel(501,{selectFlights:true});assert.deepEqual(explicit.calls,['current','quote_start'],'existing optional full-quote entry unchanged');
+ const failed=harness({quoteError:true});await failed.c.refreshLiveHotel(501);assert.deepEqual(failed.calls,['current','quote_start']);assert.equal(failed.views.get(failed.offer.key).error,'Whole-party quote unavailable');assert.equal(failed.views.get(failed.offer.key).result,null,'failure never borrows a price or falls back to infant APD');
+ let release;const gate=new Promise(resolve=>release=resolve),late=harness({currentGate:gate}),pending=late.c.refreshLiveHotel(501);late.c.selectionGeneration++;late.c.selectedOffer={key:'another-offer'};release();await pending;assert.deepEqual(late.calls,['current'],'late current context cannot start a quote');assert.equal(late.c.selectedOffer.key,'another-offer');
+ console.log('PASS actual infant inline transition: current→whole-party quote, explicit multi/sole pair, gross unchanged, ordinary manager path, failure and late selection; supplier0');
+}
+verifyInfantInlineQuoteTransition(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8')).catch(error=>{console.error(error);process.exitCode=1;});
