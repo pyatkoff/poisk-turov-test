@@ -117,7 +117,7 @@ vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/d
  function appFunction(start,end){const from=app.indexOf(start),to=app.indexOf(end,from);assert.ok(from>=0&&to>from);return app.slice(from,to);}
  function flightConsumer(selectedOffer){
   const consumer=vm.createContext({data,selectedOffer,selectionGeneration:1,modalType:'offer',
-   $:()=>({open:true}),retainedProviderView:()=>null,renderRealOffer(){},
+   $:()=>({open:true}),retainedProviderView:()=>null,renderRealOffer(){},renderOfferProgress(){},
    flightPairFor:()=>null,withFlightPair(){throw Error('No successful pair expected');},openFlightPicker(){}});
   vm.runInContext(appFunction('function isCurrentOfferRequest(','async function quoteSelectedOffer(')
    +appFunction('async function loadRealFlights(','async function openLeadWithQuote('),consumer);

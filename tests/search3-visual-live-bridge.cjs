@@ -740,7 +740,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
  assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
- assert.match(q('.application-review').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
+ assert.match(q('.application-summary .application-flight-overview').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('.tour-fuel-disclosure').textContent,/включён в цену/,'known Tourvisor fuel belongs to the unchanged supplier total');
  assert.match(q('#modal-footer').textContent,/Цена предложения/,'tour details do not claim cart actualization');
  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/120000/,'tour fuel is not added a second time');
@@ -761,7 +761,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('#prototype-lead-form'),'explicit continue opens application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();
  assert(q('#prototype-lead-form'),'canonical TV lead form connected');
- assert(q('.application-review .summary-flight-details'),'the compact review retains exact selected flight details');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт');assert(q('.selection-steps li:nth-child(2)').classList.contains('previous'));
+ assert(q('.application-summary .summary-flight-details'),'the compact review retains exact selected flight details');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт');assert(q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent.replace(/\s/g,''),/20686₽/,'application retains the selected-flight fuel amount');
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent,/включён в цену/);
  assert.match(q('#modal-footer').textContent,/Цена с выбранными рейсами · сбор включён/);

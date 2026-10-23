@@ -173,7 +173,7 @@ const server=http.createServer((req,res)=>{
     const file=path.join(evidence,`${prefix}-receipt-${width}.json`);
     const save=()=>fs.writeFileSync(file,JSON.stringify(receipt,null,2)+'\n');
     const capture=async name=>{
-     const state=await page.evaluate(()=>({url:location.search,scrollY,modalOpen:document.querySelector('#modal').open,title:document.querySelector('#modal-title').textContent,offerKey:document.querySelector('#modal').dataset.offerKey||null,bodyScroll:document.querySelector('#modal-body').scrollTop,active:{tag:document.activeElement.tagName,id:document.activeElement.id,name:document.activeElement.getAttribute('name'),action:document.activeElement.dataset.action||null},footer:document.querySelector('#modal-footer').textContent,party:document.querySelector('.chosen-trip')?.textContent||null,application:document.querySelector('.application-review')?.textContent||null,checked:document.querySelector('#prototype-lead-form')?.dataset.checked||null}));
+     const state=await page.evaluate(()=>({url:location.search,scrollY,modalOpen:document.querySelector('#modal').open,title:document.querySelector('#modal-title').textContent,offerKey:document.querySelector('#modal').dataset.offerKey||null,bodyScroll:document.querySelector('#modal-body').scrollTop,active:{tag:document.activeElement.tagName,id:document.activeElement.id,name:document.activeElement.getAttribute('name'),action:document.activeElement.dataset.action||null},footer:document.querySelector('#modal-footer').textContent,party:document.querySelector('.chosen-trip')?.textContent||null,application:document.querySelector('.application-review')?.textContent||null,applicationFlight:document.querySelector('.application-flight-overview')?.textContent||null,checked:document.querySelector('#prototype-lead-form')?.dataset.checked||null}));
      stages.push({name,...state});save();await shot(prefix+'-'+name);
     };
     const total=async expected=>assert.equal(Number((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\D/g,'')),expected,'one footer total for the exact family choice');
@@ -209,7 +209,7 @@ const server=http.createServer((req,res)=>{
      await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
      await page.locator('[data-action="continue-hotel-offer"][data-key="demo-flight-24"]').click();
      await contact().waitFor();await total(186400);assert.equal(await page.locator('[data-action="start-lead"]').count(),0,'room footer reaches contacts without an intermediate tour action');
-     await party('.application-review');assert.match(await page.locator('.application-review').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
+     await party('.application-review');assert.match(await page.locator('.application-summary .application-flight-overview').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
      await submit().click();assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'invalid phone receives focus');
      await contact().locator('[name="phone"]').fill(draft.phone);
      await page.keyboard.press('Tab');assert.equal(await contact().locator('[name="consent"]').evaluate(el=>document.activeElement===el),true,'phone Tab reaches separate consent');
