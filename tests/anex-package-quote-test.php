@@ -993,5 +993,103 @@ foreach ([false, true] as $delayedLegacy) {
         }
     }
 }
-echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
 
+
+function qh_freeze(array $request, array &$state, callable $checkpoint, int $now, ?callable $clock = null): array
+{
+    return anytour_anex_handoff_freeze($request, $state, $checkpoint, $now, $clock ?? static fn(): int => $now);
+}
+// The producer boundary freezes retained facts; it cannot fetch a quote or trust browser fields.
+function qh_fixture(array $ages = [0, 0, 8]): array
+{
+    [$s, $r, , , , $f, $make, $save] = qp_fixture('multiple', $ages);
+    $s['handoff_context'] = ['version' => 1, 'origin' => 'Москва', 'countryUiId' => '4',
+        'hotels' => anytour_anex_handoff_catalog([245 => ['id' => 245, 'name' => 'Fixture hotel',
+            'country_id' => 4, 'region_name' => 'Fixture resort']], 4)];
+    $inventory = qp_run($r, $s, $make, $save);
+    $r = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $inventory['choices'][0]['choice_ref']]);
+    qp_assert(qp_run($r, $s, $make, $save)['status'] === 'quote_verified', 'fixture retains canonical selected price');
+    unset($r['action']);
+    return [$s, $r, $f];
+}
+foreach ([[], [0], [0, 0], [0, 0, 8]] as $qhAges) {
+    [$hs, $hr, $hf] = qh_fixture($qhAges);
+    $calls = $hf->calls; $writes = 0;
+    $freeze = qh_freeze($hr, $hs, static function (&$s) use (&$writes) { ++$writes; }, 1101);
+    qp_assert($freeze['status'] === 'ready' && $writes === 1 && $hf->calls === $calls, 'one freeze, no supplier work');
+    $record = $freeze['record']; $obs = $record['observation'];
+    qp_assert($obs['trip']['childAges'] === $qhAges && $obs['price']['amount'] === '123456.78'
+        && $obs['price']['finalPriceVerified'] === false && $obs['price']['authority'] === 'browser-observation-only'
+        && $obs['flights']['state'] === 'selected', 'ordered infant ages and exact gross, no authority promotion');
+    qp_assert(array_keys($obs['flights']['outward'][0]) === ['label']
+        && !str_contains(json_encode($record), 'private-') && !str_contains(json_encode($record), 'anex_quote:'),
+        'no private supplier ids or invented structured flights in record');
+    $before = serialize($hs);
+    $cached = qh_freeze($hr, $hs, static function () { throw new RuntimeException('unexpected write'); }, 1102);
+    qp_assert($cached === $freeze && serialize($hs) === $before, 'immutable same-byte record/cache without checkpoint');
+    $expired = qh_freeze($hr, $hs, static function () { throw new RuntimeException('unexpected write'); }, $obs['price']['expiresAt']);
+    qp_assert($expired['status'] === 'held' && serialize($hs) === $before, 'exact original quote deadline, no renewal');
+}
+[$hs, $hr, $hf] = qh_fixture();
+foreach (['origin', 'hotel', 'country', 'room', 'party', 'claim', 'generation', 'offer', 'pair', 'sealed', 'unknown', 'deadline', 'price', 'long-name', 'extra-hotel-field', 'invalid-text'] as $fault) {
+    $changed = $hs; $pin = $hr;
+    $key = $hr['offer_ref']; $pair = $hr['choice_ref'];
+    if ($fault === 'origin') unset($changed['handoff_context']);
+    elseif ($fault === 'hotel') unset($changed['handoff_context']['hotels'][245]);
+    elseif ($fault === 'country') $changed['handoff_context']['countryUiId'] = '999';
+    elseif ($fault === 'room') $changed['gateway']['saved_offers']['offers'][$key]['offer']['room'] = 'FOREIGN';
+    elseif ($fault === 'party') $changed['gateway']['search']['context']['child_ages'] = [0, 8, 0];
+    elseif ($fault === 'claim') $changed['gateway']['search']['offers'][0]['supplier_offer_id'] = 'foreign-claim';
+    elseif ($fault === 'generation') $pin['generation']++;
+    elseif ($fault === 'offer') $pin['offer_ref'] = 'anex_online:' . str_repeat('c', 64);
+    elseif ($fault === 'pair') $pin['choice_ref'] = 'anex_quote:' . str_repeat('c', 64);
+    elseif ($fault === 'sealed') $changed['package_quotes'][$key]['sealed'] = true;
+    elseif ($fault === 'unknown') $changed['package_quotes'][$key]['stages']['calcfull'] = 'unknown';
+    elseif ($fault === 'deadline') $changed['package_quotes'][$key]['pairs'][$pair]['public']['verified_at'] = 1200;
+    elseif ($fault === 'price') $changed['package_quotes'][$key]['pairs'][$pair]['public']['price']['amount'] = '001';
+    elseif ($fault === 'long-name') $changed['handoff_context']['hotels'][245]['name'] = str_repeat('я', 192);
+    elseif ($fault === 'extra-hotel-field') $changed['handoff_context']['hotels'][245]['private_supplier_ref'] = 'PRIVATE';
+    else $changed['handoff_context']['origin'] = "Москва\nFOREIGN";
+    $before = serialize($changed); $writes = 0;
+    $reply = qh_freeze($pin, $changed, static function () use (&$writes) { ++$writes; }, 1101);
+    qp_assert($reply['status'] === 'held' && !isset($reply['record']) && $writes === 0
+        && serialize($changed) === $before, 'missing/changed fields held without mutation: ' . $fault);
+}
+foreach (['amount', 'observation', 'source', 'record_id'] as $extra) {
+    $changed = $hs; $pin = $hr; $pin[$extra] = 'BROWSER_VALUE';
+    qp_assert(qh_freeze($pin, $changed, static function () { throw new RuntimeException('write'); }, 1101)['status'] === 'held',
+        'browser authority input rejected: ' . $extra);
+}
+$failed = $hs; $attempts = 0;
+$reply = qh_freeze($hr, $failed, static function () use (&$attempts) { ++$attempts; throw new RuntimeException('partial checkpoint'); }, 1101);
+qp_assert($reply['status'] === 'held' && $attempts === 1, 'unknown checkpoint exports no record');
+qp_assert(qh_freeze($hr, $failed, static function () use (&$attempts) { ++$attempts; }, 1102)['status'] === 'held'
+    && $attempts === 1, 'unknown record never remints');
+$foreign = $hs;
+$reply = qh_freeze($hr, $foreign, static function (&$s) { $s = ['generation' => 8]; }, 1101);
+qp_assert($reply['status'] === 'held' && $foreign === ['generation' => 8], 'session checkpoint cannot clobber foreign context');
+$corrupt = $hs;
+$good = qh_freeze($hr, $corrupt, static function () {}, 1101);
+$slot =& $corrupt['package_quotes'][$hr['offer_ref']]['pairs'][$hr['choice_ref']]['handoff_record'];
+$forged = json_decode($slot['json'], true); $forged['observation']['price']['amount'] = '1';
+$slot['json'] = json_encode($forged); $slot['json_sha256'] = hash('sha256', $slot['json']); unset($slot);
+qp_assert(qh_freeze($hr, $corrupt, static function () { throw new RuntimeException('write'); }, 1102)['status'] === 'held',
+    'cached body must still equal retained exact terms, even with matching body hash');
+qp_assert(anytour_anex_handoff_catalog([245 => ['id' => 245, 'country_id' => 99, 'name' => 'Foreign']], 4) === [],
+    'catalog snapshot does not reinterpret another country');
+
+
+[$timeState, $timePin] = qh_fixture(); $freezeClock = 1101;
+$late = qh_freeze($timePin, $timeState, static function () use (&$freezeClock) { $freezeClock = 1700; }, 1101,
+    static function () use (&$freezeClock): int { return $freezeClock; });
+qp_assert($late['status'] === 'held' && $late['missing'][0]['field'] === 'record.checkpoint_deadline',
+    'checkpoint crossing exact expiry cannot export a fresh-looking record');
+qp_assert(anytour_anex_handoff_catalog([245 => ['id' => '245', 'country_id' => '4', 'name' => 'PDO hotel']], 4)[245]['name'] === 'PDO hotel',
+    'canonical PDO string ids keep exact catalog labels');
+[$badSelection, $badPin] = qh_fixture();
+$badSelection['package_quotes'][$badPin['offer_ref']]['choices'][$badPin['choice_ref']]['selection'][0] = 'foreign-selection';
+qp_assert(qh_freeze($badPin, $badSelection, static function () { throw new RuntimeException('write'); }, 1101)['status'] === 'held',
+    'choice reference must bind the original retained opaque selection');
+qp_assert(anytour_anex_handoff_freeze($hr, $hs, static function () { throw new RuntimeException('write'); }, 1101)['status'] === 'held',
+    'production default uses live time rather than reviving an old fixture deadline');
+echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
