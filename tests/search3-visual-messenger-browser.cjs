@@ -25,11 +25,12 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    const geometry=await page.locator('#modal').evaluate(modal=>{
     const rect=element=>{const r=element.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
     const body=modal.querySelector('#modal-body'),footer=modal.querySelector('#modal-footer');
-    return {dialog:rect(modal),body:rect(body),footer:rect(footer),dialogOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,pageOverflow:document.documentElement.scrollWidth>innerWidth,buttons:[...modal.querySelectorAll('#messenger-methods .messenger-methods button')].map(rect),bodyScroll:body.scrollTop,viewport:innerHeight};
+    return {dialog:rect(modal),body:rect(body),footer:rect(footer),heading:modal.querySelector('#messenger-methods>h3')?rect(modal.querySelector('#messenger-methods>h3')):null,dialogOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,pageOverflow:document.documentElement.scrollWidth>innerWidth,buttons:[...modal.querySelectorAll('#messenger-methods .messenger-methods button')].map(rect),bodyScroll:body.scrollTop,viewport:innerHeight};
    });
    const filename=`${stage}-${width}x${height}.png`;await page.screenshot({path:path.join(output,filename)});shots.push({stage,file:filename,geometry});
    assert.equal(geometry.dialogOverflow,false,stage+' dialog overflow');assert.equal(geometry.bodyOverflow,false,stage+' body overflow');assert.equal(geometry.pageOverflow,false,stage+' page overflow');
    assert(geometry.footer.bottom<=height+1&&geometry.body.bottom<=geometry.footer.y+1,stage+' footer does not cover the body');
+   if(methods){assert(geometry.heading.y>=geometry.body.y-1&&geometry.heading.bottom<=geometry.body.bottom+1,stage+' shows the complete choice heading');assert.equal(geometry.bodyScroll,0,stage+' starts at the top of the choice');}
    if(methods)for(const button of geometry.buttons){
     assert(button.height>=44,stage+' each method has a44px target');
     assert(button.x>=geometry.body.x-1&&button.right<=geometry.body.right+1,stage+' method fits horizontally');

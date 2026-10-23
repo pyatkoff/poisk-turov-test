@@ -2295,7 +2295,7 @@ function messengerPhone(show){
  scope.querySelector('#messenger-methods').hidden=show;scope.querySelector('#messenger-phone').hidden=!show;
  const submit=$('[data-messenger-phone-submit]');if(submit)submit.hidden=!show;
  if(show)scope.querySelector('[name="phone"]')?.focus({preventScroll:true});
- else if(messengerUi?.scope===scope)renderMessenger(messengerUi,messengerOwners.flow.view(messengerUi.snapshot));
+ else if(messengerUi?.scope===scope){renderMessenger(messengerUi,messengerOwners.flow.view(messengerUi.snapshot));$('#modal-body').scrollTop=0;}
 }
 async function messengerOpen(platform){
  const ui=messengerUi;if(!ui||!messengerActive(ui)||ui.mode!=='bots'||ui.busy||!['telegram','max'].includes(platform))return;

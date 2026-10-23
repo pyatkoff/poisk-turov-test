@@ -12,7 +12,7 @@ async function spin(check){for(let i=0;i<150;i++){if(check())return;await Promis
 function setup(route){
   const input=old.owner.applicationFixture(true,'anex_quote:'+'c'.repeat(64)),calls=[],navigation=[],buttons=[{disabled:true},{disabled:true}],submit={hidden:true},phoneInput={value:'',focuses:0,focus(){this.focuses++;}},nodes={
     '#messenger-methods':{hidden:false},'#messenger-phone':{hidden:true},'#messenger-status':{textContent:''},'#messenger-check':{hidden:true,disabled:false},'[name="phone"]':phoneInput};
-  const scope={isConnected:true,querySelector:key=>nodes[key],querySelectorAll:()=>buttons},modal={open:true};
+  const scope={isConnected:true,querySelector:key=>nodes[key],querySelectorAll:()=>buttons},modal={open:true},body={scrollTop:0};
   const retained={type:'anex-quote',choice:input.application.choiceRef,pending:false,error:'',sealed:false,result:{state:'quote_verified',finalPrice:{amount:input.application.price}}};
   let ctx,observation;
   const window={V2_CONFIG:{search3MessengerEnabled:true},AnyTourSearch3MessengerContextV1:old.owner.api,AnyTourSearch3MessengerFlowV1:flowRoot.AnyTourSearch3MessengerFlowV1,
@@ -24,9 +24,9 @@ function setup(route){
     return {ok:true,data:{operation_id:id,state:'ready',links}};
   }};
   ctx=vm.createContext({window,data,selectedOffer:input.offer,anexApplicationDraft:input.application,selectionGeneration:input.revision,modalType:'anex-application',
-    selectedTourHotel:()=>input.hotel,retainedProviderView:()=>retained,$:key=>key==='#modal'?modal:key==='#messenger-entry'?scope:key==='[data-messenger-phone-submit]'?submit:null});
+    selectedTourHotel:()=>input.hotel,retainedProviderView:()=>retained,$:key=>key==='#modal'?modal:key==='#modal-body'?body:key==='#messenger-entry'?scope:key==='[data-messenger-phone-submit]'?submit:null});
   vm.runInContext(app.slice(start,end)+'\nglobalThis.test={available:messengerAvailable,markup:messengerContactHTML,bind:bindMessenger,open:messengerOpen,phone:messengerPhone,check:messengerCheck,snapshot:()=>messengerUi?.snapshot};',ctx);
-  return {ctx,window,data,input,calls,navigation,buttons,submit,phoneInput,nodes,scope,modal,retained,test:ctx.test,settled:()=>spin(()=>buttons.every(b=>!b.disabled))};
+  return {ctx,window,data,input,calls,navigation,buttons,submit,phoneInput,nodes,scope,modal,body,retained,test:ctx.test,settled:()=>spin(()=>buttons.every(b=>!b.disabled))};
 }
 const tests=[];const test=(name,fn)=>tests.push({name,fn});
 test('Activation defaults off and unsupported receipts retain the existing phone owner',async()=>{
@@ -43,7 +43,7 @@ test('An explicit bot choice creates once and navigates with the current platfor
 });
 test('Explicit phone choice retains the same draft nodes and only then exposes submit',async()=>{
   const x=setup();x.test.bind();await x.settled();x.test.phone(true);assert.equal(x.nodes['#messenger-methods'].hidden,true);assert.equal(x.nodes['#messenger-phone'].hidden,false);assert.equal(x.submit.hidden,false);
-  x.phoneInput.value='fixture draft';const node=x.phoneInput;x.test.phone(false);x.test.phone(true);assert.equal(x.phoneInput,node);assert.equal(x.phoneInput.value,'fixture draft');assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+  x.phoneInput.value='fixture draft';const node=x.phoneInput;x.body.scrollTop=127;x.test.phone(false);assert.equal(x.body.scrollTop,0,'return to methods shows the full choice heading');x.test.phone(true);assert.equal(x.phoneInput,node);assert.equal(x.phoneInput.value,'fixture draft');assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
 });
 test('Switching to phone and back during a pending create cancels its navigation intent',async()=>{
   const gate=defer(),x=setup(action=>action==='handoff_create'?gate.promise:undefined);x.test.bind();await x.settled();const task=x.test.open('telegram');await spin(()=>x.calls.some(c=>c.action==='handoff_create'));
