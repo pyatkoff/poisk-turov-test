@@ -1615,7 +1615,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
    const phone=await page.locator('[name="phone"]').inputValue();
    await page.locator('[data-action="contact-flights"]').click();await page.locator('#tour-flight-options [name="flight-pair"]').first().waitFor();
    await page.screenshot({path:path.join(evidence,'site215-editor-'+tag+'.png')});
-   await page.locator('[name="flight-pair"][value="2"]').check();await page.locator('[data-action="modal-back"]').click();
+   await page.locator('[name="flight-pair"][value="2"]').check();await page.locator('#modal-footer [data-action="modal-back"]').click();
    await page.locator('#prototype-lead-form').waitFor();assert.equal(await amount(),checked);assert.equal(await page.locator('[name="phone"]').inputValue(),phone);assert.equal(await page.locator('[name="consent"]').isChecked(),true);
    await page.locator('[data-action="contact-flights"]').click();await page.locator('[name="flight-pair"][value="2"]').check();
    const applied=await page.locator('#flight-total').textContent();await page.locator('[data-action="apply-flight"]').click();
