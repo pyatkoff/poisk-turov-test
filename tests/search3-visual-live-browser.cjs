@@ -19,7 +19,7 @@ const fixture=(...args)=>{
 // The approved NEXT entry offers bots first for an eligible exact ANEX receipt.
 // Existing telephone-path checks choose that optional method before checking the form.
 const chooseTelephoneIfOffered=async page=>{
- await page.locator('#prototype-lead-form').waitFor({state:'attached'});
+ await page.locator('#modal[open] #prototype-lead-form').waitFor({state:'attached'});
  const phone=page.locator('[data-action="messenger-phone"]');
  if(await phone.count()){
   assert.equal(await phone.isVisible(),true,'optional telephone action is available');
