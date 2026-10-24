@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native synthetic custody and stock executor gates; no server/provider access."""
 import base64
+from email.message import Message
 import hashlib
 import importlib.util
 import io
@@ -41,10 +42,15 @@ class Admission(unittest.TestCase):
             signing.activate(c,c.parse_command(f'/run-int-server-v1 {SHA} {mode} {prefix}case-v1'))
             self.assertEqual('7586c11adb456016f0a975a0b1b88e340b94e538dc75c70e1f4f5c155d2f4b9e',
                              hashlib.sha256(c.REMOTE.encode()).hexdigest())
+        c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_SOURCE} {signing.TV_MODE} int-anex-tv-session-gateway-install-golden-v1')
+        signing.activate(c,command)
+        self.assertEqual('7f54b6544c3adab4b4f54cc4c02ac435ea6a81efe9c22b54b0aa4f1985b1abf7',
+                         hashlib.sha256(c.REMOTE.encode()).hexdigest())
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-session-gateway-install-' if mode == signing.TV_MODE else
+            prefix = ('int-anex-tv-session-gateway-enable-' if mode == signing.TV_ENABLE_MODE else
+                      'int-anex-tv-session-gateway-install-' if mode == signing.TV_MODE else
                       'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
             operation = prefix + 'case-v1'
             body = f'/run-int-server-v1 {SHA} {mode} {operation}'
@@ -420,6 +426,136 @@ class NativeTVGatewayInstall(NativeStockCustody):
             if old is None:self.assertFalse((self.runtime/p).exists())
 
 
+class NativeTVGatewayEnable(NativeTVGatewayInstall):
+    def setUp(self):
+        super().setUp()
+        for p in signing.TV_PINS:
+            (self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php')).write_bytes(self.inventory[p])
+        pointer=f"if (!defined('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE')) define('ANYTOUR_SEARCH3_HANDOFF_KEY_FILE', {str(self.keyfile)!r});\n"
+        self.original="<?php\ndeclare(strict_types=1);\ndefine('ANEX_API_TOKEN','SYNTHETIC_UNRELATED_CREDENTIAL');\n"+pointer
+        self.config.write_text(self.original)
+        self.keyfile.parent.mkdir(parents=True,exist_ok=True)
+        self.keyfile.write_text('SYNTHETIC_KEY_MUST_NOT_BE_OPENED');self.keyfile.chmod(0o000)
+        self.parent=self.home/'.anytoour-int-executor'/signing.TV_PARENT_OPERATION/'result.json'
+        self.parent.parent.mkdir();self.parent.write_text('{"status":"installed","fixture":true}')
+        self.parent.chmod(0o600)
+        self.parent_digest=hashlib.sha256(json.dumps(json.loads(self.parent.read_bytes()),sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.http_failure=False;self.config_race=False
+
+    def mutate_remote(self,c):
+        for name,old,new in [('TV_PINS',signing.TV_PINS,self.pins),('TV_DEPENDENCIES',signing.TV_DEPENDENCIES,self.deps),
+                             ('TV_PUBLIC',signing.TV_PUBLIC,self.public),('TV_PARENT_CANONICAL',signing.TV_PARENT_CANONICAL,self.parent_digest)]:
+            anchor=name+'='+repr(old);self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,name+'='+repr(new),1)
+        # Only the fixed own-site HTTP call is replaced, never PHP/tokenization or filesystem operations.
+        start=c.REMOTE.index('def tv_enable_http_ready():')
+        end=c.REMOTE.index('\ndef tv_enable_config(op):',start)
+        proof={'status':200,'provider':'tourvisor','csrf_exported':False,'private_cookie_scope':True,'supplier_calls':0,'requests':1}
+        body="fail('synthetic_http_failure')" if self.http_failure else 'return '+repr(proof)
+        c.REMOTE=c.REMOTE[:start]+'def tv_enable_http_ready():\n    '+body+'\n'+c.REMOTE[end:]
+        c.REMOTE=c.REMOTE.replace('    time.sleep(3)\n','',1)
+        if self.config_race:
+            anchor="    if tv_enable_config_identity(config)!=identity or config.read_bytes()!=old:fail('tv_enable_config_drift')"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,"    config.write_bytes(old+b'// concurrent writer\\n')\n"+anchor,1)
+
+    def enable(self,operation=None,source_sha=None):
+        return self.execute(signing.TV_ENABLE_MODE,operation or f'int-anex-tv-session-gateway-enable-native-{self.counter+1}-v1',
+                            source_sha=source_sha or signing.TV_SOURCE)[0]
+
+    def assert_config_unchanged(self):
+        self.assertEqual(self.original,self.config.read_text());self.assertEqual(0o640,self.config.stat().st_mode&0o777)
+        self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+
+    def test_enable_preserves_bytes_tail_key_and_strict_completion(self):
+        for strict in (True,False):
+            with self.subTest(strict=strict):
+                if not strict:self.original=self.original.replace('declare(strict_types=1);','');self.config.write_text(self.original)
+                r=self.enable();self.assertEqual('enabled',r['status'],r)
+                expected=self.original.encode();offset=expected.index(b';')+1 if strict else len(b'<?php\n')
+                self.assertEqual(expected[:offset]+signing.TV_FLAG_LINE+expected[offset:],self.config.read_bytes())
+                self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+                command={k:r[k] for k in ('source_sha','mode','operation_id')}
+                with mock.patch.multiple(signing,TV_PUBLIC=self.public,TV_PARENT_CANONICAL=self.parent_digest):
+                    self.assertTrue(signing.completed_enable(command,r))
+                    for k,v in [('supplier_calls',True),('schema_version',True),('production_after',{}),('tv_gateway_public_after',{})]:
+                        self.assertFalse(signing.completed_enable(command,r|{k:v}))
+                    for k,v in [('changed_files',True),('after_bytes',0),('after_mode',-512),('signing_custody_changed',True),('http',{})]:
+                        self.assertFalse(signing.completed_enable(command,r|{'tv_enable':r['tv_enable']|{k:v}}))
+                    self.assertFalse(signing.completed_enable(command,r|{'tv_enable':r['tv_enable']|{
+                        'before_bytes':-1000,'after_bytes':-1000+len(signing.TV_FLAG_LINE)}}))
+                self.assertEqual('operation_exists_no_replay',self.enable(r['operation_id'])['reason'])
+                self.config.write_text(self.original)
+
+    def test_bad_source_parent_and_runtime_refuse_before_config(self):
+        r=self.enable(source_sha=SHA);self.assertEqual('tv_enable_source',r['reason']);self.assert_config_unchanged()
+        self.parent.write_text('{}');self.assertEqual('tv_enable_parent_receipt',self.enable()['reason']);self.assert_config_unchanged()
+        self.parent.write_text('{"status":"installed","fixture":true}')
+        p='app/integrations/tourvisor-preview-gateway.php';target=self.runtime/p;old=target.read_bytes()
+        target.write_bytes(b'<?php // drift\n');self.assertEqual('tv_enable_runtime_pin',self.enable()['reason']);self.assert_config_unchanged()
+        target.write_bytes(old);self.pins[p]='0'*64
+        self.assertEqual('tv_enable_source_pin',self.enable()['reason']);self.assert_config_unchanged()
+
+    def test_unknown_config_or_existing_flag_denied_without_execution(self):
+        for extra in ["define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED',false);",'return;',
+                      "include '/no/config/includes';", "define('DYNAMIC',getenv('SECRET'));",
+                      "file_put_contents(__DIR__.'/unsafe-executed','x');"]:
+            with self.subTest(extra=extra):
+                self.config.write_text(self.original+extra)
+                r=self.enable();self.assertEqual('tv_enable_config_shape',r['reason'])
+                self.assertEqual(self.original+extra,self.config.read_text())
+                self.assertFalse((self.runtime/'unsafe-executed').exists())
+
+    def test_prewrite_config_race_not_overwritten(self):
+        self.config_race=True;r=self.enable();self.assertEqual('tv_enable_config_drift',r['reason'])
+        self.assertEqual(self.original+'// concurrent writer\n',self.config.read_text())
+
+    def test_http_failure_rolls_back_exact_config(self):
+        self.http_failure=True;r=self.enable();self.assertEqual('rolled_back',r['status'],r)
+        self.assertEqual('synthetic_http_failure',r['install_failure_class']);self.assert_config_unchanged()
+        self.assertEqual({'status':'complete','restored_files':1},r['rollback'])
+
+    def test_config_candidate_budget_is_checked_before_backup(self):
+        self.original+=' '*(65536-len(self.original.encode()))
+        self.config.write_text(self.original)
+        self.assertEqual('tv_enable_config_budget',self.enable()['reason']);self.assert_config_unchanged()
+        self.assertEqual([],list(self.home.rglob('tv-enable-plan.json')))
+
+    def test_own_http_response_validation_without_network(self):
+        start=signing.TV_ENABLE_REMOTE.index('def tv_enable_http_ready():')
+        end=signing.TV_ENABLE_REMOTE.index('\ndef tv_enable_config(op):',start)
+        def fail(reason):raise RuntimeError(reason)
+        namespace={'json':json,'re':__import__('re'),'fail':fail}
+        exec(signing.TV_ENABLE_REMOTE[start:end],namespace)
+        class Response:
+            status=200
+            def __init__(self,body,cookie,cache='private, no-store'):
+                self.body=json.dumps(body).encode();self.headers=Message()
+                self.headers.add_header('Set-Cookie',cookie);self.headers.add_header('Cache-Control',cache)
+            def read(self,limit):return self.body[:limit]
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+        body={'ok':True,'csrf':'a'*64,'provider':'tourvisor'}
+        cookie='ANYTOUR_ANEX_SEARCH3=discarded; path=/_preview/search3-anex-candidate/; secure; HttpOnly; SameSite=Lax'
+        opener=mock.Mock();opener.open.return_value=Response(body,cookie)
+        with mock.patch('urllib.request.build_opener',return_value=opener):
+            proof=namespace['tv_enable_http_ready']()
+            self.assertEqual(1,proof['requests']);self.assertFalse(proof['csrf_exported'])
+            request=opener.open.call_args.args[0]
+            self.assertEqual('GET',request.get_method());self.assertEqual({'timeout':15},opener.open.call_args.kwargs)
+            for bad in [Response(body|{'csrf':'short'},cookie),Response(body|{'provider':'anex'},cookie),
+                        Response(body|{'extra':'unexpected'},cookie),Response(body,cookie.replace('search3-anex-candidate/','')),
+                        Response(body,cookie.replace('; secure','')),Response(body,cookie,'public')]:
+                opener.open.return_value=bad
+                with self.assertRaisesRegex(RuntimeError,'tv_enable_http_unavailable'):namespace['tv_enable_http_ready']()
+
+    def test_fixed_http_and_parent_contract(self):
+        self.assertIn("https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php?action=tv_token",signing.TV_ENABLE_REMOTE)
+        self.assertIn('class NoRedirect',signing.TV_ENABLE_REMOTE)
+        self.assertNotIn('keyfile.read',signing.TV_ENABLE_REMOTE)
+        self.assertEqual('d5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9',signing.TV_PARENT_CANONICAL)
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -431,6 +567,11 @@ def load_tests(loader, tests, pattern):
                  'test_source_dependency_and_expected_absent_guards','test_symlink_public_is_not_absence',
                  'test_prewrite_rechecks_predecessor','test_postwrite_failure_rolls_back_and_removes_created'):
         suite.addTest(NativeTVGatewayInstall(name))
+    for name in ('test_enable_preserves_bytes_tail_key_and_strict_completion','test_bad_source_parent_and_runtime_refuse_before_config',
+                 'test_unknown_config_or_existing_flag_denied_without_execution','test_prewrite_config_race_not_overwritten',
+                 'test_http_failure_rolls_back_exact_config','test_fixed_http_and_parent_contract',
+                 'test_config_candidate_budget_is_checked_before_backup','test_own_http_response_validation_without_network'):
+        suite.addTest(NativeTVGatewayEnable(name))
     return suite
 
 

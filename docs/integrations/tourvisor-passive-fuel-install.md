@@ -194,3 +194,46 @@ actual pinned f4d source in CI, exact target counts/order, predecessor and sourc
 drift, symlink-vs-absence, prewrite race, rollback/removal, immutable operation,
 strict completion and three legacy REMOTE digests. No server/custody/supplier
 audit or live case is repeated to fill an evidence row.
+
+## Separate private TV enablement after the accepted default-off install
+
+The fixed enable-tv-session-gateway profile uses the SAME stock carrier/module,
+FEATURE f4d4dcae and the int-anex-tv-session-gateway-enable- operation namespace.
+Its required parent is the original consumed install
+int-anex-tv-session-gateway-install-20261024-v1, canonical receipt SHA256
+d5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9
+(coordination4709/6389870446). The parent is read as a bounded private regular
+0600 receipt; no old command, source audit, custody audit or supplier case repeats.
+All five installed candidate files, three staged/runtime dependencies and the
+typed public maps must match before planning and immediately before replacement.
+
+Only .anex-private.php changes: insert the single guarded
+ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED=true declaration after the PHP opening tag or
+first strict_types declaration. Native PHP tokenization accepts static literal
+define declarations and their same-name !defined guards only; config is never
+executed, dynamic/unknown syntax and an existing TV flag fail closed. Existing
+bytes, other constants, strict_types ordering, original key-pointer tail and mode
+are preserved. No signing key is opened, provisioned, exported or modified.
+Config identity and bytes are rechecked before the atomic replacement; candidate
+size remains at most65536. Stock private backup/staging/PHP lint/readback/rollback,
+operation reservation, no-replay and writer concurrency stay in force. Historical
+three rendered programs and the accepted default-off TV installer stay byte equal.
+
+After replacement and a short PHP cache revalidation delay, exactly ONE own-site
+HTTPS GET to the fixed private API action=tv_token checks HTTP200, provider,
+anonymous CSRF shape, no-store and the existing private cookie scope. Redirects
+are refused; TLS uses native verification. The token and cookie are discarded
+and never exported. A failed readiness check rolls back the exact prior config;
+the operation remains consumed and cannot be retried or renamed. This is an
+application readiness check with supplierHTTP/DB/booking/lead/CREATE0, not an
+outage probe, quote, messenger delivery or final-price verification.
+
+Source/mandatory nativeCI/independent review/main merge precede a separately
+reserved one-time activation. Strict completion requires one config delta,
+preserved bytes/mode, fixed parent digest, exact safe HTTP proof and unchanged
+public maps/counters. Installation, enablement, SEARCH consumer and actual
+selected-tour delivery remain separate evidence stages. SEARCH receives one
+installed+enabled contract and owns frontend/consumer acceptance. On a fresh
+browser it should initialize tv_token once before parallel TV/ANEX activity,
+so both use the existing shared private cookie. No UI or supplier series is part
+of this enablement packet; no new transport or receiver is introduced.
