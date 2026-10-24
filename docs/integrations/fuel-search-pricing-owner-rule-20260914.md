@@ -252,3 +252,39 @@ Source/CI/merge, a separately admitted narrow installation and actual next ordin
 capture remain separate. Do not use the broad install-runtime path to publish
 unrelated pending integration work. No new paid case/coverage probe, private reader,
 replay, supplier call or directory enumeration is authorized to obtain a diagnostic.
+
+
+### Prior tour-stage context for a missing pair — 2026-10-24, source only
+
+The consumed ordinary price-integrity case6381633731 emitted the existing
+flights/skipped/tour_pair_missing diagnostic. Its A→B→A selected whole-party
+price207867RUB and included fuel13789RUB were stable. That is not a pricing
+fault, raw supplier evidence or a successful private monitoring capture.
+
+When that exact missing-pair outcome occurs, the same bounded diagnostic now
+adds prior_tour. A valid recent same-offer existing tour-stage receipt yields
+only outcome, allowlisted code and age_seconds. Otherwise it is exactly
+{"outcome":"unavailable"}; no count, amount, identifier, digest, raw error,
+path, operator, party or supplier payload is exported. Successful aggregate
+bytes and all other diagnostic schemas remain unchanged.
+
+The existing helper reads only its fixed hashed tour receipt, at most2049bytes
+to reject a value exceeding2048; no enumeration, endpoint, reader transport or
+new file is introduced. Exact schema/source/tour stage/own offer digest, valid
+outcome-code pairing, original86400s expiry and age0..899seconds are required.
+Future/stale/foreign/malformed/oversized/symlink/extra-field/unreadable receipts
+return unavailable. Read failure is inert. The existing private receipt schema,
+capture guards, locking, pending consumption and money are unchanged.
+
+This is the LAST same-offer tour diagnostic, not proof that it belongs to a
+particular browser request or that it caused the current missing record.
+A retained prior outcome may precede consumed pending data; a skip/rejection
+is context only. No historical case gains a retroactive cause. as_of and
+elapsed_ms retain their existing local-processing semantics, not supplierHTTP
+latency. Population, accuracy and final-verification flags stay false.
+
+The existing suite covers valid skipped/rejected/retained context, exact freshness
+boundaries/clock rollback, missing/corrupt/foreign/redaction cases and the default
+native header with byte-identical mock supplier response. No external call.
+Source/CI/review, stock installation and natural evidence remain separate.
+No supplier replay or new search solely to observe this field.

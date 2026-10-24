@@ -44,13 +44,25 @@ function tvpf_capture_diagnostic(string $header, string $outcome, string $code):
     $value = json_decode(base64_decode(strtr($header, '-_', '+/'), true), true, 8, JSON_THROW_ON_ERROR);
     $keys = array_keys($value); sort($keys);
     $expected = ['schema_version','source','stage','outcome','code','as_of','elapsed_ms',
-        'complete_population','accuracy_evaluated','final_price_verified']; sort($expected);
+        'complete_population','accuracy_evaluated','final_price_verified'];
+    if ($code === 'tour_pair_missing') $expected[] = 'prior_tour';
+    sort($expected);
     tvpf_ok($keys === $expected && $value['schema_version'] === 1
         && $value['source'] === 'tourvisor_passive_fuel_capture_diagnostic', 'distinct exact diagnostic schema without aggregate counts');
     tvpf_ok($value['stage'] === 'flights' && $value['outcome'] === $outcome && $value['code'] === $code, 'allowlisted helper outcome');
     tvpf_ok(is_int($value['as_of']) && is_int($value['elapsed_ms']) && $value['elapsed_ms'] >= 0, 'local processing time only');
     tvpf_ok($value['complete_population'] === false && $value['accuracy_evaluated'] === false
         && $value['final_price_verified'] === false, 'capture diagnostic cannot mint population or price authority');
+    if ($code === 'tour_pair_missing') {
+        tvpf_ok(is_array($value['prior_tour'] ?? null), 'missing pair has explicit prior-tour availability');
+        $prior = $value['prior_tour'];
+        if (($prior['outcome'] ?? null) === 'unavailable') tvpf_ok($prior === ['outcome'=>'unavailable'], 'unavailable has no invented prior facts');
+        else {
+            $priorKeys=array_keys($prior); sort($priorKeys);
+            tvpf_ok($priorKeys===['age_seconds','code','outcome'] && is_int($prior['age_seconds'])
+                && $prior['age_seconds']>=0 && $prior['age_seconds']<900, 'only bounded prior-tour context exported');
+        }
+    }
     return $value;
 }
 
@@ -114,7 +126,8 @@ $now = new DateTimeImmutable('2026-09-22T20:00:00Z');
 if (PHP_SAPI === 'cli-server' && getenv('ANYTOUR_TEST_PASSIVE_FUEL_HTTP') === '1') {
     tvpf_ok(!ini_get('allow_url_fopen'), 'URL fopen remains disabled');
     $case = $_GET['case'] ?? '';
-    tvpf_ok(in_array($case, ['retained','skipped','rejected'], true), 'known HTTP fixture');
+    tvpf_ok(in_array($case, ['retained','skipped','prior_skipped','rejected'], true), 'known HTTP fixture');
+    if ($case === 'prior_skipped') $id1='999997';
     $tour = tvpf_tour($id1,1006,7); $tour['fuelCharge'] = '0.00';
     $flights = tvpf_flights(); $flights['flights'][0]['fuelCharge']['value'] = '0.00';
     if ($case !== 'skipped') AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$tour,$db,$directory,$now);
@@ -122,7 +135,7 @@ if (PHP_SAPI === 'cli-server' && getenv('ANYTOUR_TEST_PASSIVE_FUEL_HTTP') === '1
     $rejected = false;
     try {
         $receipt = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$flights,$directory,$now);
-        tvpf_ok($case === 'skipped' ? $receipt['ok'] === false : $receipt['ok'] === true, 'HTTP capture outcome');
+        tvpf_ok(in_array($case,['skipped','prior_skipped'],true) ? $receipt['ok'] === false : $receipt['ok'] === true, 'HTTP capture outcome');
     } catch (InvalidArgumentException $error) {
         tvpf_ok($case === 'rejected' && $error->getMessage() === 'TV_FUEL_AMOUNT' && $error->getCode() === 7104,
             'expected malformed fixture');
@@ -505,7 +518,8 @@ tvpf_ok($emitFailed===$repeated && file_get_contents($monitorPath)===$monitorByt
 $headerCount=count($monitorHeaders);
 $skip=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights('999999',tvpf_flights(),$monitorDirectory,$now,$captureHeader);
 tvpf_ok($skip['ok']===false && count($monitorHeaders)===$headerCount+1, 'one diagnostic for skipped capture');
-tvpf_capture_diagnostic($monitorHeaders[$headerCount], 'skipped', 'tour_pair_missing');
+$skipHeader=tvpf_capture_diagnostic($monitorHeaders[$headerCount], 'skipped', 'tour_pair_missing');
+tvpf_ok($skipHeader['prior_tour']===['outcome'=>'unavailable'], 'absent tour receipt is unknown, not a cause');
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
 $invalidFlights=$flights; unset($invalidFlights['flights'][0]['fuelCharge']);
 try {
@@ -554,6 +568,79 @@ tvpf_ok(!str_contains(json_encode($failureSummary,JSON_THROW_ON_ERROR),'canary')
     && !str_contains(json_encode($failureSummary,JSON_THROW_ON_ERROR),$id1), 'unclassified failure never exports private fields');
 array_map('unlink',array_filter(glob($failureDirectory.'/*')?:[], 'is_file'));
 rmdir($failureDirectory);rmdir(dirname($failureDirectory));
+
+// Prior-stage context uses the existing same-offer receipt only. It cannot
+// establish why the pending record is absent or create fuel/price authority.
+$priorDirectory=$root.'/prior-tour/searches'; mkdir($priorDirectory,0700,true);
+$priorId='999997';
+$priorPath=$priorDirectory.'/tourvisor-fuel-intake-receipt-v1-tour-'.hash('sha256',$priorId).'.json';
+$priorHeaders=[];
+$priorSink=static function(string $line) use (&$priorHeaders): void {$priorHeaders[]=$line;};
+$missing=static function(DateTimeImmutable $at) use ($priorId,$priorDirectory,$priorSink,&$priorHeaders): array {
+    $before=count($priorHeaders); $flights=tvpf_flights(); $unchanged=$flights;
+    $result=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($priorId,$flights,$priorDirectory,$at,$priorSink);
+    tvpf_ok($result===['source'=>'tourvisor-operator-fuel-passive-intake-v1','ok'=>false,'reason'=>'tour_pair_missing']
+        && $flights===$unchanged && count($priorHeaders)===$before+1, 'prior context cannot alter capture result or response');
+    return tvpf_capture_diagnostic($priorHeaders[$before],'skipped','tour_pair_missing')['prior_tour'];
+};
+$skippedTour=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($priorId,tvpf_tour($priorId,1006,7),$db,$priorDirectory,$now);
+tvpf_ok($skippedTour['reason']==='offer_context_missing', 'real tour capture records missing context');
+tvpf_ok($missing($now->modify('+7 seconds'))===['outcome'=>'skipped','code'=>'offer_context_missing','age_seconds'=>7],
+    'same-offer skipped tour context survives missing pair');
+$priorSaved=file_get_contents($priorPath);
+$priorValue=json_decode($priorSaved,true,8,JSON_THROW_ON_ERROR);
+foreach (['TV_PASSIVE_PARTY_CONFLICT','unclassified_error'] as $code) {
+    $record=$priorValue; $record['outcome']='rejected'; $record['code']=$code;
+    file_put_contents($priorPath,json_encode($record,JSON_THROW_ON_ERROR));
+    tvpf_ok($missing($now)===['outcome'=>'rejected','code'=>$code,'age_seconds'=>0], 'allowlisted tour rejection contextualized');
+}
+$record=$priorValue; $record['outcome']='retained'; $record['code']='tour_retained';
+file_put_contents($priorPath,json_encode($record,JSON_THROW_ON_ERROR));
+tvpf_ok($missing($now)===['outcome'=>'retained','code'=>'tour_retained','age_seconds'=>0],
+    'previous retention is context, not proof of cause or a new pair');
+tvpf_ok($missing($now->modify('+899 seconds'))['age_seconds']===899, 'last fresh second accepted');
+tvpf_ok($missing($now->modify('+900 seconds'))===['outcome'=>'unavailable'], '900-second boundary is unavailable');
+tvpf_ok($missing($now->modify('-1 second'))===['outcome'=>'unavailable'], 'future receipt rejected on clock rollback');
+$invalidRecords=[
+    'foreign-offer'=>['offer_ref_digest'=>str_repeat('a',64)],
+    'wrong-source'=>['source'=>'private-canary'],
+    'wrong-stage'=>['stage'=>'flights'],
+    'wrong-version'=>['schema_version'=>2],
+    'private-code'=>['outcome'=>'rejected','code'=>'private-canary '.$priorId],
+    'code-outcome-conflict'=>['outcome'=>'retained','code'=>'offer_context_missing'],
+    'expires'=>['expires_at'=>$now->getTimestamp()],
+    'freshness-rewritten'=>['expires_at'=>$now->getTimestamp()+900],
+    'timestamp-string'=>['observed_at'=>(string)$now->getTimestamp()],
+    'invalid-response-digest'=>['normalized_response_sha256'=>'private-canary'],
+    'count-in-tour'=>['observation_count'=>1],
+    'rule-in-tour'=>['rule_confirmed'=>false],
+    'extra-private'=>['private_data'=>'private-canary'],
+];
+foreach ($invalidRecords as $label=>$change) {
+    file_put_contents($priorPath,json_encode(array_replace($priorValue,$change),JSON_THROW_ON_ERROR));
+    tvpf_ok($missing($now)===['outcome'=>'unavailable'],'invalid prior receipt inert: '.$label);
+}
+$invalidRaw=['{broken', '[]', str_repeat('x',2049), json_encode(array_diff_key($priorValue,['code'=>true]),JSON_THROW_ON_ERROR)];
+foreach ($invalidRaw as $raw) {
+    file_put_contents($priorPath,$raw);
+    tvpf_ok($missing($now)===['outcome'=>'unavailable'],'malformed/missing/oversized prior inert');
+}
+unlink($priorPath); $outside=$root.'/prior-canary.json'; file_put_contents($outside,$priorSaved);
+symlink($outside,$priorPath);
+tvpf_ok($missing($now)===['outcome'=>'unavailable'],'symlink receipt never read');
+unlink($priorPath); unlink($outside);
+tvpf_ok($missing($now)===['outcome'=>'unavailable'],'missing receipt unavailable');
+foreach ($priorHeaders as $line) {
+    $encoded=substr($line,strlen('X-AnyTour-Fuel-Monitoring: '));
+    $decoded=base64_decode(strtr($encoded,'-_','+/'),true);
+    tvpf_ok(!str_contains($decoded,$priorId) && !str_contains($decoded,'private-canary')
+        && !str_contains($decoded,$priorDirectory) && !str_contains($decoded,'offer_ref_digest'),
+        'prior context exports no private IDs/path/digest/error');
+}
+tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===$dbCount,
+    'prior context adds no DB writes');
+array_map('unlink',array_filter(glob($priorDirectory.'/*')?:[], 'is_file'));
+rmdir($priorDirectory); rmdir(dirname($priorDirectory));
 
 // A supplier-reported zero is retained in the same private store, never replaced
 // by the positive nondefault option and never promoted to a reusable rule.
@@ -612,7 +699,7 @@ try {
         tvpf_ok(proc_get_status($process)['running'] && microtime(true)<$readyBy, 'native HTTP fixture ready');
         usleep(20000);
     } while (true);
-    foreach (['retained','skipped','rejected'] as $case) {
+    foreach (['retained','skipped','prior_skipped','rejected'] as $case) {
         $connection = stream_socket_client('tcp://'.$address,$socketError,$socketMessage,1);
         tvpf_ok(is_resource($connection), 'native HTTP fixture connection');
         stream_set_timeout($connection,5);
@@ -639,8 +726,12 @@ try {
                 && $summary['buckets'][0]['absolute_difference_minor_sum']===0, 'native explicit-zero monitoring summary');
         } else {
             tvpf_ok(count($headers)===1, 'one native capture diagnostic: '.$case);
-            tvpf_capture_diagnostic($headers[0], $case==='skipped' ? 'skipped' : 'rejected',
-                $case==='skipped' ? 'tour_pair_missing' : 'TV_FUEL_AMOUNT_VALUE_FORMAT');
+            $isSkipped=in_array($case,['skipped','prior_skipped'],true);
+            $nativeDiagnostic=tvpf_capture_diagnostic($headers[0], $isSkipped ? 'skipped' : 'rejected',
+                $isSkipped ? 'tour_pair_missing' : 'TV_FUEL_AMOUNT_VALUE_FORMAT');
+            if ($case==='prior_skipped') tvpf_ok($nativeDiagnostic['prior_tour']===
+                ['outcome'=>'skipped','code'=>'offer_context_missing','age_seconds'=>0],
+                'native header carries same-offer prior tour skip without response changes');
         }
     }
 } finally {
@@ -650,4 +741,5 @@ try {
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable native_http=retained_zero,skipped,rejected\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry prior_tour=context,age,redaction,invalid,unavailable search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable native_http=retained_zero,skipped,prior_skipped,rejected\n";
+
