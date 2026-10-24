@@ -8,8 +8,11 @@ from __future__ import annotations
 import ast
 
 TV_MODE = 'install-tv-session-gateway'
+TV_ENABLE_MODE = 'enable-tv-session-gateway'
+TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
+TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -62,7 +65,8 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-session-gateway-install-' if mode == TV_MODE else
+        prefix = ('int-anex-tv-session-gateway-enable-' if mode == TV_ENABLE_MODE else
+                  'int-anex-tv-session-gateway-install-' if mode == TV_MODE else
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
@@ -249,6 +253,8 @@ DISPATCH = r'''
 def activate(core, command):
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_ENABLE_MODE:
+        return activate_tv_enable(core, command)
     if command.get('mode') == TV_MODE:
         return activate_tv(core, command)
     expected = core.parse_command(core.PREFIX + ' '.join(str(command.get(k, '')) for k in ('source_sha', 'mode', 'operation_id')))
@@ -269,6 +275,227 @@ def activate(core, command):
     remote = remote.replace(collector, "    if mode not in ('install-search3-producer','search3-signing-provision','search3-signing-readback','reconcile',")
     ast.parse(remote)
     core.REMOTE = remote
+
+
+TV_FLAG_LINE = b"\nif (!defined('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED')) define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED', true);\n"
+TV_FLAG_PHP = r'''
+declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');
+function tfail(string $code):never{throw new RuntimeException($code);}
+function tneed(bool $ok):void{if(!$ok)tfail('tv_flag_config_shape');}
+function tname(array $tokens,int &$i):string{
+    $t=$tokens[$i++]??null;tneed(is_array($t)&&$t['id']===T_CONSTANT_ENCAPSED_STRING);
+    $raw=$t['text'];$q=$raw[0]??'';
+    tneed(in_array($q,["'",'"'],true)&&substr($raw,-1)===$q);
+    $name=substr($raw,1,-1);tneed(preg_match('/\A[A-Z][A-Z0-9_]{0,127}\z/D',$name)===1);
+    return $name;
+}
+function tsymbol(array $tokens,int &$i,string $value):void{
+    tneed(($tokens[$i++]['text']??null)===$value);
+}
+function tword(array $tokens,int &$i,string $word):void{
+    $t=$tokens[$i++]??null;tneed(is_array($t)&&$t['id']===T_STRING&&strtolower($t['text'])===$word);
+}
+function tdefine(array $tokens,int &$i):string{
+    tword($tokens,$i,'define');tsymbol($tokens,$i,'(');$name=tname($tokens,$i);tsymbol($tokens,$i,',');
+    $v=$tokens[$i++]??null;
+    tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
+        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))));
+    tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');return $name;
+}
+try{
+    tneed(count($argv)===2&&function_exists('token_get_all'));
+    $raw=file_get_contents($argv[1]);tneed(is_string($raw)&&strlen($raw)>0&&strlen($raw)<=65536);
+    $tokens=[];$offset=0;$insert=null;
+    foreach(token_get_all($raw,TOKEN_PARSE) as $v){
+        $id=is_array($v)?$v[0]:0;$text=is_array($v)?$v[1]:$v;$end=$offset+strlen($text);
+        if($id===T_OPEN_TAG){if($insert===null)$insert=$end;}
+        elseif($id===T_INLINE_HTML){tneed(trim($text)==='');}
+        elseif(!in_array($id,[T_WHITESPACE,T_COMMENT,T_DOC_COMMENT,T_CLOSE_TAG],true))
+            $tokens[]=['id'=>$id,'text'=>$text,'end'=>$end];
+        $offset=$end;
+    }
+    tneed(is_int($insert));$i=0;$statements=0;$pointer=false;
+    while($i<count($tokens)){
+        $t=$tokens[$i];
+        if($t['id']===T_DECLARE){
+            tneed($statements===0);++$i;tsymbol($tokens,$i,'(');tword($tokens,$i,'strict_types');
+            tsymbol($tokens,$i,'=');$v=$tokens[$i++]??null;
+            tneed(is_array($v)&&$v['id']===T_LNUMBER&&in_array($v['text'],['0','1'],true));
+            tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');$insert=$tokens[$i-1]['end'];++$statements;continue;
+        }
+        if($t['id']===T_IF){
+            ++$i;tsymbol($tokens,$i,'(');tsymbol($tokens,$i,'!');tword($tokens,$i,'defined');
+            tsymbol($tokens,$i,'(');$guard=tname($tokens,$i);tsymbol($tokens,$i,')');tsymbol($tokens,$i,')');
+            $braced=($tokens[$i]['text']??null)==='{';if($braced)++$i;
+            $name=tdefine($tokens,$i);tneed($guard===$name);if($braced)tsymbol($tokens,$i,'}');
+        }else{$name=tdefine($tokens,$i);}
+        if($name==='ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED')tfail('tv_flag_already_defined');
+        if($name==='ANYTOUR_SEARCH3_HANDOFF_KEY_FILE')$pointer=true;
+        ++$statements;
+    }
+    tneed($pointer);
+    echo json_encode(['ok'=>true,'offset'=>$insert,'sha256'=>hash('sha256',$raw)]);
+}catch(Throwable $e){
+    $code=$e instanceof RuntimeException&&preg_match('/\Atv_flag_[a-z_]+\z/D',$e->getMessage())===1
+        ?$e->getMessage():'tv_flag_config_shape';
+    echo json_encode(['ok'=>false,'code'=>$code]);
+    exit(1);
+}
+'''
+
+TV_ENABLE_REMOTE = r'''
+def tv_enable_preflight():
+    if source!=TV_SOURCE:fail('tv_enable_source')
+    if any(files.get(p)!=sha for p,sha in {**TV_PINS,**TV_DEPENDENCIES}.items()):fail('tv_enable_source_pin')
+    if tv_gateway_public()!=TV_PUBLIC:fail('tv_enable_public_drift')
+    for relative,expected in {**TV_PINS,**TV_DEPENDENCIES}.items():
+        target=runtime/(relative if relative.startswith('app/') else 'api-anex-search3-preview.php')
+        tv_gateway_parents(runtime,target)
+        if (not safe_file(target,2*1024*1024) or target.resolve()!=target or target.stat().st_nlink!=1
+                or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):fail('tv_enable_runtime_pin')
+    parent=private/TV_PARENT_OPERATION/'result.json'
+    if (not safe_file(parent,16384) or parent.resolve()!=parent or parent.stat().st_nlink!=1
+            or parent.stat().st_uid!=os.getuid() or parent.stat().st_mode&0o777!=0o600):fail('tv_enable_parent_receipt')
+    prior=json.loads(parent.read_bytes())
+    digest=hashlib.sha256(json.dumps(prior,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    if digest!=TV_PARENT_CANONICAL:fail('tv_enable_parent_receipt')
+
+def tv_enable_config_identity(path):
+    if (not safe_file(path,65536) or path.resolve()!=path or path.stat().st_nlink!=1
+            or path.stat().st_uid!=os.getuid() or path.stat().st_mode&0o022):fail('tv_enable_config_type')
+    s=path.stat()
+    return (s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_mode,s.st_uid,s.st_gid,s.st_nlink)
+
+def tv_enable_http_ready():
+    import urllib.request
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs):return None
+    opener=urllib.request.build_opener(NoRedirect)
+    request=urllib.request.Request('https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php?action=tv_token',
+        headers={'Origin':'https://anytoour.ru','Sec-Fetch-Site':'same-origin','Accept':'application/json'})
+    try:
+        with opener.open(request,timeout=15) as response:
+            raw=response.read(4097)
+            if response.status!=200 or len(raw)>4096:fail('tv_enable_http_shape')
+            body=json.loads(raw)
+            cookies=response.headers.get_all('Set-Cookie',[])
+            cookie=next((c for c in cookies if c.startswith('ANYTOUR_ANEX_SEARCH3=')),'')
+            lower=cookie.lower()
+            if (set(body)!={'ok','csrf','provider'} or body['ok'] is not True or body['provider']!='tourvisor'
+                    or not isinstance(body['csrf'],str) or re.fullmatch('[a-f0-9]{64}',body['csrf']) is None
+                    or re.search(r'(?:^|;)\s*path=/_preview/search3-anex-candidate/(?:;|$)',lower) is None
+                    or not all(x in lower for x in ('secure','httponly','samesite=lax'))
+                    or 'no-store' not in response.headers.get('Cache-Control','')):fail('tv_enable_http_shape')
+            # Discard the new anonymous session token/cookie; no customer or supplier request.
+            return {'status':200,'provider':'tourvisor','csrf_exported':False,'private_cookie_scope':True,
+                    'supplier_calls':0,'requests':1}
+    except Exception:fail('tv_enable_http_unavailable')
+
+def tv_enable_config(op):
+    global install_started
+    tv_enable_preflight()
+    config=runtime/'.anex-private.php';identity=tv_enable_config_identity(config);old=config.read_bytes()
+    if tv_enable_config_identity(config)!=identity:fail('tv_enable_config_drift')
+    check=subprocess.run(['php','-r',TV_FLAG_PHP,str(config)],capture_output=True,text=True,timeout=20)
+    try:parsed=json.loads(check.stdout)
+    except Exception:fail('tv_enable_config_shape')
+    if check.returncode!=0 or parsed.get('ok') is not True:fail('tv_enable_config_shape')
+    offset=parsed.get('offset')
+    if (type(offset) is not int or not 5<=offset<=len(old)
+            or parsed.get('sha256')!=hashlib.sha256(old).hexdigest()):fail('tv_enable_config_shape')
+    candidate=old[:offset]+TV_FLAG_LINE+old[offset:]
+    if len(candidate)>65536:fail('tv_enable_config_budget')
+    mode=config.stat().st_mode&0o777
+    backup=op/'backup';backup.mkdir(mode=0o700)
+    saved=backup/'.anex-private.php';saved.write_bytes(old);os.chmod(saved,0o600)
+    if saved.read_bytes()!=old:fail('tv_enable_backup')
+    relative='.anex-private.php'
+    install_previous[relative]={'exists':True,'sha256':hashlib.sha256(old).hexdigest(),'mode':mode}
+    install_expected[relative]=hashlib.sha256(candidate).hexdigest()
+    install_temps[relative]=stage_target_bytes(config,candidate,mode)
+    lint=subprocess.run(['php','-l',str(install_temps[relative])],capture_output=True,timeout=20)
+    if lint.returncode!=0:fail('tv_enable_config_lint')
+    write_private_json(op/'tv-enable-plan.json',{'source_sha':source,'target':relative,
+        'before_sha256':hashlib.sha256(old).hexdigest(),'after_sha256':hashlib.sha256(candidate).hexdigest(),
+        'parent_operation':TV_PARENT_OPERATION,'status':'prepared'})
+    tv_enable_preflight()
+    if tv_enable_config_identity(config)!=identity or config.read_bytes()!=old:fail('tv_enable_config_drift')
+    install_started=True
+    os.replace(install_temps[relative],config);install_applied.append(relative);os.chmod(config,mode)
+    if config.read_bytes()!=candidate or config.stat().st_mode&0o777!=mode:fail('tv_enable_readback')
+    time.sleep(3)
+    http=tv_enable_http_ready()
+    tv_enable_preflight()
+    if config.read_bytes()!=candidate:fail('tv_enable_postwrite_drift')
+    return {'constant':'ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED','enabled':True,'changed_files':1,
+        'original_bytes_preserved':True,'signing_custody_changed':False,'parent_operation':TV_PARENT_OPERATION,
+        'parent_canonical_sha256':TV_PARENT_CANONICAL,'before_sha256':hashlib.sha256(old).hexdigest(),
+        'after_sha256':hashlib.sha256(candidate).hexdigest(),'before_bytes':len(old),'after_bytes':len(candidate),
+        'before_mode':mode,'after_mode':mode,'http':http}
+'''
+
+TV_ENABLE_DISPATCH = r'''
+    if mode==TV_ENABLE_MODE:
+        result['tv_gateway_public_before']=tv_gateway_public()
+        result['tv_enable']=tv_enable_config(op)
+        result['tv_gateway_public_after']=tv_gateway_public()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['status']='enabled';result['runtime_changed']=True
+        result['public_ui_entrypoints_unchanged']=True
+        result['supplier_calls']=0;result['database_writes']=0
+'''
+
+
+def completed_enable(command,result):
+    proof=result.get('tv_enable')
+    fields={'constant','enabled','changed_files','original_bytes_preserved','signing_custody_changed','parent_operation',
+            'parent_canonical_sha256','before_sha256','after_sha256','before_bytes','after_bytes','before_mode','after_mode','http'}
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    if not isinstance(proof,dict) or set(proof)!=fields:return False
+    def sha(v):return isinstance(v,str) and len(v)==64 and all(c in '0123456789abcdef' for c in v)
+    return (command.get('source_sha')==TV_SOURCE
+        and all(result.get(k)==command.get(k) for k in ('source_sha','mode','operation_id'))
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='enabled'
+        and proof['constant']=='ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED' and proof['enabled'] is True
+        and type(proof['changed_files']) is int and proof['changed_files']==1 and proof['original_bytes_preserved'] is True
+        and proof['signing_custody_changed'] is False and proof['parent_operation']==TV_PARENT_OPERATION
+        and proof['parent_canonical_sha256']==TV_PARENT_CANONICAL
+        and all(sha(proof[k]) for k in ('before_sha256','after_sha256')) and proof['before_sha256']!=proof['after_sha256']
+        and all(type(proof[k]) is int for k in ('before_bytes','after_bytes','before_mode','after_mode'))
+        and proof['after_bytes']==proof['before_bytes']+len(TV_FLAG_LINE)
+        and 0<proof['before_bytes']<proof['after_bytes']<=65536 and 0<=proof['after_mode']<=0o777
+        and proof['before_mode']==proof['after_mode'] and proof['after_mode']&0o022==0
+        and proof['http']=={'status':200,'provider':'tourvisor','csrf_exported':False,'private_cookie_scope':True,
+                           'supplier_calls':0,'requests':1}
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('runtime_changed') is True and result.get('public_ui_entrypoints_unchanged') is True)
+
+
+def activate_tv_enable(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in ('source_sha','mode','operation_id')))
+    need(command==expected,'tv_enable_shape')
+    remote=core.REMOTE
+    definition='def db_summary(provider):\n'
+    dispatch="    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):\n"
+    rollback="    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview') and install_started:\n"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(rollback)==1
+         and remote.count("    if mode not in ('reconcile',")==2,'tv_enable_stock_drift')
+    constants=('TV_ENABLE_MODE='+repr(TV_ENABLE_MODE)+'\nTV_SOURCE='+repr(TV_SOURCE)+'\nTV_PINS='+repr(TV_PINS)
+        +'\nTV_DEPENDENCIES='+repr(TV_DEPENDENCIES)+'\nTV_PUBLIC='+repr(TV_PUBLIC)
+        +'\nTV_PARENT_OPERATION='+repr(TV_PARENT_OPERATION)+'\nTV_PARENT_CANONICAL='+repr(TV_PARENT_CANONICAL)
+        +'\nTV_FLAG_LINE='+repr(TV_FLAG_LINE)+'\nTV_FLAG_PHP='+repr(TV_FLAG_PHP)+'\n')
+    common=TV_REMOTE[:TV_REMOTE.index('def tv_gateway_preflight():')]
+    remote=remote.replace(definition,constants+common+TV_ENABLE_REMOTE+'\n'+definition,1)
+    remote=remote.replace(dispatch,TV_ENABLE_DISPATCH+dispatch,1)
+    remote=remote.replace(rollback,rollback.replace("('install-runtime',","('enable-tv-session-gateway','install-runtime',"),1)
+    remote=remote.replace("    if mode not in ('reconcile',","    if mode not in ('enable-tv-session-gateway','reconcile',")
+    ast.parse(remote)
+    original_complete=core.completed_result
+    core.completed_result=lambda cmd,result: completed_enable(cmd,result) if cmd.get('mode')==TV_ENABLE_MODE else original_complete(cmd,result)
+    core.REMOTE=remote
 
 
 TV_REMOTE = r'''
