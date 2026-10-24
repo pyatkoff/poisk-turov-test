@@ -440,7 +440,7 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         self.parent.parent.mkdir();self.parent.write_text('{"status":"installed","fixture":true}')
         self.parent.chmod(0o600)
         self.parent_digest=hashlib.sha256(json.dumps(json.loads(self.parent.read_bytes()),sort_keys=True,separators=(',',':')).encode()).hexdigest()
-        self.http_failure=False;self.config_race=False
+        self.http_failure=False;self.config_race=False;self.parser_failure=None
 
     def mutate_remote(self,c):
         for name,old,new in [('TV_PINS',signing.TV_PINS,self.pins),('TV_DEPENDENCIES',signing.TV_DEPENDENCIES,self.deps),
@@ -454,6 +454,17 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         body="fail('synthetic_http_failure')" if self.http_failure else 'return '+repr(proof)
         c.REMOTE=c.REMOTE[:start]+'def tv_enable_http_ready():\n    '+body+'\n'+c.REMOTE[end:]
         c.REMOTE=c.REMOTE.replace('    time.sleep(3)\n','',1)
+        if self.parser_failure:
+            anchor="    try:check=subprocess.run(['php','-r',TV_FLAG_PHP,str(config)],capture_output=True,timeout=20)"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            if self.parser_failure=='timeout':value="(_ for _ in ()).throw(subprocess.TimeoutExpired('native-parser',20))"
+            elif self.parser_failure=='unavailable':value="(_ for _ in ()).throw(OSError('SYNTHETIC_UNRELATED_CREDENTIAL'))"
+            else:
+                values={'json':b'not JSON SYNTHETIC_UNRELATED_CREDENTIAL','list':b'[]',
+                        'foreign':b'{"ok":false,"code":"SYNTHETIC_UNRELATED_CREDENTIAL"}',
+                        'missing':b'{"ok":false}', 'oversize':b'x'*1025}
+                value="__import__('types').SimpleNamespace(returncode=1,stdout="+repr(values[self.parser_failure])+")"
+            c.REMOTE=c.REMOTE.replace(anchor,'    try:check='+value,1)
         if self.config_race:
             anchor="    if tv_enable_config_identity(config)!=identity or config.read_bytes()!=old:fail('tv_enable_config_drift')"
             self.assertEqual(1,c.REMOTE.count(anchor))
@@ -497,14 +508,33 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         self.assertEqual('tv_enable_source_pin',self.enable()['reason']);self.assert_config_unchanged()
 
     def test_unknown_config_or_existing_flag_denied_without_execution(self):
-        for extra in ["define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED',false);",'return;',
-                      "include '/no/config/includes';", "define('DYNAMIC',getenv('SECRET'));",
-                      "file_put_contents(__DIR__.'/unsafe-executed','x');"]:
+        for extra,reason in [("define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED',false);",'tv_enable_flag_already_defined'),
+                      ('return;','tv_enable_statement_shape'),("include '/no/config/includes';",'tv_enable_statement_shape'),
+                      ("define('DYNAMIC',getenv('SECRET'));",'tv_enable_value_shape'),
+                      ("file_put_contents(__DIR__.'/unsafe-executed','x');",'tv_enable_statement_shape'),
+                      ('define(];','tv_enable_php_syntax')]:
             with self.subTest(extra=extra):
                 self.config.write_text(self.original+extra)
-                r=self.enable();self.assertEqual('tv_enable_config_shape',r['reason'])
+                r=self.enable();self.assertEqual(reason,r['reason'])
                 self.assertEqual(self.original+extra,self.config.read_text())
                 self.assertFalse((self.runtime/'unsafe-executed').exists())
+
+    def test_parser_environment_and_untrusted_output_only_fixed_codes(self):
+        for case in ('timeout','unavailable','json','list','foreign','missing','oversize'):
+            with self.subTest(case=case):
+                self.parser_failure=case;r=self.enable()
+                expected={'timeout':'tv_enable_parser_timeout','unavailable':'tv_enable_parser_unavailable'}.get(case,'tv_enable_parser_output')
+                self.assertEqual(expected,r['reason']);self.assert_config_unchanged()
+                self.assertNotIn('SYNTHETIC_UNRELATED_CREDENTIAL',json.dumps(r))
+                self.assertEqual([],list(self.home.rglob('tv-enable-plan.json')))
+
+    def test_native_missing_tokenizer_has_own_safe_classification(self):
+        php_bin=os.environ.get('PHP_BIN','php')
+        run=subprocess.run([php_bin,'-d','disable_functions=token_get_all','-r',signing.TV_FLAG_PHP,str(self.config)],
+                           capture_output=True,timeout=20)
+        self.assertEqual(1,run.returncode);self.assertEqual(b'',run.stderr)
+        self.assertEqual({'ok':False,'code':'tv_flag_tokenizer_unavailable'},json.loads(run.stdout))
+        self.assert_config_unchanged()
 
     def test_prewrite_config_race_not_overwritten(self):
         self.config_race=True;r=self.enable();self.assertEqual('tv_enable_config_drift',r['reason'])
@@ -570,7 +600,8 @@ def load_tests(loader, tests, pattern):
     for name in ('test_enable_preserves_bytes_tail_key_and_strict_completion','test_bad_source_parent_and_runtime_refuse_before_config',
                  'test_unknown_config_or_existing_flag_denied_without_execution','test_prewrite_config_race_not_overwritten',
                  'test_http_failure_rolls_back_exact_config','test_fixed_http_and_parent_contract',
-                 'test_config_candidate_budget_is_checked_before_backup','test_own_http_response_validation_without_network'):
+                 'test_config_candidate_budget_is_checked_before_backup','test_own_http_response_validation_without_network',
+                 'test_parser_environment_and_untrusted_output_only_fixed_codes','test_native_missing_tokenizer_has_own_safe_classification'):
         suite.addTest(NativeTVGatewayEnable(name))
     return suite
 
