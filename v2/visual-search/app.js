@@ -1223,7 +1223,9 @@ function restoreProviderHistoryRoute(route){
   if(modalType==='anex-quote'&&!view.pending&&!view.error&&view.result?.repricing?.enabled!==true){const input=$$('[name="anex-package-choice"]').find(el=>el.value===route.choice);if(input){input.checked=true;retainedProviderView(o).choice=input.value;}}
   if(route.type==='provider-application')openAndromedaApplicationPreview();
   if(route.type==='anex-application')openAnexApplicationPreview();
-  if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
+  const methods=route.type==='anex-application'&&$('#messenger-methods');
+  if(methods&&!methods.hidden)$('#modal-body').scrollTop=0;
+  else if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;
   return true;
 }
 function reopenUIRoute(route){

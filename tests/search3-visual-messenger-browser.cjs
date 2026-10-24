@@ -112,12 +112,21 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    assert.equal(await page.evaluate(element=>element===document.querySelector('[name="phone"]'),phone),true,'method changes retain the same actual form node');
    assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 000 000-00-00');await page.locator('[data-action="messenger-other"]').click();
    await capture('ready-return',{methods:true});
+   await page.locator('[data-action="messenger-phone"]').click();
+   const priorPhoneScroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});if(width===1280)assert(priorPhoneScroll>0,'desktop regression starts in a scrolled telephone view');
+   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
+   await page.goForward();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#messenger-methods')&&!document.querySelector('#messenger-methods').hidden);
+   await capture('history-forward',{methods:true});
+   assert.equal(await page.locator('[name="phone"]').isVisible(),false,'Forward returns to the optional method choice');
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 000 000-00-00');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
+   await page.locator('[data-action="messenger-other"]').click();
+   assert.equal(transport.calls.filter(call=>call.action==='quote_calculate').length,1,'Forward never requotes the selected tour');
    await Promise.all([page.waitForURL(links.max),page.locator('[data-action="messenger-open"][data-platform="max"]').click()]);
    assert.equal(await page.locator('h1').textContent(),'Fictional navigation intercepted');assert.deepEqual(navigations,[links.max]);
    assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze','handoff_create'],'explicit MAX reuses the ready operation without a second CREATE');
    assert.equal(transport.calls.filter(call=>call.action==='quote_calculate').length,1);assert(!transport.calls.some(call=>/lead|booking|payment/.test(call.url)));
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({width,height,selector,amount:selected.price.amount,phoneChoiceOnly:true,sameFormNode:true,draftRetained:true,cancelledPendingNavigation:true,createCalls:1,externalNavigationIntercepted:navigations.length,shots});
+   records.push({width,height,selector,amount:selected.price.amount,phoneChoiceOnly:true,sameFormNode:true,draftRetained:true,cancelledPendingNavigation:true,historyForwardMethods:true,priorPhoneScroll,createCalls:1,externalNavigationIntercepted:navigations.length,shots});
   }catch(error){
    await page.screenshot({path:path.join(output,`failure-${width}x${height}.png`)}).catch(()=>{});
    fs.writeFileSync(path.join(output,`failure-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,shots},null,2));throw error;

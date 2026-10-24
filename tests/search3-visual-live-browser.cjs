@@ -1085,11 +1085,18 @@ const forwardProviderApplication=async(page,transport,room,price)=>{
  const scroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});
  await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
  await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#prototype-lead-form'));
+ const methods=page.locator('#messenger-methods'),restoredMethods=await methods.count()>0&&await methods.isVisible();
+ if(restoredMethods){
+  const geometry=await methods.evaluate(el=>{const body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),rect=n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};return {body:rect(body),limit:Math.min(body.getBoundingClientRect().bottom,footer.getBoundingClientRect().top),scroll:body.scrollTop,heading:rect(el.querySelector('h3')),buttons:[...el.querySelectorAll('.messenger-methods button')].map(rect)};});
+  assert.equal(geometry.scroll,0,'Forward restores the new messenger choice at its top');assert.equal(geometry.buttons.length,3);
+  for(const box of [geometry.heading,...geometry.buttons])assert(box.top>=geometry.body.top-1&&box.bottom<=geometry.limit+1&&box.left>=geometry.body.left-1&&box.right<=geometry.body.right+1,'Forward shows the complete heading and three methods');
+  await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();
+ }
  assert((await page.locator('#modal-body').textContent()).includes(room));assert((await page.locator('#modal-footer').textContent()).replace(/\s/g,'').includes(price));
  assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
  assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null);
  const position=await page.locator('#modal-body').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight}));
- assert.equal(position.top,Math.min(scroll,position.max));assert.equal(transport.calls.length,before,'provider application Forward is passive');
+ if(!restoredMethods)assert.equal(position.top,Math.min(scroll,position.max));assert.equal(transport.calls.length,before,'provider application Forward is passive');
  assert.deepEqual(await page.evaluate(()=>Object.keys(history.state['anytour.prototype.v18.ui.v1']).sort()),['key','scroll','type']);
 };
 const continueToFlights=async page=>{
