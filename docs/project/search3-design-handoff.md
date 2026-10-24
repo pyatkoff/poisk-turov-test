@@ -1,3 +1,44 @@
+## Approved Site224 card-entry transfer — 25 October 2026
+
+Direct owner «давай дальше» after the shown exact PUBLIC Site224 and explicit
+NEXT-transfer gate authorizes this same whole version:
+[approval + receiver claim6390219318](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6390219318).
+Donor source d01542cf28c8171ae57d74330cf543f9ffc16c96, saved
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_4eaa3dab77ac8191b9a136d7584297a6,
+deployment appgdep_6add2ad6f7fc81919e300f15e6723381 SUCCEEDED.
+Bounded donor source/rendered acceptance6390171979; evidence-only successorb976
+has identical product bytes. Project/history/public remain unchanged.
+
+Receiver basebb8a / installed540bf185. For existing Tourvisor/ANEX card entry,
+«Номера и цены» names the already-connected hotel/rooms route with the same
+data-action, card-entry flag and exact representative key/price/date/party.
+Other provider legacy entry retains «Смотреть тур». The separate all-offers route
+becomes subordinate «Туры списком(N)», counted from current filtered offers;
+one offer has no empty/phantom alternatives footer. Hotel name retains information
+access; the duplicated card-footer «Об отеле» is removed. Current selected-card
+continuation, filters/list controls/history and all dispatch handlers are unchanged.
+
+The receiver's canonical card CSS is already inside styles.css, not a separate
+results-cards.css. Replace its existing mobile text-button hide selector with
+:not(.card-all-offers); retain its existing44px target. Do not copy a second CSS
+layer, renderer, donor data/hotelJourney flag, price/transport/lead or provider logic.
+
+Focused actual-card regression covers TV/ANEX versus legacy, representative identity
+and amount/date, filtered alternative count, one-choice and information access.
+The same existing controlled TV101/90000/2A ordinary compiled case gains card and
+list frames at430x900,1280x900,1280x720, then preserves its existing room/check/
+manager-contact/optional-pair133500.5/Back/draft/consent/strictquote1+flight1 guards.
+No new live/supplier case or keyboard/deferred-width queue is introduced.
+All applicable final-source gates, bounded independent source/actual-frame review,
+release-only merge, separate exclusive stock NEXT-only publisher/exact artifact,
+readback and matched affected installed snapshot remain required.
+Donor/compiled/installed/physical/real-supplier scopes and existing quality baselines
+stay separate; this transfer is not whole-search9.5 or TV connected-delivery proof.
+INT owns its private enable-parser compatibility claim6390184680 and single future
+admissible handoff. No root config/flag/signing/customer operation is included.
+
+---
+
 ## Approved Site222 room-density transfer — 24 October 2026
 
 Direct owner «дальше» after the shown exact candidate and explicit transfer gate:

@@ -1692,6 +1692,16 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
    await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
    const card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');assert.equal(await card.count(),1);
+   const hotelCard=page.locator('.hotel-card').filter({has:page.locator('.hotel-price [data-key="'+key+'"]')}),list=hotelCard.locator('[data-action="all-offers"]');
+   assert.equal(await card.textContent(),'Номера и цены');assert.equal(await hotelCard.locator('[data-action="hotel-details"]').count(),1,'hotel name remains the single information entry');
+   assert.equal(await list.count(),1);assert.match(await list.textContent(),/Туры списком \(2\)/);
+   const cardEntry=await hotelCard.evaluate(el=>({horizontalOverflow:el.scrollWidth>el.clientWidth+1,actions:[...el.querySelectorAll('.hotel-price .primary,.card-all-offers')].map(b=>({text:b.textContent.trim(),action:b.dataset.action,key:b.dataset.key||null,height:b.getBoundingClientRect().height,width:b.getBoundingClientRect().width}))}));
+   assert.equal(cardEntry.horizontalOverflow,false);assert(cardEntry.actions.every(b=>b.height>=43.5),'primary and subordinate entry retain ordinary pointer targets');assert.equal(cardEntry.actions[0].key,key);
+   await hotelCard.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,'tv-card-card-'+tag+'.png')});
+   await list.click();await page.locator('#all-offers-list [data-action="offer"][data-key="'+key+'"]').waitFor();
+   assert.equal(quoteCalls(),0);assert.equal(flightCalls(),0,'opening the list does not request flights');
+   await page.screenshot({path:path.join(evidence,'tv-card-list-'+tag+'.png')});
+   await page.locator('[data-action="close-modal"]').click();assert.equal(await card.isVisible(),true,'ordinary list Close returns to the same representative');
    // The preserved explicit-details branch is a controlled legacy-route
    // comparison inside this candidate, not a separately installed old source.
    await card.evaluate(el=>delete el.dataset.cardEntry);await card.click();await page.locator('[data-action="start-lead"]').waitFor();
@@ -1721,7 +1731,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    assert.deepEqual(reopenCalls,[{url:base+'data/local-tv-catalog-read-v1.php',action:null,body:{},query:{'oldLocalHotelIds[]':'501'}}],'same card reopen only refreshes the existing LOCAL hotel presentation');
    assert.equal(quoteCalls(),1,'same card reopen reuses the current tour');assert.equal(flightCalls(),1,'same card reopen reuses the exact pair');assert.equal(afterPair,beforeReturn+1,'only the explicit optional flight request was added before reopen');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.equal(transport.calls.some(c=>String(c.action).startsWith('handoff_')),false,'TV does not borrow ANEX bot producer');
-   records.push({width,height,key,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,checkedRooms,pairRooms,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),reopenCalls,sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
+   records.push({width,height,key,cardEntry,listReturnSameOffer:true,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,checkedRooms,pairRooms,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),reopenCalls,sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');

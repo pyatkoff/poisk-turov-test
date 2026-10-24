@@ -55,10 +55,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "3a45ec0563e089d46e10d87f7f3f334ed8818c37058ad9a2e913ea4967dea3d9",
+    "app.js": "6575137f0eb6893a3d04ef0365007af4c310487dc769116526e284c1c5ea31d3",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "ec1fae2495784d93ce9ce1e52bb793f5eeae831ed238fa5c7c75a57df39cbf21",
-    "styles.css": "49309307e98291c6d4d68fdd1e6ff304d53f5b413920c3b0240039ba0989abce",
+    "styles.css": "3dca3f067f2ec00be422dec9ea2205f1674fa4a6045e4bdc93f8b3fd1ab9bb26",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "6298bbd98aee9f44b8d058bd365c3651c10d17d4dd46b96d0bba494a2e95174d",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
@@ -273,6 +273,16 @@
       "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261024",
       "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6389631995",
       "transportOwners": "unchanged current NEXT c41; CSS density only, no donor data/price/lead copied",
+      "physicalSafariAcceptance": false
+    },
+    {
+      "site": 224,
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "sourceSha": "d01542cf28c8171ae57d74330cf543f9ffc16c96",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_4eaa3dab77ac8191b9a136d7584297a6",
+      "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261025",
+      "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6390219318",
+      "transportOwners": "unchanged current NEXT540; card hierarchy only, exact routes/keys and existing supplier/price/lead owners retained",
       "physicalSafariAcceptance": false
     }
   ],
