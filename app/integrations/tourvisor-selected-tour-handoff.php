@@ -131,6 +131,7 @@ final class AnyTourTourvisorSelectedTourHandoff
         $terms = self::terms(array_diff_key($o,array_flip(['schema','kind','capturedAt'])),$pins,$slot['expires_at']);
         self::need($record === ['binding'=>$record['binding'], 'observation'=>['schema'=>1,'kind'=>'search3_browser_observation',
             'capturedAt'=>$slot['observed_at']*1000]+$terms], 'record.integrity');
+        self::need(strlen(json_encode($record,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE)) <= 24576, 'record.receiver_size');
         return ['status'=>'ready','record'=>$record,'record_sha256'=>$slot['json_sha256']];
     }
 
@@ -161,6 +162,7 @@ final class AnyTourTourvisorSelectedTourHandoff
             self::need(is_array($records) && count($records) < self::MAX_RECORDS, 'record.limit');
             $record = ['binding'=>['record_id'=>'tourvisor:'.bin2hex(random_bytes(16)),'revision'=>1],
                 'observation'=>['schema'=>1,'kind'=>'search3_browser_observation','capturedAt'=>$observedAt*1000]+$terms];
+            self::need(strlen(json_encode($record,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE)) <= 24576, 'record.receiver_size');
             $json = json_encode($record,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             self::need(strlen($json) <= 24576, 'record.receiver_size');
             $session['tourvisor_handoff_records'][$key] = ['selector'=>$pins,'observed_at'=>$observedAt,'expires_at'=>$deadline,

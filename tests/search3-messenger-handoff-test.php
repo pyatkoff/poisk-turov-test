@@ -446,11 +446,44 @@ $tvLate=$tvBase;$tvTimes=[$tvAt,$tvDeadline];
 $tvResult=mh_tv_capture($tvPins,$tvTerms,$tvLate,$tvAt,$tvDeadline,null,static function()use(&$tvTimes):int{return array_shift($tvTimes);});
 mh_check($tvResult['status']==='held','TV checkpoint crossing original expiry cannot expose ready record');
 
+$tvLargeChoice='tourvisor_pair:'.str_repeat('f',64);
+[$tvLargePins,$tvLargeTerms,$tvLargeState,$tvLargeAt,$tvLargeDeadline]=mh_tv_fixture($tvLargeChoice);
+$tvSlashLabel=str_repeat('😀',500).str_repeat('/',500);
+$tvLargeTerms['flights']['outward']=array_fill(0,4,['label'=>$tvSlashLabel]);
+$tvLargeTerms['flights']['inward']=array_fill(0,4,['label'=>$tvSlashLabel]);
+$tvReceiverOversize=['binding'=>['record_id'=>'tourvisor:'.str_repeat('a',32),'revision'=>1],
+    'observation'=>['schema'=>1,'kind'=>'search3_browser_observation','capturedAt'=>$tvLargeAt*1000]+$tvLargeTerms];
+mh_check(strlen(json_encode($tvReceiverOversize,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))<24576
+    && strlen(json_encode($tvReceiverOversize,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE))>24576,
+    'mixed Unicode/slash fixture crosses the actual receiver encoding limit only');
+$tvBeforeLarge=$tvLargeState;
+$tvTooLarge=mh_tv_capture($tvLargePins,$tvLargeTerms,$tvLargeState,$tvLargeAt,$tvLargeDeadline);
+mh_check($tvTooLarge['status']==='held' && $tvTooLarge['missing'][0]['field']==='record.receiver_size'
+    && $tvLargeState===$tvBeforeLarge,'capture enforces receiver exact size before persistence');
+[$tvLargePins,$tvAllowedTerms,$tvCachedState,$tvLargeAt,$tvLargeDeadline]=mh_tv_fixture($tvLargeChoice);
+$tvAllowedLabel=str_repeat('😀',500).str_repeat('/',400);
+$tvAllowedTerms['flights']['outward']=array_fill(0,4,['label'=>$tvAllowedLabel]);
+$tvAllowedTerms['flights']['inward']=array_fill(0,4,['label'=>$tvAllowedLabel]);
+$tvAllowed=mh_tv_capture($tvLargePins,$tvAllowedTerms,$tvCachedState,$tvLargeAt,$tvLargeDeadline);
+mh_check($tvAllowed['status']==='ready','large valid receiver-compatible record remains usable');
+$tvReceiverLargeAllowed=$tvAllowed['record'];
+$tvCacheKey=array_key_first($tvCachedState['tourvisor_handoff_records']);
+$tvOversizeJSON=json_encode($tvReceiverOversize,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+$tvCachedState['tourvisor_handoff_records'][$tvCacheKey]['json']=$tvOversizeJSON;
+$tvCachedState['tourvisor_handoff_records'][$tvCacheKey]['json_sha256']=hash('sha256',$tvOversizeJSON);
+$tvCachedHeld=AnyTourTourvisorSelectedTourHandoff::freeze($tvLargePins,$tvCachedState,$tvLargeAt,static fn():int=>$tvLargeAt);
+mh_check($tvCachedHeld['status']==='held' && $tvCachedHeld['missing'][0]['field']==='record.receiver_size',
+    'cached old-version record also enforces exact receiver encoding limit');
+
 // Actual accepted receiver code, pinned by CI; no SQL, provider or bot is invoked.
 $receiver = getenv('SEARCH3_RECEIVER_SOURCE');
 if (is_string($receiver) && $receiver !== '') {
     require_once $receiver . '/services/Search3TourHandoffSnapshot.php';
     require_once $receiver . '/services/Search3TourHandoffTrust.php';
+    mh_check(Search3TourHandoffSnapshot::normalize($tvReceiverOversize)===null,
+        'actual receiver rejects the mixed Unicode/slash oversize boundary');
+    mh_check(Search3TourHandoffSnapshot::normalize($tvReceiverLargeAllowed)!==null,
+        'actual receiver accepts large bounded Unicode/slash record');
     foreach ($tvBodies as $tvBody) mh_check(Search3TourHandoffSnapshot::normalize(
         ['binding'=>$tvBody['binding'],'observation'=>$tvBody['observation']]) !== null,
         'actual frozen receiver accepts TV deferred and selected records unchanged');
