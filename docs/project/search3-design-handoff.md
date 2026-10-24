@@ -1,3 +1,40 @@
+## Approved Site220 room-choice transfer — 24 October 2026
+
+Owner's direct «Давай дальше» follows the shown exact PUBLIC Site220 and its
+explicit NEXT-transfer gate. [Approval + receiver claim6386195417](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6386195417)
+binds donor source `2fbfc781dd18961f714aad74b7a50ba47e1be1a7`, saved220
+`appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_74e68d6cde688191a64fd8e8e9045db4`
+and successful deployment `appgdep_6adccbf981d88191b88e84a655714412`.
+Donor evidence-only64d2 remains frozen; this is the same product package, no new Site.
+Receiver base release2b32735b / installed98ad6e00, ORIGINAL NEXT only.
+
+The existing lazy hotel-details module keeps canonical hotel/room/meal/date/operator
+facts and its detail action (now labelled «Подробности тура»). The selected row marks
+«Номер выбран» and leaves its current whole-group amount/qualification in the shared
+footer; alternative rows keep comparable prices and their selection actions. Full
+hotel names wrap in the same header. The existing footer rules are replaced, rather
+than stacked: amount/status beside the action at430, with more space for room content.
+Unverified current tours say «Проверить тур», eligible checked tours «Продолжить»;
+current ANEX check/estimate/error and unknown pair gates retain their explicit labels.
+Existing local room selection, optional manager-deferred continuation, pair amounts,
+Back/draft/consent and terminal denials retain their owners. Healthy same-choice flight
+reopen reuses inventory; an error/empty result keeps explicit retry. No donor fixtures,
+price authority, provider transport, lead sender or second renderer/controller is copied.
+
+Focused actual-source checks cover footer selection/qualification/check→continue,
+unknown-pair/terminal gates, alternative-price recovery and healthy/error/empty optional
+inventory. Existing stock compiled TV journey reuses the same fictional corpus at
+430x900,1280x900,1280x720: local entry, checked manager-contact/Back, explicit pair,
+contact/Back/reopen, retained draft and consent reset, strict quote1/flights1 ledger.
+Existing broader mandatory suites remain unchanged; no added manual keyboard/deferred
+width pass. Source tests are not rendered/native/installed proof. Final-head CI,
+rendered bounded delta review, release-only merge, separate exclusive exact-artifact
+NEXT publisher/readback and one affected installed snapshot boundary remain required.
+Native430/physical/current supplier/INT TV producer/real delivery/production retain
+separate gates. Existing SEARCH-QUALITY-1 audit is reused; no new global9.5 claim.
+
+---
+
 ## Tourvisor result-card rooms entry — 24 October 2026
 
 Same SEARCH source claim6384177407, receiving6383656434. Base release85444fcb/source142.

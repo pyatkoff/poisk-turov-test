@@ -1671,7 +1671,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
   const tag=width+'x'+height,key='tourvisor%3Avisual-tv-101',quoteCalls=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&c.action==='tour').length,flightCalls=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&c.action==='flights').length;
   const row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]'),amount=()=>page.locator('#modal-footer .footer-total>strong').textContent();
   const capture=async name=>{
-   const geometry=await page.locator('#modal').evaluate(el=>{const b=el.querySelector('#modal-body').getBoundingClientRect(),f=el.querySelector('#modal-footer').getBoundingClientRect();return{horizontalOverflow:el.scrollWidth>el.clientWidth+1,bodyBottom:b.bottom,footerTop:f.top,footerBottom:f.bottom,viewport:innerHeight};});
+   const geometry=await page.locator('#modal').evaluate(el=>{const body=el.querySelector('#modal-body'),b=body.getBoundingClientRect(),f=el.querySelector('#modal-footer').getBoundingClientRect(),title=el.querySelector('#modal-title');return{horizontalOverflow:el.scrollWidth>el.clientWidth+1,bodyBottom:b.bottom,bodyHeight:b.height,bodyScroll:body.scrollTop,footerTop:f.top,footerBottom:f.bottom,footerHeight:f.height,viewport:innerHeight,title:title.textContent,titleClipped:title.scrollWidth>title.clientWidth+1};});
    assert.equal(geometry.horizontalOverflow,false);assert(geometry.bodyBottom<=geometry.footerTop+1);assert(geometry.footerBottom<=geometry.viewport+1);
    await page.screenshot({path:path.join(evidence,'tv-card-'+name+'-'+tag+'.png')});return geometry;
   };
@@ -1699,7 +1699,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    await page.locator('[data-action="close-modal"]').click();await card.evaluate(el=>el.dataset.cardEntry='true');
    await card.click();await row().waitFor({state:'visible'});
    assert.equal(await row().getAttribute('aria-current'),'true');
-   assert.equal(await page.locator('#hotel-detail-offers').getAttribute('data-key'),key);assert.match(await page.locator('#hotel-detail-price-status').textContent(),/STANDARD SEA VIEW/);
+   assert.equal(await page.locator('#hotel-detail-offers').getAttribute('data-key'),key);assert.equal(await row().evaluate(el=>el.closest('[data-room]').dataset.room),'STANDARD SEA VIEW');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/Цена.*провер/);assert.equal(await row().locator('.hotel-room-price').isVisible(),false);assert.equal(await row().locator('.room-choice-selected').isVisible(),true);assert.equal(await page.locator('#hotel-detail-offers').textContent(),'Проверить тур');
    assert.equal(quoteCalls(),0,'room entry does not fetch or verify a price');assert.equal(flightCalls(),0,'room entry does not request flights');
    const selected=await capture('rooms');
    await page.locator('#hotel-detail-offers').click();await page.locator('#modal[open] #prototype-lead-form').waitFor();
@@ -1707,9 +1707,10 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional retained card draft');await page.locator('[name="consent"]').click();
    const manager=await capture('manager-contact'),beforeReturn=transport.calls.length;
    await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');
+   assert.equal(await page.locator('#hotel-detail-offers').textContent(),'Продолжить');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/Цена предложения.*перелёт уточняется/);const checkedRooms=await capture('checked-rooms');
    await row().locator('[data-action="hotel-flights"]').click();await row().locator('.hotel-flight-inline [name="flight-pair"]').first().waitFor();
    assert.equal(flightCalls(),1);assert.equal(quoteCalls(),1);assert.equal(await row().locator('[name="flight-pair"]:checked').count(),0);
-   await row().locator('[name="flight-pair"][value="1"]').click();assert.match(await page.locator('#hotel-detail-min').textContent(),/133\s*500/);
+   await row().locator('[name="flight-pair"][value="1"]').click();assert.match(await page.locator('#hotel-detail-min').textContent(),/133\s*500/);assert.equal(await row().locator('.hotel-room-price').isVisible(),false);const pairRooms=await capture('pair-rooms');
    await page.locator('#hotel-detail-offers').click();await page.locator('#modal[open] #prototype-lead-form').waitFor();
    assert.match(await amount(),/133\s*500/);assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(await page.locator('[name="comment"]').inputValue(),'Fictional retained card draft');assert.equal(await page.locator('[name="consent"]').isChecked(),false,'changed exact pair resets consent');
    const pairContact=await capture('pair-contact'),afterPair=transport.calls.length;
@@ -1720,7 +1721,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    assert.deepEqual(reopenCalls,[{url:base+'data/local-tv-catalog-read-v1.php',action:null,body:{},query:{'oldLocalHotelIds[]':'501'}}],'same card reopen only refreshes the existing LOCAL hotel presentation');
    assert.equal(quoteCalls(),1,'same card reopen reuses the current tour');assert.equal(flightCalls(),1,'same card reopen reuses the exact pair');assert.equal(afterPair,beforeReturn+1,'only the explicit optional flight request was added before reopen');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.equal(transport.calls.some(c=>String(c.action).startsWith('handoff_')),false,'TV does not borrow ANEX bot producer');
-   records.push({width,height,key,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),reopenCalls,sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
+   records.push({width,height,key,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,checkedRooms,pairRooms,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),reopenCalls,sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');

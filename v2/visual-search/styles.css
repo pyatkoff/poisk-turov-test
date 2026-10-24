@@ -696,7 +696,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .hotel-service-list li{overflow-wrap:anywhere}.hotel-room-meal-filter{display:grid;gap:7px;max-width:420px;font-size:14px;font-weight:600;margin:16px 0}
 .hotel-room-meal-filter select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #ccd5e9;border-radius:10px;background:white;color:var(--ink);font:inherit;font-weight:400}
 .hotel-room-count{color:var(--muted);font-size:13px;margin:0 0 14px}.hotel-room-meal strong{color:var(--ink);font-weight:600}.hotel-room-card .hotel-room-other-meals{font-size:12px}
-@media(max-width:760px){.hotel-section-nav{gap:6px}.hotel-section-nav button{min-width:0;padding:8px;white-space:normal}.hotel-service-list{grid-template-columns:minmax(0,1fr)}.hotel-room-meal-filter{max-width:none}.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.hotel-details-dialog #modal-footer .primary{width:100%;max-width:none}}
+@media(max-width:760px){.hotel-section-nav{gap:6px}.hotel-section-nav button{min-width:0;padding:8px;white-space:normal}.hotel-service-list{grid-template-columns:minmax(0,1fr)}.hotel-room-meal-filter{max-width:none}}
 
 /* v40: price confirmation and unknown services remain visible. */
 
@@ -1015,7 +1015,9 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 
 /* v61: hotel rooms retain screen space and a direct path to a sole offer. */
 #hotel-detail-price-status{display:block;font-size:12px;line-height:1.4;color:var(--muted);margin-top:3px}
-.hotel-details-dialog .modal-header h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hotel-details-dialog .modal-header h2{white-space:normal;overflow-wrap:anywhere}
+dialog.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:12px 24px}
+.room-choice-selected{font-size:13px;line-height:1.5;font-weight:600;color:var(--brand)}
 
 @media(max-width:760px){
  .hotel-details-dialog .modal-header{padding:10px 12px;gap:8px}
@@ -1024,11 +1026,6 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
  .hotel-details-dialog #modal-back:not([hidden]){grid-column:auto;width:44px;height:44px;padding:0;justify-content:center}
  .hotel-details-dialog #modal-back-label{display:none}
 
- dialog.hotel-details-dialog #modal-footer{grid-template-columns:minmax(0,1fr);gap:10px;padding:10px 14px max(12px,env(safe-area-inset-bottom));align-items:stretch}
- .hotel-details-dialog #modal-footer .footer-total{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:3px 10px}
- .hotel-details-dialog #modal-footer .footer-total small{grid-column:1/-1}
- .hotel-details-dialog #modal-footer .footer-total strong{font-size:23px;line-height:1.25;white-space:nowrap}
- .hotel-details-dialog #modal-footer .primary{font-size:14px;padding:10px;min-height:48px;line-height:1.4}
 }
 
 /* v64: prioritize the search and first hotel over prototype controls and excess chrome. */
@@ -1326,7 +1323,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .single-direct-offer .room-choice-label{display:none}
 
 .room-offer-choice{display:grid;grid-template-columns:minmax(0,1fr) 190px;align-items:center;gap:16px;padding:16px 18px;border-top:1px solid var(--line)}
-.room-offer-choice.selected{background:#f3f6ff;box-shadow:inset 3px 0 0 var(--brand)}
+.room-offer-choice.selected{grid-template-columns:minmax(0,1fr);background:#f3f6ff;box-shadow:inset 3px 0 0 var(--brand)}
 
 .room-offer-conditions{min-width:0;display:grid;gap:7px}
 .room-offer-meal{font-size:16px;line-height:1.45;overflow-wrap:anywhere}
