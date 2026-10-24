@@ -24,6 +24,9 @@ comparison is explicitly not an installed old-source baseline. All physical/nati
 supplier truth and delivery facts remain unmeasured. Final-head CI/rendered delta review,
 allowed release merge and separately exclusive stock publisher/readback are required;
 this source preparation is not installed UI progress or a new quality score.
+The existing source live-bridge consumer now scopes its explicit offer-row clicks
+to the open modal body; they no longer hit the same-key background result card.
+All original price, identity, denial, history, draft and call-count assertions remain.
 
 ---
 
