@@ -94,4 +94,3 @@ test('The real graph and existing action dispatcher connect the reviewed owners 
   assert.match(footer,/data-messenger-phone-submit hidden/);assert.match(footer,/window\.AnyTourPrototypeLead\.action\(\)/);
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});
-

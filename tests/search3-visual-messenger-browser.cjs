@@ -126,4 +126,3 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
  fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify({schema:1,compiled:!!process.env.SEARCH3_VISUAL_ASSET_ROOT,engine:'Chromium',source_sha:process.env.SEARCH3_SOURCE_SHA||null,asset_sha256:hashes,test_sha256:hash(__filename),records,transport:'fictional-intercepted-HTTP',supplier_HTTP:0,bot_HTTP:0,real_leads:0,installed:false,physical_device:false},null,2)+'\n');
  console.log('PASS compiled messenger430/1280-short: exact tour/explicit phone/same draft/pending intent/one create/intercepted navigation; supplier/bot/lead HTTP0');
 };
-

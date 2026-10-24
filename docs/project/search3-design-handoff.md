@@ -211,4 +211,3 @@ SEARCH-QUALITY-1 uses the existing12/11/5 rubric. Donor mockup and clickable sco
 retain their exact evidence; receiving source/CI/approval earns no points. The
 installed NEXT score remains separate and requires matched rendered/behavior
 acceptance after the exact publication; no invented row total or donor inheritance.
-
