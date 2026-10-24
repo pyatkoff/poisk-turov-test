@@ -281,7 +281,7 @@ TV_FLAG_LINE = b"\nif (!defined('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED')) define('A
 TV_FLAG_PHP = r'''
 declare(strict_types=1);error_reporting(0);ini_set('display_errors','0');
 function tfail(string $code):never{throw new RuntimeException($code);}
-function tneed(bool $ok):void{if(!$ok)tfail('tv_flag_config_shape');}
+function tneed(bool $ok,string $code='tv_flag_config_shape'):void{if(!$ok)tfail($code);}
 function tname(array $tokens,int &$i):string{
     $t=$tokens[$i++]??null;tneed(is_array($t)&&$t['id']===T_CONSTANT_ENCAPSED_STRING);
     $raw=$t['text'];$q=$raw[0]??'';
@@ -290,21 +290,22 @@ function tname(array $tokens,int &$i):string{
     return $name;
 }
 function tsymbol(array $tokens,int &$i,string $value):void{
-    tneed(($tokens[$i++]['text']??null)===$value);
+    tneed(($tokens[$i++]['text']??null)===$value,'tv_flag_syntax_shape');
 }
 function tword(array $tokens,int &$i,string $word):void{
-    $t=$tokens[$i++]??null;tneed(is_array($t)&&$t['id']===T_STRING&&strtolower($t['text'])===$word);
+    $t=$tokens[$i++]??null;tneed(is_array($t)&&$t['id']===T_STRING&&strtolower($t['text'])===$word,'tv_flag_statement_shape');
 }
 function tdefine(array $tokens,int &$i):string{
     tword($tokens,$i,'define');tsymbol($tokens,$i,'(');$name=tname($tokens,$i);tsymbol($tokens,$i,',');
     $v=$tokens[$i++]??null;
     tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
-        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))));
+        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
     tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');return $name;
 }
 try{
-    tneed(count($argv)===2&&function_exists('token_get_all'));
-    $raw=file_get_contents($argv[1]);tneed(is_string($raw)&&strlen($raw)>0&&strlen($raw)<=65536);
+    tneed(count($argv)===2,'tv_flag_arguments');
+    tneed(function_exists('token_get_all'),'tv_flag_tokenizer_unavailable');
+    $raw=file_get_contents($argv[1]);tneed(is_string($raw)&&strlen($raw)>0&&strlen($raw)<=65536,'tv_flag_config_read');
     $tokens=[];$offset=0;$insert=null;
     foreach(token_get_all($raw,TOKEN_PARSE) as $v){
         $id=is_array($v)?$v[0]:0;$text=is_array($v)?$v[1]:$v;$end=$offset+strlen($text);
@@ -333,11 +334,13 @@ try{
         if($name==='ANYTOUR_SEARCH3_HANDOFF_KEY_FILE')$pointer=true;
         ++$statements;
     }
-    tneed($pointer);
+    tneed($pointer,'tv_flag_pointer_missing');
     echo json_encode(['ok'=>true,'offset'=>$insert,'sha256'=>hash('sha256',$raw)]);
 }catch(Throwable $e){
-    $code=$e instanceof RuntimeException&&preg_match('/\Atv_flag_[a-z_]+\z/D',$e->getMessage())===1
-        ?$e->getMessage():'tv_flag_config_shape';
+    $allowed=['tv_flag_config_shape','tv_flag_syntax_shape','tv_flag_statement_shape','tv_flag_value_shape',
+        'tv_flag_arguments','tv_flag_tokenizer_unavailable','tv_flag_config_read','tv_flag_pointer_missing','tv_flag_already_defined'];
+    $code=$e instanceof ParseError?'tv_flag_php_syntax':
+        (($e instanceof RuntimeException&&in_array($e->getMessage(),$allowed,true))?$e->getMessage():'tv_flag_config_shape');
     echo json_encode(['ok'=>false,'code'=>$code]);
     exit(1);
 }
@@ -396,10 +399,20 @@ def tv_enable_config(op):
     tv_enable_preflight()
     config=runtime/'.anex-private.php';identity=tv_enable_config_identity(config);old=config.read_bytes()
     if tv_enable_config_identity(config)!=identity:fail('tv_enable_config_drift')
-    check=subprocess.run(['php','-r',TV_FLAG_PHP,str(config)],capture_output=True,text=True,timeout=20)
+    try:check=subprocess.run(['php','-r',TV_FLAG_PHP,str(config)],capture_output=True,timeout=20)
+    except subprocess.TimeoutExpired:fail('tv_enable_parser_timeout')
+    except OSError:fail('tv_enable_parser_unavailable')
+    if len(check.stdout)>1024:fail('tv_enable_parser_output')
     try:parsed=json.loads(check.stdout)
-    except Exception:fail('tv_enable_config_shape')
-    if check.returncode!=0 or parsed.get('ok') is not True:fail('tv_enable_config_shape')
+    except Exception:fail('tv_enable_parser_output')
+    if not isinstance(parsed,dict):fail('tv_enable_parser_output')
+    if check.returncode!=0 or parsed.get('ok') is not True:
+        codes={'tv_flag_config_shape':'tv_enable_config_shape','tv_flag_syntax_shape':'tv_enable_syntax_shape',
+            'tv_flag_statement_shape':'tv_enable_statement_shape','tv_flag_value_shape':'tv_enable_value_shape',
+            'tv_flag_arguments':'tv_enable_parser_arguments','tv_flag_tokenizer_unavailable':'tv_enable_tokenizer_unavailable',
+            'tv_flag_config_read':'tv_enable_config_read','tv_flag_pointer_missing':'tv_enable_pointer_missing',
+            'tv_flag_already_defined':'tv_enable_flag_already_defined','tv_flag_php_syntax':'tv_enable_php_syntax'}
+        fail(codes.get(parsed.get('code'),'tv_enable_parser_output') if isinstance(parsed.get('code'),str) else 'tv_enable_parser_output')
     offset=parsed.get('offset')
     if (type(offset) is not int or not 5<=offset<=len(old)
             or parsed.get('sha256')!=hashlib.sha256(old).hexdigest()):fail('tv_enable_config_shape')

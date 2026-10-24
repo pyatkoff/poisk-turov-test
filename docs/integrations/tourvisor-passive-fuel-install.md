@@ -237,3 +237,22 @@ installed+enabled contract and owns frontend/consumer acceptance. On a fresh
 browser it should initialize tv_token once before parallel TV/ANEX activity,
 so both use the existing shared private cookie. No UI or supplier series is part
 of this enablement packet; no new transport or receiver is introduced.
+
+The original enable attempt6389997818/run40136204936 is terminal UNKNOWN with
+tv_enable_config_shape (receipt6390032822). It rejected during static PHP
+validation before candidate/backup/write/readiness; no after-state was recorded.
+The receipt's supplier/DB counters remain literal unknown, not inferred zero.
+The operation is consumed: do not retry, rename, force the flag or add a privileged
+reader. Installation is accepted separately; enablement and SEARCH delivery are
+not confirmed. A source diagnostic correction does not authorize another runtime
+attempt or establish the historical concrete cause.
+
+Refusal diagnostics now propagate only fixed allowlisted categories through the
+existing receipt reason: unavailable tokenizer, PHP syntax, statement/value/syntax
+shape, missing pointer, flag already present, bounded read, parser invocation,
+timeout, unavailable binary or malformed/oversize/untrusted output. No config
+tokens, credential values, key references or stderr are exported. Config grammar
+and all write/rollback/no-replay guards are unchanged. Offline native fixtures
+exercise classifications and prove no config execution/write on these failures.
+Any later recovery needs its own concrete evidence/admission; this change provides
+no server readback mode and no replay permission for the UNKNOWN operation.
