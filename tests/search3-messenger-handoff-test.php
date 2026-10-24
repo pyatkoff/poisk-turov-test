@@ -300,11 +300,160 @@ foreach (['HTTP_HOST' => 'attacker.test', 'REQUEST_METHOD' => 'GET', 'HTTP_ORIGI
 }
 mh_check(!AnyTourSearch3MessengerHandoff::authorize($server, array_replace($request, ['csrf' => 'wrong']), $session), 'csrf mismatch rejected');
 
+// TV uses the SAME wire producer after an INTERNAL locked-server capture.
+// No HTTP capture action, browser DTO, supplier, PDO or receiver call is used.
+function mh_tv_fixture(string $choice='manager-deferred'): array
+{
+    $at=time()-3; $deadline=$at+900;
+    $pins=['generation'=>9,'search_ref'=>str_repeat('a',32),'offer_ref'=>'tourvisor:'.str_repeat('b',64),
+        'local_hotel_id'=>245,'choice_ref'=>$choice,'provider'=>'tourvisor'];
+    $selected=$choice!=='manager-deferred';
+    $terms=['source'=>'tourvisor','hotel'=>['uiId'=>245,'namespace'=>'search3-ui','name'=>'Synthetic TV hotel','resort'=>'Synthetic resort'],
+        'trip'=>['origin'=>'Москва','countryUiId'=>'4','departure'=>'2027-03-19','nights'=>7,'stayEnd'=>'2027-03-26',
+            'stayEndBasis'=>'shown-stay-end','adults'=>2,'childAges'=>[0,0,8]],
+        'stay'=>['room'=>'Premium garden','meal'=>'AI','placement'=>'DBL+3CHD','operator'=>'FUN&SUN'],
+        'flights'=>['state'=>$selected?'selected':'manager-deferred',
+            'outward'=>$selected?[['label'=>'Explicit TV outward TV101']]:[],
+            'inward'=>$selected?[['label'=>'Explicit TV inward TV102']]:[]],
+        'price'=>['amount'=>$selected?'207867.00':'200000.00','currency'=>'RUB','state'=>'checked',
+            'description'=>'Observed whole-party Tourvisor response; conditions remain unverified.',
+            'expiresAt'=>$deadline,'basis'=>$selected?'selected-pair':'shown-offer',
+            'finalPriceVerified'=>false,'authority'=>'browser-observation-only']];
+    $state=['tourvisor_context_generation'=>9,'search3_handoff_csrf'=>str_repeat('d',64)];
+    return [$pins,$terms,$state,$at,$deadline];
+}
+function mh_tv_capture(array $pins,array $terms,array &$state,int $at,int $deadline,?callable $save=null,?callable $clock=null): array
+{
+    return AnyTourTourvisorSelectedTourHandoff::capture($pins,$terms,$state,$at,$deadline,$at,
+        $save??static function(array &$unused):void {},$clock??static fn():int=>$at);
+}
+$tvBodies=[];
+foreach (['manager-deferred','tourvisor_pair:'.str_repeat('e',64)] as $tvChoice) {
+    [$tvPins,$tvTerms,$tvSession,$tvAt,$tvDeadline]=mh_tv_fixture($tvChoice);
+    $tvCapture=mh_tv_capture($tvPins,$tvTerms,$tvSession,$tvAt,$tvDeadline);
+    mh_check($tvCapture['status']==='ready','TV internal retained capture ready');
+    $tvRequest=['action'=>'handoff_freeze']+$tvPins+['csrf'=>$tvSession['search3_handoff_csrf']];
+    $tvPreview=mh_freeze($tvRequest,$tvSession,$tvAt);
+    $tvOp=$tvPreview['operation_id']; $tvWire=$tvSession['search3_messenger_handoffs'][$tvOp];
+    $tvBody=json_decode($tvWire['raw'],true,32,JSON_THROW_ON_ERROR);$tvBodies[]=$tvBody;
+    mh_check(['binding'=>$tvBody['binding'],'observation'=>$tvBody['observation']]===$tvCapture['record'],
+        'TV wire reuses sole canonical record exactly, no second projection');
+    mh_check($tvWire['record_sha256']===$tvCapture['record_sha256']
+        && $tvWire['provenance']['owner']==='tourvisor_handoff_records','TV record hash and owner preserved');
+    mh_check($tvPreview['observation']['trip']['childAges']===[0,0,8]
+        && $tvPreview['observation']['price']['amount']===$tvTerms['price']['amount']
+        && $tvPreview['observation']['capturedAt']===$tvAt*1000
+        && $tvPreview['observation']['price']['expiresAt']===$tvDeadline,'TV original ages/own whole price/time/deadline unchanged');
+    mh_check($tvPreview['observation']['price']['finalPriceVerified']===false
+        && $tvPreview['observation']['price']['authority']==='browser-observation-only','TV checked is never final verified');
+    mh_check($tvPreview['observation']['flights']===$tvTerms['flights'],'TV explicit deferred has empty legs, selected exact legs retained');
+    mh_check(mh_freeze(array_reverse($tvRequest,true),$tvSession,$tvAt+1)===$tvPreview,'TV reorder and repeat reuse original operation');
+    $tvSame=mh_tv_capture(array_reverse($tvPins,true),array_reverse($tvTerms,true),$tvSession,$tvAt,$tvDeadline);
+    mh_check($tvSame===$tvCapture,'TV server key ordering cannot mint a new record');
+    $tvRestored=unserialize(serialize($tvSession));
+    mh_check(mh_freeze($tvRequest,$tvRestored,$tvAt+2)===$tvPreview,'TV restart preserves frozen bytes');
+    $tvBefore=$tvSession; $tvChanged=$tvTerms;$tvChanged['price']['amount']='999999.00';
+    $tvHeld=mh_tv_capture($tvPins,$tvChanged,$tvSession,$tvAt,$tvDeadline);
+    mh_check($tvHeld['status']==='held' && $tvSession===$tvBefore,'TV changed terms cannot remint or overwrite old record');
+    $tvSigner=array_replace($signer,['not_before'=>$tvAt-1]);
+    $tvCalls=[];$tvTx=['action'=>'handoff_create','operation_id'=>$tvOp,'csrf'=>$tvSession['search3_handoff_csrf']];
+    $tvTransport=static function(string $url,string $raw,array $unused) use (&$tvCalls):array {
+        $body=json_decode($raw,true);$tvCalls[]=$body['action'];
+        return ['status'=>200,'body'=>json_encode(['ok'=>true,'state'=>'ready','request_hash'=>hash('sha256',$raw),
+            'links'=>['telegram'=>'https://t.me/example_bot?start=synthetic','max'=>'https://max.ru/example_bot?start=synthetic']])];
+    };
+    $tvReady=AnyTourSearch3MessengerHandoff::transact($tvTx,$tvSession,$tvAt,$tvSigner,
+        static function(array &$unused):void {},$tvTransport,static fn():int=>$tvAt);
+    mh_check($tvReady['state']==='ready' && $tvCalls===['create'],'TV uses same signed transport with no ANEX dependency');
+    $tvLost=$tvBefore; $tvActions=[];
+    $tvUnknownTransport=static function(string $url,string $raw,array $unused) use (&$tvActions):array {
+        $body=json_decode($raw,true);$tvActions[]=$body['action'];
+        if($body['action']==='create')throw new RuntimeException('private receiver timeout');
+        return ['status'=>200,'body'=>'{"ok":true,"state":"missing"}'];
+    };
+    $tvLostResult=AnyTourSearch3MessengerHandoff::transact($tvTx,$tvLost,$tvAt,$tvSigner,
+        static function(array &$unused):void {},$tvUnknownTransport,static fn():int=>$tvAt);
+    $tvMissingResult=AnyTourSearch3MessengerHandoff::transact($tvTx,$tvLost,$tvAt+1,$tvSigner,
+        static function(array &$unused):void {},$tvUnknownTransport,static fn():int=>$tvAt+1);
+    mh_check($tvLostResult['state']==='unknown' && $tvMissingResult['state']==='missing'
+        && $tvActions===['create','status'],'TV UNKNOWN create is status-only, never replay');
+    $tvLateWire=$tvBefore;$tvWireTimes=[$tvAt,$tvDeadline];$tvLateSent=0;
+    mh_error(static function()use($tvTx,&$tvLateWire,$tvAt,$tvSigner,&$tvWireTimes,&$tvLateSent):void {
+        AnyTourSearch3MessengerHandoff::transact($tvTx,$tvLateWire,$tvAt,$tvSigner,static function(array &$unused):void {},
+            static function()use(&$tvLateSent):array {++$tvLateSent;return [];},
+            static function()use(&$tvWireTimes):int {return array_shift($tvWireTimes);});
+    },'handoff_stale');
+    mh_check($tvLateSent===0 && $tvLateWire['search3_messenger_handoffs'][$tvOp]['state']==='unknown',
+        'TV expiry after durable wire checkpoint preserves UNKNOWN and sends nothing');
+    foreach (['missing','generation','bytes'] as $tvChange) {
+        $tvStale=$tvBefore;
+        if($tvChange==='missing')unset($tvStale['tourvisor_handoff_records']);
+        if($tvChange==='generation')$tvStale['tourvisor_context_generation']=10;
+        if($tvChange==='bytes'){ $tvKey=array_key_first($tvStale['tourvisor_handoff_records']);$tvStale['tourvisor_handoff_records'][$tvKey]['json'].=' '; }
+        $tvStaleCalls=0;
+        $tvRun=static function()use($tvTx,&$tvStale,$tvAt,$tvSigner,&$tvStaleCalls):void {
+            AnyTourSearch3MessengerHandoff::transact($tvTx,$tvStale,$tvAt,$tvSigner,static function(array &$unused):void {},
+                static function()use(&$tvStaleCalls):array {++$tvStaleCalls;return [];},static fn():int=>$tvAt);
+        };
+        if($tvChange==='bytes')mh_reject($tvRun,'record.integrity');
+        else mh_error($tvRun,'handoff_stale');
+        mh_check($tvStaleCalls===0,'TV stale/missing/tampered cannot reach transport');
+    }
+    mh_error(static function()use($tvRequest,$tvSession,$tvAt):void {$s=$tvSession;mh_freeze($tvRequest+['observation'=>[]],$s,$tvAt);},'invalid_request');
+    $tvEmpty=['tourvisor_context_generation'=>9];
+    mh_reject(static function()use($tvRequest,&$tvEmpty,$tvAt):void {mh_freeze($tvRequest,$tvEmpty,$tvAt);},'record.current_retained');
+}
+[$tvPins,$tvTerms,$tvBase,$tvAt,$tvDeadline]=mh_tv_fixture();
+$tvNoGeneration=['search3_handoff_csrf'=>str_repeat('d',64)];$tvNoGenerationBefore=$tvNoGeneration;
+$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvNoGeneration,$tvAt,$tvDeadline);
+mh_check($tvResult['status']==='held' && $tvNoGeneration===$tvNoGenerationBefore,'TV capture cannot establish its own current generation');
+foreach ([
+    static function(array &$t):void {$t['price']['state']='listing';},
+    static function(array &$t):void {$t['price']['amount']=null;},
+    static function(array &$t):void {$t['price']['finalPriceVerified']=true;},
+    static function(array &$t):void {$t['price']['expiresAt']++;},
+    static function(array &$t):void {$t['trip']['childAges']=[0,'0',8];},
+    static function(array &$t):void {$t['hotel']['uiId']=246;},
+    static function(array &$t):void {$t['stay']['room']='';},
+    static function(array &$t):void {$t['flights']['outward']=[['label'=>'invented default']];},
+    static function(array &$t):void {$t['source']='anex';},
+] as $tvMutate) {
+    $tvBad=$tvTerms;$tvMutate($tvBad);$tvState=$tvBase;
+    $tvResult=mh_tv_capture($tvPins,$tvBad,$tvState,$tvAt,$tvDeadline);
+    mh_check($tvResult['status']==='held' && $tvState===$tvBase,'invalid TV server terms held before mutation');
+}
+$tvClockState=$tvBase;
+$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvClockState,$tvAt,$tvDeadline,null,static fn():int=>$tvAt-1);
+mh_check($tvResult['status']==='held' && $tvClockState===$tvBase,'TV rollback clock rejected before capture');
+$tvExpired=$tvBase;
+$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvExpired,$tvAt,$tvDeadline,null,static fn():int=>$tvDeadline);
+mh_check($tvResult['status']==='held' && $tvExpired===$tvBase,'TV exact expiry boundary cannot capture');
+$tvUnknown=$tvBase;
+$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvUnknown,$tvAt,$tvDeadline,
+    static function(array &$unused):void {throw new RuntimeException('private save failure');});
+mh_check($tvResult['status']==='held' && $tvResult['missing'][0]['field']==='record.checkpoint_unknown','TV checkpoint failure seals unknown');
+$tvRetry=mh_tv_capture($tvPins,$tvTerms,$tvUnknown,$tvAt,$tvDeadline);
+mh_check($tvRetry['status']==='held','TV unknown capture cannot remint');
+$tvCorrupt=$tvBase;
+mh_tv_capture($tvPins,$tvTerms,$tvCorrupt,$tvAt,$tvDeadline);
+$tvKey=array_key_first($tvCorrupt['tourvisor_handoff_records']);$tvCorrupt['tourvisor_handoff_records'][$tvKey]=null;
+$tvBeforeCorrupt=$tvCorrupt;$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvCorrupt,$tvAt,$tvDeadline);
+mh_check($tvResult['status']==='held' && $tvCorrupt===$tvBeforeCorrupt,'TV corrupt occupied slot cannot remint');
+$tvLimit=$tvBase;$tvLimit['tourvisor_handoff_records']=array_fill(0,8,['status'=>'unknown']);
+$tvBeforeLimit=$tvLimit;$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvLimit,$tvAt,$tvDeadline);
+mh_check($tvResult['status']==='held' && $tvLimit===$tvBeforeLimit,'TV limit cannot evict UNKNOWN slots');
+$tvLate=$tvBase;$tvTimes=[$tvAt,$tvDeadline];
+$tvResult=mh_tv_capture($tvPins,$tvTerms,$tvLate,$tvAt,$tvDeadline,null,static function()use(&$tvTimes):int{return array_shift($tvTimes);});
+mh_check($tvResult['status']==='held','TV checkpoint crossing original expiry cannot expose ready record');
+
 // Actual accepted receiver code, pinned by CI; no SQL, provider or bot is invoked.
 $receiver = getenv('SEARCH3_RECEIVER_SOURCE');
 if (is_string($receiver) && $receiver !== '') {
     require_once $receiver . '/services/Search3TourHandoffSnapshot.php';
     require_once $receiver . '/services/Search3TourHandoffTrust.php';
+    foreach ($tvBodies as $tvBody) mh_check(Search3TourHandoffSnapshot::normalize(
+        ['binding'=>$tvBody['binding'],'observation'=>$tvBody['observation']]) !== null,
+        'actual frozen receiver accepts TV deferred and selected records unchanged');
     $trust = new ReflectionProperty(Search3TourHandoffTrust::class, 'keys');
     $trust->setValue(null, ['ephemeral-fixture' => ['producer' => 'search3', 'project' => 'anytour', 'not_before' => $now - 1,
         'not_after' => $now + 86400, 'public_key' => base64_encode($public)]]);
@@ -317,3 +466,4 @@ if (is_string($receiver) && $receiver !== '') {
     mh_check(!Search3TourHandoffTrust::verify($record['raw'] . ' ', $server, $now)['ok'], 'receiver rejects raw-byte tampering');
 }
 echo 'Search3 retained producer: ' . $GLOBALS['mh_checks'] . " checks PASS; external supplier/bot/SQL writes=0.\n";
+

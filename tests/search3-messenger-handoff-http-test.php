@@ -99,6 +99,15 @@ try {
     mh_check($bad['status'] === 422 && $bad['body']['field'] === 'search.current_context', 'stale version gives exact missing field');
     $bad = mh_http($path, $request + ['observation' => ['price' => 1]], $sid);
     mh_check($bad['status'] === 400, 'browser observation cannot be signed');
+    $tvRequest=array_replace($request,['provider'=>'tourvisor','offer_ref'=>'tourvisor:'.str_repeat('b',64),
+        'choice_ref'=>'manager-deferred']);
+    $tvHeld=mh_http($path,$tvRequest,$sid);
+    mh_check($tvHeld['status']===422 && ($tvHeld['body']['field']??null)==='record.current_retained',
+        'actual HTTP cannot mint a TV record from a browser selector');
+    $tvInjected=mh_http($path,$tvRequest+['observation'=>['price'=>1]],$sid);
+    mh_check($tvInjected['status']===400,'TV browser observation cannot become server capture');
+    $tvCapture=mh_http($path,array_replace($tvRequest,['action'=>'handoff_capture']),$sid);
+    mh_check($tvCapture['status']===400,'no public HTTP capture action exists');
     $quoteReceipt = mh_http($path . '?action=quote_receipt', null, $sid);
     mh_check($quoteReceipt['status'] === 200, 'existing readonly diagnostic endpoint remains available');
     echo 'Search3 producer HTTP: ' . ($GLOBALS['mh_checks'] ?? 0) . " checks PASS; loopback synthetic only, real provider/bot/SQL=0.\n";
@@ -111,3 +120,4 @@ try {
     foreach ($iterator as $file) { if ($file->isDir()) rmdir($file->getPathname()); else unlink($file->getPathname()); }
     rmdir($root);
 }
+
