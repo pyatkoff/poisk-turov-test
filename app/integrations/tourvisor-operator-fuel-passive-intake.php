@@ -125,13 +125,14 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         // distinct diagnostic envelope, never an empty population or pricing fact.
         if (($receipt['ok'] ?? false) !== true || $header === null) {
             $header = self::captureDiagnosticHeader(($receipt['ok'] ?? false) === true ? 'retained' : 'skipped',
-                ($receipt['ok'] ?? false) === true ? 'monitoring_summary_unavailable' : ($receipt['reason'] ?? ''), $now, $started);
+                ($receipt['ok'] ?? false) === true ? 'monitoring_summary_unavailable' : ($receipt['reason'] ?? ''), $now, $started,
+                ($receipt['reason'] ?? null) === 'tour_pair_missing' ? self::priorTourDiagnostic($directory, $tourId, $now) : null);
         }
         self::emitMonitoringHeader($header, $emitHeader);
         return $receipt;
     }
 
-    private static function captureDiagnosticHeader(string $outcome, string $code, DateTimeImmutable $now, int $started): ?string
+    private static function captureDiagnosticHeader(string $outcome, string $code, DateTimeImmutable $now, int $started, ?array $priorTour = null): ?string
     {
         try {
             if (!in_array($code, self::DIAGNOSTIC_CODES, true)
@@ -142,9 +143,47 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
                 'stage'=>'flights', 'outcome'=>$outcome, 'code'=>$code, 'as_of'=>$now->getTimestamp(),
                 'elapsed_ms'=>max(0, (int)ceil((hrtime(true) - $started) / 1000000)),
                 'complete_population'=>false, 'accuracy_evaluated'=>false, 'final_price_verified'=>false];
+            if ($code === 'tour_pair_missing' && $priorTour !== null) $summary['prior_tour'] = $priorTour;
             $encoded = rtrim(strtr(base64_encode(json_encode($summary, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
             return strlen($encoded) <= 2048 ? $encoded : null;
         } catch (Throwable $ignored) { return null; }
+    }
+
+    /** Last same-offer tour receipt is context, never the cause of a missing pair. */
+    private static function priorTourDiagnostic(string $directory, string $tourId, DateTimeImmutable $now): array
+    {
+        $unavailable = ['outcome' => 'unavailable'];
+        try {
+            $id = self::tourId($tourId);
+            $path = rtrim($directory, '/') . '/' . self::DIAGNOSTIC_PREFIX . 'tour-' . hash('sha256', $id) . '.json';
+            if (is_link($path) || !is_file($path)) return $unavailable;
+            $raw = @file_get_contents($path, false, null, 0, 2049);
+            if (!is_string($raw) || strlen($raw) < 2 || strlen($raw) > 2048) return $unavailable;
+            $value = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
+            $keys = ['schema_version', 'source', 'stage', 'outcome', 'code', 'observed_at', 'expires_at',
+                'elapsed_ms', 'offer_ref_digest', 'normalized_response_sha256', 'observation_count', 'rule_confirmed'];
+            if (!is_array($value) || array_is_list($value) || array_diff(array_keys($value), $keys)
+                || array_diff($keys, array_keys($value)) || $value['schema_version'] !== 1
+                || $value['source'] !== 'tourvisor-operator-fuel-passive-intake-v1' || $value['stage'] !== 'tour'
+                || $value['offer_ref_digest'] !== hash('sha256', 'tourvisor:tour:' . $id)
+                || !is_string($value['normalized_response_sha256'])
+                || preg_match('/\A[a-f0-9]{64}\z/D', $value['normalized_response_sha256']) !== 1
+                || !is_int($value['observed_at']) || !is_int($value['expires_at'])
+                || !is_int($value['elapsed_ms']) || $value['elapsed_ms'] < 0
+                || $value['observation_count'] !== null || $value['rule_confirmed'] !== null) return $unavailable;
+            $at = $now->setTimezone(new DateTimeZone('UTC'))->getTimestamp();
+            $age = $at - $value['observed_at'];
+            if ($age < 0 || $age >= self::PENDING_TTL || $value['expires_at'] <= $at
+                || $value['expires_at'] !== $value['observed_at'] + self::EVIDENCE_TTL) return $unavailable;
+            $allowed = match ($value['outcome']) {
+                'retained' => ['tour_retained'],
+                'skipped' => ['operator_not_target', 'offer_context_missing'],
+                'rejected' => array_merge(self::DIAGNOSTIC_CODES, ['unclassified_error']),
+                default => [],
+            };
+            if (!in_array($value['code'], $allowed, true)) return $unavailable;
+            return ['outcome' => $value['outcome'], 'code' => $value['code'], 'age_seconds' => $age];
+        } catch (Throwable $ignored) { return $unavailable; }
     }
 
     private static function emitMonitoringHeader(?string $value, ?callable $emitHeader): void
@@ -598,3 +637,4 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         return ['source'=>'tourvisor-operator-fuel-passive-intake-v1','ok'=>$ok,'reason'=>$reason] + $extra;
     }
 }
+
