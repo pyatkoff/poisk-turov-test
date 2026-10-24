@@ -166,4 +166,3 @@ tourvisor_autosave_results(91, 100, $resultResponse);
 check_true(count(AnyTourTourvisorOfferAutosaveV1::$calls) === 3, 'failed persistence must not create duplicate accepted calls');
 
 echo "TOURVISOR_API_AUTOSAVE_WIRING_INT_OK no_helper=1 helper_calls=3 response_transparent=1 supplier_http=0 db=0 ttl_arithmetic=0\n";
-

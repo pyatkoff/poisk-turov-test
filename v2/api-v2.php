@@ -433,4 +433,3 @@ switch ($action) {
     default:
         out(['ok' => false, 'error' => 'Unknown V2 action'], 404);
 }
-
