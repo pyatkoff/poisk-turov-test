@@ -812,4 +812,3 @@ require('./search3-visual-rating-render-inventory.cjs');
 
 // Run the approved whole form and exact-offer return against actual runtime scripts.
 require('./search3-visual-approved-interface.cjs');
-

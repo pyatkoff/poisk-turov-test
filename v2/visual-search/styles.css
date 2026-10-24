@@ -2729,4 +2729,3 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
 /* The supported retained-tour contact choice uses the existing button tokens. */
 .messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 12px}.messenger-methods .secondary{min-height:48px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:44px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
 @media(max-width:760px){.application-layout:has(.messenger-entry) .application-contact{order:-1}}
-

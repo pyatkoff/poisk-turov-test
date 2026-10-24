@@ -59,4 +59,3 @@ for(const [file,hash] of Object.entries(manifest.adaptedFiles))assert.equal(cryp
 assert.match(bootstrap,/prototype-search\/data\.js/);
 assert.match(bootstrap,/prototype-search\/calendar-exact-hotel-v1\.js/);
 console.log('PASS visual migration: preserved Site assets, explicit integration delta, separate live/offline entry graphs, noindex and cache binding');
-

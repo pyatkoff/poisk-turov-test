@@ -2411,4 +2411,3 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
-
