@@ -921,16 +921,20 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
  $$('.room-offer-choice').forEach(row=>{
   const active=row.dataset.offerKey===selected?.key;row.classList.toggle('selected',active);
   if(active)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
+  const label=row.querySelector('.room-choice-selected'),panel=row.querySelector('.hotel-room-price');
   const button=row.querySelector('[data-action="select-hotel-offer"]');if(!button)return;
-  button.classList.toggle('primary',!active);button.classList.toggle('secondary',active);button.setAttribute('aria-pressed',String(active));button.textContent=active?'Выбрано':'Выбрать';
+  const focused=button.ownerDocument?.activeElement===button;
+  if(active&&label&&button.parentElement!==label)label.append(button);
+  else if(!active&&panel&&button.parentElement!==panel)panel.insertBefore(button,panel.querySelector('.room-offer-price-status'));
+  if(label)label.hidden=!active;if(panel)panel.hidden=active;
+  if(focused&&button.ownerDocument.activeElement!==button)button.focus({preventScroll:true});
+  button.classList.toggle('primary',!active);button.classList.toggle('secondary',active);button.setAttribute('aria-pressed',String(active));button.textContent=active?'✓ Номер выбран':'Выбрать';
   syncHotelFlightSelection(row,active?selected:null,preserveFlights);
  });
  const total=$('#hotel-detail-min'),status=$('#hotel-detail-price-status'),button=$('#hotel-detail-offers');if(!total||!status||!button)return;
  if(selected){
-   const infantUnknown=selected.provider==='anex'&&selected.raw?.infantCharge?.status==='unknown';
-   total.textContent=money(selected.total);status.textContent=infantUnknown?priceStatus:`${selected.room==='По запросу'?'Номер по запросу':selected.room} · ${mealLabel(selected)} · ${dateText(selected.day)} · ${selected.operator}`;
-  button.disabled=false;button.dataset.action='continue-hotel-offer';button.dataset.key=selected.key;button.textContent=needsRefresh(selected)&&selected.provider!=='anex'?'Проверить условия':'К заявке';
-   if(!infantUnknown)status.textContent+=' · '+(selected.raw?.prototypeConditions?selectedPriceStatus(selected):priceStatus);
+  total.textContent=money(selected.total);status.textContent=selected.raw?.prototypeConditions?selectedPriceStatus(selected):priceStatus;
+  button.disabled=false;button.dataset.action='continue-hotel-offer';button.dataset.key=selected.key;button.textContent=needsRefresh(selected)&&selected.provider!=='anex'?'Проверить условия':data.amount(selected.tour?.price)&&!needsRefresh(selected)?'Продолжить':'Проверить тур';
   if(hotelOfferCheckActive(selected.key)){
    const current=selectedOffer,view=retainedProviderView(current);
    if(current.hotelFlightPreview){total.textContent=current.pricePending?'Цена уточняется':money(current.total);button.disabled=!!(current.loading||current.flightsLoading||current.pricePending||current.quoteError);status.textContent=current.pricePending?'Цена выбранной пары не передана. Выберите другую или оставьте рейсы менеджеру.':selectedPriceStatus(current);}
@@ -1899,7 +1903,7 @@ async function openHotelFlights(key){
  if(retained?.loading||retained?.flightsLoading||terminalOfferQuote(retained||listing))return;
  hotelDetailsView.checkKey=key;selectedOffer={...(retained||listing),hotelFlightPreview:true};
  const run=++selectionGeneration;
- if(selectedOffer.tour&&!selectedOffer.quoteError){if(selectedOffer.flightsLoaded&&selectedOffer.variants?.length){renderOfferProgress();return;}await loadRealFlights(run,{preserveChoice:true});return;}
+ if(selectedOffer.tour&&!selectedOffer.quoteError){if(selectedOffer.flightsLoaded&&selectedOffer.variants?.length&&!selectedOffer.flightsError){renderOfferProgress();return;}await loadRealFlights(run,{preserveChoice:true});return;}
  const initial=selectedOffer;selectedOffer={...initial,loading:true,quoteError:''};renderOfferProgress();
  await quoteSelectedOffer(initial,run,{chooseFlight:true,inlineFlights:true});
 }
