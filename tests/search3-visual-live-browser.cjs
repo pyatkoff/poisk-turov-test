@@ -10,7 +10,7 @@ const fixture=(...args)=>{
  return {...transport,handoffPreparation,json:async(url,options={})=>{
   const parsed=new URL(url),body=options.body?JSON.parse(options.body):{},action=parsed.searchParams.get('action')||body.action;
   if(String(action).startsWith('handoff_')){
-   assert(parsed.pathname.endsWith('/api-anex-search3-preview.php'));assert.equal(action,'handoff_token','telephone journeys never CREATE or freeze a bot handoff');assert.equal(options.body||'', '');
+   assert.equal(parsed.pathname,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');assert.equal(action,'handoff_token','telephone journeys never CREATE or freeze a bot handoff');assert.equal(options.body||'', '');
    handoffPreparation.push(action);return {ok:false,error:'signer_unavailable'};
   }
   return transport.json(url,options);
