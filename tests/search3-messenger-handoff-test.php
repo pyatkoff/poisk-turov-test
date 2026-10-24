@@ -460,7 +460,7 @@ $tvBeforeLarge=$tvLargeState;
 $tvTooLarge=mh_tv_capture($tvLargePins,$tvLargeTerms,$tvLargeState,$tvLargeAt,$tvLargeDeadline);
 mh_check($tvTooLarge['status']==='held' && $tvTooLarge['missing'][0]['field']==='record.receiver_size'
     && $tvLargeState===$tvBeforeLarge,'capture enforces receiver exact size before persistence');
-[$tvLargePins,$tvAllowedTerms,$tvCachedState,$tvLargeAt,$tvLargeDeadline]=mh_tv_fixture($tvLargeChoice);
+$tvAllowedTerms=$tvLargeTerms;$tvCachedState=$tvBeforeLarge;
 $tvAllowedLabel=str_repeat('😀',500).str_repeat('/',400);
 $tvAllowedTerms['flights']['outward']=array_fill(0,4,['label'=>$tvAllowedLabel]);
 $tvAllowedTerms['flights']['inward']=array_fill(0,4,['label'=>$tvAllowedLabel]);
