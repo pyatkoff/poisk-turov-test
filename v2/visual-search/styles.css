@@ -2705,7 +2705,7 @@ details.application-review .chosen-trip{display:none}
  .hotel-more .card-all-offers {flex:none;max-width:65%}
  html:not(.quality-text-200) .hotel-more {display:none}
  html:not(.quality-text-200) .hotel-more.has-variants {display:flex}
- html:not(.quality-text-200) .hotel-more .text-button {display:none}
+ html:not(.quality-text-200) .hotel-more .text-button:not(.card-all-offers) {display:none}
  html:not(.quality-text-200) .hotel-more .card-all-offers {flex:1;max-width:none;justify-content:center}
  .compact-search {position:sticky}
  .compact-search>.wrap {display:flex;flex-wrap:wrap;min-height:68px;gap:2px 10px;padding:4px 14px 5px}
@@ -2729,3 +2729,4 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
 /* The supported retained-tour contact choice uses the existing button tokens. */
 .messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 12px}.messenger-methods .secondary{min-height:48px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:44px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
 @media(max-width:760px){.application-layout:has(.messenger-entry) .application-contact{order:-1}}
+

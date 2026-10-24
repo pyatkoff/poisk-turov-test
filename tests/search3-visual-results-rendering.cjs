@@ -320,7 +320,8 @@ function cardRatingOwner(code){
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
- return {work,render};
+ ctx.offerCountText=n=>n+' тура';
+ return {work,render,card:row=>ctx.cardHTML(row)};
 }
 const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
 for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(currentCard.render(value),previousCard.render(value),'card rating markup '+String(value));
@@ -349,6 +350,32 @@ assert(source.includes('markup:cardHTML(item)'),'result rendering passes the com
 assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers,rating=null}){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
 console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
+
+// Site224 card entry: presentation must retain the representative exact key and
+// the separate list owner, without advertising alternatives after local filtering.
+{
+ const owner=cardRatingOwner(source),hotel={id:501,name:'Hotel <& family',resort:'Кемер',country:'4',stars:5,rating:4.5,photos:[],offers:[]};
+ for(const provider of ['tourvisor','anex','fixture']){
+  const first={key:provider+'%3Aexact-b',provider,total:125500,day:'2026-11-08',nights:7},other={key:provider+'%3Aexact-a',provider,total:119000,day:'2026-11-07',nights:7};
+  hotel.offers=[other,first,{key:'outside-current-filter',total:99000}];
+  const row={hotel,offers:[first,other],rating:4.5},before=JSON.stringify(row),html=owner.card(row);
+  const primary=html.match(/<button class="primary"[^>]*data-card-entry="true"[^>]*>[\s\S]*?<\/button>/)?.[0];assert(primary);
+  assert.match(primary,/data-action="offer"/,'card keeps the existing provider dispatch');
+  assert(primary.includes('data-key="'+first.key+'"'),'clicked representative key is preserved, not replaced by hotel minimum');
+  assert(primary.includes(provider==='fixture'?'Смотреть тур':'Номера и цены'),'label describes the actual existing route');
+  assert(primary.includes('125500 ₽')&&primary.includes('2026-11-08'),'price and dates belong to the same representative');
+  const more=html.match(/<div class="hotel-more has-variants">([\s\S]*?)<\/div>/)?.[1];assert(more);
+  assert.equal((more.match(/<button /g)||[]).length,1,'only the subordinate list action remains in the card footer');
+  assert.match(more,/class="text-button card-all-offers"/);assert.match(more,/data-action="all-offers" data-id="501"/);
+  assert.match(more,/Туры списком \(2\)/,'count refers to this filtered offer array, not all hotel records');
+  assert.equal((html.match(/data-action="hotel-details"/g)||[]).length,1,'hotel-name entry preserves information without a duplicate action');
+  assert(html.includes('aria-label="Об отеле: Hotel &lt;&amp; family"'));
+  assert.equal(JSON.stringify(row),before,'rendering cannot change offer identity, order, amounts or hotel inventory');
+  const single=owner.card({hotel,offers:[first],rating:4.5});
+  assert(!single.includes('card-all-offers')&&!single.includes('hotel-more'),'one current offer has no phantom list action or empty footer');
+ }
+ console.log('PASS Site224 card entry: live rooms/legacy distinction, representative key/price/date, independent filtered list, single-choice and unchanged inventory');
+}
 
 // Compare the actual summary owner with uncached full replacement. The pinned
 // markup digest comes from the pre-O34 owner; DOM identity/work is checked apart
@@ -785,3 +812,4 @@ require('./search3-visual-rating-render-inventory.cjs');
 
 // Run the approved whole form and exact-offer return against actual runtime scripts.
 require('./search3-visual-approved-interface.cjs');
+
