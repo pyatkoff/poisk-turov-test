@@ -2,7 +2,33 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
-const {fixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+// Telephone journeys retain their supplier-only request ledger. The dedicated
+// messenger browser case separately proves successful freeze/CREATE/navigation.
+const fixture=(...args)=>{
+ const transport=createFixture(...args),handoffPreparation=[];
+ return {...transport,handoffPreparation,json:async(url,options={})=>{
+  const parsed=new URL(url),body=options.body?JSON.parse(options.body):{},action=parsed.searchParams.get('action')||body.action;
+  if(String(action).startsWith('handoff_')){
+   assert.equal(parsed.pathname,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');assert.equal(action,'handoff_token','telephone journeys never CREATE or freeze a bot handoff');assert.equal(options.body||'', '');
+   handoffPreparation.push(action);return {ok:false,error:'signer_unavailable'};
+  }
+  return transport.json(url,options);
+ }};
+};
+// The approved NEXT entry offers bots first for an eligible exact ANEX receipt.
+// Existing telephone-path checks choose that optional method before checking the form.
+const chooseTelephoneIfOffered=async page=>{
+ await page.locator('#modal[open] #prototype-lead-form').waitFor({state:'attached'});
+ const phone=page.locator('[data-action="messenger-phone"]');
+ if(await phone.count()){
+  assert.equal(await phone.isVisible(),true,'optional telephone action is available');
+  assert.equal(await page.locator('#prototype-lead-form').isVisible(),false,'telephone is not mandatory before choosing a method');
+  assert.equal(await page.locator('[data-action="messenger-open"][data-platform="telegram"]').isVisible(),true);
+  assert.equal(await page.locator('[data-action="messenger-open"][data-platform="max"]').isVisible(),true);
+  await phone.click();
+ }
+};
 const mobileCardPriceLayout=async(page,width,evidence)=>{
  if(width!==390){
   const boxes=await page.locator('.hotel-card').first().evaluate(el=>({photo:el.querySelector('.hotel-image-wrap').getBoundingClientRect().width,thumbs:[...el.querySelectorAll('.card-thumb')].map(t=>t.getBoundingClientRect().width)}));
@@ -332,7 +358,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
     await page.locator(radio(2)).press('ArrowUp');await page.locator('[data-action="'+app+'"]').waitFor();await price(1);await pairClarity(1,true,[1,2]);assert.equal(transport.calls.length,beforeComparison,'passive comparisons and cached selection spend no request');
    }
    const comparisonRequests=transport.calls.length-beforeComparison;assert.equal(comparisonRequests,0);
-   await page.locator('[data-action="'+app+'"]').click();await page.locator('#prototype-lead-form').waitFor();await price(1);assert.match(await page.locator('#modal-body').textContent(),new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
+   await page.locator('[data-action="'+app+'"]').click();await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();await price(1);assert.match(await page.locator('#modal-body').textContent(),new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
    const applicationSummary=await providerApplicationFlightSummary(page,width,provider==='anex'?[`TEST ANEX PACKAGE 1 OUT · Москва SVO → Анталья AYT · ${day} 10:00`,`TEST ANEX PACKAGE 1 BACK · Анталья AYT → Москва SVO · ${back} 14:00`]:['TEST SAMO 1','TEST SAMO 2'],evidence,provider+'-reprice');
    const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom};}));
    assert.equal(fields.length,2);if(width<=760)assert(fields[1].y>=fields[0].bottom-1,'contacts stack on mobile');else assert(fields[1].x>=fields[0].right-1,'contacts keep separate columns on desktop');
@@ -1059,11 +1085,18 @@ const forwardProviderApplication=async(page,transport,room,price)=>{
  const scroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});
  await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
  await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#prototype-lead-form'));
+ const methods=page.locator('#messenger-methods'),restoredMethods=await methods.count()>0&&await methods.isVisible();
+ if(restoredMethods){
+  const geometry=await methods.evaluate(el=>{const body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),rect=n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};return {body:rect(body),limit:Math.min(body.getBoundingClientRect().bottom,footer.getBoundingClientRect().top),scroll:body.scrollTop,heading:rect(el.querySelector('h3')),buttons:[...el.querySelectorAll('.messenger-methods button')].map(rect)};});
+  assert.equal(geometry.scroll,0,'Forward restores the new messenger choice at its top');assert.equal(geometry.buttons.length,3);
+  for(const box of [geometry.heading,...geometry.buttons])assert(box.top>=geometry.body.top-1&&box.bottom<=geometry.limit+1&&box.left>=geometry.body.left-1&&box.right<=geometry.body.right+1,'Forward shows the complete heading and three methods');
+  await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();
+ }
  assert((await page.locator('#modal-body').textContent()).includes(room));assert((await page.locator('#modal-footer').textContent()).replace(/\s/g,'').includes(price));
  assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
  assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null);
  const position=await page.locator('#modal-body').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight}));
- assert.equal(position.top,Math.min(scroll,position.max));assert.equal(transport.calls.length,before,'provider application Forward is passive');
+ if(!restoredMethods)assert.equal(position.top,Math.min(scroll,position.max));assert.equal(transport.calls.length,before,'provider application Forward is passive');
  assert.deepEqual(await page.evaluate(()=>Object.keys(history.state['anytour.prototype.v18.ui.v1']).sort()),['key','scroll','type']);
 };
 const continueToFlights=async page=>{
@@ -1398,8 +1431,8 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
    assert.equal(closed.overflow,false);assert(closed.footer.bottom<=height+1);assert(closed.first.top<closed.footer.top,'first canonical option reachable before fixed footer');await page.screenshot({path:path.join(evidence,`anex-compact-closed-${width}x${height}.png`)});
    await page.locator('.anex-more-options>summary').click();await radios.nth(39).check();const exact=await radios.nth(39).getAttribute('value');assert.equal(await radios.nth(39).isChecked(),true);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,0);await page.locator('[data-action="anex-package-calculate"]').click();await calculating;
    assert.equal(await radios.nth(39).isChecked(),true);assert.equal(await radios.nth(39).isDisabled(),true);const retained=await radios.nth(39).evaluate(input=>{const box=input.getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect(),footer=document.querySelector('#modal-footer').getBoundingClientRect();return{top:box.top,bottom:box.bottom,bodyTop:body.top,limit:Math.min(body.bottom,footer.top),scroll:document.querySelector('#modal-body').scrollTop};});assert(retained.scroll>0&&retained.top>=retained.bodyTop-1&&retained.bottom<=retained.limit+1,'chosen pair40 stays visible during legacy pending at '+width+'x'+height);assert.equal(await page.locator('.anex-more-options').evaluate(el=>el.open),true);assert.equal(await page.locator('[data-action="anex-application-preview"]').count(),0);await page.screenshot({path:path.join(evidence,`anex-compact-last-pending-${width}x${height}.png`)});release();await page.locator('[data-action="anex-application-preview"]').waitFor();
-   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 OUT/);assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 BACK/);assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/135678,9/);await page.locator('[data-action="anex-application-preview"]').click();await page.locator('[name="phone"]').fill('+79990000000');await page.locator('[name="consent"]').check();await contactLayout(page,width,'ANEX compact lastpair');await page.screenshot({path:path.join(evidence,`anex-compact-contact-${width}x${height}.png`)});
-   const before=transport.calls.length;await page.locator('#modal-back').click();assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 OUT/);await page.locator('[data-action="anex-application-preview"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'+79990000000');assert.equal(await page.locator('[name="consent"]').isChecked(),false);await page.locator('[data-action="close-modal"]').click();await page.goForward();await page.locator('#prototype-lead-form').waitFor();assert.equal(await page.locator('[name="phone"]').inputValue(),'+79990000000');assert.equal(transport.calls.length,before,'last-pair Back/reopen/Forward supplier-free');
+   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 OUT/);assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 BACK/);assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/135678,9/);await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('[name="phone"]').fill('+79990000000');await page.locator('[name="consent"]').check();await contactLayout(page,width,'ANEX compact lastpair');await page.screenshot({path:path.join(evidence,`anex-compact-contact-${width}x${height}.png`)});
+   const before=transport.calls.length;await page.locator('#modal-back').click();assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 40 OUT/);await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);assert.equal(await page.locator('[name="phone"]').inputValue(),'+79990000000');assert.equal(await page.locator('[name="consent"]').isChecked(),false);await page.locator('[data-action="close-modal"]').click();await page.goForward();await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();assert.equal(await page.locator('[name="phone"]').inputValue(),'+79990000000');assert.equal(transport.calls.length,before,'last-pair Back/reopen/Forward supplier-free');
    assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,1);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,exact);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   }finally{release?.();await context.close();}
  }
@@ -1456,11 +1489,11 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/157594/);assert.match(await page.locator('#modal-body').textContent(),/Цена изменилась после проверки/);
    assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 2 OUT/);
    assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,choice);
-   await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#prototype-lead-form').waitFor();
+   await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();
    assert.match(await page.locator('.application-choice').textContent(),/ANEX CONCRETE/);assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/157594/);
    await page.locator('[name="phone"]').fill('+7 000 000-00-00');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
    await page.screenshot({path:path.join(evidence,`infant-inline-quote-contact-${width}.png`)});
-   const before=transport.calls.length;await page.locator('#modal-back').click();await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#prototype-lead-form').waitFor();
+   const before=transport.calls.length;await page.locator('#modal-back').click();await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();
    assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 000 000-00-00');assert.equal(await page.locator('[name="consent"]').isChecked(),false);assert.equal(transport.calls.length,before,'Back/recontinue retains the same full quote and draft without new requests');
    assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert(!transport.calls.some(c=>/lead|booking|payment/.test(c.url)));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -1633,6 +1666,9 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
+   if(process.argv.includes('--messenger-only')){
+    await require('./search3-visual-messenger-browser.cjs')({browser,origin,base,evidence});return;
+   }
    await require('./search3-visual-hotel-journey.cjs')();
    await inlineContactFlightReturn(browser,origin,base,evidence);
    await inlineHotelContactJourney(browser,origin,base,evidence);
@@ -1941,7 +1977,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
   await page.locator('#anex-flight-inventory').scrollIntoViewIfNeeded();
   assert.equal(await page.locator('#anex-flight-inventory').evaluate(el=>el.scrollWidth>el.clientWidth),false,'ANEX flight facts fit the target viewport');
   await page.screenshot({path:path.join(evidence,`anex-flights-${width}.png`)});
-  const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
+  const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);
   assert((await page.locator('#modal-footer').textContent()).includes('Расчётная стоимость'));assert((await page.locator('#modal-body').textContent()).includes('Расчётная стоимость требует подтверждения оператором'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
@@ -1956,8 +1992,8 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
   await retainedAnex.waitFor({state:'visible'});
   await retainedAnex.click();assert.equal(await page.locator('#modal-title').textContent(),'Доплаты ANEX рассчитаны');
   assert.match((await page.locator('#modal-body').textContent()).replace(/\s/g,''),/123000/);
-  await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#modal-back').click();
-  await page.locator('[data-action="anex-application-preview"]').click();assert.equal(transport.calls.length,callsBeforeAnexApplication);
+  await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('#modal-back').click();
+  await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);assert.equal(transport.calls.length,callsBeforeAnexApplication);
   await page.screenshot({path:path.join(evidence,`anex-return-${width}.png`)});
   await page.locator('#modal-body [data-action="all-offers"]').click();
   await retainedAnex.waitFor({state:'visible'});
@@ -1975,7 +2011,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/135678,9/);
   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 2 OUT/);
   await page.screenshot({path:path.join(evidence,`anex-package-verified-${width}.png`)});
-  await page.locator('[data-action="anex-application-preview"]').click();await page.locator('[name="consent"]').check();
+  await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('[name="consent"]').check();
   await providerApplicationFlightSummary(page,width,[`TEST ANEX PACKAGE 2 OUT · Москва SVO → Анталья AYT · ${day} 10:00`,`TEST ANEX PACKAGE 2 BACK · Анталья AYT → Москва SVO · ${back} 14:00`],evidence,'anex-legacy');
   await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');
@@ -2234,7 +2270,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 1 OUT/);
   assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,beforeSoleStart+1);
   await page.screenshot({path:path.join(evidence,`anex-sole-pair-verified-${width}.png`)});
-  await page.locator('[data-action="anex-application-preview"]').click();await contactLayout(page,width,'ANEX');
+  await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await contactLayout(page,width,'ANEX');
   assert.equal(await page.locator('[name="consent"]').isChecked(),false);assert.match(await page.locator('.application-choice').textContent(),/ANEX CONCRETE/);
   await page.screenshot({path:path.join(evidence,`anex-direct-application-${width}.png`)});
   await page.locator('#modal-back').click();assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,beforeSoleCalc+1,'application Back never recalculates');

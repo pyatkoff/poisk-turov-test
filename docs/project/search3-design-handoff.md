@@ -1,3 +1,51 @@
+## Approved Site218 messenger transfer — 24 October 2026
+
+Owner explicitly answered «да, переноси» to the whole-version transfer question for
+PUBLIC Site218/source `1ed2e9afbdc4ee0e67edeb0abd1c1a64117dcc38`;
+[approval and same-candidate continuation6382211969](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6382211969).
+Same PR4845, original NEXT only. The existing live index marks its canonical config
+script with `data-search3-messenger="enabled"`; config requires BOTH this marker
+and the exact original NEXT visual-search path. Without the marker, on another
+preview/production path, or in the offline graph, activation stays OFF.
+Only the already-reviewed verified ANEX exact-pair contact branch is affected;
+TV/deferred/listing retain their ordinary contact owner. No server, price, key,
+lead sender or global default is changed.
+
+Receiver1095 installed terminal6376953496 and producer installed terminal6377026599
+were consumed by SEARCH receiving6377507292. They are not installation blockers
+and must not be replayed. FPM signing and actual connected/native/Manager2 success
+remain separate unproved facts. No customer/native send is authorized by this UI
+approval. The existing compiled messenger journey now uses the actual entry flag;
+its synthetic config enabling override is removed and config bytes join provenance.
+Final-head focused/full/compiled/security gates, independent bounded activation
+review, allowed release merge and separately exclusive stock NEXT publication,
+readback and affected installed acceptance remain required. Nothing in this
+source checkpoint claims publication, physical evidence or a quality increase.
+
+## Search3 messenger consumer — disabled source candidate, 24 October 2026
+
+Same consumer claim [6375866103](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6375866103), brief observed execution outage/narrowing6375899721 and recovered scope6375928177. Base release911e124e51eea89b21cd0d937a12a8499a30d72b / installed NEXT4b5 remains. Reviewed context/selector/flow sourceedb78bb is incorporated into this one candidate; existing receiver1095/public956d and installer4842 remain with their current owner.
+
+### Implemented source boundary
+
+The existing `AnyTourPrototypeData` owner exports `messengerHandoff(action, fields)`. It reuses the canonical fixed same-origin ANEX endpoint resolver, allows only token/freeze/create/status/revoke and exact accepted fields, validates identity/ref/token formats before I/O, and never accepts browser price/observation/destination/signing fields. Token is GET; other operations are JSON POST. Credentials stay same-origin, redirects are errors, referrer is suppressed, private no-store semantics and a local15s deadline apply. Unknown/failed response has one attempt and a fixed public code, never automatic retry/Find/quote/supplier work. This adds no parallel transport or state owner.
+
+The actual existing `app.js` provider application contact view consumes the reviewed context/flow. It offers Telegram, MAX and explicit optional phone only for the current verified ANEX selected-pair receipt; unsupported/deferred/listing paths retain their old contact owner. Contact entry freezes for canonical review without CREATE. A later explicit bot click creates once or checks the original UNKNOWN operation. Before navigation it checks the active modal, unchanged intent, exact current snapshot and platform link. Switching to phone and back or closing/changing conditions prevents a delayed navigation. The phone form and submit remain hidden until explicit choice; the same form nodes/draft and canonical lead owner survive method changes. The public server observation must match the shown hotel/trip/ordered ages/room/meal/price/flight labels before a bot can be enabled; no browser observation is promoted to server authority.
+
+The live `index.php` graph loads the two reviewed modules after current data/flight presentation owners. Existing component tokens/styles are reused; a scoped mobile rule places the new methods before the long review. The eligible verified ANEX quote says «Продолжить» and its quote/contact step says «Связь», so that bot choice does not promise an immediate application form. Legacy/default labels remain for unsupported branches. No fixture transport, native sender, backend helper/API/key/config/schema/lead mechanism/Metrica or supplier arithmetic is changed.
+
+### Explicit activation and evidence limit
+
+**Activation defaults OFF.** The new view requires `V2_CONFIG.search3MessengerEnabled === true`; no config change or enabled runtime is made by this candidate. This presentation flag is not a trust/security boundary. Only the retained-server producer and existing native receiver establish their respective facts/identity. Normal current unsupported routes and lead handling remain usable. No enabled NEXT/Sites publication or working native path is claimed.
+
+Local actual-source checks PASS:27 context +15 flow groups (rerun because their loading/application owner changed),9 new dispatcher groups and10 new UI-function groups; changed JS syntax passes. These unit UI tests use actual source functions with handcrafted DOM nodes and intercepted navigation. They are NOT browser frames, a full real DOM journey, installed PHP/HTTP or native/physical acceptance. A separate bounded430/1280-short browser journey now uses the existing full browser server and exact compiled graph, fictional intercepted API responses and intercepted external navigation. It captures choices/explicit phone/return/pending-intent frames and actual form identity; its rendered result is pending normal current-head CI and inspection. No local browser execution or installed server is claimed. Original source/flow evidence and finite negative controls remain in their existing prep receipts, without a second supplier/receiver audit.
+
+The existing focused workflow runs the new tests and tracks both module paths. Existing required full/compiled/visual/security rules remain unchanged. Actual166cd compiled frames exposed a short-desktop phone/back defect: retained body scroll127 clipped the method heading. The existing method-change owner now resets its body scroll on returning to bots while retaining form nodes/draft/intent; the bounded browser check requires the complete heading at scroll0. Final changed-source CI/frames remain pending. Independent limited source/frame review, actual430/1280 acceptance and exact server installation receipts are required before enabling the flag or publishing a changed contact view. Other sizes/keyboard/physical remain under existing owner limits. No rubric score changes, new roadmap, automation or extra publisher.
+
+Next same owner: finish this coherent source/PR checkpoint and consume existing receiver+installer receipts. Then validate and enable this supported invocation boundary through the normal final-source/compiled/visual/stock NEXT sequence. ANEX selected-pair-only is not whole Search3/multi-source business completion; native sender/Manager2 visibility needs its actual receiver-owned receipt.
+
+---
+
 # Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
 ## Approved whole Site209 hotel-to-contact transfer — 22 October 2026

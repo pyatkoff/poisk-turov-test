@@ -1497,6 +1497,49 @@
       limit:'Лимит проверки доплат ANEX временно исчерпан.',failed:'ANEX не смог уточнить обязательные доплаты.',
       invalid:'ANEX не вернул применимый расчёт обязательных доплат.'}
   });
+  // Fixed same-origin retained-tour API. Independent from supplier verification.
+  async function messengerHandoff(action,fields={}){
+    const shapes={handoff_token:[],handoff_freeze:['generation','search_ref','offer_ref','local_hotel_id','choice_ref','csrf'],
+      handoff_create:['operation_id','csrf'],handoff_status:['operation_id','csrf'],handoff_revoke:['operation_id','csrf']};
+    const denied=code=>Object.assign(new Error('Не удалось подготовить переход в бот.'),{code});
+    const expected=typeof action==='string'&&Object.hasOwn(shapes,action)?shapes[action]:null;
+    if(!expected||!fields||typeof fields!=='object'||Array.isArray(fields)
+      ||Object.keys(fields).length!==expected.length||expected.some(key=>!Object.hasOwn(fields,key)))throw denied('invalid_request');
+    if(action!=='handoff_token'&&!(typeof fields.csrf==='string'&&/^[a-f0-9]{64}$/.test(fields.csrf)))throw denied('invalid_request');
+    if(action==='handoff_freeze'){
+      if(!Number.isSafeInteger(fields.generation)||fields.generation<1||fields.generation>2147483647
+        ||!Number.isSafeInteger(fields.local_hotel_id)||fields.local_hotel_id<1||fields.local_hotel_id>2147483647
+        ||typeof fields.search_ref!=='string'||!/^[a-f0-9]{32}$/.test(fields.search_ref)
+        ||typeof fields.offer_ref!=='string'||!/^anex_online:[a-f0-9]{64}$/.test(fields.offer_ref)
+        ||typeof fields.choice_ref!=='string'||!/^anex_quote:[a-f0-9]{64}$/.test(fields.choice_ref))throw denied('invalid_request');
+    }else if(action!=='handoff_token'&&(typeof fields.operation_id!=='string'||!/^[a-f0-9]{32}$/.test(fields.operation_id)))throw denied('invalid_request');
+    const url=nativeEndpoint(root.V2_CONFIG?.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url||url.username||url.password)throw denied('handoff_unavailable');
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+    try{
+      const token=action==='handoff_token',options={method:token?'GET':'POST',credentials:'same-origin',mode:'same-origin',
+        cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal,headers:{Accept:'application/json'}};
+      if(token)url.search=new URLSearchParams({action}).toString();
+      else{options.headers['Content-Type']='application/json';options.headers['X-Requested-With']='AnyTourSearch3';options.body=JSON.stringify({action,...fields});}
+      const response=await fetch(url.href,options),raw=await response.text();
+      if(controller.signal.aborted||new TextEncoder().encode(raw).length>32768)throw denied('handoff_unavailable');
+      let payload;try{payload=JSON.parse(raw);}catch{throw denied('handoff_unavailable');}
+      if(!response.ok||payload?.ok!==true){
+        const safe=new Set(['forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing']);
+        throw denied(safe.has(payload?.error)?payload.error:'handoff_unavailable');
+      }
+      if(token){
+        if(typeof payload.csrf!=='string'||!/^[a-f0-9]{64}$/.test(payload.csrf))throw denied('handoff_unavailable');
+        return Object.freeze({ok:true,csrf:payload.csrf});
+      }
+      if(!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw denied('handoff_unavailable');
+      return {ok:true,data:payload.data};
+    }catch(error){
+      if(controller.signal.aborted)throw denied('handoff_unknown');
+      if(error?.code&&['invalid_request','forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing','handoff_unavailable'].includes(error.code))throw error;
+      throw denied('handoff_unknown');
+    }finally{clearTimeout(timeout);}
+  }
   async function verifyAnexFollowUp(o,action){
     if(activeVerification?.quoteMutation)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
     const operation=anexFollowUps[action],identity=anexConcreteKey(o);
@@ -2083,5 +2126,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

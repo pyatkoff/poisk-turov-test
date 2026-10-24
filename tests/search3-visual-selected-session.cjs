@@ -38,6 +38,15 @@ module.exports=async function({browser,origin,base,evidence}){
   const application=provider==='anex'?'anex-application-preview':'andromeda-application-preview';
   const oldPrice=mode==='editing'?'101000':provider==='anex'?'135678,9':'125500',contacts=mode!=='verified'&&mode!=='editing';
   const calls=()=>transport.calls.length;
+  const telephone=async()=>{
+   await page.locator('#prototype-lead-form').waitFor({state:'attached'});
+   const action=page.locator('[data-action="messenger-phone"]');
+   if(await action.count()){
+    assert.equal(await action.isVisible(),true);assert.equal(await page.locator('#prototype-lead-form').isVisible(),false,'telephone remains an explicit option');
+    assert.equal(await page.locator('[data-action="messenger-open"][data-platform="telegram"]').isVisible(),true);assert.equal(await page.locator('[data-action="messenger-open"][data-platform="max"]').isVisible(),true);
+    await action.click();
+   }
+  };
   let receiptDeadline=null,expiryClock=null;
   const advancePastReceipt=async()=>{
    assert(Number.isSafeInteger(receiptDeadline),'the fictional verified receipt supplies its exact expiry');
@@ -61,6 +70,13 @@ module.exports=async function({browser,origin,base,evidence}){
      await route.continue();return;
     }
     try{
+     const body=request.postData()?JSON.parse(request.postData()):{},action=url.searchParams.get('action')||body.action;
+     if(String(action).startsWith('handoff_')){
+      assert.equal(url.origin,origin);assert.equal(url.pathname,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');assert.equal(action,'handoff_token');assert.equal(request.method(),'GET');assert.equal(request.postData(),null);
+      // These retained telephone/expiry cases model preparation unavailable;
+      // successful freeze/CREATE remains in the dedicated messenger journey.
+      await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:false,error:'signer_unavailable'})});return;
+     }
      const value=await transport.json(request.url(),{body:request.postData()});
      if(value.data?.final_price_verified===true&&Number.isSafeInteger(value.data.expires_at))receiptDeadline=value.data.expires_at*1000;
      if(mode==='return'&&url.pathname==='/api-v2.php'&&url.searchParams.get('action')==='search_results'){
@@ -128,7 +144,7 @@ module.exports=async function({browser,origin,base,evidence}){
      else assert.match(await page.locator('#andromeda-flight-price-status').textContent(),/Подтверждённая/);
     }
     if(contacts){
-     await page.locator('[data-action="'+application+'"]').click();
+     await page.locator('[data-action="'+application+'"]').click();await telephone();
      for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))await page.locator('[name="'+name+'"]').fill(value);
      await page.locator('[name="consent"]').check();
      if(mode==='return'){
@@ -146,7 +162,7 @@ module.exports=async function({browser,origin,base,evidence}){
       else{assert(flowDelta>0&&!returnState.row.chosen&&restored.row.chosen,'only the newly chosen row badge may require a scroll correction');assert(Math.abs(rowDelta-flowDelta)<=1&&returnState.row.departureTrack===restored.row.departureTrack&&restored.row.tracks.length===returnState.row.tracks.length&&restored.row.tracks.every((height,index)=>index===restored.row.departureTrack||Math.abs(height-returnState.row.tracks[index])<=1)&&Math.abs(flowDelta-restored.row.tracks[restored.row.departureTrack]+returnState.row.tracks[returnState.row.departureTrack])<=1,'scroll correction equals exactly the selected badge line footprint');assert(Math.abs(restored.scroll-expectedScroll)<=1,'same-hotel return permits only the measured selected-badge layout correction');}
       assert.equal(calls(),before,'application return uses retained offers');
       await page.screenshot({path:path.join(evidence,'selected-session-return-'+width+'.png')});
-      await page.locator('#modal-back').click();await page.locator('#prototype-lead-form').waitFor();
+      await page.locator('#modal-back').click();await telephone();await page.locator('#prototype-lead-form').waitFor();
       assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');
      }
      if(width===390&&mode==='application'){

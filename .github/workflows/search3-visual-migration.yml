@@ -14,6 +14,10 @@ on:
       - 'v2/search3-canonical-profiles-v1.js'
       - 'v2/search3-local-db-provider-v1.js'
       - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/messenger-context-v1.js'
+      - 'v2/prototype-search/messenger-flow-v1.js'
+      - 'tests/search3-messenger-context.cjs'
+      - 'tests/search3-messenger-flow.cjs'
       - 'v2/prototype-search/calendar-exact-hotel-v1.js'
       - 'v2/prototype-search/source-receipt-v1.js'
       - 'v2/prototype-search/search-lifecycle-v1.js'
@@ -47,6 +51,10 @@ jobs:
       - name: Verify affected presentation owners and CI restoration
         run: |
           export NODE_PATH="$RUNNER_TEMP/facet-tools/node_modules"
+          node tests/search3-messenger-context.cjs
+          node tests/search3-messenger-flow.cjs
+          node tests/search3-prototype-messenger-handoff.cjs
+          node tests/search3-visual-messenger-entry.cjs
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-formatting.cjs
@@ -82,6 +90,20 @@ jobs:
           cp -a v2 "$RUNNER_TEMP/visual-compiled"
           node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
           node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Affected messenger flow on the exact compiled graph
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled
+        run: node tests/search3-visual-live-browser.cjs --messenger-only
+      - name: Retain affected messenger frames
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-messenger-${{ github.event.pull_request.head.sha }}
+          path: visual-live-evidence/messenger-entry/
+          compression-level: 0
+          if-no-files-found: error
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"

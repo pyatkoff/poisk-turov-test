@@ -19,9 +19,10 @@ if (!$offline) {
         '../prototype-search/calendar-exact-hotel-v1.js',
         '../prototype-search/source-receipt-v1.js', '../prototype-search/search-lifecycle-v1.js',
         '../prototype-search/lead.js', '../prototype-search/hotel-popularity-v1.js',
-        './live-bridge.js', './flight-picker-v18.js', './filter-panel-v1.js', './app.js'
+        './live-bridge.js', './flight-picker-v18.js', '../prototype-search/messenger-context-v1.js',
+        '../prototype-search/messenger-flow-v1.js', './filter-panel-v1.js', './app.js'
     ];
-    $graph = implode("\n  ", array_map(fn($src) => '<script src="' . $src . '"' . ($src === '../prototype-search/config.js' ? ' data-local-tv-catalog="enabled"' : '') . ' defer></script>', $scripts));
+    $graph = implode("\n  ", array_map(fn($src) => '<script src="' . $src . '"' . ($src === '../prototype-search/config.js' ? ' data-local-tv-catalog="enabled" data-search3-messenger="enabled"' : '') . ' defer></script>', $scripts));
     $html = preg_replace('/<script src="\.\/fixture-data\.js" defer><\/script>.*?<script src="\.\/app\.js" defer><\/script>/s', $graph, $html);
     $html = str_replace('Прототип · цены требуют проверки', 'Версия для проверки · живой поиск', $html);
     $html = str_replace('Сохранённая выдача и демонстрационные сценарии. Живой поиск ещё не подключён. Заявки и оплата отключены.',

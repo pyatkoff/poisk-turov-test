@@ -20,9 +20,10 @@ function observe(source,s){
  const record=(name,...args)=>trace.push([name,...args.map(normalize),{modal:ctx?.modalType,selected:ctx?.selectedOffer?.key,phase:ctx?.dateDraft?.phase,month:ctx?.calendarMonth}]);
  const call=(name,fn)=>(...args)=>{record(name,...args);return fn?.(...args);};
  function node(key){
+  if(key==='#messenger-methods'&&!s.messengerMethods)return null;
   if(s.noNode&&(key==='#date-selection-price'||key==='.calendar-context'))return null;
   if(nodes.has(key))return nodes.get(key);
-  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:true,offsetHeight:80,dataset:{room:'r1'},style:{removeProperty:()=>{},setProperty:call('style:'+key)},
+  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:key==='#messenger-methods'?false:true,offsetHeight:80,dataset:{room:'r1'},style:{removeProperty:()=>{},setProperty:call('style:'+key)},
    classList:{contains:()=>false,toggle:()=>{}},getBoundingClientRect:()=>({top:0,bottom:0}),querySelector:()=>null,closest:()=>null,
    scrollIntoView:call('scrollIntoView:'+key),setAttribute:call('attribute:'+key)},
    {set:(t,k,v)=>{record('write:'+key,k,v);t[k]=v;return true;}});
@@ -80,6 +81,10 @@ const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stri
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after passive route/calendar observations');
 if(!process.argv.includes('--capture'))assert.equal(digest,'161e34c0b2119a96a31279c66959d93399a3bcbd4dcc329afef061c58e50a514','approved calendar and retained provider context observations');
 assert.equal(crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,203))).digest('hex'),'351941150be5e80e8a32a115c77132f8abb8563acf191ed81e99d66d4ce316cb','unchanged b74ac0 provider-view history records');
+const messengerScenario={kind:'restore',type:'anex-application',viewType:'anex-quote',verified:true,messengerMethods:true};
+const messengerRestore=observe(source,messengerScenario),scrollOf=result=>result.dom.find(([key])=>key==='#modal-body')[1].scrollTop;
+assert.equal(scrollOf(messengerRestore),0,'Forward opens the actually rendered messenger chooser at its top');
+assert.notEqual(scrollOf(observe(source.replace("if(methods&&!methods.hidden)$('#modal-body').scrollTop=0;","if(methods&&!methods.hidden)$('#modal-body').scrollTop=83;"),messengerScenario)),0,'old telephone scroll into the chooser is detected');
 const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
 assert(changed(source.replace('view.offer.raw===o.raw','true')),'retained raw identity mutation detected');
 assert(changed(source.replace("modalType==='andromeda-flights'&&!view.pending","modalType==='andromeda-flights'")),'pending history choice mutation detected');
