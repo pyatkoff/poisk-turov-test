@@ -10,7 +10,7 @@ const waitFor=(promise,label)=>new Promise((resolve,reject)=>{const timer=setTim
 module.exports=async function messengerJourney({browser,origin,base,evidence}){
  const output=path.join(evidence,'messenger-entry');fs.mkdirSync(output,{recursive:true});
  const assetRoot=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2'));
- const files=['visual-search/app.js','visual-search/styles.css','visual-search/index.php','prototype-search/data.js','prototype-search/messenger-context-v1.js','prototype-search/messenger-flow-v1.js'];
+ const files=['visual-search/app.js','visual-search/styles.css','visual-search/index.php','prototype-search/config.js','prototype-search/data.js','prototype-search/messenger-context-v1.js','prototype-search/messenger-flow-v1.js'];
  const hashes=Object.fromEntries(files.map(file=>[file,hash(path.join(assetRoot,file))]));
  const records=[];
  for(const width of [430,1280]){
@@ -51,9 +51,6 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
       await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;
      }
      if(url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){
-      if(url.pathname.endsWith('/prototype-search/config.js')){
-       const response=await route.fetch();await route.fulfill({response,body:(await response.text())+'\nwindow.V2_CONFIG.search3MessengerEnabled=true;\n'});return;
-      }
       await route.continue();return;
      }
      const body=request.postData()?JSON.parse(request.postData()):{},action=url.searchParams.get('action')||body.action;
@@ -85,6 +82,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
     }catch(error){forbidden.push(error.message);await route.abort();}
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+   await page.waitForFunction(()=>!!window.V2_CONFIG);assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3MessengerEnabled),true,'actual NEXT entry enables the flag without a test override');
    await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();
    await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
    await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
@@ -128,3 +126,4 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
  fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify({schema:1,compiled:!!process.env.SEARCH3_VISUAL_ASSET_ROOT,engine:'Chromium',source_sha:process.env.SEARCH3_SOURCE_SHA||null,asset_sha256:hashes,test_sha256:hash(__filename),records,transport:'fictional-intercepted-HTTP',supplier_HTTP:0,bot_HTTP:0,real_leads:0,installed:false,physical_device:false},null,2)+'\n');
  console.log('PASS compiled messenger430/1280-short: exact tour/explicit phone/same draft/pending intent/one create/intercepted navigation; supplier/bot/lead HTTP0');
 };
+

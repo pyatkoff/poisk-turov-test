@@ -1,3 +1,27 @@
+## Approved Site218 messenger transfer — 24 October 2026
+
+Owner explicitly answered «да, переноси» to the whole-version transfer question for
+PUBLIC Site218/source `1ed2e9afbdc4ee0e67edeb0abd1c1a64117dcc38`;
+[approval and same-candidate continuation6382211969](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6382211969).
+Same PR4845, original NEXT only. The existing live index marks its canonical config
+script with `data-search3-messenger="enabled"`; config requires BOTH this marker
+and the exact original NEXT visual-search path. Without the marker, on another
+preview/production path, or in the offline graph, activation stays OFF.
+Only the already-reviewed verified ANEX exact-pair contact branch is affected;
+TV/deferred/listing retain their ordinary contact owner. No server, price, key,
+lead sender or global default is changed.
+
+Receiver1095 installed terminal6376953496 and producer installed terminal6377026599
+were consumed by SEARCH receiving6377507292. They are not installation blockers
+and must not be replayed. FPM signing and actual connected/native/Manager2 success
+remain separate unproved facts. No customer/native send is authorized by this UI
+approval. The existing compiled messenger journey now uses the actual entry flag;
+its synthetic config enabling override is removed and config bytes join provenance.
+Final-head focused/full/compiled/security gates, independent bounded activation
+review, allowed release merge and separately exclusive stock NEXT publication,
+readback and affected installed acceptance remain required. Nothing in this
+source checkpoint claims publication, physical evidence or a quality increase.
+
 ## Search3 messenger consumer — disabled source candidate, 24 October 2026
 
 Same consumer claim [6375866103](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6375866103), brief observed execution outage/narrowing6375899721 and recovered scope6375928177. Base release911e124e51eea89b21cd0d937a12a8499a30d72b / installed NEXT4b5 remains. Reviewed context/selector/flow sourceedb78bb is incorporated into this one candidate; existing receiver1095/public956d and installer4842 remain with their current owner.
@@ -187,3 +211,4 @@ SEARCH-QUALITY-1 uses the existing12/11/5 rubric. Donor mockup and clickable sco
 retain their exact evidence; receiving source/CI/approval earns no points. The
 installed NEXT score remains separate and requires matched rendered/behavior
 acceptance after the exact publication; no invented row total or donor inheritance.
+

@@ -29,6 +29,25 @@ function setup(route){
   return {ctx,window,data,input,calls,navigation,buttons,submit,phoneInput,nodes,scope,modal,body,retained,test:ctx.test,settled:()=>spin(()=>buttons.every(b=>!b.disabled))};
 }
 const tests=[];const test=(name,fn)=>tests.push({name,fn});
+test('Actual config enables only the explicitly marked original NEXT live entry',async()=>{
+  const config=fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/config.js'),'utf8');
+  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/index.php'),'utf8');
+  const attrs=index.match(/data-local-tv-catalog="enabled"[^']*/)?.[0]||'';
+  assert.match(attrs,/data-search3-messenger="enabled"/,'the real config script owns the NEXT opt-in');
+  const marked={search3Messenger:'enabled',localTvCatalog:'enabled'};
+  function read(pathname,dataset,search=''){
+    const window={location:{pathname,search},document:dataset===null?{currentScript:null}:{currentScript:{dataset}}};
+    vm.runInNewContext(config,{window});return window.V2_CONFIG;
+  }
+  assert.equal(read('/_preview/search3-next-candidate/visual-search/',marked).search3MessengerEnabled,true);
+  for(const pathname of ['/poisk-turov/','/_preview/search3-design-v2-candidate/visual-search/','/_preview/search3-local-candidate/visual-search/','/_preview/search3-next-candidate/prototype-search/','/_preview/search3-next-candidate/visual-search-fake/']){
+    assert.equal(read(pathname,marked).search3MessengerEnabled,false,pathname);
+  }
+  for(const dataset of [{},{search3Messenger:'true'},{search3Messenger:'disabled'},null]){
+    assert.equal(read('/_preview/search3-next-candidate/visual-search/',dataset,'?search3MessengerEnabled=true').search3MessengerEnabled,false);
+  }
+  assert.equal(read('/_preview/search3-local-candidate/prototype-search/',marked).localTvCatalogEnabled,true,'existing catalogue opt-in is preserved');
+});
 test('Activation defaults off and unsupported receipts retain the existing phone owner',async()=>{
   const x=setup();delete x.window.V2_CONFIG.search3MessengerEnabled;assert.equal(x.test.available(x.input.application),false);assert.equal(x.test.markup(x.input.application),x.window.AnyTourPrototypeLead.markup());
   x.window.V2_CONFIG.search3MessengerEnabled=true;assert.equal(x.test.available({...x.input.application,finalPriceVerified:false}),false);assert.equal(x.calls.length,0);
@@ -75,3 +94,4 @@ test('The real graph and existing action dispatcher connect the reviewed owners 
   assert.match(footer,/data-messenger-phone-submit hidden/);assert.match(footer,/window\.AnyTourPrototypeLead\.action\(\)/);
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});
+
