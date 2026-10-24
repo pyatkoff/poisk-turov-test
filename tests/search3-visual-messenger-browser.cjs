@@ -19,7 +19,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
   const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);
   page.on('pageerror',error=>errors.push(error.message));
   const csrf='a'.repeat(64),operation='f'.repeat(32),links={telegram:'https://t.me/Any_tour_bot?start=search3_fixture_only',max:'https://max.ru/id9704048781_bot?start=search3_fixture_only'};
-  let selected,selector,releaseCreate,createStarted;
+  let selected,selector,releaseCreate,createStarted,observation;
   const createGate=new Promise(resolve=>releaseCreate=resolve),creating=new Promise(resolve=>createStarted=resolve);
   const capture=async(stage,{methods=false}={})=>{
    const geometry=await page.locator('#modal').evaluate(modal=>{
@@ -65,8 +65,8 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
        const quoted=transport.calls.find(call=>call.action==='quote_calculate').body;
        selector={generation:quoted.generation,search_ref:quoted.search_ref,offer_ref:quoted.offer_ref,local_hotel_id:quoted.local_hotel_id,choice_ref:quoted.choice_ref};
        assert.deepEqual(body,{action,...selector,csrf},'only exact retained identity pins enter the dispatcher');
-       // Independently projected fictional server facts, never a DOM snapshot.
-       const observation={schema:1,kind:'search3_browser_observation',capturedAt:Date.now(),source:'anex',hotel:{uiId:profile.id,namespace:'search3-ui',name:profile.name,resort:'Белек'},
+       // One retained fictional server observation per operation, never a DOM snapshot.
+       observation=observation||{schema:1,kind:'search3_browser_observation',capturedAt:Date.now(),source:'anex',hotel:{uiId:profile.id,namespace:'search3-ui',name:profile.name,resort:'Белек'},
         trip:{origin:'Москва',departure:day,nights:7,stayEnd:back,stayEndBasis:'shown-stay-end',adults:2,childAges:[]},stay:{room:'ANEX CONCRETE',meal:'Всё включено',placement:'',operator:''},
         flights:{state:'selected',outward:[selected.choice.legs[0]],inward:[selected.choice.legs[1]]},
         price:{amount:selected.price.amount,currency:'RUB',state:'checked',basis:'selected-pair',description:'Цена с выбранными рейсами',expiresAt:selected.expires_at,finalPriceVerified:false,authority:'browser-observation-only'}};
@@ -123,7 +123,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    assert.equal(transport.calls.filter(call=>call.action==='quote_calculate').length,1,'Forward never requotes the selected tour');
    await Promise.all([page.waitForURL(links.max),page.locator('[data-action="messenger-open"][data-platform="max"]').click()]);
    assert.equal(await page.locator('h1').textContent(),'Fictional navigation intercepted');assert.deepEqual(navigations,[links.max]);
-   assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze','handoff_create'],'explicit MAX reuses the ready operation without a second CREATE');
+   assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze','handoff_create','handoff_freeze'],'Forward refreezes the same retained observation; explicit MAX never repeats CREATE');
    assert.equal(transport.calls.filter(call=>call.action==='quote_calculate').length,1);assert(!transport.calls.some(call=>/lead|booking|payment/.test(call.url)));
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    records.push({width,height,selector,amount:selected.price.amount,phoneChoiceOnly:true,sameFormNode:true,draftRetained:true,cancelledPendingNavigation:true,historyForwardMethods:true,priorPhoneScroll,createCalls:1,externalNavigationIntercepted:navigations.length,shots});
