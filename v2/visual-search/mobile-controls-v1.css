@@ -257,13 +257,12 @@
     line-height:1.5;
   }
 
-  .hotel-details-dialog .room-offer-choice {gap:12px;padding:16px}
+  .hotel-details-dialog .room-offer-choice {gap:8px;padding:10px 12px}
 
   .hotel-details-dialog .room-offer-conditions {
-    gap:8px;
+    gap:4px;
   }
 .hotel-details-dialog .room-choice-facts > div {
-    grid-template-columns:64px minmax(0,1fr);
     align-items:baseline;
     gap:8px;
   }

@@ -7,11 +7,16 @@ assert.equal(manifest.approvedPresentation.sourceSha,'bf2f8f9b9108f36823c47457b0
 assert.equal(manifest.approvedPresentationHistory[0].sourceSha,'05051662c25cf8258991475e2e7536a12f7248d4','prior approved source retained');
 assert.equal(manifest.approvedPresentation.site,209);
 assert.equal(manifest.approvedPresentationHistory.find(value=>value.site===203).sourceSha,'8c826b44bce5713adc04b5d06db19c4f6f3d67cd','approved203 retained as history');
-const roomChoiceApproval=manifest.approvedPresentationHistory.at(-1);
+const roomChoiceApproval=manifest.approvedPresentationHistory.find(value=>value.site===220);
 assert.equal(roomChoiceApproval.site,220);assert.equal(roomChoiceApproval.sourceSha,'2fbfc781dd18961f714aad74b7a50ba47e1be1a7');
 assert.equal(roomChoiceApproval.nativeVersion,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_74e68d6cde688191a64fd8e8e9045db4');
 assert.equal(roomChoiceApproval.projectId,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a');
 assert.equal(roomChoiceApproval.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6386195417');
+const roomDensityApproval=manifest.approvedPresentationHistory.at(-1);
+assert.equal(roomDensityApproval.site,222);assert.equal(roomDensityApproval.sourceSha,'788e610e70b665fd413080d4df7eb7c62fd2d93d');
+assert.equal(roomDensityApproval.nativeVersion,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_d43ae600d6808191999155d510e1342c');
+assert.equal(roomDensityApproval.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6389631995');
+assert.equal(roomDensityApproval.projectId,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a');
 assert(manifest.approvedPresentationHistory.some(value=>value.sourceSha==='8eff868acadbc81044595c044faf605b2881c1da'),'approved198 retained as history');
 assert(manifest.approvedPresentationHistory.some(value=>value.sourceSha==='dee9043bfce695de275223c417902f393f6c9114'),'approved185 retained as history');
 assert.equal(manifest.approvedPresentation.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6347757208');

@@ -1,3 +1,25 @@
+## Approved Site222 room-density transfer — 24 October 2026
+
+Direct owner «дальше» after the shown exact candidate and explicit transfer gate:
+[approval + receiver claim6389631995](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6389631995).
+PUBLIC same project, source788e610e70b665fd413080d4df7eb7c62fd2d93d,
+saved appgver_d43ae600d6808191999155d510e1342c, successful deployment6add154f.
+Independent bounded donor source/screenshot review accepted the composition;
+the receiver replaces the existing facts-grid rule with wrapping flex and removes
+the now-inert mobile grid column declaration instead of copying a stacked override.
+Existing row/header spacing is reduced; values, prices, status,44/48px actions,
+selected-node identity, footer, all handlers and provider/lead owners are unchanged.
+Donor card-entry consolidation is not copied into provider routes by this CSS delta.
+Receiver base3279/installedc41; original NEXT only. No whole-search score is raised.
+
+Required: all existing exact-head CI and final compiled430/1280/short720 room/contact
+frames, bounded source/actual-frame review, release-only merge, separate exclusive
+stock NEXT-only publisher of the exact artifact, readback and affected installed
+snapshot inspection. Donor demo bounds do not certify NEXT/native/physical/current
+supplier/TV messenger delivery. INT gateway retains its own installation/activation.
+
+---
+
 ## Approved Site220 room-choice transfer — 24 October 2026
 
 Owner's direct «Давай дальше» follows the shown exact PUBLIC Site220 and its
