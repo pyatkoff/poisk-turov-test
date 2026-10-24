@@ -151,3 +151,46 @@ Public index test bytes stay a synthetic HOME fingerprint injection, with the re
 production expectation asserted separately. No provider/custody/session/log read.
 Source/CI/review/main merge, actual one-time installation and natural diagnostics
 remain separate; no new Find or consumed-case replay to fill evidence.
+
+## Private TV session gateway source4855 — installation only
+
+The accepted supplier/session source is FEATURE f4d4dcae0c09b92a7e4024fc202ea3e23d7822db
+(PR4855 / exact reviewed e32f5dd). The existing signing/producer module adds the
+fixed install-tv-session-gateway profile, requiring that source and an operation
+under int-anex-tv-session-gateway-install-. This is a different private file
+version, not replay of the old consumed signing/producer/diagnostic installs.
+All three historical signing/producer rendered REMOTE programs retain SHA256
+7586c11adb456016f0a975a0b1b88e340b94e538dc75c70e1f4f5c155d2f4b9e.
+
+The stock install_anex_preview installs exactly six private targets: the five
+fixed candidate files (existing producer, new TV canonical record, shared
+interactive client, TV gateway, existing private API) plus the unchanged initial
+week dependency. The private endpoint is replaced last. Two fixed predecessors
+and three explicit absences are checked; all three existing ANEX dependency
+hashes are pinned. Source hashes cannot be supplied or overridden by a caller.
+The same checks run before stock planning and again immediately before replacement.
+Existing private backup, staged PHP lint, readback, rollback, operation reservation,
+no-replay, single writer and SSH concurrency remain in force.
+
+Protected public state includes root index80e993e8, root api-v2.php90ddd430, and
+three explicitly ABSENT v2 index/API/lead paths. A symlink or nonregular file is
+never treated as absence. This profile neither installs the source root API
+extraction nor modifies public root, other previews, catalog data, configuration,
+cookie scope or signing custody. Typed public maps must be equal before/after.
+The exact completion accepts only changed5/created3/files6, the pinned endpoint
+and unchanged dependency, valid manifest digest and zero supplier/DB/booking/lead.
+A new mode cannot fall through to supplier collectors or accept a generic receipt.
+
+No TV flag is enabled and no signing activation/provisioning, key readback,
+supplier query, CREATE/customer send or SEARCH UI change is part of this profile.
+An installed default-off backend is distinct from enablement, the consumer
+handoff and a single real whole-party scenario. The code/CI/main merge prepares
+the guarded packet; it does not itself issue a server command or authorize
+activation. The current source-only authority and separate runtime admission
+remain explicit.
+
+Native tests use an isolated temporary HOME and the same existing module/suite:
+actual pinned f4d source in CI, exact target counts/order, predecessor and source
+drift, symlink-vs-absence, prewrite race, rollback/removal, immutable operation,
+strict completion and three legacy REMOTE digests. No server/custody/supplier
+audit or live case is repeated to fill an evidence row.
