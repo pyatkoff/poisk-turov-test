@@ -921,10 +921,14 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
  $$('.room-offer-choice').forEach(row=>{
   const active=row.dataset.offerKey===selected?.key;row.classList.toggle('selected',active);
   if(active)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
-  const label=row.querySelector('.room-choice-selected');if(label)label.hidden=!active;
-  const panel=row.querySelector('.hotel-room-price');if(panel)panel.hidden=active;
+  const label=row.querySelector('.room-choice-selected'),panel=row.querySelector('.hotel-room-price');
   const button=row.querySelector('[data-action="select-hotel-offer"]');if(!button)return;
-  button.classList.toggle('primary',!active);button.classList.toggle('secondary',active);button.setAttribute('aria-pressed',String(active));button.textContent=active?'Выбрано':'Выбрать';
+  const focused=button.ownerDocument?.activeElement===button;
+  if(active&&label&&button.parentElement!==label)label.append(button);
+  else if(!active&&panel&&button.parentElement!==panel)panel.insertBefore(button,panel.querySelector('.room-offer-price-status'));
+  if(label)label.hidden=!active;if(panel)panel.hidden=active;
+  if(focused&&button.ownerDocument.activeElement!==button)button.focus({preventScroll:true});
+  button.classList.toggle('primary',!active);button.classList.toggle('secondary',active);button.setAttribute('aria-pressed',String(active));button.textContent=active?'✓ Номер выбран':'Выбрать';
   syncHotelFlightSelection(row,active?selected:null,preserveFlights);
  });
  const total=$('#hotel-detail-min'),status=$('#hotel-detail-price-status'),button=$('#hotel-detail-offers');if(!total||!status||!button)return;

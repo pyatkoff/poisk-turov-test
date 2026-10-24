@@ -1018,6 +1018,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .hotel-details-dialog .modal-header h2{white-space:normal;overflow-wrap:anywhere}
 dialog.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:12px 24px}
 .room-choice-selected{font-size:13px;line-height:1.5;font-weight:600;color:var(--brand)}
+.room-choice-selected>button{padding:0;min-height:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left}
 
 @media(max-width:760px){
  .hotel-details-dialog .modal-header{padding:10px 12px;gap:8px}

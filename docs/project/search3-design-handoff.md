@@ -9,8 +9,9 @@ Donor evidence-only64d2 remains frozen; this is the same product package, no new
 Receiver base release2b32735b / installed98ad6e00, ORIGINAL NEXT only.
 
 The existing lazy hotel-details module keeps canonical hotel/room/meal/date/operator
-facts and its detail action (now labelled «Подробности тура»). The selected row marks
-«Номер выбран» and leaves its current whole-group amount/qualification in the shared
+facts and its detail action (now labelled «Подробности тура»). The same exact room
+toggle moves into the selected label slot, preserving its identity and ordinary Back
+anchor while looking like approved «Номер выбран»; there is no cloned action. The selected row leaves its current whole-group amount/qualification in the shared
 footer; alternative rows keep comparable prices and their selection actions. Full
 hotel names wrap in the same header. The existing footer rules are replaced, rather
 than stacked: amount/status beside the action at430, with more space for room content.
