@@ -5,6 +5,12 @@ on:
     paths:
       - 'app/integrations/search3-messenger-handoff.php'
       - 'app/integrations/tourvisor-selected-tour-handoff.php'
+      - 'app/integrations/tourvisor-interactive-client.php'
+      - 'app/integrations/tourvisor-preview-gateway.php'
+      - 'v2/api-v2.php'
+      - 'tests/tourvisor-preview-gateway-test.php'
+      - 'tests/tourvisor-api-autosave-wiring-int-test.php'
+      - 'docs/project/search3-production-import.json'
       - 'app/integrations/anex-package-quote-handoff.php'
       - 'app/integrations/anex-package-quote-runtime.php'
       - 'v2/api-anex-search3-preview.php'
@@ -38,11 +44,17 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
           test "$(git -C accepted-receiver rev-parse HEAD)" = e9b725c64763fbf0882de1d254b7689b9f4c7496
+          php -l app/integrations/tourvisor-interactive-client.php
+          php -l app/integrations/tourvisor-preview-gateway.php
+          php -l tests/tourvisor-preview-gateway-test.php
+          php -l v2/api-v2.php
           php -l app/integrations/search3-messenger-handoff.php
           php -l app/integrations/tourvisor-selected-tour-handoff.php
           php -l v2/api-anex-search3-preview.php
           php -l tests/search3-messenger-handoff-test.php
           php -l tests/search3-messenger-handoff-http-test.php
+          php tests/tourvisor-api-autosave-wiring-int-test.php
+          php tests/tourvisor-preview-gateway-test.php
           mkdir -p checked-search3-producer
           php tests/search3-messenger-handoff-test.php | tee checked-search3-producer/retained-contract.txt
           php tests/search3-messenger-handoff-http-test.php | tee checked-search3-producer/http-contract.txt

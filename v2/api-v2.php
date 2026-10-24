@@ -39,6 +39,12 @@ function tourvisor_fuel_passive_bootstrap(): void
 }
 tourvisor_fuel_passive_bootstrap();
 
+foreach ([__DIR__ . '/app/integrations/tourvisor-interactive-client.php', dirname(__DIR__) . '/app/integrations/tourvisor-interactive-client.php'] as $candidate) {
+    if (!is_file($candidate) || is_link($candidate)) continue;
+    require_once $candidate;
+    break;
+}
+
 function out($data, int $status = 200)
 {
     http_response_code($status);
@@ -119,52 +125,13 @@ function search_id()
 
 function query_string(array $params)
 {
-    $parts = [];
-    foreach ($params as $key => $value) {
-        if ($value === null || $value === '') continue;
-        if (is_bool($value)) $value = $value ? 'true' : 'false';
-        if (is_array($value)) {
-            foreach ($value as $item) {
-                if ($item === '' || $item === null) continue;
-                $parts[] = rawurlencode($key) . '=' . rawurlencode((string)$item);
-            }
-        } else {
-            $parts[] = rawurlencode($key) . '=' . rawurlencode((string)$value);
-        }
-    }
-    return implode('&', $parts);
+    return \AnyTour\TourvisorInteractiveClient::query($params);
 }
 
 function tv_get(string $path, array $params = [])
 {
-    $token = jwt();
-    if ($token === '') out(['ok' => false, 'error' => 'Tourvisor is not configured'], 500);
-
-    $url = 'https://api.tourvisor.ru/search/api/v1' . $path;
-    $qs = query_string($params);
-    if ($qs !== '') $url .= '?' . $qs;
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 45,
-        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
-    ]);
-    $body = curl_exec($ch);
-    $errno = curl_errno($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error'], 502);
-
-    $decoded = json_decode((string)$body, true);
-    if ($code < 200 || $code >= 300) {
-        $status = ($code >= 400 && $code < 600) ? $code : 502;
-        out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code], $status);
-    }
-
-    return is_array($decoded) ? $decoded : ['raw' => short_text((string)$body, 1000)];
+    try { return \AnyTour\TourvisorInteractiveClient::get($path, $params, jwt()); }
+    catch (\AnyTour\TourvisorInteractiveFailure $error) { out($error->response, $error->httpStatus); }
 }
 
 function bool_param(string $key)
@@ -346,52 +313,8 @@ switch ($action) {
         ]));
 
     case 'search_start':
-        $departureId = optional_int($_GET['departureId'] ?? null);
-        $countryId = optional_int($_GET['countryId'] ?? null);
-        $dateFrom = date_param('dateFrom');
-        $dateTo = date_param('dateTo');
-        $nightsFrom = strict_int($_GET['nightsFrom'] ?? 5, 1, 28, 'nightsFrom');
-        $nightsTo = strict_int($_GET['nightsTo'] ?? 14, 1, 28, 'nightsTo');
-        $adults = strict_int($_GET['adults'] ?? 2, 1, 6, 'adults');
-        $childs = child_ages();
-        $priceFrom = optional_int($_GET['priceFrom'] ?? null);
-        $priceTo = optional_int($_GET['priceTo'] ?? null);
-        if (!$departureId || !$countryId || !$dateFrom || !$dateTo) out(['ok' => false, 'error' => 'Invalid required search parameters'], 400);
-        $today = (new DateTimeImmutable('today'))->format('Y-m-d');
-        if ($dateFrom < $today) out(['ok' => false, 'error' => 'dateFrom must not be in the past'], 400);
-        if ($dateTo < $dateFrom) out(['ok' => false, 'error' => 'dateTo must not be before dateFrom'], 400);
-        $dateSpan = (new DateTimeImmutable($dateFrom))->diff(new DateTimeImmutable($dateTo))->days;
-        if ($dateSpan === false || $dateSpan > 21) out(['ok' => false, 'error' => 'date range must not exceed 21 days'], 400);
-        if ($nightsTo < $nightsFrom) out(['ok' => false, 'error' => 'nightsTo must not be less than nightsFrom'], 400);
-        if (($nightsTo - $nightsFrom) > 10) out(['ok' => false, 'error' => 'nights range must not exceed 10'], 400);
-        if ($priceFrom !== null && $priceFrom < 0) out(['ok' => false, 'error' => 'priceFrom must be positive'], 400);
-        if ($priceTo !== null && $priceTo < 0) out(['ok' => false, 'error' => 'priceTo must be positive'], 400);
-        if ($priceFrom !== null && $priceTo !== null && $priceTo < $priceFrom) out(['ok' => false, 'error' => 'priceTo must not be less than priceFrom'], 400);
-        $searchParams = [
-            'departureId' => $departureId,
-            'countryId' => $countryId,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'nightsFrom' => $nightsFrom,
-            'nightsTo' => $nightsTo,
-            'adults' => $adults,
-            'childs' => $childs,
-            'meal' => short_text($_GET['meal'] ?? '', 40),
-            'hotelCategory' => short_text($_GET['hotelCategory'] ?? '', 20),
-            'hotelRating' => short_text($_GET['hotelRating'] ?? '', 20),
-            'hotelTypes' => request_array('hotelTypes', 20),
-            'hotelIds' => request_array('hotelIds', 50),
-            'hotelServices' => request_array('hotelServices', 100),
-            'arrivalId' => optional_int($_GET['arrivalId'] ?? null),
-            'regionIds' => request_array('regionIds', 50),
-            'subregionIds' => request_array('subregionIds', 50),
-            'operatorIds' => request_array('operatorIds', 50),
-            'priceFrom' => $priceFrom,
-            'priceTo' => $priceTo,
-            'currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB',
-            'onlyCharter' => bool_param('onlyCharter'),
-            'onlyDirect' => bool_param('onlyDirect'),
-        ];
+        try { $searchParams = \AnyTour\TourvisorInteractiveClient::searchParams($_GET); }
+        catch (\AnyTour\TourvisorInteractiveFailure $error) { out($error->response, $error->httpStatus); }
         $data = tv_get('/tours/search', $searchParams);
         tourvisor_autosave_start($searchParams, $data);
         out($data);

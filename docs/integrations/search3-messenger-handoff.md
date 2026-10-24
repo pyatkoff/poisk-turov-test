@@ -156,3 +156,66 @@ gap. Prepare exact API/session admission before activation. No installation,
 new Find/quote/header probe, native/customer send or production action follows
 from this source component. SEARCH receives one accepted runtime selector receipt
 only after those actual capture/install gates.
+
+## TV same-session gateway — source preparation
+
+The private endpoint now has a default-off `ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED`
+gate. No configuration is enabled by source or CI. `GET action=tv_token` requires
+the existing allowed host and strict same-origin fetch site, creates only the
+existing scoped PHP cookie, and returns the existing CSRF token. Every TV POST
+uses the SAME origin/CSRF authorizer. The ANEX provider enable gate remains
+independent; enabling TV does not enable ANEX supplier actions.
+
+All requests contain `provider=tourvisor`, `csrf`, and a client operation
+`request_id` (32 lowercase hex). `tv_search` also takes `params`, parsed by the
+same interactive search parser as root. The server issues generation/search_ref;
+no caller generation or upstream search ID is accepted for a new search.
+Follow-ups contain that exact generation/search_ref: `tv_continue`,
+`tv_status`, `tv_results`; `tv_tour` and `tv_flights` additionally take the
+server-returned opaque offer_ref. `tv_select` is local and takes either
+manager-deferred or the exact server-issued choice_ref. No raw labels, amounts,
+observations, hotel identity, or pair DTO is accepted from the browser.
+
+The single current TV context retains original ordered request ages, including
+duplicates, result membership, and verified catalog labels from the existing
+catalog_hotels UI namespace. A checked tour must match its retained ID, hotel,
+departure, date/nights, operator labels, adults and child count. Coral Travel /
+Sunmar and unverified operators are listing-only before any tour/flights call;
+operator IDs and URL parameters never infer identity. A successful tour captures
+the manager-deferred canonical record. Flights retain their original returned
+indexes; incomplete placeholders are not selectable. Selecting a retained pair
+captures its own returned total/legs through the same canonical owner/producer.
+Reported fuel and price JSON pass through unchanged; no fuel/infant addition,
+currency conversion, or final_verified promotion is introduced.
+
+The interactive cURL implementation is extracted, not copied: root and private
+API use the same fixed destination, one attempt, connect10/timeout45, serializer,
+and safe error response. Existing root passive hooks stay in place. Private
+calls route the same responses to existing autosave/passive owners best-effort.
+Catalog/CLI60s/four-attempt code is untouched. The private runtime requires TV
+credentials and existing catalog facts, not ANEX supplier credentials.
+
+Each operation is checkpointed UNKNOWN before the one physical attempt. The
+network releases the shared PHP session lock; after reacquisition only a still
+current TV context can receive the response, preserving concurrent ANEX state.
+Exact replay reuses the original cached response; changed/UNKNOWN operations
+cannot reissue. Each offer has one tour and flights attempt in a context, so a
+different request_id cannot duplicate an in-flight/uncertain call. A legitimate
+new search has a new server generation. No automatic retry/new-search fallback
+exists. Provider410 invalidates the affected canonical record. Deadline checks
+apply both before dispatch and after return; cached selections retain the
+original checked-tour deadline. A local observation window is not a supplier
+guarantee or final-price authority.
+
+Finite source bounds: 64 request receipts per existing viewer session,
+2000 retained offers/current context, 100 flight pairs/offer, 1MiB reply and 4MiB
+TV context+receipts. Current search scope lasts at most30min and each checked
+observation at most15min, shortened by an explicit returned expiresAt. These
+are application freshness/resource bounds, not shared-account remaining quota.
+No silent deletion of UNKNOWN operations occurs.
+
+SOURCE/CI acceptance does not install protected root bytes, activate TV/signing,
+change SEARCH transport/UI, or send to customers. The installation package must
+carry exact helpers/API dependencies and preserve all existing root/control
+guards; SEARCH later consumes one accepted installed receipt and routes the
+ordinary TV scenario once, with no parallel root requests or paid replay.
