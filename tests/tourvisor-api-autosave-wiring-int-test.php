@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../app/integrations/tourvisor-interactive-client.php';
 
 function check_true(bool $value, string $message): void
 {
@@ -52,7 +53,10 @@ check_true(str_contains($source, "class_exists('AnyTourTourvisorOfferAutosaveV1'
 foreach (['86400', 'finalPrice', 'fuelCharge', 'replaceCompleteSnapshot', 'party_surcharge'] as $forbidden) {
     check_true(!str_contains($source, $forbidden), 'protected arithmetic/TTL leaked into gateway: ' . $forbidden);
 }
-check_true(str_contains($source, 'https://api.tourvisor.ru/search/api/v1'), 'supplier endpoint changed');
+$interactive = file_get_contents(__DIR__ . '/../app/integrations/tourvisor-interactive-client.php');
+check_true(str_contains($source, '\\AnyTour\\TourvisorInteractiveClient::get($path, $params, jwt())')
+    && str_contains($interactive, 'https://api.tourvisor.ru/search/api/v1')
+    && !str_contains($source, 'curl_exec('), 'gateway must delegate the same single interactive transport');
 
 $cases = [
     'search_start' => [

@@ -1291,7 +1291,28 @@ function anytour_anex_search3_http(): void
     if (is_file($private)) require_once $private;
     $enabled = getenv('ANYTOUR_ANEX_PREVIEW_ENABLED') === '1' || (defined('ANYTOUR_ANEX_PREVIEW_ENABLED')
         && in_array(ANYTOUR_ANEX_PREVIEW_ENABLED, [true, 1, '1'], true));
-    if (!$enabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
+    $anexEnabled = $enabled;
+    $tvEnabled = getenv('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED') === '1' || (defined('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED')
+        && in_array(ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED, [true, 1, '1'], true));
+    if (!$anexEnabled && !$tvEnabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $_GET === ['action'=>'tv_token']) {
+        if (!$tvEnabled) anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404);
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if (!in_array($host,['anytoour.ru','www.anytoour.ru'],true)
+            || ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? null) !== 'same-origin'
+            || (isset($_SERVER['HTTP_ORIGIN']) && $_SERVER['HTTP_ORIGIN'] !== 'https://'.$host)) {
+            anytour_anex_search3_out(['ok'=>false,'error'=>'forbidden'],403);
+        }
+        ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
+        session_name('ANYTOUR_ANEX_SEARCH3');
+        session_set_cookie_params(['lifetime'=>0,'path'=>'/_preview/search3-anex-candidate/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
+        if (!session_start()) anytour_anex_search3_out(['ok'=>false,'error'=>'temporarily_unavailable'],503);
+        if (!is_string($_SESSION['search3_handoff_csrf'] ?? null)) $_SESSION['search3_handoff_csrf'] = bin2hex(random_bytes(32));
+        $csrf = $_SESSION['search3_handoff_csrf'];
+        if (!session_write_close()) anytour_anex_search3_out(['ok'=>false,'error'=>'temporarily_unavailable'],503);
+        header('Cache-Control: private, no-store, max-age=0'); header('X-Robots-Tag: noindex, nofollow');
+        anytour_anex_search3_out(['ok'=>true,'csrf'=>$csrf,'provider'=>'tourvisor'],200);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET'
         && ($_GET === ['action' => 'quote_receipt'] || $_GET === ['action' => 'handoff_token'])) {
         if (!in_array(strtolower((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? 'same-origin')), ['same-origin', 'none'], true)
@@ -1335,6 +1356,72 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
+        if (is_string($action) && str_starts_with($action,'tv_')) {
+            header('Cache-Control: private, no-store, max-age=0'); header('X-Robots-Tag: noindex, nofollow');
+            if (!$tvEnabled) { session_write_close(); anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404); }
+            if (!AnyTourSearch3MessengerHandoff::authorize($_SERVER,$request,$_SESSION)) {
+                session_write_close(); anytour_anex_search3_out(['ok'=>false,'error'=>'forbidden'],403);
+            }
+            $app = is_file(__DIR__.'/app/integrations/tourvisor-preview-gateway.php') ? __DIR__.'/app/integrations' : __DIR__.'/../app/integrations';
+            require_once $app.'/tourvisor-preview-gateway.php';
+            $runtime = static function (): string {
+                $root = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+                if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException('tv_runtime_unavailable');
+                return $root;
+            };
+            $catalog = static function (int $id, int $country) use ($runtime): ?array {
+                $root = $runtime();
+                require_once is_file($root.'/data/db-v1.php') ? $root.'/data/db-v1.php' : $root.'/v2/data/db-v1.php';
+                $pdo = v2_data_db();
+                $q = $pdo->prepare('SELECT id,name,country_id,region_name,subregion_name FROM catalog_hotels WHERE id=? AND country_id=? AND is_active=1 LIMIT 1');
+                $q->execute([$id,$country]); $row = $q->fetch(PDO::FETCH_ASSOC);
+                return !$row ? null : ['uiId'=>(int)$row['id'],'namespace'=>'search3-ui','name'=>(string)$row['name'],
+                    'resort'=>(string)($row['subregion_name'] ?: $row['region_name'] ?: '')];
+            };
+            $transport = static function (string $path, array $params, array &$state) use ($runtime): array {
+                // UNKNOWN was durably reserved by the owner. The network must not hold the shared provider lock.
+                $_SESSION = $state;
+                if (!session_write_close()) throw new RuntimeException('tv_session_unavailable');
+                try {
+                    $root = $runtime();
+                    if (is_file($root.'/config.php') && !is_link($root.'/config.php')) require_once $root.'/config.php';
+                    $token = trim((string)getenv('TOURVISOR_JWT'));
+                    if ($token === '' && defined('TOURVISOR_JWT')) $token = trim((string)TOURVISOR_JWT);
+                    $response = \AnyTour\TourvisorInteractiveClient::get($path,$params,$token);
+                    // Existing passive owners only; no new evidence store or monetary rule.
+                    try {
+                        require_once is_file($root.'/data/db-v1.php') ? $root.'/data/db-v1.php' : $root.'/v2/data/db-v1.php';
+                        foreach (['tourvisor-anytour-offer-autosave.php','tourvisor-operator-fuel-passive-intake.php'] as $file) {
+                            $candidate = $root.'/app/integrations/'.$file;
+                            if (is_file($candidate) && !is_link($candidate)) require_once $candidate;
+                        }
+                        $at = new DateTimeImmutable('now',new DateTimeZone('UTC'));
+                        if (class_exists('AnyTourTourvisorOfferAutosaveV1',false)) {
+                            if ($path === '/tours/search') AnyTourTourvisorOfferAutosaveV1::captureSearchStart($params,$response,$at);
+                            elseif (preg_match('~^/tours/search/([1-9][0-9]*)/status$~D',$path,$m)) AnyTourTourvisorOfferAutosaveV1::captureSearchStatus((int)$m[1],$response,$at);
+                            elseif (preg_match('~^/tours/search/([1-9][0-9]*)$~D',$path,$m)) AnyTourTourvisorOfferAutosaveV1::autosaveSearchResults((int)$m[1],1000,$response,$at);
+                        }
+                        $private = $root.'/.andromeda-private.php';
+                        if (class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1',false) && is_file($private) && !is_link($private)) {
+                            $cfg = require $private; $catalogPath = is_array($cfg) ? ($cfg['catalog_path'] ?? null) : null;
+                            $directory = is_string($catalogPath) ? dirname($catalogPath).'/searches' : '';
+                            if (is_dir($directory) && !is_link($directory) && preg_match('~^/tours/([^/]+)(/flights)?$~D',$path,$m)) {
+                                if (isset($m[2])) AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights(rawurldecode($m[1]),$response,$directory,$at);
+                                else AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour(rawurldecode($m[1]),$response,v2_data_db(),$directory,$at);
+                            }
+                        }
+                    } catch (Throwable $ignored) { /* Passive intake never replaces supplier JSON. */ }
+                    return $response;
+                } finally {
+                    if (!session_start()) throw new RuntimeException('tv_session_unavailable');
+                    $state = $_SESSION;
+                }
+            };
+            $data = AnyTourTourvisorPreviewGateway::handle($request,$_SESSION,time(),$transport,$catalog,
+                [AnyTourSearch3MessengerHandoff::class,'checkpoint']);
+            if (!session_write_close()) anytour_anex_search3_out(['ok'=>false,'error'=>'temporarily_unavailable'],503);
+            anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
+        }
         if (is_string($action) && str_starts_with($action, 'handoff_')) {
             header('Cache-Control: private, no-store, max-age=0'); header('X-Robots-Tag: noindex, nofollow');
             if (!AnyTourSearch3MessengerHandoff::authorize($_SERVER, $request, $_SESSION)) {
@@ -1362,6 +1449,7 @@ function anytour_anex_search3_http(): void
             if (!session_write_close()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
             anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
         }
+        if (!$anexEnabled) { session_write_close(); anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404); }
         if (!in_array($action, ['search', 'continue', 'offer', 'expand', 'additional_prices', 'additional_prices_batch', 'flights', 'quote_start', 'quote_calculate'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         anytour_anex_search3_select_context($request, $_SESSION, time());
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
@@ -1448,6 +1536,12 @@ function anytour_anex_search3_http(): void
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
     } catch (Throwable $error) {
+        if (is_string($action ?? null) && str_starts_with($action,'tv_')) {
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            if ($error instanceof \AnyTour\TourvisorInteractiveFailure) anytour_anex_search3_out($error->response,$error->httpStatus);
+            $code = $error instanceof InvalidArgumentException ? $error->getMessage() : 'tv_temporarily_unavailable';
+            anytour_anex_search3_out(['ok'=>false,'error'=>$code],$code === 'tv_invalid_request' ? 400 : ($error instanceof InvalidArgumentException ? 409 : 503));
+        }
         if (is_string($action ?? null) && str_starts_with($action, 'handoff_')) {
             session_write_close();
             if ($error instanceof AnyTourSearch3HandoffMissing) {

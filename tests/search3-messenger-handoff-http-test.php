@@ -10,6 +10,7 @@ $fixture = var_export(__DIR__ . '/search3-messenger-handoff-test.php', true);
 $routerSource = <<<'PHP'
 <?php
 define('ANYTOUR_ANEX_PREVIEW_ENABLED', true);
+define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED', str_starts_with($_SERVER['REQUEST_URI'],'/tv-enabled/'));
 define('ANYTOUR_HANDOFF_FIXTURE_LIBRARY_ONLY', true);
 require __FIXTURE_PATH__;
 if ($_SERVER['REQUEST_URI'] === '/fixture-seed') {
@@ -110,6 +111,29 @@ try {
     mh_check($tvCapture['status']===400,'no public HTTP capture action exists');
     $quoteReceipt = mh_http($path . '?action=quote_receipt', null, $sid);
     mh_check($quoteReceipt['status'] === 200, 'existing readonly diagnostic endpoint remains available');
+    $tvOff=mh_http($path.'?action=tv_token');
+    mh_check($tvOff['status']===404,'TV session activation remains default off');
+    $tvPath='/tv-enabled'.$path;
+    $tvForbidden=mh_http($tvPath.'?action=tv_token',null,null,['Origin'=>'https://evil.test']);
+    mh_check($tvForbidden['status']===403,'TV seed rejects cross origin before session/provider');
+    $tvSeed=mh_http($tvPath.'?action=tv_token');
+    mh_check($tvSeed['status']===200 && preg_match('/\A[a-f0-9]{64}\z/D',$tvSeed['body']['csrf']??'')===1,'TV seed creates scoped existing session without ANEX search');
+    $cookie=implode("\n",$tvSeed['headers']);
+    preg_match('/ANYTOUR_ANEX_SEARCH3=([^;]+)/',$cookie,$cookieMatch);
+    $tvSid=$cookieMatch[1]??null;
+    mh_check(is_string($tvSid) && str_contains($cookie,'path=/_preview/search3-anex-candidate/')
+        && stripos($cookie,'httponly')!==false && stripos($cookie,'secure')!==false,'same private cookie scope and protections');
+    $tvReq=['action'=>'tv_search','provider'=>'tourvisor','request_id'=>str_repeat('a',32),'csrf'=>$tvSeed['body']['csrf']];
+    $tvDenied=mh_http($tvPath,$tvReq,$tvSid,['Origin'=>'https://evil.test']);
+    mh_check($tvDenied['status']===403,'TV action uses existing origin authorization');
+    $tvDenied=mh_http($tvPath,array_replace($tvReq,['csrf'=>'wrong']),$tvSid);
+    mh_check($tvDenied['status']===403,'TV action uses existing CSRF authorization');
+    $tvDenied=mh_http($tvPath,$tvReq,$tvSid);
+    mh_check($tvDenied['status']===400,'malformed authorized TV request rejected before credentials or DB');
+    $tvOrphan=['action'=>'tv_tour','provider'=>'tourvisor','request_id'=>str_repeat('b',32),'csrf'=>$tvSeed['body']['csrf'],
+        'generation'=>1,'search_ref'=>str_repeat('c',32),'offer_ref'=>'tourvisor:'.str_repeat('d',64)];
+    $tvDenied=mh_http($tvPath,$tvOrphan,$tvSid);
+    mh_check($tvDenied['status']===409 && ($tvDenied['body']['error']??null)==='tv_stale_context','orphan TV identity cannot call a supplier');
     echo 'Search3 producer HTTP: ' . ($GLOBALS['mh_checks'] ?? 0) . " checks PASS; loopback synthetic only, real provider/bot/SQL=0.\n";
 } catch (Throwable $failure) {
     fwrite(STDERR, (string)file_get_contents($log));
