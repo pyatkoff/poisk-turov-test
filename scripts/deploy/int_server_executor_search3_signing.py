@@ -20,10 +20,10 @@ PRODUCER_PINS = {
     'v2/api-anex-search3-preview.php': '14cb8f11834ff576b941356d57a3d3d919ab8f6c4d57a1f1ad4317d1b457ec8e',
 }
 TV_PINS = {
-    'app/integrations/search3-messenger-handoff.php': '5e0fe33e6adf3ce30451b9ffe1742cc77f791114e241fb41d92236c1d70ea85c',
     'app/integrations/tourvisor-selected-tour-handoff.php': '9dafb88cab92e19376e120c80dd5dfecc975730cca7e7039edc419bf1ffa57f3',
     'app/integrations/tourvisor-interactive-client.php': '01543d46b8cc68d4fd0ce030b1b35b93493b368a8bb1efe4235b545581dba954',
     'app/integrations/tourvisor-preview-gateway.php': 'eeddf0e80770f37c6c4bba49506b4624b8a1d380fa287f6f885be445c2c18e65',
+    'app/integrations/search3-messenger-handoff.php': '5e0fe33e6adf3ce30451b9ffe1742cc77f791114e241fb41d92236c1d70ea85c',
     'v2/api-anex-search3-preview.php': '9eb518005ffae3245c8f1fb549737558e62990608a17c47979f51f51bb8e6769',
 }
 TV_DEPENDENCIES = {p: PRODUCER_PINS[p] for p in (
@@ -298,7 +298,7 @@ def tv_gateway_public():
 
 def tv_gateway_preflight():
     if source!=TV_SOURCE:fail('tv_gateway_source')
-    if any(files.get(p)!=sha for p,sha in TV_PINS.items()):fail('tv_gateway_source_pin')
+    if any(files.get(p)!=sha for p,sha in {**TV_PINS,**TV_DEPENDENCIES}.items()):fail('tv_gateway_source_pin')
     if tv_gateway_public()!=TV_PUBLIC:fail('tv_gateway_public_drift')
     for relative,expected in {**TV_PREVIOUS,**TV_DEPENDENCIES}.items():
         p=runtime/relative

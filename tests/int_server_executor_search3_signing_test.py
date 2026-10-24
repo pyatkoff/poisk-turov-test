@@ -366,6 +366,11 @@ class NativeTVGatewayInstall(NativeStockCustody):
         self.assertEqual((6,5,3),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
         plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_text())
         self.assertEqual('api-anex-search3-preview.php',plan['changed_files'][-1])
+        changed=plan['changed_files']
+        self.assertLess(changed.index('app/integrations/tourvisor-selected-tour-handoff.php'),
+                        changed.index('app/integrations/search3-messenger-handoff.php'))
+        self.assertLess(changed.index('app/integrations/tourvisor-interactive-client.php'),
+                        changed.index('app/integrations/tourvisor-preview-gateway.php'))
         for p in signing.TV_PINS:
             target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
             self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
@@ -379,16 +384,22 @@ class NativeTVGatewayInstall(NativeStockCustody):
         self.assertEqual('operation_exists_no_replay',self.install(r['operation_id'])['reason'])
 
     def test_source_dependency_and_expected_absent_guards(self):
-        for kind in ('source','dependency','exists'):
+        for kind in ('source','dependency','staged_dependency','exists'):
             with self.subTest(kind=kind):
                 if kind=='source':self.pins['app/integrations/tourvisor-preview-gateway.php']='0'*64
+                elif kind=='staged_dependency':
+                    p='app/integrations/anex-initial-week-gate.php'
+                    original=self.inventory[p];self.inventory[p]=b'<?php // substituted staged dependency\n'
+                    self.rebuild_archive()
                 else:
                     p='app/integrations/'+('anex-initial-week-gate.php' if kind=='dependency' else 'tourvisor-preview-gateway.php')
                     (self.runtime/p).write_bytes(b'<?php // foreign\n')
                 r=self.install();self.assertEqual({'source':'tv_gateway_source_pin','dependency':'tv_gateway_predecessor',
+                                                  'staged_dependency':'tv_gateway_source_pin',
                                                   'exists':'tv_gateway_expected_absent'}[kind],r['reason']);self.assert_old()
                 self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
                 if kind=='dependency':(self.runtime/p).write_bytes(self.inventory[p])
+                if kind=='staged_dependency':self.inventory[p]=original;self.rebuild_archive()
                 if kind=='exists':(self.runtime/p).unlink()
 
     def test_symlink_public_is_not_absence(self):
