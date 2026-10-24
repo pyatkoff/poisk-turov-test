@@ -27,6 +27,31 @@ function setup(provider='tourvisor',kind='concrete'){
  };
  vm.createContext(c);vm.runInContext(owners,c);return {c,calls,listing,hotel,views,nodes};
 }
+function verifyResultCardEntry(){
+ const dispatcher=slice("case 'offer':{const key=b.dataset.key", "case 'start-lead':");
+ for(const provider of ['tourvisor','anex','andromeda','fixture'])for(const cardEntry of [false,true]){
+  const clicked={key:'clicked-second',hotelId:7,provider,raw:{},total:90000},first={...clicked,key:'other-first',raw:{}},previous={key:'old',hotelId:9,raw:{}};
+  const calls=[],c={b:{dataset:{key:clicked.key,...(cardEntry?{cardEntry:'true'}:{})}},hotelOfferDraft:{hotelId:9,key:'old'},selectionGeneration:3,selectedOffer:previous,state:{search:{}},
+   offerFromKey:key=>[first,clicked].find(o=>o.key===key),cancelHotelOfferCheck:()=>calls.push('cancel'),
+   openHotelDetails:(id,route)=>calls.push({type:'rooms',id,route,draft:c.hotelOfferDraft}),openOffer:(key,retained)=>calls.push({type:'offer',key,retained}),sameSelectedTourConditions:()=>false,searchKey:()=>''};
+  vm.createContext(c);vm.runInContext("function dispatch(){switch('offer'){"+dispatcher+"}}",c);c.dispatch();
+  if(cardEntry&&['tourvisor','anex'].includes(provider)){
+   const entry=calls.find(x=>x?.type==='rooms');assert(entry,provider+' result card enters existing hotel rooms');assert.equal(entry.id,7);assert.equal(entry.route.entryOfferKey,clicked.key);
+   if(provider==='tourvisor'){assert.equal(entry.draft.key,clicked.key,'clicked exact row, never first offer');assert.equal(entry.draft.hotelId,7);assert.equal(c.selectionGeneration,4);assert.equal(calls.filter(x=>x==='cancel').length,1);}
+   else assert.equal(c.hotelOfferDraft.key,'old','ANEX group refresh remains its existing owner');
+   assert.equal(calls.some(x=>x?.type==='offer'),false);
+  }else assert.equal(calls.at(-1).type,'offer','explicit details and unsupported sources retain their old route');
+  assert.strictEqual(c.selectedOffer,previous,'entry does not mint or overwrite a quote, flight choice or browser price');
+ }
+ const room={open:false},other={open:false},more={setAttribute:(name,value)=>{more[name]=value;}},key='clicked-second';
+ const row={dataset:{offerKey:key},closest:selector=>selector==='.room-overview'?room:selector==='.hotel-room-more'?more:null};
+ const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},hotels:[{id:7}],modalType:'hotel-details',
+  $:selector=>selector==='#modal'?{open:true}:null,$$:selector=>selector==='.room-offer-choice'?[{dataset:{offerKey:'first'},closest:()=>other},row]:[],
+  hotelDetailsOwner:()=>({openHotelDetails:()=>[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms(){}};
+ vm.createContext(c);vm.runInContext(slice('function renderHotelDetails(){','function positionHotelRooms(){'),c);c.renderHotelDetails();
+ assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
+ console.log('PASS exact TV result-card rooms entry; ANEX/direct/unsupported routes preserved; supplier calls0');
+}
 async function verifySite215Journey(){
  const {JSDOM,VirtualConsole}=require('jsdom');
 const root=path.resolve(__dirname,'../v2/visual-search');
@@ -149,7 +174,8 @@ async function run(){
  {const {c,calls,hotel,nodes}=setup('anex','group_minimum'),gate=deferred();c.data.expandAnexGroup=()=>{calls.expand++;return gate.promise;};const pending=c.refreshLiveHotel(1);nodes['#modal'].open=false;gate.resolve({offers:[]});await pending;assert.equal(hotel.offers.length,1);assert.equal(calls.rooms,0,'closed hotel is not replaced by a late expansion');}
  {const {c,calls}=setup('anex');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1);assert.equal(calls.offerScreens,0,'current/additional checks stay inline');assert.equal(calls.flights,0);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false,'calculated estimate never becomes verified');assert.equal(calls.contacts,0,'changed estimate needs a deliberate continue');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1,'return reuses the retained result');}
  {const {c,calls,views,listing}=setup('anex');views.set('one',{offer:listing,type:'anex-current',result:{state:'current'},error:'UNKNOWN',pending:false});await c.refreshLiveHotel(1);assert.equal(calls.verify,0);assert.equal(calls.additional,0,'an UNKNOWN current result is never retried automatically');}
+ verifyResultCardEntry();
  await verifySite215Journey();
  console.log('PASS hotel journey: exact price/pair reuse, foreign raw/search/room/party/price rejection, double intent, late/closed selection, A-B-A canonical TV/runtime deferred410 noReplay, explicit success recheck, terminal/UNKNOWN and retained ANEX recovery, inline group/current/estimate and no mandatory flights; supplier/lead calls 0');
 }
-module.exports=run;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports=run;module.exports.verifyResultCardEntry=verifyResultCardEntry;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});

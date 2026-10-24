@@ -230,7 +230,7 @@ async function quoteReturnRegressions(){
    let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__retention=()=>({offer:selectedOffer,type:modalType});\n'+marker);}win.eval(code);
   }
   const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Receiving retention timeout at '+width);};
-  const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap(exact);};
+  const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap('#modal-body '+exact);};
   try{
    await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]'));open();
    quote={error:Object.assign(new Error('Fictional temporary retry failure'),{code:'temporary_fixture'})};tap('[data-action="start-lead"]');await until(()=>get('#modal-body .error-text'));
@@ -247,7 +247,8 @@ async function quoteReturnRegressions(){
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
-  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
+  }catch(error){globalThis.console.error('Quote-return regression failed at '+width,error);throw error;}
+  finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
 async function terminalAnexExpansionRegressions(){
@@ -729,7 +730,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="hotel-details"][data-id="501"]');assert.match(q('#modal-body').textContent,/Тестовая улица/);assert.match(q('#modal-body').textContent,/Мини-клуб/);click('[data-action="close-modal"]');await settle();
  // Both quote entry points must ignore a response after closing/reopening the same offer.
  const tvActions=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action));
- const openTv=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');};
+ const openTv=()=>{click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');};
  for(const action of ['start-lead','start-tour-flights']){
   for(const failure of [false,true]){
    let release;quoteControl={pending:new Promise(resolve=>release=resolve),error:failure?new Error('Отложенный тестовый отказ'):null};
@@ -771,7 +772,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('.offer-filter-disclosure').open,'browser Forward restores the expanded concrete-tour filters');
  assert.equal(q('#modal-body').scrollTop,142,'browser Forward restores the concrete-tour list position');
  assert.equal(transport.calls.length,callsBeforeOfferListForward,'browser Forward neither restarts search nor checks an offer');
- click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(tvActions().length,tvCallsBeforeSelection,'opening exact tour is supplier-free');
+ click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');assert.equal(tvActions().length,tvCallsBeforeSelection,'opening exact tour is supplier-free');
  assert(q('[data-action="start-lead"]')&&q('[data-action="start-tour-flights"]'),'application and optional flight check are separate actions');
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
@@ -785,7 +786,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('[data-action="retry-flights"]')&&q('[data-action="confirm-tour"]'),'flight retry stays optional after returning from the application');
  const beforeQuoteOnlyReturn=transport.calls.length;
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
- click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await settle();
+ click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await settle();
  assert(q('[data-action="confirm-tour"]'),'reopening an actualized tour without flights retains application readiness');
  click('[data-action="confirm-tour"]');await wait(()=>q('#prototype-lead-form'));
  assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);
@@ -817,7 +818,7 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(transport.calls.length,callsBeforeApplicationForward,'browser Forward neither repeats the quote nor sends a lead');
  const tvRequests=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action)).length,beforeTvReturn=tvRequests();
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
- click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/,'closing and reopening TV keeps the chosen flight price');
  assert.match(q('.flight-summary').textContent,/TEST201/,'closing and reopening TV keeps the chosen outbound flight');
  assert.equal(tvRequests(),beforeTvReturn,'returning to TV never repeats the completed quote and flights');
@@ -894,14 +895,14 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
  let releaseAdditional;additionalGate=new Promise(resolve=>releaseAdditional=resolve);const callsBeforeAdditional=transport.calls.length;
  click('[data-action="anex-additional-prices"]');await wait(()=>transport.calls.length>callsBeforeAdditional);
- click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');await settle();
+ click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key^="anex%3A"]');await settle();
  assert(q('[data-action="anex-additional-prices"]').disabled,'pending APD cannot be resubmitted after reopening');
  assert.equal(transport.calls.length,callsBeforeAdditional+1,'reopen neither rechecks ANEX current nor resubmits APD');
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert(q('[data-action="anex-additional-prices"]').disabled,'browser Forward keeps the pending reservation');
  assert.equal(transport.calls.length,callsBeforeAdditional+1,'pending browser Forward does not replay APD');
  releaseAdditional();additionalGate=null;await wait(()=>q('#modal-title').textContent==='Доплаты ANEX рассчитаны');
- click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');
+ click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key^="anex%3A"]');
  await wait(()=>q('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert.match(q('#modal-body').textContent,/не финально подтверждённая цена/);assert.match(q('#modal-body').textContent.replace(/\s/g,''),/123000/);
  assert(q('[data-action="anex-application-preview"]'));click('[data-action="anex-flights"]');await wait(()=>q('#anex-flight-inventory').textContent.includes('TEST ANEX 101'));
  assert.match(q('#anex-flight-inventory').textContent,/не выбранные рейсы/);assert.match(q('#anex-flight-inventory').textContent,/Расписание уточняется/);
@@ -913,13 +914,13 @@ async function pickerRetainedDraftRegressions(){
  assert.match(q('.lead-message').textContent,/Расчётная сумма/);assert.match(q('.lead-message').textContent,/требует подтверждения/);assert.equal(transport.calls.length,anexCallsBefore,'ANEX application preview adds no provider request');
  click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');await settle();
  assert(q('[data-action="offer"][data-key^="anex%3A"]'),'ANEX application returns to this hotel’s offer list');
- const callsBeforeAnexReturn=transport.calls.length;click('[data-action="offer"][data-key^="anex%3A"]');await settle();
+ const callsBeforeAnexReturn=transport.calls.length;click('#modal-body [data-action="offer"][data-key^="anex%3A"]');await settle();
  assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/123000/);
  click('[data-action="anex-application-preview"]');await settle();assert(q('#prototype-lead-form'));
  click('#modal-back');await settle();assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');
  click('[data-action="anex-application-preview"]');await settle();
  assert.equal(transport.calls.length,callsBeforeAnexReturn,'ANEX quote and APD never replay on list/reopen/application/Back');
- click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn,'cross-provider return reuses the same completed TV receipt');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/,'cross-provider return keeps the chosen TV price');
  const callsBeforeCrossReturn=transport.calls.length;click('#modal-back');click('#modal-back');await settle();
@@ -935,7 +936,7 @@ async function pickerRetainedDraftRegressions(){
  transport.state.tvFlightFuel=' \t ';transport.state.failAnex=true;click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));assert.match(q('#search-status').textContent,/Получены не все предложения/);
  assert.doesNotMatch(q('#search-status').textContent,/Получаем предложения|100%/,'terminal partial search must not reuse a loading message');
  assert.match(q('#search-status').textContent,/найденные туры доступны для выбора/);
- click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn+2,'an explicit new search invalidates the old TV selection');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/120000/);
  assert.match(q('.tour-fuel-disclosure').textContent,/Сбор уточняется/,'blank pair fuel never becomes zero or inherits the tour amount');
@@ -945,7 +946,7 @@ async function pickerRetainedDraftRegressions(){
  // A flight price cannot inherit the tour's fuel-inclusion assurance when its own fee is absent.
  transport.state.tvFlightFuel=undefined;
  click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>!q('[data-action="stop-search"]')&&q('#results-summary').textContent.includes('2 варианта'));
- click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();
+ click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();
  assert.match(q('.tour-fuel-disclosure').textContent,/включение в цену уточняется/);
  assert.doesNotMatch(q('.tour-fuel-disclosure').textContent,/включён в цену/);
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/120000/,'an inherited fuel amount never changes the selected flight price');
@@ -958,7 +959,7 @@ async function pickerRetainedDraftRegressions(){
   click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>!q('[data-action="stop-search"]')&&q('#results-summary').textContent.includes('2 варианта'));
   click('[data-action="all-offers"][data-id="501"]');
   if(!flightChoice){
-   click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+   click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
    assert.match(q('.tour-fuel-disclosure').textContent,/Без доплаты по сбору/,'explicit supplier zero is preserved');
    click('[data-action="confirm-tour"]');await settle();assert.match(q('.tour-fuel-disclosure').textContent,/Без доплаты по сбору/);
    click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');

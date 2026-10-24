@@ -1,3 +1,35 @@
+## Tourvisor result-card rooms entry — 24 October 2026
+
+Same SEARCH source claim6384177407, receiving6383656434. Base release85444fcb/source142.
+The existing approved hotel/rooms composition from Site209 and Site218 is reused;
+no Sites/style/renderer or new visual version is introduced. The actual NEXT TV card
+previously opened legacy offer details while ANEX entered hotel rooms. TV now enters
+the same existing hotel/rooms owner with the exact clicked loaded offer selected and
+its room/More disclosure open. Other rooms are not selected, no quote/flight is fetched
+on entry, and the current selected-offer object is not replaced by this routing.
+
+The existing Continue owner remains responsible for current tour check and contacts
+with manager-deferred flights; an explicit optional pair retains its own whole-tour
+amount. Existing ANEX entry/group refresh, explicit detail links, unsupported providers,
+price qualification, backend transport and TV bot-unavailable phone fallback are unchanged.
+The current TV retained-producer dependency remains INT6383368092; this entry correction
+neither enables bots nor changes the sender/receiver contract.
+
+Focused actual-dispatch/loaded-room tests include non-first exact key, provider/direct
+route controls, unchanged selected object and correct disclosure. Compiled stock CI
+adds one fictional TV card journey at430x900,1280x900,1280x720: same-candidate preserved
+legacy-detail comparison, actual new rooms entry, manager-contact, optional pair,
+Back/reopen/draft and consent-reset assertions with12PNG and three receipts. The
+comparison is explicitly not an installed old-source baseline. All physical/native,
+supplier truth and delivery facts remain unmeasured. Final-head CI/rendered delta review,
+allowed release merge and separately exclusive stock publisher/readback are required;
+this source preparation is not installed UI progress or a new quality score.
+The existing source live-bridge consumer now scopes its explicit offer-row clicks
+to the open modal body; they no longer hit the same-key background result card.
+All original price, identity, denial, history, draft and call-count assertions remain.
+
+---
+
 ## Approved Site218 messenger transfer — 24 October 2026
 
 Owner explicitly answered «да, переноси» to the whole-version transfer question for
