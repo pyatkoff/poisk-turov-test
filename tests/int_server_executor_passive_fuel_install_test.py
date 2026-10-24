@@ -322,6 +322,15 @@ class CaptureInstall(unittest.TestCase):
         history.append(dict(history[-1],id=100))
         with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,READ_COMMAND)
 
+
+    def test_old3_rendered_programs_remain_byte_identical(self):
+        expected={"install-tv-fuel-capture":"fec8b0f34324977baba43c8bcf14ae98816f8da6ec67539989ab472613e61adc","complete-tv-fuel-capture":"4a3cc02a1ba271ec46d4ad9012bc9669038aea14d3e40919559937bcc1abaa6b","reconcile-tv-fuel-capture-install":"e07f10a5bb996f59783b380d9e8524d6a6da60f69811e21b4f098dd2106cabb8"}
+        for mode,op in [(p.CAPTURE_INSTALL_MODE,p.CAPTURE_INSTALL_OPERATION),
+                        (p.CAPTURE_COMPLETE_MODE,p.CAPTURE_COMPLETE_OPERATION),
+                        (p.CAPTURE_RECONCILE_MODE,p.CAPTURE_RECONCILE_OPERATION)]:
+            command=p.parse([SOURCE,mode,op])
+            self.assertEqual(hashlib.sha256(p.remote_program(core.REMOTE,command).encode()).hexdigest(),expected[mode])
+
     def test_exact_native_install_backup_dependencies_and_completion(self):
         with tempfile.TemporaryDirectory() as td:
             execute,helper,runtime,home,other=self.fixture(Path(td))
@@ -468,4 +477,120 @@ class CaptureInstall(unittest.TestCase):
         history.append(dict(history[0],id=100))
         with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,COMMAND)
 
+PRIOR_COMMAND=core.parse_command(core.PREFIX+p.PRIOR_TOUR_SOURCE+' '+p.PRIOR_TOUR_MODE+' '+p.PRIOR_TOUR_OPERATION)
+PRIOR_PUBLIC_REAL=copy.deepcopy(p.CAPTURE_COMPLETE_PUBLIC)
+
+class PriorTourInstall(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        source=Path(os.environ['PRIOR_TOUR_INSTALL_SOURCE_ROOT']).resolve()
+        old_source=Path(os.environ['PASSIVE_FUEL_INSTALL_SOURCE_ROOT']).resolve()
+        cls.new=(source/p.CAPTURE_INSTALL_PATH).read_bytes()
+        cls.old=(old_source/p.CAPTURE_INSTALL_PATH).read_bytes()
+        cls.dependencies={n:(old_source/n).read_bytes() for n in p.CAPTURE_INSTALL_DEPENDENCIES}
+        assert hashlib.sha256(cls.new).hexdigest()==p.PRIOR_TOUR_SHA256
+        assert hashlib.sha256(cls.old).hexdigest()==p.CAPTURE_INSTALL_SHA256
+        for n,b in cls.dependencies.items(): assert hashlib.sha256(b).hexdigest()==p.CAPTURE_INSTALL_DEPENDENCIES[n]
+        cls.php=shutil.which('php')
+        if not cls.php: raise RuntimeError('real_php_required')
+
+    def setUp(self):
+        guard=patch.object(p,'CAPTURE_COMPLETE_PUBLIC',COMPLETE_PUBLIC_FIXTURE)
+        guard.start(); self.addCleanup(guard.stop)
+
+    def fixture(self,root,**kwargs):
+        values=CaptureInstall.fixture(self,root,command=PRIOR_COMMAND,**kwargs)
+        shutil.rmtree(values[2].parents[1]/'v2')
+        return values
+
+    def test_golden_scope_and_parse(self):
+        self.assertEqual(p.PRIOR_TOUR_SOURCE,'fdcbccc87f9b22c32e74c6c1e4f64f52fbd49767')
+        self.assertEqual(p.PRIOR_TOUR_CHECK_COMMIT,'d840deb9670de177784941ebb9f75f08815a16e5')
+        self.assertEqual(p.PRIOR_TOUR_CHECK_IDS,{120896877191,120896876857,120896876773})
+        self.assertEqual(PRIOR_PUBLIC_REAL['index.php']['sha256'],'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f')
+        self.assertTrue(all(PRIOR_PUBLIC_REAL[n]=={'state':'absent'} for n in p.CAPTURE_PUBLIC_PATHS[1:]))
+        self.assertNotIn(p.PRIOR_TOUR_MODE,p.RELEASE_MODES)
+        for source,operation,extra in [('f'*40,p.PRIOR_TOUR_OPERATION,''),(p.PRIOR_TOUR_SOURCE,p.CAPTURE_COMPLETE_OPERATION,''),(p.PRIOR_TOUR_SOURCE,p.PRIOR_TOUR_OPERATION,' extra')]:
+            with self.assertRaises(ValueError): core.parse_command(core.PREFIX+source+' '+p.PRIOR_TOUR_MODE+' '+operation+extra)
+
+    def test_actual_one_helper_backup_readback_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,home,other=self.fixture(Path(td))
+            result=execute();self.assertTrue(p.completed(PRIOR_COMMAND,result),result)
+            self.assertEqual(helper.read_bytes(),self.new);self.assertEqual(other.read_bytes(),b'UNRELATED')
+            op=home/'.anytoour-int-executor'/p.PRIOR_TOUR_OPERATION
+            self.assertEqual((op/'backup'/p.CAPTURE_INSTALL_PATH).read_bytes(),self.old)
+            before=(op/'result.json').read_bytes();repeat=execute()
+            self.assertEqual(repeat['reason'],'operation_exists_no_replay')
+            self.assertEqual((op/'result.json').read_bytes(),before)
+            self.assertEqual(result['install']['files'],1)
+            for key in ['supplier_calls','database_writes','booking_calls','lead_calls']:self.assertEqual(result[key],0)
+            for mutate in [lambda r:r.update(source_sha='f'*40),lambda r:r.update(mode=p.CAPTURE_INSTALL_MODE),
+                           lambda r:r.update(operation_id=p.CAPTURE_INSTALL_OPERATION),
+                           lambda r:r['install'].update(files=True),
+                           lambda r:r['passive_capture_install'].update(sha256=p.CAPTURE_INSTALL_SHA256),
+                           lambda r:r.update(passive_capture_public_after={}),
+                           lambda r:r.update(supplier_calls='unknown')]:
+                bad=copy.deepcopy(result);mutate(bad);self.assertFalse(p.completed(PRIOR_COMMAND,bad),bad)
+
+    def test_runtime_or_public_drift_before_write(self):
+        for drift in ['target',*p.CAPTURE_INSTALL_DEPENDENCIES]:
+            with self.subTest(drift=drift),tempfile.TemporaryDirectory() as td:
+                execute,helper,*_=self.fixture(Path(td),drift=drift)
+                before=helper.read_bytes();result=execute()
+                self.assertEqual(result['reason'],'capture_install_predecessor_or_dependency_drift')
+                self.assertEqual(helper.read_bytes(),before)
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,runtime,*_=self.fixture(Path(td))
+            (runtime.parents[1]/'index.php').write_bytes(b'foreign public')
+            result=execute();self.assertEqual(result['reason'],'prior_tour_public_drift')
+            self.assertEqual(helper.read_bytes(),self.old)
+
+    def test_drift_after_backup_denies_first_replacement(self):
+        for changed in ['public',next(iter(p.CAPTURE_INSTALL_DEPENDENCIES))]:
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as td:
+                root=Path(td);execute,helper,runtime,*_=self.fixture(root)
+                target=runtime.parents[1]/'index.php' if changed=='public' else runtime/changed
+                remote=root/'remote.py'
+                marker='    prior_tour_prewrite()\n    install_started=True\n'
+                self.assertEqual(remote.read_text().count(marker),1)
+                remote.write_text(remote.read_text().replace(marker,'    pathlib.Path('+repr(str(target))+').write_bytes(b"drift after backup")\n'+marker,1))
+                result=execute()
+                self.assertEqual(result['reason'],'prior_tour_public_drift' if changed=='public' else 'prior_tour_runtime_drift')
+                self.assertEqual(helper.read_bytes(),self.old)
+
+    def test_postwrite_failure_keeps_stock_rollback(self):
+        with tempfile.TemporaryDirectory() as td:
+            execute,helper,*_=self.fixture(Path(td),fail_lint=True)
+            result=execute();self.assertEqual(result['status'],'rolled_back')
+            self.assertEqual(helper.read_bytes(),self.old)
+            self.assertFalse(p.completed(PRIOR_COMMAND,result))
+
+    def test_exact_bundle_has_one_candidate_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);target=root/p.CAPTURE_INSTALL_PATH;target.parent.mkdir(parents=True);target.write_bytes(self.new)
+            blob,pins=p.bundle_source(root,PRIOR_COMMAND)
+            self.assertEqual(pins,{p.CAPTURE_INSTALL_PATH:p.PRIOR_TOUR_SHA256})
+            with tarfile.open(fileobj=io.BytesIO(blob),mode='r:gz') as archive:self.assertEqual(archive.getnames(),[p.CAPTURE_INSTALL_PATH,'manifest.json'])
+            target.write_bytes(self.old)
+            with self.assertRaises(ValueError):p.bundle_source(root,PRIOR_COMMAND)
+
+    def test_owner_exact_ci_and_mode_no_replay(self):
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':core.REPO,'GITHUB_REF':'refs/heads/main',
+             'GITHUB_WORKFLOW_REF':core.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+             'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        event={'action':'created','repository':{'full_name':core.REPO},'comment':{'id':99}}
+        rows=[{'id':i,'head_sha':p.PRIOR_TOUR_CHECK_COMMIT,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in p.PRIOR_TOUR_CHECK_IDS]
+        history=[{'id':99,'body':core.PREFIX+p.PRIOR_TOUR_SOURCE+' '+p.PRIOR_TOUR_MODE+' '+p.PRIOR_TOUR_OPERATION}]
+        def api(path,token):return {'total_count':len(rows),'check_runs':rows} if '/check-runs' in path else history
+        p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,PRIOR_COMMAND)
+        for change in [{'GITHUB_RUN_ATTEMPT':'2'},{'GITHUB_ACTOR':'other'},{'GITHUB_EVENT_NAME':'workflow_dispatch'}]:
+            with self.assertRaises(ValueError):p.admission(api,event,'fake',dict(env,**change),core.REPO,4709,core.PREFIX,PRIOR_COMMAND)
+        rows[0]['head_sha']='f'*40
+        with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,PRIOR_COMMAND)
+        rows[0]['head_sha']=p.PRIOR_TOUR_CHECK_COMMIT
+        history.append(dict(history[0],id=100))
+        with self.assertRaises(ValueError):p.admission(api,event,'fake',env,core.REPO,4709,core.PREFIX,PRIOR_COMMAND)
+
 if __name__=='__main__':unittest.main()
+

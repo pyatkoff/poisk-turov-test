@@ -115,3 +115,39 @@ reservation hash. Production root index bytes are not in the repository, so only
 the expected root fingerprint is injected for the synthetic HOME; its actual
 no-follow classifier and public drift checks still execute. Golden receipt pins
 assert the real production expectation separately. This is not installed proof.
+
+
+## One-helper prior tour-stage diagnostic update — 2026-10-24
+
+Application PR4850/source d840deb9670de177784941ebb9f75f08815a16e5 merged
+FEATURE fdcbccc87f9b22c32e74c6c1e4f64f52fbd49767. Exact three source checks
+120896877191/120896876857/120896876773 are successful. Candidate helper SHA256
+4851c2bf1d2f09baac6b322bd3657617334edf96c6a0a02c9245801b684e82c3
+adds bounded prior-tour context only to the existing missing-pair diagnostic.
+It has no supplier/DB/price/UI/lead effect and no new diagnostic endpoint.
+
+The existing carrier's new fixed profile is install-tv-prior-tour-diagnostic,
+operation int-anex-tv-prior-tour-diagnostic-install-20261024-v1, source exactly
+fdcbccc87f9b22c32e74c6c1e4f64f52fbd49767. This is a different reviewed helper
+version, not a replay/alias of any old install/reconcile/complete operation.
+All old profiles/pins/receipts/reservations remain sealed. Their rendered REMOTE
+programs are byte-identical to the prior control source.
+
+It replaces ONLY app/integrations/tourvisor-operator-fuel-passive-intake.php.
+The predecessor must be5c0c0ba5a15517995b9241dc709e3d31ae663d0848e295e7e9bc6c8942462350;
+the same three dependency hashes above remain exact. Typed public expectation
+is root index80e993e8 regular and the three v2 paths absent, not a wildcard absence
+or a new broad production audit. These runtime/public predicates run before
+installation and again after the stock plan/backup immediately before first
+replacement. Stock backup/PHP lint/exact readback/rollback/concurrency/reservation
+and immutable-operation guard remain in force. Only a one-file changed1/created0
+receipt with unchanged typed public map and zero supplier/DB/booking/lead counters
+is accepted. The command is not issued merely by preparing this control change.
+
+Native tests retain the pinned04c fixture for historical modes and add a separate
+exactfdcb checkout to the SAME suite for the new real candidate bytes. No existing
+checks, workflow execute filters, transports, secrets or permissions are changed.
+Public index test bytes stay a synthetic HOME fingerprint injection, with the real
+production expectation asserted separately. No provider/custody/session/log read.
+Source/CI/review/main merge, actual one-time installation and natural diagnostics
+remain separate; no new Find or consumed-case replay to fill evidence.

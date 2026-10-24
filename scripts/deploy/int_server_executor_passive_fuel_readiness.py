@@ -112,7 +112,13 @@ CAPTURE_COMPLETE_PUBLIC = {'index.php':{'state':'regular','sha256':'80e993e80a4c
 CAPTURE_COMPLETE_RUNS = (
     (40034325979,'1fddefb6ce28981ae44d6e57ea06a777a56d5c74','failure',12536421402,'7fc554c40b4bd1e38ee831e75a328b63ab98fa90a7ccae8448e2527104f65aee'),
     (40037220184,'25f1eb0f68c22b955dd177b864715707619ca86d','success',12537746864,'bcdd4281e7d2a216dc1e13e16f40e31dadaf920497b1d30c019858c7b5994ba8'))
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE, CAPTURE_RECONCILE_MODE, CAPTURE_COMPLETE_MODE)
+PRIOR_TOUR_MODE = 'install-tv-prior-tour-diagnostic'
+PRIOR_TOUR_OPERATION = 'int-anex-tv-prior-tour-diagnostic-install-20261024-v1'
+PRIOR_TOUR_SOURCE = 'fdcbccc87f9b22c32e74c6c1e4f64f52fbd49767'
+PRIOR_TOUR_CHECK_COMMIT = 'd840deb9670de177784941ebb9f75f08815a16e5'
+PRIOR_TOUR_CHECK_IDS = {120896877191, 120896876857, 120896876773}
+PRIOR_TOUR_SHA256 = '4851c2bf1d2f09baac6b322bd3657617334edf96c6a0a02c9245801b684e82c3'
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE, DATE_DIAGNOSTIC_MODE, CAPTURE_INSTALL_MODE, CAPTURE_RECONCILE_MODE, CAPTURE_COMPLETE_MODE, PRIOR_TOUR_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -140,6 +146,9 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [PRIOR_TOUR_MODE]:
+        need(parts == [PRIOR_TOUR_SOURCE, PRIOR_TOUR_MODE, PRIOR_TOUR_OPERATION], 'prior_tour_fixed_scope')
+        return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
     if parts[1:2] == [CAPTURE_COMPLETE_MODE]:
         need(len(parts) == 3 and isinstance(parts[0],str) and re.fullmatch(r'[a-f0-9]{40}',parts[0])
              and parts[2] == CAPTURE_COMPLETE_OPERATION,'capture_complete_fixed_scope')
@@ -217,13 +226,15 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE,CAPTURE_COMPLETE_MODE):
         check_commit, check_ids = CAPTURE_INSTALL_CHECK_COMMIT, CAPTURE_INSTALL_CHECK_IDS
+    if command['mode'] == PRIOR_TOUR_MODE:
+        check_commit, check_ids = PRIOR_TOUR_CHECK_COMMIT, PRIOR_TOUR_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
          and {c.get('id') for c in checks.get('check_runs', [])} == check_ids
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
-    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE,CAPTURE_COMPLETE_MODE):
+    if command['mode'] in (CONTEXT_DIAGNOSTIC_MODE,DATE_DIAGNOSTIC_MODE,CAPTURE_INSTALL_MODE,CAPTURE_RECONCILE_MODE,CAPTURE_COMPLETE_MODE,PRIOR_TOUR_MODE):
         rows=checks['check_runs']
         need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
              and all(c.get('head_sha')==check_commit for c in rows),
@@ -269,6 +280,7 @@ def bundle_source(source_root, command=None):
         hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
     if command['mode'] in (CAPTURE_INSTALL_MODE,CAPTURE_COMPLETE_MODE): hashes = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
     if command['mode'] == CAPTURE_RECONCILE_MODE: hashes = {}
+    if command['mode'] == PRIOR_TOUR_MODE: hashes = {CAPTURE_INSTALL_PATH: PRIOR_TOUR_SHA256}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -1460,9 +1472,17 @@ def capture_reconcile_completed(command,result):
         and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
 
 
+def capture_install_profile(command):
+    policy(command)
+    if command['mode'] == PRIOR_TOUR_MODE:
+        return PRIOR_TOUR_MODE, PRIOR_TOUR_OPERATION, PRIOR_TOUR_SHA256, CAPTURE_INSTALL_SHA256
+    need(command['mode'] == CAPTURE_INSTALL_MODE, 'capture_install_profile')
+    return CAPTURE_INSTALL_MODE, CAPTURE_INSTALL_OPERATION, CAPTURE_INSTALL_SHA256, CAPTURE_INSTALL_PREDECESSOR
+
+
 def capture_install_remote_program(remote, command):
     """Restrict the existing stock installer to one reviewed replacement; no new I/O lane."""
-    policy(command)
+    install_mode,install_operation,candidate_sha256,predecessor_sha256 = capture_install_profile(command)
     dispatch = "    if mode in ('install-runtime','install-anex-preview','install-andromeda-preview','install-andromeda-quote-preview'):\n"
     inventory = "    if len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected):\n"
     manifest = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
@@ -1475,9 +1495,9 @@ def capture_install_remote_program(remote, command):
     for marker in (dispatch, inventory, manifest, rollback, gate, reservation, snapshot, definitions):
         need(remote.count(marker) == 1, 'capture_install_stock_drift')
     need(remote.count(exclusion) == 2, 'capture_install_stock_drift')
-    pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
-    preflight = {**CAPTURE_INSTALL_DEPENDENCIES, CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_PREDECESSOR}
-    registration = "    if mode==" + repr(CAPTURE_INSTALL_MODE) + ":\n" + (
+    pins = {CAPTURE_INSTALL_PATH: candidate_sha256}
+    preflight = {**CAPTURE_INSTALL_DEPENDENCIES, CAPTURE_INSTALL_PATH: predecessor_sha256}
+    registration = "    if mode==" + repr(install_mode) + ":\n" + (
         "        for relative,expected in " + repr(preflight) + ".items():\n"
         "            target=runtime/relative\n"
         "            if (not safe_file(target,2*1024*1024) or target.resolve()!=target\n"
@@ -1491,19 +1511,19 @@ def capture_install_remote_program(remote, command):
         "        result.update(status='installed',supplier_calls=0,database_writes=0,\n"
         "            runtime_changed=True,public_ui_entrypoints_unchanged=True)\n"
         "        result['passive_capture_install']=" + repr({'target':CAPTURE_INSTALL_PATH,
-            'sha256':CAPTURE_INSTALL_SHA256, 'previous_sha256':CAPTURE_INSTALL_PREDECESSOR,
+            'sha256':candidate_sha256, 'previous_sha256':predecessor_sha256,
             'dependencies':CAPTURE_INSTALL_DEPENDENCIES}) + "\n"
     )
-    fixed = "    if mode!=" + repr(CAPTURE_INSTALL_MODE) + " or operation!=" + repr(CAPTURE_INSTALL_OPERATION) + " or source!=" + repr(command['source_sha']) + ":fail('capture_install_fixed_scope')\n"
+    fixed = "    if mode!=" + repr(install_mode) + " or operation!=" + repr(install_operation) + " or source!=" + repr(command['source_sha']) + ":fail('capture_install_fixed_scope')\n"
     remote = remote.replace(dispatch, registration + dispatch, 1)
     remote = remote.replace(definitions, CAPTURE_PUBLIC_REMOTE + '\n' + definitions, 1)
     remote = remote.replace(snapshot, snapshot + "    result['passive_capture_public_before']=capture_install_public_state()\n"
         "    if before!={k:v.get('sha256') for k,v in result['passive_capture_public_before'].items()}:fail('production_drift')\n", 1)
-    remote = remote.replace(inventory, "    if mode!=" + repr(CAPTURE_INSTALL_MODE)
+    remote = remote.replace(inventory, "    if mode!=" + repr(install_mode)
         + " and (len(selected)<20 or not any(x=='app/integrations/three-provider-fuel-evidence.php' for x in selected)):\n", 1)
     remote = remote.replace(manifest, "if not isinstance(files,dict) or files!=" + repr(pins) + ": fail('capture_install_manifest')", 1)
-    remote = remote.replace(exclusion, "    if mode not in (" + repr(CAPTURE_INSTALL_MODE) + ",'reconcile',")
-    remote = remote.replace(rollback, rollback.replace("('install-runtime',", "(" + repr(CAPTURE_INSTALL_MODE) + ",'install-runtime',"), 1)
+    remote = remote.replace(exclusion, "    if mode not in (" + repr(install_mode) + ",'reconcile',")
+    remote = remote.replace(rollback, rollback.replace("('install-runtime',", "(" + repr(install_mode) + ",'install-runtime',"), 1)
     remote = remote.replace(gate, fixed + gate, 1)
     # Do not let the stock finally block overwrite an earlier immutable receipt.
     remote = remote.replace(reservation,
@@ -1515,16 +1535,17 @@ def capture_install_remote_program(remote, command):
 
 
 def capture_install_completed(command, result):
-    pins = {CAPTURE_INSTALL_PATH: CAPTURE_INSTALL_SHA256}
+    install_mode,install_operation,candidate_sha256,predecessor_sha256 = capture_install_profile(command)
+    pins = {CAPTURE_INSTALL_PATH: candidate_sha256}
     manifest = hashlib.sha256(json.dumps(pins, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-    expected = {'target':CAPTURE_INSTALL_PATH,'sha256':CAPTURE_INSTALL_SHA256,
-                'previous_sha256':CAPTURE_INSTALL_PREDECESSOR,'dependencies':CAPTURE_INSTALL_DEPENDENCIES}
+    expected = {'target':CAPTURE_INSTALL_PATH,'sha256':candidate_sha256,
+                'previous_sha256':predecessor_sha256,'dependencies':CAPTURE_INSTALL_DEPENDENCIES}
     install = result.get('install')
     public_before=result.get('passive_capture_public_before')
     public_fingerprints=capture_public_fingerprints(public_before)
     return (type(result.get('schema_version')) is int and result['schema_version'] == 1
-        and result.get('operation_id') == CAPTURE_INSTALL_OPERATION
-        and result.get('mode') == CAPTURE_INSTALL_MODE and result.get('source_sha') == command['source_sha']
+        and result.get('operation_id') == install_operation
+        and result.get('mode') == install_mode and result.get('source_sha') == command['source_sha']
         and result.get('status') == 'installed' and result.get('passive_capture_install') == expected
         and isinstance(install,dict) and all(type(install.get(k)) is int for k in ('files','changed_files','created_files'))
         and install == {'status':'installed','source_sha':command['source_sha'],
@@ -1536,6 +1557,30 @@ def capture_install_completed(command, result):
         and result['production_before'] == result.get('production_after')
         and all(type(result.get(k)) is int and result[k] == 0
                 for k in ('supplier_calls','database_writes','booking_calls','lead_calls')))
+
+
+def prior_tour_remote_program(remote,command):
+    """One changed helper, with the same public/runtime checks again before first write."""
+    policy(command)
+    remote=capture_install_remote_program(remote,command)
+    definitions='def db_summary(provider):\n'
+    install="        result['install']=install_runtime(stage,files,op)\n"
+    prewrite='    install_started=True\n'
+    need(remote.count(definitions)==1 and remote.count(install)==2 and remote.count(prewrite)==2,
+         'prior_tour_stock_drift')
+    preflight={**CAPTURE_INSTALL_DEPENDENCIES,CAPTURE_INSTALL_PATH:CAPTURE_INSTALL_SHA256}
+    checks=("def prior_tour_prewrite():\n"
+        "    if capture_install_public_state()!="+repr(CAPTURE_COMPLETE_PUBLIC)+":fail('prior_tour_public_drift')\n"
+        "    for relative,expected in "+repr(preflight)+".items():\n"
+        "        target=runtime/relative\n"
+        "        if (not safe_file(target,2*1024*1024) or target.resolve()!=target\n"
+        "                or target.stat().st_nlink!=1 or hashlib.sha256(target.read_bytes()).hexdigest()!=expected):\n"
+        "            fail('prior_tour_runtime_drift')\n")
+    remote=remote.replace(definitions,checks+'\n'+definitions,1)
+    remote=remote.replace(install,'        prior_tour_prewrite()\n'+install,1)
+    remote=remote.replace(prewrite,'    prior_tour_prewrite()\n'+prewrite,1)
+    ast.parse(remote)
+    return remote
 
 
 CAPTURE_COMPLETE_REMOTE = r'''
@@ -1635,6 +1680,7 @@ def capture_complete_completed(command,result):
 
 def remote_program(remote, command=None):
     command = policy(command)
+    if command['mode'] == PRIOR_TOUR_MODE:return prior_tour_remote_program(remote,command)
     if command['mode'] == CAPTURE_COMPLETE_MODE:return capture_complete_remote_program(remote,command)
     if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_remote_program(remote,command)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_remote_program(remote, command)
@@ -1698,6 +1744,9 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == PRIOR_TOUR_MODE:
+        return (result.get('passive_capture_public_before') == CAPTURE_COMPLETE_PUBLIC
+                and capture_install_completed(command,result))
     if command['mode'] == CAPTURE_COMPLETE_MODE:return capture_complete_completed(command,result)
     if command['mode'] == CAPTURE_RECONCILE_MODE:return capture_reconcile_completed(command,result)
     if command['mode'] == CAPTURE_INSTALL_MODE: return capture_install_completed(command, result)
@@ -2286,3 +2335,4 @@ def diagnostic_completed(command,result):
     except (KeyError,TypeError,ValueError):return False
     return (type(value['observed_files']) is int and value['observed_files']==observed
             and type(value['fresh_files']) is int and value['fresh_files']==fresh)
+
