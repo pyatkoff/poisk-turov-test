@@ -2,10 +2,24 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
-const {fixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+// Telephone journeys retain their supplier-only request ledger. The dedicated
+// messenger browser case separately proves successful freeze/CREATE/navigation.
+const fixture=(...args)=>{
+ const transport=createFixture(...args),handoffPreparation=[];
+ return {...transport,handoffPreparation,json:async(url,options={})=>{
+  const parsed=new URL(url),body=options.body?JSON.parse(options.body):{},action=parsed.searchParams.get('action')||body.action;
+  if(String(action).startsWith('handoff_')){
+   assert(parsed.pathname.endsWith('/api-anex-search3-preview.php'));assert.equal(action,'handoff_token','telephone journeys never CREATE or freeze a bot handoff');assert.equal(options.body||'', '');
+   handoffPreparation.push(action);return {ok:false,error:'signer_unavailable'};
+  }
+  return transport.json(url,options);
+ }};
+};
 // The approved NEXT entry offers bots first for an eligible exact ANEX receipt.
 // Existing telephone-path checks choose that optional method before checking the form.
 const chooseTelephoneIfOffered=async page=>{
+ await page.locator('#prototype-lead-form').waitFor({state:'attached'});
  const phone=page.locator('[data-action="messenger-phone"]');
  if(await phone.count()){
   assert.equal(await phone.isVisible(),true,'optional telephone action is available');
