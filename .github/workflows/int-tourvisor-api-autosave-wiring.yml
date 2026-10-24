@@ -64,3 +64,57 @@ jobs:
           grep -Fq "__DIR__ . '/app/integrations/tourvisor-anytour-offer-autosave.php'" v2/api-v2.php
           grep -Fq "dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php'" v2/api-v2.php
           echo INT_TOURVISOR_API_AUTOSAVE_WIRING_OK
+
+
+  repeated-child-ages:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.event.pull_request.head.ref == 'fix/int-tourvisor-repeated-child-ages-20261024' &&
+      github.event.pull_request.base.ref == 'feature/anex-search-adapter-20260907'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring
+      - name: Exact party parser correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=9d1c8695f225bcda05c07bef0231a7ec08518cd3
+          test "$(git merge-base HEAD "$base")" = "$base"
+          mapfile -t changed < <(git diff --name-only "$base...HEAD" | sort)
+          expected=(
+            .github/workflows/int-tourvisor-api-autosave-wiring.yml
+            docs/project/search3-production-import.json
+            tests/tourvisor-api-autosave-wiring-int-test.php
+            v2/api-v2.php
+          )
+          test "${#changed[@]}" = "${#expected[@]}"
+          for i in "${!expected[@]}"; do test "${changed[$i]}" = "${expected[$i]}"; done
+          php -l v2/api-v2.php
+          php -l tests/tourvisor-api-autosave-wiring-int-test.php
+          git show "$base:v2/api-v2.php" > "$RUNNER_TEMP/tv-party-baseline.php"
+          if php -d allow_url_fopen=0 tests/tourvisor-api-autosave-wiring-int-test.php "$RUNNER_TEMP/tv-party-baseline.php" > "$RUNNER_TEMP/tv-party-negative.log" 2>&1; then
+            echo 'Baseline unexpectedly preserved repeated child ages'; exit 1
+          fi
+          grep -Fq 'child ages lost order, multiplicity or bounds' "$RUNNER_TEMP/tv-party-negative.log"
+          php -d allow_url_fopen=0 tests/tourvisor-api-autosave-wiring-int-test.php
+          python3 - <<'PYCODE'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          path='docs/project/search3-production-import.json'
+          base=json.loads(subprocess.check_output(['git','show','9d1c8695f225bcda05c07bef0231a7ec08518cd3:'+path]))
+          current=json.loads(Path(path).read_text())
+          actual=hashlib.sha256(Path('v2/api-v2.php').read_bytes()).hexdigest()
+          assert current['protectedSha256']['api-v2.php']==actual
+          current['protectedSha256']['api-v2.php']=base['protectedSha256']['api-v2.php']
+          assert current==base, 'Unrelated import/protected metadata changed'
+          PYCODE
+          echo INT_TOURVISOR_REPEATED_CHILD_AGES_OK supplier_http=0

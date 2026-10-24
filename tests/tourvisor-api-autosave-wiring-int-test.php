@@ -6,8 +6,41 @@ function check_true(bool $value, string $message): void
     if (!$value) throw new RuntimeException($message);
 }
 
-$source = file_get_contents(__DIR__ . '/../v2/api-v2.php');
+$source = file_get_contents($argv[1] ?? (__DIR__ . '/../v2/api-v2.php'));
 check_true(is_string($source) && $source !== '', 'gateway source missing');
+
+// Run the actual request parser without bootstrap, credentials, HTTP or a session.
+function out($data, int $status = 200): void
+{
+    throw new RuntimeException('parser_status_' . $status);
+}
+$parserStart = strpos($source, 'function short_text(');
+$parserEnd = strpos($source, 'function search_id(', $parserStart === false ? 0 : $parserStart + 1);
+check_true($parserStart !== false && $parserEnd !== false, 'request parser boundaries missing');
+eval(substr($source, $parserStart, $parserEnd - $parserStart));
+$queryStart = strpos($source, 'function query_string(');
+$queryEnd = strpos($source, 'function tv_get(', $queryStart === false ? 0 : $queryStart + 1);
+check_true($queryStart !== false && $queryEnd !== false, 'query serializer boundaries missing');
+eval(substr($source, $queryStart, $queryEnd - $queryStart));
+foreach ([
+    [[0, 0, 8], [0, 0, 8]], [[1, 1, 1], [1, 1, 1]],
+    [[8, 0, 8], [8, 0, 8]], [[1, 1, 1, 8], [1, 1, 1]],
+    ['0', [0]], ['', []], [null, []], [['  ', '0', '0'], [0, 0]],
+] as [$input, $expected]) {
+    $_GET = ['childs' => $input];
+    check_true(child_ages() === $expected, 'child ages lost order, multiplicity or bounds');
+}
+$_GET = ['childs' => ['0', '0', '8'], 'ids' => ['4', '4', '5']];
+check_true(query_string(['childs' => child_ages()]) === 'childs=0&childs=0&childs=8', 'supplier query lost a party member');
+check_true(request_array('ids', 30) === ['4', '5'], 'ordinary ID lists must still deduplicate');
+check_true(request_array('ids', 2) === ['4'], 'ordinary ID input limit changed');
+foreach ([-1, 18, 'invalid'] as $invalid) {
+    $_GET = ['childs' => [0, $invalid, 0]];
+    $rejected = false;
+    try { child_ages(); } catch (RuntimeException $error) { $rejected = $error->getMessage() === 'parser_status_400'; }
+    check_true($rejected, 'invalid child age must reject before any supplier call');
+}
+$_GET = [];
 
 // The same checked gateway can live under /v2 in source or at the shared site root.
 check_true(str_contains($source, "__DIR__ . '/app/integrations/tourvisor-anytour-offer-autosave.php'"), 'root helper candidate missing');
