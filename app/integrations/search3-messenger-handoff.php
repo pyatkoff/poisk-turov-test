@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . "/anex-package-quote-handoff.php";
+require_once __DIR__ . '/tourvisor-selected-tour-handoff.php';
 
-/** Retained ANEX facts only. No supplier, database, browser DTO or lead dependency. */
+/** Retained provider facts only. No supplier, database, browser DTO or lead dependency. */
 final class AnyTourSearch3HandoffMissing extends RuntimeException
 {
     public function __construct(public readonly string $field, public readonly string $owner)
@@ -27,6 +28,14 @@ final class AnyTourSearch3MessengerHandoff
     /** Delegate to INT's one retained pair/record owner; do not project or mint another snapshot. */
     private static function canonical(array $selector, array &$session, callable $checkpoint, int $now, callable $clock): array
     {
+        if (($selector['provider'] ?? null) === 'tourvisor') {
+            $result = AnyTourTourvisorSelectedTourHandoff::freeze($selector,$session,$now,$clock);
+            if (($result['status'] ?? null) !== 'ready') {
+                $missing = $result['missing'][0] ?? ['field'=>'record.invalid_retained','owner'=>'INT'];
+                self::missing($missing['field'],$missing['owner']);
+            }
+            return $result;
+        }
         $ref = $selector['search_ref'] ?? null;
         if (!is_string($ref) || !preg_match('/\A[a-f0-9]{32}\z/D', $ref)
             || ($session['anex_context_generation'] ?? null) !== ($selector['generation'] ?? null)
@@ -50,10 +59,17 @@ final class AnyTourSearch3MessengerHandoff
     /** Return the canonical server preview. Same record SHA reuses the original wire operation. */
     public static function freeze(array $request, array &$session, int $now, callable $checkpoint, ?callable $clock = null): array
     {
-        self::exact($request, ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id', 'choice_ref', 'csrf']);
+        $keys = ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id', 'choice_ref', 'csrf'];
+        $tv = array_key_exists('provider',$request);
+        if ($tv) {
+            if ($request['provider'] !== 'tourvisor') throw new InvalidArgumentException('invalid_request');
+            $keys[] = 'provider';
+        }
+        self::exact($request, $keys);
         if ($request['action'] !== 'handoff_freeze') throw new InvalidArgumentException('invalid_request');
         $selector = [];
         foreach (['generation', 'search_ref', 'offer_ref', 'local_hotel_id', 'choice_ref'] as $field) $selector[$field] = $request[$field];
+        if ($tv) $selector['provider'] = 'tourvisor';
         $result = self::canonical($selector, $session, $checkpoint, $now, $clock ?? static fn(): int => time());
         $source = $result['record']; $digest = $result['record_sha256'];
         $records = $session['search3_messenger_handoffs'] ?? [];
@@ -67,7 +83,7 @@ final class AnyTourSearch3MessengerHandoff
         $raw = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $record = ['generation' => $selector['generation'], 'selector' => $selector, 'record_sha256' => $digest,
             'raw' => $raw, 'request_hash' => hash('sha256', $raw), 'state' => 'prepared', 'prepared_at' => $now,
-            'provenance' => ['owner' => 'package_quotes.pairs.handoff_record',
+            'provenance' => ['owner' => $tv ? 'tourvisor_handoff_records' : 'package_quotes.pairs.handoff_record',
                 'observed_at' => intdiv($source['observation']['capturedAt'], 1000),
                 'deadline' => $source['observation']['price']['expiresAt']]];
         $session['search3_messenger_handoffs'][$operation] = $record;
@@ -92,7 +108,9 @@ final class AnyTourSearch3MessengerHandoff
         if (!is_array($session['search3_messenger_handoffs'][$operation] ?? null)) throw new RuntimeException('handoff_missing');
         $record =& $session['search3_messenger_handoffs'][$operation];
         $creating = $action === 'handoff_create' && $record['state'] === 'prepared';
-        if ($creating && (($session['anex_context_generation'] ?? null) !== $record['generation']
+        $tv = ($record['selector']['provider'] ?? null) === 'tourvisor';
+        $generationKey = $tv ? 'tourvisor_context_generation' : 'anex_context_generation';
+        if ($creating && (($session[$generationKey] ?? null) !== $record['generation']
             || $now - $record['prepared_at'] > 900 || $now < $record['prepared_at']
             || $now - $record['provenance']['observed_at'] > 900)) throw new RuntimeException('handoff_stale');
         if ($creating) {
@@ -104,7 +122,8 @@ final class AnyTourSearch3MessengerHandoff
                 return $readAt;
             };
             $selector = $record['selector'];
-            $slot = $session['anex_offer_contexts'][$selector['search_ref']]['package_quotes'][$selector['offer_ref']]['pairs'][$selector['choice_ref']]['handoff_record'] ?? null;
+            $slot = $tv ? AnyTourTourvisorSelectedTourHandoff::slot($selector,$session)
+                : ($session['anex_offer_contexts'][$selector['search_ref']]['package_quotes'][$selector['offer_ref']]['pairs'][$selector['choice_ref']]['handoff_record'] ?? null);
             if (!is_array($slot) || ($slot['json_sha256'] ?? null) !== $record['record_sha256']) throw new RuntimeException('handoff_stale');
             $current = self::canonical($selector, $session, $checkpoint, $now, $readClock);
             $record =& $session['search3_messenger_handoffs'][$operation];
@@ -227,3 +246,4 @@ final class AnyTourSearch3MessengerHandoff
         return ['status' => $status, 'body' => $body];
     }
 }
+

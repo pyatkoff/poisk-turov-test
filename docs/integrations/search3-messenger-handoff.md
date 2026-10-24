@@ -21,10 +21,12 @@ No supplier, PDO, Find/search/expand/quote/flights, money/fuel/FX/infant calcula
 runs on freeze/create/status/open. Missing, legacy, expired, mismatched, UNKNOWN/sealed records are held
 with precise fixed field/owner. A create revalidates the same existing record; it cannot remint a lost slot.
 
-This first adapter supplies ANEX exact selected pairs only. Manager-deferred, listing/estimate, Tourvisor
-and Andromeda are explicitly unavailable here; their ordinary contact paths must remain usable and
-must not be forced to select flights or silently substitute another source. SEARCH's separate unloaded
-selector preparation owns invocation/UI. Three-source collectorV1 is still unfinished.
+The installed first adapter supplies ANEX exact selected pairs only. The source component below
+adds an internal TV canonical-record owner and delegation in this same producer; no TV HTTP capture
+hook/session binder is installed or exposed here. TV therefore remains unavailable to the installed
+messenger path until that separate exact runtime admission. Ordinary contact paths stay usable;
+never force flights, borrow an ANEX slot or silently substitute a provider. Andromeda and the
+three-source collector remain unavailable. SEARCH owns invocation/UI.
 
 ## Preview and explicit operation
 
@@ -88,3 +90,69 @@ key rotation/custody permissions, raw-byte tampering, and the actual cURL TLS/ti
 Loopback HTTP exercises the actual endpoint and PHP session close/reopen, including canonical freezer
 checkpoint followed by durable wire intent. Existing affected endpoint CI remains mandatory. No old
 receiver/supplier/full browser baseline, private session or natural native arrival is replayed or claimed.
+
+
+## TV canonical record component — 24 October2026, SOURCE ONLY
+
+Source claim4709/6386521152 (+HTTP consumer6386616603), existing INT queue2506.
+This implements internal trusted capture → canonical immutable TV record → the
+SAME wire producer, not a live TV gateway, second sender or receiver contract.
+
+AnyTourTourvisorSelectedTourHandoff::capture accepts ONLY a current server-owned
+selector and server-returned normalized terms under the existing viewer/session
+lock, with original observation time/deadline. It does not authenticate arbitrary
+input or prove upstream provenance by type validation. It cannot establish its
+own tourvisor_context_generation. The future gateway owner must establish that
+current search generation and resolve exact server identity/room/meal/ordered
+party, observed whole-party total, explicit manager defer or exact returned pair
+BEFORE calling it. Never hydrate it from HTTP/browser fields, listing autosave,
+fuel pending, labels used as identity, another viewer, UNKNOWN or consumed paid run.
+
+Only checked RUB shown-offer with explicit manager-deferred/empty legs or checked
+selected-pair with that pair's own whole-party amount is admitted in this component.
+The record remains finalPriceVerified=false/authority=browser-observation-only.
+No arithmetic, FX, fuel/default/infant formula or final-price promotion occurs.
+Existing trusted Coral/Sunmar actualization gate still belongs before supplier
+execution; this component introduces no supplier request or policy exception.
+
+The selector is provider=tourvisor plus generation/search_ref(32hex)/
+offer_ref(tourvisor:64hex)/local_hotel_id/choice_ref(manager-deferred or
+tourvisor_pair:64hex). Those opaque references must be issued/bound by the server
+capture owner, not guessed from UI labels/URLs. Capture is INTERNAL ONLY:
+there is no handoff_capture HTTP action. Existing handoff_freeze accepts this
+provider-qualified selector, but without a populated current TV slot it is held;
+extra observation/price/labels remain invalid HTTP input. ANEX's exact old request
+keys and scoped cookie are unchanged.
+
+One canonical record is stored in tourvisor_handoff_records inside the same PHP
+session, max8 slots without silent UNKNOWN eviction. Original capturedAt/deadline
+(max900s) stay fixed. Repeat/reordered identical capture preserves record/hash;
+changed terms, occupied corrupt/UNKNOWN slot, expired/future/clock rollback,
+missing current generation or failed checkpoint cannot mint a ready replacement
+in that state. Checkpoint mutation never restores a concurrent foreign context.
+The runtime caller must preserve its existing durable operation/no-replay outcome
+on an uncertain capture checkpoint; this internal unit is not a replacement
+ledger or permission to retry a paid/capture operation after session loss.
+
+Freeze only reads/revalidates that canonical record; it cannot capture/remint one.
+Create checks the same slot/hash/current TV generation and original deadline,
+then uses the existing signed raw bytes/UNKNOWN-before-wire/status/revoke/TLS
+mechanism. TV needs no ANEX supplier result or ANEX quote slot. A missing slot,
+stale generation or tamper reaches no transport. Late expiry after wire checkpoint
+stays UNKNOWN/status-only with zero CREATE, just like the existing ANEX boundary.
+
+Focused tests use fictional internal server facts and synthetic transport only;
+they retain all original ANEX tests, exercise deferred/selected TV, duplicate ages,
+own amount, byte/hash reuse, invalid/missing/expired/corrupt/UNKNOWN/limit cases,
+real existing endpoint denial of browser capture, and the unchanged actual frozen
+receiver normalizer/signature contract in mandatory CI. This is not proof of
+natural TV capture, FPM session binding/signing, installation or native delivery.
+
+NEXT same-owner protected delta: populate this TV slot from the real ordinary
+gateway's checked tour and optional returned pair under a proven viewer/current
+search session. ANEX cookie remains scoped to its existing private preview and
+does not reach rootTV; do not widen it or invent browser authority to bridge the
+gap. Prepare exact API/session admission before activation. No installation,
+new Find/quote/header probe, native/customer send or production action follows
+from this source component. SEARCH receives one accepted runtime selector receipt
+only after those actual capture/install gates.
