@@ -182,9 +182,16 @@ jobs:
           path: passive-fuel-install-source
           fetch-depth: 2
           persist-credentials: false
+      - name: Exact prior-tour diagnostic application source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: fdcbccc87f9b22c32e74c6c1e4f64f52fbd49767
+          path: prior-tour-install-source
+          persist-credentials: false
       - name: One-helper passive fuel native stock install and rollback
         env:
           PASSIVE_FUEL_INSTALL_SOURCE_ROOT: ${{ github.workspace }}/passive-fuel-install-source
+          PRIOR_TOUR_INSTALL_SOURCE_ROOT: ${{ github.workspace }}/prior-tour-install-source
         run: python3 tests/int_server_executor_passive_fuel_install_test.py -v
       - name: Validate permanent INT executor contract
         run: |
@@ -371,3 +378,4 @@ jobs:
           path: ${{ runner.temp }}/int-direction-store-readback/result.json
           if-no-files-found: warn
           retention-days: 30
+
