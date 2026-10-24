@@ -55,6 +55,11 @@ w.matchMedia = () => ({matches: true, addEventListener() {}, removeEventListener
 w.CSS = {escape: value => String(value).replace(/[^a-zA-Z0-9_-]/g, x => '\\' + x)};
 w.IntersectionObserver = class {observe() {} unobserve() {} disconnect() {}};
 w.HTMLElement.prototype.scrollIntoView = function() {};
+// JSDOM has no Element.scrollTo; model the used options without claiming layout.
+w.HTMLElement.prototype.scrollTo = function(options = {}) {
+  if (Number.isFinite(options.top)) this.scrollTop = options.top;
+  if (Number.isFinite(options.left)) this.scrollLeft = options.left;
+};
 w.scrollTo = () => {};
 w.HTMLDialogElement.prototype.showModal = function() {this.open = true;};
 w.HTMLDialogElement.prototype.close = function() {this.open = false;};
