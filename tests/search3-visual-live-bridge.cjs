@@ -230,7 +230,7 @@ async function quoteReturnRegressions(){
    let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__retention=()=>({offer:selectedOffer,type:modalType});\n'+marker);}win.eval(code);
   }
   const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Receiving retention timeout at '+width);};
-  const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap(exact);};
+  const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap('#modal-body '+exact);};
   try{
    await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]'));open();
    quote={error:Object.assign(new Error('Fictional temporary retry failure'),{code:'temporary_fixture'})};tap('[data-action="start-lead"]');await until(()=>get('#modal-body .error-text'));
@@ -247,7 +247,8 @@ async function quoteReturnRegressions(){
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
-  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
+  }catch(error){globalThis.console.error('Quote-return regression failed at '+width,error);throw error;}
+  finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
 async function terminalAnexExpansionRegressions(){
