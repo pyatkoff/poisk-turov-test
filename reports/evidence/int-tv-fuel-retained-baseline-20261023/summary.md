@@ -1,10 +1,7 @@
-# Tourvisor fuel — retained public monitoring slice, 23 October 2026
+# Tourvisor fuel — retained public monitoring slice, 24 October 2026
 
-Seven own contexts across three operators and four operator/country groups.
-Observations1–5 are unchanged from [83bd1826](https://github.com/pyatkoff/poisk-turov-test/blob/83bd1826748f38ac472ab48b71ab405c1f4113d0/reports/evidence/int-tv-fuel-retained-baseline-20261023/summary.json).
-Observation6 is the ordinary JIVA case after PR4835 installation. Observation7 is
-the new two-infant DREAM LAGOON case after PR4837 consumer readiness; both exact
-traces and frames are pinned in their case summaries.
+Eight own contexts across three operators and four operator/country groups.
+Observations1–7 are unchanged from evidence commit cd7d861bd2ca2e980f100d9eb7821d952e14a5f8.
 This is a public evidence slice, not the private monitoring population.
 
 | Context | Operator / country | Displayed fuel evidence | Numeric stage comparison |
@@ -16,38 +13,52 @@ This is a public evidence slice, not the private monitoring population.
 | KLEOPATRA RAMIRA | Biblio-Globus / Turkey | Selected summary15739 RUB only | Unavailable |
 | JIVA BEACH RESORT | Biblio-Globus / Turkey | Qualitative “Без доплаты по сбору”; numeric amount not retained | Unavailable |
 | DREAM LAGOON & AQUA PARK RESORT | Biblio-Globus / Egypt | Flight13888 RUB; selected summary13888 RUB included | Unavailable: no numeric tour-stage fuel |
+| SUNNY DAYS PALMA DE MIRETTE RESORT | Biblio-Globus / Egypt | Selected summary13789 RUB included, A→B→A unchanged | Unavailable: no numeric tour-stage fuel |
 
-Fuel is described in5/7 contexts: four numeric and one qualitative-only.
-Two show no fuel. Only one has both explicit numeric stage amounts; six numeric
-comparisons remain unavailable. Three contexts include infants; zero expose an
-isolated infant fee. “Zero exposed fees” is a count, never a fee amount.
-
-The new JIVA case selected10–17April2027,7n/AI/`standart room land view plus`,
-2adults plus child aged1, SU2122/SU2123,212106RUB for everyone, unchanged from listing.
-The disclosure also says other possible surcharges need checking. Preserve that
-qualification: the whole-party sum does not establish an isolated infant fee.
-The no-surcharge UI label does not prove raw supplier zero, a successful backend
-capture/header, or the SAMO/Biblio zero policy.
+Fuel is described in6/8 contexts:5numeric and1qualitative-only. Two show no fuel.
+Only one has both explicit numeric stage amounts;7numeric comparisons remain
+unavailable. Four contexts include infants;0expose an isolated infant fee.
+“Zero exposed fees” is a count, never a fee amount.
 
 The one observed stage difference remains descriptive. It is not prediction
 accuracy, a defect, a rejection threshold or a20% tolerance. No automatic pricing
 rule, FX conversion, borrowed amount, double addition or final_verified promotion.
+Missing is not0. The no-surcharge JIVA label is not raw supplier zero.
+SAMO/Biblio listing-zero policy does not apply to Tourvisor or final calculation.
 
-The new DREAM LAGOON case preserves two requested ages0/0 through the displayed
-selection:10–17February2027/7n/comfort room/AI/Biblio-Globus, SU420/SU423,
-161014→174902RUB for2adults+2children under1. The shown13888RUB fuel is included
-in the applied total; do not add it again or call the price change an infant fee.
-This UI observation does not prove typed raw supplier infant identity or isolated fees.
+Observation8 is one new ordinary TV price-integrity case, not a monitoring probe:
+SUNNY DAYS PALMA DE MIRETTE RESORT, Biblio-Globus/Egypt,19–26March2027,
+7n/AI/premium room garden view,2adults+child aged1.
+Requested17–23March is the departure-date range; departure19March is inside it.
+One Find, one own tour, one returned set of5options (4timed,1placeholder).
+Selected A SU420/SU421 → B SU420/SU425 → A SU420/SU421.
+All three applied whole-party totals207867RUB; selected-summary fuel13789RUB
+included once. Listing194078RUB. No isolated infant fee or final_verified proof.
+This verifies selection integrity on the returned set, not a fresh supplier
+recalculation per click, changed-price response, expiry or universal accuracy.
 
-PR4835 source/CI/review/install and PR4837 consumer installation are accepted
-and were not rerun. The existing console observer was read once for observation7
-and returned no matching entry. That is not proof of a missing wire header,
-failed capture or its root cause. No replacement reader, endpoint or extra probe.
-Private cohort size,
-post-install persistence count and80%accuracy remain NOT_MEASURED/null.
-Offline consolidation added0supplierHTTP. Actual live HTTP counts and global
-account remainder were not measured; UI action counts are not wire counts.
+For the first time, one ordinary response emitted the existing bounded console
+observer. Decoded source tourvisor_passive_fuel_capture_diagnostic:
+stage flights, outcome skipped, code tour_pair_missing, local elapsed1ms,
+as_of1792827648; complete_population/accuracy_evaluated/final_price_verified false.
+It proves helper execution and this pair-capture skip, not the private population,
+a supplier outage or HTTP duration. No extra call was made for the diagnostic.
+Observation7's earlier empty console remains unchanged; it did not prove wire absence.
 
-Next: consume authoritative natural observations through existing permitted
-surfaces, with one INT owner and one handoff per case. Do not repeat this or the
-five historical cases to fill missing fields.
+A narrow offline check of FEATURE04c api-v2 and passive helper confirms this code
+means the matching pending tour record did not exist. Invalid records reject
+distinctly. The preceding tour-stage receipt is not exposed, so why it was absent
+is NOT_ESTABLISHED. No privileged reader, supplier retry or capture-guard change.
+Exact source blobs, trace, selected frame, limitations:
+../int-tv-recalculation-egypt-20270317-20261024/summary.json.
+
+Installed source/CI/review/receiving receipts4837/4843/4848 and ANEX producer handoff
+6377026599 are reused; no install or full audit repeated. This delta is evidence-only.
+Private cohort size, successful post-install capture count and80%accuracy remain
+NOT_MEASURED/null. Offline consolidation/diagnosis added0supplierHTTP.
+Actual live HTTP counts and global account remainder were not measured;
+UI action counts are not wire counts. No contact/lead/booking action.
+
+Next: a minimal extension of the existing same-response diagnostic may expose
+preceding allowlisted tour-stage outcome/code/freshness. Use the existing helper
+only; no new private reader, endpoint, monitoring probe or replay of consumed cases.

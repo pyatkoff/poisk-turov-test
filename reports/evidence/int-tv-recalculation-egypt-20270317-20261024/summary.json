@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "case_id": "int-tv-recalculation-egypt-20270317-20261024-v1",
+  "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6381516314",
+  "captured_on": "2026-10-24",
+  "status": "TERMINAL_CONSUMED_NO_REPLAY",
+  "requested": {
+    "origin": "Moscow",
+    "destination_country": "Egypt",
+    "departure_from": "2027-03-17",
+    "departure_to": "2027-03-23",
+    "nights": 7,
+    "meal": "AI",
+    "party": {
+      "adults": 2,
+      "child_ages": [
+        1
+      ]
+    }
+  },
+  "selected": {
+    "provider": "tourvisor",
+    "operator": "Библио-Глобус",
+    "hotel": "SUNNY DAYS PALMA DE MIRETTE RESORT",
+    "checkin": "2027-03-19",
+    "checkout": "2027-03-26",
+    "room": "premium room garden view",
+    "meal": "AI",
+    "party": {
+      "adults": 2,
+      "child_ages": [
+        1
+      ]
+    },
+    "listing_total_rub": 194078
+  },
+  "returned_options": {
+    "count": 5,
+    "timed_pairs": 4,
+    "placeholder_with_missing_times": 1,
+    "placeholder_selected": false
+  },
+  "sequence": [
+    {
+      "step": "A",
+      "returned_option": 2,
+      "flights": [
+        "SU420",
+        "SU421"
+      ],
+      "outbound_departure": "2027-03-19T16:00",
+      "outbound_arrival": "2027-03-19T21:45",
+      "inbound_departure": "2027-03-26T22:45",
+      "inbound_arrival": "2027-03-27T06:00",
+      "whole_party_total_rub": 207867,
+      "selected_summary_fuel_rub": 13789,
+      "fuel_qualification": "включён в цену",
+      "trace_stages": [
+        "selected_A",
+        "A_flight_details"
+      ]
+    },
+    {
+      "step": "B",
+      "returned_option": 3,
+      "flights": [
+        "SU420",
+        "SU425"
+      ],
+      "outbound_departure": "2027-03-19T16:00",
+      "outbound_arrival": "2027-03-19T21:45",
+      "inbound_departure": "2027-03-26T07:10",
+      "inbound_arrival": "2027-03-26T14:20",
+      "whole_party_total_rub": 207867,
+      "selected_summary_fuel_rub": 13789,
+      "fuel_qualification": "включён в цену",
+      "trace_stages": [
+        "selected_B",
+        "B_flight_details"
+      ]
+    },
+    {
+      "step": "A_return",
+      "returned_option": 2,
+      "flights": [
+        "SU420",
+        "SU421"
+      ],
+      "whole_party_total_rub": 207867,
+      "selected_summary_fuel_rub": 13789,
+      "fuel_qualification": "включён в цену",
+      "trace_stages": [
+        "selected_A_return"
+      ]
+    }
+  ],
+  "findings": {
+    "whole_party_total_stable_across_selected_pairs": true,
+    "visible_fuel_double_addition": false,
+    "listing_to_selected_delta_rub": 13789,
+    "two_stage_numeric_fuel_comparison_available": false,
+    "raw_supplier_party_typing_verified": false,
+    "isolated_infant_fee_rub": null,
+    "final_price_verified": false,
+    "pricing_accuracy_pct": null,
+    "eighty_percent_target_evaluated": false,
+    "changed_price_supplier_response_exercised": false,
+    "expiry_exercised": false,
+    "fresh_backend_recalculation_each_selection_proven": false
+  },
+  "monitoring": {
+    "console_reads": 1,
+    "entries": [
+      {
+        "level": "info",
+        "message": "AnyTourFuelMonitoringV1 eyJzY2hlbWFfdmVyc2lvbiI6MSwic291cmNlIjoidG91cnZpc29yX3Bhc3NpdmVfZnVlbF9jYXB0dXJlX2RpYWdub3N0aWMiLCJzdGFnZSI6ImZsaWdodHMiLCJvdXRjb21lIjoic2tpcHBlZCIsImNvZGUiOiJ0b3VyX3BhaXJfbWlzc2luZyIsImFzX29mIjoxNzkyODI3NjQ4LCJlbGFwc2VkX21zIjoxLCJjb21wbGV0ZV9wb3B1bGF0aW9uIjpmYWxzZSwiYWNjdXJhY3lfZXZhbHVhdGVkIjpmYWxzZSwiZmluYWxfcHJpY2VfdmVyaWZpZWQiOmZhbHNlfQ",
+        "timestamp": "2026-10-24T07:40:48.924Z",
+        "url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/live-bridge.js?v=17cb8c7fac95"
+      }
+    ],
+    "decoded_diagnostic": {
+      "schema_version": 1,
+      "source": "tourvisor_passive_fuel_capture_diagnostic",
+      "stage": "flights",
+      "outcome": "skipped",
+      "code": "tour_pair_missing",
+      "as_of": 1792827648,
+      "elapsed_ms": 1,
+      "complete_population": false,
+      "accuracy_evaluated": false,
+      "final_price_verified": false
+    },
+    "conclusion": "Existing helper executed at flights stage and skipped matching tour/flights retention with tour_pair_missing. This is not empty population, supplier outage, HTTP duration, price defect or exact cause of missing pending state.",
+    "private_population": null,
+    "successful_capture_count": null
+  },
+  "source_ci_install_live": {
+    "application_source_change": "NONE",
+    "new_ci": "NOT_APPLICABLE evidence-only; no runtime delta",
+    "new_install": "NOT_PERFORMED; reuse installed4837/4843/4848 receipts6376693142 and6377026599",
+    "live": "one own new ordinary case; selected-price integrity only, not final_verified or SEARCH consumer acceptance"
+  },
+  "execution": {
+    "find_ui_intents": 1,
+    "accepted_tour_open_ui_intents": 1,
+    "flights_load_ui_intents": 1,
+    "flight_selection_confirmations": 3,
+    "monitoring_console_reads": 1,
+    "supplier_http_calls": null,
+    "direct_anex_http_calls": null,
+    "actual_owner_daily_usage": null,
+    "actual_owner_daily_remaining": null,
+    "offline_consolidation_additional_supplier_http": 0,
+    "runtime_changes": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "contacts_leads_booking_actions": 0,
+    "replayed_operations": 0,
+    "tab_closed": true,
+    "scope": "DB counts refer to direct agent operations; existing app persistence from ordinary flow not measured"
+  },
+  "evidence": {
+    "trace": {
+      "path": "reports/evidence/int-tv-recalculation-egypt-20270317-20261024/trace.json",
+      "bytes": 112346,
+      "sha256": "6ec2b5071ee245477b6b71bf961b2689ad9def70df3d45b36122aec718bd48d2"
+    },
+    "selected_frame": {
+      "path": "reports/evidence/int-tv-recalculation-egypt-20270317-20261024/selected.jpg",
+      "bytes": 90140,
+      "sha256": "ce66965a84f26b5974bea02394f2cfc727d49f5b966e07e7e47ae41d6b4c62c8"
+    }
+  },
+  "limitations": [
+    "One context, not private population or pricing accuracy.",
+    "Same returned flight set; no proof of fresh supplier recalculation per selection.",
+    "Selected total is not final_verified; no final booking/availability confirmation.",
+    "Whole-party sum does not isolate infant fee.",
+    "No numeric tour-stage fuel; selected-summary amount is not two-stage comparison.",
+    "tour_pair_missing establishes nonexistent matching pending record, not why it was absent; preceding tour-stage receipt was not exposed. No privileged reader or replay."
+  ],
+  "next_step": "Extend the existing safe same-response capture diagnostic, if needed, with the preceding allowlisted tour-stage outcome/code/freshness; exact bounded INT package only, no private-reader endpoint, new supplier probe or capture-guard relaxation.",
+  "offline_capture_path_check": {
+    "source_ref": "04c0647ac30e1fd195aaf78d3d538178dcd59ebb",
+    "sources": [
+      {
+        "path": "v2/api-v2.php",
+        "git_blob": "34d270a719521273ed196218026fcc0b870b67bd"
+      },
+      {
+        "path": "app/integrations/tourvisor-operator-fuel-passive-intake.php",
+        "git_blob": "1735c6da157b93478721bffab764da5255257bb0"
+      }
+    ],
+    "facts": [
+      "Gateway tour branch calls captureTour after existing supplier response; flights branch calls captureFlights after existing supplier response.",
+      "retainFlights returns tour_pair_missing only when readPending returns null. At this source, readPending returns null only for nonexistent matching pending path; invalid/symlink/size/JSON/version cases reject distinctly.",
+      "retainTour creates the pending pair only after target operator, unique context, exact party/date/operator and market checks; 900s TTL is separate tour_pair_expired code.",
+      "Successful flights retention consumes pending by unlink. Existing gateway catches capture exceptions without replacing successful supplier response.",
+      "This flights diagnostic does not expose preceding tour-stage receipt, so actual reason pending was absent is not established."
+    ],
+    "supplier_http": 0,
+    "database_access": 0,
+    "runtime_change": false,
+    "root_cause_of_missing_pending": "NOT_ESTABLISHED",
+    "conclusion": "Confirmed narrow stage: passive flights capture skipped because its matching pending tour record did not exist. Do not fix supplier transport or weaken capture guards on this evidence."
+  }
+}
