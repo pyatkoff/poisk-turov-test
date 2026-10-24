@@ -298,8 +298,19 @@ function tword(array $tokens,int &$i,string $word):void{
 function tdefine(array $tokens,int &$i):string{
     tword($tokens,$i,'define');tsymbol($tokens,$i,'(');$name=tname($tokens,$i);tsymbol($tokens,$i,',');
     $v=$tokens[$i++]??null;
-    tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
-        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
+    if(is_array($v)&&$v['id']===T_STRING&&$v['text']==='base64_decode'){
+        // Recognize the two existing publisher expressions without decoding or executing them.
+        tneed(in_array($name,['ANEX_API_TOKEN','ANEX_B2B_TOKEN'],true),'tv_flag_value_shape');
+        tsymbol($tokens,$i,'(');$encoded=$tokens[$i++]??null;
+        tneed(is_array($encoded)&&$encoded['id']===T_CONSTANT_ENCAPSED_STRING,'tv_flag_value_shape');
+        $literal=$encoded['text'];$length=strlen($literal)-2;
+        tneed($length>0&&$length<=21848&&$length%4===0
+            &&preg_match("/\A'[A-Za-z0-9+\/]+={0,2}'\z/D",$literal)===1,'tv_flag_value_shape');
+        tsymbol($tokens,$i,',');tword($tokens,$i,'true');tsymbol($tokens,$i,')');
+    }else{
+        tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
+            ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
+    }
     tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');return $name;
 }
 try{

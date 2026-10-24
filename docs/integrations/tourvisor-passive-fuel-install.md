@@ -210,7 +210,8 @@ typed public maps must match before planning and immediately before replacement.
 Only .anex-private.php changes: insert the single guarded
 ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED=true declaration after the PHP opening tag or
 first strict_types declaration. Native PHP tokenization accepts static literal
-define declarations and their same-name !defined guards only; config is never
+define declarations and their same-name !defined guards, plus the two exact
+publisher credential expressions described below; config is never
 executed, dynamic/unknown syntax and an existing TV flag fail closed. Existing
 bytes, other constants, strict_types ordering, original key-pointer tail and mode
 are preserved. No signing key is opened, provisioned, exported or modified.
@@ -256,3 +257,30 @@ and all write/rollback/no-replay guards are unchanged. Offline native fixtures
 exercise classifications and prove no config execution/write on these failures.
 Any later recovery needs its own concrete evidence/admission; this change provides
 no server readback mode and no replay permission for the UNKNOWN operation.
+
+## Publisher config compatibility correction — 25Oct2026
+
+Public source evidence supplies a concrete compatibility defect without reading
+server secrets: FEATUREf4d scripts/diagnostics/anex_search3_preview_deploy.py
+blob7504e725 emits ANEX_API_TOKEN as base64_decode('literal', true), and the safe
+wrapper blob5ebd82d4 emits ANEX_B2B_TOKEN with the same shape. The original literal
+only validator rejects the legitimate publisher output. This proves a source
+contract defect; it does not retrospectively identify the historical server
+rejection, whose original receipt omitted the detailed native code.
+
+The validator now recognizes exactly those two constant names with the existing
+single-quoted, nonempty, bounded base64 literal and strict true argument. It only
+inspects tokens, never decodes/evaluates the expression. Other function calls,
+other constant names, variables, nested calls, concatenation, false/non-strict
+argument and malformed/oversize encoded strings remain rejected. Config bytes,
+key-pointer tail and all source/parent/public/identity/lint/backup/rollback and
+immutable-operation checks are retained. The publisher itself is unchanged.
+
+The existing native suite imports the actual pinned publisher with fictional
+credentials in CI, proves the exact old parser refuses its output, and verifies
+the fixed stock enable preserves every original byte while adding only the TV
+flag. Adversarial shapes are refused before backup/write. Local stock self-check
+without the source checkout uses an explicit same-shape fictional fixture.
+Source/CI/review acceptance is not a runtime activation or a renamed replay:
+enable operation6389997818 remains UNKNOWN/consumed. No command, privileged
+reader, supplier/customer action or SEARCH consumer acceptance follows here.
