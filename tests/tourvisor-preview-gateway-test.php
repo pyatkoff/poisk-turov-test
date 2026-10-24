@@ -10,6 +10,10 @@ namespace AnyTour {
     function curl_close($ch) { $GLOBALS['tv_wire']['closed']=true; }
 }
 namespace {
+set_error_handler(static function(int $severity,string $message,string $file,int $line): bool {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message,0,$severity,$file,$line);
+});
 require_once __DIR__.'/../app/integrations/tourvisor-preview-gateway.php';
 require_once __DIR__.'/../app/integrations/search3-messenger-handoff.php';
 function tvg_ok(bool $ok,string $label): void {
@@ -46,7 +50,7 @@ $leg=static fn(string $from,string $to,string $date,string $number):array=>[
     'arrival'=>['date'=>$date,'port'=>['shortName'=>$to]]];
 $pair=['forward'=>[$leg('SVO','HRG',$day,'SU420')],'backward'=>[$leg('HRG','SVO',$end,'SU421')],
     'dateForward'=>$day,'dateBackward'=>$end,'price'=>['value'=>'209867','currency'=>'RUB'],'fuelCharge'=>13789];
-$pairB=$pair; $pairB['backward'][0]['number']='SU425'; $pairB['price']['value']='233100.50';
+$pairB=$pair; $pairB['backward'][0]['number']='SU425'; $pairB['price']['value']='233100.50'; $pairB['expiresAt']=$now+100;
 $session=['search3_handoff_csrf'=>str_repeat('c',64),'anex_context_generation'=>17,'anex_offer_contexts'=>['keep'=>'original']];
 $disk=[]; $saves=0; $calls=[]; $activeRid='';
 $save=static function(array &$state)use(&$disk,&$saves):void{$disk=$state;++$saves;};
@@ -77,7 +81,9 @@ $searchRequest=$request('tv_search',['params'=>$params]); $started=$run($searchR
 tvg_ok($session['tourvisor_context']['params']['childs']===[0,0,8] && $session['tourvisor_context_generation']===1,'server owns generation and exact ordered party');
 $again=$run($searchRequest); tvg_ok($again===$started && count($calls)===1,'same search operation cached without second HTTP');
 $run($request('tv_status')); $run($request('tv_continue'));
-$results=$run($request('tv_results')); $ref=$results['offers'][0]['offer_ref'];
+$resultsRequest=$request('tv_results');$results=$run($resultsRequest); $ref=$results['offers'][0]['offer_ref'];
+$resultsSession=$session;
+tvg_ok($run($resultsRequest)===$results,'results replay retains its own context deadline without a checked tour');
 tvg_ok(count($results['offers'])===1 && $results['offers'][0]['local_hotel_id']===1006,'server result membership with catalogue identity');
 $checkedRequest=$request('tv_tour',['offer_ref'=>$ref]); $checked=$run($checkedRequest);
 tvg_ok($checked['data']['fuelCharge']===13789 && $checked['data']['price']==='209867','supplier money and fuel unchanged');
@@ -93,6 +99,7 @@ $selected=$run($request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$flights['c
 $pairFrozen=AnyTourTourvisorSelectedTourHandoff::freeze($selected['selector'],$session,$now,$clock);
 tvg_ok($pairFrozen['record']['observation']['price']['amount']==='233100.50'
     && str_contains($pairFrozen['record']['observation']['flights']['inward'][0]['label'],'SU425'),'selected pair keeps its own total and legs');
+tvg_ok($pairFrozen['record']['observation']['price']['expiresAt']===$now+100,'shorter explicit pair expiry never inherits the tour deadline');
 tvg_ok(count($calls)===6 && $session['anex_context_generation']===17 && $session['anex_offer_contexts']['keep']==='concurrent','six ordinary supplier actions only, select local, foreign provider state preserved');
 $producerRequest=['action'=>'handoff_freeze','csrf'=>str_repeat('c',64)]+$selected['selector'];
 $producer=AnyTourSearch3MessengerHandoff::freeze($producerRequest,$session,$now,$save,$clock);
@@ -139,5 +146,37 @@ try{AnyTourTourvisorPreviewGateway::handle($r,$noSave,$now,$failing,$catalog,sta
 tvg_ok($physical===0,'failed reservation prevents HTTP');
 $cachedDeadline=$session['tourvisor_requests'][$checkedRequest['request_id']]['expires_at'];
 tvg_ok($cachedDeadline===$frozen['record']['observation']['price']['expiresAt'],'replay deadline is original observation deadline');
+$late=$session; $r=$request('tv_results'); $physical=0; $tick=$now;
+$lateClock=static function()use(&$tick):int{return $tick;};
+$lateSave=static function(array &$s)use(&$tick,$now):void{$tick=$now+1801;};
+tvg_denied(function()use($r,&$late,$now,$failing,$catalog,$lateSave,$lateClock){
+    AnyTourTourvisorPreviewGateway::handle($r,$late,$now,$failing,$catalog,$lateSave,$lateClock);
+},'tv_stale_context');
+tvg_ok($physical===0 && $late['tourvisor_requests'][$r['request_id']]['state']==='unknown','checkpoint crossing context expiry emits zero physical calls and keeps UNKNOWN');
+$late=$session; unset($late['tourvisor_context']['offers'][$ref]['operations']['tv_flights']);
+$late['tourvisor_context']['offers'][$ref]['checked']['expires_at']=$now+1;
+$r=$request('tv_flights',['offer_ref'=>$ref]);$physical=0;$tick=$now;
+$lateSave=static function(array &$s)use(&$tick,$now):void{$tick=$now+2;};
+tvg_denied(function()use($r,&$late,$now,$failing,$catalog,$lateSave,$lateClock){
+    AnyTourTourvisorPreviewGateway::handle($r,$late,$now,$failing,$catalog,$lateSave,$lateClock);
+},'tv_checked_tour_missing');
+tvg_ok($physical===0,'checkpoint crossing original checked-tour expiry cannot fetch flights');
+$heavy=$resultsSession;
+for($i=0;$i<4;++$i)$heavy['tourvisor_requests'][md5('padding'.$i)]=[
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,
+    'reply'=>['data'=>str_repeat('x',875000)]];
+$r=$request('tv_tour',['offer_ref'=>$ref]); $largeTour=$tour;$largeTour['padding']=str_repeat('x',400000);
+$largeTransport=static fn():array=>$largeTour;
+tvg_denied(function()use($r,&$heavy,$now,$largeTransport,$catalog,$save,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$heavy,$now,$largeTransport,$catalog,$save,$clock);
+},'tv_context_limit');
+tvg_ok(!isset($heavy['tourvisor_context']['offers'][$ref]['checked'])
+    && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304
+    && empty($heavy['tourvisor_handoff_records']),'oversized candidate never enters any capture checkpoint or persisted context');
+$badParty=$resultsSession; $r=$request('tv_tour',['offer_ref'=>$ref]); $wrongTour=$tour;$wrongTour['childs']=2;
+tvg_denied(function()use($r,&$badParty,$now,$wrongTour,$catalog,$save,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$badParty,$now,static fn():array=>$wrongTour,$catalog,$save,$clock);
+},'tv_tour_mismatch');
+tvg_ok(empty($badParty['tourvisor_handoff_records']),'wrong party cannot mint a selected record');
 echo 'TV private session gateway: '.$GLOBALS['tv_checks']." checks PASS; supplier/bot network=0, DB writes=0.\n";
 }
