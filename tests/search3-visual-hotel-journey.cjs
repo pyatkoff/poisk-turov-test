@@ -52,6 +52,25 @@ function verifyResultCardEntry(){
  assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
  console.log('PASS exact TV result-card rooms entry; ANEX/direct/unsupported routes preserved; supplier calls0');
 }
+async function verifyChoiceComposition(){
+ const {c,listing,nodes}=setup();
+ const panel={hidden:false,insertBefore:node=>{node.parentElement=panel;},querySelector:()=>null},label={hidden:true,append:node=>{node.parentElement=label;}},classes=new Set(),choice={textContent:'',classList:{toggle(){}},setAttribute(){}};
+ const row={dataset:{offerKey:listing.key},classList:{toggle:(name,on)=>on?classes.add(name):classes.delete(name)},setAttribute(){},removeAttribute(){},querySelector:selector=>({'.hotel-room-price':panel,'.room-choice-selected':label,'[data-action="select-hotel-offer"]':choice})[selector]};
+ nodes['#hotel-detail-price-status']={textContent:''};nodes['#hotel-detail-offers']={dataset:{},disabled:false,textContent:''};
+ Object.assign(c,{$$:()=>[row],hotelOffers:()=>[listing],cardPriceNote:()=> 'Цена из выдачи · требует проверки',syncHotelFlightSelection(){},fuelAmount:()=>null,fuelIncludedInPrice:()=>false,offerQuoteErrorText:()=> 'Предложение недоступно'});
+ vm.runInContext(slice('function selectedPriceStatus(','function fuelDisclosureHTML(')+slice('function syncHotelOfferSelection(','function observeHotelRoomChoices('),c);
+ const sync=()=>c.syncHotelOfferSelection(1,[listing]),button=nodes['#hotel-detail-offers'],status=nodes['#hotel-detail-price-status'];
+ sync();assert.equal(panel.hidden,true);assert.equal(label.hidden,false);assert.strictEqual(choice.parentElement,label,'same selected toggle stays visible as the ordinary return anchor');assert.equal(button.textContent,'Проверить тур');assert.equal(status.textContent,'Цена из выдачи · требует проверки');assert.equal(status.textContent.includes(listing.room),false,'row facts are not duplicated in the price status');
+ c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600};sync();assert.equal(button.textContent,'Продолжить');assert.equal(status.textContent,'Цена предложения · перелёт уточняется');
+ c.selectedOffer={...c.selectedOffer,hotelFlightPreview:true,pricePending:true};sync();assert.equal(button.disabled,true);assert.equal(nodes['#hotel-detail-min'].textContent,'Цена уточняется');assert.match(status.textContent,/Цена выбранной пары не передана/);
+ c.selectedOffer={...listing,quoteError:'expired',quoteErrorTerminal:true};sync();assert.equal(button.disabled,true);assert.equal(button.textContent,'Тур недоступен');
+ c.hotelOfferDraft=null;sync();assert.equal(panel.hidden,false,'alternatives recover their own comparable price/action');assert.equal(label.hidden,true);assert.strictEqual(choice.parentElement,panel,'unselected toggle returns to its original price panel');
+ for(const outcome of ['healthy','empty','error']){
+  const {c,calls,listing}=setup();c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,flightsLoaded:true,variants:outcome==='empty'?[]:[{}],flightsError:outcome==='error'?'temporary':''};
+  await c.openHotelFlights('one');assert.equal(calls.quote,0);assert.equal(calls.flights,Number(outcome!=='healthy'),outcome+' uses the existing explicit retry owner');assert.equal(c.selectedOffer.flightChoiceId,undefined,'inventory reopening never chooses a default');
+ }
+ console.log('PASS approved Site220 receiver: single selected total, current check/continue, unknown/terminal guards, alternative prices and healthy-only cached optional flights');
+}
 async function verifySite215Journey(){
  const {JSDOM,VirtualConsole}=require('jsdom');
 const root=path.resolve(__dirname,'../v2/visual-search');
@@ -175,7 +194,8 @@ async function run(){
  {const {c,calls}=setup('anex');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1);assert.equal(calls.offerScreens,0,'current/additional checks stay inline');assert.equal(calls.flights,0);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false,'calculated estimate never becomes verified');assert.equal(calls.contacts,0,'changed estimate needs a deliberate continue');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1,'return reuses the retained result');}
  {const {c,calls,views,listing}=setup('anex');views.set('one',{offer:listing,type:'anex-current',result:{state:'current'},error:'UNKNOWN',pending:false});await c.refreshLiveHotel(1);assert.equal(calls.verify,0);assert.equal(calls.additional,0,'an UNKNOWN current result is never retried automatically');}
  verifyResultCardEntry();
+ await verifyChoiceComposition();
  await verifySite215Journey();
  console.log('PASS hotel journey: exact price/pair reuse, foreign raw/search/room/party/price rejection, double intent, late/closed selection, A-B-A canonical TV/runtime deferred410 noReplay, explicit success recheck, terminal/UNKNOWN and retained ANEX recovery, inline group/current/estimate and no mandatory flights; supplier/lead calls 0');
 }
-module.exports=run;module.exports.verifyResultCardEntry=verifyResultCardEntry;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports=run;module.exports.verifyResultCardEntry=verifyResultCardEntry;module.exports.verifyChoiceComposition=verifyChoiceComposition;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
