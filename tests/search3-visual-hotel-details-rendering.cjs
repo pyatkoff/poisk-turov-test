@@ -22,7 +22,7 @@ function verifyInfantChargeStatus(appSource,hotelSource){
  const footerStart=appSource.indexOf('function syncHotelOfferSelection('),footerEnd=appSource.indexOf('function observeHotelRoomChoices(',footerStart);
  const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
  const f={...helpers,hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null,
-  state:{search:{}},searchKey:()=>'',needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[],mealLabel:o=>o.meal};
+  data:{amount:value=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):null},state:{search:{}},searchKey:()=>'',needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[],mealLabel:o=>o.meal};
  vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);f.syncHotelOfferSelection(1);
  assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i);
  assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');assert.equal(nodes['#hotel-detail-offers'].dataset.key,listing.key);
