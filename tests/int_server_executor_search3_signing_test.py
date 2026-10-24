@@ -12,6 +12,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA = '5c83c4134f8f1c3aeec24be1713736cd058fc6d3'
@@ -34,10 +35,17 @@ def core():
 
 
 class Admission(unittest.TestCase):
+    def test_three_old_remote_programs_remain_byte_identical(self):
+        for mode in signing.MODES[:3]:
+            c=core();prefix='int-anex-search3-producer-install-' if mode=='install-search3-producer' else 'int-anex-search3-signing-'
+            signing.activate(c,c.parse_command(f'/run-int-server-v1 {SHA} {mode} {prefix}case-v1'))
+            self.assertEqual('7586c11adb456016f0a975a0b1b88e340b94e538dc75c70e1f4f5c155d2f4b9e',
+                             hashlib.sha256(c.REMOTE.encode()).hexdigest())
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = 'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-'
+            prefix = ('int-anex-tv-session-gateway-install-' if mode == signing.TV_MODE else
+                      'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
             operation = prefix + 'case-v1'
             body = f'/run-int-server-v1 {SHA} {mode} {operation}'
             parsed = c.parse_command(body)
@@ -96,11 +104,11 @@ class NativeStockCustody(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def execute(self, mode='search3-signing-provision', operation=None):
+    def execute(self, mode='search3-signing-provision', operation=None, source_sha=SHA):
         self.counter += 1
         operation = operation or f'int-anex-search3-signing-native-{self.counter}-v1'
         c = core()
-        command = c.parse_command(f'/run-int-server-v1 {SHA} {mode} {operation}')
+        command = c.parse_command(f'/run-int-server-v1 {source_sha} {mode} {operation}')
         signing.activate(c, command)
         self.mutate_remote(c)
         script = self.home / 'stock-remote.py'; script.write_text(c.REMOTE)
@@ -298,6 +306,120 @@ class NativeStockProducerInstall(NativeStockCustody):
         self.assertEqual(self.original, self.config.read_text()); self.assertFalse(self.keyfile.exists())
 
 
+class NativeTVGatewayInstall(NativeStockCustody):
+    def setUp(self):
+        super().setUp()
+        fixture=os.environ.get('TV_SESSION_GATEWAY_SOURCE_ROOT')
+        for p,sha in {**signing.TV_PINS,**signing.TV_DEPENDENCIES}.items():
+            raw=(Path(fixture)/p).read_bytes() if fixture else ('<?php\n// reviewed '+p+'\n').encode()
+            if fixture:self.assertEqual(sha,hashlib.sha256(raw).hexdigest())
+            self.inventory[p]=raw
+        self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
+        self.deps={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_DEPENDENCIES}
+        (self.runtime/'app/integrations').mkdir(parents=True)
+        self.previous={}
+        for p,old in signing.TV_PREVIOUS.items():
+            if old is None:self.previous[p]=None
+            else:
+                raw=('<?php\n// prior '+p+'\n').encode();(self.runtime/p).write_bytes(raw)
+                self.previous[p]=hashlib.sha256(raw).hexdigest()
+        for p in signing.TV_DEPENDENCIES:(self.runtime/p).write_bytes(self.inventory[p])
+        self.public={}
+        for p,record in signing.TV_PUBLIC.items():
+            if record['state']=='absent':self.public[p]={'state':'absent'}
+            else:
+                target=self.project/p;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_bytes(('<?php\n// public '+p+'\n').encode())
+                self.public[p]={'state':'regular','sha256':hashlib.sha256(target.read_bytes()).hexdigest()}
+        self.old_api=(self.runtime/'api-anex-search3-preview.php').read_bytes()
+        self.old_producer=(self.runtime/'app/integrations/search3-messenger-handoff.php').read_bytes()
+        self.race=False;self.post_failure=False;self.rebuild_archive()
+
+    def mutate_remote(self,c):
+        for name,old,new in [('TV_PINS',signing.TV_PINS,self.pins),
+                             ('TV_PREVIOUS',signing.TV_PREVIOUS,self.previous),
+                             ('TV_DEPENDENCIES',signing.TV_DEPENDENCIES,self.deps),
+                             ('TV_PUBLIC',signing.TV_PUBLIC,self.public)]:
+            anchor=name+'='+repr(old);self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,name+'='+repr(new),1)
+        if self.race:
+            anchor="    if mode==TV_GATEWAY_MODE: tv_gateway_preflight()\n    install_started=True\n"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,
+                "    (runtime/'app/integrations/search3-messenger-handoff.php').write_bytes(b'<?php // raced\\n')\n"+anchor,1)
+        if self.post_failure:
+            anchor="        result['install']=install_anex_preview(stage,files,op)\n        result['tv_gateway_public_after']"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,anchor.split('\n')[0]+"\n        fail('synthetic_tv_failure')\n        result['tv_gateway_public_after']",1)
+
+    def install(self,operation=None):
+        return self.execute(signing.TV_MODE,operation or f'int-anex-tv-session-gateway-install-native-{self.counter+1}-v1',
+                            source_sha=signing.TV_SOURCE)[0]
+
+    def assert_old(self):
+        self.assertEqual(self.old_api,(self.runtime/'api-anex-search3-preview.php').read_bytes())
+        self.assertEqual(self.old_producer,(self.runtime/'app/integrations/search3-messenger-handoff.php').read_bytes())
+        self.assertEqual(self.original,self.config.read_text());self.assertFalse(self.keyfile.exists())
+
+    def test_exact_install_endpoint_last_no_activation_and_completion(self):
+        r=self.install();self.assertEqual('installed',r['status'])
+        self.assertEqual((6,5,3),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_text())
+        self.assertEqual('api-anex-search3-preview.php',plan['changed_files'][-1])
+        changed=plan['changed_files']
+        self.assertLess(changed.index('app/integrations/tourvisor-selected-tour-handoff.php'),
+                        changed.index('app/integrations/search3-messenger-handoff.php'))
+        self.assertLess(changed.index('app/integrations/tourvisor-interactive-client.php'),
+                        changed.index('app/integrations/tourvisor-preview-gateway.php'))
+        for p in signing.TV_PINS:
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
+        self.assertEqual(self.original,self.config.read_text());self.assertFalse(self.keyfile.exists())
+        self.assertEqual(self.public,r['tv_gateway_public_before']);self.assertEqual(self.public,r['tv_gateway_public_after'])
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.multiple(signing,TV_PINS=self.pins,TV_PUBLIC=self.public,TV_DEPENDENCIES=self.deps):
+            self.assertTrue(signing.completed_tv(command,r))
+            for k,v in [('production_before',{}),('tv_gateway_public_after',None),('supplier_calls',True),('schema_version',True)]:
+                self.assertFalse(signing.completed_tv(command,r|{k:v}))
+        self.assertEqual('operation_exists_no_replay',self.install(r['operation_id'])['reason'])
+
+    def test_source_dependency_and_expected_absent_guards(self):
+        for kind in ('source','dependency','staged_dependency','exists'):
+            with self.subTest(kind=kind):
+                if kind=='source':self.pins['app/integrations/tourvisor-preview-gateway.php']='0'*64
+                elif kind=='staged_dependency':
+                    p='app/integrations/anex-initial-week-gate.php'
+                    original=self.inventory[p];self.inventory[p]=b'<?php // substituted staged dependency\n'
+                    self.rebuild_archive()
+                else:
+                    p='app/integrations/'+('anex-initial-week-gate.php' if kind=='dependency' else 'tourvisor-preview-gateway.php')
+                    (self.runtime/p).write_bytes(b'<?php // foreign\n')
+                r=self.install();self.assertEqual({'source':'tv_gateway_source_pin','dependency':'tv_gateway_predecessor',
+                                                  'staged_dependency':'tv_gateway_source_pin',
+                                                  'exists':'tv_gateway_expected_absent'}[kind],r['reason']);self.assert_old()
+                self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
+                if kind=='dependency':(self.runtime/p).write_bytes(self.inventory[p])
+                if kind=='staged_dependency':self.inventory[p]=original;self.rebuild_archive()
+                if kind=='exists':(self.runtime/p).unlink()
+
+    def test_symlink_public_is_not_absence(self):
+        target=self.project/'v2/api-v2.php';target.parent.mkdir(parents=True)
+        target.symlink_to(self.project/'api-v2.php')
+        self.assertEqual('tv_gateway_public_type',self.install()['reason']);self.assert_old()
+
+    def test_prewrite_rechecks_predecessor(self):
+        self.race=True;r=self.install();self.assertEqual('tv_gateway_predecessor',r['reason'])
+        self.assertEqual(self.old_api,(self.runtime/'api-anex-search3-preview.php').read_bytes())
+        self.assertEqual(b'<?php // raced\n',(self.runtime/'app/integrations/search3-messenger-handoff.php').read_bytes())
+        self.assertFalse((self.runtime/'app/integrations/tourvisor-preview-gateway.php').exists())
+
+    def test_postwrite_failure_rolls_back_and_removes_created(self):
+        self.post_failure=True;r=self.install();self.assertEqual('rolled_back',r['status']);self.assert_old()
+        self.assertEqual('complete',r['rollback']['status'])
+        for p,old in self.previous.items():
+            if old is None:self.assertFalse((self.runtime/p).exists())
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -305,6 +427,10 @@ def load_tests(loader, tests, pattern):
                  'test_install_source_pin_and_existing_dependency_drift',
                  'test_install_postwrite_failure_restores_and_removes'):
         suite.addTest(NativeStockProducerInstall(name))
+    for name in ('test_exact_install_endpoint_last_no_activation_and_completion',
+                 'test_source_dependency_and_expected_absent_guards','test_symlink_public_is_not_absence',
+                 'test_prewrite_rechecks_predecessor','test_postwrite_failure_rolls_back_and_removes_created'):
+        suite.addTest(NativeTVGatewayInstall(name))
     return suite
 
 
