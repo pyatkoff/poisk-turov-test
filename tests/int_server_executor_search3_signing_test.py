@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native synthetic custody and stock executor gates; no server/provider access."""
 import base64
+import ast
 from email.message import Message
 import hashlib
 import importlib.util
@@ -536,6 +537,61 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         self.assertEqual({'ok':False,'code':'tv_flag_tokenizer_unavailable'},json.loads(run.stdout))
         self.assert_config_unchanged()
 
+    def publisher_stub(self):
+        fixture=os.environ.get('TV_SESSION_GATEWAY_SOURCE_ROOT')
+        if not fixture:
+            # Explicit synthetic counterpart for stock self-check without the CI checkout.
+            return "<?php\nrequire_once dirname(__DIR__, 4) . '/.anytoour-anex/search3-preview.php';\n"
+        path=Path(fixture)/'scripts/diagnostics/anex_search3_preview_deploy.py';raw=path.read_bytes()
+        self.assertEqual('7504e7250f3cfacd070c30e2dda461f7f4f4d28e',
+                         hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest())
+        # Read the exact literal emitted by the real publisher; never run its deploy/build code.
+        function=next(n for n in ast.parse(raw).body if isinstance(n,ast.FunctionDef) and n.name=='build_payload')
+        calls=[n for n in ast.walk(function) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)
+               and n.func.attr=='write_text' and isinstance(n.func.value,ast.BinOp)
+               and isinstance(n.func.value.right,ast.Constant) and n.func.value.right.value=='.anex-private.php']
+        self.assertEqual(1,len(calls));self.assertIsInstance(calls[0].args[0],ast.Constant)
+        return calls[0].args[0].value
+
+    def test_actual_publisher_stub_old_reject_fixed_preserves_bytes_without_following_include(self):
+        stub=self.publisher_stub();self.assertTrue(stub.startswith('<?php\n'))
+        pointer=self.original.splitlines(keepends=True)[-1]
+        outside=self.home/'.anytoour-anex/search3-preview.php';outside.parent.mkdir()
+        private=b"<?php file_put_contents(__DIR__.'/unwanted-execution','SYNTHETIC_UNRELATED_CREDENTIAL');\n"
+        outside.write_bytes(private);outside.chmod(0o000)
+        start=signing.TV_FLAG_PHP.index("        if($t['id']===T_REQUIRE_ONCE){")
+        end=signing.TV_FLAG_PHP.index("        if($t['id']===T_IF){",start)
+        old=(signing.TV_FLAG_PHP[:start]+signing.TV_FLAG_PHP[end:]).replace('$pointer=false;$declared=false;$bootstrap=false;',
+                 '$pointer=false;').replace("$insert=$tokens[$i-1]['end'];$declared=true;","$insert=$tokens[$i-1]['end'];")
+        self.assertEqual('087973187fd1f3ef4d3a149743eb6875e8f8d0900efd8b562d42f46ef102a5c5',hashlib.sha256(old.encode()).hexdigest())
+        for strict in (False,True):
+            with self.subTest(strict=strict):
+                self.original=stub.replace('<?php\n','<?php\ndeclare(strict_types=1);\n',1) if strict else stub
+                self.original+=pointer;self.config.write_text(self.original)
+                native=subprocess.run([os.environ.get('PHP_BIN','php'),'-r',old,str(self.config)],capture_output=True,timeout=20)
+                self.assertEqual(1,native.returncode);self.assertEqual(b'',native.stderr)
+                self.assertEqual({'ok':False,'code':'tv_flag_statement_shape'},json.loads(native.stdout))
+                result=self.enable();self.assertEqual('enabled',result['status'],result)
+                before=self.original.encode();offset=before.index(b';')+1 if strict else len(b'<?php\n')
+                self.assertEqual(before[:offset]+signing.TV_FLAG_LINE+before[offset:],self.config.read_bytes())
+                self.assertTrue(self.config.read_text().endswith(pointer))
+                self.assertEqual(0,outside.stat().st_mode&0o777);self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+                self.assertFalse((outside.parent/'unwanted-execution').exists())
+                self.assertNotIn('SYNTHETIC_UNRELATED_CREDENTIAL',json.dumps(result))
+
+    def test_only_exact_first_publisher_stub_is_recognized(self):
+        statement=self.publisher_stub().splitlines()[1]
+        for bad in [statement.replace('4','3'),statement.replace('4','5'),statement.replace('__DIR__','__FILE__'),
+                    statement.replace('search3-preview.php','other.php'),statement.replace('require_once','require'),
+                    statement.replace('require_once','include_once'),statement.replace('dirname(__DIR__, 4)',"getenv('HOME')"),
+                    'if (true) '+statement,statement+'\n'+statement,
+                    "define('OTHER',true);\n"+statement]:
+            with self.subTest(shape=bad):
+                before='<?php\n'+bad+'\n'+self.original[len('<?php\n'):];self.config.write_text(before)
+                result=self.enable();self.assertIn(result['reason'],['tv_enable_value_shape','tv_enable_statement_shape','tv_enable_syntax_shape'])
+                self.assertEqual(before,self.config.read_text());self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+                self.assertEqual([],list(self.home.rglob('tv-enable-plan.json')))
+
     def test_prewrite_config_race_not_overwritten(self):
         self.config_race=True;r=self.enable();self.assertEqual('tv_enable_config_drift',r['reason'])
         self.assertEqual(self.original+'// concurrent writer\n',self.config.read_text())
@@ -601,7 +657,9 @@ def load_tests(loader, tests, pattern):
                  'test_unknown_config_or_existing_flag_denied_without_execution','test_prewrite_config_race_not_overwritten',
                  'test_http_failure_rolls_back_exact_config','test_fixed_http_and_parent_contract',
                  'test_config_candidate_budget_is_checked_before_backup','test_own_http_response_validation_without_network',
-                 'test_parser_environment_and_untrusted_output_only_fixed_codes','test_native_missing_tokenizer_has_own_safe_classification'):
+                 'test_parser_environment_and_untrusted_output_only_fixed_codes','test_native_missing_tokenizer_has_own_safe_classification',
+                 'test_actual_publisher_stub_old_reject_fixed_preserves_bytes_without_following_include',
+                 'test_only_exact_first_publisher_stub_is_recognized'):
         suite.addTest(NativeTVGatewayEnable(name))
     return suite
 
