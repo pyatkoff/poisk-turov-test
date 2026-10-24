@@ -1715,9 +1715,12 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    const pairContact=await capture('pair-contact'),afterPair=transport.calls.length;
    await page.locator('#modal-back').click();await row().waitFor({state:'visible'});await page.locator('[data-action="close-modal"]').click();await card.click();await row().waitFor({state:'visible'});
    assert.match(await page.locator('#hotel-detail-min').textContent(),/133\s*500/);await page.locator('#hotel-detail-offers').click();await page.locator('#modal[open] #prototype-lead-form').waitFor();
-   assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(transport.calls.length,afterPair,'same card reopen reuses current tour and exact pair');assert.equal(transport.calls.length,beforeReturn+1,'only the explicit optional flight request was added');
+   assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');
+   const reopenCalls=transport.calls.slice(afterPair).map(c=>({url:c.url,action:c.action??null,body:c.body,query:c.query}));
+   assert.deepEqual(reopenCalls,[{url:base+'data/local-tv-catalog-read-v1.php',action:null,body:{},query:{'oldLocalHotelIds[]':'501'}}],'same card reopen only refreshes the existing LOCAL hotel presentation');
+   assert.equal(quoteCalls(),1,'same card reopen reuses the current tour');assert.equal(flightCalls(),1,'same card reopen reuses the exact pair');assert.equal(afterPair,beforeReturn+1,'only the explicit optional flight request was added before reopen');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.equal(transport.calls.some(c=>String(c.action).startsWith('handoff_')),false,'TV does not borrow ANEX bot producer');
-   records.push({width,height,key,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
+   records.push({width,height,key,legacyRouteComparison:'preserved explicit-details branch in same candidate',legacy,selected,manager,pairContact,quoteCalls:quoteCalls(),flightCalls:flightCalls(),reopenCalls,sameExactOffer:true,draftRetained:true,changedConsentReset:true,supplier_HTTP:0,real_leads:0});
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');
