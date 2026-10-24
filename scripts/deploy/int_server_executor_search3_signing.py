@@ -298,19 +298,8 @@ function tword(array $tokens,int &$i,string $word):void{
 function tdefine(array $tokens,int &$i):string{
     tword($tokens,$i,'define');tsymbol($tokens,$i,'(');$name=tname($tokens,$i);tsymbol($tokens,$i,',');
     $v=$tokens[$i++]??null;
-    if(is_array($v)&&$v['id']===T_STRING&&$v['text']==='base64_decode'){
-        // Recognize the two existing publisher expressions without decoding or executing them.
-        tneed(in_array($name,['ANEX_API_TOKEN','ANEX_B2B_TOKEN'],true),'tv_flag_value_shape');
-        tsymbol($tokens,$i,'(');$encoded=$tokens[$i++]??null;
-        tneed(is_array($encoded)&&$encoded['id']===T_CONSTANT_ENCAPSED_STRING,'tv_flag_value_shape');
-        $literal=$encoded['text'];$length=strlen($literal)-2;
-        tneed($length>0&&$length<=21848&&$length%4===0
-            &&preg_match("/\A'[A-Za-z0-9+\/]+={0,2}'\z/D",$literal)===1,'tv_flag_value_shape');
-        tsymbol($tokens,$i,',');tword($tokens,$i,'true');tsymbol($tokens,$i,')');
-    }else{
-        tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
-            ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
-    }
+    tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
+        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
     tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');return $name;
 }
 try{
@@ -326,14 +315,26 @@ try{
             $tokens[]=['id'=>$id,'text'=>$text,'end'=>$end];
         $offset=$end;
     }
-    tneed(is_int($insert));$i=0;$statements=0;$pointer=false;
+    tneed(is_int($insert));$i=0;$statements=0;$pointer=false;$declared=false;$bootstrap=false;
     while($i<count($tokens)){
         $t=$tokens[$i];
         if($t['id']===T_DECLARE){
             tneed($statements===0);++$i;tsymbol($tokens,$i,'(');tword($tokens,$i,'strict_types');
             tsymbol($tokens,$i,'=');$v=$tokens[$i++]??null;
             tneed(is_array($v)&&$v['id']===T_LNUMBER&&in_array($v['text'],['0','1'],true));
-            tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');$insert=$tokens[$i-1]['end'];++$statements;continue;
+            tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');$insert=$tokens[$i-1]['end'];$declared=true;++$statements;continue;
+        }
+        if($t['id']===T_REQUIRE_ONCE){
+            // Existing publisher's exact outer stub, recognized only; never follow or execute it.
+            tneed(!$bootstrap&&($statements===0||($statements===1&&$declared)),'tv_flag_statement_shape');
+            ++$i;tword($tokens,$i,'dirname');tsymbol($tokens,$i,'(');
+            $dir=$tokens[$i++]??null;tneed(is_array($dir)&&$dir['id']===T_DIR&&$dir['text']==='__DIR__','tv_flag_value_shape');
+            tsymbol($tokens,$i,',');$depth=$tokens[$i++]??null;
+            tneed(is_array($depth)&&$depth['id']===T_LNUMBER&&$depth['text']==='4','tv_flag_value_shape');
+            tsymbol($tokens,$i,')');tsymbol($tokens,$i,'.');$path=$tokens[$i++]??null;
+            tneed(is_array($path)&&$path['id']===T_CONSTANT_ENCAPSED_STRING
+                &&$path['text']==="'/.anytoour-anex/search3-preview.php'",'tv_flag_value_shape');
+            tsymbol($tokens,$i,';');$bootstrap=true;++$statements;continue;
         }
         if($t['id']===T_IF){
             ++$i;tsymbol($tokens,$i,'(');tsymbol($tokens,$i,'!');tword($tokens,$i,'defined');

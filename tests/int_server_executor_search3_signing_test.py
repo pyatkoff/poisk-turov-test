@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native synthetic custody and stock executor gates; no server/provider access."""
 import base64
+import ast
 from email.message import Message
 import hashlib
 import importlib.util
@@ -536,59 +537,57 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         self.assertEqual({'ok':False,'code':'tv_flag_tokenizer_unavailable'},json.loads(run.stdout))
         self.assert_config_unchanged()
 
-    def publisher_config(self):
+    def publisher_stub(self):
         fixture=os.environ.get('TV_SESSION_GATEWAY_SOURCE_ROOT')
-        if fixture:
-            # Existing CI checkout is pinned to actual FEATUREf4d; import only public source.
-            root=Path(fixture)
-            for path,expected in [('scripts/diagnostics/anex_search3_preview_deploy.py','7504e7250f3cfacd070c30e2dda461f7f4f4d28e'),
-                                  ('scripts/diagnostics/anex_search3_preview_deploy_safe.py','5ebd82d4b62c953de4998c74b1ae570d49c87dd1')]:
-                raw=(root/path).read_bytes()
-                self.assertEqual(expected,hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest())
-            publisher=module('tv_enable_actual_publisher',root/'scripts/diagnostics/anex_search3_preview_deploy_safe.py')
-            config=publisher.private_config('SYNTHETIC_UNRELATED_CREDENTIAL',signing.TV_SOURCE,'SYNTHETIC_B2B_CREDENTIAL')
-        else:
-            # Stock executor self-check (without the CI source checkout) uses fictional same-shape bytes.
-            encoded=base64.b64encode(b'SYNTHETIC_UNRELATED_CREDENTIAL').decode()
-            b2b=base64.b64encode(b'SYNTHETIC_B2B_CREDENTIAL').decode()
-            config=("<?php\ndefine('ANYTOUR_ANEX_PREVIEW_ENABLED', true);\n"
-                    +f"define('ANEX_API_TOKEN', base64_decode('{encoded}', true));\n"
-                    +f"define('ANEX_PREVIEW_SOURCE_SHA', '{signing.TV_SOURCE}');\n"
-                    +f"define('ANEX_B2B_TOKEN', base64_decode('{b2b}', true));\n")
-        return config+self.original.splitlines(keepends=True)[-1]
+        if not fixture:
+            # Explicit synthetic counterpart for stock self-check without the CI checkout.
+            return "<?php\nrequire_once dirname(__DIR__, 4) . '/.anytoour-anex/search3-preview.php';\n"
+        path=Path(fixture)/'scripts/diagnostics/anex_search3_preview_deploy.py';raw=path.read_bytes()
+        self.assertEqual('7504e7250f3cfacd070c30e2dda461f7f4f4d28e',
+                         hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest())
+        # Read the exact literal emitted by the real publisher; never run its deploy/build code.
+        function=next(n for n in ast.parse(raw).body if isinstance(n,ast.FunctionDef) and n.name=='build_payload')
+        calls=[n for n in ast.walk(function) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)
+               and n.func.attr=='write_text' and isinstance(n.func.value,ast.BinOp)
+               and isinstance(n.func.value.right,ast.Constant) and n.func.value.right.value=='.anex-private.php']
+        self.assertEqual(1,len(calls));self.assertIsInstance(calls[0].args[0],ast.Constant)
+        return calls[0].args[0].value
 
-    def test_actual_publisher_old_parser_rejects_fixed_stock_enable_preserves_all_bytes(self):
-        self.original=self.publisher_config();self.config.write_text(self.original)
-        start=signing.TV_FLAG_PHP.index("    if(is_array($v)&&$v['id']===T_STRING&&$v['text']==='base64_decode'){")
-        end=signing.TV_FLAG_PHP.index("    tsymbol($tokens,$i,')');tsymbol($tokens,$i,';');return $name;",start)
-        old_scalar="""    tneed(is_array($v)&&(in_array($v['id'],[T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER],true)
-        ||($v['id']===T_STRING&&in_array(strtolower($v['text']),['true','false','null'],true))),'tv_flag_value_shape');
-"""
-        old=signing.TV_FLAG_PHP[:start]+old_scalar+signing.TV_FLAG_PHP[end:]
+    def test_actual_publisher_stub_old_reject_fixed_preserves_bytes_without_following_include(self):
+        stub=self.publisher_stub();self.assertTrue(stub.startswith('<?php\n'))
+        pointer=self.original.splitlines(keepends=True)[-1]
+        outside=self.home/'.anytoour-anex/search3-preview.php';outside.parent.mkdir()
+        private=b"<?php file_put_contents(__DIR__.'/unwanted-execution','SYNTHETIC_UNRELATED_CREDENTIAL');\n"
+        outside.write_bytes(private);outside.chmod(0o000)
+        start=signing.TV_FLAG_PHP.index("        if($t['id']===T_REQUIRE_ONCE){")
+        end=signing.TV_FLAG_PHP.index("        if($t['id']===T_IF){",start)
+        old=(signing.TV_FLAG_PHP[:start]+signing.TV_FLAG_PHP[end:]).replace('$pointer=false;$declared=false;$bootstrap=false;',
+                 '$pointer=false;').replace("$insert=$tokens[$i-1]['end'];$declared=true;","$insert=$tokens[$i-1]['end'];")
         self.assertEqual('087973187fd1f3ef4d3a149743eb6875e8f8d0900efd8b562d42f46ef102a5c5',hashlib.sha256(old.encode()).hexdigest())
-        native=subprocess.run([os.environ.get('PHP_BIN','php'),'-r',old,str(self.config)],capture_output=True,timeout=20)
-        self.assertEqual(1,native.returncode);self.assertEqual(b'',native.stderr)
-        self.assertEqual({'ok':False,'code':'tv_flag_value_shape'},json.loads(native.stdout))
-        result=self.enable();self.assertEqual('enabled',result['status'],result)
-        original=self.original.encode();offset=len(b'<?php\n')
-        self.assertEqual(original[:offset]+signing.TV_FLAG_LINE+original[offset:],self.config.read_bytes())
-        self.assertTrue(self.config.read_text().endswith(self.original.splitlines(keepends=True)[-1]))
-        self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
-        self.assertNotIn('SYNTHETIC_B2B_CREDENTIAL',json.dumps(result))
+        for strict in (False,True):
+            with self.subTest(strict=strict):
+                self.original=stub.replace('<?php\n','<?php\ndeclare(strict_types=1);\n',1) if strict else stub
+                self.original+=pointer;self.config.write_text(self.original)
+                native=subprocess.run([os.environ.get('PHP_BIN','php'),'-r',old,str(self.config)],capture_output=True,timeout=20)
+                self.assertEqual(1,native.returncode);self.assertEqual(b'',native.stderr)
+                self.assertEqual({'ok':False,'code':'tv_flag_statement_shape'},json.loads(native.stdout))
+                result=self.enable();self.assertEqual('enabled',result['status'],result)
+                before=self.original.encode();offset=before.index(b';')+1 if strict else len(b'<?php\n')
+                self.assertEqual(before[:offset]+signing.TV_FLAG_LINE+before[offset:],self.config.read_bytes())
+                self.assertTrue(self.config.read_text().endswith(pointer))
+                self.assertEqual(0,outside.stat().st_mode&0o777);self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+                self.assertFalse((outside.parent/'unwanted-execution').exists())
+                self.assertNotIn('SYNTHETIC_UNRELATED_CREDENTIAL',json.dumps(result))
 
-    def test_only_exact_two_publisher_encoded_literals_are_recognized(self):
-        for name,expr in [('OTHER','base64_decode(\'YQ==\', true)'),
-                          ('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED','base64_decode(\'YQ==\', true)'),
-                          ('ANEX_API_TOKEN','getenv(\'SECRET\')'),
-                          ('ANEX_API_TOKEN','base64_decode(getenv(\'SECRET\'), true)'),
-                          ('ANEX_API_TOKEN','base64_decode(\'YQ==\', false)'),
-                          ('ANEX_B2B_TOKEN','base64_decode(\'YQ==\' . \'Yg==\', true)'),
-                          ('ANEX_B2B_TOKEN','base64_decode(\'not-base64!\', true)'),
-                          ('ANEX_API_TOKEN','base64_decode(\'\', true)'),
-                          ('ANEX_API_TOKEN','base64_decode(\'AAA\', true)'),
-                          ('ANEX_API_TOKEN','base64_decode(\''+'A'*21852+'\', true)')]:
-            with self.subTest(name=name,shape=expr[:60]):
-                before=self.original+f"define('{name}', {expr});\n";self.config.write_text(before)
+    def test_only_exact_first_publisher_stub_is_recognized(self):
+        statement=self.publisher_stub().splitlines()[1]
+        for bad in [statement.replace('4','3'),statement.replace('4','5'),statement.replace('__DIR__','__FILE__'),
+                    statement.replace('search3-preview.php','other.php'),statement.replace('require_once','require'),
+                    statement.replace('require_once','include_once'),statement.replace('dirname(__DIR__, 4)',"getenv('HOME')"),
+                    'if (true) '+statement,statement+'\n'+statement,
+                    "define('OTHER',true);\n"+statement]:
+            with self.subTest(shape=bad):
+                before='<?php\n'+bad+'\n'+self.original[len('<?php\n'):];self.config.write_text(before)
                 result=self.enable();self.assertIn(result['reason'],['tv_enable_value_shape','tv_enable_statement_shape','tv_enable_syntax_shape'])
                 self.assertEqual(before,self.config.read_text());self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
                 self.assertEqual([],list(self.home.rglob('tv-enable-plan.json')))
@@ -659,8 +658,8 @@ def load_tests(loader, tests, pattern):
                  'test_http_failure_rolls_back_exact_config','test_fixed_http_and_parent_contract',
                  'test_config_candidate_budget_is_checked_before_backup','test_own_http_response_validation_without_network',
                  'test_parser_environment_and_untrusted_output_only_fixed_codes','test_native_missing_tokenizer_has_own_safe_classification',
-                 'test_actual_publisher_old_parser_rejects_fixed_stock_enable_preserves_all_bytes',
-                 'test_only_exact_two_publisher_encoded_literals_are_recognized'):
+                 'test_actual_publisher_stub_old_reject_fixed_preserves_bytes_without_following_include',
+                 'test_only_exact_first_publisher_stub_is_recognized'):
         suite.addTest(NativeTVGatewayEnable(name))
     return suite
 

@@ -210,8 +210,8 @@ typed public maps must match before planning and immediately before replacement.
 Only .anex-private.php changes: insert the single guarded
 ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED=true declaration after the PHP opening tag or
 first strict_types declaration. Native PHP tokenization accepts static literal
-define declarations and their same-name !defined guards, plus the two exact
-publisher credential expressions described below; config is never
+define declarations and their same-name !defined guards, plus the exact outer
+publisher stub below; config is never
 executed, dynamic/unknown syntax and an existing TV flag fail closed. Existing
 bytes, other constants, strict_types ordering, original key-pointer tail and mode
 are preserved. No signing key is opened, provisioned, exported or modified.
@@ -258,29 +258,38 @@ exercise classifications and prove no config execution/write on these failures.
 Any later recovery needs its own concrete evidence/admission; this change provides
 no server readback mode and no replay permission for the UNKNOWN operation.
 
-## Publisher config compatibility correction — 25Oct2026
+## Publisher outer-stub compatibility correction — 25Oct2026
 
-Public source evidence supplies a concrete compatibility defect without reading
-server secrets: FEATUREf4d scripts/diagnostics/anex_search3_preview_deploy.py
-blob7504e725 emits ANEX_API_TOKEN as base64_decode('literal', true), and the safe
-wrapper blob5ebd82d4 emits ANEX_B2B_TOKEN with the same shape. The original literal
-only validator rejects the legitimate publisher output. This proves a source
-contract defect; it does not retrospectively identify the historical server
-rejection, whose original receipt omitted the detailed native code.
+Public source establishes the target format without reading secrets. FEATUREf4d
+scripts/diagnostics/anex_search3_preview_deploy.py blob7504e725 build_payload()
+emits .anex-private.php as exactly:
 
-The validator now recognizes exactly those two constant names with the existing
-single-quoted, nonempty, bounded base64 literal and strict true argument. It only
-inspects tokens, never decodes/evaluates the expression. Other function calls,
-other constant names, variables, nested calls, concatenation, false/non-strict
-argument and malformed/oversize encoded strings remain rejected. Config bytes,
-key-pointer tail and all source/parent/public/identity/lint/backup/rollback and
-immutable-operation checks are retained. The publisher itself is unchanged.
+```php
+<?php
+require_once dirname(__DIR__, 4) . '/.anytoour-anex/search3-preview.php';
+```
 
-The existing native suite imports the actual pinned publisher with fictional
-credentials in CI, proves the exact old parser refuses its output, and verifies
-the fixed stock enable preserves every original byte while adding only the TV
-flag. Adversarial shapes are refused before backup/write. Local stock self-check
-without the source checkout uses an explicit same-shape fictional fixture.
-Source/CI/review acceptance is not a runtime activation or a renamed replay:
-enable operation6389997818 remains UNKNOWN/consumed. No command, privileged
-reader, supplier/customer action or SEARCH consumer acceptance follows here.
+The separate private_config() output with base64-encoded credentials belongs to
+the external private file. It is not the outer runtime target. Recognizing those
+credential expressions would not fix this target contract; that expansion was
+removed from this package. Neither external config nor credentials are read.
+
+The validator recognizes only this exact top-level require_once expression as
+the first statement, optionally after strict_types. Depth, __DIR__, fixed path
+and statement kind are pinned by token shape; dynamic paths, alternate includes,
+wrong depth/file, conditional/duplicate/later includes remain rejected. No include
+is followed or executed. All remaining scalar grammar and config byte preservation,
+key-pointer tail, source/parent/public/identity/lint/backup/rollback/no-replay guards
+remain intact. Publisher, external private config and signing keys are unchanged.
+
+The existing CI suite extracts the actual stub literal from the pinned publisher
+AST, proves exact old-parser rejection, and verifies fixed stock enable preserves
+every original byte for normal and strict_types stubs. An unreadable fictional
+outside file with an execution sentinel proves no following/execution occurs;
+altered include shapes refuse before backup/write. The local stock self-check
+without that checkout uses an explicit same-shape synthetic stub.
+
+This is a confirmed source incompatibility, not proof of the current server stub
+or retrospective exact cause of UNKNOWN6389997818. Source/CI/review acceptance
+does not activate TV, add a reader, or authorize a retry/renamed operation. The
+original operation and its original source/receipt remain immutable/consumed.
