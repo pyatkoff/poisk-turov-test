@@ -1727,7 +1727,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
    await page.locator('.hotel-room-card').first().waitFor();
    const room=page.locator('.hotel-room-card').first();
    if(await room.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await room.locator(':scope>summary').click();
-   const choice=room.locator('[data-action="select-hotel-offer"]:visible').first(),key=await choice.getAttribute('data-key'),listingAmount=await choice.locator('..').locator('strong').textContent();
+   const choice=room.locator('[data-action="select-hotel-offer"]:visible').first(),key=await choice.getAttribute('data-key'),listingAmount=await page.locator('.room-offer-choice[data-offer-key="'+key+'"] .hotel-room-price>strong').textContent();
    await choice.click();await page.locator('#prototype-lead-form').waitFor();
    assert.equal(await amount(),listingAmount,'one exact room action reaches the checked manager-flight contacts');
    await page.locator('#modal-back').click();
