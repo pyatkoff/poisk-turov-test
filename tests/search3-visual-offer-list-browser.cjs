@@ -172,7 +172,7 @@ const server=http.createServer((req,res)=>{
     const file=path.join(evidence,`${prefix}-receipt-${width}.json`);
     const save=()=>fs.writeFileSync(file,JSON.stringify(receipt,null,2)+'\n');
     const capture=async name=>{
-     const state=await page.evaluate(()=>({url:location.search,scrollY,modalOpen:document.querySelector('#modal').open,title:document.querySelector('#modal-title').textContent,offerKey:document.querySelector('#modal').dataset.offerKey||null,bodyScroll:document.querySelector('#modal-body').scrollTop,active:{tag:document.activeElement.tagName,id:document.activeElement.id,name:document.activeElement.getAttribute('name'),action:document.activeElement.dataset.action||null},footer:document.querySelector('#modal-footer').textContent,party:document.querySelector('.chosen-trip')?.textContent||null,application:document.querySelector('.application-review')?.textContent||null,applicationFlight:document.querySelector('.application-flight-overview')?.textContent||null,checked:document.querySelector('#prototype-lead-form')?.dataset.checked||null}));
+     const state=await page.evaluate(()=>({url:location.search,scrollY,modalOpen:document.querySelector('#modal').open,title:document.querySelector('#modal-title').textContent,offerKey:document.querySelector('#modal').dataset.offerKey||null,bodyScroll:document.querySelector('#modal-body').scrollTop,active:{tag:document.activeElement.tagName,id:document.activeElement.id,name:document.activeElement.getAttribute('name'),action:document.activeElement.dataset.action||null},footer:document.querySelector('#modal-footer').textContent,party:document.querySelector('.chosen-trip')?.textContent||null,application:document.querySelector('.application-summary')?.textContent||null,applicationFlight:document.querySelector('.application-flight-overview')?.textContent||null,checked:document.querySelector('#prototype-lead-form')?.dataset.checked||null}));
      stages.push({name,...state});save();await shot(prefix+'-'+name);
     };
     const total=async expected=>assert.equal(Number((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\D/g,'')),expected,'one footer total for the exact family choice');
@@ -207,7 +207,7 @@ const server=http.createServer((req,res)=>{
      await profile.click();const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();
      await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
      await contact().waitFor();await total(186400);assert.equal(await page.locator('[data-action="start-lead"]').count(),0,'room footer reaches contacts without an intermediate tour action');
-     await party('.application-review');assert.match(await page.locator('.application-summary .application-flight-overview').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
+     await party('.application-review-card');assert.match(await page.locator('.application-summary .application-flight-overview').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
      await submit().click();assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'invalid phone receives focus');
      await contact().locator('[name="phone"]').fill(draft.phone);
      await page.keyboard.press('Tab');assert.equal(await contact().locator('[name="consent"]').evaluate(el=>document.activeElement===el),true,'phone Tab reaches separate consent');
@@ -222,7 +222,7 @@ const server=http.createServer((req,res)=>{
      const pair=page.locator('.flight-option[data-flight-index="2"]');assert.equal(await pair.getAttribute('data-flight-price'),'189000');assert.match(await page.locator('#flight-price-change').textContent(),/2[\s\u00a0\u202f]*600/);
      await capture('flight-pair3');await reachable(page.locator('[data-action="apply-flight"]'),'family Apply pair');await page.locator('[data-action="apply-flight"]').click();
      await total(189000);await party('.chosen-trip');assert.match(await page.locator('#modal-body').textContent(),/07:10.*11:45/s);
-     await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();await total(189000);await party('.application-review');await assertDraft();
+     await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();await total(189000);await party('.application-review-card');await assertDraft();
      assert.equal(await contact().locator('[name="consent"]').isChecked(),false,'a changed pair invalidates prior consent');assert.equal(await contact().getAttribute('data-checked'),null,'a changed pair invalidates the previous check');
      await submit().click();assert.equal(await contact().locator('[name="consent"]').evaluate(el=>document.activeElement===el),true,'required fresh consent receives focus');
      await contact().locator('[name="consent"]').check();await submit().click();
@@ -238,7 +238,7 @@ const server=http.createServer((req,res)=>{
      assert.equal(returned.active,true,'Close returns focus to the original hotel');assert(Math.abs(returned.cardTop-anchor.cardTop)<=2,'Close retains the original card position');
      const current=page.locator('#hotel-900001 .current-card-selection');await current.waitFor();assert.equal(await current.getAttribute('data-selected-key'),'demo-flight-24');assert.match(await current.textContent(),/189[\s\u00a0\u202f]*000/);
      await current.locator('[data-action="offer"]').click();await page.locator('[data-action="confirm-tour"]').waitFor();await total(189000);await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();
-     await party('.application-review');await assertDraft();await total(189000);assert.equal(await contact().locator('[name="consent"]').isChecked(),true,'same conditions retain explicit demo consent');assert.equal(await contact().getAttribute('data-checked'),null,'passive reopen does not repeat local validation');
+     await party('.application-review-card');await assertDraft();await total(189000);assert.equal(await contact().locator('[name="consent"]').isChecked(),true,'same conditions retain explicit demo consent');assert.equal(await contact().getAttribute('data-checked'),null,'passive reopen does not repeat local validation');
      receipt.returned={anchor,after:returned,exactPair:2,total:189000,consentResetOnChange:true,sameChoiceConsentRetained:true,draftRetained:true,automaticSubmit:false};
      await capture('return-contact');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
      assert.deepEqual(network.filter(row=>row.method!=='GET'||row.path.endsWith('.php')&&!row.path.endsWith('/visual-search/index.php')),[],'family Find/quote/validation/Back have no API or mutating HTTP requests');receipt.status='passed';save();
