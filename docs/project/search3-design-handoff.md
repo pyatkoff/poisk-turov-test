@@ -1,3 +1,37 @@
+## Approved Site226 ordinary journey — 25 October 2026
+
+Owner continuation after the exact shown version226 authorizes this transfer:
+[#4709/6403338578](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6403338578).
+Same PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, source
+`a513a12c4e81225c92f25c42fa2af1b67b40dcbd`, evidence-only successor
+`e72f6509d3e8b65eb5e45836e56622431d4e7826`.
+Receiver base `30a7e7013edd7fe70a4700db0aafb2bf22ee05f8`;
+installed source before transfer `693f7ff9c1e2191ac2cb67ca34a35768445988c4`.
+
+Remove the form-only nested filter screen and its replaced handlers/state/CSS;
+primary search parameters and the existing result filters retain their owners.
+An explicit exact-room action now checks its price and opens canonical contacts
+without another Continue action. A changed amount remains visible for explicit
+acceptance before contacts; only that current exact identity can be accepted.
+Ordinary Back/reopen preserves acceptance, selected pair, phone draft and consent;
+a changed selection still resets consent. Equal meal/date/operator facts appear
+once per room group, while every exact offer key and amount remains separate.
+The contact summary shows the actual full room and meal; existing Telegram/MAX
+choices stay beside the contact question, with the optional phone path retained.
+
+Current NEXT data, lifecycle, supplier, quote/price, pair, lead and messenger
+context/flow owners remain authoritative. No donor fixtures, rehearsal lead shim,
+new controller, price formula, protected contract or supplier requests are copied.
+The Tourvisor after-filter failure remains a separate unresolved exact phone case;
+this transfer does not establish its cause or repair it. Native/physical430,
+Safari/safe area and real delivery remain unmeasured; keyboard passes are excluded.
+
+Local actual-owner tests use fictional replies only. Existing mandatory exact-head
+CI and compiled430/1280/short720 inspection, independent delta review, permitted
+release merge, an exclusive stock NEXT-only publisher, exact readback and affected
+installed boundary remain required. This source preparation is not an installed
+receipt or a whole-search score.
+
 ## Tourvisor same-session messenger consumer — 25 October 2026
 
 SEARCH claim6392923643 consumes the single accepted INT installed+enabled

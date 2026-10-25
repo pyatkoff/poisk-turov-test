@@ -1328,6 +1328,7 @@ dialog.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:min
 
 .room-offer-conditions{min-width:0;display:grid;gap:4px}
 .room-offer-meal{font-size:16px;line-height:1.45;overflow-wrap:anywhere}
+.room-shared-facts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;padding:10px 14px;font-size:.875rem;line-height:1.5;color:var(--muted)}
 .room-offer-choice .room-choice-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px}
 
 .room-offer-choice .room-choice-facts dt{font-size:12px;line-height:1.5;color:var(--muted)}
@@ -1666,12 +1667,11 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 #search-form .search-submit{min-width:220px;min-height:48px;margin:0;font-size:1rem}
 #search-form #search-return{min-height:44px;font-size:13px;padding:10px 8px;color:var(--brand)}
 #search-form .search-edit-note{font-size:12px;line-height:1.5;margin:4px 0 0;color:var(--muted)}
-#search-form .form-all-filters{display:flex;justify-content:center;min-height:44px;margin:0 auto 0 0;font-size:.875rem}
 #search-form .form-price-note{font-size:.8125rem;line-height:1.5;text-align:right;color:var(--muted);margin-top:4px}
 #search-form #form-conflict{margin-top:8px;font-size:12px;line-height:1.5}
 .form-picker .modal-header .icon-button,.form-picker .calendar-navigation .icon-button{width:44px;height:44px;min-width:44px;min-height:44px}
 
-.form-picker .destination-empty .text-button,.form-picker [data-action="reset-form-filters"],.form-picker #meal-clear-query{min-height:44px}
+.form-picker .destination-empty .text-button,.form-picker #meal-clear-query{min-height:44px}
 
 @media(min-width:1101px){body.search-editing .results-section:not(.filters-requested){display:none}}
 @media(max-width:1100px){#search-form .search-primary{grid-template-columns:repeat(6,minmax(0,1fr))}#search-form .search-field{grid-column:span 3}#search-form .search-field:nth-child(3){grid-column:span 6}#search-form .search-field:nth-child(4),#search-form .search-field:nth-child(5){grid-column:span 3}}
@@ -1708,7 +1708,6 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  #search-form .quick-field .chevron{position:absolute;right:13px;bottom:17px}
  #search-form .search-actions{position:static;display:grid;gap:4px;margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none;grid-template-columns:minmax(0,1fr)}
  #search-form .search-submit{width:100%;min-width:0;min-height:48px;font-size:15px;box-shadow:none;border-radius:12px;order:1}
- #search-form .form-all-filters{justify-self:start;margin:0;order:0}
  #search-form #search-return{order:2}
 #search-form .form-price-note{text-align:left}
 
@@ -1761,7 +1760,6 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 .form-picker .destination-current-country{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:4px 14px;background:white;margin-top:12px}
 .form-picker .destination-current-country .text-button{font-size:12px;min-height:44px}
 .form-picker .replacement-value{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;font-size:14px;margin:8px 0 16px}
-.form-picker .category-options{margin-top:20px}
 .form-picker .age-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:36px 0 20px}
 .form-picker .age-grid button{display:grid;place-content:center;min-width:0;min-height:60px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:17px;line-height:22px}
 .form-picker .age-grid small{font-size:10px}
@@ -2352,6 +2350,11 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-review-heading>span,.application-review-heading>small{font-size:.875rem;line-height:1.5;color:var(--muted)}
 
 .application-review-toggle{color:var(--brand);font-size:.875rem;flex-shrink:0}
+.application-review-card{padding:18px;border:1px solid var(--line);border-radius:14px;background:#f7f9fd}
+.application-review-card>.application-review{padding:0;margin:12px 0;border:0;border-radius:0;background:transparent}
+.application-review-card>.application-review .saved-stay-summary{margin-top:12px}
+.application-review-card .application-review-stay{color:var(--ink)}
+.application-change-actions{margin-top:12px}
 
 details.application-review .chosen-trip{display:none}
 
@@ -2726,5 +2729,5 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
  .hotel-price>.primary {padding-left:8px;padding-right:8px;font-size:.875rem}
 }
 /* The supported retained-tour contact choice uses the existing button tokens. */
-.messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 12px}.messenger-methods .secondary{min-height:48px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:44px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
+.messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0 12px}.messenger-methods>[data-action="messenger-open"]{min-width:0;min-height:52px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:52px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
 @media(max-width:760px){.application-layout:has(.messenger-entry) .application-contact{order:-1}}

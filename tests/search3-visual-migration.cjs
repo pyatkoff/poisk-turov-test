@@ -18,11 +18,16 @@ assert.equal(roomDensityApproval.nativeVersion,'appgprj_6abcd9299ef88191bbce1fc1
 assert.equal(roomDensityApproval.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6389631995');
 assert.equal(roomDensityApproval.projectId,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a');
 
-const cardEntryApproval=manifest.approvedPresentationHistory.at(-1);
+const cardEntryApproval=manifest.approvedPresentationHistory.find(value=>value.site===224);
 assert.equal(cardEntryApproval.site,224);assert.equal(cardEntryApproval.sourceSha,'d01542cf28c8171ae57d74330cf543f9ffc16c96');
 assert.equal(cardEntryApproval.nativeVersion,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_4eaa3dab77ac8191b9a136d7584297a6');
 assert.equal(cardEntryApproval.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6390219318');
 assert.equal(cardEntryApproval.projectId,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a');
+const simplifiedJourneyApproval=manifest.approvedPresentationHistory.at(-1);
+assert.equal(simplifiedJourneyApproval.site,226);assert.equal(simplifiedJourneyApproval.sourceSha,'a513a12c4e81225c92f25c42fa2af1b67b40dcbd');
+assert.equal(simplifiedJourneyApproval.nativeVersion,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5e10a7697b9c8191b18a84cdccaf42b5');
+assert.equal(simplifiedJourneyApproval.approvalReceipt,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6403338578');
+assert.equal(simplifiedJourneyApproval.projectId,'appgprj_6abcd9299ef88191bbce1fc1bf8c767a');
 
 assert(manifest.approvedPresentationHistory.some(value=>value.sourceSha==='8eff868acadbc81044595c044faf605b2881c1da'),'approved198 retained as history');
 assert(manifest.approvedPresentationHistory.some(value=>value.sourceSha==='dee9043bfce695de275223c417902f393f6c9114'),'approved185 retained as history');

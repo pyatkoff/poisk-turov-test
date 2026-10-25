@@ -76,7 +76,7 @@ const server=http.createServer((req,res)=>{
    await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('#search-form').waitFor({state:'visible'});await page.locator('#search-form').scrollIntoViewIfNeeded();await shot('form');
    for(const zoom of [100,200]){
     await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);await densityFrame('form',zoom);
-    for(const control of ['.search-submit','[data-action="cancel-search-edit"]','[data-action="form-filters"]'])await reachable(page.locator('#search-form '+control),'form '+control+' text'+zoom);
+    for(const control of ['.search-submit','[data-action="cancel-search-edit"]'])await reachable(page.locator('#search-form '+control),'form '+control+' text'+zoom);
     if(zoom===200)await shot('form-text200');
    }
    await page.evaluate(()=>document.documentElement.style.fontSize='');await page.locator('#search-form').scrollIntoViewIfNeeded();
@@ -84,7 +84,7 @@ const server=http.createServer((req,res)=>{
    assert(await page.locator('#search-edit-note').isVisible());assert.doesNotMatch(editSearchNotice,/Условия изменены/,'opening the unchanged applied search does not assert a change');assert.match(editSearchNotice,/Найти туры/,'the explicit search action is explained');
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
-   for(const name of ['departure','destination','dates','nights','guests','meals','budget','form-filters']){
+   for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
     await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
     if(name==='dates'){
      const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});
@@ -100,7 +100,6 @@ const server=http.createServer((req,res)=>{
     if(name==='guests'){
      await page.locator('[data-action="children-plus"]').click();await page.locator('[data-action="child-age"]').first().click();await shot('child-age');await page.locator('#modal-back').click();
     }
-    if(name==='form-filters'){await page.locator('#modal [data-action="stars"]').click();await shot('stars');await page.locator('#modal-back').click();}
     await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
    }
    await page.locator('[data-action="cancel-search-edit"]').click();assert.equal(requests,0,'all form states leave the exact-list owner cold');

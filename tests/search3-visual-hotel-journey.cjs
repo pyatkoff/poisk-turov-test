@@ -113,9 +113,10 @@ async function run(width,lazy=false){
   click('.hotel-card [data-action="hotel-details"]');await pause();
   click('[data-action="select-hotel-offer"]');
   const key=get('.room-offer-choice.selected').dataset.offerKey;
-  if(lazy){click('#hotel-detail-offers');await settle(()=>d.querySelector('#prototype-lead-form'));assert.equal(counts.flights,0,'ordinary manager path never fetches flights');}
-  else{
-   click('.room-offer-choice.selected [data-action="hotel-flights"]');if(emptyRetry&&counts.flights===0){await settle(()=>counts.flights===1&&d.querySelector('.room-flight-preview [data-action="hotel-flights"]'));click('.room-flight-preview [data-action="hotel-flights"]');}await settle(()=>d.querySelector('.hotel-flight-inline [name="flight-pair"]'));
+  await settle(()=>d.querySelector('#prototype-lead-form'));assert.equal(counts.quote,1,'one explicit exact-room action reaches checked contacts');assert.equal(counts.flights,0,'ordinary manager path never fetches flights');
+  if(!lazy){
+   click('[data-action="modal-back"]');await settle(()=>d.querySelector('.room-offer-choice.selected'));
+   click('.room-offer-choice.selected [data-action="hotel-flights"]');if(emptyRetry){await settle(()=>counts.flights===1&&d.querySelector('.room-flight-preview [data-action="hotel-flights"]'));click('.room-flight-preview [data-action="hotel-flights"]');}await settle(()=>d.querySelector('.hotel-flight-inline [name="flight-pair"]'));
    assert.equal(get('#modal-title').textContent.includes('Ваш тур'),false,'inline flights do not insert another offer screen');
    assert.equal(d.querySelectorAll('.hotel-flight-inline [name="flight-pair"]:checked').length,0,'loading inventory never commits a default pair');
    click('.hotel-flight-inline [name="flight-pair"][value="23"]');assert.equal(get('#hotel-detail-offers').disabled,true,'unknown pair price cannot continue');assert.equal(get('#hotel-detail-min').textContent,'Цена уточняется');
@@ -152,6 +153,12 @@ async function run(width,lazy=false){
 async function run(){
  {const {c,listing,views}=setup();vm.runInContext(slice('function selectHotelFlight(','function syncHotelOfferSelection('),c);c.syncHotelOfferSelection=()=>{};c.withFlightPair=(o,id)=>({...o,flightChoiceId:id,total:201000,pricePending:false});c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,variants:[{}]};c.selectHotelFlight('one','0');assert.equal(views.get('one').type,'tourvisor-selection');assert.equal(views.get('one').offer.total,201000,'explicit inline pair reaches the existing retained view used on reopen');c.deferHotelFlight('one');assert.equal(views.get('one').offer.total,198600);assert.equal(views.get('one').offer.flightChoiceId,null,'explicit manager choice replaces the retained priced pair without new quote');}
  {const {c,calls}=setup();await c.openLeadWithQuote('one');assert.equal(calls.quote,1);assert.equal(calls.flights,0);assert.equal(calls.offerScreens,0);assert.equal(calls.contacts,1);assert.equal(calls.contactOffer.total,198600);}
+ {const {c,calls,views,listing}=setup();c.data.quote=async()=>{calls.quote++;return {price:199000};};await c.openLeadWithQuote('one');assert.equal(calls.contacts,0);assert.equal(c.selectedOffer.priceAcceptancePending,true);c.acceptSelectedOfferPrice('one');assert.equal(calls.contacts,1);assert.equal(calls.contactOffer.total,199000);assert.equal(views.get('one').offer.priceAcceptancePending,false,'explicit acceptance replaces the retained pending status');c.modalType='hotel-details';c.selectedOffer={...listing};assert(c.restoreProviderView(listing));await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'ordinary Back/reopen retains the same accepted exact price');assert.equal(calls.contacts,2);assert.equal(calls.contactOffer.total,199000);}
+ for(const mismatch of ['raw','search','price','room','party','closed','unknown','amount']){
+  const {c,calls,listing,nodes}=setup();c.selectedOffer={...listing,tour:{price:199000},total:199000,quoteListingTotal:listing.total,priceAcceptancePending:true};
+  if(mismatch==='raw')c.selectedOffer.raw={};if(mismatch==='search')c.state.search={...listing.search,origin:'Казань'};if(mismatch==='price')listing.total++;if(mismatch==='room')c.selectedOffer.room='Other';if(mismatch==='party')c.selectedOffer.ages=[8];if(mismatch==='closed')nodes['#modal'].open=false;if(mismatch==='unknown')c.selectedOffer.tour.price=null;if(mismatch==='amount')c.selectedOffer.tour.price=200000;
+  c.acceptSelectedOfferPrice('one');assert.equal(calls.contacts,0,mismatch+' cannot accept a stale or unknown amount');assert.equal(calls.quote,0,'acceptance never starts a replacement quote');assert.equal(c.selectedOffer.priceAcceptancePending,true);
+ }
  {const {c,calls,listing}=setup();const pair={price:201000};c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,total:201000,variants:[pair],flightChoiceId:'0'};await c.openLeadWithQuote('one');assert.equal(calls.quote,0);assert.equal(calls.contacts,1);assert.equal(calls.contactOffer.total,201000,'reuse the exact selected pair total');}
  for(const mismatch of ['raw','search','room','party','price']){
   const {c,calls,listing}=setup();c.selectedOffer={...listing,tour:{price:1},quoteListingTotal:198600};
@@ -162,7 +169,7 @@ async function run(){
   const {c,calls,nodes}=setup(),gate=deferred();c.data.quote=()=>{calls.quote++;return gate.promise;};
   const pending=c.openLeadWithQuote('one');await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'double action shares the current pending intent');
   if(interrupt==='close'){c.cancelHotelOfferCheck();nodes['#modal'].open=false;}if(interrupt==='new-selection')c.hotelOfferDraft={hotelId:1,key:'other'};if(interrupt==='new-generation')c.selectionGeneration++;
-  gate.resolve({price:199000});await pending;assert.equal(calls.contacts,0,'late quote after '+interrupt+' cannot navigate');if(interrupt==='close'){assert.equal(c.selectedOffer.loading,false);nodes['#modal'].open=true;c.data.quote=async()=>({price:199000});await c.openLeadWithQuote('one');assert.equal(calls.contacts,1,'explicit re-entry is usable after close');}
+  gate.resolve({price:199000});await pending;assert.equal(calls.contacts,0,'late quote after '+interrupt+' cannot navigate');if(interrupt==='close'){assert.equal(c.selectedOffer.loading,false);nodes['#modal'].open=true;c.data.quote=async()=>({price:199000});await c.openLeadWithQuote('one');assert.equal(calls.contacts,0,'changed quote cannot silently continue after close');c.acceptSelectedOfferPrice('one');assert.equal(calls.contacts,1,'explicit re-entry accepts only its own changed amount');}
  }
  {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;throw Object.assign(Error('expired'),{code:'offer_expired',retryable:false});};await c.openLeadWithQuote('one');await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'terminal quote is not replayed');assert.equal(calls.contacts,0);assert.equal(calls.offerScreens,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);}
  for(const outcome of ['success','expired','unknown']){
@@ -182,17 +189,19 @@ async function run(){
    c.data.quote=o=>{calls.quote++;return c.quote(o);};
   }else c.data.quote=()=>{calls.quote++;wire++;return calls.quote===1?gate.promise:Promise.resolve(quoted);};
   vm.runInContext("function selectRoom(key){const b={dataset:{key}};switch('select-hotel-offer'){"+slice("case 'select-hotel-offer':","case 'continue-hotel-offer':")+'}}',c);
+  const other=deferred(),originalQuote=c.data.quote;c.data.quote=o=>{if(o.key==='two'){calls.quote++;return other.promise;}return originalQuote(o);};
   const pending=c.openLeadWithQuote('one');assert.equal(c.selectedOffer.loading,true);
-  c.selectRoom('two');assert.equal(c.selectedOffer.loading,false,'changing room cancels only abandoned presentation loading');assert.equal(calls.quote,1,'room selection does not automatically quote');
+  c.selectRoom('two');assert.equal(c.selectedOffer.key,'two');assert.equal(c.selectedOffer.loading,true,'explicit B action owns its independent pending state');assert.equal(calls.quote,2,'one quote intent per explicitly clicked exact room');
   if(outcome==='success')gate.resolve(quoted);
   else if(outcome==='expired')gate.resolve({ok:false,status:410,json:async()=>({error:'expired'}),clone(){return this;}});
   else gate.reject(Object.assign(Error('uncertain result'),{code:'quote_unknown',retryable:false}));
   await pending;assert.equal(calls.contacts,0,'old A completion cannot navigate from B');
-  c.selectRoom('one');assert.equal(c.hotelOfferCheckActive('one'),true);assert.equal(c.selectedOffer.loading,false,'reselected A is not permanently disabled');assert.equal(calls.quote,1);
+  c.selectRoom('one');assert.equal(c.hotelOfferCheckActive('one'),true);await new Promise(resolve=>setImmediate(resolve));
   c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));
   assert.strictEqual(c.selectedOffer.raw,listing.raw);
-  if(outcome==='success'){assert.equal(wire,2,'explicit known-success recheck is not a retained-cache or HTTP saving claim');assert.equal(calls.quote,2);assert.equal(calls.contacts,1);assert.strictEqual(calls.contactOffer.tour,quoted);assert.equal(calls.contactOffer.total,199000);}
-  else{assert.equal(wire,1,'inactive terminal result cannot replay');assert.equal(calls.quote,1);assert.equal(calls.contacts,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);if(outcome==='expired')assert.equal(c.selectedOffer.quoteErrorCode,'offer_expired');c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.quote,1,'terminal/UNKNOWN remains sealed without replay');}
+  if(outcome==='success'){assert.equal(wire,2,'explicit known-success recheck is not a retained-cache or HTTP saving claim');assert.equal(calls.quote,3);assert.equal(calls.contacts,0,'the rechecked changed price awaits explicit acceptance');c.acceptSelectedOfferPrice('one');assert.equal(calls.contacts,1);assert.strictEqual(calls.contactOffer.tour,quoted);assert.equal(calls.contactOffer.total,199000);}
+  else{assert.equal(wire,1,'inactive terminal result cannot replay');assert.equal(calls.quote,2);assert.equal(calls.contacts,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);if(outcome==='expired')assert.equal(c.selectedOffer.quoteErrorCode,'offer_expired');c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.quote,2,'terminal/UNKNOWN A remains sealed; only unrelated B owns its withheld request');}
+  const contacts=calls.contacts;other.resolve({price:777777});await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.contacts,contacts,'late B cannot navigate after reselecting A');assert.equal(c.selectedOffer.key,'one');
  }
  for(const changed of ['raw','search','price','room']){
   const {c,calls,listing,hotel,views}=setup(),gate=deferred();c.data.quote=()=>{calls.quote++;return gate.promise;};
@@ -208,13 +217,14 @@ async function run(){
   hotel.offers.push({...listing,key:'two',room:'Other',raw:{...listing.raw}});
   c.data.verifyAnexConcrete=()=>{calls.verify++;if(!request){wire++;request=gate.promise;}return request;};
   vm.runInContext("function selectRoom(key){const b={dataset:{key}};switch('select-hotel-offer'){"+slice("case 'select-hotel-offer':","case 'continue-hotel-offer':")+'}}',c);
-  const pending=c.refreshLiveHotel(1);c.selectRoom('two');assert.equal(c.selectedOffer.loading,false);
+  const other=deferred(),originalVerify=c.data.verifyAnexConcrete;c.data.verifyAnexConcrete=o=>o.key==='two'?other.promise:originalVerify(o);
+  const pending=c.refreshLiveHotel(1);c.selectRoom('two');assert.equal(c.selectedOffer.key,'two');assert.equal(c.selectedOffer.loading,true);
   gate.resolve({state:'current'});await pending;assert.equal(calls.additional,0,'abandoned ANEX context cannot start additional pricing');
   c.selectRoom('one');c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));
   assert.equal(wire,1);assert.equal(calls.verify,1,'the retained ANEX context is restored without another current check');assert.equal(calls.additional,0);assert.equal(c.selectedOffer.loading,false);
-  await c.applyAnexAdditionalPrices();assert.equal(calls.additional,1);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false);assert.equal(calls.offerScreens,0);
+  await c.applyAnexAdditionalPrices();assert.equal(calls.additional,1);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false);assert.equal(calls.offerScreens,0);other.resolve({state:'current'});await new Promise(resolve=>setImmediate(resolve));assert.equal(c.selectedOffer.key,'one','late unrelated ANEX selection cannot replace current A');
  }
- {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;if(calls.quote===1)throw Error('temporary');return {price:199000};};await c.openLeadWithQuote('one');assert.equal(calls.contacts,0);await c.openLeadWithQuote('one');assert.equal(calls.contacts,1,'explicit retry recovers');assert.equal(calls.quote,2);}
+ {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;if(calls.quote===1)throw Error('temporary');return {price:199000};};await c.openLeadWithQuote('one');assert.equal(calls.contacts,0);await c.openLeadWithQuote('one');assert.equal(calls.contacts,0,'changed retry price awaits explicit acceptance');c.acceptSelectedOfferPrice('one');assert.equal(calls.contacts,1,'explicit retry and price acceptance recover');assert.equal(calls.quote,2);}
  {const {c,calls,hotel}=setup('anex','group_minimum');await c.refreshLiveHotel(1);assert.equal(calls.expand,1);assert.equal(hotel.offers.length,1);assert.equal(hotel.offers[0].raw.anexKind,'concrete');assert.equal(calls.rooms,1);assert.equal(calls.lists,0,'expansion stays in the same hotel');assert.equal(calls.offerScreens,0);assert.equal(c.modalType,'hotel-details');}
  {const {c,calls,hotel,nodes}=setup('anex','group_minimum'),gate=deferred();c.data.expandAnexGroup=()=>{calls.expand++;return gate.promise;};const pending=c.refreshLiveHotel(1);nodes['#modal'].open=false;gate.resolve({offers:[]});await pending;assert.equal(hotel.offers.length,1);assert.equal(calls.rooms,0,'closed hotel is not replaced by a late expansion');}
  {const {c,calls}=setup('anex');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1);assert.equal(calls.offerScreens,0,'current/additional checks stay inline');assert.equal(calls.flights,0);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false,'calculated estimate never becomes verified');assert.equal(calls.contacts,0,'changed estimate needs a deliberate continue');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1,'return reuses the retained result');}

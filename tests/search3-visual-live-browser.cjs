@@ -888,10 +888,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
    fs.writeFileSync(path.join(evidence,`departure-keyboard-${width}.json`),JSON.stringify({width,open:departureOpen,pan:departurePan,list:departureList,short_fragment:true,uppercase_full_name:true,empty_and_clear:true,query_keeps_selection:true,Cancel_preserves_form_URL:true,Apply_exact_departure_only:true,keyboard_dismissal:true,closed_late_event:true,safe_area_simulated:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
    for(const zoom of [100,200]){
     await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
-    await page.locator('#search-form [data-action="form-filters"]').click();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);
-    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').press('Enter');assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');assert.equal(await focused(),'reset-form-filters','keyboard reset retains the same logical control');
-    await page.keyboard.press('Tab');assert.equal(await focused(),'apply-form-filters','Tab after reset continues to Apply');await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'reset-form-filters','reverse Tab returns to the reset control');await page.keyboard.press('Enter');assert.equal(await focused(),'reset-form-filters','repeated reset retains focus');
-    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close('form-filters');
+    assert.equal(await page.locator('#search-form [data-action="form-filters"]').count(),0,'no duplicate advanced form route; primary controls retain these same values');
     let releaseInitialCalendar;
     if(zoom===100&&width>760){calendarReadMode={gate:new Promise(resolve=>releaseInitialCalendar=resolve),fail:true,reads:0};releases.push(releaseInitialCalendar);}
     await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;

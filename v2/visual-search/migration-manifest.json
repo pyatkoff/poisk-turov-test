@@ -55,16 +55,16 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "3203c9280cec7661bd29cf1743c63f48f1f9d42d0d1103454a3fc578e15c7fc8",
+    "app.js": "9f4bcb1a350e60166919c3dbb3a8754ba186e21b5a380ffdb504a6daa215d06f",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "1d0c65f5580283607dfb1f5e21056a1cb133b4eed4d7cbdcbc51d6ddeb79c6ed",
-    "styles.css": "0d7b156d24c302c6a90379d321dc0462f1cd1a8ab724aed17c15c56714536f51",
+    "index.html": "0172f98350007779734431e13eba4a233b76ba9eb3f6e129fc356cbeab53cf9e",
+    "styles.css": "696ca0edbd553d0c0a29020b961f9650fe3cc3da240b1cc39254c0e95789a2a8",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "6298bbd98aee9f44b8d058bd365c3651c10d17d4dd46b96d0bba494a2e95174d",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
     "offer-list-v1.js": "8b54bbcb4565282d2dd29db467e5c66c2b6bd77608254331ab6faacaa8a8d269",
     "mobile-controls-v1.css": "687359260dc368c2fb12b76058df46c445758d1e9815b338ed2051588b9046b5",
-    "hotel-details-v1.js": "4a0366fcd7ea919cea829bbbd3a6248203915415f194b8eb07f58359db56f368",
+    "hotel-details-v1.js": "677281e6a81e136817dea895d3adf5c431f6460c763c092f8bc285ca549f1470",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "7e2fde25b1f4f7afa39157885123e7f8331f8e3e5e55e2dd4377e3bdc8b485c6",
     "flight-picker-ui-v1.js": "4eef99bf61415e7a4a943f790ff4c822a8494dacfb17e68b8ea650da9c9cb7e6",
@@ -285,6 +285,18 @@
       "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6390219318",
       "transportOwners": "unchanged current NEXT540; card hierarchy only, exact routes/keys and existing supplier/price/lead owners retained",
       "physicalSafariAcceptance": false
+    },
+    {
+      "site": 226,
+      "sourceSha": "a513a12c4e81225c92f25c42fa2af1b67b40dcbd",
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5e10a7697b9c8191b18a84cdccaf42b5",
+      "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261025",
+      "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6403338578",
+      "evidenceSourceSha": "e72f6509d3e8b65eb5e45836e56622431d4e7826",
+      "scope": "Retire form-only nested filter screen; explicit exact-room action checks price then opens canonical contacts, changed amount requires acceptance; shared room facts once; visible exact stay and existing messenger choices; ordinary return/draft/optional pair preserved",
+      "transportOwners": "unchanged canonical NEXT data/quote/price/pair/lead/context/flow; no donor fixture or lead shim transfer",
+      "physicalSafariAcceptance": false
     }
   ],
   "approvedDesignLab": {
@@ -317,6 +329,16 @@
       "receiverClaim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6359640885",
       "status": "SOURCE_CANDIDATE_PENDING_EXACT_HEAD_VISUAL_ACCEPTANCE",
       "scope": "existing room owner optional inline flight picker, direct contact editing Apply/Cancel and compact paired comparison; canonical ANEX infant/whole-party controller retained; no donor fixture or lead shim transfer"
+    },
+    "simplifiedJourney": {
+      "site": 226,
+      "source": "a513a12c4e81225c92f25c42fa2af1b67b40dcbd",
+      "receivingBase": "30a7e7013edd7fe70a4700db0aafb2bf22ee05f8",
+      "receiverClaim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6403338578",
+      "status": "SOURCE_CANDIDATE_PENDING_EXACT_HEAD_ACCEPTANCE",
+      "supplierRequests": 0,
+      "realLeadRequests": 0,
+      "installedAcceptance": false
     }
   },
   "messengerHandoff": {
