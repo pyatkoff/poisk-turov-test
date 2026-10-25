@@ -488,3 +488,19 @@ tests cover drift/prewrite/rollback/strict receipt/no replay; CI adds only one
 fixture/env. Same source/review/CI/main and exclusive runtime/original receipt
 gates apply. No supplier, DB, config/key/session/root/SEARCH/lead operation or
 old-case replay is added; future live acceptance remains separate.
+
+
+### Fixed TV limit diagnostics maintenance —25 October2026
+
+`install-tv-limit-diagnostics` accepts only source02ebc7d4391f73307fc3a8dc737507101aa5f2b1
+and operation `int-anex-tv-limit-diagnostics-install-20261025-v1`. It uses the
+unchanged one-helper maintenance owner: six files checked, one private gateway
+changed385eff→8881ebe5cdf6c04de8a58d9c48b39a552c01e99ca930dc62a842d44ac945c26a,
+zero created. Client302, producer/API/dependencies, enabled parent16049,
+configurationfaea/mode0644, signing custody and typed public files stay fixed.
+Existing backups, lint, atomic replacement, prewrite checks, readback/rollback
+and operation no-replay apply. All earlier rendered programs remain byte-identical,
+including the consumed day installer c4b2d7a6 and retained-reader33f56821.
+The workflow adds only the exact immutable native fixture and its environment.
+No supplier/DB/lead/HTTP readiness call, cap reset, receipt eviction, config/key,
+production, SEARCH publication or sealed-case replay is permitted by this profile.
