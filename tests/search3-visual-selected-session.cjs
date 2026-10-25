@@ -33,7 +33,7 @@ const sessionGeometry=page=>page.evaluate(key=>{
 module.exports=async function({browser,origin,base,evidence}){
  const records=[],started=Date.now();
  const scenario=async(provider,width,mode)=>{
-  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+  const receiptNow=Date.now(),transport=fixture({clockNow:()=>receiptNow}),quoteTimes=[],errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
   transport.state.anexPackageChoiceCount=mode==='editing'?2:1;transport.state.repricingEnabled=mode==='editing';page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   const application=provider==='anex'?'anex-application-preview':'andromeda-application-preview';
   const oldPrice=mode==='editing'?'101000':provider==='anex'?'135678,9':'125500',contacts=mode!=='verified'&&mode!=='editing';
@@ -59,7 +59,13 @@ module.exports=async function({browser,origin,base,evidence}){
    assert(expiryClock.after>=receiptDeadline,'expiry is observed strictly after the retained receipt deadline');
   };
   try{
-   await page.clock.install({time:new Date()});
+   // Fixture receipts and the controlled browser share one business Date.
+   // Host time can lead Playwright's running clock under parallel CI load;
+   // a future verified_at is correctly rejected by the unchanged adapter.
+   // Timers still run; advancePastReceipt explicitly advances both expiry
+   // time and the existing idle timer, without refreshing a retained receipt.
+   await page.clock.install({time:new Date(receiptNow)});
+   await page.clock.setFixedTime(new Date(receiptNow));
    await page.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
@@ -78,7 +84,13 @@ module.exports=async function({browser,origin,base,evidence}){
       await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:false,error:'signer_unavailable'})});return;
      }
      const value=await transport.json(request.url(),{body:request.postData()});
-     if(value.data?.final_price_verified===true&&Number.isSafeInteger(value.data.expires_at))receiptDeadline=value.data.expires_at*1000;
+     if(value.data?.final_price_verified===true&&Number.isSafeInteger(value.data.expires_at)){
+      const browserNow=await page.evaluate(()=>Date.now());
+      quoteTimes.push({action,browserNow,verifiedAt:value.data.verified_at??null,expiresAt:value.data.expires_at});
+      if(value.data.verified_at!==undefined)assert(value.data.verified_at<=Math.floor(browserNow/1000),'fictional receipt cannot be verified in the browser future');
+      assert(value.data.expires_at*1000>browserNow,'fictional receipt starts unexpired');
+      receiptDeadline=value.data.expires_at*1000;
+     }
      if(mode==='return'&&url.pathname==='/api-v2.php'&&url.searchParams.get('action')==='search_results'){
       const first=value[0].tours[0],tomorrow=new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10);
       // A real selectable refinement needs multiple retained meal values; the
@@ -234,10 +246,10 @@ module.exports=async function({browser,origin,base,evidence}){
     fs.writeFileSync(path.join(evidence,`selected-session-clock-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,expiryClock,expiredRoute,afterForward:await sessionGeometry(page),supplier_HTTP:0,real_leads:0},null,2));
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({provider,width,mode,compiled:true,expiry_presentation:mode!=='other',same_hotel_return:mode==='return',independent_offer:mode==='other',root_200_reduced_height:width===390&&mode==='application',supplier_HTTP:0,real_leads:0,physical_device:false});
+   records.push({provider,width,mode,compiled:true,expiry_presentation:mode!=='other',same_hotel_return:mode==='return',independent_offer:mode==='other',root_200_reduced_height:width===390&&mode==='application',receiptNow,quoteTimes,supplier_HTTP:0,real_leads:0,physical_device:false});
   }catch(error){
    const geometry=await sessionGeometry(page).catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
-   fs.writeFileSync(path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,error:error.stack,errors,forbidden,geometry,receiptDeadline,expiryClock,compiled:true,physical_device:false},null,2)+'\n');
+   fs.writeFileSync(path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,error:error.stack,errors,forbidden,geometry,receiptNow,quoteTimes,receiptDeadline,expiryClock,compiled:true,physical_device:false},null,2)+'\n');
    console.error(`FAIL compiled selected session ${provider}/${mode}/${width}`,error.stack);
    await page.screenshot({path:path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.png`)}).catch(()=>{});
    throw error;
