@@ -64,7 +64,8 @@ class Admission(unittest.TestCase):
         c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_CACHE_SOURCE} {signing.TV_CACHE_MODE} {signing.TV_CACHE_OPERATION}')
         signing.activate(c,command)
         self.assertEqual('c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66',hashlib.sha256(c.REMOTE.encode()).hexdigest())
-        for mode,operation,source in [(signing.TV_NUMERIC_MODE,signing.TV_NUMERIC_OPERATION,signing.TV_NUMERIC_SOURCE),
+        for mode,operation,source in [(signing.TV_SESSION_FUEL_MODE,signing.TV_SESSION_FUEL_OPERATION,signing.TV_SESSION_FUEL_SOURCE),
+                                      (signing.TV_NUMERIC_MODE,signing.TV_NUMERIC_OPERATION,signing.TV_NUMERIC_SOURCE),
                                       (signing.TV_PARTY_MODE,signing.TV_PARTY_OPERATION,signing.TV_PARTY_SOURCE),
                                       (signing.TV_CHECKPOINT_MODE,signing.TV_CHECKPOINT_OPERATION,signing.TV_CHECKPOINT_SOURCE),
                                       (signing.TV_BYTES_MODE,signing.TV_BYTES_OPERATION,signing.TV_BYTES_SOURCE),
@@ -78,6 +79,8 @@ class Admission(unittest.TestCase):
             with self.assertRaises(ValueError):core().parse_command(f'/run-int-server-v1 {"0"*40} {mode} {operation}')
 
     def test_all_previous_fixed_profiles_stay_byte_identical(self):
+        c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_NUMERIC_SOURCE} {signing.TV_NUMERIC_MODE} {signing.TV_NUMERIC_OPERATION}'))
+        self.assertEqual('19cd1ee2446545932435ed2be42c5d9a8ba6039860b5b43f3b803f86b403baf1',hashlib.sha256(c.REMOTE.encode()).hexdigest())
         c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_PARTY_SOURCE} {signing.TV_PARTY_MODE} {signing.TV_PARTY_OPERATION}'))
         self.assertEqual('d9778b30c381c523939619e4de3c7ee912d6f296f99fb9afd940fe9703ef3ed2',hashlib.sha256(c.REMOTE.encode()).hexdigest())
         c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_CHECKPOINT_SOURCE} {signing.TV_CHECKPOINT_MODE} {signing.TV_CHECKPOINT_OPERATION}'))
@@ -91,7 +94,8 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-numeric-admission-install-' if mode == signing.TV_NUMERIC_MODE else
+            prefix = ('int-anex-tv-session-fuel-context-install-' if mode == signing.TV_SESSION_FUEL_MODE else
+                      'int-anex-tv-numeric-admission-install-' if mode == signing.TV_NUMERIC_MODE else
                       'int-anex-tv-party-retirement-install-' if mode == signing.TV_PARTY_MODE else
                       'int-anex-tv-scoped-checkpoint-install-' if mode == signing.TV_CHECKPOINT_MODE else
                       'int-anex-tv-context-cap-20mib-install-' if mode == signing.TV_BYTES_MODE else
@@ -119,6 +123,7 @@ class Admission(unittest.TestCase):
             if mode==signing.TV_BYTES_MODE:source=signing.TV_BYTES_SOURCE;operation=signing.TV_BYTES_OPERATION
             if mode==signing.TV_PARTY_MODE:source=signing.TV_PARTY_SOURCE;operation=signing.TV_PARTY_OPERATION
             if mode==signing.TV_NUMERIC_MODE:source=signing.TV_NUMERIC_SOURCE;operation=signing.TV_NUMERIC_OPERATION
+            if mode==signing.TV_SESSION_FUEL_MODE:source=signing.TV_SESSION_FUEL_SOURCE;operation=signing.TV_SESSION_FUEL_OPERATION
             body = f'/run-int-server-v1 {source} {mode} {operation}'
             parsed = c.parse_command(body)
             self.assertEqual({'source_sha': source, 'mode': mode, 'operation_id': operation}, parsed)
@@ -127,7 +132,7 @@ class Admission(unittest.TestCase):
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE,signing.TV_PARTY_MODE,signing.TV_NUMERIC_MODE):
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE,signing.TV_PARTY_MODE,signing.TV_NUMERIC_MODE,signing.TV_SESSION_FUEL_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -909,7 +914,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
 
     def install_maintenance(self,operation=None):
-        prefix=('int-anex-tv-numeric-admission-install-' if self.mode==signing.TV_NUMERIC_MODE else
+        prefix=('int-anex-tv-session-fuel-context-install-' if self.mode==signing.TV_SESSION_FUEL_MODE else
+                'int-anex-tv-numeric-admission-install-' if self.mode==signing.TV_NUMERIC_MODE else
                 'int-anex-tv-party-retirement-install-' if self.mode==signing.TV_PARTY_MODE else
                 'int-anex-tv-scoped-checkpoint-install-' if self.mode==signing.TV_CHECKPOINT_MODE else
                 'int-anex-tv-context-cap-20mib-install-' if self.mode==signing.TV_BYTES_MODE else
@@ -1128,6 +1134,94 @@ class NativeTVNumericInstall(NativeTVDiagnosticInstall):
         target.write_bytes(previous)
 
 
+class NativeTVSessionFuelInstall(NativeTVDiagnosticInstall):
+    mode=signing.TV_SESSION_FUEL_MODE
+    operation_attr='TV_SESSION_FUEL_OPERATION'
+    source=signing.TV_SESSION_FUEL_SOURCE
+    path=signing.TV_SESSION_FUEL_PATH
+    sha_attr='TV_SESSION_FUEL_SHA'
+    fixture_env='TV_SESSION_FUEL_SOURCE_ROOT'
+
+    def expected_previous(self):
+        return signing.tv_session_fuel_previous()
+
+    def expected_target(self):
+        return self.expected_previous()|signing.TV_SESSION_FUEL_UPDATES
+
+    @staticmethod
+    def target(path):
+        return path if path.startswith('app/') else 'api-anex-search3-preview.php'
+
+    def setUp(self):
+        super().setUp()
+        previous=os.environ.get('TV_NUMERIC_SOURCE_ROOT')
+        candidate=os.environ.get(self.fixture_env)
+        for p,sha in self.expected_previous().items():
+            raw=(Path(previous)/p).read_bytes() if previous else b'<?php // exact installed session fuel dependency\n'
+            if previous:self.assertEqual(sha,hashlib.sha256(raw).hexdigest(),p)
+            (self.runtime/self.target(p)).write_bytes(raw);self.pins[p]=hashlib.sha256(raw).hexdigest()
+            if p not in signing.TV_SESSION_FUEL_UPDATES:self.inventory[p]=raw
+        for p,sha in signing.TV_SESSION_FUEL_UPDATES.items():
+            raw=(Path(candidate)/p).read_bytes() if candidate else b'<?php // reviewed session fuel update '+p.encode()+b'\n'
+            if candidate:self.assertEqual(sha,hashlib.sha256(raw).hexdigest(),p)
+            self.inventory[p]=raw
+        self.previous={self.target(p):sha for p,sha in self.pins.items()}
+        self.newpins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in self.expected_target()}
+        self.updates={p:self.newpins[p] for p in signing.TV_SESSION_FUEL_UPDATES}
+        self.rebuild_archive()
+
+    def test_pair_install_strict_completion_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((10,2,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual([self.target(p) for p in self.updates],plan['changed_files'])
+        self.assertTrue(r['install']['endpoint']['changed']);self.assertFalse(r['install']['dependency']['changed'])
+        for p in self.newpins:self.assertEqual(self.inventory[p],(self.runtime/self.target(p)).read_bytes())
+        self.assertEqual(self.config_raw,self.config.read_bytes());self.assertEqual(self.parent_raw,self.parent.read_bytes())
+        self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        overrides={self.operation_attr:r['operation_id'],'TV_PINS':self.pins,
+            'TV_PARTY_UPDATES':{p:self.pins[p] for p in signing.TV_PARTY_UPDATES},
+            'TV_NUMERIC_SHA':self.pins[signing.TV_DIAGNOSTIC_PATH],
+            'TV_SESSION_FUEL_PREDECESSOR':self.pins[self.path],
+            'TV_SESSION_FUEL_DEPENDENCIES':{p:self.pins[p] for p in signing.TV_SESSION_FUEL_DEPENDENCIES},
+            'TV_SESSION_FUEL_UPDATES':self.updates,'TV_PUBLIC':self.public,'TV_DEPENDENCIES':self.deps,
+            'TV_ENABLED_CANONICAL':self.parent_hash,'TV_ENABLED_CONFIG_SHA':self.config_hash}
+        with mock.patch.multiple(signing,**overrides):
+            self.assertTrue(signing.completed_tv_session_fuel(command,r))
+            for k,v in [('supplier_calls',True),('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('runtime_changed',False)]:
+                self.assertFalse(signing.completed_tv_session_fuel(command,r|{k:v}))
+            for k,v in [('changed_files',1),('created_files',True),('files',6)]:
+                self.assertFalse(signing.completed_tv_session_fuel(command,r|{'install':r['install']|{k:v}}))
+            self.assertFalse(signing.completed_tv_session_fuel(command,r|{'tv_gateway':r['tv_gateway']|{'files':self.pins}}))
+            self.assertFalse(signing.completed_tv_session_fuel(command,r|{'install':r['install']|{
+                'endpoint':r['install']['endpoint']|{'changed':False}}}))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_either_target_or_passive_dependency_drift_holds(self):
+        old={p:(self.runtime/self.target(p)).read_bytes() for p in self.updates}
+        for p in self.updates|signing.TV_SESSION_FUEL_DEPENDENCIES:
+            target=self.runtime/self.target(p);before=target.read_bytes();target.write_bytes(b'<?php // foreign predecessor\n')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason'])
+            target.write_bytes(before)
+            for q,raw in old.items():self.assertEqual(raw,(self.runtime/self.target(q)).read_bytes())
+        for p in self.updates:
+            raw=self.inventory[p];self.inventory[p]=b'<?php // foreign staged source\n';self.rebuild_archive()
+            self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason'])
+            self.inventory[p]=raw;self.rebuild_archive()
+            for q,before in old.items():self.assertEqual(before,(self.runtime/self.target(q)).read_bytes())
+
+    def test_pair_prewrite_race_and_postwrite_rollback(self):
+        old={p:(self.runtime/self.target(p)).read_bytes() for p in self.updates}
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        for p,raw in old.items():self.assertEqual(raw,(self.runtime/self.target(p)).read_bytes())
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        for p,raw in old.items():self.assertEqual(raw,(self.runtime/self.target(p)).read_bytes())
+        self.assertEqual(self.config_raw,self.config.read_bytes());self.assertEqual(self.parent_raw,self.parent.read_bytes())
+
+
 class NativeTVCheckpointInstall(NativeTVDiagnosticInstall):
     mode=signing.TV_CHECKPOINT_MODE
     operation_attr='TV_CHECKPOINT_OPERATION'
@@ -1284,6 +1378,9 @@ def load_tests(loader, tests, pattern):
         suite.addTest(NativeTVCheckpointInstall(name))
         suite.addTest(NativeTVNumericInstall(name))
     suite.addTest(NativeTVNumericInstall('test_unchanged_gateway_drift_holds_before_client_write'))
+    for name in ('test_pair_install_strict_completion_and_no_replay','test_either_target_or_passive_dependency_drift_holds',
+                 'test_pair_prewrite_race_and_postwrite_rollback'):
+        suite.addTest(NativeTVSessionFuelInstall(name))
     for name in ('test_pair_install_strict_completion_and_no_replay','test_either_predecessor_or_source_drift_holds',
                  'test_pair_prewrite_race_and_postwrite_rollback'):
         suite.addTest(NativeTVPartyInstall(name))
