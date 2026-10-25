@@ -104,7 +104,9 @@ async function tourvisorJourney({browser,origin,base,output}){
     }catch(error){forbidden.push(error.message);await route.abort();}
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'0,12'}));
-   await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   // This family fixture keeps the independent ANEX source partial. Its honest
+   // compact completion notice is visible; it is not a still-running TV search.
+   await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&(document.querySelector('#search-status').hidden||document.querySelector('#search-status').classList.contains('search-status-compact')));
    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified real default');
    const card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');await card.click();await row().waitFor({state:'visible'});await capture('rooms');
    assert.equal(tv.calls.some(c=>c.action==='tv_tour'||c.action==='tv_flights'),false,'room entry spends no quote or flights');
