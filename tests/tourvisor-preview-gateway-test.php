@@ -87,6 +87,23 @@ $leg=static fn(string $from,string $to,string $date,string $number):array=>[
 $pair=['forward'=>[$leg('SVO','HRG',$day,'SU420')],'backward'=>[$leg('HRG','SVO',$end,'SU421')],
     'dateForward'=>$day,'dateBackward'=>$end,'price'=>['value'=>'209867','currency'=>'RUB'],'fuelCharge'=>13789];
 $pairB=$pair; $pairB['backward'][0]['number']='SU425'; $pairB['price']['value']='233100.50'; $pairB['expiresAt']=$now+100;
+// Missing child slots cannot silently turn a party into a smaller one.
+foreach([[null],[0,null,8],[''],[0,' ',8],[false],[true],[0.0],[[0]],[0,0,8,9]] as $badAges){
+    $badParams=$params;$badParams['childs']=$badAges;$badState=['keep'=>'untouched'];$attempts=0;$writes=0;
+    $badInput=['provider'=>'tourvisor','action'=>'tv_search','request_id'=>md5(json_encode($badAges,JSON_THROW_ON_ERROR)),
+        'csrf'=>str_repeat('c',64),'params'=>$badParams];
+    try{AnyTourTourvisorPreviewGateway::handle($badInput,$badState,$now,
+        static function()use(&$attempts):array{++$attempts;return ['searchId'=>91];},static fn()=>null,
+        static function(array &$s)use(&$writes):void{++$writes;},$clock);throw new RuntimeException('expected invalid child party');}
+    catch(\AnyTour\TourvisorInteractiveFailure $e){tvg_ok($e->httpStatus===400
+        && $badState===['keep'=>'untouched'] && $attempts===0 && $writes===0,'invalid child party denied before reservation or dispatch');}
+}
+foreach([[0,0,8],['0','0','8'],[0],[17],[],'0'] as $ages){
+    $validParams=$params;$validParams['childs']=$ages;
+    $expected=is_array($ages)?array_map('intval',$ages):[0];
+    tvg_ok(\AnyTour\TourvisorInteractiveClient::searchParams($validParams)['childs']===$expected,
+        'literal infant zero, duplicate order and ordinary scalar age remain exact');
+}
 $session=['search3_handoff_csrf'=>str_repeat('c',64),'anex_context_generation'=>17,'anex_offer_contexts'=>['keep'=>'original']];
 $disk=[]; $saves=0; $calls=[]; $activeRid='';
 $save=static function(array &$state)use(&$disk,&$saves):void{$disk=$state;++$saves;};

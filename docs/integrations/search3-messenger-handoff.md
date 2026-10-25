@@ -372,3 +372,11 @@ coverage measures retained bytes and exercises cache/no-replay, invalid admissio
 clock rollback, failed checkpoint and a late old result after the new generation.
 Source/CI/review, normal one-file installation and live acceptance remain separate;
 the consumed infant case6397634946 is not replayed to verify this change.
+
+The same private search boundary now rejects null/blank/non-integer-or-string
+child entries and arrays above three children before reservation or dispatch.
+Previously the shared text-list normalization silently dropped missing slots:
+`[0,null,8]` became `[0,8]`. Valid literal0, repeated ages/order, empty party and
+the existing scalar age input stay compatible. Missing age is not age0 and must
+not remove a person. This local input rejection adds no supplier request, price
+arithmetic or new external payload; the successful live infant `[0]` is unaffected.
