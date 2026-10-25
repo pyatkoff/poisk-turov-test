@@ -295,18 +295,46 @@ $captureLimit=tvg_limit(function()use($r,&$heavy,$now,$largeTransport,$catalog,$
 tvg_ok(!isset($heavy['tourvisor_context']['offers'][$ref]['checked'])
     && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304
     && empty($heavy['tourvisor_handoff_records']),'oversized candidate never enters any capture checkpoint or persisted context');
+// Owner-authorized tenfold session budget: the former64 boundary and the640th
+// operation admit new intent without resetting, pruning or replaying old receipts.
+foreach ([64,639] as $retainedCount) {
+    $admitted=$resultsSession;
+    while(count($admitted['tourvisor_requests'])<$retainedCount)
+        $admitted['tourvisor_requests'][md5('admitted'.count($admitted['tourvisor_requests']))]=[
+            'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'unknown'];
+    $retained=$admitted['tourvisor_requests']; $otherProvider=$admitted['anex_offer_contexts'];
+    $newIntent=$request('tv_search',['params'=>$params]); $admittedCalls=0; $admittedSaves=0;
+    $admitSave=static function(array &$s)use(&$admittedSaves):void{++$admittedSaves;};
+    $admitTransport=static function(string $path,array $query,array &$s)
+        use(&$admittedCalls,$newIntent):array {
+        tvg_ok($path==='/tours/search'
+            && ($s['tourvisor_requests'][$newIntent['request_id']]['state'] ?? null)==='unknown',
+            'new intent durably reserved before its one synthetic call');
+        ++$admittedCalls; return ['searchId'=>92];
+    };
+    $reply=AnyTourTourvisorPreviewGateway::handle(
+        $newIntent,$admitted,$now,$admitTransport,$catalog,$admitSave,$clock);
+    tvg_ok($reply['data']['searchId']===92
+        && count($admitted['tourvisor_requests'])===$retainedCount+1
+        && $admittedCalls===1 && $admittedSaves===2,
+        'former64 and640th operation admitted within640 budget');
+    tvg_ok(array_intersect_key($admitted['tourvisor_requests'],$retained)===$retained,
+        'old receipts immutable after budget increase');
+    tvg_ok($admitted['anex_offer_contexts']===$otherProvider,
+        'other provider context unchanged by cap increase');
+}
 // No supplier calls: prove each local guard separately, retaining all UNKNOWN receipts.
 $full=$resultsSession;
-while(count($full['tourvisor_requests'])<64) $full['tourvisor_requests'][md5('full'.count($full['tourvisor_requests']))]=[
+while(count($full['tourvisor_requests'])<640) $full['tourvisor_requests'][md5('full'.count($full['tourvisor_requests']))]=[
     'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'unknown'];
 $fullBefore=$full; $physical=0; $limitSaves=0;
 $limitSave=static function(array &$s)use(&$limitSaves):void{++$limitSaves;};
 $r=$request('tv_tour',['offer_ref'=>$ref]);
 $d=tvg_limit(function()use($r,&$full,$now,$failing,$catalog,$limitSave,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$full,$now,$failing,$catalog,$limitSave,$clock);
-},'tour','request_count','admission',64);
-tvg_ok($d['limitValue']===64 && $full===$fullBefore && $physical===0 && $limitSaves===0,
-    '64 receipt cap rejects before reservation, no eviction/reset/HTTP');
+},'tour','request_count','admission',640);
+tvg_ok($d['limitValue']===640 && $full===$fullBefore && $physical===0 && $limitSaves===0,
+    '641st operation rejects before reservation, no eviction/reset/HTTP');
 tvg_ok(AnyTourTourvisorPreviewGateway::handle($resultsRequest,$full,$now,$failing,$catalog,$limitSave,$clock)===$results
     && $full===$fullBefore && $physical===0,'original healthy cached request survives full cap without new attempt');
 $overflow=$resultsSession; $overflow['tourvisor_requests'][md5('overflow')]=[
