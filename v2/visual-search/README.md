@@ -1,5 +1,23 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## One lifecycle owner for live and labelled demo — 25 October 2026
+
+Both `index.php` and the offline `index.html` load
+`../prototype-search/search-lifecycle-v1.js` before the same application.
+The old local `search-lifecycle-v1.js` is a comment-only retired compatibility
+slot; it supplies no factory, listeners or fallback implementation.
+
+The replaced offline fork still executed a queued `requestSubmit()` after
+`invalidate()`, while the current canonical owner correctly canceled it.
+Using the same owner also keeps cancellation, explicit coverage/retry and cached
+resume semantics aligned without modifying live transport or the canonical file.
+Existing DOM fixtures point to that same source and retain their original journey
+assertions. The lifecycle check verifies both entry graphs and queued cancellation.
+
+This technical candidate requires applicable final-source CI and normal integration
+and publication. It changes no composition, price/party authority, supplier or lead
+contract, and is not a new live supplier or physical-device acceptance.
+
 ## Approved whole Site203 journey — 19 October 2026
 
 Whole-version owner approval: [#4217/6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744). Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8c826b44bce5713adc04b5d06db19c4f6f3d67cd`, acceptance evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` / [6270378393](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393). Preserve project, history and public audience. This receiver adaptation starts from `c0be08868a9e940860bf7a5b7e5490b58f05aee9`, original NEXT installed source `55fbf6d98db877933ccf63ee2eb67dab2eb82b38`; source claim6270542519 plus controlled test-corpus extension6270605391.

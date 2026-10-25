@@ -21,7 +21,7 @@ async function actualSession(){
   w.matchMedia=q=>({matches:q.includes('max-width'),addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}disconnect(){}unobserve(){}};
   w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
   w.fetch=async input=>{const u=new URL(input,w.location.href);assert.equal(u.origin,'https://fixture.test');assert.equal(u.pathname,'/fixtures/live-search-2026-09-23.json');reads.push(u.pathname);return{ok:true,json:async()=>JSON.parse(fs.readFileSync(root+u.pathname,'utf8'))};};
-  for(const name of ['fixture-data.js','local-db-parser.js','recorded-data.js','search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js'])w.eval(fs.readFileSync(root+'/'+name,'utf8'));
+  for(const name of ['fixture-data.js','local-db-parser.js','recorded-data.js','../prototype-search/search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js'])w.eval(fs.readFileSync(root+'/'+name,'utf8'));
   await pause();await pause();click('.hotel-card [data-action="offer"]');click('[data-action="start-tour-flights"]');await pause();
   const pair=()=>d.querySelector('[name="flight-pair"]:checked').value,route=()=>w.history.state['anytour.prototype.v18.ui.v1'];assert.equal(pair(),'0');
   const query=d.querySelector('[data-flight-query]'),initialTotal=d.querySelector('#flight-total').textContent;query.focus();resize(420,64);assert.deepEqual(viewportState(),{bounded:true,top:'72px',height:'404px'},'flight input uses the visible viewport');

@@ -68,7 +68,7 @@ w.fetch = async url => {
   assert.equal(url, './fixtures/live-search-2026-09-23.json', 'No supplier or contact API may be contacted');
   return {ok: true, json: async () => JSON.parse(fs.readFileSync(path.join(root, url), 'utf8'))};
 };
-for (const name of ['fixture-data.js', 'recorded-data.js', 'search-lifecycle-v1.js', 'flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js', 'preview-lead.js', 'offer-list-v1.js', 'hotel-details-v1.js', 'app.js']) {
+for (const name of ['fixture-data.js', 'recorded-data.js', '../prototype-search/search-lifecycle-v1.js', 'flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js', 'preview-lead.js', 'offer-list-v1.js', 'hotel-details-v1.js', 'app.js']) {
   const source=fs.readFileSync(path.join(root, name), 'utf8');
   // Exercise the preserved favorites UI in this fixture only. The product's
   // existing paused-shortlist flag is unchanged.

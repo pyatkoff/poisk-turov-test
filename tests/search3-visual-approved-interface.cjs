@@ -20,7 +20,7 @@ async function run(width,monthRange=null){
  w.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
  w.fetch=async input=>{const url=new URL(String(input),w.location.href);assert.equal(url.origin,'https://site.test','No external/provider request');const file=path.resolve(root,'.'+url.pathname);assert.ok(file.startsWith(root+path.sep));reads.push(url.pathname);return new Response(fs.readFileSync(file),{status:200,headers:{'content-type':file.endsWith('.json')?'application/json':'text/plain'}});};
  w.addEventListener('error',event=>errors.push(event.error?.stack||event.message));
- for(const file of ['fixture-data.js','local-db-parser.js','recorded-data.js','search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js'])w.eval(fs.readFileSync(path.join(root,file),'utf8'));
+ for(const file of ['fixture-data.js','local-db-parser.js','recorded-data.js','../prototype-search/search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js'])w.eval(fs.readFileSync(path.join(root,file),'utf8'));
  await pause();await pause();
  const $=selector=>{const node=d.querySelector(selector);assert.ok(node,selector);return node;};
  const click=selector=>$(selector).click();
