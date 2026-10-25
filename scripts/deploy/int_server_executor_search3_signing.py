@@ -15,6 +15,7 @@ TV_FAILURE_OPERATION = 'int-anex-tv-session-gateway-enable-20261024-v1'
 TV_FAILURE_CANONICAL = '1e27a66c3b942e0ad7103673314fc2aa6e29d98f93ec8e3dc40d945bed18e8b4'
 TV_FAILURE_CONTROL = '0456579020e8cbf9b888648b7a8e9921766bb463'
 TV_FAILURE_RUN = 40136204936
+TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8abce5fbe'
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
@@ -542,23 +543,33 @@ def tv_recovery_failure_guard():
     if (old.is_symlink() or not old.is_dir() or old.resolve()!=old or old.stat().st_uid!=os.getuid()
             or old.stat().st_mode&0o777!=0o700):fail('tv_recovery_original_directory')
     # No original plan/backup means the pinned original parser refusal preceded its first config write.
-    if {p.name for p in old.iterdir()}!={'reservation.json','result.json','source'}:fail('tv_recovery_original_write_state')
+    if {p.name for p in old.iterdir()}!={'reservation.json','result.json','source','installed-source.json'}:
+        fail('tv_recovery_original_write_state')
     original_source=old/'source'
     if (original_source.is_symlink() or not original_source.is_dir() or original_source.resolve()!=original_source):
         fail('tv_recovery_original_source_type')
     temp=runtime/('..anex-private.php.'+TV_FAILURE_OPERATION+'.tmp')
     if temp.exists() or temp.is_symlink():fail('tv_recovery_original_write_state')
     snapshots=[];values={}
-    for name in ('reservation.json','result.json'):
+    for name in ('reservation.json','result.json','installed-source.json'):
         path=old/name
-        if (not safe_file(path,16384) or path.resolve()!=path or path.stat().st_nlink!=1
+        limit=524288 if name=='installed-source.json' else 16384
+        if (not safe_file(path,limit) or path.resolve()!=path or path.stat().st_nlink!=1
                 or path.stat().st_uid!=os.getuid() or path.stat().st_mode&0o777!=0o600):fail('tv_recovery_original_file')
-        identity=tv_enable_config_identity(path);raw=path.read_bytes()
-        if tv_enable_config_identity(path)!=identity:fail('tv_recovery_original_drift')
+        def identity_of(p):
+            s=p.stat();return (s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_mode,s.st_uid,s.st_gid,s.st_nlink)
+        identity=identity_of(path);raw=path.read_bytes()
+        if identity_of(path)!=identity:fail('tv_recovery_original_drift')
         values[name]=json.loads(raw);snapshots.append((name,identity,hashlib.sha256(raw).hexdigest()))
     prior=values['result.json'];reservation=values['reservation.json']
     digest=hashlib.sha256(json.dumps(prior,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     if digest!=TV_FAILURE_CANONICAL:fail('tv_recovery_original_receipt')
+    installed=values['installed-source.json']
+    if (not isinstance(installed,dict) or set(installed)!={'source_sha','files'}
+            or installed['source_sha']!=TV_SOURCE or not isinstance(installed['files'],dict)
+            or len(installed['files'])<20 or installed['files']!=files
+            or hashlib.sha256(json.dumps(installed['files'],sort_keys=True,separators=(',',':')).encode()).hexdigest()!=TV_FAILURE_MANIFEST):
+        fail('tv_recovery_original_source_manifest')
     if (prior.get('operation_id')!=TV_FAILURE_OPERATION or prior.get('source_sha')!=TV_SOURCE
             or prior.get('mode')!='enable-tv-session-gateway' or prior.get('status')!='unknown_no_replay'
             or prior.get('reason')!='tv_enable_config_shape'
@@ -576,7 +587,8 @@ def tv_recovery_failure_guard():
         'control_sha':TV_FAILURE_CONTROL,'run_id':TV_FAILURE_RUN,'source_sha':TV_SOURCE,
         'status':'unknown_no_replay','supplier_calls':'unknown','database_writes':'unknown',
         'original_prewrite_state_absent':True,'original_receipt_reservation_unchanged':True,
-        'first_config_write_admitted':True,'reservation_sha256':snapshots[0][2]}
+        'first_config_write_admitted':True,'reservation_sha256':snapshots[0][2],
+        'source_manifest_sha256':TV_FAILURE_MANIFEST,'installed_source_sha256':snapshots[2][2]}
 
 def tv_enable_preflight():
     tv_recovery_base_preflight()
@@ -591,12 +603,12 @@ def completed_recovery(command,result):
         'control_sha':TV_FAILURE_CONTROL,'run_id':TV_FAILURE_RUN,'source_sha':TV_SOURCE,
         'status':'unknown_no_replay','supplier_calls':'unknown','database_writes':'unknown',
         'original_prewrite_state_absent':True,'original_receipt_reservation_unchanged':True,
-        'first_config_write_admitted':True}
-    digest=proof.get('reservation_sha256')
+        'first_config_write_admitted':True,'source_manifest_sha256':TV_FAILURE_MANIFEST}
+    digests=[proof.get(k) for k in ('reservation_sha256','installed_source_sha256')]
     return (command.get('mode')==TV_RECOVERY_MODE and command.get('operation_id')==TV_RECOVERY_OPERATION
-        and completed_enable(command,result) and set(proof)==set(expected)|{'reservation_sha256'}
+        and completed_enable(command,result) and set(proof)==set(expected)|{'reservation_sha256','installed_source_sha256'}
         and all(proof.get(k)==v and type(proof.get(k)) is type(v) for k,v in expected.items())
-        and isinstance(digest,str) and len(digest)==64 and all(c in '0123456789abcdef' for c in digest))
+        and all(isinstance(d,str) and len(d)==64 and all(c in '0123456789abcdef' for c in d) for d in digests))
 
 
 def activate_tv_recovery(core,command):
@@ -619,7 +631,8 @@ def activate_tv_recovery(core,command):
     need(remote.count(anchor)==1,'tv_recovery_preflight_drift')
     remote=remote.replace(anchor,'def tv_recovery_base_preflight():\n',1)
     constants=('TV_FAILURE_OPERATION='+repr(TV_FAILURE_OPERATION)+'\nTV_FAILURE_CANONICAL='+repr(TV_FAILURE_CANONICAL)
-        +'\nTV_FAILURE_CONTROL='+repr(TV_FAILURE_CONTROL)+'\nTV_FAILURE_RUN='+repr(TV_FAILURE_RUN)+'\n')
+        +'\nTV_FAILURE_CONTROL='+repr(TV_FAILURE_CONTROL)+'\nTV_FAILURE_RUN='+repr(TV_FAILURE_RUN)
+        +'\nTV_FAILURE_MANIFEST='+repr(TV_FAILURE_MANIFEST)+'\n')
     remote=remote.replace('def db_summary(provider):\n',constants+TV_RECOVERY_REMOTE+'\ndef db_summary(provider):\n',1)
     anchor="    offset=parsed.get('offset')\n"
     need(remote.count(anchor)==1,'tv_recovery_parser_drift')

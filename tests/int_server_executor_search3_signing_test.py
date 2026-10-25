@@ -665,12 +665,17 @@ class NativeTVGatewayRecovery(NativeTVGatewayEnable):
         (self.failed/'result.json').write_text(json.dumps(self.failed_result,sort_keys=True,separators=(',',':')))
         (self.failed/'reservation.json').write_text(json.dumps({'operation_id':signing.TV_FAILURE_OPERATION,
             'source_sha':signing.TV_SOURCE,'mode':'enable-tv-session-gateway','reserved_at':1792878873},sort_keys=True))
-        for p in ('result.json','reservation.json'):(self.failed/p).chmod(0o600)
-        self.before={p:(self.failed/p).read_bytes() for p in ('result.json','reservation.json')}
+        (self.failed/'installed-source.json').write_text(json.dumps({'source_sha':signing.TV_SOURCE,
+            'files':{p:hashlib.sha256(b).hexdigest() for p,b in self.inventory.items()}},sort_keys=True))
+        for p in ('result.json','reservation.json','installed-source.json'):(self.failed/p).chmod(0o600)
+        self.before={p:(self.failed/p).read_bytes() for p in ('result.json','reservation.json','installed-source.json')}
         self.original_drift=False
 
     def mutate_remote(self,c):
         super().mutate_remote(c)
+        anchor='TV_FAILURE_MANIFEST='+repr(signing.TV_FAILURE_MANIFEST)
+        self.assertEqual(1,c.REMOTE.count(anchor))
+        c.REMOTE=c.REMOTE.replace(anchor,'TV_FAILURE_MANIFEST='+repr(self.manifest_hash),1)
         if self.original_drift:
             anchor="    tv_enable_preflight()\n    if tv_enable_config_identity(config)!=identity or config.read_bytes()!=old:fail('tv_enable_config_drift')"
             self.assertEqual(1,c.REMOTE.count(anchor))
@@ -685,14 +690,15 @@ class NativeTVGatewayRecovery(NativeTVGatewayEnable):
 
     def assert_original_immutable(self):
         for p,b in self.before.items():self.assertEqual(b,(self.failed/p).read_bytes())
-        self.assertEqual({'reservation.json','result.json','source'},{p.name for p in self.failed.iterdir()})
+        self.assertEqual({'reservation.json','result.json','source','installed-source.json'},{p.name for p in self.failed.iterdir()})
 
     def test_first_write_success_preserves_original_unknown_and_strict_receipt(self):
         r=self.recover();self.assertEqual('enabled',r['status'],r);self.assert_original_immutable()
         self.assertEqual('unknown_no_replay',r['tv_recovery']['status']);self.assertEqual('unknown',r['tv_recovery']['supplier_calls'])
         self.assertEqual(0,r['supplier_calls']);self.assertEqual(0,r['database_writes'])
         command={k:r[k] for k in ('source_sha','mode','operation_id')}
-        with mock.patch.multiple(signing,TV_PUBLIC=self.public,TV_PARENT_CANONICAL=self.parent_digest,TV_RECOVERY_OPERATION=r['operation_id']):
+        with mock.patch.multiple(signing,TV_PUBLIC=self.public,TV_PARENT_CANONICAL=self.parent_digest,
+                                 TV_RECOVERY_OPERATION=r['operation_id'],TV_FAILURE_MANIFEST=self.manifest_hash):
             self.assertTrue(signing.completed_recovery(command,r))
             for k,v in [('original_prewrite_state_absent',False),('run_id',True),('status','complete'),('reservation_sha256','bad')]:
                 self.assertFalse(signing.completed_recovery(command,r|{'tv_recovery':r['tv_recovery']|{k:v}}))
@@ -713,6 +719,9 @@ class NativeTVGatewayRecovery(NativeTVGatewayEnable):
         p=self.failed/'reservation.json';v=json.loads(p.read_bytes());v['reserved_at']=1792878800;p.write_text(json.dumps(v))
         self.assertEqual('tv_recovery_original_reservation',self.recover()['reason']);self.assert_config_unchanged()
         p.write_bytes(self.before['reservation.json']);self.assert_original_immutable()
+        p=self.failed/'installed-source.json';p.write_text(json.dumps({'source_sha':SHA,'files':{}}))
+        self.assertEqual('tv_recovery_original_source_manifest',self.recover()['reason']);self.assert_config_unchanged()
+        p.write_bytes(self.before['installed-source.json']);self.assert_original_immutable()
 
     def test_current_outer_stub_and_flag_absence_required(self):
         before=self.original;self.config.write_text(before.replace(self.publisher_stub(),"<?php\n"))

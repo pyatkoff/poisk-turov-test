@@ -313,7 +313,10 @@ The profile must prove a first config write through all of these conditions:
   remain unknown; no historical source cause is asserted.
 - The original private reservation matches its operation, source, enable mode
   and recorded run window24Oct21:53:36–21:54:38UTC. Its directory contains only
-  reservation.json/result.json/source, with safe regular private records. Any
+  reservation.json/result.json/source/installed-source.json, with safe regular
+  private records. The stock prewrite installed-source metadata must match source
+  f4d, the same current archive and pinned manifest6f4c6e21 from the accepted install;
+  its identity/hash is preserved, without enumerating source files. Any
   plan, backup, extra entry, original staging temp or identity/hash drift holds
   the new action before write. Original records are never changed or reclassified.
 - The current native parser proves the fixed outer stub and absence of the TV
