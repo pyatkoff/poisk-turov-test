@@ -78,7 +78,15 @@ final class TourvisorInteractiveClient
         $nightsFrom = self::integer($input['nightsFrom'] ?? 5,1,28,'nightsFrom');
         $nightsTo = self::integer($input['nightsTo'] ?? 14,1,28,'nightsTo');
         $adults = self::integer($input['adults'] ?? 2,1,6,'adults'); $childs = [];
-        foreach (self::values($input,'childs',3,false) as $age) $childs[] = self::integer($age,0,17,'child age');
+        $ages = $input['childs'] ?? [];
+        if ($ages === '') $ages = [];
+        $ages = is_array($ages) ? $ages : [$ages];
+        if (count($ages) > 3) self::fail('child count must not exceed 3');
+        foreach ($ages as $age) {
+            if ((!is_int($age) && !is_string($age)) || trim((string)$age) === '')
+                self::fail('child age must be between 0 and 17');
+            $childs[] = self::integer($age,0,17,'child age');
+        }
         $priceFrom = self::optionalInt($input['priceFrom'] ?? null); $priceTo = self::optionalInt($input['priceTo'] ?? null);
         if (!$departureId || !$countryId || !$dateFrom || !$dateTo) self::fail('Invalid required search parameters');
         if ($dateFrom < (new \DateTimeImmutable('today'))->format('Y-m-d')) self::fail('dateFrom must not be in the past');

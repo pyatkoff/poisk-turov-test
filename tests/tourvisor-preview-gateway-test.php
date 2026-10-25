@@ -87,6 +87,23 @@ $leg=static fn(string $from,string $to,string $date,string $number):array=>[
 $pair=['forward'=>[$leg('SVO','HRG',$day,'SU420')],'backward'=>[$leg('HRG','SVO',$end,'SU421')],
     'dateForward'=>$day,'dateBackward'=>$end,'price'=>['value'=>'209867','currency'=>'RUB'],'fuelCharge'=>13789];
 $pairB=$pair; $pairB['backward'][0]['number']='SU425'; $pairB['price']['value']='233100.50'; $pairB['expiresAt']=$now+100;
+// Missing child slots cannot silently turn a party into a smaller one.
+foreach([[null],[0,null,8],[''],[0,' ',8],[false],[true],[0.0],[[0]],[0,0,8,9]] as $badAges){
+    $badParams=$params;$badParams['childs']=$badAges;$badState=['keep'=>'untouched'];$attempts=0;$writes=0;
+    $badInput=['provider'=>'tourvisor','action'=>'tv_search','request_id'=>md5(json_encode($badAges,JSON_THROW_ON_ERROR)),
+        'csrf'=>str_repeat('c',64),'params'=>$badParams];
+    try{AnyTourTourvisorPreviewGateway::handle($badInput,$badState,$now,
+        static function()use(&$attempts):array{++$attempts;return ['searchId'=>91];},static fn()=>null,
+        static function(array &$s)use(&$writes):void{++$writes;},$clock);throw new RuntimeException('expected invalid child party');}
+    catch(\AnyTour\TourvisorInteractiveFailure $e){tvg_ok($e->httpStatus===400
+        && $badState===['keep'=>'untouched'] && $attempts===0 && $writes===0,'invalid child party denied before reservation or dispatch');}
+}
+foreach([[0,0,8],['0','0','8'],[0],[17],[],'0'] as $ages){
+    $validParams=$params;$validParams['childs']=$ages;
+    $expected=is_array($ages)?array_map('intval',$ages):[0];
+    tvg_ok(\AnyTour\TourvisorInteractiveClient::searchParams($validParams)['childs']===$expected,
+        'literal infant zero, duplicate order and ordinary scalar age remain exact');
+}
 $session=['search3_handoff_csrf'=>str_repeat('c',64),'anex_context_generation'=>17,'anex_offer_contexts'=>['keep'=>'original']];
 $disk=[]; $saves=0; $calls=[]; $activeRid='';
 $save=static function(array &$state)use(&$disk,&$saves):void{$disk=$state;++$saves;};
@@ -296,7 +313,7 @@ tvg_ok(!isset($heavy['tourvisor_context']['offers'][$ref]['checked'])
     && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=20971520
     && empty($heavy['tourvisor_handoff_records']),'oversized candidate never enters any capture checkpoint or persisted context');
 // Owner-authorized tenfold session budget: the former64 boundary and the640th
-// operation admit new intent without resetting, pruning or replaying old receipts.
+// operation admit new intent without resetting or replaying old receipt IDs.
 foreach ([64,639] as $retainedCount) {
     $admitted=$resultsSession;
     while(count($admitted['tourvisor_requests'])<$retainedCount)
@@ -318,8 +335,11 @@ foreach ([64,639] as $retainedCount) {
         && count($admitted['tourvisor_requests'])===$retainedCount+1
         && $admittedCalls===1 && $admittedSaves===2,
         'former64 and640th operation admitted within640 budget');
-    tvg_ok(array_intersect_key($admitted['tourvisor_requests'],$retained)===$retained,
-        'old receipts immutable after budget increase');
+    $before=$retained[$resultsRequest['request_id']];$after=$admitted['tourvisor_requests'][$resultsRequest['request_id']];
+    unset($before['reply'],$after['reply_retired']);
+    tvg_ok(!isset($after['reply']) && $after===$before,'old listing receipt metadata retained at new search');
+    unset($retained[$resultsRequest['request_id']]);
+    tvg_ok(array_intersect_key($admitted['tourvisor_requests'],$retained)===$retained,'all other receipts immutable after budget increase');
     tvg_ok($admitted['anex_offer_contexts']===$otherProvider,
         'other provider context unchanged by cap increase');
 }
@@ -544,6 +564,99 @@ final class TVCheckpointSessionFixture implements SessionHandlerInterface {
         return serialize($v);
     }
 }
+// Repeated full listings are only discarded after a validated new generation.
+// This is a native gateway fixture; no direct invocation of the retirement helper.
+$retiring=$session;$retireCalls=0;$retireSaves=0;$retireDisk=$retiring;$retireRid='';
+$retireSave=static function(array &$s)use(&$retireDisk,&$retireSaves):void{$retireDisk=$s;++$retireSaves;};
+$retireListing=[['id'=>1006,'description'=>str_repeat('r',440000),'tours'=>[$listing]]];
+$retireTransport=static function(string $path,array $query,array &$s)
+    use(&$retireCalls,&$retireDisk,&$retireRid,$retireListing):array {
+    tvg_ok(($retireDisk['tourvisor_requests'][$retireRid]['state'] ?? null)==='unknown','retirement uses the same durable UNKNOWN before dispatch');
+    ++$retireCalls;return $path==='/tours/search'?['searchId'=>92]:$retireListing;
+};
+$retireIds=[$resultsRequest['request_id']];$oldResults=[];
+for($i=0;$i<12;++$i){
+    $read=$request('tv_results');$retireRid=$read['request_id'];$retireIds[]=$retireRid;$oldResults[$retireRid]=$read;
+    AnyTourTourvisorPreviewGateway::handle($read,$retiring,$now,$retireTransport,$catalog,$retireSave,$clock);
+}
+$retireUnknown=md5('retire-unknown');$retiring['tourvisor_requests'][$retireUnknown]=[
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'unknown'];
+$ambiguous=$retiring['tourvisor_requests'][$retireIds[1]];
+$ambiguous['reply']['data']=[];
+foreach(['extra-receipt','extra-envelope','wrong-provider','wrong-generation','wrong-offers','future-generation','expired-status','unknown-body'] as $kind){
+    $v=$ambiguous;
+    if($kind==='extra-receipt')$v['private_evidence']=['keep'=>true];
+    if($kind==='extra-envelope')$v['reply']['selector']=['keep'=>'canonical'];
+    if($kind==='wrong-provider')$v['reply']['provider']='other';
+    if($kind==='wrong-generation')$v['reply']['generation']=2;
+    if($kind==='wrong-offers')$v['reply']['offers'][0]['offer_ref']='ambiguous';
+    if($kind==='future-generation'){$v['generation']=2;$v['reply']['generation']=2;}
+    if($kind==='expired-status'){unset($v['reply']['offers']);$v['reply']['data']=['progress'=>100];$v['expires_at']=$now-1;}
+    if($kind==='unknown-body')$v['state']='unknown';
+    $retiring['tourvisor_requests'][md5('retire-'.$kind)]=$v;
+}
+$retireBefore=$retiring;$beforeBytes=strlen(json_encode([$retiring['tourvisor_context'],$retiring['tourvisor_requests']],JSON_THROW_ON_ERROR));
+$nextSearch=$request('tv_search',['params'=>$params]);$retireRid=$nextSearch['request_id'];
+$nextReply=AnyTourTourvisorPreviewGateway::handle($nextSearch,$retiring,$now,$retireTransport,$catalog,$retireSave,$clock);
+$afterBytes=strlen(json_encode([$retiring['tourvisor_context'],$retiring['tourvisor_requests']],JSON_THROW_ON_ERROR));
+tvg_ok($beforeBytes>5000000 && $afterBytes<50000 && $retireCalls===13 && $retireSaves===26,
+    'twelve actual full listing replies retire at one ordinary new search without extra calls or checkpoints');
+tvg_ok(count($retiring['tourvisor_requests'])===count($retireBefore['tourvisor_requests'])+1
+    && array_diff_key($retiring,['tourvisor_context'=>true,'tourvisor_context_generation'=>true,'tourvisor_requests'=>true])
+        ===array_diff_key($retireBefore,['tourvisor_context'=>true,'tourvisor_context_generation'=>true,'tourvisor_requests'=>true]),
+    'all IDs and selected records, prepared producer, CSRF and foreign state retained');
+foreach($retireBefore['tourvisor_requests'] as $id=>$before){
+    $after=$retiring['tourvisor_requests'][$id];
+    if(in_array($id,$retireIds,true)){
+        $encoded=json_encode($before['reply'],JSON_THROW_ON_ERROR);unset($before['reply']);
+        $proof=$after['reply_retired'];unset($after['reply_retired']);
+        tvg_ok($after===$before && $proof===['reason'=>'previous-generation-results','sha256'=>hash('sha256',$encoded),'bytes'=>strlen($encoded)],
+            'retired body has exact private JSON size/digest and unchanged terminal identity/deadline');
+    }else tvg_ok($after===$before,'UNKNOWN/ambiguous/status/tour/flight/selection replies kept byte-exact');
+}
+tvg_ok($retireDisk===$retiring && AnyTourTourvisorPreviewGateway::handle($nextSearch,$retiring,$now,$retireTransport,$catalog,$retireSave,$clock)===$nextReply
+    && $retireCalls===13 && $retireSaves===26,'retirement and new healthy cache durable; cached response adds no work');
+foreach([$now-100,$now+901] as $replayAt){
+    $oldRequest=$oldResults[$retireIds[1]];$before=$retiring;
+    tvg_denied(function()use($oldRequest,&$retiring,$replayAt,$retireTransport,$catalog,$retireSave){
+        AnyTourTourvisorPreviewGateway::handle($oldRequest,$retiring,$replayAt,$retireTransport,$catalog,$retireSave,static fn():int=>$replayAt);
+    },'tv_stale_context');
+    tvg_ok($retiring===$before && $retireCalls===13 && $retireSaves===26,'clock rollback/expiry cannot revive retired receipt or dispatch');
+}
+$restored=$retiring;$restored['tourvisor_context']=$retireBefore['tourvisor_context'];$restored['tourvisor_context_generation']=1;
+tvg_denied(function()use($oldRequest,&$restored,$now,$retireTransport,$catalog,$retireSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($oldRequest,$restored,$now,$retireTransport,$catalog,$retireSave,$clock);
+},'tv_stale_context');
+tvg_ok($retireCalls===13 && $retireSaves===26,'retirement marker is irreversible even if context is accidentally restored');
+$invalid=$retireBefore;$badSearch=$request('tv_search',['params'=>$params]);$badSearch['params']['unsupported']='invalid';
+try{AnyTourTourvisorPreviewGateway::handle($badSearch,$invalid,$now,$retireTransport,$catalog,$retireSave,$clock);throw new RuntimeException('expected invalid party');}
+catch(InvalidArgumentException $e){tvg_ok($e->getMessage()==='tv_invalid_request' && $invalid===$retireBefore
+    && $retireCalls===13 && $retireSaves===26,'invalid new-search input never retires any body');}
+$failed=$retireBefore;$failedSearch=$request('tv_search',['params'=>$params]);$failedSaves=0;
+try{AnyTourTourvisorPreviewGateway::handle($failedSearch,$failed,$now,$retireTransport,$catalog,
+    static function(array &$s)use(&$failedSaves):void{++$failedSaves;throw new RuntimeException('fixture_retirement_save_failed');},$clock);
+    throw new RuntimeException('expected failed checkpoint');}
+catch(RuntimeException $e){tvg_ok($e->getMessage()==='fixture_retirement_save_failed' && $retireCalls===13 && $failedSaves===1,'failed retirement checkpoint cannot dispatch');}
+tvg_denied(function()use($failedSearch,&$failed,$now,$retireTransport,$catalog,$retireSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($failedSearch,$failed,$now,$retireTransport,$catalog,$retireSave,$clock);
+},'tv_operation_unknown');
+// A successful old in-flight listing cannot resurrect its body after a new search.
+$lateListing=$retireBefore;$lateRead=$request('tv_results');$lateReadId=$lateRead['request_id'];$newLateReply=null;
+$lateListingTransport=static function(string $path,array $query,array &$s)
+    use($nextSearch,&$newLateReply,&$retireRid,$now,$retireTransport,$catalog,$retireSave,$clock,$retireListing):array {
+    $retireRid=$nextSearch['request_id'];
+    $newLateReply=AnyTourTourvisorPreviewGateway::handle($nextSearch,$s,$now,$retireTransport,$catalog,$retireSave,$clock);
+    return $retireListing;
+};
+tvg_denied(function()use($lateRead,&$lateListing,$now,$lateListingTransport,$catalog,$retireSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($lateRead,$lateListing,$now,$lateListingTransport,$catalog,$retireSave,$clock);
+},'tv_context_changed');
+tvg_ok($lateListing['tourvisor_context_generation']===2 && $lateListing['tourvisor_requests'][$lateReadId]['state']==='unknown'
+    && isset($lateListing['tourvisor_requests'][$retireIds[1]]['reply_retired'])
+    && $lateListing['tourvisor_requests'][$retireUnknown]===$retireBefore['tourvisor_requests'][$retireUnknown],
+    'late response keeps both old UNKNOWN markers and the newer retirement');
+tvg_ok(AnyTourTourvisorPreviewGateway::handle($nextSearch,$lateListing,$now,$retireTransport,$catalog,$retireSave,$clock)===$newLateReply
+    && $retireCalls===14,'new cache survives late old response with no second dispatch');
 ini_set('session.use_cookies','0');ini_set('session.cache_limiter','');ini_set('session.serialize_handler','php_serialize');
 foreach(['foreign_context','foreign_generation','foreign_offer','tv_generation','tv_request','csrf','producer','other','write_fail','read_fail','identity','nonstock'] as $mode){
     $handler=new TVCheckpointSessionFixture($mode);
@@ -577,4 +690,7 @@ foreach(['foreign_context','foreign_generation','foreign_offer','tv_generation',
     if(session_status()===PHP_SESSION_ACTIVE)session_abort();
 }
 echo 'TV private session gateway: '.$GLOBALS['tv_checks']." checks PASS; supplier/bot network=0, DB writes=0.\n";
+echo json_encode(['synthetic_listing_retirement'=>['before_bytes'=>$beforeBytes,'after_bytes'=>$afterBytes,
+    'retired_bodies'=>count($retireIds),'retained_receipt_ids'=>count($retiring['tourvisor_requests']),
+    'supplier_http_calls'=>0]],JSON_THROW_ON_ERROR)."\n";
 }
