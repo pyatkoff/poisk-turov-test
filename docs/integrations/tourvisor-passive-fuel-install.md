@@ -542,3 +542,24 @@ pruning/reset, payload migration or supplier/DB/lead action. Count640,offers2000
 responses1MiB, TTL, price and supplier quota/rate bounds remain unchanged.
 Finish this one guarded install and original readback before the diagnostic-only
 consumer's normal NEXT publication. The failed infant case stays consumed.
+
+
+## Scoped TV checkpoint installation — 25 October 2026
+
+PR4888/source d9931049 merged at FEATURE e57c2fba33e4df1bcd0a70efdab10a2e7a81a081
+keeps the stock durable checkpoint strict for TV/shared state while accepting
+only independent changes in three ANEX context slots after the same active-session
+readback. Independent source review5642946332 and native source CI are accepted;
+the old live503 cause is not retrospectively established.
+
+The fixed install-tv-scoped-checkpoint mode accepts only that source and
+int-anex-tv-scoped-checkpoint-install-20261025-v1. Unchanged one-helper maintenance
+replaces only gateway df33a9a8 with9ee2ade1184bd0bd36a76d24d30bf90b3dc8ffdf4e45c2ce978a0c27d681dc6f,
+six checked/one changed/zero created. Existing client302/API9eb/producer5e0,
+dependencies/enabledparent16049/configfaea0644/public files/signing remain exact.
+All earlier rendered programs, including20MiB and the consumed retained reader,
+stay byte-identical. The source fixture, strict completion, drift/prewrite/rollback
+and no-replay tests reuse the existing harness. No new transport, endpoint,
+configuration, session reset, receipt pruning, provider/DB/lead call or production
+action is admitted. Source/control review and CI/main merge precede one separate
+exclusive runtime claim/original receipt; live acceptance remains a separate stage.
