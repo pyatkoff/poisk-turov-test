@@ -279,6 +279,9 @@ def activate(core, command):
     remote = remote.replace(dispatch, REMOTE_DISPATCH+dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('"+MODE+"','reconcile',")
     remote = remote.replace(manifest, "    if not isinstance(files,dict) or files!=LOCAL_STAY_POLICY['hashes']: fail('local_stay_manifest')", 1)
+    members = '        members=package.getmembers()\n'
+    need(remote.count(members) == 1, 'local_stay_archive_anchor')
+    remote = remote.replace(members, members + "        if len(members)!=7 or {m.name for m in members}!={*LOCAL_STAY_POLICY['hashes'],'manifest.json'}: fail('local_stay_archive_scope')\n", 1)
     reservation = '    op.mkdir(mode=0o700)\n'
     final = "if 'op' in globals() and op.exists():"
     need(remote.count(reservation) == 1 and remote.count(final) == 1, 'local_stay_reservation_anchor')

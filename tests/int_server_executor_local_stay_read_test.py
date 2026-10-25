@@ -254,6 +254,22 @@ class NativeStockRead(unittest.TestCase):
         operation = self.home / '.anytoour-int-executor' / m.OPERATION
         self.assertFalse((operation / 'local-stay-anchor-read.json').exists())
 
+    def test_actual_remote_rejects_unmanifested_config_before_php_or_db(self):
+        # An extra staged config could redirect the DB helper despite six valid hashes.
+        with tarfile.open(self.archive, 'r:gz') as old:
+            members = [(x, old.extractfile(x).read()) for x in old.getmembers()]
+        with tarfile.open(self.archive, 'w:gz') as altered:
+            for info, raw in members:
+                altered.addfile(info, io.BytesIO(raw))
+            extra = b'<?php throw new RuntimeException("unmanifested configuration");'
+            info = tarfile.TarInfo('v2/config.php'); info.size = len(extra)
+            altered.addfile(info, io.BytesIO(extra))
+        result = self.run_remote()
+        self.assertFalse(m.completed(self.command, result, CONTROL))
+        self.assertEqual(result.get('reason'), 'local_stay_archive_scope')
+        operation = self.home / '.anytoour-int-executor' / m.OPERATION
+        self.assertFalse((operation / 'local-stay-anchor-read.json').exists())
+
 
 if __name__ == '__main__':
     unittest.main()
