@@ -67,14 +67,14 @@ test('The 15s request deadline aborts its own request and clears the timer witho
 // Exercise the complete real data owner, including search/poll/projection/quote.
 // Only transports, canonical-profile reads and timers are fictional here.
 function tvSetup(change){
- const crypto=require('node:crypto'),calls=[],rootCalls=[],events=[],timers=new Map();let timer=0;
+ const crypto=require('node:crypto'),calls=[],rootCalls=[],events=[],warnings=[],timers=new Map();let timer=0;
  const search={origin:'Москва',country:'4',from:'2027-03-29',to:'2027-03-29',minNights:7,maxNights:7,adults:3,ages:[0,12]};
  const tour={id:'tv-current-1',price:{value:200000,currency:'RUB'},date:search.from,nights:7,departure:'Москва',roomType:'FAMILY',meal:{name:'AI'},operator:{name:'ANEX'}};
  const leg=n=>({number:n,departure:{date:search.from,port:{id:'SVO'}},arrival:{port:{id:'AYT'}}});
  const pairs=[{price:{value:200000,currency:'RUB'},forward:[leg('A1')],backward:[leg('A2')]},{price:{value:231456,currency:'RUB'},forward:[leg('B1')],backward:[leg('B2')]}];
  const ref='tourvisor:'+crypto.createHash('sha256').update('tourvisor:tour:'+tour.id).digest('hex'),choice='tourvisor_pair:'+'e'.repeat(64);
  const pins={provider:'tourvisor',generation:23,search_ref:'d'.repeat(32),offer_ref:ref,local_hotel_id:101,choice_ref:'manager-deferred'};
- const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},crypto:crypto.webcrypto,TextEncoder,
+ const window={console:{warn:line=>warnings.push(line)},location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},crypto:crypto.webcrypto,TextEncoder,
   V2_CONFIG:{anexApi:endpoint,search3TVSessionEnabled:true},V2Runtime:{setSearchId(){},api:async(action,body)=>{rootCalls.push({action,body});throw Error('Root TV fallback is forbidden');}},
   V2TourController:{createLeadSession:()=>({payload:()=>({ok:true}),submit:()=>({ok:true})})},
   Search3CanonicalProfilesV1:{create(){return {reset(){},clearOffers(){},refresh(){},read:rows=>rows.map(h=>({...h,anytourHotelId:501,canonicalLegacyIds:[101],name:'Canonical family hotel'}))};}}};
@@ -103,7 +103,7 @@ function tvSetup(change){
  api.catalog.departures=[{id:1,name:'Москва'}];api.catalog.countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
  const start=async()=>{await api.search(search,event=>events.push(event));const poll=[...timers].find(([,value])=>value.ms===1000);if(poll){timers.delete(poll[0]);await poll[1].fn();}return events.filter(event=>event.type==='results').at(-1)?.hotels[0];};
  const checked=async h=>{const o=h.offers[0],tour=await api.quote(o);return {...o,tour,total:api.amount(tour.price),room:api.text(tour.roomType),meal:api.meal(tour.meal)};};
- return {window,api,calls,rootCalls,events,timers,search,pins,ref,choice,tour,start,checked,reply};
+ return {window,api,calls,rootCalls,events,warnings,timers,search,pins,ref,choice,tour,start,checked,reply};
 }
 test('Full TV search uses one private token before parallel providers and never calls root',async()=>{
  const x=tvSetup(),h=await x.start(),o=await x.checked(h);
@@ -161,5 +161,50 @@ test('TV comparison uses the same stored request party without changing the ente
  assert.deepEqual(plain(selection.party.childAges),x.calls.find(c=>c.action==='tv_search').body.params.childs);
  assert.equal(x.api.tourvisorHandoffSelection({...o,ages:[0,12]},h),null,'changed UI order is a new selection, not an earlier capture');
  assert.equal(x.api.tourvisorHandoffSelection({...o,adults:2},h),null);assert.equal(x.api.tourvisorHandoffSelection({...o,ages:[12,1]},h),null);
+});
+for(const action of ['tv_tour','tv_flights'])test('Private TV '+action+' preserves only typed server facts on the retained failed operation',async()=>{
+ let x;x=tvSetup(call=>call.action===action?x.reply({ok:false,error:'tv_supplier_response_error',
+  diagnostics:{provider:'tourvisor',stage:action==='tv_tour'?'tour':'flights',category:'http',httpStatus:502,curlErrno:0,elapsedMs:450,
+   token:'PRIVATE',url:'https://PRIVATE',offer_ref:'PRIVATE',message:'PRIVATE'},raw:'PRIVATE'},503):undefined);
+ const h=await x.start();let request;
+ if(action==='tv_tour')request=()=>x.api.quote(h.offers[0]);else{const o=await x.checked(h);request=()=>x.api.flights(o.tour);}
+ let first;
+ for(let i=0;i<2;i++)await assert.rejects(request(),error=>{
+  if(first)assert.equal(error,first);first=error;
+  assert.equal(error.code,'tourvisor_session_unavailable');assert.equal(error.retryable,false);assert.equal(error.status,503);
+  assert.deepEqual(plain(error.failureFacts),{phase:'response',code:'tv_supplier_response_error',backendStage:action==='tv_tour'?'tour':'flights',backendCategory:'http',upstreamStatus:502,curlErrno:0,elapsedMs:450});
+  assert(Object.isFrozen(error.failureFacts));assert.doesNotMatch(JSON.stringify(error)+error.message,/PRIVATE|token|offer_ref|https/);return true;
+ });
+ assert.equal(x.calls.filter(c=>c.action===action).length,1);assert.deepEqual(x.rootCalls,[]);
+ const logs=x.warnings.filter(line=>line.startsWith('[AnyTour quote] '));assert.equal(logs.length,1);const log=JSON.parse(logs[0].slice('[AnyTour quote] '.length));
+ assert.deepEqual(log,{provider:'tourvisor',action,...plain(first.failureFacts),httpStatus:503});
+});
+for(const errorCode of ['tv_tour_mismatch','tv_offer_not_owned','tv_operation_unknown','forbidden','Tourvisor connection error','Tourvisor request failed','Tourvisor is not configured',null,'PRIVATE','constructor'])test('Private TV missing or hostile diagnostic facts stay unknown: '+errorCode,async()=>{
+ let x;x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:errorCode,
+  diagnostics:{provider:'PRIVATE',stage:'tour',category:'http',httpStatus:500,curlErrno:1,elapsedMs:1},message:'PRIVATE'},409):undefined);
+ const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
+  const mapped={'Tourvisor connection error':'tourvisor_connection_error','Tourvisor request failed':'tourvisor_request_failed','Tourvisor is not configured':'tourvisor_not_configured'};
+  const expected=['tv_tour_mismatch','tv_offer_not_owned','tv_operation_unknown','forbidden'].includes(errorCode)?errorCode:Object.hasOwn(mapped,errorCode)?mapped[errorCode]:'unknown';
+  assert.deepEqual(plain(e.failureFacts),{phase:'response',code:expected});return true;
+ });assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);assert.doesNotMatch(x.warnings.join(''),/PRIVATE/);
+});
+test('Private TV bounds reject strings, negatives, oversized numbers, arbitrary stage and categories',async()=>{
+ for(const bad of [-1,600,1.5,'502',null,{},Infinity]){
+  let x;x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:'tv_tour_mismatch',diagnostics:{provider:'tourvisor',stage:'PRIVATE',category:'PRIVATE',httpStatus:bad,curlErrno:-1,elapsedMs:3600001,raw:'PRIVATE'}},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
+   assert.deepEqual(plain(e.failureFacts),{phase:'response',code:'tv_tour_mismatch'});return true;
+  });assert.doesNotMatch(x.warnings.join(''),/PRIVATE/);
+ }
+});
+test('Private TV unreadable and transport failures do not invent backend facts or trust thrown errors',async()=>{
+ for(const mode of ['invalid_json','response_limit','transport']){
+  let x;x=tvSetup(call=>{
+   if(call.action!=='tv_tour')return;
+   if(mode==='transport')throw Object.assign(Error('PRIVATE'),{status:410,code:'offer_expired',failureFacts:{token:'PRIVATE'}});
+   return {ok:false,status:502,text:async()=>mode==='invalid_json'?'PRIVATE':'x'.repeat(1048577)};
+  });const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
+   assert.deepEqual(plain(e.failureFacts),{phase:mode});assert.equal(e.code,'tourvisor_session_unavailable');assert.equal(e.status,0);return true;
+  });assert.doesNotMatch(x.warnings.join(''),/PRIVATE/);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);
+ }
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}console.log(JSON.stringify({groups:tests.length,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));})().catch(e=>{console.error(e);process.exitCode=1;});
