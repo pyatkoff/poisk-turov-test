@@ -151,8 +151,11 @@ async function run(){
    Object.assign(listing.raw,{id:'123',operator:'Biblio-Globus',selectionEnabled:true});
    Object.assign(c,{URL,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{href:'https://example.invalid/preview/'},generation:1,searchId:123,quoteReceipts:new WeakMap(),amount:c.data.amount});
    c.window={V2_CONFIG:{api:'https://example.invalid/api.php'},fetch:()=>{wire++;return gate.promise;}};
+   // This isolated fixture exercises the retained, unmarked root protocol.
+   // Include its actual adapter wrapper; no fake transport or private opt-in.
+   c.root=c.window;c.activeSearch=null;
    vm.runInContext(fs.readFileSync(path.join(__dirname,'../v2/runtime-v3.js'),'utf8'),c);c.rt=c.window.V2Runtime;
-   vm.runInContext(take('function assertTourvisorRecalculationSupported(','const image =')+take('function tourvisorQuoteFailure(','async function flights('),c);
+   vm.runInContext(take('function nativeEndpoint(','const anexSearchFailureCodes')+take('function assertTourvisorRecalculationSupported(','const image =')+take('function tourvisorQuoteFailure(','async function flights('),c);
    c.data.quote=o=>{calls.quote++;return c.quote(o);};
   }else c.data.quote=()=>{calls.quote++;wire++;return calls.quote===1?gate.promise:Promise.resolve(quoted);};
   vm.runInContext("function selectRoom(key){const b={dataset:{key}};switch('select-hotel-offer'){"+slice("case 'select-hotel-offer':","case 'continue-hotel-offer':")+'}}',c);
