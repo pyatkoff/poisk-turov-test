@@ -43,7 +43,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  context.data.live=false;context.searchResponse={phase:'complete',pending:false,canContinue:true,providers:{tourvisor:'partial'},sources:{tourvisor:{offers:4}}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 4$/,'offline fixtures retain their recorded source scope');
  dom.window.close();console.log('PASS current result status: canonical progressive/concrete counts, colocated continuation, retained/user-stop distinction, focus and recovery labels; no HTTP');
 }
-const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String});
+const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String,data:{}});
 // Site197 alert presentation must leave the canonical failure and retry policy intact.
 {
  const context={data:{live:true}};vm.createContext(context);
