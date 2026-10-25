@@ -344,3 +344,31 @@ includes both directions of format differences, leap-day and cross-year trips,
 manager/selected-pair freeze and existing producer preparation, no physical replay
 and invalid/different-day rejection. Source/CI, one-file installation and new live
 acceptance are separate; sealed operations remain consumed.
+
+### Previous-generation listing bodies — 25 October 2026
+
+The owner's cleanup investigation6396386236/6396535859 found that repeated full
+`tv_results` bodies dominate retained session bytes in the finite synthetic model.
+The installed20MiB limit remains unchanged; this is a separate source change.
+After a new search passes its normal admission and parameter/generation checks,
+only exact READY listing envelopes from a strictly older positive generation
+can lose their reply body. The candidate is committed with the same new operation's
+stock UNKNOWN checkpoint before its one supplier call; no separate sweep or write.
+
+Each retained receipt keeps its ID, fingerprint, generation, ready state and
+original expiry. Private `reply_retired` records the reason, SHA256 and byte size
+of the original JSON reply. Cache admission permanently rejects this marker,
+including if a context is accidentally restored; neither time reversal nor TTL
+cleanup grants a new attempt. Every receipt still counts toward640;20MiB and
+other stock admission bounds are checked before retirement as well as afterward.
+
+The exact listing-only envelope has provider/generation/search_ref/data/offers;
+its selectors are validated. Ambiguous or extended shapes remain untouched.
+Status/search/continue replies, all UNKNOWN, current-generation cached replies,
+checked-tour/flight/selection bodies, canonical and prepared/pending producer
+records are preserved. No supplier/price/fuel/infant projection, session reset,
+new store/reader, transport, lead or production change is introduced. Native
+coverage measures retained bytes and exercises cache/no-replay, invalid admission,
+clock rollback, failed checkpoint and a late old result after the new generation.
+Source/CI/review, normal one-file installation and live acceptance remain separate;
+the consumed infant case6397634946 is not replayed to verify this change.

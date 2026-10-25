@@ -125,6 +125,37 @@ final class AnyTourTourvisorPreviewGateway
     }
     private static function bounded(array $context, array $requests, string $stage, string $phase): void
     { self::limit(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)),20971520,'context_bytes',$phase,$stage); }
+    /** Retain terminal receipts; only the exact older listing envelope can lose its body. */
+    private static function retirePreviousResults(array $requests, int $generation): array
+    {
+        foreach ($requests as $rid=>$old) {
+            if (!is_array($old) || count($old) !== 5
+                || array_diff(array_keys($old),['fingerprint','generation','state','expires_at','reply'])
+                || $old['state'] !== 'ready' || !is_int($old['generation'])
+                || $old['generation'] < 1 || $old['generation'] >= $generation
+                || !is_string($old['fingerprint']) || preg_match('/\A[a-f0-9]{64}\z/D',$old['fingerprint']) !== 1
+                || !is_int($old['expires_at']) || $old['expires_at'] < 1) continue;
+            $reply = $old['reply'];
+            if (!is_array($reply) || count($reply) !== 5
+                || array_diff(array_keys($reply),['provider','generation','search_ref','data','offers'])
+                || $reply['provider'] !== 'tourvisor' || $reply['generation'] !== $old['generation']
+                || !is_string($reply['search_ref']) || preg_match('/\A[a-f0-9]{32}\z/D',$reply['search_ref']) !== 1
+                || !is_array($reply['data']) || !array_is_list($reply['data']) || count($reply['data']) > 1000
+                || !is_array($reply['offers']) || !array_is_list($reply['offers']) || count($reply['offers']) > 2000) continue;
+            foreach ($reply['offers'] as $offer) {
+                if (!is_array($offer) || count($offer) !== 2
+                    || array_diff(array_keys($offer),['offer_ref','local_hotel_id'])
+                    || !is_string($offer['offer_ref']) || preg_match('/\Atourvisor:[a-f0-9]{64}\z/D',$offer['offer_ref']) !== 1
+                    || !is_int($offer['local_hotel_id']) || $offer['local_hotel_id'] < 1) continue 2;
+            }
+            $encoded = json_encode($reply,JSON_THROW_ON_ERROR);
+            unset($old['reply']);
+            $old['reply_retired'] = ['reason'=>'previous-generation-results',
+                'sha256'=>hash('sha256',$encoded),'bytes'=>strlen($encoded)];
+            $requests[$rid] = $old;
+        }
+        return $requests;
+    }
     private static function deadline(array $offer, string $choice): int
     {
         $end = $offer['checked']['expires_at'];
@@ -239,6 +270,7 @@ final class AnyTourTourvisorPreviewGateway
             self::need(is_array($old) && ($old['fingerprint'] ?? null) === $fingerprint,'tv_request_changed');
             self::need(($old['generation'] ?? null) === ($s['tourvisor_context_generation'] ?? null),'tv_stale_context');
             self::need(($old['state'] ?? null) === 'ready','tv_operation_unknown');
+            self::need(!array_key_exists('reply_retired',$old) && array_key_exists('reply',$old),'tv_stale_context');
             self::need($now < ($old['expires_at'] ?? 0),'tv_stale_context');
             if (in_array($action,['tv_tour','tv_flights','tv_select'],true)) {
                 $current = self::context($r,$s,$now); $ref = $r['offer_ref'];
@@ -263,6 +295,7 @@ final class AnyTourTourvisorPreviewGateway
             self::limit($generation,2147483647,'generation','admission',$stage);
             $c = ['generation'=>$generation,'search_ref'=>bin2hex(random_bytes(16)),'state'=>'starting',
                 'search_id'=>null,'created_at'=>$now,'expires_at'=>$now+1800,'params'=>$params,'offers'=>[]];
+            $requests = self::retirePreviousResults($requests,$generation);
             $path = '/tours/search'; $query = $params;
         } else {
             $c = self::context($r,$s,$now); $generation = $c['generation']; $params = $c['params'];
