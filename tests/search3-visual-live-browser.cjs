@@ -915,8 +915,9 @@ async function formPickerActionJourney(browser,origin,base,evidence){
      await close('dates');
      let releaseManualCalendar;calendarReadMode={gate:new Promise(resolve=>releaseManualCalendar=resolve),fail:true,reads:0};releases.push(releaseManualCalendar);
      await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();
-     const beforeManual=await geometry(),manualScroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=Math.max(0,el.scrollTop-60);return el.scrollTop;});
-     assert(manualScroll<beforeManual.scroll-1,'manual scrolling moves away from the initial anchor');
+     const beforeManual=await geometry(),manual=await page.locator('#modal-body').evaluate(el=>{const maximum=Math.max(0,el.scrollHeight-el.clientHeight);if(maximum>1)el.scrollTop=el.scrollTop>1?Math.max(0,el.scrollTop-60):Math.min(maximum,el.scrollTop+60);return{scroll:el.scrollTop,maximum};}),manualScroll=manual.scroll;
+     if(manual.maximum>1)assert(Math.abs(manualScroll-beforeManual.scroll)>1,'manual scrolling moves away from the initial anchor');
+     else{assert.equal(manualScroll,0,'a fully fitting calendar has no scroll range');visible(beforeManual,'a fully fitting calendar keeps the departure visible without forced scrolling');}
      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));releaseManualCalendar();
      await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
      const manualSettled=await geometry();assert.equal(manualSettled.scroll,manualScroll,'late prices preserve the user scroll');monthContext(manualSettled,'manual scroll');
@@ -1161,6 +1162,95 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   assert.deepEqual(errors,[]);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
+};
+const calendarViewportFitJourney=async(browser,origin,base,evidence)=>{
+ const records=[],iso=date=>date.toISOString().slice(0,10),shift=(date,count)=>iso(new Date(Date.parse(date+'T12:00:00Z')+count*86400000));
+ for(const [width,height] of [[1280,720],[1280,900],[430,900]]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),tag=width+'x'+height;
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   // Read the installed fixture horizon, then stress a complete six-week month.
+   // The marked mixed graph and intercepted transport never reach suppliers.
+   await page.goto(origin+base+'visual-search/?scenario=mixed');await page.locator('.search-submit:not(:disabled)').waitFor({state:'attached'});
+   const start=await page.evaluate(()=>window.AnyTourPrototypeData.clockStart||new Date(Date.now()+86400000).toISOString().slice(0,10)),end=shift(start,180);
+   let range=null;
+   for(let offset=0;offset<7&&!range;offset++){
+    const first=new Date(day.slice(0,7)+'-01T12:00:00Z');first.setUTCMonth(first.getUTCMonth()+offset);
+    const year=first.getUTCFullYear(),month=first.getUTCMonth(),count=new Date(Date.UTC(year,month+1,0)).getUTCDate(),weeks=Math.ceil(((first.getUTCDay()+6)%7+count)/7),key=iso(first),next=iso(new Date(Date.UTC(year,month+1,1,12))),last=iso(new Date(Date.UTC(year,month+2,0,12)));
+    if(weeks===6&&key.slice(0,8)+'04'>=start&&last<=end)range={month:key,next,from:key.slice(0,8)+'04',to:key.slice(0,8)+'10',cancelFrom:key.slice(0,8)+'12',cancelTo:key.slice(0,8)+'14',draftFrom:key.slice(0,8)+'28',draftTo:key.slice(0,8)+'30',weeks};
+   }
+   assert(range,'a future six-week month and its following full month fit the installed calendar horizon');
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,from:range.from,to:range.to,ages:'',meals:'Всё включено',sort:'price',scenario:'mixed',searched:'1'}));
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1&&document.querySelector('#search-form').hidden&&document.querySelector('#search-status').hidden);
+   await editResultSearch(page,width);
+   const capture=()=>page.evaluate(()=>{
+    const text=selector=>document.querySelector(selector)?.textContent||'',value=selector=>document.querySelector(selector)?.value||'';
+    return {form:{dates:text('#dates-label'),origin:text('#origin-label'),destination:text('#destination-label'),detail:text('#destination-detail'),nights:text('#nights-label'),guests:text('#guests-label'),meals:text('#meal-label'),budget:text('#budget-label'),hidden:document.querySelector('#search-form').hidden},applied:{url:location.href,summary:text('#results-summary'),route:text('#route-label'),compact:text('#compact-details'),search:text('#applied-search'),filters:text('#active-filters'),min:value('#min-price'),max:value('#max-price'),query:value('#hotel-query'),sort:value('#sort'),checks:[...document.querySelectorAll('#filter-panel input[type="checkbox"]')].map(input=>({value:input.value,checked:input.checked})),cards:[...document.querySelectorAll('.hotel-card')].map(card=>({id:card.dataset.hotelId,key:card.querySelector('[data-card-entry]').dataset.key,dates:[...card.querySelectorAll('.card-minimum-offer time')].map(time=>time.dateTime),price:card.querySelector('.starting-price strong').textContent,conditions:card.querySelector('.card-minimum-offer').textContent,party:card.querySelector('.starting-price span').textContent})),rail:[...document.querySelectorAll('#price-strip [data-date]')].map(button=>button.dataset.date)}};
+   });
+   const closed=()=>page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+   const settled=async()=>{await page.waitForFunction(()=>document.querySelector('.date-choice-tools')?.getAttribute('aria-busy')==='false'&&document.querySelector('#date-selection-price')?.getAttribute('aria-busy')!=='true');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));};
+   const open=async()=>{await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();await settled();};
+   const selection=()=>page.locator('#date-calendar [data-action="day-pick"][aria-pressed="true"]').evaluateAll(cells=>cells.map(cell=>cell.dataset.date));
+   const geometry=()=>page.locator('#modal').evaluate(modal=>{
+    const rect=node=>{const box=node.getBoundingClientRect();return {top:box.top,bottom:box.bottom,left:box.left,right:box.right,width:box.width,height:box.height};},body=modal.querySelector('#modal-body'),tools=modal.querySelector('.date-choice-tools'),footer=modal.querySelector('#modal-footer'),view=rect(body),toolsBox=rect(tools),footerBox=rect(footer),limit=Math.min(view.bottom,footerBox.top),cellBox=cell=>{
+     const box=rect(cell),hit=document.elementFromPoint((box.left+box.right)/2,(box.top+box.bottom)/2),inside=box.top>=Math.max(view.top,toolsBox.bottom)-1&&box.bottom<=limit+1&&box.left>=view.left-1&&box.right<=view.right+1;
+     return {date:cell.dataset.date,...box,disabled:cell.disabled,pressed:cell.getAttribute('aria-pressed'),visible:inside&&!!hit&&(hit===cell||cell.contains(hit))};
+    },months=[...modal.querySelectorAll('.calendar-month')].map(month=>({month:month.dataset.month,heading:month.querySelector('h3').textContent,box:rect(month),headingBox:rect(month.querySelector('h3')),weekdays:[...month.querySelectorAll('.weekday')].map(rect),cells:[...month.querySelectorAll('[data-action="day-pick"]')].map(cellBox)})),visibleDates=months.flatMap(month=>month.cells.filter(cell=>cell.visible).map(cell=>cell.date)),apply=modal.querySelector('[data-action="apply-dates"]'),applyBox=rect(apply),applyHit=document.elementFromPoint((applyBox.left+applyBox.right)/2,(applyBox.top+applyBox.bottom)/2);
+    return {viewport:{width:innerWidth,height:innerHeight},modal:rect(modal),header:rect(modal.querySelector('.modal-header')),body:{...view,scrollTop:body.scrollTop,clientHeight:body.clientHeight,scrollHeight:body.scrollHeight},tools:toolsBox,footer:footerBox,navigation:modal.querySelector('.calendar-navigation')?rect(modal.querySelector('.calendar-navigation')):null,layout:{display:getComputedStyle(modal.querySelector('.calendar-months')).display,columns:getComputedStyle(modal.querySelector('.calendar-months')).gridTemplateColumns},months,visibleDates,visibleRange:{from:visibleDates[0]||null,to:visibleDates.at(-1)||null,count:visibleDates.length},scope:modal.querySelector('.calendar-context').textContent,selection:modal.querySelector('#date-selection-label').textContent,units:modal.querySelector('.calendar-units').textContent,price:modal.querySelector('#date-selection-price').textContent,source:modal.querySelector('.date-source').textContent,apply:{...applyBox,reachable:!!applyHit&&(applyHit===apply||apply.contains(applyHit))},overflow:document.documentElement.scrollWidth>innerWidth+1||modal.scrollWidth>modal.clientWidth+1||body.scrollWidth>body.clientWidth+1};
+   });
+   const assertFit=boxes=>{
+    assert.equal(boxes.overflow,false,'calendar has no horizontal overflow at '+tag);assert(boxes.apply.height>=44&&boxes.apply.reachable&&boxes.apply.bottom<=height+1,'Apply remains a reachable pointer target at '+tag);
+    assert(boxes.header.bottom<=boxes.body.top+1&&boxes.body.bottom<=boxes.footer.top+1&&boxes.footer.bottom<=height+1,'header, body and footer fit the viewport at '+tag);
+    assert.match(boxes.scope,/Москва/);assert.match(boxes.scope,/2 взр\./);assert.match(boxes.scope,/7 ночей/);assert.match(boxes.scope,/Всё включено/);
+    for(const month of boxes.months)for(const cell of month.cells)assert(cell.width>=44&&cell.height>=44,'every date retains a 44px pointer target: '+cell.date+' at '+tag);
+    if(width>760){
+     assert.deepEqual(boxes.months.map(month=>month.month),[range.month,range.next]);
+     for(const month of boxes.months){assert(month.box.top>=boxes.body.top-1&&month.box.bottom<=boxes.body.bottom+1,'the whole '+month.month+' month fits the desktop body at '+tag);assert(month.cells.every(cell=>cell.visible),'every day of '+month.month+' is fully visible and unobscured at '+tag);}
+     assert(boxes.months[1].box.left>=boxes.months[0].box.right-1,'desktop retains two side-by-side months');
+    }else{
+     assert.equal(boxes.navigation,null,'mobile retains its scrolling calendar');assert(boxes.months.some(month=>month.month===range.month)&&boxes.months.some(month=>month.month===range.next));
+     for(let index=1;index<boxes.months.length;index++){assert(Math.abs(boxes.months[index].box.left-boxes.months[0].box.left)<1,'mobile months use one column');assert(boxes.months[index].box.top>=boxes.months[index-1].box.bottom-1,'mobile months remain vertically ordered');}
+    }
+   };
+   // Wheel scrolling is deliberate pointer input; never programmatically move
+   // the scroll position or use keyboard/focus to rescue an obscured date.
+   const reveal=async locator=>{
+    if(width>760)return;
+    for(let attempt=0;attempt<16;attempt++){
+     const box=await locator.boundingBox(),body=await page.locator('#modal-body').boundingBox(),tools=await page.locator('.date-choice-tools').boundingBox(),footer=await page.locator('#modal-footer').boundingBox(),top=Math.max(body.y,tools.y+tools.height)+2,bottom=Math.min(body.y+body.height,footer.y)-2;
+     if(box&&box.y>=top&&box.y+box.height<=bottom)return;
+     assert(box,'requested mobile date exists');await page.mouse.move(body.x+body.width-12,body.y+body.height/2);await page.mouse.wheel(0,box.y<top?-Math.min(450,top-box.y+20):Math.min(450,box.y+box.height-bottom+20));await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    }
+    assert.fail('mobile pointer scroll did not reveal the complete date at '+tag);
+   };
+   const pick=async date=>{const cell=page.locator('#date-calendar [data-action="day-pick"][data-date="'+date+'"]');await reveal(cell);await cell.click();await settled();};
+   const before=await capture(),expectedInitial=Array.from({length:7},(_,index)=>shift(range.from,index));
+   assert.equal(new URL(before.applied.url).searchParams.get('from'),range.from);assert.equal(new URL(before.applied.url).searchParams.get('to'),range.to);assert.equal(new URL(before.applied.url).searchParams.get('meals'),'Всё включено');assert.match(before.form.guests,/2 взрослых/);assert.doesNotMatch(before.form.guests,/реб/);
+   await open();assert.deepEqual(await selection(),expectedInitial);
+   const initial=await geometry();await page.screenshot({path:path.join(evidence,'calendar-viewport-fit-'+tag+'.png')});fs.writeFileSync(path.join(evidence,'calendar-viewport-fit-'+tag+'.json'),JSON.stringify({width,height,horizon:{start,end},range,initial,fictional_catalogues:true,supplier_HTTP:0,real_leads:0},null,2));assertFit(initial);
+   let navigation=null;
+   if(width>760){
+    await page.locator('[data-action="month-next"]').click();await settled();assert.equal(await page.locator('#date-selection-label').textContent(),initial.selection);assert.equal(await page.locator('.calendar-month').first().getAttribute('data-month'),range.next);
+    await page.locator('[data-action="month-prev"]').click();await settled();assert.deepEqual(await selection(),expectedInitial);navigation=await geometry();assert.equal(navigation.selection,initial.selection);assertFit(navigation);
+   }
+   await pick(range.cancelFrom);await pick(range.cancelTo);assert.deepEqual(await capture(),before,'calendar draft changes leave the form, applied URL, results and filters intact');await page.locator('#modal .modal-header [data-action="close-modal"]').click();await closed();assert.deepEqual(await capture(),before,'pointer Cancel preserves the complete form and applied state');
+   await open();assert.deepEqual(await selection(),expectedInitial);await pick(range.draftFrom);await pick(range.draftTo);assert.deepEqual(await capture(),before);
+   const draftGeometry=await geometry();assertFit(draftGeometry);await page.locator('[data-action="apply-dates"]').click();await closed();
+   const draft=await capture();assert.notEqual(draft.form.dates,before.form.dates);assert.deepEqual({...draft.form,dates:before.form.dates},before.form,'Apply changes only the form date draft');assert.deepEqual(draft.applied,before.applied,'form Apply preserves the applied URL, result cards, filters and sort until Find');
+   await open();assert.deepEqual(await selection(),[range.draftFrom,shift(range.draftFrom,1),range.draftTo],'reopening retains the applied form draft');const reopened=await geometry();assertFit(reopened);await page.screenshot({path:path.join(evidence,'calendar-viewport-fit-reopened-'+tag+'.png')});await page.locator('#modal .modal-header [data-action="close-modal"]').click();await closed();assert.deepEqual(await capture(),draft);
+   await page.locator('#search-form .search-submit:not(:disabled)').click();await page.waitForFunction(from=>document.querySelector('#search-form').hidden&&new URL(location.href).searchParams.get('from')===from&&document.querySelectorAll('.hotel-card').length===1&&document.querySelector('.hotel-card .card-minimum-offer time')?.dateTime===from,range.draftFrom);
+   const found=await capture(),foundParams=new URL(found.applied.url).searchParams;assert.equal(foundParams.get('to'),range.draftTo);assert.equal(foundParams.get('meals'),'Всё включено');assert.equal(found.applied.sort,before.applied.sort);assert.deepEqual(found.applied.checks,before.applied.checks);assert.equal(found.applied.cards[0].key,before.applied.cards[0].key);assert.equal(found.applied.cards[0].price,before.applied.cards[0].price);assert.equal(found.applied.cards[0].party,before.applied.cards[0].party);
+   const mutations=transport.calls.filter(call=>/^(search(?:_.*)?|continue|tour|flights|quote(?:_.*)?|offer|lead(?:_.*)?)$/.test(call.action)||/api-anex-|api-andromeda-|quote|lead/.test(call.url));assert.deepEqual(mutations,[],'this fictional calendar journey performs no supplier, quote, offer or lead operation');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   const record={width,height,horizon:{start,end},range,initial,navigation,draftGeometry,reopened,before,draft,found,pointer_only:true,cancel_preserved:true,form_apply_only:true,find_committed:true,supplier_HTTP:0,real_leads:0,physicalSafari:false};records.push(record);fs.writeFileSync(path.join(evidence,'calendar-viewport-fit-'+tag+'.json'),JSON.stringify(record,null,2));
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'calendar-viewport-fit.json'),JSON.stringify({records,fictional_catalogues:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));console.log('PASS compiled pointer calendar viewport fit: full six-week desktop pair1280x720/900, scrolling mobile430x900, Cancel/form Apply/reopen/Find state; supplier HTTP0');
 };
 const remainingCalendarJourney=async(browser,origin,base,evidence)=>{
  const records=[],shift=n=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
@@ -1787,15 +1877,30 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
 
 // Keep every broad-matrix frame within the existing bounded artifact carrier.
 // Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
-// preserve every other chunk. The separately retained messenger bytes stay intact.
+// preserve every other chunk. Gzip ancillary JSON without changing its raw bytes;
+// the main receipt and separately retained messenger bytes stay intact.
 function retainLosslessPngEvidence(directory){
- const {inflateSync,deflateSync,gzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[];
+ const {inflateSync,deflateSync,gzipSync,gunzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[],jsonRows=[];
  const sha=value=>createHash('sha256').update(value).digest('hex'),signature=Buffer.from('89504e470d0a1a0a','hex');
  const visit=folder=>{for(const entry of fs.readdirSync(folder,{withFileTypes:true})){
   const file=path.join(folder,entry.name),relative=path.relative(directory,file).split(path.sep).join('/');
   if(relative==='messenger-entry')continue;
   if(entry.isDirectory()){visit(file);continue;}
-  if(!entry.isFile()||!file.endsWith('.png'))continue;
+  if(!entry.isFile())continue;
+  if(file.endsWith('.json')&&relative!=='receipt.json'){
+   const before=fs.readFileSync(file),candidate=gzipSync(before,{level:9}),compressed=candidate.length<before.length,retainedFile=compressed?file+'.gz':file;
+   if(compressed){
+    assert(!fs.existsSync(retainedFile),relative+' gzip path must not already exist');
+    fs.writeFileSync(retainedFile,candidate);const persisted=fs.readFileSync(retainedFile);
+    assert(persisted.equals(candidate),relative+' persisted gzip equals the candidate');
+    assert(gunzipSync(persisted).equals(before),relative+' byte-identical receipt after gunzip');
+    fs.unlinkSync(file);
+   }
+   const after=compressed?candidate:before;
+   jsonRows.push({path:relative,retained_path:compressed?relative+'.gz':relative,encoding:compressed?'gzip':'identity',original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after)});
+   continue;
+  }
+  if(!file.endsWith('.png'))continue;
   const before=fs.readFileSync(file),chunks=[],idat=[];assert(before.subarray(0,8).equals(signature),relative+' PNG signature');
   for(let offset=8;offset<before.length;){
    assert(offset+12<=before.length,relative+' complete PNG chunk');
@@ -1815,7 +1920,10 @@ function retainLosslessPngEvidence(directory){
  }};
  visit(directory);const originalBytes=rows.reduce((sum,row)=>sum+row.original_bytes,0),retainedBytes=rows.reduce((sum,row)=>sum+row.retained_bytes,0);
  fs.writeFileSync(path.join(directory,'png-retention.json.gz'),gzipSync(Buffer.from(JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n'),{level:9}));
+ const jsonOriginalBytes=jsonRows.reduce((sum,row)=>sum+row.original_bytes,0),jsonRetainedBytes=jsonRows.reduce((sum,row)=>sum+row.retained_bytes,0),jsonManifest=path.join(directory,'json-retention.json.gz');
+ if(jsonRows.length||!fs.existsSync(jsonManifest))fs.writeFileSync(jsonManifest,gzipSync(Buffer.from(JSON.stringify({schema:1,uncompressed_bytes_identical:true,root_receipt_unchanged:true,messenger_artifact_unchanged:true,files:jsonRows})+'\n'),{level:9}));
  console.log('PASS lossless complete PNG retention',JSON.stringify({frames:rows.length,originalBytes,retainedBytes,savedBytes:originalBytes-retainedBytes}));
+ console.log('PASS lossless ancillary JSON retention',JSON.stringify({files:jsonRows.length,originalBytes:jsonOriginalBytes,retainedBytes:jsonRetainedBytes,savedBytes:jsonOriginalBytes-jsonRetainedBytes}));
 }
 
 (async()=>{
@@ -1857,6 +1965,8 @@ function retainLosslessPngEvidence(directory){
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
+  // Fail the affected pointer/geometry case before the complete historical matrices.
+  await calendarViewportFitJourney(browser,origin,base,evidence);
   // Complete, independent matrices share only immutable compiled assets. The
   // first two use this browser; the large-flight owner retains its own browser,
   // server and evidence directory. Default/SAMO-mode transition tests above stay

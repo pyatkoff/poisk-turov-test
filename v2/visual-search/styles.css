@@ -96,7 +96,7 @@ dialog.offers-dialog{position:fixed;inset:0;margin:0;width:100%;max-width:100%;h
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
 
 /* Two adjacent departure months support a range crossing the month boundary. */
-dialog.dates-dialog{width:min(790px,calc(100% - 32px))}.calendar-months{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}.month-nav-spacer{display:block;width:36px;height:36px}.dates-dialog .month-day{min-height:43px}.dates-dialog .form-row{max-width:510px}.tour-options>span{font-size:14px}.hotel-links .text-button,.compare-btn{font-size:14px}.hotel-note{font-size:14px}
+dialog.dates-dialog{width:min(790px,calc(100% - 32px))}.calendar-months{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}.month-nav-spacer{display:block;width:36px;height:36px}.dates-dialog .form-row{max-width:510px}.tour-options>span{font-size:14px}.hotel-links .text-button,.compare-btn{font-size:14px}.hotel-note{font-size:14px}
 @media(max-width:900px) and (min-width:761px){.hotel-links .text-button,.compare-btn{font-size:12px}.tour-options>span{font-size:12px}}
 @media(max-width:760px){dialog.dates-dialog{width:100%;max-width:100%}.calendar-months{grid-template-columns:1fr}.tour-options>span{font-size:14px}.hotel-links .text-button,.compare-btn{font-size:14px}}
 
@@ -1940,9 +1940,25 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 .dates-dialog .calendar-legend{margin-top:8px;min-height:0;font-size:12px}
 .dates-dialog .calendar-legend[hidden]{display:none}
 @media(min-width:761px){
+ dialog.dates-dialog{max-height:calc(100dvh - 32px)}
+ .dates-dialog .modal-header{padding-block:8px}
+ .dates-dialog #modal-body{padding-block:10px}
+ .dates-dialog .date-choice-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 16px}
+ .dates-dialog #date-selection-hint{margin:0;text-align:right}
+ .dates-dialog .calendar-context{display:flex;flex-wrap:wrap;gap:2px 12px;grid-column:1/-1}
+ .dates-dialog .calendar-context .picker-caption,.dates-dialog .calendar-units{margin:0}
+ .dates-dialog .calendar-units,.dates-dialog .calendar-legend,.dates-dialog [data-calendar-load-status]{grid-column:1/-1}
+ .dates-dialog .calendar-legend{margin-top:0}
+ .dates-dialog .month-day{min-height:44px;padding:1px 0;gap:1px;line-height:1.2}
+ .dates-dialog #modal-footer{padding-block:10px}
+ .dates-dialog .date-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.7fr);align-items:center;gap:2px 18px}
+ .dates-dialog .date-footer>*{grid-column:1}
+ .dates-dialog .date-footer .picker-apply{grid-column:2;grid-row:1/span 4;align-self:center}
+ .dates-dialog #date-error{margin:0}
+ .dates-dialog #date-error:empty{display:none}
  .dates-dialog .calendar-navigation{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 8px #fff}
- .dates-dialog .calendar-month h3{position:sticky;top:52px;z-index:2;line-height:24px;background:#fff;box-shadow:0 15px #fff}
- .dates-dialog .calendar-month .weekday{position:sticky;top:91px;z-index:1;background:#fff}
+ .dates-dialog .calendar-month h3{position:sticky;top:52px;z-index:2;line-height:24px;margin-bottom:8px;background:#fff;box-shadow:0 8px #fff}
+ .dates-dialog .calendar-month .weekday{position:sticky;top:84px;z-index:1;background:#fff}
 }
 @media(max-width:760px){
  .dates-dialog .date-choice-tools{padding:0 0 9px;top:-14px}
