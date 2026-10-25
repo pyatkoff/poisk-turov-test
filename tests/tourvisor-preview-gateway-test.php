@@ -114,13 +114,20 @@ tvg_ok($frozen['status']==='ready' && $frozen['record']['observation']['trip']['
 tvg_ok($frozen['record']['observation']['flights']['state']==='manager-deferred','manager path is independently ready');
 $before=count($calls); $run($checkedRequest); tvg_ok(count($calls)===$before,'same checked tour response reused');
 tvg_denied(fn()=>$run($request('tv_tour',['offer_ref'=>$ref])),'tv_operation_already_attempted');
-$flights=$run($request('tv_flights',['offer_ref'=>$ref]));
+$managerRequest=$request('tv_select',['offer_ref'=>$ref,'choice_ref'=>'manager-deferred']);
+$managerSelected=$run($managerRequest);
+$beforeFlightsSession=$session;
+$flightsRequest=$request('tv_flights',['offer_ref'=>$ref]);
+$flights=$run($flightsRequest);
 tvg_ok(array_column($flights['choices'],'index')===[1,2],'opaque pair refs retain original returned indexes including skipped placeholder');
-$selected=$run($request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$flights['choices'][1]['choice_ref']]));
+$selectedRequest=$request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$flights['choices'][1]['choice_ref']]);
+$selected=$run($selectedRequest);
 $pairFrozen=AnyTourTourvisorSelectedTourHandoff::freeze($selected['selector'],$session,$now,$clock);
 tvg_ok($pairFrozen['record']['observation']['price']['amount']==='233100.50'
     && str_contains($pairFrozen['record']['observation']['flights']['inward'][0]['label'],'SU425'),'selected pair keeps its own total and legs');
 tvg_ok($pairFrozen['record']['observation']['price']['expiresAt']===$now+100,'shorter explicit pair expiry never inherits the tour deadline');
+tvg_ok($run($flightsRequest)===$flights && $run($selectedRequest)===$selected
+    && $run($managerRequest)===$managerSelected && count($calls)===6,'healthy tour, flights and both selection caches retain exact bytes with no HTTP');
 tvg_ok(count($calls)===6 && $session['anex_context_generation']===17 && $session['anex_offer_contexts']['keep']==='concurrent','six ordinary supplier actions only, select local, foreign provider state preserved');
 $producerRequest=['action'=>'handoff_freeze','csrf'=>str_repeat('c',64)]+$selected['selector'];
 $producer=AnyTourSearch3MessengerHandoff::freeze($producerRequest,$session,$now,$save,$clock);
@@ -170,6 +177,32 @@ tvg_denied(function()use($diagnosticRequest,&$diagnosticSession,$now,$diagnostic
     AnyTourTourvisorPreviewGateway::handle($diagnosticRequest,$diagnosticSession,$now,$diagnosticTransport,$catalog,$save,$clock);
 },'tv_operation_unknown');
 tvg_ok($GLOBALS['tv_wire']['calls']===1,'diagnostic propagation grants no retry');
+// A later provider410 revokes all previously cached responses for that exact offer.
+$revoked=$beforeFlightsSession;
+$goneRequest=$request('tv_flights',['offer_ref'=>$ref]); $goneCalls=0;
+$gone=static function()use(&$goneCalls):array {
+    ++$goneCalls; throw new \AnyTour\TourvisorInteractiveFailure(['ok'=>false,'error'=>'Tourvisor request failed'],410);
+};
+try { AnyTourTourvisorPreviewGateway::handle($goneRequest,$revoked,$now,$gone,$catalog,$save,$clock);
+    throw new RuntimeException('expected provider410'); }
+catch (\AnyTour\TourvisorInteractiveFailure $e) { tvg_ok($e->httpStatus===410,'actual provider410 propagated'); }
+tvg_ok(!empty($disk['tourvisor_context']['offers'][$ref]['expired']),'provider410 expiry durably checkpointed');
+foreach ([$checkedRequest,$managerRequest] as $cachedRequest) {
+    tvg_denied(function()use($cachedRequest,&$revoked,$now,$gone,$catalog,$save,$clock) {
+        AnyTourTourvisorPreviewGateway::handle($cachedRequest,$revoked,$now,$gone,$catalog,$save,$clock);
+    },'tv_offer_not_owned');
+}
+tvg_ok($goneCalls===1,'revoked cache admission never repeats supplier HTTP');
+tvg_ok($revoked['tourvisor_requests'][$goneRequest['request_id']]['state']==='unknown',
+    'provider410 original UNKNOWN remains sealed');
+// Search/results caches and a different current offer are unaffected by that revocation.
+tvg_ok(AnyTourTourvisorPreviewGateway::handle($resultsRequest,$revoked,$now,$gone,$catalog,$save,$clock)===$results,
+    'listing cache remains valid independently of selected-price authority');
+$other=$session; $otherRef='tourvisor:'.str_repeat('a',64);
+$other['tourvisor_context']['offers'][$otherRef]=$other['tourvisor_context']['offers'][$ref];
+$other['tourvisor_context']['offers'][$otherRef]['expired']=true;
+tvg_ok(AnyTourTourvisorPreviewGateway::handle($checkedRequest,$other,$now,$gone,$catalog,$save,$clock)===$checked,
+    'different expired offer cannot revoke the healthy cached tour');
 $changed=$session; $r=$request('tv_results');
 $concurrent=static function(string $p,array $q,array &$s):array{
     ++$s['tourvisor_context_generation']; $s['tourvisor_context']=['newer'=>'must remain']; return [];

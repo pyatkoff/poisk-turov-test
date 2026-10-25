@@ -202,7 +202,12 @@ Exact replay reuses the original cached response; changed/UNKNOWN operations
 cannot reissue. Each offer has one tour and flights attempt in a context, so a
 different request_id cannot duplicate an in-flight/uncertain call. A legitimate
 new search has a new server generation. No automatic retry/new-search fallback
-exists. Provider410 invalidates the affected canonical record. Deadline checks
+exists. Provider410 invalidates the affected canonical record. A cached tour,
+flight list or selection must still belong to the current unexpired offer before
+it can be returned; a prior ready receipt cannot restore revoked price/selection
+authority. Rejection adds no supplier attempt and preserves the original UNKNOWN
+receipt. Search/results listing caches and unrelated offers remain independent.
+Deadline checks
 apply both before dispatch and after return; cached selections retain the
 original checked-tour deadline. A local observation window is not a supplier
 guarantee or final-price authority.
