@@ -711,7 +711,7 @@ class NativeStockSchemaInstall(unittest.TestCase):
         self.assertEqual(result['schema_writes'],0);self.assertFalse(m.completed_install(self.command,result,CONTROL))
 
     def test_actual_boolean_cap_is_rejected_before_php_or_ddl(self):
-        self.payload['maximum_schema_tables']=True;result=self.run_remote()
+        self.payload['provider_http_calls']=False;result=self.run_remote()
         self.assertEqual(result.get('reason'),'local_stay_install_payload_types')
         self.assertFalse((self.home/'.anytoour-int-executor'/m.INSTALL_OPERATION/'local-stay-schema-install.json').exists())
 
