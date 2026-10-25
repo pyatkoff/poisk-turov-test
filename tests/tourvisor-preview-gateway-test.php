@@ -309,9 +309,9 @@ foreach ([
         tvg_ok($d['provider']==='tourvisor' && $d['stage']==='tour' && $d['category']==='context'
             && $d['mismatchFields']===$failedFields,'only actual failed predicates '.$field);
         tvg_ok(array_keys($d['mismatchTypes'])===$failedFields,'fixed type fields');
-        foreach($d['mismatchTypes'] as $pair)tvg_ok(array_keys($pair)===['supplier','context']
-            && in_array($pair['supplier'],['null','integer','string','number','boolean','array','other'],true)
-            && in_array($pair['context'],['null','integer','string','number','boolean','array','other'],true),'fixed type envelope');
+        foreach($d['mismatchTypes'] as $typePair)tvg_ok(array_keys($typePair)===['supplier','context']
+            && in_array($typePair['supplier'],['null','integer','string','number','boolean','array','other'],true)
+            && in_array($typePair['context'],['null','integer','string','number','boolean','array','other'],true),'fixed type envelope');
         $encoded=json_encode($e->response,JSON_THROW_ON_ERROR);
         foreach (['SYNTHETIC_PRIVATE_SUPPLIER_TEXT','other-tour-secret','19.04.2027'] as $secret)
             tvg_ok(!str_contains($encoded,$secret),'no compared supplier value in diagnostics');
@@ -326,5 +326,63 @@ foreach ([
         else tvg_ok(!isset($d['dateFormats']),'no unrelated date diagnostic');
     }
 }
+$dmy=(new DateTimeImmutable($day))->format('d.m.Y');$endDmy=(new DateTimeImmutable($end))->format('d.m.Y');
+foreach ([[$day,$dmy,$day,$end],[$dmy,$day,$day,$end],[$dmy,$dmy,$day,$end],[$day,$day,$day,$end],
+    ['2028-02-29','29.02.2028','2028-02-29','2028-03-07'],
+    ['2026-12-30','30.12.2026','2026-12-30','2027-01-06']] as [$listedDate,$checkedDate,$calendarDay,$calendarEnd]) {
+    $fresh=$resultsSession;$fresh['tourvisor_context']['offers'][$ref]['date']=$listedDate;
+    $fresh['tourvisor_context']['params']['dateFrom']=$calendarDay;$fresh['tourvisor_context']['params']['dateTo']=$calendarDay;
+    $nativeTour=$tour;$nativeTour['date']=$checkedDate;$physical=0;
+    $nativePair=$pair;$nativePair['dateForward']=(new DateTimeImmutable($calendarDay))->format('d.m.Y');
+    $nativePair['dateBackward']=(new DateTimeImmutable($calendarEnd))->format('d.m.Y');
+    $nativePair['forward'][0]['departure']['date']=$nativePair['dateForward'];
+    $nativePair['backward'][0]['departure']['date']=$calendarEnd.'T12:34:56';
+    $transport=static function(string $path)use($nativeTour,$nativePair,&$physical):array{
+        ++$physical;return str_ends_with($path,'/flights') ? ['flights'=>[$nativePair]] : $nativeTour;
+    };
+    $r=$request('tv_tour',['offer_ref'=>$ref]);
+    $reply=AnyTourTourvisorPreviewGateway::handle($r,$fresh,$now,$transport,$catalog,$save,$clock);
+    tvg_ok($reply['data']===$nativeTour,'equivalent supplier date preserves exact native checked DTO');
+    $record=AnyTourTourvisorSelectedTourHandoff::freeze($reply['selector'],$fresh,$now,$clock);
+    tvg_ok($record['status']==='ready' && $record['record']['observation']['trip']['departure']===$calendarDay,
+        'equivalent valid calendar date becomes ISO only in canonical selected record');
+    tvg_ok($record['record']['observation']['price']['amount']==='209867'
+        && $record['record']['observation']['trip']['childAges']===[0,0,8]
+        && $record['record']['observation']['price']['expiresAt']===$now+900,'money party and original freshness unchanged');
+    tvg_ok(AnyTourTourvisorPreviewGateway::handle($r,$fresh,$now,$transport,$catalog,$save,$clock)===$reply && $physical===1,
+        'same successful checked request reuses exact native bytes');
+    $prepared=AnyTourSearch3MessengerHandoff::freeze(['action'=>'handoff_freeze','csrf'=>str_repeat('c',64)]+$reply['selector'],
+        $fresh,$now,$save,$clock);
+    tvg_ok($prepared['state']==='prepared','mixed date formats reach same existing producer without sends');
+    $f=$request('tv_flights',['offer_ref'=>$ref]);
+    $fl=AnyTourTourvisorPreviewGateway::handle($f,$fresh,$now,$transport,$catalog,$save,$clock);
+    tvg_ok($fl['data']===['flights'=>[$nativePair]] && count($fl['choices'])===1,'mixed pair/leg dates preserve native DTO and original pair choice');
+    $selected=AnyTourTourvisorPreviewGateway::handle($request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$fl['choices'][0]['choice_ref']]),
+        $fresh,$now,$transport,$catalog,$save,$clock);
+    $pairRecord=AnyTourTourvisorSelectedTourHandoff::freeze($selected['selector'],$fresh,$now,$clock);
+    tvg_ok($pairRecord['status']==='ready' && $pairRecord['record']['observation']['trip']['departure']===$calendarDay
+        && $pairRecord['record']['observation']['price']['amount']==='209867' && $physical===2,
+        'same calendar pair is capturable and selection stays local');
+    unset($fresh['tourvisor_context']['offers'][$ref]['operations']['tv_flights'],$fresh['tourvisor_context']['offers'][$ref]['pairs']);
+    $badPair=$nativePair;$badPair['backward'][0]['departure']['date']=$calendarDay;
+    tvg_denied(function()use(&$fresh,$request,$ref,$now,$badPair,$catalog,$save,$clock){
+        AnyTourTourvisorPreviewGateway::handle($request('tv_flights',['offer_ref'=>$ref]),$fresh,$now,
+            static fn():array=>['flights'=>[$badPair]],$catalog,$save,$clock);
+    },'tv_pair_mismatch');
+}
+foreach (['2027-02-29','31.02.2027','2027-02-30','1.01.2027','2027-1-01',null,[],true] as $invalidDate) {
+    $fresh=$resultsSession;$fresh['tourvisor_context']['offers'][$ref]['date']=$invalidDate;
+    $badTour=$tour;$badTour['date']=$invalidDate;
+    tvg_denied(function()use(&$fresh,$request,$ref,$now,$badTour,$catalog,$save,$clock){
+        AnyTourTourvisorPreviewGateway::handle($request('tv_tour',['offer_ref'=>$ref]),$fresh,$now,
+            static fn():array=>$badTour,$catalog,$save,$clock);
+    },'tv_tour_mismatch');
+    tvg_ok(empty($fresh['tourvisor_handoff_records']),'even matching invalid/missing dates cannot mint a record');
+}
+$fresh=$resultsSession;$wrongDayTour=$tour;$wrongDayTour['date']=(new DateTimeImmutable($day))->modify('+1 day')->format('d.m.Y');
+tvg_denied(function()use(&$fresh,$request,$ref,$now,$wrongDayTour,$catalog,$save,$clock){
+    AnyTourTourvisorPreviewGateway::handle($request('tv_tour',['offer_ref'=>$ref]),$fresh,$now,
+        static fn():array=>$wrongDayTour,$catalog,$save,$clock);
+},'tv_tour_mismatch');
 echo 'TV private session gateway: '.$GLOBALS['tv_checks']." checks PASS; supplier/bot network=0, DB writes=0.\n";
 }

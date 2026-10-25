@@ -63,13 +63,26 @@ final class AnyTourTourvisorPreviewGateway
         self::need(($s['tourvisor_context_generation'] ?? null) === $c['generation']
             && ($s['tourvisor_context']['search_ref'] ?? null) === $c['search_ref'],'tv_context_changed');
     }
-    /** Preserve exact predicates; expose only which failed and fixed shape facts. */
+    /** Supplier calendar syntax only; internal records keep their strict ISO day. */
+    private static function supplierDay(mixed $value): ?string
+    {
+        if (!is_string($value)) return null;
+        if (preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/D',$value,$m) === 1)
+            [$year,$month,$day] = [(int)$m[1],(int)$m[2],(int)$m[3]];
+        elseif (preg_match('/\A([0-9]{2})\.([0-9]{2})\.([0-9]{4})\z/D',$value,$m) === 1)
+            [$year,$month,$day] = [(int)$m[3],(int)$m[2],(int)$m[1]];
+        else return null;
+        return checkdate($month,$day,$year) ? sprintf('%04d-%02d-%02d',$year,$month,$day) : null;
+    }
+    /** Strict identities/types; supplier dates must denote the same valid day. */
     private static function tourMatch(array $values, array $expected): void
     {
         $fields = []; $types = [];
         $kind = static fn($v): string => is_null($v) ? 'null' : (is_int($v) ? 'integer' : (is_string($v) ? 'string'
             : (is_float($v) ? 'number' : (is_bool($v) ? 'boolean' : (is_array($v) ? 'array' : 'other')))));
-        foreach ($values as $field=>$value) if ($value !== $expected[$field]) {
+        foreach ($values as $field=>$value) if ($field === 'date'
+            ? self::supplierDay($value) === null || self::supplierDay($value) !== self::supplierDay($expected[$field])
+            : $value !== $expected[$field]) {
             $fields[] = $field;
             $types[$field] = ['supplier'=>$kind($value),'context'=>$kind($expected[$field])];
         }
@@ -149,7 +162,7 @@ final class AnyTourTourvisorPreviewGateway
         $deadline = self::deadline($offer,$choice);
         $terms = ['source'=>'tourvisor','hotel'=>$offer['hotel'],
             'trip'=>['origin'=>self::text($tour['departure'] ?? null,180),
-                'countryUiId'=>(string)$c['params']['countryId'],'departure'=>$tour['date'],'nights'=>$tour['nights'],
+                'countryUiId'=>(string)$c['params']['countryId'],'departure'=>self::supplierDay($tour['date']),'nights'=>$tour['nights'],
                 'stayEnd'=>null,'stayEndBasis'=>'unknown','adults'=>$c['params']['adults'],'childAges'=>$c['params']['childs']],
             'stay'=>['room'=>self::text($tour['roomType'] ?? null,500),'meal'=>self::text($tour['meal'] ?? null,300),
                 'placement'=>self::text($tour['placement'] ?? '',500,false),'operator'=>self::operator($tour)[0]],
@@ -323,10 +336,13 @@ final class AnyTourTourvisorPreviewGateway
                     if (!is_array($pair)) continue;
                     try { self::amount($pair['price'] ?? null); self::legs($pair,'forward'); self::legs($pair,'backward'); }
                     catch (InvalidArgumentException $ignored) { continue; }
-                    self::need(($pair['dateForward'] ?? null) === $offer['checked']['tour']['date']
-                        && is_string($pair['dateBackward'] ?? null) && $pair['dateBackward'] > $pair['dateForward']
-                        && substr($pair['forward'][0]['departure']['date'],0,10) === $pair['dateForward']
-                        && substr($pair['backward'][0]['departure']['date'],0,10) === $pair['dateBackward'],'tv_pair_mismatch');
+                    $forwardDay = self::supplierDay($pair['dateForward'] ?? null);
+                    $backwardDay = self::supplierDay($pair['dateBackward'] ?? null);
+                    $legDay = static fn($v): ?string => is_string($v) ? self::supplierDay(substr($v,0,10)) : null;
+                    self::need($forwardDay !== null && $backwardDay !== null
+                        && $forwardDay === self::supplierDay($offer['checked']['tour']['date']) && $backwardDay > $forwardDay
+                        && $legDay($pair['forward'][0]['departure']['date']) === $forwardDay
+                        && $legDay($pair['backward'][0]['departure']['date']) === $backwardDay,'tv_pair_mismatch');
                     $choice = 'tourvisor_pair:'.hash('sha256',json_encode($pair,JSON_THROW_ON_ERROR));
                     $deadline = min($offer['checked']['expires_at'],$at+900);
                     if (isset($pair['expiresAt'])) {
