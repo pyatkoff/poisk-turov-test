@@ -516,5 +516,65 @@ tvg_denied(function()use(&$fresh,$request,$ref,$now,$wrongDayTour,$catalog,$save
     AnyTourTourvisorPreviewGateway::handle($request('tv_tour',['offer_ref'=>$ref]),$fresh,$now,
         static fn():array=>$wrongDayTour,$catalog,$save,$clock);
 },'tv_tour_mismatch');
+// Real PHP session write/unlock/read window; deterministic independent-provider update.
+final class TVCheckpointSessionFixture implements SessionHandlerInterface {
+    public string $data=''; public int $reads=0; public int $writes=0;
+    public function __construct(public string $mode) {}
+    public function open(string $path,string $name):bool{return true;}
+    public function close():bool{return true;}
+    public function destroy(string $id):bool{return true;}
+    public function gc(int $max):int|false{return 0;}
+    public function write(string $id,string $data):bool {
+        ++$this->writes;if($this->mode==='write_fail')throw new RuntimeException('fixture_write_failed');
+        $this->data=$data;return true;
+    }
+    public function read(string $id):string {
+        ++$this->reads;if($this->reads!==2)return $this->data;
+        if($this->mode==='read_fail')throw new RuntimeException('fixture_read_failed');
+        $v=unserialize($this->data,['allowed_classes'=>false]);
+        if($this->mode==='foreign_context')$v['offer_context']=['concurrent'=>'ANEX'];
+        elseif($this->mode==='foreign_generation')$v['anex_context_generation']=23;
+        elseif($this->mode==='foreign_offer')$v['anex_offer_contexts']['new']=['concurrent'=>'ANEX'];
+        elseif($this->mode==='tv_generation')++$v['tourvisor_context_generation'];
+        elseif($this->mode==='tv_request'){$key=array_key_first($v['tourvisor_requests']);$v['tourvisor_requests'][$key]['fingerprint']='changed';}
+        elseif($this->mode==='csrf')$v['search3_handoff_csrf']=str_repeat('d',64);
+        elseif($this->mode==='producer')$v['search3_messenger_handoffs']['new']=['pending'=>'changed'];
+        elseif($this->mode==='other')$v['unrelated_private_key']='changed';
+        elseif($this->mode==='nonstock')$v['offer_context']=['concurrent'=>'ANEX'];
+        return serialize($v);
+    }
+}
+ini_set('session.use_cookies','0');ini_set('session.cache_limiter','');ini_set('session.serialize_handler','php_serialize');
+foreach(['foreign_context','foreign_generation','foreign_offer','tv_generation','tv_request','csrf','producer','other','write_fail','read_fail','identity','nonstock'] as $mode){
+    $handler=new TVCheckpointSessionFixture($mode);
+    $handler->data=serialize(['search3_handoff_csrf'=>str_repeat('c',64),'anex_context_generation'=>17,
+        'anex_offer_contexts'=>['old'=>['keep'=>'original']],'offer_context'=>['keep'=>'original'],
+        'search3_messenger_handoffs'=>['keep'=>['pending'=>'original']]]);
+    session_set_save_handler($handler,true);session_id(md5('fixture-'.$mode));session_start();
+    $nativeRequest=$request('tv_search',['params'=>$params]);$nativeCalls=0;$error=null;$reply=null;
+    $nativeTransport=static function()use(&$nativeCalls):array{++$nativeCalls;return ['searchId'=>91];};
+    $nativeCheckpoint=$mode==='identity'?static function(array &$s):void{session_regenerate_id();throw new RuntimeException('handoff_session_changed');}
+        :($mode==='nonstock'?static function(array &$s):void{AnyTourSearch3MessengerHandoff::checkpoint($s);}
+        :[AnyTourSearch3MessengerHandoff::class,'checkpoint']);
+    try{$reply=AnyTourTourvisorPreviewGateway::handle($nativeRequest,$_SESSION,$now,$nativeTransport,$catalog,$nativeCheckpoint,$clock);}
+    catch(Throwable $caught){$error=$caught;}
+    if(str_starts_with($mode,'foreign_')){
+        tvg_ok($error===null && $reply['data']['searchId']===91 && $nativeCalls===1,'independent ANEX update does not abort own durable TV reservation '.$mode);
+        tvg_ok($handler->writes===2 && $_SESSION['tourvisor_requests'][$nativeRequest['request_id']]['state']==='ready',
+            'stock UNKNOWN and ready checkpoints each happen once');
+        $persisted=unserialize($handler->data,['allowed_classes'=>false]);
+        tvg_ok($_SESSION===$persisted && ($mode!=='foreign_context'||$_SESSION['offer_context']===['concurrent'=>'ANEX'])
+            && ($mode!=='foreign_generation'||$_SESSION['anex_context_generation']===23)
+            && ($mode!=='foreign_offer'||isset($_SESSION['anex_offer_contexts']['new'])),'foreign concurrent state survives without rollback');
+        tvg_ok(AnyTourTourvisorPreviewGateway::handle($nativeRequest,$_SESSION,$now,$nativeTransport,$catalog,$nativeCheckpoint,$clock)===$reply
+            && $nativeCalls===1 && $handler->writes===2,'same ready operation after foreign update is not dispatched again');
+    } else {
+        tvg_ok($error!==null && $nativeCalls===0,'own/shared/unknown drift or write/read/session failure still blocks before dispatch '.$mode);
+        if(!in_array($mode,['write_fail','identity'],true))tvg_ok(
+            unserialize($handler->data,['allowed_classes'=>false])['tourvisor_requests'][$nativeRequest['request_id']]['state']==='unknown',
+            'failed durability check retains the original stored UNKNOWN marker');
+    }
+    if(session_status()===PHP_SESSION_ACTIVE)session_abort();
+}
 echo 'TV private session gateway: '.$GLOBALS['tv_checks']." checks PASS; supplier/bot network=0, DB writes=0.\n";
 }
