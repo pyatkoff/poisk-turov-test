@@ -939,7 +939,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close('dates');
     for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close(type);}
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
-    receipts.push({width,zoom,reset,next,keyboard_reset_focus:true,keyboard_month_focus:width>760,disabled_month_boundary_focus:width>760,Escape_returns_exact_trigger:true,cancel_preserves_fields_and_URL:true,physicalSafari:false});
+    receipts.push({width,zoom,retired_form_filters_absent:true,next,keyboard_month_focus:width>760,disabled_month_boundary_focus:width>760,Escape_returns_exact_trigger:true,cancel_preserves_fields_and_URL:true,physicalSafari:false});
    }
    // Continue the same isolated five-width form context. All catalogue rows,
    // aliases and profile links below are the existing explicitly fictional fixture.
@@ -1067,7 +1067,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
   }finally{for(const release of releases)release();await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
- console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, repeated keyboard reset/month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
+ console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, no retired form-filter route, month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
 }
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
