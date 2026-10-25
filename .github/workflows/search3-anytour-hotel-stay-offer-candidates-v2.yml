@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php'
       - 'tests/anytour_hotel_stay_offer_candidates_v2_test.php'
+      - 'scripts/catalog/anytour_hotel_stay_anchor_read_v1.php'
+      - 'tests/anytour_hotel_stay_anchor_read_v1_test.php'
       - '.github/workflows/search3-anytour-hotel-stay-offer-candidates-v2.yml'
 
 permissions:
@@ -40,6 +42,8 @@ jobs:
           set -euo pipefail
           php -l scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           php -l tests/anytour_hotel_stay_offer_candidates_v2_test.php
+          php -l scripts/catalog/anytour_hotel_stay_anchor_read_v1.php
+          php -l tests/anytour_hotel_stay_anchor_read_v1_test.php
           ! grep -Fq 'curl_' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           ! grep -Fq 'http://' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
           ! grep -Fq 'https://' scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php
@@ -50,3 +54,8 @@ jobs:
           ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_offer_candidates_v2_fixture;charset=utf8mb4'
           ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD: fixture-only-password
         run: php tests/anytour_hotel_stay_offer_candidates_v2_test.php
+      - name: Exercise fixed retained-tour anchor and exact CURRENT hotel stay read
+        env:
+          ANYTOUR_STAY_ANCHOR_V1_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;charset=utf8mb4'
+          ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD: fixture-only-password
+        run: php tests/anytour_hotel_stay_anchor_read_v1_test.php
