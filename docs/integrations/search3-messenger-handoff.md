@@ -222,6 +222,22 @@ observation at most15min, shortened by an explicit returned expiresAt. These
 are application freshness/resource bounds, not shared-account remaining quota.
 No silent deletion of UNKNOWN operations occurs.
 
+Local `tv_context_limit` failures retain the same409/code and now distinguish
+`request_count`, `context_bytes`, `offer_count` and generation overflow. The
+diagnostics contain only existing action stage, category `limit`, `limitKind`,
+`limitPhase` (`admission`, `reservation`, `results`, `capture`, `reply`), the
+measured integer `limitValue` and fixed `limitMax` (64,4194304,2000,2147483647).
+Admission requires fewer than64 receipts and fewer than4MiB; candidate states
+retain the existing inclusive4MiB bound. Rejections do not delete or reset old
+receipts, relax limits, grant retry or add supplier calls. An existing healthy
+cached operation remains readable at a full receipt cap. These are local facts,
+not an upstream status or shared supplier-account quota. Raw sessions, keys,
+identities, URLs, supplier text and prices are never added to a failure.
+
+The consumed22–28November live case6395253074 returned `tv_context_limit` from
+results and tour; its exact guard/count/bytes were not retained. New diagnostics
+do not reconstruct that historical cause. Post-change live evidence is separate.
+
 SOURCE/CI acceptance does not install protected root bytes, activate TV/signing,
 change SEARCH transport/UI, or send to customers. The installation package must
 carry exact helpers/API dependencies and preserve all existing root/control

@@ -97,8 +97,17 @@ final class AnyTourTourvisorPreviewGateway
         }
         throw new \AnyTour\TourvisorInteractiveFailure(['ok'=>false,'error'=>'tv_tour_mismatch','diagnostics'=>$diagnostics],409);
     }
-    private static function bounded(array $context, array $requests): void
-    { self::need(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)) <= 4194304,'tv_context_limit'); }
+    /** Local resource facts only: no session keys, retained values or upstream status. */
+    private static function limit(int $value, int $maximum, string $kind, string $phase, string $stage,
+        bool $allowEqual = true): void
+    {
+        if ($allowEqual ? $value <= $maximum : $value < $maximum) return;
+        throw new \AnyTour\TourvisorInteractiveFailure(['ok'=>false,'error'=>'tv_context_limit','diagnostics'=>[
+            'provider'=>'tourvisor','stage'=>$stage,'category'=>'limit','limitKind'=>$kind,'limitPhase'=>$phase,
+            'limitValue'=>$value,'limitMax'=>$maximum]],409);
+    }
+    private static function bounded(array $context, array $requests, string $stage, string $phase): void
+    { self::limit(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)),4194304,'context_bytes',$phase,$stage); }
     private static function deadline(array $offer, string $choice): int
     {
         $end = $offer['checked']['expires_at'];
@@ -106,7 +115,7 @@ final class AnyTourTourvisorPreviewGateway
     }
     /** Check the complete reply cache candidate BEFORE capture can checkpoint raw context. */
     private static function captureBudget(array $c, string $ref, string $choice, mixed $data, array $s,
-        string $rid, string $fingerprint): void
+        string $rid, string $fingerprint, string $stage): void
     {
         $extra = ['selector'=>self::pins($c,$ref,$c['offers'][$ref],$choice),'record_sha256'=>str_repeat('0',64)];
         $reply = ['provider'=>'tourvisor','generation'=>$c['generation'],'search_ref'=>$c['search_ref'],
@@ -115,7 +124,7 @@ final class AnyTourTourvisorPreviewGateway
         $requests = $s['tourvisor_requests'];
         $requests[$rid] = ['fingerprint'=>$fingerprint,'generation'=>$c['generation'],'state'=>'ready',
             'expires_at'=>self::deadline($c['offers'][$ref],$choice),'reply'=>$reply];
-        self::bounded($c,$requests);
+        self::bounded($c,$requests,$stage,'capture');
     }
     private static function invalidate(string $ref, array &$s): void
     {
@@ -199,6 +208,10 @@ final class AnyTourTourvisorPreviewGateway
         }
         self::exact($r,$keys);
         self::need(in_array($action,['tv_search','tv_continue','tv_status','tv_results','tv_tour','tv_flights','tv_select'],true),'tv_invalid_request');
+        $stage = match($action) {
+            'tv_search'=>'search_start','tv_continue'=>'search_continue','tv_status'=>'search_status',
+            'tv_results'=>'search_results','tv_tour'=>'tour','tv_flights'=>'flights',default=>'other',
+        };
         $fingerprint = hash('sha256',json_encode(array_diff_key($r,['csrf'=>true]),JSON_THROW_ON_ERROR));
         $requests = $s['tourvisor_requests'] ?? [];
         self::need(is_array($requests),'tv_request_integrity');
@@ -215,7 +228,9 @@ final class AnyTourTourvisorPreviewGateway
             }
             return $old['reply'];
         }
-        self::need(count($requests) < 64 && strlen(json_encode([$s['tourvisor_context'] ?? [],$requests],JSON_THROW_ON_ERROR)) < 4194304,'tv_context_limit');
+        self::limit(count($requests),64,'request_count','admission',$stage,false);
+        self::limit(strlen(json_encode([$s['tourvisor_context'] ?? [],$requests],JSON_THROW_ON_ERROR)),
+            4194304,'context_bytes','admission',$stage,false);
         if ($search) {
             self::need(is_array($r['params']),'tv_invalid_request');
             $allowed = ['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs','meal',
@@ -225,7 +240,8 @@ final class AnyTourTourvisorPreviewGateway
             $params = \AnyTour\TourvisorInteractiveClient::searchParams($r['params']);
             self::need($params['currency'] === 'RUB','tv_price_currency');
             $generation = ($s['tourvisor_context_generation'] ?? 0) + 1;
-            self::need(is_int($generation) && $generation > 0 && $generation <= 2147483647,'tv_context_limit');
+            self::need(is_int($generation) && $generation > 0,'tv_context_limit');
+            self::limit($generation,2147483647,'generation','admission',$stage);
             $c = ['generation'=>$generation,'search_ref'=>bin2hex(random_bytes(16)),'state'=>'starting',
                 'search_id'=>null,'created_at'=>$now,'expires_at'=>$now+1800,'params'=>$params,'offers'=>[]];
             $path = '/tours/search'; $query = $params;
@@ -252,7 +268,7 @@ final class AnyTourTourvisorPreviewGateway
             }
         }
         $requests[$rid] = ['fingerprint'=>$fingerprint,'generation'=>$generation,'state'=>'unknown'];
-        self::bounded($c,$requests);
+        self::bounded($c,$requests,$stage,'reservation');
         $s['tourvisor_context_generation'] = $generation;
         $s['tourvisor_context'] = $c; $s['tourvisor_requests'] = $requests;
         // This original marker remains UNKNOWN after every ambiguous attempt or checkpoint.
@@ -300,7 +316,7 @@ final class AnyTourTourvisorPreviewGateway
                             $old = $c['offers'][$ref];
                             self::need(array_intersect_key($old,$entry) === $entry,'tv_offer_identity_changed');
                         } else $c['offers'][$ref] = $entry;
-                        self::need(count($c['offers']) <= 2000,'tv_context_limit');
+                        self::limit(count($c['offers']),2000,'offer_count','results',$stage);
                         $selectors[] = ['offer_ref'=>$ref,'local_hotel_id'=>$hotelId];
                     }
                 }
@@ -323,8 +339,8 @@ final class AnyTourTourvisorPreviewGateway
                     $deadline = min($deadline,$data['expiresAt']);
                 }
                 $c['offers'][$ref]['checked'] = ['tour'=>$data,'observed_at'=>$at,'expires_at'=>$deadline];
-                self::captureBudget($c,$ref,'manager-deferred',$data,$s,$rid,$fingerprint);
-                self::bounded($c,$s['tourvisor_requests']);
+                self::captureBudget($c,$ref,'manager-deferred',$data,$s,$rid,$fingerprint,$stage);
+                self::bounded($c,$s['tourvisor_requests'],$stage,'capture');
                 $s['tourvisor_context'] = $c;
                 $extra = self::capture($c,$ref,$s,'manager-deferred',$at,$checkpoint,$clock);
             } elseif ($action === 'tv_flights') {
@@ -356,7 +372,7 @@ final class AnyTourTourvisorPreviewGateway
                 $c['offers'][$ref]['pairs'] = $kept; $extra['choices'] = $choices;
             } elseif ($action === 'tv_select') {
                 self::need($r['choice_ref'] === 'manager-deferred' || isset($c['offers'][$ref]['pairs'][$r['choice_ref']]),'tv_pair_missing');
-                self::captureBudget($c,$ref,$r['choice_ref'],null,$s,$rid,$fingerprint);
+                self::captureBudget($c,$ref,$r['choice_ref'],null,$s,$rid,$fingerprint,$stage);
                 $extra = self::capture($c,$ref,$s,$r['choice_ref'],$at,$checkpoint,$clock);
             }
             $reply = ['provider'=>'tourvisor','generation'=>$generation,'search_ref'=>$c['search_ref'],'data'=>$data]+$extra;
@@ -367,7 +383,7 @@ final class AnyTourTourvisorPreviewGateway
             $readyRequests = $s['tourvisor_requests'];
             $readyRequests[$rid] = ['fingerprint'=>$fingerprint,'generation'=>$generation,
                 'state'=>'ready','expires_at'=>$replyDeadline,'reply'=>$reply];
-            self::bounded($c,$readyRequests);
+            self::bounded($c,$readyRequests,$stage,'reply');
             $s['tourvisor_context'] = $c; $s['tourvisor_requests'] = $readyRequests;
             $checkpoint($s); self::current($c,$s);
             return $reply;
