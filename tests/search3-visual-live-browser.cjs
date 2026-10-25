@@ -1373,6 +1373,10 @@ const server=http.createServer((req,res)=>{
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
  if(file.endsWith('.php')){
   let html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]=$argv[2]; include $argv[1];',file,u.searchParams.get('scenario')||'']).toString();
+  // This historical matrix specifically covers the retained root TV protocol.
+  // The mandatory --messenger-only pass serves the unmodified real entry and
+  // proves the new private TV default, including zero root search/quote calls.
+  if(!process.argv.includes('--messenger-only'))html=html.replace(' data-search3-tv-session="enabled"','');
   if(u.searchParams.get('loadingMode')==='eager'){
    const cold=html.match(/data-flight-picker-src="([^"]+)"/);assert(cold,'explicit cold asset for controlled eager baseline');
    const initial=html;html=html.replace(/(<script src="\.\/app\.js[^"\n]*" defer><\/script>)/,`<script src="${cold[1]}" defer></script>\n$1`);assert.notEqual(html,initial,'controlled eager baseline inserts before the host');
@@ -1736,6 +1740,39 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
  }
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');
 };
+
+// Keep every broad-matrix frame within the existing bounded artifact carrier.
+// Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
+// preserve every other chunk. The separately retained messenger bytes stay intact.
+function retainLosslessPngEvidence(directory){
+ const {inflateSync,deflateSync,gzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[];
+ const sha=value=>createHash('sha256').update(value).digest('hex'),signature=Buffer.from('89504e470d0a1a0a','hex');
+ const visit=folder=>{for(const entry of fs.readdirSync(folder,{withFileTypes:true})){
+  const file=path.join(folder,entry.name),relative=path.relative(directory,file).split(path.sep).join('/');
+  if(relative==='messenger-entry')continue;
+  if(entry.isDirectory()){visit(file);continue;}
+  if(!entry.isFile()||!file.endsWith('.png'))continue;
+  const before=fs.readFileSync(file),chunks=[],idat=[];assert(before.subarray(0,8).equals(signature),relative+' PNG signature');
+  for(let offset=8;offset<before.length;){
+   assert(offset+12<=before.length,relative+' complete PNG chunk');
+   const length=before.readUInt32BE(offset),end=offset+12+length;assert(end<=before.length,relative+' bounded PNG chunk');
+   const type=before.subarray(offset+4,offset+8),data=before.subarray(offset+8,end-4);
+   assert.equal(crc32(before.subarray(offset+4,end-4)),before.readUInt32BE(end-4),relative+' original CRC');
+   chunks.push({type:type.toString('ascii'),bytes:before.subarray(offset,end)});if(type.toString('ascii')==='IDAT')idat.push(data);offset=end;
+  }
+  assert(idat.length>0&&chunks[0].type==='IHDR'&&chunks.at(-1).type==='IEND',relative+' complete screenshot PNG');
+  const filtered=inflateSync(Buffer.concat(idat)),compressed=[{}, {strategy:constants.Z_FILTERED}]
+   .map(options=>deflateSync(filtered,{level:9,...options})).reduce((best,value)=>value.length<best.length?value:best);
+  assert(inflateSync(compressed).equals(filtered),relative+' byte-identical filtered pixels');
+  const replacement=Buffer.alloc(compressed.length+12);replacement.writeUInt32BE(compressed.length);replacement.write('IDAT',4,'ascii');compressed.copy(replacement,8);replacement.writeUInt32BE(crc32(replacement.subarray(4,-4)),replacement.length-4);
+  let inserted=false;const retained=Buffer.concat([signature,...chunks.flatMap(chunk=>chunk.type==='IDAT'?(inserted?[]:(inserted=true,[replacement])):[chunk.bytes])]);
+  const after=retained.length<before.length?retained:before;if(after!==before)fs.writeFileSync(file,after);
+  rows.push({path:relative,original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after),filtered_pixel_sha256:sha(filtered)});
+ }};
+ visit(directory);const originalBytes=rows.reduce((sum,row)=>sum+row.original_bytes,0),retainedBytes=rows.reduce((sum,row)=>sum+row.retained_bytes,0);
+ fs.writeFileSync(path.join(directory,'png-retention.json.gz'),gzipSync(Buffer.from(JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n'),{level:9}));
+ console.log('PASS lossless complete PNG retention',JSON.stringify({frames:rows.length,originalBytes,retainedBytes,savedBytes:originalBytes-retainedBytes}));
+}
 
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
@@ -2408,6 +2445,6 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');
   if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
- }finally{await browser.close();server.close();}
+ }finally{await browser.close();server.close();if(!process.argv.includes('--messenger-only'))retainLosslessPngEvidence(evidence);}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});

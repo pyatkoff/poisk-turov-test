@@ -58,4 +58,9 @@ assert.equal(manifest.sourceFiles['flight-picker-v18.js'], 'd6de6d2deb26c5f6fbce
 for(const [file,hash] of Object.entries(manifest.adaptedFiles))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'adapted '+file);
 assert.match(bootstrap,/prototype-search\/data\.js/);
 assert.match(bootstrap,/prototype-search\/calendar-exact-hotel-v1\.js/);
+assert.match(bootstrap,/data-search3-tv-session="enabled"/);
+assert.equal(manifest.messengerHandoff.tvSession.rootFallback,false);
+assert.equal(manifest.messengerHandoff.tvSession.browserPriceAuthority,false);
+assert.equal(manifest.messengerHandoff.tvSession.installedBackendHandoff,'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6392874420');
+for(const [file,hash] of Object.entries(manifest.messengerHandoff.sourceFiles))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'current messenger owner '+file);
 console.log('PASS visual migration: preserved Site assets, explicit integration delta, separate live/offline entry graphs, noindex and cache binding');

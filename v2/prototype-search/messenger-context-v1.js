@@ -85,8 +85,42 @@
       expiresAt:verified?r.expiresAt:null,basis:verified?'selected-pair':'shown-offer',finalPriceVerified:false,authority:'browser-observation-only'};
     return {...base,value,pair:r,binding,application:r};
   }
+  function readTourvisorContext(input,capturedAt,now,helpers){
+    const r=input.selector,o=input.offer,h=input.hotel;
+    if(!r||Object.keys(r).sort().join(',')!=='choice_ref,generation,local_hotel_id,offer_ref,provider,search_ref'
+      ||o?.provider!=='tourvisor'||r.provider!=='tourvisor'||!Number.isSafeInteger(r.generation)||r.generation<1||r.generation>2147483647
+      ||typeof r.search_ref!=='string'||!/^[a-f0-9]{32}$/.test(r.search_ref)||typeof r.offer_ref!=='string'||!/^tourvisor:[a-f0-9]{64}$/.test(r.offer_ref)
+      ||!Number.isSafeInteger(r.local_hotel_id)||r.local_hotel_id<1||r.local_hotel_id>2147483647
+      ||h?.id!==r.local_hotel_id&&!(h?.legacyIds||[]).map(String).includes(String(r.local_hotel_id))
+      ||input.price?.state!=='checked'||input.price.currency!=='RUB')fail('invalid_tourvisor_context');
+    const base=readContext({...input,selector:undefined},capturedAt,now,helpers),selected=base.pair;
+    if(r.choice_ref==='manager-deferred'?!!selected:!selected||typeof r.choice_ref!=='string'||!/^tourvisor_pair:[a-f0-9]{64}$/.test(r.choice_ref))fail('invalid_tourvisor_context');
+    // Compare the accepted server's retained TV terms. Keep the entire original
+    // UI observation in the binding so a changed label, party or price is stale.
+    const party=input.requestParty;
+    if(!party||Object.keys(party).sort().join(',')!=='adults,childAges'||party.adults!==o.adults||!Array.isArray(party.childAges)
+      ||party.childAges.some(age=>!Number.isInteger(age)||age<0||age>17)
+      ||JSON.stringify([...party.childAges].sort((a,b)=>a-b))!==JSON.stringify([...o.ages].sort((a,b)=>a-b)))fail('invalid_tourvisor_party');
+    const binding=JSON.stringify([base.value,r,party]);
+    const contractLegs=values=>values.map(value=>{
+      const from=value.departure?.port,to=value.arrival?.port;
+      const number=label(value.number,80,helpers),a=label(from?.shortName??from?.id,80,helpers),b=label(to?.shortName??to?.id,80,helpers),date=label(value.departure?.date,80,helpers);
+      if(!number||!a||!b||!date)fail('invalid_tourvisor_flight');
+      return {label:number+' · '+a+' → '+b+' · '+date};
+    });
+    base.value.hotel.uiId=r.local_hotel_id;
+    // Use the original canonical request order for comparison with its retained
+    // server record. The UI's entered order stays untouched in the binding.
+    base.value.trip.childAges=[...party.childAges];
+    base.value.stay.room=label(o.tour?.roomType,500,helpers);
+    base.value.stay.meal=label(o.tour?.meal,300,helpers);
+    if(!base.value.stay.room||!base.value.stay.meal)fail('invalid_tourvisor_context');
+    base.value.flights=selected?{state:'selected',outward:contractLegs(selected.forward),inward:contractLegs(selected.backward)}:{state:'manager-deferred',outward:[],inward:[]};
+    return {...base,binding,selector:Object.freeze({...r})};
+  }
   function readContext(input,capturedAt,now,helpers){
     if(input?.application!==undefined)return readApplicationContext(input,capturedAt,now,helpers);
+    if(input?.selector!==undefined)return readTourvisorContext(input,capturedAt,now,helpers);
     const o=input?.offer,h=input?.hotel,p=input?.price;
     if(!o||!h||!p||!Number.isSafeInteger(input.revision)||input.revision<0)fail('incomplete_selection_context');
     if(typeof o.key!=='string'||!o.key||o.key.length>4096)fail('invalid_selection_key');
@@ -136,6 +170,11 @@
         captures.set(value,{...snapshot,signature:JSON.stringify(value)});return value;
       },
       isCurrent(value){return currentCapture(value)!==null;},
+      selector(value){
+        const current=currentCapture(value);
+        if(current?.selector&&current.value.price.state==='checked'&&current.value.price.amount!==null)return current.selector;
+        return this.anexSelector(value);
+      },
       // Same-origin producer input only. The server resolves retained facts;
       // these private selectors are never display context or bot URL payloads.
       anexSelector(value){

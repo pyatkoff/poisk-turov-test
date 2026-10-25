@@ -204,4 +204,46 @@ test('Noncanonical private refs and out-of-range identity pins are unavailable w
   }
   assert.deepEqual(calls,[]);
 });
+function tourvisorFixture(manager=false){
+ const value=fixture(),o=value.offer;o.provider='tourvisor';o.key=encodeURIComponent('tourvisor:tv-exact');o.raw={id:'tv-exact'};
+ o.tour={id:'tv-exact',roomType:o.room,meal:{name:'AI'}};value.hotel.legacyIds=['101'];
+ value.selector={provider:'tourvisor',generation:23,search_ref:'d'.repeat(32),offer_ref:'tourvisor:'+'e'.repeat(64),local_hotel_id:101,
+  choice_ref:manager?'manager-deferred':'tourvisor_pair:'+'f'.repeat(64)};
+ value.price.expiresAt=null;
+ value.requestParty={adults:o.adults,childAges:[...o.ages].sort((a,b)=>a-b)};
+ if(manager){o.flightChoiceId=null;o.variants=[];}
+ return value;
+}
+test('TV manager and optional pair use their accepted private pins and canonical server review terms',()=>{
+ for(const manager of [true,false]){
+  const input=tourvisorFixture(manager),session=api.createSession(()=>input,()=>time),snapshot=session.capture();
+  assert.equal(snapshot.source,'tourvisor');assert.equal(snapshot.hotel.uiId,101,'exact accepted legacy crosswalk');
+  assert.equal(snapshot.stay.meal,'AI','compare the retained native meal term without changing its displayed owner');
+  assert.equal(snapshot.price.finalPriceVerified,false);assert.equal(snapshot.flights.state,manager?'manager-deferred':'selected');
+  assert.deepEqual(plain(session.selector(snapshot)),input.selector);assert.equal(session.anexSelector(snapshot),null);
+  if(!manager)assert.deepEqual(plain(snapshot.flights.outward),[{label:'VF 276 · VKO → HRG · 2027-03-29'}]);
+  assert.doesNotMatch(JSON.stringify(snapshot),/tourvisor_pair:|tourvisor:|search_ref|choice_ref|csrf/);
+ }
+});
+test('Changing TV pins, UI labels, row, original party or pair invalidates an existing capture',()=>{
+ for(const change of [x=>x.selector.generation++,x=>x.selector.choice_ref='tourvisor_pair:'+'a'.repeat(64),x=>x.offer.raw={...x.offer.raw},
+  x=>x.offer.meal='Завтраки',x=>x.offer.ages.reverse(),x=>x.hotel.legacyIds=[],x=>x.offer.variants[0].forward[0].number='CHANGED']){
+  const input=tourvisorFixture(),session=api.createSession(()=>input,()=>time),snapshot=session.capture();change(input);
+  assert.equal(session.isCurrent(snapshot),false);assert.equal(session.selector(snapshot),null);
+ }
+});
+test('TV incomplete, mixed, unverified and foreign contexts cannot acquire a dispatcher selector',()=>{
+ for(const change of [x=>x.selector.provider='anex',x=>x.selector.offer_ref='anex_online:'+'e'.repeat(64),x=>x.selector.extra='bad',
+  x=>x.selector.local_hotel_id=102,x=>x.selector.choice_ref='manager-deferred',x=>x.price.state='estimated',x=>x.price.currency='EUR',
+  x=>x.offer.variants[0].forward[0].departure.port={},x=>x.offer.tour.meal=null,x=>x.requestParty.childAges=[0,8],x=>x.requestParty.adults=3]){
+  const input=tourvisorFixture();change(input);assert.throws(()=>api.createSession(()=>input,()=>time).capture());
+ }
+ const input=tourvisorFixture(true),session=api.createSession(()=>input,()=>time),snapshot=session.capture();
+ assert.equal(session.selector(plain(snapshot)),null);assert.deepEqual(calls,[]);
+});
+test('TV request-order comparison retains the UI-entered child order and invalidates a later edit',()=>{
+ const input=tourvisorFixture(true);input.offer.ages=[12,0];input.requestParty.childAges=[0,12];
+ const session=api.createSession(()=>input,()=>time),snapshot=session.capture();assert.deepEqual(plain(snapshot.trip.childAges),[0,12]);assert.deepEqual(plain(input.offer.ages),[12,0]);
+ assert.equal(session.isCurrent(snapshot),true);input.offer.ages.reverse();assert.equal(session.isCurrent(snapshot),false);assert.equal(session.selector(snapshot),null);
+});
 console.log(JSON.stringify({cases:count,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));

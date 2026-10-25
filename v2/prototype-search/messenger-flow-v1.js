@@ -16,13 +16,15 @@
     }
     return immutable(result);
   }
-  function createSession({selection,request}){
-    if(!selection||['isCurrent','anexSelector'].some(key=>typeof selection[key]!=='function')||typeof request!=='function')throw Error('invalid_handoff_owner');
+  function createSession({selection,request,clock=Date.now}){
+    if(!selection||typeof selection.isCurrent!=='function'||typeof (selection.selector||selection.anexSelector)!=='function'||typeof request!=='function'||typeof clock!=='function')throw Error('invalid_handoff_owner');
     const captures=new WeakMap(),operations=new Map();let tokenTask=null;
-    const current=snapshot=>{try{return selection.isCurrent(snapshot)&&selection.anexSelector(snapshot)!==null;}catch{return false;}};
+    const selector=snapshot=>(selection.selector||selection.anexSelector).call(selection,snapshot);
+    const expired=entry=>{const deadline=entry?.observation?.price?.expiresAt;return Number.isSafeInteger(deadline)&&deadline*1000<=clock();};
+    const current=snapshot=>{try{return selection.isCurrent(snapshot)&&selector(snapshot)!==null&&!expired(captures.get(snapshot));}catch{return false;}};
     function view(snapshot){
       const entry=snapshot&&typeof snapshot==='object'?captures.get(snapshot):null,op=entry?.operation;
-      if(!current(snapshot))return immutable({state:'stale',canCheck:!!op,canRevoke:!!op&&op.state!=='revoked'});
+      if(!current(snapshot))return immutable({state:expired(entry)?'expired':'stale',canCheck:!!op&&!op.pending,canRevoke:!!op&&op.state!=='revoked'});
       if(!entry)return immutable({state:'idle',canCheck:false,canRevoke:false});
       const settled=op?.revokeRequested&&!['revoked','expired','missing','unavailable'].includes(op.state)?'revoke_unknown':op?.state==='prepared'&&op.attempted?'unknown':op?.state;
       const state=entry.pending?'preparing':op?.pending?op.pendingAction==='handoff_revoke'?'revoking':'pending':settled||entry.state;
@@ -45,15 +47,16 @@
       if(entry?.pending)return entry.pending;
       if(entry?.operation)return Promise.resolve(view(snapshot));
       entry=entry||{state:'idle'};captures.set(snapshot,entry);entry.error=null;
-      const selector=selection.anexSelector(snapshot);
+      const pins=selector(snapshot);
       entry.pending=Promise.resolve().then(async()=>{
         try{
           const csrf=await token();if(!current(snapshot))return;
-          const reply=await request('handoff_freeze',{...selector,csrf}),data=reply?.data;
+          const reply=await request('handoff_freeze',{...pins,csrf}),data=reply?.data;
           if(reply?.ok!==true||!operationId(data?.operation_id)||!states.has(data.state)||!data.observation
             ||data.observation.schema!==1||data.observation.kind!=='search3_browser_observation'
-            ||data.observation.price?.finalPriceVerified!==false||data.observation.price?.authority!=='browser-observation-only')throw Error('handoff_unavailable');
-          let op=operations.get(data.operation_id);const identity=JSON.stringify(selector),observation=JSON.stringify(data.observation);
+            ||data.observation.price?.finalPriceVerified!==false||data.observation.price?.authority!=='browser-observation-only'
+            ||pins.provider==='tourvisor'&&(!Number.isSafeInteger(data.observation.price.expiresAt)||data.observation.price.expiresAt<1))throw Error('handoff_unavailable');
+          let op=operations.get(data.operation_id);const identity=JSON.stringify(pins),observation=JSON.stringify(data.observation);
           if(op&&(op.identity!==identity||op.observation!==observation)){op.links=null;op.state='unknown';throw Error('handoff_unavailable');}
           if(!op){
             if(operations.size>=8)throw Error('handoff_limit');
