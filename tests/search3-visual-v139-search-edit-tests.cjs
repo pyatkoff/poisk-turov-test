@@ -44,7 +44,7 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  context.dateText||=(day=>String(day));
  context.validIds=ids=>[...new Set(ids.filter(id=>Number.isSafeInteger(id)&&id>0))].slice(0,20);context.destinationIds=f=>context.validIds(f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[]);context.setDestinationIds=(f,ids)=>{f.hotelIds=context.validIds(ids);f.hotelId=f.hotelIds.length===1?f.hotelIds[0]:0;};
  vm.createContext(context);
- vm.runInContext(extract('restoreURL')+'\n'+source.match(/function updateURL\([^]*?\n/)[0],context);
+ vm.runInContext(extract('parseURLAges')+'\n'+extract('restoreURL')+'\n'+source.match(/function updateURL\([^]*?\n/)[0],context);
  state.filters={...defaults(),flight:['charter'],beach:true,family:true,spa:true,rating:true};
  vm.runInContext('updateURL()',context);const shared=context.location.search;
  state.filters=defaults();vm.runInContext('restoreURL()',context);
@@ -57,7 +57,31 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  assert.equal(state.filters.beach,false);assert.equal(state.filters.family,false);assert.equal(state.filters.spa,true);assert.equal(state.filters.rating,false);
  context.location.search='';vm.runInContext('restoreURL()',context);
  assert.deepEqual(Array.from(state.filters.flight),[]);for(const key of ['beach','family','spa','rating'])assert.equal(state.filters[key],false,'absent flag resets '+key);
+ context.location.search='?ages=0%2C0%2C8';state.search.ages=[12];context.urlPartyNeedsReview=false;vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.search.ages),[0,0,8],'literal zero, duplicate ages and order survive URL restore');assert.equal(context.urlPartyNeedsReview,false);
+ context.location.search='?ages=0%2C%2C8';state.search.ages=[12];context.urlPartyNeedsReview=false;vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.search.ages),[0,null,8],'a missing child age keeps its party position');assert.equal(context.urlPartyNeedsReview,true,'incomplete party must require review');
+ context.location.search='?ages=0%2C18%2C8';state.search.ages=[12];context.urlPartyNeedsReview=false;vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.search.ages),[0,null,8],'an out-of-range age keeps its party position unresolved');assert.equal(context.urlPartyNeedsReview,true);
+ context.location.search='?ages=0%2C1%2C2%2C3';state.search.ages=[12];context.urlPartyNeedsReview=false;vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.search.ages),[12],'an unsupported fourth child never truncates into another searchable party');assert.equal(context.urlPartyNeedsReview,true);
+ context.location.search='?ages=';state.search.ages=[12];context.urlPartyNeedsReview=true;vm.runInContext('restoreURL()',context);
+ assert.deepEqual(Array.from(state.search.ages),[],'an explicit empty age list remains the valid no-children party');assert.equal(context.urlPartyNeedsReview,false);
  console.log('PASS shared search URL: flight and hotel restrictions round-trip, unknown values rejected');
+}
+
+// An unresolved URL party must never reach an automatic or submitted search.
+{
+ const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const extract=name=>source.match(new RegExp('function '+name+'\\([^]*?\\n\\}'))[0];
+ const calls=[];
+ const automatic={urlPartyNeedsReview:true,state:{hasSearched:true},editSearch:()=>calls.push('edit'),renderResults:()=>calls.push('render'),updateSearchUI:()=>calls.push('ui')};
+ vm.createContext(automatic);vm.runInContext(extract('prepareSearchRun'),automatic);
+ assert.equal(vm.runInContext('prepareSearchRun()',automatic),null);assert.equal(automatic.state.hasSearched,false);assert.deepEqual(calls,['edit','render','ui'],'automatic search returns before any data or supplier owner');
+ const submitted={urlPartyNeedsReview:true,openGuests:()=>calls.push('guests')};
+ vm.createContext(submitted);vm.runInContext(extract('commitSearchDraft'),submitted);
+ assert.equal(vm.runInContext('commitSearchDraft()',submitted),false);assert.equal(calls.at(-1),'guests','explicit submit routes the user to the existing party editor');
+ console.log('PASS unresolved URL party: automatic and explicit search blocked until guest ages are complete');
 }
 
 const root=path.resolve(__dirname,'../v2/visual-search'),errors=[],requests=[],scrolls=[];
