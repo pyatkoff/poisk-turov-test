@@ -119,7 +119,19 @@ const durationText=(s=state.search)=>s.minNights===s.maxNights?nightsText(s.minN
 const departureScopeLabel=(s=state.search,selected=state.selectedDate)=>selected||s.from===s.to?'Вылет':'Даты вылета';
 const departureScopeValue=(s=state.search,selected=state.selectedDate)=>selected?dateText(selected):rangeText(s.from,s.to);
 const departureScopeText=(s=state.search,selected=state.selectedDate)=>`${departureScopeLabel(s,selected)} ${departureScopeValue(s,selected)}`;
-function parseURLAges(value,fallback=[]){const raw=String(value??'');if(raw==='')return{ages:[],needsReview:false};const tokens=raw.split(',');if(tokens.length>3)return{ages:Array.isArray(fallback)?[...fallback]:[],needsReview:true};const ages=tokens.map(token=>/^\d+$/.test(token)&&Number(token)<=17?Number(token):null);return{ages,needsReview:ages.some(age=>age===null)};}
+function parseURLParty(params,fallback){
+ const issues=[],current=fallback&&typeof fallback==='object'?fallback:{adults:2,ages:[]};let adults=current.adults,ages=Array.isArray(current.ages)?[...current.ages]:[];
+ if(params.has('adults')){const raw=String(params.get('adults')??'');if(/^[1-6]$/.test(raw))adults=Number(raw);else issues.push('invalid-adults');}
+ if(params.has('ages')){const raw=String(params.get('ages')??'');if(raw==='')ages=[];else{const tokens=raw.split(',');if(tokens.length>3)issues.push('too-many-children');else{ages=tokens.map(token=>/^\d+$/.test(token)&&Number(token)<=17?Number(token):null);if(ages.some(age=>age===null))issues.push('invalid-child-age');}}}
+ return{adults,ages,issues};
+}
+function urlPartyReviewText(issues,guest=false){
+ const set=new Set(issues),adults=set.has('invalid-adults'),tooMany=set.has('too-many-children'),childAge=set.has('invalid-child-age');
+ if(tooMany)return adults?(guest?'В ссылке неверно указано число взрослых и больше 3 детей. Укажите поддерживаемый состав: от 1 до 6 взрослых и до 3 детей.':'Состав туристов в ссылке не поддерживается. Укажите от 1 до 6 взрослых и до 3 детей.'):(guest?'В ссылке больше 3 детей. Укажите поддерживаемый состав: до 3 детей.':'В ссылке больше 3 детей. Измените состав туристов перед поиском.');
+ if(adults&&childAge)return guest?'В ссылке неверно указано число взрослых и не все возрасты детей. Проверьте весь состав туристов.':'Состав туристов в ссылке нужно проверить. Укажите число взрослых и возраст каждого ребёнка.';
+ if(adults)return guest?'В ссылке неверно указано число взрослых. Укажите от 1 до 6.':'Количество взрослых в ссылке нужно проверить. Укажите от 1 до 6.';
+ return guest?'Ссылка не содержит полный возраст детей. Уточните каждый пропуск перед поиском.':'Состав туристов в ссылке нужно проверить. Укажите возраст каждого ребёнка.';
+}
 function restoreURL(tripOnly=false){
  const p=new URLSearchParams(location.search),s=state.search;
  if(!tripOnly){
@@ -129,9 +141,9 @@ function restoreURL(tripOnly=false){
  const valid=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')&&v>=startDay&&v<=endDay&&data.date(v)===v;
  if(valid(p.get('from'))&&valid(p.get('to'))&&p.get('from')<=p.get('to')&&(dateObj(p.get('to'))-dateObj(p.get('from')))/86400000<=21){s.from=p.get('from');s.to=p.get('to');}
  const selectedDay=p.get('date');state.selectedDate=valid(selectedDay)&&selectedDay>=s.from&&selectedDay<=s.to?selectedDay:null;
- for(const k of ['minNights','maxNights','adults']){const n=Number(p.get(k));if(Number.isInteger(n)&&n>=1&&n<=(k==='adults'?6:28))s[k]=n;}
+ for(const k of ['minNights','maxNights']){const n=Number(p.get(k));if(Number.isInteger(n)&&n>=1&&n<=28)s[k]=n;}
  if(s.maxNights<s.minNights||s.maxNights-s.minNights>10)s.maxNights=s.minNights;
- if(p.has('ages')){const party=parseURLAges(p.get('ages'),s.ages);s.ages=party.ages;urlPartyNeedsReview=party.needsReview;}else urlPartyNeedsReview=false;
+ const party=parseURLParty(p,s);s.adults=party.adults;s.ages=party.ages;urlPartyIssues=party.issues;
  // Dates and party need no catalogue; identities and filters still restore only after init.
  if(tripOnly){draft=structuredClone(s);return;}
  const hotelId=p.get('hotel');if(/^[1-9]\d*$/.test(hotelId||'')&&Number.isSafeInteger(Number(hotelId)))state.filters.hotelId=Number(hotelId);
@@ -151,7 +163,7 @@ function restoreURL(tripOnly=false){
  state.hasSearched=false;draft=structuredClone(s);
 }
 let compactSearchFrame=0;
-let searchEditSession=null,agesNeedReview=false,urlPartyNeedsReview=false,departureChoice='',destinationPending=null,destinationCountryList=false,ageChoice=null,starsDraft=[],formFiltersDraft=null;
+let searchEditSession=null,agesNeedReview=false,urlPartyIssues=[],departureChoice='',destinationPending=null,destinationCountryList=false,ageChoice=null,starsDraft=[],formFiltersDraft=null;
 const destinationIds=d=>validIds(d?.hotelIds?.length?d.hotelIds:d?.hotelId?[d.hotelId]:[]);
 function setDestinationIds(d,ids){d.hotelIds=validIds(ids);d.hotelId=d.hotelIds.length===1?d.hotelIds[0]:0;}
 const pickerFilters=()=>formFiltersDraft||state.filters;
@@ -314,7 +326,7 @@ function updateSearchUI(){
  $$('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget').forEach(control=>control.disabled=hydrationPending);
  const count=filterCount();$('#filter-count').textContent=count?`(${count})`:'';
  $('#origin').value=draft.origin;$('#origin-label').textContent=draft.origin;$('#departure-button').setAttribute('aria-label','Город вылета: '+draft.origin);const place=currentDraftDestination();$('#destination-label').textContent=countryNames[place.country]||destinationLabel(place);$('#destination-detail').textContent=destinationIds(place).length?destinationIds(place).map(id=>destinationHotel(id)?.name||'Выбранный отель').join(' · '):place.resorts.join(', ')||'Вся страна';$('#country').title=destinationLabel(place,true);$('#country').setAttribute('aria-label','Направление: '+destinationLabel(place,true));
- $('#dates-label').textContent=draftSelectedDate()?departureRangeText(draftSelectedDate(),draftSelectedDate()):departureRangeText(draft.from,draft.to);$('#nights-label').textContent=durationText(draft);$('#guests-label').textContent=partyLabel(draft);$('#guests-detail').hidden=!draft.ages.length;$('#guests-detail').textContent=draft.ages.map(age=>age===null?'Возраст не указан':age===0?'До 1 года':childAgeText(age)).join(' и ');$('#form-ages-recheck').hidden=!urlPartyNeedsReview&&(!agesNeedReview||!draft.ages.length);$('#form-ages-recheck').textContent=urlPartyNeedsReview?'Состав туристов в ссылке нужно проверить. Укажите возраст каждого ребёнка.':'Даты или ночи изменены. Проверьте возраст детей на возвращение.';const conflict=destinationIds(place).map(destinationHotel).filter(h=>h&&state.filters.stars.length&&!state.filters.stars.includes(h.stars));$('#form-conflict').hidden=!conflict.length;$('#form-conflict').textContent=conflict.length?`${conflict[0].stars}★ у ${conflict[0].name} · выбраны ${state.filters.stars.map(n=>n+'★').join(' и ')}. Измените категории или выберите другой отель.`:'';
+ $('#dates-label').textContent=draftSelectedDate()?departureRangeText(draftSelectedDate(),draftSelectedDate()):departureRangeText(draft.from,draft.to);$('#nights-label').textContent=durationText(draft);$('#guests-label').textContent=partyLabel(draft);$('#guests-detail').hidden=!draft.ages.length;$('#guests-detail').textContent=draft.ages.map(age=>age===null?'Возраст не указан':age===0?'До 1 года':childAgeText(age)).join(' и ');$('#form-ages-recheck').hidden=!urlPartyIssues.length&&(!agesNeedReview||!draft.ages.length);$('#form-ages-recheck').textContent=urlPartyIssues.length?urlPartyReviewText(urlPartyIssues):'Даты или ночи изменены. Проверьте возраст детей на возвращение.';const conflict=destinationIds(place).map(destinationHotel).filter(h=>h&&state.filters.stars.length&&!state.filters.stars.includes(h.stars));$('#form-conflict').hidden=!conflict.length;$('#form-conflict').textContent=conflict.length?`${conflict[0].stars}★ у ${conflict[0].name} · выбраны ${state.filters.stars.map(n=>n+'★').join(' и ')}. Измените категории или выберите другой отель.`:'';
  $$('#quick-stars button').forEach(b=>{const active=b.dataset.action==='any-stars'?!state.filters.stars.length:state.filters.stars.includes(+b.dataset.value);b.setAttribute('aria-pressed',active);b.classList.toggle('active',active)});
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
  $('#budget-label').textContent=budgetText();
@@ -1626,7 +1638,7 @@ function updateGuestSelection(){
 }
 function renderGuests(){
  const body=$('#modal-body'),focused=focusReference(document.activeElement,body),g=guestDraft;
- $('#modal-body').innerHTML=`<div class="counter-row"><div><strong>Взрослые</strong><small>От 18 лет</small></div><div class="counter"><button data-action="adults-minus" aria-label="Убрать взрослого" ${g.adults<=1?'disabled':''}>−</button><output aria-label="Количество взрослых">${g.adults}</output><button data-action="adults-plus" aria-label="Добавить взрослого" ${g.adults>=6?'disabled':''}>+</button></div></div><div class="counter-row"><div><strong>Дети</strong><small>До 18 лет</small></div><div class="counter"><button data-action="children-minus" aria-label="Убрать ребёнка" ${!g.ages.length?'disabled':''}>−</button><output aria-label="Количество детей">${g.ages.length}</output><button data-action="children-plus" aria-label="Добавить ребёнка" ${g.ages.length>=3?'disabled':''}>+</button></div></div><div class="ages">${g.ages.map((age,i)=>`<div class="guest-age-row"><button class="guest-age-choice" data-action="child-age" data-index="${i}" aria-label="Возраст ребёнка ${i+1}"><small>Ребёнок ${i+1}</small><span>${age===null?'Укажите возраст':age===0?'До 1 года':childAgeText(age)}</span><span class="chevron">›</span></button><button class="icon-button" type="button" data-action="remove-child" data-index="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('')}</div><p class="guest-age-help" id="guest-age-help">${urlPartyNeedsReview?'Ссылка не содержит полный возраст детей. Уточните каждый пропуск перед поиском.':agesNeedReview?'Даты или ночи изменены. Проверьте возраст детей на возвращение.':g.ages.length?'Укажите возраст на дату возвращения. Она зависит от выбранного тура.':'Можно добавить до 3 детей. Возраст нужен для каждого ребёнка.'}</p><p class="error-text" id="guest-error" role="alert"></p>`;
+ $('#modal-body').innerHTML=`<div class="counter-row"><div><strong>Взрослые</strong><small>От 18 лет</small></div><div class="counter"><button data-action="adults-minus" aria-label="Убрать взрослого" ${g.adults<=1?'disabled':''}>−</button><output aria-label="Количество взрослых">${g.adults}</output><button data-action="adults-plus" aria-label="Добавить взрослого" ${g.adults>=6?'disabled':''}>+</button></div></div><div class="counter-row"><div><strong>Дети</strong><small>До 18 лет</small></div><div class="counter"><button data-action="children-minus" aria-label="Убрать ребёнка" ${!g.ages.length?'disabled':''}>−</button><output aria-label="Количество детей">${g.ages.length}</output><button data-action="children-plus" aria-label="Добавить ребёнка" ${g.ages.length>=3?'disabled':''}>+</button></div></div><div class="ages">${g.ages.map((age,i)=>`<div class="guest-age-row"><button class="guest-age-choice" data-action="child-age" data-index="${i}" aria-label="Возраст ребёнка ${i+1}"><small>Ребёнок ${i+1}</small><span>${age===null?'Укажите возраст':age===0?'До 1 года':childAgeText(age)}</span><span class="chevron">›</span></button><button class="icon-button" type="button" data-action="remove-child" data-index="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('')}</div><p class="guest-age-help" id="guest-age-help">${urlPartyIssues.length?urlPartyReviewText(urlPartyIssues,true):agesNeedReview?'Даты или ночи изменены. Проверьте возраст детей на возвращение.':g.ages.length?'Укажите возраст на дату возвращения. Она зависит от выбранного тура.':'Можно добавить до 3 детей. Возраст нужен для каждого ребёнка.'}</p><p class="error-text" id="guest-error" role="alert"></p>`;
  updateGuestSelection();if(focused){const opposite={'adults-plus':'adults-minus','adults-minus':'adults-plus','children-plus':'children-minus','children-minus':'children-plus'};restoreFocus(focused,body.querySelector('[data-action="'+opposite[focused.element?.dataset.action]+'"]:not(:disabled)')||$('#modal-title'),body);}rememberUIRoute();
 }
 function openChildAge(index,value=undefined){
@@ -2761,7 +2773,7 @@ function renderSearchStatus(items,total){
 }
 
 function prepareSearchRun(options={}){
- if(urlPartyNeedsReview){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
+ if(urlPartyIssues.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  if(!data.preview&&destinationIds(state.filters).some(id=>!destinationHotel(id)?.legacyIds.length)){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
  selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
@@ -2787,7 +2799,7 @@ function mergeSearchResults(event){
  refreshOpenHotelRooms();
 }
 function commitSearchDraft(){
- if(urlPartyNeedsReview){openGuests();return false;}
+ if(urlPartyIssues.length){openGuests();return false;}
  if(currentFilterBudgetEdit(state.filters)){
   const budget=readBudgetFields($('#min-price'),$('#max-price'));
   if(!budget.valid){showFilterBudgetValidity(budget);$(budget.invalidMin?'#min-price':'#max-price').focus();return false;}
@@ -2904,7 +2916,7 @@ function handleSearchParameterAction(action,b,id){
  case 'children-minus':guestDraft.ages.pop();renderGuests();break;
  case 'children-plus':if(guestDraft.ages.length<3)guestDraft.ages.push(null);renderGuests();break;
  case 'remove-child':{const index=Number(b.dataset.index);if(!Number.isInteger(index)||index<0||index>=guestDraft.ages.length)break;guestDraft.ages.splice(index,1);renderGuests();const target=$('[data-action="child-age"][data-index="'+Math.min(index,guestDraft.ages.length-1)+'"]')||$('[data-action="children-plus"]');target.focus();break;}
- case 'apply-guests':if(guestDraft.ages.some(a=>a===null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;urlPartyNeedsReview=false;closeModal();updateSearchUI();break;
+ case 'apply-guests':if(guestDraft.ages.some(a=>a===null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;urlPartyIssues=[];closeModal();updateSearchUI();break;
 
  case 'night-pick':{const n=+b.dataset.value;if(nightsDraft.phase===1&&Math.abs(n-nightsDraft.min)>10){nightsDraft.error=`Слишком широкий диапазон. Выберите вторую границу от ${Math.max(1,nightsDraft.min-10)} до ${Math.min(28,nightsDraft.min+10)} ночей.`;renderNightSelection();break;}nightsDraft.error='';if(nightsDraft.phase===0){nightsDraft.min=n;nightsDraft.max=n;nightsDraft.phase=1}else{nightsDraft.max=Math.max(nightsDraft.min,n);nightsDraft.min=Math.min(nightsDraft.min,n);nightsDraft.phase=0}renderNightSelection();break}
  case 'night-preset':nightsDraft={min:+b.dataset.value,max:+b.dataset.value,phase:0};renderNightSelection();break;
@@ -3110,7 +3122,7 @@ document.addEventListener('error',event=>{const img=event.target;if(img.tagName=
 
 async function switchFixture(value){
  if(data.live||value==='live'){clearSearchTimers();location.assign(location.pathname.replace(/index\.html$/,'')+(value==='live'?'':'?scenario='+encodeURIComponent(value)));return;}
- searchEditSession=null;urlPartyNeedsReview=false;
+ searchEditSession=null;urlPartyIssues=[];
  clearSearchTimers();closeModal();window.AnyTourPrototypeLead.reset();await data.setScenario(value);hotels=[];destinationHotels.clear();state.search=structuredClone(data.initialSearch);draft=structuredClone(state.search);state.filters=defaultFilters();state.selectedDate=null;state.favorites=[];state.onlyFavorites=false;state.hasSearched=false;draftDestination=null;
  for(const key of Object.keys(mealNames))delete mealNames[key];operators.splice(0);applyCatalog(await data.init());catalogReady=true;$('#fixture-description').textContent=data.describe();updateSearchUI();state.hasSearched=true;runSearch();
 }
