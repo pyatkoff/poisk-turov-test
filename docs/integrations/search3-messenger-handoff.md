@@ -392,3 +392,27 @@ bounds/defaults, optional null/empty values, separate boolean flags and repeated
 literal infant ages remain compatible. Native gateway regressions use the actual
 parser and assert zero dispatches/writes and unchanged state. No price/fuel/infant
 arithmetic, UI, transport, no-replay or session capacity change is introduced.
+
+### Private TV passive fuel context
+
+The private gateway completes its own durable tour/party validation. Its results
+fetch uses `limit=1000`; the older shared autosave accepts only its separate final
+`limit=100` path, so that autosave is not the private session's party authority.
+Do not widen the shared snapshot/DB limits or invent a canonical hotel ID to make
+fuel monitoring work.
+
+For a fresh successful tour/flight request, the existing private API now invokes
+the existing passive intake after READY has been durably recorded and the session
+lock released. A cached reply, manager selection, failure or UNKNOWN request does
+not arm intake. The server-owned binding retains the exact tour/hotel/operator,
+date, party including repeated zero ages, original checked time/expiry and tour
+response digest. Flights must match that same pending binding; another party or
+checked response cannot consume it. This does not require an offer-store row.
+
+The legacy DB-backed intake, pending file format, 900-second maximum pending TTL,
+existing evidence store and safe diagnostics remain. A shorter checked expiry is
+preserved. Capture is best effort and cannot alter supplier JSON or the prepared
+messenger result. Fuel differences remain monitoring facts, with no extra fee,
+equality gate or `final_verified` authority. No supplier request or DB write is
+added. Source tests, stock installation and a future justified natural observation
+are separate evidence; old consumed tours are not replayed for this change.

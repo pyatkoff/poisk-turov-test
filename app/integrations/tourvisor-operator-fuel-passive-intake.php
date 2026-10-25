@@ -8,8 +8,9 @@ require_once __DIR__ . '/operator-fuel-rule-store.php';
  * Response-transparent bridge for the already executed Search3 tour -> flights flow.
  *
  * It performs no supplier I/O and no database writes. The existing Tourvisor offer
- * store supplies the exact party (including child ages); the existing private
- * `searches` directory holds both the short-lived pair and operator-fuel evidence.
+ * store or completed private session supplies the exact party (including child
+ * ages); the existing private `searches` directory holds both the short-lived pair
+ * and operator-fuel evidence.
  */
 final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
 {
@@ -49,12 +50,54 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             static fn(): array => self::retainTour($tourId, $tour, $db, $directory, $now));
     }
 
+    /** Only the durable, validated private gateway may supply this server-owned binding. */
+    public static function captureSessionTour(
+        string $tourId,
+        array $tour,
+        array $binding,
+        string $directory,
+        DateTimeImmutable $now
+    ): array {
+        return self::withDiagnostic($tourId, 'tour', $tour, $directory, $now,
+            static fn(): array => self::retainTour($tourId, $tour, null, $directory, $now, $binding));
+    }
+
+    private static function sessionContext(array $binding, string $tourId, array $tour, DateTimeImmutable $now): array
+    {
+        if (!self::contextKeys($binding, ['tour_id','hotel_id','operators','checkin','party','observed_at','expires_at','tour_response_sha256'])
+            || self::tourId($binding['tour_id'] ?? null) !== $tourId
+            || !is_int($binding['hotel_id']) || $binding['hotel_id'] < 1
+            || self::smallInt($tour['hotel']['id'] ?? null, 1, 999999999, 'TV_PASSIVE_CONTEXT_INTEGRITY') !== $binding['hotel_id']
+            || !is_array($binding['operators']) || !array_is_list($binding['operators']) || $binding['operators'] === []
+            || !is_int($binding['observed_at']) || !is_int($binding['expires_at'])
+            || $binding['observed_at'] < 1 || $binding['observed_at'] > $now->getTimestamp()
+            || $binding['expires_at'] <= $now->getTimestamp()
+            || $binding['expires_at'] > $binding['observed_at'] + self::PENDING_TTL) {
+            throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        if (!is_string($binding['tour_response_sha256'])
+            || !hash_equals(AnyTourOperatorFuelRuleEvidenceV1::hash($tour), $binding['tour_response_sha256'])) {
+            throw new DomainException('TV_PASSIVE_CONTEXT_CONFLICT');
+        }
+        $family = AnyTourOperatorFuelRuleEvidenceV1::operatorFamily(self::operatorLabel($tour['operator'] ?? null));
+        $families = [];
+        foreach ($binding['operators'] as $label) {
+            if (!is_string($label)) throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            $candidate = AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($label);
+            if ($candidate !== null) $families[$candidate] = true;
+        }
+        if (count($families) !== 1 || !isset($families[$family])) throw new DomainException('TV_PASSIVE_OPERATOR_CONFLICT');
+        return self::searchContext(['operator_family'=>$family,
+            'checkin'=>$binding['checkin'],'party'=>$binding['party']]);
+    }
+
     private static function retainTour(
         string $tourId,
         array $tour,
-        PDO $db,
+        ?PDO $db,
         string $directory,
-        DateTimeImmutable $now
+        DateTimeImmutable $now,
+        ?array $binding = null
     ): array {
         self::directory($directory);
         $tourId = self::tourId($tourId);
@@ -67,7 +110,8 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             return self::receipt(false, 'operator_not_target');
         }
 
-        $context = self::offerContext($db, $tourId, $now, $directory, $tour);
+        $context = $binding === null ? self::offerContext($db, $tourId, $now, $directory, $tour)
+            : self::sessionContext($binding, $tourId, $tour, $now);
         if ($context === null) return self::receipt(false, 'offer_context_missing');
         if ($context['operator_family'] !== AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($operator)) {
             throw new DomainException('TV_PASSIVE_OPERATOR_CONFLICT');
@@ -80,7 +124,7 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             throw new DomainException('TV_PASSIVE_PARTY_CONFLICT');
         }
 
-        $observedAt = $now->setTimezone(new DateTimeZone('UTC'))->getTimestamp();
+        $observedAt = $binding['observed_at'] ?? $now->setTimezone(new DateTimeZone('UTC'))->getTimestamp();
         $periodStart = substr($checkin, 0, 8) . '01';
         $periodEnd = (new DateTimeImmutable($periodStart, new DateTimeZone('UTC')))
             ->modify('last day of this month')->format('Y-m-d');
@@ -91,7 +135,7 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             'party' => $context['party'],
             'market' => self::market($tour['departure'] ?? null),
             'observed_at' => $observedAt,
-            'pending_expires_at' => $observedAt + self::PENDING_TTL,
+            'pending_expires_at' => $binding['expires_at'] ?? $observedAt + self::PENDING_TTL,
             'evidence_expires_at' => $observedAt + self::EVIDENCE_TTL,
             'valid_from' => $periodStart,
             'valid_to' => $periodEnd,
@@ -106,7 +150,8 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         array $flights,
         string $directory,
         DateTimeImmutable $now,
-        ?callable $emitHeader = null
+        ?callable $emitHeader = null,
+        ?array $sessionBinding = null
     ): array {
         $header = null;
         $started = hrtime(true);
@@ -115,7 +160,7 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         };
         try {
             $receipt = self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
-                static fn(): array => self::retainFlights($tourId, $flights, $directory, $now, $observe));
+                static fn(): array => self::retainFlights($tourId, $flights, $directory, $now, $observe, $sessionBinding));
         } catch (Throwable $failed) {
             $code = AnyTourTourvisorOperatorFuelRetainedIntakeV1::amountDiagnostic($failed) ?? $failed->getMessage();
             self::emitMonitoringHeader(self::captureDiagnosticHeader('rejected', $code, $now, $started), $emitHeader);
@@ -201,7 +246,8 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         array $flights,
         string $directory,
         DateTimeImmutable $now,
-        callable $observe
+        callable $observe,
+        ?array $sessionBinding = null
     ): array {
         self::directory($directory);
         $tourId = self::tourId($tourId);
@@ -213,6 +259,17 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             $path = self::pendingPath($directory, $tourId);
             $pending = self::readPending($path);
             if ($pending === null) return self::receipt(false, 'tour_pair_missing');
+            if ($sessionBinding !== null) {
+                $context = self::sessionContext($sessionBinding, $tourId, $pending['tour'], $now);
+                if ($pending['party'] !== $context['party']
+                    || $pending['observed_at'] !== $sessionBinding['observed_at']
+                    || $pending['pending_expires_at'] !== $sessionBinding['expires_at']
+                    || $pending['tour_response_sha256'] !== $sessionBinding['tour_response_sha256']
+                    || AnyTourTourvisorOperatorFuelRetainedIntakeV1::supplierDate($pending['tour']['date'] ?? null,
+                        'TV_PASSIVE_DATE') !== $context['checkin']) {
+                    throw new DomainException('TV_PASSIVE_CONTEXT_CONFLICT');
+                }
+            }
             $nowTs = $now->setTimezone(new DateTimeZone('UTC'))->getTimestamp();
             if (($pending['pending_expires_at'] ?? 0) <= $nowTs) {
                 @unlink($path);
@@ -637,4 +694,3 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         return ['source'=>'tourvisor-operator-fuel-passive-intake-v1','ok'=>$ok,'reason'=>$reason] + $extra;
     }
 }
-

@@ -1281,6 +1281,53 @@ function anytour_anex_search3_quote_receipt(array $session): array
     return $receipt;
 }
 
+/** Best-effort evidence from a fresh completed TV request, after releasing the session lock. */
+function anytour_anex_search3_tv_passive(array $request, array $reply, array $session, string $directory, int $now): void
+{
+    try {
+        if (!class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', false)
+            || !method_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', 'captureSessionTour')) return;
+        $action = $request['action'] ?? null;
+        if (($request['provider'] ?? null) !== 'tourvisor' || !in_array($action, ['tv_tour','tv_flights'], true)) return;
+        $context = $session['tourvisor_context'] ?? null;
+        $record = $session['tourvisor_requests'][$request['request_id'] ?? ''] ?? null;
+        $ref = $request['offer_ref'] ?? null;
+        if (!is_array($context) || !is_string($ref)
+            || ($context['state'] ?? null) !== 'ready'
+            || ($session['tourvisor_context_generation'] ?? null) !== ($context['generation'] ?? null)
+            || ($request['generation'] ?? null) !== $context['generation']
+            || ($request['search_ref'] ?? null) !== ($context['search_ref'] ?? null)
+            || ($reply['provider'] ?? null) !== 'tourvisor'
+            || ($reply['generation'] ?? null) !== $context['generation']
+            || ($reply['search_ref'] ?? null) !== $context['search_ref']
+            || ($record['state'] ?? null) !== 'ready' || ($record['reply'] ?? null) !== $reply
+            || !is_int($context['expires_at'] ?? null) || $now >= $context['expires_at']
+            || !is_int($record['expires_at'] ?? null) || $now >= $record['expires_at']) return;
+        $offer = $context['offers'][$ref] ?? null; $checked = $offer['checked'] ?? null;
+        if (!is_array($offer) || !is_array($checked) || !empty($offer['expired'])
+            || ($offer['operations'][$action] ?? null) !== $request['request_id']
+            || $ref !== 'tourvisor:'.hash('sha256','tourvisor:tour:'.($offer['id'] ?? ''))
+            || !is_int($checked['observed_at'] ?? null) || $now < $checked['observed_at']
+            || !is_int($checked['expires_at'] ?? null) || $now >= $checked['expires_at']
+            || $checked['expires_at'] > $context['expires_at'] || !is_array($checked['tour'] ?? null)) return;
+        $at = (new DateTimeImmutable('@'.$now))->setTimezone(new DateTimeZone('UTC'));
+        $params = $context['params'];
+        $binding = [
+            'tour_id'=>$offer['id'],'hotel_id'=>$offer['hotel']['uiId'],'operators'=>$offer['operators'],
+            'checkin'=>substr($offer['date'],0,10),
+            'party'=>['adults'=>$params['adults'],'children'=>count($params['childs']),'child_ages'=>$params['childs']],
+            'observed_at'=>$checked['observed_at'],'expires_at'=>$checked['expires_at'],
+            'tour_response_sha256'=>AnyTourOperatorFuelRuleEvidenceV1::hash($checked['tour']),
+        ];
+        if ($action === 'tv_tour') {
+            if (($reply['data'] ?? null) !== ($checked['tour'] ?? null)) return;
+            AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSessionTour($offer['id'], $checked['tour'], $binding, $directory, $at);
+        } else {
+            AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($offer['id'], $reply['data'], $directory, $at, null, $binding);
+        }
+    } catch (Throwable $ignored) { /* Evidence never replaces a successful supplier response. */ }
+}
+
 function anytour_anex_search3_http(): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -1378,7 +1425,8 @@ function anytour_anex_search3_http(): void
                 return !$row ? null : ['uiId'=>(int)$row['id'],'namespace'=>'search3-ui','name'=>(string)$row['name'],
                     'resort'=>(string)($row['subregion_name'] ?: $row['region_name'] ?: '')];
             };
-            $transport = static function (string $path, array $params, array &$state) use ($runtime): array {
+            $passiveDirectory = null;
+            $transport = static function (string $path, array $params, array &$state) use ($runtime, &$passiveDirectory): array {
                 // UNKNOWN was durably reserved by the owner. The network must not hold the shared provider lock.
                 $_SESSION = $state;
                 if (!session_write_close()) throw new RuntimeException('tv_session_unavailable');
@@ -1406,8 +1454,7 @@ function anytour_anex_search3_http(): void
                             $cfg = require $private; $catalogPath = is_array($cfg) ? ($cfg['catalog_path'] ?? null) : null;
                             $directory = is_string($catalogPath) ? dirname($catalogPath).'/searches' : '';
                             if (is_dir($directory) && !is_link($directory) && preg_match('~^/tours/([^/]+)(/flights)?$~D',$path,$m)) {
-                                if (isset($m[2])) AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights(rawurldecode($m[1]),$response,$directory,$at);
-                                else AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour(rawurldecode($m[1]),$response,v2_data_db(),$directory,$at);
+                                $passiveDirectory = $directory;
                             }
                         }
                     } catch (Throwable $ignored) { /* Passive intake never replaces supplier JSON. */ }
@@ -1419,7 +1466,10 @@ function anytour_anex_search3_http(): void
             };
             $data = AnyTourTourvisorPreviewGateway::handle($request,$_SESSION,time(),$transport,$catalog,
                 [AnyTourSearch3MessengerHandoff::class,'checkpoint']);
+            $passiveSession = $passiveDirectory === null ? [] : $_SESSION;
             if (!session_write_close()) anytour_anex_search3_out(['ok'=>false,'error'=>'temporarily_unavailable'],503);
+            // A cached reply or tv_select never enters transport and cannot refresh evidence.
+            if ($passiveDirectory !== null) anytour_anex_search3_tv_passive($request,$data,$passiveSession,$passiveDirectory,time());
             anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
         }
         if (is_string($action) && str_starts_with($action, 'handoff_')) {

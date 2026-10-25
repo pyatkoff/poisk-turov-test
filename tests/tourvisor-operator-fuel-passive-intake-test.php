@@ -2,9 +2,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/tourvisor-operator-fuel-passive-intake.php';
+require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 function tvpf_ok(bool $value, string $message): void
 {
+    $GLOBALS['tvpf_checks'] = ($GLOBALS['tvpf_checks'] ?? 0) + 1;
     if (!$value) throw new RuntimeException($message);
 }
 
@@ -90,6 +92,28 @@ function tvpf_flights(): array
     ];
 }
 
+function tvpf_session(array $tour, array $flights, DateTimeImmutable $now, array $ages = []): array
+{
+    $id = (string)$tour['id']; $ref = 'tourvisor:'.hash('sha256','tourvisor:tour:'.$id);
+    $at = $now->getTimestamp(); $search = str_repeat('f',32);
+    $tourId = str_repeat('a',32); $flightsId = str_repeat('b',32);
+    $replies = []; $requests = []; $records = [];
+    foreach (['tv_tour'=>[$tourId,$tour],'tv_flights'=>[$flightsId,$flights]] as $action=>[$rid,$data]) {
+        $requests[$action] = ['action'=>$action,'provider'=>'tourvisor','request_id'=>$rid,
+            'generation'=>3,'search_ref'=>$search,'offer_ref'=>$ref];
+        $replies[$action] = ['provider'=>'tourvisor','generation'=>3,'search_ref'=>$search,'data'=>$data];
+        $records[$rid] = ['state'=>'ready','expires_at'=>$at+30,'reply'=>$replies[$action]];
+    }
+    $session = ['tourvisor_context_generation'=>3,'tourvisor_requests'=>$records,'tourvisor_context'=>[
+        'generation'=>3,'search_ref'=>$search,'state'=>'ready','expires_at'=>$at+60,
+        'params'=>['adults'=>2,'childs'=>$ages],
+        'offers'=>[$ref=>['id'=>$id,'date'=>$tour['date'],'hotel'=>['uiId'=>$tour['hotel']['id']],
+            'operators'=>['Интурист','Intourist'],'operations'=>['tv_tour'=>$tourId,'tv_flights'=>$flightsId],
+            'checked'=>['tour'=>$tour,'observed_at'=>$at-1,'expires_at'=>$at+30]]],
+    ]];
+    return [$requests,$replies,$session,$ref];
+}
+
 $db = new PDO('sqlite::memory:');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->exec('CREATE TABLE anytour_offers (
@@ -126,15 +150,21 @@ $now = new DateTimeImmutable('2026-09-22T20:00:00Z');
 if (PHP_SAPI === 'cli-server' && getenv('ANYTOUR_TEST_PASSIVE_FUEL_HTTP') === '1') {
     tvpf_ok(!ini_get('allow_url_fopen'), 'URL fopen remains disabled');
     $case = $_GET['case'] ?? '';
-    tvpf_ok(in_array($case, ['retained','skipped','prior_skipped','rejected'], true), 'known HTTP fixture');
-    if ($case === 'prior_skipped') $id1='999997';
+    tvpf_ok(in_array($case, ['retained','skipped','prior_skipped','rejected','session'], true), 'known HTTP fixture');
+    if (in_array($case,['prior_skipped','session'],true)) $id1='999997';
     $tour = tvpf_tour($id1,1006,7); $tour['fuelCharge'] = '0.00';
     $flights = tvpf_flights(); $flights['flights'][0]['fuelCharge']['value'] = '0.00';
-    if ($case !== 'skipped') AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$tour,$db,$directory,$now);
+    if ($case === 'session') {
+        [$requests,$replies,$source] = tvpf_session($tour,$flights,$now);
+        anytour_anex_search3_tv_passive($requests['tv_tour'],$replies['tv_tour'],$source,$directory,$now->getTimestamp());
+    } elseif ($case !== 'skipped') AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$tour,$db,$directory,$now);
     if ($case === 'rejected') $flights['flights'][0]['fuelCharge']['value'] = 'not-money';
     $rejected = false;
     try {
-        $receipt = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$flights,$directory,$now);
+        if ($case === 'session') {
+            anytour_anex_search3_tv_passive($requests['tv_flights'],$replies['tv_flights'],$source,$directory,$now->getTimestamp());
+            $receipt = ['ok'=>true];
+        } else $receipt = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$flights,$directory,$now);
         tvpf_ok(in_array($case,['skipped','prior_skipped'],true) ? $receipt['ok'] === false : $receipt['ok'] === true, 'HTTP capture outcome');
     } catch (InvalidArgumentException $error) {
         tvpf_ok($case === 'rejected' && $error->getMessage() === 'TV_FUEL_AMOUNT' && $error->getCode() === 7104,
@@ -673,6 +703,86 @@ tvpf_ok($repeatZero['status']==='unchanged' && file_get_contents($zeroPath)===$z
 array_map('unlink',array_filter(glob($zeroDirectory.'/*')?:[], 'is_file'));
 rmdir($zeroDirectory);rmdir(dirname($zeroDirectory));
 
+// A valid completed private-session tour needs no legacy offer row or invented canonical hotel identity.
+$sessionDirectory = $root.'/session/searches'; mkdir($sessionDirectory,0700,true);
+$sessionId = '9000000001'; $sessionTour = tvpf_tour($sessionId,1006,7); $sessionTour['childs']=2;
+$sessionFlights = tvpf_flights(); $sessionFlights['flights'][0]['fuelCharge']['value']=33749;
+[$sessionRequests,$sessionReplies,$sessionSource,$sessionRef] = tvpf_session($sessionTour,$sessionFlights,$now,[0,0]);
+$sessionBefore = $sessionSource; $replyBefore = $sessionReplies;
+$dbBefore = (int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn();
+$missing = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($sessionId,$sessionTour,$db,$sessionDirectory,$now);
+tvpf_ok($missing['reason']==='offer_context_missing', 'legacy path remains missing without an offer-store row');
+anytour_anex_search3_tv_passive($sessionRequests['tv_tour'],$sessionReplies['tv_tour'],$sessionSource,$sessionDirectory,$now->getTimestamp());
+$sessionPending = glob($sessionDirectory.'/tourvisor-fuel-pending-v1-*.json');
+tvpf_ok(count($sessionPending)===1, 'same-session tour captured without legacy persistence');
+$pending = json_decode((string)file_get_contents($sessionPending[0]),true,64,JSON_THROW_ON_ERROR);
+tvpf_ok($pending['party']===['adults'=>2,'children'=>2,'child_ages'=>[0,0]], 'duplicate infant ages retained as two people');
+tvpf_ok($pending['observed_at']===$now->getTimestamp()-1 && $pending['pending_expires_at']===$now->getTimestamp()+30
+    && $pending['tour_response_sha256']===AnyTourOperatorFuelRuleEvidenceV1::hash($sessionTour),
+    'original checked observation, shorter expiry and source digest retained');
+
+// Another party with the same opaque tour ID cannot consume this pending tour.
+$foreignSource = $sessionSource; $foreignSource['tourvisor_context']['params']['childs']=[0];
+anytour_anex_search3_tv_passive($sessionRequests['tv_flights'],$sessionReplies['tv_flights'],$foreignSource,$sessionDirectory,$now->getTimestamp());
+tvpf_ok(is_file($sessionPending[0]) && !(glob($sessionDirectory.'/operator-fuel-rule-v2-*.json')?:[]),
+    'foreign party neither imports nor consumes the owned pending tour');
+$foreignSource = $sessionSource; ++$foreignSource['tourvisor_context']['offers'][$sessionRef]['checked']['tour']['price'];
+anytour_anex_search3_tv_passive($sessionRequests['tv_flights'],$sessionReplies['tv_flights'],$foreignSource,$sessionDirectory,$now->getTimestamp());
+tvpf_ok(is_file($sessionPending[0]) && !(glob($sessionDirectory.'/operator-fuel-rule-v2-*.json')?:[]),
+    'another checked response with the same party cannot consume the pending tour');
+anytour_anex_search3_tv_passive($sessionRequests['tv_flights'],$sessionReplies['tv_flights'],$sessionSource,$sessionDirectory,$now->getTimestamp());
+$sessionRules = glob($sessionDirectory.'/operator-fuel-rule-v2-*.json');
+tvpf_ok(count($sessionRules)===1 && !is_file($sessionPending[0]), 'owned flights complete the existing pending lifecycle once');
+$sessionBytes = file_get_contents($sessionRules[0]);
+$sessionRows = json_decode($sessionBytes,true,64,JSON_THROW_ON_ERROR)['observations'];
+tvpf_ok(count($sessionRows)===1 && $sessionRows[0]['scope']['party']['child_ages']===[0,0]
+    && $sessionRows[0]['monitoring']['comparison']==='different', 'differing supplier fuel is monitored with the exact infant party');
+tvpf_ok($sessionSource===$sessionBefore && $sessionReplies===$replyBefore
+    && (int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===$dbBefore,
+    'new path preserves response/session and performs no offer DB writes');
+
+foreach (['foreign_generation','foreign_search','foreign_offer','changed_reply','unknown','expired','future',
+    'operation_changed','wrong_hotel','missing_child','changed_tour_digest','select'] as $case) {
+    $caseDirectory=$root.'/session-'.$case.'/searches'; mkdir($caseDirectory,0700,true);
+    $source=$sessionBefore; $requests=$sessionRequests; $replies=$replyBefore;
+    $request=&$requests['tv_tour']; $reply=&$replies['tv_tour']; $context=&$source['tourvisor_context'];
+    $record=&$source['tourvisor_requests'][$request['request_id']]; $offer=&$context['offers'][$sessionRef];
+    switch ($case) {
+        case 'foreign_generation': ++$context['generation']; break;
+        case 'foreign_search': $request['search_ref']=str_repeat('0',32); break;
+        case 'foreign_offer': $request['offer_ref']='tourvisor:'.str_repeat('0',64); break;
+        case 'changed_reply': ++$reply['data']['price']; break;
+        case 'unknown': $record['state']='unknown'; break;
+        case 'expired': $offer['checked']['expires_at']=$now->getTimestamp(); break;
+        case 'future': $offer['checked']['observed_at']=$now->getTimestamp()+1; break;
+        case 'operation_changed': $offer['operations']['tv_tour']=str_repeat('0',32); break;
+        case 'wrong_hotel': ++$offer['hotel']['uiId']; break;
+        case 'missing_child': $context['params']['childs']=[0]; break;
+        case 'changed_tour_digest': ++$offer['checked']['tour']['price']; break;
+        case 'select': $request['action']='tv_select'; break;
+    }
+    $sourceBytes=serialize($source); $replyBytes=serialize($reply);
+    anytour_anex_search3_tv_passive($request,$reply,$source,$caseDirectory,$now->getTimestamp());
+    tvpf_ok(!(glob($caseDirectory.'/tourvisor-fuel-pending-v1-*.json')?:[])
+        && !(glob($caseDirectory.'/operator-fuel-rule-v2-*.json')?:[]), 'unowned or incomplete session cannot capture: '.$case);
+    tvpf_ok(serialize($source)===$sourceBytes && serialize($reply)===$replyBytes, 'failed capture is transparent: '.$case);
+    unset($request,$reply,$context,$record,$offer);
+    array_map('unlink',array_filter(glob($caseDirectory.'/*')?:[], 'is_file')); rmdir($caseDirectory); rmdir(dirname($caseDirectory));
+}
+// Best-effort filesystem failure likewise cannot change the valid producer response.
+anytour_anex_search3_tv_passive($sessionRequests['tv_tour'],$sessionReplies['tv_tour'],$sessionSource,$root.'/absent',$now->getTimestamp());
+tvpf_ok($sessionSource===$sessionBefore && $sessionReplies===$replyBefore && file_get_contents($sessionRules[0])===$sessionBytes,
+    'unavailable passive directory preserves successful response and existing observations');
+$apiSource=file_get_contents(__DIR__.'/../v2/api-anex-search3-preview.php');
+$route=substr($apiSource,strpos($apiSource,'$passiveDirectory = null;'));
+tvpf_ok(strpos($route,'$passiveDirectory = $directory;')!==false
+    && strpos($route,'AnyTourTourvisorPreviewGateway::handle(')<strpos($route,'$passiveSession =')
+    && strpos($route,'if (!session_write_close())')<strpos($route,'if ($passiveDirectory !== null) anytour_anex_search3_tv_passive('),
+    'only original transport arms capture; successful READY and session unlock precede intake');
+tvpf_ok(!str_contains($route,'::captureTour(') && !str_contains($route,'::captureFlights('),
+    'raw unvalidated transport and cached/select replies do not capture');
+array_map('unlink',array_filter(glob($sessionDirectory.'/*')?:[], 'is_file')); rmdir($sessionDirectory); rmdir(dirname($sessionDirectory));
+
 // Exercise native header(), not the injected sink, without enabling URL fopen
 // or contacting a supplier. All HTTP stays on one ephemeral loopback server.
 $httpDirectory = $root.'/http'; mkdir($httpDirectory,0700,true);
@@ -699,7 +809,7 @@ try {
         tvpf_ok(proc_get_status($process)['running'] && microtime(true)<$readyBy, 'native HTTP fixture ready');
         usleep(20000);
     } while (true);
-    foreach (['retained','skipped','prior_skipped','rejected'] as $case) {
+    foreach (['retained','skipped','prior_skipped','rejected','session'] as $case) {
         $connection = stream_socket_client('tcp://'.$address,$socketError,$socketMessage,1);
         tvpf_ok(is_resource($connection), 'native HTTP fixture connection');
         stream_set_timeout($connection,5);
@@ -718,7 +828,7 @@ try {
         foreach (explode("\r\n",$parts[0]) as $line) {
             if (stripos($line,'X-AnyTour-Fuel-Monitoring:')===0) $headers[]=trim(substr($line,strlen('X-AnyTour-Fuel-Monitoring:')));
         }
-        if ($case==='retained') {
+        if (in_array($case,['retained','session'],true)) {
             tvpf_ok(count($headers)===1 && strlen($headers[0])<=2048, 'one native monitoring header');
             $summary=json_decode(base64_decode(strtr($headers[0],'-_','+/'),true),true,16,JSON_THROW_ON_ERROR);
             tvpf_ok($summary['retained_count']===1 && $summary['fresh_count']===1
@@ -741,5 +851,4 @@ try {
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry prior_tour=context,age,redaction,invalid,unavailable search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable native_http=retained_zero,skipped,prior_skipped,rejected\n";
-
+echo "TOURVISOR_PASSIVE_FUEL_OK checks=".$GLOBALS['tvpf_checks']." observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry prior_tour=context,age,redaction,invalid,unavailable search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable session_context=missing_row,duplicate_infant,expiry,foreign_party,12_denials,transparent native_http=retained_zero,skipped,prior_skipped,rejected,session\n";
