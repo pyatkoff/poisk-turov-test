@@ -468,3 +468,23 @@ exact fixture checkout/environment variable. Same source/review/CI/main and
 separate exclusive runtime claim/original receipt gates apply. No supplier, DB,
 configuration, session, lead, customer or production action is added. The old
 SUNNY/SWISS/LEMON causes remain unknown; no old operation is replayed.
+
+
+## One-file supplier calendar-day installation — 25 October 2026
+
+PR4875 merged sourcef902864fcbba3c69f1d7d5404a577c17c462ec66 fixes the
+confirmed raw-date format incompatibility using only valid equivalent calendar
+days. Native supplier DTOs/cache bytes and all price/party/identity/freshness
+contracts remain unchanged; internal selected-record trip.departure stays ISO.
+The fixed install-tv-calendar-days profile accepts only that source and
+int-anex-tv-calendar-day-install-20261025-v1. Unchanged one-helper maintenance
+replaces privategatewaye708 with
+385effa8cf1a8402253cc0acd17725f8d3daa7bc34a190e451fe1909f4c36a93,
+requiring six checked / one changed / zero created. Client302/other runtime and
+dependencies, enabledparent16049/configfaea0644/public pins remain exact.
+All ten earlier maintenance programs plus the sealed readback preserve bytes,
+including field-installer42bcc385. Actual pinned predecessor/new fixture native
+tests cover drift/prewrite/rollback/strict receipt/no replay; CI adds only one
+fixture/env. Same source/review/CI/main and exclusive runtime/original receipt
+gates apply. No supplier, DB, config/key/session/root/SEARCH/lead operation or
+old-case replay is added; future live acceptance remains separate.
