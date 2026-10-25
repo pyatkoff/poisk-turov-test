@@ -1,0 +1,39 @@
+name: Locate Telegram Mini App on existing AnyTour servers
+on:
+  push:
+    branches: [audit/tgmini-anytour-location-20261025]
+    paths:
+      - .github/workflows/tgmini-anytour-location-readonly.yml
+      - audit-tgmini-server-location/**
+permissions:
+  contents: read
+concurrency:
+  group: tgmini-anytour-location-20261025
+  cancel-in-progress: false
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'cryptography==50.0.2'
+      - name: Read fixed Mini App metadata through existing SSH targets
+        env:
+          CURRENT_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          CURRENT_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          CURRENT_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          LEGACY_HOST: ${{ secrets.DEPLOY_HOST }}
+          LEGACY_USER: ${{ secrets.DEPLOY_USER }}
+          LEGACY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          READER_SHA256: fcb90bc0a5b2f2ea3160d31087456e9c07637bc7e72bde76862e12bf2d4f762a
+          REPORT_PUBLIC_KEY_B64: LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQm9qQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FZOEFNSUlCaWdLQ0FZRUFzcmtObkJuWmNiZDRsV3V5c0k1NgowODJ3Rnd4R2dnV2h5eVpZRVhFNVFLNWlzcFU3Qy8xZE01VjRXWWNyVUdhcHlUR2RBakpyYlBlcklhN1VvZWplCjB5T0Y3ZGlkQ3FMNGxua0ZQVmNFb2ozTlBhd0lyUXNFSHhyYTY5b1FtRGszWFlOUzZUQnl3TmYvdjB5WTVSMG8KQkpXODIxS29VdlgrZ0RMck53MG00VnByOUJwNWRYQmFyZW5DWkVlR0VOTDlrNXBnR05xakFFcFEzTHhWNU9KMQo3TXJtN09kdkRmMW05Sm53b0Ewd3JMaEwxRlBsc01jR2VaN0Y4dXpxMmFrem4rVlRJakxLNnQxb0gwTG9oSFJXCkRMSmVqSE1YNVlsUW9uUmdkZkdRYnM2VklqdjRER1Q5WnJwczgwMEZsVG96bStZUU40RkFha21RUVJ2Y09ybWwKQWJBQ0tlcjF4YUhTcVJ4b3loYVk4RWdsTW9LcnJZbGNwSGFFTzlUU1I5akhyb3ZrcHY1WmhFZ2h2d2dNaUE0MQpTZHVSbSthbWRzUnNmTm04Q1lXK1N6ME9oTll6cXFqTFpFYXBhTFNOcmNnM09lZzNnc093aVlLVnM5aXVYdW9OCi9Fb3ljMUNkOXVGWkRGQndEZnEvWGtxa2d3YW9DWkNpVHNJZFNHZXIrQ1dSQWdNQkFBRT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+        run: python audit-tgmini-server-location/runner.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tgmini-anytour-location-encrypted
+          path: encrypted-location/location.enc.json
+          if-no-files-found: error
+          retention-days: 7
