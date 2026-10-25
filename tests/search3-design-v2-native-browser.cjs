@@ -200,7 +200,7 @@ function terminalDataFixture(fixture) {
     async quote(offer){
       if(!offer.raw?.denialPhase)return forbidden();calls.quote++;
       if(offer.raw.denialPhase==='quote')throw Object.assign(new Error('FICTIONAL permanent quote denial'),{retryable:false});
-      return{id:offer.key,price:offer.total,roomType:offer.room,meal:offer.meal,denialPhase:offer.raw.denialPhase};
+      return{id:offer.raw.id||offer.key,price:offer.total,roomType:offer.raw.roomType||offer.room,meal:offer.raw.meal||offer.meal,denialPhase:offer.raw.denialPhase};
     },
     async flights(tour){
       if(!tour.denialPhase)return forbidden();calls.flights++;
@@ -212,6 +212,10 @@ function terminalDataFixture(fixture) {
   control.installDenials=()=>{
     const seed=hotels[0],offers=Object.fromEntries(['quote','flights','allowed'].map((phase,index)=>[phase,{...seed.offers[0],
       key:'fixture:denial:'+phase,provider:'tourvisor',operator:'FIXTURE TV',total:seed.offers[0].total+1000*index,raw:{fixture:true,denialPhase:phase}}]));
+    Object.assign(offers.allowed,{room:'Стандарт · территория',meal:'Программа питания отеля'});
+    Object.assign(offers.allowed.raw,{id:offers.allowed.key,roomType:'standard land view',meal:{name:'AI'},localStay:{source:'anytour-hotel-stay-v2',
+      room:{kind:'room',hotelId:seed.id,id:11,revision:2,localKey:'room-11',nameRu:offers.allowed.room},
+      meal:{kind:'meal',hotelId:seed.id,id:12,revision:3,localKey:'meal-12',nameRu:offers.allowed.meal}}});
     hotels=[{...seed,name:'FICTIONAL Hotel With Explicit Quote Capability',offers:Object.values(offers)}];
     control.denials={hotel:hotels[0],offers};emit({type:'results',hotels});emit({type:'complete'});
   };
@@ -491,7 +495,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
   const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead','quote-unavailable':'tour','flights-unavailable':'tour','meal-families':width===430?'filters':'results','meal-family-details':width===430?'filters':'results'}[logicalScreen];
-  assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact','local-stay-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed','local-stay-tour'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.screen==='tour'){
       const notes=measurements.readableText.filter(item=>item.kind==='tour-conditions-note');
@@ -620,7 +624,12 @@ if(require.main===module)(async()=>{
           if(terminalJourney){const actual=fs.readFileSync(path.join(assetRoot,'visual-search/native-v2/bridge.js'),'utf8');assert.equal(hash(actual),manifest.files['bridge.js']);await route.fulfill({status:200,contentType:'application/javascript',body:actual+'\n('+recordTerminalBridge.toString()+')();'});return;}
           await route.fulfill({status:200,contentType:'application/javascript',body:'('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');'});return;
         }
-        if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){await route.fulfill({status:200,contentType:'application/javascript',body:'('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');'});return;}
+        if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){
+          const actual=fs.readFileSync(path.join(assetRoot,'prototype-search/data.js'),'utf8');
+          assert.equal(hash(actual),manifest.graph.scripts.find(row=>row.path==='prototype-search/data.js').sha256);
+          const labels='const labelsOwner={Search3CanonicalProfilesV1:{create:()=>({})}};(function(window){'+actual+'})(labelsOwner);Object.assign(window.AnyTourPrototypeData,{text:labelsOwner.AnyTourPrototypeData.text,meal:labelsOwner.AnyTourPrototypeData.meal,stayLabel:labelsOwner.AnyTourPrototypeData.stayLabel});';
+          await route.fulfill({status:200,contentType:'application/javascript',body:'('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');'+labels});return;
+        }
         if(url.pathname===base+'/search3-local-db-provider-v1.js'){
           const actual=fs.readFileSync(path.join(assetRoot,'search3-local-db-provider-v1.js')),expected=manifest.graph.scripts.find(row=>row.path==='search3-local-db-provider-v1.js');
           assert(expected,'Compiled graph pins the LOCAL helper');assert.equal(hash(actual),expected.sha256,'Actual compiled LOCAL helper hash');assert.equal(actual.length,expected.bytes,'Actual compiled LOCAL helper length');
@@ -1665,6 +1674,21 @@ if(require.main===module)(async()=>{
         await actualProduct.locator('[data-action="accept-price"]:visible').first().click();
         const allowedContact=actualProduct.locator('[data-screen="tour"] [data-action="lead"]:visible').first();
         await allowedContact.waitFor({state:'visible'});assert.equal(await allowedContact.isEnabled(),true);
+        assert.equal(await actualProduct.locator('[data-tour-room]').innerText(),'Стандарт · территория');
+        assert.equal(await actualProduct.locator('[data-tour-meal]').innerText(),'Программа питания отеля');
+        await capture(page,'native',width,percent,'local-stay-tour',row);
+        await allowedContact.click();
+        await actualProduct.locator('[data-screen="lead"]').waitFor({state:'visible'});
+        assert.equal(await actualProduct.locator('[data-lead-choice]').innerText(),'Стандарт · территория · Программа питания отеля');
+        const stayFacts=await page.evaluate(()=>{const c=window.__nativeTerminalFixture,s=c.bridge.getSelection();return{room:s.offer.room,rawRoom:s.tour.roomType,total:s.total,ages:s.offer.ages,rawMeal:s.tour.meal.name};});
+        assert.equal(stayFacts.rawRoom,'standard land view');assert.equal(stayFacts.rawMeal,'AI');
+        assert.equal(stayFacts.total,163400);
+        await capture(page,'native',width,percent,'local-stay-contact',row);
+        await actualProduct.locator('[data-screen="lead"] [data-action="tour"]').click();
+        await actualProduct.locator('[data-screen="tour"]').waitFor({state:'visible'});
+        assert.equal(await actualProduct.locator('[data-tour-room]').innerText(),'Стандарт · территория');
+        assert.equal(await actualProduct.locator('[data-tour-meal]').innerText(),'Программа питания отеля');
+        row.proof.localStay={...stayFacts,actualDataHelper:true,roomMealRetained:true,backRetained:true,extraPassiveOperations:0};
         const finalDenials=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
         assert.deepEqual(finalDenials,{search:1,other:0,quote:3,flights:2});
         row.proof.permanentDenials={...denialProof,differentAllowedOfferReady:true,canonicalBridgeSHA256:manifest.files['bridge.js'],calls:finalDenials};

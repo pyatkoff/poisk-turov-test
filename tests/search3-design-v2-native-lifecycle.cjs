@@ -291,3 +291,46 @@ test('rendered startup fixture joins catalogue readiness across responsive mount
   assert.equal(w.__nativeHoldInit,false);
   w.close();
 });
+
+test('accepted LOCAL labels survive native tour/contact while changed facts stay raw', () => {
+  for (const kind of ['st-mobile','st-desktop']) {
+    const dom=new JSDOM(builder.documentHTML(builder.extract().markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
+    w.Search3CanonicalProfilesV1={create:()=>({})};
+    w.eval(fs.readFileSync(require.resolve('../v2/prototype-search/data.js'),'utf8'));
+    w.eval(source);w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/tour.js'),'utf8'));
+    const data=w.AnyTourPrototypeData,bridge=w.AnyTourDesignV2Bridge.create({data,location:{search:''}});
+    const raw={id:'LOCAL-fiction',roomType:'standard land view',meal:{name:'AI'},localStay:{source:'anytour-hotel-stay-v2',
+      room:{kind:'room',hotelId:7,id:11,revision:2,localKey:'room-11',nameRu:'Стандарт · территория'},
+      meal:{kind:'meal',hotelId:7,id:12,revision:3,localKey:'meal-12',nameRu:'Программа питания отеля'}}};
+    const offer={key:'tourvisor:LOCAL-fiction',hotelId:7,provider:'tourvisor',day:'2026-10-25',returnDay:'2026-11-01',nights:7,adults:2,ages:[0],search:trip,
+      room:raw.localStay.room.nameRu,meal:raw.localStay.meal.nameRu,operator:'FICTIONAL',total:112000,raw};
+    const tour={id:raw.id,roomType:raw.roomType,meal:{name:'AI'},price:112000};
+    const original=JSON.stringify({offer,tour});let calls=0;
+    const selected={offer,key:offer.key,raw,total:112000,tour,pricePending:false,priceAccepted:true,flightChoiceId:null,variants:[]};
+    const adapter={...bridge,getSelection:()=>selected,quoteOffer(){calls++;throw Error('no repeat quote');}};
+    const mobile=w.document.querySelector('.st-mobile[data-product]'),root=kind==='st-mobile'?mobile:mobile.cloneNode(true);
+    if(kind==='st-desktop'){root.classList.remove('st-mobile');root.classList.add('st-desktop');w.document.querySelector('[data-desktop-mount]').append(root);}
+    let owner=w.AnyTourDesignV2Tour.mount({root,bridge:adapter});
+    const render=()=>owner.render({offer,hotel:{id:7,name:'FICTIONAL LOCAL HOTEL'},screen:'tour'});
+    const check=(room,meal)=>{
+      assert.equal(root.querySelector('[data-tour-room]').textContent,room);
+      assert.equal(root.querySelector('[data-tour-meal]').textContent,meal);
+      assert.equal(root.querySelector('[data-lead-choice]').textContent,room+' · '+meal);
+    };
+    render();check(offer.room,offer.meal);
+    raw.meal={name:'AI',fullName:'AI - Все Включено'};tour.meal={...raw.meal};raw.localStay.meal.nameRu='Всё включено';
+    render();check(offer.room,'Всё включено');
+    raw.meal={name:'AI'};tour.meal={name:'AI'};raw.localStay.meal.nameRu=offer.meal;
+    owner.render({offer,hotel:{name:'FICTIONAL LOCAL HOTEL'},screen:'lead'});check(offer.room,offer.meal);
+    owner.destroy();owner=w.AnyTourDesignV2Tour.mount({root,bridge:adapter});render();check(offer.room,offer.meal);
+    assert.equal(JSON.stringify({offer,tour}),original,'raw supplier/receipt/party/price untouched');
+    tour.roomType='changed room';tour.meal={name:'BB'};render();check('changed room',data.meal(tour.meal));
+    tour.roomType=raw.roomType;tour.meal={name:'AI'};raw.localStay.room.hotelId=8;raw.localStay.meal.hotelId=8;
+    render();check(raw.roomType,data.meal(tour.meal));
+    delete raw.localStay;render();check(raw.roomType,data.meal(tour.meal));
+    tour.meal={name:'AI',fullName:'AI WITHOUT ALCOHOL'};render();check(raw.roomType,'AI WITHOUT ALCOHOL');
+    assert.equal(calls,0,'contact, Back/reopen and renders never request another quote');
+    assert.equal(selected.total,112000);assert.equal(offer.ages[0],0);
+    owner.destroy();w.close();
+  }
+});

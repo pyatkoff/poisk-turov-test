@@ -279,7 +279,8 @@
       selection=value;
       const price = describePrice(offer,value,{busy,error});
       const {total,expired,failed,checkedPrice,checkedFlight,caption:priceCaption} = price;
-      const room=textFact(tour?.roomType) || offer.room || 'Номер уточняется',meal=mealLabel(mealFact(tour?.meal) || offer.meal);
+      const labels=bridge.stayLabels?.(offer,tour);
+      const room=labels?.room || textFact(tour?.roomType) || offer.room || 'Номер уточняется',meal=mealLabel(labels?.meal || mealFact(tour?.meal) || offer.meal);
       text('[data-tour-hotel],[data-quick-hotel],[data-lead-hotel]',hotel?.name || 'Отель уточняется');
       text('[data-tour-location]',hotel?.location || 'Расположение уточняется');
       text('[data-tour-room],[data-quick-room]',room);text('[data-tour-meal],[data-quick-meal]',meal);
