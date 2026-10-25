@@ -263,7 +263,7 @@ test('Private TV mismatch details do not cross another error, provider or stage 
  }
 });
 const limitDiagnostic=(limitKind='request_count',limitPhase='admission',stage='tour')=>{
- const limitMax={request_count:64,context_bytes:4194304,offer_count:2000,generation:2147483647}[limitKind];
+ const limitMax={request_count:640,context_bytes:4194304,offer_count:2000,generation:2147483647}[limitKind];
  return {provider:'tourvisor',stage,category:'limit',limitKind,limitPhase,limitValue:limitMax+(limitKind==='request_count'?0:1),limitMax};
 };
 test('Private TV local limit facts keep measured counters and the same one-attempt failure',async()=>{
@@ -295,8 +295,8 @@ test('Private TV distinguishes start-generation, status and result limits in the
 });
 test('Private TV drops malformed local limit profiles, not the original fixed error',async()=>{
  for(const change of [d=>delete d.limitKind,d=>d.limitKind='PRIVATE',d=>d.limitKind='__proto__',d=>d.limitPhase='PRIVATE',
-  d=>d.limitPhase='results',d=>d.limitMax=65,d=>d.limitMax='64',d=>d.limitValue='64',d=>d.limitValue=63,
-  d=>d.limitValue=-1,d=>d.limitValue=64.5,d=>d.limitValue=null,d=>d.limitValue=Number.MAX_SAFE_INTEGER+1,
+  d=>d.limitPhase='results',d=>d.limitMax=64,d=>d.limitMax='640',d=>d.limitValue='640',d=>d.limitValue=639,
+  d=>d.limitValue=-1,d=>d.limitValue=640.5,d=>d.limitValue=null,d=>d.limitValue=Number.MAX_SAFE_INTEGER+1,
   d=>{d.limitKind='context_bytes';d.limitPhase='reservation';d.limitMax=4194304;d.limitValue=4194304;},
   d=>{d.limitKind='offer_count';d.limitPhase='results';d.limitMax=2000;d.limitValue=2001;}]){
   const d=limitDiagnostic();change(d);let x;
