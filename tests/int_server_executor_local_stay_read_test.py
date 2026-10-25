@@ -189,6 +189,148 @@ class Admission(unittest.TestCase):
         self.assertFalse(m.completed(parsed, changed, CONTROL))
 
 
+def schema_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.SCHEMA_SOURCE_SHA} {m.SCHEMA_MODE} {m.SCHEMA_OPERATION}')
+
+
+def schema_missing_data():
+    tables = ['anytour_hotels','anytour_hotel_sources','anytour_hotel_room_concepts_v2',
+              'anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    inventory = {'server': {'family': 'mysql', 'version': '8.0.36', 'checkEnforcement': 'supported', 'triggerVisibilityProven': True},
+                 'tables': [{'name':name,'role':'parent' if i<2 else 'target','exists':False,
+                             'tableType':None,'engine':None,'collation':None,'createSha256':None,
+                             'partitioned':False,'triggerCount':0,'columns':[],'indexes':[],'foreignKeys':[],'checks':[],
+                             'compatibility':'absent','issues':['absent']} for i,name in enumerate(tables)]}
+    plan = {'state':'blocked_parent_prerequisites','createTables':tables[2:], 'existingCompatibleTables':[],
+            'blockedTables':tables[:2],'requiresExplicitReview':True,'applyAuthorized':False,
+            'migrationSha256':m.SCHEMA_MIGRATION_SHA,'noDdlExecuted':True}
+    digest = lambda x: hashlib.sha256(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    return {'receipt': {'schemaVersion':1,'source':'anytour-hotel-stay-schema-read-v1',
+                        'state':'completed_read_only','supplierCalls':0,'databaseWrites':0,'schemaWrites':0,
+                        'automaticAccepts':0,'migrationSha256':m.SCHEMA_MIGRATION_SHA,
+                        'inventorySha256':digest(inventory),'planSha256':digest(plan),
+                        'operationId':m.SCHEMA_OPERATION,'sourceSha':m.SCHEMA_SOURCE_SHA,'controlSha':CONTROL},
+            'inventory':inventory,'plan':plan}
+
+
+def schema_receipt(data):
+    result = receipt(data)
+    result.update(mode=m.SCHEMA_MODE,operation_id=m.SCHEMA_OPERATION,source_sha=m.SCHEMA_SOURCE_SHA)
+    result['local_stay_schema_read'] = result.pop('local_stay_read')
+    return result
+
+
+class SchemaAdmission(unittest.TestCase):
+    def test_fixed_read_scope_and_attempt_and_old_profile_are_preserved(self):
+        c = wrapper().core
+        with mock.patch.dict(os.environ, {'GITHUB_RUN_ATTEMPT': '1'}):
+            parsed = schema_command(c)
+            self.assertEqual(parsed, {'source_sha': m.SCHEMA_SOURCE_SHA, 'mode': m.SCHEMA_MODE,
+                                     'operation_id': m.SCHEMA_OPERATION, 'maximum_schema_tables': 5,
+                                     'provider_http_calls': 0, 'database_writes': 0})
+            self.assertEqual(command(c), {'source_sha': m.SOURCE_SHA, 'mode': m.MODE,
+                                        'operation_id': m.OPERATION, 'maximum_cohorts': 50,
+                                        'provider_http_calls': 0, 'database_writes': 0})
+            for body in (f'{c.PREFIX}{m.SOURCE_SHA} {m.SCHEMA_MODE} {m.SCHEMA_OPERATION}',
+                         f'{c.PREFIX}{m.SCHEMA_SOURCE_SHA} {m.SCHEMA_MODE} {m.SCHEMA_OPERATION}-v2',
+                         f'{c.PREFIX}{m.SCHEMA_SOURCE_SHA} {m.SCHEMA_MODE} {m.SCHEMA_OPERATION} --apply'):
+                with self.subTest(body=body), self.assertRaises(ValueError): c.parse_command(body)
+        with mock.patch.dict(os.environ, {'GITHUB_RUN_ATTEMPT': '2'}), self.assertRaises(ValueError): schema_command(c)
+
+    def test_owner_main_and_fresh_release_are_still_checked(self):
+        c = wrapper().core
+        body = f'{c.PREFIX}{m.SCHEMA_SOURCE_SHA} {m.SCHEMA_MODE} {m.SCHEMA_OPERATION}'
+        event = {'issue': {'number': 4709}, 'comment': {'id': 102, 'user': {'id': 226193297},
+                 'author_association': 'OWNER', 'body': body}}
+        def api(path, token):
+            if path == '/issues/comments/102': return {'body': body, 'user': {'id': 226193297}}
+            if path == '/git/ref/heads/main': return {'object': {'sha': CONTROL}}
+            if path == '/git/ref/heads/release/search3-production-ready-v1': return {'object': {'sha': m.SCHEMA_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c, 'api_get', side_effect=api):
+            self.assertEqual(c.checked_event('fixture', event, CONTROL), schema_command(c))
+            for invalid in (dict(event, issue={'number': 4217}),
+                            dict(event, comment=event['comment'] | {'author_association': 'COLLABORATOR'}),
+                            dict(event, comment=event['comment'] | {'user': {'id': 2}})):
+                with self.assertRaises(ValueError): c.checked_event('fixture', invalid, CONTROL)
+            with self.assertRaisesRegex(ValueError, 'main_changed'): c.checked_event('fixture', event, 'c' * 40)
+
+    def test_closed_split_bundle_and_pinned_migration(self):
+        raw, hashes = m.bundle_schema_source(SOURCE)
+        self.assertEqual(hashes, m.schema_hashes())
+        self.assertEqual(len(hashes), 3)
+        with tarfile.open(fileobj=io.BytesIO(raw), mode='r:gz') as archive:
+            self.assertEqual(set(archive.getnames()), {*hashes, 'manifest.json'})
+            self.assertEqual(len(archive.getmembers()), 4)
+            for info in archive.getmembers():
+                self.assertTrue(info.isfile())
+                self.assertEqual(info.mode, 0o600)
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            for relative in m.SCHEMA_SOURCE_HASHES:
+                path = directory / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(SOURCE / relative, path)
+            (directory / m.SCHEMA_SQL).write_text('unreviewed migration')
+            with self.assertRaisesRegex(ValueError, 'reviewed_source_changed'): m.bundle_schema_source(directory)
+
+    def test_exact_schema_activation_preserves_reservation_and_rejects_extra_authority(self):
+        c = wrapper().core
+        parsed = schema_command(c)
+        with mock.patch.dict(os.environ, {'GITHUB_SHA': CONTROL, 'GITHUB_RUN_ATTEMPT': '1'}):
+            for key, value in (('provider_http_calls', False), ('database_writes', 1),
+                               ('maximum_schema_tables', 6), ('apply', True)):
+                with self.subTest(key=key), self.assertRaises(ValueError): m.activate(c, parsed | {key: value})
+            m.activate(c, parsed)
+        ast.parse(c.REMOTE)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')", c.REMOTE)
+        self.assertIn("if globals().get('local_stay_schema_reserved') is True and op.exists():", c.REMOTE)
+        self.assertIn("if len(members)!=4", c.REMOTE)
+        self.assertIn('disable_functions=', c.REMOTE)
+        encoded = __import__('base64').b64encode(zlib.compress(c.REMOTE.encode(), 9)).decode()
+        self.assertLess(len(encoded) + 150, 65536)
+
+
+    def test_strict_metadata_and_no_apply_receipt(self):
+        parsed = schema_command(wrapper().core)
+        data = schema_missing_data()
+        self.assertTrue(m.completed_schema(parsed,schema_receipt(data),CONTROL))
+        for section,key,value in (('receipt','schemaWrites',False),('receipt','migrationSha256','0'*64),
+                                  ('receipt','controlSha','c'*40),('plan','applyAuthorized',True),
+                                  ('plan','blockedTables',[]),('plan','state','create_only_after_review')):
+            changed = copy.deepcopy(data)
+            changed[section][key] = value
+            for field in ('inventory','plan'):
+                changed['receipt'][field+'Sha256'] = hashlib.sha256(json.dumps(changed[field],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            self.assertFalse(m.completed_schema(parsed,schema_receipt(changed),CONTROL),(section,key))
+        changed = copy.deepcopy(data)
+        changed['inventory']['tables'][0]['createSql'] = 'forbidden raw SQL'
+        changed['receipt']['inventorySha256'] = hashlib.sha256(json.dumps(changed['inventory'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertFalse(m.completed_schema(parsed,schema_receipt(changed),CONTROL))
+        for state in ('metadata_limit','schema_changed'):
+            diagnostic = copy.deepcopy(data)
+            diagnostic.update(inventory=None,plan=None)
+            diagnostic['receipt'].update(state=state,inventorySha256=None,planSha256=None)
+            self.assertTrue(m.completed_schema(parsed,schema_receipt(diagnostic),CONTROL))
+        diagnostic['receipt']['state'] = 'read_failed'
+        self.assertFalse(m.completed_schema(parsed,schema_receipt(diagnostic),CONTROL))
+        changed = schema_receipt(data)
+        changed['local_stay_schema_read']['protectedAfter']['config.php'] = 'f'*64
+        self.assertFalse(m.completed_schema(parsed,changed,CONTROL))
+        changed = schema_receipt(data)
+        changed['database_writes'] = False
+        self.assertFalse(m.completed_schema(parsed,changed,CONTROL))
+        hidden = copy.deepcopy(data)
+        hidden['inventory']['server']['triggerVisibilityProven'] = False
+        hidden['plan']['state'] = 'blocked_server_capability'
+        for field in ('inventory','plan'):
+            hidden['receipt'][field+'Sha256'] = hashlib.sha256(json.dumps(hidden[field],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertTrue(m.completed_schema(parsed,schema_receipt(hidden),CONTROL))
+        hidden['plan']['state'] = 'create_only_after_review'
+        hidden['receipt']['planSha256'] = hashlib.sha256(json.dumps(hidden['plan'],ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertFalse(m.completed_schema(parsed,schema_receipt(hidden),CONTROL))
+
+
 class NativeStockRead(unittest.TestCase):
     def setUp(self):
         self.assertIsNotNone(shutil.which('php'), 'Actual PHP is required; no skip or substitute')
@@ -269,6 +411,109 @@ class NativeStockRead(unittest.TestCase):
         self.assertEqual(result.get('reason'), 'local_stay_archive_scope')
         operation = self.home / '.anytoour-int-executor' / m.OPERATION
         self.assertFalse((operation / 'local-stay-anchor-read.json').exists())
+
+class NativeStockSchemaRead(unittest.TestCase):
+    def setUp(self):
+        self.assertIsNotNone(shutil.which('php'),'Actual PHP is required; no skip or substitute')
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.home = Path(self.temp.name)
+        self.project = self.home / 'www/anytoour.ru'
+        (self.project / 'data').mkdir(parents=True)
+        (self.project / '_preview/search3-anex-candidate').mkdir(parents=True)
+        for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+            path = self.project / name
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text('fixture protected '+name)
+        shutil.copyfile(SOURCE / 'v2/data/db-v1.php',self.project / 'data/db-v1.php')
+        self.database = 'anytour_stay_schema_control_fixture'
+        self.server = 'mysql:host=127.0.0.1;port=3306;charset=utf8mb4'
+        self.password = os.environ.get('LOCAL_STAY_TEST_PASSWORD','local_tv_schema_test_only')
+        init = subprocess.run(['php','-r','$p=new PDO($argv[1],"root",$argv[2]);$p->exec("DROP DATABASE IF EXISTS anytour_stay_schema_control_fixture");$p->exec("CREATE DATABASE anytour_stay_schema_control_fixture");',
+                               self.server,self.password],capture_output=True,text=True)
+        self.assertEqual(init.returncode,0,init.stderr)
+        self.dsn = 'mysql:host=127.0.0.1;port=3306;dbname='+self.database+';charset=utf8mb4'
+        config = '<?php\ndefine("ANYTOUR_DATA_DSN",'+json.dumps(self.dsn)+');\ndefine("ANYTOUR_DATA_DB_USER","root");\ndefine("ANYTOUR_DATA_DB_PASSWORD",'+json.dumps(self.password)+');\n'
+        (self.project / 'config.php').write_text(config)
+        self.c = wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command = schema_command(self.c)
+            m.activate(self.c,self.command)
+        archive,hashes = m.bundle_schema_source(SOURCE)
+        self.archive = self.home / 'schema-source.tar.gz'
+        self.archive.write_bytes(archive)
+        digest = hashlib.sha256(json.dumps(hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.payload = self.command | {'archive':str(self.archive),'manifest_sha256':digest}
+
+    run_remote = NativeStockRead.run_remote
+
+    def test_actual_metadata_read_and_repeat_preserves_original_terminal(self):
+        result = self.run_remote()
+        self.assertTrue(m.completed_schema(self.command,result,CONTROL),result)
+        data = result['local_stay_schema_read']['data']
+        self.assertEqual(data['receipt']['state'],'completed_read_only')
+        self.assertEqual(data['plan']['state'],'blocked_parent_prerequisites')
+        self.assertTrue(all(t['exists'] is False for t in data['inventory']['tables']))
+        self.assertFalse(data['plan']['applyAuthorized'])
+        operation = self.home / '.anytoour-int-executor' / m.SCHEMA_OPERATION
+        original = (operation / 'result.json').read_bytes()
+        repeated = self.run_remote()
+        self.assertEqual(repeated.get('reason'),'operation_exists_no_replay')
+        self.assertFalse(m.completed_schema(self.command,repeated,CONTROL))
+        self.assertEqual((operation / 'result.json').read_bytes(),original)
+
+    def test_actual_existing_migration_is_validated_without_schema_writes(self):
+        program = r"""$p=new PDO($argv[1],"root",$argv[2],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);foreach(array_slice($argv,3) as $path){$sql=preg_replace('/^\s*--.*$/m','',file_get_contents($path));foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql) as $statement){if(trim($statement)!=='')$p->exec(trim($statement));}}"""
+        run = subprocess.run(['php','-r',program,self.dsn,self.password,
+                              str(SOURCE / 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'),
+                              str(SOURCE / m.SCHEMA_SQL)],capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        result = self.run_remote()
+        self.assertTrue(m.completed_schema(self.command,result,CONTROL),result)
+        data = result['local_stay_schema_read']['data']
+        # Only the fixture's already-sanitized semantic metadata is retained:
+        # no CREATE SQL, schema/account names, credentials or application rows.
+        diagnosis = {'server':data['inventory']['server'],'tables':{
+            table['name']:{key:table[key] for key in
+                           ('compatibility','issues','columns','indexes','foreignKeys','checks','triggerCount')}
+            for table in data['inventory']['tables']}}
+        self.assertEqual(data['plan']['state'],'ready_no_op',json.dumps(diagnosis,sort_keys=True))
+        self.assertEqual(len(data['plan']['existingCompatibleTables']),3,json.dumps(diagnosis,sort_keys=True))
+        self.assertEqual(data['plan']['createTables'],[])
+        self.assertEqual(data['receipt']['schemaWrites'],0)
+        self.assertEqual(sum(len(t['checks']) for t in data['inventory']['tables'] if t['role']=='target'),8)
+
+    def test_actual_remote_rejects_boolean_cap_before_php_or_db(self):
+        self.payload['provider_http_calls'] = False
+        result = self.run_remote()
+        self.assertFalse(m.completed_schema(self.command,result,CONTROL))
+        self.assertEqual(result.get('reason'),'local_stay_schema_payload_types')
+        operation = self.home / '.anytoour-int-executor' / m.SCHEMA_OPERATION
+        self.assertFalse((operation / 'local-stay-schema-read.json').exists())
+
+    def test_actual_remote_rejects_unmanifested_config_before_php_or_db(self):
+        with tarfile.open(self.archive,'r:gz') as old:
+            members = [(x,old.extractfile(x).read()) for x in old.getmembers()]
+        with tarfile.open(self.archive,'w:gz') as altered:
+            for info,raw in members: altered.addfile(info,io.BytesIO(raw))
+            extra = b'<?php throw new RuntimeException("unmanifested configuration");'
+            info = tarfile.TarInfo('v2/config.php');info.size = len(extra)
+            altered.addfile(info,io.BytesIO(extra))
+        result = self.run_remote()
+        self.assertFalse(m.completed_schema(self.command,result,CONTROL))
+        self.assertEqual(result.get('reason'),'local_stay_schema_archive_scope')
+        operation = self.home / '.anytoour-int-executor' / m.SCHEMA_OPERATION
+        self.assertFalse((operation / 'local-stay-schema-read.json').exists())
+
+    def test_actual_php_metadata_contract_suite(self):
+        env = dict(os.environ,ANYTOUR_STAY_SCHEMA_V1_TEST_DSN=self.server,
+                   ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=self.password,
+                   LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        path = ROOT / 'tests/anytour_hotel_stay_schema_read_v1_test.php'
+        run = subprocess.run(['php',str(path)],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_SCHEMA_READ_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
 
 
 if __name__ == '__main__':
