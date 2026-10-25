@@ -12,7 +12,14 @@ const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 function privateTVFixture(transport,origin,{minimum=false}={}){
  const calls=[],members=new Map(),checked=new Map(),pairs=new Map(),observations=new Map(),generation=37,search_ref='d'.repeat(32),csrf='a'.repeat(64);let params;
  const pin=(ref,choice_ref)=>({provider:'tourvisor',generation,search_ref,offer_ref:ref,local_hotel_id:members.get(ref).hotelId,choice_ref});
- const native=async(action,fields={})=>transport.json(origin+'/api-v2.php?'+new URLSearchParams({action,...fields}));
+ const native=async(action,fields={})=>{
+  const query=new URLSearchParams({action});
+  for(const [name,value] of Object.entries(fields)){
+   if(Array.isArray(value))for(const item of value)query.append(name+'[]',String(item));
+   else query.set(name,String(value));
+  }
+  return transport.json(origin+'/api-v2.php?'+query);
+ };
  const text=v=>String(v&&typeof v==='object'?v.russianName||v.name||v.fullName||'':v??'').trim();
  const legs=values=>values.map(v=>({label:text(v.number)+' · '+text(v.departure.port.shortName??v.departure.port.id)+' → '+text(v.arrival.port.shortName??v.arrival.port.id)+' · '+text(v.departure.date)}));
  async function handle(action,body,method){
@@ -24,7 +31,7 @@ function privateTVFixture(transport,origin,{minimum=false}={}){
   assert.deepEqual(Object.keys(body).sort(),shape.sort(),'private TV exact interface');
   if(action!=='tv_search'){assert.equal(body.generation,generation);assert.equal(body.search_ref,search_ref);}
   let data=null,extra={};
-  if(action==='tv_search'){params=plain(body.params);data=await native('search_start');}
+  if(action==='tv_search'){params=plain(body.params);data=await native('search_start',params);}
   else if(action==='tv_status')data=await native('search_status');
   else if(action==='tv_continue')data=await native('search_continue');
   else if(action==='tv_results'){
@@ -277,3 +284,5 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
  fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify({schema:1,compiled:!!process.env.SEARCH3_VISUAL_ASSET_ROOT,engine:'Chromium',source_sha:process.env.SEARCH3_SOURCE_SHA||null,asset_sha256:hashes,test_sha256:hash(__filename),records,transport:'fictional-intercepted-HTTP',supplier_HTTP:0,bot_HTTP:0,real_leads:0,installed:false,physical_device:false},null,2)+'\n');
  console.log('PASS compiled messenger430/1280-short: exact tour/explicit phone/same draft/pending intent/one create/intercepted navigation; supplier/bot/lead HTTP0');
 };
+// One fictional private HTTP interface for adjacent real-entry browser consumers.
+module.exports.privateTVFixture=privateTVFixture;

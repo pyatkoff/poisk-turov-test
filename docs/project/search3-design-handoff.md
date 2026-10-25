@@ -43,6 +43,10 @@ pair133500.5 → phone/draft/consent/Back → delayed CREATE → explicit interc
 All HTTP/native/bot replies are fictional; root TV search/quote HTTP is forbidden.
 The historical full browser matrix explicitly retains its root-protocol fixture
 opt-in, preserving its prior assertions; this does not stand in for the new default.
+The adjacent LOCAL browser acceptance keeps the actual marked NEXT entry and
+consumes that same fictional private TV interface, including original native
+array parameters. Its exact501→101 filter bridge,126photos, SQL/reader guards
+and all prior assertions remain; actual frontend root TV search is forbidden.
 No workflow, required gate, supplier budget or viewport permission is changed.
 
 Supplier HTTP0, real CREATE0, customer/lead/booking0. Source/compiled/installed,

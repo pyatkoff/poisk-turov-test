@@ -156,6 +156,7 @@ async function adapterAcceptance(){
 }
 async function browserAcceptance(){
  const {chromium}=require('playwright'),assetRoot=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||sourceRoot);
+ const {privateTVFixture}=require('./search3-visual-messenger-browser.cjs');
  const evidence=path.resolve('visual-live-evidence/local-tv-catalog');fs.mkdirSync(evidence,{recursive:true});
  const server=http.createServer((req,res)=>{
   const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(403).end();return;}
@@ -170,7 +171,7 @@ async function browserAcceptance(){
  try{
   browser=await chromium.launch({headless:true});
   for(const width of [360,390,430,768,1280]){
-   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),transport=fixture(),errors=[],forbidden=[];
+   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),transport=fixture(),tv=privateTVFixture(transport,origin),errors=[],forbidden=[];
    transport.state.hotelCatalogue=[{id:profile.id,legacyId:101,name:profile.name,country:'4',countryName:profile.country.name,images:profile.images}];
    let current=original,contentReads=0,failed=false,gate=null,release;
    page.on('pageerror',e=>errors.push(e.message));
@@ -180,12 +181,18 @@ async function browserAcceptance(){
      await route.fulfill({status:failed?503:200,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:JSON.stringify(failed?{ok:false}:current)});return;}
     if(req.resourceType()==='image'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect width="700" height="500" fill="#bacad5"/></svg>'});return;}
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
-    try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}
+    try{
+     const body=req.postData()?JSON.parse(req.postData()):{},action=u.searchParams.get('action')||body.action;
+     assert(!(u.pathname==='/api-v2.php'&&/^search_|^(?:tour|flights)$/.test(action)),'actual NEXT private TV default never calls root search/quote');
+     const privateReply=await tv.handle(action,body,req.method()),value=privateReply??await transport.json(req.url(),{body:req.postData()});
+     await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+    }
     catch(e){forbidden.push(e.message);await route.abort();}
    });
    const close=async()=>{await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);};
    try{
     await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified actual NEXT entry opts into the private TV session');
     const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
     const originalDirection=await page.locator('#destination-detail').textContent();
     let progressiveState=null;
@@ -271,7 +278,8 @@ async function browserAcceptance(){
     for(let i=0;i<50&&contentReads===before;i++)await new Promise(r=>setTimeout(r,20));assert(contentReads>before);await close();release();gate=null;
     await page.waitForTimeout(100);assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late content cannot reopen a closed dialog');
     assert.equal(starts(),searches,'content reopening adds no tour search');assert.equal(page.url(),url);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-    receipts.push({width,oldLocalId:501,localTvId:101,photos:126,contentReads,lookupBeforeOffers:true,progressiveState,queryPreserved:true,applyCancelExactId:true,pickerStarts:0,pickerGeometry,newRevisionVisible:true,offerChoicesUnchanged:true,geometry,supplierHTTP:0,realLeads:0,deployedNEXT:false});
+    assert.equal(tv.calls[0].action,'tv_token');assert.equal(tv.calls.filter(c=>c.action==='tv_token').length,1);
+    receipts.push({width,oldLocalId:501,localTvId:101,photos:126,contentReads,lookupBeforeOffers:true,progressiveState,queryPreserved:true,applyCancelExactId:true,pickerStarts:0,pickerGeometry,newRevisionVisible:true,offerChoicesUnchanged:true,geometry,privateTVActions:tv.calls.map(c=>c.action),rootTVSearchHTTP:0,supplierHTTP:0,realLeads:0,deployedNEXT:false});
    }finally{release?.();await context.close();}
   }
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
