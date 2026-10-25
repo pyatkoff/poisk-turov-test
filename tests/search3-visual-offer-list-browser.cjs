@@ -206,7 +206,6 @@ const server=http.createServer((req,res)=>{
      const anchor=await profile.evaluate(el=>({cardTop:el.closest('.hotel-card').getBoundingClientRect().top,scrollY}));
      await profile.click();const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();
      await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
-     await page.locator('[data-action="continue-hotel-offer"][data-key="demo-flight-24"]').click();
      await contact().waitFor();await total(186400);assert.equal(await page.locator('[data-action="start-lead"]').count(),0,'room footer reaches contacts without an intermediate tour action');
      await party('.application-review');assert.match(await page.locator('.application-summary .application-flight-overview').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
      await submit().click();assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'invalid phone receives focus');
