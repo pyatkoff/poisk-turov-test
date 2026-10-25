@@ -515,7 +515,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
   const wholePrice=async selector=>Number((await page.locator(selector).textContent()).replace(/[^\d,.-]/g,'').replace(',','.'));
   const stay=selector=>page.locator(selector).evaluate(section=>({trip:section.querySelector('.chosen-trip').textContent.replace(/\s+/g,' ').trim(),facts:Object.fromEntries([...section.querySelectorAll('.saved-stay-summary>div')].map(row=>[row.querySelector('dt').textContent.trim(),row.querySelector('dd').textContent.trim()]))}));
   const contactStay=async expected=>{
-   const observed=await page.locator('.application-review-card').evaluate(section=>{const heading=section.querySelector('.application-review-heading');return {trip:[heading.querySelector('span:not(.application-review-stay)').textContent,heading.querySelector('small').textContent].join(' ').replace(/\s+/g,' ').trim(),stay:heading.querySelector('.application-review-stay').textContent.trim(),facts:Object.fromEntries([...section.querySelectorAll('.saved-stay-summary>div')].map(row=>[row.querySelector('dt').textContent.trim(),row.querySelector('dd').textContent.trim()]))};});
+   const observed=await page.locator('.application-review-card').evaluate(section=>{const heading=section.querySelector('.application-review-heading');return {trip:[heading.querySelector('span:not(.application-review-stay)').textContent,heading.querySelector('small').textContent].join('').replace(/\s+/g,' ').trim(),stay:heading.querySelector('.application-review-stay').textContent.trim(),facts:Object.fromEntries([...section.querySelectorAll('.saved-stay-summary>div')].map(row=>[row.querySelector('dt').textContent.trim(),row.querySelector('dd').textContent.trim()]))};});
    assert.equal(observed.trip,expected.trip,'contact summary preserves exact dates/nights/party');assert.equal(observed.stay,expected.facts['Номер']+' · '+expected.facts['Питание'],'contact summary visibly preserves the full exact room and meal');assert.equal(observed.facts['Туроператор'],expected.facts['Оператор']);assert.equal(observed.facts['Размещение'],expected.facts['Размещение']);
   };
   const flightContext=async(expected,label)=>{
@@ -1558,7 +1558,7 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
    const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]'),groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
    if(await groupRoom.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await groupRoom.locator(':scope>summary').click();
-   await group.click();assert.match(await page.locator('#hotel-detail-price-status').textContent(),/доплата за младенца уточняется/i);
+   assert.match(await page.locator('#hotel-detail-price-status').textContent(),/доплата за младенца уточняется/i);await group.click();
    await page.waitForFunction(()=>document.querySelector('.hotel-room-cards').textContent.includes('ANEX CONCRETE'));
    const concrete=page.locator('.hotel-room-card').filter({hasText:'ANEX CONCRETE'});
    if(await concrete.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await concrete.locator(':scope>summary').click();
