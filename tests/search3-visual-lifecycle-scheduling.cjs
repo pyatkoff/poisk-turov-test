@@ -1,5 +1,5 @@
 'use strict';
-// Characterize the LIVE lifecycle used by visual-search/index.php. No DOM,
+// Characterize the canonical lifecycle used by both NEXT entry graphs. No DOM,
 // browser, provider HTTP or real lead transport is needed for this boundary.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -73,6 +73,28 @@ function harness(code = source) {
 
 const cases = [];
 const check = (name, body) => cases.push({name, body});
+check('LIVE and labelled demo load one canonical lifecycle owner', () => {
+  const root = path.resolve(__dirname, '../v2/visual-search');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const php = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
+  const liveArray = php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);
+  assert.ok(liveArray, 'explicit live graph');
+  const live = [...liveArray[1].matchAll(/'([^']+\.js)'/g)].map(match => match[1]);
+  const offline = [...html.matchAll(/<script src="([^"?]+\.js)"/g)].map(match => match[1]);
+  const owner = '../prototype-search/search-lifecycle-v1.js';
+  for (const graph of [live, offline]) {
+    assert.deepEqual(graph.filter(file => file.endsWith('/search-lifecycle-v1.js')), [owner]);
+    assert.ok(graph.indexOf(owner) < graph.indexOf('./app.js'), 'lifecycle precedes the application');
+  }
+  const demoSource = fs.readFileSync(path.resolve(root, owner), 'utf8');
+  assert.equal(demoSource, source, 'demo executes the current live implementation');
+  const h = harness(demoSource);
+  h.lifecycle.requestSubmit(); h.lifecycle.invalidate(); h.flush();
+  assert.equal(h.requests.length, 0, 'an invalidated demo cannot submit a queued search');
+  const retiredWindow = {};
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'search-lifecycle-v1.js'), 'utf8'), {window: retiredWindow});
+  assert.deepEqual(Object.keys(retiredWindow), [], 'retired filename installs no second controller');
+});
 check('bind is idempotent and preserves the public API', () => {
   const h = harness();
   assert.equal(h.lifecycle.bind(), false);
