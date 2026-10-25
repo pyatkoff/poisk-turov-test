@@ -115,6 +115,19 @@
     }
     return result;
   }
+  function tvLimitFacts(value){
+    const profiles={request_count:[64,['admission']],context_bytes:[4194304,['admission','reservation','capture','reply']],
+      offer_count:[2000,['results']],generation:[2147483647,['admission']]};
+    if(!Object.hasOwn(profiles,value.limitKind))return null;
+    const [maximum,phases]=profiles[value.limitKind];
+    if(!phases.includes(value.limitPhase)||value.limitMax!==maximum||!Number.isSafeInteger(value.limitValue)
+      ||value.limitValue<maximum)return null;
+    if(value.limitKind==='offer_count'&&value.stage!=='search_results'
+      ||value.limitKind==='generation'&&value.stage!=='search_start'
+      ||value.limitPhase==='capture'&&!['tour','other'].includes(value.stage))return null;
+    if(value.limitValue===maximum&&!(value.limitPhase==='admission'&&['request_count','context_bytes'].includes(value.limitKind)))return null;
+    return {limitKind:value.limitKind,limitPhase:value.limitPhase,limitValue:value.limitValue,limitMax:maximum};
+  }
   function tvResponseFacts(payload){
     const fixedErrors={'Tourvisor request failed':'tourvisor_request_failed','Tourvisor connection error':'tourvisor_connection_error',
       'Tourvisor is not configured':'tourvisor_not_configured'};
@@ -126,6 +139,9 @@
       if(['timeout','transport','http'].includes(value.category))facts.backendCategory=value.category;
       if(facts.code==='tv_tour_mismatch'&&value.stage==='tour'&&value.category==='context'){
         facts.backendCategory='context';const detail=tvMismatchFacts(value);if(detail)Object.assign(facts,detail);
+      }
+      if(facts.code==='tv_context_limit'&&facts.backendStage&&value.category==='limit'){
+        facts.backendCategory='limit';const detail=tvLimitFacts(value);if(detail)Object.assign(facts,detail);
       }
       for(const [key,max] of Object.entries({httpStatus:599,curlErrno:999,elapsedMs:3600000}))
         if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)facts[key==='httpStatus'?'upstreamStatus':key]=value[key];

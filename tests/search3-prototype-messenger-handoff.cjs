@@ -262,4 +262,58 @@ test('Private TV mismatch details do not cross another error, provider or stage 
   assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"raw"|"token"/);
  }
 });
+const limitDiagnostic=(limitKind='request_count',limitPhase='admission',stage='tour')=>{
+ const limitMax={request_count:64,context_bytes:4194304,offer_count:2000,generation:2147483647}[limitKind];
+ return {provider:'tourvisor',stage,category:'limit',limitKind,limitPhase,limitValue:limitMax+(limitKind==='request_count'?0:1),limitMax};
+};
+test('Private TV local limit facts keep measured counters and the same one-attempt failure',async()=>{
+ for(const d of [limitDiagnostic(),limitDiagnostic('context_bytes'),limitDiagnostic('context_bytes','reservation'),
+  limitDiagnostic('context_bytes','capture'),limitDiagnostic('context_bytes','reply')]){
+  let x;x=tvSetup(c=>c.action==='tv_tour'?x.reply({ok:false,error:'tv_context_limit',diagnostics:d},409):undefined);
+  const h=await x.start();let first;for(let i=0;i<2;i++)await assert.rejects(x.api.quote(h.offers[0]),e=>{
+   if(first)assert.equal(e,first);first=e;assert.equal(e.retryable,false);assert.equal(e.status,409);
+   assert.deepEqual(plain(e.failureFacts),{phase:'response',code:'tv_context_limit',backendStage:'tour',backendCategory:'limit',
+    limitKind:d.limitKind,limitPhase:d.limitPhase,limitValue:d.limitValue,limitMax:d.limitMax});
+   assert(Object.isFrozen(e.failureFacts));return true;
+  });
+  assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);assert.deepEqual(x.rootCalls,[]);
+  const logs=x.warnings.filter(l=>l.startsWith('[AnyTour quote] '));assert.equal(logs.length,1);
+  assert.deepEqual(JSON.parse(logs[0].slice('[AnyTour quote] '.length)),{provider:'tourvisor',action:'tv_tour',...plain(first.failureFacts),httpStatus:409});
+ }
+});
+test('Private TV distinguishes start-generation, status and result limits in the actual search owner',async()=>{
+ for(const [action,stage,d] of [['tv_search','search_start',limitDiagnostic('generation','admission','search_start')],
+  ['tv_status','search_status',limitDiagnostic('request_count','admission','search_status')],
+  ['tv_results','search_results',limitDiagnostic('offer_count','results','search_results')]]){
+  let x;x=tvSetup(c=>c.action===action?x.reply({ok:false,error:'tv_context_limit',diagnostics:d},409):undefined);
+  await x.start();const logs=x.warnings.filter(l=>l.startsWith('[AnyTour quote] '));assert.equal(logs.length,1);
+  const facts=JSON.parse(logs[0].slice('[AnyTour quote] '.length));
+  assert.deepEqual(facts,{provider:'tourvisor',action,phase:'response',code:'tv_context_limit',backendStage:stage,backendCategory:'limit',
+   limitKind:d.limitKind,limitPhase:d.limitPhase,limitValue:d.limitValue,limitMax:d.limitMax,httpStatus:409});
+  assert.equal(x.calls.filter(c=>c.action===action).length,1);assert.deepEqual(x.rootCalls,[]);
+ }
+});
+test('Private TV drops malformed local limit profiles, not the original fixed error',async()=>{
+ for(const change of [d=>delete d.limitKind,d=>d.limitKind='PRIVATE',d=>d.limitKind='__proto__',d=>d.limitPhase='PRIVATE',
+  d=>d.limitPhase='results',d=>d.limitMax=65,d=>d.limitMax='64',d=>d.limitValue='64',d=>d.limitValue=63,
+  d=>d.limitValue=-1,d=>d.limitValue=64.5,d=>d.limitValue=null,d=>d.limitValue=Number.MAX_SAFE_INTEGER+1,
+  d=>{d.limitKind='context_bytes';d.limitPhase='reservation';d.limitMax=4194304;d.limitValue=4194304;},
+  d=>{d.limitKind='offer_count';d.limitPhase='results';d.limitMax=2000;d.limitValue=2001;}]){
+  const d=limitDiagnostic();change(d);let x;
+  x=tvSetup(c=>c.action==='tv_tour'?x.reply({ok:false,error:'tv_context_limit',diagnostics:d},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
+   assert.equal(e.failureFacts.code,'tv_context_limit');assert.equal(e.failureFacts.limitKind,undefined);return true;
+  });assert.doesNotMatch(x.warnings.join(''),/PRIVATE|limitValue|limitMax|limitKind|limitPhase/);
+ }
+});
+test('Private TV local limit details do not cross another code/provider/category or expose raw extras',async()=>{
+ for(const mode of ['code','provider','category','stage','extras']){
+  const d=limitDiagnostic();let code='tv_context_limit';
+  if(mode==='code')code='tv_offer_not_owned';if(mode==='provider')d.provider='anex';if(mode==='category')d.category='http';if(mode==='stage')d.stage='PRIVATE';
+  d.token='PRIVATE';d.body={id:'PRIVATE',price:'PRIVATE'};let x;
+  x=tvSetup(c=>c.action==='tv_tour'?x.reply({ok:false,error:code,diagnostics:d,raw:'PRIVATE'},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{assert.equal(!!e.failureFacts.limitKind,mode==='extras');return true;});
+  assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"token"|"body"|"raw"/);
+ }
+});
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}console.log(JSON.stringify({groups:tests.length,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));})().catch(e=>{console.error(e);process.exitCode=1;});
