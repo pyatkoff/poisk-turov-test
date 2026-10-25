@@ -390,3 +390,31 @@ This control package prepares source/mandatory CI only. Protected maintenance
 review and an exclusive runtime claim must precede the one server command.
 Actual installation needs its own original verified receipt; no supplier outage
 probe, live410 provocation, customer send or paid replay fills this acceptance.
+
+## One-file originating-context revocation update — 25 October2026
+
+Application PR4868 merged at FEATURE95b70987966675e385809ee04cb2e2ea8ea4f4b6
+binds a late provider410 to its originating current generation/search_ref. It
+protects a newer checked record for the same supplier tour. This source defect
+is independent of the consumed SWISS INN ordinary-case failure; its historical
+cause is not inferred and no replacement supplier test is part of installation.
+
+The fixed `install-tv-context-revocation` profile accepts only that source and
+`int-anex-tv-context-revocation-install-20261025-v1`. It uses the same one-helper
+maintenance code and changes only private tourvisor-preview-gateway.php from
+c97fc0c2f86381a434ccfa61fa4f7a857abf704f52e58fe9b265dc04ccc945c6
+to a68e7a30e2f5565647e690d915c4e0566c123719c830594782fac99e77991f96.
+Exactly six checked files, one change and zero creates are required. Client302fb,
+other runtime/dependencies, parent16049/configfaea0644 and typed public pins
+remain exact before/prewrite/after. Backup, PHP lint, atomic readback, rollback,
+exclusive ownership, source/operation and immutable ledger guards are unchanged.
+All eight old rendered programs retain their exact bytes, including the consumed
+cache-guard installerc7ab1eb5. That command/receipt is never replayed or renamed.
+
+The existing maintenance native tests also run against pinned95b source and its
+actual a4a predecessor, including drift/prewrite/rollback/replay/strict receipt
+negatives. Only an additional exact fixture checkout/environment variable is
+added to CI. Source/review/CI/main merge and a separate runtime claim precede the
+one command. No config/key/session/root/SEARCH/HTTP/provider/DB/lead operation
+or automatic fallback is introduced; actual supplier/delivery acceptance remains
+separate from this one-file installation.
