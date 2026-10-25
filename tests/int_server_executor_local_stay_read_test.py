@@ -225,7 +225,9 @@ class NativeStockRead(unittest.TestCase):
 
     def run_remote(self):
         env = dict(os.environ, HOME=str(self.home))
-        run = subprocess.run(['python3', '-c', self.c.REMOTE], input=json.dumps(self.payload),
+        encoded = __import__('base64').b64encode(zlib.compress(self.c.REMOTE.encode(), 9)).decode()
+        loader = 'import base64,zlib;exec(zlib.decompress(base64.b64decode(' + repr(encoded) + ')))'
+        run = subprocess.run(['python3', '-c', loader], input=json.dumps(self.payload),
                              text=True, capture_output=True, env=env, timeout=60)
         self.assertEqual(run.returncode, 0, run.stderr)
         return json.loads(run.stdout)
