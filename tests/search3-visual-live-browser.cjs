@@ -2424,13 +2424,13 @@ function retainLosslessPngEvidence(directory){
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
-  const hotelRoomSummary=page.locator('.hotel-room-card[data-room="STANDARD SEA VIEW"] [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await hotelRoomSummary.scrollIntoViewIfNeeded();await hotelRoomSummary.focus();
+  const hotelRoom=page.locator('.hotel-room-card[data-room="STANDARD SEA VIEW"]'),hotelRoomExpandable=await hotelRoom.evaluate(el=>el.tagName==='DETAILS'),hotelRoomSummary=hotelRoom.locator(':scope>summary');if(hotelRoomExpandable){await hotelRoomSummary.click();await hotelRoomSummary.focus();}else await hotelRoom.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]').scrollIntoViewIfNeeded();
   const hotelLayoutBefore=await settledHotelScroll(page),hotelScroll=hotelLayoutBefore.scroll;
   await page.evaluate(()=>{window.hotelOverview=document.querySelector('.hotel-detail-photos');});
   releaseHotelSource();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 3 · Туры: 3');assert.match(await page.locator('#hotel-detail-min').textContent(),/119\s*000/);
-  assert(await hotelRoomSummary.evaluate(el=>(el.closest('.hotel-room-card').tagName!=='DETAILS'||el.closest('.hotel-room-card').open)&&document.activeElement===el));
+  if(hotelRoomExpandable)assert(await hotelRoomSummary.evaluate(el=>el.parentElement.open&&document.activeElement===el));else assert.equal(await hotelRoom.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]').count(),1,'flat room keeps the same exact action without an expand step');
   assert(await page.locator('.hotel-detail-photos').evaluate(el=>el===window.hotelOverview));
   const hotelLayoutAfter=await settledHotelScroll(page);
   fs.writeFileSync(path.join(evidence,`hotel-scroll-layout-${width}.json`),JSON.stringify({before:hotelLayoutBefore,after:hotelLayoutAfter},null,2));

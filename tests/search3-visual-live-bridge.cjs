@@ -1070,14 +1070,13 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 2 · Туры: 2');
- const overview=q('.hotel-detail-photos'),room=q('.hotel-room-card[data-room="STANDARD SEA VIEW"]');if(room.tagName==='DETAILS')room.open=true;
- room.querySelector('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').focus();
+ const overview=q('.hotel-detail-photos'),room=q('.hotel-room-card[data-room="STANDARD SEA VIEW"]'),roomExpandable=room.tagName==='DETAILS';if(roomExpandable){room.open=true;room.querySelector('summary').focus();}
  releaseHotelSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3');
  assert.match(q('#hotel-detail-min').textContent,/119\s*000/);
  assert.equal(q('.hotel-detail-photos'),overview,'overview is not recreated');
  assert(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]')&&(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').tagName!=='DETAILS'||q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').open));
- assert.equal(d.activeElement,q('.hotel-room-card[data-room="STANDARD SEA VIEW"] [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]'));
+ if(roomExpandable)assert.equal(d.activeElement,q('.hotel-room-card[data-room="STANDARD SEA VIEW"]>summary'));else assert(q('.hotel-room-card[data-room="STANDARD SEA VIEW"] [data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]'),'flat room retains the same exact action without an expand step');
  const mealChoice=q('#hotel-room-meal');assert(mealChoice,'late different meal creates the existing meal filter');
  mealChoice.value='Завтраки';mealChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#hotel-room-count').textContent,'Номера: 1 · Туры: 1');
 
