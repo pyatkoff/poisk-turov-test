@@ -341,7 +341,7 @@ distinct evidence stages.
 
 ## TV diagnostic helper maintenance — 25 October2026
 
-`install-tv-client-diagnostics` admits only source920e83f10804e0d05cc99e4b252e71f7ddaf6697
+`install-tv-client-diagnostics` admits only source771e3834ed8b232b21a33e68cc0dda97a82a32f0
 and operation `int-anex-tv-client-diagnostics-install-20261025-v1`.
 It reuses the standard TV dependency installer, backup, PHP lint, atomic replace,
 readback and rollback. Exactly one existing private helper may change: the shared

@@ -110,7 +110,7 @@ jobs:
       - name: Exact reviewed TV diagnostic client source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 920e83f10804e0d05cc99e4b252e71f7ddaf6697
+          ref: 771e3834ed8b232b21a33e68cc0dda97a82a32f0
           path: tv-diagnostic-source
           persist-credentials: false
       - name: Exact reviewed LOCAL schema source

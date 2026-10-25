@@ -9,7 +9,7 @@ import ast
 
 TV_DIAGNOSTIC_MODE = 'install-tv-client-diagnostics'
 TV_DIAGNOSTIC_OPERATION = 'int-anex-tv-client-diagnostics-install-20261025-v1'
-TV_DIAGNOSTIC_SOURCE = '920e83f10804e0d05cc99e4b252e71f7ddaf6697'
+TV_DIAGNOSTIC_SOURCE = '771e3834ed8b232b21a33e68cc0dda97a82a32f0'
 TV_DIAGNOSTIC_PATH = 'app/integrations/tourvisor-interactive-client.php'
 TV_DIAGNOSTIC_SHA = '302fbebad64a304254bbc8944b96c06678eb57ee4fe716355469d53226721e44'
 TV_ENABLED_CANONICAL = '16049bccb2a9908c54dd25c998ddc2c6c0b6f0edecb07e55bca88faeb1c62d03'
