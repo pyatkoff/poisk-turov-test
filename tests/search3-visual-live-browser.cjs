@@ -1231,7 +1231,7 @@ const calendarViewportFitJourney=async(browser,origin,base,evidence)=>{
    };
    const pick=async date=>{const cell=page.locator('#date-calendar [data-action="day-pick"][data-date="'+date+'"]');await reveal(cell);await cell.click();await settled();};
    const before=await capture(),expectedInitial=Array.from({length:7},(_,index)=>shift(range.from,index));
-   assert.equal(new URL(before.applied.url).searchParams.get('from'),range.from);assert.equal(new URL(before.applied.url).searchParams.get('to'),range.to);assert.equal(new URL(before.applied.url).searchParams.get('meals'),'Всё включено');assert.match(before.form.guests,/2 взр\./);assert.doesNotMatch(before.form.guests,/реб/);
+   assert.equal(new URL(before.applied.url).searchParams.get('from'),range.from);assert.equal(new URL(before.applied.url).searchParams.get('to'),range.to);assert.equal(new URL(before.applied.url).searchParams.get('meals'),'Всё включено');assert.match(before.form.guests,/2 взрослых/);assert.doesNotMatch(before.form.guests,/реб/);
    await open();assert.deepEqual(await selection(),expectedInitial);
    const initial=await geometry();await page.screenshot({path:path.join(evidence,'calendar-viewport-fit-'+tag+'.png')});fs.writeFileSync(path.join(evidence,'calendar-viewport-fit-'+tag+'.json'),JSON.stringify({width,height,horizon:{start,end},range,initial,fictional_catalogues:true,supplier_HTTP:0,real_leads:0},null,2));assertFit(initial);
    let navigation=null;
