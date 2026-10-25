@@ -137,6 +137,12 @@ jobs:
           ref: f902864fcbba3c69f1d7d5404a577c17c462ec66
           path: tv-day-source
           persist-credentials: false
+      - name: Exact merged TV limit diagnostics source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 02ebc7d4391f73307fc3a8dc737507101aa5f2b1
+          path: tv-limit-source
+          persist-credentials: false
       - name: Exact reviewed LOCAL schema source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -239,7 +245,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
           python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_search3_signing.py
-          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" python3 tests/int_server_executor_search3_signing_test.py -v
+          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" TV_LIMIT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-limit-source" python3 tests/int_server_executor_search3_signing_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
