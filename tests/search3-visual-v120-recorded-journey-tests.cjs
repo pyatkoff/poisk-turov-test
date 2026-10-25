@@ -155,11 +155,15 @@ const continueToFlights=async()=>{
   if(scenario==='incomplete')assert.match(d.querySelector('#modal-body').textContent,/Багаж.*уточняется/s);
   const expected=d.querySelector('#detail-total').textContent;
   const chosenConditions=d.querySelector('.chosen-trip').textContent;
-  const exactRows=[...d.querySelectorAll('.chosen-stay dd')].map(el=>el.textContent);
+  const exactRows=Object.fromEntries([...d.querySelectorAll('.chosen-stay dl > div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]));
   click('[data-action="confirm-tour"]');await settle();
   const form=d.querySelector('#prototype-lead-form');assert(form,scenario+' reaches contact check');
-  assert.equal(d.querySelector('.chosen-trip').textContent,chosenConditions,scenario+' carries the same trip into the application');
-  assert.deepEqual([...d.querySelectorAll('.chosen-stay dd')].map(el=>el.textContent),exactRows);
+  const review=d.querySelector('.application-review-card');assert(review,scenario+' uses the approved contact summary');
+  const heading=review.querySelector('.application-review-heading');
+  assert.equal(heading.querySelector('span').textContent+heading.querySelector('small').textContent,chosenConditions,scenario+' carries the same dates, nights and party into the application');
+  assert.equal(heading.querySelector('.application-review-stay').textContent,exactRows['Номер']+' · '+exactRows['Питание'],scenario+' exposes the full exact room and meal before contacts');
+  const detailRows=Object.fromEntries([...review.querySelectorAll('details.application-review > dl > div')].map(row=>[row.querySelector('dt').textContent.replace('Туроператор','Оператор'),row.querySelector('dd').textContent]));
+  assert.deepEqual(detailRows,Object.fromEntries(Object.entries(exactRows).filter(([key])=>!['Номер','Питание'].includes(key))),scenario+' retains the same operator and placement details');
   assert.equal(d.querySelectorAll('.summary-price').length,1,'One application total');
   assert(d.querySelector('#modal-footer .summary-price'),'The application total remains beside its action');
   assert(!form.querySelector('.rehearsal-optional').open,'Optional fields start collapsed');

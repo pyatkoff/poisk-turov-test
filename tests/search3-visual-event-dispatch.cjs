@@ -81,11 +81,11 @@ function characterize(source, scenario) {
   // External collaborators are observable boundaries; the actual handlers and
   // extracted helpers execute unchanged. No collaborator issues an HTTP request.
   const keywords = new Set(['if','switch','for','while','catch','function','Number','String','Math','Date','Set','Map','Event','structuredClone']);
-  for (const [,name] of code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)) {
+  for (const [,name] of [...code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g),['','applyQuickFilters']]) {
     if (!keywords.has(name) && !(name in ctx)) ctx[name]=(...args)=>{trace.push([name,...args.map(x=>x&&typeof x==='object'?(x.focus?'DOM:'+x.id:copy(x)):x)]);checkpoints.push({name,state:copy(state),model:copy(model),draft:copy(ctx.draft),dateDraft:copy(ctx.dateDraft),guestDraft:copy(ctx.guestDraft)});};
   }
   ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
- ctx.agesNeedReview=false;ctx.formFiltersDraft=null;ctx.starsDraft=[];ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
+ ctx.agesNeedReview=false;ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
  ctx.pickerFilters=()=>ctx.state.filters;ctx.finishFilterPicker=ctx.applyQuickFilters;
  vm.createContext(ctx);vm.runInContext(code,ctx);
   const t=node('target');Object.assign(t,{id:'',name:'',value:'new',max:'2000',checked:true,dataset:{}},scenario.target||{});

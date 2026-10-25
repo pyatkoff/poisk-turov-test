@@ -243,10 +243,10 @@ async function quoteReturnRegressions(){
    assert.equal(win.__retention().type,'offer');assert.equal(get('#modal-body').scrollTop,183);assert.equal(doc.activeElement.dataset.action,'change-room');releaseFlights();await until(()=>get('[data-action="apply-flight"]'));flights=null;
    assert.equal(win.__retention().type,'flights','intentional next step is distinct from same-offer updates');assert.equal(get('#modal-body').scrollTop,0);tap('[data-action="close-modal"]');await until(()=>!get('#modal').open);
    // Fresh hotel-rooms history captures the earlier listing. It is a passive view.
-   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');tap('#modal-body '+exact);tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');assert.equal(win.__retention().type,'offer');tap('[data-action="confirm-tour"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
+   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));await until(()=>get('#prototype-lead-form'));tap('#modal-back');tap('#modal-body '+exact);tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');assert.equal(win.__retention().type,'offer');tap('[data-action="confirm-tour"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
-   tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
+   tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
   }catch(error){globalThis.console.error('Quote-return regression failed at '+width,error);throw error;}
   finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
@@ -312,13 +312,17 @@ async function terminalQuoteRegressions(){
   const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Terminal quote timeout '+phase+'/'+width);};
   const open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap('#modal-body '+exact);};
   const operations=()=>t.calls.filter(c=>['tour','flights'].includes(c.action)).length;
+  const contactsAfterCheck=async()=>{
+   await until(()=>get('#prototype-lead-form')||get('[data-action="accept-selected-price"]'));
+   if(get('[data-action="accept-selected-price"]')){const current=win.__terminal().offer,before=operations();assert.equal(current.priceAcceptancePending,true);assert.equal(current.total,current.tour.price);assert(!get('#prototype-lead-form'),'changed amount waits for explicit acceptance');tap('[data-action="accept-selected-price"]');await until(()=>get('#prototype-lead-form'));assert.equal(operations(),before,'acceptance reuses the same quote');}
+  };
   const forced=action=>{const b=doc.createElement('button');b.dataset.action=action;b.dataset.key=key;doc.body.append(b);b.click();b.remove();};
   try{
    await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]'));open();
    const original=win.__terminal().offer,searchPrice=original.total,raw=original.raw;let staleContact=null,staleOffer=null;
    tap('[data-action="start-lead"]');
    if(phase==='flights'){
-    await until(()=>get('#prototype-lead-form'));assert.equal(win.__terminal().offer.total,137000,'the prior checked total differs from the search price');staleContact=win.__terminal().capture();
+    await contactsAfterCheck();assert.equal(win.__terminal().offer.total,137000,'the prior checked total differs from the search price');staleContact=win.__terminal().capture();
     tap('#modal-back');staleOffer=win.__terminal().capture();tap('[data-action="retry-flights"]');
    }
    await until(()=>get('#modal-body .error-text'));
@@ -334,9 +338,9 @@ async function terminalQuoteRegressions(){
    tap('[data-action="all-offers"]');tap('#modal-body '+exact);assertDenied();
    tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);win.history.forward();await until(()=>get('#modal').open&&win.__terminal().type==='offer');assertDenied();
    win.innerWidth=width===430?1280:430;win.dispatchEvent(new win.Event('resize'));assertDenied();assert.equal(operations(),before,'passive reopen/history/resize never requotes');
-   tap('[data-action="all-offers"]');tap('#modal-body [data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');tap('[data-action="start-lead"]');await until(()=>get('#prototype-lead-form'));assert.equal(attempts,1,'a different allowed offer remains usable');
+   tap('[data-action="all-offers"]');tap('#modal-body [data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');tap('[data-action="start-lead"]');await contactsAfterCheck();assert.equal(attempts,1,'a different allowed offer remains usable');
    tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);tap('#applied-search [data-action="edit-search"]');deny=false;tap('.search-submit');await until(()=>win.__terminal().first?.raw!==raw&&get('[data-action="all-offers"][data-id="501"]'));open();
-   assert.notStrictEqual(win.__terminal().offer.raw,raw,'a new search has a new source identity');tap('[data-action="start-lead"]');await until(()=>get('#prototype-lead-form'));assert.equal(attempts,1,'a prior terminal view cannot poison new search authority');
+   assert.notStrictEqual(win.__terminal().offer.raw,raw,'a new search has a new source identity');tap('[data-action="start-lead"]');await contactsAfterCheck();assert.equal(attempts,1,'a prior terminal view cannot poison new search authority');
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
  console.log('PASS permanent canonical quote/flights denial:430/1280, source-bound retention/history/resize, forced continuation blocked, allowed offer/new search and search-price-only authority; fictional transport only');
@@ -618,13 +622,14 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(q('#budget-min').value,'111 000','browser Forward restores the un-applied minimum budget text');
  assert.equal(q('#budget-max').value,'222 000','browser Forward restores the un-applied maximum budget text');
  click('[data-action="close-modal"]');await settle();await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
- click('#search-form [data-action="form-filters"]');click('#modal [data-action="stars"]');click('[data-action="picker-star"][data-value="5"]');click('[data-action="apply-stars"]');q('#modal-body').scrollTop=131;
- w.history.back();await settle();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes form filters without applying their draft');
+ assert(!q('#search-form [data-action="form-filters"]'),'no duplicate nested parameter screen');click('#quick-stars [data-value="5"]');click('#search-form [data-action="meals"]');q('#modal-body').scrollTop=131;
+ w.history.back();await settle();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes the primary picker without submitting the search draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
- assert.match(q('#modal-body [data-action="stars"]').textContent,/5★/,'browser Forward restores the un-applied category draft');
- assert.equal(q('#modal-body').scrollTop,131,'browser Forward restores the form filter position');
+ assert.equal(q('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'true','primary category draft survives picker Back/Forward');
+ assert.equal(q('#modal-body').scrollTop,131,'browser Forward restores the primary picker position');
  assert.equal(starts(),0,'filter picker Back/Forward never starts a supplier search');
  click('[data-action="close-modal"]');await settle();
+ click('#quick-stars [data-action="any-stars"]');assert.equal(q('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','clear the observed primary draft before the independent unfiltered search');assert.equal(starts(),0);
  let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
  click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));await settle();
  click('.results-toolbar [data-action="filters"]');
@@ -1065,14 +1070,13 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 2 · Туры: 2');
- const overview=q('.hotel-detail-photos'),room=q('.room-overview[data-room="STANDARD SEA VIEW"]');room.open=true;
- room.querySelector('summary').focus();
+ const overview=q('.hotel-detail-photos'),room=q('.hotel-room-card[data-room="STANDARD SEA VIEW"]'),roomExpandable=room.tagName==='DETAILS';if(roomExpandable){room.open=true;room.querySelector('summary').focus();}
  releaseHotelSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3');
  assert.match(q('#hotel-detail-min').textContent,/119\s*000/);
  assert.equal(q('.hotel-detail-photos'),overview,'overview is not recreated');
- assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
- assert.equal(d.activeElement,q('.room-overview[data-room="STANDARD SEA VIEW"]>summary'));
+ assert(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]')&&(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').tagName!=='DETAILS'||q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').open));
+ if(roomExpandable)assert.equal(d.activeElement,q('.hotel-room-card[data-room="STANDARD SEA VIEW"]>summary'));else assert(q('.hotel-room-card[data-room="STANDARD SEA VIEW"] [data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]'),'flat room retains the same exact action without an expand step');
  const mealChoice=q('#hotel-room-meal');assert(mealChoice,'late different meal creates the existing meal filter');
  mealChoice.value='Завтраки';mealChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#hotel-room-count').textContent,'Номера: 1 · Туры: 1');
 
@@ -1084,14 +1088,14 @@ async function pickerRetainedDraftRegressions(){
  const beforeHotelBackSearch=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
- const priorRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');priorRoom.open=true;
- const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();click('[data-action="continue-hotel-offer"]');
+ const priorRoom=q('.hotel-room-card[data-room="STANDARD SEA VIEW"]');if(priorRoom.tagName==='DETAILS')priorRoom.open=true;
+ const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();
  await wait(()=>q('#prototype-lead-form'));
  releaseHotelBackSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  click('#modal-back');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3','Back renders current progressive rooms, not the stored snapshot');
  assert.match(q('#hotel-detail-min').textContent,/120\s*000/,'approved footer retains the explicitly selected exact TV whole-tour total');assert.equal(q('#hotel-detail-offers').dataset.key,'tourvisor%3Avisual-tv-101');assert.match(q('.hotel-room-cards').textContent,/119\s*000/,'new independent minimum remains present in the current room inventory');assert(q('#hotel-room-meal'));
- assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
+ assert(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]')&&(q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').tagName!=='DETAILS'||q('.hotel-room-card[data-room="STANDARD SEA VIEW"]').open));
  assert.equal(q('#modal-body').scrollTop,64);assert.equal(starts(),beforeHotelBackSearch+1);
  click('[data-action="close-modal"]');await settle();
  // Back must also retain an expanded nested list when a room has more than two tours.
