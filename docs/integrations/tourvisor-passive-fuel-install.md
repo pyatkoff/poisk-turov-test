@@ -591,3 +591,25 @@ HOLD/UNKNOWN result. Source/CI/installation and observed live memory are separat
 no new supplier search is justified solely to measure cleanup. The existing
 consumed infant case6397634946 remains sealed; cleanup runs naturally only on
 a subsequent justified new search generation under the unchanged stock limits.
+
+## One-client numeric search admission — preparation
+
+SOURCE PR4899/ce270780 has final source CI533gateway/147producer/26HTTP and
+Security accepted. Independent source review and normal FEATURE integration
+must finish before this preparation gets its final merged source pin or a
+control PR. No provisional source pin authorizes a server command.
+
+The fixed install-tv-numeric-admission mode and
+int-anex-tv-numeric-admission-install-20261025-v1 operation reuse the existing
+one-helper stock maintenance. Only client644ded becomes72056e5c, exactly
+six checked/one changed/zero created. Installed gateway8c2540 and all other
+source/dependency/config/parent/public/signing pins are preserved. Both the
+client predecessor and unchanged gateway must match before writes. Existing
+backup/lint/atomic replacement/readback/rollback/no-replay remain unchanged;
+strict completion checks the entire resulting hash map and typed zero calls.
+All previous rendered programs, including the consumed two-helper party
+installer, remain byte-identical. CI adds one actual pinned source fixture to
+the same native suite, with one-file completion, drift, config race, rollback
+and no-replay cases. No supplier/session/key/DB/UI/lead/production action or
+paid check is added. Source/CI/review/normal merge and a separate exclusive
+runtime claim/original receipt remain distinct gates.
