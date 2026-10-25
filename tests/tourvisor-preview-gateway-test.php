@@ -104,6 +104,44 @@ foreach([[0,0,8],['0','0','8'],[0],[17],[],'0'] as $ages){
     tvg_ok(\AnyTour\TourvisorInteractiveClient::searchParams($validParams)['childs']===$expected,
         'literal infant zero, duplicate order and ordinary scalar age remain exact');
 }
+// JSON true must not become one adult/night/identity/filter before supplier dispatch.
+foreach(['departureId','countryId','adults','nightsFrom','nightsTo','arrivalId','priceFrom','priceTo'] as $field){
+    foreach([true,false,1.0,1.5,[],(object)['value'=>1]] as $index=>$value){
+        $badParams=$params;$badParams[$field]=$value;$badState=['keep'=>'untouched'];$attempts=0;$writes=0;
+        $badInput=['provider'=>'tourvisor','action'=>'tv_search','request_id'=>md5('numeric-'.$field.'-'.$index),
+            'csrf'=>str_repeat('c',64),'params'=>$badParams];
+        try{AnyTourTourvisorPreviewGateway::handle($badInput,$badState,$now,
+            static function()use(&$attempts):array{++$attempts;return ['searchId'=>91];},static fn()=>null,
+            static function(array &$s)use(&$writes):void{++$writes;},$clock);
+            throw new RuntimeException('expected invalid numeric search input');}
+        catch(\AnyTour\TourvisorInteractiveFailure $e){tvg_ok($e->httpStatus===400
+            && $badState===['keep'=>'untouched'] && $attempts===0 && $writes===0,
+            'invalid numeric '.$field.'/'.$index.' denied before reservation or dispatch');}
+    }
+}
+foreach([1,6,'1','2','6'] as $adults){
+    $validParams=$params;$validParams['adults']=$adults;
+    $parsed=\AnyTour\TourvisorInteractiveClient::searchParams($validParams);
+    tvg_ok($parsed['adults']===(int)$adults && $parsed['childs']===[0,0,8],
+        'valid adult count stays exact with duplicate infant ages');
+}
+$stringParams=array_replace($params,['departureId'=>'1','countryId'=>'4','nightsFrom'=>'7','nightsTo'=>'7',
+    'adults'=>'2','arrivalId'=>'1','priceFrom'=>'0','priceTo'=>'500000','onlyCharter'=>true,'onlyDirect'=>false]);
+$parsed=\AnyTour\TourvisorInteractiveClient::searchParams($stringParams);
+tvg_ok(array_intersect_key($parsed,array_flip(['departureId','countryId','nightsFrom','nightsTo','adults','arrivalId','priceFrom','priceTo']))
+    ===['departureId'=>1,'countryId'=>4,'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'arrivalId'=>1,'priceFrom'=>0,'priceTo'=>500000]
+    && $parsed['onlyCharter']===true && $parsed['onlyDirect']===false,
+    'integer strings, literal zero price and separate boolean flags remain compatible');
+foreach([null,''] as $empty){
+    $validParams=array_replace($params,['arrivalId'=>$empty,'priceFrom'=>$empty,'priceTo'=>$empty]);
+    $parsed=\AnyTour\TourvisorInteractiveClient::searchParams($validParams);
+    tvg_ok($parsed['arrivalId']===null && $parsed['priceFrom']===null && $parsed['priceTo']===null,
+        'optional missing numeric filters stay missing');
+}
+$defaultParams=$params;unset($defaultParams['adults'],$defaultParams['nightsFrom'],$defaultParams['nightsTo']);
+$parsed=\AnyTour\TourvisorInteractiveClient::searchParams($defaultParams);
+tvg_ok($parsed['adults']===2 && $parsed['nightsFrom']===5 && $parsed['nightsTo']===14,
+    'omitted ordinary search defaults unchanged');
 $session=['search3_handoff_csrf'=>str_repeat('c',64),'anex_context_generation'=>17,'anex_offer_contexts'=>['keep'=>'original']];
 $disk=[]; $saves=0; $calls=[]; $activeRid='';
 $save=static function(array &$state)use(&$disk,&$saves):void{$disk=$state;++$saves;};

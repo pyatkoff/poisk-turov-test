@@ -380,3 +380,15 @@ Previously the shared text-list normalization silently dropped missing slots:
 the existing scalar age input stay compatible. Missing age is not age0 and must
 not remove a person. This local input rejection adds no supplier request, price
 arithmetic or new external payload; the successful live infant `[0]` is unaffected.
+
+### Typed numeric search admission — 25 October 2026
+
+The shared client rejects non-integer/non-string values in its existing numeric
+parsers before filtering. In particular, JSON `true` cannot become one adult,
+night, identity or optional numeric filter through PHP scalar coercion. The
+gateway rejects these malformed inputs with HTTP400 before reserving UNKNOWN,
+checkpointing state or dispatching a supplier request. Integer strings, original
+bounds/defaults, optional null/empty values, separate boolean flags and repeated
+literal infant ages remain compatible. Native gateway regressions use the actual
+parser and assert zero dispatches/writes and unchanged state. No price/fuel/infant
+arithmetic, UI, transport, no-replay or session capacity change is introduced.
