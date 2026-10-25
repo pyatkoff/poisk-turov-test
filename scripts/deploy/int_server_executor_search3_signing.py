@@ -13,6 +13,12 @@ TV_MISMATCH_SOURCE = '95b70987966675e385809ee04cb2e2ea8ea4f4b6'
 TV_MISMATCH_ID = '18296825112597'
 TV_MISMATCH_WINDOW = (1792911120, 1792911240)
 
+TV_BYTES_MODE = 'install-tv-context-cap-20mib'
+TV_BYTES_OPERATION = 'int-anex-tv-context-cap-20mib-install-20261025-v1'
+TV_BYTES_SOURCE = '0348c66a3deff138e47096b81c958a33ff7354df'
+TV_BYTES_PATH = 'app/integrations/tourvisor-preview-gateway.php'
+TV_BYTES_SHA = 'df33a9a836ba33dcae034451320a6ef8a52fc8a9cab02f29a5db3e719271d515'
+
 TV_CAP_MODE = 'install-tv-request-cap-640'
 TV_CAP_OPERATION = 'int-anex-tv-request-cap-640-install-20261025-v1'
 TV_CAP_SOURCE = 'f7218b974e2c4dfa0f7ea97119898e2cdcbf2486'
@@ -68,7 +74,7 @@ TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8a
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE, TV_BYTES_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -124,7 +130,8 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-request-cap-640-install-' if mode == TV_CAP_MODE else
+        prefix = ('int-anex-tv-context-cap-20mib-install-' if mode == TV_BYTES_MODE else
+                  'int-anex-tv-request-cap-640-install-' if mode == TV_CAP_MODE else
                   'int-anex-tv-limit-diagnostics-install-' if mode == TV_LIMIT_MODE else
                   'int-anex-tv-calendar-day-install-' if mode == TV_DAY_MODE else
                   'int-anex-tv-mismatch-fields-install-' if mode == TV_FIELDS_MODE else
@@ -137,6 +144,9 @@ def register_parser(core):
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_BYTES_MODE:
+            need(operation == TV_BYTES_OPERATION, 'tv_bytes_single_operation')
+            need(source == TV_BYTES_SOURCE, 'tv_bytes_source')
         if mode == TV_CAP_MODE:
             need(operation == TV_CAP_OPERATION, 'tv_cap_single_operation')
             need(source == TV_CAP_SOURCE, 'tv_cap_source')
@@ -345,6 +355,8 @@ def activate(core, command):
         return activate_tv_mismatch(core, command)
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_BYTES_MODE:
+        return activate_tv_bytes(core, command)
     if command.get('mode') == TV_CAP_MODE:
         return activate_tv_cap(core, command)
     if command.get('mode') == TV_LIMIT_MODE:
@@ -1164,3 +1176,13 @@ def completed_tv_cap(command, result):
 def activate_tv_cap(core, command):
     return _activate_tv_maintenance(core,command,TV_CAP_MODE,TV_CAP_SOURCE,TV_CAP_PATH,TV_CAP_SHA,
         TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_LIMIT_PATH:TV_LIMIT_SHA},completed_tv_cap)
+
+
+def completed_tv_bytes(command, result):
+    return _completed_tv_maintenance(command,result,TV_BYTES_MODE,TV_BYTES_OPERATION,TV_BYTES_SOURCE,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_BYTES_PATH:TV_BYTES_SHA})
+
+
+def activate_tv_bytes(core, command):
+    return _activate_tv_maintenance(core,command,TV_BYTES_MODE,TV_BYTES_SOURCE,TV_BYTES_PATH,TV_BYTES_SHA,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_CAP_PATH:TV_CAP_SHA},completed_tv_bytes)

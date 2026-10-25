@@ -523,3 +523,22 @@ No session reset, receipt pruning, supplier/DB/lead action or sealed-case replay
 is part of installation. Supplier quotas/rates,4MiB/2000offers/1MiB/TTL and price
 authority remain unchanged. One exclusive normal install and exact readback must
 finish before the narrow SEARCH diagnostics consumer's NEXT publication.
+
+### Owner-authorized TV context capacity20MiB maintenance —25 October2026
+
+The separate owner directive#4709/comment6396386236 raises only the context byte
+budget4MiB→20MiB after actual reply limit4302913/4194304 in terminal6396321224.
+SourcePR4884 merged at0348c66a3deff138e47096b81c958a33ff7354df. The fixed
+`install-tv-context-cap-20mib` profile accepts only that source and operation
+`int-anex-tv-context-cap-20mib-install-20261025-v1`. It reuses the same reviewed
+one-helper maintenance: gateway1989ac→
+df33a9a836ba33dcae034451320a6ef8a52fc8a9cab02f29a5db3e719271d515,
+six files checked/one changed/zero created. Client302, API9eb, all dependencies,
+enabled parent16049, configfaea/mode0644, signing/public/prod boundaries stay fixed.
+All historical rendered operations/reservations/UNKNOWN receipts stay unchanged.
+Native old/new fixtures retain prewrite identity, rollback, strict completion and
+no-replay; CI adds only the exact immutable checkout/environment. No session
+pruning/reset, payload migration or supplier/DB/lead action. Count640,offers2000,
+responses1MiB, TTL, price and supplier quota/rate bounds remain unchanged.
+Finish this one guarded install and original readback before the diagnostic-only
+consumer's normal NEXT publication. The failed infant case stays consumed.
