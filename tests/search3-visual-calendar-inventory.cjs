@@ -9,7 +9,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
 // Freeze the real clock, but retain native local calendar fields in each zone.
 // Execute both connected owners; neither bootstrap nor a supplier runs here.
 {
- const bridge=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/live-bridge.js'),'utf8'),clock=section(source,'const dateObj =','const formatDate='),period=source.match(/^const startDay=[^\n]+/m)[0],restore=section(source,'function restoreURL(','let compactSearchFrame='),previousTZ=process.env.TZ,NativeDate=Date,rows=[];
+ const bridge=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/live-bridge.js'),'utf8'),clock=section(source,'const dateObj =','const formatDate='),period=source.match(/^const startDay=[^\n]+/m)[0],restore=section(source,'function parseURLAges(','let compactSearchFrame='),previousTZ=process.env.TZ,NativeDate=Date,rows=[];
  const cases=[
   ['Europe/Kaliningrad','2026-10-18T22:30:00Z','2026-10-20','2026-11-02','2026-11-08'],
   ['Europe/Kaliningrad','2026-10-19T09:00:00Z','2026-10-20','2026-11-02','2026-11-08'],
