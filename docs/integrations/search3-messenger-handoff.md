@@ -222,6 +222,34 @@ observation at most15min, shortened by an explicit returned expiresAt. These
 are application freshness/resource bounds, not shared-account remaining quota.
 No silent deletion of UNKNOWN operations occurs.
 
+### TV checkpoint isolation from independent ANEX updates — 25 October 2026
+
+The existing stock producer checkpoint writes, releases the PHP session lock,
+reopens the session and compares the complete state. A native session-handler
+fixture reproduces a refusal when ANEX changes only its own state in that window,
+although TV's durable UNKNOWN reservation and all shared authority remain intact.
+This is a confirmed source race, not proof of the consumed live503 cause6396590693.
+
+The TV gateway wraps only its supplied checkpoint. It still calls the unchanged
+stock producer checkpoint exactly once. Only that exact callback's
+`handoff_session_changed` can be accepted after readback, and only with the same
+active PHP session name/ID and strict equality of every state key except the three
+existing ANEX-owned slots: `offer_context`, `anex_context_generation`, and
+`anex_offer_contexts`. The newer readback is retained; no foreign state is rewritten.
+TV context/generation/receipts, CSRF, canonical selected records, pending producer
+state, and all other existing or unexpected keys remain strict. Other callbacks,
+write/read failures, session changes and own/shared drift still fail closed before
+dispatch. The general producer checkpoint and HTTP/transport owners are unchanged.
+
+Native tests exercise real PHP session write/close/start through a synthetic
+SessionHandlerInterface: baseline fails on the independent update; the fix permits
+each of the three independent slots, preserves cached-operation no replay, and
+rejects own reservation/generation, CSRF, producer/unknown-key, session identity,
+non-stock callback and storage failures. No supplier, live session or DB is used.
+Count640,20MiB,2000offers,1MiBresponse, deadlines, money and UNKNOWN retention are
+unchanged. Source/CI/review, guarded installation and a justified new live case
+are separate stages; no old failing operation is replayed.
+
 The owner's25October2026 directive to increase the internal64 cap tenfold is
 recorded in#4709/comment6395983438. That packet changed only the receipt count.
 The subsequent explicit directive “увеличь в 5 раз” in#4709/comment6396386236
