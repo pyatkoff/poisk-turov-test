@@ -36,12 +36,14 @@ final class TourvisorInteractiveClient
     private static function optionalInt($value): ?int
     {
         if ($value === null || $value === '') return null;
+        if (!is_int($value) && !is_string($value)) self::fail('Invalid integer search parameter');
         $v = filter_var($value, FILTER_VALIDATE_INT);
         return $v === false ? null : (int)$v;
     }
 
     private static function integer($value, int $min, int $max, string $name): int
     {
+        if (!is_int($value) && !is_string($value)) self::fail($name . ' must be between ' . $min . ' and ' . $max);
         $v = filter_var($value, FILTER_VALIDATE_INT);
         if ($v === false || (int)$v < $min || (int)$v > $max) self::fail($name . ' must be between ' . $min . ' and ' . $max);
         return (int)$v;
