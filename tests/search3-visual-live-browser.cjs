@@ -1877,15 +1877,30 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
 
 // Keep every broad-matrix frame within the existing bounded artifact carrier.
 // Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
-// preserve every other chunk. The separately retained messenger bytes stay intact.
+// preserve every other chunk. Gzip ancillary JSON without changing its raw bytes;
+// the main receipt and separately retained messenger bytes stay intact.
 function retainLosslessPngEvidence(directory){
- const {inflateSync,deflateSync,gzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[];
+ const {inflateSync,deflateSync,gzipSync,gunzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[],jsonRows=[];
  const sha=value=>createHash('sha256').update(value).digest('hex'),signature=Buffer.from('89504e470d0a1a0a','hex');
  const visit=folder=>{for(const entry of fs.readdirSync(folder,{withFileTypes:true})){
   const file=path.join(folder,entry.name),relative=path.relative(directory,file).split(path.sep).join('/');
   if(relative==='messenger-entry')continue;
   if(entry.isDirectory()){visit(file);continue;}
-  if(!entry.isFile()||!file.endsWith('.png'))continue;
+  if(!entry.isFile())continue;
+  if(file.endsWith('.json')&&relative!=='receipt.json'){
+   const before=fs.readFileSync(file),candidate=gzipSync(before,{level:9}),compressed=candidate.length<before.length,retainedFile=compressed?file+'.gz':file;
+   if(compressed){
+    assert(!fs.existsSync(retainedFile),relative+' gzip path must not already exist');
+    fs.writeFileSync(retainedFile,candidate);const persisted=fs.readFileSync(retainedFile);
+    assert(persisted.equals(candidate),relative+' persisted gzip equals the candidate');
+    assert(gunzipSync(persisted).equals(before),relative+' byte-identical receipt after gunzip');
+    fs.unlinkSync(file);
+   }
+   const after=compressed?candidate:before;
+   jsonRows.push({path:relative,retained_path:compressed?relative+'.gz':relative,encoding:compressed?'gzip':'identity',original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after)});
+   continue;
+  }
+  if(!file.endsWith('.png'))continue;
   const before=fs.readFileSync(file),chunks=[],idat=[];assert(before.subarray(0,8).equals(signature),relative+' PNG signature');
   for(let offset=8;offset<before.length;){
    assert(offset+12<=before.length,relative+' complete PNG chunk');
@@ -1905,7 +1920,10 @@ function retainLosslessPngEvidence(directory){
  }};
  visit(directory);const originalBytes=rows.reduce((sum,row)=>sum+row.original_bytes,0),retainedBytes=rows.reduce((sum,row)=>sum+row.retained_bytes,0);
  fs.writeFileSync(path.join(directory,'png-retention.json.gz'),gzipSync(Buffer.from(JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n'),{level:9}));
+ const jsonOriginalBytes=jsonRows.reduce((sum,row)=>sum+row.original_bytes,0),jsonRetainedBytes=jsonRows.reduce((sum,row)=>sum+row.retained_bytes,0),jsonManifest=path.join(directory,'json-retention.json.gz');
+ if(jsonRows.length||!fs.existsSync(jsonManifest))fs.writeFileSync(jsonManifest,gzipSync(Buffer.from(JSON.stringify({schema:1,uncompressed_bytes_identical:true,root_receipt_unchanged:true,messenger_artifact_unchanged:true,files:jsonRows})+'\n'),{level:9}));
  console.log('PASS lossless complete PNG retention',JSON.stringify({frames:rows.length,originalBytes,retainedBytes,savedBytes:originalBytes-retainedBytes}));
+ console.log('PASS lossless ancillary JSON retention',JSON.stringify({files:jsonRows.length,originalBytes:jsonOriginalBytes,retainedBytes:jsonRetainedBytes,savedBytes:jsonOriginalBytes-jsonRetainedBytes}));
 }
 
 (async()=>{
