@@ -516,5 +516,221 @@ class NativeStockSchemaRead(unittest.TestCase):
         print(run.stdout.strip())
 
 
+def install_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.INSTALL_SOURCE_SHA} {m.INSTALL_MODE} {m.INSTALL_OPERATION}')
+
+
+def install_fixture_data():
+    # Deliberately fictional structural data tests the protocol, not production
+    # schema compatibility. Actual schema semantics are tested by native MySQL.
+    before=schema_missing_data()['inventory']
+    for table in before['tables'][:2]:
+        table.update(exists=True,tableType='base_table',engine='InnoDB',collation='utf8mb4_bin',
+                     createSha256='d'*64,compatibility='compatible',issues=[])
+    after=copy.deepcopy(before)
+    for table in after['tables'][2:]:
+        table.update(exists=True,tableType='base_table',engine='InnoDB',collation='utf8mb4_bin',
+                     createSha256='e'*64,compatibility='compatible',issues=[])
+    digest=lambda x:hashlib.sha256(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    data={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-schema-install-v1','state':'installed_empty','reason':None,
+          'migrationSha256':m.SCHEMA_MIGRATION_SHA,'parentReadOperation':m.INSTALL_PARENT['operation'],
+          'parentReadInventorySha256':digest(before),'databaseSha256':'f'*64,'beforeSha256':digest(before),'afterSha256':digest(after),
+          'attemptedTables':list(m.INSTALL_TABLES),'createdTables':list(m.INSTALL_TABLES),'unknownTables':[],
+          'tableRows':[{'name':name,'rows':0} for name in m.INSTALL_TABLES],
+          'supplierCalls':0,'databaseWrites':0,'automaticAccepts':0,'schemaWrites':3,'ddlOutcomeUnknown':False,
+          'parentMetadataUnchanged':True,'journalSha256':'a'*64,
+          'operationId':m.INSTALL_OPERATION,'sourceSha':m.INSTALL_SOURCE_SHA,'controlSha':CONTROL},'before':before,'after':after}
+    return data
+
+
+def install_journal(data):
+    r=data['receipt'];events=[{'stage':'start','operationId':r['operationId'],'migrationSha256':r['migrationSha256'],
+          'databaseSha256':r['databaseSha256'],'beforeSha256':r['beforeSha256'],
+          'parentReadInventorySha256':r['parentReadInventorySha256']}]
+    hashes=['ae700b15382e9797ff20c351abeafd052783a549749431ad3f337c9881f098a8',
+            '3dd522bc038f62e3161b15472d2081192bfae635ae9afcb154ece577f62e1762',
+            '0789fec589f0ef74fa02a2502ab65d59bcd49576a1961371c09da6ee690ec5d5']
+    for i,name in enumerate(r['attemptedTables']):
+        events.append({'stage':'before_create','table':name,'statementSha256':hashes[i]})
+        if name in r['createdTables']: events.append({'stage':'created','table':name,'acknowledgedSchemaWrites':i+1})
+    events.append({'stage':'final',**{key:r[key] for key in ('state','reason','attemptedTables','createdTables','unknownTables')}})
+    return events
+
+
+def install_receipt(data):
+    outer=receipt(missing_data());outer.update(mode=m.INSTALL_MODE,operation_id=m.INSTALL_OPERATION,source_sha=m.INSTALL_SOURCE_SHA,
+           schema_writes=3,schema_writes_acknowledged=3,schema_write_outcome_unknown=False)
+    del outer['local_stay_read']
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    outer['local_stay_schema_install']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+          'protectedBefore':dict(m.INSTALL_PARENT['protected']),'protectedAfter':dict(m.INSTALL_PARENT['protected']),
+          'parentResultSha256':m.INSTALL_PARENT['private_sha256'],'journalSha256':data['receipt']['journalSha256'],
+          'journalEvents':install_journal(data)}
+    return outer
+
+
+class InstallAdmission(unittest.TestCase):
+    def test_fixed_owner_main_release_command_and_no_new_caller_authority(self):
+        c=wrapper().core;body=f'{c.PREFIX}{m.INSTALL_SOURCE_SHA} {m.INSTALL_MODE} {m.INSTALL_OPERATION}'
+        parsed=install_command(c);self.assertEqual(parsed['maximum_schema_tables'],3)
+        for invalid in (body+' --apply',body.replace(m.INSTALL_SOURCE_SHA,'a'*40),body.replace(m.INSTALL_OPERATION,m.INSTALL_OPERATION+'-v2')):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':111,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/111': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.INSTALL_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            for wrong in (dict(event,issue={'number':4217}),dict(event,issue={'number':4709,'pull_request':{}})):
+                if wrong['issue'].get('pull_request')=={}: wrong['issue']['pull_request']={'url':'fixture'}
+                with self.assertRaises(ValueError): c.checked_event('fixture',wrong,CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+
+    def test_split_bundle_closed_scope_and_exact_source_hashes(self):
+        raw,hashes=m.bundle_install_source(SOURCE)
+        self.assertEqual(hashes,m.install_hashes())
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(len(archive.getmembers()),5)
+            self.assertEqual(set(archive.getnames()),{*hashes,'manifest.json'})
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            for relative in m.SCHEMA_SOURCE_HASHES:
+                path=root/relative;path.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(SOURCE/relative,path)
+            (root/m.SCHEMA_SQL).write_text('unreviewed migration')
+            with self.assertRaisesRegex(ValueError,'reviewed_source_changed'): m.bundle_install_source(root)
+
+    def test_activation_preserves_original_results_and_rejects_boolean_or_extra_write_caps(self):
+        c=wrapper().core;parsed=install_command(c)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_schema_tables',True),('maximum_schema_tables',4),('provider_http_calls',1),('database_writes',1),('sql','CREATE')):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",c.REMOTE)
+        self.assertIn("if globals().get('local_stay_install_reserved') is True and op.exists():",c.REMOTE)
+        self.assertIn("if len(members)!=5",c.REMOTE)
+        self.assertIn("result['schema_writes']='unknown'",c.REMOTE)
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_success_requires_three_empty_tables_protected_pins_and_durable_journal_order(self):
+        data=install_fixture_data();pins=copy.deepcopy(m.INSTALL_PARENT);pins['inventory_sha256']=data['receipt']['beforeSha256']
+        with mock.patch.object(m,'INSTALL_PARENT',pins):
+            parsed=install_command(wrapper().core);valid=install_receipt(data)
+            self.assertTrue(m.completed_install(parsed,valid,CONTROL))
+            for field,key,value in (('receipt','schemaWrites',False),('receipt','ddlOutcomeUnknown',True),('receipt','tableRows',[]),('receipt','controlSha','c'*40)):
+                changed=copy.deepcopy(data);changed[field][key]=value
+                self.assertFalse(m.completed_install(parsed,install_receipt(changed),CONTROL))
+            changed=copy.deepcopy(valid);changed['local_stay_schema_install']['journalEvents'][1]['table']=m.INSTALL_TABLES[1]
+            self.assertFalse(m.completed_install(parsed,changed,CONTROL))
+            changed=copy.deepcopy(valid);changed['local_stay_schema_install']['protectedAfter']['config.php']='0'*64
+            self.assertFalse(m.completed_install(parsed,changed,CONTROL))
+            changed=copy.deepcopy(valid);changed['schema_writes']=False
+            self.assertFalse(m.completed_install(parsed,changed,CONTROL))
+
+    def test_partial_acknowledgement_remains_unknown_and_never_completes(self):
+        data=install_fixture_data();r=data['receipt'];r.update(state='ddl_unknown',reason='ddl_execution_failed',
+            attemptedTables=list(m.INSTALL_TABLES[:2]),createdTables=list(m.INSTALL_TABLES[:1]),unknownTables=[m.INSTALL_TABLES[1]],
+            tableRows=[],schemaWrites=1,ddlOutcomeUnknown=True,parentMetadataUnchanged=True)
+        pins=copy.deepcopy(m.INSTALL_PARENT);pins['inventory_sha256']=r['beforeSha256']
+        with mock.patch.object(m,'INSTALL_PARENT',pins):
+            self.assertTrue(m.valid_install_payload(data,CONTROL))
+            failed=install_receipt(data);failed.update(status='terminal_nonzero_no_replay',schema_writes='unknown',schema_writes_acknowledged=1,schema_write_outcome_unknown=True)
+            self.assertFalse(m.completed_install(install_command(wrapper().core),failed,CONTROL))
+            self.assertEqual(failed['local_stay_schema_install']['data']['receipt']['unknownTables'],[m.INSTALL_TABLES[1]])
+
+
+class NativeStockSchemaInstall(unittest.TestCase):
+    def setUp(self):
+        self.assertIsNotNone(shutil.which('php'),'Actual PHP is required; no skip or substitute')
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.home=Path(self.temp.name)
+        self.project=self.home/'www/anytoour.ru';(self.project/'data').mkdir(parents=True)
+        (self.project/'_preview/search3-anex-candidate').mkdir(parents=True)
+        for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+            path=self.project/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture protected '+name)
+        shutil.copyfile(SOURCE/'v2/data/db-v1.php',self.project/'data/db-v1.php')
+        self.server='mysql:host=127.0.0.1;port=3306;charset=utf8mb4';self.password=os.environ.get('LOCAL_STAY_TEST_PASSWORD','local_tv_schema_test_only')
+        self.dsn='mysql:host=127.0.0.1;port=3306;dbname=anytour_stay_schema_install_control_fixture;charset=utf8mb4'
+        init=r'''$p=new PDO($argv[1],"root",$argv[2],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$p->exec("DROP DATABASE IF EXISTS anytour_stay_schema_install_control_fixture");$p->exec("CREATE DATABASE anytour_stay_schema_install_control_fixture");$p->exec("USE anytour_stay_schema_install_control_fixture");$sql=preg_replace('/^\s*--.*$/m','',file_get_contents($argv[3]));foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql) as $s){if(trim($s)!=='')$p->exec(trim($s));}'''
+        run=subprocess.run(['php','-r',init,self.server,self.password,str(SOURCE/'v2/data/migrations/20260916-anytour-canonical-catalog.sql')],capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        config='<?php\ndefine("ANYTOUR_DATA_DSN",'+json.dumps(self.dsn)+');\ndefine("ANYTOUR_DATA_DB_USER","root");\ndefine("ANYTOUR_DATA_DB_PASSWORD",'+json.dumps(self.password)+');\n'
+        (self.project/'config.php').write_text(config)
+        stage=self.home/'parent-source';stage.mkdir()
+        raw,_=m.bundle_schema_source(SOURCE)
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive: archive.extractall(stage,filter='data')
+        read=r'''require $argv[1];$p=new PDO($argv[2],"root",$argv[3],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$d=AnyTourHotelStaySchemaReadV1::read($p);$d['receipt']+=['operationId'=>AnyTourHotelStaySchemaReadV1::OPERATION,'sourceSha'=>$argv[4],'controlSha'=>$argv[5]];echo AnyTourHotelStaySchemaReadV1::json($d);'''
+        run=subprocess.run(['php','-r',read,str(stage/m.SCHEMA_RUNNER),self.dsn,self.password,m.INSTALL_PARENT['source'],m.INSTALL_PARENT['control']],capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr);data=json.loads(run.stdout)
+        self.assertEqual(data['plan']['state'],'create_only_after_review',data)
+        parent=schema_receipt(data)
+        public={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        protected={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('config.php','data/db-v1.php')}
+        parent.update(production_before=public,production_after=dict(public))
+        parent['local_stay_schema_read'].update(protectedBefore=protected,protectedAfter=dict(protected))
+        parent_raw=json.dumps(parent,sort_keys=True,separators=(',',':')).encode()
+        parent_path=self.home/'.anytoour-int-executor'/m.SCHEMA_OPERATION/'result.json';parent_path.parent.mkdir(parents=True,mode=0o700)
+        parent_path.write_bytes(parent_raw);parent_path.chmod(0o600);self.parent_path=parent_path
+        pins=copy.deepcopy(m.INSTALL_PARENT);pins.update(private_sha256=hashlib.sha256(parent_raw).hexdigest(),
+            file_sha256=parent['local_stay_schema_read']['fileSha256'],inventory_sha256=data['receipt']['inventorySha256'],
+            plan_sha256=data['receipt']['planSha256'],protected=protected)
+        self.enterContext(mock.patch.object(m,'INSTALL_PARENT',pins))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=install_command(self.c);m.activate(self.c,self.command)
+        archive,hashes=m.bundle_install_source(SOURCE);self.archive=self.home/'install-source.tar.gz';self.archive.write_bytes(archive)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    run_remote=NativeStockRead.run_remote
+
+    def test_actual_three_empty_creates_and_repeat_preserves_original_terminal_and_journal(self):
+        result=self.run_remote();self.assertTrue(m.completed_install(self.command,result,CONTROL),result)
+        receipt=result['local_stay_schema_install']['data']['receipt']
+        self.assertEqual(receipt['createdTables'],list(m.INSTALL_TABLES));self.assertEqual(result['schema_writes'],3)
+        self.assertEqual(receipt['tableRows'],[{'name':name,'rows':0} for name in m.INSTALL_TABLES])
+        operation=self.home/'.anytoour-int-executor'/m.INSTALL_OPERATION
+        original={name:(operation/name).read_bytes() for name in ('result.json','local-stay-schema-install.json','local-stay-schema-install-journal.jsonl')}
+        repeated=self.run_remote();self.assertEqual(repeated.get('reason'),'operation_exists_no_replay')
+        self.assertFalse(m.completed_install(self.command,repeated,CONTROL))
+        self.assertTrue(all((operation/name).read_bytes()==raw for name,raw in original.items()))
+
+    def test_actual_parent_bytes_drift_stops_before_php_or_ddl(self):
+        self.parent_path.write_bytes(self.parent_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_install_parent_hash')
+        self.assertFalse(m.completed_install(self.command,result,CONTROL));self.assertEqual(result.get('schema_writes'),0)
+        self.assertNotIn('local_stay_schema_install',result)
+
+    def test_actual_preexisting_target_refusal_is_retained_with_zero_ddl(self):
+        run=subprocess.run(['php','-r','$p=new PDO($argv[1],"root",$argv[2]);$p->exec("CREATE TABLE anytour_hotel_room_concepts_v2(id BIGINT UNSIGNED PRIMARY KEY) ENGINE=InnoDB");',self.dsn,self.password],capture_output=True,text=True)
+        self.assertEqual(run.returncode,0,run.stderr)
+        result=self.run_remote();self.assertEqual(result['status'],'terminal_nonzero_no_replay',result)
+        data=result['local_stay_schema_install']['data'];self.assertEqual(data['receipt']['state'],'preflight_refused')
+        self.assertEqual(result['schema_writes'],0);self.assertFalse(m.completed_install(self.command,result,CONTROL))
+
+    def test_actual_boolean_cap_is_rejected_before_php_or_ddl(self):
+        self.payload['maximum_schema_tables']=True;result=self.run_remote()
+        self.assertEqual(result.get('reason'),'local_stay_install_payload_types')
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.INSTALL_OPERATION/'local-stay-schema-install.json').exists())
+
+    def test_actual_extra_staged_config_is_rejected_before_extraction(self):
+        with tarfile.open(self.archive,'r:gz') as original: members=[(x,original.extractfile(x).read()) for x in original.getmembers()]
+        with tarfile.open(self.archive,'w:gz') as changed:
+            for info,raw in members: changed.addfile(info,io.BytesIO(raw))
+            raw=b'<?php throw new RuntimeException("unmanifested");';info=tarfile.TarInfo('v2/config.php');info.size=len(raw);changed.addfile(info,io.BytesIO(raw))
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_install_archive_scope')
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.INSTALL_OPERATION/'source/v2/config.php').exists())
+
+    def test_actual_php_create_only_contract_and_partial_acknowledgement_suite(self):
+        env=dict(os.environ,ANYTOUR_STAY_SCHEMA_INSTALL_V1_TEST_DSN=self.server,
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=self.password,LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_schema_install_v1_test.php')],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_SCHEMA_INSTALL_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()

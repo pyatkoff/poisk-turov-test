@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        install = parse_install_command(core, body)
+        if install is not None:
+            return install
         schema = parse_schema_command(core, body)
         if schema is not None:
             return schema
@@ -262,6 +265,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == INSTALL_MODE:
+        return activate_install(core, command)
     if command.get('mode') == SCHEMA_MODE:
         return activate_schema(core, command)
     if command.get('mode') != MODE:
@@ -549,3 +554,363 @@ def activate_schema(core, command):
     core.REMOTE,core.bundle_source = remote,bundle_schema_source
     original_completed = core.completed_result
     core.completed_result = lambda cmd,result: completed_schema(cmd,result,control) if cmd.get('mode') == SCHEMA_MODE else original_completed(cmd,result)
+
+
+# Explicit owner-approved creation of exactly three empty tables. Historical read
+# profiles above remain immutable and never become installation aliases.
+INSTALL_MODE = 'local-stay-schema-install-v1'
+INSTALL_OPERATION = 'int-andromeda-local-stay-schema-install-20261026-v1'
+INSTALL_SOURCE_SHA = '30a7e7013edd7fe70a4700db0aafb2bf22ee05f8'
+INSTALL_RUNNER = 'scripts/catalog/anytour_hotel_stay_schema_install_v1.php'
+INSTALL_RUNNER_SHA = '73686ff430dc6dc6f95ab71b5739cb2056d189d1096dc0ea866132bdc081522c'
+INSTALL_MAX_BYTES = 262144
+INSTALL_TABLES = ('anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2')
+INSTALL_PARENT = {
+    'operation': 'int-andromeda-local-stay-schema-read-20261025-v1',
+    'source': '30a7e7013edd7fe70a4700db0aafb2bf22ee05f8',
+    'control': 'a4faad3ba37937a44249df68e9a1530b3f5f258f',
+    # Server private result serialization is compact with no newline. The
+    # downloaded Actions artifact is a separate indent=2 representation.
+    'private_sha256': '96e41780998f973f109674d40e6aec9f6d175a769d1a1ff21e8d6b536a706f86',
+    'file_sha256': '47f6da4d660792e8a20c5882ed99b0ef34cbefd414331c9253fb84d57c66dcdb',
+    'inventory_sha256': '8a37c3c6a3cd4894afff942268d6c669f1ae81f7403253bc58f0b8ae5f38c32e',
+    'plan_sha256': '6f1c556fe1a6bf3182f3a49686850f6fcb479cf94e03210881a9faf216b603f6',
+    'protected': {
+        'config.php': '121839ce1956ec7a48f0a94758e2c2359293ee01d601c69f720a294c4bda7def',
+        'data/db-v1.php': 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4',
+    },
+}
+
+
+def parse_install_command(core, body):
+    if not body.startswith(core.PREFIX):
+        return None
+    parts = body[len(core.PREFIX):].split()
+    if len(parts) < 2 or parts[1] != INSTALL_MODE:
+        return None
+    need(len(parts) == 3 and parts[0] == INSTALL_SOURCE_SHA
+         and core.SHA_RE.fullmatch(parts[0]) is not None
+         and parts[2] == INSTALL_OPERATION, 'local_stay_install_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1') == '1', 'local_stay_install_first_attempt_only')
+    return {'source_sha':INSTALL_SOURCE_SHA,'mode':INSTALL_MODE,'operation_id':INSTALL_OPERATION,
+            'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+
+
+def install_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}',INSTALL_RUNNER_SHA) is not None, 'local_stay_install_source_not_final')
+    return {**SCHEMA_SOURCE_HASHES,SCHEMA_RUNNER:SCHEMA_RUNNER_SHA,INSTALL_RUNNER:INSTALL_RUNNER_SHA}
+
+
+def bundle_install_source(source_root):
+    source = Path(source_root).resolve()
+    control = Path(__file__).resolve().parents[2]
+    hashes = install_hashes()
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in hashes.items():
+            path = (control if relative in (SCHEMA_RUNNER,INSTALL_RUNNER) else source) / relative
+            need(path.is_file() and not path.is_symlink() and path.resolve() == path,'local_stay_install_source_path')
+            raw = path.read_bytes()
+            need(0 < len(raw) <= INSTALL_MAX_BYTES and hashlib.sha256(raw).hexdigest() == digest,
+                 'local_stay_install_reviewed_source_changed')
+            info = tarfile.TarInfo(relative)
+            info.size,info.mode,info.mtime = len(raw),0o600,0
+            archive.addfile(info,io.BytesIO(raw))
+        raw = json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        info = tarfile.TarInfo('manifest.json')
+        info.size,info.mode,info.mtime = len(raw),0o600,0
+        archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),hashes
+
+
+INSTALL_VALIDATOR = r'''
+def local_stay_install_inventory_valid(inv,source_sha,control_sha):
+    if not isinstance(inv,dict) or set(inv)!={'server','tables'} or not isinstance(inv['tables'],list): return False
+    tables=inv['tables'];missing=[];existing=[];parents=[];blocked=[]
+    for t in tables:
+        if not isinstance(t,dict): return False
+        if t.get('role')=='parent' and (t.get('exists') is not True or t.get('compatibility')!='compatible'): parents.append(t.get('name'))
+        if t.get('role')=='target':
+            if t.get('exists') is False: missing.append(t.get('name'))
+            elif t.get('compatibility')=='compatible': existing.append(t.get('name'))
+            else: blocked.append(t.get('name'))
+    server=inv.get('server',{})
+    state=('blocked_server_capability' if server.get('checkEnforcement')!='supported' or server.get('triggerVisibilityProven') is not True else
+           ('blocked_parent_prerequisites' if parents else ('blocked_existing_drift' if blocked else ('create_only_after_review' if missing else 'ready_no_op'))))
+    migration='1e80434e552fd0c91240db903245bf3f9976d4e937221b3270c5eda92f9ccc06'
+    plan={'state':state,'createTables':missing,'existingCompatibleTables':existing,'blockedTables':parents+blocked,
+          'requiresExplicitReview':True,'applyAuthorized':False,'migrationSha256':migration,'noDdlExecuted':True}
+    read={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-schema-read-v1','state':'completed_read_only',
+          'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'automaticAccepts':0,'migrationSha256':migration,
+          'inventorySha256':hashlib.sha256(local_stay_schema_canonical(inv)).hexdigest(),
+          'planSha256':hashlib.sha256(local_stay_schema_canonical(plan)).hexdigest(),
+          'operationId':'int-andromeda-local-stay-schema-read-20261025-v1','sourceSha':source_sha,'controlSha':control_sha},
+          'inventory':inv,'plan':plan}
+    return local_stay_schema_valid(read,source_sha,control_sha)
+def local_stay_install_valid(data,source_sha,control_sha,parent):
+    if not isinstance(data,dict) or set(data)!={'receipt','before','after'} or len(local_stay_schema_canonical(data))>262144: return False
+    r=data['receipt'];before=data['before'];after=data['after']
+    keys={'schemaVersion','source','state','reason','migrationSha256','parentReadOperation','parentReadInventorySha256',
+          'databaseSha256','beforeSha256','afterSha256','attemptedTables','createdTables','unknownTables','tableRows',
+          'supplierCalls','databaseWrites','automaticAccepts','schemaWrites','ddlOutcomeUnknown','parentMetadataUnchanged',
+          'journalSha256','operationId','sourceSha','controlSha'}
+    def digest(x): return isinstance(x,str) and re.fullmatch(r'[a-f0-9]{64}',x) is not None
+    targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    if (not isinstance(r,dict) or set(r)!=keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-schema-install-v1' or r['operationId']!='int-andromeda-local-stay-schema-install-20261026-v1'
+        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha
+        or not isinstance(control_sha,str) or re.fullmatch(r'[a-f0-9]{40}',control_sha) is None
+        or r['migrationSha256']!='1e80434e552fd0c91240db903245bf3f9976d4e937221b3270c5eda92f9ccc06'
+        or r['parentReadOperation']!=parent['operation'] or r['parentReadInventorySha256']!=parent['inventory_sha256']): return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','automaticAccepts')): return False
+    if type(r['schemaWrites']) is not int or not 0<=r['schemaWrites']<=3 or type(r['ddlOutcomeUnknown']) is not bool: return False
+    if r['parentMetadataUnchanged'] not in (True,False,None) or (r['parentMetadataUnchanged'] is not None and type(r['parentMetadataUnchanged']) is not bool): return False
+    if r['state'] not in ('installed_empty','preflight_refused','ddl_unknown','verification_failed'): return False
+    if r['reason'] is not None and r['reason'] not in ('parent_contract','caller_transaction','source_pin','database_identity','lock_unavailable','schema_preflight','privileges','constraint_collision','session_guards','journal','ddl_execution_failed','postflight','parent_metadata','rows_nonempty','read_failed','ddl_capability'): return False
+    for field in ('databaseSha256','beforeSha256','afterSha256','journalSha256'):
+        if r[field] is not None and not digest(r[field]): return False
+    for field in ('attemptedTables','createdTables'):
+        value=r[field]
+        if not isinstance(value,list) or value!=targets[:len(value)] or len(value)>3: return False
+    attempted=r['attemptedTables'];created=r['createdTables'];unknown=r['unknownTables']
+    if (len(created)>len(attempted) or r['schemaWrites']!=len(created) or not isinstance(unknown,list)
+        or unknown!=([attempted[-1]] if r['ddlOutcomeUnknown'] and attempted else [])): return False
+    if r['ddlOutcomeUnknown'] and (not attempted or len(attempted)!=len(created)+1): return False
+    for field,inv in (('before',before),('after',after)):
+        if inv is None:
+            if r[field+'Sha256'] is not None: return False
+        elif (not local_stay_install_inventory_valid(inv,source_sha,control_sha)
+              or r[field+'Sha256']!=hashlib.sha256(local_stay_schema_canonical(inv)).hexdigest()): return False
+    if not isinstance(r['tableRows'],list) or len(r['tableRows'])>3: return False
+    for pos,row in enumerate(r['tableRows']):
+        if (not isinstance(row,dict) or set(row)!={'name','rows'} or row['name']!=targets[pos]
+            or type(row['rows']) is not int or not 0<=row['rows']<=9223372036854775807): return False
+    if r['state']=='preflight_refused':
+        return attempted==created==unknown==[] and r['schemaWrites']==0 and r['ddlOutcomeUnknown'] is False and r['reason'] is not None
+    if not digest(r['databaseSha256']) or before is None or not digest(r['journalSha256']): return False
+    if r['beforeSha256']!=parent['inventory_sha256']: return False
+    if r['state']=='ddl_unknown': return r['ddlOutcomeUnknown'] is True and r['reason'] is not None
+    if r['ddlOutcomeUnknown'] or unknown: return False
+    if r['state']=='verification_failed': return r['reason'] is not None and 0<len(created)<=3 and attempted==created
+    if (r['reason'] is not None or attempted!=targets or created!=targets or r['schemaWrites']!=3
+        or after is None or r['tableRows']!=[{'name':name,'rows':0} for name in targets]
+        or r['parentMetadataUnchanged'] is not True): return False
+    if any(t['compatibility']!='compatible' for t in after['tables']): return False
+    return all(before['tables'][i]==after['tables'][i] for i in (0,1))
+def local_stay_install_journal_valid(events,r):
+    if r['journalSha256'] is None: return events==[]
+    if not isinstance(events,list) or not 1<=len(events)<=8: return False
+    targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    statements=['ae700b15382e9797ff20c351abeafd052783a549749431ad3f337c9881f098a8',
+                '3dd522bc038f62e3161b15472d2081192bfae635ae9afcb154ece577f62e1762',
+                '0789fec589f0ef74fa02a2502ab65d59bcd49576a1961371c09da6ee690ec5d5']
+    if events[0]!={'stage':'start','operationId':r['operationId'],'migrationSha256':r['migrationSha256'],
+                   'databaseSha256':r['databaseSha256'],'beforeSha256':r['beforeSha256'],
+                   'parentReadInventorySha256':r['parentReadInventorySha256']}: return False
+    index=0;pending=None;final=False
+    for pos,event in enumerate(events[1:],1):
+        if not isinstance(event,dict): return False
+        if event.get('stage')=='before_create':
+            if pending is not None or index>=3 or final or event!={'stage':'before_create','table':targets[index],'statementSha256':statements[index]}: return False
+            pending=targets[index]
+        elif event.get('stage')=='created':
+            if pending is None or final or event!={'stage':'created','table':pending,'acknowledgedSchemaWrites':index+1}: return False
+            pending=None;index+=1
+        elif event.get('stage')=='final':
+            if (final or pos!=len(events)-1 or set(event)!={'stage','state','reason','attemptedTables','createdTables','unknownTables'}
+                or any(event[k]!=r[k] for k in ('attemptedTables','createdTables','unknownTables'))): return False
+            if (event['state']!=r['state'] or event['reason']!=r['reason']) and r['reason']!='journal': return False
+            final=True
+        else: return False
+    if index>len(r['createdTables']) or (index!=len(r['createdTables']) and r['reason']!='journal'): return False
+    if r['ddlOutcomeUnknown'] and pending!=r['unknownTables'][0]: return False
+    if pending is not None and not r['ddlOutcomeUnknown'] and r['reason']!='journal': return False
+    if not final and r['reason']!='journal': return False
+    return r['state']!='installed_empty' or (index==3 and pending is None and final and len(events)==8)
+'''
+
+
+def valid_install_payload(data, control_sha):
+    namespace = {'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(SCHEMA_VALIDATOR+INSTALL_VALIDATOR,namespace)
+        return namespace['local_stay_install_valid'](data,INSTALL_SOURCE_SHA,control_sha,INSTALL_PARENT)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError):
+        return False
+
+
+def completed_install(command,result,control_sha):
+    try:
+        expected={'source_sha':INSTALL_SOURCE_SHA,'mode':INSTALL_MODE,'operation_id':INSTALL_OPERATION,
+                  'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+        if (command!=expected or any(type(command.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha'))
+            or len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>INSTALL_MAX_BYTES): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes')): return False
+        if (type(result.get('schema_writes')) is not int or result['schema_writes']!=3
+            or type(result.get('schema_writes_acknowledged')) is not int or result['schema_writes_acknowledged']!=3
+            or result.get('schema_write_outcome_unknown') is not False): return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True
+            or not isinstance(before['index.php'],str)
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())): return False
+        install=result.get('local_stay_schema_install')
+        if (not isinstance(install,dict) or set(install)!={'data','fileSha256','protectedBefore','protectedAfter','parentResultSha256','journalSha256','journalEvents'}
+            or install['parentResultSha256']!=INSTALL_PARENT['private_sha256']
+            or install['protectedBefore']!=INSTALL_PARENT['protected'] or install['protectedAfter']!=INSTALL_PARENT['protected']
+            or not valid_install_payload(install['data'],control_sha)): return False
+        data=install['data']
+        raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')+'\n').encode()
+        namespace={'hashlib':hashlib,'json':json,'re':re}
+        exec(SCHEMA_VALIDATOR+INSTALL_VALIDATOR,namespace)
+        return (data['receipt']['state']=='installed_empty' and install['fileSha256']==hashlib.sha256(raw).hexdigest()
+                and install['journalSha256']==data['receipt']['journalSha256']
+                and namespace['local_stay_install_journal_valid'](install['journalEvents'],data['receipt']))
+    except (KeyError,TypeError,ValueError,AttributeError):
+        return False
+
+
+INSTALL_REMOTE_HANDLER = r'''
+def local_stay_install_unique(pairs):
+    result={}
+    for key,value in pairs:
+        if key in result: raise ValueError('duplicate_json_key')
+        result[key]=value
+    return result
+def local_stay_install_protected():
+    values={}
+    for name in ('config.php','data/db-v1.php'):
+        path=project/name
+        if not safe_file(path,2097152) or path.resolve()!=path: fail('local_stay_install_private_dependency')
+        values[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    return values
+def local_stay_install_parent():
+    policy=LOCAL_STAY_INSTALL_POLICY['parent'];path=private/policy['operation']/'result.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_install_parent_file')
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=policy['private_sha256']: fail('local_stay_install_parent_hash')
+    try: parent=json.loads(raw,object_pairs_hook=local_stay_install_unique)
+    except Exception: fail('local_stay_install_parent_json')
+    command={'source_sha':policy['source'],'mode':'local-stay-schema-read-v1','operation_id':policy['operation'],
+             'maximum_schema_tables':5,'provider_http_calls':0,'database_writes':0}
+    try: valid=local_stay_parent_completed(command,parent,policy['control'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_install_parent_contract')
+    read=parent['local_stay_schema_read'];r=read['data']['receipt'];plan=read['data']['plan']
+    if (read['fileSha256']!=policy['file_sha256'] or r['inventorySha256']!=policy['inventory_sha256']
+        or r['planSha256']!=policy['plan_sha256'] or plan['state']!='create_only_after_review'
+        or plan['createTables']!=LOCAL_STAY_INSTALL_POLICY['targets'] or plan['blockedTables']
+        or read['protectedBefore']!=policy['protected']): fail('local_stay_install_parent_pins')
+    return path,policy['private_sha256']
+def run_local_stay_schema_install(stage):
+    if payload!={**LOCAL_STAY_INSTALL_POLICY['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}:
+        fail('local_stay_install_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes')):
+        fail('local_stay_install_payload_types')
+    if files!=LOCAL_STAY_INSTALL_POLICY['hashes']: fail('local_stay_install_source_pins')
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=0
+    result['schema_writes']=result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=False
+    protected_before=local_stay_install_protected()
+    if protected_before!=LOCAL_STAY_INSTALL_POLICY['parent']['protected']: fail('local_stay_install_private_drift')
+    parent_path,parent_sha=local_stay_install_parent()
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=0
+    result['schema_writes']='unknown';result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=True
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ}
+    env.update({'ANYTOUR_SITE_ROOT':str(project),'ANYTOUR_OPERATION_OUTPUT_DIR':str(op),
+                'ANYTOUR_OPERATION_RELEASE_SHA':source,'ANYTOUR_OPERATION_CONTROL_SHA':LOCAL_STAY_INSTALL_POLICY['control'],
+                'ANYTOUR_OPERATION_ID':operation,'ANYTOUR_SCHEMA_PARENT_RECEIPT_PATH':str(parent_path)})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','memory_limit=256M','-d','disable_functions='+disabled,
+                        str(stage/'scripts/catalog/anytour_hotel_stay_schema_install_v1.php')],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=180)
+    path=op/'local-stay-schema-install.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_install_receipt_file')
+    raw=path.read_bytes()
+    try: data=json.loads(raw,object_pairs_hook=local_stay_install_unique)
+    except Exception: fail('local_stay_install_receipt_json')
+    try: valid=local_stay_install_valid(data,source,LOCAL_STAY_INSTALL_POLICY['control'],LOCAL_STAY_INSTALL_POLICY['parent'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_install_receipt_contract')
+    receipt=data['receipt'];journal=op/'local-stay-schema-install-journal.jsonl';journal_sha=None;events=[]
+    item={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+          'protectedBefore':protected_before,'protectedAfter':None,
+          'parentResultSha256':parent_sha,'journalSha256':None,'journalEvents':events}
+    result['local_stay_schema_install']=item
+    result['schema_writes_acknowledged']=receipt['schemaWrites']
+    result['schema_write_outcome_unknown']=receipt['ddlOutcomeUnknown']
+    result['schema_writes']='unknown' if receipt['ddlOutcomeUnknown'] else receipt['schemaWrites']
+    if receipt['journalSha256'] is not None:
+        if not safe_file(journal,262144) or journal.resolve()!=journal or journal.stat().st_mode&0o777!=0o600:
+            fail('local_stay_install_journal_file')
+        journal_raw=journal.read_bytes();journal_sha=hashlib.sha256(journal_raw).hexdigest()
+        if journal_sha!=receipt['journalSha256'] or not journal_raw.endswith(b'\n'): fail('local_stay_install_journal_hash')
+        try: events=[json.loads(line,object_pairs_hook=local_stay_install_unique) for line in journal_raw.splitlines()]
+        except Exception: fail('local_stay_install_journal_json')
+        if len(events)>8 or any(not isinstance(e,dict) for e in events): fail('local_stay_install_journal_scope')
+    elif journal.exists() or journal.is_symlink(): fail('local_stay_install_unbound_journal')
+    item['journalSha256']=journal_sha;item['journalEvents']=events
+    if not local_stay_install_journal_valid(events,receipt): fail('local_stay_install_journal_contract')
+    protected_after=local_stay_install_protected();item['protectedAfter']=protected_after
+    if protected_before!=protected_after: fail('local_stay_install_dependency_drift')
+    if (run.returncode!=(0 if receipt['state']=='installed_empty' else 1)
+        or run.stderr.strip() or len(run.stdout.encode())>262144): fail('local_stay_install_exit_no_replay')
+    try: emitted=json.loads(run.stdout,object_pairs_hook=local_stay_install_unique)
+    except Exception: fail('local_stay_install_stdout')
+    if emitted!=data: fail('local_stay_install_stdout')
+    return item
+'''
+INSTALL_REMOTE_DISPATCH = r'''    if mode=='local-stay-schema-install-v1':
+        result['local_stay_schema_install']=run_local_stay_schema_install(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if result['local_stay_schema_install']['data']['receipt']['state']=='installed_empty' else 'terminal_nonzero_no_replay'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>262144: fail('local_stay_install_terminal_size')
+'''
+
+
+def parent_completion_source():
+    """Reuse the exact previously admitted completion predicate, not a new reader."""
+    source = Path(__file__).read_text()
+    node = next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='completed_schema')
+    original = ast.get_source_segment(source,node)
+    need(isinstance(original,str),'local_stay_install_parent_completion_source')
+    return original.replace('def completed_schema(','def local_stay_parent_completed(',1).replace('valid_schema_payload(','local_stay_parent_valid_payload(')
+
+
+def activate_install(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),INSTALL_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_schema_tables','provider_http_calls','database_writes')),
+         'local_stay_install_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','')
+    need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_install_control_sha')
+    hashes=install_hashes();remote=core.REMOTE
+    definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2
+         and remote.count(manifest)==1,'local_stay_install_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'parent':INSTALL_PARENT,'targets':list(INSTALL_TABLES)}
+    parent_constants=('SCHEMA_MAX_BYTES=262144\nSCHEMA_MODE='+repr(SCHEMA_MODE)+'\nSCHEMA_OPERATION='+repr(INSTALL_PARENT['operation'])
+                      +'\nSCHEMA_SOURCE_SHA='+repr(INSTALL_PARENT['source'])+'\n')
+    parent_validator=('def local_stay_parent_valid_payload(data,control_sha):\n'
+                      '    return local_stay_schema_valid(data,SCHEMA_SOURCE_SHA,control_sha)\n')
+    program=('LOCAL_STAY_INSTALL_POLICY='+repr(policy)+'\n'+parent_constants+SCHEMA_VALIDATOR+INSTALL_VALIDATOR
+             +'\n'+parent_validator+'\n'+parent_completion_source()+'\n'+INSTALL_REMOTE_HANDLER+'\n')
+    remote=remote.replace(definition,program+definition,1)
+    remote=remote.replace(dispatch,INSTALL_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+INSTALL_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_INSTALL_POLICY['hashes']: fail('local_stay_install_manifest')",1)
+    members='        members=package.getmembers()\n'
+    need(remote.count(members)==1,'local_stay_install_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=5 or {m.name for m in members}!={*LOCAL_STAY_INSTALL_POLICY['hashes'],'manifest.json'}: fail('local_stay_install_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_install_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_install_reserved=True\n',1)
+    remote=remote.replace(final,"if globals().get('local_stay_install_reserved') is True and op.exists():",1)
+    ast.parse(remote)
+    core.REMOTE,core.bundle_source=remote,bundle_install_source
+    original_completed=core.completed_result
+    core.completed_result=lambda cmd,result: completed_install(cmd,result,control) if cmd.get('mode')==INSTALL_MODE else original_completed(cmd,result)
