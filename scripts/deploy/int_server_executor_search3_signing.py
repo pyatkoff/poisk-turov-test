@@ -7,6 +7,12 @@ from __future__ import annotations
 
 import ast
 
+TV_MISMATCH_MODE = 'tv-mismatch-retained-readback'
+TV_MISMATCH_OPERATION = 'int-anex-tv-mismatch-retained-readback-20261025-v1'
+TV_MISMATCH_SOURCE = '95b70987966675e385809ee04cb2e2ea8ea4f4b6'
+TV_MISMATCH_ID = '18296825112597'
+TV_MISMATCH_WINDOW = (1792911120, 1792911240)
+
 TV_CONTEXT_MODE = 'install-tv-context-revocation'
 TV_CONTEXT_OPERATION = 'int-anex-tv-context-revocation-install-20261025-v1'
 TV_CONTEXT_SOURCE = '95b70987966675e385809ee04cb2e2ea8ea4f4b6'
@@ -86,6 +92,9 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if len(parts) >= 2 and parts[1] == TV_MISMATCH_MODE:
+            need(parts == [TV_MISMATCH_SOURCE, TV_MISMATCH_MODE, TV_MISMATCH_OPERATION], 'tv_mismatch_fixed_case')
+            return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2])
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
         need(len(parts) == 3, 'search3_signing_command_shape')
@@ -292,6 +301,8 @@ DISPATCH = r'''
 
 
 def activate(core, command):
+    if command.get('mode') == TV_MISMATCH_MODE:
+        return activate_tv_mismatch(core, command)
     if command.get('mode') not in MODES:
         return
     if command.get('mode') == TV_CONTEXT_MODE:
@@ -921,3 +932,147 @@ def completed_tv_context(command, result):
 def activate_tv_context(core, command):
     return _activate_tv_maintenance(core,command,TV_CONTEXT_MODE,TV_CONTEXT_SOURCE,TV_CONTEXT_PATH,TV_CONTEXT_SHA,
         TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_CACHE_PATH:TV_CACHE_SHA},completed_tv_context)
+
+
+TV_MISMATCH_READER = r'''
+def tv_mismatch_readback():
+    import datetime
+    def read(path,limit):
+        data,record,identity=pd_read(path,limit)
+        identities[path]=identity
+        if data is not None and record['mode']!=0o600:fail('tv_mismatch_file_mode')
+        return data,record
+    def obj(raw):
+        try:
+            value=json.loads(raw.decode('utf-8'),object_pairs_hook=pd_object,
+                parse_constant=lambda _:fail('tv_mismatch_schema'))
+            if not isinstance(value,dict):fail('tv_mismatch_schema')
+            return value
+        except Exception:fail('tv_mismatch_schema')
+    def kind(value):
+        return 'null' if value is None else {int:'int',str:'str',dict:'dict',list:'list',bool:'bool',float:'float'}.get(type(value),'other')
+    identities={};base=home/'.anytoour-andromeda/searches'
+    digest=hashlib.sha256(TM_ID.encode()).hexdigest()
+    pending,pending_record=read(base/('tourvisor-fuel-pending-v1-'+digest+'.json'),262144)
+    receipt,receipt_record=read(base/('tourvisor-fuel-intake-receipt-v1-tour-'+digest+'.json'),2048)
+    result={'status':'unavailable','reason':'both_missing' if pending is None and receipt is None else 'pending_missing' if pending is None else 'receipt_missing',
+        'pending':pending_record,'receipt':receipt_record,'observed_at':None,'outcome':None,'code':None,
+        'types':None,'matches':None,'date_format':None,'calendar_match':None,'response_digest_linked':False}
+    if receipt is not None:
+        diagnostic=obj(receipt)
+        try:pd_validate(diagnostic,TM_ID,'tour',int(time.time()))
+        except Exception:fail('tv_mismatch_receipt')
+        if not TM_WINDOW[0]<=diagnostic['observed_at']<=TM_WINDOW[1]:fail('tv_mismatch_case_time')
+        result.update(observed_at=diagnostic['observed_at'],outcome=diagnostic['outcome'],code=diagnostic['code'])
+    if pending is not None:
+        value=obj(pending);tour=value.get('tour')
+        if (type(value.get('version')) is not int or value['version']!=1 or value.get('tour_id')!=TM_ID
+            or not isinstance(tour,dict) or type(value.get('observed_at')) is not int
+            or not TM_WINDOW[0]<=value['observed_at']<=TM_WINDOW[1]
+            or type(value.get('pending_expires_at')) is not int or value['pending_expires_at']!=value['observed_at']+900
+            or type(value.get('tour_response_sha256')) is not str or not re.fullmatch('[a-f0-9]{64}',value['tour_response_sha256'])):
+            fail('tv_mismatch_pending')
+        if receipt is not None:
+            if (diagnostic['observed_at']!=value['observed_at'] or diagnostic['outcome']!='retained'
+                or diagnostic['code']!='tour_retained'
+                or diagnostic['normalized_response_sha256']!=value['tour_response_sha256']):fail('tv_mismatch_response_link')
+            def nested(key):
+                node=tour.get(key)
+                return node.get('id') if isinstance(node,dict) else None
+            values={'id':tour.get('id'),'hotel':nested('hotel'),'adults':tour.get('adults'),
+                'children':tour.get('childs'),'departure':nested('departure'),'date':tour.get('date'),'nights':tour.get('nights')}
+            expected={'id':TM_ID,'hotel':216,'adults':2,'children':0,'departure':1,'date':'2027-04-19','nights':7}
+            matches={k:type(v) is type(expected[k]) and v==expected[k] for k,v in values.items()}
+            matches['id']=type(values['id']) in (int,str) and str(values['id'])==TM_ID
+            day=values['date'];calendar=False;form='missing' if day is None else 'other'
+            for shape,pattern in [('iso','%Y-%m-%d'),('dmy','%d.%m.%Y')]:
+                try:
+                    parsed=datetime.datetime.strptime(day,pattern)
+                    if parsed.strftime(pattern)==day:form=shape;calendar=parsed.strftime('%Y-%m-%d')=='2027-04-19';break
+                except (TypeError,ValueError):pass
+            result.update(status='measured',reason=None,types={k:kind(v) for k,v in values.items()},matches=matches,
+                date_format=form,calendar_match=calendar,response_digest_linked=True)
+    for path,expected_identity in identities.items():
+        try:current=pf_identity(path.lstat())
+        except FileNotFoundError:current=None
+        if current!=expected_identity:fail('tv_mismatch_snapshot_changed')
+    return result
+'''
+
+
+def tv_mismatch_reader(core):
+    passive=core.passive_fuel_readiness
+    def function(source,name):
+        nodes=[n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name==name]
+        need(len(nodes)==1,'tv_mismatch_reader_registration')
+        return ast.get_source_segment(source,nodes[0])
+    common=function(passive.REMOTE_READER,'pf_read').replace("anchor=home/'www'",'anchor=home',1)
+    common+='\n'+'\n'.join(function(passive.DIAGNOSTIC_READER,n) for n in ('pf_identity','pd_read','pd_object'))
+    return ('import stat as pf_stat\nimport time\nTM_ID='+repr(TV_MISMATCH_ID)+'\nTM_WINDOW='+repr(TV_MISMATCH_WINDOW)
+        +'\nPD_MIN_TIME='+repr(TV_MISMATCH_WINDOW[0])+'\nPD_ERROR_CODES=frozenset('+repr(sorted(passive.DIAGNOSTIC_ERROR_CODES))+')\n'
+        +common+'\n'+passive.DIAGNOSTIC_VALIDATOR+'\n'+TV_MISMATCH_READER)
+
+
+def completed_tv_mismatch(command,result):
+    expected={'source_sha':TV_MISMATCH_SOURCE,'mode':TV_MISMATCH_MODE,'operation_id':TV_MISMATCH_OPERATION}
+    counters=('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
+    outer={'schema_version',*expected,'status','runtime_changed','production_before','production_after',
+        'production_unchanged','tv_mismatch',*counters}
+    value=result.get('tv_mismatch')
+    fields={'status','reason','pending','receipt','observed_at','outcome','code','types','matches','date_format',
+        'calendar_match','response_digest_linked'}
+    if (command!=expected or set(result)!=outer or any(result.get(k)!=v for k,v in expected.items())
+        or type(result.get('schema_version')) is not int or result['schema_version']!=1 or result.get('status')!='complete'
+        or result.get('runtime_changed') is not False or result.get('production_unchanged') is not True
+        or not isinstance(result.get('production_before'),dict) or set(result['production_before'])!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        or result['production_before']!=result.get('production_after')
+        or any(type(result.get(k)) is not int or result[k]!=0 for k in counters)
+        or not isinstance(value,dict) or set(value)!=fields):return False
+    import re
+    def record(row,limit):
+        return (row is None or isinstance(row,dict) and set(row)=={'sha256','bytes','mode'}
+            and isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256']) is not None
+            and type(row['bytes']) is int and 0<row['bytes']<=limit and type(row['mode']) is int and row['mode']==0o600)
+    if not record(value['pending'],262144) or not record(value['receipt'],2048):return False
+    if value['receipt'] is None:
+        if any(value[k] is not None for k in ('observed_at','outcome','code')):return False
+    else:
+        if (type(value['observed_at']) is not int or not TV_MISMATCH_WINDOW[0]<=value['observed_at']<=TV_MISMATCH_WINDOW[1]
+            or value['outcome'] not in ('retained','skipped','rejected') or not isinstance(value['code'],str)) :return False
+        # Same finite classification vocabulary as the existing passive receipt validator.
+        from pathlib import Path
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('tv_mismatch_passive',Path(__file__).with_name('int_server_executor_passive_fuel_readiness.py'))
+        passive=importlib.util.module_from_spec(spec);spec.loader.exec_module(passive)
+        allowed={'retained':{'tour_retained'},'skipped':{'operator_not_target','offer_context_missing'},
+            'rejected':passive.DIAGNOSTIC_ERROR_CODES|{'unclassified_error'}}
+        if value['code'] not in allowed[value['outcome']]:return False
+    if value['pending'] is None or value['receipt'] is None:
+        reason='both_missing' if value['pending'] is None and value['receipt'] is None else 'pending_missing' if value['pending'] is None else 'receipt_missing'
+        return (value['status']=='unavailable' and value['reason']==reason and value['response_digest_linked'] is False
+            and all(value[k] is None for k in ('types','matches','date_format','calendar_match')))
+    keys={'id','hotel','adults','children','departure','date','nights'}
+    return (value['status']=='measured' and value['reason'] is None and value['outcome']=='retained' and value['code']=='tour_retained'
+        and value['response_digest_linked'] is True and isinstance(value['types'],dict) and set(value['types'])==keys
+        and all(v in ('int','str','dict','list','bool','float','null','other') for v in value['types'].values())
+        and isinstance(value['matches'],dict) and set(value['matches'])==keys and all(type(v) is bool for v in value['matches'].values())
+        and value['date_format'] in ('iso','dmy','other','missing') and type(value['calendar_match']) is bool)
+
+
+def activate_tv_mismatch(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in ('source_sha','mode','operation_id')))
+    need(command==expected,'tv_mismatch_shape')
+    remote=core.REMOTE;definition='def db_summary(provider):\n'
+    dispatch="    if mode=='local-readback':\n";exclusion="    if mode not in ('reconcile',"
+    need(remote.count(definition)==remote.count(dispatch)==1 and remote.count(exclusion)==2,'tv_mismatch_stock_drift')
+    remote=remote.replace(definition,tv_mismatch_reader(core)+'\n'+definition,1)
+    block="    if mode=="+repr(TV_MISMATCH_MODE)+":\n"+"""        result['tv_mismatch']=tv_mismatch_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result.update(status='complete',supplier_calls=0,database_reads=0,database_writes=0,
+            runtime_writes=0,booking_calls=0,lead_calls=0,runtime_changed=False,production_unchanged=True)
+"""
+    remote=remote.replace(dispatch,block+dispatch,1).replace(exclusion,"    if mode not in ("+repr(TV_MISMATCH_MODE)+",'reconcile',")
+    ast.parse(remote);original=core.completed_result
+    core.completed_result=lambda cmd,r:completed_tv_mismatch(cmd,r) if cmd.get('mode')==TV_MISMATCH_MODE else original(cmd,r)
+    core.REMOTE=remote

@@ -418,3 +418,34 @@ added to CI. Source/review/CI/main merge and a separate runtime claim precede th
 one command. No config/key/session/root/SEARCH/HTTP/provider/DB/lead operation
 or automatic fallback is introduced; actual supplier/delivery acceptance remains
 separate from this one-file installation.
+
+## Fixed retained mismatch inspection — 25 October 2026
+
+The one new ordinary INT case6394618977 on installed NEXT5a7 returned the safe
+`tv_tour_mismatch` / HTTP409 browser diagnostic for SUNNY DAYS PALMA DE MIRETTE
+RESORT. This is a local identity/context comparison rejection, not an upstream
+409 or an established cause of the earlier sealed SWISS/LEMON failures. The
+supplier operation is consumed and must not be retried to recover missing facts.
+
+`tv-mismatch-retained-readback` accepts only source95b and the exact operation
+`int-anex-tv-mismatch-retained-readback-20261025-v1`, with no caller IDs or paths.
+It reads only this case's existing passive pending-tour file (at most256KiB) and
+tour diagnostic receipt (at most2KiB) through the existing no-follow descriptor
+reader. Owner/mode/link/size/identity/duplicate-key/time/receipt/digest-link guards
+apply; the fixed observation window is06:52–06:54UTC. Missing retention remains
+unavailable and never causes a new supplier call. Pending expiry is historical
+metadata, never extended and never promoted to a current price/selection.
+
+The result contains only field types, equality against the independently observed
+hotel216/2adults/0children/Moscow1/19April2027/7nights/tour identity, date-format
+classification and calendar equality, existing diagnostic classifications and
+file digests/sizes. ISO equality is explicitly a comparison to the UI's calendar
+date, not proof of the exact raw listing date in the sealed PHP session. It does
+not export raw response, supplier text, IDs, paths, credentials or money. The
+response-digest link compares the two trusted retained records; it is not a new
+supplier attestation. No session/search-directory scan, application/config
+execution, DB access, HTTP, mutation or new store is introduced. The permanent
+carrier's original reservation/ledger/actor/source/no-replay gates remain, and
+all nine existing rendered programs retain exact bytes. This diagnosis has one
+separate read-only runtime claim and original receipt; it is not an installation,
+price acceptance or authority to weaken the selected-tour validation.

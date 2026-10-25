@@ -900,9 +900,101 @@ class NativeTVContextInstall(NativeTVDiagnosticInstall):
     completion=staticmethod(signing.completed_tv_context)
 
 
+class NativeTVMismatchReadback(NativeStockCustody):
+    def setUp(self):
+        super().setUp()
+        self.store=self.home/'.anytoour-andromeda/searches';self.store.mkdir(parents=True)
+        digest=hashlib.sha256(signing.TV_MISMATCH_ID.encode()).hexdigest()
+        self.pending=self.store/('tourvisor-fuel-pending-v1-'+digest+'.json')
+        self.receipt=self.store/('tourvisor-fuel-intake-receipt-v1-tour-'+digest+'.json')
+        at=signing.TV_MISMATCH_WINDOW[0]+30
+        self.tour={'id':signing.TV_MISMATCH_ID,'hotel':{'id':216},'departure':{'id':1},
+            'adults':2,'childs':0,'date':'19.04.2027','nights':7,
+            'price':181409,'operator':{'name':'PRIVATE SUPPLIER TEXT'},'token':'SYNTHETIC_RAW_SECRET'}
+        self.p={'version':1,'tour_id':signing.TV_MISMATCH_ID,'tour':self.tour,'observed_at':at,
+            'pending_expires_at':at+900,'tour_response_sha256':'a'*64}
+        self.r={'schema_version':1,'source':'tourvisor-operator-fuel-passive-intake-v1','stage':'tour',
+            'outcome':'retained','code':'tour_retained','observed_at':at,'expires_at':at+86400,'elapsed_ms':5,
+            'offer_ref_digest':hashlib.sha256(('tourvisor:tour:'+signing.TV_MISMATCH_ID).encode()).hexdigest(),
+            'normalized_response_sha256':'a'*64,'observation_count':None,'rule_confirmed':None}
+        self.write(self.pending,self.p);self.write(self.receipt,self.r)
+    def write(self,path,value):
+        path.write_text(json.dumps(value));path.chmod(0o600)
+    def inspect(self):
+        operation=f'int-anex-tv-mismatch-retained-readback-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,'TV_MISMATCH_OPERATION',operation):
+            r,out=self.execute(signing.TV_MISMATCH_MODE,operation,signing.TV_MISMATCH_SOURCE)
+            command={'source_sha':signing.TV_MISMATCH_SOURCE,'mode':signing.TV_MISMATCH_MODE,'operation_id':operation}
+            complete=signing.completed_tv_mismatch(command,r)
+        self.assertNotIn('SYNTHETIC_RAW_SECRET',out);self.assertNotIn('PRIVATE SUPPLIER TEXT',out)
+        self.assertNotIn(signing.TV_MISMATCH_ID,out);self.assertNotIn('181409',out)
+        return r,complete,command
+    def test_fixed_admission_historical_bytes_and_measured_read_only(self):
+        body=f'/run-int-server-v1 {signing.TV_MISMATCH_SOURCE} {signing.TV_MISMATCH_MODE} {signing.TV_MISMATCH_OPERATION}'
+        for bad in (body+' /tmp/private',body.replace(signing.TV_MISMATCH_SOURCE,'0'*40),body.replace('-v1','-v2')):
+            with self.assertRaises(ValueError):core().parse_command(bad)
+        c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_CONTEXT_SOURCE} {signing.TV_CONTEXT_MODE} {signing.TV_CONTEXT_OPERATION}'))
+        self.assertEqual('82f914f7ad68348e6ea11975a56cad6650368e32f969a9d1fcf2435bdf2d99a3',hashlib.sha256(c.REMOTE.encode()).hexdigest())
+        before={p:p.read_bytes() for p in (self.pending,self.receipt,self.config)}
+        result,complete,cmd=self.inspect();self.assertTrue(complete)
+        self.assertEqual(before,{p:p.read_bytes() for p in before})
+        value=result['tv_mismatch'];self.assertEqual('measured',value['status'])
+        self.assertEqual({'id':True,'hotel':True,'adults':True,'children':True,'departure':True,'date':False,'nights':True},value['matches'])
+        self.assertEqual('dmy',value['date_format']);self.assertIs(True,value['calendar_match'])
+        c=core()
+        with mock.patch.object(signing,'TV_MISMATCH_OPERATION',cmd['operation_id']):signing.activate(c,cmd)
+        script=self.home/'replay.py';script.write_text(c.REMOTE)
+        replay=subprocess.run([sys.executable,str(script)],input=json.dumps(cmd|{'archive':str(self.archive),'manifest_sha256':self.manifest_hash}),
+            text=True,capture_output=True,env=dict(os.environ,HOME=str(self.home)),timeout=30)
+        self.assertEqual('operation_exists_no_replay',json.loads(replay.stdout)['reason'])
+    def test_missing_retention_is_unavailable_never_invented(self):
+        self.pending.unlink();self.r.update(outcome='skipped',code='offer_context_missing');self.write(self.receipt,self.r)
+        r,ok,_=self.inspect();self.assertTrue(ok);self.assertEqual('pending_missing',r['tv_mismatch']['reason'])
+        self.assertIsNone(r['tv_mismatch']['matches'])
+        self.receipt.unlink();r,ok,_=self.inspect();self.assertTrue(ok);self.assertEqual('both_missing',r['tv_mismatch']['reason'])
+        self.write(self.pending,self.p);r,ok,_=self.inspect();self.assertTrue(ok);self.assertEqual('receipt_missing',r['tv_mismatch']['reason'])
+    def test_unsafe_files_identity_time_and_link_rejected(self):
+        cases=[('symlink',None),('mode',None),('duplicate',None),('time',None),('id',None),('link',None)]
+        original=self.pending.read_bytes()
+        for name,_ in cases:
+            with self.subTest(name=name):
+                if self.pending.is_symlink():self.pending.unlink()
+                self.pending.write_bytes(original);self.pending.chmod(0o600);self.write(self.receipt,self.r)
+                if name=='symlink':self.pending.unlink();self.pending.symlink_to(self.config)
+                if name=='mode':self.pending.chmod(0o644)
+                if name=='duplicate':self.pending.write_text('{"version":1,"version":1}')
+                if name=='time':self.write(self.pending,self.p|{'observed_at':signing.TV_MISMATCH_WINDOW[0]-1})
+                if name=='id':self.write(self.pending,self.p|{'tour_id':'123456789'})
+                if name=='link':self.write(self.receipt,self.r|{'normalized_response_sha256':'b'*64})
+                result,complete,_=self.inspect();self.assertFalse(complete);self.assertNotEqual('complete',result['status'])
+    def test_strict_types_and_completion_reject_forged_facts(self):
+        self.p['tour']=self.tour|{'hotel':{'id':'216'},'adults':True,'childs':'0','nights':'7','date':'31.02.2027'}
+        self.write(self.pending,self.p);result,ok,command=self.inspect();self.assertTrue(ok)
+        value=result['tv_mismatch'];self.assertFalse(value['calendar_match']);self.assertEqual('other',value['date_format'])
+        for k in ('hotel','adults','children','nights','date'):self.assertIs(False,value['matches'][k])
+        with mock.patch.object(signing,'TV_MISMATCH_OPERATION',command['operation_id']):
+            for change in ({'supplier_calls':False},{'runtime_writes':1},{'runtime_changed':True},{'raw':'secret'}):
+                self.assertFalse(signing.completed_tv_mismatch(command,result|change))
+            for change in ({'matches':dict(value['matches'],id=1)},{'response_digest_linked':False},{'code':'RAW ERROR SECRET'},{'extra':'secret'}):
+                self.assertFalse(signing.completed_tv_mismatch(command,result|{'tv_mismatch':value|change}))
+    def mutate_remote(self,c):
+        if getattr(self,'race',False):
+            anchor="    for path,expected_identity in identities.items():\n"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,"    os.utime("+repr(str(self.pending))+",ns=(1,1))\n"+anchor,1)
+    def test_snapshot_change_is_unknown_without_raw_output(self):
+        self.race=True
+        result,complete,_=self.inspect();self.assertFalse(complete)
+        self.assertEqual('tv_mismatch_snapshot_changed',result['reason'])
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
+    for name in ('test_fixed_admission_historical_bytes_and_measured_read_only','test_missing_retention_is_unavailable_never_invented',
+                 'test_unsafe_files_identity_time_and_link_rejected','test_strict_types_and_completion_reject_forged_facts',
+                 'test_snapshot_change_is_unknown_without_raw_output'):
+        suite.addTest(NativeTVMismatchReadback(name))
     for name in ('test_install_narrow_dependency_first_and_endpoint_last',
                  'test_install_source_pin_and_existing_dependency_drift',
                  'test_install_postwrite_failure_restores_and_removes'):
