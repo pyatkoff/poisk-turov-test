@@ -20,6 +20,15 @@ function schema_result(PDO $db,string $planState): array {
     $result=AnyTourHotelStaySchemaReadV1::read($db);
     schema_check($result['receipt']['state']==='completed_read_only','technical read '.$planState.' actual '.$result['receipt']['state']);
     $issues=[];foreach ($result['inventory']['tables'] as $table) $issues[$table['name']]=$table['issues'];
+    if ($result['plan']['state']!==$planState) {
+        // Disposable, pinned fictional fixture only: expose the exact engine rendering for parser diagnosis.
+        // The production runner continues to emit hashes only.
+        $fixtureCheck=$db->query("SELECT c.CHECK_CLAUSE FROM information_schema.TABLE_CONSTRAINTS t
+            JOIN information_schema.CHECK_CONSTRAINTS c ON c.CONSTRAINT_SCHEMA=t.CONSTRAINT_SCHEMA AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME
+            WHERE t.TABLE_SCHEMA=DATABASE() AND t.TABLE_NAME='anytour_hotel_stay_mappings_v2'
+            AND t.CONSTRAINT_NAME='ck_anytour_hotel_stay_mapping_v2_target' AND t.CONSTRAINT_TYPE='CHECK'")->fetchAll(PDO::FETCH_ASSOC);
+        fwrite(STDERR,'FICTIONAL_FIXTURE_TARGET_CHECK='.AnyTourHotelStaySchemaReadV1::json($fixtureCheck).PHP_EOL);
+    }
     schema_check($result['plan']['state']===$planState,'plan '.$planState.' actual '.$result['plan']['state']
         .' tableIssues='.AnyTourHotelStaySchemaReadV1::json($issues));
     schema_check(!$db->inTransaction(),'readonly transaction closed');
