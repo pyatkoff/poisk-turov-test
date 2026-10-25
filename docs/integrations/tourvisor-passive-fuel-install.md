@@ -293,3 +293,48 @@ This is a confirmed source incompatibility, not proof of the current server stub
 or retrospective exact cause of UNKNOWN6389997818. Source/CI/review acceptance
 does not activate TV, add a reader, or authorize a retry/renamed operation. The
 original operation and its original source/receipt remain immutable/consumed.
+
+## Separate first-write recovery admission
+
+The fixed recover-tv-session-gateway profile uses the existing carrier and accepts
+only int-anex-tv-session-gateway-recovery-20261025-v1. Alternate IDs, successors
+and caller-supplied target/receipt paths are rejected. It is prepared separately
+from the original enable operation; the original five rendered command programs
+stay byte equal (original enable REMOTE06c91a5c9a94799f3f048ba41c6fda079a811e22730ce8678c2462ab58a6e85e).
+
+The profile must prove a first config write through all of these conditions:
+
+- Original accepted install receipt d5be6383 and current source/runtime/public
+  pins pass the existing preflight.
+- The exact original failure receipt canonical1e27a66c binds to the retained
+  original run40136204936/attempt1/control0456579020e8cbf9b888648b7a8e9921766bb463
+  evidence chain. That pinned program emits tv_enable_config_shape only before
+  candidate/backup/staging/write/readiness. Its status and supplier/DB counters
+  remain unknown; no historical source cause is asserted.
+- The original private reservation matches its operation, source, enable mode
+  and recorded run window24Oct21:53:36–21:54:38UTC. Its directory contains only
+  reservation.json/result.json/source/installed-source.json, with safe regular
+  private records. The stock prewrite installed-source metadata must match source
+  f4d, the same current archive and pinned manifest6f4c6e21 from the accepted install;
+  its identity/hash is preserved, without enumerating source files. Any
+  plan, backup, extra entry, original staging temp or identity/hash drift holds
+  the new action before write. Original records are never changed or reclassified.
+- The current native parser proves the fixed outer stub and absence of the TV
+  flag. Includes/keys are never followed/read. Current config identity/bytes and
+  the original failure state are rechecked immediately before replacement.
+
+Only then may the separate new reservation perform the existing single private
+flag write and fixed own-site token readiness check. Backup, PHP lint, exact
+readback and rollback remain the same. Readiness failure restores only the new
+flag delta; it never resets the original ledger or admits another operation.
+The new receipt preserves original UNKNOWN facts separately from its own actual
+zero supplier/DB/booking/lead counters and carries fixed original run/control/
+source/digest plus unchanged reservation evidence. No fallback or automatic
+successor exists. Any unverifiable prewrite fact means HOLD without writing.
+
+Source/mandatory native CI/exact-delta review do not themselves dispatch this
+profile. A separate explicit no-replay admission review and exclusive runtime
+claim precede the one command. No supplier query, customer CREATE, key custody
+audit, private outside-config reader, public root or SEARCH consumer action is
+part of this recovery. Installation, activation and actual TV delivery remain
+distinct evidence stages.
