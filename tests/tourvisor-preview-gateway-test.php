@@ -284,16 +284,16 @@ tvg_denied(function()use($r,&$late,$now,$failing,$catalog,$lateSave,$lateClock){
 },'tv_checked_tour_missing');
 tvg_ok($physical===0,'checkpoint crossing original checked-tour expiry cannot fetch flights');
 $heavy=$resultsSession;
-for($i=0;$i<4;++$i)$heavy['tourvisor_requests'][md5('padding'.$i)]=[
+for($i=0;$i<23;++$i)$heavy['tourvisor_requests'][md5('padding'.$i)]=[
     'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,
-    'reply'=>['data'=>str_repeat('x',875000)]];
+    'reply'=>['data'=>str_repeat('x',880000)]];
 $r=$request('tv_tour',['offer_ref'=>$ref]); $largeTour=$tour;$largeTour['padding']=str_repeat('x',400000);
 $largeTransport=static fn():array=>$largeTour;
 $captureLimit=tvg_limit(function()use($r,&$heavy,$now,$largeTransport,$catalog,$save,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$heavy,$now,$largeTransport,$catalog,$save,$clock);
-},'tour','context_bytes','capture',4194304);
+},'tour','context_bytes','capture',20971520);
 tvg_ok(!isset($heavy['tourvisor_context']['offers'][$ref]['checked'])
-    && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304
+    && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=20971520
     && empty($heavy['tourvisor_handoff_records']),'oversized candidate never enters any capture checkpoint or persisted context');
 // Owner-authorized tenfold session budget: the former64 boundary and the640th
 // operation admit new intent without resetting, pruning or replaying old receipts.
@@ -323,6 +323,27 @@ foreach ([64,639] as $retainedCount) {
     tvg_ok($admitted['anex_offer_contexts']===$otherProvider,
         'other provider context unchanged by cap increase');
 }
+// The owner's separate fivefold byte budget admits the former4MiB state
+// without rewriting a single old ready/UNKNOWN receipt or changing other bounds.
+$byteAdmitted=$resultsSession;
+for($i=0;$i<5;++$i)$byteAdmitted['tourvisor_requests'][md5('old-byte-reply'.$i)]=[
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,
+    'reply'=>['data'=>str_repeat('x',875000)]];
+$byteRetained=$byteAdmitted['tourvisor_requests'];$byteOther=$byteAdmitted['anex_offer_contexts'];
+$byteBefore=strlen(json_encode([$byteAdmitted['tourvisor_context'],$byteRetained],JSON_THROW_ON_ERROR));
+$byteIntent=$request('tv_status');$byteCalls=0;$byteSaves=0;
+$byteSave=static function(array &$s)use(&$byteSaves):void{++$byteSaves;};
+$byteTransport=static function(string $path,array $query,array &$s)use(&$byteCalls,$byteIntent):array {
+    tvg_ok($path==='/tours/search/91/status'
+        && $s['tourvisor_requests'][$byteIntent['request_id']]['state']==='unknown',
+        'fivefold byte budget retains durable reservation before dispatch');
+    ++$byteCalls;return ['progress'=>100];
+};
+$byteReply=AnyTourTourvisorPreviewGateway::handle($byteIntent,$byteAdmitted,$now,$byteTransport,$catalog,$byteSave,$clock);
+tvg_ok($byteBefore>4194304 && $byteBefore<20971520 && $byteReply['data']===['progress'=>100]
+    && $byteCalls===1 && $byteSaves===2,'former4MiB boundary admits exactly one ordinary intent below20MiB');
+tvg_ok(array_intersect_key($byteAdmitted['tourvisor_requests'],$byteRetained)===$byteRetained
+    && $byteAdmitted['anex_offer_contexts']===$byteOther,'fivefold byte increase preserves old receipts and foreign state');
 // No supplier calls: prove each local guard separately, retaining all UNKNOWN receipts.
 $full=$resultsSession;
 while(count($full['tourvisor_requests'])<640) $full['tourvisor_requests'][md5('full'.count($full['tourvisor_requests']))]=[
@@ -338,12 +359,12 @@ tvg_ok($d['limitValue']===640 && $full===$fullBefore && $physical===0 && $limitS
 tvg_ok(AnyTourTourvisorPreviewGateway::handle($resultsRequest,$full,$now,$failing,$catalog,$limitSave,$clock)===$results
     && $full===$fullBefore && $physical===0,'original healthy cached request survives full cap without new attempt');
 $overflow=$resultsSession; $overflow['tourvisor_requests'][md5('overflow')]=[
-    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,'reply'=>str_repeat('b',4194304)];
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,'reply'=>str_repeat('b',20971520)];
 $expectedBytes=strlen(json_encode([$overflow['tourvisor_context'],$overflow['tourvisor_requests']],JSON_THROW_ON_ERROR));
 $overflowBefore=$overflow;
 $d=tvg_limit(function()use($r,&$overflow,$now,$failing,$catalog,$limitSave,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$overflow,$now,$failing,$catalog,$limitSave,$clock);
-},'tour','context_bytes','admission',4194304);
+},'tour','context_bytes','admission',20971520);
 tvg_ok($d['limitValue']===$expectedBytes && $overflow===$overflowBefore && $physical===0 && $limitSaves===0,
     'size guard reports measured JSON bytes, not receipt cap or supplier status');
 // Padding models retained native replies; it is never used as a supplier/identity fact.
@@ -353,12 +374,12 @@ $padState=static function(array $s,int $bytes)use($now):array {
     $size=strlen(json_encode([$s['tourvisor_context'],$s['tourvisor_requests']],JSON_THROW_ON_ERROR));
     $s['tourvisor_requests'][$key]['reply']=str_repeat('b',$bytes-$size);return $s;
 };
-$reserveOverflow=$padState($resultsSession,4194304-8);$reserveBefore=$reserveOverflow;
+$reserveOverflow=$padState($resultsSession,20971520-8);$reserveBefore=$reserveOverflow;
 $d=tvg_limit(function()use($r,&$reserveOverflow,$now,$failing,$catalog,$limitSave,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$reserveOverflow,$now,$failing,$catalog,$limitSave,$clock);
-},'tour','context_bytes','reservation',4194304);
+},'tour','context_bytes','reservation',20971520);
 tvg_ok($reserveOverflow===$reserveBefore && $physical===0 && $limitSaves===0,
-    'reservation candidate cannot exceed 4MiB or checkpoint an oversized state');
+    'reservation candidate cannot exceed20MiB or checkpoint an oversized state');
 $tooMany=$resultsSession;
 for($i=1;$i<2000;++$i)$tooMany['tourvisor_context']['offers']['fixture-'.$i]=$tooMany['tourvisor_context']['offers'][$ref];
 $resultPhysical=0;$replyListing=$listing;$replyListing['id']='new-fixture-tour';
@@ -371,16 +392,16 @@ tvg_ok($d['limitValue']===2001 && $resultPhysical===1 && $limitSaves===1
     && count($tooMany['tourvisor_context']['offers'])===2000
     && $tooMany['tourvisor_requests'][$r['request_id']]['state']==='unknown',
     '2001st offer rejects only candidate, original UNKNOWN and 2000 offer cap retained');
-$replyOverflow=$padState($resultsSession,4194304-1500);$replyPhysical=0;
+$replyOverflow=$padState($resultsSession,20971520-1500);$replyPhysical=0;
 $replyListing=$listing;$replyListing['padding']=str_repeat('x',10000);
 $replyTransport=static function()use(&$replyPhysical,$replyListing):array{++$replyPhysical;return [['id'=>1006,'tours'=>[$replyListing]]];};
 $r=$request('tv_results');
 $d=tvg_limit(function()use($r,&$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock);
-},'search_results','context_bytes','reply',4194304);
+},'search_results','context_bytes','reply',20971520);
 tvg_ok($replyPhysical===1 && $limitSaves===2
     && $replyOverflow['tourvisor_requests'][$r['request_id']]['state']==='unknown'
-    && strlen(json_encode([$replyOverflow['tourvisor_context'],$replyOverflow['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304,
+    && strlen(json_encode([$replyOverflow['tourvisor_context'],$replyOverflow['tourvisor_requests']],JSON_THROW_ON_ERROR))<=20971520,
     'reply cache rejection retains original UNKNOWN and bounded context without retry');
 tvg_denied(function()use($r,&$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock);
