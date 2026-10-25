@@ -175,6 +175,11 @@ $before=[
 ];
 
 $inventory=(new AnyTourHotelStayOfferCandidatesV2($db))->collect(50,$now);
+cand_check(!array_key_exists('anchorEvidence',$inventory),'default inventory contract has no anchor fields');
+cand_expect(static fn()=>(new AnyTourHotelStayOfferCandidatesV2($db))->collectForTourvisorAnchor('invalid',50,$now),
+    'HOTEL_STAY_ANCHOR_SCOPE','anchor rejects non-opaque numeric tour scope');
+cand_expect(static fn()=>(new AnyTourHotelStayOfferCandidatesV2($db))->collectForTourvisorAnchor('25282424201500',51,$now),
+    'HOTEL_STAY_ANCHOR_SCOPE','anchor cohort cap cannot be widened');
 $after=[
     'offers'=>(int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn(),
     'sources'=>(int)$db->query('SELECT COUNT(*) FROM anytour_hotel_sources')->fetchColumn(),
