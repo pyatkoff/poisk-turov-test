@@ -888,16 +888,16 @@ function refreshOpenHotelRooms(){
 }
 function syncHotelFlightSelection(row,listing,preserve=false){
  let preview=row.querySelector('.room-flight-preview');
- if(!listing||['anex','andromeda'].includes(listing.provider)||needsRefresh(listing)){if(preview){const price=row.querySelector('.hotel-room-price>strong');if(price&&preview.dataset.listingPrice)price.textContent=preview.dataset.listingPrice;preview.remove();}return;}
+ const o=listing&&hotelOfferCheckActive(listing.key)&&selectedOffer?.raw===listing.raw?selectedOffer:listing;
+ if(!listing||['anex','andromeda'].includes(listing.provider)||needsRefresh(listing)||terminalOfferQuote(o)){if(preview){const price=row.querySelector('.hotel-room-price>strong');if(price&&preview.dataset.listingPrice)price.textContent=preview.dataset.listingPrice;preview.remove();}return;}
  if(!preview){preview=document.createElement('div');preview.className='room-flight-preview';preview.dataset.listingPrice=row.querySelector('.hotel-room-price>strong')?.textContent||'';row.append(preview);}
- const o=hotelOfferCheckActive(listing.key)&&selectedOffer?.raw===listing.raw?selectedOffer:listing;
  const price=row.querySelector('.hotel-room-price>strong');if(price)price.textContent=o.pricePending?'Цена уточняется':money(o.total);
+ if(o.loading||o.flightsLoading){preview.innerHTML=`<p role="status">${o.loading?'Проверяем цену тура…':'Получаем варианты перелёта…'}</p>`;return;}
  if(!o.hotelFlightPreview){preview.innerHTML=`<button type="button" class="text-button" data-action="hotel-flights" data-key="${esc(o.key)}">Выбрать рейсы · необязательно</button>`;return;}
  if(preserve&&preview.querySelector('.hotel-flight-inline'))return;
  const key=o.key,raw=o.raw,run=selectionGeneration;
  const current=()=>preview.isConnected&&hotelOfferCheckActive(key)&&selectedOffer?.raw===raw&&selectionGeneration===run;
  const manager=`<button type="button" class="text-button" data-action="defer-hotel-flight" data-key="${esc(key)}">Оставить выбор рейсов менеджеру</button>`;
- if(o.loading||o.flightsLoading){preview.innerHTML='<p role="status">Получаем варианты перелёта…</p>';return;}
  if(o.quoteError||!o.tour){preview.innerHTML=`<p role="status">${esc(o.quoteError||'Сначала проверим цену тура.')}</p>`;return;}
  if(!o.variants?.length){preview.innerHTML=`<p role="status">${esc(o.flightsError||'Варианты рейсов пока не переданы.')}</p><button type="button" class="secondary" data-action="hotel-flights" data-key="${esc(key)}">Повторить загрузку рейсов</button>${manager}`;return;}
  const paint=()=>{if(!current())return;preview.innerHTML=`<section class="tour-section flight-summary"><h3>Перелёт</h3><div class="hotel-flight-inline" data-key="${esc(key)}">${window.AnyTourFlightPickerV18.render(o,o.flightChoiceId,{esc,money,text:data.text,price:data.variantPrice,legHTML,fuelText})}</div>${manager}</section>`;let ui;ui=window.AnyTourFlightPickerV18.bind(preview.querySelector('.hotel-flight-inline'),money,o.flightPickerState?.view,()=>{if(current()&&ui){selectedOffer.flightPickerState={view:ui.snapshot()};rememberUIRoute();}});};
@@ -940,7 +940,7 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
    const current=selectedOffer,view=retainedProviderView(current);
    if(current.hotelFlightPreview){total.textContent=current.pricePending?'Цена уточняется':money(current.total);button.disabled=!!(current.loading||current.flightsLoading||current.pricePending||current.quoteError);status.textContent=current.pricePending?'Цена выбранной пары не передана. Выберите другую или оставьте рейсы менеджеру.':selectedPriceStatus(current);}
    if(current.loading){status.textContent='Проверяем выбранный вариант…';button.disabled=true;button.textContent='Проверяем цену…';}
-   else if(current.quoteError){status.textContent=offerQuoteErrorText(current,terminalOfferQuote(current),needsRefresh(current));button.disabled=terminalOfferQuote(current);button.textContent=button.disabled?'Тур недоступен':'Повторить проверку';}
+   else if(current.quoteError){status.textContent=offerQuoteErrorText(current,terminalOfferQuote(current),needsRefresh(current));button.disabled=false;if(terminalOfferQuote(current)){button.dataset.action='close-modal';delete button.dataset.key;button.textContent='К результатам';}else button.textContent='Повторить проверку';}
    else if(view?.type==='anex-current'){
      status.textContent=view.error|| (view.pending?'Уточняем обязательные доплаты…':current.raw?.infantCharge?.status==='unknown'?'Цена из поиска ANEX · доплата за младенца уточняется':'Цена из поиска ANEX · доплаты требуют проверки');
     button.disabled=!!view.error||!!view.pending;button.dataset.action='anex-additional-prices';button.textContent=view.pending?'Уточняем доплаты…':'Проверить доплаты и продолжить';

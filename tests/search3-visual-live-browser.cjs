@@ -1741,6 +1741,50 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');
 };
 
+const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
+ const records=[];
+ for(const [width,height] of [[430,900],[1280,900],[1280,720]]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  let release,entered;const pending=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve),key='tourvisor%3Avisual-tv-101';
+  const row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]'),quoteCalls=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&c.action==='tour').length;
+  const snapshot=()=>page.evaluate(()=>({trip:document.querySelector('#compact-search').textContent,filters:document.querySelector('#active-filters').textContent,query:document.querySelector('#hotel-query').value,max:document.querySelector('#max-price').value,sort:document.querySelector('#sort').value,keys:[...document.querySelectorAll('.hotel-card [data-card-entry]')].map(el=>el.dataset.key)}));
+  try{
+   await page.route('**/*',async route=>{
+    const req=route.request(),u=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=u.searchParams.get('action')||body.action;
+    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     const value=await transport.json(req.url(),{body:req.postData()});
+     if(u.pathname==='/api-v2.php'&&action==='tour'){entered();await pending;await route.fulfill({status:410,contentType:'application/json',body:JSON.stringify({error:'offer_expired'})});return;}
+     await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
+    }catch(e){forbidden.push(e.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+   await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   await openResultFilters(page,width);await page.locator('#hotel-query').fill('Вымышленный');await page.locator('#max-price').fill('180000');
+   if(width===430){await page.locator('#apply-filters').click();await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open'));}
+   const before=await snapshot(),card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');
+   await card.click();await row().waitFor({state:'visible'});assert.equal(await row().locator('[data-action="hotel-flights"]').count(),1);
+   await page.locator('#hotel-detail-offers').click();await started;await page.waitForFunction(()=>document.querySelector('#hotel-detail-offers')?.disabled);
+   assert.equal(quoteCalls(),1);assert.equal(await row().locator('[data-action="hotel-flights"]').count(),0,'pending quote does not advertise an action its handler rejects');
+   assert.match(await row().locator('.room-flight-preview [role="status"]').textContent(),/Проверяем цену тура/);
+   release();await page.waitForFunction(()=>document.querySelector('#hotel-detail-offers')?.textContent==='К результатам');
+   const recovery=page.locator('#hotel-detail-offers');assert.equal(await recovery.isEnabled(),true);assert.equal(await recovery.getAttribute('data-action'),'close-modal');assert.equal(await recovery.getAttribute('data-key'),null);
+   assert.equal(await row().locator('.room-flight-preview').count(),0,'expired price never leaves an unusable optional-flight invitation');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/ист[её]к|недоступ|не удалось/i);
+   const geometry=await recovery.evaluate(el=>{const r=el.getBoundingClientRect(),d=document.querySelector('#modal'),body=document.querySelector('#modal-body').getBoundingClientRect(),footer=document.querySelector('#modal-footer').getBoundingClientRect();return{button:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height},horizontalOverflow:d.scrollWidth>d.clientWidth+1,bodyBottom:body.bottom,footerTop:footer.top,footerBottom:footer.bottom,viewport:innerHeight,width:innerWidth};});
+   assert.equal(geometry.horizontalOverflow,false);assert(geometry.button.x>=0&&geometry.button.right<=width+1&&geometry.button.height>=43.5);assert(geometry.button.bottom<=height+1&&geometry.bodyBottom<=geometry.footerTop+1&&geometry.footerBottom<=height+1,'recovery stays available above the short-screen bottom');
+   await page.screenshot({path:path.join(evidence,'hotel-terminal-recovery-'+width+'x'+height+'.png')});
+   const requests=transport.calls.length;await recovery.click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+   assert.deepEqual(await snapshot(),before,'ordinary recovery retains dates, party, filters, sort and exact result keys');assert.equal(transport.calls.length,requests,'return to results never replays the failed quote');assert.equal(await card.isVisible(),true);
+   assert.equal(quoteCalls(),1);assert.equal(transport.calls.filter(c=>c.action==='flights'||String(c.action).startsWith('handoff_')).length,0);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({width,height,key,terminal:'HTTP410 fictional intercepted fixture',quoteCalls:1,pendingInertActionRemoved:true,terminalFlightInvitationRemoved:true,recovery:'close-modal',resultsStateRetained:true,recoveryRequests:0,geometry,supplier_HTTP:0,real_leads:0});
+  }finally{release();await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'hotel-terminal-recovery.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');
+ console.log('PASS compiled ordinary hotel terminal recovery430/1280/short720: pending status, no dead flight action, working results return retains search/filters/sort/exactkeys; supplier/lead calls0');
+};
+
 // Keep every broad-matrix frame within the existing bounded artifact carrier.
 // Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
 // preserve every other chunk. The separately retained messenger bytes stay intact.
@@ -1782,6 +1826,7 @@ function retainLosslessPngEvidence(directory){
    }
    await require('./search3-visual-hotel-journey.cjs')();
    await tvCardRoomsJourney(browser,origin,base,evidence);
+   await terminalHotelRecovery(browser,origin,base,evidence);
    await inlineContactFlightReturn(browser,origin,base,evidence);
    await inlineHotelContactJourney(browser,origin,base,evidence);
    await infantChargeQualification(browser,origin,base,evidence);
