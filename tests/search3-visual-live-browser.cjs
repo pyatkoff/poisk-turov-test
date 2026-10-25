@@ -1727,8 +1727,11 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
    await page.locator('.hotel-room-card').first().waitFor();
    const room=page.locator('.hotel-room-card').first();
    if(await room.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await room.locator(':scope>summary').click();
-   await room.locator('[data-action="select-hotel-offer"]:visible').first().click();
-   const row=page.locator('.room-offer-choice.selected'),key=await row.getAttribute('data-offer-key');
+   const choice=room.locator('[data-action="select-hotel-offer"]:visible').first(),key=await choice.getAttribute('data-key'),listingAmount=await choice.locator('..').locator('strong').textContent();
+   await choice.click();await page.locator('#prototype-lead-form').waitFor();
+   assert.equal(await amount(),listingAmount,'one exact room action reaches the checked manager-flight contacts');
+   await page.locator('#modal-back').click();
+   const row=page.locator('.room-offer-choice.selected');await row.waitFor();assert.equal(await row.getAttribute('data-offer-key'),key,'ordinary Back retains the same exact room before optional inline flight selection');
    await row.locator('[data-action="hotel-flights"]').click();
    await row.locator('.hotel-flight-inline [name="flight-pair"]').first().waitFor();
    assert.equal(await row.locator('[name="flight-pair"]:checked').count(),0,'inventory alone cannot select a pair');
