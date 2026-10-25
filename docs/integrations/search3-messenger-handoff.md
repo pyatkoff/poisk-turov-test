@@ -205,7 +205,10 @@ new search has a new server generation. No automatic retry/new-search fallback
 exists. Provider410 invalidates the affected canonical record. A cached tour,
 flight list or selection must still belong to the current unexpired offer before
 it can be returned; a prior ready receipt cannot restore revoked price/selection
-authority. Rejection adds no supplier attempt and preserves the original UNKNOWN
+authority. A late provider410 may revoke only its originating current generation
+and search_ref; it cannot expire the same supplier tour or canonical record in a
+newer search. The original caller still receives its original410 and its operation
+remains UNKNOWN/nonreplayable. Rejection adds no supplier attempt and preserves the original UNKNOWN
 receipt. Search/results listing caches and unrelated offers remain independent.
 Deadline checks
 apply both before dispatch and after return; cached selections retain the

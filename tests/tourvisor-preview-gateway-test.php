@@ -203,6 +203,45 @@ $other['tourvisor_context']['offers'][$otherRef]=$other['tourvisor_context']['of
 $other['tourvisor_context']['offers'][$otherRef]['expired']=true;
 tvg_ok(AnyTourTourvisorPreviewGateway::handle($checkedRequest,$other,$now,$gone,$catalog,$save,$clock)===$checked,
     'different expired offer cannot revoke the healthy cached tour');
+// Late old flights410 must not revoke the same tour checked in a newer search.
+$raceSession=$beforeFlightsSession; $oldFlightRequest=$request('tv_flights',['offer_ref'=>$ref]);
+$newChecked=null; $newTourRequest=null; $raceCalls=0;
+$race410=static function(string $path,array $query,array &$state)use(&$raceCalls,&$newChecked,&$newTourRequest,
+    &$activeRid,$params,$now,$transport,$catalog,$save,$clock,$ref):array {
+    ++$raceCalls;
+    $base=['provider'=>'tourvisor','csrf'=>str_repeat('c',64)];
+    $start=$base+['action'=>'tv_search','request_id'=>md5('newer-search'),'params'=>$params];
+    $activeRid=$start['request_id'];
+    AnyTourTourvisorPreviewGateway::handle($start,$state,$now,$transport,$catalog,$save,$clock);
+    $pins=['generation'=>$state['tourvisor_context_generation'],'search_ref'=>$state['tourvisor_context']['search_ref']];
+    $read=$base+$pins+['action'=>'tv_results','request_id'=>md5('newer-results')];
+    $activeRid=$read['request_id'];
+    $rows=AnyTourTourvisorPreviewGateway::handle($read,$state,$now,$transport,$catalog,$save,$clock);
+    tvg_ok($rows['offers'][0]['offer_ref']===$ref,'new search returns the same supplier tour identity');
+    $newTourRequest=$base+$pins+['action'=>'tv_tour','request_id'=>md5('newer-tour'),'offer_ref'=>$ref];
+    $activeRid=$newTourRequest['request_id'];
+    $newChecked=AnyTourTourvisorPreviewGateway::handle($newTourRequest,$state,$now,$transport,$catalog,$save,$clock);
+    throw new \AnyTour\TourvisorInteractiveFailure(['ok'=>false,'error'=>'Tourvisor request failed'],410);
+};
+try { AnyTourTourvisorPreviewGateway::handle($oldFlightRequest,$raceSession,$now,$race410,$catalog,$save,$clock);
+    throw new RuntimeException('expected late provider410'); }
+catch (\AnyTour\TourvisorInteractiveFailure $e) { tvg_ok($e->httpStatus===410,'old caller receives its original410'); }
+tvg_ok($raceSession['tourvisor_context_generation']===2 && empty($raceSession['tourvisor_context']['offers'][$ref]['expired']),
+    'old410 cannot expire the newer current offer');
+$newFrozen=AnyTourTourvisorSelectedTourHandoff::freeze($newChecked['selector'],$raceSession,$now,$clock);
+tvg_ok($newFrozen['status']==='ready' && $newFrozen['record']['observation']['price']['amount']==='209867',
+    'new generation canonical record keeps its own price authority');
+tvg_ok(AnyTourTourvisorSelectedTourHandoff::freeze($checked['selector'],$raceSession,$now,$clock)['status']!=='ready',
+    'old selection remains noncurrent after the new search');
+$raceBefore=count($calls);
+tvg_ok(AnyTourTourvisorPreviewGateway::handle($newTourRequest,$raceSession,$now,$race410,$catalog,$save,$clock)===$newChecked,
+    'new checked response remains cached with exact bytes');
+tvg_denied(function()use($oldFlightRequest,&$raceSession,$now,$race410,$catalog,$save,$clock) {
+    AnyTourTourvisorPreviewGateway::handle($oldFlightRequest,$raceSession,$now,$race410,$catalog,$save,$clock);
+},'tv_stale_context');
+tvg_ok($raceCalls===1 && count($calls)===$raceBefore
+    && $raceSession['tourvisor_requests'][$oldFlightRequest['request_id']]['state']==='unknown',
+    'old UNKNOWN stays sealed and neither response admission adds supplier calls');
 $changed=$session; $r=$request('tv_results');
 $concurrent=static function(string $p,array $q,array &$s):array{
     ++$s['tourvisor_context_generation']; $s['tourvisor_context']=['newer'=>'must remain']; return [];
