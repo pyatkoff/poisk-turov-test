@@ -174,6 +174,11 @@ final class AnyTourTourvisorPreviewGateway
             self::need(($old['generation'] ?? null) === ($s['tourvisor_context_generation'] ?? null),'tv_stale_context');
             self::need(($old['state'] ?? null) === 'ready','tv_operation_unknown');
             self::need($now < ($old['expires_at'] ?? 0),'tv_stale_context');
+            if (in_array($action,['tv_tour','tv_flights','tv_select'],true)) {
+                $current = self::context($r,$s,$now); $ref = $r['offer_ref'];
+                self::need(is_string($ref) && isset($current['offers'][$ref])
+                    && empty($current['offers'][$ref]['expired']),'tv_offer_not_owned');
+            }
             return $old['reply'];
         }
         self::need(count($requests) < 64 && strlen(json_encode([$s['tourvisor_context'] ?? [],$requests],JSON_THROW_ON_ERROR)) < 4194304,'tv_context_limit');
