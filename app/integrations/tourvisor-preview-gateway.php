@@ -336,7 +336,9 @@ final class AnyTourTourvisorPreviewGateway
         } catch (Throwable $error) {
             if (($s['tourvisor_requests'][$rid]['fingerprint'] ?? null) === $fingerprint)
                 $s['tourvisor_requests'][$rid] = ['fingerprint'=>$fingerprint,'generation'=>$generation,'state'=>'unknown'];
-            if ($error instanceof \AnyTour\TourvisorInteractiveFailure && $error->httpStatus === 410 && isset($ref)) {
+            if ($error instanceof \AnyTour\TourvisorInteractiveFailure && $error->httpStatus === 410 && isset($ref)
+                && ($s['tourvisor_context_generation'] ?? null) === $c['generation']
+                && ($s['tourvisor_context']['search_ref'] ?? null) === $c['search_ref']) {
                 self::invalidate($ref,$s);
                 try { $checkpoint($s); } catch (Throwable $ignored) {}
             }
