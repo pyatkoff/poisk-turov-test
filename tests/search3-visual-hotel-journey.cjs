@@ -63,13 +63,36 @@ async function verifyChoiceComposition(){
  sync();assert.equal(panel.hidden,true);assert.equal(label.hidden,false);assert.strictEqual(choice.parentElement,label,'same selected toggle stays visible as the ordinary return anchor');assert.equal(button.textContent,'Проверить тур');assert.equal(status.textContent,'Цена из выдачи · требует проверки');assert.equal(status.textContent.includes(listing.room),false,'row facts are not duplicated in the price status');
  c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600};sync();assert.equal(button.textContent,'Продолжить');assert.equal(status.textContent,'Цена предложения · перелёт уточняется');
  c.selectedOffer={...c.selectedOffer,hotelFlightPreview:true,pricePending:true};sync();assert.equal(button.disabled,true);assert.equal(nodes['#hotel-detail-min'].textContent,'Цена уточняется');assert.match(status.textContent,/Цена выбранной пары не передана/);
- c.selectedOffer={...listing,quoteError:'expired',quoteErrorTerminal:true};sync();assert.equal(button.disabled,true);assert.equal(button.textContent,'Тур недоступен');
+ c.selectedOffer={...listing,quoteError:'expired',quoteErrorTerminal:true};sync();assert.equal(button.disabled,false);assert.equal(button.textContent,'К результатам');assert.equal(button.dataset.action,'close-modal');assert.equal(button.dataset.key,undefined,'terminal recovery cannot replay the quote');
+ c.selectedOffer={...listing,quoteError:'temporary'};sync();assert.equal(button.disabled,false);assert.equal(button.textContent,'Повторить проверку');assert.equal(button.dataset.action,'continue-hotel-offer');assert.equal(button.dataset.key,listing.key,'a temporary failure retains its explicit retry');
+ c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600};sync();assert.equal(button.textContent,'Продолжить');assert.equal(button.dataset.action,'continue-hotel-offer');
  c.hotelOfferDraft=null;sync();assert.equal(panel.hidden,false,'alternatives recover their own comparable price/action');assert.equal(label.hidden,true);assert.strictEqual(choice.parentElement,panel,'unselected toggle returns to its original price panel');
  for(const outcome of ['healthy','empty','error']){
   const {c,calls,listing}=setup();c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,flightsLoaded:true,variants:outcome==='empty'?[]:[{}],flightsError:outcome==='error'?'temporary':''};
   await c.openHotelFlights('one');assert.equal(calls.quote,0);assert.equal(calls.flights,Number(outcome!=='healthy'),outcome+' uses the existing explicit retry owner');assert.equal(c.selectedOffer.flightChoiceId,undefined,'inventory reopening never chooses a default');
  }
  console.log('PASS approved Site220 receiver: single selected total, current check/continue, unknown/terminal guards, alternative prices and healthy-only cached optional flights');
+}
+async function verifyTerminalRecovery(){
+ for(const outcome of ['unavailable','expired','retained','loading','flights-loading','temporary','ready']){
+  const {c,calls,listing,views}=setup(),price={textContent:'198600'},preview={dataset:{listingPrice:'198600'},innerHTML:'<button data-action="hotel-flights">old action</button>',removed:false,remove(){this.removed=true;},querySelector:()=>({})};
+  const row={querySelector:selector=>selector==='.room-flight-preview'?(preview.removed?null:preview):selector==='.hotel-room-price>strong'?price:null,append(){}};
+  c.document={createElement:()=>preview};
+  vm.runInContext(slice('function syncHotelFlightSelection(','function selectHotelFlight('),c);
+  if(['unavailable','expired'].includes(outcome))c.selectedOffer={...listing,quoteError:outcome,quoteErrorCode:'offer_'+outcome};
+  if(outcome==='retained')views.set(listing.key,{offer:{...listing,quoteError:'unconfirmed',quoteErrorTerminal:true}});
+  if(outcome==='loading')c.selectedOffer={...listing,loading:true};
+  if(outcome==='flights-loading')c.selectedOffer={...listing,tour:{price:198600},flightsLoading:true,hotelFlightPreview:true};
+  if(outcome==='temporary')c.selectedOffer={...listing,quoteError:'temporary'};
+  if(outcome==='ready')c.selectedOffer={...listing,tour:{price:198600}};
+  c.syncHotelFlightSelection(row,listing,true);
+  if(['unavailable','expired','retained'].includes(outcome)){
+   assert.equal(preview.removed,true,outcome+' removes the unusable flight invitation');await c.openHotelFlights(listing.key);assert.equal(calls.quote,0);assert.equal(calls.flights,0,'terminal noReplay guard stays authoritative');
+  }else if(['loading','flights-loading'].includes(outcome)){
+   assert.doesNotMatch(preview.innerHTML,/data-action="hotel-flights"/,'a pending check is a status, never an inert action');assert.match(preview.innerHTML,/role="status"/);assert.match(preview.innerHTML,outcome==='loading'?/Проверяем цену тура/:/Получаем варианты перелёта/,'pending status precedes picker preservation');
+  }else assert.match(preview.innerHTML,/data-action="hotel-flights"/,'ordinary optional flight choice remains available after '+outcome);
+ }
+ console.log('PASS terminal room recovery: unavailable/expired/retained remove inert flights; pending status; temporary retry and successful optional choice retained; supplier/lead calls0');
 }
 async function verifySite215Journey(){
  const {JSDOM,VirtualConsole}=require('jsdom');
@@ -198,7 +221,8 @@ async function run(){
  {const {c,calls,views,listing}=setup('anex');views.set('one',{offer:listing,type:'anex-current',result:{state:'current'},error:'UNKNOWN',pending:false});await c.refreshLiveHotel(1);assert.equal(calls.verify,0);assert.equal(calls.additional,0,'an UNKNOWN current result is never retried automatically');}
  verifyResultCardEntry();
  await verifyChoiceComposition();
+ await verifyTerminalRecovery();
  await verifySite215Journey();
  console.log('PASS hotel journey: exact price/pair reuse, foreign raw/search/room/party/price rejection, double intent, late/closed selection, A-B-A canonical TV/runtime deferred410 noReplay, explicit success recheck, terminal/UNKNOWN and retained ANEX recovery, inline group/current/estimate and no mandatory flights; supplier/lead calls 0');
 }
-module.exports=run;module.exports.verifyResultCardEntry=verifyResultCardEntry;module.exports.verifyChoiceComposition=verifyChoiceComposition;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports=run;module.exports.verifyResultCardEntry=verifyResultCardEntry;module.exports.verifyChoiceComposition=verifyChoiceComposition;module.exports.verifyTerminalRecovery=verifyTerminalRecovery;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
