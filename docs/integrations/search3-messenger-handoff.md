@@ -265,3 +265,29 @@ HTTP owner already forwards this safe typed envelope; no API/transport edit is
 needed. SEARCH may preserve these optional fixed facts through its existing
 diagnostic channel while keeping user copy and behavior. Source/CI/installation
 and a future actual diagnostic observation remain separate acceptances.
+
+
+### Valid supplier calendar dates across formats — 25 October 2026
+
+Actual installed case6395079313 isolated only date as the failed predicate, with
+supplier d.m.Y and context ISO strings. It did not expose the two calendar values
+or reconstruct older failed cases. The strict raw-string comparison nevertheless
+rejects equivalent valid calendar days in those two already supported supplier
+formats; the native equivalent-day regression reproduced that source defect.
+
+The gateway now recognizes only exact YYYY-MM-DD or DD.MM.YYYY strings with real
+calendar validity. Checked-tour date equality and pair outward/return chronology
+use canonical days. Optional leg dates retain the earlier ten-character-prefix
+comparison (including previously accepted ISO date/time suffixes), now recognizing
+the same two date formats. Different days, invalid/missing dates, reversed trips
+or mismatching leg days still fail. All other identities, ordered party, types,
+operator and monetary/freshness predicates remain unchanged.
+
+Only the existing canonical selected-record trip.departure uses ISO; supplier
+DTOs, raw checked/pair storage, opaque references and healthy cached reply bytes
+are unchanged. No timezone/relative/general date parsing, browser value, added
+fee/fuel arithmetic, HTTP/store/lead change or retry is introduced. Local coverage
+includes both directions of format differences, leap-day and cross-year trips,
+manager/selected-pair freeze and existing producer preparation, no physical replay
+and invalid/different-day rejection. Source/CI, one-file installation and new live
+acceptance are separate; sealed operations remain consumed.
