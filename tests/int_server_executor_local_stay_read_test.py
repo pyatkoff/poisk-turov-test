@@ -903,5 +903,182 @@ class NativeStockInstallContext(unittest.TestCase):
         print(run.stdout.strip())
 
 
+def context_install_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.CONTEXT_INSTALL_SOURCE_SHA} {m.CONTEXT_INSTALL_MODE} {m.CONTEXT_INSTALL_OPERATION}')
+
+
+def context_install_fixture_data():
+    # Fictional protocol structures do not establish a real connection identity.
+    data=install_fixture_data();r=data['receipt'];policy=m.CONTEXT_INSTALL_PARENT
+    r.update(source='anytour-hotel-stay-context-install-v1',operationId=m.CONTEXT_INSTALL_OPERATION,
+             databaseSha256=policy['database_sha256'],contextOperation=policy['operation'],contextControlSha=policy['control'],
+             contextInventorySha256=policy['inventory_sha256'],contextPlanSha256=policy['plan_sha256'],
+             contextDatabaseSha256=policy['database_sha256'],contextFileSha256=policy['file_sha256'],contextResultSha256=policy['private_sha256'],
+             parentReadResultSha256=m.INSTALL_PARENT['private_sha256'],failedInstallResultSha256=m.CONTEXT_FAILURE['private_sha256'],
+             protectedBefore=dict(policy['protected']),protectedAfter=dict(policy['protected']))
+    return data
+
+
+def context_install_journal(data):
+    events=install_journal(data);r=data['receipt'];events[0].pop('parentReadInventorySha256')
+    events[0].update(contextResultSha256=r['contextResultSha256'],contextInventorySha256=r['contextInventorySha256'])
+    return events
+
+
+def context_install_receipt(data):
+    outer=receipt(data);outer.pop('local_stay_read');r=data['receipt'];policy=m.CONTEXT_INSTALL_PARENT
+    outer.update(mode=m.CONTEXT_INSTALL_MODE,operation_id=m.CONTEXT_INSTALL_OPERATION,source_sha=m.CONTEXT_INSTALL_SOURCE_SHA,
+                 schema_writes='unknown' if r['ddlOutcomeUnknown'] else r['schemaWrites'],
+                 schema_writes_acknowledged=r['schemaWrites'],schema_write_outcome_unknown=r['ddlOutcomeUnknown'])
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    outer['local_stay_context_install']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+          'protectedBefore':dict(policy['protected']),'protectedAfter':dict(policy['protected']),
+          'contextResultSha256':policy['private_sha256'],'parentReadResultSha256':m.INSTALL_PARENT['private_sha256'],
+          'failedInstallResultSha256':m.CONTEXT_FAILURE['private_sha256'],'journalSha256':r['journalSha256'],'journalEvents':context_install_journal(data)}
+    return outer
+
+
+class ContextInstallAdmission(unittest.TestCase):
+    def test_fixed_owner_main_release_first_attempt_and_no_caller_database_authority(self):
+        c=wrapper().core;parsed=context_install_command(c)
+        body=f'{c.PREFIX}{m.CONTEXT_INSTALL_SOURCE_SHA} {m.CONTEXT_INSTALL_MODE} {m.CONTEXT_INSTALL_OPERATION}'
+        self.assertEqual(parsed['maximum_schema_tables'],3)
+        for invalid in (body+' --apply',body+' '+m.CONTEXT_INSTALL_PARENT['database_sha256'],body.replace(m.CONTEXT_INSTALL_SOURCE_SHA,'a'*40),
+                        body.replace(m.CONTEXT_INSTALL_OPERATION,m.CONTEXT_INSTALL_OPERATION+'-retry')):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':113,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/113': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.CONTEXT_INSTALL_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            with self.assertRaises(ValueError): c.checked_event('fixture',dict(event,issue={'number':4217}),CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+
+    def test_new_closed_bundle_and_prelaunch_unknown_without_old_install_alias(self):
+        raw,hashes=m.bundle_context_install_source(SOURCE)
+        self.assertEqual(hashes,m.context_install_hashes())
+        self.assertNotIn(m.INSTALL_RUNNER,hashes);self.assertNotIn(m.CONTEXT_RUNNER,hashes)
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(len(archive.getmembers()),5);self.assertEqual(set(archive.getnames()),{*hashes,'manifest.json'})
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        c=wrapper().core;parsed=context_install_command(c)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_schema_tables',True),('provider_http_calls',False),('database_writes',1),('expected_database','a'*64),('sql','CREATE')):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE)
+        self.assertIn("if len(members)!=5",c.REMOTE)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",c.REMOTE)
+        self.assertIn("if globals().get('local_stay_context_install_reserved') is True and op.exists():",c.REMOTE)
+        self.assertNotIn('def run_local_stay_schema_install(',c.REMOTE)
+        self.assertLess(m.CONTEXT_INSTALL_REMOTE_HANDLER.index("result['schema_writes']='unknown'"),
+                        m.CONTEXT_INSTALL_REMOTE_HANDLER.index("run=subprocess.run(['php'"))
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+        source=(ROOT/m.CONTEXT_INSTALL_RUNNER).read_text()
+        self.assertIn("DATABASE_SHA256='4cd52b85a632855e79a5fafbe4e425d1c3c6a51dba2c995e0a43f976fbc25f1d'",source)
+        self.assertNotIn("getenv('ANYTOUR_DATA_",source)
+
+    def test_three_empty_success_and_truthful_partial_unknown_require_bound_context_and_journal(self):
+        policy=copy.deepcopy(m.CONTEXT_INSTALL_PARENT);policy['inventory_sha256']=install_fixture_data()['receipt']['beforeSha256']
+        read_policy=copy.deepcopy(m.INSTALL_PARENT);read_policy['inventory_sha256']=policy['inventory_sha256']
+        with mock.patch.object(m,'CONTEXT_INSTALL_PARENT',policy),mock.patch.object(m,'INSTALL_PARENT',read_policy):
+            data=context_install_fixture_data();parsed=context_install_command(wrapper().core)
+            self.assertTrue(m.completed_context_install(parsed,context_install_receipt(data),CONTROL))
+            for key,value in (('schemaWrites',False),('contextDatabaseSha256','f'*64),('contextResultSha256','a'*64),('contextControlSha','c'*40),
+                              ('tableRows',[]),('ddlOutcomeUnknown',True)):
+                changed=copy.deepcopy(data);changed['receipt'][key]=value
+                with self.subTest(key=key): self.assertFalse(m.completed_context_install(parsed,context_install_receipt(changed),CONTROL))
+            changed=context_install_receipt(data);changed['local_stay_context_install']['journalEvents'][0]['contextResultSha256']='a'*64
+            self.assertFalse(m.completed_context_install(parsed,changed,CONTROL))
+            changed=context_install_receipt(data);changed['schema_writes_acknowledged']=True
+            self.assertFalse(m.completed_context_install(parsed,changed,CONTROL))
+            r=data['receipt'];r.update(state='ddl_unknown',reason='ddl_execution_failed',attemptedTables=list(m.INSTALL_TABLES[:2]),
+               createdTables=list(m.INSTALL_TABLES[:1]),unknownTables=[m.INSTALL_TABLES[1]],schemaWrites=1,ddlOutcomeUnknown=True,tableRows=[])
+            self.assertTrue(m.valid_context_install_payload(data,CONTROL))
+            failed=context_install_receipt(data);failed['status']='terminal_nonzero_no_replay'
+            self.assertEqual(failed['schema_writes'],'unknown');self.assertEqual(failed['schema_writes_acknowledged'],1)
+            self.assertFalse(m.completed_context_install(parsed,failed,CONTROL))
+
+    def test_parent_requires_complete_current_context_and_unchanged_old_lineage(self):
+        old=schema_missing_data();old['inventory']=install_fixture_data()['before'];old['plan'].update(state='create_only_after_review',blockedTables=[])
+        digest=lambda x:hashlib.sha256(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        old['receipt'].update(controlSha=m.INSTALL_PARENT['control'],inventorySha256=digest(old['inventory']),planSha256=digest(old['plan']))
+        read=schema_receipt(old);read['local_stay_schema_read'].update(protectedBefore=dict(m.INSTALL_PARENT['protected']),protectedAfter=dict(m.INSTALL_PARENT['protected']))
+        read_policy=copy.deepcopy(m.INSTALL_PARENT);read_policy.update(file_sha256=read['local_stay_schema_read']['fileSha256'],
+            inventory_sha256=old['receipt']['inventorySha256'],plan_sha256=old['receipt']['planSha256'])
+        failure={key:value for key,value in receipt(missing_data()).items() if key not in ('local_stay_read','production_after','production_unchanged')}
+        failure.update(mode=m.INSTALL_MODE,operation_id=m.INSTALL_OPERATION,source_sha=m.CONTEXT_INSTALL_SOURCE_SHA,
+            status='unknown_no_replay',reason='local_stay_install_private_drift',schema_writes_acknowledged=0,schema_write_outcome_unknown=False)
+        with mock.patch.object(m,'INSTALL_PARENT',read_policy):
+            current=context_fixture_data();current.update(inventory=old['inventory'],plan=old['plan'])
+            current['receipt'].update(controlSha=m.CONTEXT_INSTALL_PARENT['control'],databaseSha256=m.CONTEXT_INSTALL_PARENT['database_sha256'],
+                currentProtectedBefore=dict(read_policy['protected']),currentProtectedAfter=dict(read_policy['protected']),changedFiles=[],
+                inventorySha256=old['receipt']['inventorySha256'],planSha256=old['receipt']['planSha256'],schemaMatchesParent=True)
+            context=context_receipt(current);policy=copy.deepcopy(m.CONTEXT_INSTALL_PARENT)
+            policy.update(file_sha256=context['local_stay_install_context']['fileSha256'],inventory_sha256=old['receipt']['inventorySha256'],plan_sha256=old['receipt']['planSha256'])
+            namespace={'hashlib':hashlib,'json':json,'re':re,'local_stay_parent_completed':m.completed_schema,'local_stay_context_parent_completed':m.completed_context}
+            exec(m.SCHEMA_VALIDATOR+m.CONTEXT_VALIDATOR+m.CONTEXT_INSTALL_VALIDATOR,namespace);valid=namespace['local_stay_context_install_parent_valid']
+            self.assertTrue(valid(context,read,failure,policy,read_policy,m.CONTEXT_FAILURE))
+            for key,value in (('databaseSha256','a'*64),('oldDatabaseIdentityKnown',True),('phpExecuted',False),('changedFiles',['config.php'])):
+                changed=copy.deepcopy(current);changed['receipt'][key]=value
+                with self.subTest(key=key): self.assertFalse(valid(context_receipt(changed),read,failure,policy,read_policy,m.CONTEXT_FAILURE))
+            self.assertFalse(valid(context,read,failure|{'schema_writes_acknowledged':False},policy,read_policy,m.CONTEXT_FAILURE))
+
+
+class NativeStockContextInstall(unittest.TestCase):
+    def setUp(self):
+        NativeStockInstallContext.setUp(self)
+        path=self.project/'config.php';path.write_text(path.read_text().removesuffix('// changed current config\n'))
+        context=self.run_remote();self.assertTrue(m.completed_context(self.command,context,CONTROL),context)
+        self.context_path=self.home/'.anytoour-int-executor'/m.CONTEXT_OPERATION/'result.json'
+        item=context['local_stay_install_context'];r=item['data']['receipt'];policy=copy.deepcopy(m.CONTEXT_INSTALL_PARENT)
+        policy.update(control=CONTROL,private_sha256=hashlib.sha256(self.context_path.read_bytes()).hexdigest(),file_sha256=item['fileSha256'],
+                      database_sha256=r['databaseSha256'],inventory_sha256=r['inventorySha256'],plan_sha256=r['planSha256'],protected=item['protectedBefore'])
+        self.enterContext(mock.patch.object(m,'CONTEXT_INSTALL_PARENT',policy))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=context_install_command(self.c);m.activate(self.c,self.command)
+        raw,hashes=m.bundle_context_install_source(SOURCE);self.archive=self.home/'context-install-source.tar.gz';self.archive.write_bytes(raw)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    run_remote=NativeStockRead.run_remote
+
+    def test_actual_current_private_drift_stops_before_php_and_repeat_preserves_original(self):
+        with (self.project/'config.php').open('a') as handle: handle.write('// new drift after context\n')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_context_install_private_drift',result)
+        self.assertEqual(result.get('schema_writes'),0);self.assertEqual(result.get('schema_writes_acknowledged'),0)
+        self.assertIs(result.get('schema_write_outcome_unknown'),False);self.assertNotIn('local_stay_context_install',result)
+        operation=self.home/'.anytoour-int-executor'/m.CONTEXT_INSTALL_OPERATION;original=(operation/'result.json').read_bytes()
+        self.assertFalse((operation/'local-stay-context-install.json').exists())
+        repeat=self.run_remote();self.assertEqual(repeat.get('reason'),'operation_exists_no_replay')
+        self.assertEqual((operation/'result.json').read_bytes(),original)
+
+    def test_actual_context_private_byte_drift_stops_before_php(self):
+        self.context_path.write_bytes(self.context_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_context_install_lineage_hash',result)
+        self.assertEqual(result.get('schema_writes'),0);self.assertNotIn('local_stay_context_install',result)
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.CONTEXT_INSTALL_OPERATION/'local-stay-context-install.json').exists())
+
+    def test_actual_extra_staged_config_is_rejected_before_extraction(self):
+        with tarfile.open(self.archive,'r:gz') as original: members=[(x,original.extractfile(x).read()) for x in original.getmembers()]
+        with tarfile.open(self.archive,'w:gz') as changed:
+            for info,raw in members: changed.addfile(info,io.BytesIO(raw))
+            raw=b'<?php throw new RuntimeException("unmanifested");';info=tarfile.TarInfo('v2/config.php');info.size=len(raw);changed.addfile(info,io.BytesIO(raw))
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_context_install_archive_scope')
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.CONTEXT_INSTALL_OPERATION/'source/v2/config.php').exists())
+
+    def test_actual_php_context_bound_create_only_and_partial_acknowledgement_suite(self):
+        env=dict(os.environ,ANYTOUR_STAY_CONTEXT_INSTALL_V1_TEST_DSN=self.server,
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=self.password,LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_context_install_v1_test.php')],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_CONTEXT_INSTALL_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()

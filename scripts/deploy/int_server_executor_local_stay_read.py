@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        context_install = parse_context_install_command(core, body)
+        if context_install is not None:
+            return context_install
         context = parse_context_command(core, body)
         if context is not None:
             return context
@@ -268,6 +271,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == CONTEXT_INSTALL_MODE:
+        return activate_context_install(core, command)
     if command.get('mode') == CONTEXT_MODE:
         return activate_context(core, command)
     if command.get('mode') == INSTALL_MODE:
@@ -1203,3 +1208,340 @@ def activate_context(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_context_source
     original_completed=core.completed_result
     core.completed_result=lambda cmd,result: completed_context(cmd,result,control) if cmd.get('mode')==CONTEXT_MODE else original_completed(cmd,result)
+
+
+# A separate CREATE admission bound to the completed CURRENT connection context.
+# The earlier failed install and all four historical profiles remain sealed.
+CONTEXT_INSTALL_MODE = 'local-stay-context-install-v1'
+CONTEXT_INSTALL_OPERATION = 'int-andromeda-local-stay-context-install-20261026-v1'
+CONTEXT_INSTALL_SOURCE_SHA = '30a7e7013edd7fe70a4700db0aafb2bf22ee05f8'
+CONTEXT_INSTALL_RUNNER = 'scripts/catalog/anytour_hotel_stay_context_install_v1.php'
+CONTEXT_INSTALL_RUNNER_SHA = 'd1d53b15dd25e0fcfe6939a54f2be7b90f057ec9beebf0a89d2b8d133b483847'
+CONTEXT_INSTALL_PARENT = {
+    'operation': 'int-andromeda-local-stay-install-context-read-20261026-v1',
+    'source': '30a7e7013edd7fe70a4700db0aafb2bf22ee05f8',
+    'control': 'af256ad98636480ee1e62c59808bad2a612d6420',
+    'private_sha256': '21ce19017ad4211a67d8f9e053d2ed033cfa3f5350493d0797084eb31867f1b0',
+    'file_sha256': '4f60fd91f95774b08e5b44611a20c6202d989eb96fda9a573a011101bb0ef043',
+    'database_sha256': '4cd52b85a632855e79a5fafbe4e425d1c3c6a51dba2c995e0a43f976fbc25f1d',
+    'inventory_sha256': '8a37c3c6a3cd4894afff942268d6c669f1ae81f7403253bc58f0b8ae5f38c32e',
+    'plan_sha256': '6f1c556fe1a6bf3182f3a49686850f6fcb479cf94e03210881a9faf216b603f6',
+    'protected': dict(INSTALL_PARENT['protected']),
+}
+
+
+def parse_context_install_command(core,body):
+    if not body.startswith(core.PREFIX): return None
+    parts=body[len(core.PREFIX):].split()
+    if len(parts)<2 or parts[1]!=CONTEXT_INSTALL_MODE: return None
+    need(len(parts)==3 and parts[0]==CONTEXT_INSTALL_SOURCE_SHA and core.SHA_RE.fullmatch(parts[0]) is not None
+         and parts[2]==CONTEXT_INSTALL_OPERATION,'local_stay_context_install_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','local_stay_context_install_first_attempt_only')
+    return {'source_sha':CONTEXT_INSTALL_SOURCE_SHA,'mode':CONTEXT_INSTALL_MODE,'operation_id':CONTEXT_INSTALL_OPERATION,
+            'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+
+
+def context_install_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}',CONTEXT_INSTALL_RUNNER_SHA) is not None,'local_stay_context_install_source_not_final')
+    return {**SCHEMA_SOURCE_HASHES,SCHEMA_RUNNER:SCHEMA_RUNNER_SHA,CONTEXT_INSTALL_RUNNER:CONTEXT_INSTALL_RUNNER_SHA}
+
+
+def bundle_context_install_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];hashes=context_install_hashes();output=io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in hashes.items():
+            path=(control if relative in (SCHEMA_RUNNER,CONTEXT_INSTALL_RUNNER) else source)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_stay_context_install_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=262144 and hashlib.sha256(raw).hexdigest()==digest,
+                                     'local_stay_context_install_reviewed_source_changed')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),hashes
+
+
+CONTEXT_INSTALL_VALIDATOR = r'''
+def local_stay_context_install_parent_valid(context,read,failure,policy,read_policy,failure_policy):
+    if not local_stay_context_lineage_valid(read,failure,read_policy,failure_policy): return False
+    command={'source_sha':policy['source'],'mode':'local-stay-install-context-read-v1','operation_id':policy['operation'],
+             'maximum_schema_tables':5,'provider_http_calls':0,'database_writes':0}
+    if not local_stay_context_parent_completed(command,context,policy['control']): return False
+    item=context['local_stay_install_context'];data=item['data'];r=data['receipt'];plan=data['plan']
+    return (item['fileSha256']==policy['file_sha256'] and r['state']=='completed_read_only'
+            and r['databaseSha256']==policy['database_sha256'] and r['inventorySha256']==policy['inventory_sha256']
+            and r['planSha256']==policy['plan_sha256'] and r['schemaState']=='completed_read_only'
+            and r['helperAccepted'] is True and r['phpExecuted'] is True and r['changedFiles']==[]
+            and r['connectionAuthority']=='current_root_config_and_accepted_helper'
+            and r['oldDatabaseIdentityKnown'] is False and r['applyAuthorized'] is False and r['schemaMatchesParent'] is True
+            and r['currentProtectedBefore']==policy['protected'] and r['currentProtectedAfter']==policy['protected']
+            and r['previousProtected']==read_policy['protected'] and r['parentReadInventorySha256']==read_policy['inventory_sha256']
+            and plan['state']=='create_only_after_review' and plan['createTables']==['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+            and plan['blockedTables']==[] and plan['existingCompatibleTables']==[])
+def local_stay_context_install_valid(data,source_sha,control_sha,context,read_policy,failure_policy):
+    if not isinstance(data,dict) or set(data)!={'receipt','before','after'} or len(local_stay_schema_canonical(data))>262144: return False
+    r=data['receipt'];before=data['before'];after=data['after']
+    keys={'schemaVersion','source','state','reason','migrationSha256','parentReadOperation','parentReadInventorySha256',
+          'databaseSha256','beforeSha256','afterSha256','attemptedTables','createdTables','unknownTables','tableRows',
+          'supplierCalls','databaseWrites','automaticAccepts','schemaWrites','ddlOutcomeUnknown','parentMetadataUnchanged',
+          'journalSha256','operationId','sourceSha','controlSha','contextOperation','contextControlSha','contextInventorySha256',
+          'contextPlanSha256','contextDatabaseSha256','contextFileSha256','contextResultSha256','parentReadResultSha256',
+          'failedInstallResultSha256','protectedBefore','protectedAfter'}
+    def digest(x): return isinstance(x,str) and re.fullmatch(r'[a-f0-9]{64}',x) is not None
+    def protected(x): return isinstance(x,dict) and set(x)=={'config.php','data/db-v1.php'} and all(digest(v) for v in x.values())
+    targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    if (not isinstance(r,dict) or set(r)!=keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-context-install-v1' or r['operationId']!='int-andromeda-local-stay-context-install-20261026-v1'
+        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None
+        or r['migrationSha256']!='1e80434e552fd0c91240db903245bf3f9976d4e937221b3270c5eda92f9ccc06'
+        or r['parentReadOperation']!=read_policy['operation'] or r['parentReadInventorySha256']!=read_policy['inventory_sha256']
+        or r['contextOperation']!=context['operation'] or r['contextControlSha']!=context['control']
+        or r['contextInventorySha256']!=context['inventory_sha256'] or r['contextPlanSha256']!=context['plan_sha256']
+        or r['contextDatabaseSha256']!=context['database_sha256'] or r['contextFileSha256']!=context['file_sha256']
+        or r['contextResultSha256']!=context['private_sha256'] or r['parentReadResultSha256']!=read_policy['private_sha256']
+        or r['failedInstallResultSha256']!=failure_policy['private_sha256']): return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','automaticAccepts')): return False
+    if type(r['schemaWrites']) is not int or not 0<=r['schemaWrites']<=3 or type(r['ddlOutcomeUnknown']) is not bool: return False
+    if r['parentMetadataUnchanged'] is not None and type(r['parentMetadataUnchanged']) is not bool: return False
+    if r['state'] not in ('installed_empty','preflight_refused','ddl_unknown','verification_failed'): return False
+    if r['reason'] is not None and r['reason'] not in ('context_contract','caller_transaction','source_pin','database_identity','lock_unavailable','schema_preflight','privileges','constraint_collision','session_guards','journal','ddl_execution_failed','postflight','parent_metadata','rows_nonempty','read_failed','ddl_capability','protected_drift','context_identity'): return False
+    for field in ('databaseSha256','beforeSha256','afterSha256','journalSha256'):
+        if r[field] is not None and not digest(r[field]): return False
+    for field in ('protectedBefore','protectedAfter'):
+        if r[field] is not None and not protected(r[field]): return False
+    for field in ('attemptedTables','createdTables'):
+        value=r[field]
+        if not isinstance(value,list) or value!=targets[:len(value)] or len(value)>3: return False
+    attempted=r['attemptedTables'];created=r['createdTables'];unknown=r['unknownTables']
+    if (len(created)>len(attempted) or r['schemaWrites']!=len(created) or not isinstance(unknown,list)
+        or unknown!=([attempted[-1]] if r['ddlOutcomeUnknown'] and attempted else [])): return False
+    if r['ddlOutcomeUnknown'] and (not attempted or len(attempted)!=len(created)+1): return False
+    for field,inv in (('before',before),('after',after)):
+        if inv is None:
+            if r[field+'Sha256'] is not None: return False
+        elif (not local_stay_install_inventory_valid(inv,source_sha,control_sha)
+              or r[field+'Sha256']!=hashlib.sha256(local_stay_schema_canonical(inv)).hexdigest()): return False
+    if not isinstance(r['tableRows'],list) or len(r['tableRows'])>3: return False
+    for pos,row in enumerate(r['tableRows']):
+        if (not isinstance(row,dict) or set(row)!={'name','rows'} or row['name']!=targets[pos]
+            or type(row['rows']) is not int or not 0<=row['rows']<=9223372036854775807): return False
+    if r['state']=='preflight_refused':
+        return attempted==created==unknown==[] and r['schemaWrites']==0 and r['ddlOutcomeUnknown'] is False and r['reason'] is not None
+    if (r['databaseSha256']!=context['database_sha256'] or before is None or not digest(r['journalSha256'])
+        or r['beforeSha256']!=context['inventory_sha256']): return False
+    if r['state']=='ddl_unknown': return r['ddlOutcomeUnknown'] is True and r['reason'] is not None
+    if r['ddlOutcomeUnknown'] or unknown: return False
+    if r['state']=='verification_failed': return r['reason'] is not None and 0<len(created)<=3 and attempted==created
+    if (r['reason'] is not None or attempted!=targets or created!=targets or r['schemaWrites']!=3
+        or after is None or r['tableRows']!=[{'name':name,'rows':0} for name in targets]
+        or r['parentMetadataUnchanged'] is not True or r['protectedBefore']!=context['protected'] or r['protectedAfter']!=context['protected']): return False
+    if any(t['compatibility']!='compatible' for t in after['tables']): return False
+    return all(before['tables'][i]==after['tables'][i] for i in (0,1))
+def local_stay_context_install_journal_valid(events,r):
+    if r['journalSha256'] is None: return events==[]
+    if not isinstance(events,list) or not 1<=len(events)<=8: return False
+    targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    statements=['ae700b15382e9797ff20c351abeafd052783a549749431ad3f337c9881f098a8',
+                '3dd522bc038f62e3161b15472d2081192bfae635ae9afcb154ece577f62e1762',
+                '0789fec589f0ef74fa02a2502ab65d59bcd49576a1961371c09da6ee690ec5d5']
+    if events[0]!={'stage':'start','operationId':r['operationId'],'migrationSha256':r['migrationSha256'],
+                   'databaseSha256':r['databaseSha256'],'beforeSha256':r['beforeSha256'],
+                   'contextResultSha256':r['contextResultSha256'],'contextInventorySha256':r['contextInventorySha256']}: return False
+    index=0;pending=None;final=False
+    for pos,event in enumerate(events[1:],1):
+        if not isinstance(event,dict): return False
+        if event.get('stage')=='before_create':
+            if pending is not None or index>=3 or final or event!={'stage':'before_create','table':targets[index],'statementSha256':statements[index]}: return False
+            pending=targets[index]
+        elif event.get('stage')=='created':
+            if pending is None or final or event!={'stage':'created','table':pending,'acknowledgedSchemaWrites':index+1}: return False
+            pending=None;index+=1
+        elif event.get('stage')=='final':
+            if (final or pos!=len(events)-1 or set(event)!={'stage','state','reason','attemptedTables','createdTables','unknownTables'}
+                or any(event[k]!=r[k] for k in ('attemptedTables','createdTables','unknownTables'))): return False
+            if (event['state']!=r['state'] or event['reason']!=r['reason']) and r['reason']!='journal': return False
+            final=True
+        else: return False
+    if index>len(r['createdTables']) or (index!=len(r['createdTables']) and r['reason']!='journal'): return False
+    if r['ddlOutcomeUnknown'] and pending!=r['unknownTables'][0]: return False
+    if pending is not None and not r['ddlOutcomeUnknown'] and r['reason']!='journal': return False
+    if not final and r['reason']!='journal': return False
+    return r['state']!='installed_empty' or (index==3 and pending is None and final and len(events)==8)
+'''
+
+
+def context_install_inventory_validator():
+    """Reuse only the existing pure metadata shape checker, with no old writer."""
+    node=next(n for n in ast.parse(INSTALL_VALIDATOR).body if isinstance(n,ast.FunctionDef) and n.name=='local_stay_install_inventory_valid')
+    return ast.get_source_segment(INSTALL_VALIDATOR,node)+'\n'
+
+
+def valid_context_install_payload(data,control_sha):
+    namespace={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(SCHEMA_VALIDATOR+context_install_inventory_validator()+CONTEXT_INSTALL_VALIDATOR,namespace)
+        return namespace['local_stay_context_install_valid'](data,CONTEXT_INSTALL_SOURCE_SHA,control_sha,CONTEXT_INSTALL_PARENT,INSTALL_PARENT,CONTEXT_FAILURE)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError): return False
+
+
+def completed_context_install(command,result,control_sha):
+    try:
+        expected={'source_sha':CONTEXT_INSTALL_SOURCE_SHA,'mode':CONTEXT_INSTALL_MODE,'operation_id':CONTEXT_INSTALL_OPERATION,
+                  'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+        if (command!=expected or any(type(command.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha'))
+            or len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>262144): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes')): return False
+        if (type(result.get('schema_writes')) is not int or result['schema_writes']!=3
+            or type(result.get('schema_writes_acknowledged')) is not int or result['schema_writes_acknowledged']!=3
+            or result.get('schema_write_outcome_unknown') is not False): return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True or not isinstance(before['index.php'],str)
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())): return False
+        item=result.get('local_stay_context_install');policy=CONTEXT_INSTALL_PARENT
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter','contextResultSha256','parentReadResultSha256','failedInstallResultSha256','journalSha256','journalEvents'}
+            or item['contextResultSha256']!=policy['private_sha256'] or item['parentReadResultSha256']!=INSTALL_PARENT['private_sha256']
+            or item['failedInstallResultSha256']!=CONTEXT_FAILURE['private_sha256']
+            or item['protectedBefore']!=policy['protected'] or item['protectedAfter']!=policy['protected']
+            or not valid_context_install_payload(item['data'],control_sha)): return False
+        data=item['data'];r=data['receipt'];raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')+'\n').encode()
+        namespace={'hashlib':hashlib,'json':json,'re':re}
+        exec(SCHEMA_VALIDATOR+context_install_inventory_validator()+CONTEXT_INSTALL_VALIDATOR,namespace)
+        return (r['state']=='installed_empty' and item['fileSha256']==hashlib.sha256(raw).hexdigest()
+                and item['journalSha256']==r['journalSha256'] and namespace['local_stay_context_install_journal_valid'](item['journalEvents'],r))
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError): return False
+
+
+CONTEXT_INSTALL_REMOTE_HANDLER = r'''
+def local_stay_context_install_unique(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value: raise ValueError('duplicate_json_key')
+        value[key]=item
+    return value
+def local_stay_context_install_protected():
+    values={}
+    for name in ('config.php','data/db-v1.php'):
+        path=project/name
+        if not safe_file(path,2097152) or path.resolve()!=path: fail('local_stay_context_install_private_dependency')
+        values[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    return values
+def local_stay_context_install_dependencies():
+    policy=LOCAL_STAY_CONTEXT_INSTALL_POLICY;outputs=[]
+    for item in (policy['parent'],policy['failure'],policy['context']):
+        path=private/item['operation']/'result.json'
+        if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_context_install_lineage_file')
+        raw=path.read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=item['private_sha256']: fail('local_stay_context_install_lineage_hash')
+        try: value=json.loads(raw,object_pairs_hook=local_stay_context_install_unique)
+        except Exception: fail('local_stay_context_install_lineage_json')
+        outputs.append((path,value))
+    try: valid=local_stay_context_install_parent_valid(outputs[2][1],outputs[0][1],outputs[1][1],policy['context'],policy['parent'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_context_install_lineage_contract')
+    return outputs[2][0]
+def run_local_stay_context_install(stage):
+    policy=LOCAL_STAY_CONTEXT_INSTALL_POLICY
+    if payload!={**policy['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}:
+        fail('local_stay_context_install_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes')): fail('local_stay_context_install_payload_types')
+    if files!=policy['hashes']: fail('local_stay_context_install_source_pins')
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=0
+    result['schema_writes']=result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=False
+    context_path=local_stay_context_install_dependencies();protected_before=local_stay_context_install_protected()
+    if protected_before!=policy['context']['protected']: fail('local_stay_context_install_private_drift')
+    result['schema_writes']='unknown';result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=True
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ}
+    env.update({'ANYTOUR_SITE_ROOT':str(project),'ANYTOUR_OPERATION_OUTPUT_DIR':str(op),
+                'ANYTOUR_OPERATION_RELEASE_SHA':source,'ANYTOUR_OPERATION_CONTROL_SHA':policy['control'],
+                'ANYTOUR_OPERATION_ID':operation,'ANYTOUR_CONTEXT_INSTALL_PARENT_PATH':str(context_path)})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','memory_limit=256M','-d','disable_functions='+disabled,
+                        str(stage/'scripts/catalog/anytour_hotel_stay_context_install_v1.php')],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=180)
+    path=op/'local-stay-context-install.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_context_install_receipt_file')
+    raw=path.read_bytes()
+    try: data=json.loads(raw,object_pairs_hook=local_stay_context_install_unique)
+    except Exception: fail('local_stay_context_install_receipt_json')
+    try: valid=local_stay_context_install_valid(data,source,policy['control'],policy['context'],policy['parent'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_context_install_receipt_contract')
+    r=data['receipt'];journal=op/'local-stay-context-install-journal.jsonl';journal_sha=None;events=[]
+    item={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),'protectedBefore':protected_before,'protectedAfter':None,
+          'contextResultSha256':policy['context']['private_sha256'],'parentReadResultSha256':policy['parent']['private_sha256'],
+          'failedInstallResultSha256':policy['failure']['private_sha256'],'journalSha256':None,'journalEvents':events}
+    result['local_stay_context_install']=item
+    result['schema_writes_acknowledged']=r['schemaWrites'];result['schema_write_outcome_unknown']=r['ddlOutcomeUnknown']
+    result['schema_writes']='unknown' if r['ddlOutcomeUnknown'] else r['schemaWrites']
+    if r['journalSha256'] is not None:
+        if not safe_file(journal,262144) or journal.resolve()!=journal or journal.stat().st_mode&0o777!=0o600: fail('local_stay_context_install_journal_file')
+        journal_raw=journal.read_bytes();journal_sha=hashlib.sha256(journal_raw).hexdigest()
+        if journal_sha!=r['journalSha256'] or not journal_raw.endswith(b'\n'): fail('local_stay_context_install_journal_hash')
+        try: events=[json.loads(line,object_pairs_hook=local_stay_context_install_unique) for line in journal_raw.splitlines()]
+        except Exception: fail('local_stay_context_install_journal_json')
+        if len(events)>8 or any(not isinstance(e,dict) for e in events): fail('local_stay_context_install_journal_scope')
+    elif journal.exists() or journal.is_symlink(): fail('local_stay_context_install_unbound_journal')
+    item['journalSha256']=journal_sha;item['journalEvents']=events
+    if not local_stay_context_install_journal_valid(events,r): fail('local_stay_context_install_journal_contract')
+    protected_after=local_stay_context_install_protected();item['protectedAfter']=protected_after
+    if (r['protectedBefore']!=protected_before or r['protectedAfter']!=protected_after
+        or protected_before!=protected_after): fail('local_stay_context_install_dependency_drift')
+    if (run.returncode!=(0 if r['state']=='installed_empty' else 1) or run.stderr.strip()
+        or len(run.stdout.encode())>262144): fail('local_stay_context_install_exit_no_replay')
+    try: emitted=json.loads(run.stdout,object_pairs_hook=local_stay_context_install_unique)
+    except Exception: fail('local_stay_context_install_stdout')
+    if emitted!=data: fail('local_stay_context_install_stdout')
+    return item
+'''
+CONTEXT_INSTALL_REMOTE_DISPATCH = r'''    if mode=='local-stay-context-install-v1':
+        result['local_stay_context_install']=run_local_stay_context_install(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if result['local_stay_context_install']['data']['receipt']['state']=='installed_empty' else 'terminal_nonzero_no_replay'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>262144: fail('local_stay_context_install_terminal_size')
+'''
+
+
+def context_dependency_completion_source():
+    source=Path(__file__).read_text();node=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='completed_context')
+    return ast.get_source_segment(source,node).replace('def completed_context(','def local_stay_context_parent_completed(',1).replace('valid_context_payload(','local_stay_context_parent_payload(')
+
+
+def activate_context_install(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),CONTEXT_INSTALL_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_schema_tables','provider_http_calls','database_writes')),
+         'local_stay_context_install_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_context_install_control_sha')
+    hashes=context_install_hashes();remote=core.REMOTE
+    definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,
+         'local_stay_context_install_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'context':CONTEXT_INSTALL_PARENT,'parent':INSTALL_PARENT,'failure':CONTEXT_FAILURE}
+    constants=('SCHEMA_MAX_BYTES=262144\nSCHEMA_MODE='+repr(SCHEMA_MODE)+'\nSCHEMA_OPERATION='+repr(INSTALL_PARENT['operation'])
+               +'\nSCHEMA_SOURCE_SHA='+repr(INSTALL_PARENT['source'])+'\nCONTEXT_MAX_BYTES=262144\nCONTEXT_MODE='+repr(CONTEXT_MODE)
+               +'\nCONTEXT_OPERATION='+repr(CONTEXT_OPERATION)+'\nCONTEXT_SOURCE_SHA='+repr(CONTEXT_SOURCE_SHA)
+               +'\nINSTALL_PARENT='+repr(INSTALL_PARENT)+'\nCONTEXT_FAILURE='+repr(CONTEXT_FAILURE)+'\n')
+    validators=('def local_stay_parent_valid_payload(data,control_sha):\n'
+                '    return local_stay_schema_valid(data,SCHEMA_SOURCE_SHA,control_sha)\n'
+                'def local_stay_context_parent_payload(data,control_sha):\n'
+                '    return local_stay_context_valid(data,CONTEXT_SOURCE_SHA,control_sha,INSTALL_PARENT,CONTEXT_FAILURE)\n')
+    program=('LOCAL_STAY_CONTEXT_INSTALL_POLICY='+repr(policy)+'\n'+constants+SCHEMA_VALIDATOR+CONTEXT_VALIDATOR
+             +context_install_inventory_validator()+CONTEXT_INSTALL_VALIDATOR+'\n'+validators+'\n'+parent_completion_source()
+             +'\n'+context_dependency_completion_source()+'\n'+CONTEXT_INSTALL_REMOTE_HANDLER+'\n')
+    remote=remote.replace(definition,program+definition,1);remote=remote.replace(dispatch,CONTEXT_INSTALL_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+CONTEXT_INSTALL_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_CONTEXT_INSTALL_POLICY['hashes']: fail('local_stay_context_install_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_stay_context_install_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=5 or {m.name for m in members}!={*LOCAL_STAY_CONTEXT_INSTALL_POLICY['hashes'],'manifest.json'}: fail('local_stay_context_install_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_context_install_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_context_install_reserved=True\n',1)
+    remote=remote.replace(final,"if globals().get('local_stay_context_install_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_context_install_source
+    original_completed=core.completed_result
+    core.completed_result=lambda cmd,result: completed_context_install(cmd,result,control) if cmd.get('mode')==CONTEXT_INSTALL_MODE else original_completed(cmd,result)
