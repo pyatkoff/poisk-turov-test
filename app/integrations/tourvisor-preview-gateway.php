@@ -228,7 +228,7 @@ final class AnyTourTourvisorPreviewGateway
             }
             return $old['reply'];
         }
-        self::limit(count($requests),64,'request_count','admission',$stage,false);
+        self::limit(count($requests),640,'request_count','admission',$stage,false);
         self::limit(strlen(json_encode([$s['tourvisor_context'] ?? [],$requests],JSON_THROW_ON_ERROR)),
             4194304,'context_bytes','admission',$stage,false);
         if ($search) {
