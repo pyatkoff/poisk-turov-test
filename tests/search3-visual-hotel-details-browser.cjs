@@ -117,9 +117,10 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourHotelDetails?.create);
    assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late load does not reopen a closed modal');
    await trigger.click();await page.locator('#hotel-room-count').waitFor();assert.equal(requests,2,'warm open reuses the owner');
-   const room=page.locator('.room-overview').first(),selected=await room.getAttribute('data-room');await room.locator(':scope > summary').click();
-   assert.equal(await room.evaluate(el=>el.open),true);const choice=room.locator('[data-action="select-hotel-offer"]').first(),key=await choice.getAttribute('data-key');assert(key);const listingPrice=await choice.locator('..').locator('strong').textContent();
+   const room=page.locator('.hotel-room-card').first(),selected=await room.getAttribute('data-room');if(await room.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await room.locator(':scope > summary').click();
+   assert.equal(await room.evaluate(el=>el.tagName!=='DETAILS'||el.open),true);const choice=room.locator('[data-action="select-hotel-offer"]').first(),key=await choice.getAttribute('data-key');assert(key);const listingPrice=await choice.locator('..').locator('strong').textContent();
    await page.screenshot({path:path.join(evidence,`hotel-${width}.png`)});
+   const currentRoom=()=>page.locator('.hotel-room-card').filter({has:page.locator('[data-action="select-hotel-offer"][data-key="'+key+'"]')});
    const toggleNames=()=>page.locator('[data-action="select-hotel-offer"]').evaluateAll(buttons=>buttons.map(b=>[b.dataset.key,b.getAttribute('aria-label')])),namesBefore=await toggleNames();assert(namesBefore.length>1);for(const [,name]of namesBefore)assert.match(name,/^Выбрать: /,'toggle name is independent of selected state');
    for(const disclosure of await page.locator('.room-overview,.hotel-room-more').all())if(!await disclosure.evaluate(el=>el.open))await disclosure.locator(':scope > summary').click();
    const alternate=page.locator(`[data-action="select-hotel-offer"]:not([data-key="${key}"])`).first();
@@ -134,10 +135,10 @@ const server=http.createServer((req,res)=>{
    }
    assert.equal(await choice.getAttribute('aria-pressed'),'true');
    await choice.click();await page.locator('#prototype-lead-form').waitFor();const visiblePrice=page.locator('#modal .footer-total strong:visible').first();assert.equal(await visiblePrice.textContent(),listingPrice,'visible price keeps the exact chosen offer');assert((await page.locator('#modal').innerText()).includes(selected),'selected offer keeps the exact room visible in contacts');
-   await page.locator('[data-action="modal-back"]').click();await page.locator('#hotel-room-count').waitFor();assert.equal(await page.locator('.room-overview[open]').first().getAttribute('data-room'),selected,'nested Back keeps exact chosen room disclosure');
-   assert.equal(await page.locator('.room-overview[open] [data-action="select-hotel-offer"]').first().getAttribute('data-key'),key);
+   await page.locator('[data-action="modal-back"]').click();await page.locator('#hotel-room-count').waitFor();assert.equal(await currentRoom().getAttribute('data-room'),selected,'nested Back keeps the exact chosen room');assert(await currentRoom().evaluate(el=>el.tagName!=='DETAILS'||el.open),'existing room disclosure remains open when applicable');
+   assert.equal(await currentRoom().locator('[data-action="select-hotel-offer"]').first().getAttribute('data-key'),key);
    assert.deepEqual(await toggleNames(),namesBefore,'Back rebuilds the same exact stable names for the selected and unselected rows');
-   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#hotel-room-count').waitFor();assert.equal(await page.locator('.room-overview[open]').first().getAttribute('data-room'),selected,'Forward restores room disclosure');assert.equal(requests,2);
+   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#hotel-room-count').waitFor();assert.equal(await currentRoom().getAttribute('data-room'),selected,'Forward restores the exact room');assert(await currentRoom().evaluate(el=>el.tagName!=='DETAILS'||el.open),'Forward retains disclosure when applicable');assert.equal(requests,2);
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);const gallery=await galleryAcceptance(browser,width,server.address().port);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,nested_exact_offer_back:true,supplier_requests:0,lead_requests:0,gallery});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

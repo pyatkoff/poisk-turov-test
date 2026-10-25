@@ -2424,13 +2424,13 @@ function retainLosslessPngEvidence(directory){
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
-  const hotelRoomSummary=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]>summary');await hotelRoomSummary.click();await hotelRoomSummary.focus();
+  const hotelRoomSummary=page.locator('.hotel-room-card[data-room="STANDARD SEA VIEW"] [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await hotelRoomSummary.scrollIntoViewIfNeeded();await hotelRoomSummary.focus();
   const hotelLayoutBefore=await settledHotelScroll(page),hotelScroll=hotelLayoutBefore.scroll;
   await page.evaluate(()=>{window.hotelOverview=document.querySelector('.hotel-detail-photos');});
   releaseHotelSource();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 3 · Туры: 3');assert.match(await page.locator('#hotel-detail-min').textContent(),/119\s*000/);
-  assert(await hotelRoomSummary.evaluate(el=>el.parentElement.open&&document.activeElement===el));
+  assert(await hotelRoomSummary.evaluate(el=>(el.closest('.hotel-room-card').tagName!=='DETAILS'||el.closest('.hotel-room-card').open)&&document.activeElement===el));
   assert(await page.locator('.hotel-detail-photos').evaluate(el=>el===window.hotelOverview));
   const hotelLayoutAfter=await settledHotelScroll(page);
   fs.writeFileSync(path.join(evidence,`hotel-scroll-layout-${width}.json`),JSON.stringify({before:hotelLayoutBefore,after:hotelLayoutAfter},null,2));
