@@ -504,3 +504,22 @@ including the consumed day installer c4b2d7a6 and retained-reader33f56821.
 The workflow adds only the exact immutable native fixture and its environment.
 No supplier/DB/lead/HTTP readiness call, cap reset, receipt eviction, config/key,
 production, SEARCH publication or sealed-case replay is permitted by this profile.
+
+
+### Owner-authorized TV session capacity640 maintenance —25 October2026
+
+Owner directive#4709/comment6395983438 authorizes only the internal request-record
+cap64→640. SourcePR4881 merged atf7218b974e2c4dfa0f7ea97119898e2cdcbf2486.
+The fixed `install-tv-request-cap-640` profile accepts only that source and
+`int-anex-tv-request-cap-640-install-20261025-v1`. Existing one-helper maintenance
+requires gateway8881ebe5 and replaces it with
+1989ac779320587d3fdb7f4f07025ea6fb844587ea99be139e7c6134a00ffa19:
+six checked, one private helper changed, zero created. Client302/dependencies/API,
+enabled parent16049, configfaea/mode0644, signing custody and public files remain
+fixed. Old rendered programs, reservations and UNKNOWN receipts stay unchanged.
+Exact predecessor/new fixtures exercise native prewrite, rollback, strict
+completion and no-replay; CI adds only the immutable source checkout/environment.
+No session reset, receipt pruning, supplier/DB/lead action or sealed-case replay
+is part of installation. Supplier quotas/rates,4MiB/2000offers/1MiB/TTL and price
+authority remain unchanged. One exclusive normal install and exact readback must
+finish before the narrow SEARCH diagnostics consumer's NEXT publication.

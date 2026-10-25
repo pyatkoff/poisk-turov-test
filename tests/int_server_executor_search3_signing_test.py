@@ -64,7 +64,8 @@ class Admission(unittest.TestCase):
         c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_CACHE_SOURCE} {signing.TV_CACHE_MODE} {signing.TV_CACHE_OPERATION}')
         signing.activate(c,command)
         self.assertEqual('c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66',hashlib.sha256(c.REMOTE.encode()).hexdigest())
-        for mode,operation,source in [(signing.TV_LIMIT_MODE,signing.TV_LIMIT_OPERATION,signing.TV_LIMIT_SOURCE),
+        for mode,operation,source in [(signing.TV_CAP_MODE,signing.TV_CAP_OPERATION,signing.TV_CAP_SOURCE),
+                                      (signing.TV_LIMIT_MODE,signing.TV_LIMIT_OPERATION,signing.TV_LIMIT_SOURCE),
                                       (signing.TV_DAY_MODE,signing.TV_DAY_OPERATION,signing.TV_DAY_SOURCE),
                                       (signing.TV_FIELDS_MODE,signing.TV_FIELDS_OPERATION,signing.TV_FIELDS_SOURCE),
                                       (signing.TV_CONTEXT_MODE,signing.TV_CONTEXT_OPERATION,signing.TV_CONTEXT_SOURCE),
@@ -75,7 +76,8 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-limit-diagnostics-install-' if mode == signing.TV_LIMIT_MODE else
+            prefix = ('int-anex-tv-request-cap-640-install-' if mode == signing.TV_CAP_MODE else
+                      'int-anex-tv-limit-diagnostics-install-' if mode == signing.TV_LIMIT_MODE else
                       'int-anex-tv-calendar-day-install-' if mode == signing.TV_DAY_MODE else
                       'int-anex-tv-mismatch-fields-install-' if mode == signing.TV_FIELDS_MODE else
                       'int-anex-tv-context-revocation-install-' if mode == signing.TV_CONTEXT_MODE else
@@ -93,6 +95,7 @@ class Admission(unittest.TestCase):
             if mode==signing.TV_FIELDS_MODE:source=signing.TV_FIELDS_SOURCE;operation=signing.TV_FIELDS_OPERATION
             if mode==signing.TV_DAY_MODE:source=signing.TV_DAY_SOURCE;operation=signing.TV_DAY_OPERATION
             if mode==signing.TV_LIMIT_MODE:source=signing.TV_LIMIT_SOURCE;operation=signing.TV_LIMIT_OPERATION
+            if mode==signing.TV_CAP_MODE:source=signing.TV_CAP_SOURCE;operation=signing.TV_CAP_OPERATION
             body = f'/run-int-server-v1 {source} {mode} {operation}'
             parsed = c.parse_command(body)
             self.assertEqual({'source_sha': source, 'mode': mode, 'operation_id': operation}, parsed)
@@ -101,7 +104,7 @@ class Admission(unittest.TestCase):
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE):
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -783,6 +786,7 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
     completion=staticmethod(signing.completed_tv_diagnostics)
 
     def expected_previous(self):
+        if self.mode==signing.TV_CAP_MODE:return signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA,signing.TV_LIMIT_PATH:signing.TV_LIMIT_SHA}
         if self.mode==signing.TV_LIMIT_MODE:return signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA,signing.TV_DAY_PATH:signing.TV_DAY_SHA}
         if self.mode==signing.TV_DIAGNOSTIC_MODE:return signing.TV_PINS
         current=signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA}
@@ -822,6 +826,12 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             if fixture:self.assertEqual(signing.TV_DAY_SHA,hashlib.sha256(raw).hexdigest())
             self.inventory[signing.TV_DAY_PATH]=raw
             self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
+        if self.mode==signing.TV_CAP_MODE:
+            fixture=os.environ.get('TV_LIMIT_SOURCE_ROOT')
+            raw=(Path(fixture)/signing.TV_LIMIT_PATH).read_bytes() if fixture else b'<?php // installed limit diagnostics\n'
+            if fixture:self.assertEqual(signing.TV_LIMIT_SHA,hashlib.sha256(raw).hexdigest())
+            self.inventory[signing.TV_LIMIT_PATH]=raw
+            self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
         # All current TV files are present; only the fixed maintenance target may change.
         for p in signing.TV_PINS:
             (self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php')).write_bytes(self.inventory[p])
@@ -859,7 +869,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
 
     def install_maintenance(self,operation=None):
-        prefix=('int-anex-tv-limit-diagnostics-install-' if self.mode==signing.TV_LIMIT_MODE else
+        prefix=('int-anex-tv-request-cap-640-install-' if self.mode==signing.TV_CAP_MODE else
+                'int-anex-tv-limit-diagnostics-install-' if self.mode==signing.TV_LIMIT_MODE else
                 'int-anex-tv-calendar-day-install-' if self.mode==signing.TV_DAY_MODE else
                 'int-anex-tv-mismatch-fields-install-' if self.mode==signing.TV_FIELDS_MODE else
                 'int-anex-tv-context-revocation-install-' if self.mode==signing.TV_CONTEXT_MODE else
@@ -961,6 +972,16 @@ class NativeTVLimitInstall(NativeTVDiagnosticInstall):
     sha_attr='TV_LIMIT_SHA'
     fixture_env='TV_LIMIT_SOURCE_ROOT'
     completion=staticmethod(signing.completed_tv_limit)
+
+
+class NativeTVCapInstall(NativeTVDiagnosticInstall):
+    mode=signing.TV_CAP_MODE
+    operation_attr='TV_CAP_OPERATION'
+    source=signing.TV_CAP_SOURCE
+    path=signing.TV_CAP_PATH
+    sha_attr='TV_CAP_SHA'
+    fixture_env='TV_CAP_SOURCE_ROOT'
+    completion=staticmethod(signing.completed_tv_cap)
 
 
 class NativeTVMismatchReadback(NativeStockCustody):
@@ -1099,3 +1120,4 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == '__main__':
     unittest.main()
+
