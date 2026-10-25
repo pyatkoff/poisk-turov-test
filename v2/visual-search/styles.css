@@ -1940,6 +1940,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 .dates-dialog .calendar-legend{margin-top:8px;min-height:0;font-size:12px}
 .dates-dialog .calendar-legend[hidden]{display:none}
 @media(min-width:761px){
+ dialog.dates-dialog{max-height:calc(100dvh - 32px)}
  .dates-dialog .modal-header{padding-block:8px}
  .dates-dialog #modal-body{padding-block:10px}
  .dates-dialog .date-choice-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 16px}
