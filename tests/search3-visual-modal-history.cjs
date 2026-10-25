@@ -213,4 +213,3 @@ for(const initial of [null,exactRows[0],exactRows[1]]){
  assert.deepEqual(continued,[exactRows[0].key,exactRows[1].key,exactRows[0].key],'each explicit exact-row action reaches the existing continuation once');
 }
 console.log('PASS exact offer toggle: actual renderer/dispatch/sync, unselected/A/B initial states, A→B→A stable names/pressed state/focus/exact footer; supplier and lead HTTP0');
-
