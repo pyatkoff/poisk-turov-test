@@ -119,6 +119,7 @@ const durationText=(s=state.search)=>s.minNights===s.maxNights?nightsText(s.minN
 const departureScopeLabel=(s=state.search,selected=state.selectedDate)=>selected||s.from===s.to?'Вылет':'Даты вылета';
 const departureScopeValue=(s=state.search,selected=state.selectedDate)=>selected?dateText(selected):rangeText(s.from,s.to);
 const departureScopeText=(s=state.search,selected=state.selectedDate)=>`${departureScopeLabel(s,selected)} ${departureScopeValue(s,selected)}`;
+function parseURLAges(value,fallback=[]){const raw=String(value??'');if(raw==='')return{ages:[],needsReview:false};const tokens=raw.split(',');if(tokens.length>3)return{ages:Array.isArray(fallback)?[...fallback]:[],needsReview:true};const ages=tokens.map(token=>/^\d+$/.test(token)&&Number(token)<=17?Number(token):null);return{ages,needsReview:ages.some(age=>age===null)};}
 function restoreURL(tripOnly=false){
  const p=new URLSearchParams(location.search),s=state.search;
  if(!tripOnly){
@@ -155,7 +156,6 @@ const destinationIds=d=>validIds(d?.hotelIds?.length?d.hotelIds:d?.hotelId?[d.ho
 function setDestinationIds(d,ids){d.hotelIds=validIds(ids);d.hotelId=d.hotelIds.length===1?d.hotelIds[0]:0;}
 const pickerFilters=()=>formFiltersDraft||state.filters;
 const partyLabel=s=>s.ages.length?`${s.adults} взр. · ${s.ages.length} реб.`:`${s.adults} ${s.adults===1?'взрослый':'взрослых'}`;
-function parseURLAges(value,fallback=[]){const raw=String(value??'');if(raw==='')return{ages:[],needsReview:false};const tokens=raw.split(',');if(tokens.length>3)return{ages:Array.isArray(fallback)?[...fallback]:[],needsReview:true};const ages=tokens.map(token=>/^\d+$/.test(token)&&Number(token)<=17?Number(token):null);return{ages,needsReview:ages.some(age=>age===null)};}
 function finishFilterPicker(){if(formFiltersDraft){modalBack();renderFormFilters();}else applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType)||formFiltersDraft&&modalType!=='form-filters')modalBack();else closeModal();}
 function updateURL(){if(searchEditSession||!urlStateHydrated)return;const p=new URLSearchParams();p.set('scenario',data.scenario);for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(destinationIds(f).length>1)p.set('hotels',destinationIds(f).join('|'));if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
