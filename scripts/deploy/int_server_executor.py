@@ -663,7 +663,7 @@ def checked_event(token: str, event: dict, control_sha: str) -> dict:
     command = parse_command(body)
     main = api_get('/git/ref/heads/main', token)['object']['sha']
     need(main == control_sha, 'main_changed')
-    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1','local-tv-content-v1','local-tv-capture-v1','local-stay-anchor-read-v1','local-stay-schema-read-v1',*passive_fuel_readiness.RELEASE_MODES) else FEATURE
+    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1','local-tv-content-v1','local-tv-capture-v1','local-stay-anchor-read-v1','local-stay-schema-read-v1','local-stay-schema-install-v1',*passive_fuel_readiness.RELEASE_MODES) else FEATURE
     feature = api_get('/git/ref/heads/' + source_branch, token)['object']['sha']
     need(feature == command['source_sha'], 'local_profile_release_changed' if source_branch == LOCAL_PROFILE_SOURCE else 'feature_changed')
     if command['mode'] in passive_fuel_readiness.MODES:
