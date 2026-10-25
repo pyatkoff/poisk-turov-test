@@ -113,6 +113,12 @@ jobs:
           ref: 771e3834ed8b232b21a33e68cc0dda97a82a32f0
           path: tv-diagnostic-source
           persist-credentials: false
+      - name: Exact merged TV cache revocation source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: a4a12e6a84d39397b2457bc3acdde0a738b8b744
+          path: tv-cache-source
+          persist-credentials: false
       - name: Exact reviewed LOCAL schema source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -215,7 +221,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
           python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_search3_signing.py
-          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" python3 tests/int_server_executor_search3_signing_test.py -v
+          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" python3 tests/int_server_executor_search3_signing_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
