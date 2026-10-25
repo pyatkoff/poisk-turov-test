@@ -116,7 +116,7 @@
     return result;
   }
   function tvLimitFacts(value){
-    const profiles={request_count:[640,['admission']],context_bytes:[4194304,['admission','reservation','capture','reply']],
+    const profiles={request_count:[640,['admission']],context_bytes:[20971520,['admission','reservation','capture','reply']],
       offer_count:[2000,['results']],generation:[2147483647,['admission']]};
     if(!Object.hasOwn(profiles,value.limitKind))return null;
     const [maximum,phases]=profiles[value.limitKind];

@@ -329,7 +329,7 @@
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
       "../prototype-search/messenger-flow-v1.js": "f3a8ee6530f7ccf2f93adb8ce45a57d5b8a19455e1ad45b9105bb7d5cf1b133f",
-      "../prototype-search/data.js": "2dc19eaf924425db6023dceda19c10e3fffc06f49b5cb79c179597d219197bc1",
+      "../prototype-search/data.js": "ba75943e209050b7c65e18a37abc40f3577ea825c266df6251ce72eb8ecb6fc9",
       "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",
