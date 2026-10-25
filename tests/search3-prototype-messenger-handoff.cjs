@@ -207,4 +207,59 @@ test('Private TV unreadable and transport failures do not invent backend facts o
   });assert.doesNotMatch(x.warnings.join(''),/PRIVATE/);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);
  }
 });
+const mismatchFields=['tour_id','hotel_id','adults','children','departure_id','date','nights'];
+const mismatchDiagnostic=(fields=mismatchFields)=>({provider:'tourvisor',stage:'tour',category:'context',mismatchFields:fields,
+ mismatchTypes:Object.fromEntries(fields.map(field=>[field,{supplier:'string',context:'integer'}])),
+ ...(fields.includes('date')?{dateFormats:{supplier:'dmy',context:'iso'}}:{})});
+for(const fields of [...mismatchFields.map(field=>[field]),mismatchFields])test('Private TV retains bounded local mismatch '+fields.join(','),async()=>{
+ const diagnostics=mismatchDiagnostic(fields);let x;x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:'tv_tour_mismatch',diagnostics},409):undefined);
+ const h=await x.start();let first;for(let i=0;i<2;i++)await assert.rejects(x.api.quote(h.offers[0]),e=>{
+  if(first)assert.equal(e,first);first=e;
+  assert.deepEqual(plain(e.failureFacts),{phase:'response',code:'tv_tour_mismatch',backendStage:'tour',backendCategory:'context',
+   mismatchFields:fields,mismatchTypes:diagnostics.mismatchTypes,...(diagnostics.dateFormats?{dateFormats:diagnostics.dateFormats}:{})});
+  assert.equal(e.status,409);assert.equal(e.code,'tourvisor_session_unavailable');assert.equal(e.retryable,false);
+  for(const value of [e.failureFacts.mismatchFields,e.failureFacts.mismatchTypes,...Object.values(e.failureFacts.mismatchTypes),e.failureFacts.dateFormats].filter(Boolean))assert(Object.isFrozen(value));return true;
+ });
+ const logs=x.warnings.filter(line=>line.startsWith('[AnyTour quote] '));assert.equal(logs.length,1);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);
+ assert.deepEqual(JSON.parse(logs[0].slice('[AnyTour quote] '.length)),{provider:'tourvisor',action:'tv_tour',...plain(first.failureFacts),httpStatus:409});assert.deepEqual(x.rootCalls,[]);
+});
+test('Private TV malformed or hostile mismatch details fail closed without dropping the fixed error',async()=>{
+ const corrupt=[
+  d=>delete d.mismatchFields,d=>d.mismatchFields=[],d=>d.mismatchFields=['date','date'],d=>d.mismatchFields=['nights','date'],
+  d=>d.mismatchFields=['PRIVATE'],d=>d.mismatchFields='date',d=>delete d.mismatchTypes,d=>d.mismatchTypes=[],
+  d=>delete d.mismatchTypes.date,d=>d.mismatchTypes.extra={supplier:'PRIVATE',context:'PRIVATE'},
+  d=>d.mismatchTypes.date={supplier:'PRIVATE',context:'string'},d=>d.mismatchTypes.date.supplier=null,
+  d=>d.mismatchTypes.date={supplier:'string',context:'string',value:'PRIVATE'},d=>d.mismatchTypes.date=[],
+  d=>d.dateFormats={supplier:'PRIVATE',context:'iso'},d=>d.dateFormats={supplier:'dmy',context:'iso',raw:'PRIVATE'},
+  d=>d.dateFormats=null,d=>{d.mismatchFields=['adults'];d.mismatchTypes={adults:{supplier:'string',context:'integer'}};}
+ ];
+ for(const change of corrupt){const diagnostics=mismatchDiagnostic();change(diagnostics);let x;
+  x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:'tv_tour_mismatch',diagnostics},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
+   assert.deepEqual(plain(e.failureFacts),{phase:'response',code:'tv_tour_mismatch',backendStage:'tour',backendCategory:'context'});return true;
+  });assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"value"|"raw"/);
+ }
+});
+test('Private TV mismatch types are enum strings and date syntax remains optional and descriptive',async()=>{
+ for(const type of ['null','integer','string','number','boolean','array','other']){
+  const diagnostics=mismatchDiagnostic(['date']);diagnostics.mismatchTypes.date={supplier:type,context:type};delete diagnostics.dateFormats;
+  let x;x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:'tv_tour_mismatch',diagnostics},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{assert.equal(e.failureFacts.mismatchTypes.date.supplier,type);assert.equal(e.failureFacts.dateFormats,undefined);return true;});
+ }
+ for(const format of ['iso','dmy','other','non-string']){
+  const diagnostics=mismatchDiagnostic(['date']);diagnostics.dateFormats={supplier:format,context:format};let x;
+  x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:'tv_tour_mismatch',diagnostics},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{assert.deepEqual(plain(e.failureFacts.dateFormats),{supplier:format,context:format});return true;});
+ }
+});
+test('Private TV mismatch details do not cross another error, provider or stage and ignore raw extras',async()=>{
+ for(const mode of ['code','provider','stage','extras']){
+  const diagnostics=mismatchDiagnostic(['date']);let code='tv_tour_mismatch';
+  if(mode==='code')code='tv_offer_not_owned';if(mode==='provider')diagnostics.provider='anex';if(mode==='stage')diagnostics.stage='flights';
+  diagnostics.raw='PRIVATE';diagnostics.token='PRIVATE';let x;
+  x=tvSetup(call=>call.action==='tv_tour'?x.reply({ok:false,error:code,diagnostics,raw:'PRIVATE'},409):undefined);
+  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{assert.equal(!!e.failureFacts.mismatchFields,mode==='extras');return true;});
+  assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"raw"|"token"/);
+ }
+});
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}console.log(JSON.stringify({groups:tests.length,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

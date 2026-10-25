@@ -92,6 +92,29 @@
     'tv_operation_unknown','tv_offer_not_owned','tv_operation_already_attempted','tv_supplier_response_error','tv_invalid_search_response',
     'tv_invalid_results','tv_catalog_mismatch','tv_offer_identity_changed','tv_tour_mismatch','tv_operator_changed','tv_tour_already_checked',
     'tv_tour_expired','tv_invalid_flights','tv_flights_already_loaded','tv_pair_mismatch','tv_pair_duplicate','tv_temporarily_unavailable']);
+  function tvMismatchFacts(value){
+    const fields=['tour_id','hotel_id','adults','children','departure_id','date','nights'];
+    const types=['null','integer','string','number','boolean','array','other'];
+    const formats=['iso','dmy','other','non-string'];
+    const object=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+    const keys=(v,expected)=>object(v)&&Object.keys(v).sort().join(',')===[...expected].sort().join(',');
+    const selected=value.mismatchFields,reported=value.mismatchTypes;
+    if(!Array.isArray(selected)||!selected.length||selected.length>fields.length
+      ||JSON.stringify(selected)!==JSON.stringify(fields.filter(field=>selected.includes(field)))||!keys(reported,selected))return null;
+    const cleaned={};
+    for(const field of selected){
+      const pair=reported[field];
+      if(!keys(pair,['supplier','context'])||!types.includes(pair.supplier)||!types.includes(pair.context))return null;
+      cleaned[field]=Object.freeze({supplier:pair.supplier,context:pair.context});
+    }
+    const result={mismatchFields:Object.freeze([...selected]),mismatchTypes:Object.freeze(cleaned)};
+    if(Object.hasOwn(value,'dateFormats')){
+      const pair=value.dateFormats;
+      if(!selected.includes('date')||!keys(pair,['supplier','context'])||!formats.includes(pair.supplier)||!formats.includes(pair.context))return null;
+      result.dateFormats=Object.freeze({supplier:pair.supplier,context:pair.context});
+    }
+    return result;
+  }
   function tvResponseFacts(payload){
     const fixedErrors={'Tourvisor request failed':'tourvisor_request_failed','Tourvisor connection error':'tourvisor_connection_error',
       'Tourvisor is not configured':'tourvisor_not_configured'};
@@ -101,6 +124,9 @@
     if(value&&typeof value==='object'&&!Array.isArray(value)&&value.provider==='tourvisor'){
       if(['search_start','search_continue','search_status','search_results','tour','flights','other'].includes(value.stage))facts.backendStage=value.stage;
       if(['timeout','transport','http'].includes(value.category))facts.backendCategory=value.category;
+      if(facts.code==='tv_tour_mismatch'&&value.stage==='tour'&&value.category==='context'){
+        facts.backendCategory='context';const detail=tvMismatchFacts(value);if(detail)Object.assign(facts,detail);
+      }
       for(const [key,max] of Object.entries({httpStatus:599,curlErrno:999,elapsedMs:3600000}))
         if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)facts[key==='httpStatus'?'upstreamStatus':key]=value[key];
     }
