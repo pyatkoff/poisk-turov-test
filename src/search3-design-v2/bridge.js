@@ -195,6 +195,14 @@
       }
       return latest;
     }
+    function stayLabels(offer, tour) {
+      if (!tour) return {room: offer.room, meal: offer.meal};
+      if (typeof data.stayLabel !== 'function') return null;
+      const quoted = {...offer, tour, room: data.text(tour.roomType) || offer.room,
+        meal: data.meal(tour.meal) || offer.meal};
+      // Explicit absence preserves native raw qualifiers even when meal aliases match.
+      return {room: data.stayLabel(quoted, 'room', null), meal: data.stayLabel(quoted, 'meal', null)};
+    }
     function readOffers(id) {
       const hotel = hotels.find(row => row.id === Number(id));
       return {offers: hotel?.offers || [], status: latest.status};
@@ -365,7 +373,7 @@
       // call session.submit: lead delivery is disabled in this preview.
       return data.leadSession(value).payload(formData);
     }
-    return Object.freeze({init, changeOrigin, search, readHotel, readOffers, quoteOffer, selectFlight, selectProviderFlight,
+    return Object.freeze({init, changeOrigin, search, readHotel, readOffers, stayLabels, quoteOffer, selectFlight, selectProviderFlight,
       deferFlight, retryFlights, expandOfferGroup, acceptPrice, previewContact, subscribe, getSelection: currentSelection,
       waitSelection: () => selectionPromise || followupPromise || Promise.resolve(currentSelection()),
       getDictionarySnapshot: () => dictionarySnapshot,
