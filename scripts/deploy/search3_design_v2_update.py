@@ -35,16 +35,15 @@ from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
 
 PREFIX = '/update-search3-design-v2-preview '
 REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
-# Actual immutable4442 source ledger; installed bytes are independently derived
+# Actual immutable5b0 source ledger; installed bytes are independently derived
 # by the existing route/accounting transform, never compared to this source hash.
-NATIVE_SOURCE_LEDGER_SHA256 = '5a11add708bd563b42543f7b6d66e717ceeda01cc8b14f2fa2fd9be375e2a9c7'
+NATIVE_SOURCE_LEDGER_SHA256 = 'def6732266143b1823dc3cf0eb6a060838efd5f6f06afb9f289f2b965685bd48'
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
-NATIVE_SOURCE_PARENTS = (
-    ('31e24467d51818b9b90ffe66964acf133061a4e8', 'a14ce02e0130050df4e35e8ebc575889f34428d5'),)
+NATIVE_SOURCE_PARENTS = (('f7c6b13dbad51034f026e6fe1d6896043e865e58', 'cb8246ef2f4977507624c4f5090ed58817c51fa8'),)
 NATIVE_RELEASE_PARENTS = (
-    ('c7dc712231cdb895f43b9c5604a2d8cddbf2148f', '96618721f3ac4c45c1340f69c71b858d8243498f'),
-    ('4442cec9921d0888b43cc7a7137385f1e6223c48', '9dd324cfe2106a52f4d8685cdf8774a9da14e7c6'),)
+    ('d11dda2e679bf95c7a585777da3325441114f601', '885556eb38cbb9c7f85ac1c9b649c61688e261a7'),
+    ('5b0a4cb5e7a9ca9c5e05592d00c2074f7c879abc', 'e511629818c51c5cae540d5f94be0d75babc373c'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -247,7 +246,7 @@ def native_frame_inventory(width, percent):
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'results-partial-empty', 'results-partial', 'filter-empty-partial'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
-        'meal-families', 'meal-family-details', 'popup-food-families'))
+        'meal-families', 'meal-family-details', 'popup-food-families', 'local-stay-tour', 'local-stay-contact'))
     frames.update(f'native-content-{screen}-{width}-text{percent}.png' for screen in (
         'results', 'gallery-error', 'gallery', 'contact-invalid', 'contact'))
     if width == 430:
@@ -450,6 +449,14 @@ def native_evidence(archive, request, native):
              'native_interactive_focus_required')
         native_selected_journey(actual, key[0])
         native_meal_families(actual, native)
+        stay = actual.get('localStay')
+        expected_stay = {'room': 'Стандарт · территория', 'rawRoom': 'standard land view',
+            'total': 163400, 'rawMeal': 'AI', 'actualDataHelper': True, 'roomMealRetained': True,
+            'backRetained': True, 'extraPassiveOperations': 0}
+        need(isinstance(stay, dict) and set(stay) == set(expected_stay) | {'ages'}
+             and all(type(stay.get(k)) is type(value) and stay[k] == value for k, value in expected_stay.items())
+             and isinstance(stay.get('ages'), list) and all(type(age) is int and 0 <= age <= 17 for age in stay['ages']),
+             'native_local_stay_continuity_required')
         retained = actual.get('retainedContent')
         expected_retained = {
             'hotelId': 3678, 'hotelName': 'RIA SUITES HOTEL',
@@ -526,8 +533,8 @@ def native_evidence(archive, request, native):
                                                         'native-filters-active-', 'native-filter-empty-',
                                                         'native-results-loading-', 'native-results-error-',
                                                         'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                      else 'tour' if logical_name.startswith(('native-ai-price-changed-', 'native-quote-unavailable-', 'native-flights-unavailable-'))
-                      else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
+                      else 'tour' if logical_name.startswith(('native-ai-price-changed-', 'native-quote-unavailable-', 'native-flights-unavailable-', 'native-local-stay-tour-'))
+                      else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-', 'native-local-stay-contact-'))
                       else 'gallery' if logical_name.startswith('native-content-gallery-')
                       else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
             need(frame.get('screen') == screen, 'native_rendered_screen_identity')
@@ -938,7 +945,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 123, 'native_rendered_frame_count')
+    need(len(frames) == 127, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
