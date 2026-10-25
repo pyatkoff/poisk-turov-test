@@ -915,8 +915,9 @@ async function formPickerActionJourney(browser,origin,base,evidence){
      await close('dates');
      let releaseManualCalendar;calendarReadMode={gate:new Promise(resolve=>releaseManualCalendar=resolve),fail:true,reads:0};releases.push(releaseManualCalendar);
      await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();
-     const beforeManual=await geometry(),manualScroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=Math.max(0,el.scrollTop-60);return el.scrollTop;});
-     assert(manualScroll<beforeManual.scroll-1,'manual scrolling moves away from the initial anchor');
+     const beforeManual=await geometry(),manual=await page.locator('#modal-body').evaluate(el=>{const maximum=Math.max(0,el.scrollHeight-el.clientHeight);if(maximum>1)el.scrollTop=el.scrollTop>1?Math.max(0,el.scrollTop-60):Math.min(maximum,el.scrollTop+60);return{scroll:el.scrollTop,maximum};}),manualScroll=manual.scroll;
+     if(manual.maximum>1)assert(Math.abs(manualScroll-beforeManual.scroll)>1,'manual scrolling moves away from the initial anchor');
+     else{assert.equal(manualScroll,0,'a fully fitting calendar has no scroll range');visible(beforeManual,'a fully fitting calendar keeps the departure visible without forced scrolling');}
      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));releaseManualCalendar();
      await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
      const manualSettled=await geometry();assert.equal(manualSettled.scroll,manualScroll,'late prices preserve the user scroll');monthContext(manualSettled,'manual scroll');
@@ -1176,7 +1177,7 @@ const calendarViewportFitJourney=async(browser,origin,base,evidence)=>{
    });
    // Read the installed fixture horizon, then stress a complete six-week month.
    // The marked mixed graph and intercepted transport never reach suppliers.
-   await page.goto(origin+base+'visual-search/?scenario=mixed');await page.locator('.search-submit:not(:disabled)').waitFor();
+   await page.goto(origin+base+'visual-search/?scenario=mixed');await page.locator('.search-submit:not(:disabled)').waitFor({state:'attached'});
    const start=await page.evaluate(()=>window.AnyTourPrototypeData.clockStart||new Date(Date.now()+86400000).toISOString().slice(0,10)),end=shift(start,180);
    let range=null;
    for(let offset=0;offset<7&&!range;offset++){
@@ -1946,13 +1947,14 @@ function retainLosslessPngEvidence(directory){
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
+  // Fail the affected pointer/geometry case before the complete historical matrices.
+  await calendarViewportFitJourney(browser,origin,base,evidence);
   // Complete, independent matrices share only immutable compiled assets. The
   // first two use this browser; the large-flight owner retains its own browser,
   // server and evidence directory. Default/SAMO-mode transition tests above stay
   // ordered. Retain every rejection and settle every matrix before shared cleanup.
   const completed=await Promise.allSettled([
    remainingCalendarJourney(browser,origin,base,evidence),
-   calendarViewportFitJourney(browser,origin,base,evidence),
    resultFilterViewportJourney(browser,origin,base,evidence),
    formPickerActionJourney(browser,origin,base,evidence),
    (async()=>{
