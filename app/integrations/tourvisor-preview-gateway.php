@@ -63,6 +63,23 @@ final class AnyTourTourvisorPreviewGateway
         self::need(($s['tourvisor_context_generation'] ?? null) === $c['generation']
             && ($s['tourvisor_context']['search_ref'] ?? null) === $c['search_ref'],'tv_context_changed');
     }
+    /** Stock durability stays strict for every shared/TV key; only ANEX owns these three slots. */
+    private static function checkpoint(array &$state, callable $persist): void
+    {
+        $expected = $state; $active = session_status() === PHP_SESSION_ACTIVE;
+        $id = session_id(); $name = session_name();
+        try { $persist($state); }
+        catch (RuntimeException $error) {
+            $foreign = ['offer_context'=>true,'anex_context_generation'=>true,'anex_offer_contexts'=>true];
+            if ($persist !== [AnyTourSearch3MessengerHandoff::class,'checkpoint']
+                || $error->getMessage() !== 'handoff_session_changed' || !$active
+                || session_status() !== PHP_SESSION_ACTIVE || $id === '' || session_id() !== $id || session_name() !== $name
+                || !is_array($_SESSION ?? null)
+                || array_diff_key($_SESSION,$foreign) !== array_diff_key($expected,$foreign)) throw $error;
+            // session_start has reacquired the original session. Keep its newer foreign state.
+            $state = $_SESSION;
+        }
+    }
     /** Supplier calendar syntax only; internal records keep their strict ISO day. */
     private static function supplierDay(mixed $value): ?string
     {
@@ -194,6 +211,8 @@ final class AnyTourTourvisorPreviewGateway
     public static function handle(array $r, array &$s, int $now, callable $transport,
         callable $catalog, callable $checkpoint, ?callable $clock = null): array
     {
+        $persist = $checkpoint;
+        $checkpoint = static function(array &$state) use ($persist): void { self::checkpoint($state,$persist); };
         $clock ??= static fn(): int => time();
         $action = $r['action'] ?? ''; $rid = $r['request_id'] ?? null;
         self::need(($r['provider'] ?? null) === 'tourvisor' && is_string($rid)
