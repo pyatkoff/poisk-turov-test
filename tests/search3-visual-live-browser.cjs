@@ -1745,7 +1745,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
 // Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
 // preserve every other chunk. The separately retained messenger bytes stay intact.
 function retainLosslessPngEvidence(directory){
- const {inflateSync,deflateSync,crc32}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[];
+ const {inflateSync,deflateSync,gzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[];
  const sha=value=>createHash('sha256').update(value).digest('hex'),signature=Buffer.from('89504e470d0a1a0a','hex');
  const visit=folder=>{for(const entry of fs.readdirSync(folder,{withFileTypes:true})){
   const file=path.join(folder,entry.name),relative=path.relative(directory,file).split(path.sep).join('/');
@@ -1761,7 +1761,8 @@ function retainLosslessPngEvidence(directory){
    chunks.push({type:type.toString('ascii'),bytes:before.subarray(offset,end)});if(type.toString('ascii')==='IDAT')idat.push(data);offset=end;
   }
   assert(idat.length>0&&chunks[0].type==='IHDR'&&chunks.at(-1).type==='IEND',relative+' complete screenshot PNG');
-  const filtered=inflateSync(Buffer.concat(idat)),compressed=deflateSync(filtered,{level:9});
+  const filtered=inflateSync(Buffer.concat(idat)),compressed=[{}, {strategy:constants.Z_FILTERED}]
+   .map(options=>deflateSync(filtered,{level:9,...options})).reduce((best,value)=>value.length<best.length?value:best);
   assert(inflateSync(compressed).equals(filtered),relative+' byte-identical filtered pixels');
   const replacement=Buffer.alloc(compressed.length+12);replacement.writeUInt32BE(compressed.length);replacement.write('IDAT',4,'ascii');compressed.copy(replacement,8);replacement.writeUInt32BE(crc32(replacement.subarray(4,-4)),replacement.length-4);
   let inserted=false;const retained=Buffer.concat([signature,...chunks.flatMap(chunk=>chunk.type==='IDAT'?(inserted?[]:(inserted=true,[replacement])):[chunk.bytes])]);
@@ -1769,7 +1770,7 @@ function retainLosslessPngEvidence(directory){
   rows.push({path:relative,original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after),filtered_pixel_sha256:sha(filtered)});
  }};
  visit(directory);const originalBytes=rows.reduce((sum,row)=>sum+row.original_bytes,0),retainedBytes=rows.reduce((sum,row)=>sum+row.retained_bytes,0);
- fs.writeFileSync(path.join(directory,'png-retention.json'),JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n');
+ fs.writeFileSync(path.join(directory,'png-retention.json.gz'),gzipSync(Buffer.from(JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n'),{level:9}));
  console.log('PASS lossless complete PNG retention',JSON.stringify({frames:rows.length,originalBytes,retainedBytes,savedBytes:originalBytes-retainedBytes}));
 }
 
