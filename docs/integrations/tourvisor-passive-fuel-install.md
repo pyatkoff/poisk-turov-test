@@ -563,3 +563,31 @@ and no-replay tests reuse the existing harness. No new transport, endpoint,
 configuration, session reset, receipt pruning, provider/DB/lead call or production
 action is admitted. Source/control review and CI/main merge precede one separate
 exclusive runtime claim/original receipt; live acceptance remains a separate stage.
+
+## Combined TV party/listing retirement installation — 25 October 2026
+
+SOURCE PR4891/1e5ed886 merged FEATURE343fe6a263ce9e728481916d6b2d56448f544952;
+independent5643399467 and final Security40195220974/producer40195220986 accepted.
+The earlier source guide's one-file wording applies to preceding deliveries;
+this final packet updates BOTH existing helper files in one fixed stock operation.
+
+Fixed mode install-tv-party-retirement and operation
+int-anex-tv-party-retirement-install-20261025-v1 accept only that merged source.
+The stock maintenance renderer, backups, atomic replace/lint/readback/rollback
+are reused:6checked/2changed/0created, client302fb→644ded and gateway9ee2→8c254.
+Only these two exact ordered paths may change; either predecessor/source drift
+holds before writes and a postwrite failure restores both. API9eb/producer5e0,
+dependencies/enabledparent16049/configfaea0644/signing/public pins remain exact.
+Strict completion requires typed2changed, both target hashes and all original
+preservation/zero supplier/DB/booking/lead facts. Earlier rendered programs remain
+byte-identical with their original one-file predicates/noReplay, including the
+consumed retained reader and checkpoint installer. No cap/session reset, sender,
+new transport/reader or direct session sweep is introduced.
+
+One exclusive runtime claim and one created4709 stock command follow independent
+control review, mandatory final CI and normal MAIN integration. This document
+is not runtime admission. The command/operation never retries or aliases a
+HOLD/UNKNOWN result. Source/CI/installation and observed live memory are separate;
+no new supplier search is justified solely to measure cleanup. The existing
+consumed infant case6397634946 remains sealed; cleanup runs naturally only on
+a subsequent justified new search generation under the unchanged stock limits.
