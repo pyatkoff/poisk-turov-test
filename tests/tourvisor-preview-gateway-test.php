@@ -6,7 +6,8 @@ namespace AnyTour {
     function curl_setopt_array($ch,$options) { $GLOBALS['tv_wire']['options']=$options; return true; }
     function curl_exec($ch) { return $GLOBALS['tv_wire']['body']; }
     function curl_errno($ch) { return $GLOBALS['tv_wire']['errno'] ?? 0; }
-    function curl_getinfo($ch,$option) { return $GLOBALS['tv_wire']['status']; }
+    function curl_getinfo($ch,$option) { return $option === CURLINFO_TOTAL_TIME ? ($GLOBALS['tv_wire']['seconds'] ?? 0.0) : $GLOBALS['tv_wire']['status']; }
+    function json_decode($body,$associative=false) { $GLOBALS['tv_wire']['decodes']=($GLOBALS['tv_wire']['decodes'] ?? 0)+1; return \json_decode($body,$associative); }
     function curl_close($ch) { $GLOBALS['tv_wire']['closed']=true; }
 }
 namespace {
@@ -30,11 +31,31 @@ $GLOBALS['tv_wire']=['calls'=>0,'body'=>'{"searchId":91}','status'=>200];
 $wire=$GLOBALS['tv_wire'];
 tvg_ok($wire['calls']===1 && $wire['url']==='https://api.tourvisor.ru/search/api/v1/tours/search?childs=0&childs=0&childs=8&onlyDirect=false','same fixed destination and repeated query');
 tvg_ok($wire['options'][CURLOPT_TIMEOUT]===45 && $wire['options'][CURLOPT_CONNECTTIMEOUT]===10 && $wire['closed'],'same interactive timing and close');
-foreach ([[502,0,'Tourvisor request failed'],[200,28,'Tourvisor connection error']] as [$status,$errno,$message]) {
-    $GLOBALS['tv_wire']=['calls'=>0,'body'=>'{}','status'=>$status,'errno'=>$errno];
-    try { \AnyTour\TourvisorInteractiveClient::get('/tours/fixture',[],'fixture-token'); }
-    catch (\AnyTour\TourvisorInteractiveFailure $e) { tvg_ok($e->response['error']===$message && $e->httpStatus===502 && $GLOBALS['tv_wire']['calls']===1,'no retry on supplier failure'); }
+// Exercise the actual extracted transport, including every allowlisted stage and all failure classes.
+foreach (['/tours/search'=>'search_start','/tours/search/91/status'=>'search_status',
+    '/tours/search/91/continue'=>'search_continue','/tours/search/91'=>'search_results',
+    '/tours/private-offer-id'=>'tour','/tours/private-offer-id/flights'=>'flights','/other/private'=>'other'] as $path=>$stage) {
+    foreach ([[410,0,'http',410],[502,0,'http',502],[200,28,'timeout',502],[0,7,'transport',502]] as [$status,$errno,$category,$http]) {
+        $GLOBALS['tv_wire']=['calls'=>0,'body'=>'{"secret":"supplier-error-body"}','status'=>$status,'errno'=>$errno,'seconds'=>45.0124];
+        try { \AnyTour\TourvisorInteractiveClient::get($path,['private'=>'query-secret'],'fixture-token-secret');
+            throw new RuntimeException('expected transport failure'); }
+        catch (\AnyTour\TourvisorInteractiveFailure $e) {
+            $expected=['provider'=>'tourvisor','stage'=>$stage,'category'=>$category,'httpStatus'=>$status,'curlErrno'=>$errno,'elapsedMs'=>45012];
+            tvg_ok($e->response['diagnostics']===$expected && $e->httpStatus===$http,'exact safe transport diagnostic '.$stage.'/'.$category);
+            tvg_ok($GLOBALS['tv_wire']['calls']===1 && $GLOBALS['tv_wire']['closed'] && empty($GLOBALS['tv_wire']['decodes']),
+                'one attempt, close, zero error-body decode');
+            tvg_ok(array_keys($e->response)===($errno===0?['ok','error','upstreamStatus','diagnostics']:['ok','error','diagnostics']),
+                'no raw body, URL, token or query in error projection');
+        }
+    }
 }
+foreach ([NAN,INF,-1.0,3600.1] as $seconds) {
+    $facts=\AnyTour\TourvisorInteractiveClient::failureDiagnostics('/tours/fixture',-1,600,$seconds);
+    tvg_ok(array_keys($facts)===['provider','stage','category'],'invalid numeric facts omitted');
+}
+$edge=\AnyTour\TourvisorInteractiveClient::failureDiagnostics('/tours/search/not-numeric/status',0,0,0.0);
+tvg_ok($edge===['provider'=>'tourvisor','stage'=>'other','category'=>'http','httpStatus'=>0,'curlErrno'=>0,'elapsedMs'=>0],
+    'strict stage recognition and literal measured zero preserved');
 $now=time(); $clock=static fn():int=>$now;
 $day=(new DateTimeImmutable('today'))->modify('+30 days')->format('Y-m-d');
 $end=(new DateTimeImmutable($day))->modify('+7 days')->format('Y-m-d');
@@ -135,6 +156,20 @@ $failing=static function()use(&$physical):array{++$physical;throw new RuntimeExc
 try{AnyTourTourvisorPreviewGateway::handle($r,$unknown,$now,$failing,$catalog,$save,$clock);}catch(RuntimeException $e){}
 tvg_denied(function()use($r,&$unknown,$now,$failing,$catalog,$save,$clock){AnyTourTourvisorPreviewGateway::handle($r,$unknown,$now,$failing,$catalog,$save,$clock);},'tv_operation_unknown');
 tvg_ok($physical===1,'UNKNOWN cannot replay physical supplier attempt');
+$diagnosticSession=$session; $diagnosticRequest=$request('tv_status');
+$GLOBALS['tv_wire']=['calls'=>0,'body'=>'private-error','status'=>0,'errno'=>28,'seconds'=>45.0001];
+$diagnosticTransport=static fn(string $p,array $q,array &$state):array=>\AnyTour\TourvisorInteractiveClient::get($p,$q,'fixture-token');
+try { AnyTourTourvisorPreviewGateway::handle($diagnosticRequest,$diagnosticSession,$now,$diagnosticTransport,$catalog,$save,$clock);
+    throw new RuntimeException('expected gateway transport failure'); }
+catch (\AnyTour\TourvisorInteractiveFailure $e) {
+    tvg_ok($e->response['diagnostics']['stage']==='search_status' && $e->response['diagnostics']['elapsedMs']===45000,
+        'gateway preserves same safe supplier facts');
+}
+tvg_ok($disk['tourvisor_requests'][$diagnosticRequest['request_id']]['state']==='unknown','failure keeps original durable UNKNOWN');
+tvg_denied(function()use($diagnosticRequest,&$diagnosticSession,$now,$diagnosticTransport,$catalog,$save,$clock){
+    AnyTourTourvisorPreviewGateway::handle($diagnosticRequest,$diagnosticSession,$now,$diagnosticTransport,$catalog,$save,$clock);
+},'tv_operation_unknown');
+tvg_ok($GLOBALS['tv_wire']['calls']===1,'diagnostic propagation grants no retry');
 $changed=$session; $r=$request('tv_results');
 $concurrent=static function(string $p,array $q,array &$s):array{
     ++$s['tourvisor_context_generation']; $s['tourvisor_context']=['newer'=>'must remain']; return [];
