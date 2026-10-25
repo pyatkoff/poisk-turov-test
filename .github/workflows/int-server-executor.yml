@@ -107,6 +107,12 @@ jobs:
           ref: f4d4dcae0c09b92a7e4024fc202ea3e23d7822db
           path: tv-session-source
           persist-credentials: false
+      - name: Exact reviewed TV diagnostic client source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 920e83f10804e0d05cc99e4b252e71f7ddaf6697
+          path: tv-diagnostic-source
+          persist-credentials: false
       - name: Exact reviewed LOCAL schema source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -209,7 +215,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
           python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_search3_signing.py
-          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" python3 tests/int_server_executor_search3_signing_test.py -v
+          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" python3 tests/int_server_executor_search3_signing_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
@@ -384,4 +390,5 @@ jobs:
           path: ${{ runner.temp }}/int-direction-store-readback/result.json
           if-no-files-found: warn
           retention-days: 30
+
 
