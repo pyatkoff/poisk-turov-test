@@ -9,10 +9,16 @@ import ast
 
 TV_MODE = 'install-tv-session-gateway'
 TV_ENABLE_MODE = 'enable-tv-session-gateway'
+TV_RECOVERY_MODE = 'recover-tv-session-gateway'
+TV_RECOVERY_OPERATION = 'int-anex-tv-session-gateway-recovery-20261025-v1'
+TV_FAILURE_OPERATION = 'int-anex-tv-session-gateway-enable-20261024-v1'
+TV_FAILURE_CANONICAL = '1e27a66c3b942e0ad7103673314fc2aa6e29d98f93ec8e3dc40d945bed18e8b4'
+TV_FAILURE_CONTROL = '0456579020e8cbf9b888648b7a8e9921766bb463'
+TV_FAILURE_RUN = 40136204936
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -65,11 +71,14 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-session-gateway-enable-' if mode == TV_ENABLE_MODE else
+        prefix = ('int-anex-tv-session-gateway-recovery-' if mode == TV_RECOVERY_MODE else
+                  'int-anex-tv-session-gateway-enable-' if mode == TV_ENABLE_MODE else
                   'int-anex-tv-session-gateway-install-' if mode == TV_MODE else
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_RECOVERY_MODE:
+            need(operation == TV_RECOVERY_OPERATION, 'tv_recovery_single_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
 
     core.parse_command = parse
@@ -253,6 +262,8 @@ DISPATCH = r'''
 def activate(core, command):
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_RECOVERY_MODE:
+        return activate_tv_recovery(core, command)
     if command.get('mode') == TV_ENABLE_MODE:
         return activate_tv_enable(core, command)
     if command.get('mode') == TV_MODE:
@@ -520,6 +531,105 @@ def activate_tv_enable(core,command):
     ast.parse(remote)
     original_complete=core.completed_result
     core.completed_result=lambda cmd,result: completed_enable(cmd,result) if cmd.get('mode')==TV_ENABLE_MODE else original_complete(cmd,result)
+    core.REMOTE=remote
+
+
+TV_RECOVERY_REMOTE = r'''
+_tv_failure_snapshot=None
+def tv_recovery_failure_guard():
+    global _tv_failure_snapshot
+    old=private/TV_FAILURE_OPERATION
+    if (old.is_symlink() or not old.is_dir() or old.resolve()!=old or old.stat().st_uid!=os.getuid()
+            or old.stat().st_mode&0o777!=0o700):fail('tv_recovery_original_directory')
+    # No original plan/backup means the pinned original parser refusal preceded its first config write.
+    if {p.name for p in old.iterdir()}!={'reservation.json','result.json','source'}:fail('tv_recovery_original_write_state')
+    original_source=old/'source'
+    if (original_source.is_symlink() or not original_source.is_dir() or original_source.resolve()!=original_source):
+        fail('tv_recovery_original_source_type')
+    temp=runtime/('..anex-private.php.'+TV_FAILURE_OPERATION+'.tmp')
+    if temp.exists() or temp.is_symlink():fail('tv_recovery_original_write_state')
+    snapshots=[];values={}
+    for name in ('reservation.json','result.json'):
+        path=old/name
+        if (not safe_file(path,16384) or path.resolve()!=path or path.stat().st_nlink!=1
+                or path.stat().st_uid!=os.getuid() or path.stat().st_mode&0o777!=0o600):fail('tv_recovery_original_file')
+        identity=tv_enable_config_identity(path);raw=path.read_bytes()
+        if tv_enable_config_identity(path)!=identity:fail('tv_recovery_original_drift')
+        values[name]=json.loads(raw);snapshots.append((name,identity,hashlib.sha256(raw).hexdigest()))
+    prior=values['result.json'];reservation=values['reservation.json']
+    digest=hashlib.sha256(json.dumps(prior,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    if digest!=TV_FAILURE_CANONICAL:fail('tv_recovery_original_receipt')
+    if (prior.get('operation_id')!=TV_FAILURE_OPERATION or prior.get('source_sha')!=TV_SOURCE
+            or prior.get('mode')!='enable-tv-session-gateway' or prior.get('status')!='unknown_no_replay'
+            or prior.get('reason')!='tv_enable_config_shape'
+            or prior.get('supplier_calls')!='unknown' or prior.get('database_writes')!='unknown'):
+        fail('tv_recovery_original_boundary')
+    if (set(reservation)!={'operation_id','source_sha','mode','reserved_at'}
+            or reservation.get('operation_id')!=TV_FAILURE_OPERATION or reservation.get('source_sha')!=TV_SOURCE
+            or reservation.get('mode')!='enable-tv-session-gateway'
+            or type(reservation.get('reserved_at')) is not int or not 1792878816<=reservation['reserved_at']<=1792878878):
+        fail('tv_recovery_original_reservation')
+    snapshot=tuple(snapshots)
+    if _tv_failure_snapshot is None:_tv_failure_snapshot=snapshot
+    elif snapshot!=_tv_failure_snapshot:fail('tv_recovery_original_drift')
+    return {'operation_id':TV_FAILURE_OPERATION,'canonical_sha256':TV_FAILURE_CANONICAL,
+        'control_sha':TV_FAILURE_CONTROL,'run_id':TV_FAILURE_RUN,'source_sha':TV_SOURCE,
+        'status':'unknown_no_replay','supplier_calls':'unknown','database_writes':'unknown',
+        'original_prewrite_state_absent':True,'original_receipt_reservation_unchanged':True,
+        'first_config_write_admitted':True,'reservation_sha256':snapshots[0][2]}
+
+def tv_enable_preflight():
+    tv_recovery_base_preflight()
+    tv_recovery_failure_guard()
+'''
+
+
+def completed_recovery(command,result):
+    proof=result.get('tv_recovery')
+    if not isinstance(proof,dict):return False
+    expected={'operation_id':TV_FAILURE_OPERATION,'canonical_sha256':TV_FAILURE_CANONICAL,
+        'control_sha':TV_FAILURE_CONTROL,'run_id':TV_FAILURE_RUN,'source_sha':TV_SOURCE,
+        'status':'unknown_no_replay','supplier_calls':'unknown','database_writes':'unknown',
+        'original_prewrite_state_absent':True,'original_receipt_reservation_unchanged':True,
+        'first_config_write_admitted':True}
+    digest=proof.get('reservation_sha256')
+    return (command.get('mode')==TV_RECOVERY_MODE and command.get('operation_id')==TV_RECOVERY_OPERATION
+        and completed_enable(command,result) and set(proof)==set(expected)|{'reservation_sha256'}
+        and all(proof.get(k)==v and type(proof.get(k)) is type(v) for k,v in expected.items())
+        and isinstance(digest,str) and len(digest)==64 and all(c in '0123456789abcdef' for c in digest))
+
+
+def activate_tv_recovery(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in ('source_sha','mode','operation_id')))
+    need(command==expected,'tv_recovery_shape')
+    # Reuse the existing single-flag writer; historical command programs remain byte-identical.
+    internal={'source_sha':command['source_sha'],'mode':TV_ENABLE_MODE,
+              'operation_id':'int-anex-tv-session-gateway-enable-render-only-v1'}
+    activate_tv_enable(core,internal)
+    remote=core.REMOTE
+    need(remote.count(repr(TV_ENABLE_MODE))==4,'tv_recovery_mode_drift')
+    remote=remote.replace(repr(TV_ENABLE_MODE),repr(TV_RECOVERY_MODE))
+    native="['ok'=>true,'offset'=>$insert,'sha256'=>hash('sha256',$raw)]"
+    need(TV_FLAG_PHP.count(native)==1,'tv_recovery_native_drift')
+    php=TV_FLAG_PHP.replace(native,native[:-1]+",'outer_stub'=>$bootstrap]")
+    anchor='TV_FLAG_PHP='+repr(TV_FLAG_PHP)
+    need(remote.count(anchor)==1,'tv_recovery_php_drift')
+    remote=remote.replace(anchor,'TV_FLAG_PHP='+repr(php),1)
+    anchor='def tv_enable_preflight():\n'
+    need(remote.count(anchor)==1,'tv_recovery_preflight_drift')
+    remote=remote.replace(anchor,'def tv_recovery_base_preflight():\n',1)
+    constants=('TV_FAILURE_OPERATION='+repr(TV_FAILURE_OPERATION)+'\nTV_FAILURE_CANONICAL='+repr(TV_FAILURE_CANONICAL)
+        +'\nTV_FAILURE_CONTROL='+repr(TV_FAILURE_CONTROL)+'\nTV_FAILURE_RUN='+repr(TV_FAILURE_RUN)+'\n')
+    remote=remote.replace('def db_summary(provider):\n',constants+TV_RECOVERY_REMOTE+'\ndef db_summary(provider):\n',1)
+    anchor="    offset=parsed.get('offset')\n"
+    need(remote.count(anchor)==1,'tv_recovery_parser_drift')
+    remote=remote.replace(anchor,"    if parsed.get('outer_stub') is not True:fail('tv_recovery_current_outer_stub')\n"+anchor,1)
+    anchor="        result['tv_enable']=tv_enable_config(op)\n"
+    need(remote.count(anchor)==1,'tv_recovery_dispatch_drift')
+    remote=remote.replace(anchor,anchor+"        result['tv_recovery']=tv_recovery_failure_guard()\n",1)
+    ast.parse(remote)
+    original=core.completed_result
+    core.completed_result=lambda cmd,result: completed_recovery(cmd,result) if cmd.get('mode')==TV_RECOVERY_MODE else original(cmd,result)
     core.REMOTE=remote
 
 

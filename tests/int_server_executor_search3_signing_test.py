@@ -47,21 +47,29 @@ class Admission(unittest.TestCase):
         signing.activate(c,command)
         self.assertEqual('7f54b6544c3adab4b4f54cc4c02ac435ea6a81efe9c22b54b0aa4f1985b1abf7',
                          hashlib.sha256(c.REMOTE.encode()).hexdigest())
+        c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_SOURCE} {signing.TV_ENABLE_MODE} int-anex-tv-session-gateway-enable-golden-v1')
+        signing.activate(c,command)
+        self.assertEqual('06c91a5c9a94799f3f048ba41c6fda079a811e22730ce8678c2462ab58a6e85e',
+                         hashlib.sha256(c.REMOTE.encode()).hexdigest())
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-session-gateway-enable-' if mode == signing.TV_ENABLE_MODE else
+            prefix = ('int-anex-tv-session-gateway-recovery-' if mode == signing.TV_RECOVERY_MODE else
+                      'int-anex-tv-session-gateway-enable-' if mode == signing.TV_ENABLE_MODE else
                       'int-anex-tv-session-gateway-install-' if mode == signing.TV_MODE else
                       'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
-            operation = prefix + 'case-v1'
+            operation = signing.TV_RECOVERY_OPERATION if mode == signing.TV_RECOVERY_MODE else prefix + 'case-v1'
             body = f'/run-int-server-v1 {SHA} {mode} {operation}'
             parsed = c.parse_command(body)
             self.assertEqual({'source_sha': SHA, 'mode': mode, 'operation_id': operation}, parsed)
             for invalid in [body + ' /tmp/key', body.replace(SHA, 'x' * 40),
                             body.replace(prefix, 'int-andromeda-'),
-                            body.replace('case-v1', 'case'), body.replace('/run-int-server-v1', '/other')]:
+                            body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
+            if mode==signing.TV_RECOVERY_MODE:
+                for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
+                    with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
 
     def test_registration_is_isolated_and_stock_guards_remain(self):
@@ -642,6 +650,85 @@ class NativeTVGatewayEnable(NativeTVGatewayInstall):
         self.assertEqual('d5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9',signing.TV_PARENT_CANONICAL)
 
 
+class NativeTVGatewayRecovery(NativeTVGatewayEnable):
+    def setUp(self):
+        super().setUp()
+        self.original=self.publisher_stub()+self.original.splitlines(keepends=True)[-1]
+        self.config.write_text(self.original)
+        self.failed=self.home/'.anytoour-int-executor'/signing.TV_FAILURE_OPERATION
+        self.failed.mkdir(mode=0o700);(self.failed/'source').mkdir(mode=0o700)
+        self.failed_result={'booking_calls':0,'database_writes':'unknown','lead_calls':0,'mode':'enable-tv-session-gateway',
+            'operation_id':signing.TV_FAILURE_OPERATION,'production_before':{p:v.get('sha256') for p,v in signing.TV_PUBLIC.items() if p!='api-v2.php'},
+            'reason':'tv_enable_config_shape','schema_version':1,'source_sha':signing.TV_SOURCE,'status':'unknown_no_replay',
+            'supplier_calls':'unknown','tv_gateway_public_before':signing.TV_PUBLIC}
+        self.assertEqual(signing.TV_FAILURE_CANONICAL,hashlib.sha256(json.dumps(self.failed_result,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+        (self.failed/'result.json').write_text(json.dumps(self.failed_result,sort_keys=True,separators=(',',':')))
+        (self.failed/'reservation.json').write_text(json.dumps({'operation_id':signing.TV_FAILURE_OPERATION,
+            'source_sha':signing.TV_SOURCE,'mode':'enable-tv-session-gateway','reserved_at':1792878873},sort_keys=True))
+        for p in ('result.json','reservation.json'):(self.failed/p).chmod(0o600)
+        self.before={p:(self.failed/p).read_bytes() for p in ('result.json','reservation.json')}
+        self.original_drift=False
+
+    def mutate_remote(self,c):
+        super().mutate_remote(c)
+        if self.original_drift:
+            anchor="    tv_enable_preflight()\n    if tv_enable_config_identity(config)!=identity or config.read_bytes()!=old:fail('tv_enable_config_drift')"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,
+                "    p=private/TV_FAILURE_OPERATION/'result.json';p.write_bytes(p.read_bytes()+b' ')\n"+anchor,1)
+
+    def recover(self,operation=None):
+        # Isolated HOME cases use explicit fixture IDs; production parser permits ONLY the pinned one.
+        operation=operation or f'int-anex-tv-session-gateway-recovery-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,'TV_RECOVERY_OPERATION',operation):
+            return self.execute(signing.TV_RECOVERY_MODE,operation,source_sha=signing.TV_SOURCE)[0]
+
+    def assert_original_immutable(self):
+        for p,b in self.before.items():self.assertEqual(b,(self.failed/p).read_bytes())
+        self.assertEqual({'reservation.json','result.json','source'},{p.name for p in self.failed.iterdir()})
+
+    def test_first_write_success_preserves_original_unknown_and_strict_receipt(self):
+        r=self.recover();self.assertEqual('enabled',r['status'],r);self.assert_original_immutable()
+        self.assertEqual('unknown_no_replay',r['tv_recovery']['status']);self.assertEqual('unknown',r['tv_recovery']['supplier_calls'])
+        self.assertEqual(0,r['supplier_calls']);self.assertEqual(0,r['database_writes'])
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.multiple(signing,TV_PUBLIC=self.public,TV_PARENT_CANONICAL=self.parent_digest,TV_RECOVERY_OPERATION=r['operation_id']):
+            self.assertTrue(signing.completed_recovery(command,r))
+            for k,v in [('original_prewrite_state_absent',False),('run_id',True),('status','complete'),('reservation_sha256','bad')]:
+                self.assertFalse(signing.completed_recovery(command,r|{'tv_recovery':r['tv_recovery']|{k:v}}))
+        self.assertEqual('operation_exists_no_replay',self.recover(r['operation_id'])['reason'])
+
+    def test_any_original_plan_backup_or_temp_holds_without_config_write(self):
+        for name in ('tv-enable-plan.json','backup'):
+            p=self.failed/name;p.mkdir() if name=='backup' else p.write_text('{}')
+            self.assertEqual('tv_recovery_original_write_state',self.recover()['reason']);self.assert_config_unchanged()
+            p.rmdir() if name=='backup' else p.unlink()
+        temp=self.runtime/('..anex-private.php.'+signing.TV_FAILURE_OPERATION+'.tmp');temp.write_text('uncertain original staged state')
+        self.assertEqual('tv_recovery_original_write_state',self.recover()['reason']);self.assert_config_unchanged()
+        self.assert_original_immutable()
+
+    def test_original_receipt_or_reservation_mismatch_holds(self):
+        p=self.failed/'result.json';p.write_text('{}')
+        self.assertEqual('tv_recovery_original_receipt',self.recover()['reason']);self.assert_config_unchanged();p.write_bytes(self.before['result.json'])
+        p=self.failed/'reservation.json';v=json.loads(p.read_bytes());v['reserved_at']=1792878800;p.write_text(json.dumps(v))
+        self.assertEqual('tv_recovery_original_reservation',self.recover()['reason']);self.assert_config_unchanged()
+        p.write_bytes(self.before['reservation.json']);self.assert_original_immutable()
+
+    def test_current_outer_stub_and_flag_absence_required(self):
+        before=self.original;self.config.write_text(before.replace(self.publisher_stub(),"<?php\n"))
+        self.assertEqual('tv_recovery_current_outer_stub',self.recover()['reason']);self.assert_original_immutable()
+        self.config.write_text(before+"define('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED',true);\n")
+        self.assertEqual('tv_enable_flag_already_defined',self.recover()['reason']);self.assert_original_immutable()
+        self.assertEqual([],list(self.home.rglob('tv-enable-plan.json')))
+
+    def test_original_identity_drift_before_write_holds(self):
+        self.original_drift=True;r=self.recover();self.assertEqual('tv_recovery_original_drift',r['reason']);self.assert_config_unchanged()
+
+    def test_readiness_failure_rolls_back_only_new_flag(self):
+        self.http_failure=True;r=self.recover();self.assertEqual('rolled_back',r['status']);self.assert_config_unchanged()
+        self.assert_original_immutable();self.assertEqual({'status':'complete','restored_files':1},r['rollback'])
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -661,6 +748,11 @@ def load_tests(loader, tests, pattern):
                  'test_actual_publisher_stub_old_reject_fixed_preserves_bytes_without_following_include',
                  'test_only_exact_first_publisher_stub_is_recognized'):
         suite.addTest(NativeTVGatewayEnable(name))
+    for name in ('test_first_write_success_preserves_original_unknown_and_strict_receipt',
+                 'test_any_original_plan_backup_or_temp_holds_without_config_write',
+                 'test_original_receipt_or_reservation_mismatch_holds','test_current_outer_stub_and_flag_absence_required',
+                 'test_original_identity_drift_before_write_holds','test_readiness_failure_rolls_back_only_new_flag'):
+        suite.addTest(NativeTVGatewayRecovery(name))
     return suite
 
 
