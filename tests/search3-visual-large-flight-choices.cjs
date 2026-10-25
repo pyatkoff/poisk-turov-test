@@ -40,7 +40,9 @@ async function run(){
   const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
   const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
   if(!fs.existsSync(file)){res.writeHead(404).end();return;}
-  if(file.endsWith('.php')){const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]);res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
+  // This independent SAMO/legacy TV matrix owns only the unmarked ROOT fixture.
+  // The actual marked NEXT entry is covered by mandatory messenger + LOCAL cases.
+  if(file.endsWith('.php')){const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]).toString().replace(' data-search3-tv-session="enabled"','');res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
   let body=fs.readFileSync(file);
   // Retain the large SAMO inventory regression only in this fictional server.
   if(file.endsWith('/prototype-search/config.js'))body=body.toString()+"\nwindow.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';window.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';\n";
@@ -76,6 +78,7 @@ async function run(){
    try{
     await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
     await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),false,'this retained matrix uses the actual unmarked legacy TV consumer');
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
     await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
     const startsFor=name=>transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));
