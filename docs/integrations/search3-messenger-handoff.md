@@ -216,24 +216,28 @@ original checked-tour deadline. A local observation window is not a supplier
 guarantee or final-price authority.
 
 Finite source bounds: 640 request receipts per existing viewer session,
-2000 retained offers/current context, 100 flight pairs/offer, 1MiB reply and 4MiB
+2000 retained offers/current context, 100 flight pairs/offer, 1MiB reply and 20MiB
 TV context+receipts. Current search scope lasts at most30min and each checked
 observation at most15min, shortened by an explicit returned expiresAt. These
 are application freshness/resource bounds, not shared-account remaining quota.
 No silent deletion of UNKNOWN operations occurs.
 
 The owner's25October2026 directive to increase the internal64 cap tenfold is
-recorded in#4709/comment6395983438. Only this session receipt-count bound changes;
-existing receipts and sealed operations remain intact. Supplier quotas, rate
-limits and all byte, offer, freshness and identity bounds remain unchanged.
+recorded in#4709/comment6395983438. That packet changed only the receipt count.
+The subsequent explicit directive “увеличь в 5 раз” in#4709/comment6396386236
+raises the context+receipt byte budget from4194304 to20971520 after the actual
+reply limit in#4709/comment6396321224. Existing ready replies and UNKNOWN markers
+remain intact; there is no cache reset, pruning, codec migration or replay.
+Supplier quotas/rates,640 receipts,2000 offers,1MiB responses, freshness, identity
+and monetary authority stay unchanged.
 
 Local `tv_context_limit` failures retain the same409/code and now distinguish
 `request_count`, `context_bytes`, `offer_count` and generation overflow. The
 diagnostics contain only existing action stage, category `limit`, `limitKind`,
 `limitPhase` (`admission`, `reservation`, `results`, `capture`, `reply`), the
-measured integer `limitValue` and fixed `limitMax` (640,4194304,2000,2147483647).
-Admission requires fewer than640 receipts and fewer than4MiB; candidate states
-retain the existing inclusive4MiB bound. Rejections do not delete or reset old
+measured integer `limitValue` and fixed `limitMax` (640,20971520,2000,2147483647).
+Admission requires fewer than640 receipts and fewer than20MiB; candidate states
+retain the inclusive20MiB bound. Rejections do not delete or reset old
 receipts, relax limits, grant retry or add supplier calls. An existing healthy
 cached operation remains readable at a full receipt cap. These are local facts,
 not an upstream status or shared supplier-account quota. Raw sessions, keys,

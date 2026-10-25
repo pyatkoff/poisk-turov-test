@@ -107,7 +107,7 @@ final class AnyTourTourvisorPreviewGateway
             'limitValue'=>$value,'limitMax'=>$maximum]],409);
     }
     private static function bounded(array $context, array $requests, string $stage, string $phase): void
-    { self::limit(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)),4194304,'context_bytes',$phase,$stage); }
+    { self::limit(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)),20971520,'context_bytes',$phase,$stage); }
     private static function deadline(array $offer, string $choice): int
     {
         $end = $offer['checked']['expires_at'];
@@ -230,7 +230,7 @@ final class AnyTourTourvisorPreviewGateway
         }
         self::limit(count($requests),640,'request_count','admission',$stage,false);
         self::limit(strlen(json_encode([$s['tourvisor_context'] ?? [],$requests],JSON_THROW_ON_ERROR)),
-            4194304,'context_bytes','admission',$stage,false);
+            20971520,'context_bytes','admission',$stage,false);
         if ($search) {
             self::need(is_array($r['params']),'tv_invalid_request');
             $allowed = ['departureId','countryId','dateFrom','dateTo','nightsFrom','nightsTo','adults','childs','meal',
