@@ -60,6 +60,34 @@ rendered-матрица, независимый просмотр кадров и
 
 ### Текущая точка и выполненная работа
 
+Пакет `native-stay-labels-20261025-v1` продолжает принятый LOCAL handoff
+[#2690/6398018102](https://github.com/pyatkoff/poisk-turov-test/issues/2690#issuecomment-6398018102).
+До исправления native предпочитал raw room/meal из quote и терял уже принятое
+hotel-scoped LOCAL название на туре/контакте. PR4893/source5b0a4cb5e7a9ca9c5e05592d00c2074f7c879abc
+принят и слит receiving61df4576b51b74446657e3b8ae010b396bcfc3c4.
+LOCAL helper сохраняет прежний двухаргументный API; необязательный fallback
+позволяет native отличить отсутствие mapping от принятой подписи, совпавшей с
+canonical alias. Неизвестные/чужие/изменённые raw qualifiers остаются исходными;
+словарь и сопоставления не добавлены. Offer/tour/party/price/receipt не изменяются.
+
+Источник прошёл все применимые exact-head CI; native40198510808/artifact12600813334
+и четыре затронутых compiled PNG430/1280@100 приняты root+independent reviewer.
+Actual artifact semantic gate выполнен до product merge, сохранённый ZIP переиспользуется.
+Фактическая установка завершена: [terminal6399188675](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6399188675),
+source5b0a4cb5/runtime61df4576/publish40203794601; 855 файлов, ровно пять изменённых.
+Target `c21a2ccc97d3cf0521909061c3112c5603b7c3371f055fcc5ac23b2310add130`,
+native manifest `5a534ca0c1c556e1155ae3795a0e8f0afcb1984e46314d43090f45808db99cb3`.
+Команда6399065639 CONSUMED/NO REPLAY; предыдущая4442 сохранена для rollback.
+Приёмка четырёх actual installed кадров ещё выполняется в этом же пакете;
+публикация не объявляет её завершённой. Конечный carrier — существующий
+`tests/search3-design-v2-native-installed.cjs --stay-labels-only`, QA-only ветка
+`test/design-v2-installed-stay-labels-20261025`. Только tour/contact2PNG на каждой
+из двух ширин; actual installed bridge+data helper hash-verified, canonical responses
+fictional, supplier/API/analytics/realLead0. Back/resize/reopen не добавляют операций;
+855 compiled runtime bytes QA должны равняться принятому продукту.
+Старые24/meal6/LeadC2 кадры и погашенные supplier-контексты не повторяются.
+
+
 Точечный QA-only проход `native-lead-c2-20261022-v1` закрывает только заранее
 названное недостающее evidence10.C2 «понятное действие и фокус»;
 [паспорт/claim6334223508](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334223508).
@@ -69,7 +97,10 @@ Back/Forward, понятные labels/preview-action и сохранённый e
 Только четыре новых viewport PNG; прежний полный corpus/meal delta не повторяются.
 Продуктовые байты4442 и публикация39518137791 не меняются. Отдельные full keyboard
 11.C1, physical Safari, delivery и refactor остаются отложенными/not_measured.
-Оценка10.C2 появится только после фактического CI и независимого review.
+Проход10.C2 завершён и принят22.10: [6334420464](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334420464),
+[SEARCH-QUALITY-1/6334409239](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6334409239).
+QA-only receiving d11dda2 не менял installed4442; существующие 855 runtime bytes равны продукту.
+Не повторять закрытый Lead C2 corpus или CI без новых bytes/evidence/дефекта.
 
 Поручение владельца 21.10 — объединить питание в фильтрах через LOCAL;
 реализация опубликована одним пакетом. Его конечное закрытие определяется
@@ -78,7 +109,7 @@ actual installed приёмкой ниже, а не фактом merge или п
 текущей работой или условием продолжения. Новые supplier-запросы для фильтров
 не нужны: проверка использует сохранённые предложения и deterministic fixtures.
 
-- Установлен source `4442cec9921d0888b43cc7a7137385f1e6223c48`, runtime release
+- Предшествующая установка source `4442cec9921d0888b43cc7a7137385f1e6223c48`, runtime release
   `43c6a56e06a7fd634a603e24a890f745c5e49773`, publish run `39518137791`.
   855 файлов; target digest
   `45ca6fe2db4d700607442a71e32892724ff60e9dcba45eebd24ecd751c3ae741`,
