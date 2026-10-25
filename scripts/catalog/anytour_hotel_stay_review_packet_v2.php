@@ -200,10 +200,16 @@ final class AnyTourHotelStayReviewPacketV2
             throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_COHORTS');
         }
 
-        $items=[];$blocked=[];$seen=[];
+        $items=[];$blocked=[];$seen=[];$seenCohorts=[];
         foreach ($cohorts as $cohort) {
             if (!is_array($cohort)||($cohort['reviewState']??null)!=='needs-review') continue;
             $base=self::cohortBase($cohort);
+            $scope=$base;unset($scope['observedCount'],$scope['lastSeenAt']);
+            $cohortKey=self::json([$scope,$cohort['roomRaw']??null,$cohort['mealRaw']??null]);
+            if (isset($seenCohorts[$cohortKey])) {
+                throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_DUPLICATE_ITEM');
+            }
+            $seenCohorts[$cohortKey]=true;
             $hotelChoices=$concepts[$base['hotelId']]??['room'=>[],'meal'=>[]];
             $match=$cohort['match']??null;
             if (!is_array($match)) throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_MATCH');
@@ -218,11 +224,26 @@ final class AnyTourHotelStayReviewPacketV2
                     $base,$kind,$raw,$status,$hotelChoices[$kind]??[],$actionable
                 );
                 if (isset($seen[$item['itemId']])) {
-                    throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_DUPLICATE_ITEM');
+                    // One room can occur with different meals, and vice versa.
+                    // Only disjoint pair cohorts with identical review facts combine.
+                    $previous=$seen[$item['itemId']];
+                    $previousFacts=$previous;$itemFacts=$item;
+                    unset($previousFacts['observedCount'],$previousFacts['lastSeenAt']);
+                    unset($itemFacts['observedCount'],$itemFacts['lastSeenAt']);
+                    if ($previousFacts!==$itemFacts) {
+                        throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_DUPLICATE_ITEM');
+                    }
+                    if ($item['observedCount']>PHP_INT_MAX-$previous['observedCount']) {
+                        throw new InvalidArgumentException('HOTEL_STAY_REVIEW_PACKET_OBSERVED');
+                    }
+                    $item['observedCount']+=$previous['observedCount'];
+                    $item['lastSeenAt']=max($previous['lastSeenAt'],$item['lastSeenAt']);
                 }
-                $seen[$item['itemId']]=true;
-                if ($actionable) $items[]=$item; else $blocked[]=$item;
+                $seen[$item['itemId']]=$item;
             }
+        }
+        foreach ($seen as $item) {
+            if ($item['actionable']) $items[]=$item; else $blocked[]=$item;
         }
         usort($items,static fn(array $a,array $b)=>strcmp($a['itemId'],$b['itemId']));
         usort($blocked,static fn(array $a,array $b)=>strcmp($a['itemId'],$b['itemId']));
