@@ -352,3 +352,41 @@ identical afterward. No include/key read, flag/config/session mutation, readines
 HTTP, supplier/DB/booking/lead call or frontend change is introduced. Old six
 rendered programs retain their exact bytes. Drift holds; consumed/UNKNOWN does
 not retry or permit aliases. Source/CI/review and actual installation are separate.
+
+## One-file cached selection revocation update — 25 October2026
+
+Application PR4866 is merged at FEATUREa4a12e6a84d39397b2457bc3acdde0a738b8b744.
+Its cache admission refuses earlier ready tour/flight/selection responses after
+the exact retained offer is revoked. Source CI and source merge are distinct from
+installation and actual supplier/customer acceptance.
+
+The fixed `install-tv-cache-revocation` profile admits only that exact source and
+operation `int-anex-tv-cache-revocation-install-20261025-v1`. It reuses the SAME
+one-helper maintenance installer/completion, stock backup, native PHP lint,
+atomic replacement, exact readback and rollback. Only the private
+app/integrations/tourvisor-preview-gateway.php may change, from
+`eeddf0e80770f37c6c4bba49506b4624b8a1d380fa287f6f885be445c2c18e65`
+to `c97fc0c2f86381a434ccfa61fa4f7a857abf704f52e58fe9b265dc04ccc945c6`.
+The already-installed diagnostic client302fbeba, other private runtime files,
+three ANEX dependencies and all typed public pins remain exact. Six files are
+checked; exactly one changed file and zero creates are required for completion.
+
+The accepted enabled parent16049bcc and configfaea72b8/mode0644 are checked
+before planning, immediately before replacement and after installation; their
+identity and bytes must remain unchanged. No config/flag/key/session/SEARCH,
+public root, readiness HTTP, provider, DB, booking or lead change is included.
+Old seven rendered command programs remain byte-identical; fixed source/ID,
+concurrency, original consumed/UNKNOWN records and all existing admission guards
+remain in force. Any drift holds before write; postwrite failure uses the same
+rollback. No retry, alternate ID or generic install fallback is authorized.
+
+Native tests reuse the existing diagnostic maintenance suite with exact f4d,
+771e and a4a source fixtures, covering sole changed target, unchanged endpoint,
+config/parent/dependency/source drift, prewrite race, postwrite rollback, immutable
+replay receipt and strict rejection of forged completion. Workflow changes add
+only the pinned a4a fixture and its test environment variable.
+
+This control package prepares source/mandatory CI only. Protected maintenance
+review and an exclusive runtime claim must precede the one server command.
+Actual installation needs its own original verified receipt; no supplier outage
+probe, live410 provocation, customer send or paid replay fills this acceptance.

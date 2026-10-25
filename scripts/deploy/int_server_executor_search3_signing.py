@@ -7,6 +7,12 @@ from __future__ import annotations
 
 import ast
 
+TV_CACHE_MODE = 'install-tv-cache-revocation'
+TV_CACHE_OPERATION = 'int-anex-tv-cache-revocation-install-20261025-v1'
+TV_CACHE_SOURCE = 'a4a12e6a84d39397b2457bc3acdde0a738b8b744'
+TV_CACHE_PATH = 'app/integrations/tourvisor-preview-gateway.php'
+TV_CACHE_SHA = 'c97fc0c2f86381a434ccfa61fa4f7a857abf704f52e58fe9b265dc04ccc945c6'
+
 TV_DIAGNOSTIC_MODE = 'install-tv-client-diagnostics'
 TV_DIAGNOSTIC_OPERATION = 'int-anex-tv-client-diagnostics-install-20261025-v1'
 TV_DIAGNOSTIC_SOURCE = '771e3834ed8b232b21a33e68cc0dda97a82a32f0'
@@ -26,7 +32,7 @@ TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8a
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -79,13 +85,17 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-client-diagnostics-install-' if mode == TV_DIAGNOSTIC_MODE else
+        prefix = ('int-anex-tv-cache-revocation-install-' if mode == TV_CACHE_MODE else
+                  'int-anex-tv-client-diagnostics-install-' if mode == TV_DIAGNOSTIC_MODE else
                   'int-anex-tv-session-gateway-recovery-' if mode == TV_RECOVERY_MODE else
                   'int-anex-tv-session-gateway-enable-' if mode == TV_ENABLE_MODE else
                   'int-anex-tv-session-gateway-install-' if mode == TV_MODE else
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_CACHE_MODE:
+            need(operation == TV_CACHE_OPERATION, 'tv_cache_single_operation')
+            need(source == TV_CACHE_SOURCE, 'tv_cache_source')
         if mode == TV_DIAGNOSTIC_MODE:
             need(operation == TV_DIAGNOSTIC_OPERATION, 'tv_diagnostic_single_operation')
             need(source == TV_DIAGNOSTIC_SOURCE, 'tv_diagnostic_source')
@@ -274,6 +284,8 @@ DISPATCH = r'''
 def activate(core, command):
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_CACHE_MODE:
+        return activate_tv_cache(core, command)
     if command.get('mode') == TV_DIAGNOSTIC_MODE:
         return activate_tv_diagnostics(core, command)
     if command.get('mode') == TV_RECOVERY_MODE:
@@ -812,19 +824,18 @@ def tv_diagnostic_boundary():
 '''
 
 
-def completed_tv_diagnostics(command, result):
-    pins=TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA}
-    proof={'source_sha':TV_DIAGNOSTIC_SOURCE,'files':pins,'activation_performed':False,
+def _completed_tv_maintenance(command, result, mode, operation, source, pins):
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
            'configuration_changed':False,'signing_custody_changed':False}
     basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
            'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
            'receipt_and_configuration_unchanged':True}
     install=result.get('install');manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
     public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
-    return (command=={'source_sha':TV_DIAGNOSTIC_SOURCE,'mode':TV_DIAGNOSTIC_MODE,'operation_id':TV_DIAGNOSTIC_OPERATION}
+    return (command=={'source_sha':source,'mode':mode,'operation_id':operation}
         and all(result.get(k)==v for k,v in command.items())
         and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
-        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==TV_DIAGNOSTIC_SOURCE
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
         and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
         and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':6,'changed_files':1,'created_files':0}.items())
         and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
@@ -838,14 +849,14 @@ def completed_tv_diagnostics(command, result):
         and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
 
 
-def activate_tv_diagnostics(core, command):
+def _activate_tv_maintenance(core, command, mode, source, path, sha, previous_pins, completed):
     # Reuse the existing installer, backups, atomic replacement, lint, readback and rollback.
     # This adaptation is exclusive to the new fixed one-helper operation; historical programs stay byte-identical.
     activate_tv(core, command)
     remote=core.REMOTE
-    pins=TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA}
-    previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in TV_PINS.items()}
-    for name,old,new in [('TV_GATEWAY_MODE',TV_MODE,TV_DIAGNOSTIC_MODE),('TV_SOURCE',TV_SOURCE,TV_DIAGNOSTIC_SOURCE),
+    pins=previous_pins|{path:sha}
+    previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in previous_pins.items()}
+    for name,old,new in [('TV_GATEWAY_MODE',TV_MODE,mode),('TV_SOURCE',TV_SOURCE,source),
                          ('TV_PINS',TV_PINS,pins),('TV_PREVIOUS',TV_PREVIOUS,previous)]:
         anchor=name+'='+repr(old);need(remote.count(anchor)==1,'tv_diagnostic_stock_drift')
         remote=remote.replace(anchor,name+'='+repr(new),1)
@@ -857,14 +868,34 @@ def activate_tv_diagnostics(core, command):
     remote=remote.replace(anchor,"    tv_diagnostic_boundary()\n"+anchor,1)
     anchor="    if mode==TV_GATEWAY_MODE: tv_gateway_preflight()\n    install_started=True\n"
     need(remote.count(anchor)==1,'tv_diagnostic_stock_drift')
-    remote=remote.replace(anchor,"    if changed!="+repr([TV_DIAGNOSTIC_PATH])+":fail('tv_diagnostic_exact_delta')\n"+anchor,1)
+    remote=remote.replace(anchor,"    if changed!="+repr([path])+":fail('tv_diagnostic_exact_delta')\n"+anchor,1)
     before="        result['tv_gateway_public_before']=tv_gateway_public()\n"
     after="        result['tv_gateway_public_after']=tv_gateway_public()\n"
     need(remote.count(before)==1 and remote.count(after)==1,'tv_diagnostic_stock_drift')
     remote=remote.replace(before,"        result['diagnostic_basis_before']=tv_diagnostic_boundary()\n"+before,1)
     remote=remote.replace(after,"        result['diagnostic_basis_after']=tv_diagnostic_boundary()\n"+after,1)
-    remote=remote.replace("'install-tv-session-gateway'",repr(TV_DIAGNOSTIC_MODE))
+    remote=remote.replace("'install-tv-session-gateway'",repr(mode))
     ast.parse(remote)
-    complete=core.completed_result
-    core.completed_result=lambda cmd,r:completed_tv_diagnostics(cmd,r) if cmd.get('mode')==TV_DIAGNOSTIC_MODE else complete(cmd,r)
+    original_complete=core.completed_result
+    core.completed_result=lambda cmd,r:completed(cmd,r) if cmd.get('mode')==mode else original_complete(cmd,r)
     core.REMOTE=remote
+
+
+def completed_tv_diagnostics(command, result):
+    return _completed_tv_maintenance(command,result,TV_DIAGNOSTIC_MODE,TV_DIAGNOSTIC_OPERATION,
+        TV_DIAGNOSTIC_SOURCE,TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA})
+
+
+def activate_tv_diagnostics(core, command):
+    return _activate_tv_maintenance(core,command,TV_DIAGNOSTIC_MODE,TV_DIAGNOSTIC_SOURCE,
+        TV_DIAGNOSTIC_PATH,TV_DIAGNOSTIC_SHA,TV_PINS,completed_tv_diagnostics)
+
+
+def completed_tv_cache(command, result):
+    return _completed_tv_maintenance(command,result,TV_CACHE_MODE,TV_CACHE_OPERATION,TV_CACHE_SOURCE,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_CACHE_PATH:TV_CACHE_SHA})
+
+
+def activate_tv_cache(core, command):
+    return _activate_tv_maintenance(core,command,TV_CACHE_MODE,TV_CACHE_SOURCE,TV_CACHE_PATH,TV_CACHE_SHA,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA},completed_tv_cache)
