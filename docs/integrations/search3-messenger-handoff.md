@@ -240,3 +240,28 @@ its original durable operation remains UNKNOWN and cannot replay. This restores
 observability lost in the extraction; it does not establish historical supplier
 root cause or prove recovery. Installation and a later justified new live case
 remain separate from this source/fixture evidence.
+### Local checked-tour mismatch diagnostics — 25 October 2026
+
+The consumed ordinary case6394618977 proved a real local `tv_tour_mismatch`
+HTTP409. Fixed retained-only inspection6394721203 found neither the pending
+response nor passive receipt, so its exact failing field remains unknown. These
+cases must not be replayed or used to infer an upstream failure or a price.
+
+The gateway keeps the same seven strict comparisons and public error/status.
+Only that rejection now uses the already supported InteractiveFailure envelope
+with `diagnostics.provider=tourvisor`, `stage=tour`, `category=context`.
+`mismatchFields` is a nonempty ordered subset of `tour_id, hotel_id, adults,
+children, departure_id, date, nights`; `mismatchTypes` contains exactly those
+keys, each with `supplier` and `context` drawn only from `null, integer, string,
+number, boolean, array, other`. If date differs, `dateFormats` contains exactly
+`supplier/context`, each one of `iso, dmy, other, non-string`. Formats describe
+syntax only, never calendar validity or equivalent dates. No compared values,
+IDs, money, supplier text, paths, URLs, tokens or response bodies are emitted.
+
+Success replies, invalid-ID classification, UNKNOWN/no-replay and all expiry,
+price, party, revocation, transport and lead rules remain unchanged. No coercion,
+date conversion, fallback, new store or extra supplier attempt is added. The
+HTTP owner already forwards this safe typed envelope; no API/transport edit is
+needed. SEARCH may preserve these optional fixed facts through its existing
+diagnostic channel while keeping user copy and behavior. Source/CI/installation
+and a future actual diagnostic observation remain separate acceptances.
