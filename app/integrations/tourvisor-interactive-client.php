@@ -105,6 +105,24 @@ final class TourvisorInteractiveClient
         ];
     }
 
+    /** Same fixed categories/numeric facts as root; no path, ID, token or supplier text. */
+    public static function failureDiagnostics(string $path, int $errno, int $status, float $seconds): array
+    {
+        $stage = 'other';
+        if ($path === '/tours/search') $stage = 'search_start';
+        elseif (preg_match('~\A/tours/search/[1-9][0-9]*/status\z~D', $path)) $stage = 'search_status';
+        elseif (preg_match('~\A/tours/search/[1-9][0-9]*/continue\z~D', $path)) $stage = 'search_continue';
+        elseif (preg_match('~\A/tours/search/[1-9][0-9]*\z~D', $path)) $stage = 'search_results';
+        elseif (preg_match('~\A/tours/[^/]+/flights\z~D', $path)) $stage = 'flights';
+        elseif (preg_match('~\A/tours/[^/]+\z~D', $path)) $stage = 'tour';
+        $facts = ['provider'=>'tourvisor', 'stage'=>$stage,
+            'category'=>$errno !== 0 ? ($errno === 28 ? 'timeout' : 'transport') : 'http'];
+        if ($status >= 0 && $status <= 599) $facts['httpStatus'] = $status;
+        if ($errno >= 0 && $errno <= 999) $facts['curlErrno'] = $errno;
+        if (is_finite($seconds) && $seconds >= 0 && $seconds <= 3600) $facts['elapsedMs'] = (int)round($seconds * 1000);
+        return $facts;
+    }
+
     public static function get(string $path, array $params, string $token): array
     {
         if ($token === '') self::fail('Tourvisor is not configured',500);
@@ -116,12 +134,16 @@ final class TourvisorInteractiveClient
             CURLOPT_HTTPHEADER=>['Authorization: Bearer ' . $token,'Accept: application/json'],
         ]);
         $body = curl_exec($ch); $errno = curl_errno($ch);
-        $code = (int)curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
-        if ($errno) self::fail('Tourvisor connection error',502);
-        $decoded = json_decode((string)$body,true);
+        $code = (int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+        $seconds = (float)curl_getinfo($ch,CURLINFO_TOTAL_TIME); curl_close($ch);
+        if ($errno) self::fail('Tourvisor connection error',502,
+            ['diagnostics'=>self::failureDiagnostics($path,$errno,$code,$seconds)]);
+        // Never decode or return upstream error bodies, including oversized error JSON.
         if ($code < 200 || $code >= 300) {
-            self::fail('Tourvisor request failed',($code >= 400 && $code < 600) ? $code : 502,['upstreamStatus'=>$code]);
+            self::fail('Tourvisor request failed',($code >= 400 && $code < 600) ? $code : 502,
+                ['upstreamStatus'=>$code,'diagnostics'=>self::failureDiagnostics($path,$errno,$code,$seconds)]);
         }
+        $decoded = json_decode((string)$body,true);
         return is_array($decoded) ? $decoded : ['raw'=>self::text((string)$body,1000)];
     }
 }

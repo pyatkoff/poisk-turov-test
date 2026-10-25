@@ -219,3 +219,16 @@ change SEARCH transport/UI, or send to customers. The installation package must
 carry exact helpers/API dependencies and preserve all existing root/control
 guards; SEARCH later consumes one accepted installed receipt and routes the
 ordinary TV scenario once, with no parallel root requests or paid replay.
+
+## Shared TV failure diagnostics — 25 October2026, source delta
+
+The extracted interactive client retains the existing root gateway's safe failure
+facts: fixed provider/stage/category, measured HTTP status, cURL errno and elapsed
+milliseconds when bounded numeric values are available. No path/offer/search ID,
+query, credential, supplier body or raw cURL message is returned. HTTP error bodies
+are rejected before JSON decoding. Status/error codes, one attempt and10s/45s
+timeouts stay unchanged; the private gateway propagates the same failure while
+its original durable operation remains UNKNOWN and cannot replay. This restores
+observability lost in the extraction; it does not establish historical supplier
+root cause or prove recovery. Installation and a later justified new live case
+remain separate from this source/fixture evidence.
