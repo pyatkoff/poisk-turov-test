@@ -53,6 +53,8 @@ on:
       - 'scripts/diagnostics/local_tv_content_v1.php'
       - 'tests/int_server_executor_local_tv_content_test.py'
       - 'scripts/deploy/int_server_executor_local_tv_capture.py'
+      - 'scripts/deploy/int_server_executor_local_stay_read.py'
+      - 'tests/int_server_executor_local_stay_read_test.py'
       - 'scripts/diagnostics/local_tv_capture_v1.php'
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'
@@ -101,6 +103,19 @@ jobs:
         with:
           php-version: '8.3'
           extensions: pdo_mysql, pdo_sqlite, mbstring
+      - name: Exact accepted LOCAL stay read source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 516ab32e7ea3f23e0d071343143e207e3d9bbefe
+          path: local-stay-source
+          persist-credentials: false
+      - name: LOCAL fixed anchor read controller and actual read-only terminal
+        env:
+          LOCAL_STAY_SOURCE_ROOT: ${{ github.workspace }}/local-stay-source
+          LOCAL_STAY_TEST_PASSWORD: local_tv_schema_test_only
+        run: |
+          python3 -m py_compile scripts/deploy/int_server_executor_local_stay_read.py
+          python3 tests/int_server_executor_local_stay_read_test.py -v
       - name: Exact reviewed private TV session gateway source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
