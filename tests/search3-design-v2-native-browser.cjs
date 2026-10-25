@@ -495,7 +495,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
   const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead','quote-unavailable':'tour','flights-unavailable':'tour','meal-families':width===430?'filters':'results','meal-family-details':width===430?'filters':'results'}[logicalScreen];
-  assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact','local-stay-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed','local-stay-tour'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.screen==='tour'){
       const notes=measurements.readableText.filter(item=>item.kind==='tour-conditions-note');
@@ -1684,7 +1684,11 @@ if(require.main===module)(async()=>{
         assert.equal(stayFacts.rawRoom,'standard land view');assert.equal(stayFacts.rawMeal,'AI');
         assert.equal(stayFacts.total,163400);
         await capture(page,'native',width,percent,'local-stay-contact',row);
-        row.proof.localStay={...stayFacts,actualDataHelper:true,roomMealRetained:true,extraPassiveOperations:0};
+        await actualProduct.locator('[data-screen="lead"] [data-action="tour"]').click();
+        await actualProduct.locator('[data-screen="tour"]').waitFor({state:'visible'});
+        assert.equal(await actualProduct.locator('[data-tour-room]').innerText(),'Стандарт · территория');
+        assert.equal(await actualProduct.locator('[data-tour-meal]').innerText(),'Программа питания отеля');
+        row.proof.localStay={...stayFacts,actualDataHelper:true,roomMealRetained:true,backRetained:true,extraPassiveOperations:0};
         const finalDenials=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
         assert.deepEqual(finalDenials,{search:1,other:0,quote:3,flights:2});
         row.proof.permanentDenials={...denialProof,differentAllowedOfferReady:true,canonicalBridgeSHA256:manifest.files['bridge.js'],calls:finalDenials};
