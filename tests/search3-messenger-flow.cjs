@@ -7,7 +7,7 @@ const runner="function test(name,fn){fn();count++;console.log('PASS '+name);}";
 assert.ok(fixtures.includes(runner));fixtures=fixtures.replace(runner,'function test(){}');
 fixtures=fixtures.slice(0,fixtures.lastIndexOf('\nconsole.log('));
 const harness=vm.createContext({require,__dirname,structuredClone,console:{log(){throw Error('old baseline executed');}}});
-vm.runInContext(fixtures+'\nglobalThis.fixtureOwner={applicationFixture,api,existingCasesRun:count,setClock:value=>time=value,clock:()=>time};',harness);
+vm.runInContext(fixtures+'\nglobalThis.fixtureOwner={applicationFixture,tourvisorFixture,api,existingCasesRun:count,setClock:value=>time=value,clock:()=>time};',harness);
 assert.equal(harness.fixtureOwner.existingCasesRun,0);
 const io=[];
 const root={fetch(){io.push('fetch');throw Error('unexpected transport');},localStorage:new Proxy({},{get(){io.push('storage');throw Error('unexpected storage');}}),document:new Proxy({},{get(){io.push('DOM');throw Error('unexpected DOM');}})};
@@ -128,6 +128,30 @@ test('The same operation cannot be replayed through a fresh capture of identical
   const x=setup(action=>action==='handoff_create'?Promise.reject(Error('timeout')):undefined);await x.flow.prepare(x.snapshot);await x.flow.create(x.snapshot);
   const fresh=x.selection.capture();await x.flow.prepare(fresh);await x.flow.create(fresh);
   assert.equal(x.calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(x.calls.at(-1).action,'handoff_status');
+});
+test('TV manager and exact-pair preparation retain the original server deadline through reopen and CREATE',async()=>{
+ for(const manager of [true,false]){
+  const owner=harness.fixtureOwner;owner.setClock(1800000000000);
+  const input=owner.tourvisorFixture(manager),selection=owner.api.createSession(()=>input,owner.clock),snapshot=selection.capture(),calls=[];
+  const observation={...plain(snapshot),price:{...plain(snapshot.price),expiresAt:owner.clock()/1000+30}};
+  const flow=api.createSession({selection,clock:owner.clock,request:async(action,fields)=>{
+   calls.push({action,fields:plain(fields||{})});
+   if(action==='handoff_token')return {ok:true,csrf};
+   if(action==='handoff_freeze')return {ok:true,data:{operation_id:id,state:'prepared',observation}};
+   return {ok:true,data:{operation_id:id,state:'ready',links:validLinks}};
+  }});
+  assert.equal((await flow.prepare(snapshot)).state,'prepared');assert.deepEqual(calls[1].fields,{...plain(input.selector),csrf});
+  assert.equal(calls.some(c=>c.action==='handoff_create'),false);assert.equal((await flow.create(snapshot)).state,'ready');
+  owner.setClock(observation.price.expiresAt*1000);assert.equal(flow.view(snapshot).state,'expired');assert.equal(flow.link(snapshot,'telegram'),null);
+  await flow.create(snapshot);assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);
+  const fresh=selection.capture();assert.equal((await flow.prepare(fresh)).state,'expired','reopen cannot renew the frozen deadline');
+  await flow.create(fresh);assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(flow.link(fresh,'max'),null);
+ }
+});
+test('TV freeze without its authoritative original expiry cannot enable CREATE',async()=>{
+ const owner=harness.fixtureOwner,input=owner.tourvisorFixture(true),selection=owner.api.createSession(()=>input,owner.clock),snapshot=selection.capture(),calls=[];
+ const flow=api.createSession({selection,request:async(action)=>{calls.push(action);return action==='handoff_token'?{ok:true,csrf}:{ok:true,data:{operation_id:id,state:'prepared',observation:plain(snapshot)}};}});
+ assert.equal((await flow.prepare(snapshot)).state,'unavailable');await flow.create(snapshot);assert.deepEqual(calls,['handoff_token','handoff_freeze']);
 });
 (async()=>{
   for(const {name,fn} of tests){await fn();console.log('PASS '+name);}

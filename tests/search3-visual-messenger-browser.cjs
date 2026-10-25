@@ -6,6 +6,139 @@ const {fixture,trip,profile,day,back}=require('./search3-visual-live-fixture.cjs
 const plain=value=>JSON.parse(JSON.stringify(value));
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const waitFor=(promise,label)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(label+' did not start')),10000);promise.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});
+const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
+// Accepted HTTP interface only. The native fictional fixture supplies DTOs;
+// these retained records never come from a DOM or a submitted browser price.
+function privateTVFixture(transport,origin,{minimum=false}={}){
+ const calls=[],members=new Map(),checked=new Map(),pairs=new Map(),observations=new Map(),generation=37,search_ref='d'.repeat(32),csrf='a'.repeat(64);let params;
+ const pin=(ref,choice_ref)=>({provider:'tourvisor',generation,search_ref,offer_ref:ref,local_hotel_id:members.get(ref).hotelId,choice_ref});
+ const native=async(action,fields={})=>transport.json(origin+'/api-v2.php?'+new URLSearchParams({action,...fields}));
+ const text=v=>String(v&&typeof v==='object'?v.russianName||v.name||v.fullName||'':v??'').trim();
+ const legs=values=>values.map(v=>({label:text(v.number)+' · '+text(v.departure.port.shortName??v.departure.port.id)+' → '+text(v.arrival.port.shortName??v.arrival.port.id)+' · '+text(v.departure.date)}));
+ async function handle(action,body,method){
+  if(!String(action).startsWith('tv_'))return undefined;
+  calls.push({action,method,body:plain(body)});
+  if(action==='tv_token'){assert.equal(method,'GET');return {ok:true,csrf,provider:'tourvisor'};}
+  assert.equal(method,'POST');assert.equal(body.provider,'tourvisor');assert.equal(body.csrf,csrf);assert.match(body.request_id,/^[a-f0-9]{32}$/);
+  const shape=['action','provider','request_id','csrf',...(action==='tv_search'?['params']:['generation','search_ref']),...(['tv_tour','tv_flights','tv_select'].includes(action)?['offer_ref']:[]),...(action==='tv_select'?['choice_ref']:[])];
+  assert.deepEqual(Object.keys(body).sort(),shape.sort(),'private TV exact interface');
+  if(action!=='tv_search'){assert.equal(body.generation,generation);assert.equal(body.search_ref,search_ref);}
+  let data=null,extra={};
+  if(action==='tv_search'){params=plain(body.params);data=await native('search_start');}
+  else if(action==='tv_status')data=await native('search_status');
+  else if(action==='tv_continue')data=await native('search_continue');
+  else if(action==='tv_results'){
+   data=await native('search_results',{limit:1000});
+   if(minimum)data=data.map(h=>({...h,tours:h.tours.map(t=>({...t,price:90000,operator:{name:'FUN&SUN'}}))}));
+   extra.offers=data.flatMap(h=>h.tours.map(t=>{const ref='tourvisor:'+digest('tourvisor:tour:'+t.id);members.set(ref,{tourId:t.id,hotelId:Number(h.id)});return {offer_ref:ref,local_hotel_id:Number(h.id)};}));
+  }else{
+   const member=members.get(body.offer_ref);assert(member,'only a returned offer is retained');
+   if(action==='tv_tour'){
+    data={...await native('tour',{tourId:member.tourId}),departure:'Москва'};
+    if(minimum)data={...data,price:90000,operator:{name:'FUN&SUN'}};
+    checked.set(body.offer_ref,{tour:plain(data),expiresAt:Math.floor(Date.now()/1000)+600});extra={selector:pin(body.offer_ref,'manager-deferred'),record_sha256:'a'.repeat(64)};
+   }else if(action==='tv_flights'){
+    data=await native('flights',{tourId:member.tourId});extra.choices=data.map((value,index)=>({index,choice_ref:'tourvisor_pair:'+digest(JSON.stringify(value))}));
+    pairs.set(body.offer_ref,new Map(extra.choices.map(p=>[p.choice_ref,plain(data[p.index])])));
+   }else if(action==='tv_select'){
+    assert(checked.has(body.offer_ref));assert(body.choice_ref==='manager-deferred'||pairs.get(body.offer_ref)?.has(body.choice_ref));extra={selector:pin(body.offer_ref,body.choice_ref),record_sha256:'b'.repeat(64)};
+   }else throw Error('Unexpected TV action '+action);
+  }
+  return {ok:true,data:{provider:'tourvisor',generation,search_ref,data,...extra}};
+ }
+ function freeze(fields){
+  const {offer_ref,choice_ref}=fields,member=members.get(offer_ref),fact=checked.get(offer_ref);assert(member&&fact);
+  assert.deepEqual(fields,pin(offer_ref,choice_ref));assert(calls.some(c=>c.action==='tv_select'&&c.body.offer_ref===offer_ref&&c.body.choice_ref===choice_ref));
+  const key=offer_ref+'|'+choice_ref;if(observations.has(key))return observations.get(key);
+  const tour=fact.tour,pair=choice_ref==='manager-deferred'?null:pairs.get(offer_ref)?.get(choice_ref);if(choice_ref!=='manager-deferred')assert(pair);
+  const price=pair?.price??tour.price,amount=String(price&&typeof price==='object'?price.value:price);
+  const observation={schema:1,kind:'search3_browser_observation',capturedAt:Date.now(),source:'tourvisor',hotel:{uiId:member.hotelId,namespace:'search3-ui',name:profile.name,resort:'Белек'},
+   trip:{origin:text(tour.departure),countryUiId:String(params.countryId),departure:tour.date,nights:tour.nights,stayEnd:null,stayEndBasis:'unknown',adults:params.adults,childAges:plain(params.childs)},
+   stay:{room:text(tour.roomType),meal:text(tour.meal),placement:text(tour.placement),operator:text(tour.operator)},
+   flights:{state:pair?'selected':'manager-deferred',outward:pair?legs(pair.forward):[],inward:pair?legs(pair.backward):[]},
+   price:{amount,currency:'RUB',state:'checked',basis:pair?'selected-pair':'shown-offer',description:'Цена Tourvisor за всю группу; окончательный расчёт не подтверждён.',expiresAt:fact.expiresAt,finalPriceVerified:false,authority:'browser-observation-only'}};
+  const result={operation_id:digest(key).slice(0,32),state:'prepared',observation};observations.set(key,result);return result;
+ }
+ return {calls,handle,freeze};
+}
+
+async function tourvisorJourney({browser,origin,base,output}){
+ const records=[],key='tourvisor%3Avisual-tv-101';
+ for(const width of [430,1280]){
+  const height=width===1280?720:900,transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:true}),calls=[],errors=[],forbidden=[],navigations=[],shots=[];
+  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=tv_fixture_only',max:'https://max.ru/id9704048781_bot?start=tv_fixture_only'};
+  let releaseCreate,startedCreate;const createGate=new Promise(resolve=>releaseCreate=resolve),creating=new Promise(resolve=>startedCreate=resolve);
+  const ready=()=>page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('[data-action="messenger-open"]')];return buttons.length===2&&buttons.every(b=>!b.disabled);});
+  const amount=()=>page.locator('#modal-footer .footer-total>strong').textContent(),row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]');
+  const capture=async(stage,methods=false)=>{
+   const geometry=await page.locator('#modal').evaluate(el=>{
+    const box=n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height};},body=el.querySelector('#modal-body'),footer=el.querySelector('#modal-footer');
+    return {overflow:el.scrollWidth>el.clientWidth+1||body.scrollWidth>body.clientWidth+1||document.documentElement.scrollWidth>innerWidth,body:box(body),footer:box(footer),buttons:[...el.querySelectorAll('#messenger-methods button:not([hidden])')].map(box)};
+   });
+   assert.equal(geometry.overflow,false,stage+' fits the viewport');assert(geometry.footer.bottom<=height+1&&geometry.body.bottom<=geometry.footer.y+1,stage+' footer leaves the content available');
+   if(methods)for(const b of geometry.buttons){assert(b.height>=44);assert(b.x>=geometry.body.x-1&&b.right<=geometry.body.right+1);assert(b.y>=geometry.body.y-1&&b.bottom<=geometry.body.bottom+1,stage+' methods are visible');}
+   const file=`tv-${stage}-${width}x${height}.png`;await page.screenshot({path:path.join(output,file)});shots.push({stage,file,geometry});
+  };
+  try{
+   await page.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=url.searchParams.get('action')||body.action;
+    try{
+     if(Object.values(links).includes(url.href)&&req.isNavigationRequest()){navigations.push(url.href);await route.fulfill({contentType:'text/html',body:'<!doctype html><h1>Fictional TV navigation intercepted</h1>'});return;}
+     assert.equal(url.origin,origin,'external HTTP is forbidden');
+     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+     if(url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+     assert(!(url.pathname==='/api-v2.php'&&/^search_|^(?:tour|flights)$/.test(action)),'actual TV default cannot use root search/quote/flights');
+     const tvReply=await tv.handle(action,body,req.method());if(tvReply!==undefined){await route.fulfill({contentType:'application/json',body:JSON.stringify(tvReply)});return;}
+     let value;
+     if(String(action).startsWith('handoff_')){
+      calls.push({action,body:plain(body)});
+      if(action==='handoff_token'){assert.equal(req.method(),'GET');value={ok:true,csrf};}
+      else{
+       assert.equal(req.method(),'POST');assert.equal(body.csrf,csrf);
+       if(action==='handoff_freeze'){const {action:_,csrf:__,...pins}=body;value={ok:true,data:tv.freeze(pins)};}
+       else{assert.equal(action,'handoff_create');assert.deepEqual(Object.keys(body).sort(),['action','csrf','operation_id']);startedCreate();await createGate;value={ok:true,data:{operation_id:body.operation_id,state:'ready',links}};}
+      }
+     }else value=await transport.json(req.url(),{body:req.postData()});
+     await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'0,12'}));
+   await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified real default');
+   const card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');await card.click();await row().waitFor({state:'visible'});await capture('rooms');
+   assert.equal(tv.calls.some(c=>c.action==='tv_tour'||c.action==='tv_flights'),false,'room entry spends no quote or flights');
+   await page.locator('#hotel-detail-offers').click();await ready();await capture('manager-methods',true);
+   assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
+   assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
+   assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.some(c=>c.action==='tv_flights'),false);
+   const first=calls.find(c=>c.action==='handoff_freeze').body;assert.equal(first.choice_ref,'manager-deferred');assert.equal(first.local_hotel_id,101);
+   assert.equal(calls.some(c=>c.action==='handoff_create'),false,'contact entry never CREATEs');
+   await page.locator('[data-action="messenger-phone"]').click();await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional TV family draft');await page.locator('[name="consent"]').click();
+   const phone=await page.locator('[name="phone"]').elementHandle();await capture('manager-phone');await page.locator('[data-action="messenger-other"]').click();await capture('methods-return',true);
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.evaluate(el=>el===document.querySelector('[name="phone"]'),phone),true);assert.equal(await page.locator('[name="consent"]').isChecked(),true);
+   await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');
+   await row().locator('[data-action="hotel-flights"]').click();await row().locator('[name="flight-pair"][value="1"]').waitFor();
+   assert.equal(await row().locator('[name="flight-pair"]:checked').count(),0,'optional flights never choose pair zero implicitly');
+   await row().locator('[name="flight-pair"][value="1"]').click();await capture('pair-rooms');await page.locator('#hotel-detail-offers').click();await ready();
+   await capture('pair-methods',true);assert.match((await amount()).replace(/\s/g,''),/133500/);
+   const pairFreeze=calls.filter(c=>c.action==='handoff_freeze').at(-1).body;assert.match(pairFreeze.choice_ref,/^tourvisor_pair:[a-f0-9]{64}$/);assert.equal(pairFreeze.offer_ref,first.offer_ref);assert.equal(pairFreeze.generation,first.generation);
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(await page.locator('[name="comment"]').inputValue(),'Fictional TV family draft');assert.equal(await page.locator('[name="consent"]').isChecked(),false,'changed exact pair resets consent');
+   await page.locator('[data-action="messenger-other"]').click();await page.locator('[data-action="messenger-open"][data-platform="telegram"]').click();await waitFor(creating,'TV explicit CREATE');
+   await page.locator('[data-action="messenger-phone"]').click();await page.locator('[data-action="messenger-other"]').click();releaseCreate();await ready();
+   assert.deepEqual(navigations,[],'late CREATE cannot navigate after a changed method intent');await capture('pending-return',true);
+   await page.locator('#modal-back').click();await row().waitFor({state:'visible'});await page.locator('#hotel-detail-offers').click();await ready();
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');await page.locator('[data-action="messenger-other"]').click();await capture('pair-reopen',true);
+   assert.equal(tv.calls.filter(c=>c.action==='tv_token').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_flights').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_select').length,2,'only manager and the exact chosen pair');
+   assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(tv.calls[0].action,'tv_token');assert.deepEqual(tv.calls.find(c=>c.action==='tv_search').body.params.childs,[0,12]);
+   await Promise.all([page.waitForURL(links.max),page.locator('[data-action="messenger-open"][data-platform="max"]').click()]);assert.deepEqual(navigations,[links.max]);
+   assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({provider:'tourvisor',width,height,party:{adults:3,childAges:[0,12]},managerAmount:'90000',pairAmount:'133500.5',managerSelector:first,pairSelector:pairFreeze,actions:tv.calls.map(c=>c.action),rootTVSearchQuoteHTTP:0,quoteCalls:1,flightCalls:1,selectCalls:2,createCalls:1,draftRetained:true,consentResetOnPair:true,lateNavigationCancelled:true,externalNavigationIntercepted:1,shots});
+  }catch(error){await page.screenshot({path:path.join(output,`tv-failure-${width}.png`)}).catch(()=>{});fs.writeFileSync(path.join(output,`tv-failure-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,tv:tv.calls,shots},null,2));throw error;}
+  finally{releaseCreate();await context.close();}
+ }
+ return records;
+}
 
 module.exports=async function messengerJourney({browser,origin,base,evidence}){
  const output=path.join(evidence,'messenger-entry');fs.mkdirSync(output,{recursive:true});
@@ -14,7 +147,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
  const hashes=Object.fromEntries(files.map(file=>[file,hash(path.join(assetRoot,file))]));
  const records=[];
  for(const width of [430,1280]){
-  const height=width===1280?720:900,transport=fixture(),calls=[],errors=[],forbidden=[],navigations=[],shots=[];
+  const height=width===1280?720:900,transport=fixture(),tv=privateTVFixture(transport,origin),calls=[],errors=[],forbidden=[],navigations=[],shots=[];
   transport.state.anexPackageChoiceCount=1;
   const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);
   page.on('pageerror',error=>errors.push(error.message));
@@ -54,6 +187,9 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
       await route.continue();return;
      }
      const body=request.postData()?JSON.parse(request.postData()):{},action=url.searchParams.get('action')||body.action;
+     const tvReply=await tv.handle(action,body,request.method());
+     if(tvReply!==undefined){await route.fulfill({contentType:'application/json',body:JSON.stringify(tvReply)});return;}
+     assert(!(url.pathname==='/api-v2.php'&&/^search_|^(?:tour|flights)$/.test(action)),'actual new entry never sends root TV search/quote HTTP');
      if(String(action).startsWith('handoff_')){
       assert(url.pathname.endsWith('/api-anex-search3-preview.php'));calls.push({action,method:request.method(),fields:plain(body)});
       if(action==='handoff_token'){
@@ -83,6 +219,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
    await page.waitForFunction(()=>!!window.V2_CONFIG);assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3MessengerEnabled),true,'actual NEXT entry enables the flag without a test override');
+   assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'actual NEXT entry enables the private TV session');
    await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();
    await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
    await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
@@ -126,12 +263,14 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze','handoff_create','handoff_freeze'],'Forward refreezes the same retained observation; explicit MAX never repeats CREATE');
    assert.equal(transport.calls.filter(call=>call.action==='quote_calculate').length,1);assert(!transport.calls.some(call=>/lead|booking|payment/.test(call.url)));
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({width,height,selector,amount:selected.price.amount,phoneChoiceOnly:true,sameFormNode:true,draftRetained:true,cancelledPendingNavigation:true,historyForwardMethods:true,priorPhoneScroll,createCalls:1,externalNavigationIntercepted:navigations.length,shots});
+   assert.equal(tv.calls[0].action,'tv_token');assert.equal(tv.calls.filter(c=>c.action==='tv_token').length,1);
+   records.push({provider:'anex',width,height,selector,amount:selected.price.amount,TVSessionInitialized:true,rootTVSearchQuoteHTTP:0,phoneChoiceOnly:true,sameFormNode:true,draftRetained:true,cancelledPendingNavigation:true,historyForwardMethods:true,priorPhoneScroll,createCalls:1,externalNavigationIntercepted:navigations.length,shots});
   }catch(error){
    await page.screenshot({path:path.join(output,`failure-${width}x${height}.png`)}).catch(()=>{});
    fs.writeFileSync(path.join(output,`failure-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,shots},null,2));throw error;
   }finally{releaseCreate();await context.close();}
  }
+ records.push(...await tourvisorJourney({browser,origin,base,output}));
  fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify({schema:1,compiled:!!process.env.SEARCH3_VISUAL_ASSET_ROOT,engine:'Chromium',source_sha:process.env.SEARCH3_SOURCE_SHA||null,asset_sha256:hashes,test_sha256:hash(__filename),records,transport:'fictional-intercepted-HTTP',supplier_HTTP:0,bot_HTTP:0,real_leads:0,installed:false,physical_device:false},null,2)+'\n');
  console.log('PASS compiled messenger430/1280-short: exact tour/explicit phone/same draft/pending intent/one create/intercepted navigation; supplier/bot/lead HTTP0');
 };

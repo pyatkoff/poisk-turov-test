@@ -1,3 +1,55 @@
+## Tourvisor same-session messenger consumer — 25 October 2026
+
+SEARCH claim6392923643 consumes the single accepted INT installed+enabled
+[handoff6392874420](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6392874420).
+Receiver based93761d5506771cacf766feb6074c8898167e5c5 / installed product497f8ba8.
+No private installed/custody/recovery audit, supplier diagnosis or INT case is repeated.
+
+Only the original NEXT live entry opts into the accepted private TV HTTP owner.
+Initialize tv_token once before parallel supplier activity; search/status/results/
+explicit continuation and tour/flight reads use that same private browser session.
+The existing native DTO, parameters and whole-group amounts pass through unchanged.
+Returned opaque offer refs are matched to returned native IDs using the accepted
+identity digest and returned hotel membership; labels, array positions and browser
+prices cannot establish membership. The existing canonical hotel crosswalk is
+required when its UI ID differs from the returned local hotel ID.
+
+Keep one data adapter and the existing Site218 messenger context/flow/contact
+composition. After a current checked TV tour, manager-deferred continuation is
+available without requesting flights. An optional exact returned pair requires its
+own supplied total and retained choice ref. Local tv_select precedes handoff_freeze;
+only private identity pins enter freeze, with no browser amount, party or observation.
+Canonical review terms must match the current selected tour. TV remains a checked
+offer; neither browser observations nor this entry assert final_price_verified.
+The original server observation deadline controls CREATE and links, including
+reopen; it is never renewed locally. Unknown tour/flight results retain the original
+attempt and never retry via a new operation or the root TV path. Search cancellation,
+new selection and changed contact intent reject stale completion/navigation.
+
+The approved Telegram/MAX/optional-phone block reuses existing CSS, lead form,
+draft and consent owner. Pair changes reset consent while ordinary Back/reopen
+preserve the selected tour/pair and permitted draft. No second renderer, controller,
+store, lead transport, money formula, supplier payload, config or protected path.
+
+Focused source VM checks cover the full data owner, private pins/crosswalk and
+no-replay, context, flow deadlines and actual app entry. The existing mandatory
+compiled messenger pass serves the actual marked NEXT entry at430x900 and
+1280x720: retained ANEX path plus one TV family3A+[0,12] manager90000 → optional
+pair133500.5 → phone/draft/consent/Back → delayed CREATE → explicit intercepted MAX.
+All HTTP/native/bot replies are fictional; root TV search/quote HTTP is forbidden.
+The historical full browser matrix explicitly retains its root-protocol fixture
+opt-in, preserving its prior assertions; this does not stand in for the new default.
+No workflow, required gate, supplier budget or viewport permission is changed.
+
+Supplier HTTP0, real CREATE0, customer/lead/booking0. Source/compiled/installed,
+native430/physical and connected real-supplier delivery remain separate stages.
+Before runtime: final exact-head gates and bounded independent delta/frame review,
+release-only merge, separate exclusive stock NEXT-only publisher of that artifact,
+readback and the affected installed boundary. One later justified real TV case
+belongs to one INT executor and one shared receipt, never a parallel SEARCH copy.
+
+---
+
 ## Approved Site224 card-entry transfer — 25 October 2026
 
 Direct owner «давай дальше» after the shown exact PUBLIC Site224 and explicit

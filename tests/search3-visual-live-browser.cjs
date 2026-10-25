@@ -1373,6 +1373,10 @@ const server=http.createServer((req,res)=>{
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
  if(file.endsWith('.php')){
   let html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]=$argv[2]; include $argv[1];',file,u.searchParams.get('scenario')||'']).toString();
+  // This historical matrix specifically covers the retained root TV protocol.
+  // The mandatory --messenger-only pass serves the unmodified real entry and
+  // proves the new private TV default, including zero root search/quote calls.
+  if(!process.argv.includes('--messenger-only'))html=html.replace(' data-search3-tv-session="enabled"','');
   if(u.searchParams.get('loadingMode')==='eager'){
    const cold=html.match(/data-flight-picker-src="([^"]+)"/);assert(cold,'explicit cold asset for controlled eager baseline');
    const initial=html;html=html.replace(/(<script src="\.\/app\.js[^"\n]*" defer><\/script>)/,`<script src="${cold[1]}" defer></script>\n$1`);assert.notEqual(html,initial,'controlled eager baseline inserts before the host');
