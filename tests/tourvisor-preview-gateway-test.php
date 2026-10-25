@@ -26,6 +26,20 @@ function tvg_denied(callable $call,string $code): void {
     catch (\AnyTour\TourvisorInteractiveFailure $e) { tvg_ok(($e->response['error'] ?? null)===$code && $e->httpStatus===409,$code.' safe mismatch envelope'); return; }
     throw new RuntimeException('expected '.$code);
 }
+function tvg_limit(callable $call,string $stage,string $kind,string $phase,int $maximum): array {
+    try { $call(); }
+    catch (\AnyTour\TourvisorInteractiveFailure $e) {
+        $d=$e->response['diagnostics'] ?? [];
+        tvg_ok($e->httpStatus===409 && $e->response['error']==='tv_context_limit'
+            && array_keys($e->response)===['ok','error','diagnostics'],'same local limit code/status, no upstream facts');
+        tvg_ok(array_keys($d)===['provider','stage','category','limitKind','limitPhase','limitValue','limitMax']
+            && $d['provider']==='tourvisor' && $d['stage']===$stage && $d['category']==='limit'
+            && $d['limitKind']===$kind && $d['limitPhase']===$phase && $d['limitMax']===$maximum
+            && is_int($d['limitValue']) && $d['limitValue']>=$maximum,'fixed measured limit profile');
+        return $d;
+    }
+    throw new RuntimeException('expected diagnostic tv_context_limit');
+}
 
 $GLOBALS['tv_wire']=['calls'=>0,'body'=>'{"searchId":91}','status'=>200];
 \AnyTour\TourvisorInteractiveClient::get('/tours/search',['childs'=>[0,0,8],'onlyDirect'=>false],'fixture-token');
@@ -275,12 +289,81 @@ for($i=0;$i<4;++$i)$heavy['tourvisor_requests'][md5('padding'.$i)]=[
     'reply'=>['data'=>str_repeat('x',875000)]];
 $r=$request('tv_tour',['offer_ref'=>$ref]); $largeTour=$tour;$largeTour['padding']=str_repeat('x',400000);
 $largeTransport=static fn():array=>$largeTour;
-tvg_denied(function()use($r,&$heavy,$now,$largeTransport,$catalog,$save,$clock){
+$captureLimit=tvg_limit(function()use($r,&$heavy,$now,$largeTransport,$catalog,$save,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$heavy,$now,$largeTransport,$catalog,$save,$clock);
-},'tv_context_limit');
+},'tour','context_bytes','capture',4194304);
 tvg_ok(!isset($heavy['tourvisor_context']['offers'][$ref]['checked'])
     && strlen(json_encode([$heavy['tourvisor_context'],$heavy['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304
     && empty($heavy['tourvisor_handoff_records']),'oversized candidate never enters any capture checkpoint or persisted context');
+// No supplier calls: prove each local guard separately, retaining all UNKNOWN receipts.
+$full=$resultsSession;
+while(count($full['tourvisor_requests'])<64) $full['tourvisor_requests'][md5('full'.count($full['tourvisor_requests']))]=[
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'unknown'];
+$fullBefore=$full; $physical=0; $limitSaves=0;
+$limitSave=static function(array &$s)use(&$limitSaves):void{++$limitSaves;};
+$r=$request('tv_tour',['offer_ref'=>$ref]);
+$d=tvg_limit(function()use($r,&$full,$now,$failing,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$full,$now,$failing,$catalog,$limitSave,$clock);
+},'tour','request_count','admission',64);
+tvg_ok($d['limitValue']===64 && $full===$fullBefore && $physical===0 && $limitSaves===0,
+    '64 receipt cap rejects before reservation, no eviction/reset/HTTP');
+tvg_ok(AnyTourTourvisorPreviewGateway::handle($resultsRequest,$full,$now,$failing,$catalog,$limitSave,$clock)===$results
+    && $full===$fullBefore && $physical===0,'original healthy cached request survives full cap without new attempt');
+$overflow=$resultsSession; $overflow['tourvisor_requests'][md5('overflow')]=[
+    'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,'reply'=>str_repeat('b',4194304)];
+$expectedBytes=strlen(json_encode([$overflow['tourvisor_context'],$overflow['tourvisor_requests']],JSON_THROW_ON_ERROR));
+$overflowBefore=$overflow;
+$d=tvg_limit(function()use($r,&$overflow,$now,$failing,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$overflow,$now,$failing,$catalog,$limitSave,$clock);
+},'tour','context_bytes','admission',4194304);
+tvg_ok($d['limitValue']===$expectedBytes && $overflow===$overflowBefore && $physical===0 && $limitSaves===0,
+    'size guard reports measured JSON bytes, not receipt cap or supplier status');
+// Padding models retained native replies; it is never used as a supplier/identity fact.
+$padState=static function(array $s,int $bytes)use($now):array {
+    $key=md5('budget-padding');$s['tourvisor_requests'][$key]=[
+        'fingerprint'=>str_repeat('f',64),'generation'=>1,'state'=>'ready','expires_at'=>$now+900,'reply'=>''];
+    $size=strlen(json_encode([$s['tourvisor_context'],$s['tourvisor_requests']],JSON_THROW_ON_ERROR));
+    $s['tourvisor_requests'][$key]['reply']=str_repeat('b',$bytes-$size);return $s;
+};
+$reserveOverflow=$padState($resultsSession,4194304-8);$reserveBefore=$reserveOverflow;
+$d=tvg_limit(function()use($r,&$reserveOverflow,$now,$failing,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$reserveOverflow,$now,$failing,$catalog,$limitSave,$clock);
+},'tour','context_bytes','reservation',4194304);
+tvg_ok($reserveOverflow===$reserveBefore && $physical===0 && $limitSaves===0,
+    'reservation candidate cannot exceed 4MiB or checkpoint an oversized state');
+$tooMany=$resultsSession;
+for($i=1;$i<2000;++$i)$tooMany['tourvisor_context']['offers']['fixture-'.$i]=$tooMany['tourvisor_context']['offers'][$ref];
+$resultPhysical=0;$replyListing=$listing;$replyListing['id']='new-fixture-tour';
+$resultTransport=static function()use(&$resultPhysical,$replyListing):array{++$resultPhysical;return [['id'=>1006,'tours'=>[$replyListing]]];};
+$r=$request('tv_results');
+$d=tvg_limit(function()use($r,&$tooMany,$now,$resultTransport,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$tooMany,$now,$resultTransport,$catalog,$limitSave,$clock);
+},'search_results','offer_count','results',2000);
+tvg_ok($d['limitValue']===2001 && $resultPhysical===1 && $limitSaves===1
+    && count($tooMany['tourvisor_context']['offers'])===2000
+    && $tooMany['tourvisor_requests'][$r['request_id']]['state']==='unknown',
+    '2001st offer rejects only candidate, original UNKNOWN and 2000 offer cap retained');
+$replyOverflow=$padState($resultsSession,4194304-1500);$replyPhysical=0;
+$replyListing=$listing;$replyListing['padding']=str_repeat('x',10000);
+$replyTransport=static function()use(&$replyPhysical,$replyListing):array{++$replyPhysical;return [['id'=>1006,'tours'=>[$replyListing]]];};
+$r=$request('tv_results');
+$d=tvg_limit(function()use($r,&$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock);
+},'search_results','context_bytes','reply',4194304);
+tvg_ok($replyPhysical===1 && $limitSaves===2
+    && $replyOverflow['tourvisor_requests'][$r['request_id']]['state']==='unknown'
+    && strlen(json_encode([$replyOverflow['tourvisor_context'],$replyOverflow['tourvisor_requests']],JSON_THROW_ON_ERROR))<=4194304,
+    'reply cache rejection retains original UNKNOWN and bounded context without retry');
+tvg_denied(function()use($r,&$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$replyOverflow,$now,$replyTransport,$catalog,$limitSave,$clock);
+},'tv_operation_unknown');
+tvg_ok($replyPhysical===1 && $limitSaves===2,'diagnostic limit failure grants no new supplier attempt');
+$generationOverflow=$resultsSession;$generationOverflow['tourvisor_context_generation']=2147483647;
+$r=$request('tv_search',['params'=>$params]);
+$d=tvg_limit(function()use($r,&$generationOverflow,$now,$failing,$catalog,$limitSave,$clock){
+    AnyTourTourvisorPreviewGateway::handle($r,$generationOverflow,$now,$failing,$catalog,$limitSave,$clock);
+},'search_start','generation','admission',2147483647);
+tvg_ok($d['limitValue']===2147483648 && $physical===0 && $limitSaves===2,'generation overflow is distinct and cannot dispatch');
 $badParty=$resultsSession; $r=$request('tv_tour',['offer_ref'=>$ref]); $wrongTour=$tour;$wrongTour['childs']=2;
 tvg_denied(function()use($r,&$badParty,$now,$wrongTour,$catalog,$save,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$badParty,$now,static fn():array=>$wrongTour,$catalog,$save,$clock);
