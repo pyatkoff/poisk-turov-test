@@ -84,8 +84,33 @@
   let tvTokenTask=null;
   const tvCheckedTours=new WeakMap(),tvFlightChoices=new WeakMap();
   const tvSessionEnabled=()=>root.V2_CONFIG?.search3TVSessionEnabled===true;
-  const tvFailure=(status=0)=>Object.assign(new Error(status===410?'Срок предложения истёк. Выполните новый поиск.':'Не удалось подтвердить TV-сессию. Сохранённый результат не отправляется повторно.'),
-    {code:status===410?'offer_expired':'tourvisor_session_unavailable',retryable:false,status});
+  const tvFailures=new WeakSet();
+  const tvFailureCodes=new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request',
+    'tv_invalid_request','tv_invalid_identity','tv_operator_unverified','tv_operator_listing_only','tv_price_currency','tv_price_missing',
+    'tv_label_missing','tv_stale_context','tv_context_changed','tv_context_limit','tv_response_limit','tv_pair_incomplete',
+    'tv_checked_tour_missing','tv_pair_missing','tv_pair_expired','tv_capture_held','tv_request_integrity','tv_request_changed',
+    'tv_operation_unknown','tv_offer_not_owned','tv_operation_already_attempted','tv_supplier_response_error','tv_invalid_search_response',
+    'tv_invalid_results','tv_catalog_mismatch','tv_offer_identity_changed','tv_tour_mismatch','tv_operator_changed','tv_tour_already_checked',
+    'tv_tour_expired','tv_invalid_flights','tv_flights_already_loaded','tv_pair_mismatch','tv_pair_duplicate','tv_temporarily_unavailable']);
+  function tvResponseFacts(payload){
+    const fixedErrors={'Tourvisor request failed':'tourvisor_request_failed','Tourvisor connection error':'tourvisor_connection_error',
+      'Tourvisor is not configured':'tourvisor_not_configured'};
+    const reported=payload?.error;
+    const facts={code:tvFailureCodes.has(reported)?reported:typeof reported==='string'&&Object.hasOwn(fixedErrors,reported)?fixedErrors[reported]:'unknown'};
+    const value=payload?.diagnostics;
+    if(value&&typeof value==='object'&&!Array.isArray(value)&&value.provider==='tourvisor'){
+      if(['search_start','search_continue','search_status','search_results','tour','flights','other'].includes(value.stage))facts.backendStage=value.stage;
+      if(['timeout','transport','http'].includes(value.category))facts.backendCategory=value.category;
+      for(const [key,max] of Object.entries({httpStatus:599,curlErrno:999,elapsedMs:3600000}))
+        if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)facts[key==='httpStatus'?'upstreamStatus':key]=value[key];
+    }
+    return facts;
+  }
+  function tvFailure(status=0,facts={phase:'local'}){
+    const failure=Object.assign(new Error(status===410?'Срок предложения истёк. Выполните новый поиск.':'Не удалось подтвердить TV-сессию. Сохранённый результат не отправляется повторно.'),
+      {code:status===410?'offer_expired':'tourvisor_session_unavailable',retryable:false,status,failureFacts:Object.freeze({...facts})});
+    tvFailures.add(failure);return failure;
+  }
   const tvRef=value=>typeof value==='string'&&/^tourvisor:[a-f0-9]{64}$/.test(value);
   const tvChoice=value=>value==='manager-deferred'||typeof value==='string'&&/^tourvisor_pair:[a-f0-9]{64}$/.test(value);
   function tvSelectorValid(value){
@@ -106,11 +131,26 @@
       if(token)url.search=new URLSearchParams({action}).toString();
       else{options.headers['Content-Type']='application/json';options.headers['X-Requested-With']='AnyTourSearch3';options.body=JSON.stringify({action,...fields});}
       const response=await fetch(url.href,options),raw=await response.text();
-      if(controller.signal.aborted||new TextEncoder().encode(raw).length>1048576||run&&!current(run))throw tvFailure();
-      let result;try{result=JSON.parse(raw);}catch{throw tvFailure();}
-      if(!response.ok||result?.ok!==true)throw tvFailure(response.status);
+      if(controller.signal.aborted)throw tvFailure(0,{phase:'aborted'});
+      if(run&&!current(run))throw tvFailure(0,{phase:'stale'});
+      if(new TextEncoder().encode(raw).length>1048576)throw tvFailure(0,{phase:'response_limit'});
+      let result;try{result=JSON.parse(raw);}catch{throw tvFailure(0,{phase:'invalid_json'});}
+      if(!response.ok||result?.ok!==true)throw tvFailure(response.status,{phase:'response',...tvResponseFacts(result)});
       return result;
-    }catch(error){throw error?.code==='offer_expired'?error:tvFailure(error?.status||0);}
+    }catch(error){
+      const failure=tvFailures.has(error)?error:tvFailure(0,{phase:controller.signal.aborted?'aborted':'transport'});
+      // Same browser-local failure channel as the other providers; never raw JSON,
+      // response text, URLs, selectors or exception messages. The retained operation
+      // carries this same safe error, so reopening does not emit another request.
+      const detail=Object.freeze({provider:'tourvisor',action,...failure.failureFacts,
+        ...(Number.isInteger(failure.status)&&failure.status>=100&&failure.status<=599?{httpStatus:failure.status}:{})});
+      if((!run||current(run))&&detail.phase!=='aborted'&&detail.phase!=='stale'){
+        try{root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+        }catch{}
+      }
+      throw failure;
+    }
     finally{clearTimeout(timeout);run?.controller.signal.removeEventListener('abort',abort);}
   }
   function tvToken(){
