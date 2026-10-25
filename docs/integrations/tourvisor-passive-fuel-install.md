@@ -592,12 +592,14 @@ no new supplier search is justified solely to measure cleanup. The existing
 consumed infant case6397634946 remains sealed; cleanup runs naturally only on
 a subsequent justified new search generation under the unchanged stock limits.
 
-## One-client numeric search admission — preparation
+## One-client numeric search admission — 25 October 2026
 
 SOURCE PR4899/ce270780 has final source CI533gateway/147producer/26HTTP and
-Security accepted. Independent source review and normal FEATURE integration
-must finish before this preparation gets its final merged source pin or a
-control PR. No provisional source pin authorizes a server command.
+Security accepted. Independent exact-source review5643955356 accepted the
+three-file delta. Normal FEATURE integration is
+9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44, exact tree23aa792c and
+ordered parents343fe6a+ce270780 verified. Only that merged source is admitted;
+the earlier preparation pince270780 is not a runtime source.
 
 The fixed install-tv-numeric-admission mode and
 int-anex-tv-numeric-admission-install-20261025-v1 operation reuse the existing

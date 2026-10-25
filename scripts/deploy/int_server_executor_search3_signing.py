@@ -23,7 +23,7 @@ TV_PARTY_UPDATES = {
 
 TV_NUMERIC_MODE = 'install-tv-numeric-admission'
 TV_NUMERIC_OPERATION = 'int-anex-tv-numeric-admission-install-20261025-v1'
-TV_NUMERIC_SOURCE = 'ce2707801032e27cceb201b89c5c5df42cb6ed7d'
+TV_NUMERIC_SOURCE = '9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44'
 TV_NUMERIC_SHA = '72056e5c4642daa9515d2d5dccece0804b6e3dd9c935b6250e0e29ca2e39daf9'
 
 TV_CHECKPOINT_MODE = 'install-tv-scoped-checkpoint'

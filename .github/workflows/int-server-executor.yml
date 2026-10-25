@@ -167,10 +167,10 @@ jobs:
           ref: 343fe6a263ce9e728481916d6b2d56448f544952
           path: tv-party-source
           persist-credentials: false
-      - name: Exact reviewed TV numeric admission source
+      - name: Exact merged TV numeric admission source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: ce2707801032e27cceb201b89c5c5df42cb6ed7d
+          ref: 9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44
           path: tv-numeric-source
           persist-credentials: false
       - name: Exact reviewed LOCAL schema source
