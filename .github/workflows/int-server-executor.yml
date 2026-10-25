@@ -191,7 +191,7 @@ jobs:
       - name: Exact TV session fuel context source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 1e444b0e98e2d6850afe67a40f7e1cb56c8979f1
+          ref: 87ba43199d96eae6d3048feb9138c65fb810ae21
           path: tv-session-fuel-source
           persist-credentials: false
       - name: Exact reviewed LOCAL schema source
