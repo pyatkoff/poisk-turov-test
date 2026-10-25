@@ -852,5 +852,3 @@ try {
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
 echo "TOURVISOR_PASSIVE_FUEL_OK checks=".$GLOBALS['tvpf_checks']." observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry prior_tour=context,age,redaction,invalid,unavailable search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable session_context=missing_row,duplicate_infant,expiry,foreign_party,12_denials,transparent native_http=retained_zero,skipped,prior_skipped,rejected,session\n";
-
-

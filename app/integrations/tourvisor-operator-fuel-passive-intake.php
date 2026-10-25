@@ -694,5 +694,3 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         return ['source'=>'tourvisor-operator-fuel-passive-intake-v1','ok'=>$ok,'reason'=>$reason] + $extra;
     }
 }
-
-
