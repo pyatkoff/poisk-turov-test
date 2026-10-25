@@ -40,7 +40,19 @@ def inspect(alias, work, dns):
     identity = {'alias':alias,'target_matches_tg_dns':bool(set(host_ips)&set(dns['tg.rhat.ru'])),
                 'target_matches_anytoour_dns':bool(set(host_ips)&set(dns['anytoour.ru']))}
     if p.returncode:
-        return identity | {'status':'SSH_READ_FAILED'}
+        error=p.stderr.decode(errors='replace')
+        reason='REMOTE_READ_FAILED'
+        for phrase,code in [('Permission denied (publickey','SSH_AUTHENTICATION_FAILED'),
+                            ('Permission denied, please try again','SSH_AUTHENTICATION_FAILED'),
+                            ('PermissionError','REMOTE_FILE_PERMISSION'),
+                            ('python3: command not found','PYTHON_UNAVAILABLE'),
+                            ('python3: not found','PYTHON_UNAVAILABLE'),
+                            ('SyntaxError','REMOTE_PYTHON_SYNTAX'),
+                            ('Host key verification failed','HOST_KEY_VERIFICATION_FAILED'),
+                            ('Connection refused','SSH_CONNECTION_REFUSED'),
+                            ('Connection timed out','SSH_CONNECTION_TIMEOUT')]:
+            if phrase in error: reason=code;break
+        return identity | {'status':'SSH_READ_FAILED','exit_code':p.returncode,'reason':reason}
     if len(p.stdout)>100000:
         raise RuntimeError('report_size_bound')
     r=json.loads(p.stdout)
@@ -58,7 +70,7 @@ def main():
     dns = {name:addresses(name) for name in ['tg.rhat.ru','anytoour.ru','anytour.online']}
     with tempfile.TemporaryDirectory(prefix='tgmini-location-',dir=os.environ['RUNNER_TEMP']) as temp:
         results=[]
-        for alias in ['CURRENT','LEGACY']:
+        for alias in ['LEGACY']:
             try: results.append(inspect(alias,Path(temp),dns))
             except Exception as e: results.append({'alias':alias,'status':'READ_FAILED','error_type':type(e).__name__})
         report={'kind':'tgmini_location_report','dns':dns,'targets':results}
