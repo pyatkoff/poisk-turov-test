@@ -75,6 +75,8 @@ final class AnyTourHotelStaySchemaReadV1
             if (str_starts_with($token,"'")) return ['string',substr($token,1,-1)];
             if (!preg_match('/^[a-z_][a-z0-9_]*$/D',$token)) throw new RuntimeException('CHECK_AST');
             if (($tokens[$at]??null)==='(') {
+                // MySQL serializes OCTET_LENGTH via Item_func_length::func_name() as length.
+                if ($token==='length') $token='octet_length';
                 if (!in_array($token,['json_valid','octet_length','char_length'],true)) throw new RuntimeException('CHECK_AST');
                 ++$at;$arg=$primary();if (($tokens[$at++]??null)!==')') throw new RuntimeException('CHECK_AST');
                 return ['function',$token,$arg];

@@ -19,7 +19,9 @@ function schema_sql(PDO $db,string $path): void {
 function schema_result(PDO $db,string $planState): array {
     $result=AnyTourHotelStaySchemaReadV1::read($db);
     schema_check($result['receipt']['state']==='completed_read_only','technical read '.$planState.' actual '.$result['receipt']['state']);
-    schema_check($result['plan']['state']===$planState,'plan '.$planState.' actual '.$result['plan']['state']);
+    $issues=[];foreach ($result['inventory']['tables'] as $table) $issues[$table['name']]=$table['issues'];
+    schema_check($result['plan']['state']===$planState,'plan '.$planState.' actual '.$result['plan']['state']
+        .' tableIssues='.AnyTourHotelStaySchemaReadV1::json($issues));
     schema_check(!$db->inTransaction(),'readonly transaction closed');
     foreach (['supplierCalls','databaseWrites','schemaWrites','automaticAccepts'] as $key) schema_check($result['receipt'][$key]===0,'int0 '.$key);
     schema_check($result['plan']['applyAuthorized']===false&&$result['plan']['requiresExplicitReview']===true
@@ -32,6 +34,11 @@ function schema_table(array $result,string $name): array {
     $rows=array_values(array_filter($result['inventory']['tables'],static fn($t)=>$t['name']===$name));
     schema_check(count($rows)===1,'exact table '.$name);return $rows[0];
 }
+// The server stores the byte-length alias as LENGTH in CHECK metadata.
+$ast=new ReflectionMethod(AnyTourHotelStaySchemaReadV1::class,'checkAst');
+$byteLength=$ast->invoke(null,'OCTET_LENGTH(operator_key)>0');
+schema_check($byteLength!==null&&$byteLength===$ast->invoke(null,'length(`operator_key`) > 0'),'MySQL byte-length serializer alias accepted');
+schema_check($byteLength!==$ast->invoke(null,'CHAR_LENGTH(operator_key)>0'),'character-length semantics remain distinct');
 $dsn=(string)getenv('ANYTOUR_STAY_SCHEMA_V1_TEST_DSN');
 if (!preg_match('/^mysql:host=127\.0\.0\.1;port=[0-9]+;charset=utf8mb4$/D',$dsn)) throw new RuntimeException('Dedicated loopback MySQL fixture DSN required');
 $migration=$source.'/v2/data/migrations/20260918-anytour-hotel-stay-v2.sql';

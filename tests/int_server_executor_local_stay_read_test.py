@@ -471,8 +471,14 @@ class NativeStockSchemaRead(unittest.TestCase):
         result = self.run_remote()
         self.assertTrue(m.completed_schema(self.command,result,CONTROL),result)
         data = result['local_stay_schema_read']['data']
-        self.assertEqual(data['plan']['state'],'ready_no_op')
-        self.assertEqual(len(data['plan']['existingCompatibleTables']),3)
+        # Only the fixture's already-sanitized semantic metadata is retained:
+        # no CREATE SQL, schema/account names, credentials or application rows.
+        diagnosis = {'server':data['inventory']['server'],'tables':{
+            table['name']:{key:table[key] for key in
+                           ('compatibility','issues','columns','indexes','foreignKeys','checks','triggerCount')}
+            for table in data['inventory']['tables']}}
+        self.assertEqual(data['plan']['state'],'ready_no_op',json.dumps(diagnosis,sort_keys=True))
+        self.assertEqual(len(data['plan']['existingCompatibleTables']),3,json.dumps(diagnosis,sort_keys=True))
         self.assertEqual(data['plan']['createTables'],[])
         self.assertEqual(data['receipt']['schemaWrites'],0)
         self.assertEqual(sum(len(t['checks']) for t in data['inventory']['tables'] if t['role']=='target'),8)
