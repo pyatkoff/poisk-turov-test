@@ -7,6 +7,12 @@ from __future__ import annotations
 
 import ast
 
+TV_CONTEXT_MODE = 'install-tv-context-revocation'
+TV_CONTEXT_OPERATION = 'int-anex-tv-context-revocation-install-20261025-v1'
+TV_CONTEXT_SOURCE = '95b70987966675e385809ee04cb2e2ea8ea4f4b6'
+TV_CONTEXT_PATH = 'app/integrations/tourvisor-preview-gateway.php'
+TV_CONTEXT_SHA = 'a68e7a30e2f5565647e690d915c4e0566c123719c830594782fac99e77991f96'
+
 TV_CACHE_MODE = 'install-tv-cache-revocation'
 TV_CACHE_OPERATION = 'int-anex-tv-cache-revocation-install-20261025-v1'
 TV_CACHE_SOURCE = 'a4a12e6a84d39397b2457bc3acdde0a738b8b744'
@@ -32,7 +38,7 @@ TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8a
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -85,7 +91,8 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-cache-revocation-install-' if mode == TV_CACHE_MODE else
+        prefix = ('int-anex-tv-context-revocation-install-' if mode == TV_CONTEXT_MODE else
+                  'int-anex-tv-cache-revocation-install-' if mode == TV_CACHE_MODE else
                   'int-anex-tv-client-diagnostics-install-' if mode == TV_DIAGNOSTIC_MODE else
                   'int-anex-tv-session-gateway-recovery-' if mode == TV_RECOVERY_MODE else
                   'int-anex-tv-session-gateway-enable-' if mode == TV_ENABLE_MODE else
@@ -93,6 +100,9 @@ def register_parser(core):
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_CONTEXT_MODE:
+            need(operation == TV_CONTEXT_OPERATION, 'tv_context_single_operation')
+            need(source == TV_CONTEXT_SOURCE, 'tv_context_source')
         if mode == TV_CACHE_MODE:
             need(operation == TV_CACHE_OPERATION, 'tv_cache_single_operation')
             need(source == TV_CACHE_SOURCE, 'tv_cache_source')
@@ -284,6 +294,8 @@ DISPATCH = r'''
 def activate(core, command):
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_CONTEXT_MODE:
+        return activate_tv_context(core, command)
     if command.get('mode') == TV_CACHE_MODE:
         return activate_tv_cache(core, command)
     if command.get('mode') == TV_DIAGNOSTIC_MODE:
@@ -899,3 +911,13 @@ def completed_tv_cache(command, result):
 def activate_tv_cache(core, command):
     return _activate_tv_maintenance(core,command,TV_CACHE_MODE,TV_CACHE_SOURCE,TV_CACHE_PATH,TV_CACHE_SHA,
         TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA},completed_tv_cache)
+
+
+def completed_tv_context(command, result):
+    return _completed_tv_maintenance(command,result,TV_CONTEXT_MODE,TV_CONTEXT_OPERATION,TV_CONTEXT_SOURCE,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_CONTEXT_PATH:TV_CONTEXT_SHA})
+
+
+def activate_tv_context(core, command):
+    return _activate_tv_maintenance(core,command,TV_CONTEXT_MODE,TV_CONTEXT_SOURCE,TV_CONTEXT_PATH,TV_CONTEXT_SHA,
+        TV_PINS|{TV_DIAGNOSTIC_PATH:TV_DIAGNOSTIC_SHA,TV_CACHE_PATH:TV_CACHE_SHA},completed_tv_context)
