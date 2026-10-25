@@ -615,3 +615,35 @@ the same native suite, with one-file completion, drift, config race, rollback
 and no-replay cases. No supplier/session/key/DB/UI/lead/production action or
 paid check is added. Source/CI/review/normal merge and a separate exclusive
 runtime claim/original receipt remain distinct gates.
+## Private-session passive fuel context — source4903
+
+Application PR4903 is accepted by independent exact-delta review5645286603,
+with all13 final-source CI successful on1e444b0e. Its normal FEATURE merge
+is 87ba43199d96eae6d3048feb9138c65fb810ae21, exact treec5b5f0fe and ordered parents9fc+1e.
+Only this merged source is admitted. This control package is not an installation.
+The same-job source fixture and signing source pin both name that exact merge.
+The workflow hunk starts from MAINefbe and preserves LOCAL516 registration and
+native checks; custody released6403095187 was reclaimed6403230494.
+
+
+The fixed profile is `install-tv-session-fuel-context`, operation
+`int-anex-tv-session-fuel-context-install-20261025-v1`. Only the existing passive
+helper and private API are replaced, dependency first and API last. Its predecessor
+helper4851c2bf is already proved by accepted terminal6385558188; API9eb51800,
+client72056e5c, gateway8c2540f0 and the three original passive dependencies remain
+exact. This reuses the existing maintenance installer and its backup, PHP lint,
+prewrite checks, readback, rollback and immutable no-replay reservation.
+
+Completion requires10checked/2changed/0created, the entire resulting TV/passive
+dependency hash map, changed private endpoint, unchanged initial-week dependency,
+enabled parent16049/configfaea0644/signing/public custody and typed integer zero
+supplier/DB-write/booking/lead counters. No caller path/hash, provider/auth call,
+private session/data read, public root or configuration write is admitted.
+
+The same existing native suite adds three bounded cases for actual two-file
+delivery/strict completion/no-replay, either changed source/predecessor or passive
+dependency drift, and prewrite race/two-file rollback. All earlier rendered programs
+remain frozen, including consumed numeric19cd1ee2. Exact candidate and numeric9fc
+predecessor fixtures belong to that same existing job. Source, final control CI,
+normal MAIN integration, one original installation receipt and a future justified
+natural observation are distinct. No old paid/UNKNOWN case or installer is replayed.

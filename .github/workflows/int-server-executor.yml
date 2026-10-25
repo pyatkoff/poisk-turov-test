@@ -188,6 +188,12 @@ jobs:
           ref: 9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44
           path: tv-numeric-source
           persist-credentials: false
+      - name: Exact TV session fuel context source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 87ba43199d96eae6d3048feb9138c65fb810ae21
+          path: tv-session-fuel-source
+          persist-credentials: false
       - name: Exact reviewed LOCAL schema source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -290,7 +296,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
           python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_search3_signing.py
-          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" TV_LIMIT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-limit-source" TV_CAP_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cap-source" TV_BYTES_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-bytes-source" TV_CHECKPOINT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-checkpoint-source" TV_PARTY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-party-source" TV_NUMERIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-numeric-source" python3 tests/int_server_executor_search3_signing_test.py -v
+          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" TV_LIMIT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-limit-source" TV_CAP_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cap-source" TV_BYTES_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-bytes-source" TV_CHECKPOINT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-checkpoint-source" TV_PARTY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-party-source" TV_NUMERIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-numeric-source" TV_SESSION_FUEL_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-fuel-source" python3 tests/int_server_executor_search3_signing_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py

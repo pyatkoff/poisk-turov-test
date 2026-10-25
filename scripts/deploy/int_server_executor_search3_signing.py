@@ -26,6 +26,22 @@ TV_NUMERIC_OPERATION = 'int-anex-tv-numeric-admission-install-20261025-v1'
 TV_NUMERIC_SOURCE = '9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44'
 TV_NUMERIC_SHA = '72056e5c4642daa9515d2d5dccece0804b6e3dd9c935b6250e0e29ca2e39daf9'
 
+TV_SESSION_FUEL_MODE = 'install-tv-session-fuel-context'
+TV_SESSION_FUEL_OPERATION = 'int-anex-tv-session-fuel-context-install-20261025-v1'
+TV_SESSION_FUEL_SOURCE = '87ba43199d96eae6d3048feb9138c65fb810ae21'
+TV_SESSION_FUEL_PATH = 'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+TV_SESSION_FUEL_PREDECESSOR = '4851c2bf1d2f09baac6b322bd3657617334edf96c6a0a02c9245801b684e82c3'
+TV_SESSION_FUEL_SHA = '09a40aa5c6c4b6d98d378e353707412a4a3b83631452585a3fff27c6392d7008'
+TV_SESSION_FUEL_UPDATES = {
+    TV_SESSION_FUEL_PATH: TV_SESSION_FUEL_SHA,
+    'v2/api-anex-search3-preview.php': 'c3e13695cc15977b92732d9559badf12d82b2d4033e752f91190de7fc9963a03',
+}
+TV_SESSION_FUEL_DEPENDENCIES = {
+    'app/integrations/tourvisor-operator-fuel-retained-intake.php': '6c233c9fc0fe64c1647941ccb22756e1cad4c17b9692998dbd1eb6b7eb04a3d0',
+    'app/integrations/operator-fuel-rule-store.php': 'a84468efc7953f50ee6fc25aaa77a40b97bd527ad9fbbe923d547dbe9db60fb9',
+    'app/integrations/operator-fuel-rule-evidence.php': '5205c275da1f71aa756aab6852664902a8ea0453a4a457673f0896737f11a6a4',
+}
+
 TV_CHECKPOINT_MODE = 'install-tv-scoped-checkpoint'
 TV_CHECKPOINT_OPERATION = 'int-anex-tv-scoped-checkpoint-install-20261025-v1'
 TV_CHECKPOINT_SOURCE = 'e57c2fba33e4df1bcd0a70efdab10a2e7a81a081'
@@ -93,7 +109,7 @@ TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8a
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE, TV_BYTES_MODE, TV_CHECKPOINT_MODE, TV_PARTY_MODE, TV_NUMERIC_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE, TV_BYTES_MODE, TV_CHECKPOINT_MODE, TV_PARTY_MODE, TV_NUMERIC_MODE, TV_SESSION_FUEL_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -149,7 +165,8 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-numeric-admission-install-' if mode == TV_NUMERIC_MODE else
+        prefix = ('int-anex-tv-session-fuel-context-install-' if mode == TV_SESSION_FUEL_MODE else
+                  'int-anex-tv-numeric-admission-install-' if mode == TV_NUMERIC_MODE else
                   'int-anex-tv-party-retirement-install-' if mode == TV_PARTY_MODE else
                   'int-anex-tv-scoped-checkpoint-install-' if mode == TV_CHECKPOINT_MODE else
                   'int-anex-tv-context-cap-20mib-install-' if mode == TV_BYTES_MODE else
@@ -166,6 +183,9 @@ def register_parser(core):
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_SESSION_FUEL_MODE:
+            need(operation == TV_SESSION_FUEL_OPERATION, 'tv_session_fuel_single_operation')
+            need(source == TV_SESSION_FUEL_SOURCE, 'tv_session_fuel_source')
         if mode == TV_NUMERIC_MODE:
             need(operation == TV_NUMERIC_OPERATION, 'tv_numeric_single_operation')
             need(source == TV_NUMERIC_SOURCE, 'tv_numeric_source')
@@ -386,6 +406,8 @@ def activate(core, command):
         return activate_tv_mismatch(core, command)
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_SESSION_FUEL_MODE:
+        return activate_tv_session_fuel(core, command)
     if command.get('mode') == TV_NUMERIC_MODE:
         return activate_tv_numeric(core, command)
     if command.get('mode') == TV_PARTY_MODE:
@@ -1256,3 +1278,46 @@ def completed_tv_numeric(command, result):
 def activate_tv_numeric(core, command):
     return _activate_tv_maintenance(core,command,TV_NUMERIC_MODE,TV_NUMERIC_SOURCE,
         TV_DIAGNOSTIC_PATH,TV_NUMERIC_SHA,TV_PINS|TV_PARTY_UPDATES,completed_tv_numeric)
+
+
+def tv_session_fuel_previous():
+    return (TV_PINS|TV_PARTY_UPDATES|{TV_DIAGNOSTIC_PATH:TV_NUMERIC_SHA,
+        TV_SESSION_FUEL_PATH:TV_SESSION_FUEL_PREDECESSOR}|TV_SESSION_FUEL_DEPENDENCIES)
+
+
+def completed_tv_session_fuel(command, result):
+    source=TV_SESSION_FUEL_SOURCE; pins=tv_session_fuel_previous()|TV_SESSION_FUEL_UPDATES
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':TV_SESSION_FUEL_MODE,'operation_id':TV_SESSION_FUEL_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':10,'changed_files':2,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':TV_SESSION_FUEL_UPDATES['v2/api-anex-search3-preview.php'],'changed':True}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+def activate_tv_session_fuel(core, command):
+    _activate_tv_maintenance(core,command,TV_SESSION_FUEL_MODE,TV_SESSION_FUEL_SOURCE,
+        TV_SESSION_FUEL_PATH,TV_SESSION_FUEL_UPDATES[TV_SESSION_FUEL_PATH],tv_session_fuel_previous(),
+        completed_tv_session_fuel,updates=TV_SESSION_FUEL_UPDATES)
+    # Source API is deployed at the existing private root target; dependencies precede it.
+    old='    if changed!='+repr(list(TV_SESSION_FUEL_UPDATES))+":fail('tv_diagnostic_exact_delta')\n"
+    targets=[p if p.startswith('app/') else 'api-anex-search3-preview.php' for p in TV_SESSION_FUEL_UPDATES]
+    need(core.REMOTE.count(old)==1,'tv_session_fuel_stock_drift')
+    core.REMOTE=core.REMOTE.replace(old,'    if changed!='+repr(targets)+":fail('tv_diagnostic_exact_delta')\n",1)
+    ast.parse(core.REMOTE)
