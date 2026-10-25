@@ -718,6 +718,23 @@
     const key=typeof part.localKey==='string'&&part.localKey.length<=128&&!/[\u0000-\u001f\u007f]/.test(part.localKey)?part.localKey.trim():'';
     return name&&key?name:'';
   }
+  function stayLabel(o,kind){
+    const field=kind==='room'?'room':kind==='meal'?'meal':null;
+    if(!field)return '';
+    const label=typeof o?.[field]==='string'?o[field]:'';
+    // Selected values remain supplier facts for the existing quote/bot guards.
+    // Reuse an accepted LOCAL label only for the same unchanged quoted fact.
+    if(!o?.tour||String(o.tour.id)!==String(o.raw?.id))return label;
+    const key=kind==='room'?'roomType':'meal',before=o.raw?.[key],after=o.tour[key];
+    const fact=value=>{
+      const fields=[text(value),text(value?.name),text(value?.russianName),text(value?.fullName),text(value?.fullRussianName),text(value?.id)]
+        .map(value=>value.replace(/\s+/g,' ').trim());
+      return fields.slice(0,5).some(Boolean)?JSON.stringify(fields):null;
+    };
+    const original=fact(before);
+    if(!original||original!==fact(after)||label!==(kind==='room'?text(after):meal(after)))return label;
+    return localStayName(o.raw,{id:o.hotelId},kind)||label;
+  }
   function offer(t, h, s, index, indexes=mealIndexes()) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
@@ -2360,5 +2377,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,stayLabel,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

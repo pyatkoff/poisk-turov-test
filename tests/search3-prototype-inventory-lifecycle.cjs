@@ -1774,6 +1774,67 @@ function cachedProviderSnapshot(params,provider,operatorName){
  row.listing.operator={raw:operatorName,canonical_name:operatorName};
  return data;
 }
+test('accepted LOCAL stay labels survive actual tour selection without changing supplier facts',async()=>{
+ const raw={id:'fictional-local-stay',provider:'tourvisor',price:129258,date:trip.from,nights:7,
+  roomType:'standard land view',meal:{name:'AI',fullName:'AI - Все Включено'},operator:{name:'FUN&SUN'},
+  localStay:{source:'anytour-hotel-stay-v2',room:{kind:'room',hotelId:501,id:11,revision:2,localKey:'room-11',nameRu:'Стандарт · территория'},
+   meal:{kind:'meal',hotelId:501,id:12,revision:3,localKey:'meal-12',nameRu:'Программа питания отеля'}}};
+ const original=JSON.stringify(raw),quoted={id:raw.id,price:129258,roomType:raw.roomType,meal:structuredClone(raw.meal)};
+ const h=harness({api:action=>action==='tour'?structuredClone(quoted):undefined});await h.start();
+ const initial=h.data.project([{id:501,name:'FICTIONAL LOCAL HOTEL',tours:[raw]}],trip)[0].offers[0];
+ assert.equal(initial.room,'Стандарт · территория');assert.equal(initial.meal,'Программа питания отеля');
+ for(const value of ['AI - Все Включено',{name:'AI',fullName:'AI - Все Включено'}])assert.equal(h.data.meal(value),'Всё включено');
+ const visual=fs.readFileSync(path.join(rootDir,'v2/visual-search/app.js'),'utf8');
+ const block=(start,end)=>{const a=visual.indexOf(start),b=visual.indexOf(end,a);assert(a>=0&&b>a);return visual.slice(a,b);};
+ let contact=null,rendered=0;
+ const ctx=vm.createContext({data:h.data,selectedOffer:initial,
+  terminalOfferQuote:()=>false,isCurrentOfferRequest:()=>true,renderOfferProgress:()=>rendered++,openLeadPreview:o=>contact=o,
+  esc:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  rangeText:(a,b)=>a+' → '+b,nightsText:n=>n+' ночей',guestsText:()=> '2 взрослых',icon:()=>'',
+  offerQuoteFailure:(o,error)=>{throw error;}});
+ vm.runInContext(block('const mealLabel=','const matchesMeal=')+block('function chosenStayHTML(','function offerSelectionHint(')
+  +block('async function quoteSelectedOffer(','async function openOffer('),ctx);
+ const before=ctx.chosenStayHTML(initial),calls=h.calls.length;
+ await ctx.quoteSelectedOffer(initial,1);
+ assert.equal(h.calls.length,calls+1,'one fictional quote only, no extra source reads');
+ assert.equal(rendered,1);assert.equal(contact,ctx.selectedOffer,'the actual ordinary contact path consumes the same selected object');
+ const selected=ctx.selectedOffer,after=ctx.chosenStayHTML(selected);
+ for(const html of [before,after]){
+  assert.match(html,/<dd>Стандарт · территория<\/dd>/);
+  assert.match(html,/<dd>Программа питания отеля<\/dd>/);
+ }
+ assert.equal(selected.room,h.data.text(selected.tour.roomType),'raw room equality used by TV handoff remains intact');
+ assert.equal(selected.meal,h.data.meal(selected.tour.meal),'raw meal equality used by TV handoff remains intact');
+ assert.equal(selected.total,129258);assert.equal(selected.key,initial.key);assert.equal(selected.hotelId,501);
+ assert.equal(JSON.stringify(selected.ages),JSON.stringify(initial.ages));assert.equal(selected.raw,raw);
+ assert.equal(JSON.stringify(raw),original,'LOCAL presentation never rewrites supplier input/provenance');
+ for(const [kind,field,quotedField,value]of [['room','room','roomType','different room'],['meal','meal','meal',{name:'BB'}]]){
+  const tour={...selected.tour,[quotedField]:value},fallback=kind==='room'?h.data.text(value):h.data.meal(value);
+  assert.equal(h.data.stayLabel({...selected,tour,[field]:fallback},kind),fallback,'changed quote fact cannot inherit an old LOCAL label');
+ }
+ for(const mutate of [
+  o=>o.raw.localStay.source='unaccepted',o=>o.raw.localStay.room.hotelId=502,o=>o.raw.localStay.room.kind='meal',
+  o=>o.raw.localStay.room.id=0,o=>o.raw.localStay.room.revision=0,o=>o.raw.localStay.room.localKey='',
+  o=>o.tour.id='different-tour',o=>o.raw.roomType='different original room',
+  o=>o.raw.localStay.room.nameRu='invalid\u0000label',o=>delete o.raw.localStay
+ ]){
+  const bad=structuredClone(selected);mutate(bad);
+  assert.equal(h.data.stayLabel(bad,'room'),selected.room,'unaccepted, foreign or changed evidence stays verbatim');
+ }
+ const unknown={...selected,raw:{...raw,localStay:undefined}};
+ assert.equal(h.data.stayLabel(unknown,'room'),'standard land view','no hotel-scoped mapping means no invented translation');
+ for(const [kind,key,name,changed]of [['room','roomType','STANDARD','DELUXE'],['meal','meal','AI','UAI']]){
+  const value={id:7,name,russianName:'Исходная подпись'},fallback=kind==='room'?h.data.text(value):h.data.meal(value);
+  const sample={...selected,[kind]:fallback,raw:{...raw,[key]:value},tour:{...selected.tour,[key]:{...value}}};
+  assert.notEqual(h.data.stayLabel(sample,kind),fallback,'matching complete raw fact may use the accepted LOCAL label');
+  sample.tour[key].name=changed;
+  assert.equal(h.data.stayLabel(sample,kind),fallback,'localized text cannot conceal a changed supplier name or qualifier');
+ }
+ assert.equal(h.data.stayLabel(selected,'invalid'),'');
+ assert.equal(h.data.stayLabel({...selected,room:'On Request'},'room'),'On Request','changed displayed fact cannot be hidden');
+ assert.equal(JSON.stringify(raw),original);
+});
+
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
 
 
