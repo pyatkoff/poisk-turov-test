@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        source_facts = parse_source_facts_command(core, body)
+        if source_facts is not None:
+            return source_facts
         context_install = parse_context_install_command(core, body)
         if context_install is not None:
             return context_install
@@ -271,6 +274,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == SOURCE_FACTS_MODE:
+        return activate_source_facts(core, command)
     if command.get('mode') == CONTEXT_INSTALL_MODE:
         return activate_context_install(core, command)
     if command.get('mode') == CONTEXT_MODE:
@@ -1545,3 +1550,352 @@ def activate_context_install(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_context_install_source
     original_completed=core.completed_result
     core.completed_result=lambda cmd,result: completed_context_install(cmd,result,control) if cmd.get('mode')==CONTEXT_INSTALL_MODE else original_completed(cmd,result)
+
+
+# Independent source-only facts observation after the sealed CREATE refusal.
+SOURCE_FACTS_MODE = 'local-stay-source-facts-read-v1'
+SOURCE_FACTS_OPERATION = 'int-andromeda-local-stay-source-facts-read-20261026-v1'
+SOURCE_FACTS_SOURCE_SHA = '1d0e529e3fc0666783db1454c0765d3c16d63843'
+SOURCE_FACTS_RUNNER = 'scripts/catalog/anytour_hotel_stay_source_facts_read_v1.php'
+SOURCE_FACTS_CANDIDATE = 'scripts/catalog/anytour_hotel_stay_offer_candidates_v2.php'
+SOURCE_FACTS_RUNNER_SHA = 'e303a358c29dec9ab96422bb19d2a0cdf6c73a094d8101c8df6b4397c0b3c3c2'
+SOURCE_FACTS_CANDIDATE_SHA = '55890c76c0349579d64f8da6dc3c1221c32f59bf683bf1b743c6f177d1791000'
+SOURCE_FACTS_SOURCE_HASHES = {
+    'v2/data/anytour-hotel-stay-catalog-v2.php': '7a0b9081bc1dd3033d1110441e0bc918e1c6cc6c5657cda0f3d3c50e39882a5a',
+    'v2/data/anytour-provider-identity-bridge-v1.php': '641e92a97c91a40166a4271662044ac54ba68aaa6ab74628315e20eca6f076ad',
+    'v2/data/db-v1.php': 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4',
+}
+SOURCE_FACTS_FAILURE = {
+    'operation': 'int-andromeda-local-stay-context-install-20261026-v1',
+    'source': '30a7e7013edd7fe70a4700db0aafb2bf22ee05f8',
+    'control': 'ecc2e42af388a81de965949e1e9e2e9ee9011698',
+    'private_sha256': '0da0b944d7a09b010fbd449fbc6004916c2f1e4d9c7698df850eb5eb65308596',
+    'file_sha256': 'a56bd8c4b0a7f5d126c626151687c5c9b5c2d37006c16be4c67494b67f29c73a',
+}
+
+
+def parse_source_facts_command(core,body):
+    if not body.startswith(core.PREFIX): return None
+    parts=body[len(core.PREFIX):].split()
+    if len(parts)<2 or parts[1]!=SOURCE_FACTS_MODE: return None
+    need(len(parts)==3 and parts[0]==SOURCE_FACTS_SOURCE_SHA and core.SHA_RE.fullmatch(parts[0]) is not None
+         and parts[2]==SOURCE_FACTS_OPERATION,'local_stay_source_facts_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','local_stay_source_facts_first_attempt_only')
+    return {'source_sha':SOURCE_FACTS_SOURCE_SHA,'mode':SOURCE_FACTS_MODE,'operation_id':SOURCE_FACTS_OPERATION,
+            'maximum_cohorts':50,'provider_http_calls':0,'database_writes':0}
+
+
+def source_facts_hashes():
+    need(all(re.fullmatch(r'[a-f0-9]{64}',v) is not None for v in (SOURCE_FACTS_RUNNER_SHA,SOURCE_FACTS_CANDIDATE_SHA)),
+         'local_stay_source_facts_source_not_final')
+    return {**SOURCE_FACTS_SOURCE_HASHES,SOURCE_FACTS_CANDIDATE:SOURCE_FACTS_CANDIDATE_SHA,SOURCE_FACTS_RUNNER:SOURCE_FACTS_RUNNER_SHA}
+
+
+def bundle_source_facts_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];hashes=source_facts_hashes();output=io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in hashes.items():
+            path=(control if relative in (SOURCE_FACTS_CANDIDATE,SOURCE_FACTS_RUNNER) else source)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_stay_source_facts_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=2097152 and hashlib.sha256(raw).hexdigest()==digest,
+                                     'local_stay_source_facts_reviewed_source_changed')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),hashes
+
+
+SOURCE_FACTS_LINEAGE_VALIDATOR = r'''
+def local_stay_source_facts_lineage_valid(context,latest,read,failure,context_policy,latest_policy,read_policy,failure_policy):
+    if not local_stay_context_install_parent_valid(context,read,failure,context_policy,read_policy,failure_policy): return False
+    keys={'schema_version','mode','operation_id','source_sha','status','supplier_calls','database_writes','booking_calls','lead_calls',
+          'profile_writes','mapping_writes','schema_writes','schema_writes_acknowledged','schema_write_outcome_unknown',
+          'production_before','production_after','production_unchanged','local_stay_context_install'}
+    if (not isinstance(latest,dict) or set(latest)!=keys or type(latest['schema_version']) is not int or latest['schema_version']!=1
+        or latest['mode']!='local-stay-context-install-v1' or latest['operation_id']!=latest_policy['operation']
+        or latest['source_sha']!=latest_policy['source'] or latest['status']!='terminal_nonzero_no_replay'
+        or latest['schema_write_outcome_unknown'] is not False or latest['production_unchanged'] is not True
+        or latest['production_before']!=context['production_before'] or latest['production_after']!=context['production_before']): return False
+    if any(type(latest[k]) is not int or latest[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes','schema_writes_acknowledged')): return False
+    item=latest['local_stay_context_install']
+    if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter','contextResultSha256','parentReadResultSha256','failedInstallResultSha256','journalSha256','journalEvents'}
+        or item['fileSha256']!=latest_policy['file_sha256'] or item['contextResultSha256']!=context_policy['private_sha256']
+        or item['parentReadResultSha256']!=read_policy['private_sha256'] or item['failedInstallResultSha256']!=failure_policy['private_sha256']
+        or item['protectedBefore']!=context_policy['protected'] or item['protectedAfter']!=context_policy['protected']
+        or item['journalSha256'] is not None or item['journalEvents']!=[]): return False
+    data=item['data']
+    if not local_stay_context_install_valid(data,latest_policy['source'],latest_policy['control'],context_policy,read_policy,failure_policy): return False
+    r=data['receipt'];raw=local_stay_schema_canonical(data)+b'\n'
+    return (hashlib.sha256(raw).hexdigest()==item['fileSha256'] and r['state']=='preflight_refused' and r['reason']=='privileges'
+            and r['attemptedTables']==r['createdTables']==r['unknownTables']==r['tableRows']==[]
+            and r['schemaWrites']==0 and r['ddlOutcomeUnknown'] is False and r['journalSha256'] is None
+            and r['databaseSha256']==context_policy['database_sha256'] and r['beforeSha256']==context_policy['inventory_sha256']
+            and r['afterSha256'] is None and data['after'] is None and r['protectedBefore']==context_policy['protected']
+            and r['protectedAfter']==context_policy['protected'])
+'''
+
+
+SOURCE_FACTS_VALIDATOR = r'''
+def local_stay_source_facts_valid(data,source_sha,control_sha,context_policy,latest_policy):
+    keys={'receipt','anchorEvidence','sourceFacts','currentCohorts','draftConcepts','conceptLookup','privilegeProof'}
+    if not isinstance(data,dict) or set(data)!=keys or len(local_stay_schema_canonical(data))>2097152: return False
+    r=data['receipt'];anchor=data['anchorEvidence'];facts=data['sourceFacts'];cohorts=data['currentCohorts'];drafts=data['draftConcepts']
+    receipt_keys={'schemaVersion','source','state','observedAt','tourvisorTourId','contextOperation','contextResultSha256',
+        'failedInstallOperation','failedInstallResultSha256','databaseSha256Before','databaseSha256After','protectedBefore','protectedAfter',
+        'supplierCalls','databaseWrites','schemaWrites','profileWrites','mappingWrites','automaticAccepts','importHeld','priceAuthority',
+        'anchorRetainedRows','anchorExpiredRows','currentValidatedOffers','currentFactRows','returnedCohorts','draftConceptCount',
+        'omittedMissingOperatorOffers','omittedMissingStayFactOffers','missingTables','factsSha256','operationId','sourceSha','controlSha'}
+    def digest(x): return isinstance(x,str) and re.fullmatch(r'[a-f0-9]{64}',x) is not None
+    def integer(x,maximum=9223372036854775807): return type(x) is int and 0<=x<=maximum
+    def protected(x): return isinstance(x,dict) and set(x)=={'config.php','data/db-v1.php'} and all(digest(v) for v in x.values())
+    def label(x): return isinstance(x,str) and bool(x.strip()) and len(x.encode())<=512 and re.search(r'[\x00-\x1f\x7f]',x) is None
+    def stamp(x): return isinstance(x,str) and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}',x) is not None
+    def sha(x): return hashlib.sha256(local_stay_schema_canonical(x)).hexdigest()
+    states=('completed_read_only','read_failed','source_schema_missing','anchor_missing','anchor_payload_invalid','anchor_identity_ambiguous',
+            'anchor_identity_unavailable','anchor_row_limit','current_row_limit','current_payload_invalid','cohort_limit','result_size_limit',
+            'context_contract','database_identity','protected_drift','caller_transaction')
+    if (not isinstance(r,dict) or set(r)!=receipt_keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-source-facts-read-v1' or r['state'] not in states
+        or r['operationId']!='int-andromeda-local-stay-source-facts-read-20261026-v1' or r['sourceSha']!=source_sha
+        or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None
+        or type(r['observedAt']) is not int or not 0<r['observedAt']<=253402300799 or r['tourvisorTourId']!='25282424201500'
+        or r['contextOperation']!=context_policy['operation'] or r['contextResultSha256']!=context_policy['private_sha256']
+        or r['failedInstallOperation']!=latest_policy['operation'] or r['failedInstallResultSha256']!=latest_policy['private_sha256']
+        or r['importHeld'] is not True or r['priceAuthority'] is not False): return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','schemaWrites','profileWrites','mappingWrites','automaticAccepts')): return False
+    counts=('anchorRetainedRows','anchorExpiredRows','currentValidatedOffers','currentFactRows','returnedCohorts','draftConceptCount','omittedMissingOperatorOffers','omittedMissingStayFactOffers')
+    if any(not integer(r[k],30128) for k in counts): return False
+    for field in ('databaseSha256Before','databaseSha256After'):
+        if r[field] is not None and not digest(r[field]): return False
+    for field in ('protectedBefore','protectedAfter'):
+        if r[field] is not None and not protected(r[field]): return False
+    source_tables=['anytour_hotels','anytour_hotel_sources','anytour_offers','anytour_offer_scope_state']
+    if (not isinstance(r['missingTables'],list) or r['missingTables']!=[t for t in source_tables if t in r['missingTables']]
+        or (r['state']=='source_schema_missing' and not r['missingTables'])
+        or (r['missingTables'] and r['state'] not in ('source_schema_missing','database_identity','protected_drift'))): return False
+    if data['conceptLookup']!={'state':'not_read','reason':'source_facts_only','rooms':None,'meals':None,'mappings':None}: return False
+    privileges=data['privilegeProof'];privilege_keys={'state','scope','CREATE','REFERENCES','SELECT','TRIGGER','allRequired'}
+    if not isinstance(privileges,dict) or set(privileges)!=privilege_keys or privileges['scope']!='direct_global_or_schema': return False
+    if privileges['state']=='unavailable':
+        if any(privileges[k] is not None for k in ('CREATE','REFERENCES','SELECT','TRIGGER','allRequired')): return False
+    elif privileges['state']=='direct_metadata_observed':
+        if (any(type(privileges[k]) is not bool for k in ('CREATE','REFERENCES','SELECT','TRIGGER','allRequired'))
+            or privileges['allRequired']!=all(privileges[k] for k in ('CREATE','REFERENCES','SELECT','TRIGGER'))): return False
+    else: return False
+    if r['factsSha256']!=sha({k:data[k] for k in keys if k!='receipt'}): return False
+    if r['state']!='completed_read_only':
+        if anchor is not None or facts is not None or cohorts is not None or drafts is not None or any(r[k]!=0 for k in counts): return False
+        if r['state'] not in ('read_failed','context_contract','database_identity','protected_drift','caller_transaction'):
+            return (r['databaseSha256Before']==r['databaseSha256After']==context_policy['database_sha256']
+                    and r['protectedBefore']==r['protectedAfter']==context_policy['protected'])
+        return True
+    if (r['databaseSha256Before']!=context_policy['database_sha256'] or r['databaseSha256After']!=context_policy['database_sha256']
+        or r['protectedBefore']!=context_policy['protected'] or r['protectedAfter']!=context_policy['protected']): return False
+    anchor_keys={'hotelId','legacyHotelId','provider','providerHotelRefDigest','offerRefDigest','retainedRows','expiredRows','identityOnly','profileSha256'}
+    if (not isinstance(anchor,dict) or set(anchor)!=anchor_keys or not integer(anchor['hotelId']) or anchor['hotelId']==0
+        or not integer(anchor['legacyHotelId']) or anchor['legacyHotelId']==0 or anchor['provider']!='tourvisor'
+        or anchor['providerHotelRefDigest']!=hashlib.sha256(('tourvisor:hotel:'+str(anchor['legacyHotelId'])).encode()).hexdigest()
+        or anchor['offerRefDigest']!=hashlib.sha256(b'tourvisor:tour:25282424201500').hexdigest()
+        or not integer(anchor['retainedRows'],64) or anchor['retainedRows']==0 or not integer(anchor['expiredRows'],anchor['retainedRows'])
+        or anchor['identityOnly'] is not True or not digest(anchor['profileSha256'])): return False
+    if not isinstance(facts,list) or not 1<=len(facts)<=15064 or not isinstance(cohorts,list) or len(cohorts)>50 or not isinstance(drafts,list) or len(drafts)>228: return False
+    identity_keys=('hotelId','legacyHotelId','provider','providerHotelRefDigest')
+    def scoped(row):
+        if (not integer(row['hotelId']) or row['hotelId']==0 or not integer(row['legacyHotelId']) or row['legacyHotelId']==0
+            or any(row[k]!=anchor[k] for k in identity_keys) or not label(row['operatorRaw']) or len(row['operatorRaw'].encode())>240): return False
+        scope={'namespace':'anytour_local_id','hotelKey':str(row['legacyHotelId']),
+               'operatorKey':'offer-exact-v1:'+hashlib.sha256((row['provider']+'\0'+row['providerHotelRefDigest']+'\0'+row['operatorRaw']).encode()).hexdigest()}
+        return row['scope']==scope
+    fact_keys={'evidenceState',*identity_keys,'operatorRaw','scope','roomRaw','mealRaw','payloadSha256','lastSeenAt','expiresAt','expired','active'}
+    groups={};expected_drafts={};retained=0;expired=0;current=0
+    for index,fact in enumerate(facts):
+        if (not isinstance(fact,dict) or set(fact)!=fact_keys or not scoped(fact) or fact['evidenceState'] not in ('retained_identity_only','current_complete')
+            or not digest(fact['payloadSha256']) or not stamp(fact['lastSeenAt']) or type(fact['expired']) is not bool or type(fact['active']) is not bool
+            or any(fact[k] is not None and not label(fact[k]) for k in ('roomRaw','mealRaw'))): return False
+        if fact['evidenceState']=='retained_identity_only':
+            retained+=1;expired+=int(fact['expired'])
+            if fact['roomRaw'] is None or fact['mealRaw'] is None or not stamp(fact['expiresAt']): return False
+        else:
+            current+=1
+            if (fact['roomRaw'] is None and fact['mealRaw'] is None) or fact['expiresAt'] is not None or fact['expired'] is not False or fact['active'] is not True: return False
+            group_key=local_stay_schema_canonical([fact[k] for k in (*identity_keys,'operatorRaw','roomRaw','mealRaw')])
+            if group_key not in groups:
+                groups[group_key]={k:fact[k] for k in (*identity_keys,'operatorRaw','scope','roomRaw','mealRaw')}
+                groups[group_key].update(observedCount=0,lastSeenAt=fact['lastSeenAt'])
+            groups[group_key]['observedCount']+=1;groups[group_key]['lastSeenAt']=max(groups[group_key]['lastSeenAt'],fact['lastSeenAt'])
+        for kind in ('room','meal'):
+            raw=fact[kind+'Raw']
+            if raw is None: continue
+            draft_id=sha([fact[k] for k in (*identity_keys,'operatorRaw')]+[kind,raw])
+            if draft_id not in expected_drafts:
+                expected_drafts[draft_id]={'draftId':draft_id,**{k:fact[k] for k in (*identity_keys,'operatorRaw','scope')},'kind':kind,'raw':raw,
+                    'evidenceStates':[],'sourceFactIndexes':[],'canonicalId':None,'targetLocalKey':None,'nameRu':None,'canonicalFacts':None,'status':'manual_review_required'}
+            expected_drafts[draft_id]['sourceFactIndexes'].append(index)
+            expected_drafts[draft_id]['evidenceStates']=sorted(set(expected_drafts[draft_id]['evidenceStates']+[fact['evidenceState']]))
+    if (retained!=anchor['retainedRows'] or expired!=anchor['expiredRows'] or r['anchorRetainedRows']!=retained or r['anchorExpiredRows']!=expired
+        or current!=r['currentFactRows'] or current>15000 or len(cohorts)!=r['returnedCohorts'] or len(drafts)!=r['draftConceptCount']
+        or r['currentValidatedOffers']>15000 or r['draftConceptCount']>228
+        or r['currentValidatedOffers']!=current+r['omittedMissingOperatorOffers']+r['omittedMissingStayFactOffers']): return False
+    cohort_keys={*identity_keys,'operatorRaw','scope','roomRaw','mealRaw','observedCount','lastSeenAt'};seen=set()
+    for cohort in cohorts:
+        if not isinstance(cohort,dict) or set(cohort)!=cohort_keys or not scoped(cohort) or not integer(cohort['observedCount'],15000) or cohort['observedCount']==0: return False
+        key=local_stay_schema_canonical([cohort[k] for k in (*identity_keys,'operatorRaw','roomRaw','mealRaw')])
+        if key in seen or key not in groups or cohort!=groups[key]: return False
+        seen.add(key)
+    if len(seen)!=len(groups) or len(drafts)!=len(expected_drafts): return False
+    seen=set()
+    for draft in drafts:
+        if not isinstance(draft,dict) or draft.get('draftId') not in expected_drafts or draft['draftId'] in seen or draft!=expected_drafts[draft['draftId']]: return False
+        if not scoped(draft) or any(type(i) is not int for i in draft['sourceFactIndexes']): return False
+        seen.add(draft['draftId'])
+    return True
+'''
+
+
+def valid_source_facts_payload(data,control_sha):
+    namespace={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(SCHEMA_VALIDATOR+SOURCE_FACTS_VALIDATOR,namespace)
+        return namespace['local_stay_source_facts_valid'](data,SOURCE_FACTS_SOURCE_SHA,control_sha,CONTEXT_INSTALL_PARENT,SOURCE_FACTS_FAILURE)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+def completed_source_facts(command,result,control_sha):
+    try:
+        expected={'source_sha':SOURCE_FACTS_SOURCE_SHA,'mode':SOURCE_FACTS_MODE,'operation_id':SOURCE_FACTS_OPERATION,
+                  'maximum_cohorts':50,'provider_http_calls':0,'database_writes':0}
+        if (command!=expected or any(type(command.get(k)) is not int for k in ('maximum_cohorts','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha'))
+            or len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>2097152): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')): return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True or not isinstance(before['index.php'],str)
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())): return False
+        item=result.get('local_stay_source_facts')
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter','contextResultSha256','failedInstallResultSha256'}
+            or item['contextResultSha256']!=CONTEXT_INSTALL_PARENT['private_sha256'] or item['failedInstallResultSha256']!=SOURCE_FACTS_FAILURE['private_sha256']
+            or item['protectedBefore']!=CONTEXT_INSTALL_PARENT['protected'] or item['protectedAfter']!=CONTEXT_INSTALL_PARENT['protected']
+            or not valid_source_facts_payload(item['data'],control_sha)): return False
+        data=item['data'];r=data['receipt']
+        raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')+'\n').encode()
+        return (r['state'] not in ('read_failed','context_contract','database_identity','protected_drift','caller_transaction')
+                and r['protectedBefore']==item['protectedBefore'] and r['protectedAfter']==item['protectedAfter']
+                and r['databaseSha256Before']==r['databaseSha256After']==CONTEXT_INSTALL_PARENT['database_sha256']
+                and item['fileSha256']==hashlib.sha256(raw).hexdigest())
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+SOURCE_FACTS_REMOTE_HANDLER = r'''
+def local_stay_source_facts_unique(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value: raise ValueError('duplicate_json_key')
+        value[key]=item
+    return value
+def local_stay_source_facts_protected():
+    values={}
+    for name in ('config.php','data/db-v1.php'):
+        path=project/name
+        if not safe_file(path,2097152) or path.resolve()!=path: fail('local_stay_source_facts_private_dependency')
+        values[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    return values
+def local_stay_source_facts_dependencies():
+    policy=LOCAL_STAY_SOURCE_FACTS_POLICY;outputs=[]
+    for item in (policy['parent'],policy['failure'],policy['context'],policy['latest']):
+        path=private/item['operation']/'result.json'
+        if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_source_facts_lineage_file')
+        raw=path.read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=item['private_sha256']: fail('local_stay_source_facts_lineage_hash')
+        try: value=json.loads(raw,object_pairs_hook=local_stay_source_facts_unique)
+        except Exception: fail('local_stay_source_facts_lineage_json')
+        outputs.append((path,value))
+    try: valid=local_stay_source_facts_lineage_valid(outputs[2][1],outputs[3][1],outputs[0][1],outputs[1][1],policy['context'],policy['latest'],policy['parent'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_source_facts_lineage_contract')
+    return outputs[2][0],outputs[3][0]
+def run_local_stay_source_facts(stage):
+    policy=LOCAL_STAY_SOURCE_FACTS_POLICY
+    if payload!={**policy['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}:
+        fail('local_stay_source_facts_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_cohorts','provider_http_calls','database_writes')): fail('local_stay_source_facts_payload_types')
+    if files!=policy['hashes']: fail('local_stay_source_facts_source_pins')
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=result['schema_writes']=0
+    context_path,latest_path=local_stay_source_facts_dependencies();protected_before=local_stay_source_facts_protected()
+    if protected_before!=policy['context']['protected']: fail('local_stay_source_facts_private_drift')
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ}
+    env.update({'ANYTOUR_SITE_ROOT':str(project),'ANYTOUR_OPERATION_OUTPUT_DIR':str(op),
+                'ANYTOUR_OPERATION_RELEASE_SHA':source,'ANYTOUR_OPERATION_CONTROL_SHA':policy['control'],
+                'ANYTOUR_OPERATION_ID':operation,'ANYTOUR_SOURCE_FACTS_CONTEXT_PATH':str(context_path),'ANYTOUR_SOURCE_FACTS_FAILURE_PATH':str(latest_path)})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','memory_limit=256M','-d','disable_functions='+disabled,
+                        str(stage/'scripts/catalog/anytour_hotel_stay_source_facts_read_v1.php')],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=180)
+    path=op/'local-stay-source-facts-read.json'
+    if not safe_file(path,2097152) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_source_facts_receipt_file')
+    raw=path.read_bytes()
+    try: data=json.loads(raw,object_pairs_hook=local_stay_source_facts_unique)
+    except Exception: fail('local_stay_source_facts_receipt_json')
+    try: valid=local_stay_source_facts_valid(data,source,policy['control'],policy['context'],policy['latest'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_source_facts_receipt_contract')
+    item={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),'protectedBefore':protected_before,'protectedAfter':None,
+          'contextResultSha256':policy['context']['private_sha256'],'failedInstallResultSha256':policy['latest']['private_sha256']}
+    result['local_stay_source_facts']=item
+    protected_after=local_stay_source_facts_protected();item['protectedAfter']=protected_after;r=data['receipt']
+    if (r['protectedBefore']!=protected_before or r['protectedAfter']!=protected_after or protected_before!=protected_after):
+        fail('local_stay_source_facts_dependency_drift')
+    terminal=r['state'] in ('read_failed','context_contract','database_identity','protected_drift','caller_transaction')
+    if (run.returncode!=(1 if terminal else 0) or run.stderr.strip() or len(run.stdout.encode())>2097152): fail('local_stay_source_facts_exit_no_replay')
+    try: emitted=json.loads(run.stdout,object_pairs_hook=local_stay_source_facts_unique)
+    except Exception: fail('local_stay_source_facts_stdout')
+    if emitted!=data: fail('local_stay_source_facts_stdout')
+    return item
+'''
+SOURCE_FACTS_REMOTE_DISPATCH = r'''    if mode=='local-stay-source-facts-read-v1':
+        result['local_stay_source_facts']=run_local_stay_source_facts(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        terminal=result['local_stay_source_facts']['data']['receipt']['state'] in ('read_failed','context_contract','database_identity','protected_drift','caller_transaction')
+        result['status']='terminal_nonzero_no_replay' if terminal else 'complete'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>2097152: fail('local_stay_source_facts_terminal_size')
+'''
+
+
+def activate_source_facts(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),SOURCE_FACTS_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_cohorts','provider_http_calls','database_writes')),
+         'local_stay_source_facts_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_source_facts_control_sha')
+    hashes=source_facts_hashes();remote=core.REMOTE
+    definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,
+         'local_stay_source_facts_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'context':CONTEXT_INSTALL_PARENT,'latest':SOURCE_FACTS_FAILURE,'parent':INSTALL_PARENT,'failure':CONTEXT_FAILURE}
+    constants=('SCHEMA_MAX_BYTES=262144\nSCHEMA_MODE='+repr(SCHEMA_MODE)+'\nSCHEMA_OPERATION='+repr(INSTALL_PARENT['operation'])
+               +'\nSCHEMA_SOURCE_SHA='+repr(INSTALL_PARENT['source'])+'\nCONTEXT_MAX_BYTES=262144\nCONTEXT_MODE='+repr(CONTEXT_MODE)
+               +'\nCONTEXT_OPERATION='+repr(CONTEXT_OPERATION)+'\nCONTEXT_SOURCE_SHA='+repr(CONTEXT_SOURCE_SHA)
+               +'\nINSTALL_PARENT='+repr(INSTALL_PARENT)+'\nCONTEXT_FAILURE='+repr(CONTEXT_FAILURE)+'\n')
+    validators=('def local_stay_parent_valid_payload(data,control_sha):\n'
+                '    return local_stay_schema_valid(data,SCHEMA_SOURCE_SHA,control_sha)\n'
+                'def local_stay_context_parent_payload(data,control_sha):\n'
+                '    return local_stay_context_valid(data,CONTEXT_SOURCE_SHA,control_sha,INSTALL_PARENT,CONTEXT_FAILURE)\n')
+    program=('LOCAL_STAY_SOURCE_FACTS_POLICY='+repr(policy)+'\n'+constants+SCHEMA_VALIDATOR+CONTEXT_VALIDATOR
+             +context_install_inventory_validator()+CONTEXT_INSTALL_VALIDATOR+SOURCE_FACTS_LINEAGE_VALIDATOR+SOURCE_FACTS_VALIDATOR
+             +'\n'+validators+'\n'+parent_completion_source()+'\n'+context_dependency_completion_source()+'\n'+SOURCE_FACTS_REMOTE_HANDLER+'\n')
+    remote=remote.replace(definition,program+definition,1);remote=remote.replace(dispatch,SOURCE_FACTS_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+SOURCE_FACTS_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_SOURCE_FACTS_POLICY['hashes']: fail('local_stay_source_facts_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_stay_source_facts_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=6 or {m.name for m in members}!={*LOCAL_STAY_SOURCE_FACTS_POLICY['hashes'],'manifest.json'}: fail('local_stay_source_facts_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_source_facts_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_source_facts_reserved=True\n',1)
+    remote=remote.replace(final,"if globals().get('local_stay_source_facts_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_source_facts_source
+    original_completed=core.completed_result
+    core.completed_result=lambda cmd,result: completed_source_facts(cmd,result,control) if cmd.get('mode')==SOURCE_FACTS_MODE else original_completed(cmd,result)

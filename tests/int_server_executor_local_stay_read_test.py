@@ -1080,5 +1080,188 @@ class NativeStockContextInstall(unittest.TestCase):
         print(run.stdout.strip())
 
 
+def source_facts_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.SOURCE_FACTS_SOURCE_SHA} {m.SOURCE_FACTS_MODE} {m.SOURCE_FACTS_OPERATION}')
+
+
+def source_facts_refresh(data):
+    data['receipt']['factsSha256']=hashlib.sha256(json.dumps({k:v for k,v in data.items() if k!='receipt'},
+        ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    return data
+
+
+def source_facts_fixture_data(held=False):
+    # Fictional raw labels exercise grouping and null drafts, never real mappings.
+    legacy=101;hotel=11;provider='tourvisor';digest=hashlib.sha256(b'tourvisor:hotel:101').hexdigest();operator='FICTIONAL OPERATOR'
+    scope={'namespace':'anytour_local_id','hotelKey':'101','operatorKey':'offer-exact-v1:'+hashlib.sha256((provider+'\0'+digest+'\0'+operator).encode()).hexdigest()}
+    base={'hotelId':hotel,'legacyHotelId':legacy,'provider':provider,'providerHotelRefDigest':digest,'operatorRaw':operator,'scope':scope}
+    facts=[{'evidenceState':'retained_identity_only',**base,'roomRaw':'RETAINED ROOM','mealRaw':'AI','payloadSha256':'a'*64,
+            'lastSeenAt':'2026-10-20 12:00:00','expiresAt':'2026-10-21 12:00:00','expired':True,'active':False},
+           {'evidenceState':'current_complete',**base,'roomRaw':'CURRENT ROOM','mealRaw':'AI','payloadSha256':'b'*64,
+            'lastSeenAt':'2026-10-26 12:00:00','expiresAt':None,'expired':False,'active':True}]
+    drafts={}
+    for index,fact in enumerate(facts):
+        for kind in ('room','meal'):
+            raw=fact[kind+'Raw'];key=hashlib.sha256(json.dumps([hotel,legacy,provider,digest,operator,kind,raw],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+            if key not in drafts: drafts[key]={'draftId':key,**base,'kind':kind,'raw':raw,'evidenceStates':[],'sourceFactIndexes':[],
+                'canonicalId':None,'targetLocalKey':None,'nameRu':None,'canonicalFacts':None,'status':'manual_review_required'}
+            drafts[key]['sourceFactIndexes'].append(index);drafts[key]['evidenceStates']=sorted(set(drafts[key]['evidenceStates']+[fact['evidenceState']]))
+    policy=m.CONTEXT_INSTALL_PARENT
+    data={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-source-facts-read-v1','state':'source_schema_missing' if held else 'completed_read_only',
+        'observedAt':1792968926,'tourvisorTourId':m.TOUR,'contextOperation':policy['operation'],'contextResultSha256':policy['private_sha256'],
+        'failedInstallOperation':m.SOURCE_FACTS_FAILURE['operation'],'failedInstallResultSha256':m.SOURCE_FACTS_FAILURE['private_sha256'],
+        'databaseSha256Before':policy['database_sha256'],'databaseSha256After':policy['database_sha256'],
+        'protectedBefore':dict(policy['protected']),'protectedAfter':dict(policy['protected']),
+        'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'profileWrites':0,'mappingWrites':0,'automaticAccepts':0,'importHeld':True,'priceAuthority':False,
+        'anchorRetainedRows':0 if held else 1,'anchorExpiredRows':0 if held else 1,'currentValidatedOffers':0 if held else 1,'currentFactRows':0 if held else 1,
+        'returnedCohorts':0 if held else 1,'draftConceptCount':0 if held else len(drafts),'omittedMissingOperatorOffers':0,'omittedMissingStayFactOffers':0,
+        'missingTables':['anytour_offers'] if held else [],'factsSha256':None,'operationId':m.SOURCE_FACTS_OPERATION,'sourceSha':m.SOURCE_FACTS_SOURCE_SHA,'controlSha':CONTROL},
+        'anchorEvidence':None if held else {'hotelId':hotel,'legacyHotelId':legacy,'provider':provider,'providerHotelRefDigest':digest,
+            'offerRefDigest':hashlib.sha256(('tourvisor:tour:'+m.TOUR).encode()).hexdigest(),'retainedRows':1,'expiredRows':1,'identityOnly':True,'profileSha256':'c'*64},
+        'sourceFacts':None if held else facts,'currentCohorts':None if held else [{**base,'roomRaw':'CURRENT ROOM','mealRaw':'AI','observedCount':1,'lastSeenAt':'2026-10-26 12:00:00'}],
+        'draftConcepts':None if held else list(drafts.values()),'conceptLookup':{'state':'not_read','reason':'source_facts_only','rooms':None,'meals':None,'mappings':None},
+        'privilegeProof':{'state':'direct_metadata_observed','scope':'direct_global_or_schema','CREATE':False,'REFERENCES':False,'SELECT':True,'TRIGGER':False,'allRequired':False}}
+    return source_facts_refresh(data)
+
+
+def source_facts_receipt(data):
+    outer=receipt(data);outer.pop('local_stay_read')
+    outer.update(mode=m.SOURCE_FACTS_MODE,operation_id=m.SOURCE_FACTS_OPERATION,source_sha=m.SOURCE_FACTS_SOURCE_SHA)
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    outer['local_stay_source_facts']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+        'protectedBefore':dict(m.CONTEXT_INSTALL_PARENT['protected']),'protectedAfter':dict(m.CONTEXT_INSTALL_PARENT['protected']),
+        'contextResultSha256':m.CONTEXT_INSTALL_PARENT['private_sha256'],'failedInstallResultSha256':m.SOURCE_FACTS_FAILURE['private_sha256']}
+    return outer
+
+
+class SourceFactsAdmission(unittest.TestCase):
+    def test_fixed_owner_main_release_first_attempt_and_read_only_scope(self):
+        c=wrapper().core;parsed=source_facts_command(c);body=f'{c.PREFIX}{m.SOURCE_FACTS_SOURCE_SHA} {m.SOURCE_FACTS_MODE} {m.SOURCE_FACTS_OPERATION}'
+        self.assertEqual(parsed['maximum_cohorts'],50)
+        for invalid in (body+' --apply',body+' 251234',body.replace(m.SOURCE_FACTS_SOURCE_SHA,'a'*40),
+                        body.replace(m.SOURCE_FACTS_SOURCE_SHA,m.CONTEXT_INSTALL_SOURCE_SHA),body.replace(m.SOURCE_FACTS_OPERATION,m.SOURCE_FACTS_OPERATION+'-retry')):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':114,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/114': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.SOURCE_FACTS_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            with self.assertRaises(ValueError): c.checked_event('fixture',dict(event,issue={'number':4217}),CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+
+    def test_closed_five_source_bundle_and_preserved_reservation(self):
+        raw,hashes=m.bundle_source_facts_source(SOURCE)
+        self.assertEqual(hashes,m.source_facts_hashes())
+        self.assertFalse({m.SCHEMA_RUNNER,m.SCHEMA_SQL,m.INSTALL_RUNNER,m.CONTEXT_RUNNER,m.CONTEXT_INSTALL_RUNNER}&set(hashes))
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(len(archive.getmembers()),6);self.assertEqual(set(archive.getnames()),{*hashes,'manifest.json'})
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        c=wrapper().core;parsed=source_facts_command(c)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_cohorts',True),('maximum_cohorts',51),('provider_http_calls',False),('database_writes',1),('sql','SELECT'),('tour_id','other')):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE)
+        self.assertIn("if len(members)!=6",c.REMOTE)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",c.REMOTE)
+        self.assertIn("if globals().get('local_stay_source_facts_reserved') is True and op.exists():",c.REMOTE)
+        self.assertNotIn('def run_local_stay_context_install(',c.REMOTE)
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_raw_evidence_groups_and_null_drafts_never_require_create_privilege(self):
+        parsed=source_facts_command(wrapper().core);data=source_facts_fixture_data()
+        self.assertTrue(m.completed_source_facts(parsed,source_facts_receipt(data),CONTROL))
+        for mutate in (lambda d:d['receipt'].update(supplierCalls=False),lambda d:d['receipt'].update(priceAuthority=True),
+                       lambda d:d['receipt'].update(currentFactRows=True),lambda d:d['draftConcepts'][0].update(canonicalId=1),
+                       lambda d:d['draftConcepts'][0].update(sourceFactIndexes=[False]),lambda d:d['sourceFacts'][0].update(hotelId=12),
+                       lambda d:d['sourceFacts'][0].update(price=999),lambda d:d['privilegeProof'].update(allRequired=True),
+                       lambda d:d['conceptLookup'].update(state='absent')):
+            changed=copy.deepcopy(data);mutate(changed);source_facts_refresh(changed)
+            self.assertFalse(m.completed_source_facts(parsed,source_facts_receipt(changed),CONTROL))
+        held=source_facts_fixture_data(True);self.assertTrue(m.completed_source_facts(parsed,source_facts_receipt(held),CONTROL))
+        held['receipt']['missingTables']=['anytour_hotel_stay_mappings_v2'];self.assertFalse(m.valid_source_facts_payload(held,CONTROL))
+        failed=source_facts_fixture_data(True);failed['receipt'].update(state='database_identity',missingTables=[],databaseSha256Before='d'*64,databaseSha256After='d'*64)
+        self.assertTrue(m.valid_source_facts_payload(failed,CONTROL));self.assertFalse(m.completed_source_facts(parsed,source_facts_receipt(failed),CONTROL))
+
+    def test_latest_apply_is_exact_zero_ddl_privileges_evidence_not_completion(self):
+        policy=copy.deepcopy(m.CONTEXT_INSTALL_PARENT);policy['inventory_sha256']=install_fixture_data()['receipt']['beforeSha256']
+        read_policy=copy.deepcopy(m.INSTALL_PARENT);read_policy['inventory_sha256']=policy['inventory_sha256']
+        with mock.patch.object(m,'CONTEXT_INSTALL_PARENT',policy),mock.patch.object(m,'INSTALL_PARENT',read_policy):
+            data=context_install_fixture_data();data.update(after=None)
+            data['receipt'].update(state='preflight_refused',reason='privileges',afterSha256=None,attemptedTables=[],createdTables=[],unknownTables=[],
+                tableRows=[],schemaWrites=0,ddlOutcomeUnknown=False,parentMetadataUnchanged=None,journalSha256=None)
+            latest=context_install_receipt(data);latest['status']='terminal_nonzero_no_replay'
+            item=latest['local_stay_context_install'];item.update(journalSha256=None,journalEvents=[])
+            latest_policy=copy.deepcopy(m.SOURCE_FACTS_FAILURE);latest_policy.update(control=CONTROL,file_sha256=item['fileSha256'])
+            namespace={'hashlib':hashlib,'json':json,'re':re}
+            exec(m.SCHEMA_VALIDATOR+m.context_install_inventory_validator()+m.CONTEXT_INSTALL_VALIDATOR+m.SOURCE_FACTS_LINEAGE_VALIDATOR,namespace)
+            # Historical context validation has its own retained tests above;
+            # isolate the additional failed-apply boundary in this unit.
+            namespace['local_stay_context_install_parent_valid']=lambda *args:True
+            valid=namespace['local_stay_source_facts_lineage_valid'];context={'production_before':latest['production_before']}
+            self.assertTrue(valid(context,latest,{}, {},policy,latest_policy,read_policy,m.CONTEXT_FAILURE))
+            for key,value in (('status','complete'),('schema_writes_acknowledged',False),('schema_write_outcome_unknown',True)):
+                self.assertFalse(valid(context,latest|{key:value},{},{},policy,latest_policy,read_policy,m.CONTEXT_FAILURE))
+            changed=copy.deepcopy(latest);changed['local_stay_context_install']['journalEvents']=[{'stage':'start'}]
+            self.assertFalse(valid(context,changed,{},{},policy,latest_policy,read_policy,m.CONTEXT_FAILURE))
+
+
+class NativeStockSourceFacts(unittest.TestCase):
+    def setUp(self):
+        NativeStockContextInstall.setUp(self)
+        context=json.loads(self.context_path.read_bytes());data=context_install_fixture_data();data.update(before=context['local_stay_install_context']['data']['inventory'],after=None)
+        data['receipt'].update(state='preflight_refused',reason='privileges',parentReadInventorySha256=m.INSTALL_PARENT['inventory_sha256'],beforeSha256=m.CONTEXT_INSTALL_PARENT['inventory_sha256'],afterSha256=None,
+            attemptedTables=[],createdTables=[],unknownTables=[],tableRows=[],schemaWrites=0,ddlOutcomeUnknown=False,parentMetadataUnchanged=None,journalSha256=None)
+        # A typed local retained-failure fixture binds native observed metadata;
+        # the production installer CLI is never recompiled or invoked here.
+        latest=context_install_receipt(data);latest['status']='terminal_nonzero_no_replay';latest['local_stay_context_install'].update(journalSha256=None,journalEvents=[])
+        latest['production_before']=dict(context['production_before']);latest['production_after']=dict(context['production_before'])
+        self.latest_path=self.home/'.anytoour-int-executor'/m.CONTEXT_INSTALL_OPERATION/'result.json';self.latest_path.parent.mkdir(parents=True,exist_ok=True)
+        raw=json.dumps(latest,sort_keys=True,separators=(',',':')).encode();self.latest_path.write_bytes(raw);self.latest_path.chmod(0o600)
+        latest_policy=copy.deepcopy(m.SOURCE_FACTS_FAILURE);latest_policy.update(control=CONTROL,private_sha256=hashlib.sha256(raw).hexdigest(),file_sha256=latest['local_stay_context_install']['fileSha256'])
+        self.enterContext(mock.patch.object(m,'SOURCE_FACTS_FAILURE',latest_policy))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=source_facts_command(self.c);m.activate(self.c,self.command)
+        raw,hashes=m.bundle_source_facts_source(SOURCE);self.archive=self.home/'source-facts-source.tar.gz';self.archive.write_bytes(raw)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    run_remote=NativeStockRead.run_remote
+
+    def test_actual_current_private_drift_stops_before_php_and_repeat_preserves_original(self):
+        with (self.project/'config.php').open('a') as handle: handle.write('// drift after retained context\n')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_source_facts_private_drift',result)
+        self.assertEqual(result.get('schema_writes'),0);self.assertNotIn('local_stay_source_facts',result)
+        operation=self.home/'.anytoour-int-executor'/m.SOURCE_FACTS_OPERATION;original=(operation/'result.json').read_bytes()
+        self.assertFalse((operation/'local-stay-source-facts-read.json').exists())
+        repeat=self.run_remote();self.assertEqual(repeat.get('reason'),'operation_exists_no_replay')
+        self.assertEqual((operation/'result.json').read_bytes(),original)
+
+    def test_actual_latest_private_bytes_drift_stops_before_php(self):
+        self.latest_path.write_bytes(self.latest_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_source_facts_lineage_hash',result)
+        self.assertNotIn('local_stay_source_facts',result);self.assertEqual(result.get('schema_writes'),0)
+
+    def test_actual_extra_staged_config_is_rejected_before_extraction(self):
+        with tarfile.open(self.archive,'r:gz') as original: members=[(x,original.extractfile(x).read()) for x in original.getmembers()]
+        with tarfile.open(self.archive,'w:gz') as changed:
+            for info,raw in members: changed.addfile(info,io.BytesIO(raw))
+            raw=b'<?php throw new RuntimeException("unmanifested");';info=tarfile.TarInfo('v2/config.php');info.size=len(raw);changed.addfile(info,io.BytesIO(raw))
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_source_facts_archive_scope')
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.SOURCE_FACTS_OPERATION/'source/v2/config.php').exists())
+
+    def test_actual_php_source_only_raw_facts_contract_suite(self):
+        env=dict(os.environ,ANYTOUR_STAY_SOURCE_FACTS_V1_TEST_DSN=self.server,
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=self.password,LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_source_facts_read_v1_test.php')],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_SOURCE_FACTS_READ_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()
