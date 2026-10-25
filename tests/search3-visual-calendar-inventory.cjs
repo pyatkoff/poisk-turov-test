@@ -76,7 +76,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
   const draft={from:'2026-10-27',to:'2026-11-02',phase:0};
   const dateContext={source:'form'};
   const context={innerWidth:width,modalType:'dates',dateContext,calendarOpeningAnchor:null,calendarMonth:'2026-10-01',dateDraft:draft,$:selector=>selector==='#modal'?modal:selector==='#modal-body'?body:selector.includes('data-date=')?selected:null};
-  vm.createContext(context);vm.runInContext(section(source,'// Initial price notices may change','let dateContext='),context);vm.runInContext(section(source,'function revealCalendarMonth(','function syncCalendarScopeDisclosure('),context);
+  vm.createContext(context);vm.runInContext(section(source,'// Initial price notices may change','let dateContext='),context);vm.runInContext(section(source,'function revealCalendarMonth(',source.includes('function syncCalendarScopeDisclosure(')?'function syncCalendarScopeDisclosure(':'function calendarPriceInventory('),context);
   context.revealCalendarMonth(revealSelection);
   assert.deepEqual(draft,{from:'2026-10-27',to:'2026-11-02',phase:0},'reveal never changes the chosen range');
   return {context,body,geometry,listeners,get scroll(){return body.scrollTop;},get selected(){return selected?.getBoundingClientRect();}};

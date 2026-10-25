@@ -1,5 +1,20 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Retired calendar disclosure code — 25 October 2026
+
+The approved compact date picker renders its context through `renderCalendarScope`.
+The superseded disclosure template, unregistered toggle/visible-month callbacks,
+their unused toggle state and disclosure-only CSS have been removed together.
+The active calendar painter, viewport/scroll handling, month loading observer,
+prices, date selection and history remain unchanged. Existing passive-context
+and calendar parity checks retain their original observations and assertions.
+
+This is a technical cleanup of the existing owner, with no new composition or
+score increase. It starts from release `65d8d11b1cbc5b130a2fdf8f766daa3281282259`,
+which already includes the accepted PR4901 desktop calendar repair and LOCAL
+changes. Its final-source build, CI, visual review and NEXT publication require
+their own exact receipts; the earlier rejected c73 publisher remains sealed.
+
 ## One lifecycle owner for live and labelled demo — 25 October 2026
 
 Both `index.php` and the offline `index.html` load
