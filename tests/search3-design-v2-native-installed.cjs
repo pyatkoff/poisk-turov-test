@@ -10,11 +10,14 @@ const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-se
 const mealOnly=process.argv.includes('--meal-only');
 const leadFocusOnly=process.argv.includes('--lead-focus-only');
 assert(!(mealOnly&&leadFocusOnly),'One finite installed mode at a time');
-const currentInstalled=mealOnly||leadFocusOnly;
+const stayLabelsOnly=process.argv.includes('--stay-labels-only');
+assert([mealOnly,leadFocusOnly,stayLabelsOnly].filter(Boolean).length<=1,'One finite installed mode');
+const currentInstalled=mealOnly||leadFocusOnly||stayLabelsOnly;
 const PRIOR_INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
 // ROOT fills these only from the actual one-shot publication terminal receipt.
 const MEAL_INSTALLED=Object.freeze({source:'4442cec9921d0888b43cc7a7137385f1e6223c48',release:'43c6a56e06a7fd634a603e24a890f745c5e49773',publishRun:39518137791,manifestSHA256:'839d40fef279afee958d447858eada8bfac5e536b99b7b76d7bf34d22f8f1d67'});
-const INSTALLED=currentInstalled?MEAL_INSTALLED:PRIOR_INSTALLED;
+const STAY_INSTALLED=Object.freeze({source:'5b0a4cb5e7a9ca9c5e05592d00c2074f7c879abc',release:'61df4576b51b74446657e3b8ae010b396bcfc3c4',publishRun:40203794601,manifestSHA256:'5a534ca0c1c556e1155ae3795a0e8f0afcb1984e46314d43090f45808db99cb3'});
+const INSTALLED=stayLabelsOnly?STAY_INSTALLED:currentInstalled?MEAL_INSTALLED:PRIOR_INSTALLED;
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
 assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
@@ -28,8 +31,8 @@ const MEAL_HELPER_SHA256='83dc1add39bde2e5d5360d52e36387a0197b71859b9e2a6a8a6324
 const noOp=Buffer.from('/* Controlled installed presentation evidence: canonical transport disabled. */\n');
 const fixtureScript=Buffer.from('('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');');
 const terminalScript=Buffer.from('('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');');
-const report={schema:1,status:'running',mode:leadFocusOnly?'lead-focus-only':mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
-  scope:leadFocusOnly?'Installed HTTPS Lead 10.C2 action clarity and click/programmatic focus on entry, local validation and return, with explicit fictional canonical data; Chromium 430/1280 at 100%; full keyboard, live supplier and delivery not measured':mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
+const report={schema:1,status:'running',mode:stayLabelsOnly?'stay-labels-only':leadFocusOnly?'lead-focus-only':mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
+  scope:stayLabelsOnly?'Installed HTTPS tour/contact LOCAL label continuity with actual verified bridge and data helper, fictional canonical responses;430/1280@100 only; supplier/lead0':leadFocusOnly?'Installed HTTPS Lead 10.C2 action clarity and click/programmatic focus on entry, local validation and return, with explicit fictional canonical data; Chromium 430/1280 at 100%; full keyboard, live supplier and delivery not measured':mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
   fixture:fixture.label,clock:'2026-10-12T08:00:00Z',widths:[430,1280],height:900,textPercent:100,
   manifest:null,graph:[],publicGETs:[],replacements:[],network:[],cases:[],unexpectedRequests:[],
   exclusions:{supplierSearches:0,supplierQuotes:0,canonicalAPIRequests:0,realLeadSubmissions:0,analyticsRequests:0,physicalSafari:'not_measured',liveAuthority:'not_measured'}};
@@ -151,6 +154,36 @@ async function capture(page,row,name){
   }
   if(contact){row.proof.contactFeedback||={};row.proof.contactFeedback[name]={before:contactBefore,after:await contactFeedback()};}
   const bytes=fs.readFileSync(file);row.frames.push({file:nameFile,sha256:hash(bytes),bytes:bytes.length});
+}
+async function acceptStayLabels(page,row,product,screen){
+  const counts=()=>page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
+  assert.deepEqual(await counts(),{search:0,other:0,quote:0,flights:0});
+  await screen('search').locator('button[type="submit"]').click();await screen('results').waitFor({state:'visible'});
+  await page.evaluate(()=>window.__nativeTerminalFixture.installDenials());
+  await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
+  assert.equal((await counts()).quote,0,'Passive hotel opening never quotes');
+  await product.locator('[data-hotel-offers] [data-offer="fixture:denial:allowed"]').click();await screen('tour').waitFor({state:'visible'});
+  await product.locator('[data-native-tour-flight="0"]').click();
+  await product.locator('[data-action="accept-price"]:visible').first().click();
+  const labels=async()=>{
+    assert.equal(await product.locator('[data-tour-room]').innerText(),'Стандарт · территория');
+    assert.equal(await product.locator('[data-tour-meal]').innerText(),'Программа питания отеля');
+  };
+  await labels();await capture(page,row,'local-stay-tour');
+  const read=()=>page.evaluate(()=>{const c=window.__nativeTerminalFixture,s=c.bridge.getSelection();return{
+    calls:{...c.calls},key:s.key,total:s.total,ages:[...s.offer.ages],room:s.tour.roomType,meal:s.tour.meal.name,
+    exactOffer:s.offer===c.denials.offers.allowed,choice:s.flightChoiceId,accepted:s.priceAccepted};});
+  const before=await read();assert.equal(before.total,163400);assert.equal(before.room,'standard land view');assert.equal(before.meal,'AI');assert.equal(before.exactOffer,true);
+  assert.deepEqual(before.calls,{search:1,other:0,quote:1,flights:1});
+  await screen('tour').locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+  assert.equal(await product.locator('[data-lead-choice]').innerText(),'Стандарт · территория · Программа питания отеля');
+  await capture(page,row,'local-stay-contact');
+  await screen('lead').locator('[data-action="tour"]').click();await screen('tour').waitFor({state:'visible'});await labels();
+  await page.setViewportSize({width:row.width===430?1280:430,height:900});
+  await page.setViewportSize({width:row.width,height:900});
+  await screen('tour').waitFor({state:'visible'});await labels();
+  assert.deepEqual(await read(),before,'Contact, Back and responsive reopen preserve exact receipt and add zero operations');
+  row.proof={acceptedLocalLabels:true,rawReceiptRetained:true,backResponsiveRetained:true,extraOperations:0,before,after:await read()};
 }
 async function acceptMealFamilies(page,row,product,screen,installedManifest){
   const width=row.width;
@@ -362,7 +395,7 @@ async function run(){
     for(const width of [430,1280]){
       const row={width,height:900,textPercent:100,frames:[],errors:[],proof:{},status:'running'};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce',serviceWorkers:'block'});
-      let page,terminalJourney=false;
+      let page,terminalJourney=stayLabelsOnly;
       await context.route('**/*',async route=>{
         const req=route.request(),value=req.url(),entry={width,url:value,method:req.method(),resourceType:req.resourceType()};report.network.push(entry);
         try{
@@ -375,7 +408,14 @@ async function run(){
             body=terminalJourney?Buffer.concat([body,Buffer.from('\n('+recordTerminalBridge.toString()+')();')]):fixtureScript;
             entry.action=terminalJourney?'verified-installed-bridge-instrumentation':'fixture-bridge';
           }
-          else if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){body=terminalScript;entry.action='fictional-canonical-data';}
+          else if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){
+            body=terminalScript;
+            if(stayLabelsOnly){
+              const labels='const labelsOwner={Search3CanonicalProfilesV1:{create:()=>({})}};(function(window){'+actual.body.toString('utf8')+'})(labelsOwner);Object.assign(window.AnyTourPrototypeData,{text:labelsOwner.AnyTourPrototypeData.text,meal:labelsOwner.AnyTourPrototypeData.meal,stayLabel:labelsOwner.AnyTourPrototypeData.stayLabel});';
+              body=Buffer.concat([body,Buffer.from(labels)]);
+            }
+            entry.action=stayLabelsOnly?'fictional-canonical-data-with-verified-installed-label-helper':'fictional-canonical-data';
+          }
           else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')&&!(currentInstalled&&url.pathname===localHelperPath)){body=noOp;entry.action='canonical-script-disabled';}
           else entry.action='verified-installed-bytes';
           if(body!==actual.body){const change={path:url.pathname,originalSHA256:actual.sha256,replacementSHA256:hash(body),reason:entry.action};if(!report.replacements.some(r=>r.path===change.path&&r.replacementSHA256===change.replacementSHA256))report.replacements.push(change);}
@@ -389,9 +429,14 @@ async function run(){
         page=await context.newPage();page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(20000);
         page.on('pageerror',error=>row.errors.push(error.message));
         await page.clock.setFixedTime(new Date(report.clock));
-        await page.goto(TARGET,{waitUntil:'networkidle'});
+        await page.goto(stayLabelsOnly?TARGET+'?'+new URLSearchParams({...fixture.trip,ages:fixture.trip.ages.join(',')}):TARGET,{waitUntil:'networkidle'});
         row.initialURL=verifyInitialURL(page.url());const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});assert.equal((await calls(page)).search,0);
+        if(stayLabelsOnly){
+          await acceptStayLabels(page,row,product,screen);
+          assert.equal(row.frames.length,2,'Only changed tour/contact states per width');
+          assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';continue;
+        }
         if(leadFocusOnly){
           await acceptLeadFocus(page,row,product,screen);
           assert.equal(row.frames.length,2,'Only two new Lead C2 states per width');
@@ -548,7 +593,7 @@ async function run(){
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
     }
-    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),leadFocusOnly?4:mealOnly?6:24);report.status='passed';
+    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),stayLabelsOnly||leadFocusOnly?4:mealOnly?6:24);report.status='passed';
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
