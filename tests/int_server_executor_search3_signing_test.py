@@ -1115,6 +1115,7 @@ def load_tests(loader, tests, pattern):
         suite.addTest(NativeTVFieldsInstall(name))
         suite.addTest(NativeTVDayInstall(name))
         suite.addTest(NativeTVLimitInstall(name))
+        suite.addTest(NativeTVCapInstall(name))
     return suite
 
 
