@@ -21,6 +21,10 @@ own supplied total and retained choice ref. Local tv_select precedes handoff_fre
 only private identity pins enter freeze, with no browser amount, party or observation.
 Canonical review terms must match the current selected tour. TV remains a checked
 offer; neither browser observations nor this entry assert final_price_verified.
+TV comparison consumes the same stored canonical request party, including its
+existing native child-age order. The original entered order remains in the UI and
+capture binding; entering12,0 cannot falsely mismatch the retained0,12 request,
+and a later edit still invalidates the capture. No supplier payload is reordered.
 The original server observation deadline controls CREATE and links, including
 reopen; it is never renewed locally. Unknown tour/flight results retain the original
 attempt and never retry via a new operation or the root TV path. Search cancellation,
@@ -34,7 +38,7 @@ store, lead transport, money formula, supplier payload, config or protected path
 Focused source VM checks cover the full data owner, private pins/crosswalk and
 no-replay, context, flow deadlines and actual app entry. The existing mandatory
 compiled messenger pass serves the actual marked NEXT entry at430x900 and
-1280x720: retained ANEX path plus one TV family3A+[0,12] manager90000 → optional
+1280x720: retained ANEX path plus one TV family3A+[12,0] / canonical request[0,12] manager90000 → optional
 pair133500.5 → phone/draft/consent/Back → delayed CREATE → explicit intercepted MAX.
 All HTTP/native/bot replies are fictional; root TV search/quote HTTP is forbidden.
 The historical full browser matrix explicitly retains its root-protocol fixture

@@ -2255,16 +2255,16 @@ function messengerAvailable(receipt){
  return data.live===true&&window.V2_CONFIG?.search3MessengerEnabled===true&&typeof data.messengerHandoff==='function'
   &&!!window.AnyTourSearch3MessengerContextV1&&!!window.AnyTourSearch3MessengerFlowV1
   &&(receipt===anexApplicationDraft&&receipt?.finalPriceVerified===true
-    ||receipt?.provider==='tourvisor'&&!!data.tourvisorHandoffSelector?.(receipt,selectedTourHotel(receipt)));
+    ||receipt?.provider==='tourvisor'&&!!data.tourvisorHandoffSelection?.(receipt,selectedTourHotel(receipt)));
 }
 function messengerInput(){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!$('#modal').open||!h)return null;
  if(modalType==='selected-tour'){
-  const ready=leadReadyOffer(o),selector=ready&&data.tourvisorHandoffSelector?.(ready,h);
-  if(!selector||!messengerAvailable(ready))return null;
+  const ready=leadReadyOffer(o),selection=ready&&data.tourvisorHandoffSelection?.(ready,h);
+  if(!selection||!messengerAvailable(ready))return null;
   const pair=flightPairFor(ready),deadlines=[ready.tour?.expiresAt,pair?.expiresAt].filter(value=>Number.isSafeInteger(value)&&value>0);
-  return {revision:selectionGeneration,offer:ready,hotel:h,selector,
+  return {revision:selectionGeneration,offer:ready,hotel:h,selector:selection.selector,requestParty:selection.party,
    price:{state:'checked',currency:'RUB',description:'Цена Tourvisor за всю группу; окончательный расчёт не подтверждён.',expiresAt:deadlines.length?Math.min(...deadlines):null}};
  }
  const r=anexApplicationDraft,v=retainedProviderView(o);

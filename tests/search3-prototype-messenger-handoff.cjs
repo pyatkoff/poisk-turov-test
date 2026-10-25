@@ -108,7 +108,7 @@ function tvSetup(change){
 test('Full TV search uses one private token before parallel providers and never calls root',async()=>{
  const x=tvSetup(),h=await x.start(),o=await x.checked(h);
  assert.equal(x.calls[0].action,'tv_token');assert.equal(x.calls.filter(c=>c.action==='tv_token').length,1);assert.equal(x.api.searchId,88);
- assert.equal(h.id,501);assert.deepEqual(plain(h.legacyIds),['101']);assert.deepEqual(plain(x.api.tourvisorHandoffSelector(o,h)),x.pins);
+ assert.equal(h.id,501);assert.deepEqual(plain(h.legacyIds),['101']);assert.deepEqual(plain(x.api.tourvisorHandoffSelection(o,h).selector),x.pins);
  await Promise.all([x.api.quote(o),x.api.quote(o)]);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1,'repeat quote consumers share the original operation');
  await x.api.messengerHandoff('handoff_freeze',{...x.pins,csrf});await x.api.messengerHandoff('handoff_freeze',{...x.pins,csrf});
  assert.equal(x.calls.filter(c=>c.action==='tv_select').length,1,'reopen reuses its retained local selection');
@@ -119,13 +119,13 @@ test('Full TV search uses one private token before parallel providers and never 
 test('Only a server-returned exact pair with its own total can supply TV pins',async()=>{
  const x=tvSetup(),h=await x.start(),o=await x.checked(h),pairs=await x.api.flights(o.tour);
  const chosen={...o,variants:pairs,flightChoiceId:'1',total:231456};
- assert.equal(x.api.tourvisorHandoffSelector(chosen,h).choice_ref,x.choice);
- assert.equal(x.api.tourvisorHandoffSelector({...chosen,total:200000},h),null);
- assert.equal(x.api.tourvisorHandoffSelector({...chosen,flightChoiceId:'0',total:200000},h),null,'complete but unretained pair is not an authority');
- assert.equal(x.api.tourvisorHandoffSelector({...chosen,variants:plain(pairs)},h),null);
- assert.equal(x.api.tourvisorHandoffSelector({...chosen,raw:{...chosen.raw}},h),null);
- assert.equal(x.api.tourvisorHandoffSelector(chosen,{...h,legacyIds:[]}),null);
- const count=x.calls.length;x.api.stop();assert.equal(x.api.tourvisorHandoffSelector(chosen,h),null);
+ assert.equal(x.api.tourvisorHandoffSelection(chosen,h).selector.choice_ref,x.choice);
+ assert.equal(x.api.tourvisorHandoffSelection({...chosen,total:200000},h),null);
+ assert.equal(x.api.tourvisorHandoffSelection({...chosen,flightChoiceId:'0',total:200000},h),null,'complete but unretained pair is not an authority');
+ assert.equal(x.api.tourvisorHandoffSelection({...chosen,variants:plain(pairs)},h),null);
+ assert.equal(x.api.tourvisorHandoffSelection({...chosen,raw:{...chosen.raw}},h),null);
+ assert.equal(x.api.tourvisorHandoffSelection(chosen,{...h,legacyIds:[]}),null);
+ const count=x.calls.length;x.api.stop();assert.equal(x.api.tourvisorHandoffSelection(chosen,h),null);
  await assert.rejects(x.api.messengerHandoff('handoff_freeze',{...x.pins,csrf}),e=>e.code==='tourvisor_session_unavailable');assert.equal(x.calls.length,count);
 });
 test('A lost TV quote or flight response is retained without a new ID, retry or root fallback',async()=>{
@@ -140,13 +140,13 @@ test('Unreturned or foreign result membership cannot quote, and late replies can
  let x;x=tvSetup(call=>call.action==='tv_results'?x.reply({ok:true,data:{provider:'tourvisor',generation:23,search_ref:'d'.repeat(32),data:[{id:101,tours:[x.tour]}],offers:[]}}):undefined);
  const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>e.retryable===false);assert.equal(x.calls.some(c=>c.action==='tv_tour'),false);
  const y=tvSetup(),hotel=await y.start(),old=await y.checked(hotel);await y.start();
- assert.equal(y.api.tourvisorHandoffSelector(old,hotel),null);assert.deepEqual(y.rootCalls,[]);
+ assert.equal(y.api.tourvisorHandoffSelection(old,hotel),null);assert.deepEqual(y.rootCalls,[]);
 });
 test('Private TV410 revokes the exact checked receipt and already-created contact session without replay',async()=>{
  let x;x=tvSetup(call=>call.action==='tv_flights'?x.reply({ok:false,error:'tv_offer_expired'},410):undefined);
- const h=await x.start(),o=await x.checked(h),session=x.api.leadSession(o);assert(x.api.tourvisorHandoffSelector(o,h));
+ const h=await x.start(),o=await x.checked(h),session=x.api.leadSession(o);assert(x.api.tourvisorHandoffSelection(o,h));
  await assert.rejects(x.api.flights(o.tour),e=>e.code==='offer_expired'&&e.status===410&&e.retryable===false);
- assert.equal(x.api.tourvisorHandoffSelector(o,h),null);
+ assert.equal(x.api.tourvisorHandoffSelection(o,h),null);
  for(const fn of [()=>x.api.leadSession(o),()=>session.payload({}),()=>session.submit({})])assert.throws(fn,e=>e.code==='offer_expired');
  await assert.rejects(x.api.quote(o),e=>e.code==='offer_expired');await assert.rejects(x.api.flights(o.tour),e=>e.code==='offer_expired');
  assert.equal(x.calls.filter(c=>c.action==='tv_flights').length,1);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);assert.deepEqual(x.rootCalls,[]);
@@ -154,5 +154,12 @@ test('Private TV410 revokes the exact checked receipt and already-created contac
 test('Private token failure is terminal on this page and does not send supplier search or fallback',async()=>{
  const x=tvSetup(call=>{if(call.action==='tv_token')throw Error('private failure');});await x.start();await x.start();
  assert.deepEqual(x.calls.map(c=>c.action),['tv_token']);assert.deepEqual(x.rootCalls,[]);assert.equal(x.events.at(-1).canContinue,false);
+});
+test('TV comparison uses the same stored request party without changing the entered child order',async()=>{
+ const x=tvSetup();x.search.ages=[12,0];const h=await x.start(),o=await x.checked(h),selection=x.api.tourvisorHandoffSelection(o,h);
+ assert.deepEqual(plain(o.ages),[12,0]);assert.deepEqual(plain(selection.party),{adults:3,childAges:[0,12]});
+ assert.deepEqual(plain(selection.party.childAges),x.calls.find(c=>c.action==='tv_search').body.params.childs);
+ assert.equal(x.api.tourvisorHandoffSelection({...o,ages:[0,12]},h),null,'changed UI order is a new selection, not an earlier capture');
+ assert.equal(x.api.tourvisorHandoffSelection({...o,adults:2},h),null);assert.equal(x.api.tourvisorHandoffSelection({...o,ages:[12,1]},h),null);
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}console.log(JSON.stringify({groups:tests.length,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

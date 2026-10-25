@@ -97,7 +97,11 @@
     if(r.choice_ref==='manager-deferred'?!!selected:!selected||typeof r.choice_ref!=='string'||!/^tourvisor_pair:[a-f0-9]{64}$/.test(r.choice_ref))fail('invalid_tourvisor_context');
     // Compare the accepted server's retained TV terms. Keep the entire original
     // UI observation in the binding so a changed label, party or price is stale.
-    const binding=JSON.stringify([base.value,r]);
+    const party=input.requestParty;
+    if(!party||Object.keys(party).sort().join(',')!=='adults,childAges'||party.adults!==o.adults||!Array.isArray(party.childAges)
+      ||party.childAges.some(age=>!Number.isInteger(age)||age<0||age>17)
+      ||JSON.stringify([...party.childAges].sort((a,b)=>a-b))!==JSON.stringify([...o.ages].sort((a,b)=>a-b)))fail('invalid_tourvisor_party');
+    const binding=JSON.stringify([base.value,r,party]);
     const contractLegs=values=>values.map(value=>{
       const from=value.departure?.port,to=value.arrival?.port;
       const number=label(value.number,80,helpers),a=label(from?.shortName??from?.id,80,helpers),b=label(to?.shortName??to?.id,80,helpers),date=label(value.departure?.date,80,helpers);
@@ -105,6 +109,9 @@
       return {label:number+' · '+a+' → '+b+' · '+date};
     });
     base.value.hotel.uiId=r.local_hotel_id;
+    // Use the original canonical request order for comparison with its retained
+    // server record. The UI's entered order stays untouched in the binding.
+    base.value.trip.childAges=[...party.childAges];
     base.value.stay.room=label(o.tour?.roomType,500,helpers);
     base.value.stay.meal=label(o.tour?.meal,300,helpers);
     if(!base.value.stay.room||!base.value.stay.meal)fail('invalid_tourvisor_context');

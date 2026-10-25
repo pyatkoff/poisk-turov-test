@@ -210,6 +210,7 @@ function tourvisorFixture(manager=false){
  value.selector={provider:'tourvisor',generation:23,search_ref:'d'.repeat(32),offer_ref:'tourvisor:'+'e'.repeat(64),local_hotel_id:101,
   choice_ref:manager?'manager-deferred':'tourvisor_pair:'+'f'.repeat(64)};
  value.price.expiresAt=null;
+ value.requestParty={adults:o.adults,childAges:[...o.ages].sort((a,b)=>a-b)};
  if(manager){o.flightChoiceId=null;o.variants=[];}
  return value;
 }
@@ -234,10 +235,15 @@ test('Changing TV pins, UI labels, row, original party or pair invalidates an ex
 test('TV incomplete, mixed, unverified and foreign contexts cannot acquire a dispatcher selector',()=>{
  for(const change of [x=>x.selector.provider='anex',x=>x.selector.offer_ref='anex_online:'+'e'.repeat(64),x=>x.selector.extra='bad',
   x=>x.selector.local_hotel_id=102,x=>x.selector.choice_ref='manager-deferred',x=>x.price.state='estimated',x=>x.price.currency='EUR',
-  x=>x.offer.variants[0].forward[0].departure.port={},x=>x.offer.tour.meal=null]){
+  x=>x.offer.variants[0].forward[0].departure.port={},x=>x.offer.tour.meal=null,x=>x.requestParty.childAges=[0,8],x=>x.requestParty.adults=3]){
   const input=tourvisorFixture();change(input);assert.throws(()=>api.createSession(()=>input,()=>time).capture());
  }
  const input=tourvisorFixture(true),session=api.createSession(()=>input,()=>time),snapshot=session.capture();
  assert.equal(session.selector(plain(snapshot)),null);assert.deepEqual(calls,[]);
+});
+test('TV request-order comparison retains the UI-entered child order and invalidates a later edit',()=>{
+ const input=tourvisorFixture(true);input.offer.ages=[12,0];input.requestParty.childAges=[0,12];
+ const session=api.createSession(()=>input,()=>time),snapshot=session.capture();assert.deepEqual(plain(snapshot.trip.childAges),[0,12]);assert.deepEqual(plain(input.offer.ages),[12,0]);
+ assert.equal(session.isCurrent(snapshot),true);input.offer.ages.reverse();assert.equal(session.isCurrent(snapshot),false);assert.equal(session.selector(snapshot),null);
 });
 console.log(JSON.stringify({cases:count,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));

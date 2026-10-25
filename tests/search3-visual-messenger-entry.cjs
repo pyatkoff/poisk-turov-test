@@ -17,7 +17,7 @@ function setup(route,{tv=false,manager=false}={}){
   let ctx,observation;
   const window={V2_CONFIG:{search3MessengerEnabled:true},AnyTourSearch3MessengerContextV1:old.owner.api,AnyTourSearch3MessengerFlowV1:flowRoot.AnyTourSearch3MessengerFlowV1,
     AnyTourPrototypeLead:{markup:()=>'<form id="prototype-lead-form"><input name="phone" required></form>',action:()=>'<button type="submit" form="prototype-lead-form">Проверить заявку</button>'},location:{assign:url=>navigation.push(url)}};
-  const data={live:true,tourvisorHandoffSelector:(o,h)=>tv&&o.raw===input.offer.raw&&h===input.hotel?input.selector:null,messengerHandoff:async(action,fields)=>{
+  const data={live:true,tourvisorHandoffSelection:(o,h)=>tv&&o.raw===input.offer.raw&&h===input.hotel?{selector:input.selector,party:input.requestParty}:null,messengerHandoff:async(action,fields)=>{
     calls.push({action,fields:plain(fields||{})});if(route){const reply=route(action,fields);if(reply!==undefined)return reply;}
     if(action==='handoff_token')return {ok:true,csrf};
     if(action==='handoff_freeze'){observation=observation||plain(ctx.test.snapshot());if(tv)observation.price.expiresAt=Math.floor(Date.now()/1000)+600;return {ok:true,data:{operation_id:id,state:'prepared',observation}};}
@@ -111,5 +111,9 @@ test('TV contact no longer authorizes a delayed bot navigation after Back or sel
  const gate=defer(),x=setup(action=>action==='handoff_create'?gate.promise:undefined,{tv:true,manager:true});x.test.bind();await x.settled();
  const task=x.test.open('telegram');await spin(()=>x.calls.some(c=>c.action==='handoff_create'));x.ctx.selectionGeneration++;
  gate.resolve({ok:true,data:{operation_id:id,state:'ready',links}});await task;assert.deepEqual(x.navigation,[]);
+});
+test('TV family contact matches canonical request ages while retaining the entered UI order',async()=>{
+ const x=setup(undefined,{tv:true,manager:true});x.input.offer.ages=[12,0];x.input.requestParty.childAges=[0,12];x.test.bind();await x.settled();
+ assert.deepEqual(plain(x.test.snapshot().trip.childAges),[0,12]);assert.deepEqual(plain(x.input.offer.ages),[12,0]);await x.test.open('telegram');assert.deepEqual(x.navigation,[links.telegram]);
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

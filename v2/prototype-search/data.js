@@ -199,12 +199,13 @@
     }
     return value;
   }
-  function tourvisorHandoffSelector(o,h){
+  function tourvisorHandoffSelection(o,h){
     const receipt=quoteReceipts.get(o?.tour),saved=tvCheckedTours.get(o?.tour),run=saved?.run;
     if(!tvSessionEnabled()||!run||!current(run)||receipt?.generation!==generation||receipt.searchId!==searchId||receipt.raw!==o.raw||receipt.failure
       ||o.provider!=='tourvisor'||o.cached||o.raw?.selectionEnabled===false||o.loading||o.flightsLoading||o.flightsError||o.quoteError||o.pricePending
       ||String(o.tour.id)!==String(o.raw?.id)||o.key!==encodeURIComponent('tourvisor:'+String(o.raw.id))||h?.id!==o.hotelId
-      ||o.room!==text(o.tour.roomType)||o.meal!==meal(o.tour.meal)||text(o.tour.departure)!==(o.origin||o.search?.origin))return null;
+      ||o.room!==text(o.tour.roomType)||o.meal!==meal(o.tour.meal)||text(o.tour.departure)!==(o.origin||o.search?.origin)
+      ||!searchParams||o.adults!==run.search.adults||JSON.stringify(o.ages)!==JSON.stringify(run.search.ages))return null;
     const member=run.tv.members.get(String(o.raw.id));
     if(!member||member.ref!==saved.selector.offer_ref||member.localHotelId!==saved.selector.local_hotel_id
       ||h.id!==member.localHotelId&&!(h.legacyIds||[]).map(String).includes(String(member.localHotelId)))return null;
@@ -215,7 +216,8 @@
       choice=pin.choice;total=amount(pair.price);
     }
     if(!total||amount(o.total)!==total)return null;
-    return Object.freeze({...saved.selector,choice_ref:choice});
+    return Object.freeze({selector:Object.freeze({...saved.selector,choice_ref:choice}),
+      party:Object.freeze({adults:searchParams.adults,childAges:Object.freeze([...searchParams.childs])})});
   }
   async function prepareTourvisorHandoff(fields){
     const run=activeSearch,member=run?.tv&&[...run.tv.members.values()].find(x=>x.ref===fields.offer_ref);
@@ -2276,5 +2278,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelector,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

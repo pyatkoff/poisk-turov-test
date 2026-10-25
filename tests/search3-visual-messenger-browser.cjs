@@ -103,7 +103,7 @@ async function tourvisorJourney({browser,origin,base,output}){
      await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
     }catch(error){forbidden.push(error.message);await route.abort();}
    });
-   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'0,12'}));
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'12,0'}));
    // This family fixture keeps the independent ANEX source partial. Its honest
    // compact completion notice is visible; it is not a still-running TV search.
    await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&(document.querySelector('#search-status').hidden||document.querySelector('#search-status').classList.contains('search-status-compact')));
@@ -112,6 +112,7 @@ async function tourvisorJourney({browser,origin,base,output}){
    assert.equal(tv.calls.some(c=>c.action==='tv_tour'||c.action==='tv_flights'),false,'room entry spends no quote or flights');
    await page.locator('#hotel-detail-offers').click();await ready();await capture('manager-methods',true);
    assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
+   assert.match((await page.locator('.application-review-heading small').textContent()).replace(/\s+/g,' '),/12 лет, до года/,'the entered child order stays visible while its canonical request order is compared');
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
    assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.some(c=>c.action==='tv_flights'),false);
    const first=calls.find(c=>c.action==='handoff_freeze').body;assert.equal(first.choice_ref,'manager-deferred');assert.equal(first.local_hotel_id,101);
@@ -135,7 +136,7 @@ async function tourvisorJourney({browser,origin,base,output}){
    assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(tv.calls[0].action,'tv_token');assert.deepEqual(tv.calls.find(c=>c.action==='tv_search').body.params.childs,[0,12]);
    await Promise.all([page.waitForURL(links.max),page.locator('[data-action="messenger-open"][data-platform="max"]').click()]);assert.deepEqual(navigations,[links.max]);
    assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({provider:'tourvisor',width,height,party:{adults:3,childAges:[0,12]},managerAmount:'90000',pairAmount:'133500.5',managerSelector:first,pairSelector:pairFreeze,actions:tv.calls.map(c=>c.action),rootTVSearchQuoteHTTP:0,quoteCalls:1,flightCalls:1,selectCalls:2,createCalls:1,draftRetained:true,consentResetOnPair:true,lateNavigationCancelled:true,externalNavigationIntercepted:1,shots});
+   records.push({provider:'tourvisor',width,height,party:{adults:3,enteredChildAges:[12,0],requestChildAges:[0,12]},managerAmount:'90000',pairAmount:'133500.5',managerSelector:first,pairSelector:pairFreeze,actions:tv.calls.map(c=>c.action),rootTVSearchQuoteHTTP:0,quoteCalls:1,flightCalls:1,selectCalls:2,createCalls:1,draftRetained:true,consentResetOnPair:true,lateNavigationCancelled:true,externalNavigationIntercepted:1,shots});
   }catch(error){await page.screenshot({path:path.join(output,`tv-failure-${width}.png`)}).catch(()=>{});fs.writeFileSync(path.join(output,`tv-failure-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,tv:tv.calls,shots},null,2));throw error;}
   finally{releaseCreate();await context.close();}
  }
