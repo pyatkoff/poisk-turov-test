@@ -54,6 +54,18 @@ final class AnyTourHotelStaySchemaReadV1
         if (strlen($expression)>8192) throw new RuntimeException('METADATA_LIMIT');
         $tokens=[];$offset=0;
         while ($offset<strlen($expression)) {
+            if (preg_match('/\G\s+/A',$expression,$space,0,$offset)) $offset+=strlen($space[0]);
+            if ($offset>=strlen($expression)) break;
+            // MySQL CHECK_CLAUSE escapes quote delimiters. Accept only a closed ASCII literal;
+            // embedded escapes, mixed delimiters and arbitrary SQL unescaping remain rejected.
+            $escapedQuote=chr(92).chr(39);
+            if (substr($expression,$offset,2)===$escapedQuote) {
+                $end=strpos($expression,$escapedQuote,$offset+2);
+                if ($end===false) return null;
+                $literal=substr($expression,$offset+2,$end-$offset-2);
+                if (!preg_match('/^[A-Za-z0-9_]+$/D',$literal)) return null;
+                $tokens[]=chr(39).$literal.chr(39);$offset=$end+2;continue;
+            }
             if (!preg_match('/\G\s*(?:(`[a-zA-Z_][a-zA-Z0-9_]*`)|([a-zA-Z_][a-zA-Z0-9_]*)|([0-9]+)|(\x27(?:\x27\x27|[^\x27\\\\])*\x27)|(<>|!=|>=|<=|[=><(),]))/A',
                 $expression,$m,0,$offset)) {
                 if (trim(substr($expression,$offset))==='') break;

@@ -48,6 +48,20 @@ $ast=new ReflectionMethod(AnyTourHotelStaySchemaReadV1::class,'checkAst');
 $byteLength=$ast->invoke(null,'OCTET_LENGTH(operator_key)>0');
 schema_check($byteLength!==null&&$byteLength===$ast->invoke(null,'length(`operator_key`) > 0'),'MySQL byte-length serializer alias accepted');
 schema_check($byteLength!==$ast->invoke(null,'CHAR_LENGTH(operator_key)>0'),'character-length semantics remain distinct');
+$originalTarget=<<<'SQL'
+(state='accepted' AND ((kind='room' AND room_concept_id IS NOT NULL AND meal_concept_id IS NULL) OR (kind='meal' AND meal_concept_id IS NOT NULL AND room_concept_id IS NULL))) OR (state<>'accepted' AND room_concept_id IS NULL AND meal_concept_id IS NULL)
+SQL;
+$serializedTarget=<<<'SQL'
+(((`state` = _utf8mb4\'accepted\') and (((`kind` = _utf8mb4\'room\') and (`room_concept_id` is not null) and (`meal_concept_id` is null)) or ((`kind` = _utf8mb4\'meal\') and (`meal_concept_id` is not null) and (`room_concept_id` is null)))) or ((`state` <> _utf8mb4\'accepted\') and (`room_concept_id` is null) and (`meal_concept_id` is null)))
+SQL;
+schema_check(hash('sha256',$serializedTarget)==='277066ae33080f3ae77ce7b595e4fa919bd3c7963f6b9780f906225aed190545','exact retained native CHECK rendering');
+$originalAst=$ast->invoke(null,$originalTarget);
+schema_check($originalAst!==null,'full original target check parses');
+schema_check($originalAst===$ast->invoke(null,$serializedTarget),'actual MySQL escaped-delimiter target metadata has exact contract AST');
+foreach (["state = _utf8mb4\'accepted'","state = _utf8mb4'accepted\'","state = _utf8mb4\'acce\\pted\'"] as $malformed) {
+    schema_check($ast->invoke(null,$malformed)===null,'mixed or embedded quote escapes remain rejected');
+}
+
 $dsn=(string)getenv('ANYTOUR_STAY_SCHEMA_V1_TEST_DSN');
 if (!preg_match('/^mysql:host=127\.0\.0\.1;port=[0-9]+;charset=utf8mb4$/D',$dsn)) throw new RuntimeException('Dedicated loopback MySQL fixture DSN required');
 $migration=$source.'/v2/data/migrations/20260918-anytour-hotel-stay-v2.sql';
