@@ -23,6 +23,7 @@ function tvg_ok(bool $ok,string $label): void {
 }
 function tvg_denied(callable $call,string $code): void {
     try { $call(); } catch (InvalidArgumentException $e) { tvg_ok($e->getMessage()===$code,$code.' actual '.$e->getMessage()); return; }
+    catch (\AnyTour\TourvisorInteractiveFailure $e) { tvg_ok(($e->response['error'] ?? null)===$code && $e->httpStatus===409,$code.' safe mismatch envelope'); return; }
     throw new RuntimeException('expected '.$code);
 }
 
@@ -285,5 +286,45 @@ tvg_denied(function()use($r,&$badParty,$now,$wrongTour,$catalog,$save,$clock){
     AnyTourTourvisorPreviewGateway::handle($r,$badParty,$now,static fn():array=>$wrongTour,$catalog,$save,$clock);
 },'tv_tour_mismatch');
 tvg_ok(empty($badParty['tourvisor_handoff_records']),'wrong party cannot mint a selected record');
+// Diagnose the existing strict rejection without exporting either compared value.
+foreach ([
+    'tour_id'=>['id'=>'other-tour-secret'], 'hotel_id'=>['hotel'=>['id'=>999]],
+    'adults'=>['adults'=>'2'], 'children'=>['childs'=>'3'],
+    'departure_id'=>['departure'=>['id'=>999]], 'date'=>['date'=>'19.04.2027'], 'nights'=>['nights'=>'7'],
+    'multiple'=>['id'=>'other-tour-secret','hotel'=>['id'=>999],'adults'=>'2','childs'=>'3',
+        'departure'=>['id'=>999],'date'=>'19.04.2027','nights'=>'7'],
+    'malformed_date'=>['date'=>['private'=>'SYNTHETIC_PRIVATE_SUPPLIER_TEXT']],
+] as $field=>$delta) {
+    $failedFields=$field==='multiple' ? ['tour_id','hotel_id','adults','children','departure_id','date','nights']
+        : ($field==='malformed_date' ? ['date'] : [$field]);
+    $fresh=$resultsSession; $r=$request('tv_tour',['offer_ref'=>$ref]);$bad=array_replace($tour,$delta);
+    $bad['private']='SYNTHETIC_PRIVATE_SUPPLIER_TEXT';$calls=0;
+    $transport=static function()use($bad,&$calls):array{++$calls;return $bad;};
+    try { AnyTourTourvisorPreviewGateway::handle($r,$fresh,$now,$transport,$catalog,$save,$clock);
+        throw new RuntimeException('expected mismatch'); }
+    catch (Throwable $e) {
+        tvg_ok($e instanceof \AnyTour\TourvisorInteractiveFailure,'strict mismatch carries safe detail for '.$field);
+        tvg_ok($e->httpStatus===409 && $e->response['error']==='tv_tour_mismatch','same public mismatch status/code');
+        $d=$e->response['diagnostics'];
+        tvg_ok($d['provider']==='tourvisor' && $d['stage']==='tour' && $d['category']==='context'
+            && $d['mismatchFields']===$failedFields,'only actual failed predicates '.$field);
+        tvg_ok(array_keys($d['mismatchTypes'])===$failedFields,'fixed type fields');
+        foreach($d['mismatchTypes'] as $pair)tvg_ok(array_keys($pair)===['supplier','context']
+            && in_array($pair['supplier'],['null','integer','string','number','boolean','array','other'],true)
+            && in_array($pair['context'],['null','integer','string','number','boolean','array','other'],true),'fixed type envelope');
+        $encoded=json_encode($e->response,JSON_THROW_ON_ERROR);
+        foreach (['SYNTHETIC_PRIVATE_SUPPLIER_TEXT','other-tour-secret','19.04.2027'] as $secret)
+            tvg_ok(!str_contains($encoded,$secret),'no compared supplier value in diagnostics');
+        tvg_ok($calls===1 && $fresh['tourvisor_requests'][$r['request_id']]['state']==='unknown'
+            && empty($fresh['tourvisor_handoff_records']) && !isset($fresh['tourvisor_context']['offers'][$ref]['checked']),
+            'mismatch leaves original unknown and cannot mint checked selection');
+        tvg_denied(function()use($r,&$fresh,$now,$transport,$catalog,$save,$clock){
+            AnyTourTourvisorPreviewGateway::handle($r,$fresh,$now,$transport,$catalog,$save,$clock);
+        },'tv_operation_unknown');
+        tvg_ok($calls===1,'diagnostic failure is never physically replayed');
+        if(in_array('date',$failedFields,true))tvg_ok($d['dateFormats']===['supplier'=>$field==='malformed_date'?'non-string':'dmy','context'=>'iso'],'fixed date formats without dates');
+        else tvg_ok(!isset($d['dateFormats']),'no unrelated date diagnostic');
+    }
+}
 echo 'TV private session gateway: '.$GLOBALS['tv_checks']." checks PASS; supplier/bot network=0, DB writes=0.\n";
 }

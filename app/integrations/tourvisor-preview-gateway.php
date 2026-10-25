@@ -63,6 +63,27 @@ final class AnyTourTourvisorPreviewGateway
         self::need(($s['tourvisor_context_generation'] ?? null) === $c['generation']
             && ($s['tourvisor_context']['search_ref'] ?? null) === $c['search_ref'],'tv_context_changed');
     }
+    /** Preserve exact predicates; expose only which failed and fixed shape facts. */
+    private static function tourMatch(array $values, array $expected): void
+    {
+        $fields = []; $types = [];
+        $kind = static fn($v): string => is_null($v) ? 'null' : (is_int($v) ? 'integer' : (is_string($v) ? 'string'
+            : (is_float($v) ? 'number' : (is_bool($v) ? 'boolean' : (is_array($v) ? 'array' : 'other')))));
+        foreach ($values as $field=>$value) if ($value !== $expected[$field]) {
+            $fields[] = $field;
+            $types[$field] = ['supplier'=>$kind($value),'context'=>$kind($expected[$field])];
+        }
+        if ($fields === []) return;
+        $diagnostics = ['provider'=>'tourvisor','stage'=>'tour','category'=>'context',
+            'mismatchFields'=>$fields,'mismatchTypes'=>$types];
+        if (in_array('date',$fields,true)) {
+            $shape = static fn($v): string => !is_string($v) ? 'non-string'
+                : (preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D',$v) === 1 ? 'iso'
+                : (preg_match('/\A[0-9]{2}\.[0-9]{2}\.[0-9]{4}\z/D',$v) === 1 ? 'dmy' : 'other'));
+            $diagnostics['dateFormats'] = ['supplier'=>$shape($values['date']),'context'=>$shape($expected['date'])];
+        }
+        throw new \AnyTour\TourvisorInteractiveFailure(['ok'=>false,'error'=>'tv_tour_mismatch','diagnostics'=>$diagnostics],409);
+    }
     private static function bounded(array $context, array $requests): void
     { self::need(strlen(json_encode([$context,$requests],JSON_THROW_ON_ERROR)) <= 4194304,'tv_context_limit'); }
     private static function deadline(array $offer, string $choice): int
@@ -272,11 +293,12 @@ final class AnyTourTourvisorPreviewGateway
                 }
                 $extra['offers'] = $selectors;
             } elseif ($action === 'tv_tour') {
-                self::need(is_array($data) && self::id($data['id'] ?? null) === $offer['id']
-                    && ($data['hotel']['id'] ?? null) === $offer['hotel']['uiId']
-                    && ($data['adults'] ?? null) === $params['adults'] && ($data['childs'] ?? null) === count($params['childs'])
-                    && ($data['departure']['id'] ?? null) === $params['departureId']
-                    && ($data['date'] ?? null) === $offer['date'] && ($data['nights'] ?? null) === $offer['nights'],'tv_tour_mismatch');
+                self::tourMatch(['tour_id'=>self::id($data['id'] ?? null),'hotel_id'=>$data['hotel']['id'] ?? null,
+                    'adults'=>$data['adults'] ?? null,'children'=>$data['childs'] ?? null,
+                    'departure_id'=>$data['departure']['id'] ?? null,'date'=>$data['date'] ?? null,'nights'=>$data['nights'] ?? null],
+                    ['tour_id'=>$offer['id'],'hotel_id'=>$offer['hotel']['uiId'],'adults'=>$params['adults'],
+                    'children'=>count($params['childs']),'departure_id'=>$params['departureId'],
+                    'date'=>$offer['date'],'nights'=>$offer['nights']]);
                 $names = self::operator($data); self::operatorAllowed($names);
                 self::need(array_intersect(array_map([self::class,'operatorKey'],$names),
                     array_map([self::class,'operatorKey'],$offer['operators'])) !== [],'tv_operator_changed');
