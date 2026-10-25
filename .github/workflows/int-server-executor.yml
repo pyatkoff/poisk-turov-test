@@ -53,6 +53,8 @@ on:
       - 'scripts/diagnostics/local_tv_content_v1.php'
       - 'tests/int_server_executor_local_tv_content_test.py'
       - 'scripts/deploy/int_server_executor_local_tv_capture.py'
+      - 'scripts/deploy/int_server_executor_local_stay_read.py'
+      - 'tests/int_server_executor_local_stay_read_test.py'
       - 'scripts/diagnostics/local_tv_capture_v1.php'
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'
@@ -101,6 +103,19 @@ jobs:
         with:
           php-version: '8.3'
           extensions: pdo_mysql, pdo_sqlite, mbstring
+      - name: Exact accepted LOCAL stay read source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 516ab32e7ea3f23e0d071343143e207e3d9bbefe
+          path: local-stay-source
+          persist-credentials: false
+      - name: LOCAL fixed anchor read controller and actual read-only terminal
+        env:
+          LOCAL_STAY_SOURCE_ROOT: ${{ github.workspace }}/local-stay-source
+          LOCAL_STAY_TEST_PASSWORD: local_tv_schema_test_only
+        run: |
+          python3 -m py_compile scripts/deploy/int_server_executor_local_stay_read.py
+          python3 tests/int_server_executor_local_stay_read_test.py -v
       - name: Exact reviewed private TV session gateway source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -172,6 +187,12 @@ jobs:
         with:
           ref: 9fc116b4cd26695c3a4d5f4b9ed1bf6b9e1f1e44
           path: tv-numeric-source
+          persist-credentials: false
+      - name: Exact TV session fuel context source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 1e444b0e98e2d6850afe67a40f7e1cb56c8979f1
+          path: tv-session-fuel-source
           persist-credentials: false
       - name: Exact reviewed LOCAL schema source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -275,7 +296,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
           python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_search3_signing.py
-          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" TV_LIMIT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-limit-source" TV_CAP_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cap-source" TV_BYTES_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-bytes-source" TV_CHECKPOINT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-checkpoint-source" TV_PARTY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-party-source" TV_NUMERIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-numeric-source" python3 tests/int_server_executor_search3_signing_test.py -v
+          TV_SESSION_GATEWAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-source" TV_DIAGNOSTIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-diagnostic-source" TV_CACHE_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cache-source" TV_CONTEXT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-context-source" TV_FIELDS_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-fields-source" TV_DAY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-day-source" TV_LIMIT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-limit-source" TV_CAP_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-cap-source" TV_BYTES_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-bytes-source" TV_CHECKPOINT_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-checkpoint-source" TV_PARTY_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-party-source" TV_NUMERIC_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-numeric-source" TV_SESSION_FUEL_SOURCE_ROOT="$GITHUB_WORKSPACE/tv-session-fuel-source" python3 tests/int_server_executor_search3_signing_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py

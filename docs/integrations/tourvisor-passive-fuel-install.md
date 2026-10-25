@@ -619,9 +619,9 @@ runtime claim/original receipt remain distinct gates.
 
 This preparation is not an installation or a command admission. Application
 PR4903 has final13CI success; the exact independent review and normal FEATURE
-merge must precede finalizing its immutable source pin. The stock workflow fixture
-hunk waits for LOCAL6400560144 to release its existing workflow writer. No shared
-workflow, controller CI or runtime command is changed by this local preparation.
+merge must precede finalizing its immutable source pin. LOCAL6400937803 released its workflow writer and handed custody to INT. The
+fixture hunk is prepared on MAINefbe, preserving LOCAL registration,516 source
+and native checks. No controller CI or runtime command runs on a provisional pin.
 
 The fixed profile is `install-tv-session-fuel-context`, operation
 `int-anex-tv-session-fuel-context-install-20261025-v1`. Only the existing passive
