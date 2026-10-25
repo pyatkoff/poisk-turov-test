@@ -64,7 +64,8 @@ class Admission(unittest.TestCase):
         c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_CACHE_SOURCE} {signing.TV_CACHE_MODE} {signing.TV_CACHE_OPERATION}')
         signing.activate(c,command)
         self.assertEqual('c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66',hashlib.sha256(c.REMOTE.encode()).hexdigest())
-        for mode,operation,source in [(signing.TV_CHECKPOINT_MODE,signing.TV_CHECKPOINT_OPERATION,signing.TV_CHECKPOINT_SOURCE),
+        for mode,operation,source in [(signing.TV_PARTY_MODE,signing.TV_PARTY_OPERATION,signing.TV_PARTY_SOURCE),
+                                      (signing.TV_CHECKPOINT_MODE,signing.TV_CHECKPOINT_OPERATION,signing.TV_CHECKPOINT_SOURCE),
                                       (signing.TV_BYTES_MODE,signing.TV_BYTES_OPERATION,signing.TV_BYTES_SOURCE),
                                       (signing.TV_CAP_MODE,signing.TV_CAP_OPERATION,signing.TV_CAP_SOURCE),
                                       (signing.TV_LIMIT_MODE,signing.TV_LIMIT_OPERATION,signing.TV_LIMIT_SOURCE),
@@ -76,6 +77,8 @@ class Admission(unittest.TestCase):
             with self.assertRaises(ValueError):core().parse_command(f'/run-int-server-v1 {"0"*40} {mode} {operation}')
 
     def test_all_previous_fixed_profiles_stay_byte_identical(self):
+        c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_CHECKPOINT_SOURCE} {signing.TV_CHECKPOINT_MODE} {signing.TV_CHECKPOINT_OPERATION}'))
+        self.assertEqual('a590c1f86deaefc02006bc5b89f019a4ac005880c37bcf0dd7f7d1cd52917949',hashlib.sha256(c.REMOTE.encode()).hexdigest())
         expected={'TV_BYTES': '881eb82c4ca77000ff8c9cba0c29ccb4952bbbc86bbef2d4544e93dc59330341', 'TV_CACHE': 'c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66', 'TV_CAP': 'cb882cde61f6075620e46da322c74c1ab6464120c6100958444f70c4c39d92eb', 'TV_CONTEXT': '82f914f7ad68348e6ea11975a56cad6650368e32f969a9d1fcf2435bdf2d99a3', 'TV_DAY': 'c4b2d7a66ccfde5073c0697498c99362d86168a581cd8be033e6c30c3a01d20a', 'TV_DIAGNOSTIC': 'c7168a39c0466160c61dc2cae37b3075e39bb45a05e9dd1d178a812824276476', 'TV_FIELDS': '42bcc3854f4d96ef9c6437bdbe0c76f416473b99e66503a392f2f96ebffb81df', 'TV_LIMIT': 'acbfcbe309e1b1f18861ae1a9d3e7c261f1df67881f2bc15eefff36af9432ead', 'TV_MISMATCH': '33f56821b857630903354dcf8d7ac816ca6ec1645b2d6529804f2bb4e59814e8'}
         for prefix,want in expected.items():
             c=core();source=getattr(signing,prefix+"_SOURCE");mode=getattr(signing,prefix+"_MODE");op=getattr(signing,prefix+"_OPERATION")
@@ -85,7 +88,8 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-scoped-checkpoint-install-' if mode == signing.TV_CHECKPOINT_MODE else
+            prefix = ('int-anex-tv-party-retirement-install-' if mode == signing.TV_PARTY_MODE else
+                      'int-anex-tv-scoped-checkpoint-install-' if mode == signing.TV_CHECKPOINT_MODE else
                       'int-anex-tv-context-cap-20mib-install-' if mode == signing.TV_BYTES_MODE else
                       'int-anex-tv-request-cap-640-install-' if mode == signing.TV_CAP_MODE else
                       'int-anex-tv-limit-diagnostics-install-' if mode == signing.TV_LIMIT_MODE else
@@ -109,6 +113,7 @@ class Admission(unittest.TestCase):
             if mode==signing.TV_CAP_MODE:source=signing.TV_CAP_SOURCE;operation=signing.TV_CAP_OPERATION
             if mode==signing.TV_CHECKPOINT_MODE:source=signing.TV_CHECKPOINT_SOURCE;operation=signing.TV_CHECKPOINT_OPERATION
             if mode==signing.TV_BYTES_MODE:source=signing.TV_BYTES_SOURCE;operation=signing.TV_BYTES_OPERATION
+            if mode==signing.TV_PARTY_MODE:source=signing.TV_PARTY_SOURCE;operation=signing.TV_PARTY_OPERATION
             body = f'/run-int-server-v1 {source} {mode} {operation}'
             parsed = c.parse_command(body)
             self.assertEqual({'source_sha': source, 'mode': mode, 'operation_id': operation}, parsed)
@@ -117,7 +122,7 @@ class Admission(unittest.TestCase):
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE):
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE,signing.TV_PARTY_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -878,8 +883,11 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
         self.parent_raw=self.parent.read_bytes();self.config_raw=self.config.read_bytes()
         self.rebuild_archive();self.fail_after_write=False;self.config_before_write=False
 
+    def expected_target(self):
+        return self.expected_previous()|{self.path:getattr(signing,self.sha_attr)}
+
     def mutate_remote(self,c):
-        for name,old,new in [('TV_PINS',self.expected_previous()|{self.path:getattr(signing,self.sha_attr)},self.newpins),
+        for name,old,new in [('TV_PINS',self.expected_target(),self.newpins),
             ('TV_PREVIOUS',{p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in self.expected_previous().items()},self.previous),
             ('TV_DEPENDENCIES',signing.TV_DEPENDENCIES,self.deps),('TV_PUBLIC',signing.TV_PUBLIC,self.public),
             ('TV_ENABLED_CANONICAL',signing.TV_ENABLED_CANONICAL,self.parent_hash),
@@ -896,7 +904,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
 
     def install_maintenance(self,operation=None):
-        prefix=('int-anex-tv-scoped-checkpoint-install-' if self.mode==signing.TV_CHECKPOINT_MODE else
+        prefix=('int-anex-tv-party-retirement-install-' if self.mode==signing.TV_PARTY_MODE else
+                'int-anex-tv-scoped-checkpoint-install-' if self.mode==signing.TV_CHECKPOINT_MODE else
                 'int-anex-tv-context-cap-20mib-install-' if self.mode==signing.TV_BYTES_MODE else
                 'int-anex-tv-request-cap-640-install-' if self.mode==signing.TV_CAP_MODE else
                 'int-anex-tv-limit-diagnostics-install-' if self.mode==signing.TV_LIMIT_MODE else
@@ -1011,6 +1020,70 @@ class NativeTVCapInstall(NativeTVDiagnosticInstall):
     sha_attr='TV_CAP_SHA'
     fixture_env='TV_CAP_SOURCE_ROOT'
     completion=staticmethod(signing.completed_tv_cap)
+
+
+class NativeTVPartyInstall(NativeTVDiagnosticInstall):
+    mode=signing.TV_PARTY_MODE
+    operation_attr='TV_PARTY_OPERATION'
+    source=signing.TV_PARTY_SOURCE
+    path=signing.TV_CHECKPOINT_PATH
+    sha_attr='TV_CHECKPOINT_SHA'
+    fixture_env='TV_CHECKPOINT_SOURCE_ROOT'
+
+    def expected_previous(self):
+        return signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA,self.path:signing.TV_CHECKPOINT_SHA}
+
+    def expected_target(self):
+        return self.expected_previous()|signing.TV_PARTY_UPDATES
+
+    def setUp(self):
+        super().setUp()
+        old=os.environ.get('TV_CHECKPOINT_SOURCE_ROOT');new=os.environ.get('TV_PARTY_SOURCE_ROOT')
+        for p in signing.TV_PARTY_UPDATES:
+            raw=(Path(old)/p).read_bytes() if old else b'<?php // previous party helper\n'
+            if old:self.assertEqual(self.expected_previous()[p],hashlib.sha256(raw).hexdigest())
+            (self.runtime/p).write_bytes(raw);self.pins[p]=hashlib.sha256(raw).hexdigest()
+            raw=(Path(new)/p).read_bytes() if new else b'<?php // new party helper\n'
+            if new:self.assertEqual(signing.TV_PARTY_UPDATES[p],hashlib.sha256(raw).hexdigest())
+            self.inventory[p]=raw
+        self.previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in self.pins.items()}
+        self.newpins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
+        self.rebuild_archive()
+
+    def test_pair_install_strict_completion_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'],r)
+        self.assertEqual((6,2,0),tuple(r['install'][k] for k in ('files','changed_files','created_files')))
+        for p in signing.TV_PINS:self.assertEqual(self.inventory[p],(self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php')).read_bytes())
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.multiple(signing,TV_PARTY_OPERATION=r['operation_id'],TV_PINS=self.pins,
+            TV_PARTY_UPDATES={p:self.newpins[p] for p in signing.TV_PARTY_UPDATES},TV_PUBLIC=self.public,
+            TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash,TV_DEPENDENCIES=self.deps):
+            self.assertTrue(signing.completed_tv_party(command,r))
+            for k,v in [('changed_files',1),('changed_files',3),('changed_files',True),('created_files',1)]:
+                self.assertFalse(signing.completed_tv_party(command,r|{'install':r['install']|{k:v}}))
+            for k,v in [('supplier_calls',True),('diagnostic_basis_after',{}),('tv_gateway_public_after',{})]:
+                self.assertFalse(signing.completed_tv_party(command,r|{k:v}))
+        self.assertEqual(self.config_raw,self.config.read_bytes());self.assertEqual(self.parent_raw,self.parent.read_bytes())
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_either_predecessor_or_source_drift_holds(self):
+        before={p:(self.runtime/p).read_bytes() for p in signing.TV_PARTY_UPDATES}
+        for p in signing.TV_PARTY_UPDATES:
+            target=self.runtime/p;target.write_text('<?php // predecessor drift')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason'])
+            target.write_bytes(before[p]);raw=self.inventory[p];self.inventory[p]=b'<?php // source drift';self.rebuild_archive()
+            self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason'])
+            self.inventory[p]=raw;self.rebuild_archive()
+            for other,b in before.items():self.assertEqual(b,(self.runtime/other).read_bytes())
+
+    def test_pair_prewrite_race_and_postwrite_rollback(self):
+        before={p:(self.runtime/p).read_bytes() for p in signing.TV_PARTY_UPDATES}
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        for p,b in before.items():self.assertEqual(b,(self.runtime/p).read_bytes())
+        self.assertEqual(self.config_raw,self.config.read_bytes())
 
 
 class NativeTVCheckpointInstall(NativeTVDiagnosticInstall):
@@ -1167,6 +1240,9 @@ def load_tests(loader, tests, pattern):
         suite.addTest(NativeTVCapInstall(name))
         suite.addTest(NativeTVBytesInstall(name))
         suite.addTest(NativeTVCheckpointInstall(name))
+    for name in ('test_pair_install_strict_completion_and_no_replay','test_either_predecessor_or_source_drift_holds',
+                 'test_pair_prewrite_race_and_postwrite_rollback'):
+        suite.addTest(NativeTVPartyInstall(name))
     return suite
 
 
