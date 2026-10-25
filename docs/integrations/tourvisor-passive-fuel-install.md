@@ -338,3 +338,17 @@ claim precede the one command. No supplier query, customer CREATE, key custody
 audit, private outside-config reader, public root or SEARCH consumer action is
 part of this recovery. Installation, activation and actual TV delivery remain
 distinct evidence stages.
+
+## TV diagnostic helper maintenance — 25 October2026
+
+`install-tv-client-diagnostics` admits only source771e3834ed8b232b21a33e68cc0dda97a82a32f0
+and operation `int-anex-tv-client-diagnostics-install-20261025-v1`.
+It reuses the standard TV dependency installer, backup, PHP lint, atomic replace,
+readback and rollback. Exactly one existing private helper may change: the shared
+interactive client01543d46→302fbeba. Six existing runtime files are checked;
+all other f4d dependencies/public bytes remain fixed. The accepted enabled parent
+receipt16049bcc and configfaea72b8/mode0644 must match before write and remain
+identical afterward. No include/key read, flag/config/session mutation, readiness
+HTTP, supplier/DB/booking/lead call or frontend change is introduced. Old six
+rendered programs retain their exact bytes. Drift holds; consumed/UNKNOWN does
+not retry or permit aliases. Source/CI/review and actual installation are separate.

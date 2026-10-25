@@ -51,23 +51,31 @@ class Admission(unittest.TestCase):
         signing.activate(c,command)
         self.assertEqual('06c91a5c9a94799f3f048ba41c6fda079a811e22730ce8678c2462ab58a6e85e',
                          hashlib.sha256(c.REMOTE.encode()).hexdigest())
+        c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_SOURCE} {signing.TV_RECOVERY_MODE} {signing.TV_RECOVERY_OPERATION}')
+        signing.activate(c,command)
+        self.assertEqual('245bcaa130aa14e9f440abbb665f9532ed298a7e448e977462ebd41ea99d42db',
+                         hashlib.sha256(c.REMOTE.encode()).hexdigest())
+
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-session-gateway-recovery-' if mode == signing.TV_RECOVERY_MODE else
+            prefix = ('int-anex-tv-client-diagnostics-install-' if mode == signing.TV_DIAGNOSTIC_MODE else
+                      'int-anex-tv-session-gateway-recovery-' if mode == signing.TV_RECOVERY_MODE else
                       'int-anex-tv-session-gateway-enable-' if mode == signing.TV_ENABLE_MODE else
                       'int-anex-tv-session-gateway-install-' if mode == signing.TV_MODE else
                       'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
             operation = signing.TV_RECOVERY_OPERATION if mode == signing.TV_RECOVERY_MODE else prefix + 'case-v1'
-            body = f'/run-int-server-v1 {SHA} {mode} {operation}'
+            if mode==signing.TV_DIAGNOSTIC_MODE:operation=signing.TV_DIAGNOSTIC_OPERATION
+            source=signing.TV_DIAGNOSTIC_SOURCE if mode==signing.TV_DIAGNOSTIC_MODE else SHA
+            body = f'/run-int-server-v1 {source} {mode} {operation}'
             parsed = c.parse_command(body)
-            self.assertEqual({'source_sha': SHA, 'mode': mode, 'operation_id': operation}, parsed)
-            for invalid in [body + ' /tmp/key', body.replace(SHA, 'x' * 40),
+            self.assertEqual({'source_sha': source, 'mode': mode, 'operation_id': operation}, parsed)
+            for invalid in [body + ' /tmp/key', body.replace(source, 'x' * 40),
                             body.replace(prefix, 'int-andromeda-'),
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode==signing.TV_RECOVERY_MODE:
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -738,6 +746,96 @@ class NativeTVGatewayRecovery(NativeTVGatewayEnable):
         self.assert_original_immutable();self.assertEqual({'status':'complete','restored_files':1},r['rollback'])
 
 
+
+class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
+    def setUp(self):
+        super().setUp()
+        # Current accepted install: all TV files already present, only client replacement is allowed.
+        for p in signing.TV_PINS:
+            (self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php')).write_bytes(self.inventory[p])
+        self.previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in self.pins.items()}
+        fixture=os.environ.get('TV_DIAGNOSTIC_SOURCE_ROOT')
+        raw=(Path(fixture)/signing.TV_DIAGNOSTIC_PATH).read_bytes() if fixture else b'<?php // synthetic diagnostic client\n'
+        if fixture:self.assertEqual(signing.TV_DIAGNOSTIC_SHA,hashlib.sha256(raw).hexdigest())
+        self.inventory[signing.TV_DIAGNOSTIC_PATH]=raw
+        self.newpins=self.pins|{signing.TV_DIAGNOSTIC_PATH:hashlib.sha256(raw).hexdigest()}
+        self.config.chmod(0o644);self.config_hash=hashlib.sha256(self.config.read_bytes()).hexdigest()
+        self.keyfile.parent.mkdir(parents=True);self.keyfile.write_text('KEY_MUST_NOT_BE_READ');self.keyfile.chmod(0)
+        self.parent=self.home/'.anytoour-int-executor'/signing.TV_RECOVERY_OPERATION/'result.json'
+        self.parent.parent.mkdir(mode=0o700)
+        self.parent.write_text(json.dumps({'source_sha':signing.TV_SOURCE,'mode':'recover-tv-session-gateway',
+            'operation_id':signing.TV_RECOVERY_OPERATION,'status':'enabled'}));self.parent.chmod(0o600)
+        self.parent_hash=hashlib.sha256(json.dumps(json.loads(self.parent.read_bytes()),sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.parent_raw=self.parent.read_bytes();self.config_raw=self.config.read_bytes()
+        self.rebuild_archive();self.fail_after_write=False;self.config_before_write=False
+
+    def mutate_remote(self,c):
+        for name,old,new in [('TV_PINS',signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA},self.newpins),
+            ('TV_PREVIOUS',{p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in signing.TV_PINS.items()},self.previous),
+            ('TV_DEPENDENCIES',signing.TV_DEPENDENCIES,self.deps),('TV_PUBLIC',signing.TV_PUBLIC,self.public),
+            ('TV_ENABLED_CANONICAL',signing.TV_ENABLED_CANONICAL,self.parent_hash),
+            ('TV_ENABLED_CONFIG_SHA',signing.TV_ENABLED_CONFIG_SHA,self.config_hash)]:
+            anchor=name+'='+repr(old);self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,name+'='+repr(new),1)
+        if self.fail_after_write:
+            anchor="        result['diagnostic_basis_after']=tv_diagnostic_boundary()"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,"        fail('synthetic_postwrite_failure')\n"+anchor,1)
+        if self.config_before_write:
+            anchor="    if mode==TV_GATEWAY_MODE: tv_gateway_preflight()\n    install_started=True"
+            self.assertEqual(1,c.REMOTE.count(anchor))
+            c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
+
+    def install_diagnostics(self,operation=None):
+        operation=operation or f'int-anex-tv-client-diagnostics-install-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,'TV_DIAGNOSTIC_OPERATION',operation):
+            return self.execute(signing.TV_DIAGNOSTIC_MODE,operation,signing.TV_DIAGNOSTIC_SOURCE)[0]
+
+    def test_one_helper_update_preserves_every_other_boundary_and_no_replay(self):
+        r=self.install_diagnostics();self.assertEqual('installed',r['status'])
+        self.assertEqual((6,1,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual([signing.TV_DIAGNOSTIC_PATH],plan['changed_files'])
+        self.assertFalse(r['install']['endpoint']['changed']);self.assertFalse(r['install']['dependency']['changed'])
+        for p in signing.TV_PINS:
+            self.assertEqual(self.inventory[p],(self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php')).read_bytes())
+        self.assertEqual(self.config_raw,self.config.read_bytes());self.assertEqual(0o644,self.config.stat().st_mode&0o777)
+        self.assertEqual(self.parent_raw,self.parent.read_bytes());self.assertEqual(0,self.keyfile.stat().st_mode&0o777)
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.multiple(signing,TV_DIAGNOSTIC_OPERATION=r['operation_id'],TV_PINS=self.pins,
+            TV_DIAGNOSTIC_SHA=self.newpins[signing.TV_DIAGNOSTIC_PATH],TV_PUBLIC=self.public,TV_DEPENDENCIES=self.deps,
+            TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_tv_diagnostics(command,r))
+            for k,v in [('supplier_calls',True),('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('runtime_changed',False)]:
+                self.assertFalse(signing.completed_tv_diagnostics(command,r|{k:v}))
+            for k,v in [('changed_files',2),('created_files',True),('files',True)]:
+                self.assertFalse(signing.completed_tv_diagnostics(command,r|{'install':r['install']|{k:v}}))
+        self.assertEqual('operation_exists_no_replay',self.install_diagnostics(r['operation_id'])['reason'])
+
+    def test_bad_parent_config_dependency_and_source_hold_before_write(self):
+        target=self.runtime/signing.TV_DIAGNOSTIC_PATH;old=target.read_bytes()
+        for kind in ('parent','config','dependency','source','already_updated'):
+            with self.subTest(kind=kind):
+                if kind=='parent':p=self.parent;original=p.read_bytes();p.write_text('{}');reason='tv_diagnostic_parent_receipt'
+                elif kind=='config':p=self.config;original=p.read_bytes();p.write_text('<?php // foreign config');reason='tv_diagnostic_config'
+                elif kind=='dependency':p=self.runtime/'app/integrations/anex-initial-week-gate.php';original=p.read_bytes();p.write_text('<?php // foreign dependency');reason='tv_gateway_predecessor'
+                elif kind=='source':
+                    p=None;original=self.inventory[signing.TV_DIAGNOSTIC_PATH];self.inventory[signing.TV_DIAGNOSTIC_PATH]=b'<?php // wrong staged source';self.rebuild_archive();reason='tv_gateway_source_pin'
+                else:p=target;original=old;p.write_bytes(self.inventory[signing.TV_DIAGNOSTIC_PATH]);reason='tv_gateway_predecessor'
+                self.assertEqual(reason,self.install_diagnostics()['reason'])
+                if kind!='already_updated':self.assertEqual(old,target.read_bytes())
+                if p is not None:p.write_bytes(original)
+                else:self.inventory[signing.TV_DIAGNOSTIC_PATH]=original;self.rebuild_archive()
+        self.assertEqual(self.config_raw,self.config.read_bytes())
+
+    def test_config_prewrite_race_holds_and_postwrite_failure_rolls_back(self):
+        old=(self.runtime/signing.TV_DIAGNOSTIC_PATH).read_bytes();self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_diagnostics()['reason'])
+        self.assertEqual(old,(self.runtime/signing.TV_DIAGNOSTIC_PATH).read_bytes())
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_diagnostics();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(old,(self.runtime/signing.TV_DIAGNOSTIC_PATH).read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -762,6 +860,10 @@ def load_tests(loader, tests, pattern):
                  'test_original_receipt_or_reservation_mismatch_holds','test_current_outer_stub_and_flag_absence_required',
                  'test_original_identity_drift_before_write_holds','test_readiness_failure_rolls_back_only_new_flag'):
         suite.addTest(NativeTVGatewayRecovery(name))
+    for name in ('test_one_helper_update_preserves_every_other_boundary_and_no_replay',
+                 'test_bad_parent_config_dependency_and_source_hold_before_write',
+                 'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
+        suite.addTest(NativeTVDiagnosticInstall(name))
     return suite
 
 
