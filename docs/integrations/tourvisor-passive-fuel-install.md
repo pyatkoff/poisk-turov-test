@@ -449,3 +449,22 @@ carrier's original reservation/ledger/actor/source/no-replay gates remain, and
 all nine existing rendered programs retain exact bytes. This diagnosis has one
 separate read-only runtime claim and original receipt; it is not an installation,
 price acceptance or authority to weaken the selected-tour validation.
+
+
+## One-file strict mismatch diagnostic installation — 25 October 2026
+
+PR4872/source0c6126 merged at FEATUREd0c32007278f3d9d4af262776f99c76d432ddaa9
+adds only safe local comparison diagnostics (see the selected-record contract).
+The fixed tv-mismatch-fields-install profile accepts only this source and
+int-anex-tv-mismatch-fields-install-20261025-v1. Existing one-helper maintenance
+replaces private gatewaya68e7a30 with
+e708a8e9b030ed792345bf9beece2cf1a4ac4f519a7313d222f61472ee6a2b67,
+with six checked / one changed / zero created. Installed diagnostic client302,
+other runtime/dependencies, enabledparent16049/configfaea0644 and public pins
+remain exact. All nine historical maintenance programs plus the consumed fixed
+retained-readback program33f56821 retain bytes. Source fixture/native rollback,
+prewrite drift, strict completion and no-replay are checked; CI adds only one
+exact fixture checkout/environment variable. Same source/review/CI/main and
+separate exclusive runtime claim/original receipt gates apply. No supplier, DB,
+configuration, session, lead, customer or production action is added. The old
+SUNNY/SWISS/LEMON causes remain unknown; no old operation is replayed.

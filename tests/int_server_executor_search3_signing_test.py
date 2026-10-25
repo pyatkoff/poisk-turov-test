@@ -64,7 +64,8 @@ class Admission(unittest.TestCase):
         c=core();command=c.parse_command(f'/run-int-server-v1 {signing.TV_CACHE_SOURCE} {signing.TV_CACHE_MODE} {signing.TV_CACHE_OPERATION}')
         signing.activate(c,command)
         self.assertEqual('c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66',hashlib.sha256(c.REMOTE.encode()).hexdigest())
-        for mode,operation,source in [(signing.TV_CONTEXT_MODE,signing.TV_CONTEXT_OPERATION,signing.TV_CONTEXT_SOURCE),
+        for mode,operation,source in [(signing.TV_FIELDS_MODE,signing.TV_FIELDS_OPERATION,signing.TV_FIELDS_SOURCE),
+                                      (signing.TV_CONTEXT_MODE,signing.TV_CONTEXT_OPERATION,signing.TV_CONTEXT_SOURCE),
                                       (signing.TV_CACHE_MODE,signing.TV_CACHE_OPERATION,signing.TV_CACHE_SOURCE),
                                       (signing.TV_DIAGNOSTIC_MODE,signing.TV_DIAGNOSTIC_OPERATION,signing.TV_DIAGNOSTIC_SOURCE)]:
             with self.assertRaises(ValueError):core().parse_command(f'/run-int-server-v1 {"0"*40} {mode} {operation}')
@@ -72,7 +73,8 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-context-revocation-install-' if mode == signing.TV_CONTEXT_MODE else
+            prefix = ('int-anex-tv-mismatch-fields-install-' if mode == signing.TV_FIELDS_MODE else
+                      'int-anex-tv-context-revocation-install-' if mode == signing.TV_CONTEXT_MODE else
                       'int-anex-tv-cache-revocation-install-' if mode == signing.TV_CACHE_MODE else
                       'int-anex-tv-client-diagnostics-install-' if mode == signing.TV_DIAGNOSTIC_MODE else
                       'int-anex-tv-session-gateway-recovery-' if mode == signing.TV_RECOVERY_MODE else
@@ -84,6 +86,7 @@ class Admission(unittest.TestCase):
             if mode==signing.TV_CACHE_MODE:operation=signing.TV_CACHE_OPERATION
             if mode==signing.TV_CONTEXT_MODE:operation=signing.TV_CONTEXT_OPERATION
             source=signing.TV_CONTEXT_SOURCE if mode==signing.TV_CONTEXT_MODE else (signing.TV_CACHE_SOURCE if mode==signing.TV_CACHE_MODE else (signing.TV_DIAGNOSTIC_SOURCE if mode==signing.TV_DIAGNOSTIC_MODE else SHA))
+            if mode==signing.TV_FIELDS_MODE:source=signing.TV_FIELDS_SOURCE;operation=signing.TV_FIELDS_OPERATION
             body = f'/run-int-server-v1 {source} {mode} {operation}'
             parsed = c.parse_command(body)
             self.assertEqual({'source_sha': source, 'mode': mode, 'operation_id': operation}, parsed)
@@ -92,7 +95,7 @@ class Admission(unittest.TestCase):
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE):
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -776,7 +779,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
     def expected_previous(self):
         if self.mode==signing.TV_DIAGNOSTIC_MODE:return signing.TV_PINS
         current=signing.TV_PINS|{signing.TV_DIAGNOSTIC_PATH:signing.TV_DIAGNOSTIC_SHA}
-        return current|{signing.TV_CACHE_PATH:signing.TV_CACHE_SHA} if self.mode==signing.TV_CONTEXT_MODE else current
+        if self.mode in (signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE):current|={signing.TV_CACHE_PATH:signing.TV_CACHE_SHA}
+        return current|{signing.TV_CONTEXT_PATH:signing.TV_CONTEXT_SHA} if self.mode==signing.TV_FIELDS_MODE else current
     def setUp(self):
         super().setUp()
         # Use the current accepted diagnostic client before the later cache-guard update.
@@ -786,11 +790,17 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             if fixture:self.assertEqual(signing.TV_DIAGNOSTIC_SHA,hashlib.sha256(raw).hexdigest())
             self.inventory[signing.TV_DIAGNOSTIC_PATH]=raw
             self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
-        if self.mode==signing.TV_CONTEXT_MODE:
+        if self.mode in (signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE):
             fixture=os.environ.get('TV_CACHE_SOURCE_ROOT')
             raw=(Path(fixture)/signing.TV_CACHE_PATH).read_bytes() if fixture else b'<?php // installed cache guard\n'
             if fixture:self.assertEqual(signing.TV_CACHE_SHA,hashlib.sha256(raw).hexdigest())
             self.inventory[signing.TV_CACHE_PATH]=raw
+            self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
+        if self.mode==signing.TV_FIELDS_MODE:
+            fixture=os.environ.get('TV_CONTEXT_SOURCE_ROOT')
+            raw=(Path(fixture)/signing.TV_CONTEXT_PATH).read_bytes() if fixture else b'<?php // installed context guard\n'
+            if fixture:self.assertEqual(signing.TV_CONTEXT_SHA,hashlib.sha256(raw).hexdigest())
+            self.inventory[signing.TV_CONTEXT_PATH]=raw
             self.pins={p:hashlib.sha256(self.inventory[p]).hexdigest() for p in signing.TV_PINS}
         # All current TV files are present; only the fixed maintenance target may change.
         for p in signing.TV_PINS:
@@ -829,7 +839,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
 
     def install_maintenance(self,operation=None):
-        prefix=('int-anex-tv-context-revocation-install-' if self.mode==signing.TV_CONTEXT_MODE else
+        prefix=('int-anex-tv-mismatch-fields-install-' if self.mode==signing.TV_FIELDS_MODE else
+                'int-anex-tv-context-revocation-install-' if self.mode==signing.TV_CONTEXT_MODE else
                 'int-anex-tv-cache-revocation-install-' if self.mode==signing.TV_CACHE_MODE else 'int-anex-tv-client-diagnostics-install-')
         operation=operation or f'{prefix}native-{self.counter+1}-v1'
         with mock.patch.object(signing,self.operation_attr,operation):
@@ -900,6 +911,16 @@ class NativeTVContextInstall(NativeTVDiagnosticInstall):
     completion=staticmethod(signing.completed_tv_context)
 
 
+class NativeTVFieldsInstall(NativeTVDiagnosticInstall):
+    mode=signing.TV_FIELDS_MODE
+    operation_attr='TV_FIELDS_OPERATION'
+    source=signing.TV_FIELDS_SOURCE
+    path=signing.TV_FIELDS_PATH
+    sha_attr='TV_FIELDS_SHA'
+    fixture_env='TV_FIELDS_SOURCE_ROOT'
+    completion=staticmethod(signing.completed_tv_fields)
+
+
 class NativeTVMismatchReadback(NativeStockCustody):
     def setUp(self):
         super().setUp()
@@ -931,6 +952,8 @@ class NativeTVMismatchReadback(NativeStockCustody):
         return r,complete,command
     def test_fixed_admission_historical_bytes_and_measured_read_only(self):
         body=f'/run-int-server-v1 {signing.TV_MISMATCH_SOURCE} {signing.TV_MISMATCH_MODE} {signing.TV_MISMATCH_OPERATION}'
+        old=core();signing.activate(old,old.parse_command(body))
+        self.assertEqual('33f56821b857630903354dcf8d7ac816ca6ec1645b2d6529804f2bb4e59814e8',hashlib.sha256(old.REMOTE.encode()).hexdigest())
         for bad in (body+' /tmp/private',body.replace(signing.TV_MISMATCH_SOURCE,'0'*40),body.replace('-v1','-v2')):
             with self.assertRaises(ValueError):core().parse_command(bad)
         c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_CONTEXT_SOURCE} {signing.TV_CONTEXT_MODE} {signing.TV_CONTEXT_OPERATION}'))
@@ -1022,6 +1045,7 @@ def load_tests(loader, tests, pattern):
         suite.addTest(NativeTVDiagnosticInstall(name))
         suite.addTest(NativeTVCacheInstall(name))
         suite.addTest(NativeTVContextInstall(name))
+        suite.addTest(NativeTVFieldsInstall(name))
     return suite
 
 
