@@ -10,6 +10,7 @@ on:
       - 'tests/anex-search3-foreground-page-test.php'
       - 'tests/anex-search3-http-continuation-test.php'
       - 'tests/anex-search3-continue-failure-test.php'
+      - 'tests/anex-retained-additional-prices-test.php'
       - 'tests/anex-package-quote-test.php'
       - '.github/workflows/anex-search3-foreground-page.yml'
 permissions:
@@ -38,6 +39,7 @@ jobs:
           php tests/anex-search3-continue-failure-test.php
           php tests/anex-search-smoke.php
           php tests/anex-search3-preview-smoke.php
+          php tests/anex-retained-additional-prices-test.php
       - name: Retain checked changed runtime files only
         run: |
           mkdir -p checked-anex-first-page
