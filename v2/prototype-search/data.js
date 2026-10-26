@@ -1832,7 +1832,19 @@
       const payload=await response.json().catch(()=>null);
       if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!response.ok||payload?.ok!==true||action!=='flights'&&!payload.data)throw new Error(response.status===429?operation.limit:operation.failed);
-      const result=operation.normalize(payload.data,o);if(!result)throw new Error(operation.invalid);
+      const result=operation.normalize(payload.data,o);
+      if(!result){
+        if(action==='additional_prices'){
+          const detail=anexAdditionalDiagnostic(payload.data,identity,response.status);
+          if(detail)try{
+            root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+            if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function'){
+              root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+            }
+          }catch{}
+        }
+        throw new Error(operation.invalid);
+      }
       if(action==='offer'){
         const currentIdentity=anexConcreteKey(o);if(!currentIdentity)throw new Error('Условия поиска изменились. Выберите тур заново.');
         anexCurrentReceipts.add(currentIdentity.key);
@@ -2073,9 +2085,31 @@
       ||evidence.party_surcharge.source!=='anex_b2b_additional_prices_daily'
       ||evidence.search_plus_additional.formula!=='search_price_plus_program_date_party_additional')return null;
     return Object.freeze({state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,
+      applicationState:'applied',...(evidence.application_reason==='applied'?{applicationReason:'applied'}:{}),
       searchPrice:Object.freeze({amount:search.amount,currency:'RUB'}),
       partySurcharge:Object.freeze({amount:surcharge.amount,currency:'RUB'}),
       calculatedTotal:Object.freeze({amount:total.amount,currency:'RUB'})});
+  }
+  function anexAdditionalDiagnostic(value,identity,httpStatus){
+    if(!identity||!value||typeof value!=='object'||Array.isArray(value)||value.provider!=='anex'
+      ||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef
+      ||!['additional_prices','additional_prices_unavailable','additional_prices_unknown'].includes(value.status))return null;
+    const detail={provider:'anex',action:'additional_prices',code:'quote_unconfirmed',
+      ...(Number.isInteger(httpStatus)&&httpStatus>=100&&httpStatus<=599?{httpStatus}:{}),responseStatus:value.status};
+    if(value.status==='additional_prices'&&value.additional_prices&&typeof value.additional_prices==='object'
+      &&!Array.isArray(value.additional_prices)){
+      const applicationState=['applied','unknown'].includes(value.additional_prices.application_state)
+        ?value.additional_prices.application_state:null;
+      if(applicationState){
+        detail.applicationState=applicationState;
+        const reason=value.additional_prices.application_reason;
+        if(applicationState==='applied'&&reason==='applied'
+          ||applicationState==='unknown'&&['rate_rows_unconfirmed','party_unconfirmed','money_unconfirmed','amount_out_of_range'].includes(reason)){
+          detail.applicationReason=reason;
+        }
+      }
+    }
+    return Object.freeze(detail);
   }
   async function verifyAnexAdditional(o){return verifyAnexFollowUp(o,'additional_prices');}
   function andromedaContext(value,depth=0){

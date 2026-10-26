@@ -41,7 +41,7 @@ const currentAnexConcrete=(body,{ready=false}={})=>({ok:true,data:{
 }});
 const additionalAnexConcrete=(body,{search='1510000',surcharge='20000',total='1530000'}={})=>({ok:true,data:{
  provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'additional_prices',selection_state:'disabled',
- additional_prices:{source:'anex_b2b_additional_prices_daily',application_state:'applied',converted_currency:'RUB',
+ additional_prices:{source:'anex_b2b_additional_prices_daily',application_state:'applied',application_reason:'applied',converted_currency:'RUB',
   per_person_or_package:'per_person_by_party_type',included_in_search_price:false,arithmetic_applied:true,final_price_verified:false,
   party_surcharge:{amount:surcharge,currency:'RUB',source:'anex_b2b_additional_prices_daily'},
   search_price:{amount:search,currency:'RUB',source:'direct_anex_search'},
@@ -768,12 +768,60 @@ test('ANEX AdditionalPrices requires a current concrete receipt and is explicit 
  assert.equal(request.action,'additional_prices');assert.equal(request.generation,concrete.raw.anexGeneration);
  assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
  assert.equal(result.state,'additional_prices');assert.equal(result.finalPriceVerified,false);assert.equal(result.arithmeticApplied,true);
+ assert.equal(result.applicationState,'applied');assert.equal(result.applicationReason,'applied');
  assert.deepEqual(JSON.parse(JSON.stringify(result.searchPrice)),{amount:'1510000',currency:'RUB'});
  assert.deepEqual(JSON.parse(JSON.stringify(result.partySurcharge)),{amount:'20000',currency:'RUB'});
  assert.deepEqual(JSON.parse(JSON.stringify(result.calculatedTotal)),{amount:'1530000',currency:'RUB'});
  const sent=h.anexCalls.length;
  await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/);
  assert.equal(h.anexCalls.length,sent,'same AdditionalPrices request cannot replay in one browser generation');
+});
+test('ANEX AdditionalPrices failure keeps only bound fixed application diagnostics without replay',async()=>{
+ const cases=[
+  ['rate rows','additional_prices','unknown','rate_rows_unconfirmed',false,true],
+  ['party','additional_prices','unknown','party_unconfirmed',false,true],
+  ['money','additional_prices','unknown','money_unconfirmed',false,true],
+  ['range','additional_prices','unknown','amount_out_of_range',false,true],
+  ['applied invalid money','additional_prices','applied','applied',false,true],
+  ['unknown private reason','additional_prices','unknown','private token URL',false,true],
+  ['inconsistent reason','additional_prices','applied','money_unconfirmed',false,true],
+  ['unavailable','additional_prices_unavailable','unknown','money_unconfirmed',false,true],
+  ['unknown status','additional_prices_unknown','unknown','money_unconfirmed',false,true],
+  ['unlisted status','quote_failed','unknown','money_unconfirmed',false,false],
+  ['identity mismatch','additional_prices','unknown','money_unconfirmed',true,false]
+ ];
+ for(const [name,status,state,reason,mismatch,retained] of cases){
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
+  const h=harness({anex:async body=>{
+   let value;
+   if(body.action==='search'&&verification)value=directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef});
+   else if(body.action==='expand')value=expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101});
+   else if(body.action==='offer')value=currentAnexConcrete(body);
+   else if(body.action==='additional_prices'){
+    value=additionalAnexConcrete(body);value.data.status=status;
+    value.data.additional_prices.application_state=state;value.data.additional_prices.application_reason=reason;
+    value.data.additional_prices.search_plus_additional.amount='1540000';
+    if(mismatch)value.data.offer_ref='anex_online:'+'9'.repeat(64);
+   }else value=directAnex(body,{offerRef:groupRef,localId:101});
+   return {response:{ok:true,status:207,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  await assert.rejects(h.data.verifyAnexAdditional(concrete),/применимый расчёт/,name);
+  const expected={provider:'anex',action:'additional_prices',code:'quote_unconfirmed',httpStatus:207,responseStatus:status};
+  if(status==='additional_prices'&&!mismatch){
+   expected.applicationState=state;
+   if(state==='unknown'&&['rate_rows_unconfirmed','party_unconfirmed','money_unconfirmed','amount_out_of_range'].includes(reason)
+     ||state==='applied'&&reason==='applied')expected.applicationReason=reason;
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(h.quoteFailures)),retained?[expected]:[],name);
+  assert.deepEqual(h.quoteWarnings,retained?['[AnyTour quote] '+JSON.stringify(expected)]:[],name);
+  const sent=h.anexCalls.filter(call=>call.action==='additional_prices').length;
+  await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/,name+' no replay');
+  assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,sent,name+' one request');
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|token|URL|offer_ref|search_ref/,name);
+ }
 });
 test('ANEX accepts an evidenced zero surcharge but rejects missing or negative money',async()=>{
  for(const [surcharge,valid] of [['0',true],['0.0000',true],['-1',false],[null,false]]){
