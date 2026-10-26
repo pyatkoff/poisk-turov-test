@@ -10,10 +10,11 @@
 Исторические checkpoint и snapshots не являются заданиями.
 
 **Текущая основа:** [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
-source `03638572ed7634797fe690f774282e288c06c4b7` → runtime release
-`e9b2bc741da26107cd5878a492739c0de3a837e1`;
-[публикация](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417128363) и
-[проверка установленной версии](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417167272).
+source `137e61aa2ca0df648ef53b0800be7de034cea9ef` → runtime release
+`db20aac906a766fabbdb199438c074ab8d80ca21`;
+[публикация](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716) и
+[проверка установленной версии](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6421725853).
+PR4935 синхронизирует обновлённые фото открытой галереи, сохраняет выбранный снимок при перестановке и корректно обрабатывает удалённые фото; [приёмка](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6421725853), UI delta0.
 Согласованная композиция — Site226 / PR4909 в прежнем PUBLIC design-lab.
 Обычный compiled430/1280, включая1280×720, принят в своём scope на9.5/9.5.
 Это не оценка всего поиска, естественной доставки или production.
