@@ -1,0 +1,91 @@
+{
+  "schema": "match_dual_live30_offline_receipt_v1",
+  "state": "completed_offline_join_not_server_acceptance",
+  "coordination_claim": 5853425089,
+  "source_registry_at": "2026-09-26T23:12:33+00:00",
+  "source_census_at": "2026-09-26T22:50:27+00:00",
+  "scope": {
+    "tv_live30_nontriple": 1674,
+    "tv_missing_both_included": 726,
+    "samo_live30_catalog": 1896,
+    "samo_nontriple": 487,
+    "samo_missing_local_identity": 125,
+    "samo_missing_direct_anex": 362,
+    "samo_operator_only": 283,
+    "signed_source_identities_preserved_without_abs": 170,
+    "unmapped_samo_excluded_by_prior_acquisition_plan": 123,
+    "scope_sets_may_overlap_do_not_sum": true
+  },
+  "root_defect": {
+    "old_pr": 3927,
+    "old_head": "ab384ffdfd722eb5b39a5296f8947fddbebe2d6c",
+    "old_source": "scripts/diagnostics/hotel_match_tv_samo_common4_fingerprint_join_v37.php",
+    "reason": "The SAMO branch used V37_DIRECT TV numeric operator IDs25/43 instead of SAMO315/342.",
+    "correct_tv": {"operator_315": 25, "operator_342": 43},
+    "correct_samo": {"operator_315": 315, "operator_342": 342},
+    "real_raw_rows_rejected_by_old_comparison": 706,
+    "rejected_by_input": {"wave1": 193, "wave5": 508, "broad": 5},
+    "new_committed_mappings_from_this_fix": 0,
+    "fix_scope": "Pure source-specific binding committed on this unmerged branch and used by the tested local join. Old terminal v37 execution was not changed or replayed."
+  },
+  "result": {
+    "tv_unique_identity_edges": 2224,
+    "samo_unique_identity_edges": 2464,
+    "catalog_pairs_already_accepted_in_snapshot": 62,
+    "catalog_pairs_hold": 24,
+    "new_free_catalog_pairs": 0,
+    "direct_anex_candidates_requiring_fresh_current": 82,
+    "direct_anex_conflicts_hold": 5,
+    "operator_only_candidates_requiring_fresh_current": 1,
+    "operator_only_without_exact_tv_proof_in_consumed_inputs": 282,
+    "proposed_identity_count": 83,
+    "newly_committed_mappings": 0,
+    "provider_http_calls_this_pass": 0,
+    "database_writes_this_pass": 0,
+    "fresh_database_reads_this_pass": 0,
+    "guaranteed_full_triple_gain": 0
+  },
+  "direct_anex_delta_local_then_anex": [[8928,"14355"],[9116,"11548"],[9135,"40608"],[11736,"30938"],[11806,"15978"],[11812,"35738"],[11818,"16927"],[11819,"39378"],[11824,"26491"],[11828,"32466"],[11831,"16844"],[12126,"16296"],[13921,"5605"],[13949,"13541"],[14133,"5585"],[20825,"40240"],[22728,"5177"],[23031,"43269"],[26043,"14709"],[26061,"25271"],[28159,"8537"],[33536,"32469"],[37222,"13410"],[37936,"9224"],[41772,"39285"],[42576,"17097"],[49611,"25220"],[49622,"14881"],[56729,"40273"],[59115,"18778"],[59578,"41274"],[60257,"41660"],[60388,"29332"],[60874,"20569"],[60957,"44301"],[60960,"41636"],[64275,"25053"],[64350,"23364"],[64915,"18578"],[65633,"14912"],[67403,"27234"],[71259,"37269"],[72602,"29103"],[74218,"34652"],[74258,"30599"],[74279,"31999"],[80533,"33219"],[81314,"35690"],[102486,"37573"],[110700,"37560"],[112448,"37742"],[113114,"37326"],[113315,"38788"],[116384,"37917"],[118671,"37886"],[120840,"43496"],[121069,"39226"],[122366,"39426"],[122893,"27023"],[124986,"44617"],[126072,"40252"],[127325,"41621"],[127573,"40650"],[127609,"40939"],[129442,"41275"],[129551,"41566"],[130621,"45330"],[132354,"34595"],[132421,"41436"],[138801,"43206"],[138803,"43207"],[141665,"43326"],[141976,"44231"],[144205,"43439"],[146995,"44843"],[148425,"43573"],[150513,"43782"],[154810,"44187"],[157530,"44560"],[159008,"44763"],[161982,"45068"],[162479,"45123"]],
+  "all82_direct_anex_candidates_still_need_samo": true,
+  "operator_identity_candidate": {
+    "local_hotel_id": 2191,
+    "name": "LARA PARK HOTEL",
+    "supplier_namespace": "operator_315",
+    "external_hotel_id": "859893",
+    "catalog_mapping_proven": false,
+    "status": "candidate_requires_fresh_current",
+    "tv_proof": {"artifact_id":10857072001,"result_sha256":"43a71d55d649ccbece446e3a8a36fc6df59e141215c1de6085b0821c23642545","json_pointer":"/rows/155","row_sha256":"0a8be3680bde1758d9334ba3623fd3f99f7c16c8bda77e7edb0171097c7d1e3d"},
+    "samo_proof": {"artifact_id":10918272317,"result_sha256":"1531b8bdb096c3158502b950e863665bd02321374900908498699935922383e9","saved_file_sha256":"83fc81d34269a3ab532806dfb16132277afcc9cabbf930f09f856edfc4ffbf61","saved_row_sha256":"339c07339af6fe76c7af89dc42774b558d830f954a68fe6ea12bb232adbeef6f","saved_json_pointer":"/store/snapshot/offers/16"}
+  },
+  "protected": {"anex_conflict_local_ids":[9251,81349,115349,124758,128305],"catalog_pairs_hold":24,"prior15_hold_not_promoted":true,"prior14_accepted_not_replayed":true},
+  "one_exact_same_operator_sufficient_for_candidate": true,
+  "cross_namespace_numeric_equality_alone_is_not_proof": true,
+  "tests": {"local_pure_and_real_input_tests":54,"result":"PASS","server_ci_or_writer_run":false},
+  "consumed_artifact_ids": [10917671953,10917808046,10918272317,10857072001,10775291892,10907946061,10909959597,10915714601,10801649638,10827398562,10828978531,10831681750,10854039431,10858495950,10856651937,10684769853],
+  "input_limits": [
+    "TV942 raw child results are not in this local bundle. Do not claim every historical archive consumed.",
+    "Wave3 is represented by its sealed328-row audit, not all1200 acquisition rows; its ambiguous edge remains excluded.",
+    "Full scope accounting is not proof of complete provider acquisition;123 unmapped SAMO sources were excluded by the prior acquisition plan and2 additional unmapped sources are absent from that old plan.",
+    "BG full F4 and SAMO operator_115 IDs remain distinct; no prefix stripping.",
+    "ANEX and SAMO operator_5 numeric equality alone is not cross-source identity proof.",
+    "No fresh server CURRENT read or writer executed; execution-enabling workflow was denied and not retried."
+  ],
+  "artifacts": {
+    "MATCH_dual_live30_verified_report_2026-09-27.json":"51e215bff5a8dfa54925a6a4d4a8f3607100a1411071a3314efb181d0fc979fa",
+    "MATCH_next83_candidates_2026-09-27.json":"d823331dbea705f6c9d7daf47599628bbcc439e9236224f8b2adc6c9600c6c6e",
+    "MATCH_dual_live30_block83_2026-09-27.zip":"2a691d7bbaa67db54e063938a443d9fdba21432a81d64b8250189e95e9b241bd"
+  },
+  "execution_blocker": {
+    "action":"GitHub.create_file",
+    "path":".github/workflows/hotel-match-dual-live30-retained-union-v1.yml",
+    "result":"DENIED_BY_TOOL_SECURITY",
+    "coordination_comment":5853460802,
+    "retried":false,
+    "alternate_executor_used":false
+  },
+  "unexecuted_php_collector": "Source prototype faca6b50 was not run; it is not a validated server package or acceptance. The completed work is the local join and pure source-specific binding.",
+  "source_branch":"match/dual-live30-full-union-20260927",
+  "fresh_current_and_guarded_writer_required":true,
+  "safe_to_write_now":false,
+  "no_background_worker":true
+}
