@@ -81,6 +81,9 @@ $db=pi_fixture(PDO::class,true);$a=pi_authority($db);$normal=pi_run($db,$a,'norm
 $db=pi_fixture();$a=pi_authority($db);$other=pi_fixture();pi_refused(pi_run($other,$a,'wrong-db'),'permission_drift');pi_check(pi_targets($db)===[]&&pi_targets($other)===[],'wrong target has no DDL');
 $db=pi_fixture();$a=pi_authority($db);$name=(string)$db->query('SELECT DATABASE()')->fetchColumn();$otherUser='stay_perm_other_account';$root->exec("CREATE USER '".$otherUser."'@'%' IDENTIFIED BY '".$fixturePassword."'");$root->exec('GRANT CREATE,REFERENCES,SELECT,TRIGGER ON `'.str_replace('_','\\_',$name)."`.* TO '".$otherUser."'@'%'");$otherAccount=new PDO(str_replace(';charset=utf8mb4',';dbname='.$name.';charset=utf8mb4',$server),$otherUser,$fixturePassword,$options);pi_refused(pi_run($otherAccount,$a,'wrong-account'),'permission_drift');
 $db=pi_fixture();$a=pi_authority($db);$current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();$user=substr($current,0,strrpos($current,'@'));$root->exec("GRANT SELECT ON `unrelated\\_permission\\_%`.* TO '".$user."'@'%'");pi_refused(pi_run($db,$a,'grant-drift'),'permission_drift');
+$db=pi_fixture();$a=pi_authority($db);$name=(string)$db->query('SELECT DATABASE()')->fetchColumn();$current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();$user=substr($current,0,strrpos($current,'@'));
+$root->exec('REVOKE TRIGGER ON `'.str_replace('_','\\_',$name)."`.* FROM '".$user."'@'%'");$root->exec('GRANT TRIGGER ON `'.$name."`.anytour_hotels TO '".$user."'@'%'");
+pi_refused(pi_run($db,$a,'table-only-trigger'),'permission_drift');pi_check(pi_targets($db)===[],'table-only TRIGGER cannot admit first DDL');
 $db=pi_fixture();$a=pi_authority($db);$config=file_get_contents($site.'/config.php');file_put_contents($site.'/config.php','changed');pi_refused(pi_run($db,$a,'private-drift'),'protected_drift');file_put_contents($site.'/config.php',$config);
 $db=pi_fixture();$a=pi_authority($db);$bad=$a;$bad[0]['local_stay_context_permission']['data']['receipt']['controlSha']=str_repeat('e',40);pi_refused(pi_run($db,$bad,'parent-mismatch'),'permission_parent');
 $db=pi_fixture();$a=pi_authority($db);$db->exec('CREATE TABLE anytour_hotel_room_concepts_v2 (id BIGINT UNSIGNED PRIMARY KEY) ENGINE=InnoDB');pi_refused(pi_run($db,$a,'preexisting'),'schema_preflight');pi_check(count(pi_targets($db))===1,'preexisting target never overwritten');
@@ -104,6 +107,44 @@ final class PermissionInstallCapacityPdo extends PDO {
     }
 }
 $db=pi_fixture(PermissionInstallCapacityPdo::class);$a=pi_authority($db);pi_refused(pi_run($db,$a,'capacity-report'),'ddl_capability');
+final class PermissionInstallPostProofDriftPdo extends PDO {
+    public static PDO $root;public static string $database;public static string $user;
+    public function exec(string $sql): int|false {
+        $r=parent::exec($sql);
+        if (str_starts_with($sql,'CREATE TABLE anytour_hotel_stay_mappings_v2 (')) {
+            self::$root->exec('REVOKE TRIGGER ON `'.str_replace('_','\\_',self::$database)."`.* FROM '".self::$user."'@'%'");
+            self::$root->exec('GRANT TRIGGER ON `'.self::$database."`.anytour_hotels TO '".self::$user."'@'%'");
+        }return $r;
+    }
+}
+PermissionInstallPostProofDriftPdo::$root=$root;$db=pi_fixture(PermissionInstallPostProofDriftPdo::class);PermissionInstallPostProofDriftPdo::$database=(string)$db->query('SELECT DATABASE()')->fetchColumn();
+$current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();PermissionInstallPostProofDriftPdo::$user=substr($current,0,strrpos($current,'@'));$a=pi_authority($db);$postProof=pi_run($db,$a,'post-proof-drift');
+pi_check($postProof['receipt']['state']==='verification_failed'&&$postProof['receipt']['reason']==='permission_drift'&&$postProof['receipt']['schemaWrites']===3&&!$postProof['receipt']['ddlOutcomeUnknown']&&count(pi_targets($db))===3,'post-DDL table-only TRIGGER drift retains3ACK and refuses success');
+
+final class PermissionInstallMissingPostPdo extends PDO {
+    public static PDO $root;
+    public function exec(string $sql): int|false {
+        $r=parent::exec($sql);
+        if (str_starts_with($sql,'CREATE TABLE anytour_hotel_stay_mappings_v2 (')) {$name=(string)$this->query('SELECT DATABASE()')->fetchColumn();self::$root->exec('DROP TABLE `'.$name.'`.anytour_hotel_stay_mappings_v2');}
+        return $r;
+    }
+}
+PermissionInstallMissingPostPdo::$root=$root;$db=pi_fixture(PermissionInstallMissingPostPdo::class);$a=pi_authority($db);$missing=pi_run($db,$a,'missing-post-target');
+pi_check($missing['receipt']['state']==='verification_failed'&&$missing['receipt']['schemaWrites']===3&&!$missing['receipt']['ddlOutcomeUnknown']&&$missing['receipt']['schemaVerification']===null&&count(pi_targets($db))===2,'missing post target never qualifies and retains3ACK');
+
+final class PermissionInstallNonemptyPostPdo extends PDO {
+    public static PDO $root;public static string $database;public static int $hotel;
+    public function exec(string $sql): int|false {
+        $r=parent::exec($sql);
+        if (str_starts_with($sql,'CREATE TABLE anytour_hotel_stay_mappings_v2 (')) self::$root->exec('INSERT INTO `'.self::$database.'`.anytour_hotel_room_concepts_v2(anytour_hotel_id,local_key,name_ru,facts_json,created_at,updated_at) VALUES ('.self::$hotel.",X'66697874757265','fixture','{}',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+        return $r;
+    }
+}
+PermissionInstallNonemptyPostPdo::$root=$root;$db=pi_fixture(PermissionInstallNonemptyPostPdo::class);PermissionInstallNonemptyPostPdo::$database=(string)$db->query('SELECT DATABASE()')->fetchColumn();
+$root->exec("INSERT INTO `".PermissionInstallNonemptyPostPdo::$database."`.anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES ('{\\"nonempty\\":true}',SHA2('{\\"nonempty\\":true}',256),1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+PermissionInstallNonemptyPostPdo::$hotel=(int)$root->query('SELECT id FROM `'.PermissionInstallNonemptyPostPdo::$database.'`.anytour_hotels LIMIT 1')->fetchColumn();$a=pi_authority($db);$nonempty=pi_run($db,$a,'nonempty-post-target');
+pi_check($nonempty['receipt']['state']==='verification_failed'&&$nonempty['receipt']['reason']==='rows_nonempty'&&$nonempty['receipt']['schemaWrites']===3&&!$nonempty['receipt']['ddlOutcomeUnknown']&&$nonempty['receipt']['tableRows']===[['name'=>AnyTourHotelStayPermissionInstallV1::TARGETS[0],'rows'=>1]],'nonempty post target never qualifies and retains3ACK');
+
 final class PermissionInstallLostAckPdo extends PDO {public function exec(string $sql): int|false {$r=parent::exec($sql);if (str_starts_with($sql,'CREATE TABLE anytour_hotel_meal_concepts_v2 (')) throw new PDOException('FIXTURE LOST ACK AFTER COMMITTED SECOND CREATE');return $r;}}
 $db=pi_fixture(PermissionInstallLostAckPdo::class);$a=pi_authority($db);$partial=pi_run($db,$a,'lost-ack');$r=$partial['receipt'];
 pi_check($r['state']==='ddl_unknown'&&$r['schemaWrites']===1&&$r['ddlOutcomeUnknown']&&$r['createdTables']===[AnyTourHotelStayPermissionInstallV1::TARGETS[0]]&&$r['unknownTables']===[AnyTourHotelStayPermissionInstallV1::TARGETS[1]],'lost ACK truth retained');

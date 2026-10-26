@@ -54,8 +54,7 @@ SSH, reservation, quota, no-replay и production guards не меняются.
 вызываются. Read-классы используются только через чистые `::read()`.
 
 Одна PDO и фиксированный advisory lock охватывают fresh permission proof,
-fresh schema read и все DDL. До первой DDL и перед каждым CREATE заново
-проверяются:
+fresh schema read и все DDL. До первой DDL полный preflight проверяет:
 
 - точные DB/account/role/protected bindings и полный положительный proof всех
   четырёх прав с принятыми coverage/metadata hashes;
@@ -64,6 +63,14 @@ fresh schema read и все DDL. До первой DDL и перед кажды�
   case-insensitive constraint-name collisions;
 - DYNAMIC row format, достаточный page size, включённые foreign-key и unique
   session guards, отсутствие caller transaction.
+
+Непосредственно перед каждым CREATE повторяются только те guards, которые
+обязаны оставаться истинными после предыдущего CREATE: текущие
+DB/account/role/session bindings и protected hashes. Полное отсутствие всех
+трёх targets проверяется один раз под тем же lock до первой DDL; оно по
+определению уже не может оставаться истинным перед вторым и третьим CREATE.
+После трёх ACK выполняются новый полный permission proof и строгий raw schema
+postflight.
 
 Порядок единственных разрешённых DDL:
 
