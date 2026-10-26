@@ -83,7 +83,7 @@ $db=pi_fixture();$a=pi_authority($db);$name=(string)$db->query('SELECT DATABASE(
 $db=pi_fixture();$a=pi_authority($db);$current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();$user=substr($current,0,strrpos($current,'@'));$root->exec("GRANT SELECT ON `unrelated\\_permission\\_%`.* TO '".$user."'@'%'");pi_refused(pi_run($db,$a,'grant-drift'),'permission_drift');
 $db=pi_fixture();$a=pi_authority($db);$name=(string)$db->query('SELECT DATABASE()')->fetchColumn();$current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();$user=substr($current,0,strrpos($current,'@'));
 $root->exec('REVOKE TRIGGER ON `'.str_replace('_','\\_',$name)."`.* FROM '".$user."'@'%'");$root->exec('GRANT TRIGGER ON `'.$name."`.anytour_hotels TO '".$user."'@'%'");
-pi_refused(pi_run($db,$a,'table-only-trigger'),'permission_drift');pi_check(pi_targets($db)===[],'table-only TRIGGER cannot admit first DDL');
+pi_refused(pi_run($db,$a,'table-only-trigger'),'permission_proof');pi_check(pi_targets($db)===[],'table-only TRIGGER cannot admit first DDL');
 $db=pi_fixture();$a=pi_authority($db);$config=file_get_contents($site.'/config.php');file_put_contents($site.'/config.php','changed');pi_refused(pi_run($db,$a,'private-drift'),'protected_drift');file_put_contents($site.'/config.php',$config);
 $db=pi_fixture();$a=pi_authority($db);$bad=$a;$bad[0]['local_stay_context_permission']['data']['receipt']['controlSha']=str_repeat('e',40);pi_refused(pi_run($db,$bad,'parent-mismatch'),'permission_parent');
 $db=pi_fixture();$a=pi_authority($db);$db->exec('CREATE TABLE anytour_hotel_room_concepts_v2 (id BIGINT UNSIGNED PRIMARY KEY) ENGINE=InnoDB');pi_refused(pi_run($db,$a,'preexisting'),'schema_preflight');pi_check(count(pi_targets($db))===1,'preexisting target never overwritten');
@@ -119,7 +119,7 @@ final class PermissionInstallPostProofDriftPdo extends PDO {
 }
 PermissionInstallPostProofDriftPdo::$root=$root;$db=pi_fixture(PermissionInstallPostProofDriftPdo::class);PermissionInstallPostProofDriftPdo::$database=(string)$db->query('SELECT DATABASE()')->fetchColumn();
 $current=(string)$db->query('SELECT CURRENT_USER()')->fetchColumn();PermissionInstallPostProofDriftPdo::$user=substr($current,0,strrpos($current,'@'));$a=pi_authority($db);$postProof=pi_run($db,$a,'post-proof-drift');
-pi_check($postProof['receipt']['state']==='verification_failed'&&$postProof['receipt']['reason']==='permission_drift'&&$postProof['receipt']['schemaWrites']===3&&!$postProof['receipt']['ddlOutcomeUnknown']&&count(pi_targets($db))===3,'post-DDL table-only TRIGGER drift retains3ACK and refuses success');
+pi_check($postProof['receipt']['state']==='verification_failed'&&$postProof['receipt']['reason']==='permission_proof'&&$postProof['receipt']['schemaWrites']===3&&!$postProof['receipt']['ddlOutcomeUnknown']&&count(pi_targets($db))===3,'post-DDL table-only TRIGGER drift retains3ACK and refuses success');
 
 final class PermissionInstallMissingPostPdo extends PDO {
     public static PDO $root;
