@@ -1641,5 +1641,186 @@ class ProtectedContextFiles(unittest.TestCase):
         self.assertFalse((self.home/'.anytoour-int-executor'/m.PROTECTED_CONTEXT_OPERATION/'local-stay-protected-context-read.json').exists())
 
 
+def context_permission_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.CONTEXT_PERMISSION_SOURCE_SHA} {m.CONTEXT_PERMISSION_MODE} {m.CONTEXT_PERMISSION_OPERATION}')
+
+
+def context_permission_fixture_data(with_engine=True):
+    # Fictional protocol metadata is deliberately an unbound library result.
+    # No retained execution receipt is adapted or given historical CLI fields.
+    sample=permission_fixture_data();engine={k:copy.deepcopy(v) for k,v in sample.items()}
+    engine['receipt']={k:v for k,v in engine['receipt'].items() if k not in ('operationId','sourceSha','controlSha')}
+    baseline=dict(m.PERMISSION_PARENT['protected']);snapshot={name:{'status':'hashed','sha256':digest,'matchesBaseline':True} for name,digest in baseline.items()}
+    protected={'baselineProtected':baseline,'protectedBefore':snapshot,'protectedAfter':copy.deepcopy(snapshot),'changedFiles':[],'stable':True}
+    if not with_engine:
+        for side in ('protectedBefore','protectedAfter'): protected[side]['config.php'].update(sha256='f'*64,matchesBaseline=False)
+        protected['changedFiles']=['config.php'];engine=None
+    sha=lambda x:hashlib.sha256(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    return {'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-context-permission-read-v1','state':'completed_read_only' if with_engine else 'protected_refused','observedAt':1792977313,
+        'contextOperation':m.CONTEXT_PERMISSION_PARENT['operation'],'contextResultSha256':m.CONTEXT_PERMISSION_PARENT['private_sha256'],'contextFileSha256':m.CONTEXT_PERMISSION_PARENT['file_sha256'],
+        'failedPermissionOperation':m.PROTECTED_CONTEXT_FAILURE['operation'],'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256'],
+        'rawOperation':m.PERMISSION_PARENT['operation'],'rawResultSha256':m.PERMISSION_PARENT['private_sha256'],'engineSourceSha256':m.PERMISSION_RUNNER_SHA,
+        'engineResultSha256':sha(engine) if engine else None,'engineOperationBound':False,'engineCliExecuted':False,'phpExecuted':with_engine,
+        'helperAttempted':with_engine,'pdoAttempted':with_engine,'engineInvoked':with_engine,'databaseBindingKnown':with_engine,'accountBindingKnown':with_engine,'roleBindingKnown':with_engine,
+        'oldAccountIdentityKnown':False,'allRequiredProven':with_engine,'effectiveDenialClaimed':False,'ddlAdmission':False,
+        'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'profileWrites':0,'mappingWrites':0,'automaticAccepts':0,
+        'operationId':m.CONTEXT_PERMISSION_OPERATION,'sourceSha':m.CONTEXT_PERMISSION_SOURCE_SHA,'controlSha':CONTROL},'protectedContext':protected,'engine':engine}
+
+
+def context_permission_receipt(data):
+    outer=receipt(data);outer.pop('local_stay_read');outer.update(mode=m.CONTEXT_PERMISSION_MODE,operation_id=m.CONTEXT_PERMISSION_OPERATION,source_sha=m.CONTEXT_PERMISSION_SOURCE_SHA)
+    r=data['receipt'];baseline=m.PERMISSION_PARENT['protected'];snapshot={name:{'status':'hashed','sha256':digest,'matchesBaseline':True} for name,digest in baseline.items()}
+    admission={'protectedContext':{'baselineProtected':dict(baseline),'protectedBefore':snapshot,'protectedAfter':copy.deepcopy(snapshot),'changedFiles':[],'stable':True},
+        'protectedAfterLaunch':copy.deepcopy(snapshot),'admitted':True,'phpAttempted':True,'launchState':'receipt_validated','phpReturnCode':0,
+        **{k:r[k] for k in ('helperAttempted','pdoAttempted','engineInvoked')}}
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    outer['local_stay_context_permission']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),'contextResultSha256':m.CONTEXT_PERMISSION_PARENT['private_sha256'],
+        'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256'],'rawResultSha256':m.PERMISSION_PARENT['private_sha256'],'admission':admission,'usableProof':r['state']=='completed_read_only'}
+    return outer
+
+
+class ContextPermissionAdmission(unittest.TestCase):
+    def test_fixed_owner_release_caps_closed_sources_and_phase_before_launch(self):
+        c=wrapper().core;parsed=context_permission_command(c);body=f'{c.PREFIX}{m.CONTEXT_PERMISSION_SOURCE_SHA} {m.CONTEXT_PERMISSION_MODE} {m.CONTEXT_PERMISSION_OPERATION}'
+        self.assertEqual(parsed['maximum_privileges'],4)
+        for invalid in (body+' --apply',body+' expected_hash',body.replace(m.CONTEXT_PERMISSION_SOURCE_SHA,m.INSTALL_SOURCE_SHA),body+' retry'):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':117,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/117': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.CONTEXT_PERMISSION_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            with self.assertRaises(ValueError): c.checked_event('fixture',dict(event,issue={'number':4217}),CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+        raw,hashes=m.bundle_context_permission_source(SOURCE)
+        self.assertEqual(set(hashes),{m.CONTEXT_PERMISSION_RUNNER,m.PERMISSION_RUNNER,'v2/data/db-v1.php'})
+        self.assertEqual(hashes[m.PERMISSION_RUNNER],'1e9b8a15f0418e467380bcfe63368e8e4734b76a1deb9d95d6b16245b2cc6e4b')
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(set(archive.getnames()),{*hashes,'manifest.json'});self.assertEqual(len(archive.getmembers()),4)
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_privileges',True),('provider_http_calls',False),('database_writes',1),('expected_hash','f'*64)):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE);self.assertIn('if len(members)!=4',c.REMOTE)
+        self.assertNotIn('def run_local_stay_permission_proof(',c.REMOTE)
+        handler=m.CONTEXT_PERMISSION_REMOTE_HANDLER
+        self.assertLess(handler.index("result['local_stay_context_permission']=item"),handler.index('local_stay_context_permission_parents();'))
+        self.assertLess(handler.index("admission.update(phpAttempted=True"),handler.index("run=subprocess.run(['php'"))
+        self.assertIn("if run is not None and data['receipt']['phpExecuted'] is not True:",handler)
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_verbatim_unbound_engine_and_phase_truth_never_fabricate_old_cli_receipts(self):
+        data=context_permission_fixture_data();parsed=context_permission_command(wrapper().core)
+        self.assertTrue(m.completed_context_permission(parsed,context_permission_receipt(data),CONTROL))
+        self.assertFalse(m.valid_permission_payload(data['engine'],CONTROL))
+        self.assertFalse({'operationId','sourceSha','controlSha'}&set(data['engine']['receipt']))
+        for field,value in (('engineOperationBound',True),('engineCliExecuted',True),('databaseWrites',False),('phpExecuted',False),('ddlAdmission',True)):
+            changed=copy.deepcopy(data);changed['receipt'][field]=value
+            self.assertFalse(m.valid_context_permission_payload(changed,CONTROL))
+        changed=copy.deepcopy(data);changed['engine']['receipt']['operationId']=m.PERMISSION_OPERATION
+        changed['receipt']['engineResultSha256']=hashlib.sha256(json.dumps(changed['engine'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertFalse(m.valid_context_permission_payload(changed,CONTROL))
+        held=context_permission_fixture_data(False);self.assertTrue(m.valid_context_permission_payload(held,CONTROL))
+        self.assertFalse(m.completed_context_permission(parsed,context_permission_receipt(held),CONTROL))
+        changed=context_permission_receipt(data);changed['local_stay_context_permission']['admission']['phpAttempted']=False
+        self.assertFalse(m.completed_context_permission(parsed,changed,CONTROL))
+        changed=context_permission_receipt(data);changed['local_stay_context_permission']['usableProof']=False
+        self.assertFalse(m.completed_context_permission(parsed,changed,CONTROL))
+        changed=context_permission_receipt(data);changed['local_stay_context_permission']['admission']['protectedAfterLaunch']['unreviewed_path']={}
+        self.assertFalse(m.completed_context_permission(parsed,changed,CONTROL))
+
+    def test_full_current_context_raw_and_failed_parents_are_mandatory(self):
+        raw=permission_parent_fixture();failure=protected_context_failed_fixture(raw);raw_policy=copy.deepcopy(m.PERMISSION_PARENT)
+        raw_policy['file_sha256']=raw['local_stay_source_facts']['fileSha256']
+        with mock.patch.object(m,'PERMISSION_PARENT',raw_policy):
+            data=protected_context_fixture_data();data['receipt']['controlSha']=m.CONTEXT_PERMISSION_PARENT['control'];context=protected_context_receipt(data)
+            policy=copy.deepcopy(m.CONTEXT_PERMISSION_PARENT);policy['file_sha256']=context['local_stay_protected_context']['fileSha256']
+            namespace={'local_stay_permission_parent_completed':m.completed_source_facts,'local_stay_context_permission_parent_completed':m.completed_protected_context}
+            exec(m.PERMISSION_PARENT_VALIDATOR+m.PROTECTED_CONTEXT_VALIDATOR+m.CONTEXT_PERMISSION_VALIDATOR,namespace)
+            valid=namespace['local_stay_context_permission_parents_valid']
+            self.assertTrue(valid(context,raw,failure,policy,m.PERMISSION_PARENT,m.PROTECTED_CONTEXT_FAILURE))
+            self.assertFalse(valid(context,raw,failure|{'database_writes':False},policy,m.PERMISSION_PARENT,m.PROTECTED_CONTEXT_FAILURE))
+            altered=copy.deepcopy(context);altered['local_stay_protected_context']['data']['receipt']['controlSha']=CONTROL
+            self.assertFalse(valid(altered,raw,failure,policy,m.PERMISSION_PARENT,m.PROTECTED_CONTEXT_FAILURE))
+            altered=copy.deepcopy(context);altered['local_stay_protected_context']['data']['receipt']['changedFiles']=['config.php']
+            self.assertFalse(valid(altered,raw,failure,policy,m.PERMISSION_PARENT,m.PROTECTED_CONTEXT_FAILURE))
+
+
+class ContextPermissionFiles(unittest.TestCase):
+    def setUp(self):
+        ProtectedContextFiles.setUp(self)
+        context=ProtectedContextFiles.run_remote(self)
+        self.assertTrue(m.completed_protected_context(self.command,context,CONTROL),context)
+        self.context_path=self.home/'.anytoour-int-executor'/m.PROTECTED_CONTEXT_OPERATION/'result.json'
+        policy=copy.deepcopy(m.CONTEXT_PERMISSION_PARENT);policy.update(control=CONTROL,
+            private_sha256=hashlib.sha256(self.context_path.read_bytes()).hexdigest(),file_sha256=context['local_stay_protected_context']['fileSha256'])
+        self.enterContext(mock.patch.object(m,'CONTEXT_PERMISSION_PARENT',policy))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=context_permission_command(self.c);m.activate(self.c,self.command)
+        raw,self.hashes=m.bundle_context_permission_source(SOURCE);self.archive=self.home/'context-permission-source.tar.gz';self.archive.write_bytes(raw)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(self.hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    run_remote=ProtectedContextFiles.run_remote
+
+    def handler_namespace(self):
+        prefix=self.c.REMOTE.split('\ntry:\n    if not re.fullmatch',1)[0];namespace={}
+        with mock.patch.dict(os.environ,{'HOME':str(self.home)}),mock.patch('sys.stdin',io.StringIO(json.dumps(self.payload))): exec(prefix,namespace)
+        operation=self.home/'.anytoour-int-executor'/m.CONTEXT_PERMISSION_OPERATION;operation.mkdir(mode=0o700)
+        stage=operation/'source';stage.mkdir(mode=0o700);namespace.update(op=operation,files=self.hashes)
+        return namespace,operation,stage
+
+    def test_actual_pre_php_refusal_retains_mismatch_unavailable_and_repeat_original(self):
+        (self.project/'config.php').write_text('current different config');helper=self.project/'data/db-v1.php';helper.unlink();helper.symlink_to(helper)
+        result=self.run_remote();item=result['local_stay_context_permission'];r=item['data']['receipt']
+        self.assertEqual(result['status'],'terminal_nonzero_no_replay');self.assertEqual(r['state'],'protected_refused')
+        self.assertIs(r['phpExecuted'],False);self.assertIs(r['pdoAttempted'],False);self.assertIsNone(item['data']['engine'])
+        self.assertIs(item['admission']['phpAttempted'],False);self.assertIs(item['usableProof'],False)
+        self.assertEqual(item['admission']['protectedContext']['changedFiles'],['config.php'])
+        self.assertEqual(item['data']['protectedContext']['protectedAfter']['data/db-v1.php']['status'],'unsafe')
+        operation=self.home/'.anytoour-int-executor'/m.CONTEXT_PERMISSION_OPERATION
+        original={name:(operation/name).read_bytes() for name in ('result.json','local-stay-context-permission-read.json')}
+        repeat=self.run_remote();self.assertEqual(repeat.get('reason'),'operation_exists_no_replay')
+        self.assertTrue(all((operation/name).read_bytes()==raw for name,raw in original.items()))
+
+    def test_actual_current_context_hash_drift_prevents_observation_and_php(self):
+        self.context_path.write_bytes(self.context_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_context_permission_parent_hash',result)
+        admission=result['local_stay_context_permission']['admission'];self.assertIsNone(admission['protectedContext'])
+        self.assertIs(admission['phpAttempted'],False);self.assertEqual(admission['launchState'],'not_attempted')
+
+    def test_actual_handler_timeout_preserves_attempted_unknown_and_null_child_phases(self):
+        namespace,operation,stage=self.handler_namespace()
+        with mock.patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture-launch',180)):
+            with self.assertRaisesRegex(RuntimeError,'launch_unobserved'): namespace['run_local_stay_context_permission'](stage)
+        item=namespace['result']['local_stay_context_permission'];admission=item['admission']
+        self.assertIs(admission['admitted'],True);self.assertIs(admission['phpAttempted'],True);self.assertEqual(admission['launchState'],'attempted_unknown')
+        self.assertTrue(all(admission[k] is None for k in ('helperAttempted','pdoAttempted','engineInvoked')))
+        self.assertIsNone(item['data']);self.assertIs(item['usableProof'],False)
+        self.assertFalse((operation/'local-stay-context-permission-read.json').exists())
+
+    def test_actual_boolean_caps_retains_known_prelaunch_phase(self):
+        self.payload['provider_http_calls']=False;result=self.run_remote()
+        self.assertEqual(result.get('reason'),'local_stay_context_permission_payload_types')
+        item=result['local_stay_context_permission'];self.assertIs(item['admission']['phpAttempted'],False)
+        self.assertIsNone(item['admission']['protectedContext']);self.assertIsNone(item['data'])
+
+
+class NativeContextPermission(unittest.TestCase):
+    def test_actual_php_wrapper_and_unbound_permission_engine_contract_suite(self):
+        self.assertIsNotNone(shutil.which('php'),'Actual PHP is required; no skip or substitute')
+        env=dict(os.environ,ANYTOUR_STAY_CONTEXT_PERMISSION_V1_TEST_DSN='mysql:host=127.0.0.1;port=3306;charset=utf8mb4',
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=os.environ.get('LOCAL_STAY_TEST_PASSWORD','local_tv_schema_test_only'),LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_context_permission_read_v1_test.php')],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_CONTEXT_PERMISSION_READ_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()
