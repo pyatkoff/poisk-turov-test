@@ -55,7 +55,7 @@ proof_check($r['receipt']['accountSha256Before']===$r['receipt']['accountSha256A
 $table=proof_account('perm_proof_table','GRANT SELECT ON `'.$name.'`.anytour_hotels');proof_check($table->query('SELECT id FROM anytour_hotels')->fetchColumn()===7,'native table-only SELECT works');
 $t=proof_run($table,proof_parent($table));proof_held($t);proof_check($t['coverage']['state']==='complete'&&$t['privileges']['SELECT']['basis']==='none'&&$t['coverage']['tableColumnScopes'][0]['tablePrivileges']===['SELECT'],'table privilege observed separately, never database-wide SELECT proof');
 
-$root->exec("CREATE USER 'perm_proof_roles'@'%' IDENTIFIED BY '".$fixturePassword."'");$roleUser=new PDO($server,'perm_proof_roles',$fixturePassword,$options);$root->exec("CREATE ROLE 'perm_proof_role'");$root->exec('GRANT SELECT ON `'.$escaped."`.* TO 'perm_proof_role'");$root->exec("GRANT 'perm_proof_role' TO 'perm_proof_roles'@'%'");$roleUser->exec("SET ROLE 'perm_proof_role'");$roleUser->exec('USE `'.$name.'`');
+$root->exec("CREATE USER 'perm_proof_roles'@'%' IDENTIFIED BY '".$fixturePassword."'");$root->exec("CREATE ROLE 'perm_proof_role'");$root->exec('GRANT SELECT ON `'.$escaped."`.* TO 'perm_proof_role'");$root->exec("GRANT 'perm_proof_role' TO 'perm_proof_roles'@'%'");$roleUser=new PDO($server,'perm_proof_roles',$fixturePassword,$options);$roleUser->exec("SET ROLE 'perm_proof_role'");$roleUser->exec('USE `'.$name.'`');
 proof_check($roleUser->query('SELECT id FROM anytour_hotels')->fetchColumn()===7,'active native role supplies SELECT');$role=proof_run($roleUser,proof_parent($roleUser));proof_held($role);
 proof_check($role['coverage']['activeRoles']==='unexpanded'&&$role['coverage']['state']==='partial','active roles explicitly held without graph expansion');
 
