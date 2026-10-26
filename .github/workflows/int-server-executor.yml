@@ -55,6 +55,10 @@ on:
       - 'scripts/deploy/int_server_executor_local_tv_capture.py'
       - 'scripts/deploy/int_server_executor_local_stay_read.py'
       - 'tests/int_server_executor_local_stay_read_test.py'
+      - 'scripts/deploy/int_server_executor_local_profile_read.py'
+      - 'scripts/catalog/anytour_hotel_profile_completeness_read_v1.php'
+      - 'tests/int_server_executor_local_profile_read_test.py'
+      - 'tests/anytour_hotel_profile_completeness_read_v1_test.php'
       - 'scripts/diagnostics/local_tv_capture_v1.php'
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'
@@ -116,6 +120,18 @@ jobs:
         run: |
           python3 -m py_compile scripts/deploy/int_server_executor_local_stay_read.py
           python3 tests/int_server_executor_local_stay_read_test.py -v
+      - name: Exact LOCAL profile source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 1d0e529e3fc0666783db1454c0765d3c16d63843
+          path: local-profile-source
+          persist-credentials: false
+      - name: LOCAL fixed profile provenance and consumer native acceptance
+        env:
+          LOCAL_PROFILE_SOURCE_ROOT: ${{ github.workspace }}/local-profile-source
+          LOCAL_PROFILE_TEST_DSN: mysql:host=127.0.0.1;port=3306;charset=utf8mb4
+          LOCAL_STAY_TEST_PASSWORD: local_tv_schema_test_only
+        run: python3 tests/int_server_executor_local_profile_read_test.py -v
       - name: Exact reviewed private TV session gateway source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:

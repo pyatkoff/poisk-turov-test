@@ -132,6 +132,14 @@ local_stay_read = importlib.util.module_from_spec(local_stay_spec)
 local_stay_spec.loader.exec_module(local_stay_read)
 local_stay_read.register_parser(core)
 
+LOCAL_PROFILE_READ_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_read.py')
+local_profile_read_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_read', LOCAL_PROFILE_READ_SCRIPT)
+if local_profile_read_spec is None or local_profile_read_spec.loader is None:
+    raise RuntimeError('local_profile_read_registration_import')
+local_profile_read = importlib.util.module_from_spec(local_profile_read_spec)
+local_profile_read_spec.loader.exec_module(local_profile_read)
+local_profile_read.register_parser(core)
+
 MATCH_RETAINED_SCRIPT = SCRIPT.with_name('int_server_executor_match_retained.py')
 match_retained_spec = importlib.util.spec_from_file_location('int_server_executor_match_retained', MATCH_RETAINED_SCRIPT)
 if match_retained_spec is None or match_retained_spec.loader is None:
@@ -306,6 +314,7 @@ def main() -> None:
     local_tv_content.activate(core, command)
     local_tv_capture.activate(core, command)
     local_stay_read.activate(core, command)
+    local_profile_read.activate(core, command)
     match_retained.activate(core, command)
     search3_signing.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES or (command['mode']=='local-tv-content-v1' and command['action']=='fill'):
