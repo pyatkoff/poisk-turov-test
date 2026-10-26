@@ -88,6 +88,9 @@ jobs:
       - name: Inspect installed Chromium system dependencies
         id: browser-deps
         run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu package mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
       - name: Install missing Chromium system dependencies
         if: ${{ steps.browser-deps.outputs.ready != 'true' }}
         run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"

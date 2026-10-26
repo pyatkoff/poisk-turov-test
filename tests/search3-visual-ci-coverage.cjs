@@ -44,6 +44,7 @@ function verify(workflow,bootstrap,html){
  for(const job of [focused,full])assert(job.includes('node tests/search3-visual-browser-dependencies.cjs'),'dependency preflight regressions run in both jobs');
  const setup=full.slice(full.indexOf('      - name: Inspect installed Chromium system dependencies'),full.indexOf('      - name: Build the exact compiled visual fixture graph'));
  assert(setup.includes('id: browser-deps')&&setup.includes('node scripts/ci/search3_visual_browser_dependencies.cjs'),'required dependency facts precede installation');
+ assert(setup.includes('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror'),'mirror preference is conditional and uses only the explicit fixed-file helper mode');
  assert(setup.includes("if: ${{ steps.browser-deps.outputs.ready != 'true' }}"),'only positive package facts skip stock system installation');
  assert(setup.includes('playwright install-deps chromium'),'negative facts retain stock system installation');
  assert(setup.includes('      - name: Install pinned Playwright Chromium\n        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"'),'stock browser installation is unconditional');
@@ -60,6 +61,8 @@ assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !gi
 assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_browser_dependencies.cjs'\n",''),bootstrap,html),/preflight triggers/,'setup helper cannot fall outside CI scope');
 assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-browser-dependencies.cjs\n',''),bootstrap,html),/regressions run/,'preflight regression removal detected');
 assert.throws(()=>verify(workflow.replace("ready != 'true'", "ready == 'false'"),bootstrap,html),/positive package facts/,'missing output cannot bypass stock installation');
+assert.throws(()=>verify(workflow.replace(' --prefer-ubuntu-mirror',''),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot silently use a different helper mode');
+assert.throws(()=>verify(workflow.replace('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n','      - name: Prefer the existing HTTPS Ubuntu package mirror\n'),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot run when system packages already satisfy the gate');
 assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        if: false\n'),bootstrap,html),/unconditional/,'browser installation cannot be skipped');
 assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        continue-on-error: true\n'),bootstrap,html),/unconditional|failures/,'browser installation cannot hide failures');
 for(const file of leadSources)assert.throws(()=>verify(workflow.replace("      - '"+file+"'\n",''),bootstrap,html),/every entry dependency/,'generated projection retains canonical source coverage: '+file);
