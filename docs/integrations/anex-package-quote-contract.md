@@ -55,6 +55,28 @@ Returned package identity and selected transport UIDs must match at every stage.
 Only calcfull can produce quote_verified, with expiry no later than the search
 context. Personal/raw supplier documents are neither persisted nor projected.
 
+## Current infant contract precedence — 2026-10-26
+
+The listing correction below supersedes only the older listing-admission advice
+in "Observed age-zero boundary". That investigation and its live receipt remain
+historical evidence; they must not restore the superseded rejection of every
+explicit supplier infant=0 row.
+
+| Boundary | Existing source behavior | Remaining evidence limit |
+| --- | --- | --- |
+| Search listing | Preserve all requested ages0/1 in CHILD/AGES. Adults and non-infant children must match; an explicit supplier infant count may be0 or the exact requested infant count. Preserve supplier_infants separately and infant_charge as unknown with null amount/inclusion. Missing, malformed or conflicting nonzero counts are rejected. | Listing admission does not prove that the infant is included in the price or bound to a quote participant. |
+| Selected whole-family quote | Every existing quote stage must prove the requested ADL/CHD/INF participants with distinct keys, exact retained family and selected package/transport identity. Only the existing explicit RUB gross calcfull result can verify the whole party after these checks. | Search counts, APD, a successful start alone or an adults-only total cannot replace that proof. Original expiry and UNKNOWN/no-replay guards remain. |
+| Separate infant charge | Keep it unknown until an explicit applicable supplier fact establishes the charge and its inclusion. Use a verified whole-family gross once; never add an estimated infant fee to it. | Missing is not0. Neither supplier infant=0 nor a difference between search and selected totals establishes a fee. |
+
+Source snapshot: FEATURE87ba43199d96eae6d3048feb9138c65fb810ae21,
+anex-normalizer blob634ab892a3d3a5cc501305da5947e4868ca5b21f and
+anex-search-smoke blobeb809924285dbce38474580f1917f37197cd3077.
+The existing smoke now expects the synthetic174-row infant0 shape to survive
+normalization/deduplication with unknown charge and final_price_verified=false.
+That fixture is not a replay or a new interpretation of the historical live receipt.
+This documentation correction changes no request, parser, quote guard, runtime
+installation or live acceptance. ANEX/APD and paused SAMO behavior stay unchanged.
+
 ## Infant family binding — listing correction 2026-10-22
 
 The original request keeps every child in CHILD/AGES, including ages0/1. The
@@ -247,6 +269,15 @@ case can establish actual supplier counter semantics. Source, CI, independent
 review, stock installation and that future live acceptance remain separate stages.
 
 ## Observed age-zero boundary — 22 October 2026
+
+**Historical listing restriction:** this section records the then-installed
+normalizer's174-row rejection and the investigation before the listing correction
+above. Its instruction against accepting infant0 is superseded for unverified
+search listings only. The recorded rejection/counts/digests, no-replay restriction,
+unknown separate fee and strict whole-family quote requirements remain unchanged.
+Use "Current infant contract precedence" for the next action; do not repeat this
+case or reinstate its old listing predicate.
+
 
 PR4802 was independently reviewed, merged as5a703baf, and installed through the
 existing runtime and endpoint carriers (39685334326 and39685594872). In the one
