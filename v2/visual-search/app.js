@@ -2286,10 +2286,19 @@ function renderMessenger(ui,result){
  for(const button of ui.scope.querySelectorAll('[data-action="messenger-open"]'))button.disabled=!ready||ui.busy;
  const messages={preparing:'Подготавливаем переход…',pending:'Подготавливаем ссылку…',prepared:'Выбранный тур готов к передаче.',ready:'Выбранный тур готов к передаче.',
   unknown:'Пока не удалось подтвердить переход. Проверьте его состояние.',missing:'Переход не подтверждён. Можно выбрать другой способ связи.',
-  unavailable:'Не удалось подготовить переход. Попробуйте ещё раз или выберите другой способ связи.',
+  unavailable:'Не удалось подготовить переход. Можно связаться по телефону или вернуться к выбору тура.',
   revoked:'Переход отменён.',revoke_unknown:'Уточняем отмену перехода.',expired:'Срок перехода истёк.',stale:'Условия тура изменились. Вернитесь к выбору тура.'};
- const status=ui.scope.querySelector('#messenger-status');status.textContent=matched||!result.observation?messages[state]||messages.unavailable:'Условия тура изменились. Вернитесь к выбору тура.';
- const check=ui.scope.querySelector('#messenger-check');check.hidden=!current||ui.busy||!['unknown','unavailable','revoke_unknown'].includes(state);check.disabled=ui.busy;
+ const reasonMessages={handoff_limit:'Достигнут лимит переходов. Можно связаться по телефону.',
+  handoff_stale:'Срок перехода истёк. Вернитесь к выбору тура.',handoff_session_changed:'Условия тура изменились. Вернитесь к выбору тура.',
+  retained_fact_missing:'Не удалось подготовить выбранный тур для передачи. Можно связаться по телефону или вернуться к выбору тура.',
+  forbidden:'Сессия поиска недоступна. Вернитесь к выбору тура.',
+  signer_unavailable:'Переход в бот временно недоступен. Можно связаться по телефону.',
+  temporarily_unavailable:'Переход в бот временно недоступен. Можно связаться по телефону.'};
+ const reason=state==='unavailable'?reasonMessages[result.failure?.code]:null;
+ const status=ui.scope.querySelector('#messenger-status');status.textContent=matched||!result.observation?reason||messages[state]||messages.unavailable:'Условия тура изменились. Вернитесь к выбору тура.';
+ const check=ui.scope.querySelector('#messenger-check');
+ // A status check needs an existing operation. Do not disguise another freeze as a check.
+ check.hidden=!current||ui.busy||!result.canCheck||!['unknown','unavailable','revoke_unknown'].includes(state);check.disabled=ui.busy;
 }
 function bindMessenger(){
  const scope=$('#messenger-entry');if(!scope)return;
@@ -2327,8 +2336,8 @@ async function messengerCheck(){
  const ui=messengerUi;if(!ui||!messengerActive(ui)||ui.busy)return;
  ui.busy=true;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));
  try{
-  const state=messengerOwners.flow.view(ui.snapshot),result=state.canCheck?await messengerOwners.flow.status(ui.snapshot):await messengerOwners.flow.prepare(ui.snapshot);
-  renderMessenger(ui,result);
+  const state=messengerOwners.flow.view(ui.snapshot);if(!state.canCheck)return;
+  renderMessenger(ui,await messengerOwners.flow.status(ui.snapshot));
  }finally{ui.busy=false;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));}
 }
 function openAnexApplicationPreview(){

@@ -150,6 +150,68 @@ async function tourvisorJourney({browser,origin,base,output}){
  return records;
 }
 
+// The same actual owner, one fictional failed freeze. Reopening must preserve
+// its terminal preparation failure rather than silently dispatching it again.
+async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
+ const records=[],key='tourvisor%3Avisual-tv-101';
+ for(const width of [430,1280]){
+  const height=width===1280?720:900,transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:true}),calls=[],errors=[],forbidden=[],shots=[];
+  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const csrf='a'.repeat(64),row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]');
+  const failed=()=>page.waitForFunction(()=>document.querySelector('#messenger-status')?.textContent.includes('Не удалось подготовить выбранный тур для передачи.'));
+  const capture=async(stage,methods=false)=>{
+   const geometry=await page.locator('#modal').evaluate(el=>{
+    const box=n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height};},body=el.querySelector('#modal-body'),footer=el.querySelector('#modal-footer');
+    return {overflow:el.scrollWidth>el.clientWidth+1||body.scrollWidth>body.clientWidth+1||document.documentElement.scrollWidth>innerWidth,body:box(body),footer:box(footer),status:box(el.querySelector('#messenger-status')),buttons:[...el.querySelectorAll('#messenger-methods .messenger-methods button')].map(box)};
+   });
+   assert.equal(geometry.overflow,false,stage+' fits the viewport');assert(geometry.footer.bottom<=height+1&&geometry.body.bottom<=geometry.footer.y+1,stage+' footer leaves content available');
+   if(methods){
+    for(const b of geometry.buttons){assert(b.height>=44);assert(b.x>=geometry.body.x-1&&b.right<=geometry.body.right+1);assert(b.y>=geometry.body.y-1&&b.bottom<=geometry.body.bottom+1,stage+' methods remain visible');}
+    assert(geometry.status.y>=geometry.body.y-1&&geometry.status.bottom<=geometry.body.bottom+1,stage+' complete failure guidance remains visible');
+   }
+   const file=`tv-${stage}-${width}x${height}.png`;await page.screenshot({path:path.join(output,file)});shots.push({stage,file,geometry});
+  };
+  try{
+   await page.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=url.searchParams.get('action')||body.action;
+    try{
+     assert.equal(url.origin,origin,'no external navigation or HTTP in failed preparation');
+     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+     if(url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+     assert(!(url.pathname==='/api-v2.php'&&/^search_|^(?:tour|flights)$/.test(action)),'actual TV entry cannot use root search/quote/flights');
+     const tvReply=await tv.handle(action,body,req.method());if(tvReply!==undefined){await route.fulfill({contentType:'application/json',body:JSON.stringify(tvReply)});return;}
+     if(String(action).startsWith('handoff_')){
+      calls.push({action,method:req.method()});
+      if(action==='handoff_token'){assert.equal(req.method(),'GET');await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,csrf})});return;}
+      assert.equal(action,'handoff_freeze','failed preparation never CREATEs, checks or revokes');assert.equal(req.method(),'POST');assert.equal(body.csrf,csrf);
+      const {action:_,csrf:__,...pins}=body;tv.freeze(pins); // Validate the same retained selector without sending it anywhere.
+      await route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({ok:false,error:'retained_fact_missing',field:'stay.room',owner:'INT',private_detail:'PRIVATE_NOT_FOR_UI'})});return;
+     }
+     const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'12,0'}));
+   await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&(document.querySelector('#search-status').hidden||document.querySelector('#search-status').classList.contains('search-status-compact')));
+   await page.locator('.hotel-card .hotel-price [data-key="'+key+'"]').click();await row().waitFor({state:'visible'});await page.locator('#hotel-detail-offers').click();await failed();
+   assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified real default');
+   assert.match((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\s/g,''),/90000/);
+   const status=await page.locator('#messenger-status').textContent();assert.match(status,/телефону|выбору тура/);assert.doesNotMatch(status,/422|stay\.room|INT|PRIVATE|retained_fact_missing/);
+   assert.equal(await page.locator('[data-action="messenger-open"]:disabled').count(),2);assert.equal(await page.locator('#messenger-check').isVisible(),false);
+   assert.equal(await page.locator('[name="phone"]').isVisible(),false);await capture('failed-methods',true);
+   await page.locator('[data-action="messenger-phone"]').click();await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional failed-preparation draft');await capture('failed-phone');
+   await page.locator('[data-action="messenger-other"]').click();
+   await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');await page.locator('#hotel-detail-offers').click();await failed();
+   assert.equal(await page.locator('[data-action="messenger-open"]:disabled').count(),2);assert.equal(await page.locator('#messenger-check').isVisible(),false);assert.match((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\s/g,''),/90000/);await capture('failed-return',true);
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(await page.locator('[name="comment"]').inputValue(),'Fictional failed-preparation draft');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
+   assert.deepEqual(calls.map(c=>c.action),['handoff_token','handoff_freeze'],'ordinary Back/reopen never repeats failed preparation');
+   assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_flights').length,0);assert.equal(tv.calls.filter(c=>c.action==='tv_select').length,1);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({provider:'tourvisor',scenario:'failed-preparation',width,height,party:{adults:3,enteredChildAges:[12,0],requestChildAges:[0,12]},amount:'90000',failure:{action:'handoff_freeze',stage:'http',code:'retained_fact_missing',httpStatus:422,field:'stay.room',owner:'INT'},message:status,botsDisabled:true,statusCheckHidden:true,failedPreparationRetained:true,draftRetained:true,quoteCalls:1,flightCalls:0,selectCalls:1,createCalls:0,externalNavigationIntercepted:0,shots});
+  }catch(error){await page.screenshot({path:path.join(output,`tv-failed-preparation-error-${width}.png`)}).catch(()=>{});fs.writeFileSync(path.join(output,`tv-failed-preparation-error-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,tv:tv.calls,shots},null,2));throw error;}
+  finally{await context.close();}
+ }
+ return records;
+}
+
 module.exports=async function messengerJourney({browser,origin,base,evidence}){
  const output=path.join(evidence,'messenger-entry');fs.mkdirSync(output,{recursive:true});
  const assetRoot=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2'));
@@ -281,6 +343,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
   }finally{releaseCreate();await context.close();}
  }
  records.push(...await tourvisorJourney({browser,origin,base,output}));
+ records.push(...await tourvisorFailedPreparationJourney({browser,origin,base,output}));
  fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify({schema:1,compiled:!!process.env.SEARCH3_VISUAL_ASSET_ROOT,engine:'Chromium',source_sha:process.env.SEARCH3_SOURCE_SHA||null,asset_sha256:hashes,test_sha256:hash(__filename),records,transport:'fictional-intercepted-HTTP',supplier_HTTP:0,bot_HTTP:0,real_leads:0,installed:false,physical_device:false},null,2)+'\n');
  console.log('PASS compiled messenger430/1280-short: exact tour/explicit phone/same draft/pending intent/one create/intercepted navigation; supplier/bot/lead HTTP0');
 };

@@ -1,5 +1,29 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Contact failure recovery — 26 October 2026
+
+The existing same-origin adapter and messenger flow retain only fixed public
+failure action/stage/code, an integer HTTP status and a complete allowlisted
+missing-field/owner pair. Request identities, tokens, cookies, private references,
+URLs, raw replies and exception messages never enter this failure view.
+Conditional Tourvisor selection is distinguished from token/freeze; local reply
+validation is distinguished from HTTP/transport failure. Existing TV errors and
+its existing diagnostic channel remain unchanged.
+
+A failed preparation shows a usable phone/return alternative. A status check is
+shown only for an existing operation; it never silently repeats preparation.
+Reopening the same failed selector keeps its original unavailable disposition
+without another token/select/freeze. UNKNOWN CREATE remains status-only and never
+creates another operation. Bot-first choice, optional phone, retained draft,
+price/selection binding, expiry and consent behavior keep their existing owners.
+
+This repairs the source-confirmed frontend loss from INT handoff
+[#2506/6402606612](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6402606612).
+It does not establish or fix the historical phone request's backend cause, the
+Tourvisor-after-filter failure, real bot delivery or production. Checks use only
+fictional intercepted replies; native CI/publication/runtime acceptance remain
+separate. Existing approved composition and CSS are unchanged.
+
 ## Approved Site226 ordinary journey — 25 October 2026
 
 Owner continuation after the exact shown version226 authorizes this transfer:
