@@ -60,8 +60,8 @@ function pi_run(PDO $db,array $authority,string $label): array {
 function pi_refused(array $r,string $reason): void {pi_check($r['receipt']['state']==='preflight_refused'&&$r['receipt']['reason']===$reason,'refused '.$reason.' actual '.($r['receipt']['reason']??'null'));pi_check($r['receipt']['schemaWrites']===0&&$r['receipt']['attemptedTables']===[]&&$r['receipt']['createdTables']===[]&&!$r['receipt']['ddlOutcomeUnknown'],'refusal is known zero DDL');}
 function pi_targets(PDO $db): array {return $db->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE BINARY TABLE_SCHEMA=BINARY DATABASE() AND TABLE_NAME IN ('anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2') ORDER BY TABLE_NAME")->fetchAll(PDO::FETCH_COLUMN);}
 
-$db=pi_fixture();$a=pi_authority($db);
-$db->exec("INSERT INTO anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES ('{\"sentinel\":true}',SHA2('{\"sentinel\":true}',256),1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+$db=pi_fixture();$a=pi_authority($db);$name=(string)$db->query('SELECT DATABASE()')->fetchColumn();
+$root->exec("INSERT INTO `".$name."`.anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES ('{\"sentinel\":true}',SHA2('{\"sentinel\":true}',256),1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
 $sentinel=$db->query('SELECT profile_json,profile_sha256,revision FROM anytour_hotels')->fetchAll();$success=pi_run($db,$a,'success');$r=$success['receipt'];
 pi_check($r['state']==='installed_empty'&&$r['schemaWrites']===3&&$r['createdTables']===AnyTourHotelStayPermissionInstallV1::TARGETS,'actual exactly3CREATE success with escaped schema grant');
 pi_check($r['schemaVerification']==='permission_qualified'&&$r['rawSchemaState']==='blocked_server_capability','writer qualification is explicit, raw plan never rewritten');
