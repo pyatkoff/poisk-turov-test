@@ -1,0 +1,471 @@
+{
+  "artifactId": 12628445087,
+  "artifactSha256": "c67a9aca2c2efd00e4a187cc43a3b6d258bd5629457778ee03d82e28f0d63b00",
+  "count": 20,
+  "jsonSha256": "0b79183d8e4d8615cd810151431859ca1cd43c5e1c066fb9d0b2a9e0930fe251",
+  "producerRunId": 40269983482,
+  "records": [
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 13:33:47",
+        "observation_count": 21315,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 1,
+      "hotelId": 485,
+      "name": "SWISS INN RESORT DAHAB",
+      "path": "/country/egipet/hotel/swiss-inn-resort-dahab-485/",
+      "recordId": "hotel.1.485.core-review.v1",
+      "recordSha256": "3b140e72c871cc73ded63ce4bccb40c47242015ed30b91909f95ad5890dfe1af",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 01:15:10",
+        "observation_count": 18873,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1451,
+      "name": "DELPHIN BE GRAND (EX. BOTANIK, RIXOS LARES)",
+      "path": "/country/turciya/hotel/delphin-be-grand-ex-botanik-rixos-lares-1451/",
+      "recordId": "hotel.4.1451.core-review.v1",
+      "recordSha256": "665b27656eb393edf711ecc3ae74c0bff1ae2d69c0015c7dba637c91122d4547",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 22:35:28",
+        "observation_count": 13339,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 9432,
+      "name": "DELPHIN IMPERIAL LARA",
+      "path": "/country/turciya/hotel/delphin-imperial-lara-9432/",
+      "recordId": "hotel.4.9432.core-review.v1",
+      "recordSha256": "5c13f94aac0e44aef97efd9d0a8457b27fe142834d102ee139ebec303f15042e",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 01:15:10",
+        "observation_count": 9706,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1351,
+      "name": "MC MAHBERI BEACH HOTEL",
+      "path": "/country/turciya/hotel/mc-mahberi-beach-hotel-1351/",
+      "recordId": "hotel.4.1351.core-review.v1",
+      "recordSha256": "d07c934431eea6eecb098551a58c3d3e19b3225a23b78fee16369c412976b0c7",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 22:34:57",
+        "observation_count": 9090,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 1,
+      "hotelId": 465,
+      "name": "STELLA DI MARE BEACH HOTEL & SPA",
+      "path": "/country/egipet/hotel/stella-di-mare-beach-hotel-spa-465/",
+      "recordId": "hotel.1.465.core-review.v1",
+      "recordSha256": "38b031b38cfa25709b6076997fc3a8f0195a33cfa01f55532e8706219f4b2f08",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 22:35:28",
+        "observation_count": 8469,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1361,
+      "name": "LABRANDA ALANTUR HOTEL (EX. MARITIM CLUB)",
+      "path": "/country/turciya/hotel/labranda-alantur-hotel-ex-maritim-club-1361/",
+      "recordId": "hotel.4.1361.core-review.v1",
+      "recordSha256": "6ed234b4a551cc6d3c7399e502b9f0c762ecfe1adefb3710b7eab156a66ec810",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 22:34:57",
+        "observation_count": 8338,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 1,
+      "hotelId": 12114,
+      "name": "JAZ ELITE PALACE ADULTS ONLY 16+ (EX. IBEROTEL PALACE ADULTS ONLY)",
+      "path": "/country/egipet/hotel/jaz-elite-palace-adults-only-16-ex-iberotel-palace-adults-only-12114/",
+      "recordId": "hotel.1.12114.core-review.v1",
+      "recordSha256": "511b88338a04fd20f2f49b97dc6a1c162fdad7732a66300f3924568b025b3def",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 22:35:28",
+        "observation_count": 7931,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1102,
+      "name": "CLUB HOTEL SUNBEL",
+      "path": "/country/turciya/hotel/club-hotel-sunbel-1102/",
+      "recordId": "hotel.4.1102.core-review.v1",
+      "recordSha256": "9815406c77d77db65edb2beb219570bdf0efa39fe21c8cb89a4a73bca0ad22de",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 01:15:10",
+        "observation_count": 6279,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 986,
+      "name": "ANTIK BUTIK (EX. ANTIK HOTEL & GARDEN)",
+      "path": "/country/turciya/hotel/antik-butik-ex-antik-hotel-garden-986/",
+      "recordId": "hotel.4.986.core-review.v1",
+      "recordSha256": "bd195f7e51721958cfefe9857c6bab7e44effbcd7afab5a302d4db9df26e26b7",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:41",
+        "observation_count": 5875,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1141,
+      "name": "CRYSTAL FAMILY COMFORT COLLECTION (EX. CRYSTAL FAMILY RESORT & SPA)",
+      "path": "/country/turciya/hotel/crystal-family-comfort-collection-ex-crystal-family-resort-spa-1141/",
+      "recordId": "hotel.4.1141.core-review.v1",
+      "recordSha256": "c20b4bc64f1eecd5327963cc290327884a7a7a4823578ac1a0d1832a271476df",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 5589,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 15872,
+      "name": "CRYSTAL WATERWORLD AQUA COLLECTION (EX. CRYSTAL WATERWORLD RESORT & SPA)",
+      "path": "/country/turciya/hotel/crystal-waterworld-aqua-collection-ex-crystal-waterworld-resort-spa-15872/",
+      "recordId": "hotel.4.15872.core-review.v1",
+      "recordSha256": "28ef77bef836c8fb631f5a7752aacaea83b79c360b50b9f3b8d8e1b178ac6379",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 5163,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1574,
+      "name": "ORANGE COUNTY RESORT HOTEL BELEK",
+      "path": "/country/turciya/hotel/orange-county-resort-hotel-belek-1574/",
+      "recordId": "hotel.4.1574.core-review.v1",
+      "recordSha256": "67c7886050eadb2b4d16802a4bb8f84a008e85e9bc031320100345d5c30bd274",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 4926,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1143,
+      "name": "CRYSTAL PARAISO AQUA COLLECTION (EX. CRYSTAL PARAISO VERDE RESORT & SPA)",
+      "path": "/country/turciya/hotel/crystal-paraiso-aqua-collection-ex-crystal-paraiso-verde-resort-spa-1143/",
+      "recordId": "hotel.4.1143.core-review.v1",
+      "recordSha256": "b151262209c8aec457cc953aaa88f981a71993fa27bf88c5f4f2a91874d6bbff",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 17:17:23",
+        "observation_count": 4848,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 111129,
+      "name": "SIDE MOON PALACE HOTEL",
+      "path": "/country/turciya/hotel/side-moon-palace-hotel-111129/",
+      "recordId": "hotel.4.111129.core-review.v1",
+      "recordSha256": "3a31977b95621b29f6d799fc029af7ab424fb96ef3482c4522ec7a4241771a1c",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 4682,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 5535,
+      "name": "INNVISTA (EX. VERA VERDE RESORT BELEK)",
+      "path": "/country/turciya/hotel/innvista-ex-vera-verde-resort-belek-5535/",
+      "recordId": "hotel.4.5535.core-review.v1",
+      "recordSha256": "adfa52055623c3b1389104b7b7fe261ad2b0b04a697f48418618b358e3b95121",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 4635,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 9270,
+      "name": "ARMAS LIFE BELEK (EX. FUN&SUN FAMILY LIFE BELEK)",
+      "path": "/country/turciya/hotel/armas-life-belek-ex-fun-sun-family-life-belek-9270/",
+      "recordId": "hotel.4.9270.core-review.v1",
+      "recordSha256": "a7ffa18371cf5003af9bd1ea9c44bf83b259e8889f19383a09d6f4f785db9d57",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 4412,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 1029,
+      "name": "CRYSTAL TAT BEACH PEARL COLLECTION (EX. CRYSTAL TAT BEACH GOLF RESORT & SPA)",
+      "path": "/country/turciya/hotel/crystal-tat-beach-pearl-collection-ex-crystal-tat-beach-golf-resort-spa-1029/",
+      "recordId": "hotel.4.1029.core-review.v1",
+      "recordSha256": "ffafba42826c306d64495e67dad442630b7c1c1485066ae086929da08cf09726",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:37:04",
+        "observation_count": 4141,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 28660,
+      "name": "SELENIUM HOTEL",
+      "path": "/country/turciya/hotel/selenium-hotel-28660/",
+      "recordId": "hotel.4.28660.core-review.v1",
+      "recordSha256": "cc295f4228f6b5e3bb55b70026ce7f3d1e2e4bbf246460bd6a1b61b9553835ce",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:54",
+        "observation_count": 3997,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 88750,
+      "name": "THE X BELEK",
+      "path": "/country/turciya/hotel/the-x-belek-88750/",
+      "recordId": "hotel.4.88750.core-review.v1",
+      "recordSha256": "c69ca3db08824761f5b813c8545906e36e379a0345dcd06715a0b8724ef83a83",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    },
+    {
+      "cohortEvidence": {
+        "last_observed_at": "2026-10-25 19:38:41",
+        "observation_count": 3948,
+        "selection_basis": "fresh_first_party_inventory_observation_coverage"
+      },
+      "countryId": 4,
+      "hotelId": 65659,
+      "name": "AYDINBEY QUEENS PALACE & SPA",
+      "path": "/country/turciya/hotel/aydinbey-queens-palace-spa-65659/",
+      "recordId": "hotel.4.65659.core-review.v1",
+      "recordSha256": "6fef8fb73330933a5a48fd34a87c8a828a7576c80598cdf0491a8cd094fd4d12",
+      "reviewFlags": {
+        "canonical_launch_allowed": false,
+        "explicit_user_indexation_approval_required": true,
+        "indexation_allowed": false,
+        "publication_allowed": false,
+        "route_launch_allowed": false,
+        "sitemap_allowed": false
+      },
+      "status": "review",
+      "type": "hotel_tours"
+    }
+  ],
+  "schemaVersion": 1,
+  "sliceStart": 1
+}
