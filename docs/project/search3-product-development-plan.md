@@ -1,5 +1,83 @@
 # Search3 — продуктовый план и критерии качества
 
+## Текущая очередь Search3 — 26.10.2026
+
+Один исполняемый план для `S3_PRODUCT_CURRENT_ACCEPTANCE`; статус
+`NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN` сохраняется.
+[SEARCH1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646) ведёт пользовательский результат;
+[4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709) хранит текущего исполнителя, claims и terminal.
+Сначала читать этот раздел и новые события, затем применимые правила ниже.
+Исторические checkpoint и snapshots не являются заданиями.
+
+**Текущая основа:** [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
+source `03638572ed7634797fe690f774282e288c06c4b7` → runtime release
+`e9b2bc741da26107cd5878a492739c0de3a837e1`;
+[публикация](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417128363) и
+[проверка установленной версии](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417167272).
+Согласованная композиция — Site226 / PR4909 в прежнем PUBLIC design-lab.
+Обычный compiled430/1280, включая1280×720, принят в своём scope на9.5/9.5.
+Это не оценка всего поиска, естественной доставки или production.
+
+### Ближайший пользовательский результат
+
+Новый обоснованный обычный поиск с фильтрами → конкретный тур → контакты/продолжение
+с теми же условиями. За весь результат отвечает один ведущий SEARCH-пакета;
+INT остаётся владельцем supplier/backend/price facts. Ведущий фиксируется в4709
+до действий и сводит один общий результат, не забирая чужие paths или executor.
+
+| Пакет / порядок | Ответственность и действие | Готово, когда |
+| --- | --- | --- |
+| 1. Поиск после фильтров → выбранный тур | SEARCH ведёт UI; INT2506 — поставщицкий результат. По свежим claims выбрать один новый допустимый ordinary intent и принять его один executor/case/receipt; заранее записать условия, ожидаемое действие и конечный budget. Существующий INT4928 по доступности рейсов продолжает его владелец, без второй установки/диагностики | По exact версии показано, как фильтры применились к тем же предложениям; сохранены источник, отель/offer identity, даты/ночи, номер/питание, полный состав и понятная цена за всех. Проверен только затронутый установленный UI; источник/цена/unknown подтверждены соответствующим INT receipt. Отказ получает конкретный этап/owner/следующий факт, без обхода и повторного запуска |
+| 2. Выбранный тур → контакт/handoff | SEARCH принимает контактную границу того же тура и сохраняемые условия; INT даёт только нужный текущий backend факт. Рейсы можно оставить менеджеру после валидной цены тура; exact pair необязательна и требует своей цены. Контакт/Back/draft не требуют реальной заявки | В разрешённом scope совпадают тур/туристы/цена; возврат сохраняет выбор и допустимый черновик. При естественном отказе понятны причина и доступное действие. Разрешённая граница handoff и реальная доставка в Telegram/MAX имеют разные статусы; preview delivery выключена |
+| 3. Ускорить подготовку Search3 CI | Следующий свободный SEARCH/CI writer, отдельный claim на `.github/workflows/search3-visual-migration.yml`, при необходимости `tests/search3-visual-ci-coverage.cjs`. Сначала разделить время системных зависимостей и Chromium; затем рассмотреть cache браузера только для точной версии Playwright/ОС/архитектуры с обычной установкой при miss | Все существующие команды, coverage, check/job names, exact-head checkout, одна compiled graph, receipts и artifact bindings сохранены; независимый review и обязательный CI финального SHA passed. Для следующего допустимого нового запуска отдельно записаны setup/build/affected/full/total и cold/warm. Без измеренного сравнения ускорение не заявляется |
+
+Пакеты1–2 — один продуктовый WIP, а не два параллельных supplier-прохода.
+Работу3 можно вести независимо только при свободных paths и отсутствии release freeze.
+Без нового допустимого case не создавать ещё один collector/reader или supplier-пробу
+ради наблюдаемости. Продолжать подтверждённое независимое существенное frontend-исправление
+в пределах того же пользовательского пути; закрытый corpus и косметику не переигрывать.
+
+Исходное наблюдение CI — один завершённый [run40325298725](https://github.com/pyatkoff/poisk-turov-test/actions/runs/40325298725):
+29м32с всего; совмещённая установка Chromium/зависимостей12м22с; compiled build≈5с;
+затронутый messenger browser≈20с; полная регрессия16м14с. Это не среднее, и доли apt/скачивания
+пока не разделены. Этот run не перезапускать для замера. Новый CI-пакет не трогает INT workflow.
+
+### Три этапа готовности
+
+| Этап | Состояние / условие завершения |
+| --- | --- |
+| Обычный согласованный UI | Принят в exact compiled430/1280incl720 scope; PR4909/4920/4926 закрыты. Новый дефект проверяется по delta, прежние оценки не переоцениваются ради документа |
+| Функциональный путь в NEXT | Открыт: поисковый/фильтровый результат → точный тур/цена → разрешённый контакт/handoff по критериям1–2. UI, реальные supplier facts, native/physical и доставка отмечаются отдельно. Подтверждённый внешний блокер не делает разрешённое UI-исправление незавершённым |
+| Production и коммерческий пилот | Открыты: конкретная полная версия, применимые gates и отдельное одобрение владельца. Реальная доставка/заявки проверяются только по своему точному допуску; новые цели Метрики не создаются. Production effect пока не измерен |
+
+Это критерии организации работы, а не новые функции или разрешение на отправку.
+Полная готовность поиска не объявляется при незакрытых обязательных применимых gates.
+Native430/physical, canonical aliases/actual submittedIDs, natural failure/LeadC3/realdelivery
+сохраняют владельцев и точные условия в таблице зависимостей ниже.
+Исторический TV-after-filter отказ остаётся `NOT_RETAINED`: новый case докажет нынешнее
+поведение, но не причину старого отказа. Ошибку специально не провоцировать.
+
+Standing [6323725979](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323725979) сохраняет автономные
+обоснованные проверки/серии в stock limits с конечным scope/budget/reservation/claim,
+без повторного per-check согласования. Consumed/UNKNOWN/refused не повторять/не переименовывать;
+paid fallback, realLead/booking, protected contracts и production требуют своих допусков.
+Keyboard/Tab/A11y-only запрещены; другие размеры/200%/Compare deferred.
+
+**Правило обновления:** здесь только текущий результат/владелец/следующий шаг;
+в4709 один terminal со ссылками на evidence. AUTOPILOT и общий development документ —
+указатели. STATE хранит текущую задачу и ссылки, не ещё одну копию отчёта.
+История и неизменённые доказательства сохраняются ниже; документация не повышает UI-балл
+и не доказывает ускорение. Расписания, модели, enabled/paused и чужие задачи не меняются.
+
+## Исторический checkpoint PR4927 — 26.10.2026
+
+Следующий сохранённый блок — точный прежний checkpoint, до улучшения плана.
+Его формулировки «следующий результат» и прежние references — история, не очередь.
+Актуальные действия определяет верхний раздел и свежие события4709.
+
+<details>
+<summary>Прежний checkpoint и полный набор доказательств — без изменений</summary>
+
 ## Текущий проверенный checkpoint — 26.10.2026, ORIGINAL NEXT
 
 Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, статус `NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN`, SEARCH [#1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646), координация [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709). Обычный compiled UI-этап430/1280, включая1280×720, принят в точном scope; полная поставка, physical и production остаются отдельными gates.
@@ -27,6 +105,8 @@
 
 Оба пути заявки сохраняются: актуальная цена тура позволяет оставить рейсы менеджеру; optional exact pair требует собственной цены за всю группу. Keyboard/Tab/A11y-only запрещены; другие размеры/200%/Compare deferred. Native/physical/alias/submittedIDs/real delivery/production не подменяются compiled, form, source или частным баллом. История/snapshots/root next_action не исполняемая очередь. Собственная автоматизация и чужие задачи/модели/расписания не меняются. Этот factual sync фиксирует принятые4909/4920/4926; UI delta0. Публикация и один DOM-only readback относятся к завершённому пакету4926; сам docs-sync не запускает browser/build/publisher/runtime. Ссылки ниже сохраняют свои исторические exact scopes и не возобновляют операции.
 
+</details>
+
 ## История и актуальные доказательства
 
 - [Полный план до чистки — 21.10.2026](search3-product-development-plan-history-20261021.md): все прежние checkpoint, решения, no-replay, PR/SHA, оценки и evidence сохранены дословно; это архив, а не очередь.
@@ -50,18 +130,19 @@
 Целевой runtime: [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
 repo `pyatkoff/poisk-turov-test`, branch `release/search3-production-ready-v1`.
 Design-lab: тот же PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, история
-и аудитория сохраняются. Согласованный Site203/source8c826b44/[6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744)
-перенесён; новая композиция требует конкретного whole-version visual+behavior approval.
+и аудитория сохраняются. Текущая согласованная композиция — Site226/PR4909; Site203/source8c826b44 и
+[6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744) — история.
+Новая композиция требует конкретного whole-version visual+behavior approval.
 Site205: LIVE открывает top-level NEXT, iframe — demo. Не возвращать cross-site live iframe.
 Foreign `release/search3-design-v2` и его preview принадлежат другому исполнителю;
 shared paths требуют свободного claim независимо от URL/ветки.
 
 ### Следующее действие
 
-Следовать `current_task` и свежему terminal/claim #4709, затем таблице оставшихся условий
-ниже. При расхождении dated checkpoint и нового события сверять source/CI/установку
-отдельно. Новый факт не означает новый UI-пакет; source-ready не означает installed.
-Старые Find/quote/публикации/UNKNOWN и завершённые проверки не повторять из архива.
+Следовать верхней [текущей очереди](#текущая-очередь-search3--26102026) и свежему terminal/claim4709.
+Таблица зависимостей ниже уточняет отдельные gates, не заменяет ближайший результат.
+При расхождении dated checkpoint и нового события сверять source/CI/установку отдельно.
+Source-ready не означает installed; старые Find/quote/публикации/UNKNOWN не повторять.
 
 ## Действующее поручение и границы
 
@@ -182,15 +263,15 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 
 ### Незакрытые зависимости и точные условия продолжения
 
-Действующий остаток после принятого UI3d7, установленного9f8/c44, закрытого shared A/B/A и form-only684/687. Старые runtime/next_action и consumed операции не новая очередь.
+Действующий остаток после установленного PR4926/source036385/runtimee9b2 и принятых4909/4920. Закрытые shared A/B/A, form-only684/687 и все прежние runtime/cases сохраняют exact evidence/no-replay; это не новое задание. Ближайший результат — верхняя текущая очередь.
 
 | Область / состояние | Ответственный | Следующее действие | Доказательство закрытия |
 | --- | --- | --- | --- |
 | Native430 / physicalSafari / safearea — отдельные N | SEARCH + QA при штатной capability | Только фактически доступный native/physical ordinary путь; не повторять принятый compiled430/1280 corpus или закрытые supplier cases | Свой exact native/physical факт; compiled/iframe/technical1363×936 его не подменяют |
 | Rix: form684/687 принята; aliases / actual submittedIDs — N | LOCAL — canonical факты; SEARCH — применение | При accepted canonical alias/handoff и штатном безопасном actual-ID receipt проверить применение в новом обоснованном ordinary intent; не запускать supplier-пробу ради поиска наблюдаемости | Canonical alias и фактические OR submittedIDs в своих scopes. Pre-submit draft/DOMlocal IDs/список10 подсказок не wire/full-inventory proof |
-| ANEX SOURCE и bounded A/B/cachedA закрыты; family/infant отдельный текущий INT scope | INT#2506; SEARCH — только consumer | Следовать своему owner6325033841: accepted source/install/один новый own family case; SEARCH потребляет тот же результат и проверяет только UI-границу. SOURCE receiving6323462398/двухпарный6324054718 не повторять | Exact full-party/infant/currency/whole-gross safe facts от INT; существующая двухпарная приёмка не доказывает infants/fuel/expiry или все40пар |
+| ANEX SOURCE и bounded A/B/cachedA закрыты; family/infant отдельный текущий INT scope | INT#2506; SEARCH — только consumer | Следовать свежему активному INT2506/4709 и его текущему claim; старый owner6325033841 не исполняемая команда. Один допустимый собственный family/infant результат принимает SEARCH только на UI-границе; receiving6323462398/двухпарный6324054718 не повторять | Exact full-party/infant/currency/whole-gross safe facts от INT; существующая двухпарная приёмка не доказывает infants/fuel/expiry или все40пар |
 | LeadC3 / реальная доставка — N, preview delivery выключена | Owner-reviewed lead transport; SEARCH — consumer | После точного допуска защищённого scope проверить штатные pending/error/retry/success; локальный контакт/возврат отдельно | Свой real-delivery receipt; UI/quote expiry/preview validation его не доказывают |
-| Production — отдельное approval | Владелец + штатный publisher | Предъявить конкретную полную поставку после применимых gates; публиковать только по отдельному approval | Exact approved artifact/receipt/runtime. Installedsource9f8/art12373527335 и baseline3d7 не получают production-допуск от плана |
+| Production — отдельное approval | Владелец + штатный publisher | Предъявить конкретную полную поставку после применимых gates; публиковать только по отдельному approval | Exact approved artifact/receipt/runtime. Текущий installed036385/runtimee9b2, прежние9f8/art12373527335 и baseline3d7 не получают production-допуск от плана |
 
 Остальные применимые N сохраняют конкретный пробел в существующем SEARCH-QUALITY-1. Они проверяются в связанном пользовательском пути при доступном разрешённом scope; отдельная косметическая/QA-only очередь не возникает. Один внешний gate не останавливает независимый разрешённый шаг. Keyboard запрещён;200%/Compare/другие размеры deferred.
 
