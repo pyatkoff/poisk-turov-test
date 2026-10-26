@@ -10,10 +10,10 @@
 Исторические checkpoint и snapshots не являются заданиями.
 
 **Текущая основа:** [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
-source `137e61aa2ca0df648ef53b0800be7de034cea9ef` → runtime release
-`db20aac906a766fabbdb199438c074ab8d80ca21`;
-[публикация и установленная проверка](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716),
-[затронутый UI-аудит](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6421725853).
+source `c65c679d85179836995a7f10d7082da1ba18b5ee` → runtime release
+`901180446f756a1d7c00ee7bef6d9b84ae2177c0`;
+[публикация и установленная проверка](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6422893335),
+[затронутый UI-аудит](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6422896003).
 Согласованная композиция — Site226 / PR4909 в прежнем PUBLIC design-lab.
 Обычный compiled430/1280, включая1280×720, принят в своём scope на9.5/9.5.
 Это не оценка всего поиска, естественной доставки или production.
@@ -39,7 +39,7 @@ INT остаётся владельцем supplier/backend/price facts. Веду
 
 **Последний функциональный результат:** [terminal6418719912](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6418719912) — один декабрьский поиск в Турцию, `CONTACT_NOT_REACHED`: ANEX не вернул применимый расчёт обязательных доплат. Подтверждённая цена и контакт/Back не доказаны; операция `CONSUMED / NO_REPLAY`. Условие продолжения пакетов1–2 — свежий отдельно owned принятый INT calculation handoff; SEARCH потребляет тот же receipt один раз, без повторения этого Find/quote или новой пробы ради наблюдаемости.
 
-**Последнее независимое frontend-исправление:** [PR4935 / terminal6421735716](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716) — открытая галерея синхронизирует progressive grow/reorder/shrink/empty/restore, сохраняет выбранный URL и обычный Back/Forward; installed RIA 1/4→2/4→3/4 без alert. Supplier/lead0, композиция и bounded9.5/9.5 неизменны, UI delta0.
+**Последнее независимое frontend-исправление:** [PR4935 / terminal6421735716](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716) — открытая галерея синхронизирует progressive grow/reorder/shrink/empty/restore, сохраняет выбранный URL и обычный Back/Forward; installed RIA 1/4→2/4→3/4 без alert. Supplier/lead0, композиция и bounded9.5/9.5 неизменны, UI delta0.\n\n**Последняя установленная consumer-граница:** [PR4938 / terminal6422893335](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6422893335) — существующий safe failure channel для будущего обычного `additional_prices` сохраняет только bound appHTTP/status/applicationState/consistent fixed applicationReason; malformed/mismatched/secret поля не удерживаются, money/final-price/no-replay guards не ослаблены. Publisher40366880982 attempt1 SUCCESS; runtime data.js?v=fe117285fa8f, supplier/lead0. Natural applicationReason остаётся N, старый Turkey case не повторялся; композиция и bounded9.5/9.5 неизменны, UI delta0.
 
 **Историческое исходное наблюдение до CI4931 — не текущая детализация и не очередь:**
 
