@@ -1,0 +1,718 @@
+{
+  "candidates_with_proven_tv_lanes": [
+    {
+      "andromeda_catalog_id": "2000123210",
+      "candidate_names": [
+        "Kleopatra Ada"
+      ],
+      "candidate_sha256": "714f7b7a7dec63fd402a1e35550b8ec262a8ee3611809b2268d42307b434cc15",
+      "direct_anex_support_not_authority": "none",
+      "dossier_sha256": "da91c31239d3c318d45f04abe560f5a7b796cdb73d99d6382ed566765f35ea5d",
+      "hotel_name": "KLEOPATRA ADA HOTEL",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 1299,
+      "next_gate": "CURRENT_occupancy_manual_evidence_and_name_review",
+      "original_status": "strict_multi_lane_candidate",
+      "proven_lanes": [
+        {
+          "namespace": "operator_315",
+          "native_id": "353603",
+          "tv_child_result_sha256": "fb8cb7d6acbcc921aa1d6f8a1399190e4b0fb2e418d23c9ac0c84c6e470c20e4",
+          "tv_link_sha256": "10573602b51ab56c4380a3618d2466ca67aaf7e67c35236d756cd0e16d8536f9",
+          "tv_tour_sha256": "e358ac62544fb18cd5bf10b5fab6f3fbc1b0b7e26722c41de4dec6e04b84a255"
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "5257",
+      "candidate_names": [
+        "Sural Resort"
+      ],
+      "candidate_sha256": "4e05951e8d1c1d87e95eba78e198b3d33833f025319a537f8bc19b29768d5cef",
+      "direct_anex_support_not_authority": "support_equal",
+      "dossier_sha256": "f43a96a958bb391a2cf5f6b1aec5eccefb54a772053a1fd2d67181146810d00e",
+      "hotel_name": "SURAL HOTEL",
+      "independent_tv_lane_count": 2,
+      "local_hotel_id": 1540,
+      "next_gate": "CURRENT_occupancy_manual_evidence_and_name_review",
+      "original_status": "hold_multiple_strict",
+      "proven_lanes": [
+        {
+          "namespace": "operator_315",
+          "native_id": "30843",
+          "tv_child_result_sha256": "fb8cb7d6acbcc921aa1d6f8a1399190e4b0fb2e418d23c9ac0c84c6e470c20e4",
+          "tv_link_sha256": "5e021810b8ee51bf28095996ef2ba9018897dc71fd629cd75cf35805915be8bf",
+          "tv_tour_sha256": "86acd980d38b81455c07403ce8bf8752e7bcb05361fbba4646fe8145804554eb"
+        },
+        {
+          "namespace": "operator_342",
+          "native_id": "22855",
+          "tv_child_result_sha256": "fb8cb7d6acbcc921aa1d6f8a1399190e4b0fb2e418d23c9ac0c84c6e470c20e4",
+          "tv_link_sha256": "055a303c51ca8a4e7cbcd8da0f82092e3bef1858856eb6c3acdab0c810e6cdcf",
+          "tv_tour_sha256": "4bf18899d6fbd990003af484ab5fb035b988ecffd54e28136c8dfc6004771b26"
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000113715",
+      "candidate_names": [
+        "Grand Bay Hotel"
+      ],
+      "candidate_sha256": "b5e475ddc6a72bbf2cff47a890f4c0e2ba9d876ad92876e60dd68ebddd42eee0",
+      "direct_anex_support_not_authority": "support_equal",
+      "dossier_sha256": "2a82e9ea343254d8e5e4f83794ebeb3f733aaecebd8d41efbd387936d5d1e28c",
+      "hotel_name": "GRAND BAY HOTEL PHU QUOC",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 148230,
+      "next_gate": "CURRENT_occupancy_manual_evidence_and_name_review",
+      "original_status": "hold_multiple_strict",
+      "proven_lanes": [
+        {
+          "namespace": "operator_342",
+          "native_id": "66674",
+          "tv_child_result_sha256": "0b396a1132ab21a1a7ad21eb777be988a8d1fbd432912b3bef19b45940dcc4de",
+          "tv_link_sha256": "d56f95148540d8308e334a87da1cc1cc720f8cc793b54802767b21ed85e311a2",
+          "tv_tour_sha256": "a4765441b7da5b3c90fedb2a0f3feb328c5c1d2e54ab2b42df06efa5ffca6ef9"
+        }
+      ],
+      "safe_to_write_now": false
+    }
+  ],
+  "current_validation_performed": false,
+  "database_reads": 0,
+  "database_writes": 0,
+  "dossier_ids_by_exact_independent_tv_lane_count": {
+    "0": [
+      125,
+      167,
+      242,
+      316,
+      320,
+      367,
+      466,
+      474,
+      592,
+      682,
+      854,
+      856,
+      879,
+      898,
+      1164,
+      1181,
+      1229,
+      1244,
+      1247,
+      1259,
+      1483,
+      1507,
+      1520,
+      1733,
+      1734,
+      1735,
+      1736,
+      1737,
+      1739,
+      1760,
+      1769,
+      1772,
+      1773,
+      1779,
+      1781,
+      1790,
+      1812,
+      2158,
+      2181,
+      2213,
+      2231,
+      2468,
+      2530,
+      2617,
+      2667,
+      3111,
+      3407,
+      4100,
+      4219,
+      4326,
+      5523,
+      7858,
+      7958,
+      8097,
+      8190,
+      8208,
+      8323,
+      8339,
+      8964,
+      9151,
+      9323,
+      9352,
+      9374,
+      11742,
+      11748,
+      11771,
+      11773,
+      13947,
+      15788,
+      15816,
+      15819,
+      17414,
+      17562,
+      17564,
+      22622,
+      22632,
+      23214,
+      23668,
+      23757,
+      24957,
+      27691,
+      28234,
+      28433,
+      28596,
+      28649,
+      29348,
+      34430,
+      37364,
+      37386,
+      37551,
+      37937,
+      39146,
+      42903,
+      44413,
+      44414,
+      45140,
+      45455,
+      50869,
+      51062,
+      51667,
+      55205,
+      55668,
+      55945,
+      56479,
+      57552,
+      57656,
+      58034,
+      59608,
+      59994,
+      60000,
+      60007,
+      60018,
+      60234,
+      60965,
+      61597,
+      63524,
+      64351,
+      64355,
+      64672,
+      64722,
+      65341,
+      65714,
+      65896,
+      66150,
+      66290,
+      66531,
+      66564,
+      67304,
+      67703,
+      68667,
+      69287,
+      69451,
+      71376,
+      72238,
+      74154,
+      75641,
+      76753,
+      77323,
+      77448,
+      77976,
+      78200,
+      78836,
+      80872,
+      80964,
+      81154,
+      81951,
+      83221,
+      83285,
+      84071,
+      84315,
+      92728,
+      98723,
+      103125,
+      108356,
+      113617,
+      116228,
+      116886,
+      117800,
+      119842,
+      119844,
+      121109,
+      130333,
+      138585,
+      141010,
+      148539,
+      150898,
+      156432,
+      158720,
+      159711,
+      161985,
+      163058,
+      163929
+    ],
+    "1": [
+      1299,
+      148230
+    ],
+    "2": [
+      1540
+    ]
+  },
+  "input_count": 175,
+  "input_hashes_zip_result_receipt": {
+    "bg": [
+      "0f3f82ba6716155bbfc74a44c7b90df7bca88a944864450b73b1b8893b73a3bf",
+      "b52da9feaa87caea3800b6434fbcaf75d7fc21ff8742824074cef02632758964",
+      "c9b5c0a9c6b24a0258f6be2510343b63a81ab4ca2f7aa9c504b2829ecf75fa06"
+    ],
+    "samo": [
+      "033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8",
+      "42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810",
+      "46792a26c166c597602814afc217e08e07709d2ed3aa6941ab291a418e28c626"
+    ],
+    "tv": [
+      "0c26f52918f3cd9bdf1c6e55cae63b7428f46902e7558f5b48c3884cf4aefd44",
+      "dc4ad9e16b5f800a363f406965e318b6eb69bdb2ea77eb0b856cfe4c010fce9c",
+      "e7d3f1f72c55ee65d1612bf8fffbfc5f26475be657f7ff8bf4903c7ec46a5618"
+    ]
+  },
+  "mapping_writes": 0,
+  "mode": "offline_evidence_only",
+  "normalized_direct_anex_support_corrections_not_identity": [
+    [
+      125,
+      "2000062991",
+      "support_equal"
+    ],
+    [
+      466,
+      "2000090573",
+      "support_equal"
+    ],
+    [
+      474,
+      "2000059367",
+      "support_equal"
+    ],
+    [
+      1181,
+      "2000028206",
+      "support_equal"
+    ],
+    [
+      1229,
+      "5464",
+      "support_equal"
+    ],
+    [
+      1299,
+      "2000035724",
+      "support_equal"
+    ],
+    [
+      1540,
+      "5257",
+      "support_equal"
+    ],
+    [
+      1733,
+      "87732",
+      "support_equal"
+    ],
+    [
+      1734,
+      "129812",
+      "support_equal"
+    ],
+    [
+      1735,
+      "5767",
+      "support_equal"
+    ],
+    [
+      1736,
+      "298738",
+      "support_equal"
+    ],
+    [
+      1737,
+      "150070",
+      "support_equal"
+    ],
+    [
+      1739,
+      "450605",
+      "support_equal"
+    ],
+    [
+      1760,
+      "207647",
+      "support_equal"
+    ],
+    [
+      1772,
+      "34485",
+      "support_equal"
+    ],
+    [
+      1773,
+      "37255",
+      "support_equal"
+    ],
+    [
+      1779,
+      "450291",
+      "support_equal"
+    ],
+    [
+      3111,
+      "141649",
+      "support_equal"
+    ],
+    [
+      8323,
+      "2000085087",
+      "support_equal"
+    ],
+    [
+      8339,
+      "116809",
+      "support_equal"
+    ],
+    [
+      9151,
+      "268692",
+      "support_equal"
+    ],
+    [
+      11742,
+      "183505",
+      "support_equal"
+    ],
+    [
+      11748,
+      "191231",
+      "support_equal"
+    ],
+    [
+      11771,
+      "364948",
+      "support_equal"
+    ],
+    [
+      22632,
+      "450630",
+      "support_equal"
+    ],
+    [
+      23214,
+      "394688",
+      "support_equal"
+    ],
+    [
+      66290,
+      "2000052048",
+      "support_equal"
+    ],
+    [
+      67304,
+      "2000055490",
+      "support_equal"
+    ],
+    [
+      71376,
+      "2000061777",
+      "support_equal"
+    ],
+    [
+      76753,
+      "2000087342",
+      "support_equal"
+    ],
+    [
+      80872,
+      "2000123960",
+      "support_equal"
+    ],
+    [
+      81951,
+      "2000123961",
+      "support_equal"
+    ],
+    [
+      103125,
+      "131606",
+      "support_equal"
+    ],
+    [
+      108356,
+      "269426",
+      "support_equal"
+    ],
+    [
+      116886,
+      "2000103169",
+      "support_equal"
+    ],
+    [
+      119844,
+      "2000106853",
+      "support_equal"
+    ],
+    [
+      121109,
+      "2000090159",
+      "support_equal"
+    ],
+    [
+      138585,
+      "2000121663",
+      "support_equal"
+    ],
+    [
+      141010,
+      "2000121662",
+      "support_equal"
+    ],
+    [
+      148230,
+      "2000113715",
+      "support_equal"
+    ],
+    [
+      156432,
+      "2000057685",
+      "support_equal"
+    ],
+    [
+      159711,
+      "2000124072",
+      "support_equal"
+    ]
+  ],
+  "original_status_counts": {
+    "hold_insufficient_or_partial": 60,
+    "hold_multiple_strict": 7,
+    "review_no_strict_candidate": 59,
+    "strict_multi_lane_candidate": 49
+  },
+  "provider_http_calls": 0,
+  "safe_to_write_now": false,
+  "schema": "match_retained175_review_v1",
+  "selected_legacy_bg_review": [
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 167,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102675320274"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 242,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102663029179"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 320,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102663029167"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 856,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102666609533"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 898,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102666835449"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [
+        {
+          "cityKey": "100525109559",
+          "countryKey": "100411293179",
+          "key": "102625564281",
+          "name": "Kleopatra Ada Hotel",
+          "row_sha256": "62f904829f5cca6a004098663fecba3afbca133f4c030ac5685a1403f0401148",
+          "stars": "4*"
+        }
+      ],
+      "local_hotel_id": 1299,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": true,
+      "samo_original_ids": [
+        "625564281"
+      ],
+      "tv_full_ids": [
+        "102625564281"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 4100,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610123964"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 15819,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102662878387"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 23668,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102616073490"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 51062,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": true,
+      "samo_original_ids": [
+        "610073995"
+      ],
+      "tv_full_ids": [
+        "102610073995"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 64351,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610234617"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 64355,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610104339"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 68667,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": true,
+      "samo_original_ids": [
+        "610000754"
+      ],
+      "tv_full_ids": [
+        "102610000754"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 71376,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": true,
+      "samo_original_ids": [
+        "610158741"
+      ],
+      "tv_full_ids": [
+        "102610158741"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 108356,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102665822173"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 113617,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610237497"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 117800,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610245750"
+      ]
+    },
+    {
+      "exact_full_key_dictionary_rows": [],
+      "local_hotel_id": 119844,
+      "namespace_binding_proven": false,
+      "prefix_pattern_observed_not_authority": false,
+      "samo_original_ids": [],
+      "tv_full_ids": [
+        "102610275830"
+      ]
+    }
+  ],
+  "strict_candidate_catalog_collisions": [
+    {
+      "catalog_id": "37255",
+      "local_hotel_ids": [
+        1772,
+        1773
+      ]
+    }
+  ]
+}
