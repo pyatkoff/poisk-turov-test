@@ -10,10 +10,10 @@
 Исторические checkpoint и snapshots не являются заданиями.
 
 **Текущая основа:** [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
-source `03638572ed7634797fe690f774282e288c06c4b7` → runtime release
-`e9b2bc741da26107cd5878a492739c0de3a837e1`;
-[публикация](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417128363) и
-[проверка установленной версии](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417167272).
+source `137e61aa2ca0df648ef53b0800be7de034cea9ef` → runtime release
+`db20aac906a766fabbdb199438c074ab8d80ca21`;
+[публикация и установленная проверка](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716),
+[затронутый UI-аудит](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6421725853).
 Согласованная композиция — Site226 / PR4909 в прежнем PUBLIC design-lab.
 Обычный compiled430/1280, включая1280×720, принят в своём scope на9.5/9.5.
 Это не оценка всего поиска, естественной доставки или production.
@@ -38,6 +38,8 @@ INT остаётся владельцем supplier/backend/price facts. Веду
 в пределах того же пользовательского пути; закрытый corpus и косметику не переигрывать.
 
 **Последний функциональный результат:** [terminal6418719912](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6418719912) — один декабрьский поиск в Турцию, `CONTACT_NOT_REACHED`: ANEX не вернул применимый расчёт обязательных доплат. Подтверждённая цена и контакт/Back не доказаны; операция `CONSUMED / NO_REPLAY`. Условие продолжения пакетов1–2 — свежий отдельно owned принятый INT calculation handoff; SEARCH потребляет тот же receipt один раз, без повторения этого Find/quote или новой пробы ради наблюдаемости.
+
+**Последнее независимое frontend-исправление:** [PR4935 / terminal6421735716](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6421735716) — открытая галерея синхронизирует progressive grow/reorder/shrink/empty/restore, сохраняет выбранный URL и обычный Back/Forward; installed RIA 1/4→2/4→3/4 без alert. Supplier/lead0, композиция и bounded9.5/9.5 неизменны, UI delta0.
 
 **Историческое исходное наблюдение до CI4931 — не текущая детализация и не очередь:**
 
