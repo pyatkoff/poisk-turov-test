@@ -647,3 +647,46 @@ remain frozen, including consumed numeric19cd1ee2. Exact candidate and numeric9f
 predecessor fixtures belong to that same existing job. Source, final control CI,
 normal MAIN integration, one original installation receipt and a future justified
 natural observation are distinct. No old paid/UNKNOWN case or installer is replayed.
+
+## Shared DB-helper source roles — 26 October 2026
+
+This SOURCE-only role contract follows INT handoff2506/6412575747 and the
+LOCAL4923 dependency4709/6412686455. It adds no runtime admission or new mode.
+A known source hash is not proof of who installed it, when it changed, or which
+database/account it currently selects.
+
+| Source snapshot | Source path and exact bytes | Role and config resolution |
+| --- | --- | --- |
+| MAINa7ceec4a7ba89ab0361ffd768beca60d7d819ea5 / FEATURE9bb0a2c68a68cdac0985e5e711fa92c7b1064a6d | v2/data/db-v1.php, blob4ac8258ee4933c74ac20c2c9b771dfc88ab7537c,3282 UTF-8 bytes, SHA256 c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13 | ROOT-placement source baseline. The config loader considers its adjacent dirname(__DIR__)/config.php, without a DOCUMENT_ROOT fallback. |
+| RELEASEccf5a1b1c8dcc9d3b796b40c85aca0f9407eb1a1 | v2/data/db-v1.php, blobc7e13f41be4a317087fc063da0db6f5dcf769e29,3861 UTF-8 bytes, SHA256 ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4 | Isolated/staged source variant. If its adjacent config is absent, it can use a distinct existing DOCUMENT_ROOT/config.php. |
+
+The exact source difference is only that config-loader fallback; the remaining
+file bodies are byte-identical. Both declare v2_data_db_config, v2_data_db,
+v2_data_normalize_text and v2_data_slug. Function-name equality alone is not a
+compatibility or DB-identity proof.
+
+Conditional equivalence applies only when either version is placed at the SAME
+ROOT/data/db-v1.php and the SAME adjacent ROOT/config.php already exists and
+passes the applicable regular-file, no-symlink, integrity and topology guards.
+With the same process environment/constants, both versions then choose that
+same config file and use the unchanged remaining config/PDO code. This source
+reasoning does not execute config, PHP or PDO and proves no live connection.
+It does not transfer automatically to a staged RELEASE helper with a different
+__DIR__; its actual adjacent/fallback path must be established separately.
+
+The observed LOCAL4923 ROOT helper hash matches the first source row. Its
+private_drift refusal was correct under its ORIGINAL ca7 pin and remains literal
+unknown_no_replay. Neither this source match nor conditional equivalence permits
+replacing that pin, restoring ROOT helper/config to match an isolated variant,
+reopening a failed operation, or ignoring protected drift. Historical pins,
+receipts and sealed operations above remain unchanged.
+
+A materially new LOCAL proposal, if separately admitted by its existing owner,
+may reference the exact ROOT c1c source role only while consuming the full
+immutable refused4923 lineage and preserving fresh protected/config/topology
+guards. It must establish a NEW current DB binding before hotel-data reads,
+and retain exact target/parent/expiry/first-attempt/no-replay boundaries.
+Historical DB/account facts are dependencies, not current measurements.
+Staged helper resolution and ROOT integrity remain separate checks. This document
+creates no command, generic reader, restore/repair, grant/account/config change,
+schema/content write, installation instruction or exception to existing guards.
