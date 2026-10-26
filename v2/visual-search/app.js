@@ -1628,30 +1628,42 @@ function restoredNightsDraft(value){
 }
 function openNights(restore=null){nightsDraft=restoredNightsDraft(restore?.draft);showModal('nights','Количество ночей','',`<p class="modal-intro">Нажмите одно число для точной длительности или два — для диапазона.</p><div class="night-grid" aria-label="Количество ночей">${Array.from({length:28},(_,i)=>`<button data-action="night-pick" data-value="${i+1}" aria-label="${nightsText(i+1)}">${i+1}</button>`).join('')}</div><p class="picker-caption">Даты вылета не изменятся</p><h3 class="picker-subtitle">Быстрый выбор</h3><div class="nights-options">${[7,10,14,21].map(n=>`<button data-action="night-preset" data-value="${n}">${nightsText(n)}</button>`).join('')}</div>`);$('#modal').classList.add('nights-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="nights-footer"><p class="night-selection" aria-live="polite"></p><p class="error-text" id="night-error" role="alert" hidden></p><button class="primary picker-apply" data-action="apply-nights"></button></div>';renderNightSelection();}
 function renderNightSelection(){$('#night-error').hidden=!nightsDraft.error;$('#night-error').textContent=nightsDraft.error||'';$$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',n>=nightsDraft.min&&n<=nightsDraft.max)});$$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value));const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent=nightsDraft.phase?'Выберите вторую границу или подтвердите '+label:'Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;rememberUIRoute();}
+const galleryPhotoSources=new WeakMap();
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(retry=false){
- const h=hotels.find(x=>x.id===gallery.id);if(!h?.photos.length)return;
+ const h=hotels.find(x=>x.id===gallery.id);
+ if(!h?.photos.length){gallery.index=0;$('#modal-body').innerHTML=`<div class="saved-empty" role="status">${icon('image')}<h3>Фото пока недоступны</h3><p>Можно вернуться к отелю и продолжить выбор тура.</p></div>`;rememberUIRoute();return;}
  const body=$('#modal-body');let stage=$('.gallery-stage');
+ const previous=stage?.dataset.hotelId===String(h.id)?galleryPhotoSources.get(stage):null;
+ const changed=!previous||previous.length!==h.photos.length||previous.some((src,i)=>src!==h.photos[i]);
+ if(previous&&changed){const selected=h.photos.indexOf(previous[gallery.index]);if(selected>=0)gallery.index=selected;}
+ gallery.index=Number.isInteger(gallery.index)?Math.max(0,Math.min(gallery.index,h.photos.length-1)):0;
  if(!stage||stage.dataset.hotelId!==String(h.id)){
-  body.innerHTML=`<div class="gallery-stage" data-hotel-id="${h.id}"><img id="gallery-image" draggable="false"><div class="gallery-state"><p role="status" aria-live="polite"></p><button class="secondary" data-action="gallery-retry" hidden>Повторить загрузку фото</button></div><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span data-gallery-count></span></div><div class="gallery-thumbs" role="group" aria-label="Выбор фотографии">${h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" aria-label="Фото ${i+1}"><span class="gallery-thumb-placeholder" aria-hidden="true">${icon('image')}</span><img src="${esc(p)}" alt="" loading="lazy"></button>`).join('')}</div>`;
+  body.innerHTML=`<div class="gallery-stage" data-hotel-id="${h.id}"><img id="gallery-image" draggable="false"><div class="gallery-state"><p role="status" aria-live="polite"></p><button class="secondary" data-action="gallery-retry" hidden>Повторить загрузку фото</button></div><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span data-gallery-count></span></div><div class="gallery-thumbs" role="group" aria-label="Выбор фотографии"></div>`;
   stage=$('.gallery-stage');
+ }
+ const strip=$('.gallery-thumbs'),restoreThumbFocus=changed&&strip.contains(document.activeElement);
+ if(changed){
+  strip.innerHTML=h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" aria-label="Фото ${i+1}"><span class="gallery-thumb-placeholder" aria-hidden="true">${icon('image')}</span><img src="${esc(p)}" alt="" loading="lazy"></button>`).join('');
   for(const thumb of $$('.gallery-thumbs img')){const button=thumb.parentElement,label=`Фото ${Number(button.dataset.value)+1}`;thumb.onload=()=>{thumb.hidden=false;button.setAttribute('aria-label',label);};thumb.onerror=()=>{thumb.hidden=true;button.setAttribute('aria-label',label+' пока не загрузилось');};}
+  galleryPhotoSources.set(stage,[...h.photos]);
  }
  const img=$('#gallery-image'),status=stage.querySelector('[role="status"]'),retryButton=stage.querySelector('[data-action="gallery-retry"]');
  const current=()=>modalType==='gallery'&&gallery.id===h.id&&$('#gallery-image')===img;
  img.onload=()=>{if(!current()||!img.complete||!img.naturalWidth)return;stage.setAttribute('aria-busy','false');stage.classList.remove('photo-failed');status.textContent='';retryButton.hidden=true;img.hidden=false;};
  img.onerror=()=>{if(!current())return;stage.setAttribute('aria-busy','false');stage.classList.add('photo-failed');status.textContent='Не удалось загрузить это фото. Можно открыть другое или повторить загрузку.';retryButton.hidden=false;};
  const src=photoUrl(h,gallery.index),index=String(gallery.index);
+ img.alt=`Фото ${gallery.index+1} из ${h.photos.length} отеля ${h.name}`;
  if(retry||img.dataset.photoIndex!==index||img.getAttribute('src')!==src){
   if(document.activeElement===retryButton)stage.querySelector('.gallery-arrow.next').focus({preventScroll:true});
-  stage.setAttribute('aria-busy','true');stage.classList.remove('photo-failed');status.textContent='Загружаем фото…';retryButton.hidden=true;img.hidden=false;img.dataset.photoIndex=index;img.alt=`Фото ${gallery.index+1} из ${h.photos.length} отеля ${h.name}`;
+  stage.setAttribute('aria-busy','true');stage.classList.remove('photo-failed');status.textContent='Загружаем фото…';retryButton.hidden=true;img.hidden=false;img.dataset.photoIndex=index;
   if(retry){img.removeAttribute('src');const thumb=$(`.gallery-thumbs [data-value="${gallery.index}"] img`);if(thumb?.hidden){thumb.loading='eager';thumb.removeAttribute('src');thumb.setAttribute('src',src);}}img.setAttribute('src',src);if(img.complete&&img.naturalWidth)img.onload();
  }
  $('[data-gallery-count]').textContent=`${gallery.index+1} / ${h.photos.length}`;
  for(const button of $$('.gallery-thumbs button')){const active=Number(button.dataset.value)===gallery.index;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));}
- const strip=$('.gallery-thumbs'),active=strip.querySelector('.active'),bounds=strip.getBoundingClientRect(),photo=active.getBoundingClientRect();
+ const active=strip.querySelector('.active'),bounds=strip.getBoundingClientRect(),photo=active.getBoundingClientRect();
  if(photo.left<bounds.left+12)strip.scrollLeft+=photo.left-bounds.left-12;else if(photo.right>bounds.right-12)strip.scrollLeft+=photo.right-bounds.right+12;
- if(strip.contains(document.activeElement)&&document.activeElement!==active)active.focus({preventScroll:true});
+ if(restoreThumbFocus||strip.contains(document.activeElement)&&document.activeElement!==active)active.focus({preventScroll:true});
  rememberUIRoute();
 }
 let flightDraft=null,andromedaQuoteDraft=null,andromedaApplicationDraft=null,anexCurrentDraft=null,anexApplicationDraft=null,selectionGeneration=0;
@@ -2784,6 +2796,7 @@ function mergeSearchResults(event){
  operators.splice(0,operators.length,...resultOperators);
  refreshOpenOfferList();
  refreshOpenHotelRooms();
+ if(modalType==='gallery')renderGallery();
 }
 function commitSearchDraft(){
  if(urlPartyIssues.length){openGuests();return false;}
