@@ -7,6 +7,13 @@ from __future__ import annotations
 
 import ast
 
+
+TV_SEATS_MODE = 'install-tv-seat-availability'
+TV_SEATS_OPERATION = 'int-anex-tv-seat-availability-install-20261026-v1'
+TV_SEATS_SOURCE = '096cd1b596cdf3741d9b67ff3855ae55332cf1e4'
+TV_SEATS_PATH = 'app/integrations/tourvisor-preview-gateway.php'
+TV_SEATS_SHA = 'c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1'
+
 TV_MISMATCH_MODE = 'tv-mismatch-retained-readback'
 TV_MISMATCH_OPERATION = 'int-anex-tv-mismatch-retained-readback-20261025-v1'
 TV_MISMATCH_SOURCE = '95b70987966675e385809ee04cb2e2ea8ea4f4b6'
@@ -109,7 +116,7 @@ TV_FAILURE_MANIFEST = '6f4c6e21b8a74d334d5085b289e4ef614dcf1d78f9ee04f782dd90d8a
 TV_PARENT_OPERATION = 'int-anex-tv-session-gateway-install-20261024-v1'
 TV_PARENT_CANONICAL = 'd5be638399918ca5cabf2ba2e22e768c9e1e5a99c416d032272d65664a5e42b9'
 TV_SOURCE = 'f4d4dcae0c09b92a7e4024fc202ea3e23d7822db'
-MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE, TV_BYTES_MODE, TV_CHECKPOINT_MODE, TV_PARTY_MODE, TV_NUMERIC_MODE, TV_SESSION_FUEL_MODE)
+MODES = ('search3-signing-provision', 'search3-signing-readback', 'install-search3-producer', TV_MODE, TV_ENABLE_MODE, TV_RECOVERY_MODE, TV_DIAGNOSTIC_MODE, TV_CACHE_MODE, TV_CONTEXT_MODE, TV_FIELDS_MODE, TV_DAY_MODE, TV_LIMIT_MODE, TV_CAP_MODE, TV_BYTES_MODE, TV_CHECKPOINT_MODE, TV_PARTY_MODE, TV_NUMERIC_MODE, TV_SESSION_FUEL_MODE, TV_SEATS_MODE)
 KEY_ID = 'search3-anytour-v1'
 # Reviewed FEATURE b1a69c57 (INT4838 / producer4839 / expiry fix4841).
 PRODUCER_PINS = {
@@ -165,7 +172,8 @@ def register_parser(core):
         need(len(parts) == 3, 'search3_signing_command_shape')
         source, mode, operation = parts
         need(core.SHA_RE.fullmatch(source) is not None, 'search3_signing_source')
-        prefix = ('int-anex-tv-session-fuel-context-install-' if mode == TV_SESSION_FUEL_MODE else
+        prefix = ('int-anex-tv-seat-availability-install-' if mode == TV_SEATS_MODE else
+                  'int-anex-tv-session-fuel-context-install-' if mode == TV_SESSION_FUEL_MODE else
                   'int-anex-tv-numeric-admission-install-' if mode == TV_NUMERIC_MODE else
                   'int-anex-tv-party-retirement-install-' if mode == TV_PARTY_MODE else
                   'int-anex-tv-scoped-checkpoint-install-' if mode == TV_CHECKPOINT_MODE else
@@ -183,6 +191,9 @@ def register_parser(core):
                   'int-anex-search3-producer-install-' if mode == 'install-search3-producer' else 'int-anex-search3-signing-')
         need(core.OP_RE.fullmatch(operation) is not None
              and operation.startswith(prefix), 'search3_signing_operation')
+        if mode == TV_SEATS_MODE:
+            need(operation == TV_SEATS_OPERATION, 'tv_seats_single_operation')
+            need(source == TV_SEATS_SOURCE, 'tv_seats_source')
         if mode == TV_SESSION_FUEL_MODE:
             need(operation == TV_SESSION_FUEL_OPERATION, 'tv_session_fuel_single_operation')
             need(source == TV_SESSION_FUEL_SOURCE, 'tv_session_fuel_source')
@@ -406,6 +417,8 @@ def activate(core, command):
         return activate_tv_mismatch(core, command)
     if command.get('mode') not in MODES:
         return
+    if command.get('mode') == TV_SEATS_MODE:
+        return activate_tv_seats(core, command)
     if command.get('mode') == TV_SESSION_FUEL_MODE:
         return activate_tv_session_fuel(core, command)
     if command.get('mode') == TV_NUMERIC_MODE:
@@ -1321,3 +1334,38 @@ def activate_tv_session_fuel(core, command):
     need(core.REMOTE.count(old)==1,'tv_session_fuel_stock_drift')
     core.REMOTE=core.REMOTE.replace(old,'    if changed!='+repr(targets)+":fail('tv_diagnostic_exact_delta')\n",1)
     ast.parse(core.REMOTE)
+
+
+def tv_seats_previous():
+    return tv_session_fuel_previous()|TV_SESSION_FUEL_UPDATES
+
+
+def completed_tv_seats(command, result):
+    source=TV_SEATS_SOURCE; pins=tv_seats_previous()|{TV_SEATS_PATH:TV_SEATS_SHA}
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':TV_SEATS_MODE,'operation_id':TV_SEATS_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':10,'changed_files':1,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':pins['v2/api-anex-search3-preview.php'],'changed':False}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+def activate_tv_seats(core, command):
+    return _activate_tv_maintenance(core,command,TV_SEATS_MODE,TV_SEATS_SOURCE,
+        TV_SEATS_PATH,TV_SEATS_SHA,tv_seats_previous(),completed_tv_seats)

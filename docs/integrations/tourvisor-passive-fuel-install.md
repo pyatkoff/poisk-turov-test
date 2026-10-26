@@ -690,3 +690,12 @@ Historical DB/account facts are dependencies, not current measurements.
 Staged helper resolution and ROOT integrity remain separate checks. This document
 creates no command, generic reader, restore/repair, grant/account/config change,
 schema/content write, installation instruction or exception to existing guards.
+
+
+## TV explicit seat availability maintenance — 26 October 2026
+
+SOURCE4928 exact096ef35e → FEATURE096cd1b596cdf3741d9b67ff3855ae55332cf1e4; independent5652844381; native40332164301/121604102255581gateway+147producer+26HTTP and Security40332164223 SUCCESS. Official public OpenAPI1.2.4 FlightDirection.noPlaces identifies unavailable seats; onDemand is separate. Reject explicit unavailable/malformed flags on any leg; money/fuel/party authority unchanged. Missing legacy flags remain unknown-compatible.
+
+ONE fixed tuple: source096cd1b596cdf3741d9b67ff3855ae55332cf1e4 / mode install-tv-seat-availability / operation int-anex-tv-seat-availability-install-20261026-v1. Existing maintenance installer only. Previous10-file map is accepted87ba session-fuel installed state; gateway8c2540f0abf44daebfd3f98d0e23387ab94775da97414a8fa52229df536e1501 → c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1, exactly1changed/0created; APIc3e13695/helper09a40aa5/passive dependencies unchanged. Parent16049/configfaea/public/signing/ROOT DB-helper guards unchanged. Old tuples/programs remain immutable/consumed, no aliases/retries.
+
+CONTROL requires independent review/native exactsource fixture install, all10predecessor/source drift, prewriteconfig race/rollback/noReplay and strict completion before normal MAIN merge. Then separately fresh exclusive finite runtime claim and ONE command; release on terminal. UNKNOWN/refusal stays consumed. No supplier/DB/lead/booking budget or ROOThelper/config/ACL permission, no UI/consumer audit or final_verified promotion. Source/CI/install/live remain separate. This document proves no new installation/natural request.
