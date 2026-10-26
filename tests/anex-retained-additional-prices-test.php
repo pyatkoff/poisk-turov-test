@@ -81,6 +81,7 @@ $assert(strpos($transportCalls[0]['url'], 'tour=987654321') !== false
     && strpos($transportCalls[0]['url'], 'nights=7') !== false
     && strpos($transportCalls[0]['url'], 'currency=345') !== false, 'private retained criteria drive real client request');
 $evidence = $result['additional_prices'];
+$assert($evidence['application_reason'] === 'applied', 'fixed application diagnostic is not final-price authority');
 $assert($evidence['rows'][0]['price_adult'] === '120' && $evidence['rows'][0]['cashrate'] === '104.23'
     && $evidence['rows'][0]['price_converted_adult'] === '12507.6', 'raw supplier money facts preserved');
 $assert($evidence['scope'] === 'tour_program_date_nights_currency' && $evidence['offer_specific'] === false,
@@ -105,6 +106,7 @@ $assert(strpos($json, '987654321') === false && strpos($json, '"currency":345') 
 $again = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
 $assert($again['status'] === 'additional_prices' && $factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1,
     'completed evidence is supplier-free cached read');
+$assert($again === $result, 'cached application returns the same diagnostic and money facts without another request');
 $assert($again['additional_prices']['party_surcharge']['amount'] === '25015.2'
     && $again['additional_prices']['search_plus_additional']['amount'] === '125015.2', 'cached raw evidence reapplies the same party arithmetic');
 
@@ -122,6 +124,7 @@ $missingChild = anytour_anex_search3_additional_application(anytour_anex_search3
 $assert($missingChild['application_state'] === 'unknown' && $missingChild['party_surcharge'] === null
     && $missingChild['search_plus_additional'] === null && $missingChild['arithmetic_applied'] === false,
     'missing child rate is unknown and never treated as zero');
+$assert($missingChild['application_reason'] === 'money_unconfirmed', 'missing child rate has a local money diagnostic');
 $ambiguous = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
     'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
     'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
@@ -131,6 +134,31 @@ $ambiguous = anytour_anex_search3_additional_application(anytour_anex_search3_ad
 ]], 'totalCount' => 2]), $offer);
 $assert($ambiguous['application_state'] === 'unknown' && $ambiguous['arithmetic_applied'] === false,
     'multiple program/date rate rows do not choose one silently');
+$assert($ambiguous['application_reason'] === 'rate_rows_unconfirmed', 'ambiguous rates have a local cardinality diagnostic');
+
+// Diagnostics are derived locally from this application, never copied from an
+// input reason or interpreted as supplier HTTP/capability/price authority.
+$diagnosticCases = [
+    [array_replace($evidence, ['rows' => [], 'total_count' => 0]), $offer, 'rate_rows_unconfirmed'],
+    [array_replace($evidence, ['truncated' => true]), $offer, 'rate_rows_unconfirmed'],
+    [$evidence, array_replace($offer, ['infants' => 1]), 'party_unconfirmed'],
+    [$evidence, array_replace($offer, ['adults' => '2']), 'party_unconfirmed'],
+    [$evidence, array_replace($offer, ['price' => ['amount' => '100000', 'currency' => 'USD']]), 'money_unconfirmed'],
+];
+foreach ($diagnosticCases as [$input, $party, $reason]) {
+    $input['application_reason'] = 'untrusted supplier text/token/URL';
+    $diagnostic = anytour_anex_search3_additional_application($input, $party);
+    $assert($diagnostic['application_reason'] === $reason
+        && $diagnostic['application_state'] === 'unknown' && $diagnostic['arithmetic_applied'] === false
+        && $diagnostic['party_surcharge'] === null && $diagnostic['search_price'] === null
+        && $diagnostic['search_plus_additional'] === null && $diagnostic['final_price_verified'] === false,
+        'fixed local reason preserves unknown money and final-price guards');
+}
+$reapplied = anytour_anex_search3_additional_application(array_replace($evidence,
+    ['application_reason' => 'untrusted supplier text/token/URL']), $offer);
+$assert($reapplied === $evidence, 'successful reapplication also replaces an untrusted reason without changing other facts');
+$assert($factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1,
+    'local diagnostic classification never makes a new request or reservation');
 
 $state = $stateTemplate;
 $mismatchFactoryCalls = 0;

@@ -655,23 +655,29 @@ function anytour_anex_search3_money_string(int $units): string
 function anytour_anex_search3_additional_application(array $evidence, array $offer): array
 {
     $evidence['application_state'] = 'unknown';
+    // Local application gate only; never a supplier error or final-price authority.
+    // Overwrite any retained value so only these fixed codes can cross the response.
+    $evidence['application_reason'] = 'rate_rows_unconfirmed';
     $evidence['party_surcharge'] = null;
     $evidence['search_price'] = null;
     $evidence['search_plus_additional'] = null;
     $evidence['arithmetic_applied'] = false;
     $rows = $evidence['rows'] ?? null;
     if (!is_array($rows) || count($rows) !== 1 || ($evidence['total_count'] ?? null) !== 1 || ($evidence['truncated'] ?? true)) return $evidence;
+    $evidence['application_reason'] = 'party_unconfirmed';
     $adults = $offer['adults'] ?? null;
     $children = $offer['children'] ?? null;
     $infants = $offer['infants'] ?? null;
     if (!is_int($adults) || $adults < 1 || $adults > 6 || !is_int($children) || $children < 0 || $children > 3
         || ($infants !== null && $infants !== 0)) return $evidence;
+    $evidence['application_reason'] = 'money_unconfirmed';
     $adult = anytour_anex_search3_money_units((string) ($rows[0]['price_converted_adult'] ?? ''));
     $child = $children === 0 ? 0 : anytour_anex_search3_money_units((string) ($rows[0]['price_converted_chd'] ?? ''));
     $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? null);
     $base = is_array($price) && ($price['currency'] ?? null) === 'RUB'
         ? anytour_anex_search3_money_units((string) ($price['amount'] ?? '')) : null;
     if ($adult === null || $child === null || $base === null) return $evidence;
+    $evidence['application_reason'] = 'amount_out_of_range';
     $party = ($adult * $adults) + ($child * $children);
     if ($party < 0 || $base > PHP_INT_MAX - $party) return $evidence;
     $total = $base + $party;
@@ -679,6 +685,7 @@ function anytour_anex_search3_additional_application(array $evidence, array $off
     $evidence['per_person_or_package'] = 'per_person_by_party_type';
     $evidence['included_in_search_price'] = false;
     $evidence['application_state'] = 'applied';
+    $evidence['application_reason'] = 'applied';
     $evidence['party'] = ['adults' => $adults, 'children' => $children];
     $evidence['rates'] = [
         'adult' => ['amount' => anytour_anex_search3_money_string($adult), 'currency' => 'RUB'],
