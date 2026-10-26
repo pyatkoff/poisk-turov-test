@@ -141,7 +141,7 @@ final class PermissionInstallNonemptyPostPdo extends PDO {
     }
 }
 PermissionInstallNonemptyPostPdo::$root=$root;$db=pi_fixture(PermissionInstallNonemptyPostPdo::class);PermissionInstallNonemptyPostPdo::$database=(string)$db->query('SELECT DATABASE()')->fetchColumn();
-$root->exec("INSERT INTO `".PermissionInstallNonemptyPostPdo::$database."`.anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES ('{\\"nonempty\\":true}',SHA2('{\\"nonempty\\":true}',256),1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+$root->exec("INSERT INTO `".PermissionInstallNonemptyPostPdo::$database."`.anytour_hotels(profile_json,profile_sha256,revision,is_active,created_at,updated_at) VALUES ('{\"nonempty\":true}',SHA2('{\"nonempty\":true}',256),1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
 PermissionInstallNonemptyPostPdo::$hotel=(int)$root->query('SELECT id FROM `'.PermissionInstallNonemptyPostPdo::$database.'`.anytour_hotels LIMIT 1')->fetchColumn();$a=pi_authority($db);$nonempty=pi_run($db,$a,'nonempty-post-target');
 pi_check($nonempty['receipt']['state']==='verification_failed'&&$nonempty['receipt']['reason']==='rows_nonempty'&&$nonempty['receipt']['schemaWrites']===3&&!$nonempty['receipt']['ddlOutcomeUnknown']&&$nonempty['receipt']['tableRows']===[['name'=>AnyTourHotelStayPermissionInstallV1::TARGETS[0],'rows'=>1]],'nonempty post target never qualifies and retains3ACK');
 
