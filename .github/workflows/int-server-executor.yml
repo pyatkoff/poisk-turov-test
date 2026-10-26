@@ -62,6 +62,8 @@ on:
       - 'scripts/catalog/anytour_hotel_profile_batch_read_v1.php'
       - 'scripts/catalog/fixtures/local-profile-batch-20261026.json'
       - 'tests/anytour_hotel_profile_batch_read_v1_test.php'
+      - 'scripts/catalog/anytour_hotel_profile_88750_evidence_v1.php'
+      - 'tests/anytour_hotel_profile_88750_evidence_v1_test.php'
       - 'scripts/diagnostics/local_tv_capture_v1.php'
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'

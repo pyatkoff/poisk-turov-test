@@ -42,6 +42,10 @@ def register_parser(core):
 
     def parse(body):
         parts = body[len(core.PREFIX):].split() if body.startswith(core.PREFIX) else []
+        if len(parts) >= 2 and parts[1] == EVIDENCE_MODE:
+            need(parts == [EVIDENCE_SOURCE, EVIDENCE_MODE, EVIDENCE_OPERATION], 'local_profile_88750_fixed_command')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'local_profile_88750_first_attempt')
+            return evidence_command()
         if len(parts) >= 2 and parts[1] == BATCH_MODE:
             need(parts == [SOURCE_SHA, BATCH_MODE, BATCH_OPERATION], 'local_profile_batch_fixed_command')
             need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'local_profile_batch_first_attempt')
@@ -226,6 +230,8 @@ REMOTE_DISPATCH = r'''    if mode=='local-profile-completeness-read-v1':
 
 
 def activate(core, command):
+    if command.get('mode') == EVIDENCE_MODE:
+        return activate_evidence(core, command)
     if command.get('mode') == BATCH_MODE:
         return activate_batch(core, command)
     if command.get('mode') != MODE:
@@ -415,3 +421,194 @@ def activate_batch(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_batch_source
     original=core.completed_result
     core.completed_result=lambda cmd,r:completed_batch(cmd,r,control) if cmd.get('mode')==BATCH_MODE else original(cmd,r)
+
+
+# One confirmed missing-description prerequisite. Historical capsules above are sealed.
+EVIDENCE_MODE = 'local-profile-88750-evidence-v1'
+EVIDENCE_OPERATION = 'int-andromeda-local-profile-88750-evidence-20261026-v1'
+EVIDENCE_SOURCE = 'ccf5a1b1c8dcc9d3b796b40c85aca0f9407eb1a1'
+EVIDENCE_RUNNER = 'scripts/catalog/anytour_hotel_profile_88750_evidence_v1.php'
+EVIDENCE_RUNNER_SHA = '1bf61fc2d3e4e418d32479b8e718a88babbdc1a2ba3be498b4ca8a6dfec123f1'
+EVIDENCE_PARENT_SHA = 'ec2267edaebfa24f3f1b6d72b51834a047e063e1e2fbb86ba6988d34f58b22d8'
+EVIDENCE_PARENT_CONTROL = 'e2a1074e3c7c335377024e88951467479da8331b'
+EVIDENCE_RAW_SHA = 'f64669c666ea20e89bc3dc262c4559e2ff133da75f6c3c7a53e9104f451456a4'
+EVIDENCE_TIME_SHA = 'bdbf170ed62868c1418d2b39610f8c042d6717fd84f968b516769c8f5073c45e'
+
+
+def evidence_command():
+    return {'source_sha': EVIDENCE_SOURCE, 'mode': EVIDENCE_MODE, 'operation_id': EVIDENCE_OPERATION,
+            'catalog_hotel_id': 88750, 'provider_http_calls': 0, 'database_writes': 0}
+
+
+def evidence_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}', EVIDENCE_RUNNER_SHA), 'local_profile_88750_unreviewed')
+    return {**hashes(), EVIDENCE_RUNNER: EVIDENCE_RUNNER_SHA}
+
+
+def evidence_policy(control):
+    return {'command': evidence_command(), 'hashes': evidence_hashes(), 'control': control,
+            'protected': PROTECTED, 'database': DATABASE, 'parentSha256': EVIDENCE_PARENT_SHA,
+            'parentControl': EVIDENCE_PARENT_CONTROL, 'parentOperation': BATCH_OPERATION,
+            'parentPolicy': batch_policy(EVIDENCE_PARENT_CONTROL), 'rawSha256': EVIDENCE_RAW_SHA,
+            'timeSha256': EVIDENCE_TIME_SHA}
+
+
+def bundle_evidence_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];output=io.BytesIO();pins=evidence_hashes()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in pins.items():
+            path=(control if relative in (RUNNER,EVIDENCE_RUNNER) else source)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_profile_88750_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=2097152 and hashlib.sha256(raw).hexdigest()==digest,'local_profile_88750_source_drift')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':pins},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),pins
+
+
+EVIDENCE_VALIDATOR = r'''
+def profile_read_json(value):
+    return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029').encode()
+def profile_read_unique(pairs):
+    result={}
+    for key,value in pairs:
+        if key in result: raise ValueError('duplicate_json_key')
+        result[key]=value
+    return result
+def profile_read_valid(data,policy):
+    sha=lambda v:isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) is not None
+    integer=lambda v,lo,hi:type(v) is int and lo<=v<=hi
+    if not isinstance(data,dict) or set(data)!={'receipt','evidence'} or len(profile_read_json(data))>262144:return False
+    r=data['receipt'];e=data['evidence']
+    keys={'schemaVersion','source','state','reason','observedAt','hotelId','countryId','parentResultSha256','parentTargetSha256',
+          'rawSha256Before','rawSha256After','sourceTimeSha256','databaseSha256Before','databaseSha256After','protectedBefore','protectedAfter',
+          'blockCount','textBytes','evidenceSha256','supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites',
+          'automaticAccepts','priceAuthority','importAllowed','operationId','sourceSha','controlSha'}
+    if (not isinstance(r,dict) or set(r)!=keys or not integer(r['schemaVersion'],1,1)
+        or r['source']!='anytour-hotel-profile-88750-evidence-v1' or r['state'] not in ('held','completed_read_only')
+        or not integer(r['observedAt'],1,253402300799) or not integer(r['hotelId'],88750,88750) or not integer(r['countryId'],4,4)
+        or r['parentResultSha256']!=policy['parentSha256'] or r['parentTargetSha256']!='2022f9f9592c1f27cdefb3a9370c9ee84cee3de4139d5a33f5428b713e899a50'
+        or r['operationId']!=policy['command']['operation_id'] or r['sourceSha']!=policy['command']['source_sha'] or r['controlSha']!=policy['control']
+        or not integer(r['blockCount'],0,32) or not integer(r['textBytes'],0,65536) or r['priceAuthority'] is not False or r['importAllowed'] is not False):return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites','automaticAccepts')):return False
+    for key in ('rawSha256Before','rawSha256After','sourceTimeSha256','databaseSha256Before','databaseSha256After'):
+        if r[key] is not None and not sha(r[key]):return False
+    for key in ('protectedBefore','protectedAfter'):
+        if r[key] is not None and (not isinstance(r[key],dict) or set(r[key])!=set(policy['protected']) or any(not sha(v) for v in r[key].values())):return False
+    if r['state']=='held':
+        return (isinstance(r['reason'],str) and re.fullmatch(r'[a-z_]{1,64}',r['reason']) is not None and e is None
+                and r['evidenceSha256'] is None and r['blockCount']==0 and r['textBytes']==0)
+    if (r['reason'] is not None or r['rawSha256Before']!=policy['rawSha256'] or r['rawSha256After']!=policy['rawSha256']
+        or r['sourceTimeSha256']!=policy['timeSha256'] or r['databaseSha256Before']!=policy['database'] or r['databaseSha256After']!=policy['database']
+        or r['protectedBefore']!=policy['protected'] or r['protectedAfter']!=policy['protected'] or r['blockCount']<1
+        or not isinstance(e,dict) or set(e)!={'hotelId','countryId','name','rawSha256','sourceTimeSha256','consumerRevision','consumerState',
+                                           'manualFieldCount','sourceAbsentCount','sourceAbsentSha256','blocks'}
+        or not integer(e['hotelId'],88750,88750) or not integer(e['countryId'],4,4) or e['name']!='THE X BELEK'
+        or e['rawSha256']!=policy['rawSha256'] or e['sourceTimeSha256']!=policy['timeSha256']
+        or not integer(e['consumerRevision'],3,3) or e['consumerState']!='ready' or not integer(e['manualFieldCount'],0,0)
+        or not integer(e['sourceAbsentCount'],1,1) or e['sourceAbsentSha256']!=policy.get('absentSha256','8f515b15e10dfa8d9181889456d432e3b6b5d40458b1c41fbd864e9fa628a4d2')
+        or not isinstance(e['blocks'],list) or len(e['blocks'])!=r['blockCount'] or r['evidenceSha256']!=hashlib.sha256(profile_read_json(e)).hexdigest()):return False
+    fixed={'common.place':'place','common.build':'build','common.repair':'repair','common.square':'square',
+           **{'infrastructure.'+k:'hotelInformation.infrastructure.'+k for k in ('beach','territory','pools','pool','sport','internet')},
+           **{'services.'+k:'hotelInformation.services.'+k for k in ('available','inRoom','child','animation','free','servicesPay')}}
+    paths=set();total=0
+    for block in e['blocks']:
+        if (not isinstance(block,dict) or set(block)!={'sourcePath','consumerPath','text','sha256','byteLength','consumerComparison'}
+            or not isinstance(block['sourcePath'],str) or block['sourcePath'] in paths):return False
+        match=re.fullmatch(r'\$(?:\[0\])?\.([A-Za-z]+)\.([A-Za-z][A-Za-z0-9_]{0,47})',block['sourcePath'])
+        if not match:return False
+        group,key=match.groups();path=group+'.'+key
+        if path in fixed:expected=fixed[path]
+        elif group in ('meals','descriptions') and not re.search(r'phone|email|contact|url|site|booking|secret|token|password|account|address',key,re.I):
+            expected='hotelInformation.meals.'+key if group=='meals' else None
+        else:return False
+        text=block['text']
+        if (block['consumerPath']!=expected or not isinstance(text,str) or not text.strip() or not integer(block['byteLength'],1,8192)
+            or len(text.encode())!=block['byteLength'] or block['sha256']!=hashlib.sha256(text.encode()).hexdigest()):return False
+        total+=block['byteLength'];paths.add(block['sourcePath']);c=block['consumerComparison']
+        if not isinstance(c,dict) or set(c)!={'state','sha256','byteLength'}:return False
+        if expected is None:
+            if c!={'state':'not_projected','sha256':None,'byteLength':None}:return False
+        elif c['state']=='missing':
+            if c['sha256'] is not None or type(c['byteLength']) is not int or c['byteLength']!=0:return False
+        elif c['state'] in ('equal','different'):
+            if (not sha(c['sha256']) or not integer(c['byteLength'],1,2097152)
+                or ((c['state']=='equal')!=(c['sha256']==block['sha256']))
+                or (c['state']=='equal' and c['byteLength']!=block['byteLength'])):return False
+        else:return False
+    return total==r['textBytes'] and total<=65536
+'''
+
+
+EVIDENCE_PARENT_PROGRAM = r'''
+profile_88750_batch_valid=profile_read_valid
+def profile_88750_parent():
+    directory=private/PROFILE_READ_POLICY['parentOperation']
+    path=directory/'result.json'
+    if directory.is_symlink() or directory.resolve()!=directory or not directory.is_dir() or not safe_file(path,36952) or path.resolve()!=path: fail('local_profile_88750_parent_unavailable')
+    raw=path.read_bytes()
+    if len(raw)!=36952 or hashlib.sha256(raw).hexdigest()!=PROFILE_READ_POLICY['parentSha256']: fail('local_profile_88750_parent_drift')
+    try: parent=json.loads(raw,object_pairs_hook=profile_read_unique)
+    except Exception: fail('local_profile_88750_parent_json')
+    p=PROFILE_READ_POLICY['parentPolicy'];item=parent.get('local_profile_batch',{});data=item.get('data',{});r=data.get('receipt',{})
+    if (parent.get('status')!='complete' or parent.get('mode')!=p['command']['mode'] or parent.get('operation_id')!=p['command']['operation_id']
+        or parent.get('source_sha')!=p['command']['source_sha'] or type(parent.get('schema_version')) is not int or parent['schema_version']!=1
+        or any(type(parent.get(k)) is not int or parent[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes'))
+        or parent.get('production_unchanged') is not True or parent.get('production_before')!=parent.get('production_after')
+        or item.get('protectedBefore')!=p['protected'] or item.get('protectedAfter')!=p['protected']
+        or not profile_88750_batch_valid(data,p) or r.get('state')!='completed_read_only' or r.get('observedCount')!=20 or r.get('heldCount')!=0
+        or item.get('fileSha256')!=hashlib.sha256(profile_read_json(data)+b'\n').hexdigest()):fail('local_profile_88750_parent_contract')
+    target=[x for x in data['items'] if x['hotelId']==88750]
+    if len(target)!=1 or hashlib.sha256(profile_read_json(target[0])).hexdigest()!='2022f9f9592c1f27cdefb3a9370c9ee84cee3de4139d5a33f5428b713e899a50':fail('local_profile_88750_parent_target')
+'''
+
+
+def valid_evidence_payload(data,control):
+    namespace={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(EVIDENCE_VALIDATOR,namespace)
+        return namespace['profile_read_valid'](data,evidence_policy(control))
+    except (KeyError,TypeError,ValueError,AttributeError):return False
+
+
+def completed_evidence(command,result,control):
+    try:
+        if (command!=evidence_command() or any(type(command.get(k)) is not int for k in ('catalog_hotel_id','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha')) or len(json.dumps(result).encode())>524288):return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')):return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'} or not isinstance(before['index.php'],str)
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())):return False
+        item=result['local_profile_88750_evidence']
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter'} or item['protectedBefore']!=PROTECTED
+            or item['protectedAfter']!=PROTECTED or not valid_evidence_payload(item['data'],control) or item['data']['receipt']['state']!='completed_read_only'):return False
+        raw=json.dumps(item['data'],ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029').encode()+b'\n'
+        return item['fileSha256']==hashlib.sha256(raw).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError):return False
+
+
+def activate_evidence(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([EVIDENCE_SOURCE,EVIDENCE_MODE,EVIDENCE_OPERATION]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('catalog_hotel_id','provider_http_calls','database_writes')),'local_profile_88750_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control),'local_profile_88750_control')
+    remote=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,'local_profile_88750_registration')
+    handler=REMOTE_HANDLER.replace('run_profile_read','run_profile_88750_evidence').replace('local_profile_completeness','local_profile_88750_evidence').replace('anytour_hotel_profile_completeness_read_v1.php','anytour_hotel_profile_88750_evidence_v1.php').replace('local-profile-completeness-read.json','local-profile-88750-evidence.json').replace('local_profile_read_','local_profile_88750_')
+    anchor='    protected=profile_read_protected()\n'
+    need(handler.count(anchor)==1,'local_profile_88750_parent_anchor')
+    handler=handler.replace(anchor,'    profile_88750_parent()\n'+anchor,1)
+    code=REMOTE_DISPATCH.replace(MODE,EVIDENCE_MODE).replace('local_profile_completeness','local_profile_88750_evidence').replace('run_profile_read','run_profile_88750_evidence')
+    program='PROFILE_READ_POLICY='+repr(evidence_policy(control))+'\n'+BATCH_VALIDATOR+EVIDENCE_PARENT_PROGRAM+EVIDENCE_VALIDATOR+handler+'\n'
+    remote=remote.replace(definition,program+definition,1).replace(dispatch,code+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+EVIDENCE_MODE+"','reconcile',").replace(manifest,"    if not isinstance(files,dict) or files!=PROFILE_READ_POLICY['hashes']: fail('local_profile_88750_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_profile_88750_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=len(PROFILE_READ_POLICY['hashes'])+1 or {m.name for m in members}!={*PROFILE_READ_POLICY['hashes'],'manifest.json'}: fail('local_profile_88750_archive')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_profile_88750_reservation')
+    remote=remote.replace(reservation,reservation+'    profile_read_reserved=True\n',1).replace(final,"if globals().get('profile_read_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_evidence_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,r:completed_evidence(cmd,r,control) if cmd.get('mode')==EVIDENCE_MODE else original(cmd,r)
