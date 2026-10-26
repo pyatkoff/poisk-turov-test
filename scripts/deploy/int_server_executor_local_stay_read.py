@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        permission = parse_permission_command(core, body)
+        if permission is not None:
+            return permission
         source_facts = parse_source_facts_command(core, body)
         if source_facts is not None:
             return source_facts
@@ -274,6 +277,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == PERMISSION_MODE:
+        return activate_permission(core, command)
     if command.get('mode') == SOURCE_FACTS_MODE:
         return activate_source_facts(core, command)
     if command.get('mode') == CONTEXT_INSTALL_MODE:
@@ -1899,3 +1904,317 @@ def activate_source_facts(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_source_facts_source
     original_completed=core.completed_result
     core.completed_result=lambda cmd,result: completed_source_facts(cmd,result,control) if cmd.get('mode')==SOURCE_FACTS_MODE else original_completed(cmd,result)
+
+
+# A distinct metadata-only disposition after direct-metadata false observations.
+PERMISSION_MODE = 'local-stay-permission-proof-read-v1'
+PERMISSION_OPERATION = 'int-andromeda-local-stay-permission-proof-read-20261026-v1'
+PERMISSION_SOURCE_SHA = '1d0e529e3fc0666783db1454c0765d3c16d63843'
+PERMISSION_RUNNER = 'scripts/catalog/anytour_hotel_stay_permission_proof_read_v1.php'
+PERMISSION_RUNNER_SHA = '1e9b8a15f0418e467380bcfe63368e8e4734b76a1deb9d95d6b16245b2cc6e4b'
+PERMISSION_PARENT = {
+    'operation': 'int-andromeda-local-stay-source-facts-read-20261026-v1',
+    'source': '1d0e529e3fc0666783db1454c0765d3c16d63843',
+    'control': '436cf6f1bd85f062dd7b8ff42292f80f8232a4b5',
+    'private_sha256': '0852e6438c911a4c04c772c6d81fff7613b61593bb5613948d460fc60b8a0817',
+    'file_sha256': '1b26f11a7fbca04f7ce9ffcaeb9c41a849948a98301284a6c4ca3ccf9e79dea4',
+    'database_sha256': '4cd52b85a632855e79a5fafbe4e425d1c3c6a51dba2c995e0a43f976fbc25f1d',
+    'protected': dict(CONTEXT_INSTALL_PARENT['protected']),
+}
+
+
+def parse_permission_command(core,body):
+    if not body.startswith(core.PREFIX): return None
+    parts=body[len(core.PREFIX):].split()
+    if len(parts)<2 or parts[1]!=PERMISSION_MODE: return None
+    need(len(parts)==3 and parts[0]==PERMISSION_SOURCE_SHA and core.SHA_RE.fullmatch(parts[0]) is not None
+         and parts[2]==PERMISSION_OPERATION,'local_stay_permission_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','local_stay_permission_first_attempt_only')
+    return {'source_sha':PERMISSION_SOURCE_SHA,'mode':PERMISSION_MODE,'operation_id':PERMISSION_OPERATION,
+            'maximum_privileges':4,'provider_http_calls':0,'database_writes':0}
+
+
+def permission_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}',PERMISSION_RUNNER_SHA) is not None,'local_stay_permission_source_not_final')
+    return {'v2/data/db-v1.php':'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4',PERMISSION_RUNNER:PERMISSION_RUNNER_SHA}
+
+
+def bundle_permission_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];hashes=permission_hashes();output=io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in hashes.items():
+            path=(control if relative==PERMISSION_RUNNER else source)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_stay_permission_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=262144 and hashlib.sha256(raw).hexdigest()==digest,
+                                     'local_stay_permission_reviewed_source_changed')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),hashes
+
+
+PERMISSION_PARENT_VALIDATOR = r'''
+def local_stay_permission_parent_valid(parent,policy):
+    command={'source_sha':policy['source'],'mode':'local-stay-source-facts-read-v1','operation_id':policy['operation'],
+             'maximum_cohorts':50,'provider_http_calls':0,'database_writes':0}
+    if not local_stay_permission_parent_completed(command,parent,policy['control']): return False
+    item=parent['local_stay_source_facts'];data=item['data'];r=data['receipt']
+    return (item['fileSha256']==policy['file_sha256'] and r['state']=='anchor_missing' and r['missingTables']==[]
+            and r['databaseSha256Before']==r['databaseSha256After']==policy['database_sha256']
+            and r['protectedBefore']==r['protectedAfter']==policy['protected']
+            and item['protectedBefore']==item['protectedAfter']==policy['protected']
+            and all(data[k] is None for k in ('anchorEvidence','sourceFacts','currentCohorts','draftConcepts'))
+            and data['privilegeProof']=={'state':'direct_metadata_observed','scope':'direct_global_or_schema','CREATE':False,'REFERENCES':False,'SELECT':False,'TRIGGER':False,'allRequired':False})
+'''
+
+
+def permission_parent_completion_source():
+    source=Path(__file__).read_text();node=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='completed_source_facts')
+    return ast.get_source_segment(source,node).replace('def completed_source_facts(','def local_stay_permission_parent_completed(',1).replace('valid_source_facts_payload(','local_stay_permission_parent_payload(')
+
+
+PERMISSION_VALIDATOR = r'''
+def local_stay_permission_bound(r,parent):
+    return (r['databaseSha256Before']==r['databaseSha256After']==parent['database_sha256']
+            and r['protectedBefore']==r['protectedAfter']==parent['protected']
+            and all(isinstance(r[k+'Sha256Before'],str) and re.fullmatch(r'[a-f0-9]{64}',r[k+'Sha256Before']) is not None
+                    and r[k+'Sha256Before']==r[k+'Sha256After'] for k in ('account','role')))
+def local_stay_permission_valid(data,source_sha,control_sha,parent):
+    if not isinstance(data,dict) or set(data)!={'receipt','coverage','privileges'} or len(local_stay_schema_canonical(data))>262144: return False
+    r=data['receipt'];coverage=data['coverage'];privileges=data['privileges'];names=['CREATE','REFERENCES','SELECT','TRIGGER']
+    keys={'schemaVersion','source','state','observedAt','parentOperation','parentResultSha256','parentFileSha256',
+          'databaseSha256Before','databaseSha256After','accountSha256Before','accountSha256After','roleSha256Before','roleSha256After',
+          'protectedBefore','protectedAfter','coverageSha256','supplierCalls','databaseWrites','schemaWrites','profileWrites','mappingWrites',
+          'automaticAccepts','oldAccountIdentityKnown','allRequiredProven','effectiveDenialClaimed','ddlAdmission','operationId','sourceSha','controlSha'}
+    def digest(x): return isinstance(x,str) and re.fullmatch(r'[a-f0-9]{64}',x) is not None
+    def integer(x,limit): return type(x) is int and 0<=x<=limit
+    def protected(x): return isinstance(x,dict) and set(x)=={'config.php','data/db-v1.php'} and all(digest(v) for v in x.values())
+    if (not isinstance(r,dict) or set(r)!=keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-permission-proof-read-v1' or r['operationId']!='int-andromeda-local-stay-permission-proof-read-20261026-v1'
+        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None
+        or type(r['observedAt']) is not int or not 0<r['observedAt']<=253402300799
+        or r['parentOperation']!=parent['operation'] or r['parentResultSha256']!=parent['private_sha256'] or r['parentFileSha256']!=parent['file_sha256']
+        or r['oldAccountIdentityKnown'] is not False or r['effectiveDenialClaimed'] is not False or r['ddlAdmission'] is not False
+        or type(r['allRequiredProven']) is not bool): return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','schemaWrites','profileWrites','mappingWrites','automaticAccepts')): return False
+    if r['state'] not in ('completed_read_only','metadata_unavailable','metadata_limit','parent_invalid','caller_transaction','database_identity','protected_drift','binding_drift','read_failed'): return False
+    for field in ('databaseSha256Before','databaseSha256After','accountSha256Before','accountSha256After','roleSha256Before','roleSha256After'):
+        if r[field] is not None and not digest(r[field]): return False
+    for field in ('protectedBefore','protectedAfter'):
+        if r[field] is not None and not protected(r[field]): return False
+    coverage_keys={'state','accountEncoding','lowerCaseTableNames','partialRevokes','activeRoles','schemaPatterns','matchingSchemaPatterns',
+                   'metadataRowsBefore','metadataRowsAfter','metadataSha256Before','metadataSha256After','tableColumnScopes','limits'}
+    if (not isinstance(coverage,dict) or set(coverage)!=coverage_keys or coverage['state'] not in ('complete','partial','unavailable')
+        or coverage['accountEncoding'] not in ('supported','unsupported','not_observed')
+        or coverage['activeRoles'] not in ('none','unexpanded','not_observed')
+        or coverage['schemaPatterns'] not in ('single_literal_match','no_match','ambiguous','unsupported','not_observed')
+        or coverage['limits']!={'rows':512,'bytes':131072}): return False
+    if coverage['lowerCaseTableNames'] is not None and (type(coverage['lowerCaseTableNames']) is not int or coverage['lowerCaseTableNames'] not in (0,1,2)): return False
+    if coverage['partialRevokes'] is not None and type(coverage['partialRevokes']) is not bool: return False
+    for field in ('matchingSchemaPatterns','metadataRowsBefore','metadataRowsAfter'):
+        if coverage[field] is not None and not integer(coverage[field],256): return False
+    for field in ('metadataSha256Before','metadataSha256After'):
+        if coverage[field] is not None and not digest(coverage[field]): return False
+    for suffix in ('Before','After'):
+        if (coverage['metadataRows'+suffix] is None)!=(coverage['metadataSha256'+suffix] is None): return False
+    tables=['anytour_hotels','anytour_hotel_sources','anytour_offers','anytour_offer_scope_state',
+            'anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    columns=[['id','is_active','profile_json','profile_sha256'],
+             ['namespace','external_key','anytour_hotel_id','acquired_via','source_json','source_sha256'],
+             ['id','anytour_hotel_id','legacy_hotel_id','provider','provider_hotel_ref_digest','offer_ref_digest','search_ref_digest','identity_sha256','payload_json','payload_sha256','last_seen_at','expires_at','is_active','scope_sha256','last_refresh_token'],
+             ['provider','scope_sha256','latest_complete_refresh_token'],
+             ['id','anytour_hotel_id','local_key','name_ru','facts_json','revision','is_active'],
+             ['id','anytour_hotel_id','local_key','name_ru','facts_json','revision','is_active'],
+             ['namespace','external_hotel_key','operator_key','kind','key_kind','external_key','anytour_hotel_id','room_concept_id','meal_concept_id','state']]
+    scopes=coverage['tableColumnScopes']
+    if scopes is not None:
+        if not isinstance(scopes,list) or len(scopes)!=7: return False
+        scope_rows=0
+        for pos,item in enumerate(scopes):
+            if (not isinstance(item,dict) or set(item)!={'tableName','tablePrivileges','columnPrivileges','columnGrantRows','observationScope','columnGrants'}
+                or item['tableName']!=tables[pos] or not integer(item['columnGrantRows'],256)
+                or item['observationScope']!='direct_metadata_fixed_columns' or not isinstance(item['columnGrants'],list)): return False
+            for field in ('tablePrivileges','columnPrivileges'):
+                if not isinstance(item[field],list) or item[field]!=[name for name in names if name in item[field]]: return False
+            observed=[];column_privileges=[];column_rows=0
+            for grant in item['columnGrants']:
+                if (not isinstance(grant,dict) or set(grant)!={'columnName','privileges'} or grant['columnName'] not in columns[pos]
+                    or not isinstance(grant['privileges'],list) or not grant['privileges']
+                    or grant['privileges']!=[name for name in names if name in grant['privileges']]): return False
+                observed.append(grant['columnName']);column_privileges+=grant['privileges'];column_rows+=len(grant['privileges'])
+            if (observed!=[name for name in columns[pos] if name in observed] or item['columnGrantRows']!=column_rows
+                or item['columnPrivileges']!=[name for name in names if name in column_privileges]): return False
+            scope_rows+=len(item['tablePrivileges'])+column_rows
+        if coverage['metadataRowsBefore'] is None or scope_rows>coverage['metadataRowsBefore']: return False
+    if coverage['schemaPatterns']=='single_literal_match' and coverage['matchingSchemaPatterns']!=1: return False
+    if coverage['schemaPatterns']=='no_match' and coverage['matchingSchemaPatterns']!=0: return False
+    if coverage['schemaPatterns']=='ambiguous' and (coverage['matchingSchemaPatterns'] is None or coverage['matchingSchemaPatterns']<2): return False
+    if coverage['state']=='complete':
+        if (coverage['accountEncoding']!='supported' or coverage['lowerCaseTableNames']!=0 or coverage['partialRevokes'] is not False
+            or coverage['activeRoles']!='none' or coverage['schemaPatterns'] not in ('single_literal_match','no_match')
+            or coverage['metadataRowsBefore'] is None or coverage['metadataRowsBefore']!=coverage['metadataRowsAfter']
+            or coverage['metadataSha256Before']!=coverage['metadataSha256After'] or scopes is None): return False
+    if not isinstance(privileges,dict) or set(privileges)!=set(names): return False
+    for name in names:
+        value=privileges[name]
+        if (not isinstance(value,dict) or set(value)!={'status','coverage','basis'}
+            or value['status'] not in ('proven','not_proven') or value['coverage']!=coverage['state']
+            or value['basis'] not in ('none','direct_global','single_literal_schema','direct_global_and_single_literal_schema')): return False
+        expected=coverage['state']=='complete' and value['basis']!='none' and r['state']=='completed_read_only'
+        if (value['status']=='proven')!=expected: return False
+        if value['basis'] in ('single_literal_schema','direct_global_and_single_literal_schema') and coverage['schemaPatterns']!='single_literal_match': return False
+    if r['allRequiredProven']!=all(privileges[k]['status']=='proven' for k in names): return False
+    if r['coverageSha256']!=hashlib.sha256(local_stay_schema_canonical({'coverage':coverage,'privileges':privileges})).hexdigest(): return False
+    if r['state']=='completed_read_only':
+        if not local_stay_permission_bound(r,parent) or coverage['state']=='unavailable': return False
+    elif r['state'] in ('metadata_unavailable','metadata_limit'):
+        if (coverage['state']!='unavailable' or r['protectedBefore']!=parent['protected'] or r['protectedAfter']!=parent['protected']
+            or any(privileges[k]['basis']!='none' for k in names)): return False
+        if any(r['databaseSha256'+suffix] is not None and r['databaseSha256'+suffix]!=parent['database_sha256'] for suffix in ('Before','After')): return False
+        if any(r[k+'Sha256Before']!=r[k+'Sha256After'] for k in ('database','account','role')): return False
+    elif r['allRequiredProven'] or any(privileges[k]['status']=='proven' for k in names): return False
+    return True
+'''
+
+
+def valid_permission_payload(data,control_sha):
+    namespace={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(SCHEMA_VALIDATOR+PERMISSION_VALIDATOR,namespace)
+        return namespace['local_stay_permission_valid'](data,PERMISSION_SOURCE_SHA,control_sha,PERMISSION_PARENT)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+def completed_permission(command,result,control_sha):
+    try:
+        expected={'source_sha':PERMISSION_SOURCE_SHA,'mode':PERMISSION_MODE,'operation_id':PERMISSION_OPERATION,
+                  'maximum_privileges':4,'provider_http_calls':0,'database_writes':0}
+        if (command!=expected or any(type(command.get(k)) is not int for k in ('maximum_privileges','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha'))
+            or len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>262144): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')): return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True or not isinstance(before['index.php'],str)
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())): return False
+        item=result.get('local_stay_permission_proof')
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter','parentResultSha256'}
+            or item['parentResultSha256']!=PERMISSION_PARENT['private_sha256']
+            or item['protectedBefore']!=PERMISSION_PARENT['protected'] or item['protectedAfter']!=PERMISSION_PARENT['protected']
+            or not valid_permission_payload(item['data'],control_sha)): return False
+        data=item['data'];r=data['receipt'];raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')+'\n').encode()
+        return (r['state'] in ('completed_read_only','metadata_unavailable','metadata_limit')
+                and r['databaseSha256Before']==r['databaseSha256After']==PERMISSION_PARENT['database_sha256']
+                and all(isinstance(r[k+'Sha256Before'],str) and re.fullmatch(r'[a-f0-9]{64}',r[k+'Sha256Before']) is not None
+                        and r[k+'Sha256Before']==r[k+'Sha256After'] for k in ('account','role'))
+                and item['fileSha256']==hashlib.sha256(raw).hexdigest())
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+PERMISSION_REMOTE_HANDLER = r'''
+def local_stay_permission_unique(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value: raise ValueError('duplicate_json_key')
+        value[key]=item
+    return value
+def local_stay_permission_protected():
+    values={}
+    for name in ('config.php','data/db-v1.php'):
+        path=project/name
+        if not safe_file(path,2097152) or path.resolve()!=path: fail('local_stay_permission_private_dependency')
+        values[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    return values
+def local_stay_permission_parent():
+    policy=LOCAL_STAY_PERMISSION_POLICY['parent'];path=private/policy['operation']/'result.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_permission_parent_file')
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=policy['private_sha256']: fail('local_stay_permission_parent_hash')
+    try: parent=json.loads(raw,object_pairs_hook=local_stay_permission_unique)
+    except Exception: fail('local_stay_permission_parent_json')
+    try: valid=local_stay_permission_parent_valid(parent,policy)
+    except Exception: valid=False
+    if not valid: fail('local_stay_permission_parent_contract')
+    return path
+def run_local_stay_permission_proof(stage):
+    policy=LOCAL_STAY_PERMISSION_POLICY
+    if payload!={**policy['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}:
+        fail('local_stay_permission_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_privileges','provider_http_calls','database_writes')): fail('local_stay_permission_payload_types')
+    if files!=policy['hashes']: fail('local_stay_permission_source_pins')
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=result['schema_writes']=0
+    parent_path=local_stay_permission_parent();protected_before=local_stay_permission_protected()
+    if protected_before!=policy['parent']['protected']: fail('local_stay_permission_private_drift')
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ}
+    env.update({'ANYTOUR_SITE_ROOT':str(project),'ANYTOUR_OPERATION_OUTPUT_DIR':str(op),
+                'ANYTOUR_OPERATION_RELEASE_SHA':source,'ANYTOUR_OPERATION_CONTROL_SHA':policy['control'],
+                'ANYTOUR_OPERATION_ID':operation,'ANYTOUR_PERMISSION_PROOF_PARENT_PATH':str(parent_path)})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','memory_limit=256M','-d','disable_functions='+disabled,
+                        str(stage/'scripts/catalog/anytour_hotel_stay_permission_proof_read_v1.php')],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=180)
+    path=op/'local-stay-permission-proof-read.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_permission_receipt_file')
+    raw=path.read_bytes()
+    try: data=json.loads(raw,object_pairs_hook=local_stay_permission_unique)
+    except Exception: fail('local_stay_permission_receipt_json')
+    try: valid=local_stay_permission_valid(data,source,policy['control'],policy['parent'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_permission_receipt_contract')
+    item={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),'protectedBefore':protected_before,'protectedAfter':None,
+          'parentResultSha256':policy['parent']['private_sha256']}
+    result['local_stay_permission_proof']=item
+    protected_after=local_stay_permission_protected();item['protectedAfter']=protected_after;r=data['receipt']
+    if r['protectedBefore']!=protected_before or r['protectedAfter']!=protected_after or protected_before!=protected_after:
+        fail('local_stay_permission_dependency_drift')
+    terminal=r['state'] not in ('completed_read_only','metadata_unavailable','metadata_limit')
+    if (run.returncode!=(1 if terminal else 0) or run.stderr.strip() or len(run.stdout.encode())>262144): fail('local_stay_permission_exit_no_replay')
+    try: emitted=json.loads(run.stdout,object_pairs_hook=local_stay_permission_unique)
+    except Exception: fail('local_stay_permission_stdout')
+    if emitted!=data: fail('local_stay_permission_stdout')
+    return item
+'''
+PERMISSION_REMOTE_DISPATCH = r'''    if mode=='local-stay-permission-proof-read-v1':
+        result['local_stay_permission_proof']=run_local_stay_permission_proof(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        r=result['local_stay_permission_proof']['data']['receipt']
+        terminal=r['state'] not in ('completed_read_only','metadata_unavailable','metadata_limit') or not local_stay_permission_bound(r,LOCAL_STAY_PERMISSION_POLICY['parent'])
+        result['status']='terminal_nonzero_no_replay' if terminal else 'complete'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>262144: fail('local_stay_permission_terminal_size')
+'''
+
+
+def activate_permission(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),PERMISSION_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_privileges','provider_http_calls','database_writes')),
+         'local_stay_permission_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_permission_control_sha')
+    hashes=permission_hashes();remote=core.REMOTE
+    definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,
+         'local_stay_permission_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'parent':PERMISSION_PARENT}
+    constants=('SOURCE_FACTS_MODE='+repr(SOURCE_FACTS_MODE)+'\nSOURCE_FACTS_OPERATION='+repr(SOURCE_FACTS_OPERATION)
+               +'\nSOURCE_FACTS_SOURCE_SHA='+repr(SOURCE_FACTS_SOURCE_SHA)+'\nCONTEXT_INSTALL_PARENT='+repr(CONTEXT_INSTALL_PARENT)
+               +'\nSOURCE_FACTS_FAILURE='+repr(SOURCE_FACTS_FAILURE)+'\n')
+    validators=('def local_stay_permission_parent_payload(data,control_sha):\n'
+                '    return local_stay_source_facts_valid(data,SOURCE_FACTS_SOURCE_SHA,control_sha,CONTEXT_INSTALL_PARENT,SOURCE_FACTS_FAILURE)\n')
+    program=('LOCAL_STAY_PERMISSION_POLICY='+repr(policy)+'\n'+constants+SCHEMA_VALIDATOR+SOURCE_FACTS_VALIDATOR+PERMISSION_PARENT_VALIDATOR
+             +PERMISSION_VALIDATOR+'\n'+validators+'\n'+permission_parent_completion_source()+'\n'+PERMISSION_REMOTE_HANDLER+'\n')
+    remote=remote.replace(definition,program+definition,1);remote=remote.replace(dispatch,PERMISSION_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+PERMISSION_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_PERMISSION_POLICY['hashes']: fail('local_stay_permission_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_stay_permission_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=3 or {m.name for m in members}!={*LOCAL_STAY_PERMISSION_POLICY['hashes'],'manifest.json'}: fail('local_stay_permission_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_permission_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_permission_reserved=True\n',1)
+    remote=remote.replace(final,"if globals().get('local_stay_permission_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_permission_source
+    original_completed=core.completed_result
+    core.completed_result=lambda cmd,result: completed_permission(cmd,result,control) if cmd.get('mode')==PERMISSION_MODE else original_completed(cmd,result)

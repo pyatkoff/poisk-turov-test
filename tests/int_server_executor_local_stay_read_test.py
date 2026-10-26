@@ -1263,5 +1263,199 @@ class NativeStockSourceFacts(unittest.TestCase):
         print(run.stdout.strip())
 
 
+def permission_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.PERMISSION_SOURCE_SHA} {m.PERMISSION_MODE} {m.PERMISSION_OPERATION}')
+
+
+def permission_refresh(data):
+    data['receipt']['coverageSha256']=hashlib.sha256(json.dumps({k:data[k] for k in ('coverage','privileges')},
+        ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    return data
+
+
+def permission_fixture_data(state='complete'):
+    # Fictional metadata proves the envelope rules, never a live account grant.
+    parent=m.PERMISSION_PARENT;names=['CREATE','REFERENCES','SELECT','TRIGGER']
+    tables=['anytour_hotels','anytour_hotel_sources','anytour_offers','anytour_offer_scope_state',
+            'anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    coverage={'state':state,'accountEncoding':'supported','lowerCaseTableNames':0,'partialRevokes':False,
+        'activeRoles':'unexpanded' if state=='partial' else 'none','schemaPatterns':'single_literal_match','matchingSchemaPatterns':1,
+        'metadataRowsBefore':4,'metadataRowsAfter':4,'metadataSha256Before':'a'*64,'metadataSha256After':'a'*64,
+        'tableColumnScopes':[{'tableName':table,'tablePrivileges':[],'columnPrivileges':[],'columnGrantRows':0,'observationScope':'direct_metadata_fixed_columns','columnGrants':[]} for table in tables],
+        'limits':{'rows':512,'bytes':131072}}
+    if state=='unavailable': coverage.update(schemaPatterns='not_observed',matchingSchemaPatterns=None,
+        metadataRowsBefore=None,metadataRowsAfter=None,metadataSha256Before=None,metadataSha256After=None,tableColumnScopes=None)
+    data={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-permission-proof-read-v1',
+        'state':'metadata_unavailable' if state=='unavailable' else 'completed_read_only','observedAt':1792972284,
+        'parentOperation':parent['operation'],'parentResultSha256':parent['private_sha256'],'parentFileSha256':parent['file_sha256'],
+        'databaseSha256Before':parent['database_sha256'],'databaseSha256After':parent['database_sha256'],
+        'accountSha256Before':'b'*64,'accountSha256After':'b'*64,'roleSha256Before':'c'*64,'roleSha256After':'c'*64,
+        'oldAccountIdentityKnown':False,'protectedBefore':dict(parent['protected']),'protectedAfter':dict(parent['protected']),
+        'coverageSha256':None,'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'profileWrites':0,'mappingWrites':0,'automaticAccepts':0,
+        'allRequiredProven':state=='complete','effectiveDenialClaimed':False,'ddlAdmission':False,
+        'operationId':m.PERMISSION_OPERATION,'sourceSha':m.PERMISSION_SOURCE_SHA,'controlSha':CONTROL},'coverage':coverage,
+        'privileges':{name:{'status':'proven' if state=='complete' else 'not_proven','coverage':state,
+            'basis':'none' if state=='unavailable' else 'single_literal_schema'} for name in names}}
+    return permission_refresh(data)
+
+
+def permission_receipt(data):
+    result=receipt(data);result.pop('local_stay_read')
+    result.update(mode=m.PERMISSION_MODE,operation_id=m.PERMISSION_OPERATION,source_sha=m.PERMISSION_SOURCE_SHA)
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    result['local_stay_permission_proof']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+        'protectedBefore':dict(m.PERMISSION_PARENT['protected']),'protectedAfter':dict(m.PERMISSION_PARENT['protected']),
+        'parentResultSha256':m.PERMISSION_PARENT['private_sha256']}
+    return result
+
+
+def permission_parent_fixture():
+    data=source_facts_fixture_data(True);data['receipt'].update(state='anchor_missing',missingTables=[],controlSha=m.PERMISSION_PARENT['control'])
+    for key in ('CREATE','REFERENCES','SELECT','TRIGGER','allRequired'): data['privilegeProof'][key]=False
+    return source_facts_receipt(source_facts_refresh(data))
+
+
+class PermissionAdmission(unittest.TestCase):
+    def test_fixed_owner_main_release_and_first_attempt_without_permission_changes(self):
+        c=wrapper().core;parsed=permission_command(c);body=f'{c.PREFIX}{m.PERMISSION_SOURCE_SHA} {m.PERMISSION_MODE} {m.PERMISSION_OPERATION}'
+        self.assertEqual(parsed,{'source_sha':m.PERMISSION_SOURCE_SHA,'mode':m.PERMISSION_MODE,'operation_id':m.PERMISSION_OPERATION,
+                                'maximum_privileges':4,'provider_http_calls':0,'database_writes':0})
+        for invalid in (body+' --grant',body+' otheraccount',body.replace(m.PERMISSION_SOURCE_SHA,m.INSTALL_SOURCE_SHA),
+                        body.replace(m.PERMISSION_OPERATION,m.PERMISSION_OPERATION+'-retry')):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':115,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/115': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.PERMISSION_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            with self.assertRaises(ValueError): c.checked_event('fixture',dict(event,issue={'number':4217}),CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+
+    def test_closed_two_file_bundle_preserves_no_replay_and_typed_caps(self):
+        raw,hashes=m.bundle_permission_source(SOURCE)
+        self.assertEqual(set(hashes),{m.PERMISSION_RUNNER,'v2/data/db-v1.php'})
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(len(archive.getmembers()),3);self.assertEqual(set(archive.getnames()),{*hashes,'manifest.json'})
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'v2/data').mkdir(parents=True);(root/'v2/data/db-v1.php').write_text('unreviewed helper')
+            with self.assertRaisesRegex(ValueError,'reviewed_source_changed'): m.bundle_permission_source(root)
+        c=wrapper().core;parsed=permission_command(c)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_privileges',True),('maximum_privileges',5),('provider_http_calls',False),('database_writes',1),('account','root'),('sql','GRANT')):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE)
+        self.assertIn("if len(members)!=3",c.REMOTE)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",c.REMOTE)
+        self.assertIn("if globals().get('local_stay_permission_reserved') is True and op.exists():",c.REMOTE)
+        self.assertNotIn('def run_local_stay_source_facts(',c.REMOTE)
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_positive_partial_and_unavailable_proofs_never_admit_ddl_or_claim_denial(self):
+        parsed=permission_command(wrapper().core)
+        for state in ('complete','partial','unavailable'):
+            data=permission_fixture_data(state);self.assertTrue(m.completed_permission(parsed,permission_receipt(data),CONTROL))
+            for mutate in (lambda d:d['receipt'].update(databaseWrites=False),lambda d:d['receipt'].update(ddlAdmission=True),
+                           lambda d:d['receipt'].update(effectiveDenialClaimed=True),lambda d:d['receipt'].update(oldAccountIdentityKnown=True),
+                           lambda d:d['receipt'].update(accountSha256After='d'*64),lambda d:d['coverage'].update(metadataRowsBefore=True),
+                           lambda d:d['privileges']['SELECT'].update(status='proven',basis='none')):
+                changed=copy.deepcopy(data);mutate(changed);permission_refresh(changed)
+                self.assertFalse(m.completed_permission(parsed,permission_receipt(changed),CONTROL))
+        data=permission_fixture_data();data['coverage']['partialRevokes']=True;permission_refresh(data)
+        self.assertFalse(m.valid_permission_payload(data,CONTROL))
+        data=permission_fixture_data();data['privileges']['SELECT'].update(status='not_proven',basis='none');data['receipt']['allRequiredProven']=False
+        self.assertTrue(m.completed_permission(parsed,permission_receipt(permission_refresh(data)),CONTROL))
+        column_only=permission_fixture_data();column_only['receipt']['allRequiredProven']=False
+        column_only['coverage'].update(schemaPatterns='no_match',matchingSchemaPatterns=0,metadataRowsBefore=1,metadataRowsAfter=1)
+        for value in column_only['privileges'].values(): value.update(status='not_proven',basis='none')
+        column_only['coverage']['tableColumnScopes'][2].update(columnPrivileges=['SELECT'],columnGrantRows=1,
+            columnGrants=[{'columnName':'id','privileges':['SELECT']}])
+        self.assertTrue(m.completed_permission(parsed,permission_receipt(permission_refresh(column_only)),CONTROL))
+        column_only['coverage']['tableColumnScopes'][2]['columnGrants'][0]['columnName']='unreviewed_column'
+        self.assertFalse(m.valid_permission_payload(permission_refresh(column_only),CONTROL))
+        unbound=permission_fixture_data('unavailable')
+        for subject in ('database','account','role'):
+            for suffix in ('Before','After'): unbound['receipt'][subject+'Sha256'+suffix]=None
+        self.assertTrue(m.valid_permission_payload(unbound,CONTROL))
+        self.assertFalse(m.completed_permission(parsed,permission_receipt(unbound),CONTROL))
+
+    def test_parent_is_full_old_completed_anchor_missing_direct_false_receipt(self):
+        parent=permission_parent_fixture();policy=copy.deepcopy(m.PERMISSION_PARENT)
+        policy['file_sha256']=parent['local_stay_source_facts']['fileSha256']
+        namespace={'local_stay_permission_parent_completed':m.completed_source_facts}
+        exec(m.PERMISSION_PARENT_VALIDATOR,namespace);valid=namespace['local_stay_permission_parent_valid']
+        self.assertTrue(valid(parent,policy))
+        changed=copy.deepcopy(parent);changed['local_stay_source_facts']['data']['receipt']['controlSha']=CONTROL
+        self.assertFalse(valid(changed,policy))
+        changed_data=copy.deepcopy(parent['local_stay_source_facts']['data']);changed_data['privilegeProof']['SELECT']=True
+        changed=source_facts_receipt(source_facts_refresh(changed_data));policy['file_sha256']=changed['local_stay_source_facts']['fileSha256']
+        self.assertTrue(m.completed_source_facts(source_facts_command(wrapper().core),changed,m.PERMISSION_PARENT['control']))
+        self.assertFalse(valid(changed,policy))
+
+
+class NativeStockPermission(unittest.TestCase):
+    def setUp(self):
+        self.assertIsNotNone(shutil.which('php'),'Actual PHP is required; no skip or substitute')
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.home=Path(self.temp.name)
+        self.project=self.home/'www/anytoour.ru';(self.project/'data').mkdir(parents=True);(self.project/'_preview/search3-anex-candidate').mkdir(parents=True)
+        for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+            path=self.project/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture protected '+name)
+        shutil.copyfile(SOURCE/'v2/data/db-v1.php',self.project/'data/db-v1.php');(self.project/'config.php').write_text('<?php // disposable pre-PHP boundary fixture\n')
+        protected={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('config.php','data/db-v1.php')}
+        context=copy.deepcopy(m.CONTEXT_INSTALL_PARENT);context['protected']=protected
+        self.enterContext(mock.patch.object(m,'CONTEXT_INSTALL_PARENT',context))
+        parent=permission_parent_fixture();public={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        parent.update(production_before=public,production_after=dict(public));raw=json.dumps(parent,sort_keys=True,separators=(',',':')).encode()
+        private=self.home/'.anytoour-int-executor';private.mkdir(mode=0o700)
+        self.parent_path=private/m.PERMISSION_PARENT['operation']/'result.json';self.parent_path.parent.mkdir(mode=0o700)
+        self.parent_path.write_bytes(raw);self.parent_path.chmod(0o600)
+        policy=copy.deepcopy(m.PERMISSION_PARENT);policy.update(private_sha256=hashlib.sha256(raw).hexdigest(),
+            file_sha256=parent['local_stay_source_facts']['fileSha256'],protected=protected)
+        self.enterContext(mock.patch.object(m,'PERMISSION_PARENT',policy))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=permission_command(self.c);m.activate(self.c,self.command)
+        raw,hashes=m.bundle_permission_source(SOURCE);self.archive=self.home/'permission-source.tar.gz';self.archive.write_bytes(raw)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+        self.server='mysql:host=127.0.0.1;port=3306;charset=utf8mb4';self.password=os.environ.get('LOCAL_STAY_TEST_PASSWORD','local_tv_schema_test_only')
+
+    run_remote=NativeStockRead.run_remote
+
+    def test_actual_current_private_drift_stops_before_php_and_repeat_preserves_original(self):
+        with (self.project/'config.php').open('a') as handle: handle.write('// drift after retained RAW\n')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_permission_private_drift',result)
+        self.assertEqual(result.get('schema_writes'),0);self.assertNotIn('local_stay_permission_proof',result)
+        operation=self.home/'.anytoour-int-executor'/m.PERMISSION_OPERATION;original=(operation/'result.json').read_bytes()
+        self.assertFalse((operation/'local-stay-permission-proof-read.json').exists())
+        repeat=self.run_remote();self.assertEqual(repeat.get('reason'),'operation_exists_no_replay')
+        self.assertEqual((operation/'result.json').read_bytes(),original)
+
+    def test_actual_retained_raw_private_bytes_drift_stops_before_php(self):
+        self.parent_path.write_bytes(self.parent_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_permission_parent_hash',result)
+        self.assertNotIn('local_stay_permission_proof',result);self.assertEqual(result.get('schema_writes'),0)
+
+    def test_actual_extra_staged_config_is_rejected_before_extraction(self):
+        with tarfile.open(self.archive,'r:gz') as original: members=[(x,original.extractfile(x).read()) for x in original.getmembers()]
+        with tarfile.open(self.archive,'w:gz') as changed:
+            for info,raw in members: changed.addfile(info,io.BytesIO(raw))
+            raw=b'<?php throw new RuntimeException("unmanifested");';info=tarfile.TarInfo('v2/config.php');info.size=len(raw);changed.addfile(info,io.BytesIO(raw))
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_permission_archive_scope')
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.PERMISSION_OPERATION/'source/v2/config.php').exists())
+
+    def test_actual_php_conservative_permission_metadata_contract_suite(self):
+        env=dict(os.environ,ANYTOUR_STAY_PERMISSION_PROOF_V1_TEST_DSN=self.server,
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=self.password,LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_permission_proof_read_v1_test.php')],capture_output=True,text=True,env=env,timeout=120)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout)
+        self.assertRegex(run.stdout,r'HOTEL_STAY_PERMISSION_PROOF_READ_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()
