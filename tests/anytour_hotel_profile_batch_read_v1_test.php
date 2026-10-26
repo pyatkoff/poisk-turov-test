@@ -31,7 +31,7 @@ try {
     $db->exec('CREATE TABLE catalog_hotel_details(hotel_id BIGINT PRIMARY KEY,status VARCHAR(32),description MEDIUMTEXT,raw_json MEDIUMTEXT,source_hash CHAR(64),fetched_at DATETIME) ENGINE=InnoDB');
     $sql=preg_replace('/^\s*--.*$/m','',(string)file_get_contents($source.'/v2/data/migrations/20261010-local-tv-catalog.sql'))??'';
     foreach(preg_split('/;\s*(?:\r?\n|$)/',$sql)?:[]as$part)if(trim($part)!=='')$db->exec($part);
-    $manifest=AnyTourHotelProfileBatchReadV1::manifest(__DIR__.'/../scripts/catalog/fixtures/local-profile-batch-20261026.json');
+    $manifest=AnyTourHotelProfileBatchReadV1::manifest((string)realpath(__DIR__.'/../scripts/catalog/fixtures/local-profile-batch-20261026.json'));
     $catalogInsert=$db->prepare('INSERT INTO catalog_hotels VALUES(?,?,?,1)');$detailInsert=$db->prepare("INSERT INTO catalog_hotel_details(hotel_id,status,description) VALUES(?,'success','Misleading normalized column must not be truth')");
     $localInsert=$db->prepare("INSERT INTO local_tv_hotels(id,first_seen_at,last_seen_at,pending_since,discovery_json,content_json,manual_json,source_absent_json) VALUES(?,'2026-10-26 01:00:00','2026-10-26 01:00:00','2026-10-26 01:00:00','{}','{}','{}','[]')");
     foreach($manifest['records'] as $target){$id=$target['hotelId'];$catalogInsert->execute([$id,$target['name'],$target['countryId']]);$detailInsert->execute([$id]);pb_raw($target,pb_payload($target));$localInsert->execute([$id]);(new LocalTvCatalogV1($db))->saveSource($id,pb_payload($target),'2026-10-26 01:00:00');}
