@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "9f4bcb1a350e60166919c3dbb3a8754ba186e21b5a380ffdb504a6daa215d06f",
+    "app.js": "85ba14266360a446e50c4237c6bea8afd099eb40c155ea48caafd336ce718271",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "0172f98350007779734431e13eba4a233b76ba9eb3f6e129fc356cbeab53cf9e",
     "styles.css": "696ca0edbd553d0c0a29020b961f9650fe3cc3da240b1cc39254c0e95789a2a8",
@@ -351,8 +351,8 @@
     "visualAcceptance": false,
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
-      "../prototype-search/messenger-flow-v1.js": "f3a8ee6530f7ccf2f93adb8ce45a57d5b8a19455e1ad45b9105bb7d5cf1b133f",
-      "../prototype-search/data.js": "a7d7e35b2328a911eb321ee129d1481f9f808b6714ff52842da5030d8f455715",
+      "../prototype-search/messenger-flow-v1.js": "a71fa3b98e761127faab0db6de3099f08a2fa7df0ea4c52c4d0284243f004d22",
+      "../prototype-search/data.js": "cba0190f5e022d5ec2d4b581825fc400e60b44e50f89e074f27d67e255a1de77",
       "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",

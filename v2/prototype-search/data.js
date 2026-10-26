@@ -1750,7 +1750,17 @@
   async function messengerHandoff(action,fields={}){
     const shapes={handoff_token:[],handoff_freeze:['generation','search_ref','offer_ref','local_hotel_id','choice_ref','csrf'],
       handoff_create:['operation_id','csrf'],handoff_status:['operation_id','csrf'],handoff_revoke:['operation_id','csrf']};
-    const denied=code=>Object.assign(new Error('Не удалось подготовить переход в бот.'),{code});
+    const failures=new WeakSet(),safeCodes=new Set(['invalid_request','forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing','handoff_unavailable','handoff_unknown','temporarily_unavailable']);
+    const safeFields=new Set(['flights.retained_pair','flights.retained_pair_binding','flights.selected_labels','handoff.session','hotel.catalog_labels','offer.retained_identity','price.receiver_bounds','price.retained','quote.complete_exact_pair','quote.observed_deadline','record.checkpoint_changed','record.checkpoint_deadline','record.checkpoint_unknown','record.clock','record.current_retained','record.immutable_terms','record.integrity','record.invalid_retained','record.limit','record.observed_deadline','record.receiver_size','record.server_terms','record.source','search.current_context','selection.pins','stay.hotel_place','stay.meal','stay.operator','stay.placement','stay.retained','stay.room','trip.childAges','trip.countryUiId','trip.departure_nights','trip.origin','trip.party','trip.retained','trip.stayEnd']);
+    const denied=(code,stage='request',httpStatus=null,payload=null,actualAction=action)=>{
+      const handoffFailure={...(Object.hasOwn(shapes,actualAction)||actualAction==='tv_select'?{action:actualAction}:{}),stage,code};
+      if(Number.isInteger(httpStatus)&&httpStatus>=100&&httpStatus<=599)handoffFailure.httpStatus=httpStatus;
+      if(code==='retained_fact_missing'&&safeFields.has(payload?.field)&&['INT','SEARCH','anex_session'].includes(payload?.owner)){
+        handoffFailure.field=payload.field;handoffFailure.owner=payload.owner;
+      }
+      const error=Object.assign(new Error('Не удалось подготовить переход в бот.'),{code,handoffFailure:Object.freeze(handoffFailure)});
+      failures.add(error);return error;
+    };
     const tv=action==='handoff_freeze'&&fields?.provider==='tourvisor';
     const expected=typeof action==='string'&&Object.hasOwn(shapes,action)?[...shapes[action],...(tv?['provider']:[])]:null;
     if(!expected||!fields||typeof fields!=='object'||Array.isArray(fields)
@@ -1765,7 +1775,15 @@
     }else if(action!=='handoff_token'&&(typeof fields.operation_id!=='string'||!/^[a-f0-9]{32}$/.test(fields.operation_id)))throw denied('invalid_request');
     const url=nativeEndpoint(root.V2_CONFIG?.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url||url.username||url.password)throw denied('handoff_unavailable');
-    if(tv)await prepareTourvisorHandoff(fields);
+    if(tv){
+      try{await prepareTourvisorHandoff(fields);}
+      catch(error){
+        const phase=error?.failureFacts?.phase,stage=phase==='response'?'http':phase==='local'||phase==='stale'?'request':phase==='invalid_json'||phase==='response_limit'?'response':'transport';
+        const failure=denied(error?.status===410?'handoff_stale':'handoff_unavailable',stage,error?.status,null,'tv_select');
+        if(error&&typeof error==='object'){error.handoffFailure=failure.handoffFailure;throw error;}
+        throw failure;
+      }
+    }
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
     try{
       const token=action==='handoff_token',options={method:token?'GET':'POST',credentials:'same-origin',mode:'same-origin',
@@ -1773,22 +1791,21 @@
       if(token)url.search=new URLSearchParams({action}).toString();
       else{options.headers['Content-Type']='application/json';options.headers['X-Requested-With']='AnyTourSearch3';options.body=JSON.stringify({action,...fields});}
       const response=await fetch(url.href,options),raw=await response.text();
-      if(controller.signal.aborted||new TextEncoder().encode(raw).length>32768)throw denied('handoff_unavailable');
-      let payload;try{payload=JSON.parse(raw);}catch{throw denied('handoff_unavailable');}
+      if(controller.signal.aborted)throw denied('handoff_unknown','transport');
+      if(new TextEncoder().encode(raw).length>32768)throw denied('handoff_unavailable','response',response.status);
+      let payload;try{payload=JSON.parse(raw);}catch{throw denied('handoff_unavailable','response',response.status);}
       if(!response.ok||payload?.ok!==true){
-        const safe=new Set(['forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing']);
-        throw denied(safe.has(payload?.error)?payload.error:'handoff_unavailable');
+        throw denied(safeCodes.has(payload?.error)?payload.error:'handoff_unavailable',response.ok?'response':'http',response.status,payload);
       }
       if(token){
-        if(typeof payload.csrf!=='string'||!/^[a-f0-9]{64}$/.test(payload.csrf))throw denied('handoff_unavailable');
+        if(typeof payload.csrf!=='string'||!/^[a-f0-9]{64}$/.test(payload.csrf))throw denied('handoff_unavailable','response',response.status);
         return Object.freeze({ok:true,csrf:payload.csrf});
       }
-      if(!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw denied('handoff_unavailable');
+      if(!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw denied('handoff_unavailable','response',response.status);
       return {ok:true,data:payload.data};
     }catch(error){
-      if(controller.signal.aborted)throw denied('handoff_unknown');
-      if(error?.code&&['invalid_request','forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing','handoff_unavailable'].includes(error.code))throw error;
-      throw denied('handoff_unknown');
+      if(failures.has(error))throw error;
+      throw denied('handoff_unknown','transport');
     }finally{clearTimeout(timeout);}
   }
   async function verifyAnexFollowUp(o,action){

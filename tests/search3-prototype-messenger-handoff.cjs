@@ -126,7 +126,7 @@ test('Only a server-returned exact pair with its own total can supply TV pins',a
  assert.equal(x.api.tourvisorHandoffSelection({...chosen,raw:{...chosen.raw}},h),null);
  assert.equal(x.api.tourvisorHandoffSelection(chosen,{...h,legacyIds:[]}),null);
  const count=x.calls.length;x.api.stop();assert.equal(x.api.tourvisorHandoffSelection(chosen,h),null);
- await assert.rejects(x.api.messengerHandoff('handoff_freeze',{...x.pins,csrf}),e=>e.code==='tourvisor_session_unavailable');assert.equal(x.calls.length,count);
+ await assert.rejects(x.api.messengerHandoff('handoff_freeze',{...x.pins,csrf}),e=>{assert.equal(e.code,'tourvisor_session_unavailable');assert.equal(e.handoffFailure.stage,'request');return true;});assert.equal(x.calls.length,count);
 });
 test('A lost TV quote or flight response is retained without a new ID, retry or root fallback',async()=>{
  for(const action of ['tv_tour','tv_flights']){
@@ -317,5 +317,48 @@ test('Private TV local limit details do not cross another code/provider/category
   const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{assert.equal(!!e.failureFacts.limitKind,mode==='extras');return true;});
   assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"token"|"body"|"raw"/);
  }
+});
+test('Invalid caller actions never become public failure facts',async()=>{
+ const x=setup();await assert.rejects(x.dispatch('PRIVATE_ACTION'),e=>{
+  assert.deepEqual(plain(e.handoffFailure),{stage:'request',code:'invalid_request'});return true;
+ });assert.equal(x.calls.length,0);
+});
+test('Handoff failures retain only fixed action, stage, integer status and allowlisted missing field/owner',async()=>{
+ for(const action of ['handoff_token','handoff_freeze','handoff_create','handoff_status','handoff_revoke']){
+  const x=setup(()=>({ok:false,status:422,text:async()=>JSON.stringify({ok:false,error:'retained_fact_missing',field:'stay.room',owner:'INT',token:'PRIVATE',url:'https://PRIVATE',operation_id:'PRIVATE'})}));
+  await assert.rejects(x.dispatch(action,action==='handoff_token'?{}:action==='handoff_freeze'?selector:{operation_id,csrf}),error=>{
+   assert.deepEqual(plain(error.handoffFailure),{action,stage:'http',code:'retained_fact_missing',httpStatus:422,field:'stay.room',owner:'INT'});
+   assert.equal(Object.isFrozen(error.handoffFailure),true);assert.doesNotMatch(JSON.stringify(error),/PRIVATE/);return true;
+  });
+  assert.equal(x.calls.length,1);assert.equal(x.timers.size,0);
+ }
+ for(const [field,owner,status] of [['PRIVATE','INT',422],['stay.room','PRIVATE',422],['stay.room','INT','422']]){
+  const x=setup(()=>({ok:false,status,text:async()=>JSON.stringify({ok:false,error:'retained_fact_missing',field,owner})}));
+  await assert.rejects(x.dispatch('handoff_status',{operation_id,csrf}),error=>{
+   const expected={action:'handoff_status',stage:'http',code:'retained_fact_missing'};
+   if(Number.isInteger(status))expected.httpStatus=status;
+   if(field==='stay.room'&&owner==='INT')Object.assign(expected,{field,owner});
+   assert.deepEqual(plain(error.handoffFailure),expected);return true;
+  });
+ }
+});
+test('Unreadable response and transport failures keep their actual boundary without trusting exception properties',async()=>{
+ const malformed=setup(()=>({ok:true,status:200,text:async()=>'{'}));
+ await assert.rejects(malformed.dispatch('handoff_token'),e=>e.handoffFailure.stage==='response'&&e.handoffFailure.httpStatus===200);
+ const transport=setup(()=>{throw Object.assign(Error('PRIVATE'),{code:'retained_fact_missing',field:'stay.room',owner:'INT',status:422});});
+ await assert.rejects(transport.dispatch('handoff_create',{operation_id,csrf}),e=>{
+  assert.deepEqual(plain(e.handoffFailure),{action:'handoff_create',stage:'transport',code:'handoff_unknown'});return true;
+ });
+ assert.equal(transport.calls.length,1);
+});
+test('Conditional TV selection failure preserves original TV error and prevents freeze',async()=>{
+ let x;x=tvSetup(c=>c.action==='tv_select'?x.reply({ok:false,error:'tv_operation_unknown'},409):undefined);
+ const h=await x.start(),o=await x.checked(h),pins=x.api.tourvisorHandoffSelection(o,h).selector;
+ await assert.rejects(x.api.messengerHandoff('handoff_freeze',{...pins,csrf}),e=>{
+  assert.equal(e.code,'tourvisor_session_unavailable');
+  assert.deepEqual(plain(e.handoffFailure),{action:'tv_select',stage:'http',code:'handoff_unavailable',httpStatus:409});return true;
+ });
+ assert.equal(x.calls.filter(c=>c.action==='handoff_freeze').length,0);
+ assert.equal(x.calls.filter(c=>c.action==='tv_select').length,1);
 });
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}console.log(JSON.stringify({groups:tests.length,result:'PASS',supplierRequests:0,botMessages:0,storageWrites:0,runtimeConnected:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

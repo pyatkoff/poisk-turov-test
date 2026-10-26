@@ -116,4 +116,16 @@ test('TV family contact matches canonical request ages while retaining the enter
  const x=setup(undefined,{tv:true,manager:true});x.input.offer.ages=[12,0];x.input.requestParty.childAges=[0,12];x.test.bind();await x.settled();
  assert.deepEqual(plain(x.test.snapshot().trip.childAges),[0,12]);assert.deepEqual(plain(x.input.offer.ages),[12,0]);await x.test.open('telegram');assert.deepEqual(x.navigation,[links.telegram]);
 });
+test('Failed preparation shows a useful contact alternative without a misleading status/retry action',async()=>{
+ for(const code of ['retained_fact_missing','handoff_limit','forbidden','handoff_stale','signer_unavailable','temporarily_unavailable','handoff_unavailable']){
+  const x=setup(action=>action==='handoff_freeze'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{action,stage:'http',code,httpStatus:422,field:'stay.room',owner:'INT'}})):undefined);
+  x.test.bind();await spin(()=>x.nodes['#messenger-status'].textContent&&x.nodes['#messenger-status'].textContent!=='Подготавливаем переход…');
+  assert.ok(x.buttons.every(b=>b.disabled));assert.equal(x.nodes['#messenger-check'].hidden,true);
+  assert.match(x.nodes['#messenger-status'].textContent,/телефону|выбору тура/);
+  assert.doesNotMatch(x.nodes['#messenger-status'].textContent,/PRIVATE|422|stay\.room|retained_fact|INT/);
+  const before=x.calls.length;await x.test.check();assert.equal(x.calls.length,before,'no operation means no status or replacement preparation');
+  x.test.phone(true);x.phoneInput.value='synthetic draft';x.test.phone(false);assert.equal(x.phoneInput.value,'synthetic draft');
+  assert.deepEqual(x.navigation,[]);assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+ }
+});
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

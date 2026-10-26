@@ -153,6 +153,131 @@ test('TV freeze without its authoritative original expiry cannot enable CREATE',
  const flow=api.createSession({selection,request:async(action)=>{calls.push(action);return action==='handoff_token'?{ok:true,csrf}:{ok:true,data:{operation_id:id,state:'prepared',observation:plain(snapshot)}};}});
  assert.equal((await flow.prepare(snapshot)).state,'unavailable');await flow.create(snapshot);assert.deepEqual(calls,['handoff_token','handoff_freeze']);
 });
+test('Preparation preserves bounded token and freeze failures without exposing private exception data',async()=>{
+ for(const action of ['handoff_token','handoff_freeze']){
+  const x=setup(current=>current===action?Promise.reject(Object.assign(Error('PRIVATE_EXCEPTION'),{handoffFailure:{
+   action,stage:'http',code:'forbidden',httpStatus:403,csrf,operation_id:id,links:validLinks,message:'PRIVATE_BODY'
+  }})):undefined);
+  const result=await x.flow.prepare(x.snapshot);
+  assert.equal(result.state,'unavailable');assert.equal(result.error,'handoff_unavailable');
+  assert.deepEqual(plain(result.failure),{action,stage:'http',code:'forbidden',httpStatus:403});
+  assert.equal(Object.isFrozen(result.failure),true);
+  assert.doesNotMatch(JSON.stringify(result),/PRIVATE_|csrf|operation_id|fixture-only|links/);
+  await x.flow.create(x.snapshot);assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+ }
+});
+test('Create and status failures keep distinct facts while UNKNOWN remains status-only',async()=>{
+ let statuses=0;
+ const x=setup(action=>action==='handoff_create'?Promise.reject(Object.assign(Error('PRIVATE_CREATE'),{handoffFailure:{action,stage:'http',code:'signer_unavailable',httpStatus:503}})):
+  action==='handoff_status'&&statuses++===0?Promise.reject(Object.assign(Error('PRIVATE_STATUS'),{handoffFailure:{action,stage:'http',code:'handoff_missing',httpStatus:404}})):undefined);
+ await x.flow.prepare(x.snapshot);
+ const create=await x.flow.create(x.snapshot);assert.equal(create.state,'unknown');
+ assert.deepEqual(plain(create.failure),{action:'handoff_create',stage:'http',code:'signer_unavailable',httpStatus:503});
+ const status=await x.flow.create(x.snapshot);assert.equal(status.state,'unknown');
+ assert.deepEqual(plain(status.failure),{action:'handoff_status',stage:'http',code:'handoff_missing',httpStatus:404});
+ assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze','handoff_create','handoff_status']);
+ const ready=await x.flow.status(x.snapshot);assert.equal(ready.state,'ready');assert.equal(ready.error,undefined);assert.equal(ready.failure,undefined);
+ assert.equal(x.calls.filter(c=>c.action==='handoff_create').length,1);
+});
+test('Foreign action, unlisted stage/code and malformed status cannot enter the public failure view',async()=>{
+ for(const httpStatus of [true,'403',99,600,NaN]){
+  const x=setup(action=>action==='handoff_token'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{
+   action,stage:'PRIVATE_STAGE',code:'PRIVATE_CODE',httpStatus,field:'PRIVATE_FIELD',owner:'PRIVATE_OWNER',raw:'PRIVATE_BODY'
+  }})):undefined);
+  const result=await x.flow.prepare(x.snapshot);
+  assert.deepEqual(plain(result.failure),{action:'handoff_token',stage:'transport',code:'handoff_unavailable'});
+  assert.doesNotMatch(JSON.stringify(result),/PRIVATE/);
+ }
+ const x=setup(action=>action==='handoff_token'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{
+  action:'handoff_create',stage:'http',code:'forbidden',httpStatus:403
+ }})):undefined);
+ assert.deepEqual(plain((await x.flow.prepare(x.snapshot)).failure),{action:'handoff_token',stage:'transport',code:'handoff_unavailable'});
+});
+test('TV selection facts belong only to the conditional TV freeze boundary',async()=>{
+ const fact={action:'tv_select',stage:'http',code:'retained_fact_missing',httpStatus:422};
+ const owner=harness.fixtureOwner,input=owner.tourvisorFixture(true),selection=owner.api.createSession(()=>input,owner.clock),snapshot=selection.capture();
+ const flow=api.createSession({selection,request:async action=>{
+  if(action==='handoff_token')return {ok:true,csrf};
+  throw Object.assign(Error('PRIVATE_TV'),{handoffFailure:fact});
+ }});
+ assert.deepEqual(plain((await flow.prepare(snapshot)).failure),fact);
+ const anex=setup(action=>action==='handoff_freeze'?Promise.reject(Object.assign(Error('PRIVATE_TV'),{handoffFailure:fact})):undefined);
+ assert.deepEqual(plain((await anex.flow.prepare(anex.snapshot)).failure),{action:'handoff_freeze',stage:'transport',code:'handoff_unavailable'});
+});
+test('Only a complete allowlisted retained-field and owner pair survives the failure boundary',async()=>{
+ for(const [code,field,owner,allowed] of [
+  ['retained_fact_missing','stay.room','INT',true],['retained_fact_missing','trip.stayEnd','SEARCH',true],
+  ['retained_fact_missing','handoff.session','anex_session',true],['forbidden','stay.room','INT',false],
+  ['retained_fact_missing','stay.room',undefined,false],['retained_fact_missing',undefined,'INT',false],
+  ['retained_fact_missing','trip.checkIn','INT',false],['retained_fact_missing','trip.checkOut','INT',false],
+  ['retained_fact_missing','PRIVATE_FIELD','INT',false],['retained_fact_missing','stay.room','PRIVATE_OWNER',false]
+ ]){
+  const x=setup(action=>action==='handoff_freeze'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{
+   action,stage:'http',code,httpStatus:422,field,owner,operation_id:id,raw:'PRIVATE_BODY'
+  }})):undefined);
+  const expected={action:'handoff_freeze',stage:'http',code,httpStatus:422,...(allowed?{field,owner}:{})};
+  const result=await x.flow.prepare(x.snapshot);assert.deepEqual(plain(result.failure),expected);
+  assert.doesNotMatch(JSON.stringify(result),/PRIVATE_|operation_id|checkIn|checkOut/);
+ }
+});
+test('Malformed replies identify the local response boundary rather than a backend failure',async()=>{
+ for(const action of ['handoff_token','handoff_freeze','handoff_create','handoff_status']){
+  const x=setup(current=>current===action?{ok:true,data:{}}:undefined);
+  let result=await x.flow.prepare(x.snapshot);
+  if(action==='handoff_create')result=await x.flow.create(x.snapshot);
+  if(action==='handoff_status')result=await x.flow.status(x.snapshot);
+  assert.deepEqual(plain(result.failure),{action,stage:'response',code:'handoff_unavailable'});
+ }
+});
+test('Failed token/freeze preparation survives same-selector reopen without another request',async()=>{
+ for(const failedAction of ['handoff_token','handoff_freeze']){
+  const x=setup(action=>action===failedAction?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{action,stage:'transport',code:'handoff_unknown'}})):undefined);
+  const first=await x.flow.prepare(x.snapshot),calls=plain(x.calls);
+  assert.equal(first.state,'unavailable');
+  assert.deepEqual(plain((await x.flow.prepare(x.snapshot)).failure),plain(first.failure));
+  const reopen=x.selection.capture();assert.equal(x.selection.isCurrent(reopen),true);
+  assert.deepEqual(plain((await x.flow.prepare(reopen)).failure),plain(first.failure));
+  await x.flow.create(reopen);await x.flow.status(reopen);
+  assert.deepEqual(plain(x.calls),calls,'reopen cannot retry token/freeze or fabricate CREATE/status');
+  x.input.revision++;x.input.offer.raw={...x.input.offer.raw,anexGeneration:8};x.input.application={...x.input.application,generation:8};
+  const next=x.selection.capture();await x.flow.prepare(next);
+  assert.equal(x.calls.filter(c=>c.action===failedAction).length,2,'a genuinely different current selector may prepare');
+ }
+});
+test('Conditional TV-select failure remains unavailable across exact-selector recapture',async()=>{
+ const owner=harness.fixtureOwner,input=owner.tourvisorFixture(true),selection=owner.api.createSession(()=>input,owner.clock),calls=[];
+ const flow=api.createSession({selection,request:async action=>{
+  calls.push(action);if(action==='handoff_token')return {ok:true,csrf};
+  throw Object.assign(Error('PRIVATE'),{handoffFailure:{action:'tv_select',stage:'transport',code:'handoff_unknown'}});
+ }});
+ const first=selection.capture();assert.equal((await flow.prepare(first)).failure.action,'tv_select');
+ const reopen=selection.capture();assert.equal((await flow.prepare(reopen)).failure.action,'tv_select');
+ assert.deepEqual(calls,['handoff_token','handoff_freeze']);
+});
+test('Failed preparation identities retain the eight-operation bound without eviction or replay',async()=>{
+ const x=setup(action=>action==='handoff_token'?Promise.reject(Error('PRIVATE')):undefined);
+ for(let generation=7;generation<15;generation++){
+  x.input.offer.raw={...x.input.offer.raw,anexGeneration:generation};x.input.application={...x.input.application,generation};
+  await x.flow.prepare(x.selection.capture());
+ }
+ assert.equal(x.calls.length,8);
+ x.input.offer.raw={...x.input.offer.raw,anexGeneration:15};x.input.application={...x.input.application,generation:15};
+ const blocked=await x.flow.prepare(x.selection.capture());
+ assert.deepEqual(plain(blocked.failure),{action:'handoff_freeze',stage:'request',code:'handoff_limit'});assert.equal(x.calls.length,8);
+ x.input.offer.raw={...x.input.offer.raw,anexGeneration:7};x.input.application={...x.input.application,generation:7};
+ assert.equal((await x.flow.prepare(x.selection.capture())).failure.action,'handoff_token');assert.equal(x.calls.length,8);
+});
+test('The failed-preparation bound does not block reopening an already-known successful operation',async()=>{
+ const x=setup(action=>action==='handoff_freeze'?{ok:true,data:{
+  operation_id:x.input.application.generation.toString(16).padStart(32,'0'),state:'prepared',observation:plain(x.selection.capture())
+ }}:undefined);
+ for(let generation=7;generation<15;generation++){
+  x.input.offer.raw={...x.input.offer.raw,anexGeneration:generation};x.input.application={...x.input.application,generation};
+  assert.equal((await x.flow.prepare(x.selection.capture())).state,'prepared');
+ }
+ x.input.offer.raw={...x.input.offer.raw,anexGeneration:7};x.input.application={...x.input.application,generation:7};
+ assert.equal((await x.flow.prepare(x.selection.capture())).state,'prepared');
+});
 (async()=>{
   for(const {name,fn} of tests){await fn();console.log('PASS '+name);}
   assert.deepEqual(io,[]);assert.equal(harness.fixtureOwner.existingCasesRun,0);
