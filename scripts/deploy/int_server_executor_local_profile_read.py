@@ -42,6 +42,10 @@ def register_parser(core):
 
     def parse(body):
         parts = body[len(core.PREFIX):].split() if body.startswith(core.PREFIX) else []
+        if len(parts) >= 2 and parts[1] == TOPOLOGY_MODE:
+            need(parts == [TOPOLOGY_SOURCE, TOPOLOGY_MODE, TOPOLOGY_OPERATION], 'local_profile_topology_fixed_command')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'local_profile_topology_first_attempt')
+            return topology_command()
         if len(parts) >= 2 and parts[1] == EVIDENCE_MODE:
             need(parts == [EVIDENCE_SOURCE, EVIDENCE_MODE, EVIDENCE_OPERATION], 'local_profile_88750_fixed_command')
             need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'local_profile_88750_first_attempt')
@@ -230,6 +234,8 @@ REMOTE_DISPATCH = r'''    if mode=='local-profile-completeness-read-v1':
 
 
 def activate(core, command):
+    if command.get('mode') == TOPOLOGY_MODE:
+        return activate_topology(core, command)
     if command.get('mode') == EVIDENCE_MODE:
         return activate_evidence(core, command)
     if command.get('mode') == BATCH_MODE:
@@ -612,3 +618,226 @@ def activate_evidence(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_evidence_source
     original=core.completed_result
     core.completed_result=lambda cmd,r:completed_evidence(cmd,r,control) if cmd.get('mode')==EVIDENCE_MODE else original(cmd,r)
+
+
+# Materially new topology/config-selection and same-PDO binding contract from INT6412575747.
+# The refused4923 capsule above stays immutable, including its ca7 ROOT pin.
+TOPOLOGY_MODE = 'local-profile-topology-evidence-v1'
+TOPOLOGY_OPERATION = 'int-andromeda-local-profile-topology-evidence-20261026-v1'
+TOPOLOGY_SOURCE = 'ccf5a1b1c8dcc9d3b796b40c85aca0f9407eb1a1'
+TOPOLOGY_RUNNER = 'scripts/catalog/anytour_hotel_profile_topology_evidence_v1.php'
+TOPOLOGY_RUNNER_SHA = '7a2fef3203ac7b376626fceb411185a42eaa5ef6739cde18bc272d64cf50da3f'
+TOPOLOGY_CONTRACT = 'scripts/catalog/fixtures/local-profile-topology-evidence-20261026.json'
+TOPOLOGY_CONTRACT_SHA = '9e7dc77ba18452218e0073dca02af3fa97831d94958f19767a15214a47018ca0'
+TOPOLOGY_HANDOFF_SHA = 'f474c8ec1cd383f321b0fd35cd9b8263ea864aa5150924c13379545a78a62603'
+TOPOLOGY_MAIN_HELPER = 'provenance/main-db-v1.php'
+TOPOLOGY_MAIN_HELPER_SHA = 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'
+TOPOLOGY_FAILED_SHA = '8eefd9d1c36ae5bf5c2d8d07c5931da4238ec886f87bf2be01d521a3fabf9dcd'
+TOPOLOGY_PROTECTED = {'config.php':PROTECTED['config.php'],'data/db-v1.php':TOPOLOGY_MAIN_HELPER_SHA}
+
+
+def topology_command():
+    return {'source_sha':TOPOLOGY_SOURCE,'mode':TOPOLOGY_MODE,'operation_id':TOPOLOGY_OPERATION,
+            'catalog_hotel_id':88750,'provider_http_calls':0,'database_writes':0}
+
+
+def topology_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}',TOPOLOGY_RUNNER_SHA),'local_profile_topology_unreviewed')
+    return {**hashes(),TOPOLOGY_RUNNER:TOPOLOGY_RUNNER_SHA,TOPOLOGY_CONTRACT:TOPOLOGY_CONTRACT_SHA,
+            TOPOLOGY_MAIN_HELPER:TOPOLOGY_MAIN_HELPER_SHA}
+
+
+def topology_contract():
+    path=Path(__file__).resolve().parents[2]/TOPOLOGY_CONTRACT
+    need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_profile_topology_contract_path')
+    raw=path.read_bytes();need(len(raw)==4797 and hashlib.sha256(raw).hexdigest()==TOPOLOGY_CONTRACT_SHA,'local_profile_topology_contract_pin')
+    d=json.loads(raw);h=d['ownerHandoff']
+    need(d['schemaVersion']==1 and h['commentId']==6412575747 and h['issue']==2506 and h['actorId']==226193297
+         and h['association']=='OWNER' and h['createdAt']==h['updatedAt'] and h['bodySha256']==TOPOLOGY_HANDOFF_SHA
+         and hashlib.sha256(h['body'].encode()).hexdigest()==TOPOLOGY_HANDOFF_SHA,'local_profile_topology_owner_handoff')
+    return d
+
+
+def topology_policy(control):
+    return {'command':topology_command(),'hashes':topology_hashes(),'control':control,'protected':TOPOLOGY_PROTECTED,'database':DATABASE,
+            'contractSha256':TOPOLOGY_CONTRACT_SHA,'contract':topology_contract(),'handoffSha256':TOPOLOGY_HANDOFF_SHA,
+            'failedSha256':TOPOLOGY_FAILED_SHA,'failedOperation':EVIDENCE_OPERATION,'mainHelperSha256':TOPOLOGY_MAIN_HELPER_SHA,
+            'parentSha256':EVIDENCE_PARENT_SHA,'parentOperation':BATCH_OPERATION,'parentPolicy':batch_policy(EVIDENCE_PARENT_CONTROL),
+            'rawSha256':EVIDENCE_RAW_SHA,'timeSha256':EVIDENCE_TIME_SHA}
+
+
+def bundle_topology_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];output=io.BytesIO();pins=topology_hashes()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in pins.items():
+            path=control/'v2/data/db-v1.php' if relative==TOPOLOGY_MAIN_HELPER else (control if relative in (RUNNER,TOPOLOGY_RUNNER,TOPOLOGY_CONTRACT) else source)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_profile_topology_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=2097152 and hashlib.sha256(raw).hexdigest()==digest,'local_profile_topology_source_drift')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':pins},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),pins
+
+
+TOPOLOGY_INPUT_PROGRAM = r'''
+def profile_topology_inputs(stage):
+    p=private/PROFILE_READ_POLICY['failedOperation'];f=p/'result.json'
+    if p.is_symlink() or p.resolve()!=p or not p.is_dir() or not safe_file(f,832) or f.resolve()!=f:fail('local_profile_topology_failed_unavailable')
+    raw=f.read_bytes()
+    if len(raw)!=832 or hashlib.sha256(raw).hexdigest()!=PROFILE_READ_POLICY['failedSha256']:fail('local_profile_topology_failed_drift')
+    try: failed=json.loads(raw,object_pairs_hook=profile_read_unique)
+    except Exception:fail('local_profile_topology_failed_json')
+    item=failed.get('local_profile_88750_evidence',{})
+    if (failed.get('status')!='unknown_no_replay' or failed.get('reason')!='local_profile_88750_private_drift'
+        or failed.get('mode')!='local-profile-88750-evidence-v1' or failed.get('operation_id')!=PROFILE_READ_POLICY['failedOperation']
+        or failed.get('source_sha')!=PROFILE_READ_POLICY['command']['source_sha']
+        or item!={'data':None,'fileSha256':None,'protectedBefore':PROFILE_READ_POLICY['protected'],'protectedAfter':None}
+        or any(type(failed.get(k)) is not int or failed[k]!=0 for k in ('supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls'))):fail('local_profile_topology_failed_contract')
+    profile_88750_parent()
+    c=stage/'scripts/catalog/fixtures/local-profile-topology-evidence-20261026.json'
+    if not safe_file(c,4797) or c.resolve()!=c:fail('local_profile_topology_contract_path')
+    raw=c.read_bytes()
+    if len(raw)!=4797 or hashlib.sha256(raw).hexdigest()!=PROFILE_READ_POLICY['contractSha256']:fail('local_profile_topology_contract_drift')
+    try: contract=json.loads(raw,object_pairs_hook=profile_read_unique)
+    except Exception:fail('local_profile_topology_contract_json')
+    if contract!=PROFILE_READ_POLICY['contract'] or hashlib.sha256(contract['ownerHandoff']['body'].encode()).hexdigest()!=PROFILE_READ_POLICY['handoffSha256']:fail('local_profile_topology_owner_handoff')
+    adjacent=stage/'v2/config.php';known=stage/'provenance/main-db-v1.php'
+    if adjacent.exists() or adjacent.is_symlink():fail('local_profile_topology_adjacent_config')
+    if not safe_file(known,3282) or known.resolve()!=known or hashlib.sha256(known.read_bytes()).hexdigest()!=PROFILE_READ_POLICY['mainHelperSha256']:fail('local_profile_topology_main_source')
+'''
+
+
+TOPOLOGY_VALIDATOR = r'''
+def profile_read_json(value):
+    return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029').encode()
+def profile_read_unique(pairs):
+    result={}
+    for k,v in pairs:
+        if k in result:raise ValueError('duplicate_json_key')
+        result[k]=v
+    return result
+def profile_read_valid(data,policy):
+    sha=lambda v:isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) is not None
+    integer=lambda v,lo,hi:type(v) is int and lo<=v<=hi
+    if not isinstance(data,dict) or set(data)!={'receipt','topology','evidence'} or len(profile_read_json(data))>262144:return False
+    r=data['receipt'];t=data['topology'];e=data['evidence']
+    keys={'schemaVersion','source','state','reason','observedAt','hotelId','countryId','contractSha256','ownerHandoffBodySha256','failedResultSha256',
+          'parentResultSha256','parentTargetSha256','rawSha256Before','rawSha256After','sourceTimeSha256','databaseSha256Before','databaseSha256After',
+          'accountSha256Before','accountSha256After','roleSha256Before','roleSha256After','oldAccountIdentityKnown','protectedBefore','protectedAfter',
+          'blockCount','textBytes','evidenceSha256','supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites','automaticAccepts',
+          'priceAuthority','importAllowed','phases','operationId','sourceSha','controlSha'}
+    if (not isinstance(r,dict) or set(r)!=keys or not integer(r['schemaVersion'],1,1) or r['source']!='anytour-hotel-profile-topology-evidence-v1'
+        or r['state'] not in ('held','completed_read_only') or not integer(r['observedAt'],1,253402300799) or not integer(r['hotelId'],88750,88750)
+        or not integer(r['countryId'],4,4) or r['contractSha256']!=policy['contractSha256'] or r['ownerHandoffBodySha256']!=policy['handoffSha256']
+        or r['failedResultSha256']!=policy['failedSha256'] or r['parentResultSha256']!=policy['parentSha256']
+        or r['parentTargetSha256']!='2022f9f9592c1f27cdefb3a9370c9ee84cee3de4139d5a33f5428b713e899a50'
+        or r['operationId']!=policy['command']['operation_id'] or r['sourceSha']!=policy['command']['source_sha'] or r['controlSha']!=policy['control']
+        or not integer(r['blockCount'],0,32) or not integer(r['textBytes'],0,65536) or r['oldAccountIdentityKnown'] is not False
+        or r['priceAuthority'] is not False or r['importAllowed'] is not False):return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites','automaticAccepts')):return False
+    for k in ('rawSha256Before','rawSha256After','sourceTimeSha256','databaseSha256Before','databaseSha256After','accountSha256Before','accountSha256After','roleSha256Before','roleSha256After'):
+        if r[k] is not None and not sha(r[k]):return False
+    for k in ('protectedBefore','protectedAfter'):
+        if r[k] is not None and (not isinstance(r[k],dict) or set(r[k])!=set(policy['protected']) or any(not sha(v) for v in r[k].values())):return False
+    p=r['phases'];phasekeys={'phpExecuted','stagedHelperAttempted','pdoAttempted','databaseConnected','configSelected','topologyVerified','appDataRead','rootHelperExecuted'}
+    if not isinstance(p,dict) or set(p)!=phasekeys or any(type(v) is not bool for v in p.values()) or p['phpExecuted'] is not True or p['rootHelperExecuted'] is not False:return False
+    if ((p['stagedHelperAttempted'] and not p['topologyVerified']) or (p['configSelected'] and not p['stagedHelperAttempted'])
+        or (p['pdoAttempted'] and not p['configSelected']) or (p['databaseConnected'] and not p['pdoAttempted']) or (p['appDataRead'] and not p['databaseConnected'])):return False
+    if not isinstance(t,dict) or set(t)!={'before','after','selectedConfigSha256'}:return False
+    topokeys={'rootConfigSha256','rootHelperSha256','mainHelperSha256','stagedHelperSha256','stagedConfigAbsent','documentRootBound'}
+    for side in ('before','after'):
+        v=t[side]
+        if v is not None and (not isinstance(v,dict) or set(v)!=topokeys or any(not sha(v[k]) for k in ('rootConfigSha256','rootHelperSha256','mainHelperSha256','stagedHelperSha256'))
+                              or type(v['stagedConfigAbsent']) is not bool or type(v['documentRootBound']) is not bool):return False
+    if ((t['selectedConfigSha256'] is not None and not sha(t['selectedConfigSha256']))
+        or p['configSelected']!=(t['selectedConfigSha256'] is not None)):return False
+    if r['state']=='held':return (isinstance(r['reason'],str) and re.fullmatch(r'[a-z_]{1,64}',r['reason']) is not None
+        and e is None and r['evidenceSha256'] is None and r['blockCount']==0 and r['textBytes']==0)
+    expected={'rootConfigSha256':policy['protected']['config.php'],'rootHelperSha256':policy['mainHelperSha256'],'mainHelperSha256':policy['mainHelperSha256'],
+              'stagedHelperSha256':policy['hashes']['v2/data/db-v1.php'],'stagedConfigAbsent':True,'documentRootBound':True}
+    if (r['reason'] is not None or any(p[k] is not True for k in phasekeys-{'rootHelperExecuted'}) or t['before']!=expected or t['after']!=expected
+        or t['selectedConfigSha256']!=expected['rootConfigSha256'] or r['rawSha256Before']!=policy['rawSha256'] or r['rawSha256After']!=policy['rawSha256']
+        or r['sourceTimeSha256']!=policy['timeSha256'] or r['databaseSha256Before']!=policy['database'] or r['databaseSha256After']!=policy['database']
+        or not sha(r['accountSha256Before']) or r['accountSha256Before']!=r['accountSha256After'] or not sha(r['roleSha256Before']) or r['roleSha256Before']!=r['roleSha256After']
+        or r['protectedBefore']!=policy['protected'] or r['protectedAfter']!=policy['protected'] or r['blockCount']<1
+        or not isinstance(e,dict) or set(e)!={'hotelId','countryId','name','rawSha256','sourceTimeSha256','consumerRevision','consumerState','manualFieldCount','sourceAbsentCount','sourceAbsentSha256','blocks'}
+        or not integer(e['hotelId'],88750,88750) or not integer(e['countryId'],4,4) or e['name']!='THE X BELEK' or e['rawSha256']!=policy['rawSha256']
+        or e['sourceTimeSha256']!=policy['timeSha256'] or not integer(e['consumerRevision'],3,3) or e['consumerState']!='ready'
+        or not integer(e['manualFieldCount'],0,0) or not integer(e['sourceAbsentCount'],1,1)
+        or e['sourceAbsentSha256']!='8f515b15e10dfa8d9181889456d432e3b6b5d40458b1c41fbd864e9fa628a4d2'
+        or not isinstance(e['blocks'],list) or len(e['blocks'])!=r['blockCount'] or r['evidenceSha256']!=hashlib.sha256(profile_read_json(e)).hexdigest()):return False
+    fixed={'common.place':'place','common.build':'build','common.repair':'repair','common.square':'square',
+           **{'infrastructure.'+k:'hotelInformation.infrastructure.'+k for k in ('beach','territory','pools','pool','sport','internet')},
+           **{'services.'+k:'hotelInformation.services.'+k for k in ('available','inRoom','child','animation','free','servicesPay')}}
+    paths=set();total=0
+    for b in e['blocks']:
+        if not isinstance(b,dict) or set(b)!={'sourcePath','consumerPath','text','sha256','byteLength','consumerComparison'} or not isinstance(b['sourcePath'],str) or b['sourcePath'] in paths:return False
+        match=re.fullmatch(r'\$(?:\[0\])?\.([A-Za-z]+)\.([A-Za-z][A-Za-z0-9_]{0,47})',b['sourcePath'])
+        if not match:return False
+        group,key=match.groups();path=group+'.'+key
+        if path in fixed:projection=fixed[path]
+        elif group in ('meals','descriptions') and not re.search(r'phone|email|contact|url|site|booking|secret|token|password|account|address',key,re.I):projection='hotelInformation.meals.'+key if group=='meals' else None
+        else:return False
+        if (b['consumerPath']!=projection or not isinstance(b['text'],str) or not b['text'].strip() or not integer(b['byteLength'],1,8192)
+            or len(b['text'].encode())!=b['byteLength'] or b['sha256']!=hashlib.sha256(b['text'].encode()).hexdigest()):return False
+        total+=b['byteLength'];paths.add(b['sourcePath']);c=b['consumerComparison']
+        if not isinstance(c,dict) or set(c)!={'state','sha256','byteLength'}:return False
+        if projection is None:
+            if c!={'state':'not_projected','sha256':None,'byteLength':None}:return False
+        elif c['state']=='missing':
+            if c['sha256'] is not None or type(c['byteLength']) is not int or c['byteLength']!=0:return False
+        elif c['state'] in ('equal','different'):
+            if (not sha(c['sha256']) or not integer(c['byteLength'],1,2097152) or ((c['state']=='equal')!=(c['sha256']==b['sha256'])) or (c['state']=='equal' and c['byteLength']!=b['byteLength'])):return False
+        else:return False
+    return total==r['textBytes'] and total<=65536
+'''
+
+
+def valid_topology_payload(data,control):
+    ns={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(TOPOLOGY_VALIDATOR,ns)
+        return ns['profile_read_valid'](data,topology_policy(control))
+    except (KeyError,TypeError,ValueError,AttributeError):return False
+
+
+def completed_topology(command,result,control):
+    try:
+        if (command!=topology_command() or any(type(command.get(k)) is not int for k in ('catalog_hotel_id','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha')) or len(json.dumps(result).encode())>524288):return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')):return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'} or not isinstance(before['index.php'],str)
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())):return False
+        item=result['local_profile_topology_evidence']
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','protectedBefore','protectedAfter'} or item['protectedBefore']!=TOPOLOGY_PROTECTED
+            or item['protectedAfter']!=TOPOLOGY_PROTECTED or not valid_topology_payload(item['data'],control) or item['data']['receipt']['state']!='completed_read_only'):return False
+        raw=json.dumps(item['data'],ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029').encode()+b'\n'
+        return item['fileSha256']==hashlib.sha256(raw).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError):return False
+
+
+def activate_topology(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([TOPOLOGY_SOURCE,TOPOLOGY_MODE,TOPOLOGY_OPERATION]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('catalog_hotel_id','provider_http_calls','database_writes')),'local_profile_topology_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control),'local_profile_topology_control')
+    remote=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,'local_profile_topology_registration')
+    handler=REMOTE_HANDLER.replace('run_profile_read','run_profile_topology_evidence').replace('local_profile_completeness','local_profile_topology_evidence').replace('anytour_hotel_profile_completeness_read_v1.php','anytour_hotel_profile_topology_evidence_v1.php').replace('local-profile-completeness-read.json','local-profile-topology-evidence.json').replace('local_profile_read_','local_profile_topology_')
+    anchor='    protected=profile_read_protected()\n';need(handler.count(anchor)==1,'local_profile_topology_input_anchor')
+    handler=handler.replace(anchor,'    profile_topology_inputs(stage)\n'+anchor,1)
+    code=REMOTE_DISPATCH.replace(MODE,TOPOLOGY_MODE).replace('local_profile_completeness','local_profile_topology_evidence').replace('run_profile_read','run_profile_topology_evidence')
+    program='PROFILE_READ_POLICY='+repr(topology_policy(control))+'\n'+BATCH_VALIDATOR+EVIDENCE_PARENT_PROGRAM+TOPOLOGY_VALIDATOR+TOPOLOGY_INPUT_PROGRAM+handler+'\n'
+    remote=remote.replace(definition,program+definition,1).replace(dispatch,code+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+TOPOLOGY_MODE+"','reconcile',").replace(manifest,"    if not isinstance(files,dict) or files!=PROFILE_READ_POLICY['hashes']: fail('local_profile_topology_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_profile_topology_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=len(PROFILE_READ_POLICY['hashes'])+1 or {m.name for m in members}!={*PROFILE_READ_POLICY['hashes'],'manifest.json'}: fail('local_profile_topology_archive')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_profile_topology_reservation')
+    remote=remote.replace(reservation,reservation+'    profile_read_reserved=True\n',1).replace(final,"if globals().get('profile_read_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_topology_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,r:completed_topology(cmd,r,control) if cmd.get('mode')==TOPOLOGY_MODE else original(cmd,r)

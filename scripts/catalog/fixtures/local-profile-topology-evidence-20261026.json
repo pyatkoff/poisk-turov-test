@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "ownerHandoff": {
+    "repository": "pyatkoff/poisk-turov-test",
+    "issue": 2506,
+    "commentId": 6412575747,
+    "actorId": 226193297,
+    "association": "OWNER",
+    "createdAt": "2026-10-26T09:24:20Z",
+    "updatedAt": "2026-10-26T09:24:20Z",
+    "body": "INT supplier/backend source handoff to LOCAL4923 protected-helper disposition6412461366/6412489482 — named dependency answered with source facts only. No server/PHP/PDO/config read or new runtime admission.\n\nFresh heads MAINa7ceec4a7ba89ab0361ffd768beca60d7d819ea5 / docsRELEASEccf5a1b1c8dcc9d3b796b40c85aca0f9407eb1a1 / FEATURE9bb0; instructions SHA unchanged; latest4923 runtime/window RELEASED.\n\nExact source binding independently calculated from GitHub file bytes (Python hashlib; file contents never executed):\n1. MAIN v2/data/db-v1.php blob4ac8258ee4933c74ac20c2c9b771dfc88ab7537c,3282UTF8bytes → SHA256 c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13. This exactly equals the differing ROOTdata/db-v1.php hash in LOCAL's ORIGINAL refused receipt.\n2. RELEASE v2/data/db-v1.php blobc7e13f41be4a317087fc063da0db6f5dcf769e29,3861UTF8bytes → SHA256 ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4. This exactly equals LOCAL's accepted historical helper pin.\n\nNarrow exact diff: only v2_data_db_config() config resolution differs. Both first consider dirname(__DIR__).'/config.php'. RELEASE additionally falls back to DOCUMENT_ROOT/config.php when that adjacent config is absent; MAIN has no such fallback. The rest of both file bodies is byte-identical. All four declared functions remain v2_data_db_config / v2_data_db / v2_data_normalize_text / v2_data_slug. Declaration equality alone is NOT behavioral compatibility or DB-identity proof.\n\nCorrect disposition: current observed hash is byte-identical to a known current MAIN source helper, not an unidentified byte sequence. This does NOT prove deployment provenance, actor/time/reason, historical restoration, after-state, currentDB/account/grants, or compatibility of using MAIN/RELEASE/staged layouts. We did not execute either config loader/helper or query DB. The 404 for repository data/db-v1.php confirms only that this is not the repository path; source identity above is v2/data/db-v1.php, distinct from observed deployment ROOTdata/db-v1.php. No file-path equivalence or installation history inferred.\n\nLOCAL's refused operation int-andromeda-local-profile-88750-evidence-20261026-v1 stays literal unknown_no_replay/consumed. Do not retry/rename/repin it, change ROOThelper/config/ACL, or infer that ignoring the hash is safe. Existing LOCAL owner may consume this SAME source disposition for any materially new reviewed topology/config/DB-binding contract; any runtime remains separately gated. LOCAL owns88750/profile/DB work; INT takes no writer or server window.\n\nChanged repository files0; source/CI/install/live action0; supplier/DB/schema/profile/mapping/lead/booking0. Prior INT4918 and SEARCH4920 receiving6410446624 stay complete. Independent useful step finished: exact source-version identification + behavioral delta, not a price/infant/fuel fix. ONE next INT trigger remains new safe confirmed backend fact or a bounded genuinely justified product condition; existing autopilot unchanged.",
+    "bodySha256": "f474c8ec1cd383f321b0fd35cd9b8263ea864aa5150924c13379545a78a62603"
+  },
+  "failed": {
+    "operation": "int-andromeda-local-profile-88750-evidence-20261026-v1",
+    "bytes": 832,
+    "sha256": "8eefd9d1c36ae5bf5c2d8d07c5931da4238ec886f87bf2be01d521a3fabf9dcd"
+  },
+  "parent": {
+    "operation": "int-andromeda-local-profile-batch-read-20261026-v1",
+    "bytes": 36952,
+    "sha256": "ec2267edaebfa24f3f1b6d72b51834a047e063e1e2fbb86ba6988d34f58b22d8",
+    "targetSha256": "2022f9f9592c1f27cdefb3a9370c9ee84cee3de4139d5a33f5428b713e899a50"
+  },
+  "topology": {
+    "source": "ccf5a1b1c8dcc9d3b796b40c85aca0f9407eb1a1",
+    "mainBase": "a7ceec4a7ba89ab0361ffd768beca60d7d819ea5",
+    "rootHelperSha256": "c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13",
+    "stagedHelperSha256": "ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4",
+    "rootConfigSha256": "121839ce1956ec7a48f0a94758e2c2359293ee01d601c69f720a294c4bda7def",
+    "stagedConfig": "v2/config.php",
+    "stagedConfigMustBeAbsent": true,
+    "rootHelperExecuted": false
+  },
+  "target": {
+    "hotelId": 88750,
+    "name": "THE X BELEK",
+    "countryId": 4,
+    "rawSha256": "f64669c666ea20e89bc3dc262c4559e2ff133da75f6c3c7a53e9104f451456a4",
+    "timeSha256": "bdbf170ed62868c1418d2b39610f8c042d6717fd84f968b516769c8f5073c45e",
+    "revision": 3,
+    "manualFieldCount": 0,
+    "sourceAbsentSha256": "8f515b15e10dfa8d9181889456d432e3b6b5d40458b1c41fbd864e9fa628a4d2"
+  }
+}
