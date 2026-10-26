@@ -187,6 +187,33 @@ tvg_denied(fn()=>$run($request('tv_tour',['offer_ref'=>$ref])),'tv_operation_alr
 $managerRequest=$request('tv_select',['offer_ref'=>$ref,'choice_ref'=>'manager-deferred']);
 $managerSelected=$run($managerRequest);
 $beforeFlightsSession=$session;
+// Supplier noPlaces is authoritative for each direction/connection, not a price or onDemand flag.
+foreach (['forward','backward'] as $direction) foreach ([0,1] as $legIndex) {
+    foreach ([true,null,0,'false'] as $noPlaces) {
+        $unavailable=$pair;
+        if($legIndex===1)$unavailable[$direction][]=$unavailable[$direction][0];
+        $unavailable[$direction][$legIndex]['noPlaces']=$noPlaces;
+        $available=$pairB;$available['forward'][0]['noPlaces']=false;$available['forward'][0]['onDemand']=true;
+        $availabilitySession=$beforeFlightsSession;$physical=0;
+        $availabilityRequest=$request('tv_flights',['offer_ref'=>$ref]);
+        $availabilityTransport=static function()use($unavailable,$available,&$physical):array{++$physical;return ['flights'=>[$unavailable,$available]];};
+        $availabilitySave=static function(array &$s):void{};
+        $availability=AnyTourTourvisorPreviewGateway::handle($availabilityRequest,$availabilitySession,$now,
+            $availabilityTransport,$catalog,$availabilitySave,$clock);
+        tvg_ok(array_column($availability['choices'],'index')===[1],
+            'unavailable or malformed noPlaces cannot become a choice; false with onDemand stays selectable');
+        $forged='tourvisor_pair:'.hash('sha256',json_encode($unavailable,JSON_THROW_ON_ERROR));
+        tvg_denied(fn()=>AnyTourTourvisorPreviewGateway::handle($request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$forged]),
+            $availabilitySession,$now,$availabilityTransport,$catalog,$availabilitySave,$clock),'tv_pair_missing');
+        $picked=AnyTourTourvisorPreviewGateway::handle($request('tv_select',['offer_ref'=>$ref,'choice_ref'=>$availability['choices'][0]['choice_ref']]),
+            $availabilitySession,$now,$availabilityTransport,$catalog,$availabilitySave,$clock);
+        $pickedRecord=AnyTourTourvisorSelectedTourHandoff::freeze($picked['selector'],$availabilitySession,$now,$clock);
+        tvg_ok($physical===1 && $pickedRecord['status']==='ready'
+            && $pickedRecord['record']['observation']['price']['amount']==='233100.50'
+            && $pickedRecord['record']['observation']['price']['finalPriceVerified']===false,
+            'available choice keeps exact supplier price and qualification; selection never repeats HTTP');
+    }
+}
 $flightsRequest=$request('tv_flights',['offer_ref'=>$ref]);
 $flights=$run($flightsRequest);
 tvg_ok(array_column($flights['choices'],'index')===[1,2],'opaque pair refs retain original returned indexes including skipped placeholder');

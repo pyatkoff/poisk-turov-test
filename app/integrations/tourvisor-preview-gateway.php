@@ -193,6 +193,9 @@ final class AnyTourTourvisorPreviewGateway
         $out = [];
         foreach ($legs as $leg) {
             self::need(is_array($leg),'tv_pair_incomplete');
+            // Explicit supplier unavailability applies to every leg, including connections.
+            // Missing legacy flags stay unknown; onDemand is a separate supplier state.
+            self::need(!array_key_exists('noPlaces',$leg) || $leg['noPlaces'] === false,'tv_pair_unavailable');
             $number = self::text($leg['number'] ?? null,80);
             $from = $leg['departure']['port']['shortName'] ?? $leg['departure']['port']['id'] ?? null;
             $to = $leg['arrival']['port']['shortName'] ?? $leg['arrival']['port']['id'] ?? null;
