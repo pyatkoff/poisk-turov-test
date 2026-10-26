@@ -2357,7 +2357,11 @@ function retainLosslessPngEvidence(directory){
    assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening does not call the supplier');
   }
   const failures=await page.evaluate(()=>window.quoteFailures);
-  assert.equal(failures.length,2);assert(failures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
+  const supplierFailures=failures.filter(f=>f.scope!=='messenger'),messengerFailures=failures.filter(f=>f.scope==='messenger');
+  assert.equal(failures.length,3);
+  assert.equal(supplierFailures.length,2);assert(supplierFailures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
+  assert.deepEqual(messengerFailures,[{scope:'messenger',action:'handoff_token',stage:'http',code:'signer_unavailable',httpStatus:502}],
+   'the failed telephone-journey preparation emits only its fixed safe fact, without supplier attribution or private request identity');
   await page.locator('[data-action="close-modal"]').click();transport.state.wideFacets=true;
   let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
   await editResultSearch(page,width);await page.locator('.search-submit').click();
