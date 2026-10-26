@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        permission_install = parse_permission_install_command(core, body)
+        if permission_install is not None:
+            return permission_install
         context_permission = parse_context_permission_command(core, body)
         if context_permission is not None:
             return context_permission
@@ -283,6 +286,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == PERMISSION_INSTALL_MODE:
+        return activate_permission_install(core, command)
     if command.get('mode') == CONTEXT_PERMISSION_MODE:
         return activate_context_permission(core, command)
     if command.get('mode') == PROTECTED_CONTEXT_MODE:
@@ -2797,3 +2802,312 @@ def activate_context_permission(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_context_permission_source
     original_completed=core.completed_result
     core.completed_result=lambda cmd,result: completed_context_permission(cmd,result,control) if cmd.get('mode')==CONTEXT_PERMISSION_MODE else original_completed(cmd,result)
+
+
+# A new write admission consumes the measured positive permission proof; no old writer runs.
+PERMISSION_INSTALL_MODE = 'local-stay-permission-install-v1'
+PERMISSION_INSTALL_OPERATION = 'int-andromeda-local-stay-permission-install-20261026-v1'
+PERMISSION_INSTALL_SOURCE_SHA = '1d0e529e3fc0666783db1454c0765d3c16d63843'
+PERMISSION_INSTALL_RUNNER = 'scripts/catalog/anytour_hotel_stay_permission_install_v1.php'
+PERMISSION_INSTALL_RUNNER_SHA = '421e8f5a1f846e1beda5424224b7f5a523af59cb28d41b344f87bfbbc15e386b'
+PERMISSION_INSTALL_PARENT = {
+    'operation': CONTEXT_PERMISSION_OPERATION, 'source': CONTEXT_PERMISSION_SOURCE_SHA,
+    'control': 'b4fc7c3c00c56ba205ade7dabfc214490d8de279', 'bytes':8400,
+    'private_sha256':'ab218f78c62e1d57e9d6be54203134adedb07c382ad949719b130e0e9d4b031e',
+    'file_sha256':'33d60c6a1f580b965547982f49d10c3a956bcb0c24fa19c7b94d128fdb76777b',
+    'engine_sha256':'c15febf3673ebefc1169e704b3b2e8eba3e1faf4962fb07c4ec637d6cc0ab068',
+    'database_sha256':PERMISSION_PARENT['database_sha256'],
+    'account_sha256':'7ef350d330c1c4e04d1232ba7649b559d85a4930a512746585cba4aadb9d4ef8',
+    'role_sha256':'08f51cfad4b88bfff85676aac5da3d61ddacc7612f6106db7759ee5fff1411d0',
+    'coverage_sha256':'f4fea51dd60b2e3944e4ab9bde80e4d5ba2fd8d8d12dda907f9b45a613a24a5b',
+    'metadata_sha256':'fc2221f539a7fa83c66ad2fda24922e0bbf34b87bb97cddc2bd10e83ec17c59c',
+}
+def parse_permission_install_command(core,body):
+    if not body.startswith(core.PREFIX): return None
+    parts=body[len(core.PREFIX):].split()
+    if len(parts)<2 or parts[1]!=PERMISSION_INSTALL_MODE: return None
+    need(len(parts)==3 and parts[0]==PERMISSION_INSTALL_SOURCE_SHA and parts[2]==PERMISSION_INSTALL_OPERATION,'local_stay_permission_install_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','local_stay_permission_install_first_attempt_only')
+    return {'source_sha':PERMISSION_INSTALL_SOURCE_SHA,'mode':PERMISSION_INSTALL_MODE,'operation_id':PERMISSION_INSTALL_OPERATION,
+            'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+def permission_install_hashes():
+    need(re.fullmatch(r'[a-f0-9]{64}',PERMISSION_INSTALL_RUNNER_SHA) is not None,'local_stay_permission_install_source_not_final')
+    return {**SCHEMA_SOURCE_HASHES,SCHEMA_RUNNER:SCHEMA_RUNNER_SHA,CONTEXT_PERMISSION_RUNNER:CONTEXT_PERMISSION_RUNNER_SHA,
+            PERMISSION_RUNNER:PERMISSION_RUNNER_SHA,PERMISSION_INSTALL_RUNNER:PERMISSION_INSTALL_RUNNER_SHA}
+def bundle_permission_install_source(source_root):
+    source=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];hashes=permission_install_hashes();output=io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for name,digest in hashes.items():
+            path=(source if name in SCHEMA_SOURCE_HASHES else control)/name
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_stay_permission_install_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=262144 and hashlib.sha256(raw).hexdigest()==digest,'local_stay_permission_install_source_pin')
+            item=tarfile.TarInfo(name);item.size,item.mode,item.mtime=len(raw),0o600,0;archive.addfile(item,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        item=tarfile.TarInfo('manifest.json');item.size,item.mode,item.mtime=len(raw),0o600,0;archive.addfile(item,io.BytesIO(raw))
+    return output.getvalue(),hashes
+def permission_install_fresh_validator_source():
+    program=CONTEXT_PERMISSION_VALIDATOR
+    changes=[
+        ('def local_stay_context_permission_valid(data,source_sha,control_sha,context,raw,failure,engine_sha):','def local_stay_permission_install_fresh_valid(data,context,raw,failure,engine_sha):'),
+        ("          'operationId','sourceSha','controlSha'}","          }"),
+        (" or r['operationId']!='int-andromeda-local-stay-context-permission-read-20261026-v1'",''),
+        ("        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None\n",'')]
+    for old,new in changes:
+        need(program.count(old)==1,'local_stay_permission_install_fresh_validator_drift');program=program.replace(old,new,1)
+    ast.parse(program);return program
+def permission_install_schema_validator_source():
+    program=SCHEMA_VALIDATOR
+    changes=[('def local_stay_schema_valid(data,source_sha,control_sha):','def local_stay_permission_install_schema_valid(data):'),
+             ("'migrationSha256','inventorySha256','planSha256','operationId','sourceSha','controlSha'}","'migrationSha256','inventorySha256','planSha256'}"),
+             (" or r['operationId']!='int-andromeda-local-stay-schema-read-20261025-v1'",''),
+             ("        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or r['migrationSha256']!=migration\n        or not isinstance(control_sha,str) or re.fullmatch(r'[a-f0-9]{40}',control_sha) is None): return False","        or r['migrationSha256']!=migration): return False")]
+    for old,new in changes:
+        need(program.count(old)==1,'local_stay_permission_install_schema_validator_drift');program=program.replace(old,new,1)
+    ast.parse(program);return program
+def permission_install_parent_completion_source():
+    source=Path(__file__).read_text();node=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='completed_context_permission')
+    return ast.get_source_segment(source,node).replace('def completed_context_permission(','def local_stay_permission_install_parent_completed(',1).replace('valid_context_permission_payload(','local_stay_permission_install_parent_payload(')
+def permission_install_journal_source():
+    node=next(n for n in ast.parse(CONTEXT_INSTALL_VALIDATOR).body if isinstance(n,ast.FunctionDef) and n.name=='local_stay_context_install_journal_valid')
+    program=ast.get_source_segment(CONTEXT_INSTALL_VALIDATOR,node).replace('local_stay_context_install_journal_valid','local_stay_permission_install_journal_valid')
+    old="'contextResultSha256':r['contextResultSha256'],'contextInventorySha256':r['contextInventorySha256']"
+    new="'permissionResultSha256':r['permissionResultSha256'],'permissionBeforeSha256':r['permissionBeforeSha256'],'accountSha256':r['accountSha256'],'roleSha256':r['roleSha256'],'coverageSha256':r['coverageSha256'],'metadataSha256':r['metadataSha256']"
+    need(program.count(old)==1,'local_stay_permission_install_journal_validator_drift');return program.replace(old,new,1)+'\n'
+
+PERMISSION_INSTALL_VALIDATOR = r'''
+def local_stay_permission_install_positive(data,parent,context,raw,failure):
+    if not local_stay_permission_install_fresh_valid(data,context,raw,failure,'1e9b8a15f0418e467380bcfe63368e8e4734b76a1deb9d95d6b16245b2cc6e4b'): return False
+    r=data['receipt'];e=data['engine']
+    if r['state']!='completed_read_only' or r['allRequiredProven'] is not True or e is None: return False
+    er=e['receipt'];c=e['coverage']
+    return (er['databaseSha256Before']==er['databaseSha256After']==parent['database_sha256']
+        and er['accountSha256Before']==er['accountSha256After']==parent['account_sha256']
+        and er['roleSha256Before']==er['roleSha256After']==parent['role_sha256']
+        and er['coverageSha256']==parent['coverage_sha256'] and c['state']=='complete'
+        and c['metadataSha256Before']==c['metadataSha256After']==parent['metadata_sha256']
+        and all(e['privileges'][k]['status']=='proven' and e['privileges'][k]['coverage']=='complete' for k in ('CREATE','REFERENCES','SELECT','TRIGGER')))
+def local_stay_permission_install_parent_valid(proof,context,failed,raw,policy,context_policy,raw_policy,failure_policy):
+    if not local_stay_context_permission_parents_valid(context,raw,failed,context_policy,raw_policy,failure_policy): return False
+    command={'source_sha':policy['source'],'mode':'local-stay-context-permission-read-v1','operation_id':policy['operation'],
+             'maximum_privileges':4,'provider_http_calls':0,'database_writes':0}
+    if not local_stay_permission_install_parent_completed(command,proof,policy['control']): return False
+    item=proof['local_stay_context_permission'];data=item['data']
+    if item['fileSha256']!=policy['file_sha256'] or data['receipt']['engineResultSha256']!=policy['engine_sha256']: return False
+    pure={**data,'receipt':{k:v for k,v in data['receipt'].items() if k not in ('operationId','sourceSha','controlSha')}}
+    return (local_stay_permission_install_positive(pure,policy,context_policy,raw_policy,failure_policy)
+            and proof['production_before']==raw['production_before'])
+def local_stay_permission_install_post_kind(raw_schema,before,first,last,parent,context,raw,failure):
+    if not all(local_stay_permission_install_positive(p,parent,context,raw,failure) for p in (first,last)): return None
+    if not local_stay_permission_install_schema_valid(raw_schema) or raw_schema['receipt']['state']!='completed_read_only': return None
+    inv=raw_schema['inventory'];plan=raw_schema['plan'];targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    if inv['server']['checkEnforcement']!='supported' or inv['tables'][:2]!=before['tables'][:2]: return None
+    if plan['state']=='ready_no_op' and plan['existingCompatibleTables']==targets: return 'raw_ready'
+    if (plan['state']!='blocked_server_capability' or inv['server']['triggerVisibilityProven'] is not False
+        or plan['createTables']!=[] or plan['blockedTables']!=targets): return None
+    if any(t['exists'] is not True or t['triggerCount']!=0 or t['compatibility']!='incompatible' or t['issues']!=['trigger_visibility_not_proven'] for t in inv['tables'][2:]): return None
+    return 'permission_qualified'
+def local_stay_permission_install_valid(data,source_sha,control_sha,parent,context,raw,failure):
+    if not isinstance(data,dict) or set(data)!={'receipt','before','after','permissionBefore','permissionPostBefore','permissionAfter','rawSchemaAfter'} or len(local_stay_schema_canonical(data))>262144: return False
+    r=data['receipt'];before=data['before'];after=data['after'];targets=['anytour_hotel_room_concepts_v2','anytour_hotel_meal_concepts_v2','anytour_hotel_stay_mappings_v2']
+    keys={'schemaVersion','source','state','reason','migrationSha256','permissionOperation','permissionResultSha256','permissionFileSha256','permissionEngineSha256',
+          'contextResultSha256','failedPermissionResultSha256','rawResultSha256','databaseSha256','accountSha256','roleSha256','coverageSha256','metadataSha256',
+          'beforeSha256','afterSha256','permissionBeforeSha256','permissionPostBeforeSha256','permissionAfterSha256','rawSchemaAfterSha256','rawSchemaState','schemaVerification',
+          'protectedBefore','protectedAfter','attemptedTables','createdTables','unknownTables','tableRows','supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites','automaticAccepts','ddlOutcomeUnknown','parentMetadataUnchanged','journalSha256','operationId','sourceSha','controlSha'}
+    def digest(x): return isinstance(x,str) and re.fullmatch(r'[a-f0-9]{64}',x) is not None
+    if (not isinstance(r,dict) or set(r)!=keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-permission-install-v1' or r['operationId']!='int-andromeda-local-stay-permission-install-20261026-v1'
+        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None
+        or r['migrationSha256']!='1e80434e552fd0c91240db903245bf3f9976d4e937221b3270c5eda92f9ccc06'
+        or r['permissionOperation']!=parent['operation'] or r['permissionResultSha256']!=parent['private_sha256']
+        or r['contextResultSha256']!=context['private_sha256'] or r['failedPermissionResultSha256']!=failure['private_sha256'] or r['rawResultSha256']!=raw['private_sha256']): return False
+    for field,policykey in (('permissionFileSha256','file_sha256'),('permissionEngineSha256','engine_sha256'),('databaseSha256','database_sha256'),('accountSha256','account_sha256'),('roleSha256','role_sha256'),('coverageSha256','coverage_sha256'),('metadataSha256','metadata_sha256')):
+        if r[field] is not None and r[field]!=parent[policykey]: return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('supplierCalls','databaseWrites','profileWrites','mappingWrites','automaticAccepts')): return False
+    if type(r['schemaWrites']) is not int or not 0<=r['schemaWrites']<=3 or type(r['ddlOutcomeUnknown']) is not bool: return False
+    if r['state'] not in ('installed_empty','preflight_refused','verification_failed','ddl_unknown'): return False
+    reasons=('permission_parent','permission_proof','permission_drift','caller_transaction','source_pin','database_identity','protected_drift','lock_unavailable','schema_preflight','constraint_collision','ddl_capability','session_guards','journal','ddl_execution_failed','postflight','parent_metadata','rows_nonempty','read_failed')
+    if r['reason'] is not None and r['reason'] not in reasons: return False
+    for key in ('attemptedTables','createdTables'):
+        if not isinstance(r[key],list) or len(r[key])>3 or r[key]!=targets[:len(r[key])]: return False
+    attempted=r['attemptedTables'];created=r['createdTables'];unknown=r['unknownTables']
+    if (r['schemaWrites']!=len(created) or len(created)>len(attempted) or not isinstance(unknown,list)
+        or unknown!=([attempted[-1]] if r['ddlOutcomeUnknown'] and attempted else [])): return False
+    if r['ddlOutcomeUnknown'] and (not attempted or len(attempted)!=len(created)+1): return False
+    for field,inv in (('before',before),('after',after)):
+        if inv is None:
+            if r[field+'Sha256'] is not None: return False
+        elif not local_stay_install_inventory_valid(inv,source_sha,control_sha) or r[field+'Sha256']!=hashlib.sha256(local_stay_schema_canonical(inv)).hexdigest(): return False
+    for field in ('permissionBefore','permissionPostBefore','permissionAfter'):
+        p=data[field]
+        if p is None:
+            if r[field+'Sha256'] is not None: return False
+        elif (not local_stay_permission_install_positive(p,parent,context,raw,failure)
+              or r[field+'Sha256']!=hashlib.sha256(local_stay_schema_canonical(p)).hexdigest()): return False
+    schema=data['rawSchemaAfter']
+    if schema is None:
+        if r['rawSchemaAfterSha256'] is not None or r['rawSchemaState'] is not None: return False
+    elif (not local_stay_permission_install_schema_valid(schema) or r['rawSchemaAfterSha256']!=hashlib.sha256(local_stay_schema_canonical(schema)).hexdigest()
+          or r['rawSchemaState']!=schema['plan']['state'] or after!=schema['inventory']): return False
+    if r['schemaVerification'] not in (None,'raw_ready','permission_qualified'): return False
+    for field in ('protectedBefore','protectedAfter'):
+        p=r[field]
+        if p is not None and (not isinstance(p,dict) or set(p)!={'config.php','data/db-v1.php'} or any(not digest(v) for v in p.values())): return False
+    if r['parentMetadataUnchanged'] is not None and type(r['parentMetadataUnchanged']) is not bool: return False
+    if not isinstance(r['tableRows'],list) or len(r['tableRows'])>3: return False
+    for pos,row in enumerate(r['tableRows']):
+        if not isinstance(row,dict) or set(row)!={'name','rows'} or row['name']!=targets[pos] or type(row['rows']) is not int or not 0<=row['rows']<10**15: return False
+    if r['journalSha256'] is not None and not digest(r['journalSha256']): return False
+    if r['state']=='preflight_refused': return attempted==created==unknown==[] and r['schemaWrites']==0 and r['ddlOutcomeUnknown'] is False and r['reason'] is not None
+    if before is None or data['permissionBefore'] is None or not digest(r['journalSha256']): return False
+    if r['state']=='ddl_unknown': return r['ddlOutcomeUnknown'] and r['reason'] is not None
+    if r['ddlOutcomeUnknown'] or unknown or attempted!=created: return False
+    if r['state']=='verification_failed': return 0<len(created)<=3 and r['reason'] is not None
+    kind=local_stay_permission_install_post_kind(schema,before,data['permissionPostBefore'],data['permissionAfter'],parent,context,raw,failure) if all(data[k] is not None for k in ('rawSchemaAfter','permissionPostBefore','permissionAfter')) else None
+    return (r['reason'] is None and attempted==created==targets and r['schemaWrites']==3 and r['schemaVerification']==kind and kind is not None
+        and r['parentMetadataUnchanged'] is True and r['protectedBefore']==r['protectedAfter']==raw['protected']
+        and r['tableRows']==[{'name':name,'rows':0} for name in targets])
+'''
+def permission_install_program():
+    constants={name:globals()[name] for name in ('SOURCE_FACTS_MODE','SOURCE_FACTS_OPERATION','SOURCE_FACTS_SOURCE_SHA','CONTEXT_INSTALL_PARENT','SOURCE_FACTS_FAILURE',
+        'PROTECTED_CONTEXT_MODE','PROTECTED_CONTEXT_OPERATION','PROTECTED_CONTEXT_SOURCE_SHA','PERMISSION_PARENT','PROTECTED_CONTEXT_FAILURE',
+        'CONTEXT_PERMISSION_MODE','CONTEXT_PERMISSION_OPERATION','CONTEXT_PERMISSION_SOURCE_SHA','CONTEXT_PERMISSION_PARENT','PERMISSION_RUNNER_SHA')}
+    constants['CONTEXT_PERMISSION_VALIDATOR']=CONTEXT_PERMISSION_VALIDATOR
+    stubs=("def local_stay_permission_parent_payload(data,control_sha):\n    return local_stay_source_facts_valid(data,SOURCE_FACTS_SOURCE_SHA,control_sha,CONTEXT_INSTALL_PARENT,SOURCE_FACTS_FAILURE)\n"
+        "def local_stay_context_permission_parent_payload(data,control_sha):\n    return local_stay_protected_context_valid(data,PROTECTED_CONTEXT_SOURCE_SHA,control_sha,PERMISSION_PARENT,PROTECTED_CONTEXT_FAILURE)\n"
+        "def local_stay_permission_install_parent_payload(data,control_sha):\n    return local_stay_context_permission_valid(data,CONTEXT_PERMISSION_SOURCE_SHA,control_sha,CONTEXT_PERMISSION_PARENT,PERMISSION_PARENT,PROTECTED_CONTEXT_FAILURE,PERMISSION_RUNNER_SHA)\n")
+    return ('\n'.join(name+'='+repr(value) for name,value in constants.items())+'\n'+SCHEMA_VALIDATOR+SOURCE_FACTS_VALIDATOR+PERMISSION_PARENT_VALIDATOR+
+        PROTECTED_CONTEXT_VALIDATOR+context_permission_engine_validator_source()+CONTEXT_PERMISSION_VALIDATOR+permission_install_fresh_validator_source()+
+        permission_install_schema_validator_source()+context_install_inventory_validator()+PERMISSION_INSTALL_VALIDATOR+permission_install_journal_source()+stubs+
+        permission_parent_completion_source()+'\n'+context_permission_parent_completion_source()+'\n'+permission_install_parent_completion_source()+'\n'+context_permission_observer_source())
+def valid_permission_install_payload(data,control_sha):
+    ns={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(permission_install_program(),ns)
+        return ns['local_stay_permission_install_valid'](data,PERMISSION_INSTALL_SOURCE_SHA,control_sha,PERMISSION_INSTALL_PARENT,CONTEXT_PERMISSION_PARENT,PERMISSION_PARENT,PROTECTED_CONTEXT_FAILURE)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError): return False
+def completed_permission_install(command,result,control_sha):
+    try:
+        expected={'source_sha':PERMISSION_INSTALL_SOURCE_SHA,'mode':PERMISSION_INSTALL_MODE,'operation_id':PERMISSION_INSTALL_OPERATION,'maximum_schema_tables':3,'provider_http_calls':0,'database_writes':0}
+        if command!=expected or any(type(command.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes')): return False
+        if result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1 or any(result.get(k)!=expected[k] for k in ('source_sha','mode','operation_id')): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('database_writes','profile_writes','mapping_writes','supplier_calls','booking_calls','lead_calls')): return False
+        if result.get('schema_writes')!=3 or type(result.get('schema_writes')) is not int or result.get('schema_writes_acknowledged')!=3 or type(result.get('schema_writes_acknowledged')) is not int or result.get('schema_write_outcome_unknown') is not False: return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'} or before!=result.get('production_after') or result.get('production_unchanged') is not True
+            or not isinstance(before['index.php'],str) or any(v is not None and re.fullmatch(r'[a-f0-9]{64}',v or '') is None for v in before.values())): return False
+        item=result['local_stay_permission_install'];data=item['data'];r=data['receipt'];a=item['admission']
+        if (not valid_permission_install_payload(data,control_sha) or r['state']!='installed_empty' or item['permissionResultSha256']!=PERMISSION_INSTALL_PARENT['private_sha256']
+            or item['contextResultSha256']!=CONTEXT_PERMISSION_PARENT['private_sha256'] or item['failedPermissionResultSha256']!=PROTECTED_CONTEXT_FAILURE['private_sha256'] or item['rawResultSha256']!=PERMISSION_PARENT['private_sha256']
+            or a['phpAttempted'] is not True or a['launchState']!='receipt_validated' or a['phpReturnCode']!=0
+            or item['protectedBefore']!=item['protectedAfter'] or item['protectedAfter']!=PERMISSION_PARENT['protected']): return False
+        encoded=local_permission_install_canonical(data)+b'\n'
+        ns={'hashlib':hashlib,'json':json,'re':re};exec(permission_install_journal_source(),ns)
+        return item['fileSha256']==hashlib.sha256(encoded).hexdigest() and item['journalSha256']==r['journalSha256'] and ns['local_stay_permission_install_journal_valid'](item['journalEvents'],r)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError): return False
+def local_permission_install_canonical(value):
+    return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029').encode()
+
+PERMISSION_INSTALL_REMOTE_HANDLER = r'''
+def local_stay_permission_install_unique(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value: raise ValueError('duplicate_json_key')
+        value[key]=item
+    return value
+def run_local_stay_permission_install(stage):
+    policy=LOCAL_STAY_PERMISSION_INSTALL_POLICY
+    admission={'phpAttempted':False,'launchState':'not_attempted','phpReturnCode':None,'protectedObservations':None}
+    item={'data':None,'fileSha256':None,'permissionResultSha256':policy['parent']['private_sha256'],'contextResultSha256':policy['context']['private_sha256'],
+          'failedPermissionResultSha256':policy['failure']['private_sha256'],'rawResultSha256':policy['raw']['private_sha256'],
+          'protectedBefore':None,'protectedAfter':None,'journalSha256':None,'journalEvents':[],'admission':admission}
+    result['local_stay_permission_install']=item
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=0
+    result['schema_writes']=result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=False
+    if payload!={**policy['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}: fail('local_stay_permission_install_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_schema_tables','provider_http_calls','database_writes')): fail('local_stay_permission_install_payload_types')
+    if files!=policy['hashes']: fail('local_stay_permission_install_source_pins')
+    values=[];paths=[]
+    for p in (policy['parent'],policy['context'],policy['failure'],policy['raw']):
+        path=private/p['operation']/'result.json'
+        if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_permission_install_parent_file')
+        raw=path.read_bytes()
+        if len(raw)!=p['bytes'] or hashlib.sha256(raw).hexdigest()!=p['private_sha256']: fail('local_stay_permission_install_parent_hash')
+        try: values.append(json.loads(raw,object_pairs_hook=local_stay_permission_install_unique));paths.append(path)
+        except Exception: fail('local_stay_permission_install_parent_json')
+    try: valid=local_stay_permission_install_parent_valid(values[0],values[1],values[2],values[3],policy['parent'],policy['context'],policy['raw'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_permission_install_parent_contract')
+    baseline=policy['raw']['protected'];snapshots=[{name:local_stay_protected_context_observe(name,baseline[name]) for name in baseline} for _ in range(2)]
+    admission['protectedObservations']=snapshots
+    if not all(snapshots[0]==s and all(e['status']=='hashed' and e['matchesBaseline'] is True for e in s.values()) for s in snapshots): fail('local_stay_permission_install_private_drift')
+    item['protectedBefore']={name:e['sha256'] for name,e in snapshots[0].items()}
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ}
+    env.update({'ANYTOUR_SITE_ROOT':str(project),'ANYTOUR_OPERATION_OUTPUT_DIR':str(op),'ANYTOUR_OPERATION_RELEASE_SHA':source,'ANYTOUR_OPERATION_CONTROL_SHA':policy['control'],'ANYTOUR_OPERATION_ID':operation,
+                'ANYTOUR_PERMISSION_INSTALL_PARENT_PATH':str(paths[0]),'ANYTOUR_CONTEXT_PERMISSION_CONTEXT_PATH':str(paths[1]),
+                'ANYTOUR_CONTEXT_PERMISSION_FAILURE_PATH':str(paths[2]),'ANYTOUR_CONTEXT_PERMISSION_RAW_PATH':str(paths[3])})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    admission.update(phpAttempted=True,launchState='attempted_unknown')
+    result['schema_writes']='unknown';result['schema_writes_acknowledged']=0;result['schema_write_outcome_unknown']=True
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','memory_limit=256M','-d','disable_functions='+disabled,str(stage/'scripts/catalog/anytour_hotel_stay_permission_install_v1.php')],
+                           cwd=project,env=env,capture_output=True,text=True,timeout=180)
+    except Exception: fail('local_stay_permission_install_launch_unobserved')
+    admission.update(launchState='child_returned',phpReturnCode=run.returncode)
+    path=op/'local-stay-permission-install.json'
+    if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_permission_install_receipt_file')
+    raw=path.read_bytes();item['fileSha256']=hashlib.sha256(raw).hexdigest()
+    try: data=json.loads(raw,object_pairs_hook=local_stay_permission_install_unique)
+    except Exception: fail('local_stay_permission_install_receipt_json')
+    try: valid=local_stay_permission_install_valid(data,source,policy['control'],policy['parent'],policy['context'],policy['raw'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_permission_install_receipt_contract')
+    item['data']=data;r=data['receipt'];admission['launchState']='receipt_validated'
+    result['schema_writes_acknowledged']=r['schemaWrites'];result['schema_write_outcome_unknown']=r['ddlOutcomeUnknown'];result['schema_writes']='unknown' if r['ddlOutcomeUnknown'] else r['schemaWrites']
+    journal=op/'local-stay-permission-install-journal.jsonl'
+    if r['journalSha256'] is not None:
+        if not safe_file(journal,262144) or journal.resolve()!=journal or journal.stat().st_mode&0o777!=0o600: fail('local_stay_permission_install_journal_file')
+        jr=journal.read_bytes();item['journalSha256']=hashlib.sha256(jr).hexdigest()
+        if item['journalSha256']!=r['journalSha256'] or not jr.endswith(b'\n'): fail('local_stay_permission_install_journal_hash')
+        try: item['journalEvents']=[json.loads(line,object_pairs_hook=local_stay_permission_install_unique) for line in jr.splitlines()]
+        except Exception: fail('local_stay_permission_install_journal_json')
+    elif journal.exists() or journal.is_symlink(): fail('local_stay_permission_install_unbound_journal')
+    if not local_stay_permission_install_journal_valid(item['journalEvents'],r): fail('local_stay_permission_install_journal_contract')
+    post={name:local_stay_protected_context_observe(name,baseline[name]) for name in baseline}
+    item['protectedAfter']={name:e['sha256'] for name,e in post.items()};admission['protectedAfterLaunch']=post
+    if r['protectedBefore']!=item['protectedBefore'] or r['protectedAfter']!=item['protectedAfter'] or item['protectedBefore']!=item['protectedAfter']: fail('local_stay_permission_install_private_post')
+    if run.returncode!=(0 if r['state']=='installed_empty' else 1) or run.stderr.strip() or len(run.stdout.encode())>262144: fail('local_stay_permission_install_exit_no_replay')
+    try: emitted=json.loads(run.stdout,object_pairs_hook=local_stay_permission_install_unique)
+    except Exception: fail('local_stay_permission_install_stdout')
+    if emitted!=data: fail('local_stay_permission_install_stdout')
+    return item
+'''
+PERMISSION_INSTALL_REMOTE_DISPATCH = r'''    if mode=='local-stay-permission-install-v1':
+        result['local_stay_permission_install']=run_local_stay_permission_install(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if result['local_stay_permission_install']['data']['receipt']['state']=='installed_empty' else 'terminal_nonzero_no_replay'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>524288: fail('local_stay_permission_install_terminal_size')
+'''
+def activate_permission_install(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),PERMISSION_INSTALL_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_schema_tables','provider_http_calls','database_writes')),'local_stay_permission_install_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_permission_install_control_sha')
+    hashes=permission_install_hashes();remote=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,'local_stay_permission_install_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'parent':PERMISSION_INSTALL_PARENT,
+            'context':dict(CONTEXT_PERMISSION_PARENT,bytes=CONTEXT_PERMISSION_PARENT.get('bytes',2930)),
+            'failure':dict(PROTECTED_CONTEXT_FAILURE,bytes=PROTECTED_CONTEXT_FAILURE.get('bytes',573)),
+            'raw':dict(PERMISSION_PARENT,bytes=PERMISSION_PARENT.get('bytes',3429))}
+    program='LOCAL_STAY_PERMISSION_INSTALL_POLICY='+repr(policy)+'\n'+permission_install_program()+'\n'+PERMISSION_INSTALL_REMOTE_HANDLER+'\n'
+    remote=remote.replace(definition,program+definition,1).replace(dispatch,PERMISSION_INSTALL_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+PERMISSION_INSTALL_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_PERMISSION_INSTALL_POLICY['hashes']: fail('local_stay_permission_install_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_stay_permission_install_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=7 or {m.name for m in members}!={*LOCAL_STAY_PERMISSION_INSTALL_POLICY['hashes'],'manifest.json'}: fail('local_stay_permission_install_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_permission_install_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_permission_install_reserved=True\n',1).replace(final,"if globals().get('local_stay_permission_install_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_permission_install_source;original=core.completed_result
+    core.completed_result=lambda cmd,result:completed_permission_install(cmd,result,control) if cmd.get('mode')==PERMISSION_INSTALL_MODE else original(cmd,result)
