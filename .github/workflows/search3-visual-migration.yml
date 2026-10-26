@@ -25,6 +25,7 @@ on:
       - 'v2/prototype-search/hotel-popularity-v1.js'
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
+      - 'scripts/ci/search3_visual_browser_dependencies.cjs'
       - 'tests/search3-prototype-*.cjs'
       - 'tests/local-tv-catalog-browser.cjs'
       - 'tests/local-tv-catalog-test.php'
@@ -57,6 +58,7 @@ jobs:
           node tests/search3-visual-messenger-entry.cjs
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-visual-browser-dependencies.cjs
           node tests/search3-visual-formatting.cjs
           node tests/search3-visual-calendar-inventory.cjs
           node tests/search3-visual-flight-filter-work.cjs
@@ -83,7 +85,14 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
-      - run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Inspect installed Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Install missing Chromium system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Playwright Chromium
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"
       - name: Build the exact compiled visual fixture graph
         run: |
           npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
@@ -109,6 +118,7 @@ jobs:
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-visual-browser-dependencies.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs

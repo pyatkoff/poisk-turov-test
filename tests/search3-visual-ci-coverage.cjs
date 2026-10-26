@@ -40,6 +40,14 @@ function verify(workflow,bootstrap,html){
  const full=workflow.slice(workflow.indexOf('  visual-migration:'));
  assert(full.includes('if: ${{ !github.event.pull_request.draft }}'),'full matrix is deferred only while draft');
  assert.equal((workflow.match(/ref: \$\{\{ github.event.pull_request.head.sha \}\}/g)||[]).length,2,'both jobs check exact source head');
+ assert(rules.some(rule=>matches(rule,'scripts/ci/search3_visual_browser_dependencies.cjs')),'browser dependency preflight triggers its full gate');
+ for(const job of [focused,full])assert(job.includes('node tests/search3-visual-browser-dependencies.cjs'),'dependency preflight regressions run in both jobs');
+ const setup=full.slice(full.indexOf('      - name: Inspect installed Chromium system dependencies'),full.indexOf('      - name: Build the exact compiled visual fixture graph'));
+ assert(setup.includes('id: browser-deps')&&setup.includes('node scripts/ci/search3_visual_browser_dependencies.cjs'),'required dependency facts precede installation');
+ assert(setup.includes("if: ${{ steps.browser-deps.outputs.ready != 'true' }}"),'only positive package facts skip stock system installation');
+ assert(setup.includes('playwright install-deps chromium'),'negative facts retain stock system installation');
+ assert(setup.includes('      - name: Install pinned Playwright Chromium\n        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"'),'stock browser installation is unconditional');
+ assert(!setup.includes('continue-on-error'),'installation failures must fail the full gate');
  return deps;
 }
 const deps=verify(workflow,bootstrap,html);
@@ -49,6 +57,11 @@ assert.throws(()=>verify(workflow,bootstrap.replace("'../prototype-search/data.j
 assert.throws(()=>verify(workflow.replace("      - 'tests/search3-prototype-*.cjs'\n",''),bootstrap,html),/characterization trigger/,'test-only change detected');
 assert.throws(()=>verify(workflow.replace('ready_for_review, ',''),bootstrap,html),/restores/,'missing ready restoration detected');
 assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !github.event.pull_request.draft }}\n    # Drafts retain'),bootstrap,html),/every draft/,'disabled draft check detected');
+assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_browser_dependencies.cjs'\n",''),bootstrap,html),/preflight triggers/,'setup helper cannot fall outside CI scope');
+assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-browser-dependencies.cjs\n',''),bootstrap,html),/regressions run/,'preflight regression removal detected');
+assert.throws(()=>verify(workflow.replace("ready != 'true'", "ready == 'false'"),bootstrap,html),/positive package facts/,'missing output cannot bypass stock installation');
+assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        if: false\n'),bootstrap,html),/unconditional/,'browser installation cannot be skipped');
+assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        continue-on-error: true\n'),bootstrap,html),/unconditional|failures/,'browser installation cannot hide failures');
 for(const file of leadSources)assert.throws(()=>verify(workflow.replace("      - '"+file+"'\n",''),bootstrap,html),/every entry dependency/,'generated projection retains canonical source coverage: '+file);
-console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; draft focus/full ready restoration; eight coverage mutations detected`);
+console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; draft focus/full ready restoration; browser setup failure/trigger policy mutations detected`);
 require('./search3-visual-lead-runtime.cjs');
