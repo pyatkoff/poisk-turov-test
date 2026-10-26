@@ -317,4 +317,103 @@ class NativeEvidence(unittest.TestCase):
             self.assertTrue(m.completed_evidence(m.evidence_command(),evidence_receipt(data),CONTROL))
         print(next(x for x in run.stdout.splitlines()if x.startswith('LOCAL_PROFILE_88750_EVIDENCE_OK')))
 
+def topology_success():
+    d=evidence_success();r=d['receipt'];r.update(source='anytour-hotel-profile-topology-evidence-v1',operationId=m.TOPOLOGY_OPERATION,
+        sourceSha=m.TOPOLOGY_SOURCE,contractSha256=m.TOPOLOGY_CONTRACT_SHA,ownerHandoffBodySha256=m.TOPOLOGY_HANDOFF_SHA,
+        failedResultSha256=m.TOPOLOGY_FAILED_SHA,accountSha256Before='a'*64,accountSha256After='a'*64,roleSha256Before='c'*64,roleSha256After='c'*64,
+        oldAccountIdentityKnown=False,protectedBefore=m.TOPOLOGY_PROTECTED,protectedAfter=m.TOPOLOGY_PROTECTED,
+        phases=dict.fromkeys(('phpExecuted','stagedHelperAttempted','pdoAttempted','databaseConnected','configSelected','topologyVerified','appDataRead'),True)|{'rootHelperExecuted':False})
+    topology={'rootConfigSha256':m.TOPOLOGY_PROTECTED['config.php'],'rootHelperSha256':m.TOPOLOGY_MAIN_HELPER_SHA,'mainHelperSha256':m.TOPOLOGY_MAIN_HELPER_SHA,
+        'stagedHelperSha256':m.SOURCE_HASHES['v2/data/db-v1.php'],'stagedConfigAbsent':True,'documentRootBound':True}
+    d['topology']={'before':dict(topology),'after':dict(topology),'selectedConfigSha256':topology['rootConfigSha256']};return d
+
+def topology_receipt(data):
+    r=receipt(data);r.update(mode=m.TOPOLOGY_MODE,operation_id=m.TOPOLOGY_OPERATION,source_sha=m.TOPOLOGY_SOURCE)
+    r['local_profile_topology_evidence']=r.pop('local_profile_completeness')
+    r['local_profile_topology_evidence'].update(protectedBefore=m.TOPOLOGY_PROTECTED,protectedAfter=m.TOPOLOGY_PROTECTED);return r
+
+class TopologyAdmission(unittest.TestCase):
+    def test_exact_new_command_and_immutable_old_capsule(self):
+        c=wrapper().core;body=c.PREFIX+' '.join([m.TOPOLOGY_SOURCE,m.TOPOLOGY_MODE,m.TOPOLOGY_OPERATION])
+        self.assertEqual(c.parse_command(body),m.topology_command())
+        for bad in (body+' 88751',body.replace(m.TOPOLOGY_OPERATION,m.EVIDENCE_OPERATION),body.replace(m.TOPOLOGY_SOURCE,m.SOURCE_SHA)):
+            with self.assertRaises(ValueError):c.parse_command(bad)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        self.assertEqual(c.parse_command(c.PREFIX+' '.join([m.EVIDENCE_SOURCE,m.EVIDENCE_MODE,m.EVIDENCE_OPERATION])),m.evidence_command())
+        self.assertEqual(m.EVIDENCE_RUNNER_SHA,'1bf61fc2d3e4e418d32479b8e718a88babbdc1a2ba3be498b4ca8a6dfec123f1')
+        self.assertEqual(m.PROTECTED['data/db-v1.php'],m.SOURCE_HASHES['v2/data/db-v1.php'])
+        self.assertNotEqual(m.PROTECTED,m.TOPOLOGY_PROTECTED)
+        self.assertEqual(hashlib.sha256(m.EVIDENCE_VALIDATOR.encode()).hexdigest(),'6ad529ed7925883ee2d5b47256e68d7701e92bf108335e6f8a72cd4918a3f3f7')
+        self.assertEqual(hashlib.sha256(m.EVIDENCE_PARENT_PROGRAM.encode()).hexdigest(),'b34924f0e870fc4bd0a40fbace09211dcda30ed8816f02d3136f42e59cb33b22')
+
+    def test_closed_owner_handoff_and_both_distinct_source_helpers(self):
+        contract=m.topology_contract();self.assertEqual(contract['ownerHandoff']['commentId'],6412575747)
+        raw,pins=m.bundle_topology_source(SOURCE)
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz')as package:
+            self.assertEqual(set(package.getnames()),{*pins,'manifest.json'});self.assertEqual(len(package.getnames()),9)
+            self.assertEqual(hashlib.sha256(package.extractfile('provenance/main-db-v1.php').read()).hexdigest(),m.TOPOLOGY_MAIN_HELPER_SHA)
+            self.assertNotEqual(package.extractfile('provenance/main-db-v1.php').read(),package.extractfile('v2/data/db-v1.php').read())
+        with mock.patch.object(m,'TOPOLOGY_CONTRACT_SHA','0'*64),self.assertRaises(ValueError):m.topology_policy(CONTROL)
+
+    def test_topology_and_phase_proof_mandatory_before_facts(self):
+        d=topology_success();self.assertTrue(m.valid_topology_payload(d,CONTROL));self.assertTrue(m.completed_topology(m.topology_command(),topology_receipt(d),CONTROL))
+        changes=[(('receipt','phases','configSelected'),False),(('receipt','phases','topologyVerified'),False),
+            (('receipt','phases','rootHelperExecuted'),True),(('receipt','phases','pdoAttempted'),False),(('receipt','failedResultSha256'),'0'*64),
+            (('receipt','oldAccountIdentityKnown'),True),(('receipt','accountSha256After'),'0'*64),(('receipt','roleSha256After'),'0'*64),
+            (('topology','before','stagedConfigAbsent'),False),(('topology','after','rootHelperSha256'),m.PROTECTED['data/db-v1.php']),
+            (('topology','selectedConfigSha256'),'0'*64),(('receipt','databaseSha256After'),'0'*64),(('evidence','blocks',0,'text'),'invented')]
+        for path,value in changes:
+            changed=copy.deepcopy(d);target=changed
+            for k in path[:-1]:target=target[k]
+            target[path[-1]]=value;self.assertFalse(m.valid_topology_payload(changed,CONTROL),path)
+        held=copy.deepcopy(d);held['receipt'].update(state='held',reason='account_drift',blockCount=0,textBytes=0,evidenceSha256=None);held['evidence']=None
+        self.assertTrue(m.valid_topology_payload(held,CONTROL));self.assertFalse(m.completed_topology(m.topology_command(),topology_receipt(held),CONTROL))
+        held['evidence']=d['evidence'];self.assertFalse(m.valid_topology_payload(held,CONTROL))
+
+    def test_failed_parent_gate_before_php_and_no_replay(self):
+        c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,m.topology_command())
+        ast.parse(c.REMOTE)
+        import base64,zlib
+        self.assertLess(len(base64.b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+        self.assertIn('profile_topology_inputs(stage)',c.REMOTE);self.assertIn('local_profile_topology_adjacent_config',c.REMOTE)
+        self.assertNotIn("str(stage/'scripts/catalog/anytour_hotel_profile_88750_evidence_v1.php')",c.REMOTE)
+        raw,pins=m.bundle_topology_source(SOURCE)
+        with tempfile.TemporaryDirectory()as temp:
+            home=Path(temp);project=home/'www/anytoour.ru';(project/'data').mkdir(parents=True);(project/'index.php').write_text('public')
+            (project/'_preview/search3-anex-candidate').mkdir(parents=True);archive=home/'source.tar.gz';archive.write_bytes(raw)
+            payload=m.topology_command()|{'archive':str(archive),'manifest_sha256':hashlib.sha256(canonical(pins)).hexdigest()}
+            program=c.REMOTE.replace('home=pathlib.Path.home()','home=pathlib.Path('+repr(str(home))+')',1)
+            encoded=base64.b64encode(zlib.compress(program.encode(),9)).decode()
+            def run():
+                p=subprocess.run([sys.executable,'-c',"import base64,zlib;exec(zlib.decompress(base64.b64decode('"+encoded+"')))"],input=json.dumps(payload),text=True,capture_output=True,timeout=30)
+                return json.loads(p.stdout)
+            first=run();self.assertEqual(first['reason'],'local_profile_topology_failed_unavailable',first)
+            self.assertNotIn('local_profile_topology_evidence',first);self.assertEqual(first['database_writes'],0)
+            path=home/'.anytoour-int-executor'/m.TOPOLOGY_OPERATION/'result.json';original=path.read_bytes()
+            self.assertEqual(run()['reason'],'operation_exists_no_replay');self.assertEqual(path.read_bytes(),original)
+
+    def test_stock_owner_main_and_fresh_release_admission(self):
+        c=wrapper().core;body=c.PREFIX+' '.join([m.TOPOLOGY_SOURCE,m.TOPOLOGY_MODE,m.TOPOLOGY_OPERATION])
+        event={'issue':{'number':4709},'comment':{'id':101,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):return {'body':body,'user':{'id':226193297}}if path=='/issues/comments/101'else{'object':{'sha':CONTROL if path=='/git/ref/heads/main'else m.TOPOLOGY_SOURCE}}
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),m.topology_command())
+            with self.assertRaises(ValueError):c.checked_event('fixture',event|{'issue':{'number':4217}},CONTROL)
+            with self.assertRaisesRegex(ValueError,'main_changed'):c.checked_event('fixture',event,'c'*40)
+
+class NativeTopology(unittest.TestCase):
+    def test_actual_config_selection_same_pdo_and_factual_evidence(self):
+        env=dict(os.environ,LOCAL_PROFILE_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_profile_topology_evidence_v1_test.php')],env=env,capture_output=True,text=True,timeout=120)
+        self.assertEqual(run.returncode,0,run.stdout+'\n'+run.stderr)
+        self.assertRegex(run.stdout,r'LOCAL_PROFILE_TOPOLOGY_EVIDENCE_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        import base64
+        data=json.loads(base64.b64decode(next(x.split('=',1)[1]for x in run.stdout.splitlines()if x.startswith('PROFILE_TOPOLOGY_EVIDENCE_PAYLOAD='))))
+        with mock.patch.object(m,'DATABASE',data['receipt']['databaseSha256Before']),mock.patch.object(m,'TOPOLOGY_PROTECTED',data['receipt']['protectedBefore']),\
+             mock.patch.object(m,'EVIDENCE_RAW_SHA',data['receipt']['rawSha256Before']),mock.patch.object(m,'EVIDENCE_TIME_SHA',data['receipt']['sourceTimeSha256']):
+            self.assertTrue(m.valid_topology_payload(data,CONTROL),data)
+            self.assertTrue(m.completed_topology(m.topology_command(),topology_receipt(data),CONTROL))
+        print(next(x for x in run.stdout.splitlines()if x.startswith('LOCAL_PROFILE_TOPOLOGY_EVIDENCE_OK')))
+
 if __name__=='__main__':unittest.main()
