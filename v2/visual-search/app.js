@@ -1632,7 +1632,7 @@ const galleryPhotoSources=new WeakMap();
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(retry=false){
  const h=hotels.find(x=>x.id===gallery.id);
- if(!h?.photos.length){gallery.index=0;$('#modal-body').innerHTML=`<div class="saved-empty" role="status">${icon('image')}<h3>Фото пока недоступны</h3><p>Можно вернуться к отелю и продолжить выбор тура.</p></div>`;rememberUIRoute();return;}
+ if(!h?.photos.length){gallery.index=0;$('#modal-body').innerHTML='<div class="gallery-stage photo-failed"><div class="gallery-state"><p role="status">Фото пока недоступны. Можно вернуться к отелю и продолжить выбор тура.</p></div></div>';rememberUIRoute();return;}
  const body=$('#modal-body');let stage=$('.gallery-stage');
  const previous=stage?.dataset.hotelId===String(h.id)?galleryPhotoSources.get(stage):null;
  const changed=!previous||previous.length!==h.photos.length||previous.some((src,i)=>src!==h.photos[i]);
@@ -2796,7 +2796,6 @@ function mergeSearchResults(event){
  operators.splice(0,operators.length,...resultOperators);
  refreshOpenOfferList();
  refreshOpenHotelRooms();
- if(modalType==='gallery')renderGallery();
 }
 function commitSearchDraft(){
  if(urlPartyIssues.length){openGuests();return false;}
@@ -2821,7 +2820,7 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  prepare:prepareSearchRun,
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
- afterEvent:event=>{if(event?.type==='results')searchResponse.currentInventory=true;renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();},
+ afterEvent:event=>{if(event?.type==='results')searchResponse.currentInventory=true;renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();if(event?.type==='results'&&modalType==='gallery')renderGallery();},
  afterStart:()=>renderResults(),
  afterFailure:()=>renderResults(),
  commit:commitSearchDraft,
