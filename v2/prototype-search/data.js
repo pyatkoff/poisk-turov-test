@@ -1804,8 +1804,14 @@
       if(!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw denied('handoff_unavailable','response',response.status);
       return {ok:true,data:payload.data};
     }catch(error){
-      if(failures.has(error))throw error;
-      throw denied('handoff_unknown','transport');
+      const failure=failures.has(error)?error:denied('handoff_unknown','transport');
+      // Reuse the browser-local safe failure channel. No request identity,
+      // response text, guessed supplier, storage or new diagnostic endpoint.
+      const detail=Object.freeze({scope:'messenger',...failure.handoffFailure});
+      try{root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+        if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+      }catch{}
+      throw failure;
     }finally{clearTimeout(timeout);}
   }
   async function verifyAnexFollowUp(o,action){

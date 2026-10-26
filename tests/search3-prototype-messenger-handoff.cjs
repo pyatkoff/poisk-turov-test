@@ -318,6 +318,15 @@ test('Private TV local limit details do not cross another code/provider/category
   assert.doesNotMatch(x.warnings.join(''),/PRIVATE|"token"|"body"|"raw"/);
  }
 });
+test('One actual failed handoff uses the existing browser-local safe channel without private data',async()=>{
+ const x=setup(()=>({ok:false,status:422,text:async()=>JSON.stringify({ok:false,error:'retained_fact_missing',field:'stay.room',owner:'INT',token:'PRIVATE',operation_id:'PRIVATE'})}));
+ const warnings=[],events=[];x.root.console={warn:value=>warnings.push(value)};
+ x.root.CustomEvent=class{constructor(type,options){this.type=type;this.detail=options.detail;}};x.root.dispatchEvent=event=>events.push(event);
+ await assert.rejects(x.dispatch('handoff_freeze',selector));
+ assert.equal(warnings.length,1);assert.equal(events.length,1);assert.equal(events[0].type,'anytour:quote-failure');
+ assert.deepEqual(plain(events[0].detail),{scope:'messenger',action:'handoff_freeze',stage:'http',code:'retained_fact_missing',httpStatus:422,field:'stay.room',owner:'INT'});
+ assert.doesNotMatch(warnings[0],/PRIVATE|csrf|operation_id|search_ref|offer_ref|choice_ref|https:/);assert.equal(x.calls.length,1);
+});
 test('Invalid caller actions never become public failure facts',async()=>{
  const x=setup();await assert.rejects(x.dispatch('PRIVATE_ACTION'),e=>{
   assert.deepEqual(plain(e.handoffFailure),{stage:'request',code:'invalid_request'});return true;
