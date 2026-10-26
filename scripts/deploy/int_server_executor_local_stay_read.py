@@ -35,6 +35,9 @@ def register_parser(core):
     original = core.parse_command
 
     def parse(body):
+        protected_context = parse_protected_context_command(core, body)
+        if protected_context is not None:
+            return protected_context
         permission = parse_permission_command(core, body)
         if permission is not None:
             return permission
@@ -277,6 +280,8 @@ def completed(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == PROTECTED_CONTEXT_MODE:
+        return activate_protected_context(core, command)
     if command.get('mode') == PERMISSION_MODE:
         return activate_permission(core, command)
     if command.get('mode') == SOURCE_FACTS_MODE:
@@ -2218,3 +2223,235 @@ def activate_permission(core,command):
     ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_permission_source
     original_completed=core.completed_result
     core.completed_result=lambda cmd,result: completed_permission(cmd,result,control) if cmd.get('mode')==PERMISSION_MODE else original_completed(cmd,result)
+
+
+# Python-only CURRENT file evidence after the sealed pre-PHP permission refusal.
+PROTECTED_CONTEXT_MODE = 'local-stay-protected-context-read-v1'
+PROTECTED_CONTEXT_OPERATION = 'int-andromeda-local-stay-protected-context-read-20261026-v1'
+PROTECTED_CONTEXT_SOURCE_SHA = '1d0e529e3fc0666783db1454c0765d3c16d63843'
+PROTECTED_CONTEXT_FAILURE = {
+    'operation': 'int-andromeda-local-stay-permission-proof-read-20261026-v1',
+    'source': '1d0e529e3fc0666783db1454c0765d3c16d63843',
+    'private_sha256': '356a4d731d4a9d6f38045ea9c27ed71dcd07e87a525f7af942a1abccfcb2d005',
+}
+PROTECTED_CONTEXT_HASHES = {'v2/data/db-v1.php':'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4'}
+
+
+def parse_protected_context_command(core,body):
+    if not body.startswith(core.PREFIX): return None
+    parts=body[len(core.PREFIX):].split()
+    if len(parts)<2 or parts[1]!=PROTECTED_CONTEXT_MODE: return None
+    need(len(parts)==3 and parts[0]==PROTECTED_CONTEXT_SOURCE_SHA and core.SHA_RE.fullmatch(parts[0]) is not None
+         and parts[2]==PROTECTED_CONTEXT_OPERATION,'local_stay_protected_context_fixed_command')
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','local_stay_protected_context_first_attempt_only')
+    return {'source_sha':PROTECTED_CONTEXT_SOURCE_SHA,'mode':PROTECTED_CONTEXT_MODE,'operation_id':PROTECTED_CONTEXT_OPERATION,
+            'maximum_protected_files':2,'provider_http_calls':0,'database_writes':0}
+
+
+def bundle_protected_context_source(source_root):
+    source=Path(source_root).resolve();output=io.BytesIO();hashes=dict(PROTECTED_CONTEXT_HASHES)
+    with tarfile.open(fileobj=output,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in hashes.items():
+            path=source/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path,'local_stay_protected_context_source_path')
+            raw=path.read_bytes();need(0<len(raw)<=262144 and hashlib.sha256(raw).hexdigest()==digest,
+                                     'local_stay_protected_context_reviewed_source_changed')
+            info=tarfile.TarInfo(relative);info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+        raw=json.dumps({'schema_version':1,'files':hashes},sort_keys=True,separators=(',',':')).encode()
+        info=tarfile.TarInfo('manifest.json');info.size,info.mode,info.mtime=len(raw),0o600,0;archive.addfile(info,io.BytesIO(raw))
+    return output.getvalue(),hashes
+
+
+PROTECTED_CONTEXT_VALIDATOR = r'''
+def local_stay_protected_context_parents_valid(parent,failure,parent_policy,failure_policy):
+    if not local_stay_permission_parent_valid(parent,parent_policy): return False
+    keys={'schema_version','mode','operation_id','source_sha','status','reason','supplier_calls','database_writes',
+          'booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes','production_before'}
+    return (isinstance(failure,dict) and set(failure)==keys and type(failure['schema_version']) is int and failure['schema_version']==1
+            and failure['mode']=='local-stay-permission-proof-read-v1' and failure['operation_id']==failure_policy['operation']
+            and failure['source_sha']==failure_policy['source'] and failure['status']=='unknown_no_replay'
+            and failure['reason']=='local_stay_permission_private_drift' and failure['production_before']==parent['production_before']
+            and all(type(failure[k]) is int and failure[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')))
+def local_stay_protected_context_valid(data,source_sha,control_sha,parent,failure):
+    if not isinstance(data,dict) or set(data)!={'receipt','protectedBefore','protectedAfter'} or len(local_stay_schema_canonical(data))>32768: return False
+    r=data['receipt'];names=('config.php','data/db-v1.php')
+    keys={'schemaVersion','source','state','observedAt','parentOperation','parentResultSha256','parentFileSha256',
+          'failedPermissionOperation','failedPermissionResultSha256','baselineProtected','changedFiles','databaseState','accountState',
+          'permissionState','priceAuthority','applyAuthorized','ddlAdmission','phpExecuted','helperExecuted','databaseConnected','subprocessCalls','supplierCalls','databaseWrites',
+          'schemaWrites','profileWrites','mappingWrites','automaticAccepts','operationId','sourceSha','controlSha'}
+    if (not isinstance(r,dict) or set(r)!=keys or type(r['schemaVersion']) is not int or r['schemaVersion']!=1
+        or r['source']!='anytour-hotel-stay-protected-context-read-v1' or r['operationId']!='int-andromeda-local-stay-protected-context-read-20261026-v1'
+        or r['sourceSha']!=source_sha or r['controlSha']!=control_sha or re.fullmatch(r'[a-f0-9]{40}',control_sha or '') is None
+        or type(r['observedAt']) is not int or not 0<r['observedAt']<=253402300799
+        or r['parentOperation']!=parent['operation'] or r['parentResultSha256']!=parent['private_sha256'] or r['parentFileSha256']!=parent['file_sha256']
+        or r['failedPermissionOperation']!=failure['operation'] or r['failedPermissionResultSha256']!=failure['private_sha256']
+        or r['baselineProtected']!=parent['protected'] or any(r[k]!='NOT_MEASURED' for k in ('databaseState','accountState','permissionState'))
+        or any(r[k] is not False for k in ('priceAuthority','applyAuthorized','ddlAdmission','phpExecuted','helperExecuted','databaseConnected'))): return False
+    if any(type(r[k]) is not int or r[k]!=0 for k in ('subprocessCalls','supplierCalls','databaseWrites','schemaWrites','profileWrites','mappingWrites','automaticAccepts')): return False
+    available=True
+    for key in ('protectedBefore','protectedAfter'):
+        snapshot=data[key]
+        if not isinstance(snapshot,dict) or set(snapshot)!=set(names): return False
+        for name in names:
+            observation=snapshot[name]
+            if not isinstance(observation,dict) or set(observation)!={'status','sha256','matchesBaseline'}: return False
+            if observation['status']=='hashed':
+                if (not isinstance(observation['sha256'],str) or re.fullmatch(r'[a-f0-9]{64}',observation['sha256']) is None
+                    or type(observation['matchesBaseline']) is not bool or observation['matchesBaseline']!=(observation['sha256']==parent['protected'][name])): return False
+            elif (observation['status'] not in ('missing','unsafe','unavailable','size_limit','changed_during_read')
+                  or observation['sha256'] is not None or observation['matchesBaseline'] is not None): return False
+            else: available=False
+    stable=available and data['protectedBefore']==data['protectedAfter']
+    expected='completed_read_only' if stable else ('protected_drift' if available else 'protected_unavailable')
+    changed=[name for name in names if data['protectedAfter'][name]['matchesBaseline'] is False] if stable else None
+    return r['state']==expected and r['changedFiles']==changed
+'''
+
+
+def valid_protected_context_payload(data,control_sha):
+    namespace={'hashlib':hashlib,'json':json,'re':re}
+    try:
+        exec(SCHEMA_VALIDATOR+PROTECTED_CONTEXT_VALIDATOR,namespace)
+        return namespace['local_stay_protected_context_valid'](data,PROTECTED_CONTEXT_SOURCE_SHA,control_sha,PERMISSION_PARENT,PROTECTED_CONTEXT_FAILURE)
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+def completed_protected_context(command,result,control_sha):
+    try:
+        expected={'source_sha':PROTECTED_CONTEXT_SOURCE_SHA,'mode':PROTECTED_CONTEXT_MODE,'operation_id':PROTECTED_CONTEXT_OPERATION,
+                  'maximum_protected_files':2,'provider_http_calls':0,'database_writes':0}
+        if (command!=expected or any(type(command.get(k)) is not int for k in ('maximum_protected_files','provider_http_calls','database_writes'))
+            or result.get('status')!='complete' or type(result.get('schema_version')) is not int or result['schema_version']!=1
+            or any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha'))
+            or len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>65536): return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes')): return False
+        before=result.get('production_before')
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result.get('production_after') or result.get('production_unchanged') is not True or not isinstance(before['index.php'],str)
+            or any(v is not None and (not isinstance(v,str) or re.fullmatch(r'[a-f0-9]{64}',v) is None) for v in before.values())): return False
+        item=result.get('local_stay_protected_context')
+        if (not isinstance(item,dict) or set(item)!={'data','fileSha256','parentResultSha256','failedPermissionResultSha256'}
+            or item['parentResultSha256']!=PERMISSION_PARENT['private_sha256'] or item['failedPermissionResultSha256']!=PROTECTED_CONTEXT_FAILURE['private_sha256']
+            or not valid_protected_context_payload(item['data'],control_sha)): return False
+        data=item['data'];raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')+'\n').encode()
+        return data['receipt']['state']=='completed_read_only' and item['fileSha256']==hashlib.sha256(raw).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError,IndexError,UnicodeError): return False
+
+
+PROTECTED_CONTEXT_REMOTE_HANDLER = r'''
+import stat
+def local_stay_protected_context_unique(pairs):
+    value={}
+    for key,item in pairs:
+        if key in value: raise ValueError('duplicate_json_key')
+        value[key]=item
+    return value
+def local_stay_protected_context_parents():
+    policy=LOCAL_STAY_PROTECTED_CONTEXT_POLICY;values=[]
+    for item in (policy['parent'],policy['failure']):
+        path=private/item['operation']/'result.json'
+        if not safe_file(path,262144) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600: fail('local_stay_protected_context_parent_file')
+        raw=path.read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=item['private_sha256']: fail('local_stay_protected_context_parent_hash')
+        try: value=json.loads(raw,object_pairs_hook=local_stay_protected_context_unique)
+        except Exception: fail('local_stay_protected_context_parent_json')
+        values.append(value)
+    try: valid=local_stay_protected_context_parents_valid(values[0],values[1],policy['parent'],policy['failure'])
+    except Exception: valid=False
+    if not valid: fail('local_stay_protected_context_parent_contract')
+def local_stay_protected_context_observe(name,baseline):
+    path=project/name
+    def held(status): return {'status':status,'sha256':None,'matchesBaseline':None}
+    def signature(value): return (value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns)
+    try:
+        if path.resolve()!=path: return held('unsafe')
+        initial=path.lstat()
+        if not stat.S_ISREG(initial.st_mode): return held('unsafe')
+        if initial.st_size>2097152: return held('size_limit')
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        with os.fdopen(fd,'rb') as handle:
+            before=os.fstat(handle.fileno())
+            if not stat.S_ISREG(before.st_mode): return held('unsafe')
+            if (before.st_dev,before.st_ino)!=(initial.st_dev,initial.st_ino): return held('changed_during_read')
+            raw=handle.read(2097153);after=os.fstat(handle.fileno())
+        if len(raw)>2097152: return held('size_limit')
+        if (signature(before)!=signature(after) or len(raw)!=after.st_size or path.resolve()!=path
+            or signature(path.lstat())!=signature(after)): return held('changed_during_read')
+        digest=hashlib.sha256(raw).hexdigest()
+        return {'status':'hashed','sha256':digest,'matchesBaseline':digest==baseline}
+    except FileNotFoundError: return held('missing')
+    except RuntimeError: return held('unsafe')
+    except OSError: return held('unavailable')
+def run_local_stay_protected_context(stage):
+    policy=LOCAL_STAY_PROTECTED_CONTEXT_POLICY
+    if payload!={**policy['command'],'archive':payload.get('archive'),'manifest_sha256':payload.get('manifest_sha256')}:
+        fail('local_stay_protected_context_payload_scope')
+    if any(type(payload.get(k)) is not int for k in ('maximum_protected_files','provider_http_calls','database_writes')):
+        fail('local_stay_protected_context_payload_types')
+    if files!=policy['hashes']: fail('local_stay_protected_context_source_pins')
+    result['supplier_calls']=result['database_writes']=result['profile_writes']=result['mapping_writes']=result['schema_writes']=0
+    local_stay_protected_context_parents();baseline=policy['parent']['protected'];names=('config.php','data/db-v1.php')
+    before={name:local_stay_protected_context_observe(name,baseline[name]) for name in names}
+    after={name:local_stay_protected_context_observe(name,baseline[name]) for name in names}
+    available=all(item['status']=='hashed' for snapshot in (before,after) for item in snapshot.values())
+    stable=available and before==after
+    data={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-protected-context-read-v1',
+          'state':'completed_read_only' if stable else ('protected_drift' if available else 'protected_unavailable'),'observedAt':int(time.time()),
+          'parentOperation':policy['parent']['operation'],'parentResultSha256':policy['parent']['private_sha256'],'parentFileSha256':policy['parent']['file_sha256'],
+          'failedPermissionOperation':policy['failure']['operation'],'failedPermissionResultSha256':policy['failure']['private_sha256'],
+          'baselineProtected':baseline,'changedFiles':[name for name in names if after[name]['matchesBaseline'] is False] if stable else None,
+          'databaseState':'NOT_MEASURED','accountState':'NOT_MEASURED','permissionState':'NOT_MEASURED',
+          'priceAuthority':False,'applyAuthorized':False,'ddlAdmission':False,'phpExecuted':False,'helperExecuted':False,'databaseConnected':False,'subprocessCalls':0,
+          'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'profileWrites':0,'mappingWrites':0,'automaticAccepts':0,
+          'operationId':operation,'sourceSha':source,'controlSha':policy['control']},'protectedBefore':before,'protectedAfter':after}
+    if not local_stay_protected_context_valid(data,source,policy['control'],policy['parent'],policy['failure']): fail('local_stay_protected_context_generated_contract')
+    raw=local_stay_schema_canonical(data)+b'\n';path=op/'local-stay-protected-context-read.json'
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:
+        if handle.write(raw)!=len(raw): fail('local_stay_protected_context_receipt_write')
+        handle.flush();os.fsync(handle.fileno())
+    if not safe_file(path,32768) or path.resolve()!=path or path.stat().st_mode&0o777!=0o600 or path.read_bytes()!=raw:
+        fail('local_stay_protected_context_receipt_file')
+    return {'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),'parentResultSha256':policy['parent']['private_sha256'],
+            'failedPermissionResultSha256':policy['failure']['private_sha256']}
+'''
+PROTECTED_CONTEXT_REMOTE_DISPATCH = r'''    if mode=='local-stay-protected-context-read-v1':
+        result['local_stay_protected_context']=run_local_stay_protected_context(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if result['local_stay_protected_context']['data']['receipt']['state']=='completed_read_only' else 'terminal_nonzero_no_replay'
+        if len(json.dumps(result,ensure_ascii=False,separators=(',',':')).encode())>65536: fail('local_stay_protected_context_terminal_size')
+'''
+
+
+def activate_protected_context(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),PROTECTED_CONTEXT_MODE,str(command.get('operation_id',''))]))
+    need(command==expected and all(type(command.get(k)) is int for k in ('maximum_protected_files','provider_http_calls','database_writes')),
+         'local_stay_protected_context_authorized_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local_stay_protected_context_control_sha')
+    hashes=dict(PROTECTED_CONTEXT_HASHES);remote=core.REMOTE
+    definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n"
+    collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,
+         'local_stay_protected_context_registration_drift')
+    policy={'command':expected,'hashes':hashes,'control':control,'parent':PERMISSION_PARENT,'failure':PROTECTED_CONTEXT_FAILURE}
+    constants=('SOURCE_FACTS_MODE='+repr(SOURCE_FACTS_MODE)+'\nSOURCE_FACTS_OPERATION='+repr(SOURCE_FACTS_OPERATION)
+               +'\nSOURCE_FACTS_SOURCE_SHA='+repr(SOURCE_FACTS_SOURCE_SHA)+'\nCONTEXT_INSTALL_PARENT='+repr(CONTEXT_INSTALL_PARENT)
+               +'\nSOURCE_FACTS_FAILURE='+repr(SOURCE_FACTS_FAILURE)+'\n')
+    validators=('def local_stay_permission_parent_payload(data,control_sha):\n'
+                '    return local_stay_source_facts_valid(data,SOURCE_FACTS_SOURCE_SHA,control_sha,CONTEXT_INSTALL_PARENT,SOURCE_FACTS_FAILURE)\n')
+    program=('LOCAL_STAY_PROTECTED_CONTEXT_POLICY='+repr(policy)+'\n'+constants+SCHEMA_VALIDATOR+SOURCE_FACTS_VALIDATOR+PERMISSION_PARENT_VALIDATOR
+             +PROTECTED_CONTEXT_VALIDATOR+'\n'+validators+'\n'+permission_parent_completion_source()+'\n'+PROTECTED_CONTEXT_REMOTE_HANDLER+'\n')
+    remote=remote.replace(definition,program+definition,1);remote=remote.replace(dispatch,PROTECTED_CONTEXT_REMOTE_DISPATCH+dispatch,1)
+    remote=remote.replace(collector,"    if mode not in ('"+PROTECTED_CONTEXT_MODE+"','reconcile',")
+    remote=remote.replace(manifest,"    if not isinstance(files,dict) or files!=LOCAL_STAY_PROTECTED_CONTEXT_POLICY['hashes']: fail('local_stay_protected_context_manifest')",1)
+    members='        members=package.getmembers()\n';need(remote.count(members)==1,'local_stay_protected_context_archive_anchor')
+    remote=remote.replace(members,members+"        if len(members)!=2 or {m.name for m in members}!={*LOCAL_STAY_PROTECTED_CONTEXT_POLICY['hashes'],'manifest.json'}: fail('local_stay_protected_context_archive_scope')\n",1)
+    reservation='    op.mkdir(mode=0o700)\n';final="if 'op' in globals() and op.exists():"
+    need(remote.count(reservation)==1 and remote.count(final)==1,'local_stay_protected_context_reservation_anchor')
+    remote=remote.replace(reservation,reservation+'    local_stay_protected_context_reserved=True\n',1)
+    remote=remote.replace(final,"if globals().get('local_stay_protected_context_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE,core.bundle_source=remote,bundle_protected_context_source
+    original_completed=core.completed_result
+    core.completed_result=lambda cmd,result: completed_protected_context(cmd,result,control) if cmd.get('mode')==PROTECTED_CONTEXT_MODE else original_completed(cmd,result)

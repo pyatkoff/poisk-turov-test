@@ -1457,5 +1457,189 @@ class NativeStockPermission(unittest.TestCase):
         print(run.stdout.strip())
 
 
+def protected_context_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.PROTECTED_CONTEXT_SOURCE_SHA} {m.PROTECTED_CONTEXT_MODE} {m.PROTECTED_CONTEXT_OPERATION}')
+
+
+def protected_context_fixture_data(changed=False):
+    baseline=dict(m.PERMISSION_PARENT['protected']);snapshot={name:{'status':'hashed','sha256':digest,'matchesBaseline':True} for name,digest in baseline.items()}
+    if changed: snapshot['data/db-v1.php'].update(sha256='f'*64,matchesBaseline=False)
+    return {'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-protected-context-read-v1','state':'completed_read_only','observedAt':1792972284,
+        'parentOperation':m.PERMISSION_PARENT['operation'],'parentResultSha256':m.PERMISSION_PARENT['private_sha256'],'parentFileSha256':m.PERMISSION_PARENT['file_sha256'],
+        'failedPermissionOperation':m.PROTECTED_CONTEXT_FAILURE['operation'],'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256'],
+        'baselineProtected':baseline,'changedFiles':['data/db-v1.php'] if changed else [],'databaseState':'NOT_MEASURED','accountState':'NOT_MEASURED','permissionState':'NOT_MEASURED',
+        'priceAuthority':False,'applyAuthorized':False,'ddlAdmission':False,'phpExecuted':False,'helperExecuted':False,'databaseConnected':False,
+        'subprocessCalls':0,'supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'profileWrites':0,'mappingWrites':0,'automaticAccepts':0,
+        'operationId':m.PROTECTED_CONTEXT_OPERATION,'sourceSha':m.PROTECTED_CONTEXT_SOURCE_SHA,'controlSha':CONTROL},
+        'protectedBefore':snapshot,'protectedAfter':copy.deepcopy(snapshot)}
+
+
+def protected_context_receipt(data):
+    outer=receipt(data);outer.pop('local_stay_read')
+    outer.update(mode=m.PROTECTED_CONTEXT_MODE,operation_id=m.PROTECTED_CONTEXT_OPERATION,source_sha=m.PROTECTED_CONTEXT_SOURCE_SHA)
+    raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+    outer['local_stay_protected_context']={'data':data,'fileSha256':hashlib.sha256(raw).hexdigest(),
+        'parentResultSha256':m.PERMISSION_PARENT['private_sha256'],'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256']}
+    return outer
+
+
+def protected_context_failed_fixture(parent):
+    return {'schema_version':1,'mode':m.PERMISSION_MODE,'operation_id':m.PERMISSION_OPERATION,'source_sha':m.PERMISSION_SOURCE_SHA,
+        'status':'unknown_no_replay','reason':'local_stay_permission_private_drift','production_before':dict(parent['production_before']),
+        **dict.fromkeys(('supplier_calls','database_writes','booking_calls','lead_calls','profile_writes','mapping_writes','schema_writes'),0)}
+
+
+class ProtectedContextAdmission(unittest.TestCase):
+    def test_fixed_owner_main_release_caps_and_helper_only_archive(self):
+        c=wrapper().core;parsed=protected_context_command(c);body=f'{c.PREFIX}{m.PROTECTED_CONTEXT_SOURCE_SHA} {m.PROTECTED_CONTEXT_MODE} {m.PROTECTED_CONTEXT_OPERATION}'
+        self.assertEqual(parsed['maximum_protected_files'],2)
+        for invalid in (body+' config.php',body+' --apply',body.replace(m.PROTECTED_CONTEXT_SOURCE_SHA,m.INSTALL_SOURCE_SHA),body+' retry'):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        event={'issue':{'number':4709},'comment':{'id':116,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        def api(path,token):
+            if path=='/issues/comments/116': return {'body':body,'user':{'id':226193297}}
+            if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/release/search3-production-ready-v1': return {'object':{'sha':m.PROTECTED_CONTEXT_SOURCE_SHA}}
+            raise AssertionError(path)
+        with mock.patch.object(c,'api_get',side_effect=api):
+            self.assertEqual(c.checked_event('fixture',event,CONTROL),parsed)
+            with self.assertRaises(ValueError): c.checked_event('fixture',dict(event,issue={'number':4217}),CONTROL)
+            with self.assertRaises(ValueError): c.checked_event('fixture',event,'c'*40)
+        raw,hashes=m.bundle_protected_context_source(SOURCE)
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+            self.assertEqual(set(archive.getnames()),{'v2/data/db-v1.php','manifest.json'});self.assertEqual(len(archive.getmembers()),2)
+            self.assertTrue(all(x.isfile() and x.mode==0o600 for x in archive.getmembers()))
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            for key,value in (('maximum_protected_files',True),('provider_http_calls',False),('database_writes',1),('path','config.php'),('expected_hash','f'*64)):
+                with self.subTest(key=key),self.assertRaises(ValueError): m.activate(c,parsed|{key:value})
+            m.activate(c,parsed)
+        ast.parse(c.REMOTE);self.assertIn('if len(members)!=2',c.REMOTE)
+        self.assertIn("if globals().get('local_stay_protected_context_reserved') is True and op.exists():",c.REMOTE)
+        handler=ast.parse(m.PROTECTED_CONTEXT_REMOTE_HANDLER)
+        self.assertFalse(any(isinstance(n,ast.Name) and n.id=='subprocess' for n in ast.walk(handler)))
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_stable_match_or_difference_is_evidence_only_and_unstable_is_held(self):
+        parsed=protected_context_command(wrapper().core)
+        for changed in (False,True):
+            data=protected_context_fixture_data(changed);self.assertTrue(m.completed_protected_context(parsed,protected_context_receipt(data),CONTROL))
+            for key,value in (('databaseWrites',False),('helperExecuted',True),('databaseConnected',True),('ddlAdmission',True),('databaseState','KNOWN'),('changedFiles',['config.php'])):
+                altered=copy.deepcopy(data);altered['receipt'][key]=value
+                self.assertFalse(m.completed_protected_context(parsed,protected_context_receipt(altered),CONTROL))
+        data=protected_context_fixture_data();data['protectedAfter']['config.php'].update(sha256='d'*64,matchesBaseline=False)
+        data['receipt'].update(state='protected_drift',changedFiles=None)
+        self.assertTrue(m.valid_protected_context_payload(data,CONTROL));self.assertFalse(m.completed_protected_context(parsed,protected_context_receipt(data),CONTROL))
+        data['protectedAfter']['config.php']={'status':'missing','sha256':None,'matchesBaseline':None};data['receipt']['state']='protected_unavailable'
+        self.assertTrue(m.valid_protected_context_payload(data,CONTROL));self.assertFalse(m.completed_protected_context(parsed,protected_context_receipt(data),CONTROL))
+
+    def test_exact_failed_pre_php_shape_and_full_historical_raw_parent(self):
+        parent=permission_parent_fixture();failure=protected_context_failed_fixture(parent);policy=copy.deepcopy(m.PERMISSION_PARENT)
+        policy['file_sha256']=parent['local_stay_source_facts']['fileSha256']
+        namespace={'local_stay_permission_parent_completed':m.completed_source_facts}
+        exec(m.PERMISSION_PARENT_VALIDATOR+m.PROTECTED_CONTEXT_VALIDATOR,namespace);valid=namespace['local_stay_protected_context_parents_valid']
+        self.assertTrue(valid(parent,failure,policy,m.PROTECTED_CONTEXT_FAILURE))
+        for key,value in (('database_writes',False),('status','complete'),('reason','other'),('local_stay_permission_proof',{}),('controlSha','f'*40)):
+            self.assertFalse(valid(parent,failure|{key:value},policy,m.PROTECTED_CONTEXT_FAILURE))
+        changed=copy.deepcopy(parent);changed['local_stay_source_facts']['data']['receipt']['controlSha']=CONTROL
+        self.assertFalse(valid(changed,failure,policy,m.PROTECTED_CONTEXT_FAILURE))
+
+
+class ProtectedContextFiles(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.home=Path(self.temp.name)
+        self.project=self.home/'www/anytoour.ru';(self.project/'data').mkdir(parents=True);(self.project/'_preview/search3-anex-candidate').mkdir(parents=True)
+        for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+            path=self.project/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture public '+name)
+        (self.project/'config.php').write_text('<?php throw new RuntimeException("NEVER_EXECUTE_CONFIG");\n')
+        shutil.copyfile(SOURCE/'v2/data/db-v1.php',self.project/'data/db-v1.php')
+        baseline={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('config.php','data/db-v1.php')}
+        context=copy.deepcopy(m.CONTEXT_INSTALL_PARENT);context['protected']=baseline
+        self.enterContext(mock.patch.object(m,'CONTEXT_INSTALL_PARENT',context))
+        parent=permission_parent_fixture();public={name:hashlib.sha256((self.project/name).read_bytes()).hexdigest() for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        parent.update(production_before=public,production_after=dict(public));failure=protected_context_failed_fixture(parent)
+        private=self.home/'.anytoour-int-executor';private.mkdir(mode=0o700);paths=[]
+        for operation,value in ((m.PERMISSION_PARENT['operation'],parent),(m.PROTECTED_CONTEXT_FAILURE['operation'],failure)):
+            path=private/operation/'result.json';path.parent.mkdir(mode=0o700);raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+            path.write_bytes(raw);path.chmod(0o600);paths.append((path,raw))
+        self.parent_path,self.failure_path=paths[0][0],paths[1][0]
+        policy=copy.deepcopy(m.PERMISSION_PARENT);policy.update(private_sha256=hashlib.sha256(paths[0][1]).hexdigest(),
+            file_sha256=parent['local_stay_source_facts']['fileSha256'],protected=baseline)
+        failure_policy=copy.deepcopy(m.PROTECTED_CONTEXT_FAILURE);failure_policy['private_sha256']=hashlib.sha256(paths[1][1]).hexdigest()
+        self.enterContext(mock.patch.object(m,'PERMISSION_PARENT',policy));self.enterContext(mock.patch.object(m,'PROTECTED_CONTEXT_FAILURE',failure_policy))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):
+            self.command=protected_context_command(self.c);m.activate(self.c,self.command)
+        raw,self.hashes=m.bundle_protected_context_source(SOURCE);self.archive=self.home/'protected-source.tar.gz';self.archive.write_bytes(raw)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(self.hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    def run_remote(self):
+        encoded=__import__('base64').b64encode(zlib.compress(self.c.REMOTE.encode(),9)).decode()
+        loader='import base64,zlib,subprocess\ndef forbidden(*a,**k): raise AssertionError("NO_CHILD_PROCESSES")\nsubprocess.run=forbidden\nsubprocess.Popen=forbidden\nexec(zlib.decompress(base64.b64decode('+repr(encoded)+')))'
+        run=subprocess.run(['python3','-c',loader],input=json.dumps(self.payload),text=True,capture_output=True,env=dict(os.environ,HOME=str(self.home)),timeout=30)
+        self.assertEqual(run.returncode,0,run.stderr);return json.loads(run.stdout)
+
+    def handler_namespace(self):
+        prefix=self.c.REMOTE.split('\ntry:\n    if not re.fullmatch',1)[0];namespace={}
+        with mock.patch.dict(os.environ,{'HOME':str(self.home)}),mock.patch('sys.stdin',io.StringIO(json.dumps(self.payload))): exec(prefix,namespace)
+        operation=self.home/'.anytoour-int-executor'/m.PROTECTED_CONTEXT_OPERATION;operation.mkdir(mode=0o700)
+        stage=operation/'source';stage.mkdir(mode=0o700);namespace.update(op=operation,files=self.hashes)
+        return namespace,operation,stage
+
+    def test_actual_stable_two_hashes_and_repeat_preserve_original_without_child_process(self):
+        result=self.run_remote();self.assertTrue(m.completed_protected_context(self.command,result,CONTROL),result)
+        item=result['local_stay_protected_context'];self.assertEqual(item['data']['receipt']['changedFiles'],[])
+        operation=self.home/'.anytoour-int-executor'/m.PROTECTED_CONTEXT_OPERATION
+        original={name:(operation/name).read_bytes() for name in ('result.json','local-stay-protected-context-read.json')}
+        self.assertEqual(json.loads(original['local-stay-protected-context-read.json']),item['data'])
+        self.assertEqual((operation/'local-stay-protected-context-read.json').stat().st_mode&0o777,0o600)
+        repeat=self.run_remote();self.assertEqual(repeat.get('reason'),'operation_exists_no_replay')
+        self.assertTrue(all((operation/name).read_bytes()==raw for name,raw in original.items()))
+
+    def test_actual_changed_helper_is_only_current_hash_evidence(self):
+        (self.project/'data/db-v1.php').write_text('<?php throw new RuntimeException("NEVER_EXECUTE_HELPER");')
+        result=self.run_remote();self.assertTrue(m.completed_protected_context(self.command,result,CONTROL),result)
+        r=result['local_stay_protected_context']['data']['receipt'];self.assertEqual(r['changedFiles'],['data/db-v1.php'])
+        self.assertIs(r['helperExecuted'],False);self.assertIs(r['databaseConnected'],False);self.assertEqual(r['permissionState'],'NOT_MEASURED')
+
+    def test_actual_missing_and_symlink_files_are_held_without_reading_target(self):
+        (self.project/'config.php').unlink();(self.project/'data/db-v1.php').unlink()
+        outside=self.home/'private-target';outside.write_text('must not read this content');(self.project/'data/db-v1.php').symlink_to(outside)
+        node=next(n for n in ast.parse(m.PROTECTED_CONTEXT_REMOTE_HANDLER).body if isinstance(n,ast.FunctionDef) and n.name=='local_stay_protected_context_observe')
+        namespace={'project':self.project,'os':os,'stat':__import__('stat'),'hashlib':hashlib}
+        exec(compile(ast.Module(body=[node],type_ignores=[]),'<fixed-observer-fixture>','exec'),namespace)
+        self.assertEqual(namespace['local_stay_protected_context_observe']('data/db-v1.php','a'*64)['status'],'unsafe')
+        link=self.project/'data/db-v1.php';link.unlink();link.symlink_to(link)
+        result=self.run_remote();data=result['local_stay_protected_context']['data']
+        self.assertEqual(result['status'],'terminal_nonzero_no_replay');self.assertEqual(data['receipt']['state'],'protected_unavailable')
+        self.assertIsNone(data['receipt']['changedFiles']);self.assertEqual(data['protectedAfter']['config.php']['status'],'missing')
+        self.assertEqual(data['protectedAfter']['data/db-v1.php'],{'status':'unsafe','sha256':None,'matchesBaseline':None})
+        self.assertFalse(m.completed_protected_context(self.command,result,CONTROL))
+
+    def test_actual_handler_detects_file_change_between_snapshots(self):
+        namespace,operation,stage=self.handler_namespace();observe=namespace['local_stay_protected_context_observe'];calls=0
+        def mutate_fixture(name,baseline):
+            nonlocal calls
+            observed=observe(name,baseline);calls+=1
+            if calls==2: (self.project/'config.php').write_text('changed between the two observations')
+            return observed
+        namespace['local_stay_protected_context_observe']=mutate_fixture
+        with mock.patch.object(subprocess,'run',side_effect=AssertionError('NO_CHILD_PROCESSES')):
+            item=namespace['run_local_stay_protected_context'](stage)
+        self.assertEqual(item['data']['receipt']['state'],'protected_drift');self.assertIsNone(item['data']['receipt']['changedFiles'])
+        self.assertEqual(calls,4)
+
+    def test_actual_handler_exclusive_receipt_preserves_existing_bytes(self):
+        namespace,operation,stage=self.handler_namespace();path=operation/'local-stay-protected-context-read.json';path.write_bytes(b'original receipt');path.chmod(0o600)
+        with self.assertRaises(FileExistsError): namespace['run_local_stay_protected_context'](stage)
+        self.assertEqual(path.read_bytes(),b'original receipt')
+
+    def test_actual_failed_private_bytes_drift_stops_before_observation(self):
+        self.failure_path.write_bytes(self.failure_path.read_bytes()+b' ')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_protected_context_parent_hash',result)
+        self.assertNotIn('local_stay_protected_context',result)
+        self.assertFalse((self.home/'.anytoour-int-executor'/m.PROTECTED_CONTEXT_OPERATION/'local-stay-protected-context-read.json').exists())
+
+
 if __name__ == '__main__':
     unittest.main()
