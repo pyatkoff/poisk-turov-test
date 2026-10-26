@@ -117,4 +117,100 @@ class Native(unittest.TestCase):
             self.assertTrue(m.completed(m.fixed_command(),receipt(data),CONTROL))
         print(next(x for x in run.stdout.splitlines() if x.startswith('LOCAL_PROFILE_COMPLETENESS_OK')))
 
+def batch_held():
+    targets=m.batch_policy(CONTROL)['targets']
+    items=[{'hotelId':x['hotelId'],'countryId':x['countryId'],'recordSha256':x['recordSha256'],'state':'held','reason':'retained_source_unavailable',
+            'source':None,'consumer':None,'gaps':None} for x in targets]
+    r={'schemaVersion':1,'source':'anytour-hotel-profile-batch-read-v1','state':'completed_read_only','reason':None,'observedAt':1792994000,
+       'manifestSha256':m.BATCH_MANIFEST_SHA,'producerArtifactSha256':'c67a9aca2c2efd00e4a187cc43a3b6d258bd5629457778ee03d82e28f0d63b00',
+       'producerJsonSha256':'0b79183d8e4d8615cd810151431859ca1cd43c5e1c066fb9d0b2a9e0930fe251','requestedCount':20,'observedCount':0,'heldCount':20,'possibleGapCount':0,
+       'databaseSha256Before':m.DATABASE,'databaseSha256After':m.DATABASE,'protectedBefore':m.PROTECTED,'protectedAfter':m.PROTECTED,
+       **dict.fromkeys(('supplierCalls','databaseWrites','profileWrites','mappingWrites','schemaWrites','automaticAccepts'),0),
+       'priceAuthority':False,'importAllowed':False,'itemsSha256':hashlib.sha256(canonical(items)).hexdigest(),
+       'operationId':m.BATCH_OPERATION,'sourceSha':m.SOURCE_SHA,'controlSha':CONTROL}
+    return {'receipt':r,'items':items}
+
+def batch_receipt(data):
+    r=receipt(data);r.update(mode=m.BATCH_MODE,operation_id=m.BATCH_OPERATION)
+    r['local_profile_batch']=r.pop('local_profile_completeness');return r
+
+class BatchAdmission(unittest.TestCase):
+    def test_fixed20_parser_and_original_programs_preserved(self):
+        c=wrapper().core;body=c.PREFIX+' '.join([m.SOURCE_SHA,m.BATCH_MODE,m.BATCH_OPERATION])
+        self.assertEqual(c.parse_command(body),m.batch_command())
+        for bad in (body+' 21',body.replace(m.BATCH_OPERATION,m.OPERATION),body.replace(m.SOURCE_SHA,'a'*40)):
+            with self.assertRaises(ValueError):c.parse_command(bad)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        self.assertEqual(c.parse_command(c.PREFIX+' '.join([m.SOURCE_SHA,m.MODE,m.OPERATION])),m.fixed_command())
+        for k,digest in {'VALIDATOR':'bd2ea59c3252a6ed9f2a1c4221ecb42b32611bd26dba6dcc81e564661ca4011a',
+                         'REMOTE_HANDLER':'9aa5f773b4e8ab5800fc1b6cc9fbffdaa588031a15940efd3296d2a06394f454',
+                         'REMOTE_DISPATCH':'00b8fa6a5d6476cf1bd58a3ccde10e3513e29ce6a71ed8d11a208fb384a8e1c5'}.items():
+            self.assertEqual(hashlib.sha256(getattr(m,k).encode()).hexdigest(),digest)
+        self.assertEqual(m.RUNNER_SHA,'11e54194b60ec03b2d6bebf8492953685d524a782ac9d80657006e2d54b9f8d3')
+
+    def test_closed_manifest_and_bundle_never_select_alternate_hotel(self):
+        policy=m.batch_policy(CONTROL);ids=[x['hotelId']for x in policy['targets']]
+        self.assertEqual(ids,[485,1451,9432,1351,465,1361,12114,1102,986,1141,15872,1574,1143,111129,5535,9270,1029,28660,88750,65659])
+        raw,pins=m.bundle_batch_source(SOURCE)
+        with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz')as package:
+            self.assertEqual(set(package.getnames()),{*pins,'manifest.json'});self.assertEqual(len(package.getnames()),8)
+        with mock.patch.object(m,'BATCH_MANIFEST_SHA','0'*64),self.assertRaisesRegex(ValueError,'manifest_pin'):m.batch_policy(CONTROL)
+
+    def test_strict_partition_order_and_zero_authority_receipt(self):
+        data=batch_held();r=batch_receipt(data);self.assertTrue(m.completed_batch(m.batch_command(),r,CONTROL))
+        for field,value in (('heldCount',False),('observedCount',1),('importAllowed',True),('possibleGapCount',1),('producerArtifactSha256','0'*64)):
+            changed=copy.deepcopy(data);changed['receipt'][field]=value;self.assertFalse(m.valid_batch_payload(changed,CONTROL))
+        for mutation in ('order','extra','wrong_id'):
+            changed=copy.deepcopy(data)
+            if mutation=='order':changed['items'].reverse()
+            elif mutation=='extra':changed['items'][0]['raw_url']='forbidden'
+            else:changed['items'][0]['hotelId']=475
+            changed['receipt']['itemsSha256']=hashlib.sha256(canonical(changed['items'])).hexdigest()
+            self.assertFalse(m.valid_batch_payload(changed,CONTROL))
+        namespace={'json':json,'hashlib':hashlib,'re':__import__('re')};exec(m.BATCH_VALIDATOR,namespace)
+        with self.assertRaises(ValueError):namespace['profile_read_unique']([('a',1),('a',2)])
+
+    def test_activation_keeps_old_no_replay_and_closed_archive(self):
+        c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,m.batch_command())
+        ast.parse(c.REMOTE)
+        self.assertIn("operation_exists_no_replay",c.REMOTE);self.assertIn("local_profile_batch_manifest",c.REMOTE)
+        self.assertNotIn('str(stage/\'scripts/catalog/anytour_hotel_profile_completeness_read_v1.php\')',c.REMOTE)
+        import base64,zlib
+        self.assertLess(len(base64.b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+
+    def test_actual_batch_private_refusal_preserves_original(self):
+        c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,m.batch_command())
+        raw,pins=m.bundle_batch_source(SOURCE)
+        with tempfile.TemporaryDirectory()as temp:
+            home=Path(temp);project=home/'www/anytoour.ru';(project/'data').mkdir(parents=True);(project/'index.php').write_text('public')
+            (project/'_preview/search3-anex-candidate').mkdir(parents=True)
+            (project/'config.php').write_text('different config');(project/'data/db-v1.php').write_text('different helper')
+            archive=home/'source.tar.gz';archive.write_bytes(raw)
+            payload=m.batch_command()|{'archive':str(archive),'manifest_sha256':hashlib.sha256(canonical(pins)).hexdigest()}
+            program=c.REMOTE.replace('home=pathlib.Path.home()','home=pathlib.Path('+repr(str(home))+')',1)
+            import base64,zlib
+            encoded=base64.b64encode(zlib.compress(program.encode(),9)).decode()
+            def run():
+                p=subprocess.run([sys.executable,'-c',"import base64,zlib;exec(zlib.decompress(base64.b64decode('"+encoded+"')))"],input=json.dumps(payload),text=True,capture_output=True,timeout=30)
+                return json.loads(p.stdout)
+            first=run();self.assertEqual(first['reason'],'local_profile_batch_private_drift',first)
+            self.assertEqual(first['database_writes'],0);self.assertIsNone(first['local_profile_batch']['data'])
+            path=home/'.anytoour-int-executor'/m.BATCH_OPERATION/'result.json';original=path.read_bytes()
+            self.assertEqual(run()['reason'],'operation_exists_no_replay');self.assertEqual(path.read_bytes(),original)
+
+class NativeBatch(unittest.TestCase):
+    def test_actual_native20_source_and_consumer_gap_partition(self):
+        env=dict(os.environ,LOCAL_PROFILE_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_profile_batch_read_v1_test.php')],env=env,capture_output=True,text=True,timeout=120)
+        self.assertEqual(run.returncode,0,run.stdout+'\n'+run.stderr)
+        self.assertRegex(run.stdout,r'LOCAL_PROFILE_BATCH_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL')
+        import base64
+        data=json.loads(base64.b64decode(next(x.split('=',1)[1]for x in run.stdout.splitlines()if x.startswith('PROFILE_BATCH_READ_PAYLOAD='))))
+        with mock.patch.object(m,'DATABASE',data['receipt']['databaseSha256Before']),mock.patch.object(m,'PROTECTED',data['receipt']['protectedBefore']):
+            self.assertTrue(m.valid_batch_payload(data,CONTROL),data)
+            self.assertTrue(m.completed_batch(m.batch_command(),batch_receipt(data),CONTROL))
+        print(next(x for x in run.stdout.splitlines()if x.startswith('LOCAL_PROFILE_BATCH_OK')))
+
 if __name__=='__main__':unittest.main()
