@@ -1822,5 +1822,164 @@ class NativeContextPermission(unittest.TestCase):
         print(run.stdout.strip())
 
 
+
+def permission_install_command(c):
+    return c.parse_command(f'{c.PREFIX}{m.PERMISSION_INSTALL_SOURCE_SHA} {m.PERMISSION_INSTALL_MODE} {m.PERMISSION_INSTALL_OPERATION}')
+
+def permission_install_fresh_fixture():
+    data=context_permission_fixture_data();r=data['receipt'];e=data['engine'];er=e['receipt'];policy=m.PERMISSION_INSTALL_PARENT
+    for side in ('Before','After'):
+        er['accountSha256'+side]=policy['account_sha256'];er['roleSha256'+side]=policy['role_sha256']
+        e['coverage']['metadataSha256'+side]=policy['metadata_sha256']
+    permission_refresh(e)
+    r['engineResultSha256']=hashlib.sha256(m.local_permission_install_canonical(e)).hexdigest()
+    r['helperAttempted']=False
+    data['receipt']={k:v for k,v in r.items() if k not in ('operationId','sourceSha','controlSha')}
+    return data
+
+def permission_install_fixture_data(qualified=True):
+    shape=install_fixture_data();before=shape['before'];after=shape['after'];p=m.PERMISSION_INSTALL_PARENT
+    if qualified:
+        after['server']['triggerVisibilityProven']=False
+        for t in after['tables'][2:]: t.update(compatibility='incompatible',issues=['trigger_visibility_not_proven'])
+    digest=lambda x:hashlib.sha256(m.local_permission_install_canonical(x)).hexdigest()
+    plan={'state':'blocked_server_capability' if qualified else 'ready_no_op','createTables':[],'existingCompatibleTables':[] if qualified else list(m.INSTALL_TABLES),
+          'blockedTables':list(m.INSTALL_TABLES) if qualified else [],'requiresExplicitReview':True,'applyAuthorized':False,'migrationSha256':m.SCHEMA_MIGRATION_SHA,'noDdlExecuted':True}
+    raw_schema={'receipt':{'schemaVersion':1,'source':'anytour-hotel-stay-schema-read-v1','state':'completed_read_only','supplierCalls':0,'databaseWrites':0,'schemaWrites':0,'automaticAccepts':0,
+                          'migrationSha256':m.SCHEMA_MIGRATION_SHA,'inventorySha256':digest(after),'planSha256':digest(plan)},'inventory':after,'plan':plan}
+    fresh=permission_install_fresh_fixture()
+    r={'schemaVersion':1,'source':'anytour-hotel-stay-permission-install-v1','state':'installed_empty','reason':None,'migrationSha256':m.SCHEMA_MIGRATION_SHA,
+       'permissionOperation':p['operation'],'permissionResultSha256':p['private_sha256'],'permissionFileSha256':p['file_sha256'],'permissionEngineSha256':p['engine_sha256'],
+       'contextResultSha256':m.CONTEXT_PERMISSION_PARENT['private_sha256'],'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256'],'rawResultSha256':m.PERMISSION_PARENT['private_sha256'],
+       **{k:p[v] for k,v in [('databaseSha256','database_sha256'),('accountSha256','account_sha256'),('roleSha256','role_sha256'),('coverageSha256','coverage_sha256'),('metadataSha256','metadata_sha256')]},
+       'beforeSha256':digest(before),'afterSha256':digest(after),'permissionBeforeSha256':digest(fresh),'permissionPostBeforeSha256':digest(fresh),'permissionAfterSha256':digest(fresh),
+       'rawSchemaAfterSha256':digest(raw_schema),'rawSchemaState':plan['state'],'schemaVerification':'permission_qualified' if qualified else 'raw_ready',
+       'protectedBefore':dict(m.PERMISSION_PARENT['protected']),'protectedAfter':dict(m.PERMISSION_PARENT['protected']),
+       'attemptedTables':list(m.INSTALL_TABLES),'createdTables':list(m.INSTALL_TABLES),'unknownTables':[],'tableRows':[{'name':t,'rows':0} for t in m.INSTALL_TABLES],
+       'supplierCalls':0,'databaseWrites':0,'profileWrites':0,'mappingWrites':0,'schemaWrites':3,'automaticAccepts':0,'ddlOutcomeUnknown':False,'parentMetadataUnchanged':True,'journalSha256':None,
+       'operationId':m.PERMISSION_INSTALL_OPERATION,'sourceSha':m.PERMISSION_INSTALL_SOURCE_SHA,'controlSha':CONTROL}
+    data={'receipt':r,'before':before,'after':after,'permissionBefore':fresh,'permissionPostBefore':copy.deepcopy(fresh),'permissionAfter':copy.deepcopy(fresh),'rawSchemaAfter':raw_schema}
+    r['journalSha256']=hashlib.sha256(b''.join(m.local_permission_install_canonical(e)+b'\n' for e in permission_install_journal(data))).hexdigest()
+    return data
+
+def permission_install_journal(data):
+    events=install_journal({'receipt':data['receipt']|{'parentReadInventorySha256':None}});r=data['receipt'];events[0].pop('parentReadInventorySha256')
+    events[0].update(**{k:r[k] for k in ('permissionResultSha256','permissionBeforeSha256','accountSha256','roleSha256','coverageSha256','metadataSha256')})
+    return events
+
+def permission_install_receipt(data):
+    outer=receipt(data);outer.pop('local_stay_read');r=data['receipt']
+    outer.update(mode=m.PERMISSION_INSTALL_MODE,operation_id=m.PERMISSION_INSTALL_OPERATION,source_sha=m.PERMISSION_INSTALL_SOURCE_SHA,
+        schema_writes='unknown' if r['ddlOutcomeUnknown'] else r['schemaWrites'],schema_writes_acknowledged=r['schemaWrites'],schema_write_outcome_unknown=r['ddlOutcomeUnknown'])
+    outer['local_stay_permission_install']={'data':data,'fileSha256':hashlib.sha256(m.local_permission_install_canonical(data)+b'\n').hexdigest(),
+        'permissionResultSha256':m.PERMISSION_INSTALL_PARENT['private_sha256'],'contextResultSha256':m.CONTEXT_PERMISSION_PARENT['private_sha256'],
+        'failedPermissionResultSha256':m.PROTECTED_CONTEXT_FAILURE['private_sha256'],'rawResultSha256':m.PERMISSION_PARENT['private_sha256'],
+        'protectedBefore':dict(m.PERMISSION_PARENT['protected']),'protectedAfter':dict(m.PERMISSION_PARENT['protected']),'journalSha256':r['journalSha256'],'journalEvents':permission_install_journal(data),
+        'admission':{'phpAttempted':True,'launchState':'receipt_validated','phpReturnCode':0,'protectedObservations':None}}
+    return outer
+
+class PermissionInstallAdmission(unittest.TestCase):
+    def test_fixed_command_closed_bundle_and_unchanged_old_programs(self):
+        c=wrapper().core;cmd=permission_install_command(c);body=c.PREFIX+m.PERMISSION_INSTALL_SOURCE_SHA+' '+m.PERMISSION_INSTALL_MODE+' '+m.PERMISSION_INSTALL_OPERATION
+        for invalid in (body+' retry',body+' --apply',body.replace(m.PERMISSION_INSTALL_SOURCE_SHA,m.CONTEXT_INSTALL_SOURCE_SHA),body+' expectedDB'):
+            with self.subTest(body=invalid),self.assertRaises(ValueError): c.parse_command(invalid)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError): c.parse_command(body)
+        archive,hashes=m.bundle_permission_install_source(SOURCE)
+        self.assertEqual(len(hashes),6)
+        with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tar: self.assertEqual(set(tar.getnames()),{*hashes,'manifest.json'});self.assertEqual(len(tar.getmembers()),7)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}): m.activate(c,cmd)
+        ast.parse(c.REMOTE);self.assertNotIn('def run_local_stay_context_install(',c.REMOTE)
+        self.assertIn('if len(members)!=7',c.REMOTE)
+        self.assertLess(len(__import__('base64').b64encode(zlib.compress(c.REMOTE.encode(),9)))+150,65536)
+        old=[
+            (m.SOURCE_SHA,m.MODE,m.OPERATION,'160047785833ba9d56fc23e7c8a3cd5be7d76eba763be3ed9f84a6458b5d5789'),
+            (m.SCHEMA_SOURCE_SHA,m.SCHEMA_MODE,m.SCHEMA_OPERATION,'6a840625dfba39d6b0349c2fe5f59c3a610aa5658cac27f0eada235d4e6430c4'),
+            (m.INSTALL_SOURCE_SHA,m.INSTALL_MODE,m.INSTALL_OPERATION,'2e60b420123f77758ed44315eba70251422dce1d13253eae05286a1c8494e149'),
+            (m.CONTEXT_SOURCE_SHA,m.CONTEXT_MODE,m.CONTEXT_OPERATION,'228fd088c1aeb8fec38168fe211281f2ae825e7a218261bb7f5308552c5f5fb5'),
+            (m.CONTEXT_INSTALL_SOURCE_SHA,m.CONTEXT_INSTALL_MODE,m.CONTEXT_INSTALL_OPERATION,'bd4b86c454a7cefefba2218dc751d1b93fe6f04db5f41f5178a8e77b1f2e1065'),
+            (m.SOURCE_FACTS_SOURCE_SHA,m.SOURCE_FACTS_MODE,m.SOURCE_FACTS_OPERATION,'59afabcdb78c344ccc7f29cff94b98a8120795464c6879d78f750b75f75ebc0b'),
+            (m.PERMISSION_SOURCE_SHA,m.PERMISSION_MODE,m.PERMISSION_OPERATION,'1331749f740ef298736976ca9000c95726d940795703db5fbb25bab37ba71f4c'),
+            (m.PROTECTED_CONTEXT_SOURCE_SHA,m.PROTECTED_CONTEXT_MODE,m.PROTECTED_CONTEXT_OPERATION,'e6a0efc1dc4fa3f02cf4365f42d94105b29a9c52b5f0ba1216c2249e80684779'),
+            (m.CONTEXT_PERMISSION_SOURCE_SHA,m.CONTEXT_PERMISSION_MODE,m.CONTEXT_PERMISSION_OPERATION,'2dc1b00a07a107c5580e77cca189c360e7d76dbe528cd91b4e326c17a932f460')]
+        for source,mode,op,digest in old:
+            core=wrapper().core
+            with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}): m.activate(core,core.parse_command(core.PREFIX+' '.join((source,mode,op))))
+            self.assertEqual(hashlib.sha256(core.REMOTE.encode()).hexdigest(),digest,mode)
+
+    def test_qualified_post_is_separate_and_rejects_every_extra_issue(self):
+        for qualified in (False,True):
+            data=permission_install_fixture_data(qualified);self.assertTrue(m.valid_permission_install_payload(data,CONTROL))
+            self.assertTrue(m.completed_permission_install(permission_install_command(wrapper().core),permission_install_receipt(data),CONTROL))
+        data=permission_install_fixture_data();self.assertEqual(data['rawSchemaAfter']['plan']['state'],'blocked_server_capability')
+        changed=copy.deepcopy(data);changed['after']['tables'][2]['issues'].append('columns');changed['rawSchemaAfter']['inventory']=changed['after']
+        for key,obj in (('afterSha256',changed['after']),('rawSchemaAfterSha256',changed['rawSchemaAfter'])): changed['receipt'][key]=hashlib.sha256(m.local_permission_install_canonical(obj)).hexdigest()
+        changed['rawSchemaAfter']['receipt']['inventorySha256']=changed['receipt']['afterSha256'];changed['receipt']['rawSchemaAfterSha256']=hashlib.sha256(m.local_permission_install_canonical(changed['rawSchemaAfter'])).hexdigest()
+        self.assertFalse(m.valid_permission_install_payload(changed,CONTROL))
+        for key,value in (('schemaWrites',True),('accountSha256','0'*64),('metadataSha256','0'*64),('schemaVerification',None)):
+            changed=copy.deepcopy(data);changed['receipt'][key]=value
+            self.assertFalse(m.valid_permission_install_payload(changed,CONTROL),key)
+        changed=copy.deepcopy(data);changed['permissionAfter']['engine']['receipt']['operationId']=m.PERMISSION_OPERATION
+        self.assertFalse(m.valid_permission_install_payload(changed,CONTROL))
+
+    def test_partial_lost_ack_is_retained_and_never_success(self):
+        data=permission_install_fixture_data();r=data['receipt'];r.update(state='ddl_unknown',reason='ddl_execution_failed',schemaWrites=1,createdTables=list(m.INSTALL_TABLES[:1]),attemptedTables=list(m.INSTALL_TABLES[:2]),
+            unknownTables=[m.INSTALL_TABLES[1]],ddlOutcomeUnknown=True,tableRows=[],schemaVerification=None,rawSchemaState=None,rawSchemaAfterSha256=None,afterSha256=None,
+            permissionPostBeforeSha256=None,permissionAfterSha256=None)
+        data.update(after=None,rawSchemaAfter=None,permissionPostBefore=None,permissionAfter=None)
+        events=permission_install_journal(data);r['journalSha256']=hashlib.sha256(b''.join(m.local_permission_install_canonical(e)+b'\n' for e in events)).hexdigest()
+        self.assertTrue(m.valid_permission_install_payload(data,CONTROL))
+        outer=permission_install_receipt(data);outer['status']='terminal_nonzero_no_replay'
+        self.assertFalse(m.completed_permission_install(permission_install_command(wrapper().core),outer,CONTROL))
+        handler=m.PERMISSION_INSTALL_REMOTE_HANDLER
+        self.assertLess(handler.index("result['schema_writes']='unknown'"),handler.index("run=subprocess.run(['php'"))
+        self.assertLess(handler.index("item['data']=data"),handler.index("journal=op/"))
+        self.assertLess(handler.index("result['schema_writes_acknowledged']=r['schemaWrites']"),handler.index("journal=op/"))
+
+class PermissionInstallFiles(unittest.TestCase):
+    def setUp(self):
+        ContextPermissionFiles.setUp(self)
+        data=permission_install_fresh_fixture();data['receipt'].update(operationId=m.CONTEXT_PERMISSION_OPERATION,sourceSha=m.CONTEXT_PERMISSION_SOURCE_SHA,controlSha=CONTROL,helperAttempted=True)
+        proof=context_permission_receipt(data);raw_parent=json.loads(self.parent_path.read_bytes());proof.update(production_before=raw_parent['production_before'],production_after=raw_parent['production_after'])
+        self.proof_path=self.home/'.anytoour-int-executor'/m.CONTEXT_PERMISSION_OPERATION/'result.json';self.proof_path.parent.mkdir(mode=0o700)
+        encoded=m.local_permission_install_canonical(proof);self.proof_path.write_bytes(encoded);self.proof_path.chmod(0o600)
+        policy=copy.deepcopy(m.PERMISSION_INSTALL_PARENT);policy.update(control=CONTROL,bytes=len(encoded),private_sha256=hashlib.sha256(encoded).hexdigest(),file_sha256=proof['local_stay_context_permission']['fileSha256'],engine_sha256=data['receipt']['engineResultSha256'])
+        self.enterContext(mock.patch.object(m,'PERMISSION_INSTALL_PARENT',policy))
+        for field,path in (('CONTEXT_PERMISSION_PARENT',self.context_path),('PROTECTED_CONTEXT_FAILURE',self.failure_path),('PERMISSION_PARENT',self.parent_path)):
+            value=copy.deepcopy(getattr(m,field));value['bytes']=len(path.read_bytes());self.enterContext(mock.patch.object(m,field,value))
+        self.c=wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}): self.command=permission_install_command(self.c);m.activate(self.c,self.command)
+        archive,self.hashes=m.bundle_permission_install_source(SOURCE);self.archive=self.home/'permission-install-source.tar.gz';self.archive.write_bytes(archive)
+        self.payload=self.command|{'archive':str(self.archive),'manifest_sha256':hashlib.sha256(json.dumps(self.hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+    run_remote=ProtectedContextFiles.run_remote
+    def handler_namespace(self):
+        prefix=self.c.REMOTE.split('\ntry:\n    if not re.fullmatch',1)[0];ns={}
+        with mock.patch.dict(os.environ,{'HOME':str(self.home)}),mock.patch('sys.stdin',io.StringIO(json.dumps(self.payload))): exec(prefix,ns)
+        op=self.home/'.anytoour-int-executor'/m.PERMISSION_INSTALL_OPERATION;op.mkdir(mode=0o700);stage=op/'source';stage.mkdir(mode=0o700);ns.update(op=op,files=self.hashes);return ns,op,stage
+    def test_full_parent_hash_drift_stops_before_php_and_repeat_preserves_original(self):
+        self.proof_path.write_bytes(self.proof_path.read_bytes()+b' ')
+        first=self.run_remote();self.assertEqual(first.get('reason'),'local_stay_permission_install_parent_hash',first)
+        self.assertEqual(first['schema_writes'],0);self.assertFalse(first['local_stay_permission_install']['admission']['phpAttempted'])
+        op=self.home/'.anytoour-int-executor'/m.PERMISSION_INSTALL_OPERATION;original=(op/'result.json').read_bytes()
+        self.assertEqual(self.run_remote().get('reason'),'operation_exists_no_replay');self.assertEqual((op/'result.json').read_bytes(),original)
+    def test_current_private_refusal_retains_observations_and_known_zero(self):
+        (self.project/'config.php').write_text('different current config')
+        result=self.run_remote();self.assertEqual(result.get('reason'),'local_stay_permission_install_private_drift',result)
+        item=result['local_stay_permission_install'];self.assertIsNone(item['data']);self.assertFalse(item['admission']['phpAttempted'])
+        self.assertFalse(item['admission']['protectedObservations'][0]['config.php']['matchesBaseline']);self.assertEqual(result['schema_writes'],0)
+    def test_timeout_keeps_unknown_not_zero(self):
+        ns,op,stage=self.handler_namespace()
+        with mock.patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',180)),self.assertRaisesRegex(RuntimeError,'launch_unobserved'): ns['run_local_stay_permission_install'](stage)
+        result=ns['result'];self.assertEqual(result['schema_writes'],'unknown');self.assertTrue(result['schema_write_outcome_unknown'])
+        self.assertTrue(result['local_stay_permission_install']['admission']['phpAttempted']);self.assertIsNone(result['local_stay_permission_install']['data'])
+
+class NativePermissionInstall(unittest.TestCase):
+    def test_actual_php_permission_bound_create_and_qualified_postflight(self):
+        self.assertIsNotNone(shutil.which('php'),'Actual PHP required; no substitute or skip')
+        env=dict(os.environ,ANYTOUR_STAY_PERMISSION_INSTALL_V1_TEST_DSN='mysql:host=127.0.0.1;port=3306;charset=utf8mb4',
+                 ANYTOUR_STAY_OFFER_CANDIDATES_V2_TEST_PASSWORD=os.environ.get('LOCAL_STAY_TEST_PASSWORD','local_tv_schema_test_only'),LOCAL_STAY_SOURCE_ROOT=str(SOURCE))
+        run=subprocess.run(['php',str(ROOT/'tests/anytour_hotel_stay_permission_install_v1_test.php')],capture_output=True,text=True,env=env,timeout=180)
+        self.assertEqual(run.returncode,0,run.stderr+'\n'+run.stdout);self.assertRegex(run.stdout,r'HOTEL_STAY_PERMISSION_INSTALL_OK checks=[1-9][0-9]+ database=NATIVE_MYSQL');print(run.stdout.strip())
+
+
 if __name__ == '__main__':
     unittest.main()
