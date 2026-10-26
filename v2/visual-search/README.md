@@ -2,6 +2,12 @@
 
 ## Contact failure recovery — 26 October 2026
 
+While contact preparation is pending, Back/reopen makes a fresh UI capture but
+shares the same retained selector's request and outcome. Each capture keeps its
+own currentness check; a stale capture cannot CREATE or expose links. Pending
+identities reserve the existing eight-operation bound together with settled
+operations and retained failures. A settled failure remains non-replayable.
+
 The existing same-origin adapter and messenger flow retain only fixed public
 failure action/stage/code, an integer HTTP status and a complete allowlisted
 missing-field/owner pair. Request identities, tokens, cookies, private references,

@@ -278,6 +278,83 @@ test('The failed-preparation bound does not block reopening an already-known suc
  x.input.offer.raw={...x.input.offer.raw,anexGeneration:7};x.input.application={...x.input.application,generation:7};
  assert.equal((await x.flow.prepare(x.selection.capture())).state,'prepared');
 });
+// Fresh contact bindings capture new objects even when the retained selector is
+// unchanged. Exercise the real context owner, not copied/forged observations.
+const turn=()=>new Promise(resolve=>setImmediate(resolve));
+function preparationCase(kind,route){
+ const owner=harness.fixtureOwner;owner.setClock(1800000000000);
+ const input=kind==='anex'?owner.applicationFixture(true,choice):owner.tourvisorFixture(kind==='tv-manager');
+ const selection=owner.api.createSession(()=>input,owner.clock),snapshot=selection.capture(),calls=[],deadline=owner.clock()/1000+30;
+ const flow=api.createSession({selection,clock:owner.clock,request:async(action,fields)=>{
+  calls.push({action,fields:plain(fields||{})});
+  const observation=action==='handoff_freeze'?plain(selection.capture()):null;
+  if(observation&&kind!=='anex')observation.price.expiresAt=deadline;
+  const reply=action==='handoff_token'?{ok:true,csrf}:action==='handoff_freeze'?{ok:true,data:{operation_id:id,state:'prepared',observation}}:{ok:true,data:{operation_id:id,state:'ready',links:validLinks}};
+  return route?route(action,fields,reply):reply;
+ }});
+ return {owner,input,selection,snapshot,calls,flow,deadline};
+}
+test('Fresh ANEX and TV captures share pending token/freeze and keep explicit CREATE singular',async()=>{
+ for(const kind of ['anex','tv-manager','tv-pair'])for(const stage of ['handoff_token','handoff_freeze']){
+  const gate=defer(),x=preparationCase(kind,async(action,fields,reply)=>{if(action===stage)await gate.promise;return reply;});
+  const first=x.flow.prepare(x.snapshot);await turn();x.owner.setClock(x.owner.clock()+1);
+  const fresh=x.selection.capture();assert.notEqual(fresh,x.snapshot);assert.notEqual(fresh.capturedAt,x.snapshot.capturedAt);
+  assert.equal(x.selection.isCurrent(x.snapshot),true);assert.equal(x.selection.isCurrent(fresh),true);
+  assert.deepEqual(plain(x.selection.selector(fresh)),plain(x.selection.selector(x.snapshot)));
+  const reopened=x.flow.prepare(fresh);await turn();assert.equal(x.flow.view(fresh).state,'preparing');
+  assert.equal(x.calls.filter(c=>c.action===stage).length,1,'Back/reopen must not repeat '+stage);
+  gate.resolve();const results=await Promise.all([first,reopened]);assert.deepEqual(results.map(r=>r.state),['prepared','prepared']);
+  assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze']);assert.equal(x.flow.view(fresh).links,undefined);
+  await Promise.all([x.flow.create(x.snapshot),x.flow.create(fresh)]);
+  assert.equal(x.calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(x.flow.link(fresh,'max'),validLinks.max);
+ }
+});
+test('Shared pending failures remain terminal across fresh current captures',async()=>{
+ for(const kind of ['anex','tv-manager','tv-pair'])for(const stage of ['handoff_token','handoff_freeze']){
+  const gate=defer(),x=preparationCase(kind,async(action,fields,reply)=>{if(action===stage)await gate.promise;return reply;});
+  const first=x.flow.prepare(x.snapshot);await turn();const fresh=x.selection.capture(),second=x.flow.prepare(fresh);await turn();
+  gate.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{action:stage,stage:'transport',code:'handoff_unknown'}}));
+  const results=await Promise.all([first,second]);assert.deepEqual(results.map(r=>r.state),['unavailable','unavailable']);
+  assert.deepEqual(plain(results[0].failure),plain(results[1].failure));
+  await x.flow.prepare(x.selection.capture());await x.flow.create(fresh);await x.flow.status(fresh);
+  assert.deepEqual(x.calls.map(c=>c.action),stage==='handoff_token'?['handoff_token']:['handoff_token','handoff_freeze']);
+ }
+});
+test('A fresh current UI revision can await the same pending selector without reviving the old snapshot',async()=>{
+ for(const stage of ['handoff_token','handoff_freeze']){
+  const gate=defer(),x=preparationCase('tv-manager',async(action,fields,reply)=>{if(action===stage)await gate.promise;return reply;});
+  const first=x.flow.prepare(x.snapshot);await turn();x.input.revision++;
+  const fresh=x.selection.capture(),second=x.flow.prepare(fresh),third=x.flow.prepare(fresh);await turn();
+  assert.equal(x.selection.isCurrent(x.snapshot),false);assert.equal(x.selection.isCurrent(fresh),true);
+  gate.resolve();assert.equal((await first).state,'stale');assert.equal((await second).state,'prepared');assert.equal((await third).state,'prepared');
+  await x.flow.create(x.snapshot);assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze']);
+  assert.equal(x.flow.view(x.snapshot).canRevoke,true);assert.equal(x.flow.link(x.snapshot,'telegram'),null);
+ }
+});
+test('Shared preparation preserves the original TV deadline at expiry without CREATE or renewal',async()=>{
+ const gate=defer(),x=preparationCase('tv-pair',async(action,fields,reply)=>{if(action==='handoff_freeze')await gate.promise;return reply;});
+ const first=x.flow.prepare(x.snapshot);await turn();const fresh=x.selection.capture(),second=x.flow.prepare(fresh);await turn();
+ x.owner.setClock(x.deadline*1000);gate.resolve();assert.equal((await first).state,'expired');assert.equal((await second).state,'expired');
+ await x.flow.create(fresh);assert.equal(x.flow.link(fresh,'max'),null);assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze']);
+});
+test('Eight distinct pending preparations reserve the existing bound and known pending identities still coalesce',async()=>{
+ const gates=[],x=preparationCase('anex',async(action,fields,reply)=>{
+  if(action!=='handoff_freeze')return reply;
+  reply.data.operation_id=fields.generation.toString(16).padStart(32,'0');
+  const gate=defer();gates.push(gate);await gate.promise;return reply;
+ }),tasks=[];
+ for(let generation=7;generation<15;generation++){
+  x.input.offer.raw={...x.input.offer.raw,anexGeneration:generation};x.input.application={...x.input.application,generation};
+  const snapshot=x.selection.capture();tasks.push(x.flow.prepare(snapshot));await turn();
+  if(generation===14)tasks.push(x.flow.prepare(x.selection.capture()));
+ }
+ assert.equal(gates.length,8);
+ x.input.offer.raw={...x.input.offer.raw,anexGeneration:15};x.input.application={...x.input.application,generation:15};
+ const blocked=await x.flow.prepare(x.selection.capture());
+ assert.equal(blocked.state,'unavailable');assert.equal(blocked.failure.code,'handoff_limit');assert.equal(gates.length,8);
+ for(const gate of gates)gate.resolve();await Promise.all(tasks);
+ assert.equal(x.calls.filter(c=>c.action==='handoff_token').length,1);assert.equal(x.calls.filter(c=>c.action==='handoff_freeze').length,8);
+});
 (async()=>{
   for(const {name,fn} of tests){await fn();console.log('PASS '+name);}
   assert.deepEqual(io,[]);assert.equal(harness.fixtureOwner.existingCasesRun,0);

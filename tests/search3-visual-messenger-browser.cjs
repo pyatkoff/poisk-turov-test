@@ -150,14 +150,16 @@ async function tourvisorJourney({browser,origin,base,output}){
  return records;
 }
 
-// The same actual owner, one fictional failed freeze. Reopening must preserve
-// its terminal preparation failure rather than silently dispatching it again.
+// The same actual owner, one delayed fictional freeze. Fresh contact bindings
+// share its pending preparation and retain the eventual terminal failure.
 async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
  const records=[],key='tourvisor%3Avisual-tv-101';
  for(const width of [430,1280]){
   const height=width===1280?720:900,transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:true}),calls=[],errors=[],forbidden=[],shots=[];
   const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   const csrf='a'.repeat(64),row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]');
+  let releaseFreeze,markFreeze;
+  const freezePending=new Promise(resolve=>{releaseFreeze=resolve;}),freezeArrived=new Promise(resolve=>{markFreeze=resolve;});
   const failed=()=>page.waitForFunction(()=>document.querySelector('#messenger-status')?.textContent.includes('Не удалось подготовить выбранный тур для передачи.'));
   const capture=async(stage,methods=false)=>{
    const geometry=await page.locator('#modal').evaluate(el=>{
@@ -185,6 +187,7 @@ async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
       if(action==='handoff_token'){assert.equal(req.method(),'GET');await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,csrf})});return;}
       assert.equal(action,'handoff_freeze','failed preparation never CREATEs, checks or revokes');assert.equal(req.method(),'POST');assert.equal(body.csrf,csrf);
       const {action:_,csrf:__,...pins}=body;tv.freeze(pins); // Validate the same retained selector without sending it anywhere.
+      markFreeze();await freezePending;
       await route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({ok:false,error:'retained_fact_missing',field:'stay.room',owner:'INT',private_detail:'PRIVATE_NOT_FOR_UI'})});return;
      }
      const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
@@ -192,22 +195,31 @@ async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'12,0'}));
    await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&(document.querySelector('#search-status').hidden||document.querySelector('#search-status').classList.contains('search-status-compact')));
-   await page.locator('.hotel-card .hotel-price [data-key="'+key+'"]').click();await row().waitFor({state:'visible'});await page.locator('#hotel-detail-offers').click();await failed();
+   await page.locator('.hotel-card .hotel-price [data-key="'+key+'"]').click();await row().waitFor({state:'visible'});await page.locator('#hotel-detail-offers').click();
+   let freezeDeadline;
+   try{await Promise.race([freezeArrived,new Promise((resolve,reject)=>{freezeDeadline=setTimeout(()=>reject(Error('preparation request did not arrive')),10000);})]);}finally{clearTimeout(freezeDeadline);}
+   assert.match(await page.locator('#messenger-status').textContent(),/Подготавливаем переход/);await capture('pending-methods',true);
+   await page.locator('[data-action="messenger-phone"]').click();await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional failed-preparation draft');await page.locator('[data-action="messenger-other"]').click();
+   await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');await page.locator('#hotel-detail-offers').click();
+   assert.match(await page.locator('#messenger-status').textContent(),/Подготавливаем переход/);await capture('pending-return',true);
+   assert.equal(await page.locator('[data-action="messenger-open"]:disabled').count(),2);assert.equal(await page.locator('#messenger-check').isVisible(),false);
+   assert.deepEqual(calls.map(c=>c.action),['handoff_token','handoff_freeze'],'Back/reopen shares the pending preparation');
+   releaseFreeze();await failed();
    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified real default');
    assert.match((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\s/g,''),/90000/);
    const status=await page.locator('#messenger-status').textContent();assert.match(status,/телефону|выбору тура/);assert.doesNotMatch(status,/422|stay\.room|INT|PRIVATE|retained_fact_missing/);
    assert.equal(await page.locator('[data-action="messenger-open"]:disabled').count(),2);assert.equal(await page.locator('#messenger-check').isVisible(),false);
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);await capture('failed-methods',true);
-   await page.locator('[data-action="messenger-phone"]').click();await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional failed-preparation draft');await capture('failed-phone');
+   await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(await page.locator('[name="comment"]').inputValue(),'Fictional failed-preparation draft');await capture('failed-phone');
    await page.locator('[data-action="messenger-other"]').click();
    await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');await page.locator('#hotel-detail-offers').click();await failed();
    assert.equal(await page.locator('[data-action="messenger-open"]:disabled').count(),2);assert.equal(await page.locator('#messenger-check').isVisible(),false);assert.match((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\s/g,''),/90000/);await capture('failed-return',true);
    await page.locator('[data-action="messenger-phone"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'70000001234');assert.equal(await page.locator('[name="comment"]').inputValue(),'Fictional failed-preparation draft');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
    assert.deepEqual(calls.map(c=>c.action),['handoff_token','handoff_freeze'],'ordinary Back/reopen never repeats failed preparation');
    assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_flights').length,0);assert.equal(tv.calls.filter(c=>c.action==='tv_select').length,1);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({provider:'tourvisor',scenario:'failed-preparation',width,height,party:{adults:3,enteredChildAges:[12,0],requestChildAges:[0,12]},amount:'90000',failure:{action:'handoff_freeze',stage:'http',code:'retained_fact_missing',httpStatus:422,field:'stay.room',owner:'INT'},message:status,botsDisabled:true,statusCheckHidden:true,failedPreparationRetained:true,draftRetained:true,quoteCalls:1,flightCalls:0,selectCalls:1,createCalls:0,externalNavigationIntercepted:0,shots});
+   records.push({provider:'tourvisor',scenario:'failed-preparation',width,height,party:{adults:3,enteredChildAges:[12,0],requestChildAges:[0,12]},amount:'90000',failure:{action:'handoff_freeze',stage:'http',code:'retained_fact_missing',httpStatus:422,field:'stay.room',owner:'INT'},message:status,botsDisabled:true,statusCheckHidden:true,pendingPreparationRetained:true,failedPreparationRetained:true,draftRetained:true,quoteCalls:1,flightCalls:0,selectCalls:1,createCalls:0,externalNavigationIntercepted:0,shots});
   }catch(error){await page.screenshot({path:path.join(output,`tv-failed-preparation-error-${width}.png`)}).catch(()=>{});fs.writeFileSync(path.join(output,`tv-failed-preparation-error-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,tv:tv.calls,shots},null,2));throw error;}
-  finally{await context.close();}
+  finally{releaseFreeze();await context.close();}
  }
  return records;
 }
