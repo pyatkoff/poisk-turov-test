@@ -37,7 +37,7 @@
   }
   function createSession({selection,request,clock=Date.now}){
     if(!selection||typeof selection.isCurrent!=='function'||typeof (selection.selector||selection.anexSelector)!=='function'||typeof request!=='function'||typeof clock!=='function')throw Error('invalid_handoff_owner');
-    const captures=new WeakMap(),operations=new Map(),failedPreparations=new Map();let tokenTask=null;
+    const captures=new WeakMap(),operations=new Map(),failedPreparations=new Map(),preparations=new Map();let tokenTask=null;
     const selector=snapshot=>(selection.selector||selection.anexSelector).call(selection,snapshot);
     const expired=entry=>{const deadline=entry?.observation?.price?.expiresAt;return Number.isSafeInteger(deadline)&&deadline*1000<=clock();};
     const current=snapshot=>{try{return selection.isCurrent(snapshot)&&selector(snapshot)!==null&&!expired(captures.get(snapshot));}catch{return false;}};
@@ -64,21 +64,25 @@
     function prepare(snapshot){
       if(!current(snapshot))return Promise.resolve(view(snapshot));
       let entry=captures.get(snapshot);
-      if(entry?.pending)return entry.pending;
+      if(entry?.pending)return entry.pending.then(()=>view(snapshot));
       if(entry?.operation||entry?.state==='unavailable')return Promise.resolve(view(snapshot));
       const pins=selector(snapshot),identity=JSON.stringify(pins),failed=failedPreparations.get(identity);
       if(failed){captures.set(snapshot,failed);return Promise.resolve(view(snapshot));}
-      entry=entry||{state:'idle'};captures.set(snapshot,entry);entry.error=null;entry.failure=null;
+      // A new contact binding has a fresh capture, not a new retained selector.
+      const pending=preparations.get(identity);
+      if(pending){pending.snapshot=snapshot;captures.set(snapshot,pending);return pending.pending.then(()=>view(snapshot));}
+      entry=entry||{state:'idle'};captures.set(snapshot,entry);entry.error=null;entry.failure=null;entry.snapshot=snapshot;
       // Keep failed exact identities without eviction: reopening must not replay
       // token/select/freeze. Share the existing eight-operation session bound.
-      if(operations.size+failedPreparations.size>=8&&![...operations.values()].some(op=>op.identity===identity)){
+      const identities=new Set([...operations.values()].map(op=>op.identity).concat([...failedPreparations.keys()],[...preparations.keys()]));
+      if(identities.size>=8&&!identities.has(identity)){
         entry.state='unavailable';entry.error='handoff_unavailable';entry.failure=immutable({action:'handoff_freeze',stage:'request',code:'handoff_limit'});
         return Promise.resolve(view(snapshot));
       }
       entry.pending=Promise.resolve().then(async()=>{
         let action='handoff_token';
         try{
-          const csrf=await token();if(!current(snapshot))return;
+          const csrf=await token();if(!current(entry.snapshot))return;
           action='handoff_freeze';
           const reply=await request('handoff_freeze',{...pins,csrf}),data=reply?.data;
           if(reply?.ok!==true||!operationId(data?.operation_id)||!states.has(data.state)||!data.observation
@@ -101,7 +105,8 @@
           entry.state='unavailable';entry.error='handoff_unavailable';entry.failure=failure(error,action,pins.provider==='tourvisor');
           if(failedPreparations.size<8)failedPreparations.set(identity,entry);
         }
-      }).finally(()=>{entry.pending=null;}).then(()=>view(snapshot));
+      }).finally(()=>{entry.pending=null;if(preparations.get(identity)===entry)preparations.delete(identity);}).then(()=>view(snapshot));
+      preparations.set(identity,entry);
       return entry.pending;
     }
     function perform(snapshot,action){
