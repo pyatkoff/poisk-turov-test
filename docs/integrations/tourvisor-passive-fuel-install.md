@@ -699,3 +699,28 @@ SOURCE4928 exact096ef35e → FEATURE096cd1b596cdf3741d9b67ff3855ae55332cf1e4; in
 ONE fixed tuple: source096cd1b596cdf3741d9b67ff3855ae55332cf1e4 / mode install-tv-seat-availability / operation int-anex-tv-seat-availability-install-20261026-v1. Existing maintenance installer only. Previous10-file map is accepted87ba session-fuel installed state; gateway8c2540f0abf44daebfd3f98d0e23387ab94775da97414a8fa52229df536e1501 → c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1, exactly1changed/0created; APIc3e13695/helper09a40aa5/passive dependencies unchanged. Parent16049/configfaea/public/signing/ROOT DB-helper guards unchanged. Old tuples/programs remain immutable/consumed, no aliases/retries.
 
 CONTROL requires independent review/native exactsource fixture install, all10predecessor/source drift, prewriteconfig race/rollback/noReplay and strict completion before normal MAIN merge. Then separately fresh exclusive finite runtime claim and ONE command; release on terminal. UNKNOWN/refusal stays consumed. No supplier/DB/lead/booking budget or ROOThelper/config/ACL permission, no UI/consumer audit or final_verified promotion. Source/CI/install/live remain separate. This document proves no new installation/natural request.
+
+
+## ANEX APD local application diagnostic — SOURCE4933, 26.10.2026
+
+SEARCH original Turkey receipt6418719912/6419885188 is CONSUMED_NO_REPLAY;
+HTTP/action/application result/code/duration are NOT_RETAINED in its available
+browser evidence. SOURCE4933 adds only fixed local `application_reason` values;
+it does not establish the historical supplier cause, timing or final price.
+
+Existing maintenance carrier only: source `09cedd5c0a8f34521820a7a58586bfb37ad7b553`,
+mode `install-anex-apd-application-reason`, operation
+`int-anex-apd-application-reason-install-20261026-v1`.
+Previous full pin map is the installed seat4929 map: 10 selected /12 protected
+paths. Only `v2/api-anex-search3-preview.php` → private
+`api-anex-search3-preview.php` changes from
+`c3e13695cc15977b92732d9559badf12d82b2d4033e752f91190de7fc9963a03` to
+`4b0f8bdeeec2170d7ff64d1ff668c717e9204fabd677927dd1e60c0f6240de08`.
+Gateway c3008d, session-fuel helper09a4 and every other pin remain required.
+Completion requires10 selected/1changed/0created, endpoint changed=true,
+dependency changed=false and the entire exact protected/public/config/parent
+maps unchanged. Existing preflight/first-attempt/backup/atomic/readback/rollback
+and no-replay guards remain mandatory; no arbitrary source/path/alias allowed.
+Supplier/DB/lead/booking counters must be typed0. SOURCE/CI/control readiness is
+not installation. Installation is not natural-case recovery/final-price proof;
+old receipts/operations/TTLs must not be renewed or reaccepted.

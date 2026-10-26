@@ -86,6 +86,7 @@ class Admission(unittest.TestCase):
         c=core();signing.activate(c,c.parse_command(f'/run-int-server-v1 {signing.TV_CHECKPOINT_SOURCE} {signing.TV_CHECKPOINT_MODE} {signing.TV_CHECKPOINT_OPERATION}'))
         self.assertEqual('a590c1f86deaefc02006bc5b89f019a4ac005880c37bcf0dd7f7d1cd52917949',hashlib.sha256(c.REMOTE.encode()).hexdigest())
         expected={'TV_BYTES': '881eb82c4ca77000ff8c9cba0c29ccb4952bbbc86bbef2d4544e93dc59330341', 'TV_CACHE': 'c7ab1eb55f5e2446b02abe9ede7cb859c5527f6c155b9a38c0351e1f068b8e66', 'TV_CAP': 'cb882cde61f6075620e46da322c74c1ab6464120c6100958444f70c4c39d92eb', 'TV_CONTEXT': '82f914f7ad68348e6ea11975a56cad6650368e32f969a9d1fcf2435bdf2d99a3', 'TV_DAY': 'c4b2d7a66ccfde5073c0697498c99362d86168a581cd8be033e6c30c3a01d20a', 'TV_DIAGNOSTIC': 'c7168a39c0466160c61dc2cae37b3075e39bb45a05e9dd1d178a812824276476', 'TV_FIELDS': '42bcc3854f4d96ef9c6437bdbe0c76f416473b99e66503a392f2f96ebffb81df', 'TV_LIMIT': 'acbfcbe309e1b1f18861ae1a9d3e7c261f1df67881f2bc15eefff36af9432ead', 'TV_MISMATCH': '33f56821b857630903354dcf8d7ac816ca6ec1645b2d6529804f2bb4e59814e8'}
+        expected['TV_SEATS']='ce3f9718a675648985d8285ed5187b3b383468e1d5576d90a9ff2c049ebc8a77'
         for prefix,want in expected.items():
             c=core();source=getattr(signing,prefix+"_SOURCE");mode=getattr(signing,prefix+"_MODE");op=getattr(signing,prefix+"_OPERATION")
             signing.activate(c,c.parse_command(f"/run-int-server-v1 {source} {mode} {op}"))
@@ -94,7 +95,8 @@ class Admission(unittest.TestCase):
     def test_exact_modes_and_no_arbitrary_arguments(self):
         c = core()
         for mode in signing.MODES:
-            prefix = ('int-anex-tv-seat-availability-install-' if mode == signing.TV_SEATS_MODE else
+            prefix = ('int-anex-apd-application-reason-install-' if mode == signing.ANEX_APD_REASON_MODE else
+                      'int-anex-tv-seat-availability-install-' if mode == signing.TV_SEATS_MODE else
                       'int-anex-tv-session-fuel-context-install-' if mode == signing.TV_SESSION_FUEL_MODE else
                       'int-anex-tv-numeric-admission-install-' if mode == signing.TV_NUMERIC_MODE else
                       'int-anex-tv-party-retirement-install-' if mode == signing.TV_PARTY_MODE else
@@ -124,6 +126,7 @@ class Admission(unittest.TestCase):
             if mode==signing.TV_BYTES_MODE:source=signing.TV_BYTES_SOURCE;operation=signing.TV_BYTES_OPERATION
             if mode==signing.TV_PARTY_MODE:source=signing.TV_PARTY_SOURCE;operation=signing.TV_PARTY_OPERATION
             if mode==signing.TV_NUMERIC_MODE:source=signing.TV_NUMERIC_SOURCE;operation=signing.TV_NUMERIC_OPERATION
+            if mode==signing.ANEX_APD_REASON_MODE:source=signing.ANEX_APD_REASON_SOURCE;operation=signing.ANEX_APD_REASON_OPERATION
             if mode==signing.TV_SEATS_MODE:source=signing.TV_SEATS_SOURCE;operation=signing.TV_SEATS_OPERATION
             if mode==signing.TV_SESSION_FUEL_MODE:source=signing.TV_SESSION_FUEL_SOURCE;operation=signing.TV_SESSION_FUEL_OPERATION
             body = f'/run-int-server-v1 {source} {mode} {operation}'
@@ -134,7 +137,7 @@ class Admission(unittest.TestCase):
                             body.replace(operation, operation.removesuffix('-v1')), body.replace('/run-int-server-v1', '/other')]:
                 with self.subTest(mode=mode, invalid=invalid), self.assertRaises(ValueError):
                     c.parse_command(invalid)
-            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE,signing.TV_PARTY_MODE,signing.TV_NUMERIC_MODE,signing.TV_SESSION_FUEL_MODE,signing.TV_SEATS_MODE):
+            if mode in (signing.TV_RECOVERY_MODE,signing.TV_DIAGNOSTIC_MODE,signing.TV_CACHE_MODE,signing.TV_CONTEXT_MODE,signing.TV_FIELDS_MODE,signing.TV_DAY_MODE,signing.TV_LIMIT_MODE,signing.TV_CAP_MODE,signing.TV_BYTES_MODE,signing.TV_CHECKPOINT_MODE,signing.TV_PARTY_MODE,signing.TV_NUMERIC_MODE,signing.TV_SESSION_FUEL_MODE,signing.TV_SEATS_MODE,signing.ANEX_APD_REASON_MODE):
                 for changed in (operation.replace('v1','v2'),prefix+'alias-v1'):
                     with self.assertRaises(ValueError):c.parse_command(body.replace(operation,changed))
         self.assertEqual('install-runtime', c.parse_command(f'/run-int-server-v1 {SHA} install-runtime int-anex-existing-install-v1')['mode'])
@@ -148,6 +151,16 @@ class Admission(unittest.TestCase):
         self.assertIn("if changed!=['app/integrations/tourvisor-preview-gateway.php']",c.REMOTE)
         self.assertEqual(signing.TV_SESSION_FUEL_UPDATES['v2/api-anex-search3-preview.php'],
             signing.tv_seats_previous()['v2/api-anex-search3-preview.php'])
+
+    def test_apd_reason_fixed_source_and_latest_predecessor_profile(self):
+        c=core();body=f'/run-int-server-v1 {signing.ANEX_APD_REASON_SOURCE} {signing.ANEX_APD_REASON_MODE} {signing.ANEX_APD_REASON_OPERATION}'
+        command=c.parse_command(body);signing.activate(c,command);ast.parse(c.REMOTE)
+        self.assertEqual(12,len(signing.anex_apd_reason_previous()|signing.TV_DEPENDENCIES))
+        for bad in (body.replace(signing.ANEX_APD_REASON_SOURCE,'0'*40),body.replace('v1','v2'),body+' extra'):
+            with self.assertRaises(ValueError):core().parse_command(bad)
+        self.assertIn("if changed!=['api-anex-search3-preview.php']",c.REMOTE)
+        self.assertEqual(signing.TV_SESSION_FUEL_UPDATES['v2/api-anex-search3-preview.php'],
+            signing.anex_apd_reason_previous()['v2/api-anex-search3-preview.php'])
 
     def test_registration_is_isolated_and_stock_guards_remain(self):
         c = core(); before = c.REMOTE
@@ -926,7 +939,8 @@ class NativeTVDiagnosticInstall(NativeTVGatewayInstall):
             c.REMOTE=c.REMOTE.replace(anchor,"    (runtime/'.anex-private.php').write_bytes(b'<?php // concurrent writer\\n')\n"+anchor,1)
 
     def install_maintenance(self,operation=None):
-        prefix=('int-anex-tv-seat-availability-install-' if self.mode==signing.TV_SEATS_MODE else
+        prefix=('int-anex-apd-application-reason-install-' if self.mode==signing.ANEX_APD_REASON_MODE else
+                'int-anex-tv-seat-availability-install-' if self.mode==signing.TV_SEATS_MODE else
                 'int-anex-tv-session-fuel-context-install-' if self.mode==signing.TV_SESSION_FUEL_MODE else
                 'int-anex-tv-numeric-admission-install-' if self.mode==signing.TV_NUMERIC_MODE else
                 'int-anex-tv-party-retirement-install-' if self.mode==signing.TV_PARTY_MODE else
@@ -1405,6 +1419,71 @@ class NativeTVSeatsInstall(NativeTVDiagnosticInstall):
         self.assertEqual(before,target.read_bytes())
 
 
+class NativeAnexAPDReasonInstall(NativeTVDiagnosticInstall):
+    mode=signing.ANEX_APD_REASON_MODE
+    operation_attr='ANEX_APD_REASON_OPERATION'
+    source=signing.ANEX_APD_REASON_SOURCE
+    path=signing.ANEX_APD_REASON_PATH
+    sha_attr='ANEX_APD_REASON_SHA'
+    fixture_env='ANEX_APD_REASON_SOURCE_ROOT'
+
+    def expected_previous(self):return signing.anex_apd_reason_previous()
+
+    def setUp(self):
+        super().setUp()
+        previous=os.environ.get('TV_SEATS_SOURCE_ROOT')
+        for p,sha in self.expected_previous().items():
+            raw=(Path(previous)/p).read_bytes() if previous else b'<?php // exact installed seat predecessor '+p.encode()+b'\n'
+            if previous:self.assertEqual(sha,hashlib.sha256(raw).hexdigest(),p)
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            (self.runtime/target).write_bytes(raw);self.pins[p]=hashlib.sha256(raw).hexdigest()
+            if p!=self.path:self.inventory[p]=raw
+        self.previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in self.pins.items()}
+        self.newpins=self.pins|{self.path:hashlib.sha256(self.inventory[self.path]).hexdigest()}
+        self.rebuild_archive()
+
+    def test_apd_reason_install_strict_completion_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((10,1,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual(['api-anex-search3-preview.php'],plan['changed_files'])
+        self.assertTrue(r['install']['endpoint']['changed']);self.assertFalse(r['install']['dependency']['changed'])
+        self.assertEqual(self.parent_raw,self.parent.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+        for p in self.newpins:
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.object(signing,'anex_apd_reason_previous',return_value=self.pins),mock.patch.multiple(signing,
+            ANEX_APD_REASON_OPERATION=r['operation_id'],ANEX_APD_REASON_SHA=self.newpins[self.path],TV_PUBLIC=self.public,
+            TV_DEPENDENCIES=self.deps,TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_anex_apd_reason(command,r))
+            for k,v in [('supplier_calls',True),('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('runtime_changed',False)]:
+                self.assertFalse(signing.completed_anex_apd_reason(command,r|{k:v}))
+            for k,v in [('changed_files',2),('created_files',True),('files',6)]:
+                self.assertFalse(signing.completed_anex_apd_reason(command,r|{'install':r['install']|{k:v}}))
+            self.assertFalse(signing.completed_anex_apd_reason(command,r|{'install':r['install']|{'endpoint':r['install']['endpoint']|{'changed':False}}}))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_apd_reason_any_predecessor_or_source_drift_holds(self):
+        target=self.runtime/'api-anex-search3-preview.php';before=target.read_bytes()
+        for p in self.expected_previous()|signing.TV_DEPENDENCIES:
+            f=self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php');raw=f.read_bytes();f.write_bytes(b'<?php // foreign predecessor\n')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason'])
+            f.write_bytes(raw);self.assertEqual(before,target.read_bytes())
+        self.inventory[self.path]=b'<?php // wrong source\n';self.rebuild_archive()
+        self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason'])
+        self.assertEqual(before,target.read_bytes())
+
+    def test_config_prewrite_race_holds_and_postwrite_failure_rolls_back(self):
+        target=self.runtime/'api-anex-search3-preview.php';old=target.read_bytes()
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        self.assertEqual(old,target.read_bytes())
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(old,target.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -1456,6 +1535,9 @@ def load_tests(loader, tests, pattern):
     for name in ('test_seats_install_strict_completion_and_no_replay','test_seats_any_predecessor_or_source_drift_holds',
                  'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
         suite.addTest(NativeTVSeatsInstall(name))
+    for name in ('test_apd_reason_install_strict_completion_and_no_replay','test_apd_reason_any_predecessor_or_source_drift_holds',
+                 'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
+        suite.addTest(NativeAnexAPDReasonInstall(name))
     return suite
 
 
