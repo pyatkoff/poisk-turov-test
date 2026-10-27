@@ -2,6 +2,7 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
+const retainLosslessPngEvidence=require('../scripts/ci/search3_visual_evidence_retention.cjs');
 const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
 // Telephone journeys retain their supplier-only request ledger. The dedicated
 // messenger browser case separately proves successful freeze/CREATE/navigation.
@@ -1886,56 +1887,6 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
  console.log('PASS compiled ordinary hotel terminal recovery430/1280/short720: pending status, no dead flight action, working results return retains search/filters/sort/exactkeys; supplier/lead calls0');
 };
 
-// Keep every broad-matrix frame within the existing bounded artifact carrier.
-// Re-encode only the PNG zlib stream; verify identical filtered pixel bytes and
-// preserve every other chunk. Gzip ancillary JSON without changing its raw bytes;
-// the main receipt and separately retained messenger bytes stay intact.
-function retainLosslessPngEvidence(directory){
- const {inflateSync,deflateSync,gzipSync,gunzipSync,crc32,constants}=require('node:zlib'),{createHash}=require('node:crypto'),rows=[],jsonRows=[];
- const sha=value=>createHash('sha256').update(value).digest('hex'),signature=Buffer.from('89504e470d0a1a0a','hex');
- const visit=folder=>{for(const entry of fs.readdirSync(folder,{withFileTypes:true})){
-  const file=path.join(folder,entry.name),relative=path.relative(directory,file).split(path.sep).join('/');
-  if(relative==='messenger-entry')continue;
-  if(entry.isDirectory()){visit(file);continue;}
-  if(!entry.isFile())continue;
-  if(file.endsWith('.json')&&relative!=='receipt.json'){
-   const before=fs.readFileSync(file),candidate=gzipSync(before,{level:9}),compressed=candidate.length<before.length,retainedFile=compressed?file+'.gz':file;
-   if(compressed){
-    assert(!fs.existsSync(retainedFile),relative+' gzip path must not already exist');
-    fs.writeFileSync(retainedFile,candidate);const persisted=fs.readFileSync(retainedFile);
-    assert(persisted.equals(candidate),relative+' persisted gzip equals the candidate');
-    assert(gunzipSync(persisted).equals(before),relative+' byte-identical receipt after gunzip');
-    fs.unlinkSync(file);
-   }
-   const after=compressed?candidate:before;
-   jsonRows.push({path:relative,retained_path:compressed?relative+'.gz':relative,encoding:compressed?'gzip':'identity',original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after)});
-   continue;
-  }
-  if(!file.endsWith('.png'))continue;
-  const before=fs.readFileSync(file),chunks=[],idat=[];assert(before.subarray(0,8).equals(signature),relative+' PNG signature');
-  for(let offset=8;offset<before.length;){
-   assert(offset+12<=before.length,relative+' complete PNG chunk');
-   const length=before.readUInt32BE(offset),end=offset+12+length;assert(end<=before.length,relative+' bounded PNG chunk');
-   const type=before.subarray(offset+4,offset+8),data=before.subarray(offset+8,end-4);
-   assert.equal(crc32(before.subarray(offset+4,end-4)),before.readUInt32BE(end-4),relative+' original CRC');
-   chunks.push({type:type.toString('ascii'),bytes:before.subarray(offset,end)});if(type.toString('ascii')==='IDAT')idat.push(data);offset=end;
-  }
-  assert(idat.length>0&&chunks[0].type==='IHDR'&&chunks.at(-1).type==='IEND',relative+' complete screenshot PNG');
-  const filtered=inflateSync(Buffer.concat(idat)),compressed=[{}, {strategy:constants.Z_FILTERED}]
-   .map(options=>deflateSync(filtered,{level:9,...options})).reduce((best,value)=>value.length<best.length?value:best);
-  assert(inflateSync(compressed).equals(filtered),relative+' byte-identical filtered pixels');
-  const replacement=Buffer.alloc(compressed.length+12);replacement.writeUInt32BE(compressed.length);replacement.write('IDAT',4,'ascii');compressed.copy(replacement,8);replacement.writeUInt32BE(crc32(replacement.subarray(4,-4)),replacement.length-4);
-  let inserted=false;const retained=Buffer.concat([signature,...chunks.flatMap(chunk=>chunk.type==='IDAT'?(inserted?[]:(inserted=true,[replacement])):[chunk.bytes])]);
-  const after=retained.length<before.length?retained:before;if(after!==before)fs.writeFileSync(file,after);
-  rows.push({path:relative,original_bytes:before.length,retained_bytes:after.length,original_sha256:sha(before),retained_sha256:sha(after),filtered_pixel_sha256:sha(filtered)});
- }};
- visit(directory);const originalBytes=rows.reduce((sum,row)=>sum+row.original_bytes,0),retainedBytes=rows.reduce((sum,row)=>sum+row.retained_bytes,0);
- fs.writeFileSync(path.join(directory,'png-retention.json.gz'),gzipSync(Buffer.from(JSON.stringify({encoding_only:true,pixel_streams_identical:true,dimensions_and_other_chunks_unchanged:true,messenger_artifact_unchanged:true,frames:rows.length,original_bytes:originalBytes,retained_bytes:retainedBytes,files:rows})+'\n'),{level:9}));
- const jsonOriginalBytes=jsonRows.reduce((sum,row)=>sum+row.original_bytes,0),jsonRetainedBytes=jsonRows.reduce((sum,row)=>sum+row.retained_bytes,0),jsonManifest=path.join(directory,'json-retention.json.gz');
- if(jsonRows.length||!fs.existsSync(jsonManifest))fs.writeFileSync(jsonManifest,gzipSync(Buffer.from(JSON.stringify({schema:1,uncompressed_bytes_identical:true,root_receipt_unchanged:true,messenger_artifact_unchanged:true,files:jsonRows})+'\n'),{level:9}));
- console.log('PASS lossless complete PNG retention',JSON.stringify({frames:rows.length,originalBytes,retainedBytes,savedBytes:originalBytes-retainedBytes}));
- console.log('PASS lossless ancillary JSON retention',JSON.stringify({files:jsonRows.length,originalBytes:jsonOriginalBytes,retainedBytes:jsonRetainedBytes,savedBytes:jsonOriginalBytes-jsonRetainedBytes}));
-}
 
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
@@ -2618,6 +2569,6 @@ function retainLosslessPngEvidence(directory){
    (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');
   if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
- }finally{await browser.close();server.close();if(!process.argv.includes('--messenger-only'))retainLosslessPngEvidence(evidence);}
+ }finally{await browser.close();server.close();if(!process.argv.includes('--messenger-only'))await retainLosslessPngEvidence(evidence);}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
