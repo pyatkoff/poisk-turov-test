@@ -203,8 +203,32 @@ test('Private TV unreadable and transport failures do not invent backend facts o
    if(mode==='transport')throw Object.assign(Error('PRIVATE'),{status:410,code:'offer_expired',failureFacts:{token:'PRIVATE'}});
    return {ok:false,status:502,text:async()=>mode==='invalid_json'?'PRIVATE':'x'.repeat(1048577)};
   });const h=await x.start();await assert.rejects(x.api.quote(h.offers[0]),e=>{
-   assert.deepEqual(plain(e.failureFacts),{phase:mode});assert.equal(e.code,'tourvisor_session_unavailable');assert.equal(e.status,0);return true;
+   assert.deepEqual(plain(e.failureFacts),{phase:mode,...(mode==='transport'?{}:{httpStatus:502})});assert.equal(e.code,'tourvisor_session_unavailable');assert.equal(e.status,0);return true;
   });assert.doesNotMatch(x.warnings.join(''),/PRIVATE/);assert.equal(x.calls.filter(c=>c.action==='tv_tour').length,1);
+ }
+});
+test('Unreadable TV responses retain only known HTTP status without changing expiry or replay policy',async()=>{
+ for(const action of ['tv_tour','tv_flights'])for(const phase of ['invalid_json','response_limit'])for(const status of [200,410,502,0,600,'502',null,1.5,NaN]){
+  const raw=phase==='invalid_json'?'PRIVATE_RESPONSE_BODY':'PRIVATE_RESPONSE_BODY'+'я'.repeat(524289);
+  const x=tvSetup(call=>call.action===action?{ok:false,status,text:async()=>raw}:undefined),emitted=[];
+  x.window.CustomEvent=class{constructor(type,options){this.type=type;this.detail=options.detail;}};
+  x.window.dispatchEvent=event=>emitted.push(event);
+  const h=await x.start();let request;
+  if(action==='tv_tour')request=()=>x.api.quote(h.offers[0]);else{const o=await x.checked(h);request=()=>x.api.flights(o.tour);}
+  const known=Number.isInteger(status)&&status>=100&&status<=599;
+  const facts={phase,...(known?{httpStatus:status}:{})};let first;
+  for(let attempt=0;attempt<2;attempt++)await assert.rejects(request(),error=>{
+   if(first)assert.equal(error,first);first=error;
+   assert.equal(error.status,0,'HTTP diagnostics must not terminalize an unreadable 410 as provider-confirmed expiry');
+   assert.equal(error.code,'tourvisor_session_unavailable');assert.equal(error.retryable,false);
+   assert.deepEqual(plain(error.failureFacts),facts);assert(Object.isFrozen(error.failureFacts));
+   assert.doesNotMatch(JSON.stringify(error)+error.message,/PRIVATE_RESPONSE_BODY/);return true;
+  });
+  assert.equal(x.calls.filter(call=>call.action===action).length,1,'Reopening retains the same failed operation');
+  const expected={provider:'tourvisor',action,...facts},logs=x.warnings.filter(line=>line.startsWith('[AnyTour quote] '));
+  assert.equal(logs.length,1);assert.deepEqual(JSON.parse(logs[0].slice('[AnyTour quote] '.length)),expected);
+  assert.equal(emitted.length,1);assert.equal(emitted[0].type,'anytour:quote-failure');assert.deepEqual(plain(emitted[0].detail),expected);
+  assert.equal(x.timers.size,0);assert.deepEqual(x.rootCalls,[]);assert.doesNotMatch(x.warnings.join(''),/PRIVATE_RESPONSE_BODY/);
  }
 });
 const mismatchFields=['tour_id','hotel_id','adults','children','departure_id','date','nights'];
