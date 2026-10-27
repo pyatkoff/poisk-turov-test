@@ -10,7 +10,7 @@
   "leadDelivery": false,
   "sourceFiles": {
     "app.js": "cba264ec609ba55d865c8692726cf2eddafc98b344ec45c1d11c5e98d9f5f0d1",
-    "styles.css": "5adc35a95d2d16d9ac47d72b801753adf7a859f1e0bf17a3e5de57a8571b4cc0",
+    "styles.css": "d86b84b04882a1b6d7ecbef338ae039e78dd6d5ee581675db3dcf8c97d29c816",
     "mobile-controls-v1.css": "8b5c50dd5e352ae95603801d0469a6f89d411365131fe1a4fdc44f20976f151c",
     "fixture-data.js": "1793005f8066fed74e3404ce633dba97fcae034b195d91ec2e11ef9cf92a75e3",
     "local-db-parser.js": "98fd0db7582041d1fe131d43898f0583c1d9759adde449e53a5616347012c268",
@@ -58,7 +58,7 @@
     "app.js": "a0f511480d290f99e3202d9881a8273b89974a03ef7a84432d2800542d8444bb",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "0172f98350007779734431e13eba4a233b76ba9eb3f6e129fc356cbeab53cf9e",
-    "styles.css": "696ca0edbd553d0c0a29020b961f9650fe3cc3da240b1cc39254c0e95789a2a8",
+    "styles.css": "5adc35a95d2d16d9ac47d72b801753adf7a859f1e0bf17a3e5de57a8571b4cc0",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "6298bbd98aee9f44b8d058bd365c3651c10d17d4dd46b96d0bba494a2e95174d",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
