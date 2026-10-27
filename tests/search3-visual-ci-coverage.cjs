@@ -42,6 +42,8 @@ function verify(workflow,bootstrap,html){
  assert.equal((workflow.match(/ref: \$\{\{ github.event.pull_request.head.sha \}\}/g)||[]).length,2,'both jobs check exact source head');
  assert(rules.some(rule=>matches(rule,'scripts/ci/search3_visual_browser_dependencies.cjs')),'browser dependency preflight triggers its full gate');
  for(const job of [focused,full])assert(job.includes('node tests/search3-visual-browser-dependencies.cjs'),'dependency preflight regressions run in both jobs');
+ assert(rules.some(rule=>matches(rule,'scripts/ci/search3_visual_evidence_retention.cjs')),'lossless evidence owner triggers its full gate');
+ for(const job of [focused,full])assert(job.includes('node tests/search3-visual-evidence-retention.cjs'),'lossless evidence regressions run in both jobs');
  const setup=full.slice(full.indexOf('      - name: Inspect installed Chromium system dependencies'),full.indexOf('      - name: Build the exact compiled visual fixture graph'));
  assert(setup.includes('id: browser-deps')&&setup.includes('node scripts/ci/search3_visual_browser_dependencies.cjs'),'required dependency facts precede installation');
  assert(setup.includes('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror'),'mirror preference is conditional and uses only the explicit fixed-file helper mode');
@@ -60,6 +62,8 @@ assert.throws(()=>verify(workflow.replace('ready_for_review, ',''),bootstrap,htm
 assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !github.event.pull_request.draft }}\n    # Drafts retain'),bootstrap,html),/every draft/,'disabled draft check detected');
 assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_browser_dependencies.cjs'\n",''),bootstrap,html),/preflight triggers/,'setup helper cannot fall outside CI scope');
 assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-browser-dependencies.cjs\n',''),bootstrap,html),/regressions run/,'preflight regression removal detected');
+assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_evidence_retention.cjs'\n",''),bootstrap,html),/evidence owner triggers/,'archive helper cannot fall outside CI scope');
+assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-evidence-retention.cjs\n',''),bootstrap,html),/evidence regressions run/,'archive regression removal detected');
 assert.throws(()=>verify(workflow.replace('      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}','      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready == \'false\' }}'),bootstrap,html),/positive package facts/,'missing output cannot bypass stock installation');
 assert.throws(()=>verify(workflow.replace(' --prefer-ubuntu-mirror',''),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot silently use a different helper mode');
 assert.throws(()=>verify(workflow.replace('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n','      - name: Prefer the existing HTTPS Ubuntu package mirror\n'),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot run when system packages already satisfy the gate');

@@ -26,6 +26,7 @@ on:
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
       - 'scripts/ci/search3_visual_browser_dependencies.cjs'
+      - 'scripts/ci/search3_visual_evidence_retention.cjs'
       - 'tests/search3-prototype-*.cjs'
       - 'tests/local-tv-catalog-browser.cjs'
       - 'tests/local-tv-catalog-test.php'
@@ -59,6 +60,7 @@ jobs:
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-browser-dependencies.cjs
+          node tests/search3-visual-evidence-retention.cjs
           node tests/search3-visual-formatting.cjs
           node tests/search3-visual-calendar-inventory.cjs
           node tests/search3-visual-flight-filter-work.cjs
@@ -122,6 +124,7 @@ jobs:
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-browser-dependencies.cjs
+          node tests/search3-visual-evidence-retention.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
