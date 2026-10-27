@@ -121,6 +121,22 @@ async function tourvisorJourney({browser,origin,base,output}){
    assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
    assert.match((await page.locator('.application-review-heading small').textContent()).replace(/\s+/g,' '),/12 лет, до года/,'the entered child order stays visible while its canonical request order is compared');
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
+   // Retained ordinary INT screenshot: full Russian labels must not paint over
+   // operator/placement values. Use the same fictional contact journey, no new calls.
+   const details=page.locator('.application-review-card>details.application-review');
+   await details.locator('summary').click();
+   const conditionRows=await details.locator('.saved-stay-summary>div').evaluateAll(rows=>rows.map(row=>{
+    const dt=row.querySelector('dt'),dd=row.querySelector('dd'),range=document.createRange();range.selectNodeContents(dt);
+    const text=range.getBoundingClientRect(),label=dt.getBoundingClientRect(),value=dd.getBoundingClientRect();
+    return {label:dt.textContent,textRight:text.right,labelRight:label.right,valueX:value.x,valueY:value.y,labelBottom:label.bottom};
+   }));
+   assert(conditionRows.some(row=>row.label==='Туроператор'),'expanded exact operator fact is covered');
+   for(const row of conditionRows){
+    assert(row.textRight<=row.labelRight+1,'full condition label wraps inside its own column: '+row.label);
+    assert(row.valueY>=row.labelBottom-1||row.textRight+6<=row.valueX,'condition label/value remain separated: '+row.label);
+   }
+   await capture('manager-condition-details',true);
+   await details.locator('summary').click();
    assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.some(c=>c.action==='tv_flights'),false);
    const first=calls.find(c=>c.action==='handoff_freeze').body;assert.equal(first.choice_ref,'manager-deferred');assert.equal(first.local_hotel_id,101);
    assert.equal(calls.some(c=>c.action==='handoff_create'),false,'contact entry never CREATEs');
