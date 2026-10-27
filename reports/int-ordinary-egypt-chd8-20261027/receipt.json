@@ -1,0 +1,121 @@
+{
+  "operation": "int-ordinary-egypt-chd8-20261214-20261027-v1",
+  "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6434685711",
+  "executor": "root INT",
+  "scope": {
+    "departure": "Moscow",
+    "country": "Egypt",
+    "from": "2026-12-14",
+    "to": "2026-12-20",
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [
+      8
+    ],
+    "stars": [
+      4,
+      5
+    ],
+    "meal": "AI"
+  },
+  "observed_listing": {
+    "hotels": 168,
+    "variants": 606
+  },
+  "selected": {
+    "provider": "Tourvisor",
+    "operator": "Библио-Глобус",
+    "hotel": "MIRAGE BAY RESORT & AQUAPARK",
+    "room": "standard room",
+    "meal": "Всё включено",
+    "check_in": "2026-12-15",
+    "check_out": "2026-12-22",
+    "nights": 7,
+    "party": {
+      "adults": 2,
+      "child_ages": [
+        8
+      ]
+    },
+    "currency": "RUB",
+    "listing_amount": 123253,
+    "applied_pair_amount": 143924,
+    "fuel_amount": 20671,
+    "fuel_inclusion_before_pair": "unknown",
+    "fuel_inclusion_after_pair": "included (explicit current consumer wording)",
+    "infant_fee": "not_applicable; no infant"
+  },
+  "pair": {
+    "forward": {
+      "flight": "SU420",
+      "carrier": "Аэрофлот",
+      "date": "2026-12-15",
+      "departure": "15:10",
+      "arrival": "20:30",
+      "from": "Москва",
+      "to": "Хургада"
+    },
+    "backward": {
+      "flight": "SU421",
+      "carrier": "Аэрофлот",
+      "departure_date": "2026-12-22",
+      "arrival_date": "2026-12-23",
+      "departure": "21:50",
+      "arrival": "05:00 +1",
+      "from": "Хургада",
+      "to": "Москва"
+    },
+    "baggage_kg": 23,
+    "hand_baggage_kg": 10,
+    "returned_options": 5,
+    "selected_option": 2
+  },
+  "actions": {
+    "Find": 1,
+    "CheckTour_control": 1,
+    "GetFlights_control": 1,
+    "pair_selection": 1,
+    "pair_apply": 1,
+    "other_offer_calculations": 0,
+    "repeated_searches": 0,
+    "receipt_polls": 0,
+    "lead_sends": 0,
+    "bookings": 0
+  },
+  "observation": {
+    "terminal": "OBSERVED_CALCULATION_APPLIED",
+    "handoff_preparation": "ready",
+    "messenger_buttons": "enabled; not clicked",
+    "whole_party_displayed": true,
+    "raw_final_verified": "NOT_RETAINED",
+    "backend_generation_search_offer_pair_refs": "NOT_RETAINED (DOM allowlist returned empty)",
+    "supplier_HTTP_count": "NOT_RETAINED; UI actions are not physical HTTP",
+    "supplier_HTTP_status_code_duration": "NOT_RETAINED; no failure attribution",
+    "valid_until": "NOT_RETAINED; no TTL extension or subsequent reuse accepted",
+    "limitations": "This is one current observed installed-consumer product outcome. Not a raw backend receipt, global final_verified or supplier/root-cause proof."
+  },
+  "budget": {
+    "own_development_test_daily_ceiling": 5000,
+    "physical_case_reservation": 768,
+    "actual_physical_used": "NOT_RETAINED",
+    "reservation_disposition": "CONSERVATIVELY_HELD_UNKNOWN_NO_REPLAY; no unused balance inferred",
+    "production_user_traffic_in_scope": false
+  },
+  "evidence": {
+    "screenshot": {
+      "path": "/workspace/scratch/anytour-int-egypt-chd8-1793079947696.jpg",
+      "bytes": 91776,
+      "sha256": "5a248d0cb567eba9ae07fc68526895177e6799641ba1949710925c6ccf82e9ee"
+    },
+    "ax": {
+      "path": "/workspace/scratch/anytour-int-egypt-chd8-1793079947696.ax.txt",
+      "bytes": 4617,
+      "sha256": "7fe88aa6f12251c15c605e7a5ab98db76863e9b360f0c23898dc93d3a24c956c"
+    }
+  },
+  "no_replay": true,
+  "source_changes": 0,
+  "CI_runs": 0,
+  "installs": 0
+}
+

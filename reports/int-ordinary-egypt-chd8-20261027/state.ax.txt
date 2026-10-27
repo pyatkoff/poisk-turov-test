@@ -1,0 +1,79 @@
+Browser tab: 2, Title: "AnyTour — найдите свой отдых", URL: "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2026-12-14&to=2026-12-20&minNights=7&maxNights=7&adults=2&ages=8&searched=1&stars=4%7C5&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE&sort=price".
+0 AXWebArea AnyTour — найдите свой отдых, URL: anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=1&from=2026-12-14&to=2026-12-20&minNights=7&maxNights=7&adults=2&ages=8&searched=1&stars=4%7C5&meals=%D0%92%D1%81%D1%91+%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B5%D0%BD%D0%BE&sort=price
+	1 container Продолжить, ID: modal
+		70 button Description: К отелю, Help: К отелю: MIRAGE BAY RESORT & AQUAPARK, ID: modal-back
+		71 text ВЫБРАННЫЙ ТУР
+		3 heading Продолжить, Value: 2, ID: modal-title
+			72 text Продолжить
+		5 button Закрыть окно
+		6 container modal-body
+			73 content list Этапы выбора тура
+				74 text Номер и питание
+				75 text Перелёт
+				76 text Связь
+			77 container
+				78 text Цена с выбранным перелётом Цена предложения 123 253 ₽ → с выбранной парой 143 924 ₽ за всех.
+			79 container
+				80 text MIRAGE BAY RESORT & AQUAPARK
+				81 text 15 дек — 22 дек · 7 ночей
+				82 text 2 взр. + 1 реб. · возраст ребёнка: 8 лет
+				83 text standard room · Всё включено
+				84 button (expanded) Подробности тура ⌃, Secondary Actions: Collapse
+					85 text Подробности тура
+					129 text ⌃
+				130 definition list
+					131 container Туроператор
+						132 text Туроператор
+					133 text Библио-Глобус
+					134 container Размещение
+						135 text Размещение
+					136 text 2 взрослых + ребенок
+				137 button (collapsed) Топливный сбор 20 671 ₽ · включён в цену ⌄, ID: detail-fuel-summary, Secondary Actions: Expand
+					138 text Топливный сбор
+					139 text 20 671 ₽ · включён в цену
+					140 text ⌄
+				87 container Перелёт выбранного тура
+					88 heading Перелёт, Value: 3
+						89 text Перелёт
+					90 button Изменить рейсы
+					91 container
+						92 button (expanded) Рейсы и багаж Туда 15:10 → 20:30 · Обратно 21:50 → 05:00 +1 ⌄, Secondary Actions: Collapse
+							93 text Рейсы и багаж
+							94 text Туда 15:10 → 20:30 · Обратно 21:50 → 05:00 +1
+							95 text ⌄
+						96 container Выбранный перелёт
+							97 container
+								98 text Туда
+								99 text 15.12.2026 15:10 → 20:30 Москва, Россия → Хургада, Египет Аэрофлот · SU420 · Без пересадок
+								100 definition list
+									101 container Багаж
+										102 text Багаж
+									103 text 23 кг
+									104 container Ручная кладь
+										105 text Ручная кладь
+									106 text 10 кг
+							107 container
+								108 text Обратно
+								109 text 22.12.2026 → 23.12.2026 21:50 → 05:00 +1 Хургада, Египет → Москва, Россия Аэрофлот · SU421 · Без пересадок
+								110 definition list
+									111 container Багаж
+										112 text Багаж
+									113 text 23 кг
+									114 container Ручная кладь
+										115 text Ручная кладь
+									116 text 10 кг
+				117 button Изменить номер и питание
+			118 container messenger-methods
+				119 heading Как вам удобнее продолжить?, Value: 3
+					120 text Как вам удобнее продолжить?
+				121 text Передадим выбранный тур в диалог. Номер телефона для этого не нужен.
+				122 button Telegram
+				123 button MAX
+				124 button По телефону
+				141 text Выбранный тур готов к передаче.
+		69 container modal-footer
+			126 text За всех туристов
+			127 text 143 924 ₽
+			128 text Цена с выбранными рейсами · сбор включён
+
+The focused UI element is 84 button (expanded) Подробности тура ⌃, Secondary Actions: Collapse
