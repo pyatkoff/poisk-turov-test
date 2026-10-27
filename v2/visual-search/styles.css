@@ -56,7 +56,7 @@ svg.icon{width:20px;height:20px;flex-shrink:0;vertical-align:middle;stroke-width
 .best-tour-info{grid-column:2;grid-row:2;margin:0 18px 15px;border-top:1px solid #E7EBF3;padding-top:12px;min-width:0}.tour-eyebrow{font-size:12px;color:var(--muted);line-height:1.4}.best-tour-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:14px;margin-top:6px;color:var(--ink)}.best-tour-title svg{width:16px;height:16px;color:var(--brand)}.tour-nights{font-size:12px;font-weight:500;border-radius:5px;padding:2px 6px;background:#EDF2FD;color:var(--brand)}.tour-options{display:grid;gap:5px;margin-top:9px}.tour-options>span{display:flex;align-items:flex-start;gap:6px;font-size:12px;line-height:1.5}.tour-options svg{width:14px;height:14px;color:#7587AD;margin-top:2px}.best-tour-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5}.best-tour-meta span+span:before{content:'·';margin-right:7px}.operator-logo{display:inline-flex;align-items:center;justify-content:flex-start;vertical-align:middle}.operator-logo img{display:block;max-width:94px;max-height:22px;width:auto;height:auto;object-fit:contain}.best-tour-meta .operator-logo:before{display:none}
 .price-inclusions{display:grid;gap:8px;margin-top:21px;border-top:1px solid #E4EAF4;padding-top:16px;color:var(--muted);font-size:12px}.price-inclusions>span{display:flex;align-items:center;gap:6px}.price-inclusions svg{color:#90A2C6;width:14px;height:14px}.rotate-arrow{display:inline-block;margin-left:4px}.rotate-arrow.up{transform:rotate(180deg)}
 .offers{grid-column:1/-1;padding:0 20px 16px;border-top:1px solid var(--line)}.offers-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px 0}.offers-header strong{font-size:16px}.offers-header small{color:var(--muted);font-size:12px}.offer{display:grid;grid-template-columns:1.1fr 1.1fr .85fr 155px;gap:15px;align-items:center;border-top:1px solid var(--line);padding:17px 0;font-size:14px}.offer strong{font-size:14px;font-weight:600;color:var(--ink)}.offer small{display:block;font-size:12px;line-height:1.6;color:var(--muted);margin-top:4px}.flight-tag{display:inline-block;padding:3px 6px;border-radius:5px;background:#EDF2FE;color:var(--brand);font-size:12px}.flight-tag.regular{background:#EDF7F0;color:#3B7253}.offer-price{text-align:right}.offer-price>strong{font-size:22px;display:block;white-space:nowrap}.offer-price .primary{font-size:12px;min-height:40px;margin-top:9px;padding:8px 10px;width:100%}.offer-price .primary svg{width:15px;height:15px}.empty{border:1px solid var(--line);border-radius:var(--radius);background:white;padding:48px 25px;text-align:center}.empty>svg{width:39px;height:39px;color:var(--brand);margin-bottom:18px}.empty h3{font-size:23px;letter-spacing:-.4px}.empty p{font-size:16px;color:var(--muted);line-height:1.7;max-width:430px;margin:13px auto 24px}.empty-actions{display:flex;justify-content:center;gap:10px}
-.results-pristine #search-status,.results-pristine #price-calendar,.results-pristine .results-toolbar,.results-pristine #active-filters{display:none}
+.results-pristine #search-status,.results-pristine #price-calendar,.results-pristine .results-toolbar,.results-pristine #active-filters,.results-pristine .results-heading{display:none}
 
 .results-pristine:not(.filters-requested) .results-layout{display:block}.results-pristine .check-row small{display:none}.results-pristine .empty{padding:40px 25px}.results-pristine-active .mobile-bottom{display:none}
 @media(min-width:1101px){.results-pristine:not(.filters-requested) .filter-panel{display:none}}
@@ -1673,7 +1673,19 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 
 .form-picker .destination-empty .text-button,.form-picker #meal-clear-query{min-height:44px}
 
-@media(min-width:1101px){body.search-editing .results-section:not(.filters-requested){display:none}}
+@media(min-width:1101px){
+ body.search-editing .results-section:not(.filters-requested){display:none}
+ #search-form.search-box{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) minmax(190px,.8fr);gap:12px}
+ #search-form .search-primary{grid-column:1/-1}
+ #search-form .search-secondary{display:contents}
+ #search-form .quick-category{grid-column:1;grid-row:2}
+ #search-form .quick-field{grid-row:2}
+ #search-form .search-actions{display:contents}
+ #search-form .search-submit{grid-column:4;grid-row:2;align-self:end;width:100%;min-width:0;min-height:64px}
+ #search-form #search-return{grid-column:1/span 3;grid-row:3;justify-self:start}
+ #search-form .form-price-note,#search-form #form-conflict,#search-form .search-edit-note{grid-column:1/-1;margin:0}
+ #search-form .form-price-note:not([id]){grid-column:4;grid-row:3}
+}
 @media(max-width:1100px){#search-form .search-primary{grid-template-columns:repeat(6,minmax(0,1fr))}#search-form .search-field{grid-column:span 3}#search-form .search-field:nth-child(3){grid-column:span 6}#search-form .search-field:nth-child(4),#search-form .search-field:nth-child(5){grid-column:span 3}}
 @media(max-width:760px){
  html:has(body.form-visible){scrollbar-width:none}
@@ -1919,7 +1931,8 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 }
 /* v144: keep the actual price scope with the calendar, without an always-open filter list. */
 .dates-dialog .calendar-context{margin:0;font-size:14px;line-height:1.4}
-.dates-dialog .date-missing-price,.dates-dialog .date-source{margin:0;font-size:12px;line-height:1.4;color:var(--muted)}
+.dates-dialog .date-missing-price{margin:0;font-size:12px;line-height:1.4;color:var(--muted)}
+.dates-dialog .date-source{margin:0;width:fit-content;padding:4px 6px;border-radius:5px;background:var(--soft-blue);font-size:13px;line-height:1.4;font-weight:600;color:var(--ink)}
 .dates-dialog .date-choice-tools{padding:0 0 8px;background:#fff;border-bottom:1px solid var(--line)}
 .dates-dialog .calendar-price-key{margin:0;font-size:12px;gap:4px 8px}
 .dates-dialog .calendar-legend{margin-top:8px;min-height:0;font-size:12px}
