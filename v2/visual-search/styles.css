@@ -759,7 +759,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 
 /* v43: saved itinerary remains readable; calendar history explains empty results. */
 .saved-stay-summary{display:grid;gap:8px;margin:6px 0;font-size:14px;line-height:1.5}
-.saved-stay-summary>div{display:grid;grid-template-columns:70px minmax(0,1fr);gap:12px}.saved-stay-summary dt{color:var(--muted)}.saved-stay-summary dd{margin:0;overflow-wrap:anywhere}
+.saved-stay-summary>div{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px}.saved-stay-summary dt{color:var(--muted);min-width:0;overflow-wrap:anywhere}.saved-stay-summary dd{margin:0;overflow-wrap:anywhere}
 .saved-flight-summary{display:grid;gap:10px;margin:10px 0}
 .saved-flight-leg{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;min-width:0}
 .saved-flight-leg header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:14px;line-height:1.5}.saved-flight-leg header span{color:var(--muted)}
