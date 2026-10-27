@@ -124,7 +124,7 @@ async function tourvisorJourney({browser,origin,base,output}){
    // Retained ordinary INT screenshot: full Russian labels must not paint over
    // operator/placement values. Use the same fictional contact journey, no new calls.
    const details=page.locator('.application-review-card>details.application-review');
-   await details.locator('summary').click();
+   await details.locator(':scope > summary').click();
    const conditionRows=await details.locator('.saved-stay-summary>div').evaluateAll(rows=>rows.map(row=>{
     const dt=row.querySelector('dt'),dd=row.querySelector('dd'),range=document.createRange();range.selectNodeContents(dt);
     const text=range.getBoundingClientRect(),label=dt.getBoundingClientRect(),value=dd.getBoundingClientRect();
@@ -136,7 +136,7 @@ async function tourvisorJourney({browser,origin,base,output}){
     assert(row.valueY>=row.labelBottom-1||row.textRight+6<=row.valueX,'condition label/value remain separated: '+row.label);
    }
    await capture('manager-condition-details',true);
-   await details.locator('summary').click();
+   await details.locator(':scope > summary').click();
    assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.some(c=>c.action==='tv_flights'),false);
    const first=calls.find(c=>c.action==='handoff_freeze').body;assert.equal(first.choice_ref,'manager-deferred');assert.equal(first.local_hotel_id,101);
    assert.equal(calls.some(c=>c.action==='handoff_create'),false,'contact entry never CREATEs');
