@@ -45,13 +45,15 @@ sp_hero(
 );
 ?>
 <main class="sp-main sp-seo-editorial-page" data-anytour-hotel-id="99" data-local-tv-hotel-id="268">
-    <figure class="sp-card">
+    <section class="sp-card" aria-label="Фотография отеля">
+        <figure style="margin:0">
         <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
              alt="Общий вид территории JAZ Makadi Saraya с бассейном и невысокими корпусами"
              fetchpriority="high" decoding="async"
              style="display:block;width:100%;height:auto;border-radius:var(--at-radius-md)">
         <figcaption>Общий вид отеля из гостиничного каталога. Фотография не определяет выбранную категорию номера.</figcaption>
-    </figure>
+        </figure>
+    </section>
     <section class="sp-card sp-card--supporting">
         <h2>Что полезно знать</h2>
         <p>В официальном factsheet отдельно перечислены One-Bedroom Apartments и Two-Bedroom Apartments. Для апартаментов указаны обеденный стол и микроволновая печь. Тип внутренних дверей в этом описании не установлен.</p>
