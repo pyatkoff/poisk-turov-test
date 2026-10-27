@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "case": "int-current-tv-party-handoff-egypt-20270218-20261028-v1",
+  "claim": 6455196928,
+  "admission": 6455235277,
+  "status": "OBSERVED_SELECTED_PAIR_CONTACT_READY_CONSUMED_NO_REPLAY",
+  "source": "62a7f3d08fcc9a12151ceb97a40de7aba0d41218",
+  "runtime": "48563aadfee26af0c975b78dfd00952c2c66ee46",
+  "receiving_release": "234f079ae82813c3a5321edb6bc7dab057767462",
+  "query": {
+    "origin": "Москва",
+    "country": "Египет",
+    "from": "2027-02-18",
+    "to": "2027-02-24",
+    "nights": 7,
+    "adults": 2,
+    "childAges": [],
+    "stars": [
+      4,
+      5
+    ],
+    "meal": "AI"
+  },
+  "offer": {
+    "hotel": "SWISS HEAVEN SHARMING INN",
+    "operator": "Библио-Глобус",
+    "source": "tourvisor",
+    "from": "2027-02-23",
+    "to": "2027-03-02",
+    "nights": 7,
+    "room": "standard room with garden view",
+    "meal": "AI",
+    "party": {
+      "adults": 2,
+      "childAges": []
+    },
+    "listingRUB": 129626,
+    "checkedManagerDeferredRUB": 129626,
+    "selectedPairTotalRUB": 143473,
+    "fuel": {
+      "amountRUB": 13787,
+      "displayBeforeApply": "включение в цену уточняется",
+      "displayAfterApply": "сбор включён"
+    },
+    "outbound": {
+      "number": "SU5955",
+      "date": "2027-02-23",
+      "departure": "08:20",
+      "arrival": "14:00",
+      "route": "Москва → Шарм-эль-Шейх"
+    },
+    "inbound": {
+      "number": "SU5956",
+      "date": "2027-03-02",
+      "departure": "15:00",
+      "arrival": "22:15",
+      "route": "Шарм-эль-Шейх → Москва"
+    },
+    "baggage": "без багажа",
+    "handLuggage": "уточняется",
+    "returnedPairs": 10,
+    "selectedOption": 2
+  },
+  "observed": {
+    "tourCheck": "successful contact preparation",
+    "flights": "returned",
+    "selectedPair": "applied",
+    "contactReady": true,
+    "telegramEnabled": true,
+    "maxEnabled": true
+  },
+  "uiActions": {
+    "find": 1,
+    "tourCheck": 1,
+    "flightsControl": 1,
+    "pairSelection": 1,
+    "pairApply": 1,
+    "continue": 0,
+    "ANEXfollowup": 0,
+    "explicitFreeze": 0,
+    "create": 0,
+    "native": 0,
+    "send": 0,
+    "booking": 0
+  },
+  "automaticPreparation": {
+    "note": "Stock contact entry automatically prepares the handoff; no separate explicit freeze. Raw freeze count not measured; readiness is observed. Reservation claim freeze0 is corrected to explicitFreeze0, not a claim of zero HTTP."
+  },
+  "safeQuoteFacts": [],
+  "diagnosticNote": "Filtered existing safe console read at tour-check and after pair application. Empty array means no matching retained TV failure log in those reads; not proof of no HTTP or of all-stage diagnostics.",
+  "unknown": [
+    "physical supplier HTTP count",
+    "raw supplier code/status/duration",
+    "raw operation/selector/hash/expiry",
+    "CURRENT final_verified",
+    "infant fee",
+    "native delivery",
+    "production readiness"
+  ],
+  "authority": {
+    "finalPriceVerified": false,
+    "basis": "observed UI selected-pair calculation; existing producer contract browser-observation-only, no stronger raw proof exported"
+  },
+  "budget": {
+    "ownDevelopmentDay": "2026-10-28",
+    "reservedPhysicalHTTP": 2048,
+    "sourceBound": 668,
+    "measuredPhysicalHTTP": "NOT_MEASURED",
+    "disposition": "CONSERVATIVELY_HELD_UNKNOWN_NO_REPLAY",
+    "priorDay27Allocation": 4640,
+    "priorDayDisposition": "unchanged held history; no refund/provider billing day reset"
+  },
+  "changes": {
+    "source": 0,
+    "ci": 0,
+    "install": 0
+  },
+  "noReplay": true
+}
