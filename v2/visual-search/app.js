@@ -1411,7 +1411,7 @@ function calendarScope(ctx){
  const place={country:ctx.search.country,hotelId:ctx.filters.hotelId,hotelIds:destinationIds(ctx.filters),resorts:ctx.filters.resorts};
  return {destination:destinationLabel(place),fullDestination:destinationLabel(place,true),filters:filterChipData({filters:ctx.filters}).filter(chip=>!['hotelId','hotelIds','resorts'].includes(chip.key))};
 }
-const calendarSourceLabel=()=>data.scenario==='live'?'Ранее найденная цена':data.scenario==='snapshot'?'Снимок 23.09 · без обновления':data.scenario==='recorded'?(hotels.some(h=>h.offers?.some(o=>o.recordingKind==='demo'))?'Демонстрационная запись':'Цена из загруженной записи'):'Демонстрационная цена';
+const calendarSourceLabel=()=>data.scenario==='live'?'Цены из прошлых поисков · уточняются':data.scenario==='snapshot'?'Снимок 23.09 · без обновления':data.scenario==='recorded'?(hotels.some(h=>h.offers?.some(o=>o.recordingKind==='demo'))?'Демонстрационная запись':'Цена из загруженной записи'):'Демонстрационная цена';
 function renderCalendarScope(){
  const ctx=dateContext,scope=calendarScope(ctx),node=$('.calendar-context');if(!node)return;
  node.innerHTML=`<p class="picker-caption">${esc(dateContextLabel(ctx.search))}</p>`+((destinationIds(ctx.filters).length||ctx.filters.resorts.length||scope.filters.length)?`<p class="picker-caption">Цены: ${esc(scope.destination)}${scope.filters.length?' · '+scope.filters.map(chip=>esc(chip.label)).join(' · '):''}</p>`:'');
