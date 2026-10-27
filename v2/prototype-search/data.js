@@ -20,6 +20,8 @@
   function localContentEndpoint(){
     if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
     const path=String(root.location?.pathname||'');
+    if(root.V2_CONFIG?.search3ProductionEnabled===true&&(path==='/poisk-turov/'||path==='/poisk-turov/index.php'))
+      return '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php';
     return path.startsWith('/_preview/search3-next-candidate/')? '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php'
       :path.startsWith(local)?local+'data/local-tv-catalog-read-v1.php':null;
   }
@@ -1564,7 +1566,7 @@
   }
   let catalogGeneration=0;
   async function countries(origin) {
-    const run=++catalogGeneration,departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
+    const run=++catalogGeneration,departure=catalog.departures.find(x=>text(x)===origin||root.V2_CONFIG?.search3ProductionEnabled===true&&/^[1-9][0-9]*$/.test(String(origin))&&String(x.id)===String(origin))||catalog.departures[0];
     const rows=await destinationCatalog('countries',{departureId:departure.id});
     if(run!==catalogGeneration)return null;if(!rows.length)throw new Error('Для этого города список стран недоступен.');
     const seen=new Set(),items=[];

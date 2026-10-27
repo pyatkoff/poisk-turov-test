@@ -2,7 +2,9 @@
   'use strict';
   let draft={name:'',phone:'',comment:''},draftRevision=0,providerRevision=0;
   const preview=new URL(root.V2_CONFIG.leadApi,root.location.href).pathname.endsWith('/preview-lead-disabled.php');
+  const phoneLeadEnabled=()=>root.V2_CONFIG.search3PhoneLeadEnabled!==false;
   function markup(){
+    if(!phoneLeadEnabled())return '<section class="phone-contact-fallback"><p class="modal-intro">Для связи по телефону откройте контакты агентства.</p><a class="secondary" href="/contacts/">Контакты агентства</a></section>';
     return `<form id="prototype-lead-form">
       <p class="modal-intro">${preview?'Проверьте контакты и выбранные условия. В версии для проверки заявка не отправляется.':'Менеджер получит выбранный тур и рейс и свяжется с вами. Оплата на этом шаге не требуется.'}</p>
       <div class="form-row"><label>Имя (необязательно)<input class="input" name="name" autocomplete="name" maxlength="120" placeholder="Как к вам обращаться"></label><label>Телефон<input class="input" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" required placeholder="+7 999 123-45-67" aria-describedby="prototype-phone-hint"></label></div>
@@ -12,8 +14,9 @@
       <p class="lead-message modal-intro" role="status" aria-live="polite"></p>
     </form>`;
   }
-  function action(){return `<button class="primary" type="submit" form="prototype-lead-form">${preview?'Проверить заявку':'Отправить заявку'}</button>`;}
+  function action(){return phoneLeadEnabled()?`<button class="primary" type="submit" form="prototype-lead-form">${preview?'Проверить заявку':'Отправить заявку'}</button>`:'';}
   function bind(offer){
+    if(!phoneLeadEnabled())return;
     providerRevision++;
     const form=document.getElementById('prototype-lead-form');if(!form)return;
     draftRevision++;
@@ -112,6 +115,7 @@
       priceKind:'verified',finalPriceVerified:true,flight,flightFuel:null});
   }
   function bindProviderApplication(receipt){
+    if(!phoneLeadEnabled())return;
     if(preview)return bindProviderPreview(receipt);
     const form=document.getElementById('prototype-lead-form');if(!form)return;
     const revision=++providerRevision;
@@ -139,6 +143,7 @@
     });
   }
   function bindProviderPreview(receipt){
+    if(!phoneLeadEnabled())return;
     const form=document.getElementById('prototype-lead-form');if(!form)return;
     draftRevision++;
     const phone=form.elements.phone,button=document.querySelector('[type="submit"][form="prototype-lead-form"]'),message=form.querySelector('.lead-message');

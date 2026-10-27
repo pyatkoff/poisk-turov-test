@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "ea4dde4260a320fd7019ebd62887de7209bfa204c71241320bec79d128beeba5",
+    "app.js": "c92340747677af6c9556c1bfbd9e11e6c041aeecef9361c9ca918326cb7a8812",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "0172f98350007779734431e13eba4a233b76ba9eb3f6e129fc356cbeab53cf9e",
     "styles.css": "e80f24ad2af7b1eb1fc0a0155e0055bae8e62892aac9b9f411841f0a379c963c",
@@ -352,8 +352,8 @@
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
       "../prototype-search/messenger-flow-v1.js": "18d52f878669185b41d335938755b684c5d470e48fe4ce8a71faefa33298e687",
-      "../prototype-search/data.js": "13da19d91639c1dcbc2cb2146ff97e669abea918f294ac8c5ebb94024e12d742",
-      "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
+      "../prototype-search/data.js": "beb2dd0c13c72c491453923f5c355b504a2cb862164a524507f345621a83e30e",
+      "../prototype-search/config.js": "ae0b562fcdeff9e8fa9645c5ce488867753bb6c6e6f1c3c15699df0ba3fbeacb"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",
     "approvedDesignLab": {
@@ -378,5 +378,16 @@
       "connectedSupplierDeliveryAcceptance": false,
       "physicalAcceptance": false
     }
+  },
+  "productionCandidate": {
+    "status": "LOCAL_DRAFT_NOT_PUBLISHED",
+    "route": "/poisk-turov/",
+    "activationPerformed": false,
+    "configurationOptIn": "data-search3-production=enabled on exact production entry only",
+    "sameBackendSessionAsNext": true,
+    "phonePolicy": "messenger inquiry or existing contacts page; no phone submission",
+    "builder": "scripts/build/search3_production_candidate.py",
+    "queryOwner": "production-query-v1.js",
+    "queryOwnerSha256": "9083c7947d8abb2d7a12707d52cae89d57d944f78dbde0f168b23dc11408a4f1"
   }
 }

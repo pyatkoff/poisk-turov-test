@@ -8,6 +8,14 @@ on:
       - 'tests/search3_production_snapshot_test.py'
       - '.github/workflows/validate-search3-production-rollback.yml'
       - 'docs/project/search3-production-migration-runbook.md'
+      - 'scripts/build/search3_production_candidate.py'
+      - 'tests/search3_production_candidate_test.py'
+      - 'tests/search3-production-*.cjs'
+      - 'v2/prototype-search/config.js'
+      - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/lead.js'
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/visual-search/**'
   push:
     branches:
       - release/search3-production-ready-v1
@@ -16,6 +24,14 @@ on:
       - 'tests/search3_production_snapshot_test.py'
       - '.github/workflows/validate-search3-production-rollback.yml'
       - 'docs/project/search3-production-migration-runbook.md'
+      - 'scripts/build/search3_production_candidate.py'
+      - 'tests/search3_production_candidate_test.py'
+      - 'tests/search3-production-*.cjs'
+      - 'v2/prototype-search/config.js'
+      - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/lead.js'
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/visual-search/**'
   workflow_dispatch:
 
 permissions:
@@ -30,3 +46,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate snapshot utility and isolated restore drill
         run: python3 tests/search3_production_snapshot_test.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate production entry and contact policy without external IO
+        run: |
+          php --version
+          node tests/search3-production-mode.cjs
+          node tests/search3-canonical-profiles.cjs
+          node tests/search3-production-query.cjs
+          node tests/search3-production-contact.cjs
+          python3 -B tests/search3_production_candidate_test.py
