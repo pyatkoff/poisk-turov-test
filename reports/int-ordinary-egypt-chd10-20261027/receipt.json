@@ -1,0 +1,67 @@
+{
+  "operation": "int-ordinary-egypt-chd10-20261221-20261027-v1",
+  "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6441063267",
+  "input": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6440589808",
+  "executor": "sole root INT; SEARCH receives same bytes",
+  "scope": {
+    "departure": "Moscow", "country": "Egypt",
+    "departure_from": "2026-12-21", "departure_to": "2026-12-27",
+    "nights": 7, "adults": 2, "child_ages": [10],
+    "stars": [4, 5], "meal": "AI", "budget_filter": "none"
+  },
+  "listing_observed": {"hotels": 159, "variants": 393, "sort": "price ascending, local"},
+  "selected": {
+    "provider": "Tourvisor", "operator": "Библио-Глобус",
+    "hotel": "MIRAGE BAY RESORT & AQUAPARK", "room": "standard room", "meal": "Всё включено",
+    "check_in": "2026-12-23", "check_out": "2026-12-30", "nights": 7,
+    "adults": 2, "child_ages": [10], "currency": "RUB",
+    "listing_amount": 114898, "applied_pair_amount": 135569,
+    "fuel_amount": 20671,
+    "fuel_inclusion_before_pair": "unknown, explicitly displayed in option details",
+    "fuel_inclusion_after_pair": "included, explicitly displayed in prepared summary",
+    "infant_fee": "not applicable; no infant"
+  },
+  "pair": {
+    "forward": {"flight": "SU420", "carrier": "Аэрофлот", "date": "2026-12-23", "departure": "15:45", "arrival": "21:15", "from": "Москва", "to": "Хургада"},
+    "backward": {"flight": "SU423", "carrier": "Аэрофлот", "date": "2026-12-30", "departure": "14:15", "arrival": "21:30", "from": "Хургада", "to": "Москва"},
+    "baggage_kg": 23, "hand_baggage_kg": 10, "returned_options": 5, "selected_option": 2
+  },
+  "observed_user_path": {
+    "summary": "same hotel/room/meal/dates/2ADL+CHD10/pair/135569/fuel included",
+    "contact": "phone form opened; blank inputs; consent unchecked; no check/submit",
+    "back": "ordinary modal Back to hotel; standard room remains selected; 23–30Dec/2ADL+CHD/135569 and price with selected flights retained",
+    "ordinary_continue_after_back": "same hotel/room/meal/dates/age10/135569 and exact SU420/SU423 visible again",
+    "draft_retention": "not tested; no draft entered"
+  },
+  "executor_observed_actions_not_HTTP_counts": {
+    "Find": 1, "CheckTour_control": 1, "GetFlights_control": 1,
+    "pair_selection": 1, "pair_apply": 1, "phone_form_open": 1,
+    "ordinary_Back": 1, "ordinary_Continue_after_Back": 1,
+    "other_offer_calculations": 0, "supplier_retries": 0, "receipt_polls": 0,
+    "lead_check_or_sends": 0, "bookings": 0
+  },
+  "outcome": "OBSERVED_CALCULATION_APPLIED_CONTACT_BACK_PRESERVED",
+  "authority_and_limits": {
+    "raw_backend_final_verified": "NOT_RETAINED",
+    "backend_generation_search_offer_pair_refs": "NOT_RETAINED",
+    "valid_until_or_expiry": "NOT_RETAINED; no TTL renewal or later reuse authorized",
+    "physical_supplier_HTTP_count_status_code_duration": "NOT_RETAINED; action counts are not physical HTTP",
+    "stage_timestamps": "browser observation timestamps only, not supplier durations",
+    "not_established": "raw final-price authority, historical rootcause, globalCURRENT, 80% fuel prediction, separate infant fee, ANEX quote recovery, natural delivery, physical devices or production readiness"
+  },
+  "budget": {
+    "own_dev_test_daily_ceiling": 5000, "new_case_physical_reservation": 768,
+    "actual_physical_used": "NOT_RETAINED",
+    "disposition": "CONSERVATIVELY_HELD_UNKNOWN_NO_REPLAY; previous separate768 UNKNOWN unchanged; no remaining-balance or refund inferred",
+    "ordinary_public_user_traffic_in_scope": false
+  },
+  "evidence": [
+    {"file": "trace.json", "original_path": "/workspace/scratch/int-chd10-trace.json", "bytes": 315102, "sha256": "43325edbf0ee40654122e72b46c0feeac6b20c2329f09d83bd1ddd841924dcd0", "stages": 11},
+    {"file": "summary.jpg", "bytes": 91560, "sha256": "a1db649c180f2f4e000d0b967239d5bb8d0eff862d128053dc858f5fb3f9c2ad"},
+    {"file": "contact.jpg", "bytes": 102278, "sha256": "46cdc653b006ffc3cbab584c6bd8996427f7c9f4a30d731c95a4173598a8a9e0"},
+    {"file": "back.jpg", "bytes": 82703, "sha256": "07a11c917d7b4e5a987576e0c11caa404aed4412626b1d17a68e10b59d7878d8"}
+  ],
+  "same_hotel_not_old_case": "New search21–27Dec/CHD10 selects23–30Dec/SU420–423/135569. Prior consumed CHD8 case selected15–22Dec/SU420–421/143924 and was not revisited or renewed.",
+  "no_replay": true, "runtime_source_changes": 0, "new_CI_runs": 0, "installs": 0,
+  "protected": "Coral/Sunmar not calculated; TV fuel unchanged by SAMO policy; SAMO paused; no MATCH/LOCAL/lead/booking/production changes"
+}
