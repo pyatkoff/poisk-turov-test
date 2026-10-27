@@ -175,8 +175,9 @@
       const response=await fetch(url.href,options),raw=await response.text();
       if(controller.signal.aborted)throw tvFailure(0,{phase:'aborted'});
       if(run&&!current(run))throw tvFailure(0,{phase:'stale'});
-      if(new TextEncoder().encode(raw).length>1048576)throw tvFailure(0,{phase:'response_limit'});
-      let result;try{result=JSON.parse(raw);}catch{throw tvFailure(0,{phase:'invalid_json'});}
+      const httpFacts=Number.isInteger(response.status)&&response.status>=100&&response.status<=599?{httpStatus:response.status}:{};
+      if(new TextEncoder().encode(raw).length>1048576)throw tvFailure(0,{phase:'response_limit',...httpFacts});
+      let result;try{result=JSON.parse(raw);}catch{throw tvFailure(0,{phase:'invalid_json',...httpFacts});}
       if(!response.ok||result?.ok!==true)throw tvFailure(response.status,{phase:'response',...tvResponseFacts(result)});
       return result;
     }catch(error){
