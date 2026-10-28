@@ -1221,6 +1221,251 @@ function anytour_anex_search3_valid_normalization_counts($counts, int $retained,
     return $rejected === $counts['rejected_rows'] && $seen === $counts['rows_seen'];
 }
 
+/** Retained own-session diagnostics only; hashes identify provenance, not anonymity. */
+function anytour_anex_search3_apd_receipt(array $session): array
+{
+    $out = ['schema_version' => 1, 'retained_only' => true, 'supplier_calls' => 0,
+        'status' => 'unknown', 'reason' => 'not_retained', 'records' => [], 'cache_files_read' => 0];
+    $contexts = $session['anex_offer_contexts'] ?? [];
+    if (!is_array($contexts) || count($contexts) > 4) return array_replace($out, ['reason' => 'context_limit_or_shape']);
+    $active = $session['offer_context'] ?? null;
+    if (is_array($active)) {
+        $ref = $active['gateway']['saved_offers']['search_ref'] ?? null;
+        if (!is_string($ref) || preg_match('/\A[a-f0-9]{32}\z/D', $ref) !== 1) {
+            return $contexts === [] ? $out : array_replace($out, ['reason' => 'active_context_unconfirmed']);
+        } elseif (isset($contexts[$ref]) && $contexts[$ref] !== $active) {
+            return array_replace($out, ['reason' => 'context_alias_mismatch']);
+        } elseif (!isset($contexts[$ref])) $contexts[$ref] = $active;
+    }
+    if (count($contexts) > 4) return array_replace($out, ['reason' => 'context_limit_or_shape']);
+    $candidates = []; $complete = true;
+    foreach ($contexts as $ref => $state) {
+        $saved = is_array($state) ? ($state['gateway']['saved_offers'] ?? null) : null;
+        $snapshot = is_array($state) ? ($state['gateway']['search'] ?? null) : null;
+        $attempts = is_array($state) ? ($state['additional_prices'] ?? []) : null;
+        if (!is_string($ref) || preg_match('/\A[a-f0-9]{32}\z/D', $ref) !== 1
+            || !is_array($state) || !is_int($state['generation'] ?? null) || $state['generation'] < 1
+            || !is_array($saved) || ($saved['search_ref'] ?? null) !== $ref
+            || !is_array($snapshot) || ($snapshot['schema_version'] ?? null) !== 1
+            || !is_array($saved['search'] ?? null) || !is_array($snapshot['context'] ?? null)
+            || !is_array($saved['offers'] ?? null) || count($saved['offers']) > 4800
+            || !is_array($snapshot['offers'] ?? null) || !array_is_list($snapshot['offers']) || count($snapshot['offers']) > 4800
+            || !is_array($attempts) || count($attempts) > 40 || count($out['records']) + count($attempts) > 40) {
+            return array_replace($out, ['status' => 'unknown', 'reason' => 'context_limit_or_shape', 'records' => []]);
+        }
+        try {
+            $search = anytour_anex_normalizer_context($saved['search']);
+            if ($search !== anytour_anex_normalizer_context($snapshot['context'])) {
+                return array_replace($out, ['reason' => 'search_binding_mismatch', 'records' => []]);
+            }
+        } catch (InvalidArgumentException $ignored) {
+            return array_replace($out, ['reason' => 'search_binding_mismatch', 'records' => []]);
+        }
+        $knownKeys = [];
+        foreach ($snapshot['offers'] as $known) {
+            $key = is_array($known) ? ($known['offer_key'] ?? null) : null;
+            if (!is_string($key) || isset($knownKeys[$key])) {
+                return array_replace($out, ['reason' => 'offer_binding_mismatch', 'records' => []]);
+            }
+            $knownKeys[$key] = $known;
+        }
+        $bindings = [];
+        foreach ($saved['offers'] as $key => $entry) {
+            $offer = is_array($entry) ? ($entry['offer'] ?? null) : null;
+            if (!is_array($offer) || ($offer['kind'] ?? null) !== 'concrete') continue;
+            $local = $offer['hotel']['local_id'] ?? null; $known = $knownKeys[$key] ?? null;
+            $tour = $entry['supplier_tour_program_id'] ?? null; $currency = $entry['supplier_currency_id'] ?? null;
+            $date = $offer['checkin'] ?? null; $nights = $offer['nights'] ?? null;
+            // Same saved/known identity and rate-tuple guards as additional_prices_batch_plan.
+            if (!is_string($key) || preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $key) !== 1
+                || ($offer['offer_key'] ?? null) !== $key || !is_array($known) || ($known['kind'] ?? null) !== 'concrete'
+                || ($known['hotel_external_id'] ?? null) !== ($offer['hotel']['external_id'] ?? null)
+                || !is_int($local) || $local < 1 || $local > 999999999
+                || !is_string($tour) || preg_match('/\A[1-9][0-9]{0,17}\z/D', $tour) !== 1
+                || !is_string($currency) || preg_match('/\A[1-9][0-9]{0,17}\z/D', $currency) !== 1
+                || !is_int($nights) || $nights < $search['nights_from'] || $nights > $search['nights_till']
+                || !is_string($date) || $date < $search['checkin_begin'] || $date > $search['checkin_end']
+                || ($offer['adults'] ?? null) !== $search['adults'] || ($offer['children'] ?? null) !== $search['children']) continue;
+            $expectedInfants = anytour_anex_normalizer_infant_count($search['child_ages']);
+            $infants = $offer['infants'] ?? null;
+            if ($expectedInfants === 0 ? !in_array($infants, [null, 0], true) : $infants !== $expectedInfants) continue;
+            $parsed = is_string($date) ? DateTimeImmutable::createFromFormat('!Y-m-d', $date, new DateTimeZone('UTC')) : false;
+            if ($parsed === false || $parsed->format('Y-m-d') !== $date) continue;
+            $parts = ['provider' => 'anex', 'local_hotel_id' => $local, 'checkin' => $date, 'nights' => $offer['nights']];
+            foreach (['adults', 'children', 'infants'] as $field) {
+                $value = $offer[$field] ?? null;
+                if (!($field === 'infants' && $value === null)
+                    && (!is_int($value) || $value < ($field === 'adults' ? 1 : 0) || $value > 20)) continue 2;
+                $parts[$field] = $value;
+            }
+            $digest = hash('sha256', implode("\0", [$tour, $currency, $date, (string) $nights]));
+            $case = hash('sha256', json_encode($parts, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            $bindings[$digest][$case][$key] = $offer;
+        }
+        foreach ($attempts as $digest => $attempt) {
+            $cases = is_string($digest) ? array_keys($bindings[$digest] ?? []) : [];
+            if (!is_string($digest) || preg_match('/\A[a-f0-9]{64}\z/D', $digest) !== 1 || $cases === []) {
+                return array_replace($out, ['status' => 'unknown', 'reason' => 'apd_binding_unconfirmed', 'records' => []]);
+            }
+            sort($cases, SORT_STRING);
+            $record = ['semantic_cases_sha256' => $cases, 'status' => 'unknown', 'reason' => 'attempt_unconfirmed',
+                'application_basis' => 'not_retained', 'application_state' => 'unknown', 'application_reason' => 'not_retained',
+                'cache' => ['status' => 'unknown', 'reason' => 'no_bound_complete_evidence']];
+            $evidence = is_array($attempt) ? ($attempt['evidence'] ?? null) : null;
+            $facts = is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($evidence)
+                ? anytour_anex_search3_apd_evidence_receipt($evidence) : null;
+            if ($facts === null) $complete = false;
+            else {
+                $record = array_replace($record, $facts, ['status' => 'complete', 'reason' => 'retained_rows',
+                    'application_basis' => 'retained_evidence_local_gate']);
+                $applications = [];
+                foreach ($bindings[$digest] as $caseOffers) foreach ($caseOffers as $boundOffer) {
+                    $safeMoney = true;
+                    foreach (['price', 'converted_price'] as $field) {
+                        $money = $boundOffer[$field] ?? null;
+                        if ($money !== null && (!is_array($money) || !is_string($money['amount'] ?? null)
+                            || !is_string($money['currency'] ?? null))) $safeMoney = false;
+                    }
+                    $application = $safeMoney ? anytour_anex_search3_additional_application($evidence, $boundOffer)
+                        : ['application_state' => 'unknown', 'application_reason' => 'money_unconfirmed'];
+                    $applications[$application['application_state'] . ':' . $application['application_reason']] =
+                        [$application['application_state'], $application['application_reason']];
+                }
+                if (count($applications) === 1) {
+                    [$record['application_state'], $record['application_reason']] = array_values($applications)[0];
+                } else $record['application_reason'] = 'binding_ambiguous';
+                $time = new DateTimeImmutable($facts['observed_at']);
+                $day = $time->setTimezone(new DateTimeZone('Europe/Moscow'))->format('Y-m-d');
+                $candidate = $day . ':' . $digest;
+                if (!isset($candidates[$candidate])) $candidates[$candidate] = ['digest' => $digest, 'day' => $day, 'evidence' => $evidence, 'indices' => []];
+                elseif ($candidates[$candidate]['evidence']['rows'] !== $evidence['rows']
+                    || $candidates[$candidate]['evidence']['total_count'] !== $evidence['total_count']
+                    || $candidates[$candidate]['evidence']['truncated'] !== $evidence['truncated']) {
+                    $candidates[$candidate]['conflict'] = true;
+                }
+                $candidates[$candidate]['indices'][] = count($out['records']);
+            }
+            $out['records'][] = $record;
+        }
+    }
+    if ($out['records'] === []) return $out;
+    $out['status'] = $complete ? 'complete' : 'unknown'; $out['reason'] = $complete ? 'retained_rows' : 'attempt_unconfirmed';
+    if (count($candidates) > 1) {
+        foreach ($out['records'] as &$record) $record['cache'] = ['status' => 'unknown', 'reason' => 'multiple_cache_candidates'];
+        unset($record);
+    } elseif (count($candidates) === 1) {
+        $candidate = array_values($candidates)[0];
+        $cache = ($candidate['conflict'] ?? false)
+            ? ['status' => 'unknown', 'reason' => 'conflicting_session_evidence', 'files_read' => 0]
+            : anytour_anex_search3_apd_cache_receipt($candidate['digest'], $candidate['day'], $candidate['evidence']);
+        $out['cache_files_read'] = $cache['files_read']; unset($cache['files_read']);
+        foreach ($candidate['indices'] as $index) $out['records'][$index]['cache'] = $cache;
+    }
+    return $out;
+}
+
+/** Counts exist only for fully shaped retained evidence, never for an absent/unknown attempt. */
+function anytour_anex_search3_apd_evidence_receipt(array $evidence): ?array
+{
+    $rows = $evidence['rows'] ?? null; $total = $evidence['total_count'] ?? null; $at = $evidence['observed_at'] ?? null;
+    if (($evidence['source'] ?? null) !== 'anex_b2b_additional_prices_daily'
+        || !is_array($rows) || !array_is_list($rows) || count($rows) > 10
+        || !is_int($total) || $total < count($rows) || $total > 100000000
+        || !is_bool($evidence['truncated'] ?? null) || $evidence['truncated'] !== ($total > count($rows))
+        || !is_string($at) || preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\z/D', $at) !== 1) return null;
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s\Z', $at, new DateTimeZone('UTC'));
+    if ($date === false || $date->format('Y-m-d\TH:i:s\Z') !== $at || $date->getTimestamp() < 1) return null;
+    $fields = ['price_adult', 'price_chd', 'cashrate', 'price_converted_adult', 'price_converted_chd'];
+    foreach ($rows as $row) {
+        if (!is_array($row) || count($row) !== count($fields) || array_diff($fields, array_keys($row))) return null;
+        foreach ($fields as $field) if ($row[$field] !== null
+            && (!is_string($row[$field]) || anytour_anex_search3_additional_decimal($row[$field]) === null)) return null;
+    }
+    return ['row_count' => count($rows), 'total_count' => $total, 'truncated' => $evidence['truncated'], 'observed_at' => $at];
+}
+
+/** One existing private regular file only; no client/cache helpers, locks, creation or fallback. */
+function anytour_anex_search3_apd_cache_receipt(string $digest, string $day, array $evidence): array
+{
+    $unknown = ['status' => 'unknown', 'reason' => 'cache_access_or_shape_unconfirmed', 'files_read' => 0];
+    if (preg_match('/\A[a-f0-9]{64}\z/D', $digest) !== 1 || preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $day) !== 1) return $unknown;
+    $temp = realpath(sys_get_temp_dir());
+    if (!is_string($temp)) return $unknown;
+    $root = $temp . DIRECTORY_SEPARATOR . 'anytour-anex-apd-v1';
+    $dir = $root . DIRECTORY_SEPARATOR . $day;
+    $path = $dir . DIRECTORY_SEPARATOR . $digest . '.json';
+    $parents = [];
+    foreach ([$root, $dir] as $parent) {
+        clearstatcache(true, $parent); $st = @lstat($parent);
+        if (!is_array($st) || ($st['mode'] & 0170000) !== 0040000 || ($st['mode'] & 0077) !== 0
+            || realpath($parent) !== $parent) return $unknown;
+        $parents[$parent] = $st;
+    }
+    clearstatcache(true, $path); $before = @lstat($path);
+    if (!is_array($before)) return array_replace($unknown, ['reason' => 'cache_not_retained_or_inaccessible']);
+    if (($before['mode'] & 0170000) !== 0100000 || ($before['mode'] & 0077) !== 0
+        || $before['size'] < 2 || $before['size'] > 65536 || realpath($path) !== $path
+        || $before['uid'] !== $parents[$root]['uid'] || $before['uid'] !== $parents[$dir]['uid']) return $unknown;
+    $same = static function ($a, $b): bool {
+        if (!is_array($a) || !is_array($b)) return false;
+        foreach (['dev', 'ino', 'mode', 'uid', 'gid', 'size', 'mtime', 'ctime'] as $field) if (($a[$field] ?? null) !== ($b[$field] ?? null)) return false;
+        return true;
+    };
+    $handle = @fopen($path, 'rb');
+    if ($handle === false) return $unknown;
+    try {
+        if (!$same($before, @fstat($handle))) return $unknown;
+        foreach ($parents as $parent => $st) {
+            clearstatcache(true, $parent);
+            if (!$same($st, @lstat($parent)) || realpath($parent) !== $parent) return $unknown;
+        }
+        $unknown['files_read'] = 1;
+        $raw = @stream_get_contents($handle, $before['size']);
+        clearstatcache(true, $path);
+        if (!is_string($raw) || strlen($raw) !== $before['size'] || !$same($before, @fstat($handle))
+            || !$same($before, @lstat($path)) || realpath($path) !== $path) return $unknown;
+        foreach ($parents as $parent => $st) {
+            clearstatcache(true, $parent);
+            if (!$same($st, @lstat($parent)) || realpath($parent) !== $parent) return $unknown;
+        }
+    } finally { fclose($handle); }
+    try { $entry = json_decode($raw, true, 32, JSON_THROW_ON_ERROR); }
+    catch (Throwable $ignored) { return $unknown; }
+    if (!is_array($entry) || ($entry['version'] ?? null) !== 1 || ($entry['day'] ?? null) !== $day
+        || ($entry['context_digest'] ?? null) !== $digest) return $unknown;
+    if (($entry['status'] ?? null) === 'unknown' && count($entry) === 4
+        && !array_diff(array_keys($entry), ['version', 'day', 'context_digest', 'status'])) {
+        return ['status' => 'complete', 'entry_status' => 'unknown', 'reason' => 'retained_unknown_reservation', 'files_read' => 1];
+    }
+    if (($entry['status'] ?? null) !== 'complete' || count($entry) !== 5
+        || array_diff(array_keys($entry), ['version', 'day', 'context_digest', 'status', 'payload'])
+        || !is_array($entry['payload'] ?? null)) return $unknown;
+    $payload = $entry['payload'];
+    if (count($payload) !== 2 || !array_key_exists('data', $payload) || !array_key_exists('totalCount', $payload)
+        || !is_array($payload['data']) || !array_is_list($payload['data'])
+        || !is_int($payload['totalCount']) || $payload['totalCount'] < count($payload['data']) || $payload['totalCount'] > 100000000) return $unknown;
+    $fields = ['price_adult', 'price_chd', 'cashrate', 'price_converted_adult', 'price_converted_chd'];
+    foreach ($payload['data'] as $row) {
+        if (!is_array($row) || array_diff(array_keys($row), $fields)) return $unknown;
+        foreach ($row as $value) if (!is_string($value) || anytour_anex_search3_additional_decimal($value) === null) return $unknown;
+    }
+    try { $normalized = anytour_anex_search3_additional_evidence($payload); }
+    catch (RuntimeException $ignored) { return $unknown; }
+    return ['status' => 'complete', 'entry_status' => 'complete', 'reason' => 'retained_cache_rows', 'files_read' => 1,
+        'row_count' => count($normalized['rows']), 'total_count' => $payload['totalCount'],
+        'truncated' => $normalized['truncated'],
+        'matches_session_evidence' => $normalized['rows'] === $evidence['rows']
+            && $normalized['total_count'] === $evidence['total_count'] && $normalized['truncated'] === $evidence['truncated']];
+}
+
+/** Preserve the existing quote projection and add only the own-session APD receipt. */
+function anytour_anex_search3_retained_receipt(array $session): array
+{
+    $receipt = anytour_anex_search3_quote_receipt($session);
+    $receipt['additional_prices_receipt'] = anytour_anex_search3_apd_receipt($session);
+    return $receipt;
+}
+
 /** Read regular own-session aggregates only; never return supplier/session identifiers. */
 function anytour_anex_search3_quote_receipt(array $session): array
 {
@@ -1386,7 +1631,7 @@ function anytour_anex_search3_http(): void
             if (!session_write_close()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
             anytour_anex_search3_out(['ok' => true, 'csrf' => $token], 200);
         }
-        anytour_anex_search3_out(['ok' => true, 'data' => anytour_anex_search3_quote_receipt($_SESSION)], 200);
+        anytour_anex_search3_out(['ok' => true, 'data' => anytour_anex_search3_retained_receipt($_SESSION)], 200);
     }
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         header('Allow: POST');
