@@ -23,7 +23,10 @@ RIA_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
 RIA2_MODE = 'anex-ria-apd-fpm-readback'
 RIA2_OPERATION = 'int-anex-ria-apd-fpm-readback-20261028-v1'
 RIA2_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
-MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE)
+RIA3_MODE = 'anex-ria-apd-access-v3'
+RIA3_OPERATION = 'int-anex-ria-apd-access-20261028-v3'
+RIA3_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -47,6 +50,7 @@ def register_parser(core) -> None:
             CONTINUATION_MODE: (CONTINUATION_SOURCE, CONTINUATION_OPERATION),
             RIA_MODE: (RIA_SOURCE, RIA_OPERATION),
             RIA2_MODE: (RIA2_SOURCE, RIA2_OPERATION),
+            RIA3_MODE: (RIA3_SOURCE, RIA3_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -451,6 +455,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 def remote_with_readback(core, mode: str = MODE) -> str:
     need(mode in MODES, 'firstpage_registration_mode')
+    if mode == RIA3_MODE: return remote_with_ria3_readback(core)
     if mode == RIA2_MODE: return remote_with_ria2_readback(core)
     if mode == RIA_MODE: return remote_with_ria_readback(core)
     remote = core.REMOTE
@@ -1334,5 +1339,134 @@ def remote_with_ria2_readback(core):
     remote=remote.replace(definition,REMOTE_RIA_READER+REMOTE_RIA2_READER+definition,1)
     remote=remote.replace(dispatch,REMOTE_RIA2_DISPATCH+dispatch,1)
     remote=remote.replace(collectors,"    if mode not in ('"+RIA2_MODE+"','reconcile',")
+    ast.parse(remote)
+    return remote
+
+REMOTE_RIA3_READER = r'''RIA3_EXEC_FACTS={}
+
+def ria3_failure(stderr,returncode):
+    # LC_ALL=C; closed whole-line patterns only. Never return text or its hash.
+    if not isinstance(stderr,bytes) or len(stderr)>8192:
+        return 'principal_stderr_limit','stream_limit'
+    text=stderr.decode('utf-8','replace').strip()
+    lines=text.splitlines();first=lines[0] if lines else ''
+    python=re.search(r'(?m)^Traceback \(most recent call last\):$',text) or re.search(r'(?m)^  File "<(?:string|pinned-ria-sudo-reader|pinned-ria-fpm-reader)>", line [0-9]+(?:, in [A-Za-z0-9_]+)?$',text)
+    if returncode!=0 and python:
+        last=lines[-1] if lines else ''
+        match=re.fullmatch(r'(NameError|SyntaxError|IndentationError|TabError|ImportError|ModuleNotFoundError|TypeError|ValueError|RuntimeError|PermissionError|FileNotFoundError|OSError|TimeoutError|MemoryError|RecursionError|AttributeError|KeyError|IndexError|UnicodeDecodeError)(?::.*)?',last)
+        if match:return 'child_python_'+match[1].lower(),'child_python_error'
+        return 'principal_failure_unclassified','unclassified'
+    categories=set()
+    if not python:
+        for line in lines:
+            if returncode==1:
+                if line=='sudo: a password is required':categories.add(('sudo_password_required','password_required'))
+                if line in ('sudo: sorry, you must have a tty to run sudo',
+                    'sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper'):
+                    categories.add(('sudo_tty_required','tty_required'))
+                if line in ('sudo: unknown user www-data','sudo: unknown user: www-data'):
+                    categories.add(('sudo_principal_unknown','principal_unknown'))
+                if re.fullmatch(r'(?:sudo: )?[^\n]{1,256} is not in the sudoers file\.(?:  This incident will be reported\.)?',line) or re.fullmatch(r'Sorry, user [^\n]{1,256} is not allowed to execute [^\n]{1,4096} as www-data on [^\n]{1,256}\.',line) or re.fullmatch(r'sudo: [^\n]{1,256} may not run sudo on [^\n]{1,256}\.',line):
+                    categories.add(('sudo_policy_denied','policy_denied'))
+            if returncode in (1,126,127) and line in ('sudo: /usr/bin/python3: command not found',
+                'sudo: unable to execute /usr/bin/python3: No such file or directory',
+                'sudo: unable to execute /usr/bin/python3: Permission denied',
+                'sudo: unable to execute /usr/bin/python3: Exec format error'):
+                categories.add(('principal_exec_unavailable','exec_unavailable'))
+    if len(categories)==1:return next(iter(categories))
+    if len(categories)>1:return 'principal_failure_unclassified','unclassified'
+    if returncode==124:return 'child_timeout','timeout'
+    return 'principal_failure_unclassified','unclassified'
+
+def ria3_run_child(payload,deadline):
+    import queue,threading
+    global RIA3_EXEC_FACTS
+    if hashlib.sha256(RIA2_CHILD_SOURCE.encode()).hexdigest()!=RIA2_CHILD_SHA:
+        raise Ria2Failure('source_pin','child_source_drift','unsupported_shape')
+    argv=['/usr/bin/sudo','-n','-u','www-data','--','/usr/bin/python3','-I','-S','-B','-c',RIA2_CHILD_SOURCE]
+    try:
+        child=subprocess.Popen(argv,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+            cwd='/',env={'PATH':'/usr/bin:/bin','LANG':'C','LC_ALL':'C','HOME':'/nonexistent'})
+    except OSError:
+        raise Ria2Failure('principal_execution','principal_exec_unavailable','exec_unavailable') from None
+    output=queue.Queue(maxsize=2);streams={};workers=[];complete=False
+    limits={'stdout':32768,'stderr':8192}
+    def consume(name,pipe):
+        try:
+            raw=pipe.read(limits[name]+1)
+            if isinstance(raw,bytes):RIA3_EXEC_FACTS[name+'_bytes_observed']=len(raw)
+            output.put((name,raw))
+        except Exception:output.put((name,None))
+    for name in ('stdout','stderr'):
+        worker=threading.Thread(target=consume,args=(name,getattr(child,name)),daemon=True)
+        workers.append(worker);worker.start()
+    try:
+        try:child.stdin.write(payload);child.stdin.close()
+        except BrokenPipeError:pass
+        while len(streams)<2:
+            try:name,raw=output.get(timeout=max(.1,deadline-time.monotonic()+3))
+            except queue.Empty:raise Ria2Failure('principal_execution','child_timeout','timeout') from None
+            if not isinstance(raw,bytes):raise Ria2Failure('principal_execution','principal_stream_unavailable','unclassified')
+            streams[name]=raw
+            if len(raw)>limits[name]:
+                raise Ria2Failure('principal_execution','principal_'+name+'_limit','stream_limit')
+        try:code=child.wait(timeout=max(.1,deadline-time.monotonic()+3))
+        except subprocess.TimeoutExpired:raise Ria2Failure('principal_execution','child_timeout','timeout') from None
+        if type(code) is not int:raise Ria2Failure('principal_execution','principal_returncode_unavailable','unclassified')
+        RIA3_EXEC_FACTS['returncode']=code
+        try:
+            # Receipt validation is pure and invokes no content reader.
+            ria2_validate_child(ria2_module(),streams['stdout'])
+        except Ria2Failure:
+            reason,category=ria3_failure(streams['stderr'],code)
+            RIA3_EXEC_FACTS['classification']=reason
+            raise Ria2Failure('principal_execution',reason,category) from None
+        if code!=0:
+            RIA3_EXEC_FACTS['classification']='child_receipt_process_nonzero'
+            raise Ria2Failure('principal_execution','child_receipt_process_nonzero','process_nonzero')
+        complete=True
+        RIA3_EXEC_FACTS['classification']='validated_child_receipt'
+        return streams['stdout']
+    finally:
+        if not complete:
+            if child.poll() is None:
+                child.terminate()
+                try:child.wait(timeout=1)
+                except subprocess.TimeoutExpired:child.kill();child.wait(timeout=2)
+            while time.monotonic()<deadline+.25:time.sleep(.01)
+        for worker in workers:worker.join(timeout=1)
+        child.stdout.close();child.stderr.close()
+        if not child.stdin.closed:child.stdin.close()
+        streams.clear()
+
+def ria3_readback():
+    global ria2_run_child,RIA3_EXEC_FACTS
+    original=ria2_run_child;RIA3_EXEC_FACTS={}
+    ria2_run_child=ria3_run_child
+    try:receipt=ria2_readback()
+    finally:ria2_run_child=original
+    if RIA3_EXEC_FACTS:receipt['principal_diagnostics']=dict(RIA3_EXEC_FACTS)
+    return receipt
+'''
+REMOTE_RIA3_DISPATCH = r'''    if mode=='anex-ria-apd-access-v3':
+        if operation!='int-anex-ria-apd-access-20261028-v3' or source!='09cedd5c0a8f34521820a7a58586bfb37ad7b553':
+            fail('ria3_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,session_writes=0,cache_writes=0)
+        result['anex_ria_apd_access_readback']=ria3_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+def remote_with_ria3_readback(core):
+    remote=core.REMOTE
+    definition='def local_read(scopes):\n'
+    dispatch="    if mode=='local-readback':\n"
+    collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'ria3_registration_source_drift')
+    remote=remote.replace(definition,REMOTE_RIA_READER+REMOTE_RIA2_READER+REMOTE_RIA3_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_RIA3_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+RIA3_MODE+"','reconcile',")
     ast.parse(remote)
     return remote
