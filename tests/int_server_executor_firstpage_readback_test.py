@@ -861,5 +861,189 @@ class ContinuationFailureEvidenceTest(unittest.TestCase):
         self.assertNotIn('credential-canary', json.dumps(result))
 
 
+RIA_HISTORICAL_REMOTE_HASHES = {'andromeda-firstpage-readback': 'c38143365593dfa26561b634670838c310d1a9dfdc9c1489ce3b4408ae2c6b38', 'andromeda-initial-failure-readback': '79f83c07b4e50545701ee0df620db89b14d8b01e282925cb85b478556e5f0576', 'andromeda-continuation-failure-readback': '4a6fc777fcba082d55803cb5c6a3cee74af94d8baad064a5ef598a2935356467'}
+
+class RiaReadbackCommandTest(unittest.TestCase):
+    def setUp(self):
+        self.core=load('int_server_executor')
+        extension.register_parser(self.core)
+        self.command={'source_sha':extension.RIA_SOURCE,'mode':extension.RIA_MODE,'operation_id':extension.RIA_OPERATION}
+        self.body=self.core.PREFIX+' '.join(self.command[key] for key in ('source_sha','mode','operation_id'))
+
+    def test_fixed_three_token_command_and_no_path_or_payload_options(self):
+        self.assertEqual(self.command,self.core.parse_command(self.body))
+        for body in (self.body+' /tmp',self.body+' --path=/tmp',self.body.replace(extension.RIA_SOURCE,'a'*40),
+                     self.body.replace(extension.RIA_OPERATION,extension.RIA_OPERATION+'-other')):
+            with self.assertRaises(ValueError): self.core.parse_command(body)
+
+    def test_existing_wrapper_registers_mode_without_supplier_or_secret_slot(self):
+        wrapper=load('int_server_executor_anex_secret_transport')
+        self.assertEqual(self.command,wrapper.core.parse_command(self.body))
+        self.assertNotIn(extension.RIA_MODE,wrapper.SUPPLIER_SLOT_MODES)
+        self.assertNotIn(extension.RIA_MODE,wrapper.DIRECT_ANEX_MODES)
+
+    def test_historical_remote_bytes_remain_exact(self):
+        for mode,digest in RIA_HISTORICAL_REMOTE_HASHES.items():
+            self.assertEqual(digest,hashlib.sha256(extension.remote_with_readback(self.core,mode).encode()).hexdigest(),mode)
+
+    def test_activation_preserves_bundle_and_excludes_both_collector_branches(self):
+        import ast
+        bundle=self.core.bundle_source
+        extension.activate(self.core,self.command)
+        self.assertIs(bundle,self.core.bundle_source)
+        tree=ast.parse(self.core.REMOTE)
+        excluded=[]
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Compare) and isinstance(node.left,ast.Name) and node.left.id=='mode' and len(node.ops)==1 and isinstance(node.ops[0],ast.NotIn):
+                values=node.comparators[0]
+                if isinstance(values,ast.Tuple) and any(isinstance(item,ast.Constant) and item.value=='reconcile' for item in values.elts):
+                    excluded.append(eval(compile(ast.Expression(node),'scope','eval'),{'mode':extension.RIA_MODE}))
+        self.assertEqual([False,False],excluded)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",self.core.REMOTE)
+        self.assertLess(self.core.REMOTE.index("(op/'reservation.json').write_text"),self.core.REMOTE.index("if mode=='anex-ria-apd-retained-readback':"))
+        self.assertNotIn('ria_readback',self.core.REMOTE.split('try:\n    if not re.fullmatch',1)[0].split('def ria_readback()',1)[-1].split('def local_read',1)[-1])
+
+
+class RiaReadbackEvidenceTest(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix='ria-controller-native-')
+        self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name).resolve()
+        self.sessions=self.root/'sessions';self.sessions.mkdir()
+        self.cache=self.root/'anytour-anex-apd-v1'
+        (self.cache/'2026-10-28').mkdir(parents=True)
+        self.ns={'home':self.root,'pathlib':__import__('pathlib'),'hashlib':hashlib,'json':json,'re':re,
+            'subprocess':subprocess,'time':__import__('time')}
+        exec(extension.REMOTE_RIA_READER,self.ns)
+        self.public={'path_scope':'single_fpm_default_candidate_only','vhost_pool_authority':False,
+            'session_root_sha256':'a'*64,'cache_root_sha256':'b'*64,'serializer':'php',
+            'cache_path_basis':'fpm_default_configured_candidate','other_roots_examined':0}
+        self.ns['ria_runtime_scope']=lambda:(self.sessions,'php',self.cache,self.public)
+
+    @staticmethod
+    def php(value):
+        if value is None:return b'N;'
+        if type(value) is bool:return b'b:'+str(int(value)).encode()+b';'
+        if type(value) is int:return b'i:'+str(value).encode()+b';'
+        if isinstance(value,str):
+            raw=value.encode();return b's:'+str(len(raw)).encode()+b':"'+raw+b'";'
+        if isinstance(value,list):value=dict(enumerate(value))
+        if isinstance(value,dict):return b'a:'+str(len(value)).encode()+b':{'+b''.join(RiaReadbackEvidenceTest.php(k)+RiaReadbackEvidenceTest.php(v) for k,v in value.items())+b'}'
+        raise ValueError('fixture_type')
+
+    def write_case(self):
+        program,currency='778','1'
+        digest=hashlib.sha256('\0'.join((program,currency,'2026-11-16','7')).encode()).hexdigest()
+        offer={'kind':'concrete','hotel':{'name':'RIA SUITES HOTEL'},'room':'Standard Room','meal':'BB',
+            'checkin':'2026-11-16','checkout':'2026-11-23','nights':7,'adults':2,'children':0,
+            'infants':None,'price':{'amount':'73690','currency':'RUB'},'flight_type':'regular'}
+        context={'gateway':{'saved_offers':{'offers':{'PRIVATE_OFFER':{'offer':offer,
+            'supplier_tour_program_id':program,'supplier_currency_id':currency}}}},
+            'additional_prices':{digest:{'status':'complete','evidence':{'observed_at':'2026-10-28T00:09:02Z','rows':[],
+            'total_count':0,'truncated':False}}}}
+        session={'canary':'NEVER_EXPORT_CREDENTIAL','anex_offer_contexts':{'PRIVATE_SEARCH':context}}
+        raw=b''.join(key.encode()+b'|'+self.php(value) for key,value in session.items())
+        target=self.sessions/('sess_'+'a'*26);target.write_bytes(raw)
+        os.utime(target,(1793146140,1793146140))
+        entry={'version':1,'day':'2026-10-28','context_digest':digest,'status':'complete','payload':{'data':[],'totalCount':0}}
+        (self.cache/'2026-10-28'/(digest+'.json')).write_text(json.dumps(entry))
+        return target
+
+    def snapshot(self):
+        return {str(p.relative_to(self.root)):(p.read_bytes(),p.stat().st_mtime_ns,p.stat().st_mode) for p in self.root.rglob('*') if p.is_file()}
+
+    def test_real_embedded_reader_matches_one_case_without_mutation_or_exports(self):
+        self.write_case();before=self.snapshot()
+        receipt=self.ns['ria_readback']()
+        self.assertEqual('retained_case_matched',receipt['status'])
+        self.assertEqual('regular',receipt['flight_type'])
+        self.assertTrue(receipt['cache']['matches_original_empty'])
+        self.assertEqual(before,self.snapshot())
+        self.assertEqual('not_established',receipt['upstream_empty_reason'])
+        self.assertFalse(receipt['scope']['vhost_pool_authority'])
+        output=json.dumps(receipt)
+        for canary in ('NEVER_EXPORT_CREDENTIAL','PRIVATE_OFFER','PRIVATE_SEARCH','RIA SUITES','Standard Room','73690','"778"','"1"',str(self.root)):
+            self.assertNotIn(canary,output)
+        self.assertEqual(0,receipt['supplier_requests'])
+        self.assertEqual(0,receipt['database_operations'])
+        self.assertEqual(0,receipt['runtime_session_cache_writes'])
+
+    def test_no_match_is_only_a_bounded_candidate_result(self):
+        receipt=self.ns['ria_readback']()
+        self.assertEqual('hold',receipt['status'])
+        self.assertEqual('no_case_in_candidate_root',receipt['reason'])
+        self.assertFalse(receipt['scope']['vhost_pool_authority'])
+
+    def test_wrong_reader_pin_and_private_access_errors_are_sanitized(self):
+        source=self.ns['RIA_PINNED_READER']
+        self.ns['RIA_PINNED_READER']=source+'\n'
+        self.assertEqual('reader_source_drift',self.ns['ria_readback']()['reason'])
+        self.ns['RIA_PINNED_READER']=source
+        self.ns['ria_runtime_scope']=mock.Mock(side_effect=OSError('NEVER_EXPORT_CREDENTIAL/private/path'))
+        receipt=self.ns['ria_readback']()
+        self.assertEqual('retained_file_access_or_shape',receipt['reason'])
+        self.assertNotIn('NEVER_EXPORT_CREDENTIAL',json.dumps(receipt))
+
+    def test_fixed_dispatch_checks_source_before_reading_and_preserves_runtime(self):
+        self.write_case();before=self.snapshot()
+        self.ns.update(mode=extension.RIA_MODE,operation=extension.RIA_OPERATION,source=extension.RIA_SOURCE,
+            result={},before={'protected':'a'*64},fingerprints=lambda:{'protected':'a'*64},
+            fail=lambda code:(_ for _ in ()).throw(ValueError(code)))
+        exec(__import__('textwrap').dedent(extension.REMOTE_RIA_DISPATCH),self.ns)
+        self.assertEqual('complete',self.ns['result']['status'])
+        self.assertEqual('retained_case_matched',self.ns['result']['anex_ria_apd_readback']['status'])
+        self.assertEqual(before,self.snapshot())
+        for field in ('supplier_calls','database_reads','database_writes','runtime_writes','session_writes','cache_writes'):
+            self.assertEqual(0,self.ns['result'][field])
+        self.ns['source']='a'*40
+        self.ns['ria_readback']=mock.Mock(side_effect=AssertionError('reader must not run'))
+        with self.assertRaisesRegex(ValueError,'ria_sealed_scope'):exec(__import__('textwrap').dedent(extension.REMOTE_RIA_DISPATCH),self.ns)
+        self.ns['ria_readback'].assert_not_called()
+
+    def test_fpm_parser_discards_every_other_phpinfo_field(self):
+        parser=self.ns['ria_fpm_values']
+        text='SECRET => NEVER_EXPORT_CREDENTIAL => private\nsession.save_path => /tmp => /tmp\nsession.serialize_handler => php => php\nsys_temp_dir => no value => no value\n'
+        values=parser(text)
+        self.assertEqual({'session.save_path','session.serialize_handler','sys_temp_dir'},set(values))
+        with self.assertRaisesRegex(RuntimeError,'metadata_format'):parser(text+'session.save_path => /tmp => /tmp\n')
+        with self.assertRaisesRegex(RuntimeError,'metadata_format'):parser(text.replace('php => php','php => php_serialize'))
+
+    def test_candidate_paths_are_absolute_closed_and_not_vhost_authority(self):
+        candidate=self.ns['ria_candidate_path']
+        for path in ('/tmp','/var/tmp','/var/lib/php/sessions'):
+            self.assertEqual(path,candidate(path,'session').as_posix())
+        for path in ('relative','/etc','/tmp/../etc','/tmp//../etc','/tmp\nsecret','https://example.test','/other/account/sessions'):
+            with self.assertRaises(RuntimeError):candidate(path,'session')
+
+    def test_discovery_uses_only_fixed_fpm_and_optional_clean_php_introspection(self):
+        namespace=dict(self.ns)
+        exec(extension.REMOTE_RIA_READER,namespace)
+        calls=[]
+        info='session.save_path => /tmp => /tmp\nsession.serialize_handler => php => php\nsys_temp_dir => no value => no value\n'
+        namespace['ria_system_binary']=lambda path:path
+        def capture(argv,maximum,timeout=10):
+            calls.append((argv,maximum))
+            return info if argv[-1]=='-i' else '/var/tmp'
+        namespace['ria_capture']=capture
+        sessions,serializer,cache,scope=namespace['ria_runtime_scope']()
+        self.assertEqual('/tmp',sessions.as_posix())
+        self.assertEqual('php',serializer)
+        self.assertEqual('/var/tmp/anytour-anex-apd-v1',cache.as_posix())
+        self.assertEqual([['/usr/sbin/php-fpm8.3','-i'],['/usr/bin/php8.3','-n','-d','allow_url_fopen=0','-d','auto_prepend_file=',
+            '-d','auto_append_file=','-d','opcache.enable_cli=0','-r','echo sys_get_temp_dir();']],[call[0] for call in calls])
+        self.assertEqual([1024*1024,4096],[call[1] for call in calls])
+        self.assertFalse(scope['vhost_pool_authority'])
+        self.assertEqual('php_system_default_candidate',scope['cache_path_basis'])
+        self.assertNotIn('/tmp',json.dumps(scope))
+
+    def test_metadata_process_has_a_real_byte_limit_and_timeout(self):
+        capture=self.ns['ria_capture']
+        self.assertEqual('bounded',capture([sys.executable,'-c',"print('bounded',end='')"],20))
+        with self.assertRaisesRegex(RuntimeError,'metadata_output_limit'):
+            capture([sys.executable,'-c',"print('X'*4096,end='')"],32)
+        with self.assertRaisesRegex(RuntimeError,'metadata_timeout'):
+            capture([sys.executable,'-c','import time; time.sleep(2)'],32,.1)
+
+
 if __name__ == '__main__':
     unittest.main()
