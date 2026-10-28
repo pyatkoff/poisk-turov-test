@@ -8,6 +8,12 @@ from __future__ import annotations
 import ast
 
 
+ANEX_OWN_SESSION_APD_MODE = 'install-anex-own-session-apd-receipt'
+ANEX_OWN_SESSION_APD_OPERATION = 'int-anex-own-session-apd-receipt-install-20261028-v1'
+ANEX_OWN_SESSION_APD_SOURCE = '4e0b9707162db0c517a3e545eaf8933724f9d6a8'
+ANEX_OWN_SESSION_APD_PATH = 'v2/api-anex-search3-preview.php'
+ANEX_OWN_SESSION_APD_SHA = 'c4cf2c782510048f8a40b5e0301ca0410bb60679d7779d0a72107f1f130d9436'
+
 ANEX_APD_REASON_MODE = 'install-anex-apd-application-reason'
 ANEX_APD_REASON_OPERATION = 'int-anex-apd-application-reason-install-20261026-v1'
 ANEX_APD_REASON_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
@@ -170,6 +176,10 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if len(parts) >= 2 and parts[1] == ANEX_OWN_SESSION_APD_MODE:
+            need(parts == [ANEX_OWN_SESSION_APD_SOURCE, ANEX_OWN_SESSION_APD_MODE,
+                           ANEX_OWN_SESSION_APD_OPERATION], 'anex_own_session_apd_fixed_case')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
         if len(parts) >= 2 and parts[1] == TV_MISMATCH_MODE:
             need(parts == [TV_MISMATCH_SOURCE, TV_MISMATCH_MODE, TV_MISMATCH_OPERATION], 'tv_mismatch_fixed_case')
             return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2])
@@ -423,6 +433,8 @@ DISPATCH = r'''
 
 
 def activate(core, command):
+    if command.get('mode') == ANEX_OWN_SESSION_APD_MODE:
+        return activate_anex_own_session_apd(core, command)
     if command.get('mode') == TV_MISMATCH_MODE:
         return activate_tv_mismatch(core, command)
     if command.get('mode') not in MODES:
@@ -1418,5 +1430,51 @@ def activate_anex_apd_reason(core, command):
         ANEX_APD_REASON_PATH,ANEX_APD_REASON_SHA,anex_apd_reason_previous(),completed_anex_apd_reason)
     old="    if changed!=['v2/api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n"
     need(core.REMOTE.count(old)==1,'anex_apd_reason_stock_drift')
+    core.REMOTE=core.REMOTE.replace(old,"    if changed!=['api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n",1)
+    ast.parse(core.REMOTE)
+
+
+def anex_own_session_apd_previous():
+    return anex_apd_reason_previous()|{ANEX_APD_REASON_PATH:ANEX_APD_REASON_SHA}
+
+
+def completed_anex_own_session_apd(command, result):
+    source=ANEX_OWN_SESSION_APD_SOURCE; pins=anex_own_session_apd_previous()|{ANEX_OWN_SESSION_APD_PATH:ANEX_OWN_SESSION_APD_SHA}
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':ANEX_OWN_SESSION_APD_MODE,'operation_id':ANEX_OWN_SESSION_APD_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':10,'changed_files':1,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':pins['v2/api-anex-search3-preview.php'],'changed':True}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and install['endpoint']['changed'] is True and install['dependency']['changed'] is False
+        and all(isinstance(result.get(k),dict) for k in
+            ('tv_gateway','diagnostic_basis_before','diagnostic_basis_after'))
+        and all(result.get('tv_gateway',{}).get(k) is False for k in
+            ('activation_performed','configuration_changed','signing_custody_changed'))
+        and all(result.get(k,{}).get('receipt_and_configuration_unchanged') is True
+            for k in ('diagnostic_basis_before','diagnostic_basis_after'))
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+def activate_anex_own_session_apd(core, command):
+    _activate_tv_maintenance(core,command,ANEX_OWN_SESSION_APD_MODE,ANEX_OWN_SESSION_APD_SOURCE,
+        ANEX_OWN_SESSION_APD_PATH,ANEX_OWN_SESSION_APD_SHA,anex_own_session_apd_previous(),completed_anex_own_session_apd)
+    old="    if changed!=['v2/api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n"
+    need(core.REMOTE.count(old)==1,'anex_own_session_apd_stock_drift')
     core.REMOTE=core.REMOTE.replace(old,"    if changed!=['api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n",1)
     ast.parse(core.REMOTE)
