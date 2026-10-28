@@ -60,6 +60,8 @@ $assert(($seen['options']['verify_peer'] ?? null) === true, 'tls peer verify');
 $assert(($seen['options']['follow_redirects'] ?? null) === false, 'redirects disabled');
 $assert(($client->lastRequestDiagnostics()['action'] ?? null) === 'AdditionalPricesDaily', 'sanitized diagnostics');
 $assert(strpos(json_encode($client->lastRequestDiagnostics(), JSON_THROW_ON_ERROR), 'secret-token') === false, 'diagnostics omit token');
+$assert(is_int($client->lastRequestDiagnostics()['elapsed_ms'] ?? null)
+    && $client->lastRequestDiagnostics()['elapsed_ms'] >= 0, 'successful current transport duration retained');
 $expect('ANEX_B2B_REQUEST_LIMIT', static function () use ($client): void {
     $client->additionalPricesDaily([
         'page' => 1, 'pageSize' => 10, 'tour' => 778,
@@ -202,5 +204,23 @@ try{
     @unlink($cacheFixture);
     @rmdir($cacheTarget);
 }
+
+$emptyClient = new AnyTourAnexAdditionalPricesClient('empty-token', static function (): array {
+    return ['status' => 200, 'body' => '{"data":[],"totalCount":0}'];
+});
+$assert($emptyClient->additionalPricesDaily($criteria)['data'] === []
+    && $emptyClient->lastRequestDiagnostics()['http_status'] === 200
+    && $emptyClient->lastRequestDiagnostics()['response_bytes'] === 26
+    && is_int($emptyClient->lastRequestDiagnostics()['elapsed_ms'] ?? null),
+    'successful empty APD preserves current numeric transport facts without changing empty data');
+$failedClient = new AnyTourAnexAdditionalPricesClient('failure-token', static function (): array {
+    throw new RuntimeException('PRIVATE_TIMEOUT');
+});
+$expect('ANEX_B2B_TRANSPORT_ERROR', static function () use ($failedClient, $criteria): void {
+    $failedClient->additionalPricesDaily($criteria);
+});
+$assert(!array_key_exists('elapsed_ms', $failedClient->lastRequestDiagnostics())
+    && !array_key_exists('curl_errno', $failedClient->lastRequestDiagnostics()),
+    'existing failure diagnostics and timeout classification are unchanged');
 
 fwrite(STDOUT, "ANEX AdditionalPricesDaily client/context: {$checks} checks passed; network=0.\n");

@@ -364,6 +364,7 @@ final class AnyTourAnexAdditionalPricesClient
         if ($this->transport === null && !$this->rateSlot()) {
             throw new RuntimeException('ANEX_B2B_RATE_LIMIT');
         }
+        $started = microtime(true);
         ++$this->requests;
         try {
             $response = $this->transport !== null
@@ -400,6 +401,8 @@ final class AnyTourAnexAdditionalPricesClient
             throw new RuntimeException('ANEX_B2B_INVALID_RESPONSE');
         }
         $this->validateResponseContext($decoded, $criteria);
+        // Successful current transport only; cache hits and failures retain their existing semantics.
+        $this->lastRequest['elapsed_ms'] = (int) round((microtime(true) - $started) * 1000);
         return $this->redactPayload($decoded);
     }
 

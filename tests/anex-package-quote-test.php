@@ -147,6 +147,20 @@ function qp_apd_contract(): void
     foreach (['PRIVATE', $key, $ref, '12345', sys_get_temp_dir(), '100000'] as $canary) {
         qp_assert(!str_contains(json_encode($empty), $canary), 'receipt does not export raw context/path/money canary');
     }
+    $diagnosed = unserialize(serialize($session));
+    $diagnosed['anex_offer_contexts'][$ref]['additional_prices'][$digest]['evidence']['_read_diagnostics'] = [
+        'action' => 'AdditionalPricesDaily', 'observed_at_basis' => 'local_consumption', 'supplier_calls' => 1,
+        'cache_status' => 'miss', 'http_status' => 200, 'elapsed_ms' => 125, 'response_bytes' => 26,
+        'url' => 'PRIVATE_DIAGNOSTIC_CANARY'];
+    $diagnosed['offer_context'] = $diagnosed['anex_offer_contexts'][$ref];
+    $diagnosticReply = $read($diagnosed);
+    qp_assert($diagnosticReply['records'][0]['read_diagnostics'] === [
+        'observed_at_basis' => 'local_consumption', 'source' => 'supplier_transport', 'supplier_calls' => 1,
+        'cache_status' => 'miss', 'http_status' => 200, 'response_bytes' => 26, 'elapsed_ms' => 125],
+        'own receipt projects typed retained read facts without arbitrary fields');
+    qp_assert(!str_contains(json_encode($diagnosticReply), 'PRIVATE_DIAGNOSTIC_CANARY'), 'receipt excludes raw diagnostic fields');
+    qp_assert($empty['records'][0]['read_diagnostics']['supplier_calls'] === null
+        && $empty['records'][0]['read_diagnostics']['observed_at_basis'] === 'unknown', 'legacy receipts preserve unknown read provenance');
     $reservation = $entry; unset($reservation['payload']); $reservation['status'] = 'unknown'; $write($reservation);
     $reservedRead = $read($session);
     qp_assert($reservedRead['cache_files_read'] === 1 && $reservedRead['records'][0]['cache'] === [
