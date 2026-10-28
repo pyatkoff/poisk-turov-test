@@ -957,8 +957,9 @@ function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id)
    else if(current.priceAcceptancePending){total.textContent=money(current.total);status.textContent=`Цена изменилась: ${money(current.quoteListingTotal)} → ${money(current.total)} за всех. Подтвердите новую цену.`;button.dataset.action='accept-selected-price';button.textContent='Принять новую цену';}
    else if(current.quoteError){status.textContent=offerQuoteErrorText(current,terminalOfferQuote(current),needsRefresh(current));button.disabled=false;if(terminalOfferQuote(current)){button.dataset.action='close-modal';delete button.dataset.key;button.textContent='К результатам';}else button.textContent='Повторить проверку';}
    else if(view?.type==='anex-current'){
-     status.textContent=view.error|| (view.pending?'Уточняем обязательные доплаты…':current.raw?.infantCharge?.status==='unknown'?'Цена из поиска ANEX · доплата за младенца уточняется':'Цена из поиска ANEX · доплаты требуют проверки');
-    button.disabled=!!view.error||!!view.pending;button.dataset.action='anex-additional-prices';button.textContent=view.pending?'Уточняем доплаты…':'Проверить доплаты и продолжить';
+    const unconfirmed=anexAdditionalUnconfirmed(view);
+    status.textContent=view.error||(view.pending?'Уточняем обязательные доплаты…':unconfirmed?'ANEX не передал ставки доплат · полная цена пока не подтверждена':current.raw?.infantCharge?.status==='unknown'?'Цена из поиска ANEX · доплата за младенца уточняется':'Цена из поиска ANEX · доплаты требуют проверки');
+    button.disabled=!!view.error||!!view.pending;button.dataset.action=unconfirmed?'anex-package-quote':'anex-additional-prices';button.textContent=view.pending?'Уточняем доплаты…':unconfirmed?'Уточнить полную цену и рейсы':'Проверить доплаты и продолжить';
    }else if(view?.type==='anex-additional'&&anexApplicationDraft){
     total.textContent=money(anexApplicationDraft.price);status.textContent='Расчётная стоимость за всех · итог и рейсы подтвердит менеджер';button.dataset.action='anex-application-preview';button.textContent='К заявке по расчётной цене';
    }
@@ -1715,6 +1716,7 @@ function rememberProviderView(o,type,result,error='',pending=false){
   ...(type.startsWith('andromeda-')&&repricing?{outbound:previous?.outbound||result.flights?.find(f=>f.direction==='0')?.flightRef,inbound:previous?.inbound||result.flights?.find(f=>f.direction==='1')?.flightRef}:
    type==='andromeda-flights'&&previous?.type===type&&previous.result===result?{outbound:previous.outbound,inbound:previous.inbound}:{})});
 }
+function anexAdditionalUnconfirmed(view){return view?.type==='anex-current'&&view.result?.additionalPrices?.state==='additional_prices_unconfirmed';}
 function rememberAndromedaFlightChoice(input){
  const view=retainedProviderView(selectedOffer),direction=input.name==='andromeda-outbound'?'0':'1',repricing=view?.result?.repricing?.enabled===true;
  const flights=repricing?view.result.flightChoices||view.result.flights:view?.result?.flights,field=direction==='0'?'outbound':'inbound';
@@ -2413,6 +2415,7 @@ function openAnexPackageQuote(o,result,error='',pending=false){
 }
 async function loadAnexPackageQuote(calculate=false,{fromOffer=false}={}){
  const o=selectedOffer,view=retainedProviderView(o),repricing=view?.result?.repricing?.enabled===true;if(!o||o.provider!=='anex'||view?.sealed||view?.pending&&!repricing)return;
+ if(!calculate&&hotelOfferCheckActive(o.key)&&anexAdditionalUnconfirmed(view)&&!view.error&&!terminalOfferQuote(o))fromOffer=true;
  if(calculate&&modalType!=='anex-quote'||!calculate&&!['anex-current','anex-additional'].includes(modalType)&&!(fromOffer&&(modalType==='offer'||hotelOfferCheckActive(o.key))))return;
  const choice=calculate?$('[name="anex-package-choice"]:checked')?.value:null;if(calculate&&!choice)return;
  let old=calculate?view?.result:null;openAnexPackageQuote(o,old,'',true);
@@ -2461,8 +2464,9 @@ function renderAnexFlightInventory(){
  if(!selectedOffer||!['anex-current','anex-additional'].includes(modalType))return;
  let section=$('#anex-flight-inventory');
  if(!section){$('#modal-body').insertAdjacentHTML('beforeend','<section id="anex-flight-inventory" aria-label="Перелёт ANEX"></section>');section=$('#anex-flight-inventory');}
- section.innerHTML=`<p><button class="primary" data-action="anex-package-quote" ${retainedProviderView(selectedOffer)?.pending?'disabled':''}>Актуализировать тур и выбрать перелёт</button></p>`+anexFlightInventoryHTML(selectedOffer);
- const apd=$('[data-action="anex-additional-prices"]'),view=retainedProviderView(selectedOffer);
+ const view=retainedProviderView(selectedOffer),unconfirmed=anexAdditionalUnconfirmed(view);
+ section.innerHTML=(unconfirmed?'':`<p><button class="primary" data-action="anex-package-quote" ${view?.pending?'disabled':''}>Актуализировать тур и выбрать перелёт</button></p>`)+anexFlightInventoryHTML(selectedOffer);
+ const apd=$('[data-action="anex-additional-prices"]');
  if(apd)apd.disabled=!!(view?.pending||view?.error||anexFlightViews.get(selectedOffer.raw)?.pending);
 }
 async function loadAnexFlightInventory(){
@@ -2480,7 +2484,9 @@ function openAnexConcreteCurrent(o,current){
  rememberProviderView(o,'anex-current',current,retainedProviderView(o)?.error,retainedProviderView(o)?.pending);selectedOffer={...o,loading:false};anexApplicationDraft=null;anexCurrentDraft={offer:o,current};
  if(hotelOfferCheckActive(o.key)){renderOfferProgress();return;}
  showModal('anex-current','Предложение ANEX','ANEX · ТУР ИЗ ТЕКУЩЕГО ПОИСКА',`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(roomLabel(o))} · ${esc(displayMealLabel(o))}</span><strong>${money(price)}</strong></div><p class="modal-intro">Предложение относится к текущему поиску. Это проверка контекста, а не пересчёт стоимости у ANEX. Показана цена из поиска; обязательные доплаты и итоговая цена ещё требуют подтверждения.${o.raw?.infantCharge?.status==='unknown'?' Доплата за младенца и её включение в цену пока неизвестны.':''}</p><p class="error-text" id="anex-additional-error" role="alert"></p>`,true);
- $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="anex-additional-prices">Уточнить обязательные доплаты</button>`;
+ const unconfirmed=anexAdditionalUnconfirmed(retainedProviderView(o));
+ if(unconfirmed){const note=$('#anex-additional-error');note.className='modal-intro';note.setAttribute('role','status');note.textContent='ANEX не передал ставки доплат. Их размер и полная цена пока неизвестны. Можно отдельно уточнить полную цену тура с перелётом.';}
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button><button class="primary" data-action="${unconfirmed?'anex-package-quote':'anex-additional-prices'}">${unconfirmed?'Уточнить полную цену и рейсы':'Уточнить обязательные доплаты'}</button>`;
  renderAnexFlightInventory();
 }
 function openAnexAdditionalEstimate(o,result){
@@ -2494,13 +2500,19 @@ function openAnexAdditionalEstimate(o,result){
 }
 async function applyAnexAdditionalPrices(){
  const draft=anexCurrentDraft,inline=hotelOfferCheckActive(draft?.offer.key),view=retainedProviderView(draft?.offer);
- if(!draft||modalType!=='anex-current'&&!inline||anexFlightViews.get(draft.offer.raw)?.pending||view?.pending||view?.error)return;
+ if(!draft||modalType!=='anex-current'&&!inline||anexFlightViews.get(draft.offer.raw)?.pending||view?.pending||view?.error||anexAdditionalUnconfirmed(view))return;
  selectionGeneration++;const button=$('[data-action="anex-additional-prices"]');if(button)button.disabled=true;
  const error=$('#anex-additional-error');if(error)error.textContent='';
  rememberProviderView(draft.offer,'anex-current',draft.current,'',true);
  if(inline)renderOfferProgress();else renderAnexFlightInventory();
  try{
   const result=await data.verifyAnexAdditional(draft.offer);
+  if(result.state==='additional_prices_unconfirmed'){
+   const current={...draft.current,additionalPrices:result};
+   rememberProviderView(draft.offer,'anex-current',current);
+   if($('#modal').open&&(modalType==='anex-current'||hotelOfferCheckActive(draft.offer.key))&&selectedOffer?.raw===draft.offer.raw)openAnexConcreteCurrent(draft.offer,current);
+   return;
+  }
   rememberProviderView(draft.offer,'anex-additional',result);
   if(!$('#modal').open||modalType!=='anex-current'&&!hotelOfferCheckActive(draft.offer.key)||selectedOffer?.raw!==draft.offer.raw)return;
   openAnexAdditionalEstimate(draft.offer,result);

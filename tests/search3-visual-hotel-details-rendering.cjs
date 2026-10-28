@@ -1,6 +1,10 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),crypto=require('crypto'),{JSDOM}=require('jsdom');
 const source=fs.readFileSync(__dirname+'/../v2/visual-search/hotel-details-v1.js','utf8');
+function anexAdditionalOwner(appSource){
+ const start=appSource.indexOf('function anexAdditionalUnconfirmed('),end=appSource.indexOf('function rememberAndromedaFlightChoice(',start);
+ assert(start>=0&&end>start,'actual ANEX unconfirmed helper boundaries');return appSource.slice(start,end);
+}
 function verifyInfantChargeStatus(appSource,hotelSource){
  const start=appSource.indexOf('const cachedPriceNote='),end=appSource.indexOf('// Meal identities',start);
  assert(start>=0&&end>start);
@@ -23,7 +27,7 @@ function verifyInfantChargeStatus(appSource,hotelSource){
  const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
  const f={...helpers,hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null,
   data:{amount:value=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):null},state:{search:{}},searchKey:()=>'',needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[],mealLabel:o=>o.meal};
- vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);f.syncHotelOfferSelection(1);
+ vm.createContext(f);vm.runInContext(anexAdditionalOwner(appSource)+appSource.slice(footerStart,footerEnd),f);f.syncHotelOfferSelection(1);
  assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i);
  assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');assert.equal(nodes['#hotel-detail-offers'].dataset.key,listing.key);
  f.hotelOfferCheckActive=()=>true;f.selectedOffer=listing;f.retainedProviderView=()=>({type:'anex-current'});f.syncHotelOfferSelection(1);
@@ -118,7 +122,7 @@ function verifyRoomPriceStatus(appSource,hotelSource){
  assert.equal(rowNote(row(listing)),'&lt;unverified&gt;','price-note text stays escaped');
  const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
  const f={hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:null,selectedOffer:null,state:{search},searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:same,selectedPriceStatus:helpers.selectedPriceStatus,cardPriceNote:()=>snapshot,money:helpers.money,mealLabel:helpers.displayMealLabel,dateText:helpers.dateText,needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[]};
- vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);
+ vm.createContext(f);vm.runInContext(anexAdditionalOwner(appSource)+appSource.slice(footerStart,footerEnd),f);
  f.syncHotelOfferSelection(1);
  assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'minimum footer identifies listing price');
  f.hotelOfferDraft={hotelId:1,key:'one'};f.syncHotelOfferSelection(1);
@@ -137,6 +141,7 @@ console.log('PASS room price status: listing/minimum/selected/current pair/pendi
 async function verifyInfantInlineQuoteTransition(appSource){
  const owner=(start,end)=>{const a=appSource.indexOf(start),b=appSource.indexOf(end,a);assert(a>=0&&b>a);return appSource.slice(a,b);};
  const code=appSource.match(/^const unknownInfantCharge=.*$/m)[0]+'\n'
+  +anexAdditionalOwner(appSource)
   +owner('function isCurrentOfferRequest(','function terminalOfferQuote(')
   +owner('function restoreProviderView(','const flightPairFor=')
   +owner('async function refreshLiveHotel(','function refreshHotel(')

@@ -8,7 +8,7 @@
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
-  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
+  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexAdditionalReceipts=new Map(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
   const anexPackageReceipts=new Map(),anexExpansionAttempts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
@@ -784,7 +784,7 @@
     localContentQueue.length=0;
     clearCalendarWindows();generation=generation<2147483647?generation+1:searchGenerationSeed()+1;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();anexExpansionAttempts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexAdditionalReceipts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();anexExpansionAttempts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -1741,7 +1741,7 @@
       repeated:'Рейсы уже запрашивались. Неизвестный результат не запрашивается повторно.',
       limit:'Лимит проверки рейсов ANEX временно исчерпан.',failed:'Не удалось получить рейсы ANEX.',
       invalid:'Рейсы выбранного предложения не подтверждены.'},
-    additional_prices:{normalize:normalizeAnexAdditional,attempts:anexAdditionalAttempts,
+    additional_prices:{normalize:normalizeAnexAdditional,attempts:anexAdditionalAttempts,receipts:anexAdditionalReceipts,
       stale:'Сначала подтвердите актуальность конкретного предложения ANEX.',
       repeated:'Обязательные доплаты уже запрашивались для этого предложения. Повторите поиск для новой проверки.',
       limit:'Лимит проверки доплат ANEX временно исчерпан.',failed:'ANEX не смог уточнить обязательные доплаты.',
@@ -1849,7 +1849,7 @@
       if(action==='offer'){
         const currentIdentity=anexConcreteKey(o);if(!currentIdentity)throw new Error('Условия поиска изменились. Выберите тур заново.');
         anexCurrentReceipts.add(currentIdentity.key);
-      }else operation.receipts?.set(identity.key,result);
+      }else if(action!=='additional_prices'||result.state==='additional_prices_unconfirmed')operation.receipts?.set(identity.key,result);
       return result;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
@@ -2075,6 +2075,22 @@
   async function verifyAnexFlights(o){return verifyAnexFollowUp(o,'flights');}
   function normalizeAnexAdditional(value,o,status='additional_prices'){
     const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
+    if(status==='additional_prices'&&identity&&value?.provider==='anex'&&value.generation===identity.epoch
+      &&value.search_ref===identity.searchRef&&value.offer_ref===identity.offerRef&&value.status===status
+      &&value.selection_state==='disabled'&&evidence&&typeof evidence==='object'&&!Array.isArray(evidence)
+      &&(evidence.source==='anex_b2b_additional_prices_daily'
+        ||evidence.source==='anex_b2b_additional_prices_daily_cache'&&evidence.cache_source==='anytour_anex_apd_rates')
+      &&evidence.scope==='tour_program_date_nights_currency'&&evidence.offer_specific===false
+      &&Array.isArray(evidence.rows)&&evidence.rows.length===0&&evidence.total_count===0&&evidence.truncated===false
+      &&evidence.application_state==='unknown'&&evidence.application_reason==='rate_rows_unconfirmed'
+      &&evidence.arithmetic_applied===false&&evidence.final_price_verified===false
+      &&evidence.currency===null&&evidence.converted_currency===null&&evidence.per_person_or_package==='unknown'
+      &&evidence.fuel_equivalence_verified===false&&evidence.included_in_search_price==='unknown'
+      &&evidence.search_price===null&&evidence.party_surcharge===null&&evidence.search_plus_additional===null){
+      return Object.freeze({state:'additional_prices_unconfirmed',finalPriceVerified:false,arithmeticApplied:false,
+        applicationState:'unknown',applicationReason:'rate_rows_unconfirmed',rowCount:0,totalCount:0,truncated:false,
+        searchPrice:null,partySurcharge:null,calculatedTotal:null});
+    }
     if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
       ||value.offer_ref!==identity.offerRef||value.status!==status||value.selection_state!=='disabled'
       ||!evidence||evidence.application_state!=='applied'||evidence.arithmetic_applied!==true||evidence.final_price_verified!==false
