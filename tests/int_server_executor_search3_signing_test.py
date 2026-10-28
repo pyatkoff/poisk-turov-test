@@ -1484,6 +1484,203 @@ class NativeAnexAPDReasonInstall(NativeTVDiagnosticInstall):
         self.assertEqual(old,target.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
 
 
+
+class OwnSessionAPDAdmission(unittest.TestCase):
+    """Literal release pins are independent of the fictional native mechanism fixture."""
+    def command(self):
+        return {'source_sha':signing.ANEX_OWN_SESSION_APD_SOURCE,
+                'mode':signing.ANEX_OWN_SESSION_APD_MODE,
+                'operation_id':signing.ANEX_OWN_SESSION_APD_OPERATION}
+
+    def test_literal_source_endpoint_and_all_twelve_runtime_pins(self):
+        self.assertEqual('4e0b9707162db0c517a3e545eaf8933724f9d6a8',signing.ANEX_OWN_SESSION_APD_SOURCE)
+        self.assertEqual('install-anex-own-session-apd-receipt',signing.ANEX_OWN_SESSION_APD_MODE)
+        self.assertEqual('int-anex-own-session-apd-receipt-install-20261028-v1',signing.ANEX_OWN_SESSION_APD_OPERATION)
+        self.assertEqual('v2/api-anex-search3-preview.php',signing.ANEX_OWN_SESSION_APD_PATH)
+        self.assertEqual('c4cf2c782510048f8a40b5e0301ca0410bb60679d7779d0a72107f1f130d9436',signing.ANEX_OWN_SESSION_APD_SHA)
+        expected={
+            'app/integrations/operator-fuel-rule-evidence.php':'5205c275da1f71aa756aab6852664902a8ea0453a4a457673f0896737f11a6a4',
+            'app/integrations/operator-fuel-rule-store.php':'a84468efc7953f50ee6fc25aaa77a40b97bd527ad9fbbe923d547dbe9db60fb9',
+            'app/integrations/search3-messenger-handoff.php':'5e0fe33e6adf3ce30451b9ffe1742cc77f791114e241fb41d92236c1d70ea85c',
+            'app/integrations/tourvisor-interactive-client.php':'72056e5c4642daa9515d2d5dccece0804b6e3dd9c935b6250e0e29ca2e39daf9',
+            'app/integrations/tourvisor-operator-fuel-passive-intake.php':'09a40aa5c6c4b6d98d378e353707412a4a3b83631452585a3fff27c6392d7008',
+            'app/integrations/tourvisor-operator-fuel-retained-intake.php':'6c233c9fc0fe64c1647941ccb22756e1cad4c17b9692998dbd1eb6b7eb04a3d0',
+            'app/integrations/tourvisor-preview-gateway.php':'c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1',
+            'app/integrations/tourvisor-selected-tour-handoff.php':'9dafb88cab92e19376e120c80dd5dfecc975730cca7e7039edc419bf1ffa57f3',
+            'v2/api-anex-search3-preview.php':'4b0f8bdeeec2170d7ff64d1ff668c717e9204fabd677927dd1e60c0f6240de08',
+            'app/integrations/anex-package-quote-runtime.php':'bdc4b6737974935cf195f5db1477013ab95110108e2137aea684571bbd22af01',
+            'app/integrations/anex-package-quote-handoff.php':'d3d134a43b6f19676e7d046de525fc7ac206d7781aaaaf9eee375334e237bb7d',
+            'app/integrations/anex-initial-week-gate.php':'145eff807355b50bcd381c6b3d732eb5c8ac4350f2945fb77304c9fd50673ce6'}
+        self.assertEqual(expected,signing.anex_own_session_apd_previous()|signing.TV_DEPENDENCIES)
+        self.assertEqual(9,len(signing.anex_own_session_apd_previous()))
+
+    def test_exact_command_and_direct_activation_reject_alias_or_caller_fields(self):
+        cmd=self.command();body='/run-int-server-v1 '+' '.join(cmd.values())
+        self.assertEqual(cmd,core().parse_command(body))
+        for bad in (body.replace(cmd['source_sha'],'0'*40),body.replace('20261028-v1','20261028-v2'),
+                    body.replace(cmd['mode'],cmd['mode']+'-alias'),body+' extra',
+                    '/run-int-server-v1 '+cmd['source_sha']+' '+cmd['mode']):
+            with self.subTest(body=bad),self.assertRaises(ValueError):core().parse_command(bad)
+        for extra in ({'key_file':'/tmp/caller'},{'archive':'/tmp/caller'},{'operation_id':cmd['operation_id']+'x'}):
+            with self.subTest(extra=extra),self.assertRaises(ValueError):signing.activate(core(),cmd|extra)
+
+    def test_stock_remote_pins_exact_delta_and_all_maintenance_guards(self):
+        c=core();signing.activate(c,self.command());tree=ast.parse(c.REMOTE)
+        constants={}
+        for node in tree.body:
+            if isinstance(node,ast.Assign) and len(node.targets)==1 and isinstance(node.targets[0],ast.Name):
+                try:constants[node.targets[0].id]=ast.literal_eval(node.value)
+                except (ValueError,TypeError):pass
+        previous=signing.anex_own_session_apd_previous()
+        self.assertEqual(previous|{signing.ANEX_OWN_SESSION_APD_PATH:signing.ANEX_OWN_SESSION_APD_SHA},constants['TV_PINS'])
+        self.assertEqual({p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in previous.items()},constants['TV_PREVIOUS'])
+        self.assertEqual(signing.TV_DEPENDENCIES,constants['TV_DEPENDENCIES'])
+        self.assertEqual(signing.ANEX_OWN_SESSION_APD_SOURCE,constants['TV_SOURCE'])
+        self.assertEqual(signing.ANEX_OWN_SESSION_APD_MODE,constants['TV_GATEWAY_MODE'])
+        self.assertEqual(10,len([p for p in constants['TV_PINS'] if p.startswith('app/integrations/')])+2)
+        self.assertEqual(12,len(constants['TV_PINS']|constants['TV_DEPENDENCIES']))
+        for guard in ("if changed!=['api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')",
+            "if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",
+            "result['diagnostic_basis_before']=tv_diagnostic_boundary()",
+            "result['diagnostic_basis_after']=tv_diagnostic_boundary()",
+            "tv_gateway_preflight()", "anex_preview_install_source_lint",
+            "anex_preview_install_backup_hash", "anex_preview_install_readback",
+            "result['production_before']", "result['production_after']"):
+            self.assertIn(guard,c.REMOTE)
+        self.assertNotIn('sudo',c.REMOTE)
+        self.assertNotIn('if changed!=[\'v2/api-anex-search3-preview.php\']',c.REMOTE)
+        self.assertLess(len(base64.b64encode(__import__('zlib').compress(c.REMOTE.encode(),9))),64000)
+        self.assertEqual(signing.ANEX_OWN_SESSION_APD_MODE,c.parse_command('/run-int-server-v1 '+' '.join(self.command().values()))['mode'])
+
+    def receipt(self):
+        cmd=self.command();source=cmd['source_sha'];dep='app/integrations/anex-initial-week-gate.php'
+        proof={'source_sha':source,'files':signing.anex_own_session_apd_previous()|{signing.ANEX_OWN_SESSION_APD_PATH:signing.ANEX_OWN_SESSION_APD_SHA},
+            'activation_performed':False,'configuration_changed':False,'signing_custody_changed':False}
+        basis={'parent_operation':signing.TV_RECOVERY_OPERATION,'parent_canonical_sha256':signing.TV_ENABLED_CANONICAL,
+            'configuration_sha256':signing.TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,'receipt_and_configuration_unchanged':True}
+        public={p:v.get('sha256') for p,v in signing.TV_PUBLIC.items() if p!='api-v2.php'}
+        return cmd|{'schema_version':1,'status':'installed',
+            'install':{'status':'installed','source_sha':source,'manifest_sha256':'a'*64,'files':10,'changed_files':1,'created_files':0,
+                'endpoint':{'source':signing.ANEX_OWN_SESSION_APD_PATH,'target':'api-anex-search3-preview.php','sha256':signing.ANEX_OWN_SESSION_APD_SHA,'changed':True},
+                'dependency':{'source':dep,'target':dep,'sha256':signing.TV_DEPENDENCIES[dep],'changed':False}},
+            'tv_gateway':proof,'diagnostic_basis_before':basis,'diagnostic_basis_after':basis,
+            'tv_gateway_public_before':signing.TV_PUBLIC,'tv_gateway_public_after':signing.TV_PUBLIC,
+            'production_before':public,'production_after':public,'supplier_calls':0,'database_writes':0,
+            'booking_calls':0,'lead_calls':0,'public_ui_entrypoints_unchanged':True,'runtime_changed':True}
+
+    def test_completion_strict_types_delta_proofs_zero_calls_and_dispatch(self):
+        cmd=self.command();r=self.receipt();c=core();signing.activate(c,cmd)
+        self.assertTrue(signing.completed_anex_own_session_apd(cmd,r));self.assertTrue(c.completed_result(cmd,r))
+        for k,v in [('schema_version',True),('supplier_calls',False),('database_writes',1),('booking_calls',True),
+                    ('lead_calls',1),('runtime_changed',False),('public_ui_entrypoints_unchanged',1),
+                    ('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('production_after',{})]:
+            with self.subTest(key=k):self.assertFalse(c.completed_result(cmd,r|{k:v}))
+        for k,v in [('files',True),('files',9),('changed_files',2),('changed_files',True),
+                    ('created_files',False),('created_files',1),('manifest_sha256','f'*63)]:
+            with self.subTest(install=k):self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{k:v}}))
+        for key,field,values in [('endpoint','changed',(False,1)),('endpoint','sha256',('0'*64,)),
+                                 ('dependency','changed',(True,0))]:
+            for value in values:
+                with self.subTest(key=key,value=value):
+                    bad=r|{'install':r['install']|{key:r['install'][key]|{field:value}}}
+                    self.assertFalse(c.completed_result(cmd,bad))
+        for key,field,value in [('tv_gateway','activation_performed',0),
+                ('diagnostic_basis_after','receipt_and_configuration_unchanged',1)]:
+            self.assertFalse(c.completed_result(cmd,r|{key:r[key]|{field:value}}))
+        for key in ('tv_gateway','diagnostic_basis_before','diagnostic_basis_after'):
+            for value in (None,[], 'malformed'):
+                with self.subTest(key=key,shape=type(value).__name__):
+                    self.assertFalse(c.completed_result(cmd,r|{key:value}))
+        self.assertFalse(c.completed_result(cmd|{'operation_id':cmd['operation_id']+'x'},r))
+
+    def test_historical_apd_reason_render_stays_byte_identical(self):
+        c=core();cmd=c.parse_command(f'/run-int-server-v1 {signing.ANEX_APD_REASON_SOURCE} {signing.ANEX_APD_REASON_MODE} {signing.ANEX_APD_REASON_OPERATION}')
+        signing.activate(c,cmd)
+        self.assertEqual('f367c3084c5c46c28898cc9b9909125b2a3ef33d4cfb15b315faaee9cd5913ee',hashlib.sha256(c.REMOTE.encode()).hexdigest())
+
+    def test_new_native_cases_are_registered_in_existing_harness(self):
+        suite=load_tests(unittest.TestLoader(),unittest.TestSuite(),None)
+        def flatten(s):
+            for item in s:
+                if isinstance(item,unittest.TestSuite):yield from flatten(item)
+                else:yield item
+        cases=[c for c in flatten(suite) if type(c) is NativeOwnSessionAPDInstall]
+        self.assertEqual(3,len(cases))
+
+
+class NativeOwnSessionAPDInstall(NativeTVDiagnosticInstall):
+    mode=signing.ANEX_OWN_SESSION_APD_MODE
+    operation_attr='ANEX_OWN_SESSION_APD_OPERATION'
+    source=signing.ANEX_OWN_SESSION_APD_SOURCE
+    path=signing.ANEX_OWN_SESSION_APD_PATH
+    sha_attr='ANEX_OWN_SESSION_APD_SHA'
+    fixture_env='ANEX_APD_REASON_SOURCE_ROOT'
+
+    def expected_previous(self):return signing.anex_own_session_apd_previous()
+
+    def setUp(self):
+        # Explicitly fictional mechanism fixture. The existing CI env points at the
+        # old API source; it must not be treated as the new reviewed source.
+        # This scope restores the environment before any existing class runs.
+        with mock.patch.dict(os.environ):
+            os.environ.pop(self.fixture_env,None)
+            NativeTVDiagnosticInstall.setUp(self)
+        for p in self.expected_previous():
+            raw=b'<?php // fictional own-session predecessor '+p.encode()+b'\n'
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            (self.runtime/target).write_bytes(raw);self.pins[p]=hashlib.sha256(raw).hexdigest()
+            if p!=self.path:self.inventory[p]=raw
+        self.previous={p if p.startswith('app/') else 'api-anex-search3-preview.php':v for p,v in self.pins.items()}
+        self.newpins=self.pins|{self.path:hashlib.sha256(self.inventory[self.path]).hexdigest()}
+        self.rebuild_archive()
+
+    def install_maintenance(self,operation=None):
+        operation=operation or f'int-anex-own-session-apd-receipt-install-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,self.operation_attr,operation):
+            return self.execute(self.mode,operation,self.source)[0]
+
+    def test_own_session_apd_install_strict_completion_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((10,1,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual(['api-anex-search3-preview.php'],plan['changed_files'])
+        self.assertTrue(r['install']['endpoint']['changed']);self.assertFalse(r['install']['dependency']['changed'])
+        self.assertEqual(self.parent_raw,self.parent.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+        for p in self.newpins:
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
+        command={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.object(signing,'anex_own_session_apd_previous',return_value=self.pins),mock.patch.multiple(signing,
+            ANEX_OWN_SESSION_APD_OPERATION=r['operation_id'],ANEX_OWN_SESSION_APD_SHA=self.newpins[self.path],TV_PUBLIC=self.public,
+            TV_DEPENDENCIES=self.deps,TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_anex_own_session_apd(command,r))
+            for k,v in [('supplier_calls',True),('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('runtime_changed',False)]:
+                self.assertFalse(signing.completed_anex_own_session_apd(command,r|{k:v}))
+            for k,v in [('changed_files',2),('created_files',True),('files',6)]:
+                self.assertFalse(signing.completed_anex_own_session_apd(command,r|{'install':r['install']|{k:v}}))
+            self.assertFalse(signing.completed_anex_own_session_apd(command,r|{'install':r['install']|{'endpoint':r['install']['endpoint']|{'changed':False}}}))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_own_session_apd_any_predecessor_or_source_drift_holds(self):
+        target=self.runtime/'api-anex-search3-preview.php';before=target.read_bytes()
+        for p in self.expected_previous()|signing.TV_DEPENDENCIES:
+            f=self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php');raw=f.read_bytes();f.write_bytes(b'<?php // foreign predecessor\n')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason'])
+            f.write_bytes(raw);self.assertEqual(before,target.read_bytes())
+        self.inventory[self.path]=b'<?php // wrong source\n';self.rebuild_archive()
+        self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason'])
+        self.assertEqual(before,target.read_bytes())
+
+    def test_config_prewrite_race_holds_and_postwrite_failure_rolls_back(self):
+        target=self.runtime/'api-anex-search3-preview.php';old=target.read_bytes()
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        self.assertEqual(old,target.read_bytes())
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(old,target.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -1538,6 +1735,11 @@ def load_tests(loader, tests, pattern):
     for name in ('test_apd_reason_install_strict_completion_and_no_replay','test_apd_reason_any_predecessor_or_source_drift_holds',
                  'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
         suite.addTest(NativeAnexAPDReasonInstall(name))
+    suite.addTests(loader.loadTestsFromTestCase(OwnSessionAPDAdmission))
+    for name in ('test_own_session_apd_install_strict_completion_and_no_replay',
+                 'test_own_session_apd_any_predecessor_or_source_drift_holds',
+                 'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
+        suite.addTest(NativeOwnSessionAPDInstall(name))
     return suite
 
 
