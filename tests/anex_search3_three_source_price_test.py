@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from unittest.mock import patch
 from types import SimpleNamespace
 
 path=Path(__file__).resolve().parents[1]/'scripts/diagnostics/anex_search3_three_source_price.py'
@@ -13,6 +14,16 @@ checks=0
 def check(value):
     global checks; checks+=1
     if not value: raise AssertionError(f'three_price_py_{checks}')
+
+# The current endpoint ends with one LF; keep exact bootstrap/trailer binding and never embed HTTP dispatch.
+endpoint=(path.parents[2]/'v2/api-andromeda-search3-preview.php').read_text()
+with patch.object(mod.Path, 'read_text', return_value=endpoint):
+    library=mod._current_andromeda_library(path.parent)
+check('anytour_andromeda_search3_http();' not in library)
+for changed in [endpoint + 'UNEXPECTED_DISPATCH', endpoint.rstrip('\n'), 'UNEXPECTED_BOOTSTRAP' + endpoint]:
+    with patch.object(mod.Path, 'read_text', return_value=changed):
+        try: mod._current_andromeda_library(path.parent); check(False)
+        except ValueError as error: check(str(error)=='three_source_andromeda_source_contract_changed')
 
 combined=mod.source(); check(combined.startswith('declare(strict_types=1);\n'))
 check(combined.count('declare(strict_types=1);')==1); check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
