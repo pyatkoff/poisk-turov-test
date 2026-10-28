@@ -1931,4 +1931,3 @@ function anytour_anex_search3_http(): void
 }
 
 if (realpath((string) ($_SERVER['SCRIPT_FILENAME'] ?? '')) === __FILE__) anytour_anex_search3_http();
-

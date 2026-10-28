@@ -359,4 +359,3 @@ $assert($clientCode === 0 && $clientErrors === '' && str_contains($clientOutput,
     'existing client contract including unchanged failure diagnostics passes without network');
 
 echo "ANEX retained additional-prices party arithmetic: {$checks} checks passed; network=0\n";
-

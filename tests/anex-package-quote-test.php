@@ -1326,4 +1326,3 @@ qp_assert($apdCode === 0 && $apdErrors === '' && ($apdFacts['status'] ?? null) =
 rmdir($apdTemp);
 
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
-
