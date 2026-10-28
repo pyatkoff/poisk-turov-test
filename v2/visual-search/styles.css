@@ -580,7 +580,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 @media(max-width:1050px){.applied-main{flex-wrap:wrap;gap:14px}.applied-route{flex-basis:calc(100% - 160px)}.applied-main>.secondary{order:1}.applied-trip{order:2;width:100%;justify-content:space-between;gap:12px}.applied-extras button:last-child{margin-left:0}}
 @media(max-width:760px){.search-section.search-collapsed>.wrap{padding:15px 14px 12px}.applied-main{gap:14px 8px}.applied-route{gap:8px;flex-basis:calc(100% - 110px)}.applied-route strong{font-size:16px}.applied-route .summary-icon{display:none}.applied-main>.secondary{font-size:14px;padding:9px 10px}.applied-main>.secondary svg{display:none}.applied-trip{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.7fr) minmax(0,1fr)}.applied-trip dd{font-size:14px}.applied-extras{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.applied-extras button{font-size:14px;min-height:44px;max-width:100%;overflow-wrap:anywhere}.search-actions{display:flex;flex-direction:column-reverse;gap:4px}.search-actions .search-submit{width:100%;margin:0}.search-actions #search-return{width:100%}.search-edit-note{font-size:14px;margin-bottom:10px}}
 .calendar-price-key{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--ink);margin:14px 0 6px}
-dialog.dates-dialog .month-day.is-cheap>small{padding:0 3px;border-radius:4px;background:#fff;color:#276B3B;font-weight:650}
+dialog.dates-dialog .month-day.is-cheap>small{padding:0 1px;border-radius:4px;background:#fff;color:#276B3B;font-weight:650}
 dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B3B}
 .date-selection-price{display:block;padding:0;min-width:0}
 .date-selection-price>span{display:block;font-size:13px;line-height:1.5;color:var(--muted)}
@@ -1840,7 +1840,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  dialog.form-picker .month-day>span{font-size:18px;font-weight:inherit}
  dialog.form-picker .month-day.active{background:var(--brand);color:white;font-weight:650}
  dialog.form-picker .month-day.in-range{background:#dce4ff;color:var(--brand);box-shadow:inset 0 2px var(--brand),inset 0-2px var(--brand)}
- dialog.form-picker .month-day small{font-size:15px!important;line-height:18px;font-weight:400;white-space:nowrap;overflow-wrap:normal;color:var(--text)}
+ dialog.form-picker .month-day small{font-size:clamp(12px,calc(5.46vw - 5.46px),15px)!important;line-height:18px;font-weight:400;white-space:nowrap;overflow-wrap:normal;color:var(--text)}
  dialog.form-picker .month-day.active small{color:white}
  dialog.form-picker .weekday{font-size:12px;line-height:18px;font-weight:650;color:var(--text)}
  dialog.form-picker .date-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
