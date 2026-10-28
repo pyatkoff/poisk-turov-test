@@ -651,9 +651,48 @@ function anytour_anex_search3_money_string(int $units): string
     return $whole . '.' . rtrim(str_pad((string) $fraction, 4, '0', STR_PAD_LEFT), '0');
 }
 
+/** Receipt-only current APD read facts. Never infer original supplier facts from a cache hit. */
+function anytour_anex_search3_apd_read_diagnostics($facts): array
+{
+    $out = ['observed_at_basis' => 'unknown', 'source' => 'unknown', 'supplier_calls' => null, 'cache_status' => 'unknown'];
+    if (!is_array($facts) || ($facts['action'] ?? null) !== 'AdditionalPricesDaily'
+        || ($facts['observed_at_basis'] ?? null) !== 'local_consumption'
+        || !in_array($facts['supplier_calls'] ?? null, [0, 1], true)) return $out;
+    $out['observed_at_basis'] = 'local_consumption';
+    $out['supplier_calls'] = $facts['supplier_calls'];
+    if (in_array($facts['cache_status'] ?? null, ['hit', 'miss', 'unknown', 'unavailable'], true)) {
+        $out['cache_status'] = $facts['cache_status'];
+    }
+    if ($out['supplier_calls'] === 0) {
+        if ($out['cache_status'] === 'hit') $out['source'] = 'daily_cache';
+        return $out;
+    }
+    if ($out['cache_status'] === 'hit') return array_replace($out, ['source' => 'unknown', 'supplier_calls' => null]);
+    $out['source'] = 'supplier_transport';
+    foreach (['http_status' => [100, 599], 'response_bytes' => [0, 524288], 'elapsed_ms' => [0, 60000]] as $key => $range) {
+        $value = $facts[$key] ?? null;
+        if (is_int($value) && $value >= $range[0] && $value <= $range[1]) $out[$key] = $value;
+    }
+    return $out;
+}
+
+/** Capture only the existing successful client read; missing metadata never changes the APD outcome. */
+function anytour_anex_search3_apd_capture_diagnostics($client): array
+{
+    $facts = [];
+    if ($client instanceof AnyTourAnexAdditionalPricesClient) {
+        $facts = $client->lastRequestDiagnostics();
+        $facts['supplier_calls'] = $client->requestsMade();
+        $facts['observed_at_basis'] = 'local_consumption';
+    }
+    // Retain the discriminator for the same strict sanitizer on receipt readback.
+    return array_replace(anytour_anex_search3_apd_read_diagnostics($facts), ['action' => 'AdditionalPricesDaily']);
+}
+
 /** Apply the program/date rates to this retained party while preserving each money fact separately. */
 function anytour_anex_search3_additional_application(array $evidence, array $offer): array
 {
+    unset($evidence['_read_diagnostics']); // Internal evidence is not part of public price replies.
     $evidence['application_state'] = 'unknown';
     // Local application gate only; never a supplier error or final-price authority.
     // Overwrite any retained value so only these fixed codes can cross the response.
@@ -769,6 +808,7 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
             'nights' => $context['nights'], 'currency' => (int) $context['supplier_currency_id']]);
         if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
         $evidence = anytour_anex_search3_additional_evidence($payload);
+        $evidence['_read_diagnostics'] = anytour_anex_search3_apd_capture_diagnostics($additional);
         $observed = $clock();
         if (!is_int($observed) || !anytour_anex_search3_current($state, $observed)) {
             throw new RuntimeException('ANEX_SESSION_EXPIRED');
@@ -897,6 +937,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         }
         if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
         $evidence = anytour_anex_search3_additional_evidence($payload);
+        $evidence['_read_diagnostics'] = anytour_anex_search3_apd_capture_diagnostics($additional);
         $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock());
         $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
         if (!anytour_anex_search3_current($state, $clock())) return $reply;
@@ -1317,7 +1358,8 @@ function anytour_anex_search3_apd_receipt(array $session): array
             if ($facts === null) $complete = false;
             else {
                 $record = array_replace($record, $facts, ['status' => 'complete', 'reason' => 'retained_rows',
-                    'application_basis' => 'retained_evidence_local_gate']);
+                    'application_basis' => 'retained_evidence_local_gate',
+                    'read_diagnostics' => anytour_anex_search3_apd_read_diagnostics($evidence['_read_diagnostics'] ?? null)]);
                 $applications = [];
                 foreach ($bindings[$digest] as $caseOffers) foreach ($caseOffers as $boundOffer) {
                     $safeMoney = true;
@@ -1889,3 +1931,4 @@ function anytour_anex_search3_http(): void
 }
 
 if (realpath((string) ($_SERVER['SCRIPT_FILENAME'] ?? '')) === __FILE__) anytour_anex_search3_http();
+

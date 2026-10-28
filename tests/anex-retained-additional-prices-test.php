@@ -75,6 +75,13 @@ $additionalFactory = static function () use (&$factoryCalls, &$transportCalls) {
 $state = $stateTemplate;
 $result = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
 $assert($result['status'] === 'additional_prices', 'completed status');
+$attempt = array_values($state['additional_prices'])[0];
+$readFacts = $attempt['evidence']['_read_diagnostics'] ?? [];
+$assert($readFacts['source'] === 'supplier_transport' && $readFacts['supplier_calls'] === 1
+    && $readFacts['observed_at_basis'] === 'local_consumption' && $readFacts['http_status'] === 200
+    && is_int($readFacts['elapsed_ms'] ?? null), 'ordinary success retains actual current-read diagnostics');
+$assert(!array_key_exists('_read_diagnostics', $result['additional_prices']), 'private diagnostics excluded from public ordinary reply');
+
 $assert($factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1, 'one real client transport after one checkpoint');
 $assert(strpos($transportCalls[0]['url'], 'tour=987654321') !== false
     && strpos($transportCalls[0]['url'], 'dateBeg=2026-09-20') !== false
@@ -298,4 +305,58 @@ $state['gateway']['search']['offers'][0]['kind'] = 'group_minimum';
 $group = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
 $assert($group['status'] === 'not_concrete' && $state['additional_prices'] === [], 'group minimum cannot request additional evidence');
 
+// Diagnostic provenance is independent of price, and daily cache hits have no original transport authority.
+$diagCache = sys_get_temp_dir() . '/anex-apd-read-facts-' . bin2hex(random_bytes(6));
+$diagClock = static fn(): int => 1789220100;
+$diagCriteria = ['page' => 1, 'pageSize' => 10, 'tour' => 987654321, 'dateBeg' => '2026-09-20', 'nights' => 7, 'currency' => 345];
+try {
+    $fresh = new AnyTourAnexAdditionalPricesClient('fresh-token', static fn(): array =>
+        ['status' => 200, 'body' => '{"data":[],"totalCount":0}'], $diagCache, $diagClock);
+    $fresh->additionalPricesDaily($diagCriteria);
+    $freshFacts = anytour_anex_search3_apd_capture_diagnostics($fresh);
+    $assert($freshFacts['source'] === 'supplier_transport' && $freshFacts['supplier_calls'] === 1
+        && $freshFacts['cache_status'] === 'miss' && $freshFacts['http_status'] === 200,
+        'fresh empty successful transport distinguished from cache');
+    $cached = new AnyTourAnexAdditionalPricesClient('cached-token', static function (): array {
+        throw new RuntimeException('CACHE_MUST_NOT_CALL_SUPPLIER');
+    }, $diagCache, $diagClock);
+    $cached->additionalPricesDaily($diagCriteria);
+    $cacheFacts = anytour_anex_search3_apd_capture_diagnostics($cached);
+    $assert($cacheFacts['source'] === 'daily_cache' && $cacheFacts['supplier_calls'] === 0
+        && $cacheFacts['cache_status'] === 'hit' && $cacheFacts['observed_at_basis'] === 'local_consumption'
+        && array_intersect_key($cacheFacts, array_flip(['http_status', 'elapsed_ms', 'response_bytes'])) === [],
+        'cache hit cannot acquire fresh or original supplier HTTP/time facts');
+    $legacyFacts = anytour_anex_search3_apd_read_diagnostics(null);
+    $assert($legacyFacts['observed_at_basis'] === 'unknown' && $legacyFacts['supplier_calls'] === null,
+        'legacy retained observation is not relabeled as measured supplier time');
+    $malicious = ['action' => 'AdditionalPricesDaily', 'observed_at_basis' => 'local_consumption',
+        'supplier_calls' => 1, 'cache_status' => 'miss', 'http_status' => '200', 'elapsed_ms' => -1,
+        'response_bytes' => 524289, 'url' => 'PRIVATE_CANARY', 'body' => 'PRIVATE_CANARY', 'curl_errno' => 28];
+    $scrubbed = anytour_anex_search3_apd_read_diagnostics($malicious);
+    $assert(array_keys($scrubbed) === ['observed_at_basis', 'source', 'supplier_calls', 'cache_status']
+        && !str_contains(json_encode($scrubbed), 'PRIVATE_CANARY'), 'typed numeric bounds and fixed allowlist reject raw fields');
+    $malicious['supplier_calls'] = true;
+    $assert(anytour_anex_search3_apd_read_diagnostics($malicious) === $legacyFacts, 'boolean call count cannot imply one supplier request');
+    $privateEmpty = anytour_anex_search3_additional_evidence(['data' => [], 'totalCount' => 0]);
+    $privateEmpty['_read_diagnostics'] = $freshFacts;
+    $publicEmpty = anytour_anex_search3_additional_application($privateEmpty, $offer);
+    $assert(!array_key_exists('_read_diagnostics', $publicEmpty) && $publicEmpty['party_surcharge'] === null
+        && $publicEmpty['final_price_verified'] === false, 'empty public application remains unknown and receipt-only facts stay private');
+} finally {
+    foreach (glob($diagCache . '/*/*') ?: [] as $path) @unlink($path);
+    foreach (glob($diagCache . '/*', GLOB_ONLYDIR) ?: [] as $path) @rmdir($path);
+    @rmdir($diagCache);
+}
+
+// The existing foreground workflow executes this harness; run the changed client contract in an isolated process too.
+$clientPipes = [];
+$clientProcess = proc_open([PHP_BINARY, '-n', __DIR__ . '/anex-additional-prices-client-test.php'],
+    [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $clientPipes);
+$assert(is_resource($clientProcess), 'isolated client contract process starts');
+$clientOutput = stream_get_contents($clientPipes[1]); $clientErrors = stream_get_contents($clientPipes[2]);
+fclose($clientPipes[1]); fclose($clientPipes[2]); $clientCode = proc_close($clientProcess);
+$assert($clientCode === 0 && $clientErrors === '' && str_contains($clientOutput, 'network=0.'),
+    'existing client contract including unchanged failure diagnostics passes without network');
+
 echo "ANEX retained additional-prices party arithmetic: {$checks} checks passed; network=0\n";
+
