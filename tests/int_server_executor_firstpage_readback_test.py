@@ -1273,5 +1273,157 @@ class Ria2EvidenceTest(RiaReadbackEvidenceTest):
         self.ns['ria2_readback'].assert_not_called()
 
 
+RIA3_HISTORICAL_HASHES = {'andromeda-firstpage-readback': 'c38143365593dfa26561b634670838c310d1a9dfdc9c1489ce3b4408ae2c6b38', 'andromeda-initial-failure-readback': '79f83c07b4e50545701ee0df620db89b14d8b01e282925cb85b478556e5f0576', 'andromeda-continuation-failure-readback': '4a6fc777fcba082d55803cb5c6a3cee74af94d8baad064a5ef598a2935356467', 'anex-ria-apd-retained-readback': 'ab4fd68c601592b1610f5b98e4e475ea6ecf6d50fa45d13cb714ea018ac91fb7', 'anex-ria-apd-fpm-readback': 'b351a421932f5e7a84f01db05a1c4b5ce2a4c1541b267eeb929417d3a70c0eea'}
+
+class Ria3CommandTest(unittest.TestCase):
+    def setUp(self):
+        self.core=load('int_server_executor');extension.register_parser(self.core)
+        self.command={'source_sha':extension.RIA3_SOURCE,'mode':extension.RIA3_MODE,'operation_id':extension.RIA3_OPERATION}
+
+    def test_fixed_new_command_and_five_prior_remote_payloads(self):
+        body=self.core.PREFIX+' '.join(self.command[k] for k in ('source_sha','mode','operation_id'))
+        self.assertEqual(self.command,self.core.parse_command(body))
+        for wrong in (body+' /tmp',body+' root',body.replace(extension.RIA3_SOURCE,'a'*40),body.replace(extension.RIA3_OPERATION,extension.RIA2_OPERATION)):
+            with self.assertRaises(ValueError):self.core.parse_command(wrong)
+        for mode,digest in RIA3_HISTORICAL_HASHES.items():
+            self.assertEqual(digest,hashlib.sha256(extension.remote_with_readback(self.core,mode).encode()).hexdigest(),mode)
+        wrapper=load('int_server_executor_anex_secret_transport')
+        self.assertNotIn(extension.RIA3_MODE,wrapper.DIRECT_ANEX_MODES)
+        self.assertNotIn(extension.RIA3_MODE,wrapper.SUPPLIER_SLOT_MODES)
+
+    def test_new_mode_keeps_reservation_no_replay_and_collector_exclusions(self):
+        import ast
+        bundle=self.core.bundle_source;extension.activate(self.core,self.command)
+        self.assertIs(bundle,self.core.bundle_source)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",self.core.REMOTE)
+        flags=[]
+        for n in ast.walk(ast.parse(self.core.REMOTE)):
+            if isinstance(n,ast.Compare) and isinstance(n.left,ast.Name) and n.left.id=='mode' and len(n.ops)==1 and isinstance(n.ops[0],ast.NotIn):
+                seq=n.comparators[0]
+                if isinstance(seq,ast.Tuple) and any(isinstance(x,ast.Constant) and x.value=='reconcile' for x in seq.elts):
+                    flags.append(eval(compile(ast.Expression(n),'scope','eval'),{'mode':extension.RIA3_MODE}))
+        self.assertEqual([False,False],flags)
+
+
+class Ria3EvidenceTest(unittest.TestCase):
+    write_case=RiaReadbackEvidenceTest.write_case
+    snapshot=RiaReadbackEvidenceTest.snapshot
+    php=staticmethod(RiaReadbackEvidenceTest.php)
+    child=Ria2EvidenceTest.child
+
+    def setUp(self):
+        RiaReadbackEvidenceTest.setUp(self)
+        exec(extension.REMOTE_RIA2_READER,self.ns)
+        self.ns['ria2_select_actor']=lambda *args:'current'
+        exec(extension.REMOTE_RIA3_READER,self.ns)
+        self.runner=self.ns['ria3_run_child']
+        self.ns['RIA3_EXEC_FACTS']={}
+
+    def fake(self,out=b'',err=b'',code=1):
+        import io
+        class Input:
+            closed=False
+            def write(self,value):self.value=value
+            def close(self):self.closed=True
+        return types.SimpleNamespace(stdin=Input(),stdout=io.BytesIO(out),stderr=io.BytesIO(err),
+            poll=lambda:code,wait=lambda timeout:code,terminate=mock.Mock(),kill=mock.Mock())
+
+    def subprocess(self,factory):
+        self.ns['subprocess']=types.SimpleNamespace(Popen=factory,PIPE=subprocess.PIPE,DEVNULL=subprocess.DEVNULL,TimeoutExpired=subprocess.TimeoutExpired)
+
+    def test_closed_access_and_python_error_classes_never_export_canaries(self):
+        classify=self.ns['ria3_failure']
+        cases=[(b'sudo: a password is required\n',1,'sudo_password_required'),
+            (b'sudo: unable to resolve host PRIVATE_HOST: Name or service not known\nsudo: a password is required\n',1,'sudo_password_required'),
+            (b'Sorry, user PRIVATE_USER is not allowed to execute /PRIVATE_PATH as www-data on PRIVATE_HOST.\n',1,'sudo_policy_denied'),
+            (b'sudo: sorry, you must have a tty to run sudo\n',1,'sudo_tty_required'),
+            (b'sudo: unknown user: www-data\n',1,'sudo_principal_unknown'),
+            (b'sudo: unable to execute /usr/bin/python3: Permission denied\n',126,'principal_exec_unavailable'),
+            (b'Traceback (most recent call last):\n  File "<string>", line 1\nNameError: PRIVATE_SECRET\n',1,'child_python_nameerror'),
+            (b'Traceback (most recent call last):\nValueError: sudo: a password is required\n',1,'child_python_valueerror'),
+            (b'PRIVATE_SECRET contains sudo: a password is required',1,'principal_failure_unclassified'),
+            (b'sudo: a password is required\nsudo: unknown user www-data',1,'principal_failure_unclassified'),
+            ('sudo: требуется пароль PRIVATE_SECRET'.encode(),1,'principal_failure_unclassified'),
+            (b'sudo: a password is required',0,'principal_failure_unclassified')]
+        for stderr,code,expected in cases:
+            result=classify(stderr,code);self.assertEqual(expected,result[0])
+            self.assertNotIn('PRIVATE',json.dumps(result));self.assertNotIn('www-data',json.dumps(result))
+
+    def test_valid_zero_receipt_survives_stderr_warning_nonzero_never_succeeds(self):
+        self.write_case();before=self.snapshot()
+        payload=self.ns['ria2_child_payload'](self.sessions,'php',self.cache,__import__('time').monotonic()+12)
+        good=json.dumps(self.child(payload)).encode()
+        for code in (0,1):
+            process=self.fake(good,b'sudo: harmless PRIVATE_HOST warning\n',code)
+            factory=mock.Mock(return_value=process);self.subprocess(factory)
+            if code==0:self.assertEqual(good,self.runner(payload,__import__('time').monotonic()-1))
+            else:
+                with self.assertRaises(Exception) as caught:self.runner(payload,__import__('time').monotonic()-1)
+                self.assertEqual('child_receipt_process_nonzero',caught.exception.reason)
+            self.assertEqual(1,factory.call_count)
+            self.assertEqual(code,self.ns['RIA3_EXEC_FACTS']['returncode'])
+            self.assertNotIn('PRIVATE',json.dumps(self.ns['RIA3_EXEC_FACTS']))
+        self.assertEqual(before,self.snapshot())
+
+    def test_actual_fixed_argv_and_sanitized_access_hold_without_content_retry(self):
+        self.write_case();before=self.snapshot()
+        namespace=self.ns['ria2_module']();namespace['inspect']=mock.Mock(side_effect=AssertionError('no current read'))
+        self.ns['ria2_module']=lambda:namespace
+        self.ns['ria2_select_actor']=lambda *args:'default_fpm_www_data'
+        self.ns['ria2_fpm_actor']=lambda namespace:{'sudo_rights_provisioned':False,'root_fallback':False}
+        process=self.fake(b'',b'sudo: a password is required\n',1);factory=mock.Mock(return_value=process);self.subprocess(factory)
+        counter=[0]
+        def clock():counter[0]+=100;return counter[0]
+        self.ns['time']=types.SimpleNamespace(monotonic=clock,sleep=lambda n:None)
+        original=self.ns['ria2_run_child'];receipt=self.ns['ria3_readback']()
+        self.assertIs(original,self.ns['ria2_run_child'])
+        self.assertEqual('hold',receipt['status']);self.assertEqual('sudo_password_required',receipt['reason'])
+        self.assertEqual(1,factory.call_count);namespace['inspect'].assert_not_called();self.assertEqual(before,self.snapshot())
+        argv=factory.call_args.args[0]
+        self.assertEqual(['/usr/bin/sudo','-n','-u','www-data','--','/usr/bin/python3','-I','-S','-B','-c'],argv[:-1])
+        self.assertEqual(extension.RIA2_CHILD_SHA256,hashlib.sha256(argv[-1].encode()).hexdigest())
+        self.assertEqual(subprocess.PIPE,factory.call_args.kwargs['stderr'])
+        self.assertEqual({'PATH','LANG','LC_ALL','HOME'},set(factory.call_args.kwargs['env']))
+        facts=receipt['principal_diagnostics'];self.assertEqual(1,facts['returncode'])
+        self.assertEqual(len(b'sudo: a password is required\n'),facts['stderr_bytes_observed'])
+        self.assertNotIn('stderr_sha256',json.dumps(receipt));self.assertNotIn('www-data',json.dumps(receipt))
+
+    def real_producer(self,source,deadline_offset=-1):
+        original_popen=subprocess.Popen
+        calls=[]
+        def factory(argv,**kwargs):
+            calls.append(argv)
+            return original_popen([sys.executable,'-I','-S','-B','-c',source],**kwargs)
+        self.subprocess(factory)
+        try:self.runner(b'{}',__import__('time').monotonic()+deadline_offset)
+        except self.ns['Ria2Failure'] as error:return error.reason,calls
+        raise AssertionError('synthetic stream must not become a receipt')
+
+    def test_both_pipes_fill_simultaneously_without_deadlock(self):
+        reason,calls=self.real_producer("import sys;sys.stdout.buffer.write(b'A'*20000);sys.stdout.flush();sys.stderr.buffer.write(b'B'*7000);sys.stderr.flush();sys.exit(1)")
+        self.assertEqual('principal_failure_unclassified',reason);self.assertEqual(1,len(calls))
+        self.assertEqual(20000,self.ns['RIA3_EXEC_FACTS']['stdout_bytes_observed'])
+        self.assertEqual(7000,self.ns['RIA3_EXEC_FACTS']['stderr_bytes_observed'])
+
+    def test_one_stream_overflow_stops_even_when_other_is_silent(self):
+        for name,limit in (('stdout',32768),('stderr',8192)):
+            reason,calls=self.real_producer("import sys,time;sys."+name+".buffer.write(b'X'*70000);sys."+name+".flush();time.sleep(2)")
+            self.assertEqual('principal_'+name+'_limit',reason);self.assertEqual(1,len(calls))
+            self.assertEqual(limit+1,self.ns['RIA3_EXEC_FACTS'][name+'_bytes_observed'])
+
+    def test_silent_timeout_and_early_exit_are_bounded_and_not_retried(self):
+        reason,calls=self.real_producer('import time;time.sleep(2)',-3)
+        self.assertEqual('child_timeout',reason);self.assertEqual(1,len(calls))
+        reason,calls=self.real_producer("import sys;sys.stderr.write('sudo: a password is required\\n');sys.exit(1)")
+        self.assertEqual('sudo_password_required',reason);self.assertEqual(1,len(calls))
+
+    def test_source_and_operation_guard_precedes_any_capture_or_read(self):
+        self.ns.update(mode=extension.RIA3_MODE,operation=extension.RIA2_OPERATION,source=extension.RIA3_SOURCE,
+            result={},ria3_readback=mock.Mock(side_effect=AssertionError('no read')),
+            fail=lambda code:(_ for _ in ()).throw(ValueError(code)))
+        with self.assertRaisesRegex(ValueError,'ria3_sealed_scope'):
+            exec(__import__('textwrap').dedent(extension.REMOTE_RIA3_DISPATCH),self.ns)
+        self.ns['ria3_readback'].assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()
