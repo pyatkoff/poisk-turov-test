@@ -65,6 +65,93 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+function emptyAdditional(overrides={}){
+ return {source:'anex_b2b_additional_prices_daily',rows:[],total_count:0,truncated:false,
+  scope:'tour_program_date_nights_currency',offer_specific:false,currency:null,converted_currency:null,
+  per_person_or_package:'unknown',fuel_equivalence_verified:false,included_in_search_price:'unknown',
+  arithmetic_applied:false,final_price_verified:false,application_state:'unknown',application_reason:'rate_rows_unconfirmed',
+  party_surcharge:null,search_price:null,search_plus_additional:null,...overrides};
+}
+async function additionalHarness(evidence,mutate=value=>value,flightType='regular'){
+ const h=harness(),p=page();h.run.anexSessionCurrent=true;p.hotels[0].tours[0].flight_type=flightType;
+ await h.initial(p);const o=h.t.offers()[0];
+ h.setFetch(async(url,body)=>{
+  const identity={provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref};
+  if(body.action==='offer')return{ok:true,data:{...identity,status:'current',selection_state:'disabled',offer:{final_price_verified:false},
+   context:{status:'current',current_context_verified:true,selection_state:'disabled'},finalPriceReady:false}};
+  assert.equal(body.action,'additional_prices');
+  return{ok:true,data:mutate({...identity,status:'additional_prices',selection_state:'disabled',additional_prices:evidence})};
+ });
+ await h.root.AnyTourPrototypeData.verifyAnexConcrete(o);
+ return {...h,o,additional:()=>h.root.AnyTourPrototypeData.verifyAnexAdditional(o)};
+}
+test('valid empty APD is typed unconfirmed and the same receipt never repeats a request',async()=>{
+ for(const flightType of ['regular','charter'])for(const origin of [{},{source:'anex_b2b_additional_prices_daily_cache',cache_source:'anytour_anex_apd_rates'}]){
+  const h=await additionalHarness(emptyAdditional(origin),value=>value,flightType),before=JSON.stringify(h.t.offers());
+  const result=await h.additional();
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),{state:'additional_prices_unconfirmed',finalPriceVerified:false,arithmeticApplied:false,
+   applicationState:'unknown',applicationReason:'rate_rows_unconfirmed',rowCount:0,totalCount:0,truncated:false,
+   searchPrice:null,partySurcharge:null,calculatedTotal:null});
+  assert(Object.isFrozen(result));assert.strictEqual(await h.additional(),result);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);assert.equal(h.warnings.length,0);
+  assert.equal(JSON.stringify(h.t.offers()),before,'an empty rate list cannot change listing money or final-price authority');
+  h.t.stop();await assert.rejects(h.additional());assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ }
+});
+test('malformed or contradictory empty APD remains a sealed failure rather than zero or an unconfirmed receipt',async()=>{
+ const faults=[{source:'other'},{source:'anex_b2b_additional_prices_daily_cache',cache_source:'other'},
+  {scope:'other'},{offer_specific:true},{rows:[{}]},{total_count:1},{total_count:'0'},{truncated:true},
+  {application_state:'applied'},{application_reason:'party_unconfirmed'},{application_reason:undefined},
+  {arithmetic_applied:true},{final_price_verified:true},{currency:'RUB'},{converted_currency:'RUB'},
+  {per_person_or_package:'per_person_by_party_type'},{fuel_equivalence_verified:true},{included_in_search_price:false},
+  {search_price:{amount:'100000',currency:'RUB'}},{party_surcharge:{amount:'0',currency:'RUB'}},
+  {search_plus_additional:{amount:'100000',currency:'RUB'}},{search_price:undefined},{party_surcharge:undefined},
+  {search_plus_additional:undefined}];
+ for(const fault of faults){
+  const h=await additionalHarness(emptyAdditional(fault));
+  await assert.rejects(h.additional(),/применимый расчёт/);await assert.rejects(h.additional(),/уже запрашивались/);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);assert.equal(h.t.offers()[0].total,100000);
+ }
+ // The old sparse empty shape is deliberately malformed; it does not gain a success path.
+ const sparse=await additionalHarness({application_state:'unknown',rows:[],total_count:0});
+ await assert.rejects(sparse.additional(),/применимый расчёт/);assert.equal(sparse.calls.length,2);
+});
+test('empty APD requires the original exact envelope identity and action status',async()=>{
+ const faults=[{provider:'other'},{generation:2},{search_ref:'f'.repeat(32)},{offer_ref:offerRef(9)},
+  {selection_state:'enabled'},{status:'current'},{status:'additional_prices_unknown'},{status:'additional_prices_unavailable'}];
+ for(const fault of faults){
+  const h=await additionalHarness(emptyAdditional(),value=>({...value,...fault}));
+  await assert.rejects(h.additional(),/применимый расчёт/);await assert.rejects(h.additional(),/уже запрашивались/);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ }
+});
+test('applied APD retains its exact money contract and cannot fall back to unconfirmed on bad arithmetic',async()=>{
+ const evidence={...emptyAdditional(),rows:[{price_converted_adult:'50'}],total_count:1,
+  application_state:'applied',application_reason:'applied',arithmetic_applied:true,included_in_search_price:false,
+  converted_currency:'RUB',per_person_or_package:'per_person_by_party_type',
+  search_price:{amount:'100000',currency:'RUB',source:'direct_anex_search'},
+  party_surcharge:{amount:'100',currency:'RUB',source:'anex_b2b_additional_prices_daily'},
+  search_plus_additional:{amount:'100100',currency:'RUB',formula:'search_price_plus_program_date_party_additional'}};
+ const h=await additionalHarness(evidence),result=await h.additional();
+ assert.deepEqual(JSON.parse(JSON.stringify(result)),{state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,
+  applicationState:'applied',applicationReason:'applied',searchPrice:{amount:'100000',currency:'RUB'},
+  partySurcharge:{amount:'100',currency:'RUB'},calculatedTotal:{amount:'100100',currency:'RUB'}});
+ await assert.rejects(h.additional(),/уже запрашивались/);assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ const bad=await additionalHarness({...evidence,search_plus_additional:{...evidence.search_plus_additional,amount:'100101'}});
+ await assert.rejects(bad.additional(),/применимый расчёт/);assert.equal(bad.calls.filter(c=>c.body.action==='additional_prices').length,1);
+});
+test('a typed empty APD receipt leaves the explicit package quote path available',async()=>{
+ const h=await additionalHarness(emptyAdditional());await h.additional();
+ const choices=[{choice_ref:pairRef(1),legs:[{label:'TEST OUT'},{label:'TEST BACK'}],current:true}];
+ h.setFetch(async(url,body)=>{
+  assert.equal(body.action,'quote_start');
+  return{ok:true,data:{...expandIdentity(body),status:'quote_choices',selection_state:'disabled',final_price_verified:false,choices,
+   repricing:{enabled:true,max_pairs:3,used_pairs:0,remaining_pairs:3}}};
+ });
+ const quote=await h.root.AnyTourPrototypeData.verifyAnexPackage(h.o);
+ assert.equal(quote.state,'quote_choices');assert.equal(quote.finalPriceVerified,false);
+ assert.deepEqual(h.calls.map(c=>c.body.action),['offer','additional_prices','quote_start']);
+});
 test('infant listing retains an unknown charge through initial projection and one group expansion',async()=>{
  const h=harness(),family={...params,childs:[1,8]},search={origin:'Москва',country:'4',adults:2,ages:[1,8],from:params.dateFrom,to:params.dateTo,minNights:7,maxNights:7};
  h.t.applied(search);h.t.expansionCatalog();h.run.anexSessionCurrent=true;

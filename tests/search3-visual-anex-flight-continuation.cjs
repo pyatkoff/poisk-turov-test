@@ -14,6 +14,68 @@ function loadFixtureScripts(w){
  w.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';
 }
 
+async function unconfirmedAdditionalScenario(inline,mode='valid'){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ w.fetch=async(url,options={})=>{
+  const value=await transport.json(url,options),action=options.body&&JSON.parse(options.body).action;
+  if(action==='additional_prices'){
+   value.data.additional_prices={source:'anex_b2b_additional_prices_daily',scope:'tour_program_date_nights_currency',offer_specific:false,
+    rows:[],total_count:0,truncated:false,application_state:'unknown',application_reason:'rate_rows_unconfirmed',arithmetic_applied:false,
+    final_price_verified:false,currency:null,converted_currency:null,per_person_or_package:'unknown',fuel_equivalence_verified:false,
+    included_in_search_price:'unknown',search_price:null,party_surcharge:null,search_plus_additional:null};
+   if(mode==='identity')value.data.offer_ref='anex_online:'+'f'.repeat(64);
+   if(mode==='malformed')value.data.additional_prices.party_surcharge={amount:'0',currency:'RUB'};
+  }
+  return new Response(JSON.stringify(value),{status:action==='additional_prices'&&mode==='http'?503:200,headers:{'Content-Type':'application/json'}});
+ };
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Unconfirmed APD timeout: '+d.body.textContent.slice(-2200));};
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150)),count=action=>transport.calls.filter(c=>c.action===action).length;
+ const openSelection=async()=>{
+  if(inline){click('[data-action="hotel-details"][data-id="501"]');await wait(()=>q('[data-action="select-hotel-offer"][data-key^="anex%3A"]'));click('[data-action="select-hotel-offer"][data-key^="anex%3A"]');}
+  else{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');}
+ };
+ try{
+  loadFixtureScripts(w);await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+  await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
+  await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));click('[data-action="close-modal"]');await settle();
+  await openSelection();if(!inline){click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));click('[data-action="anex-additional-prices"]');}
+  await wait(()=>count('additional_prices')===1);await settle();
+  assert.equal(count('quote_start'),0,'empty APD never starts a package request automatically');
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'unconfirmed APD cannot authorize a priced application');
+  assert.equal(q('#prototype-lead-form'),null);
+  if(mode!=='valid'){
+   assert(q('#hotel-detail-offers').disabled,'invalid/HTTP/identity failures retain the existing closed inline state');
+   assert.equal(q('#hotel-detail-offers').dataset.action,'anex-additional-prices');
+   assert.equal(q('#modal [data-action="anex-package-quote"]'),null,'only valid empty evidence gains the inline recovery action');
+   assert.equal(count('quote_start'),0);assert.deepEqual(errors,[]);return;
+  }
+  const verifyUnknown=()=>{
+   const button=q('#modal-footer [data-action="anex-package-quote"]');assert(button&&!button.disabled,'valid empty rates keep explicit complete-price continuation available');
+   assert.match(inline?q('#hotel-detail-price-status').textContent:q('#anex-additional-error').textContent,/не передал ставки доплат/);
+   assert.doesNotMatch(q('#modal-footer').textContent,/Доплата.*0|Доплаты рассчитаны|К заявке/);
+   assert.equal(q('#modal [data-action="anex-additional-prices"]'),null,'the spent APD action is no longer offered');
+  };
+  verifyUnknown();const before=transport.calls.length;
+  click('[data-action="close-modal"]');await settle();await openSelection();await settle();verifyUnknown();
+  assert.equal(transport.calls.length,before,'close/reopen restores the same unconfirmed outcome without repeating APD');
+  click('#modal-footer [data-action="anex-package-quote"]');await wait(()=>q('[name="anex-package-choice"]'));
+  assert.equal(count('quote_start'),1);assert.equal(count('additional_prices'),1);assert.equal(count('quote_calculate'),0);
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'flight inventory alone grants no price authority');
+  click('[data-action="anex-package-calculate"]');await wait(()=>q('[data-action="anex-application-preview"]'));
+  assert.equal(count('quote_calculate'),1);assert.equal(count('additional_prices'),1);
+  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/,'only the independently verified full-package price is actionable');
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+}
+
 async function expansionEntryScenario(count,late=false){
  const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
@@ -365,6 +427,10 @@ async function compactAnexScenario(width){
  }finally{release?.();await settle();dom.window.close();}
 }
 (async()=>{
+ for(const inline of [false,true])await unconfirmedAdditionalScenario(inline);
+ for(const mode of ['malformed','identity','http'])await unconfirmedAdditionalScenario(true,mode);
+ console.log('VISUAL_ANEX_UNCONFIRMED_APD_OK inline/modal explicit package continuation/reopen and invalid rejection; supplier HTTP 0');
+ if(process.argv.includes('--empty-apd'))return;
  for(const width of [360,390,430,768,1280])await compactAnexScenario(width);
  await boundedRepriceScenario('anex','initial-busy');
  console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
