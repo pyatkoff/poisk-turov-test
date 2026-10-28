@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "case_id": "int-anex-package-continuation-egypt-20270306-20261029-v1",
+  "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6482910766",
+  "admission": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6482952216",
+  "terminal": "CONSUMED_NO_REPLAY",
+  "executor": "same_current_INT_root",
+  "source": {
+    "release": "5d1ce47046098e061b7fac5402502892bad9a772",
+    "feature": "a5e2f8bbe8dcb050cc3ec3a099423e3d07591c4f",
+    "control": "ce1354318bc8fd3848f171985b6ed895fa1bf414"
+  },
+  "requested": {
+    "origin": "Moscow",
+    "country": "Egypt",
+    "departure_from": "2027-03-06",
+    "departure_to": "2027-03-12",
+    "nights": 7,
+    "adults": 2,
+    "child_ages": [],
+    "meal": "AI",
+    "stars": [
+      4,
+      5
+    ]
+  },
+  "selected": {
+    "provider": "direct_anex",
+    "operator": "ANEX",
+    "hotel": "SWISS HEAVEN SHARMING INN",
+    "checkin": "2027-03-11",
+    "checkout": "2027-03-18",
+    "room": "Standard Room",
+    "listing_total_rub": 106186,
+    "listing_final_verified": false
+  },
+  "observed_actions": {
+    "find": 1,
+    "group_expansion_path": 1,
+    "first_concrete_selection": 1,
+    "apd": 1,
+    "explicit_quote_start": 1,
+    "quote_calculate": 0,
+    "separate_flights_inventory": 0,
+    "own_receipt_get": 1,
+    "alternate_or_retry": 0,
+    "contact_or_freeze": 0,
+    "lead": 0,
+    "booking": 0
+  },
+  "result": {
+    "empty_apd_explicit_continuation_reached": true,
+    "concrete_flight_pair_reached": false,
+    "whole_party_final_price_reached": false,
+    "ui_safe_failure": {
+      "provider": "anex",
+      "action": "quote_start",
+      "code": "quote_unconfirmed",
+      "httpStatus": 500,
+      "responseStatus": "unknown"
+    },
+    "retained_quote": {
+      "status": "quote_failed",
+      "reason": "ANEX_QUOTE_TRANSPORT_ERROR",
+      "stages": [
+        {
+          "stage": "start",
+          "state": "complete",
+          "http_status": 200,
+          "response_bytes": 12648,
+          "elapsed_ms": 1104,
+          "curl_errno": 0
+        },
+        {
+          "stage": "transports",
+          "state": "unknown",
+          "http_status": 0,
+          "response_bytes": 0,
+          "elapsed_ms": 45004,
+          "curl_errno": 28
+        }
+      ],
+      "version": 2,
+      "reserved_calls": 2,
+      "sealed": true
+    },
+    "retained_apd": {
+      "semantic_cases_sha256": [
+        "fdbee998a76e92022a159845f1c20a3ba2b2720527f98ad1f8dc41cf70885eb6"
+      ],
+      "status": "complete",
+      "reason": "retained_rows",
+      "application_basis": "retained_evidence_local_gate",
+      "application_state": "unknown",
+      "application_reason": "rate_rows_unconfirmed",
+      "cache": {
+        "status": "complete",
+        "entry_status": "complete",
+        "reason": "retained_cache_rows",
+        "row_count": 0,
+        "total_count": 0,
+        "truncated": false,
+        "matches_session_evidence": true
+      },
+      "row_count": 0,
+      "total_count": 0,
+      "truncated": false,
+      "observed_at": "2026-10-28T23:04:11Z",
+      "read_diagnostics": {
+        "observed_at_basis": "local_consumption",
+        "source": "supplier_transport",
+        "supplier_calls": 1,
+        "cache_status": "miss",
+        "http_status": 200,
+        "response_bytes": 41,
+        "elapsed_ms": 106
+      }
+    },
+    "historical_empty_apd_cause": "UNKNOWN",
+    "new_empty_apd_business_explanation": "NOT_RETAINED"
+  },
+  "budget": {
+    "own_reservation_max_physical_http": 2048,
+    "reservation_state": "HELD_UNKNOWN",
+    "source_supplier_upper_bound": 674,
+    "conservative_supplier_plus_selected_app_hops_bound": 680,
+    "known_retained_supplier_attempts_apd_plus_quote": 3,
+    "full_physical_http_used": null,
+    "remaining_daily_budget": null,
+    "provider_day_reset_claimed": false,
+    "prior_holds_unchanged": {
+      "28Oct": 2048,
+      "27Oct": 4640
+    }
+  },
+  "runtime_code_changes": [],
+  "source_ci_install_repeated": false,
+  "production_or_protected_controls_changed": false,
+  "limitations": [
+    "HTTP500 is browser-to-backend status, not supplier HTTP500",
+    "transports HTTP0/cURL28 after45004ms establishes this attempt timeout only, not supplier outage or timing of older cases",
+    "UNKNOWN sealed: no replay of transports or quote_start",
+    "APD HTTP200/41bytes/106ms/cachemiss/zero rows is new current-read fact; observed_at is local consumption",
+    "No supplier body/error description, full initial search call count, final price, infant fee or passive80% proof"
+  ],
+  "original_files": [
+    {
+      "name": "int-anex-package-continuation-20261029-v1-retained.txt",
+      "bytes": 1286,
+      "sha256": "76ff3c9b6727ffc252dff2b9e263f45c6d76042daa6e4823b6e33a2cdf2290e4"
+    },
+    {
+      "name": "int-anex-package-continuation-20261029-v1-trace.json",
+      "bytes": 206979,
+      "sha256": "48614f4c5ef86f988ae83fce28a352d6e8a62c11d765a271b9e38c9d58be0c2e"
+    },
+    {
+      "name": "int-anex-package-continuation-20261029-v1.jpg",
+      "bytes": 78676,
+      "sha256": "7c9bb5845e440b7e083b459794fd7798f8a842d8d0a032df8c2311dd44f91042"
+    }
+  ]
+}
