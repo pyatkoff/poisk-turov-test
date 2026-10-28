@@ -52,6 +52,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-search3-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   PREVIEW_BASE: /_preview/search3-site-candidate
 
