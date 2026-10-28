@@ -1681,6 +1681,141 @@ class NativeOwnSessionAPDInstall(NativeTVDiagnosticInstall):
         self.assertEqual(old,target.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
 
 
+
+class APDReadFactsAdmission(unittest.TestCase):
+    def command(self):
+        return {'source_sha':signing.ANEX_APD_READ_FACTS_SOURCE,'mode':signing.ANEX_APD_READ_FACTS_MODE,
+                'operation_id':signing.ANEX_APD_READ_FACTS_OPERATION}
+
+    def test_fixed_admission_and_exact_remote(self):
+        cmd=self.command();body='/run-int-server-v1 '+' '.join(cmd.values())
+        self.assertEqual(cmd,core().parse_command(body))
+        for bad in (body+' extra',body.replace(cmd['source_sha'],'0'*40),body.replace('20261029-v1','20261029-v2'),
+                    body.replace(cmd['mode'],cmd['mode']+'-alias')):
+            with self.subTest(body=bad),self.assertRaises(ValueError):core().parse_command(bad)
+        with self.assertRaises(ValueError):signing.activate(core(),cmd|{'path':'/tmp/caller'})
+        c=core();signing.activate(c,cmd);ast.parse(c.REMOTE)
+        self.assertIn("if changed!=['app/integrations/anex-additional-prices-client.php', 'api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')",c.REMOTE)
+        self.assertIn("complete['apd_client']",c.REMOTE)
+        self.assertIn("operation_exists_no_replay",c.REMOTE)
+        self.assertNotIn('sudo',c.REMOTE)
+        self.assertLess(len(base64.b64encode(__import__('zlib').compress(c.REMOTE.encode(),9))),64000)
+        self.assertEqual(10,len(signing.anex_apd_read_facts_previous()))
+        self.assertEqual('b13657f206961c2a3e88ef5515ba2bb5739230483d35102496b479656bb4db8e',
+                         signing.anex_apd_read_facts_previous()[signing.ANEX_APD_READ_FACTS_CLIENT_PATH])
+
+    def receipt(self):
+        r=OwnSessionAPDAdmission().receipt();cmd=self.command();r.update(cmd)
+        r['install'].update(source_sha=cmd['source_sha'],files=11,changed_files=2)
+        r['install']['endpoint']['sha256']=signing.ANEX_APD_READ_FACTS_API_SHA
+        client=signing.ANEX_APD_READ_FACTS_CLIENT_PATH
+        r['install']['apd_client']={'source':client,'target':client,'sha256':signing.ANEX_APD_READ_FACTS_UPDATES[client],'changed':True}
+        r['tv_gateway']=r['tv_gateway']|{'source_sha':cmd['source_sha'],
+            'files':signing.anex_apd_read_facts_previous()|signing.ANEX_APD_READ_FACTS_UPDATES}
+        return r
+
+    def test_completion_exact_pair_and_strict_boundary_facts(self):
+        cmd=self.command();r=self.receipt();c=core();signing.activate(c,cmd)
+        self.assertTrue(c.completed_result(cmd,r))
+        for k,v in [('files',10),('changed_files',1),('changed_files',True),('created_files',False),('created_files',1)]:
+            self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{k:v}}))
+        for k,v in [('source','v2/client.php'),('target','api-anex-search3-preview.php'),('sha256','0'*64),('changed',False),('changed',1)]:
+            bad=r|{'install':r['install']|{'apd_client':r['install']['apd_client']|{k:v}}}
+            self.assertFalse(c.completed_result(cmd,bad))
+        for k,v in [('supplier_calls',True),('database_writes',1),('booking_calls',True),('lead_calls',1),
+                    ('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('production_after',{}),('runtime_changed',False)]:
+            self.assertFalse(c.completed_result(cmd,r|{k:v}))
+        self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{'endpoint':r['install']['endpoint']|{'changed':1}}}))
+        self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{'dependency':r['install']['dependency']|{'changed':0}}}))
+
+    def test_only_three_new_native_cases_are_registered(self):
+        def flatten(suite):
+            for case in suite:
+                if isinstance(case,unittest.TestSuite):yield from flatten(case)
+                else:yield case
+        suite=load_tests(unittest.TestLoader(),unittest.TestSuite(),None)
+        self.assertEqual(3,len([case for case in flatten(suite) if type(case) is NativeAPDReadFactsInstall]))
+
+    def test_historical_own_session_program_unchanged(self):
+        c=core();signing.activate(c,OwnSessionAPDAdmission().command())
+        self.assertEqual('8f9680fc236eb03dffd2370e8648a70c7942ce83c20baa75ccc64da4cfab763f',hashlib.sha256(c.REMOTE.encode()).hexdigest())
+
+
+class NativeAPDReadFactsInstall(NativeOwnSessionAPDInstall):
+    mode=signing.ANEX_APD_READ_FACTS_MODE
+    operation_attr='ANEX_APD_READ_FACTS_OPERATION'
+    source=signing.ANEX_APD_READ_FACTS_SOURCE
+    sha_attr='ANEX_APD_READ_FACTS_API_SHA'
+
+    def expected_previous(self):return signing.anex_apd_read_facts_previous()
+    def expected_target(self):return self.expected_previous()|signing.ANEX_APD_READ_FACTS_UPDATES
+
+    def setUp(self):
+        super().setUp()
+        client=signing.ANEX_APD_READ_FACTS_CLIENT_PATH
+        self.inventory[client]=b'<?php // fictional new APD read diagnostic client\n'
+        self.newpins=self.pins|{self.path:hashlib.sha256(self.inventory[self.path]).hexdigest(),
+            client:hashlib.sha256(self.inventory[client]).hexdigest()}
+        self.rebuild_archive()
+
+    def install_maintenance(self,operation=None):
+        operation=operation or f'int-anex-apd-read-facts-install-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,self.operation_attr,operation):
+            return self.execute(self.mode,operation,self.source)[0]
+
+    def test_pair_install_strict_receipt_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((11,2,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        client=signing.ANEX_APD_READ_FACTS_CLIENT_PATH
+        self.assertEqual([client,'api-anex-search3-preview.php'],plan['changed_files'])
+        self.assertEqual(self.inventory[client],(self.runtime/client).read_bytes())
+        self.assertEqual(self.inventory[self.path],(self.runtime/'api-anex-search3-preview.php').read_bytes())
+        self.assertEqual(self.config_raw,self.config.read_bytes());self.assertEqual(self.parent_raw,self.parent.read_bytes())
+        cmd={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.object(signing,'anex_apd_read_facts_previous',return_value=self.pins),mock.patch.multiple(signing,
+            ANEX_APD_READ_FACTS_OPERATION=r['operation_id'],
+            ANEX_APD_READ_FACTS_UPDATES={client:self.newpins[client],self.path:self.newpins[self.path]},
+            TV_PUBLIC=self.public,TV_DEPENDENCIES=self.deps,TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_anex_apd_read_facts(cmd,r))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_any_predecessor_dependency_or_source_drift_holds(self):
+        oldapi=(self.runtime/'api-anex-search3-preview.php').read_bytes()
+        oldclient=(self.runtime/signing.ANEX_APD_READ_FACTS_CLIENT_PATH).read_bytes()
+        for p in self.expected_previous()|signing.TV_DEPENDENCIES:
+            f=self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php');raw=f.read_bytes();f.write_bytes(b'<?php // drift\n')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason']);f.write_bytes(raw)
+        for p in signing.ANEX_APD_READ_FACTS_UPDATES:
+            raw=self.inventory[p];self.inventory[p]=b'<?php // wrong source\n';self.rebuild_archive()
+            self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason']);self.inventory[p]=raw
+        self.assertEqual(oldapi,(self.runtime/'api-anex-search3-preview.php').read_bytes())
+        self.assertEqual(oldclient,(self.runtime/signing.ANEX_APD_READ_FACTS_CLIENT_PATH).read_bytes())
+
+    def test_prewrite_race_and_partial_or_full_postwrite_rollback(self):
+        targets=[self.runtime/signing.ANEX_APD_READ_FACTS_CLIENT_PATH,self.runtime/'api-anex-search3-preview.php']
+        before=[p.read_bytes() for p in targets]
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        self.assertEqual(before,[p.read_bytes() for p in targets])
+        self.config_before_write=False;self.config.write_bytes(self.config_raw)
+        self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(before,[p.read_bytes() for p in targets])
+        self.fail_after_write=False
+        original=self.mutate_remote
+        def partial(c):
+            original(c)
+            anchor="        install_applied.append(target_relative)\n"
+            begin=c.REMOTE.index('def install_anex_preview(stage,files,op):\n')
+            end=c.REMOTE.index('def install_andromeda_preview(stage,files,op):\n',begin)
+            block=c.REMOTE[begin:end];self.assertEqual(1,block.count(anchor))
+            c.REMOTE=c.REMOTE[:begin]+block.replace(anchor,anchor+"        fail('synthetic_partial_pair_failure')\n",1)+c.REMOTE[end:]
+        self.mutate_remote=partial
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(before,[p.read_bytes() for p in targets])
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -1735,6 +1870,11 @@ def load_tests(loader, tests, pattern):
     for name in ('test_apd_reason_install_strict_completion_and_no_replay','test_apd_reason_any_predecessor_or_source_drift_holds',
                  'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
         suite.addTest(NativeAnexAPDReasonInstall(name))
+    suite.addTests(loader.loadTestsFromTestCase(APDReadFactsAdmission))
+    for name in ('test_pair_install_strict_receipt_and_no_replay',
+                 'test_any_predecessor_dependency_or_source_drift_holds',
+                 'test_prewrite_race_and_partial_or_full_postwrite_rollback'):
+        suite.addTest(NativeAPDReadFactsInstall(name))
     suite.addTests(loader.loadTestsFromTestCase(OwnSessionAPDAdmission))
     for name in ('test_own_session_apd_install_strict_completion_and_no_replay',
                  'test_own_session_apd_any_predecessor_or_source_drift_holds',

@@ -8,6 +8,17 @@ from __future__ import annotations
 import ast
 
 
+ANEX_APD_READ_FACTS_MODE = 'install-anex-apd-read-facts'
+ANEX_APD_READ_FACTS_OPERATION = 'int-anex-apd-read-facts-install-20261029-v1'
+ANEX_APD_READ_FACTS_SOURCE = 'a5e2f8bbe8dcb050cc3ec3a099423e3d07591c4f'
+ANEX_APD_READ_FACTS_API_SHA = '89bb5e5f28270893730a0950c9196423b9ec15f785883936d86d3ce30af89243'
+ANEX_APD_READ_FACTS_CLIENT_PATH = 'app/integrations/anex-additional-prices-client.php'
+ANEX_APD_READ_FACTS_CLIENT_PREVIOUS = 'b13657f206961c2a3e88ef5515ba2bb5739230483d35102496b479656bb4db8e'
+ANEX_APD_READ_FACTS_UPDATES = {
+    ANEX_APD_READ_FACTS_CLIENT_PATH: 'e905ce4f12a920201b1b2faeff78623a26023dd8ad79e0c3d6378d1dc75478f7',
+    'v2/api-anex-search3-preview.php': ANEX_APD_READ_FACTS_API_SHA,
+}
+
 ANEX_OWN_SESSION_APD_MODE = 'install-anex-own-session-apd-receipt'
 ANEX_OWN_SESSION_APD_OPERATION = 'int-anex-own-session-apd-receipt-install-20261028-v1'
 ANEX_OWN_SESSION_APD_SOURCE = '4e0b9707162db0c517a3e545eaf8933724f9d6a8'
@@ -176,6 +187,10 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if len(parts) >= 2 and parts[1] == ANEX_APD_READ_FACTS_MODE:
+            need(parts == [ANEX_APD_READ_FACTS_SOURCE, ANEX_APD_READ_FACTS_MODE,
+                           ANEX_APD_READ_FACTS_OPERATION], 'anex_apd_read_facts_fixed_case')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
         if len(parts) >= 2 and parts[1] == ANEX_OWN_SESSION_APD_MODE:
             need(parts == [ANEX_OWN_SESSION_APD_SOURCE, ANEX_OWN_SESSION_APD_MODE,
                            ANEX_OWN_SESSION_APD_OPERATION], 'anex_own_session_apd_fixed_case')
@@ -433,6 +448,8 @@ DISPATCH = r'''
 
 
 def activate(core, command):
+    if command.get('mode') == ANEX_APD_READ_FACTS_MODE:
+        return activate_anex_apd_read_facts(core, command)
     if command.get('mode') == ANEX_OWN_SESSION_APD_MODE:
         return activate_anex_own_session_apd(core, command)
     if command.get('mode') == TV_MISMATCH_MODE:
@@ -1477,4 +1494,62 @@ def activate_anex_own_session_apd(core, command):
     old="    if changed!=['v2/api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n"
     need(core.REMOTE.count(old)==1,'anex_own_session_apd_stock_drift')
     core.REMOTE=core.REMOTE.replace(old,"    if changed!=['api-anex-search3-preview.php']:fail('tv_diagnostic_exact_delta')\n",1)
+    ast.parse(core.REMOTE)
+
+def anex_apd_read_facts_previous():
+    return anex_own_session_apd_previous()|{ANEX_OWN_SESSION_APD_PATH:ANEX_OWN_SESSION_APD_SHA,
+        ANEX_APD_READ_FACTS_CLIENT_PATH:ANEX_APD_READ_FACTS_CLIENT_PREVIOUS}
+
+
+def completed_anex_apd_read_facts(command, result):
+    source=ANEX_APD_READ_FACTS_SOURCE; pins=anex_apd_read_facts_previous()|ANEX_APD_READ_FACTS_UPDATES
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':ANEX_APD_READ_FACTS_MODE,'operation_id':ANEX_APD_READ_FACTS_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':11,'changed_files':2,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':pins['v2/api-anex-search3-preview.php'],'changed':True}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and install.get('apd_client')=={'source':ANEX_APD_READ_FACTS_CLIENT_PATH,
+            'target':ANEX_APD_READ_FACTS_CLIENT_PATH,'sha256':pins[ANEX_APD_READ_FACTS_CLIENT_PATH],'changed':True}
+        and install['apd_client']['changed'] is True
+        and install['endpoint']['changed'] is True and install['dependency']['changed'] is False
+        and all(isinstance(result.get(k),dict) for k in
+            ('tv_gateway','diagnostic_basis_before','diagnostic_basis_after'))
+        and all(result.get('tv_gateway',{}).get(k) is False for k in
+            ('activation_performed','configuration_changed','signing_custody_changed'))
+        and all(result.get(k,{}).get('receipt_and_configuration_unchanged') is True
+            for k in ('diagnostic_basis_before','diagnostic_basis_after'))
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+
+def activate_anex_apd_read_facts(core, command):
+    _activate_tv_maintenance(core,command,ANEX_APD_READ_FACTS_MODE,ANEX_APD_READ_FACTS_SOURCE,
+        ANEX_OWN_SESSION_APD_PATH,ANEX_APD_READ_FACTS_API_SHA,anex_apd_read_facts_previous(),
+        completed_anex_apd_read_facts,updates=ANEX_APD_READ_FACTS_UPDATES)
+    # Existing installer selects app dependencies before the existing root API target.
+    old='    if changed!='+repr(list(ANEX_APD_READ_FACTS_UPDATES))+":fail('tv_diagnostic_exact_delta')\n"
+    targets=[p if p.startswith('app/') else 'api-anex-search3-preview.php' for p in ANEX_APD_READ_FACTS_UPDATES]
+    need(core.REMOTE.count(old)==1,'anex_apd_read_facts_stock_drift')
+    core.REMOTE=core.REMOTE.replace(old,'    if changed!='+repr(targets)+":fail('tv_diagnostic_exact_delta')\n",1)
+    anchor="    write_private_json(op/'install-state.json',complete)\n    return complete\n\ndef install_andromeda_preview"
+    need(core.REMOTE.count(anchor)==1,'anex_apd_read_facts_receipt_drift')
+    client=ANEX_APD_READ_FACTS_CLIENT_PATH
+    proof="    complete['apd_client']={'source':"+repr(client)+",'target':"+repr(client)+",'sha256':install_expected["+repr(client)+"],'changed':"+repr(client)+" in changed}\n"
+    core.REMOTE=core.REMOTE.replace(anchor,proof+anchor,1)
     ast.parse(core.REMOTE)
