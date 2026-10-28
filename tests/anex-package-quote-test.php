@@ -79,6 +79,210 @@ require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 $checks = 0;
 function qp_assert(bool $ok, string $message): void { global $checks; ++$checks; if (!$ok) throw new RuntimeException($message); }
 qp_assert(function_exists('anytour_anex_normalizer_context'), 'standalone receipt import loads the normalizer without a POST bootstrap');
+
+/** Fictional RIA-shaped retained state, not supplier/live acceptance evidence. */
+function qp_apd_state(array $rows = [], int $total = 0, string $observed = '2026-10-27T21:12:00Z'): array
+{
+    $ref = str_repeat('c', 32); $key = 'anex_online:' . str_repeat('d', 64);
+    $criteria = ['supplier_namespace' => 'anex_online', 'departure_id' => '1', 'destination_id' => '2',
+        'currency_id' => '3', 'checkin_begin' => '2026-11-10', 'checkin_end' => '2026-11-16',
+        'nights_from' => 7, 'nights_till' => 7, 'adults' => 2, 'children' => 0, 'child_ages' => [], 'hotel_ids' => ['469']];
+    $offer = ['offer_key' => $key, 'provider' => 'anex', 'supplier_namespace' => 'anex_online', 'kind' => 'concrete',
+        'hotel' => ['external_id' => '469', 'local_id' => 245], 'checkin' => '2026-11-16', 'nights' => 7,
+        'adults' => 2, 'children' => 0, 'infants' => 0, 'price' => ['amount' => '100000', 'currency' => 'RUB']];
+    $digest = hash('sha256', implode("\0", ['12345', '3', '2026-11-16', '7']));
+    $evidence = anytour_anex_search3_additional_evidence(['data' => $rows, 'totalCount' => $total]);
+    $evidence['observed_at'] = $observed;
+    $state = ['generation' => 7, 'gateway' => [
+        'saved_offers' => ['search_ref' => $ref, 'created_at' => 1000, 'expires_at' => 1900, 'search' => $criteria,
+            'offers' => [$key => ['offer' => $offer, 'observed_at' => 1001, 'supplier_tour_program_id' => '12345', 'supplier_currency_id' => '3']]],
+        'search' => ['schema_version' => 1, 'context' => $criteria, 'offers' => [
+            ['offer_key' => $key, 'kind' => 'concrete', 'hotel_external_id' => '469']]]],
+        'additional_prices' => [$digest => ['status' => 'complete', 'evidence' => $evidence]]];
+    $session = ['anex_offer_contexts' => [$ref => $state], 'unrelated_secret' => 'PRIVATE_SESSION_CANARY'];
+    $session['offer_context'] =& $session['anex_offer_contexts'][$ref];
+    return [$session, $digest, $ref, $key];
+}
+
+function qp_apd_contract(): void
+{
+    $root = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'anytour-anex-apd-v1';
+    qp_assert(!file_exists($root), 'APD fixture root is isolated');
+    mkdir($root, 0700); mkdir($root . '/2026-10-28', 0700); mkdir($root . '/2026-10-27', 0700);
+    [$session, $digest, $ref, $key] = qp_apd_state();
+    $path = $root . '/2026-10-28/' . $digest . '.json';
+    $entry = ['version' => 1, 'day' => '2026-10-28', 'context_digest' => $digest, 'status' => 'complete',
+        'payload' => ['data' => [], 'totalCount' => 0]];
+    $write = static function (array $value) use ($path): void {
+        file_put_contents($path, json_encode($value, JSON_THROW_ON_ERROR)); chmod($path, 0600);
+    };
+    $read = static function (array $s): array { return anytour_anex_search3_retained_receipt($s)['additional_prices_receipt']; };
+    $before = serialize($session);
+    $absent = $read([]);
+    qp_assert($absent['status'] === 'unknown' && $absent['reason'] === 'not_retained'
+        && $absent['records'] === [] && $absent['cache_files_read'] === 0, 'absent APD never becomes zero');
+    $missing = $read($session);
+    qp_assert($missing['records'][0]['status'] === 'complete' && $missing['records'][0]['row_count'] === 0
+        && $missing['records'][0]['application_state'] === 'unknown'
+        && $missing['records'][0]['application_reason'] === 'rate_rows_unconfirmed'
+        && $missing['records'][0]['cache']['status'] === 'unknown'
+        && $missing['cache_files_read'] === 0, 'empty retained evidence is distinct from unknown cache and applied zero');
+    qp_assert(!file_exists($path) && count(scandir($root . '/2026-10-28')) === 2, 'read creates no cache or lock');
+    $write($entry);
+    $fileBefore = [hash_file('sha256', $path), filemtime($path), fileperms($path)];
+    $empty = $read($session);
+    $envelope = anytour_anex_search3_retained_receipt($session); unset($envelope['additional_prices_receipt']);
+    qp_assert($envelope === anytour_anex_search3_quote_receipt($session), 'legacy quote projection remains semantically identical in additive envelope');
+    qp_assert($empty['status'] === 'complete' && count($empty['records']) === 1 && $empty['cache_files_read'] === 1
+        && $empty['records'][0]['cache']['status'] === 'complete'
+        && $empty['records'][0]['cache']['row_count'] === 0
+        && $empty['records'][0]['cache']['matches_session_evidence'] === true, 'one derived original Moscow-day cache is read');
+    qp_assert($empty['records'][0]['observed_at'] === '2026-10-27T21:12:00Z'
+        && $fileBefore === [hash_file('sha256', $path), filemtime($path), fileperms($path)]
+        && serialize($session) === $before, 'receipt changes neither session nor cache bytes/mtime/mode');
+    $semantic = ['provider' => 'anex', 'local_hotel_id' => 245, 'checkin' => '2026-11-16', 'nights' => 7,
+        'adults' => 2, 'children' => 0, 'infants' => 0];
+    qp_assert($empty['records'][0]['semantic_cases_sha256'] === [hash('sha256', json_encode($semantic, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))],
+        'semantic binding is reproducible from the fictional own case');
+    foreach (['PRIVATE', $key, $ref, '12345', sys_get_temp_dir(), '100000'] as $canary) {
+        qp_assert(!str_contains(json_encode($empty), $canary), 'receipt does not export raw context/path/money canary');
+    }
+    $reservation = $entry; unset($reservation['payload']); $reservation['status'] = 'unknown'; $write($reservation);
+    $reservedRead = $read($session);
+    qp_assert($reservedRead['cache_files_read'] === 1 && $reservedRead['records'][0]['cache'] === [
+        'status' => 'complete', 'entry_status' => 'unknown', 'reason' => 'retained_unknown_reservation'],
+        'actual client unknown reservation has no rowcounts and is not an access failure or zero');
+    $manyRows = array_fill(0, 20, []);
+    [$manySession] = qp_apd_state($manyRows, 20); $manyEntry = $entry;
+    $manyEntry['payload'] = ['data' => $manyRows, 'totalCount' => 20]; $write($manyEntry);
+    $manyRead = $read($manySession)['records'][0]['cache'];
+    qp_assert($manyRead['row_count'] === 10 && $manyRead['total_count'] === 20 && $manyRead['truncated'] === true
+        && $manyRead['matches_session_evidence'] === true, 'cache counts describe the same first10 projection as retained session evidence');
+    $write($entry);
+    $large = unserialize(serialize($session));
+    for ($i = 1; $i <= 300; ++$i) $large['offer_context']['gateway']['search']['offers'][] = [
+        'offer_key' => 'anex_online:' . hash('sha256', 'fictional-extra-' . $i), 'kind' => 'group_minimum', 'hotel_external_id' => '469'];
+    qp_assert($read($large)['status'] === 'complete', 'authoritative4800 offer cap permits more than300 retained offers');
+    foreach (['adults' => 3, 'checkin' => '2026-11-17', 'nights' => 8] as $field => $value) {
+        $foreign = unserialize(serialize($session));
+        $foreignOffer =& $foreign['offer_context']['gateway']['saved_offers']['offers'][$key]['offer'];
+        $foreignOffer[$field] = $value;
+        $foreignDigest = hash('sha256', implode("\0", ['12345', '3', $foreignOffer['checkin'], (string)$foreignOffer['nights']]));
+        unset($foreignOffer);
+        $foreign['offer_context']['additional_prices'] = [$foreignDigest => $session['offer_context']['additional_prices'][$digest]];
+        qp_assert($read($foreign)['reason'] === 'apd_binding_unconfirmed' && $read($foreign)['cache_files_read'] === 0,
+            'rate tuple outside its retained search party/date/night bounds cannot authorize cache I/O');
+    }
+    $positiveRows = [['price_adult' => '1.25', 'price_converted_adult' => '100.5']];
+    [$positive] = qp_apd_state($positiveRows, 1);
+    $entry['payload'] = ['data' => $positiveRows, 'totalCount' => 1]; $write($entry);
+    $result = $read($positive);
+    qp_assert($result['records'][0]['row_count'] === 1 && $result['records'][0]['application_state'] === 'applied'
+        && $result['records'][0]['application_reason'] === 'applied'
+        && $result['records'][0]['application_basis'] === 'retained_evidence_local_gate'
+        && !str_contains(json_encode($result), '100.5'), 'positive rows retain the existing local gate without money export');
+    foreach ([['PRIVATE_AMOUNT'], (object)['PRIVATE_AMOUNT' => '1']] as $badAmount) {
+        $badMoney = unserialize(serialize($positive));
+        $badMoney['offer_context']['gateway']['saved_offers']['offers'][$key]['offer']['price']['amount'] = $badAmount;
+        set_error_handler(static function (): bool { throw new RuntimeException('APD malformed money emitted a warning'); });
+        try { $badMoneyResult = $read($badMoney); } finally { restore_error_handler(); }
+        qp_assert($badMoneyResult['records'][0]['application_state'] === 'unknown'
+            && $badMoneyResult['records'][0]['application_reason'] === 'money_unconfirmed',
+            'malformed retained money cannot emit a warning or object conversion error');
+    }
+    $nullInfants = unserialize(serialize($session));
+    $nullInfants['offer_context']['gateway']['saved_offers']['offers'][$key]['offer']['infants'] = null;
+    $nullResult = $read($nullInfants);
+    $nullSemantic = $semantic; $nullSemantic['infants'] = null;
+    qp_assert($nullResult['records'][0]['status'] === 'complete'
+        && $nullResult['records'][0]['semantic_cases_sha256'] === [hash('sha256', json_encode($nullSemantic, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))]
+        && $nullResult['records'][0]['semantic_cases_sha256'] !== $empty['records'][0]['semantic_cases_sha256'],
+        'normalizer-allowed unknown infant fact remains null rather than zero');
+    $aliasBad = unserialize(serialize($session)); unset($aliasBad['offer_context']); $aliasBad['offer_context'] = [];
+    qp_assert($read($aliasBad)['reason'] === 'active_context_unconfirmed' && $read($aliasBad)['cache_files_read'] === 0,
+        'an invalid active alias cannot silently borrow another canonical branch');
+    $overfull = unserialize(serialize($session));
+    for ($i = 0; $i < 5; ++$i) $overfull['anex_offer_contexts'][str_repeat((string)$i, 32)] = $overfull['offer_context'];
+    qp_assert($read($overfull)['reason'] === 'context_limit_or_shape' && $read($overfull)['cache_files_read'] === 0,
+        'context cap is enforced before filesystem access');
+    $overfull = unserialize(serialize($session));
+    $overfull['offer_context']['additional_prices'] = array_fill(0, 41, ['status' => 'unknown']);
+    qp_assert($read($overfull)['reason'] === 'context_limit_or_shape' && $read($overfull)['cache_files_read'] === 0,
+        'record cap is enforced before filesystem access');
+    $unknown = unserialize(serialize($session));
+    $unknown['offer_context']['additional_prices'][$digest] = ['status' => 'unknown'];
+    $result = $read($unknown);
+    qp_assert($result['status'] === 'unknown' && !isset($result['records'][0]['row_count'])
+        && $result['cache_files_read'] === 0, 'reserved unknown is never zero or a cache retry');
+    foreach (['total_count' => -1, 'truncated' => true, 'observed_at' => '2026-02-30T00:00:00Z', 'rows' => [['PRIVATE' => '1']]] as $field => $value) {
+        $bad = unserialize(serialize($session)); $bad['offer_context']['additional_prices'][$digest]['evidence'][$field] = $value;
+        $result = $read($bad);
+        qp_assert($result['status'] === 'unknown' && !isset($result['records'][0]['row_count']) && $result['cache_files_read'] === 0,
+            'malformed retained evidence is unknown without cache I/O');
+    }
+    $bad = unserialize(serialize($session)); $bad['offer_context']['gateway']['saved_offers']['offers'][$key]['supplier_currency_id'] = '4';
+    qp_assert($read($bad)['reason'] === 'apd_binding_unconfirmed' && $read($bad)['cache_files_read'] === 0, 'foreign rate tuple is not borrowed');
+    $bad = unserialize(serialize($session)); $bad['offer_context']['gateway']['search']['context']['adults'] = 3;
+    qp_assert($read($bad)['reason'] === 'search_binding_mismatch', 'search snapshot context must equal saved search');
+    $bad = unserialize(serialize($session)); $bad['offer_context']['gateway']['search']['offers'][] = $bad['offer_context']['gateway']['search']['offers'][0];
+    qp_assert($read($bad)['reason'] === 'offer_binding_mismatch', 'duplicate known offer keys fail closed');
+    $duplicate = unserialize(serialize($session)); $ref2 = str_repeat('e', 32);
+    $duplicate['anex_offer_contexts'][$ref2] = unserialize(serialize($duplicate['offer_context']));
+    $duplicate['anex_offer_contexts'][$ref2]['gateway']['saved_offers']['search_ref'] = $ref2;
+    $duplicate['anex_offer_contexts'][$ref2]['additional_prices'][$digest]['evidence']['observed_at'] = '2026-10-27T21:13:00Z';
+    $entry['payload'] = ['data' => [], 'totalCount' => 0]; $write($entry);
+    $result = $read($duplicate);
+    qp_assert(count($result['records']) === 2 && $result['cache_files_read'] === 1, 'duplicate derived cache identity reads once globally');
+    $shared = unserialize(serialize($session));
+    for ($i = 1; $i <= 6; ++$i) {
+        $sharedKey = 'anex_online:' . hash('sha256', 'fictional-shared-' . $i);
+        $sharedEntry = $shared['offer_context']['gateway']['saved_offers']['offers'][$key];
+        $sharedEntry['offer']['offer_key'] = $sharedKey;
+        $sharedEntry['offer']['hotel'] = ['external_id' => (string)(469 + $i), 'local_id' => 245 + $i];
+        $shared['offer_context']['gateway']['saved_offers']['offers'][$sharedKey] = $sharedEntry;
+        $shared['offer_context']['gateway']['search']['offers'][] = ['offer_key' => $sharedKey, 'kind' => 'concrete',
+            'hotel_external_id' => (string)(469 + $i)];
+    }
+    $sharedRead = $read($shared);
+    qp_assert(count($sharedRead['records'][0]['semantic_cases_sha256']) === 7 && $sharedRead['cache_files_read'] === 1,
+        'a shared APD rate identity may bind more than6 semantic cases without first-case selection');
+    $other = $duplicate;
+    $otherEntry =& $other['anex_offer_contexts'][$ref2]['gateway']['saved_offers']['offers'][$key];
+    $otherEntry['supplier_tour_program_id'] = '54321'; unset($otherEntry);
+    $digest2 = hash('sha256', implode("\0", ['54321', '3', '2026-11-16', '7']));
+    $other['anex_offer_contexts'][$ref2]['additional_prices'] = [$digest2 => ['status' => 'complete', 'evidence' => $session['offer_context']['additional_prices'][$digest]['evidence']]];
+    $result = $read($other);
+    qp_assert($result['cache_files_read'] === 0 && $result['records'][0]['cache']['reason'] === 'multiple_cache_candidates',
+        'different verified cache identities do not first-pick or read a second file');
+    foreach (['version' => 2, 'day' => '2026-10-27', 'context_digest' => str_repeat('f', 64), 'status' => 'unknown',
+        'payload' => ['data' => [[]], 'totalCount' => 0]] as $field => $value) {
+        $badEntry = $entry; $badEntry[$field] = $value; $write($badEntry);
+        $result = $read($session);
+        qp_assert($result['records'][0]['cache']['status'] === 'unknown' && !isset($result['records'][0]['cache']['row_count']),
+            'mismatched/corrupt cache gives typed unknown');
+    }
+    $write($entry); chmod($path, 0644);
+    qp_assert($read($session)['cache_files_read'] === 0, 'nonprivate cache leaf rejected before bytes'); chmod($path, 0600);
+    chmod($root . '/2026-10-28', 0755);
+    qp_assert($read($session)['cache_files_read'] === 0, 'nonprivate cache parent rejected before bytes'); chmod($root . '/2026-10-28', 0700);
+    file_put_contents($path, str_repeat('x', 65537)); chmod($path, 0600);
+    qp_assert($read($session)['cache_files_read'] === 0, 'oversize cache is rejected before reading content');
+    unlink($path); mkdir($path, 0700);
+    qp_assert($read($session)['cache_files_read'] === 0, 'cache directory cannot be read as a file'); rmdir($path);
+    file_put_contents($root . '/target.json', json_encode($entry)); chmod($root . '/target.json', 0600);
+    qp_assert(symlink($root . '/target.json', $path), 'Linux fixture supports a leaf symlink');
+    qp_assert($read($session)['cache_files_read'] === 0, 'symlink leaf rejected before bytes'); unlink($path);
+    rmdir($root . '/2026-10-28'); symlink($root . '/2026-10-27', $root . '/2026-10-28');
+    qp_assert($read($session)['cache_files_read'] === 0, 'symlink day rejected before bytes'); unlink($root . '/2026-10-28');
+    unlink($root . '/target.json'); rmdir($root . '/2026-10-27'); rmdir($root);
+}
+if (($argv[1] ?? '') === '--apd-receipt-fixture') {
+    qp_apd_contract();
+    echo json_encode(['status' => 'passed', 'checks' => $checks, 'supplier_calls' => 0], JSON_THROW_ON_ERROR);
+    exit;
+}
+
+
 function qp_fixture(string $mode = '', ?array $familyAges = null): array
 {
     $key = 'anex_online:' . str_repeat('b', 64); $ref = str_repeat('a', 32);
@@ -1092,4 +1296,19 @@ qp_assert(qh_freeze($badPin, $badSelection, static function () { throw new Runti
     'choice reference must bind the original retained opaque selection');
 qp_assert(anytour_anex_handoff_freeze($hr, $hs, static function () { throw new RuntimeException('write'); }, 1101)['status'] === 'held',
     'production default uses live time rather than reviving an old fixture deadline');
+
+$apdTemp = sys_get_temp_dir() . '/anex-own-apd-contract-' . bin2hex(random_bytes(6));
+mkdir($apdTemp, 0700);
+$apdPipes = [];
+$apdProcess = proc_open([PHP_BINARY, '-n', '-d', 'sys_temp_dir=' . $apdTemp, __FILE__, '--apd-receipt-fixture'],
+    [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $apdPipes);
+qp_assert(is_resource($apdProcess), 'APD native fixture process starts');
+$apdOutput = stream_get_contents($apdPipes[1]); $apdErrors = stream_get_contents($apdPipes[2]);
+fclose($apdPipes[1]); fclose($apdPipes[2]); $apdCode = proc_close($apdProcess);
+$apdFacts = json_decode($apdOutput, true);
+qp_assert($apdCode === 0 && $apdErrors === '' && ($apdFacts['status'] ?? null) === 'passed'
+    && ($apdFacts['checks'] ?? 0) >= 30 && ($apdFacts['supplier_calls'] ?? null) === 0,
+    'isolated own-session APD native fixtures pass without supplier/client/writer calls');
+rmdir($apdTemp);
+
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
