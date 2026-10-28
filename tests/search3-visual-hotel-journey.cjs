@@ -6,6 +6,7 @@ const app=fs.readFileSync(path.join(__dirname,'../v2/visual-search/app.js'),'utf
 function slice(from,to){const a=app.indexOf(from),b=app.indexOf(to,a+from.length);assert(a>=0&&b>a,from);return app.slice(a,b);}
 const owners=slice('function hotelOfferCheckActive(','async function openOffer(')
  +slice('const unknownInfantCharge=','const priceNote=')
+ +slice('function anexAdditionalUnconfirmed(','function rememberAndromedaFlightChoice(')
  +slice('function restoreProviderView(','const flightPairFor=')
  +slice('function leadReadyOffer(','function quotePriceChangeHTML(')
  +slice('function anexApplicationReceipt(','function openAnexApplicationPreview(')
