@@ -17,7 +17,10 @@ FAILURE_SOURCE = 'd1ad064fbc6fda65929cc57395581b1ba819d952'
 CONTINUATION_MODE = 'andromeda-continuation-failure-readback'
 CONTINUATION_OPERATION = 'int-andromeda-continuation-failure-20261004-v1'
 CONTINUATION_SOURCE = '3054d34bb587ca684d5ecbc5f3c306851785d624'
-MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE)
+RIA_MODE = 'anex-ria-apd-retained-readback'
+RIA_OPERATION = 'int-anex-ria-apd-retained-20261028-v1'
+RIA_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -39,6 +42,7 @@ def register_parser(core) -> None:
         expected_source, expected_operation = {
             MODE: (SOURCE, OPERATION), FAILURE_MODE: (FAILURE_SOURCE, FAILURE_OPERATION),
             CONTINUATION_MODE: (CONTINUATION_SOURCE, CONTINUATION_OPERATION),
+            RIA_MODE: (RIA_SOURCE, RIA_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -443,6 +447,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 def remote_with_readback(core, mode: str = MODE) -> str:
     need(mode in MODES, 'firstpage_registration_mode')
+    if mode == RIA_MODE: return remote_with_ria_readback(core)
     remote = core.REMOTE
     definition = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -473,3 +478,577 @@ def activate(core, command: dict) -> None:
     ]))
     need(command == expected, 'firstpage_authorized_shape')
     core.REMOTE = remote_with_readback(core, mode)
+
+RIA_READER_SHA256 = 'e75beb5c112fae08592a6c2308db38ee1f2d8d5aecffb49d118f856b303e1aad'
+RIA_PINNED_READER_SOURCE = r'''#!/usr/bin/env python3
+"""Artifact-only, bounded retained-file reader for the sealed RIA APD case.
+
+No application imports, PHP execution, network, DB, session APIs, or file writes.
+Only the parent/admitted server channel may supply an existing session root.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import stat
+import sys
+
+CASE = "ria-apd-20261028-000902"
+OBSERVED_AT = "2026-10-28T00:09:02Z"
+DAY = "2026-10-28"
+START = int(dt.datetime(2026, 10, 28, 0, 8, tzinfo=dt.timezone.utc).timestamp())
+END = int(dt.datetime(2026, 10, 28, 0, 25, tzinfo=dt.timezone.utc).timestamp())
+MAX_FILES = 32
+MAX_ENTRIES = 4096
+MAX_FILE = 4 * 1024 * 1024
+MAX_TOTAL = 16 * 1024 * 1024
+MAX_CACHE = 1024 * 1024
+MAX_NODES = 120000
+MAX_DEPTH = 64
+NAME = re.compile(r"sess_[A-Za-z0-9,-]{16,128}\Z")
+IDENT = re.compile(r"[1-9][0-9]{0,17}\Z")
+
+
+class Hold(Exception):
+    pass
+
+
+class Ref:
+    """An unresolved PHP serialization alias; never dereferenced or exported."""
+
+
+class PhpScalars:
+    """Parse bounded PHP scalar/array serialization, without object construction."""
+    def __init__(self, data: bytes):
+        self.data, self.pos, self.nodes, self.refs = data, 0, 0, 0
+
+    def take(self, length: int) -> bytes:
+        if length < 0 or self.pos + length > len(self.data):
+            raise Hold("session_serialization_invalid")
+        part = self.data[self.pos:self.pos + length]
+        self.pos += length
+        return part
+
+    def literal(self, value: bytes) -> None:
+        if self.take(len(value)) != value:
+            raise Hold("session_serialization_invalid")
+
+    def number(self, delimiter: bytes = b":", maximum: int = MAX_FILE) -> int:
+        end = self.data.find(delimiter, self.pos, self.pos + 24)
+        if end < 0:
+            raise Hold("session_serialization_invalid")
+        text = self.data[self.pos:end]
+        if not re.fullmatch(rb"(?:0|[1-9][0-9]*)", text):
+            raise Hold("session_serialization_invalid")
+        self.pos = end + len(delimiter)
+        value = int(text)
+        if value > maximum:
+            raise Hold("session_serialization_limit")
+        return value
+
+    def value(self, depth: int = 0):
+        self.nodes += 1
+        if depth > MAX_DEPTH or self.nodes > MAX_NODES:
+            raise Hold("session_serialization_limit")
+        tag = self.take(1)
+        if tag == b"N":
+            self.literal(b";")
+            return None
+        self.literal(b":")
+        if tag == b"s":
+            length = self.number(maximum=1024 * 1024)
+            self.literal(b'"')
+            value = self.take(length).decode("utf-8", errors="surrogateescape")
+            self.literal(b'";')
+            return value
+        if tag == b"a":
+            size = self.number(maximum=MAX_NODES // 2)
+            self.literal(b"{")
+            result = {}
+            for _ in range(size):
+                key = self.value(depth + 1)
+                if type(key) not in (int, str) or key in result:
+                    raise Hold("session_serialization_invalid")
+                result[key] = self.value(depth + 1)
+            self.literal(b"}")
+            return result
+        if tag in (b"R", b"r"):
+            self.number(b";", MAX_NODES)
+            self.refs += 1
+            return Ref()
+        if tag in (b"O", b"C", b"E"):
+            raise Hold("session_object_unsupported")
+        end = self.data.find(b";", self.pos, self.pos + 100)
+        if end < 0:
+            raise Hold("session_serialization_invalid")
+        text = self.data[self.pos:end]
+        self.pos = end + 1
+        if tag == b"b" and text in (b"0", b"1"):
+            return text == b"1"
+        if tag == b"i" and re.fullmatch(rb"-?(?:0|[1-9][0-9]{0,18})", text):
+            return int(text)
+        if tag == b"d" and re.fullmatch(rb"-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[Ee][+-]?[0-9]+)?", text):
+            value = float(text)
+            if math.isfinite(value):
+                return value
+        raise Hold("session_serialization_invalid")
+
+
+def decode_session(data: bytes, serializer: str) -> dict:
+    parser = PhpScalars(data)
+    if serializer == "php_serialize":
+        result = parser.value()
+    elif serializer == "php":
+        result = {}
+        while parser.pos < len(data):
+            end = data.find(b"|", parser.pos, parser.pos + 130)
+            if end < 0:
+                raise Hold("session_serialization_invalid")
+            key = data[parser.pos:end]
+            if not re.fullmatch(rb"[A-Za-z_][A-Za-z0-9_]{0,127}", key):
+                raise Hold("session_serialization_invalid")
+            key = key.decode("ascii")
+            if key in result:
+                raise Hold("session_serialization_invalid")
+            parser.pos = end + 1
+            result[key] = parser.value()
+    else:
+        raise Hold("session_serializer_unsupported")
+    if parser.pos != len(data) or not isinstance(result, dict):
+        raise Hold("session_serialization_invalid")
+    return result
+
+
+def no_links(path: Path) -> None:
+    if not path.is_absolute():
+        raise Hold("absolute_path_required")
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        try:
+            entry = os.lstat(current)
+        except FileNotFoundError:
+            raise Hold("retained_file_missing") from None
+        if stat.S_ISLNK(entry.st_mode):
+            raise Hold("symlink_rejected")
+        if getattr(entry, "st_file_attributes", 0) & 0x400:
+            raise Hold("reparse_point_rejected")
+
+
+def read_file(path: Path, limit: int, *, session_window: bool = False) -> bytes:
+    no_links(path)
+    before = os.lstat(path)
+    if not stat.S_ISREG(before.st_mode) or before.st_size < 1 or before.st_size > limit:
+        raise Hold("retained_file_type_or_size")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    fd = os.open(path, flags)
+    try:
+        opened = os.fstat(fd)
+        if session_window and not START <= opened.st_mtime <= END:
+            raise Hold("session_candidate_window_changed")
+        if (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns):
+            raise Hold("retained_file_changed")
+        chunks, size = [], 0
+        while size < opened.st_size:
+            chunk = os.read(fd, min(65536, opened.st_size - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            if size > limit:
+                raise Hold("retained_file_type_or_size")
+        after = os.fstat(fd)
+        if (after.st_size, after.st_mtime_ns, after.st_ctime_ns) != (opened.st_size, opened.st_mtime_ns, opened.st_ctime_ns) or size != opened.st_size:
+            raise Hold("retained_file_changed")
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+
+def select_session_candidates(entries: list[dict]) -> list[dict]:
+    """Pure selector: never truncate an oversized window or guess a likely file."""
+    if len(entries) > MAX_ENTRIES:
+        raise Hold("session_directory_entry_limit")
+    candidates = []
+    for entry in entries:
+        if not NAME.fullmatch(entry["name"]) or not START <= entry["mtime"] <= END:
+            continue
+        if entry["symlink"] or not entry["regular"]:
+            raise Hold("session_candidate_type_rejected")
+        if not 1 <= entry["size"] <= MAX_FILE:
+            raise Hold("session_candidate_size_limit")
+        candidates.append(entry)
+    if len(candidates) > MAX_FILES:
+        raise Hold("session_candidate_count_limit")
+    if sum(entry["size"] for entry in candidates) > MAX_TOTAL:
+        raise Hold("session_candidate_total_size_limit")
+    return sorted(candidates, key=lambda entry: entry["name"])
+
+
+def session_candidates(root: Path) -> list[Path]:
+    no_links(root)
+    if not root.is_dir():
+        raise Hold("session_root_invalid")
+    entries = []
+    with os.scandir(root) as scan:
+        for entry in scan:
+            if len(entries) >= MAX_ENTRIES:
+                raise Hold("session_directory_entry_limit")
+            facts = entry.stat(follow_symlinks=False)
+            entries.append({"name": entry.name, "mtime": facts.st_mtime, "size": facts.st_size,
+                            "symlink": entry.is_symlink() or bool(getattr(facts, "st_file_attributes", 0) & 0x400),
+                            "regular": stat.S_ISREG(facts.st_mode)})
+    return [root / entry["name"] for entry in select_session_candidates(entries)]
+
+
+def label(value) -> str:
+    return " ".join(value.split()).upper() if isinstance(value, str) else ""
+
+
+def fixed_price(value) -> bool:
+    return type(value) in (int, str) and re.fullmatch(r"73690(?:\.0{1,4})?", str(value)) is not None
+
+
+def has_reference(value) -> bool:
+    return isinstance(value, Ref) or isinstance(value, dict) and any(has_reference(item) for item in value.values())
+
+
+def matching_cases(session: dict) -> list[dict]:
+    contexts = session.get("anex_offer_contexts")
+    if contexts is None:
+        context = session.get("offer_context")
+        if isinstance(context, Ref):
+            raise Hold("target_reference_unsupported")
+        contexts = {"legacy": context} if isinstance(context, dict) else {}
+    if isinstance(contexts, Ref):
+        raise Hold("target_reference_unsupported")
+    if not isinstance(contexts, dict) or len(contexts) > 4:
+        raise Hold("session_context_shape_or_limit")
+    matches = []
+    for context in contexts.values():
+        if isinstance(context, Ref):
+            raise Hold("target_reference_unsupported")
+        if not isinstance(context, dict):
+            raise Hold("session_context_shape_or_limit")
+        gateway = context.get("gateway", {})
+        if not isinstance(gateway, dict):
+            raise Hold("target_reference_or_shape_unsupported")
+        saved = gateway.get("saved_offers", {})
+        entries = saved.get("offers", {}) if isinstance(saved, dict) else None
+        if not isinstance(entries, dict) or len(entries) > 5000:
+            raise Hold("session_offer_shape_or_limit")
+        for entry in entries.values():
+            if isinstance(entry, Ref):
+                raise Hold("target_reference_unsupported")
+            offer = entry.get("offer") if isinstance(entry, dict) else None
+            if isinstance(offer, Ref):
+                raise Hold("target_reference_unsupported")
+            if not isinstance(offer, dict):
+                continue
+            hotel = offer.get("hotel")
+            if isinstance(hotel, Ref) or isinstance(hotel, dict) and isinstance(hotel.get("name"), Ref):
+                raise Hold("target_reference_unsupported")
+            if not isinstance(hotel, dict) or label(hotel.get("name")) != "RIA SUITES HOTEL":
+                continue
+            # A target name is present: ambiguous/unresolved identity must HOLD, not disappear.
+            if has_reference(offer):
+                raise Hold("target_reference_unsupported")
+            if not (offer.get("kind") == "concrete" and label(offer.get("room")) == "STANDARD ROOM"
+                    and label(offer.get("meal")) == "BB" and offer.get("checkin") == "2026-11-16"
+                    and offer.get("checkout") == "2026-11-23" and offer.get("nights") == 7
+                    and all(type(offer.get(k)) is int for k in ("nights", "adults", "children"))
+                    and offer.get("adults") == 2 and offer.get("children") == 0
+                    and (offer.get("infants") is None or type(offer.get("infants")) is int and offer.get("infants") == 0)):
+                continue
+            money = offer.get("price")
+            converted = offer.get("converted_price")
+            if not any(isinstance(m, dict) and m.get("currency") == "RUB" and fixed_price(m.get("amount")) for m in (money, converted)):
+                continue
+            tour, currency = entry.get("supplier_tour_program_id"), entry.get("supplier_currency_id")
+            if not isinstance(tour, str) or not IDENT.fullmatch(tour) or not isinstance(currency, str) or not IDENT.fullmatch(currency):
+                raise Hold("target_binding_unconfirmed")
+            digest = hashlib.sha256("\0".join((tour, currency, "2026-11-16", "7")).encode("ascii")).hexdigest()
+            attempts = context.get("additional_prices")
+            if not isinstance(attempts, dict):
+                raise Hold("target_apd_evidence_missing_or_unsupported")
+            attempt = attempts.get(digest)
+            if has_reference(attempt):
+                raise Hold("target_reference_unsupported")
+            evidence = attempt.get("evidence") if isinstance(attempt, dict) else None
+            if not isinstance(evidence, dict) or evidence.get("observed_at") != OBSERVED_AT:
+                continue
+            if attempt.get("status") != "complete" or evidence.get("rows") not in ({}, []) or type(evidence.get("total_count")) is not int or evidence.get("total_count") != 0 or evidence.get("truncated") is not False:
+                raise Hold("target_evidence_differs_from_original")
+            matches.append({"digest": digest,
+                            "tour_digest": hashlib.sha256(tour.encode("ascii")).hexdigest(),
+                            "currency_digest": hashlib.sha256(currency.encode("ascii")).hexdigest(),
+                            "flight_type": offer.get("flight_type") if offer.get("flight_type") in ("regular", "charter", "unknown") else "unconfirmed"})
+    return matches
+
+
+def json_object(raw: bytes) -> dict:
+    def object_pairs(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise Hold("cache_json_invalid")
+            result[key] = value
+        return result
+    try:
+        result = json.loads(raw, object_pairs_hook=object_pairs, parse_constant=lambda _: (_ for _ in ()).throw(Hold("cache_json_invalid")))
+    except (ValueError, UnicodeError, RecursionError):
+        raise Hold("cache_json_invalid") from None
+    if not isinstance(result, dict):
+        raise Hold("cache_json_invalid")
+    return result
+
+
+def inspect_cache(root: Path, digest: str) -> dict:
+    no_links(root)
+    if not root.is_dir() or root.name != "anytour-anex-apd-v1":
+        raise Hold("cache_root_invalid")
+    if os.path.lexists(root / DAY):
+        no_links(root / DAY)
+    target = root / DAY / (digest + ".json")
+    if not os.path.lexists(target):
+        return {"status": "missing_in_supplied_root"}
+    raw = read_file(target, MAX_CACHE)
+    entry = json_object(raw)
+    if type(entry.get("version")) is not int or entry.get("version") != 1 or entry.get("day") != DAY or entry.get("context_digest") != digest:
+        raise Hold("cache_binding_mismatch")
+    state = entry.get("status")
+    if state == "unknown":
+        return {"status": "unknown_reservation", "sha256": hashlib.sha256(raw).hexdigest()}
+    if state != "complete" or not isinstance(entry.get("payload"), dict):
+        raise Hold("cache_shape_invalid")
+    payload = entry["payload"]
+    rows, total = payload.get("data"), payload.get("totalCount")
+    if not isinstance(rows, list) or type(total) is not int or total < len(rows):
+        raise Hold("cache_shape_invalid")
+    return {"status": "complete", "row_count": len(rows), "total_count": total,
+            "matches_original_empty": rows == [] and total == 0,
+            "sha256": hashlib.sha256(raw).hexdigest()}
+
+
+def inspect(paths: list[Path], serializer: str, cache_root: Path) -> dict:
+    if len(paths) > MAX_FILES:
+        raise Hold("session_candidate_count_limit")
+    # Recheck the complete selected set before any content read. The opened-file
+    # guard below still applies if any candidate changes after this preflight.
+    selected_bytes = 0
+    for path in paths:
+        no_links(path)
+        facts = os.lstat(path)
+        if not stat.S_ISREG(facts.st_mode) or not 1 <= facts.st_size <= MAX_FILE:
+            raise Hold("session_candidate_type_or_size")
+        if not START <= facts.st_mtime <= END:
+            raise Hold("session_candidate_window_changed")
+        selected_bytes += facts.st_size
+        if selected_bytes > MAX_TOTAL:
+            raise Hold("session_candidate_total_size_limit")
+    matches, read_bytes = [], 0
+    for path in paths:
+        remaining = MAX_TOTAL - read_bytes
+        if remaining < 1:
+            raise Hold("session_candidate_total_size_limit")
+        raw = read_file(path, min(MAX_FILE, remaining), session_window=True)
+        read_bytes += len(raw)
+        if read_bytes > MAX_TOTAL:
+            raise Hold("session_candidate_total_size_limit")
+        for case in matching_cases(decode_session(raw, serializer)):
+            matches.append((case, hashlib.sha256(raw).hexdigest()))
+    if not matches:
+        raise Hold("no_exact_case_in_supplied_window")
+    if len(matches) != 1:
+        raise Hold("exact_case_ambiguous")
+    case, source_digest = matches[0]
+    cache = inspect_cache(cache_root, case["digest"])
+    return {"schema_version": 1, "case": CASE, "status": "retained_case_matched",
+            "observed_at": OBSERVED_AT, "selected_files": len(paths), "session_bytes_read": read_bytes,
+            "session_sha256": source_digest, "context_digest": case["digest"],
+            "tour_id_sha256": case["tour_digest"], "currency_id_sha256": case["currency_digest"],
+            "flight_type": case["flight_type"], "original_daily_rows": 0, "cache": cache,
+            "fresh_read_vs_cache_hit": "not_retained", "upstream_empty_reason": "not_established",
+            "supplier_requests": 0, "database_operations": 0, "runtime_session_cache_writes": 0}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--session-file", type=Path)
+    group.add_argument("--session-root", type=Path)
+    parser.add_argument("--serializer", choices=("php", "php_serialize"), required=True)
+    parser.add_argument("--cache-root", required=True, type=Path)
+    args = parser.parse_args()
+    try:
+        if args.session_file is not None:
+            if not NAME.fullmatch(args.session_file.name):
+                raise Hold("session_filename_invalid")
+            paths = [args.session_file]
+        else:
+            paths = session_candidates(args.session_root)
+        result = inspect(paths, args.serializer, args.cache_root)
+    except Hold as error:
+        result = {"schema_version": 1, "case": CASE, "status": "hold", "reason": str(error),
+                  "supplier_requests": 0, "database_operations": 0, "runtime_session_cache_writes": 0}
+        print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+        return 2
+    except (OSError, RecursionError):
+        print(json.dumps({"schema_version": 1, "case": CASE, "status": "hold", "reason": "retained_file_access_or_shape"}, sort_keys=True, separators=(",", ":")))
+        return 2
+    print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+REMOTE_RIA_READER_TEMPLATE = r'''
+RIA_PINNED_READER = @@READER@@
+RIA_READER_HASH = 'e75beb5c112fae08592a6c2308db38ee1f2d8d5aecffb49d118f856b303e1aad'
+RIA_SOURCE_PIN = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
+RIA_OPERATION_PIN = 'int-anex-ria-apd-retained-20261028-v1'
+RIA_REASON_CODES = ['absolute_path_required', 'cache_binding_mismatch', 'cache_json_invalid', 'cache_root_invalid', 'cache_shape_invalid', 'candidate_path_rejected', 'exact_case_ambiguous', 'metadata_binary_unavailable', 'metadata_format', 'metadata_output_limit', 'metadata_timeout', 'metadata_unavailable', 'no_case_in_candidate_root', 'no_exact_case_in_supplied_window', 'reader_source_drift', 'reparse_point_rejected', 'retained_file_access_or_shape', 'retained_file_changed', 'retained_file_missing', 'retained_file_type_or_size', 'retained_reader_unclassified', 'session_candidate_count_limit', 'session_candidate_size_limit', 'session_candidate_total_size_limit', 'session_candidate_type_or_size', 'session_candidate_type_rejected', 'session_candidate_window_changed', 'session_context_shape_or_limit', 'session_directory_entry_limit', 'session_filename_invalid', 'session_object_unsupported', 'session_offer_shape_or_limit', 'session_root_invalid', 'session_save_path_sharded_or_invalid', 'session_serialization_invalid', 'session_serialization_limit', 'session_serializer_unsupported', 'symlink_rejected', 'target_apd_evidence_missing_or_unsupported', 'target_binding_unconfirmed', 'target_evidence_differs_from_original', 'target_reference_or_shape_unsupported', 'target_reference_unsupported']
+
+def ria_capture(argv, maximum, timeout=10):
+    # Fixed trusted system executables only. No application bootstrap or caller argv.
+    import queue as ria_queue, threading as ria_threads
+    started = time.monotonic()
+    child = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, env={'HOME':str(home),'PATH':'/usr/sbin:/usr/bin:/bin','LANG':'C','LC_ALL':'C'})
+    output = ria_queue.Queue(maxsize=1)
+    def consume():
+        try: output.put(child.stdout.read(maximum + 1))
+        except Exception: output.put(None)
+    worker = ria_threads.Thread(target=consume, daemon=True)
+    worker.start()
+    try:
+        try: raw = output.get(timeout=timeout)
+        except ria_queue.Empty: raise RuntimeError('metadata_timeout') from None
+        if not isinstance(raw, bytes): raise RuntimeError('metadata_unavailable')
+        if len(raw) > maximum: raise RuntimeError('metadata_output_limit')
+        try: code = child.wait(timeout=max(.01,timeout-(time.monotonic()-started)))
+        except subprocess.TimeoutExpired: raise RuntimeError('metadata_timeout') from None
+        if code: raise RuntimeError('metadata_unavailable')
+        try: return raw.decode('utf-8')
+        except UnicodeError: raise RuntimeError('metadata_format') from None
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=2)
+        worker.join(timeout=1)
+        child.stdout.close()
+
+def ria_system_binary(path):
+    import stat as ria_stat
+    p = pathlib.Path(path)
+    if not p.is_absolute() or p.is_symlink(): raise RuntimeError('metadata_binary_unavailable')
+    st = p.lstat()
+    if not ria_stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o022:
+        raise RuntimeError('metadata_binary_unavailable')
+    return str(p)
+
+def ria_fpm_values(text):
+    selected = {}
+    wanted = {'session.save_path','session.serialize_handler','sys_temp_dir'}
+    for line in text.splitlines():
+        parts = [piece.strip() for piece in line.split('=>')]
+        if not parts or parts[0] not in wanted: continue
+        if len(parts) != 3 or parts[0] in selected or parts[1] != parts[2]:
+            raise RuntimeError('metadata_format')
+        selected[parts[0]] = parts[1]
+    if set(selected) != wanted: raise RuntimeError('metadata_format')
+    return selected
+
+def ria_candidate_path(value, category):
+    # Explicit single-root whitelist. This is a candidate, never proof of vhost ini.
+    if not isinstance(value,str) or not value.startswith('/') or len(value)>1024 or re.search(r'[\\\x00-\x20\x7f]',value):
+        raise RuntimeError('candidate_path_rejected')
+    pure = pathlib.PurePosixPath(value)
+    if any(part in ('.','..') for part in value.split('/')): raise RuntimeError('candidate_path_rejected')
+    p = pathlib.Path(value)
+    account = pathlib.Path(home)
+    own = p != account and account in p.parents
+    standard = value in ('/tmp','/var/tmp') or category=='session' and value=='/var/lib/php/sessions'
+    if not (own or standard): raise RuntimeError('candidate_path_rejected')
+    return p
+
+def ria_runtime_scope():
+    fpm = ria_system_binary('/usr/sbin/php-fpm8.3')
+    values = ria_fpm_values(ria_capture([fpm,'-i'],1024*1024))
+    serializer = values['session.serialize_handler']
+    if serializer not in ('php','php_serialize'): raise RuntimeError('session_serializer_unsupported')
+    saved = values['session.save_path'].split(';')
+    if len(saved)==1: session = saved[0]
+    elif len(saved) in (2,3) and saved[0]=='0' and (len(saved)==2 or re.fullmatch(r'[0-7]{3,4}',saved[1])): session=saved[-1]
+    else: raise RuntimeError('session_save_path_sharded_or_invalid')
+    sessions = ria_candidate_path(session,'session')
+    temporary = values['sys_temp_dir']
+    temp_basis = 'fpm_default_configured_candidate'
+    if temporary in ('no value',''):
+        php = ria_system_binary('/usr/bin/php8.3')
+        temporary = ria_capture([php,'-n','-d','allow_url_fopen=0','-d','auto_prepend_file=',
+            '-d','auto_append_file=','-d','opcache.enable_cli=0','-r','echo sys_get_temp_dir();'],4096)
+        temp_basis = 'php_system_default_candidate'
+    cache = ria_candidate_path(temporary,'temp')/'anytour-anex-apd-v1'
+    public = {'path_scope':'single_fpm_default_candidate_only','vhost_pool_authority':False,
+        'session_root_sha256':hashlib.sha256(str(sessions).encode()).hexdigest(),
+        'cache_root_sha256':hashlib.sha256(str(cache).encode()).hexdigest(),
+        'serializer':serializer,'cache_path_basis':temp_basis,'other_roots_examined':0}
+    return sessions,serializer,cache,public
+
+def ria_readback():
+    scope = {'path_scope':'candidate_discovery_incomplete','vhost_pool_authority':False,'other_roots_examined':0}
+    try:
+        if hashlib.sha256(RIA_PINNED_READER.encode()).hexdigest()!=RIA_READER_HASH:
+            raise RuntimeError('reader_source_drift')
+        sessions,serializer,cache,scope = ria_runtime_scope()
+        namespace = {'__name__':'anex_ria_fixed_reader'}
+        exec(compile(RIA_PINNED_READER,'<pinned-ria-reader>','exec'),namespace)
+        try:
+            paths = namespace['session_candidates'](sessions)
+            receipt = namespace['inspect'](paths,serializer,cache)
+        except namespace['Hold'] as error:
+            code = str(error)
+            if code=='no_exact_case_in_supplied_window': code='no_case_in_candidate_root'
+            if code not in RIA_REASON_CODES: code='retained_reader_unclassified'
+            return {'status':'hold','reason':code,'scope':scope,'supplier_requests':0,
+                'database_operations':0,'runtime_session_cache_writes':0}
+        return dict(receipt,scope=scope)
+    except (OSError,RecursionError,RuntimeError,ValueError) as error:
+        code = str(error) if type(error) is RuntimeError else 'retained_file_access_or_shape'
+        if code not in RIA_REASON_CODES: code='retained_reader_unclassified'
+        return {'status':'hold','reason':code,'scope':scope,'supplier_requests':0,
+            'database_operations':0,'runtime_session_cache_writes':0}
+
+'''
+REMOTE_RIA_READER = REMOTE_RIA_READER_TEMPLATE.replace("@@READER@@",repr(RIA_PINNED_READER_SOURCE))
+REMOTE_RIA_DISPATCH = r'''    if mode=='anex-ria-apd-retained-readback':
+        if operation!='int-anex-ria-apd-retained-20261028-v1' or source!='09cedd5c0a8f34521820a7a58586bfb37ad7b553':
+            fail('ria_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,
+            session_writes=0,cache_writes=0)
+        result['anex_ria_apd_readback']=ria_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+def remote_with_ria_readback(core):
+    remote=core.REMOTE
+    definition='def local_read(scopes):\n'
+    dispatch="    if mode=='local-readback':\n"
+    collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'ria_registration_source_drift')
+    remote=remote.replace(definition,REMOTE_RIA_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_RIA_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+RIA_MODE+"','reconcile',")
+    ast.parse(remote)
+    return remote
