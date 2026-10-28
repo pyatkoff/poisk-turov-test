@@ -88,6 +88,18 @@ const server=http.createServer((req,res)=>{
     await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
     if(name==='dates'){
      const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});
+     if(width===430||width===768){
+      for(const narrowWidth of width===430?[320,375,430]:[768]){
+       await page.setViewportSize({width:narrowWidth,height:900});await page.evaluate(()=>document.fonts.ready);
+       const prices=await page.locator('#date-calendar .month-day small').evaluateAll(rows=>rows.map(price=>{const day=price.closest('.month-day').getBoundingClientRect(),box=price.getBoundingClientRect();return{text:price.textContent,priceLeft:box.left,priceRight:box.right,dayLeft:day.left,dayRight:day.right,fontSize:parseFloat(getComputedStyle(price).fontSize),minimum:price.closest('.month-day').classList.contains('is-cheap')};}));
+       assert(prices.length>0,'calendar fixture contains saved price cells');
+       assert(prices.some(price=>/\d{3}[,.]\d/.test(price.text)),'calendar fixture includes a long numeric price');
+       assert(prices.some(price=>price.minimum&&/\d/.test(price.text)),'calendar fixture includes a numeric minimum highlight');
+       assert(prices.every(price=>price.priceLeft>=price.dayLeft-.5&&price.priceRight<=price.dayRight+.5),'complete calendar prices and minimum highlights stay inside their own day at '+narrowWidth+'px');
+       if(narrowWidth>=375&&narrowWidth<=760)assert(prices.every(price=>price.fontSize===15),'ordinary mobile price typography stays15px at '+narrowWidth+'px');
+       calendarContext.push({width:narrowWidth,prices});await shot('dates-price-fit-'+narrowWidth);
+      }
+     }
      for(const zoom of [100,200]){
       await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
       if(width<=760)await page.locator('#date-calendar .calendar-month').nth(2).evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
