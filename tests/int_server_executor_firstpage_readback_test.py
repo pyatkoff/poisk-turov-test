@@ -1045,5 +1045,233 @@ class RiaReadbackEvidenceTest(unittest.TestCase):
             capture([sys.executable,'-c','import time; time.sleep(2)'],32,.1)
 
 
+RIA2_HISTORICAL_HASHES = {'andromeda-firstpage-readback': 'c38143365593dfa26561b634670838c310d1a9dfdc9c1489ce3b4408ae2c6b38', 'andromeda-initial-failure-readback': '79f83c07b4e50545701ee0df620db89b14d8b01e282925cb85b478556e5f0576', 'andromeda-continuation-failure-readback': '4a6fc777fcba082d55803cb5c6a3cee74af94d8baad064a5ef598a2935356467', 'anex-ria-apd-retained-readback': 'ab4fd68c601592b1610f5b98e4e475ea6ecf6d50fa45d13cb714ea018ac91fb7'}
+
+class Ria2CommandTest(unittest.TestCase):
+    def setUp(self):
+        self.core=load('int_server_executor');extension.register_parser(self.core)
+        self.command={'source_sha':extension.RIA2_SOURCE,'mode':extension.RIA2_MODE,'operation_id':extension.RIA2_OPERATION}
+        self.body=self.core.PREFIX+' '.join(self.command[key] for key in ('source_sha','mode','operation_id'))
+
+    def test_exact_new_principal_mode_has_no_arbitrary_user_path_or_payload(self):
+        self.assertEqual(self.command,self.core.parse_command(self.body))
+        for body in (self.body+' root',self.body+' --session-root=/tmp',self.body.replace(extension.RIA2_SOURCE,'a'*40),
+                     self.body.replace(extension.RIA2_OPERATION,extension.RIA_OPERATION)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        wrapper=load('int_server_executor_anex_secret_transport')
+        self.assertEqual(self.command,wrapper.core.parse_command(self.body))
+        self.assertNotIn(extension.RIA2_MODE,wrapper.DIRECT_ANEX_MODES)
+        self.assertNotIn(extension.RIA2_MODE,wrapper.SUPPLIER_SLOT_MODES)
+
+    def test_all_four_consumed_remote_outputs_are_byte_equal(self):
+        for mode,digest in RIA2_HISTORICAL_HASHES.items():
+            self.assertEqual(digest,hashlib.sha256(extension.remote_with_readback(self.core,mode).encode()).hexdigest(),mode)
+
+    def test_new_mode_keeps_same_reservation_and_excludes_both_collectors(self):
+        import ast
+        before=self.core.bundle_source;extension.activate(self.core,self.command)
+        self.assertIs(before,self.core.bundle_source)
+        self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",self.core.REMOTE)
+        self.assertLess(self.core.REMOTE.index("(op/'reservation.json').write_text"),self.core.REMOTE.index("if mode=='anex-ria-apd-fpm-readback':"))
+        values=[]
+        for node in ast.walk(ast.parse(self.core.REMOTE)):
+            if isinstance(node,ast.Compare) and isinstance(node.left,ast.Name) and node.left.id=='mode' and len(node.ops)==1 and isinstance(node.ops[0],ast.NotIn):
+                seq=node.comparators[0]
+                if isinstance(seq,ast.Tuple) and any(isinstance(x,ast.Constant) and x.value=='reconcile' for x in seq.elts):
+                    values.append(eval(compile(ast.Expression(node),'scope','eval'),{'mode':extension.RIA2_MODE}))
+        self.assertEqual([False,False],values)
+
+
+class Ria2EvidenceTest(RiaReadbackEvidenceTest):
+    def setUp(self):
+        super().setUp()
+        exec(extension.REMOTE_RIA2_READER,self.ns)
+        self.metadata_select=self.ns['ria2_select_actor']
+        self.runner=self.ns['ria2_run_child']
+        self.ns['ria2_select_actor']=lambda *args:'current'
+
+    def module(self):return self.ns['ria2_module']()
+
+    def child(self,payload,actor=True):
+        import io
+        child={'__name__':'child_fixture'}
+        exec(self.ns['RIA2_CHILD_SOURCE'],child)
+        child['sys']=types.SimpleNamespace(stdin=types.SimpleNamespace(buffer=io.BytesIO(payload)))
+        child['child_actor']=lambda:actor
+        child['child_deadline']=lambda deadline:None
+        result=child['child_main']()
+        result.update(child_actor_verified=child['ACTOR_VERIFIED'],child_principal='www-data')
+        return result
+
+    def test_current_actor_reads_once_and_permission_failure_never_retries_as_fpm(self):
+        self.write_case();namespace=self.module();original=namespace['inspect'];calls=[]
+        def inspect(*args):calls.append('current');return original(*args)
+        namespace['inspect']=inspect;self.ns['ria2_module']=lambda:namespace
+        self.ns['ria2_run_child']=mock.Mock(side_effect=AssertionError('no second actor'))
+        receipt=self.ns['ria2_readback']()
+        self.assertEqual('retained_case_matched',receipt['status']);self.assertEqual(['current'],calls)
+        self.assertEqual('current_principal',receipt['actor'])
+        def denied(*args):raise namespace['DiagnosticHold']('retained_permission_denied','permission_denied','session_file')
+        namespace['inspect']=denied
+        receipt=self.ns['ria2_readback']()
+        self.assertEqual('hold',receipt['status']);self.assertEqual('permission_denied',receipt['failure_class'])
+        self.assertEqual('session_file',receipt['stage']);self.ns['ria2_run_child'].assert_not_called()
+
+    def test_metadata_selects_one_actor_before_any_session_content(self):
+        self.write_case();namespace=self.module()
+        namespace['read_file']=mock.Mock(side_effect=AssertionError('metadata must not read bytes'))
+        namespace['inspect']=mock.Mock(side_effect=AssertionError('metadata must not inspect bytes'))
+        self.ns['ria2_effective_access']=lambda path,directory=False,**kw:True
+        self.assertEqual('current',self.metadata_select(namespace,self.sessions,self.cache))
+        self.ns['ria2_effective_access']=lambda path,directory=False,**kw:directory
+        self.assertEqual('default_fpm_www_data',self.metadata_select(namespace,self.sessions,self.cache))
+        namespace['read_file'].assert_not_called();namespace['inspect'].assert_not_called()
+
+    def test_cache_directories_need_traversal_not_listing_before_current_actor(self):
+        self.write_case();namespace=self.module();calls=[]
+        import os
+        def access(path,flags,effective_ids=False):
+            calls.append((Path(path),flags,effective_ids))
+            if Path(path) in (self.cache,self.cache/'2026-10-28'):return flags==os.X_OK
+            return True
+        with mock.patch.object(os,'access',access),mock.patch.object(os,'supports_effective_ids',{access}):
+            self.assertEqual('current',self.metadata_select(namespace,self.sessions,self.cache))
+        self.assertTrue(all(item[2] for item in calls))
+        self.assertTrue(all(flags==os.X_OK for path,flags,ids in calls if path in (self.cache,self.cache/'2026-10-28')))
+
+    def test_fpm_actor_executes_only_child_reader_and_sanitized_receipt(self):
+        self.write_case();before=self.snapshot();namespace=self.module()
+        namespace['inspect']=mock.Mock(side_effect=AssertionError('parent session read forbidden'))
+        self.ns['ria2_module']=lambda:namespace
+        self.ns['ria2_select_actor']=lambda *args:'default_fpm_www_data'
+        self.ns['ria2_fpm_actor']=lambda n:{'actor_basis':'fixed_root_owned_default_www_pool','sudo_rights_provisioned':False,'root_fallback':False}
+        calls=[]
+        def execute(payload,deadline):calls.append(payload);return json.dumps(self.child(payload)).encode()
+        self.ns['ria2_run_child']=execute
+        receipt=self.ns['ria2_readback']()
+        self.assertEqual('retained_case_matched',receipt['status']);self.assertEqual('configured_fpm_principal',receipt['actor'])
+        self.assertNotIn('www-data',json.dumps(receipt));self.assertNotIn('child_principal',receipt)
+        self.assertTrue(receipt['child_actor_verified']);self.assertFalse(receipt['root_fallback'])
+        self.assertEqual(1,len(calls));namespace['inspect'].assert_not_called();self.assertEqual(before,self.snapshot())
+        for token in ('PRIVATE_OFFER','PRIVATE_SEARCH','NEVER_EXPORT_CREDENTIAL','73690',str(self.root)):
+            self.assertNotIn(token,json.dumps(receipt))
+
+    def test_fpm_pool_is_fixed_and_unknown_user_or_root_never_authorized(self):
+        namespace=self.module();self.ns['ria2_root_owned_path']=mock.Mock(return_value=Path('/fixed'))
+        fake=types.SimpleNamespace(pw_name='www-data',pw_uid=33)
+        with mock.patch.dict(sys.modules,{'pwd':types.SimpleNamespace(getpwnam=lambda name:fake)}):
+            namespace['read_file']=lambda path,limit:b'[www]\nuser = www-data\n'
+            info=self.ns['ria2_fpm_actor'](namespace)
+            self.assertFalse(info['sudo_rights_provisioned'])
+            self.assertEqual(str(Path('/etc/php/8.3/fpm/pool.d/www.conf')),self.ns['ria2_root_owned_path'].call_args_list[0].args[0])
+            for body in (b'[www]\nuser=root\n',b'[other]\nuser=www-data\n',b'[www]\nuser=www-data\ninclude=/other\n'):
+                namespace['read_file']=lambda path,limit,body=body:body
+                with self.assertRaises(Exception):self.ns['ria2_fpm_actor'](namespace)
+            namespace['read_file']=lambda path,limit:b'[www]\nuser=www-data\n';fake.pw_uid=0
+            with self.assertRaises(Exception):self.ns['ria2_fpm_actor'](namespace)
+
+    def test_missing_or_denied_paths_are_distinct_fixed_stages_without_text(self):
+        self.write_case();namespace=self.module();self.ns['ria2_module']=lambda:namespace
+        for reason,category,stage in (('retained_permission_denied','permission_denied','session_file'),
+            ('retained_path_not_found','not_found','cache_file'),('cache_shape_invalid','evidence_shape','cache_shape')):
+            def reject(*args):raise namespace['DiagnosticHold'](reason,category,stage)
+            namespace['inspect']=reject
+            receipt=self.ns['ria2_readback']()
+            self.assertEqual((reason,category,stage),(receipt['reason'],receipt['failure_class'],receipt['stage']))
+        self.ns['ria_runtime_scope']=mock.Mock(side_effect=FileNotFoundError('PRIVATE_PATH_NEVER_EXPORT'))
+        receipt=self.ns['ria2_readback']();self.assertEqual('not_found',receipt['failure_class'])
+        self.assertEqual('metadata_discovery',receipt['stage']);self.assertNotIn('PRIVATE_PATH',json.dumps(receipt))
+
+    def test_child_uid_guard_is_required_and_strict_schema_rejects_leaks(self):
+        self.write_case();payload=self.ns['ria2_child_payload'](self.sessions,'php',self.cache,__import__('time').monotonic()+12)
+        receipt=self.child(payload,False)
+        self.assertEqual('child_actor_mismatch',receipt['reason']);self.assertFalse(receipt['child_actor_verified'])
+        self.ns['ria2_validate_child'](self.module(),json.dumps(receipt).encode())
+        good=self.child(payload)
+        for item in (dict(good,extra='NEVER_EXPORT_CREDENTIAL'),dict(good,observed_at='PRIVATE'),
+                     dict(good,child_principal='root'),dict(good,child_actor_verified=False),
+                     dict(receipt,case='NEVER_EXPORT_CREDENTIAL')):
+            with self.assertRaises(Exception):self.ns['ria2_validate_child'](self.module(),json.dumps(item).encode())
+
+    def fake_process(self,raw=b'{}',code=0):
+        import io
+        class Input:
+            closed=False
+            def write(self,value):self.value=value
+            def close(self):self.closed=True
+        return types.SimpleNamespace(stdin=Input(),stdout=io.BytesIO(raw),poll=lambda:code,wait=lambda timeout:code,
+            terminate=mock.Mock(),kill=mock.Mock())
+
+    def test_child_version_cache_consistency_and_reason_class_binding_are_strict(self):
+        import copy
+        self.write_case();payload=self.ns['ria2_child_payload'](self.sessions,'php',self.cache,__import__('time').monotonic()+12)
+        good=self.child(payload);bad=[]
+        for version in (True,'1',{'PRIVATE':'NEVER_EXPORT_CREDENTIAL'},2):bad.append(dict(good,schema_version=version))
+        for cache in ({'status':'complete'},dict(good['cache'],row_count=1),dict(good['cache'],matches_original_empty=False),
+                      dict(good['cache'],sha256=1),dict(good['cache'],row_count=True),
+                      {'status':'missing_in_supplied_root','sha256':'a'*64}):
+            bad.append(dict(good,cache=cache))
+        hold=self.child(payload,False)
+        bad.append(dict(hold,failure_class='unsupported_shape'))
+        bad.append(dict(hold,child_actor_verified=True))
+        bad.append(dict(hold,stage='session_file'))
+        for item in bad:
+            with self.assertRaises(Exception):self.ns['ria2_validate_child'](self.module(),json.dumps(item).encode())
+        accepted=self.ns['ria2_validate_child'](self.module(),json.dumps(good).encode())
+        self.assertNotIn('child_principal',accepted)
+
+    def test_existing_sudo_argv_is_closed_isolated_and_never_grants_permissions(self):
+        child=self.fake_process(b'{}',0);popen=mock.Mock(return_value=child)
+        self.ns['subprocess']=types.SimpleNamespace(Popen=popen,PIPE=subprocess.PIPE,DEVNULL=subprocess.DEVNULL,TimeoutExpired=subprocess.TimeoutExpired)
+        self.assertEqual(b'{}',self.runner(b'{}',__import__('time').monotonic()+.1))
+        argv=popen.call_args.args[0]
+        self.assertEqual(['/usr/bin/sudo','-n','-u','www-data','--','/usr/bin/python3','-I','-S','-B','-c'],argv[:-1])
+        self.assertEqual(extension.RIA2_CHILD_SHA256,hashlib.sha256(argv[-1].encode()).hexdigest())
+        self.assertEqual('/',popen.call_args.kwargs['cwd'])
+        self.assertEqual({'PATH','LANG','LC_ALL','HOME'},set(popen.call_args.kwargs['env']))
+        child.terminate.assert_not_called();child.kill.assert_not_called()
+
+    def test_sudo_denial_and_output_cap_do_not_retry_or_leak_stderr(self):
+        for raw,code,reason in ((b'PRIVATE_STDOUT',1,'existing_sudo_denied_or_child_unavailable'),
+                               (b'X'*32769,0,'child_output_invalid')):
+            popen=mock.Mock(return_value=self.fake_process(raw,code))
+            self.ns['subprocess']=types.SimpleNamespace(Popen=popen,PIPE=subprocess.PIPE,DEVNULL=subprocess.DEVNULL,TimeoutExpired=subprocess.TimeoutExpired)
+            with self.assertRaisesRegex(Exception,reason):
+                try:self.runner(b'{}',__import__('time').monotonic()-1)
+                except self.ns['Ria2Failure'] as error:raise RuntimeError(error.reason)
+            self.assertEqual(1,popen.call_count)
+
+    def test_child_absolute_deadline_precedes_content_and_expires_late_start(self):
+        import io
+        child={'__name__':'deadline_fixture'};exec(self.ns['RIA2_CHILD_SOURCE'],child)
+        events=[]
+        class Stop(BaseException):pass
+        child['time']=types.SimpleNamespace(monotonic=lambda:100.)
+        child['os']=types.SimpleNamespace(_exit=lambda code:(_ for _ in ()).throw(Stop(code)))
+        child['signal']=types.SimpleNamespace(SIGALRM=14,ITIMER_REAL=0,signal=lambda *x:events.append(('handler',x)),
+            setitimer=lambda *x:events.append(('timer',x)))
+        child['child_deadline'](101.)
+        self.assertEqual('handler',events[0][0]);self.assertEqual(('timer',(0,1.)),events[1])
+        payload=self.ns['ria2_child_payload'](self.sessions,'php',self.cache,99.)
+        child['sys']=types.SimpleNamespace(stdin=types.SimpleNamespace(buffer=io.BytesIO(payload)))
+        child['child_actor']=mock.Mock(side_effect=AssertionError('no UID/content after deadline'))
+        with self.assertRaises(Stop):child['child_main']()
+        child['child_actor'].assert_not_called()
+
+    def test_new_dispatch_has_independent_seal_and_preserves_runtime(self):
+        self.write_case();before=self.snapshot()
+        self.ns.update(mode=extension.RIA2_MODE,operation=extension.RIA2_OPERATION,source=extension.RIA2_SOURCE,
+            result={},before={'protected':'a'*64},fingerprints=lambda:{'protected':'a'*64},
+            fail=lambda code:(_ for _ in ()).throw(ValueError(code)))
+        exec(__import__('textwrap').dedent(extension.REMOTE_RIA2_DISPATCH),self.ns)
+        self.assertEqual('complete',self.ns['result']['status']);self.assertEqual(before,self.snapshot())
+        self.assertEqual('current_principal',self.ns['result']['anex_ria_apd_fpm_readback']['actor'])
+        self.ns['operation']=extension.RIA_OPERATION
+        self.ns['ria2_readback']=mock.Mock(side_effect=AssertionError('old operation cannot read'))
+        with self.assertRaisesRegex(ValueError,'ria2_sealed_scope'):
+            exec(__import__('textwrap').dedent(extension.REMOTE_RIA2_DISPATCH),self.ns)
+        self.ns['ria2_readback'].assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
