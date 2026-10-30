@@ -1419,4 +1419,6 @@ qp_assert($apdCode === 0 && $apdErrors === '' && ($apdFacts['status'] ?? null) =
     'isolated own-session APD native fixtures pass without supplier/client/writer calls');
 rmdir($apdTemp);
 
+require __DIR__ . '/anex-package-quote-rate-lock-test.php';
+
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
