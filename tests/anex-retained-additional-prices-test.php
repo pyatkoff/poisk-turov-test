@@ -57,6 +57,167 @@ $checkpoint = static function (array &$state) use (&$checkpoints, $assert): void
     $assert(count($attempts) === 1 && ($attempts[0]['status'] ?? null) === 'unknown', 'reservation before transport');
 };
 
+/** Focused offline group: no real cache files, network, database, or Unix permission assumptions. */
+function retained_empty_apd_capture_fixture(callable $assert, array $template, array $request, callable $resolver,
+    callable $directFactory, callable $metadata, callable $clock): void
+{
+    $criteria = ['page' => 1, 'pageSize' => 10, 'tour' => 987654321, 'dateBeg' => '2026-09-20', 'nights' => 7, 'currency' => 345];
+    $digest = hash('sha256', implode("\0", ['987654321', '345', '2026-09-20', '7']));
+    $binding = ['generation' => 9, 'search_ref' => $request['search_ref'], 'offer_ref' => $request['offer_ref'], 'digest' => $digest];
+    $facts = ['observed_at_basis' => 'local_consumption', 'source' => 'supplier_transport', 'supplier_calls' => 1,
+        'cache_status' => 'miss', 'http_status' => 200, 'response_bytes' => 41, 'elapsed_ms' => 106, 'action' => 'AdditionalPricesDaily'];
+    $payload = ['data' => [], 'totalCount' => 0, 'totalPages' => 0, 'success' => true, 'isSuccess' => false,
+        'state' => 4, 'status' => 'PRIVATE_STATUS', 'code' => 17, 'errorCode' => 23,
+        'error' => 'PRIVATE_ERROR', 'errors' => [['PRIVATE_NESTED_KEY' => 'PRIVATE_NESTED_VALUE']],
+        'message' => 'PRIVATE_MESSAGE', 'PRIVATE_TOKEN_KEY' => 'PRIVATE_TOKEN'];
+    $capture = anytour_anex_search3_apd_empty_capture($payload, $criteria, $facts, $binding, 3);
+    $assert(is_array($capture) && $capture['query'] === $criteria && $capture['_binding'] === $binding
+        && $capture['selected_search_currency'] === 3 && $capture['basis'] === 'api_arguments', 'private capture freezes exact API arguments and internal binding');
+    $assert(strlen(json_encode($capture, JSON_THROW_ON_ERROR)) <= 2048, 'capture stays within private 2 KiB budget');
+    $markers = $capture['response']['fields'];
+    $assert($markers['totalPages'] === ['type' => 'integer', 'value' => 0, 'empty' => null]
+        && $markers['success']['value'] === true && $markers['isSuccess']['value'] === false
+        && $markers['state']['value'] === 4 && $markers['code']['value'] === 17 && $markers['errorCode']['value'] === 23,
+        'known counts flags and bounded integer codes remain descriptive facts');
+    $assert($markers['error'] === ['type' => 'string', 'value' => null, 'empty' => false]
+        && $markers['errors'] === ['type' => 'array', 'value' => null, 'empty' => false]
+        && $capture['response']['other_key_count'] === 1 && !str_contains(json_encode($capture), 'PRIVATE_'),
+        'supplier strings nested keys unknown keys tokens and payload values are absent');
+    $assert(anytour_anex_search3_apd_envelope_valid($capture['response']), 'captured fixed envelope passes strict export schema');
+    foreach (['code', 'errorCode', 'state', 'status'] as $codeField) {
+        $minus = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, $codeField => '-1'], $criteria, $facts, $binding, 3);
+        $zero = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, $codeField => '0'], $criteria, $facts, $binding, 3);
+        $assert($minus['response']['fields'][$codeField] === ['type' => 'string', 'value' => -1, 'empty' => false]
+            && $zero['response']['fields'][$codeField] === ['type' => 'string', 'value' => 0, 'empty' => false]
+            && anytour_anex_search3_apd_envelope_valid($minus['response']) && anytour_anex_search3_apd_envelope_valid($zero['response']),
+            'canonical numeric string code facts preserve original type and distinguish minus one from zero');
+        foreach (['00', '-0', '+1', '01', '-01', '1e2', '1.0', ' 1', '100000001', '-100000001', '12345678901234567890', 'PRIVATE_CODE'] as $rawCode) {
+            $safe = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, $codeField => $rawCode], $criteria, $facts, $binding, 3);
+            $assert($safe['response']['fields'][$codeField] === ['type' => 'string', 'value' => null, 'empty' => false],
+                'noncanonical out-of-bound and arbitrary code strings retain no value');
+        }
+    }
+    $typedOnly = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, 'success' => '0', 'isSuccess' => '1', 'message' => '-1'],
+        $criteria, $facts, $binding, 3);
+    $assert($typedOnly['response']['fields']['success']['value'] === null && $typedOnly['response']['fields']['isSuccess']['value'] === null
+        && $typedOnly['response']['fields']['message']['value'] === null, 'no undocumented string boolean or arbitrary string coercion');
+    $badMarker = $capture['response']; $badMarker['fields']['message']['value'] = -1;
+    $assert(!anytour_anex_search3_apd_envelope_valid($badMarker), 'strict export validator rejects numeric string facts on arbitrary fields');
+    $search = ['checkin_begin' => '2026-09-20', 'checkin_end' => '2026-09-20', 'nights_from' => 7, 'nights_till' => 7,
+        'adults' => 2, 'children' => 0, 'child_ages' => [], 'currency_id' => '3'];
+    $exportTemplate = $template;
+    $exportTemplate['gateway']['saved_offers']['search'] = $search;
+    $exportTemplate['gateway']['search']['schema_version'] = 1;
+    $exportTemplate['gateway']['search']['context'] = $search;
+    $exportCodeFacts = [];
+    foreach (['-1', '0'] as $rawCode) {
+        $body = ['data' => [], 'totalCount' => 0, 'code' => $rawCode];
+        $empty = anytour_anex_search3_additional_evidence($body);
+        $empty['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock()); $empty['_read_diagnostics'] = $facts;
+        $empty['_empty_apd_capture'] = anytour_anex_search3_apd_empty_capture($body, $criteria, $facts, $binding, 3);
+        $exportTemplate['additional_prices'] = [$digest => ['status' => 'complete', 'evidence' => $empty]];
+        $exported = anytour_anex_search3_apd_diagnostic_export(['offer_context' => $exportTemplate]);
+        $assert($exported['status'] === 'complete' && $exported['response']['fields']['code']['type'] === 'string'
+            && $exported['response']['fields']['code']['value'] === (int) $rawCode, 'private export preserves the distinct bounded string code fact');
+        $exportCodeFacts[] = $exported['response']['fields']['code'];
+    }
+    $assert($exportCodeFacts[0] !== $exportCodeFacts[1], 'download no longer collapses code minus one and zero');
+    $withUnsafeFacts = $facts + ['headers' => ['Authorization' => 'PRIVATE_TOKEN'], 'url' => 'PRIVATE_URL', 'body' => 'PRIVATE_BODY'];
+    $assert(anytour_anex_search3_apd_empty_capture($payload, $criteria, $withUnsafeFacts, $binding, null)['read_facts'] === $facts,
+        'raw metadata never enters private capture');
+    foreach ([['supplier_calls' => 0, 'cache_status' => 'hit'], ['cache_status' => 'unknown'], ['cache_status' => 'unavailable'],
+        ['http_status' => 201], ['http_status' => '200'], ['supplier_calls' => true], ['response_bytes' => 524289], ['elapsed_ms' => -1],
+        ['action' => 'OtherAction'], ['observed_at_basis' => 'unknown']] as $change) {
+        $assert(anytour_anex_search3_apd_empty_capture($payload, $criteria, array_replace($facts, $change), $binding, 3) === null,
+            'cache unknown invalid or nonfresh read cannot acquire a new capture');
+    }
+    $assert(anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => '000'], $criteria, $facts, $binding, 3) !== null,
+        'existing valid string totalCount remains accepted without exposing its raw value');
+    foreach ([['data' => [[]], 'totalCount' => 1], ['data' => [], 'totalCount' => 1], ['data' => null, 'totalCount' => 0]] as $other) {
+        $assert(anytour_anex_search3_apd_empty_capture($other, $criteria, $facts, $binding, 3) === null, 'nonempty or invalid envelope does not receive empty capture');
+    }
+    $assert(anytour_anex_search3_apd_empty_capture($payload, $criteria + ['selector' => 'PRIVATE'], $facts, $binding, 3) === null
+        && anytour_anex_search3_apd_empty_capture($payload, $criteria, $facts, array_replace($binding, ['digest' => str_repeat('0', 64)]), 3) === null,
+        'wrong criteria shape and digest fail capture closed');
+    $oversize = ['data' => [], 'totalCount' => 0];
+    for ($i = 0; $i < 64; ++$i) $oversize['PRIVATE_' . $i] = 'PRIVATE';
+    $assert(anytour_anex_search3_apd_empty_capture($oversize, $criteria, $facts, $binding, 3) === null, 'bounded root shape skips capture without changing evidence');
+    $assert(anytour_anex_search3_additional_evidence($oversize)['total_count'] === 0, 'capture failure leaves existing evidence interpretation unchanged');
+
+    $wire = []; $factoryCalls = 0;
+    // Controlled successful-client provenance fixture only. Custom transport stays cache-off;
+    // mark the client metadata miss explicitly, without touching a real shared daily-cache root.
+    $makeFactory = static function (array $body, string $cacheStatus = 'miss') use (&$wire, &$factoryCalls): callable {
+        return static function () use ($body, $cacheStatus, &$wire, &$factoryCalls): AnyTourAnexAdditionalPricesClient {
+            ++$factoryCalls; $client = null;
+            $client = new AnyTourAnexAdditionalPricesClient('offline-private-token',
+                static function (string $url) use ($body, $cacheStatus, &$wire, &$client): array {
+                    parse_str((string) parse_url($url, PHP_URL_QUERY), $query); $wire[] = $query;
+                    $property = new ReflectionProperty(AnyTourAnexAdditionalPricesClient::class, 'lastRequest');
+                    $last = $property->getValue($client); $last['cache_status'] = $cacheStatus; $property->setValue($client, $last);
+                    return ['status' => 200, 'body' => json_encode($body, JSON_THROW_ON_ERROR)];
+                });
+            return $client;
+        };
+    };
+    $template['gateway']['search']['context']['currency_id'] = '3';
+    $checkpoint = static function (array &$state) use ($assert): void {
+        $assert(count($state['additional_prices']) === 1 && array_values($state['additional_prices'])[0]['status'] === 'unknown',
+            'fresh ordinary or batch still reserves unknown before the one client call');
+    };
+    $state = $template; $factory = $makeFactory($payload);
+    $reply = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $factory);
+    $stored = $state['additional_prices'][$digest]['evidence']; $captured = $stored['_empty_apd_capture'] ?? null;
+    $assert($factoryCalls === 1 && count($wire) === 1 && $captured['query'] === $criteria
+        && $captured['_binding'] === $binding && $captured['selected_search_currency'] === 3, 'ordinary client call captures one exact native tuple and selected search currency separately');
+    $expectedWire = array_map(static fn($value): string => (string) $value, $criteria);
+    $assert($wire[0] === $expectedWire, 'wire criteria are exactly the same six frozen API arguments');
+    $assert($reply['status'] === 'additional_prices' && !isset($reply['additional_prices']['_empty_apd_capture'])
+        && !isset($reply['additional_prices']['_read_diagnostics']) && $reply['additional_prices']['application_state'] === 'unknown'
+        && $reply['additional_prices']['application_reason'] === 'rate_rows_unconfirmed'
+        && $reply['additional_prices']['party_surcharge'] === null && $reply['additional_prices']['arithmetic_applied'] === false
+        && $reply['additional_prices']['final_price_verified'] === false, 'ordinary public empty reply preserves unknown money and excludes both private blocks');
+    $again = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint,
+        static function () { throw new RuntimeException('REPLAY_MUST_NOT_RUN'); });
+    $assert($again === $reply && $state['additional_prices'][$digest]['evidence'] === $stored && count($wire) === 1,
+        'existing completed ordinary attempt retains capture without another client call');
+    $state = $template;
+    $reply = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $makeFactory($payload, 'unknown'));
+    $assert($reply['status'] === 'additional_prices' && !isset($state['additional_prices'][$digest]['evidence']['_empty_apd_capture']),
+        'unconfirmed cache origin preserves successful APD response but skips capture');
+    $state = $template;
+    $reply = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $makeFactory($oversize));
+    $assert($reply['status'] === 'additional_prices' && !isset($state['additional_prices'][$digest]['evidence']['_empty_apd_capture']),
+        'ordinary best-effort capture failure does not replace or fail valid empty APD');
+
+    $batchRequest = ['action' => 'additional_prices_batch', 'generation' => 9, 'search_ref' => $request['search_ref'],
+        'items' => [['offer_ref' => $request['offer_ref'], 'local_hotel_id' => 6319]]];
+    $state = $template; $before = count($wire);
+    $batch = anytour_anex_search3_additional_batch($batchRequest, $state, $resolver, $metadata, $clock, $checkpoint, $makeFactory($payload));
+    $assert(count($wire) === $before + 1 && $wire[$before] === $expectedWire
+        && $state['additional_prices'][$digest]['evidence']['_empty_apd_capture']['query'] === $criteria
+        && $state['additional_prices'][$digest]['evidence']['_empty_apd_capture']['_binding'] === $binding,
+        'single-target batch captures exactly the once-called native tuple');
+    $assert($batch['offers'][0]['status'] === 'additional_prices' && $batch['offers'][0]['finalPriceReady'] === false
+        && $batch['offers'][0]['finalPrice'] === null && !isset($batch['offers'][0]['additional_prices']['_empty_apd_capture']),
+        'batch public pricing and private boundary remain unchanged');
+    $state = $template; $otherKey = 'anex_online:' . str_repeat('e', 64);
+    $other = $state['gateway']['saved_offers']['offers'][$request['offer_ref']]; $other['offer']['offer_key'] = $otherKey;
+    $state['gateway']['saved_offers']['offers'][$otherKey] = $other;
+    $state['gateway']['search']['offers'][] = ['offer_key' => $otherKey, 'kind' => 'concrete', 'hotel_external_id' => '8121'];
+    $batchRequest['items'][] = ['offer_ref' => $otherKey, 'local_hotel_id' => 6319]; $before = count($wire);
+    $batch = anytour_anex_search3_additional_batch($batchRequest, $state, $resolver, $metadata, $clock, $checkpoint, $makeFactory($payload));
+    $assert(count($wire) === $before + 1 && count($batch['offers']) === 2
+        && !isset($state['additional_prices'][$digest]['evidence']['_empty_apd_capture']),
+        'shared batch tuple still calls once but never first-picks an offer for private export binding');
+}
+
+retained_empty_apd_capture_fixture($assert, $stateTemplate, $request, $resolver, $directFactory, $metadata, $clock);
+if (in_array('--empty-apd-capture-fixture', $argv ?? [], true)) {
+    echo "ANEX empty APD capture: {$checks} checks passed; network=0; filesystem=0\n";
+    exit(0);
+}
+
 $factoryCalls = 0;
 $transportCalls = [];
 $additionalFactory = static function () use (&$factoryCalls, &$transportCalls) {

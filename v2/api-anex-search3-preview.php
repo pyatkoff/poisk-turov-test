@@ -689,10 +689,191 @@ function anytour_anex_search3_apd_capture_diagnostics($client): array
     return array_replace(anytour_anex_search3_apd_read_diagnostics($facts), ['action' => 'AdditionalPricesDaily']);
 }
 
+/** Fixed, shallow envelope shape only. Supplier strings and unknown field names are never retained here. */
+function anytour_anex_search3_apd_envelope(array $payload): ?array
+{
+    $fields = ['data', 'totalCount', 'totalPages', 'success', 'isSuccess', 'state', 'status', 'code', 'errorCode', 'error', 'errors', 'message'];
+    if (count($payload) > 64) return null;
+    $out = ['root_type' => 'object', 'fields' => [], 'other_key_count' => count(array_diff(array_keys($payload), $fields))];
+    foreach ($fields as $field) {
+        $type = 'missing'; $value = null; $empty = null;
+        if (array_key_exists($field, $payload)) {
+            $raw = $payload[$field];
+            if ($raw === null) $type = 'null';
+            elseif (is_bool($raw)) { $type = 'boolean'; $value = $raw; }
+            elseif (is_int($raw)) {
+                $type = 'integer';
+                if (in_array($field, ['totalCount', 'totalPages', 'state', 'status', 'code', 'errorCode', 'error'], true)
+                    && $raw >= -100000000 && $raw <= 100000000) $value = $raw;
+            } elseif (is_float($raw)) $type = 'float';
+            elseif (is_string($raw)) {
+                $type = 'string'; $empty = $raw === '';
+                // Numeric code spelling is a diagnostic fact, not business or price interpretation.
+                if (in_array($field, ['code', 'errorCode', 'state', 'status'], true)
+                    && preg_match('/\A(?:0|-?[1-9][0-9]{0,8})\z/D', $raw) === 1
+                    && (int) $raw >= -100000000 && (int) $raw <= 100000000) $value = (int) $raw;
+            }
+            elseif (is_array($raw)) { $type = array_is_list($raw) ? 'array' : 'object'; $empty = $raw === []; }
+            else $type = 'other';
+        }
+        $out['fields'][$field] = ['type' => $type, 'value' => $value, 'empty' => $empty];
+    }
+    return $out;
+}
+
+/** Validate the same six actual client arguments without changing the supplier criteria. */
+function anytour_anex_search3_apd_diagnostic_query(array $query): bool
+{
+    $keys = ['page', 'pageSize', 'tour', 'dateBeg', 'nights', 'currency'];
+    if (count($query) !== 6 || array_diff($keys, array_keys($query)) || ($query['page'] ?? null) !== 1
+        || ($query['pageSize'] ?? null) !== 10 || !is_int($query['tour'] ?? null) || $query['tour'] < 1 || $query['tour'] > 999999999
+        || !is_int($query['currency'] ?? null) || $query['currency'] < 1 || $query['currency'] > 999999999
+        || !is_int($query['nights'] ?? null) || $query['nights'] < 1 || $query['nights'] > 60
+        || !is_string($query['dateBeg'] ?? null) || preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $query['dateBeg']) !== 1) return false;
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $query['dateBeg'], new DateTimeZone('UTC'));
+    return $date !== false && $date->format('Y-m-d') === $query['dateBeg'];
+}
+
+/** Best-effort private evidence for one fresh, successful, empty read. Never a new supplier operation. */
+function anytour_anex_search3_apd_empty_capture(array $payload, array $criteria, array $readFacts, array $binding,
+    ?int $selectedSearchCurrency): ?array
+{
+    try {
+        $total = $payload['totalCount'] ?? null;
+        if (is_string($total) && preg_match('/\A[0-9]{1,9}\z/D', $total)) $total = (int) $total;
+        if (($payload['data'] ?? null) !== [] || $total !== 0 || !anytour_anex_search3_apd_diagnostic_query($criteria)
+            || ($selectedSearchCurrency !== null && ($selectedSearchCurrency < 1 || $selectedSearchCurrency > 999999999))) return null;
+        $facts = anytour_anex_search3_apd_read_diagnostics($readFacts);
+        if (($readFacts['action'] ?? null) !== 'AdditionalPricesDaily' || $facts['source'] !== 'supplier_transport'
+            || $facts['supplier_calls'] !== 1 || $facts['cache_status'] !== 'miss' || ($facts['http_status'] ?? null) !== 200
+            || !isset($facts['response_bytes'], $facts['elapsed_ms'])) return null;
+        $keys = ['generation', 'search_ref', 'offer_ref', 'digest'];
+        if (count($binding) !== 4 || array_diff($keys, array_keys($binding))
+            || !is_int($binding['generation'] ?? null) || $binding['generation'] < 1 || $binding['generation'] > 2147483647
+            || !is_string($binding['search_ref'] ?? null) || preg_match('/\A[a-f0-9]{32}\z/D', $binding['search_ref']) !== 1
+            || !is_string($binding['offer_ref'] ?? null) || preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $binding['offer_ref']) !== 1
+            || !is_string($binding['digest'] ?? null) || $binding['digest'] !== hash('sha256', implode("\0",
+                [(string) $criteria['tour'], (string) $criteria['currency'], $criteria['dateBeg'], (string) $criteria['nights']]))) return null;
+        $response = anytour_anex_search3_apd_envelope($payload);
+        if ($response === null) return null;
+        $capture = ['schema_version' => 1, 'basis' => 'api_arguments', '_binding' => $binding, 'query' => $criteria,
+            'selected_search_currency' => $selectedSearchCurrency, 'response' => $response,
+            'read_facts' => array_replace($facts, ['action' => 'AdditionalPricesDaily'])];
+        return strlen(json_encode($capture, JSON_THROW_ON_ERROR)) <= 2048 ? $capture : null;
+    } catch (Throwable $ignored) { return null; }
+}
+
+/** The private attachment requires an existing same-origin browser session; no selector or fallback. */
+function anytour_anex_search3_apd_diagnostic_authorized(array $server, array $cookies, array $query, bool $anexEnabled): bool
+{
+    $host = $server['HTTP_HOST'] ?? null; $cookie = $cookies['ANYTOUR_ANEX_SEARCH3'] ?? null;
+    return $anexEnabled && ($server['REQUEST_METHOD'] ?? null) === 'GET'
+        && $query === ['action' => 'apd_diagnostic_download']
+        && in_array($host, ['anytoour.ru', 'www.anytoour.ru'], true)
+        && ($server['HTTP_SEC_FETCH_SITE'] ?? null) === 'same-origin'
+        && (!array_key_exists('HTTP_ORIGIN', $server) || $server['HTTP_ORIGIN'] === 'https://' . $host)
+        && is_string($cookie) && $cookie !== '' && strlen($cookie) <= 256 && preg_match('/[\x00-\x20\x7f]/', $cookie) !== 1;
+}
+
+/** Revalidate fixed descriptors instead of trusting arbitrary retained supplier keys or strings. */
+function anytour_anex_search3_apd_envelope_valid(array $response): bool
+{
+    $fields = ['data', 'totalCount', 'totalPages', 'success', 'isSuccess', 'state', 'status', 'code', 'errorCode', 'error', 'errors', 'message'];
+    if (count($response) !== 3 || array_diff(['root_type', 'fields', 'other_key_count'], array_keys($response))
+        || ($response['root_type'] ?? null) !== 'object' || !is_array($response['fields'] ?? null)
+        || count($response['fields']) !== count($fields) || array_diff($fields, array_keys($response['fields']))
+        || !is_int($response['other_key_count'] ?? null) || $response['other_key_count'] < 0 || $response['other_key_count'] > 64) return false;
+    foreach ($response['fields'] as $field => $marker) {
+        if (!is_array($marker) || count($marker) !== 3 || array_diff(['type', 'value', 'empty'], array_keys($marker))
+            || !in_array($marker['type'] ?? null, ['missing', 'null', 'boolean', 'integer', 'float', 'string', 'array', 'object', 'other'], true)) return false;
+        $type = $marker['type']; $value = $marker['value']; $empty = $marker['empty'];
+        if ($type === 'boolean') { if (!is_bool($value)) return false; }
+        elseif ($value !== null) {
+            $numericFields = $type === 'integer' ? ['totalCount', 'totalPages', 'state', 'status', 'code', 'errorCode', 'error']
+                : ($type === 'string' ? ['code', 'errorCode', 'state', 'status'] : []);
+            if (!in_array($field, $numericFields, true) || !is_int($value) || $value < -100000000 || $value > 100000000) return false;
+        }
+        if (in_array($type, ['string', 'array', 'object'], true) ? !is_bool($empty) : $empty !== null) return false;
+    }
+    return ($response['fields']['data'] === ['type' => 'array', 'value' => null, 'empty' => true])
+        && (($response['fields']['totalCount']['type'] === 'integer' && $response['fields']['totalCount']['value'] === 0)
+            || ($response['fields']['totalCount']['type'] === 'string' && $response['fields']['totalCount']['empty'] === false));
+}
+
+/** Pure own-active-session download. No cache, filesystem, DB, client, or session mutation. */
+function anytour_anex_search3_apd_diagnostic_export(array $session): array
+{
+    $unknown = ['schema_version' => 1, 'status' => 'unknown', 'reason' => 'not_captured'];
+    try {
+        $state = $session['offer_context'] ?? null;
+        $saved = is_array($state) ? ($state['gateway']['saved_offers'] ?? null) : null;
+        $snapshot = is_array($state) ? ($state['gateway']['search'] ?? null) : null;
+        $attempts = is_array($state) ? ($state['additional_prices'] ?? []) : null;
+        if (!is_array($state) || !is_int($state['generation'] ?? null) || $state['generation'] < 1 || $state['generation'] > 2147483647
+            || !is_array($saved) || !is_string($saved['search_ref'] ?? null) || preg_match('/\A[a-f0-9]{32}\z/D', $saved['search_ref']) !== 1
+            || !is_array($snapshot) || ($snapshot['schema_version'] ?? null) !== 1
+            || !is_array($saved['search'] ?? null) || !is_array($snapshot['context'] ?? null)
+            || !is_array($saved['offers'] ?? null) || count($saved['offers']) > 4800
+            || !is_array($snapshot['offers'] ?? null) || !array_is_list($snapshot['offers']) || count($snapshot['offers']) > 4800
+            || !is_array($attempts)) return array_replace($unknown, ['reason' => 'context_unconfirmed']);
+        if (count($attempts) > 40) return array_replace($unknown, ['reason' => 'attempt_limit']);
+        $search = anytour_anex_normalizer_context($saved['search']);
+        if ($search !== anytour_anex_normalizer_context($snapshot['context'])) return array_replace($unknown, ['reason' => 'context_unconfirmed']);
+        $known = [];
+        foreach ($snapshot['offers'] as $row) {
+            $key = is_array($row) ? ($row['offer_key'] ?? null) : null;
+            if (!is_string($key) || isset($known[$key])) return array_replace($unknown, ['reason' => 'context_unconfirmed']);
+            $known[$key] = $row;
+        }
+        $selected = anytour_anex_normalizer_integer($search['currency_id'] ?? null, 1, 999999999);
+        $valid = [];
+        foreach ($attempts as $digest => $attempt) {
+            $evidence = is_array($attempt) ? ($attempt['evidence'] ?? null) : null;
+            $capture = is_array($evidence) ? ($evidence['_empty_apd_capture'] ?? null) : null;
+            if (($attempt['status'] ?? null) !== 'complete' || !is_array($evidence) || !is_array($capture)
+                || count($capture) !== 7 || array_diff(['schema_version', 'basis', '_binding', 'query', 'selected_search_currency', 'response', 'read_facts'], array_keys($capture))) continue;
+            $facts = anytour_anex_search3_apd_evidence_receipt($evidence);
+            $binding = $capture['_binding'] ?? null; $query = $capture['query'] ?? null;
+            if ($facts === null || $facts['row_count'] !== 0 || $facts['total_count'] !== 0 || $facts['truncated'] !== false
+                || ($capture['schema_version'] ?? null) !== 1 || ($capture['basis'] ?? null) !== 'api_arguments'
+                || !is_array($binding) || count($binding) !== 4 || array_diff(['generation', 'search_ref', 'offer_ref', 'digest'], array_keys($binding))
+                || ($binding['generation'] ?? null) !== $state['generation'] || ($binding['search_ref'] ?? null) !== $saved['search_ref']
+                || !is_string($digest) || preg_match('/\A[a-f0-9]{64}\z/D', $digest) !== 1 || ($binding['digest'] ?? null) !== $digest
+                || !is_array($query) || !anytour_anex_search3_apd_diagnostic_query($query)
+                || $digest !== hash('sha256', implode("\0", [(string) $query['tour'], (string) $query['currency'], $query['dateBeg'], (string) $query['nights']]))
+                || ($capture['selected_search_currency'] ?? null) !== $selected
+                || !is_array($capture['response'] ?? null) || !anytour_anex_search3_apd_envelope_valid($capture['response'])
+                || !is_array($capture['read_facts'] ?? null) || strlen(json_encode($capture, JSON_THROW_ON_ERROR, 8)) > 2048) continue;
+            $read = array_replace(anytour_anex_search3_apd_read_diagnostics($capture['read_facts']), ['action' => 'AdditionalPricesDaily']);
+            if ($read !== $capture['read_facts'] || $read !== array_replace(anytour_anex_search3_apd_read_diagnostics($evidence['_read_diagnostics'] ?? null), ['action' => 'AdditionalPricesDaily'])
+                || $read['source'] !== 'supplier_transport' || $read['supplier_calls'] !== 1 || $read['cache_status'] !== 'miss'
+                || ($read['http_status'] ?? null) !== 200 || !isset($read['response_bytes'], $read['elapsed_ms'])) continue;
+            $key = $binding['offer_ref'] ?? null;
+            if (!is_string($key) || preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $key) !== 1) continue;
+            $entry = $saved['offers'][$key] ?? null; $offer = is_array($entry) ? ($entry['offer'] ?? null) : null; $row = $known[$key] ?? null;
+            if (!is_array($offer) || !is_array($row) || ($offer['offer_key'] ?? null) !== $key || ($offer['kind'] ?? null) !== 'concrete'
+                || ($row['kind'] ?? null) !== 'concrete' || ($row['hotel_external_id'] ?? null) !== ($offer['hotel']['external_id'] ?? null)
+                || !is_int($offer['hotel']['local_id'] ?? null) || $offer['hotel']['local_id'] < 1
+                || ($entry['supplier_tour_program_id'] ?? null) !== (string) $query['tour']
+                || ($entry['supplier_currency_id'] ?? null) !== (string) $query['currency']
+                || ($offer['checkin'] ?? null) !== $query['dateBeg'] || ($offer['nights'] ?? null) !== $query['nights']
+                || $query['dateBeg'] < $search['checkin_begin'] || $query['dateBeg'] > $search['checkin_end']
+                || $query['nights'] < $search['nights_from'] || $query['nights'] > $search['nights_till']
+                || ($offer['adults'] ?? null) !== $search['adults'] || ($offer['children'] ?? null) !== $search['children']) continue;
+            $infants = anytour_anex_normalizer_infant_count($search['child_ages']);
+            if ($infants === 0 ? !in_array($offer['infants'] ?? null, [null, 0], true) : ($offer['infants'] ?? null) !== $infants) continue;
+            $valid[] = ['schema_version' => 1, 'status' => 'complete', 'basis' => 'api_arguments', 'observed_at' => $facts['observed_at'],
+                'query' => $query, 'selected_search_currency' => $selected, 'response' => $capture['response'], 'read_facts' => $read];
+        }
+        if (count($valid) > 1) return ['schema_version' => 1, 'status' => 'ambiguous', 'reason' => 'multiple_valid_captures'];
+        return $valid[0] ?? $unknown;
+    } catch (Throwable $ignored) { return array_replace($unknown, ['reason' => 'context_unconfirmed']); }
+}
+
 /** Apply the program/date rates to this retained party while preserving each money fact separately. */
 function anytour_anex_search3_additional_application(array $evidence, array $offer): array
 {
-    unset($evidence['_read_diagnostics']); // Internal evidence is not part of public price replies.
+    unset($evidence['_read_diagnostics'], $evidence['_empty_apd_capture']); // Internal evidence is not part of public price replies.
     $evidence['application_state'] = 'unknown';
     // Local application gate only; never a supplier error or final-price authority.
     // Overwrite any retained value so only these fixed codes can cross the response.
@@ -794,7 +975,7 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
             throw new RuntimeException('ANEX_SESSION_EXPIRED');
         }
     };
-    $reader = static function (array $context) use (&$state, $additionalFactory, $clock): array {
+    $reader = static function (array $context) use (&$state, $additionalFactory, $clock, $plan): array {
         $before = $clock();
         if (!is_int($before) || !anytour_anex_search3_current($state, $before)) {
             throw new RuntimeException('ANEX_SESSION_EXPIRED');
@@ -803,12 +984,26 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
         if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
             throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
         }
-        $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10,
+        $criteria = ['page' => 1, 'pageSize' => 10,
             'tour' => (int) $context['supplier_tour_program_id'], 'dateBeg' => $context['checkin'],
-            'nights' => $context['nights'], 'currency' => (int) $context['supplier_currency_id']]);
+            'nights' => $context['nights'], 'currency' => (int) $context['supplier_currency_id']];
+        $payload = $additional->additionalPricesDaily($criteria);
         if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $readFacts = anytour_anex_search3_apd_capture_diagnostics($additional);
+        $capture = null;
+        // A shared batch rate tuple has no unique offer binding; never choose the first offer.
+        $bound = array_values(array_filter($plan['offers'], static function (array $item) use ($context): bool {
+            return $item['context_digest'] === $context['context_digest'];
+        }));
+        if (count($bound) === 1) {
+            $capture = anytour_anex_search3_apd_empty_capture($payload, $criteria, $readFacts,
+                ['generation' => $state['generation'], 'search_ref' => $state['gateway']['saved_offers']['search_ref'],
+                    'offer_ref' => $bound[0]['offer_ref'], 'digest' => $context['context_digest']],
+                anytour_anex_normalizer_integer($state['gateway']['search']['context']['currency_id'] ?? null, 1, 999999999));
+        }
         $evidence = anytour_anex_search3_additional_evidence($payload);
-        $evidence['_read_diagnostics'] = anytour_anex_search3_apd_capture_diagnostics($additional);
+        $evidence['_read_diagnostics'] = $readFacts;
+        if ($capture !== null) $evidence['_empty_apd_capture'] = $capture;
         $observed = $clock();
         if (!is_int($observed) || !anytour_anex_search3_current($state, $observed)) {
             throw new RuntimeException('ANEX_SESSION_EXPIRED');
@@ -926,9 +1121,10 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
             throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
         }
+        $criteria = ['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
+            'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency];
         try {
-            $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
-                'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency]);
+            $payload = $additional->additionalPricesDaily($criteria);
         } catch (RuntimeException $error) {
             if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
                 return array_replace($reply, ['status' => 'additional_prices_unknown']);
@@ -936,8 +1132,13 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
             throw $error;
         }
         if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $readFacts = anytour_anex_search3_apd_capture_diagnostics($additional);
+        $capture = anytour_anex_search3_apd_empty_capture($payload, $criteria, $readFacts,
+            ['generation' => $state['generation'], 'search_ref' => $saved['search_ref'], 'offer_ref' => $key, 'digest' => $digest],
+            anytour_anex_normalizer_integer($state['gateway']['search']['context']['currency_id'] ?? null, 1, 999999999));
         $evidence = anytour_anex_search3_additional_evidence($payload);
-        $evidence['_read_diagnostics'] = anytour_anex_search3_apd_capture_diagnostics($additional);
+        $evidence['_read_diagnostics'] = $readFacts;
+        if ($capture !== null) $evidence['_empty_apd_capture'] = $capture;
         $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock());
         $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
         if (!anytour_anex_search3_current($state, $clock())) return $reply;
@@ -1636,6 +1837,35 @@ function anytour_anex_search3_http(): void
     $tvEnabled = getenv('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED') === '1' || (defined('ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED')
         && in_array(ANYTOUR_SEARCH3_TV_GATEWAY_ENABLED, [true, 1, '1'], true));
     if (!$anexEnabled && !$tvEnabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $_GET === ['action' => 'apd_diagnostic']) {
+        if (!$anexEnabled) anytour_anex_search3_out(['ok' => false, 'error' => 'not_found'], 404);
+        if (!in_array($_SERVER['HTTP_HOST'] ?? null, ['anytoour.ru', 'www.anytoour.ru'], true)) {
+            anytour_anex_search3_out(['ok' => false, 'error' => 'forbidden'], 403);
+        }
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Robots-Tag: noindex, nofollow');
+        header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+        // Static navigation only: no session is opened and no retained information is rendered.
+        echo '<!doctype html><html lang="ru"><meta charset="utf-8"><title>Диагностика ANEX</title><a href="?action=apd_diagnostic_download">Открыть JSON-диагностику своей сессии</a></html>';
+        exit;
+    }
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && ($_GET['action'] ?? null) === 'apd_diagnostic_download') {
+        if (!anytour_anex_search3_apd_diagnostic_authorized($_SERVER, $_COOKIE, $_GET, $anexEnabled)) {
+            anytour_anex_search3_out(['ok' => false, 'error' => 'forbidden'], 403);
+        }
+        ini_set('session.use_strict_mode', '1');
+        ini_set('session.use_only_cookies', '1');
+        session_name('ANYTOUR_ANEX_SEARCH3');
+        session_set_cookie_params(['lifetime' => 0, 'path' => '/_preview/search3-anex-candidate/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
+        if (!session_start(['read_and_close' => true])) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: inline; filename="anex-apd-diagnostic.json"');
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Robots-Tag: noindex, nofollow');
+        header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+        anytour_anex_search3_out(anytour_anex_search3_apd_diagnostic_export($_SESSION), 200);
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $_GET === ['action'=>'tv_token']) {
         if (!$tvEnabled) anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404);
         $host = $_SERVER['HTTP_HOST'] ?? '';
