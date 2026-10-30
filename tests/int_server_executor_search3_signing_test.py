@@ -1816,6 +1816,121 @@ class NativeAPDReadFactsInstall(NativeOwnSessionAPDInstall):
         self.assertEqual(before,[p.read_bytes() for p in targets])
 
 
+class QuoteRateLockAdmission(unittest.TestCase):
+    def command(self):
+        return {'source_sha':signing.ANEX_QUOTE_RATE_LOCK_SOURCE,'mode':signing.ANEX_QUOTE_RATE_LOCK_MODE,
+                'operation_id':signing.ANEX_QUOTE_RATE_LOCK_OPERATION}
+
+    def test_fixed_case_and_exact_single_target(self):
+        cmd=self.command();body='/run-int-server-v1 '+' '.join(cmd.values())
+        self.assertEqual('6dcfb5053793caba4f353facfa7a899a30df2d17',cmd['source_sha'])
+        self.assertEqual(cmd,core().parse_command(body))
+        for bad in (body+' extra',body.replace(cmd['source_sha'],'0'*40),body.replace('20261030-v1','20261030-v2'),
+                    body.replace(cmd['mode'],cmd['mode']+'-alias')):
+            with self.subTest(body=bad),self.assertRaises(ValueError):core().parse_command(bad)
+        with self.assertRaises(ValueError):signing.activate(core(),cmd|{'path':'/tmp/caller'})
+        previous=signing.anex_quote_rate_lock_previous()
+        self.assertEqual(11,len(previous))
+        self.assertEqual('208f13e623c9021915af4f566cbb1492bc6d25248feb4b194595e0c31350b3b9',previous[signing.ANEX_QUOTE_RATE_LOCK_PATH])
+        self.assertEqual('0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4',previous['v2/api-anex-search3-preview.php'])
+        self.assertEqual('e905ce4f12a920201b1b2faeff78623a26023dd8ad79e0c3d6378d1dc75478f7',previous[signing.ANEX_APD_READ_FACTS_CLIENT_PATH])
+        c=core();signing.activate(c,cmd);ast.parse(c.REMOTE)
+        self.assertIn("if changed!=['app/integrations/anex-package-quote-client.php']:fail('tv_diagnostic_exact_delta')",c.REMOTE)
+        self.assertIn("complete['quote_client']",c.REMOTE)
+        self.assertIn('operation_exists_no_replay',c.REMOTE)
+        self.assertIn('tv_diagnostic_boundary()',c.REMOTE)
+        self.assertNotIn('sudo',c.REMOTE)
+        self.assertLess(len(base64.b64encode(__import__('zlib').compress(c.REMOTE.encode(),9))),64000)
+
+    def receipt(self):
+        r=APDReadFactsAdmission().receipt();cmd=self.command();r.update(cmd)
+        r['install'].update(source_sha=cmd['source_sha'],files=12,changed_files=1)
+        r['install']['endpoint'].update(sha256=signing.ANEX_QUOTE_RATE_LOCK_API_SHA,changed=False)
+        r['install'].pop('apd_client')
+        p=signing.ANEX_QUOTE_RATE_LOCK_PATH
+        r['install']['quote_client']={'source':p,'target':p,'sha256':signing.ANEX_QUOTE_RATE_LOCK_SHA,'changed':True}
+        r['tv_gateway']=r['tv_gateway']|{'source_sha':cmd['source_sha'],
+            'files':signing.anex_quote_rate_lock_previous()|{p:signing.ANEX_QUOTE_RATE_LOCK_SHA}}
+        return r
+
+    def test_strict_completion_and_unchanged_api(self):
+        cmd=self.command();r=self.receipt();c=core();signing.activate(c,cmd)
+        self.assertTrue(c.completed_result(cmd,r))
+        for k,v in [('files',11),('changed_files',2),('changed_files',True),('created_files',False),('created_files',1)]:
+            self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{k:v}}))
+        for k,v in [('source','v2/client.php'),('target','api-anex-search3-preview.php'),('sha256','0'*64),('changed',False),('changed',1)]:
+            self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{'quote_client':r['install']['quote_client']|{k:v}}}))
+        for k,v in [('supplier_calls',True),('database_writes',1),('booking_calls',True),('lead_calls',1),
+                    ('diagnostic_basis_after',{}),('tv_gateway_public_after',{}),('production_after',{}),('runtime_changed',False)]:
+            self.assertFalse(c.completed_result(cmd,r|{k:v}))
+        for field,value in [('changed',True),('changed',0),('sha256',signing.ANEX_APD_READ_FACTS_API_SHA)]:
+            self.assertFalse(c.completed_result(cmd,r|{'install':r['install']|{'endpoint':r['install']['endpoint']|{field:value}}}))
+
+    def test_historical_apd_read_facts_remote_unchanged(self):
+        c=core();signing.activate(c,APDReadFactsAdmission().command())
+        self.assertEqual('c61554abf6c624f38eca854c9d9e4a84bdfcfc65f3b7f2a135ecc18c3319fa73',hashlib.sha256(c.REMOTE.encode()).hexdigest())
+
+    def test_three_native_cases_registered(self):
+        def flatten(suite):
+            for case in suite:
+                if isinstance(case,unittest.TestSuite):yield from flatten(case)
+                else:yield case
+        suite=load_tests(unittest.TestLoader(),unittest.TestSuite(),None)
+        self.assertEqual(3,len([case for case in flatten(suite) if type(case) is NativeQuoteRateLockInstall]))
+
+
+class NativeQuoteRateLockInstall(NativeOwnSessionAPDInstall):
+    mode=signing.ANEX_QUOTE_RATE_LOCK_MODE
+    operation_attr='ANEX_QUOTE_RATE_LOCK_OPERATION'
+    source=signing.ANEX_QUOTE_RATE_LOCK_SOURCE
+    path=signing.ANEX_QUOTE_RATE_LOCK_PATH
+    sha_attr='ANEX_QUOTE_RATE_LOCK_SHA'
+    fixture_env='ANEX_QUOTE_RATE_LOCK_SOURCE_ROOT'
+
+    def expected_previous(self):return signing.anex_quote_rate_lock_previous()
+
+    def install_maintenance(self,operation=None):
+        operation=operation or f'int-anex-quote-rate-lock-install-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,self.operation_attr,operation):
+            return self.execute(self.mode,operation,self.source)[0]
+
+    def test_single_client_strict_receipt_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((12,1,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual([self.path],plan['changed_files'])
+        self.assertFalse(r['install']['endpoint']['changed']);self.assertTrue(r['install']['quote_client']['changed'])
+        self.assertEqual(self.parent_raw,self.parent.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+        for p in self.newpins:
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
+        cmd={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.object(signing,'anex_quote_rate_lock_previous',return_value=self.pins),mock.patch.multiple(signing,
+            ANEX_QUOTE_RATE_LOCK_OPERATION=r['operation_id'],ANEX_QUOTE_RATE_LOCK_SHA=self.newpins[self.path],
+            TV_PUBLIC=self.public,TV_DEPENDENCIES=self.deps,TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_anex_quote_rate_lock(cmd,r))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+    def test_predecessor_dependency_and_source_drift_hold(self):
+        client=self.runtime/self.path;before=client.read_bytes()
+        for p in self.expected_previous()|signing.TV_DEPENDENCIES:
+            f=self.runtime/(p if p.startswith('app/') else 'api-anex-search3-preview.php');raw=f.read_bytes();f.write_bytes(b'<?php // foreign\n')
+            self.assertEqual('tv_gateway_predecessor',self.install_maintenance()['reason']);f.write_bytes(raw)
+            self.assertEqual(before,client.read_bytes())
+        self.inventory[self.path]=b'<?php // wrong source\n';self.rebuild_archive()
+        self.assertEqual('tv_gateway_source_pin',self.install_maintenance()['reason'])
+        self.assertEqual(before,client.read_bytes())
+
+    def test_prewrite_race_and_postwrite_rollback(self):
+        client=self.runtime/self.path;before=client.read_bytes()
+        self.config_before_write=True
+        self.assertEqual('tv_diagnostic_config',self.install_maintenance()['reason'])
+        self.assertEqual(before,client.read_bytes())
+        self.config_before_write=False;self.config.write_bytes(self.config_raw);self.fail_after_write=True
+        r=self.install_maintenance();self.assertEqual('rolled_back',r['status']);self.assertEqual('complete',r['rollback']['status'])
+        self.assertEqual(before,client.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -1870,6 +1985,10 @@ def load_tests(loader, tests, pattern):
     for name in ('test_apd_reason_install_strict_completion_and_no_replay','test_apd_reason_any_predecessor_or_source_drift_holds',
                  'test_config_prewrite_race_holds_and_postwrite_failure_rolls_back'):
         suite.addTest(NativeAnexAPDReasonInstall(name))
+    suite.addTests(loader.loadTestsFromTestCase(QuoteRateLockAdmission))
+    for name in ('test_single_client_strict_receipt_and_no_replay',
+                 'test_predecessor_dependency_and_source_drift_hold','test_prewrite_race_and_postwrite_rollback'):
+        suite.addTest(NativeQuoteRateLockInstall(name))
     suite.addTests(loader.loadTestsFromTestCase(APDReadFactsAdmission))
     for name in ('test_pair_install_strict_receipt_and_no_replay',
                  'test_any_predecessor_dependency_or_source_drift_holds',

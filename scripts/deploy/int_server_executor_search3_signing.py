@@ -8,6 +8,14 @@ from __future__ import annotations
 import ast
 
 
+ANEX_QUOTE_RATE_LOCK_MODE = 'install-anex-quote-rate-lock'
+ANEX_QUOTE_RATE_LOCK_OPERATION = 'int-anex-quote-rate-lock-install-20261030-v1'
+ANEX_QUOTE_RATE_LOCK_SOURCE = '6dcfb5053793caba4f353facfa7a899a30df2d17'
+ANEX_QUOTE_RATE_LOCK_PATH = 'app/integrations/anex-package-quote-client.php'
+ANEX_QUOTE_RATE_LOCK_PREVIOUS = '208f13e623c9021915af4f566cbb1492bc6d25248feb4b194595e0c31350b3b9'
+ANEX_QUOTE_RATE_LOCK_SHA = '010900cb382af985c0da097a440fc49dc6d85e311ea380d4c1a93e0df656ce0a'
+ANEX_QUOTE_RATE_LOCK_API_SHA = '0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4'
+
 ANEX_APD_READ_FACTS_MODE = 'install-anex-apd-read-facts'
 ANEX_APD_READ_FACTS_OPERATION = 'int-anex-apd-read-facts-install-20261029-v1'
 ANEX_APD_READ_FACTS_SOURCE = 'a5e2f8bbe8dcb050cc3ec3a099423e3d07591c4f'
@@ -187,6 +195,10 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if len(parts) >= 2 and parts[1] == ANEX_QUOTE_RATE_LOCK_MODE:
+            need(parts == [ANEX_QUOTE_RATE_LOCK_SOURCE, ANEX_QUOTE_RATE_LOCK_MODE,
+                           ANEX_QUOTE_RATE_LOCK_OPERATION], 'anex_quote_rate_lock_fixed_case')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
         if len(parts) >= 2 and parts[1] == ANEX_APD_READ_FACTS_MODE:
             need(parts == [ANEX_APD_READ_FACTS_SOURCE, ANEX_APD_READ_FACTS_MODE,
                            ANEX_APD_READ_FACTS_OPERATION], 'anex_apd_read_facts_fixed_case')
@@ -448,6 +460,8 @@ DISPATCH = r'''
 
 
 def activate(core, command):
+    if command.get('mode') == ANEX_QUOTE_RATE_LOCK_MODE:
+        return activate_anex_quote_rate_lock(core, command)
     if command.get('mode') == ANEX_APD_READ_FACTS_MODE:
         return activate_anex_apd_read_facts(core, command)
     if command.get('mode') == ANEX_OWN_SESSION_APD_MODE:
@@ -1551,5 +1565,59 @@ def activate_anex_apd_read_facts(core, command):
     need(core.REMOTE.count(anchor)==1,'anex_apd_read_facts_receipt_drift')
     client=ANEX_APD_READ_FACTS_CLIENT_PATH
     proof="    complete['apd_client']={'source':"+repr(client)+",'target':"+repr(client)+",'sha256':install_expected["+repr(client)+"],'changed':"+repr(client)+" in changed}\n"
+    core.REMOTE=core.REMOTE.replace(anchor,proof+anchor,1)
+    ast.parse(core.REMOTE)
+
+
+def anex_quote_rate_lock_previous():
+    return anex_apd_read_facts_previous()|ANEX_APD_READ_FACTS_UPDATES|{
+        'v2/api-anex-search3-preview.php':ANEX_QUOTE_RATE_LOCK_API_SHA,
+        ANEX_QUOTE_RATE_LOCK_PATH:ANEX_QUOTE_RATE_LOCK_PREVIOUS}
+
+
+def completed_anex_quote_rate_lock(command, result):
+    source=ANEX_QUOTE_RATE_LOCK_SOURCE; pins=anex_quote_rate_lock_previous()|{ANEX_QUOTE_RATE_LOCK_PATH:ANEX_QUOTE_RATE_LOCK_SHA}
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':ANEX_QUOTE_RATE_LOCK_MODE,'operation_id':ANEX_QUOTE_RATE_LOCK_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':12,'changed_files':1,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':pins['v2/api-anex-search3-preview.php'],'changed':False}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and install.get('quote_client')=={'source':ANEX_QUOTE_RATE_LOCK_PATH,
+            'target':ANEX_QUOTE_RATE_LOCK_PATH,'sha256':pins[ANEX_QUOTE_RATE_LOCK_PATH],'changed':True}
+        and install['quote_client']['changed'] is True
+        and install['endpoint']['changed'] is False and install['dependency']['changed'] is False
+        and all(isinstance(result.get(k),dict) for k in
+            ('tv_gateway','diagnostic_basis_before','diagnostic_basis_after'))
+        and all(result.get('tv_gateway',{}).get(k) is False for k in
+            ('activation_performed','configuration_changed','signing_custody_changed'))
+        and all(result.get(k,{}).get('receipt_and_configuration_unchanged') is True
+            for k in ('diagnostic_basis_before','diagnostic_basis_after'))
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+def activate_anex_quote_rate_lock(core, command):
+    _activate_tv_maintenance(core,command,ANEX_QUOTE_RATE_LOCK_MODE,ANEX_QUOTE_RATE_LOCK_SOURCE,
+        ANEX_QUOTE_RATE_LOCK_PATH,ANEX_QUOTE_RATE_LOCK_SHA,anex_quote_rate_lock_previous(),
+        completed_anex_quote_rate_lock)
+    anchor="    write_private_json(op/'install-state.json',complete)\n    return complete\n\ndef install_andromeda_preview"
+    need(core.REMOTE.count(anchor)==1,'anex_quote_rate_lock_receipt_drift')
+    client=ANEX_QUOTE_RATE_LOCK_PATH
+    proof="    complete['quote_client']={'source':"+repr(client)+",'target':"+repr(client)+",'sha256':install_expected["+repr(client)+"],'changed':"+repr(client)+" in changed}\n"
     core.REMOTE=core.REMOTE.replace(anchor,proof+anchor,1)
     ast.parse(core.REMOTE)
