@@ -117,10 +117,22 @@ final class AnyTourAnexPackageQuoteClient
         $file = @fopen($path, 'c+');
         if ($file === false) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
         @chmod($path, 0600);
-        $deadline = microtime(true) + 3;
+        $deadlineNs = hrtime(true) + 3000000000;
+        // The normal slot also consumes this browser request's shared budget.
+        // A received 429 must still persist the existing token-wide cooldown.
+        if (!$throttled && $this->deadlineNs !== null) $deadlineNs = min($deadlineNs, $this->deadlineNs);
         try {
             do {
-                if (!flock($file, LOCK_EX)) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
+                if (hrtime(true) >= $deadlineNs) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
+                $wouldBlock = 0;
+                if (!flock($file, LOCK_EX | LOCK_NB, $wouldBlock)) {
+                    if (!$wouldBlock) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
+                    $remainingNs = $deadlineNs - hrtime(true);
+                    if ($remainingNs <= 0) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
+                    usleep((int) min(20000, ceil($remainingNs / 1000)));
+                    continue;
+                }
+                if (hrtime(true) >= $deadlineNs) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
                 rewind($file); $raw = stream_get_contents($file, 2048);
                 $state = $raw === '' ? ['next_at' => 0.0, 'blocked_until' => 0.0] : json_decode($raw, true);
                 if (!is_array($state) || !isset($state['next_at'], $state['blocked_until'])) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
@@ -129,10 +141,13 @@ final class AnyTourAnexPackageQuoteClient
                 elseif ((float) $state['blocked_until'] > $now) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
                 elseif ((float) $state['next_at'] > $now) {
                     flock($file, LOCK_UN);
-                    if ($now >= $deadline) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
-                    usleep((int) ceil(min(1.05, (float) $state['next_at'] - $now) * 1000000));
+                    $remainingNs = $deadlineNs - hrtime(true);
+                    if ($remainingNs <= 0) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
+                    usleep((int) ceil(min(1.05, (float) $state['next_at'] - $now,
+                        $remainingNs / 1000000000) * 1000000));
                     continue;
                 } else $state['next_at'] = $now + 1.05;
+                if (hrtime(true) >= $deadlineNs) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
                 $json = json_encode($state, JSON_THROW_ON_ERROR); rewind($file);
                 if (!ftruncate($file, 0) || fwrite($file, $json) !== strlen($json) || !fflush($file)) throw new RuntimeException('ANEX_QUOTE_RATE_LIMIT');
                 return;
