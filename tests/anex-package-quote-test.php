@@ -104,6 +104,100 @@ function qp_apd_state(array $rows = [], int $total = 0, string $observed = '2026
     return [$session, $digest, $ref, $key];
 }
 
+function qp_apd_diagnostic_contract(): void
+{
+    $server = ['REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'anytoour.ru',
+        'HTTP_SEC_FETCH_SITE' => 'same-origin', 'HTTP_ORIGIN' => 'https://anytoour.ru'];
+    $cookies = ['ANYTOUR_ANEX_SEARCH3' => 'OWN_SESSION_NOT_EXPORTED'];
+    $query = ['action' => 'apd_diagnostic_download'];
+    qp_assert(anytour_anex_search3_apd_diagnostic_authorized($server, $cookies, $query, true),
+        'explicit same-origin own-session diagnostic attachment is authorized');
+    $withoutOrigin = $server; unset($withoutOrigin['HTTP_ORIGIN']);
+    qp_assert(anytour_anex_search3_apd_diagnostic_authorized($withoutOrigin, $cookies, $query, true),
+        'same-origin browser GET need not supply an Origin header');
+    $www = $server; $www['HTTP_HOST'] = 'www.anytoour.ru'; $www['HTTP_ORIGIN'] = 'https://www.anytoour.ru';
+    qp_assert(anytour_anex_search3_apd_diagnostic_authorized($www, $cookies, $query, true), 'canonical www origin is exact');
+    foreach ([['REQUEST_METHOD', 'POST'], ['HTTP_HOST', 'evil.example'], ['HTTP_HOST', 'anytoour.ru.evil.example'],
+        ['HTTP_HOST', 'anytoour.ru:443'], ['HTTP_SEC_FETCH_SITE', 'same-site'], ['HTTP_SEC_FETCH_SITE', 'cross-site'],
+        ['HTTP_SEC_FETCH_SITE', 'none'], ['HTTP_SEC_FETCH_SITE', null], ['HTTP_ORIGIN', 'https://evil.example']] as [$field, $value]) {
+        $bad = $server; if ($value === null) unset($bad[$field]); else $bad[$field] = $value;
+        qp_assert(!anytour_anex_search3_apd_diagnostic_authorized($bad, $cookies, $query, true), 'attachment rejects foreign or missing request boundary');
+    }
+    foreach ([[], ['ANYTOUR_ANEX_SEARCH3' => ''], ['ANYTOUR_ANEX_SEARCH3' => []]] as $badCookies) {
+        qp_assert(!anytour_anex_search3_apd_diagnostic_authorized($server, $badCookies, $query, true), 'attachment requires an existing own-session cookie');
+    }
+    foreach (['ref', 'path', 'url', 'offer_ref', 'search_ref', 'context'] as $selector) {
+        qp_assert(!anytour_anex_search3_apd_diagnostic_authorized($server, $cookies, $query + [$selector => 'PRIVATE'], true),
+            'attachment cannot select arbitrary contexts, files, URLs or references');
+    }
+    qp_assert(!anytour_anex_search3_apd_diagnostic_authorized($server, $cookies, ['action' => 'quote_receipt'], true)
+        && !anytour_anex_search3_apd_diagnostic_authorized($server, $cookies, $query, false), 'attachment has its own action and enabled gate');
+
+    [$session, $digest, $ref, $key] = qp_apd_state();
+    $criteria = ['page' => 1, 'pageSize' => 10, 'tour' => 12345, 'dateBeg' => '2026-11-16', 'nights' => 7, 'currency' => 3];
+    $read = ['action' => 'AdditionalPricesDaily', 'observed_at_basis' => 'local_consumption',
+        'source' => 'supplier_transport', 'supplier_calls' => 1, 'cache_status' => 'miss',
+        'http_status' => 200, 'response_bytes' => 41, 'elapsed_ms' => 106];
+    $binding = ['generation' => 7, 'search_ref' => $ref, 'offer_ref' => $key, 'digest' => $digest];
+    $capture = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, 'totalPages' => 0], $criteria, $read, $binding, 3);
+    qp_assert(is_array($capture), 'fresh empty decoded response can be captured without a new request');
+    $session['anex_offer_contexts'][$ref]['additional_prices'][$digest]['evidence']['_empty_apd_capture'] = $capture;
+    $session['anex_offer_contexts'][$ref]['additional_prices'][$digest]['evidence']['_read_diagnostics'] = $capture['read_facts'];
+    $session['offer_context'] = $session['anex_offer_contexts'][$ref];
+    $before = serialize($session);
+    $export = anytour_anex_search3_apd_diagnostic_export($session);
+    qp_assert(($export['status'] ?? null) === 'complete' && ($export['basis'] ?? null) === 'api_arguments'
+        && ($export['query'] ?? null) === $criteria && ($export['selected_search_currency'] ?? null) === 3,
+        'explicit private attachment freezes the exact non-credential arguments, not a reconstructed alternative');
+    qp_assert(is_array($export['response'] ?? null) && is_array($export['read_facts'] ?? null), 'attachment carries bounded decoded-envelope and current-read facts');
+    qp_assert(anytour_anex_search3_apd_diagnostic_export($session) === $export && serialize($session) === $before,
+        'repeat export is a pure retained read with no session mutation');
+    foreach ([$ref, $key, 'OWN_SESSION_NOT_EXPORTED', 'PRIVATE_SESSION_CANARY', '_binding', 'offer_ref', 'search_ref'] as $private) {
+        qp_assert(!str_contains(json_encode($export), $private), 'private attachment still excludes credentials and opaque session/offer binding');
+    }
+    $legacy = anytour_anex_search3_quote_receipt($session);
+    qp_assert(!str_contains(json_encode($legacy), '12345') && !str_contains(json_encode($legacy), 'api_arguments'),
+        'existing quote receipt remains redacted and does not inherit the attachment contract');
+    $none = anytour_anex_search3_apd_diagnostic_export([]);
+    qp_assert(($none['status'] ?? null) === 'unknown' && !isset($none['query']), 'absent capture is unavailable rather than invented zero or reconstructed query');
+
+    foreach (['generation', 'search_ref', 'offer_ref', 'digest'] as $field) {
+        $bad = unserialize(serialize($session));
+        $bad['offer_context']['additional_prices'][$digest]['evidence']['_empty_apd_capture']['_binding'][$field] = $field === 'generation' ? 8 : 'PRIVATE_FOREIGN_BINDING';
+        qp_assert((anytour_anex_search3_apd_diagnostic_export($bad)['status'] ?? null) !== 'complete', 'attachment rejects a changed binding');
+    }
+    foreach (['tour' => 12346, 'currency' => 4, 'dateBeg' => '2026-11-17', 'nights' => 8, 'page' => 2, 'pageSize' => 100] as $field => $value) {
+        $bad = unserialize(serialize($session));
+        $bad['offer_context']['additional_prices'][$digest]['evidence']['_empty_apd_capture']['query'][$field] = $value;
+        qp_assert((anytour_anex_search3_apd_diagnostic_export($bad)['status'] ?? null) !== 'complete', 'attachment rejects altered outbound criteria rather than trusting an unbound snapshot');
+    }
+    $changedGeneration = unserialize(serialize($session)); $changedGeneration['offer_context']['generation']++;
+    qp_assert((anytour_anex_search3_apd_diagnostic_export($changedGeneration)['status'] ?? null) !== 'complete', 'a new generation cannot borrow the old capture');
+    $foreignKnown = unserialize(serialize($session)); $foreignKnown['offer_context']['gateway']['search']['offers'][0]['hotel_external_id'] = '999';
+    qp_assert((anytour_anex_search3_apd_diagnostic_export($foreignKnown)['status'] ?? null) !== 'complete', 'saved and known hotel binding must still agree');
+    $raw = unserialize(serialize($session)); $raw['offer_context']['additional_prices'][$digest]['evidence']['_empty_apd_capture']['vendor_message'] = 'PRIVATE_SUPPLIER_TEXT';
+    qp_assert(!str_contains(json_encode(anytour_anex_search3_apd_diagnostic_export($raw)), 'PRIVATE_SUPPLIER_TEXT'), 'unrecognized retained fields cannot leak vendor text');
+
+    $key2 = 'anex_online:' . str_repeat('e', 64);
+    $criteria2 = $criteria; $criteria2['tour'] = 12346;
+    $digest2 = hash('sha256', implode("\0", ['12346', '3', '2026-11-16', '7']));
+    $two = unserialize(serialize($session)); $state =& $two['offer_context'];
+    $entry = $state['gateway']['saved_offers']['offers'][$key]; $entry['offer']['offer_key'] = $key2; $entry['supplier_tour_program_id'] = '12346';
+    $state['gateway']['saved_offers']['offers'][$key2] = $entry;
+    $known = $state['gateway']['search']['offers'][0]; $known['offer_key'] = $key2; $state['gateway']['search']['offers'][] = $known;
+    $binding2 = ['generation' => 7, 'search_ref' => $ref, 'offer_ref' => $key2, 'digest' => $digest2];
+    $capture2 = anytour_anex_search3_apd_empty_capture(['data' => [], 'totalCount' => 0, 'totalPages' => 0], $criteria2, $read, $binding2, 3);
+    $state['additional_prices'][$digest2] = $state['additional_prices'][$digest];
+    $state['additional_prices'][$digest2]['evidence']['_empty_apd_capture'] = $capture2;
+    qp_assert((anytour_anex_search3_apd_diagnostic_export($two)['status'] ?? null) === 'ambiguous',
+        'two eligible captures cannot be silently reduced to the first one');
+}
+qp_apd_diagnostic_contract();
+if (($argv[1] ?? '') === '--apd-diagnostic-fixture') {
+    echo json_encode(['status' => 'passed', 'checks' => $checks, 'supplier_calls' => 0], JSON_THROW_ON_ERROR);
+    exit;
+}
+
 function qp_apd_contract(): void
 {
     $root = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'anytour-anex-apd-v1';
