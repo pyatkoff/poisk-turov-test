@@ -1914,7 +1914,7 @@ function continueHotelOffer(key){
  if(retained?.loading||retained?.flightsLoading||retained?.priceAcceptancePending||retained?.hotelFlightPreview&&retained.pricePending)return;
  hotelDetailsView.checkKey=key;selectedOffer=retained||{...listing};
  if(needsRefresh(selectedOffer)){
-  if(data.live&&selectedOffer.provider==='anex')refreshLiveHotel(id);
+  if(data.live&&selectedOffer.provider==='anex')refreshLiveHotel(id,{selectFlights:selectedOffer.flight==='regular'&&selectedOffer.raw?.anexKind==='concrete'&&selectedOffer.raw?.anexSessionCurrent===true});
   else openOffer(key,retained);
  }else openLeadWithQuote(key);
 }
@@ -2527,8 +2527,10 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
  if(terminalOfferQuote(o)){renderOfferProgress();return;}
+ const view=retainedProviderView(o);
  if(restoreProviderView(o)){
-  if(selectFlights&&['anex-current','anex-additional'].includes(modalType)
+  if(selectFlights&&(['anex-current','anex-additional'].includes(modalType)
+    ||hotelOfferCheckActive(o.key)&&['anex-current','anex-additional'].includes(view?.type)&&!view.error&&!view.pending)
    ||unknownInfantCharge(o)&&hotelOfferCheckActive(o.key)&&retainedProviderView(o)?.type==='anex-current')await loadAnexPackageQuote(false,{fromOffer:true});
   return;
  }
