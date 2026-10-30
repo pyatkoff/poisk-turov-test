@@ -2,7 +2,7 @@
 
 ## Текущая очередь Search3 — 26.10.2026
 
-Актуализировано 27.10.2026 после публикации PR4946. Один исполняемый план для
+Актуализировано 30.10.2026 после публикации и проверки ANEX PR4962. Один исполняемый план для
 `S3_PRODUCT_CURRENT_ACCEPTANCE`; статус
 `NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN` сохраняется.
 [SEARCH1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646) ведёт пользовательский результат;
@@ -10,12 +10,13 @@
 Исторические checkpoint, `resume_evidence` и старые следующие действия не являются заданиями.
 
 **Установленный ORIGINAL NEXT:** [поисковик](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
-source `62a7f3d08fcc9a12151ceb97a40de7aba0d41218` → runtime release
-`48563aadfee26af0c975b78dfd00952c2c66ee46`.
-[Публикация и RELEASE](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451707739),
-[проверка установленного текста](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451787711).
-PR4946 исправил два пояснения: выбранный тур передаётся менеджеру после перехода
-в Telegram/MAX и запуска бота. Бронирование и оплата на сайте не выполняются.
+source `2cf6345ed7732e81ecd10a16279e3f5c06e22fc9` → runtime release
+`2f102fa13bd2fff27db106ce9c05641f05ccaafd`.
+[Публикация](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6530282272),
+[полный регулярный расчёт и RELEASE](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6531021572).
+PR4962 восстановил обычный переход из конкретного регулярного предложения ANEX
+в существующий полный quote. Прежние пояснения PR4946 о запуске Telegram/MAX сохраняются;
+бронирование и оплата на сайте не выполняются.
 Согласованная композиция — прежний Site226 / PR4909; нового design-кандидата нет.
 Историческая оценка9.5/9.5 относится только к принятому compiled ordinary430/1280,
 включая720. Новая публикация и документация не повышают её и не доказывают готовность всего поиска.
@@ -25,12 +26,16 @@ PR4946 исправил два пояснения: выбранный тур п�
 Выбранный тур → запуск бота по подписанной ссылке → карточка того же тура у туриста →
 те же условия и нужный менеджер в Manager2. Уже установленный bot1202 поддерживает
 карточку, в том числе для первого посетителя; естественное получение новой карточки
-ещё не подтверждено. SEARCH ведёт тот же пакет, INT — только подтверждённый новый
-backend/price факт. Второй исполнитель или параллельная серия поиска не создаются.
+ещё не подтверждено. Старый post1202-пакет уже закрыт после отклонённой проверки TV;
+его восстановление или повтор не являются следующим шагом. Новый native-кейс требует
+собственного допуска и receipt; эта очередь не разрешает send/lead/booking.
+SEARCH принимает только подтверждённый frontend-дефект, INT — новый backend/price факт.
+Второй исполнитель или параллельная серия поиска не создаются.
 
 | Пакет | Текущее состояние и следующее действие | Условие завершения |
 | --- | --- | --- |
-| Поиск → точный тур → новая карточка в боте | Существующий `search3-post1202-native-preview-20261027`, [владелец и checkpoint](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451184937): один Find дал188отелей/409вариантов, затем исходная сессия стала недоступна. Quote/freeze/CREATE/native/send0, новой ссылки нет. Исполнение RELEASED; сохраняются identity, точное состояние и резерв. Следующий шаг — пассивно восстановить только ту же сессию у исходного исполнителя, если она вернётся | Только фактический результат того же case подтверждает тур, полный состав, цену с её статусом, native-карточку и Manager2/менеджера. Пока исходная сессия недоступна — конкретный environment blocker; не повторять Find, не запускать другую платформу/дату/профиль как обход и не реконструировать ссылку |
+| Поиск → точный тур → новая карточка в боте | `search3-post1202-native-preview-20261027`: [канонический terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451184937) и [фактическое восстановление/закрытие](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6452059012). После исходного Find сессия уже восстановлена; один первый TVcheck предложения136703₽ завершился NOT_CONFIRMED. CONSUMED_NO_REPLAY; freeze/CREATE/native/send0, rawHTTP не сохранён. Все leases RELEASED | Закрытый case не возобновлять и не заменять другой платформой/датой/профилем. Естественная bot1202-карточка и тот же Manager2 остаются отдельным неподтверждённым gate; только новый отдельно допущенный case может дать новый receipt. Причина TV-отказа по DOM не установлена |
+| Регулярный ANEX: выбор → полный расчёт → возврат | [PR4962](https://github.com/pyatkoff/poisk-turov-test/pull/4962), все7 existing exact-source checks SUCCESS; один штатный NEXT publisher41104992141/attempt1. Координатор подтвердил BEACH SAFARI NUBIAN RESORT / StandardRoom / AI /19–26Dec2026/7n/2A: ordinary concrete regular → full quote, первая пара Pegasus PC389+PC624 / PC621+PC388,155687→185244₽ за весь состав. Back/Close/повторное открытие сохраняют185244₽ и пару без нового Find/calc; [terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6531021572) | Закрыто в этом technical scope, consumed/no-replay. Разница — актуализация полной цены, не APD/fuel. Retained receipt: quote_verified и4 завершённыхHTTP200; raw amount-basis/final_price_verified не экспортированы и не объявляются прочитанными. Contact/native/freeze/CREATE/lead/booking/support0. Source-only review контактной границы и существующий тест подтверждают quote price/ANEX identity/party/flights; новой живой отправки не было. Причина прежних пустых APD этим не установлена |
 | Цена и приём выбранных условий | [Принятый INT-контракт](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6445236990) допускает честно обозначенную сохранённую TV-цену со сроком и basis, `checked`, `finalPriceVerified=false`, `browser-observation-only`. Freeze не продлевает срок. Old MAX119887₽ [уже истёк и consumed](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451325789); это не цена нового case | Сохранены exact offer/party/search/pair и квалификация цены. Более сильный `final_verified` требует реального подходящего supplier proof и своего принятого контракта. Native entry, сообщение туриста, получение менеджером и physical phone имеют отдельные фактические receipts; установка bot1202 сама по себе их не доказывает |
 | Пояснения и публикация | PR4946 source/4checks/парные compiled430×900 и1280×720 приняты; один штатный NEXT publisher40570004014/attempt1 завершён, predecessor сохранён. Installed DOM-readback1363×936 подтвердил обе строки и отсутствие overflow без Find | Закрыто в указанном scope. Compiled430/1280 не объявляются новым native/physical проходом. Не повторять сборку, публикацию или source/frame-приёмку ради документа |
 | Ускорение CI | [PR4931](https://github.com/pyatkoff/poisk-turov-test/pull/4931) и [PR4945/terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6450802576) завершены. Системная подготовка в сравненных запусках668→15с; локальная обработка одного корпуса786кадров/963файлов156.6→91.5с, все выходные байты одинаковы | Применимые exact-source проверки пройдены, прежнее покрытие сохранено. Это отдельные наблюдения подготовки и encoder, не среднее/p95/обещание42% ускорения всего CI или поиска. Закрытые прогоны и corpus не повторять |
@@ -46,7 +51,7 @@ backend/price факт. Второй исполнитель или паралл�
 
 | Этап | Состояние |
 | --- | --- |
-| Согласованный ordinary UI | Принят в своих исторических exact scopes. PR4946 установлен; оценки прежнего corpus и compiled/frame/publication/readback различаются |
+| Согласованный ordinary UI | Принят в своих исторических exact scopes. Текущий PR4962 установлен и regular ANEX проверен в отдельном technical scope; оценки прежнего corpus и compiled/frame/publication/live различаются |
 | Функциональный NEXT | Открыт: естественное получение новой bot1202-карточки и того же Manager2 результата не подтверждено. Physical phone отдельно. Прямая цена `checked/false` не становится `final_verified` от отправки в бот |
 | Production и коммерческий пилот | Открыты: конкретная полная версия, применимые gates и отдельное одобрение владельца. Производственный эффект не измерен; цели Метрики и lead-механизм не меняются |
 
@@ -60,13 +65,16 @@ backend/price факт. Второй исполнитель или паралл�
 `Publish checked Search3 site preview` — другой carrier; ожидание его browser dispatch
 не блокирует уже допущенную NEXT-команду. Новый publisher/allowlist/transport не нужен.
 Перед каждой будущей публикацией заново проверить текущие source/release/claims и
-применимые exact-source gates; завершённую4946 не отправлять повторно.
+применимые exact-source gates; закрытые4946/4962 не отправлять повторно.
+Docs/state-only актуализация не создаёт product build, publisher или browser/supplier проверку.
 
 Standing [6323725979](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323725979)
 сохраняет автономные обоснованные проверки в stock limits с конечным scope/budget/claim.
 5000/сутки — бюджет разработки и тестов данного исполнителя, не общий лимит пользователей
-или измеренный баланс. Текущий консервативный учёт4640 включает прежние UNKNOWN,
-остановленный резерв1536 и32на pristine bootstrap; это не фактический расход/остаток/refund.
+или измеренный баланс. Исторический учёт27Oct4640 включал прежние UNKNOWN,
+резерв1536 и32на pristine bootstrap; это не текущий расход/остаток/refund.
+Новые30Oct admissions и непогашенные holds сохраняются в соответствующих terminal4709;
+эта документация их не суммирует, не освобождает и не объявляет остатком аккаунта.
 Чужие и consumed/UNKNOWN/refused операции не повторять и не переименовывать.
 Paid fallback, realLead/booking, protected contracts и production сохраняют отдельные допуски.
 Keyboard/Tab/A11y-only запрещены; новые размеры/200%/Compare deferred, существующий обязательный CI сохранён.
