@@ -1624,9 +1624,11 @@ def v4_owned_session_readback():
         exec(compile(V4_PARSER_SOURCE,'<fixed-v4-decoder>','exec'),ns)
         ns.update(START=V4_START,END=V4_END)
         actor=os.geteuid()
+        report['stage']='runtime_api_pin'
         api=v4_owned_read(runtime/'api-anex-search3-preview.php',262144,actor,ns)
         if hashlib.sha256(api).hexdigest()!='0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4':raise ValueError('runtime_api_pin')
         candidates=[]
+        report['stage']='project_configuration'
         for config in (project/'.user.ini',project/'_preview/.user.ini',runtime/'.user.ini'):
             if not config.exists():continue
             facts=os.lstat(config)
@@ -1646,6 +1648,7 @@ def v4_owned_session_readback():
         report['configured_candidates']=len(candidates)
         if not candidates:raise ValueError('project_owned_session_override_absent')
         if len(candidates)!=1:raise ValueError('project_owned_session_override_ambiguous')
+        report['stage']='session_candidate_metadata'
         paths=ns['session_candidates'](candidates[0])
         report['candidate_files']=len(paths)
         total=0
@@ -1656,10 +1659,12 @@ def v4_owned_session_readback():
         if total>ns['MAX_TOTAL']:raise ValueError('session_total_limit')
         matches=[];read_bytes=0
         for path in paths:
+            report['stage']='retained_session_content'
             raw=v4_owned_read(path,min(ns['MAX_FILE'],ns['MAX_TOTAL']-read_bytes),actor,ns,window=True)
             read_bytes+=len(raw)
             serializer='php_serialize' if raw.startswith(b'a:') else 'php'
             session=ns['decode_session'](raw,serializer)
+            report['stage']='exact_case_binding'
             for case in v4_target_cases(session,ns):matches.append((case,hashlib.sha256(raw).hexdigest()))
         if len(matches)!=1:raise ValueError('exact_v4_case_missing' if not matches else 'exact_v4_case_ambiguous')
         case,digest=matches[0]
@@ -1672,9 +1677,15 @@ def v4_owned_session_readback():
             'session_ownership','session_total_limit','exact_v4_case_missing','exact_v4_case_ambiguous',
             'context_shape','context_reference_or_shape','saved_shape','search_shape','offers_shape','target_reference','target_key_binding',
             'quote_reference_or_shape','public_shape','pairs_shape','pair_reference_or_shape','parser_pin','runtime_api_pin',
-            'session_window_changed','retained_file_changed','target_context_binding','snapshot_binding','known_offer_binding'}
+            'session_window_changed','retained_file_changed','target_context_binding','snapshot_binding','known_offer_binding',
+            'retained_file_missing','symlink_rejected','reparse_point_rejected','session_root_invalid',
+            'session_directory_entry_limit','session_candidate_count_limit','session_candidate_size_limit',
+            'session_candidate_total_size_limit','session_candidate_type_rejected','session_serialization_invalid',
+            'session_serialization_limit','session_object_unsupported','session_serializer_unsupported'}
         reason=str(error)
-        report['reason']=reason if reason in allowed else 'permission_or_retained_shape_unavailable'
+        if isinstance(error,PermissionError):
+            report.update(reason='retained_permission_denied',failure_class='permission_denied')
+        else:report['reason']=reason if reason in allowed else 'retained_shape_unavailable'
     return report
 """
 

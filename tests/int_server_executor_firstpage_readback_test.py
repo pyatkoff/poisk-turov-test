@@ -1518,12 +1518,21 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.assertEqual(result['stored_public_status'],'quote_verified');self.assertNotIn('price',result)
 
     def test_opened_config_mode_is_checked_before_content(self):
-        with tempfile.TemporaryDirectory() as directory:
-            config=Path(directory)/'.user.ini';config.write_bytes(b'PRIVATE_CONFIG');config.chmod(0o666)
-            with mock.patch.object(os,'read') as read:
-                with self.assertRaisesRegex(ValueError,'config_ownership_or_mode'):
-                    self.ns['v4_owned_read'](config,65536,config.stat().st_uid,self.parser,config=True)
-                read.assert_not_called()
+        facts=types.SimpleNamespace(st_dev=1,st_ino=1,st_uid=7,st_mode=0o100666,st_size=14,
+            st_mtime_ns=1,st_ctime_ns=1,st_mtime=1)
+        parser=dict(self.parser,no_links=mock.Mock())
+        with mock.patch.object(os,'lstat',return_value=facts),mock.patch.object(os,'fstat',return_value=facts), \
+                mock.patch.object(os,'open',return_value=41),mock.patch.object(os,'close'),mock.patch.object(os,'read') as read:
+            with self.assertRaisesRegex(ValueError,'config_ownership_or_mode'):
+                self.ns['v4_owned_read'](Path('/synthetic/.user.ini'),65536,7,parser,config=True)
+            read.assert_not_called()
+
+    def test_permission_denial_has_fixed_stage_without_exception_text(self):
+        self.ns.update(home=Path('/synthetic'),project=Path('/synthetic/www/anytoour.ru'),runtime=Path('/synthetic/runtime'))
+        self.ns['v4_owned_read']=mock.Mock(side_effect=PermissionError('PRIVATE_EXCEPTION'))
+        with mock.patch.object(os,'geteuid',return_value=7,create=True):result=self.ns['v4_owned_session_readback']()
+        self.assertEqual(result['reason'],'retained_permission_denied');self.assertEqual(result['failure_class'],'permission_denied')
+        self.assertEqual(result['stage'],'runtime_api_pin');self.assertNotIn('PRIVATE',json.dumps(result))
 
     def test_reference_in_target_cannot_be_reported_as_missing(self):
         self.context['package_quotes']=self.parser['Ref']()
@@ -1552,14 +1561,13 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.assertEqual(len(self.cases()),2)
 
     def test_runtime_pin_hold_has_no_secret_or_supplier_activity(self):
-        with tempfile.TemporaryDirectory() as directory:
-            home=Path(directory).resolve();project=home/'www/anytoour.ru';runtime=project/'_preview/search3-anex-candidate';runtime.mkdir(parents=True)
-            api=runtime/'api-anex-search3-preview.php';api.write_bytes(b'PRIVATE_WRONG_API')
-            self.ns.update(home=home,project=project,runtime=runtime)
-            with mock.patch.object(os,'geteuid',return_value=api.stat().st_uid,create=True):result=self.ns['v4_owned_session_readback']()
-            self.assertEqual(result['reason'],'runtime_api_pin')
-            self.assertEqual(result['supplier_requests'],0);self.assertFalse(result['actor_escalation'])
-            self.assertNotIn('PRIVATE_',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
+        home=Path('/synthetic');project=home/'www/anytoour.ru';runtime=project/'_preview/search3-anex-candidate'
+        self.ns.update(home=home,project=project,runtime=runtime)
+        self.ns['v4_owned_read']=mock.Mock(return_value=b'PRIVATE_WRONG_API')
+        with mock.patch.object(os,'geteuid',return_value=7,create=True):result=self.ns['v4_owned_session_readback']()
+        self.assertEqual(result['reason'],'runtime_api_pin')
+        self.assertEqual(result['supplier_requests'],0);self.assertFalse(result['actor_escalation'])
+        self.assertNotIn('PRIVATE_',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
 
 
 if __name__ == '__main__':
