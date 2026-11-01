@@ -1514,7 +1514,7 @@ def v4_target_cases(session,ns):
         contexts={'legacy':context} if isinstance(context,dict) else {}
     if not isinstance(contexts,dict) or len(contexts)>4:raise ValueError('context_shape')
     matches=[]
-    for context in contexts.values():
+    for context_ref,context in contexts.items():
         if not isinstance(context,dict):raise ValueError('context_reference_or_shape')
         saved=context.get('gateway',{}).get('saved_offers',{})
         if not isinstance(saved,dict):raise ValueError('saved_shape')
@@ -1529,15 +1529,35 @@ def v4_target_cases(session,ns):
                 and type(search.get('adults')) is int and search['adults']==2
                 and type(search.get('children')) is int and search['children']==1
                 and type(search.get('nights_from')) is int and type(search.get('nights_till')) is int):continue
+        generation=context.get('generation');saved_ref=saved.get('search_ref')
+        if (type(generation) is not int or generation<1 or session.get('anex_context_generation')!=generation
+                or type(session.get('anex_context_generation')) is not int
+                or not isinstance(saved_ref,str) or not re.fullmatch(r'[a-f0-9]{32}',saved_ref)
+                or context_ref not in (saved_ref,'legacy')):raise ValueError('target_context_binding')
+        snapshot=context.get('gateway',{}).get('search',{})
+        snapshot_context=snapshot.get('context') if isinstance(snapshot,dict) else None
+        fields=('checkin_begin','checkin_end','nights_from','nights_till','adults','children','child_ages')
+        if not isinstance(snapshot_context,dict) or ns['has_reference'](snapshot_context):raise ValueError('snapshot_binding')
+        if any(type(snapshot_context.get(field)) is not type(search.get(field)) or snapshot_context.get(field)!=search.get(field) for field in fields):raise ValueError('snapshot_binding')
+        known_rows=v4_values(snapshot.get('offers'))
+        if known_rows is None or len(known_rows)>5000:raise ValueError('known_offer_binding')
+        known={}
+        for row in known_rows:
+            if not isinstance(row,dict) or not isinstance(row.get('offer_key'),str) or row['offer_key'] in known:raise ValueError('known_offer_binding')
+            known[row['offer_key']]=row
         entries=saved.get('offers')
         if not isinstance(entries,dict) or len(entries)>5000:raise ValueError('offers_shape')
         for key,entry in entries.items():
+            if isinstance(entry,ns['Ref']):raise ValueError('target_reference')
             offer=entry.get('offer') if isinstance(entry,dict) else None
+            if isinstance(offer,ns['Ref']):raise ValueError('target_reference')
             if not isinstance(offer,dict):continue
             hotel=offer.get('hotel',{})
             if not isinstance(hotel,dict) or ns['label'](hotel.get('name'))!='BEACH SAFARI NUBIAN RESORT':continue
             if ns['has_reference'](offer):raise ValueError('target_reference')
             if not isinstance(key,str) or not re.fullmatch(r'anex_online:[a-f0-9]{64}',key) or offer.get('offer_key')!=key:raise ValueError('target_key_binding')
+            row=known.get(key)
+            if not isinstance(row,dict) or row.get('kind')!=offer.get('kind') or type(row.get('hotel_external_id')) is not type(hotel.get('external_id')) or row.get('hotel_external_id')!=hotel.get('external_id') or hotel.get('external_id') is None:raise ValueError('known_offer_binding')
             money=offer.get('converted_price') or offer.get('price')
             if not (offer.get('kind')=='concrete' and ns['label'](offer.get('room'))=='STANDARD ROOM'
                     and ns['label'](offer.get('meal'))=='AI' and offer.get('checkin')=='2026-12-24'
@@ -1652,7 +1672,7 @@ def v4_owned_session_readback():
             'session_ownership','session_total_limit','exact_v4_case_missing','exact_v4_case_ambiguous',
             'context_shape','context_reference_or_shape','saved_shape','search_shape','offers_shape','target_reference','target_key_binding',
             'quote_reference_or_shape','public_shape','pairs_shape','pair_reference_or_shape','parser_pin','runtime_api_pin',
-            'session_window_changed','retained_file_changed'}
+            'session_window_changed','retained_file_changed','target_context_binding','snapshot_binding','known_offer_binding'}
         reason=str(error)
         report['reason']=reason if reason in allowed else 'permission_or_retained_shape_unavailable'
     return report

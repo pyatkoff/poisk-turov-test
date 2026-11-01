@@ -1434,14 +1434,17 @@ class V4OwnedSessionTest(unittest.TestCase):
         exec(extension.RIA_PINNED_READER_SOURCE,self.parser)
         self.created=self.ns['V4_START']+120
         self.key='anex_online:'+'a'*64
-        self.offer={'offer_key':self.key,'kind':'concrete','hotel':{'name':'BEACH SAFARI NUBIAN RESORT'},'room':'Standard Room','meal':'AI',
+        self.offer={'offer_key':self.key,'kind':'concrete','hotel':{'name':'BEACH SAFARI NUBIAN RESORT','external_id':'101'},'room':'Standard Room','meal':'AI',
             'checkin':'2026-12-24','checkout':'2026-12-31','nights':7,'adults':2,'children':1,'infants':1,
             'price':{'amount':'107581','currency':'RUB'}}
-        self.context={'gateway':{'saved_offers':{'created_at':self.created,
+        self.ref='a'*32
+        self.context={'generation':1,'gateway':{'saved_offers':{'created_at':self.created,'search_ref':self.ref,
             'search':{'checkin_begin':'2026-12-20','checkin_end':'2026-12-26','nights_from':7,'nights_till':7,
                       'adults':2,'children':1,'child_ages':{0:1}},
             'offers':{self.key:{'offer':self.offer}}}},'package_quotes':{}}
-        self.session={'anex_offer_contexts':{'PRIVATE_SEARCH':self.context}}
+        self.context['gateway']['search']={'context':copy.deepcopy(self.context['gateway']['saved_offers']['search']),
+            'offers':{0:{'offer_key':self.key,'kind':'concrete','hotel_external_id':'101'}}}
+        self.session={'anex_context_generation':1,'anex_offer_contexts':{self.ref:self.context}}
 
     def cases(self):return self.ns['v4_target_cases'](self.session,self.parser)
 
@@ -1526,9 +1529,26 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.context['package_quotes']=self.parser['Ref']()
         with self.assertRaisesRegex(ValueError,'quote_reference_or_shape'):self.cases()
 
+    def test_disconnected_saved_key_or_search_context_cannot_authorize_repeat(self):
+        original=copy.deepcopy(self.context)
+        mutations=(lambda c:c.update(generation=2),
+            lambda c:c['gateway']['saved_offers'].update(search_ref='b'*32),
+            lambda c:c['gateway']['search']['context'].update(adults=3),
+            lambda c:c['gateway']['search']['offers'][0].update(kind='group_minimum'),
+            lambda c:c['gateway']['search']['offers'][0].update(hotel_external_id='102'))
+        for mutate in mutations:
+            self.context=copy.deepcopy(original);self.session['anex_offer_contexts'][self.ref]=self.context
+            mutate(self.context)
+            with self.assertRaises(ValueError):self.cases()
+
+    def test_unresolved_second_offer_cannot_be_silently_excluded(self):
+        self.context['gateway']['saved_offers']['offers']['PRIVATE_ALIAS']={'offer':self.parser['Ref']()}
+        with self.assertRaisesRegex(ValueError,'target_reference'):self.cases()
+
     def test_same_semantic_tour_is_ambiguous_not_first_match(self):
         key='anex_online:'+'b'*64
         self.context['gateway']['saved_offers']['offers'][key]={'offer':dict(self.offer,offer_key=key)}
+        self.context['gateway']['search']['offers'][1]={'offer_key':key,'kind':'concrete','hotel_external_id':'101'}
         self.assertEqual(len(self.cases()),2)
 
     def test_runtime_pin_hold_has_no_secret_or_supplier_activity(self):
