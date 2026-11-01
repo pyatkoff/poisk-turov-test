@@ -1707,7 +1707,8 @@ class V4MappedConfigTest(unittest.TestCase):
                 return parent
             parser=dict(self.parser,no_links=mock.Mock())
             budget={'files':set(),'bytes':2097151}
-            with mock.patch.object(os,'lstat',side_effect=lstat),mock.patch.object(os,'fstat',return_value=big), \
+            with mock.patch.object(Path,'resolve',autospec=True,side_effect=lambda path,*args,**kwargs:path), \
+                    mock.patch.object(os,'lstat',side_effect=lstat),mock.patch.object(os,'fstat',return_value=big), \
                     mock.patch.object(os,'open',return_value=41),mock.patch.object(os,'close'),mock.patch.object(os,'read') as read:
                 with self.assertRaisesRegex(ValueError,'config_changed|session_total_limit'):
                     self.ns['v4_config_trusted'](config,(root,),7,parser,budget)
