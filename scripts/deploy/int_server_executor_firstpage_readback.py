@@ -29,7 +29,9 @@ RIA3_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
 V4_MODE = 'anex-v4-owned-session-readback'
 V4_OPERATION = 'int-anex-v4-owned-session-20261101-v1'
 V4_SOURCE = '6dcfb5053793caba4f353facfa7a899a30df2d17'
-MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE)
+V4_MAP_MODE = 'anex-v4-vhost-session-readback'
+V4_MAP_OPERATION = 'int-anex-v4-vhost-session-20261101-v1'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -55,6 +57,7 @@ def register_parser(core) -> None:
             RIA2_MODE: (RIA2_SOURCE, RIA2_OPERATION),
             RIA3_MODE: (RIA3_SOURCE, RIA3_OPERATION),
             V4_MODE: (V4_SOURCE, V4_OPERATION),
+            V4_MAP_MODE: (V4_SOURCE, V4_MAP_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -458,6 +461,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 
 def remote_with_readback(core, mode: str = MODE) -> str:
+    if mode == V4_MAP_MODE: return remote_with_v4_map_readback(core)
     if mode == V4_MODE: return remote_with_v4_readback(core)
     need(mode in MODES, 'firstpage_registration_mode')
     if mode == RIA3_MODE: return remote_with_ria3_readback(core)
@@ -1593,7 +1597,7 @@ def v4_target_cases(session,ns):
                             'created_at':created,'supplier_stages':stages})
     return matches
 
-def v4_owned_read(path,limit,actor,ns,window=False,config=False,require_owner=True):
+def v4_owned_read(path,limit,actor,ns,window=False,config=False,require_owner=True,expected_facts=None):
     import stat
     ns['no_links'](path)
     before=os.lstat(path)
@@ -1603,6 +1607,7 @@ def v4_owned_read(path,limit,actor,ns,window=False,config=False,require_owner=Tr
         facts=lambda st:(st.st_dev,st.st_ino,st.st_uid,st.st_mode,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
         if facts(before)!=facts(opened) or not stat.S_ISREG(opened.st_mode) or require_owner and opened.st_uid!=actor:raise ValueError('session_ownership')
         if config and opened.st_mode&0o022:raise ValueError('config_ownership_or_mode')
+        if expected_facts is not None and facts(opened)!=expected_facts:raise ValueError('config_changed')
         if not 0<opened.st_size<=limit:raise ValueError('session_total_limit')
         if window and not V4_START<=opened.st_mtime<=V4_END:raise ValueError('session_window_changed')
         chunks=[];remaining=opened.st_size
@@ -1714,4 +1719,369 @@ def remote_with_v4_readback(core):
     remote=remote.replace(collectors,"    if mode not in ('"+V4_MODE+"','reconcile',")
     ast.parse(remote)
     return remote
+
+
+REMOTE_V4_MAP_READER = r"""
+def v4_nginx_parse(text):
+    tokens=[];i=0
+    while i<len(text):
+        char=text[i]
+        if char.isspace():i+=1;continue
+        if char=='#':
+            end=text.find('\n',i);i=len(text) if end<0 else end+1;continue
+        if char in '{};':tokens.append(char);i+=1
+        else:
+            word=[]
+            while i<len(text) and not text[i].isspace() and text[i] not in '{};#':
+                char=text[i]
+                if char in ('\"',"'"):
+                    quote=char;i+=1
+                    while i<len(text) and text[i]!=quote:
+                        if text[i]=='\\':i+=1
+                        if i>=len(text):raise ValueError('nginx_syntax')
+                        word.append(text[i]);i+=1
+                    if i>=len(text):raise ValueError('nginx_syntax')
+                    i+=1
+                elif char=='\\':
+                    i+=1
+                    if i>=len(text):raise ValueError('nginx_syntax')
+                    word.append(text[i] if text[i].isspace() or text[i] in '\"\'\\;#{}' else '\\'+text[i]);i+=1
+                else:word.append(char);i+=1
+            tokens.append(''.join(word))
+        if len(tokens)>50000:raise ValueError('config_scope_limit')
+    at=0;count=0
+    def block(depth):
+        nonlocal at,count
+        if depth>16:raise ValueError('config_scope_limit')
+        result=[]
+        while at<len(tokens) and tokens[at]!='}':
+            words=[]
+            while at<len(tokens) and tokens[at] not in ('{','}',';'):words.append(tokens[at]);at+=1
+            if not words or at>=len(tokens) or tokens[at]=='}':raise ValueError('nginx_syntax')
+            ending=tokens[at];at+=1
+            children=None
+            if ending=='{':
+                children=block(depth+1)
+                if at>=len(tokens) or tokens[at]!='}':raise ValueError('nginx_syntax')
+                at+=1
+            result.append((words[0],words[1:],children));count+=1
+            if count>5000:raise ValueError('config_scope_limit')
+        return result
+    result=block(0)
+    if at!=len(tokens):raise ValueError('nginx_syntax')
+    return result
+
+def v4_config_trusted(path,roots,actor,ns,budget):
+    import stat
+    if not path.is_absolute() or '..' in path.parts or not any(path==root or root in path.parents for root in roots):raise ValueError('config_path_scope')
+    resolved=path.resolve(strict=True)
+    accepted=next((root for root in roots if resolved==root or root in resolved.parents),None)
+    if accepted is None:raise ValueError('config_path_scope')
+    for parent in (accepted,*list(resolved.relative_to(accepted).parents)[:-1]):
+        check=parent if parent.is_absolute() else accepted/parent
+        facts=os.lstat(check)
+        if facts.st_uid not in (0,actor) or facts.st_mode&0o022:raise ValueError('config_trust')
+    facts=os.lstat(resolved)
+    if not stat.S_ISREG(facts.st_mode) or facts.st_uid not in (0,actor) or facts.st_mode&0o022:raise ValueError('config_trust')
+    fingerprint=(facts.st_dev,facts.st_ino,facts.st_uid,facts.st_mode,facts.st_size,facts.st_mtime_ns,facts.st_ctime_ns)
+    cache=budget.setdefault('cache',{})
+    if str(resolved) in cache:
+        data,previous=cache[str(resolved)]
+        if fingerprint!=previous:raise ValueError('config_changed')
+        return resolved,data
+    remaining=2097152-budget['bytes']
+    if len(budget['files'])>=32 or not 0<facts.st_size<=min(262144,remaining):raise ValueError('config_scope_limit')
+    data=v4_owned_read(resolved,min(262144,remaining),facts.st_uid,ns,config=True,expected_facts=fingerprint)
+    budget['files'].add(str(resolved));budget['bytes']+=len(data)
+    cache[str(resolved)]=(data,fingerprint)
+    return resolved,data
+
+def v4_config_matches(pattern,roots,actor):
+    import fnmatch
+    if any(char in str(pattern.parent) for char in '*?[') or '$' in str(pattern) or '..' in pattern.parts:raise ValueError('config_include_shape')
+    if not pattern.is_absolute() or not any(pattern.parent==root or root in pattern.parent.parents for root in roots):raise ValueError('config_path_scope')
+    parent=pattern.parent.resolve(strict=True)
+    if not any(parent==root or root in parent.parents for root in roots):raise ValueError('config_path_scope')
+    facts=os.lstat(parent)
+    if facts.st_uid not in (0,actor) or facts.st_mode&0o022:raise ValueError('config_trust')
+    if not any(char in pattern.name for char in '*?['):return [pattern]
+    matches=[];entries=0
+    with os.scandir(parent) as scan:
+        for entry in scan:
+            entries+=1
+            if entries>4096:raise ValueError('config_scope_limit')
+            if fnmatch.fnmatchcase(entry.name,pattern.name):matches.append(pathlib.Path(entry.path))
+            if len(matches)>32:raise ValueError('config_scope_limit')
+    return sorted(matches)
+
+def v4_nginx_load(actor,ns,budget):
+    roots=(pathlib.Path('/etc/nginx'),pathlib.Path('/usr/share/nginx/modules-available'))
+    expanded=0
+    def load(path,chain):
+        nonlocal expanded
+        resolved,data=v4_config_trusted(path,roots,actor,ns,budget)
+        if resolved in chain or len(chain)>=16:raise ValueError('config_include_cycle')
+        result=[]
+        def expand(nodes):
+            nonlocal expanded
+            output=[]
+            for name,args,children in nodes:
+                expanded+=1
+                if expanded>10000:raise ValueError('config_scope_limit')
+                if name=='include':
+                    if children is not None or len(args)!=1 or '$' in args[0] or '..' in pathlib.Path(args[0]).parts:raise ValueError('config_include_shape')
+                    pattern=pathlib.Path(args[0]);pattern=pattern if pattern.is_absolute() else roots[0]/pattern
+                    for match in v4_config_matches(pattern,roots,actor):output.extend(load(match,chain+(resolved,)))
+                else:output.append((name,args,expand(children) if children is not None else None))
+            return output
+        result.extend(expand(v4_nginx_parse(data.decode('utf-8'))))
+        return result
+    return load(roots[0]/'nginx.conf',())
+
+def v4_nginx_endpoint(children):
+    endpoint='/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+    routing={'proxy_pass','grpc_pass','uwsgi_pass','scgi_pass','rewrite','return','error_page','internal'}
+    if any(name in routing or name=='if' for name,args,sub in children):raise ValueError('vhost_route_unsupported')
+    locations=[(args,sub) for name,args,sub in children if name=='location']
+    for args,sub in locations:
+        if sub is None or any(name=='location' for name,values,nested in sub):raise ValueError('vhost_route_unsupported')
+    exact=[sub for args,sub in locations if args==['=',endpoint]]
+    if len(exact)>1:raise ValueError('vhost_route_ambiguous')
+    selected=exact[0] if exact else None
+    if selected is None:
+        prefixes=[]
+        for args,sub in locations:
+            if len(args)==1 and args[0].startswith('/'):
+                if endpoint.startswith(args[0]):prefixes.append((args[0],False,sub))
+            elif len(args)==2 and args[0]=='^~' and args[1].startswith('/'):
+                if endpoint.startswith(args[1]):prefixes.append((args[1],True,sub))
+            elif args and args[0] not in ('=','~','~*','^~') and (len(args)!=1 or not args[0].startswith('@')):raise ValueError('vhost_route_unsupported')
+        longest=max((len(path) for path,stop,sub in prefixes),default=-1)
+        prefixes=[item for item in prefixes if len(item[0])==longest]
+        if len(prefixes)>1:raise ValueError('vhost_route_ambiguous')
+        if prefixes and prefixes[0][1]:selected=prefixes[0][2]
+        else:
+            for args,sub in locations:
+                if not args or args[0] not in ('~','~*'):continue
+                if len(args)!=2:raise ValueError('vhost_route_unsupported')
+                pattern=args[1]
+                matched=None
+                if pattern in ('\\.php$','.php$','\\.php(/|$)','\\.php(?:/|$)','\\.php(?:$|/)'):matched=True
+                elif (pattern.startswith('/\\.') or pattern.startswith('^/\\.')) and '|' not in pattern:
+                    suffix=pattern[4:] if pattern.startswith('^') else pattern[3:]
+                    if not suffix.startswith(('*','?','{')):matched=False
+                else:
+                    extensions=re.fullmatch(r'\\\.\(([A-Za-z0-9|?]+)\)\$',pattern)
+                    if extensions:
+                        variants=[]
+                        for part in extensions[1].split('|'):
+                            if not re.fullmatch(r'[A-Za-z0-9]+\??',part):raise ValueError('vhost_route_unsupported')
+                            variants.extend((part[:-1],part[:-2]) if part.endswith('?') else (part,))
+                        matched='php' in ([value.lower() for value in variants] if args[0]=='~*' else variants)
+                    else:
+                        prefix=re.match(r'^\^(/[A-Za-z0-9_/-]+)',pattern)
+                        if prefix and '|' not in pattern and pattern[prefix.end():] in ('','.*','.*$','/.*','/.*$','$'):
+                            target=endpoint.lower() if args[0]=='~*' else endpoint
+                            expected=prefix[1].lower() if args[0]=='~*' else prefix[1]
+                            if not target.startswith(expected):matched=False
+                if matched is None:raise ValueError('vhost_route_unsupported')
+                if matched:selected=sub;break
+            if selected is None and prefixes:selected=prefixes[0][2]
+    if selected is None:raise ValueError('vhost_route_missing')
+    if any(name in routing or name=='if' for name,args,sub in selected):raise ValueError('vhost_route_unsupported')
+    if any(name=='try_files' and args not in (['$uri','=404'],['$fastcgi_script_name','=404']) for name,args,sub in selected):raise ValueError('vhost_route_unsupported')
+    if any(name=='fastcgi_split_path_info' and args!=['^(.+?\\.php)(/.*)$'] for name,args,sub in selected):raise ValueError('vhost_route_unsupported')
+    params=[args for name,args,sub in selected if name=='fastcgi_param']
+    if not params:params=[args for name,args,sub in children if name=='fastcgi_param']
+    script=[args[1] for args in params if len(args)==2 and args[0]=='SCRIPT_FILENAME']
+    if not script or any(value not in ('$document_root$fastcgi_script_name','$realpath_root$fastcgi_script_name','$request_filename') for value in script):raise ValueError('vhost_route_unsupported')
+    passes={args[0] for name,args,sub in selected if name=='fastcgi_pass' and len(args)==1}
+    if not passes:passes={args[0] for name,args,sub in children if name=='fastcgi_pass' and len(args)==1}
+    if len(passes)!=1:raise ValueError('vhost_php_mapping_ambiguous')
+    return next(iter(passes))
+
+def v4_nginx_target(nodes,project_path):
+    def walk(values):
+        for node in values:
+            yield node
+            if node[2] is not None:yield from walk(node[2])
+    servers=[]
+    for name,args,children in walk(nodes):
+        if name!='server' or children is None:continue
+        hostnames=[arg for key,values,sub in children if key=='server_name' for arg in values]
+        if not set(hostnames)&{'anytoour.ru','www.anytoour.ru'}:continue
+        directives=list(walk(children))
+        roots={values[0] for key,values,sub in directives if key=='root' and len(values)==1}
+        if not roots:continue  # A redirect-only www/server block is not a PHP mapping.
+        if len(roots)!=1 or any('$' in value for value in roots):raise ValueError('vhost_root_ambiguous')
+        if pathlib.Path(next(iter(roots))).resolve()!=project_path.resolve():continue
+        if any(key=='alias' for key,values,sub in directives):raise ValueError('vhost_alias_unsupported')
+        if any(key=='fastcgi_param' and values and values[0] in ('PHP_VALUE','PHP_ADMIN_VALUE') for key,values,sub in directives):raise ValueError('vhost_php_override_unsupported')
+        returns=[values for key,values,sub in children if key=='return']
+        if len(returns)==1 and returns[0] and returns[0][0] in ('301','302','307','308'):continue
+        address=v4_nginx_endpoint(children)
+        if not address.startswith('unix:'):
+            upstreams=[sub for key,values,sub in walk(nodes) if key=='upstream' and values==[address] and sub is not None]
+            if len(upstreams)!=1:raise ValueError('vhost_upstream_unsupported')
+            endpoints=[values[0] for key,values,sub in upstreams[0] if key=='server' and len(values)==1]
+            if len(endpoints)!=1:raise ValueError('vhost_upstream_unsupported')
+            address=endpoints[0]
+        if not address.startswith('unix:/') or '$' in address:raise ValueError('vhost_socket_unsupported')
+        servers.append(pathlib.Path(address[5:]).resolve(strict=True))
+    servers=set(servers)
+    if len(servers)!=1:raise ValueError('vhost_mapping_missing_or_ambiguous')
+    return next(iter(servers))
+
+def v4_pool_sections(text):
+    pools={};current=None
+    for line in text.splitlines():
+        line=line.strip()
+        if not line or line.startswith((';','#')):continue
+        if line.startswith('['):
+            match=re.fullmatch(r'\[([A-Za-z0-9_.-]{1,80})\]',line)
+            if not match or match[1] in pools:raise ValueError('pool_shape')
+            current={};pools[match[1]]=current;continue
+        if current is None:continue
+        if '=' not in line:raise ValueError('pool_shape')
+        key,value=line.split('=',1);key=key.strip();value=value.strip()
+        if value.startswith(('\"',"'")):
+            quote=value[0];end=value.find(quote,1)
+            if end<0 or value[end+1:].strip() and not value[end+1:].strip().startswith(';'):raise ValueError('pool_shape')
+            value=value[1:end]
+        else:value=value.split(';',1)[0].strip()
+        if key=='include':raise ValueError('pool_include_unsupported')
+        if key in ('listen','user','chroot','php_admin_value[session.save_path]','php_value[session.save_path]',
+                   'php_admin_value[user_ini.filename]','php_value[user_ini.filename]'):
+            if key in current:raise ValueError('pool_shape')
+            current[key]=value
+    return list(pools.values())
+
+def v4_fpm_config_load(pool_root,actor,ns,budget):
+    included=set()
+    def load(path,chain):
+        resolved,data=v4_config_trusted(path,(pool_root,),actor,ns,budget)
+        if resolved in chain or len(chain)>=16:raise ValueError('config_include_cycle')
+        if resolved in included:raise ValueError('config_include_repeated')
+        included.add(resolved)
+        output=[];section=None
+        for line in data.decode('utf-8').splitlines():
+            clean=line.strip()
+            if clean.startswith('['):
+                match=re.fullmatch(r'\[([A-Za-z0-9_.-]{1,80})\]',clean)
+                if not match:raise ValueError('pool_shape')
+                section=match[1]
+            include=re.match(r'^include\s*=(.*)$',clean)
+            if include:
+                if section not in (None,'global'):raise ValueError('pool_include_unsupported')
+                value=include[1].strip()
+                if value.startswith(('\"',"'")):
+                    quote=value[0];end=value.find(quote,1)
+                    if end<0 or value[end+1:].strip() and not value[end+1:].strip().startswith(';'):raise ValueError('pool_shape')
+                    value=value[1:end]
+                else:value=value.split(';',1)[0].strip()
+                if not value:raise ValueError('config_include_shape')
+                pattern=pathlib.Path(value);pattern=pattern if pattern.is_absolute() else pool_root/pattern
+                for match in v4_config_matches(pattern,(pool_root,),actor):output.append(load(match,chain+(resolved,)))
+            else:output.append(line)
+        return '\n'.join(output)
+    return v4_pool_sections(load(pool_root/'php-fpm.conf',()))
+
+def v4_mapped_session_readback():
+    import pwd,stat
+    report={'status':'hold','actor_escalation':False,'supplier_requests':0,'database_operations':0,
+            'runtime_session_cache_writes':0,'path_scope':'single_configured_vhost_pool_candidate',
+            'vhost_pool_authority':'static_configuration_only','stage':'runtime_api_pin'}
+    try:
+        ns={'__name__':'fixed_v4_mapped_decoder'}
+        if hashlib.sha256(V4_PARSER_SOURCE.encode()).hexdigest()!='e75beb5c112fae08592a6c2308db38ee1f2d8d5aecffb49d118f856b303e1aad':raise ValueError('parser_pin')
+        exec(compile(V4_PARSER_SOURCE,'<fixed-v4-mapped-decoder>','exec'),ns);ns.update(START=V4_START,END=V4_END)
+        actor=os.geteuid()
+        api=v4_owned_read(runtime/'api-anex-search3-preview.php',262144,actor,ns,require_owner=False)
+        if hashlib.sha256(api).hexdigest()!='0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4':raise ValueError('runtime_api_pin')
+        report['stage']='configured_vhost';budget={'files':set(),'bytes':0}
+        socket=v4_nginx_target(v4_nginx_load(actor,ns,budget),project)
+        if not stat.S_ISSOCK(os.stat(socket).st_mode):raise ValueError('fpm_socket_not_live')
+        report['stage']='configured_fpm_pool';pool_root=pathlib.Path('/etc/php/8.3/fpm')
+        matches=[]
+        for pool in v4_fpm_config_load(pool_root,actor,ns,budget):
+            listen=pool.get('listen','')
+            if listen.startswith('/') and pathlib.Path(listen).resolve()==socket:matches.append(pool)
+        if len(matches)!=1:raise ValueError('fpm_pool_missing_or_ambiguous')
+        pool=matches[0];username=pool.get('user','')
+        if pool.get('chroot') or not re.fullmatch(r'[a-z_][a-z0-9_-]{0,31}',username):raise ValueError('fpm_principal_unsupported')
+        uid=pwd.getpwnam(username).pw_uid
+        if uid<1:raise ValueError('fpm_principal_unsupported')
+        binary=ria_system_binary('/usr/sbin/php-fpm8.3')
+        info=ria_capture([binary,'-i'],1048576);values=ria_fpm_values(info)
+        user_ini=[line.split('=>') for line in info.splitlines() if line.split('=>')[0].strip()=='user_ini.filename']
+        if len(user_ini)!=1 or len(user_ini[0])!=3 or user_ini[0][1].strip()!=user_ini[0][2].strip():raise ValueError('user_ini_metadata_unavailable')
+        user_ini=pool.get('php_admin_value[user_ini.filename]',pool.get('php_value[user_ini.filename]',user_ini[0][1].strip()))
+        if user_ini not in ('.user.ini','','no value'):raise ValueError('user_ini_filename_unsupported')
+        raw_path=pool.get('php_admin_value[session.save_path]',pool.get('php_value[session.save_path]',values['session.save_path']))
+        session_path=v4_config_value('session.save_path="'+raw_path+'"')
+        if not session_path:raise ValueError('fpm_session_path_unavailable')
+        candidate=pathlib.Path(session_path);ns['no_links'](candidate);candidate=candidate.resolve(strict=True)
+        if candidate==project or project in candidate.parents:raise ValueError('candidate_scope')
+        for config in ((project/'.user.ini',project/'_preview/.user.ini',runtime/'.user.ini') if user_ini=='.user.ini' else ()):
+            if config.exists() and v4_config_value(v4_owned_read(config,65536,actor,ns,config=True).decode('utf-8')) is not None:raise ValueError('app_override_changed')
+        report.update(pool_uid_same_as_carrier=uid==actor,configured_candidates=1,
+                      session_root_sha256=hashlib.sha256(str(candidate).encode()).hexdigest())
+        report['stage']='session_candidate_metadata';paths=[];total=0;entries=0
+        for config,(_,previous) in budget.get('cache',{}).items():
+            facts=os.lstat(config)
+            if (facts.st_dev,facts.st_ino,facts.st_uid,facts.st_mode,facts.st_size,facts.st_mtime_ns,facts.st_ctime_ns)!=previous:raise ValueError('config_changed')
+        with os.scandir(candidate) as scan:
+            for entry in scan:
+                entries+=1
+                if entries>4096:raise ValueError('session_directory_entry_limit')
+                facts=entry.stat(follow_symlinks=False)
+                if not ns['NAME'].fullmatch(entry.name) or not V4_START<=facts.st_mtime<=V4_END or facts.st_uid!=uid:continue
+                if not stat.S_ISREG(facts.st_mode) or entry.is_symlink() or not 0<facts.st_size<=ns['MAX_FILE']:raise ValueError('session_candidate_type_or_size')
+                paths.append(pathlib.Path(entry.path));total+=facts.st_size
+                if len(paths)>32 or total>ns['MAX_TOTAL']:raise ValueError('session_candidate_total_size_limit')
+        report['candidate_files']=len(paths);cases=[];read_bytes=0
+        for path in sorted(paths):
+            report['stage']='retained_session_content'
+            # Expected file owner only; os.open still runs as the unchanged carrier actor.
+            raw=v4_owned_read(path,min(ns['MAX_FILE'],ns['MAX_TOTAL']-read_bytes),uid,ns,window=True);read_bytes+=len(raw)
+            session=ns['decode_session'](raw,'php_serialize' if raw.startswith(b'a:') else 'php')
+            report['stage']='exact_case_binding'
+            for case in v4_target_cases(session,ns):cases.append((case,hashlib.sha256(raw).hexdigest()))
+        if len(cases)!=1:raise ValueError('exact_v4_case_missing' if not cases else 'exact_v4_case_ambiguous')
+        case,digest=cases[0];report.update(status='retained_case_matched',case='v4-20261101-2A-age1',
+            session_sha256=digest,retained_outcome=case,session_bytes_read=read_bytes,full_price_verified_current=False)
+    except PermissionError:report.update(reason='retained_permission_denied',failure_class='permission_denied')
+    except FileNotFoundError:report.update(reason='configured_path_unavailable',failure_class='not_found')
+    except Exception as error:
+        reasons={'nginx_syntax','config_scope_limit','config_path_scope','config_trust','config_changed','config_include_cycle','config_include_shape',
+            'vhost_root_ambiguous','vhost_alias_unsupported','vhost_php_override_unsupported','vhost_php_mapping_ambiguous',
+            'vhost_route_unsupported','vhost_route_missing','vhost_route_ambiguous',
+            'vhost_upstream_unsupported','vhost_socket_unsupported','vhost_mapping_missing_or_ambiguous','pool_shape','pool_include_unsupported',
+            'fpm_socket_not_live','fpm_pool_missing_or_ambiguous','fpm_principal_unsupported','fpm_session_path_unavailable',
+            'candidate_scope','app_override_changed','user_ini_metadata_unavailable','user_ini_filename_unsupported','session_directory_entry_limit','session_candidate_type_or_size',
+            'session_candidate_total_size_limit','exact_v4_case_missing','exact_v4_case_ambiguous','runtime_api_pin','parser_pin',
+            'config_value_unsupported','config_path_unsupported','config_sharded_path_unsupported','config_value_ambiguous',
+            'metadata_binary_unavailable','metadata_output_limit','metadata_timeout','metadata_unavailable','metadata_format'}
+        reason=str(error);report['reason']=reason if reason in reasons else 'mapping_or_retained_shape_unavailable'
+    return report
+"""
+
+REMOTE_V4_MAP_DISPATCH = r'''    if mode=='anex-v4-vhost-session-readback':
+        if operation!='int-anex-v4-vhost-session-20261101-v1' or source!='6dcfb5053793caba4f353facfa7a899a30df2d17':fail('v4_map_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,session_writes=0,cache_writes=0)
+        result['anex_v4_vhost_readback']=v4_mapped_session_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+'''
+
+
+def remote_with_v4_map_readback(core):
+    remote=core.REMOTE;definition='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n";collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'v4_map_registration_source_drift')
+    reader=REMOTE_V4_READER.replace('@@V4_PARSER@@',repr(RIA_PINNED_READER_SOURCE))
+    remote=remote.replace(definition,REMOTE_RIA_READER+reader+REMOTE_V4_MAP_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_V4_MAP_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+V4_MAP_MODE+"','reconcile',")
+    ast.parse(remote);return remote
 
