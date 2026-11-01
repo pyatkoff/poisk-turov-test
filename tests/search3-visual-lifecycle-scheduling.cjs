@@ -73,6 +73,7 @@ function harness(code = source) {
 
 const cases = [];
 const check = (name, body) => cases.push({name, body});
+check('ANEX expanded selection survives an obsolete search result', require('./search3-visual-anex-selection-retention.cjs'));
 check('LIVE and labelled demo load one canonical lifecycle owner', () => {
   const root = path.resolve(__dirname, '../v2/visual-search');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
