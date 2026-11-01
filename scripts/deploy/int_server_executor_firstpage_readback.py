@@ -1593,7 +1593,7 @@ def v4_target_cases(session,ns):
                             'created_at':created,'supplier_stages':stages})
     return matches
 
-def v4_owned_read(path,limit,actor,ns,window=False,config=False):
+def v4_owned_read(path,limit,actor,ns,window=False,config=False,require_owner=True):
     import stat
     ns['no_links'](path)
     before=os.lstat(path)
@@ -1601,7 +1601,7 @@ def v4_owned_read(path,limit,actor,ns,window=False,config=False):
     try:
         opened=os.fstat(fd)
         facts=lambda st:(st.st_dev,st.st_ino,st.st_uid,st.st_mode,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
-        if facts(before)!=facts(opened) or not stat.S_ISREG(opened.st_mode) or opened.st_uid!=actor:raise ValueError('session_ownership')
+        if facts(before)!=facts(opened) or not stat.S_ISREG(opened.st_mode) or require_owner and opened.st_uid!=actor:raise ValueError('session_ownership')
         if config and opened.st_mode&0o022:raise ValueError('config_ownership_or_mode')
         if not 0<opened.st_size<=limit:raise ValueError('session_total_limit')
         if window and not V4_START<=opened.st_mtime<=V4_END:raise ValueError('session_window_changed')
@@ -1625,7 +1625,8 @@ def v4_owned_session_readback():
         ns.update(START=V4_START,END=V4_END)
         actor=os.geteuid()
         report['stage']='runtime_api_pin'
-        api=v4_owned_read(runtime/'api-anex-search3-preview.php',262144,actor,ns)
+        # This is pinned public source, not session/config contents; ordinary read ACLs suffice.
+        api=v4_owned_read(runtime/'api-anex-search3-preview.php',262144,actor,ns,require_owner=False)
         if hashlib.sha256(api).hexdigest()!='0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4':raise ValueError('runtime_api_pin')
         candidates=[]
         report['stage']='project_configuration'

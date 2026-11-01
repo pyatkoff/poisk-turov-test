@@ -1534,6 +1534,16 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.assertEqual(result['reason'],'retained_permission_denied');self.assertEqual(result['failure_class'],'permission_denied')
         self.assertEqual(result['stage'],'runtime_api_pin');self.assertNotIn('PRIVATE',json.dumps(result))
 
+    def test_foreign_session_owner_is_denied_before_content(self):
+        facts=types.SimpleNamespace(st_dev=1,st_ino=1,st_uid=8,st_mode=0o100644,st_size=14,
+            st_mtime_ns=1,st_ctime_ns=1,st_mtime=1)
+        parser=dict(self.parser,no_links=mock.Mock())
+        with mock.patch.object(os,'lstat',return_value=facts),mock.patch.object(os,'fstat',return_value=facts), \
+                mock.patch.object(os,'open',return_value=41),mock.patch.object(os,'close'),mock.patch.object(os,'read') as read:
+            with self.assertRaisesRegex(ValueError,'session_ownership'):
+                self.ns['v4_owned_read'](Path('/synthetic/sessions/sess_fixed'),65536,7,parser)
+            read.assert_not_called()
+
     def test_reference_in_target_cannot_be_reported_as_missing(self):
         self.context['package_quotes']=self.parser['Ref']()
         with self.assertRaisesRegex(ValueError,'quote_reference_or_shape'):self.cases()
@@ -1566,6 +1576,7 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.ns['v4_owned_read']=mock.Mock(return_value=b'PRIVATE_WRONG_API')
         with mock.patch.object(os,'geteuid',return_value=7,create=True):result=self.ns['v4_owned_session_readback']()
         self.assertEqual(result['reason'],'runtime_api_pin')
+        self.assertEqual(self.ns['v4_owned_read'].call_args.kwargs,{'require_owner':False},'only public pinned API source omits the same-UID content restriction')
         self.assertEqual(result['supplier_requests'],0);self.assertFalse(result['actor_escalation'])
         self.assertNotIn('PRIVATE_',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
 
