@@ -26,7 +26,10 @@ RIA2_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
 RIA3_MODE = 'anex-ria-apd-access-v3'
 RIA3_OPERATION = 'int-anex-ria-apd-access-20261028-v3'
 RIA3_SOURCE = '09cedd5c0a8f34521820a7a58586bfb37ad7b553'
-MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE)
+V4_MODE = 'anex-v4-owned-session-readback'
+V4_OPERATION = 'int-anex-v4-owned-session-20261101-v1'
+V4_SOURCE = '6dcfb5053793caba4f353facfa7a899a30df2d17'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -51,6 +54,7 @@ def register_parser(core) -> None:
             RIA_MODE: (RIA_SOURCE, RIA_OPERATION),
             RIA2_MODE: (RIA2_SOURCE, RIA2_OPERATION),
             RIA3_MODE: (RIA3_SOURCE, RIA3_OPERATION),
+            V4_MODE: (V4_SOURCE, V4_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -454,6 +458,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 
 def remote_with_readback(core, mode: str = MODE) -> str:
+    if mode == V4_MODE: return remote_with_v4_readback(core)
     need(mode in MODES, 'firstpage_registration_mode')
     if mode == RIA3_MODE: return remote_with_ria3_readback(core)
     if mode == RIA2_MODE: return remote_with_ria2_readback(core)
@@ -1470,3 +1475,207 @@ def remote_with_ria3_readback(core):
     remote=remote.replace(collectors,"    if mode not in ('"+RIA3_MODE+"','reconcile',")
     ast.parse(remote)
     return remote
+
+
+# Same permanent SSH carrier; no public endpoint, sudo, permissions or supplier call.
+REMOTE_V4_READER = r"""
+V4_PARSER_SOURCE = @@V4_PARSER@@
+V4_START = 1793535300  # 2026-11-01T12:15:00Z; excludes the earlier v3 Find.
+V4_END = 1793535780    # 2026-11-01T12:23:00Z; original v4 completed12:22:39Z.
+
+def v4_values(value):
+    if isinstance(value,list):return value
+    if isinstance(value,dict) and list(value)==list(range(len(value))):return list(value.values())
+    return None
+
+def v4_config_value(text):
+    values=[]
+    for line in text.splitlines():
+        line=line.strip()
+        if not line or line.startswith((';','#')):continue
+        if line.startswith('['):raise ValueError('config_section_unsupported')
+        if not re.match(r'(?i)^session\.save_path\s*=',line):continue
+        match=re.fullmatch(r"(?i)session\.save_path\s*=\s*(?:\"([^\"]+)\"|'([^']+)'|([^;\s]+))\s*(?:;.*)?",line)
+        if not match:raise ValueError('config_value_unsupported')
+        value=next(v for v in match.groups() if v is not None)
+        parts=value.split(';')
+        if len(parts)==1:value=parts[0]
+        elif len(parts) in (2,3) and parts[0]=='0' and (len(parts)==2 or re.fullmatch(r'[0-7]{3,4}',parts[1])):value=parts[-1]
+        else:raise ValueError('config_sharded_path_unsupported')
+        if not value.startswith('/') or '$' in value or '\x00' in value:raise ValueError('config_path_unsupported')
+        values.append(value)
+    if len(values)>1:raise ValueError('config_value_ambiguous')
+    return values[0] if values else None
+
+def v4_target_cases(session,ns):
+    contexts=session.get('anex_offer_contexts')
+    if contexts is None:
+        context=session.get('offer_context')
+        contexts={'legacy':context} if isinstance(context,dict) else {}
+    if not isinstance(contexts,dict) or len(contexts)>4:raise ValueError('context_shape')
+    matches=[]
+    for context in contexts.values():
+        if not isinstance(context,dict):raise ValueError('context_reference_or_shape')
+        saved=context.get('gateway',{}).get('saved_offers',{})
+        if not isinstance(saved,dict):raise ValueError('saved_shape')
+        created=saved.get('created_at')
+        if type(created) is not int or not V4_START<=created<=V4_END:continue
+        search=saved.get('search',{})
+        if not isinstance(search,dict):raise ValueError('search_shape')
+        ages=v4_values(search.get('child_ages'))
+        if ages!=[1] or any(type(age) is not int for age in ages):continue
+        if not (search.get('checkin_begin')=='2026-12-20' and search.get('checkin_end')=='2026-12-26'
+                and search.get('nights_from')==7 and search.get('nights_till')==7
+                and type(search.get('adults')) is int and search['adults']==2
+                and type(search.get('children')) is int and search['children']==1
+                and type(search.get('nights_from')) is int and type(search.get('nights_till')) is int):continue
+        entries=saved.get('offers')
+        if not isinstance(entries,dict) or len(entries)>5000:raise ValueError('offers_shape')
+        for key,entry in entries.items():
+            offer=entry.get('offer') if isinstance(entry,dict) else None
+            if not isinstance(offer,dict):continue
+            hotel=offer.get('hotel',{})
+            if not isinstance(hotel,dict) or ns['label'](hotel.get('name'))!='BEACH SAFARI NUBIAN RESORT':continue
+            if ns['has_reference'](offer):raise ValueError('target_reference')
+            if not isinstance(key,str) or not re.fullmatch(r'anex_online:[a-f0-9]{64}',key) or offer.get('offer_key')!=key:raise ValueError('target_key_binding')
+            money=offer.get('converted_price') or offer.get('price')
+            if not (offer.get('kind')=='concrete' and ns['label'](offer.get('room'))=='STANDARD ROOM'
+                    and ns['label'](offer.get('meal'))=='AI' and offer.get('checkin')=='2026-12-24'
+                    and offer.get('checkout')=='2026-12-31' and type(offer.get('nights')) is int and offer['nights']==7
+                    and type(offer.get('adults')) is int and offer['adults']==2
+                    and type(offer.get('children')) is int and offer['children']==1
+                    and type(offer.get('infants')) is int and offer['infants']==1
+                    and isinstance(money,dict) and money.get('currency')=='RUB' and type(money.get('amount')) in (str,int)
+                    and re.fullmatch(r'107581(?:\.0{1,2})?',str(money.get('amount')))):continue
+            attempts=context.get('package_quotes',{})
+            if not isinstance(attempts,dict):raise ValueError('quote_reference_or_shape')
+            attempt=attempts.get(key)
+            if attempt is None:
+                matches.append({'status':'quote_not_started','created_at':created,'supplier_stages':[]})
+                continue
+            if not isinstance(attempt,dict):raise ValueError('quote_reference_or_shape')
+            public=attempt.get('public',{})
+            if not isinstance(public,dict):raise ValueError('public_shape')
+            status=public.get('status')
+            if status not in ('quote_choices','quote_verified','quote_failed','quote_unknown','quote_expired'):status='quote_unknown'
+            stages=[]
+            for stage,state in attempt.get('stages',{}).items():
+                if stage in ('start','transports','SetTransport','calcfull') and state in ('complete','unknown'):stages.append({'stage':stage,'state':state})
+            pairs=attempt.get('pairs',{})
+            if not isinstance(pairs,dict) or len(pairs)>3:raise ValueError('pairs_shape')
+            for pair in pairs.values():
+                if not isinstance(pair,dict):raise ValueError('pair_reference_or_shape')
+                for stage,state in pair.get('stages',{}).items():
+                    if stage in ('SetTransport','calcfull') and state in ('complete','unknown'):stages.append({'stage':stage,'state':state})
+            matches.append({'status':status,'created_at':created,'supplier_stages':stages})
+    return matches
+
+def v4_owned_read(path,limit,actor,ns,window=False):
+    import stat
+    ns['no_links'](path)
+    before=os.lstat(path)
+    fd=os.open(path,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0))
+    try:
+        opened=os.fstat(fd)
+        facts=lambda st:(st.st_dev,st.st_ino,st.st_uid,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+        if facts(before)!=facts(opened) or not stat.S_ISREG(opened.st_mode) or opened.st_uid!=actor:raise ValueError('session_ownership')
+        if not 0<opened.st_size<=limit:raise ValueError('session_total_limit')
+        if window and not V4_START<=opened.st_mtime<=V4_END:raise ValueError('session_window_changed')
+        chunks=[];remaining=opened.st_size
+        while remaining:
+            part=os.read(fd,min(65536,remaining))
+            if not part:raise ValueError('retained_file_changed')
+            chunks.append(part);remaining-=len(part)
+        if facts(opened)!=facts(os.fstat(fd)):raise ValueError('retained_file_changed')
+        return b''.join(chunks)
+    finally:os.close(fd)
+
+def v4_owned_session_readback():
+    import stat
+    report={'status':'hold','supplier_requests':0,'database_operations':0,'runtime_session_cache_writes':0,
+            'actor_escalation':False,'path_scope':'project_owned_ini_candidate_only','vhost_pool_authority':False}
+    try:
+        if hashlib.sha256(V4_PARSER_SOURCE.encode()).hexdigest()!='e75beb5c112fae08592a6c2308db38ee1f2d8d5aecffb49d118f856b303e1aad':raise ValueError('parser_pin')
+        ns={'__name__':'fixed_v4_readonly_decoder'}
+        exec(compile(V4_PARSER_SOURCE,'<fixed-v4-decoder>','exec'),ns)
+        ns.update(START=V4_START,END=V4_END)
+        actor=os.geteuid()
+        api=v4_owned_read(runtime/'api-anex-search3-preview.php',262144,actor,ns)
+        if hashlib.sha256(api).hexdigest()!='0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4':raise ValueError('runtime_api_pin')
+        candidates=[]
+        for config in (project/'.user.ini',project/'_preview/.user.ini',runtime/'.user.ini'):
+            if not config.exists():continue
+            facts=os.lstat(config)
+            if not stat.S_ISREG(facts.st_mode) or facts.st_uid!=actor or facts.st_mode&0o022:raise ValueError('config_ownership_or_mode')
+            raw=v4_owned_read(config,65536,actor,ns)
+            value=v4_config_value(raw.decode('utf-8'))
+            if value is None:continue
+            candidate=pathlib.Path(value)
+            ns['no_links'](candidate)
+            candidate=candidate.resolve(strict=True)
+            candidate.relative_to(home.resolve(strict=True))
+            if candidate==home or candidate==project or project in candidate.parents:raise ValueError('candidate_scope')
+            facts=os.lstat(candidate)
+            if not stat.S_ISDIR(facts.st_mode) or facts.st_uid!=actor:raise ValueError('candidate_ownership')
+            candidates.append(candidate)
+        candidates=list(dict.fromkeys(candidates))
+        report['configured_candidates']=len(candidates)
+        if not candidates:raise ValueError('project_owned_session_override_absent')
+        if len(candidates)!=1:raise ValueError('project_owned_session_override_ambiguous')
+        paths=ns['session_candidates'](candidates[0])
+        report['candidate_files']=len(paths)
+        total=0
+        for path in paths:
+            facts=os.lstat(path)
+            if facts.st_uid!=actor:raise ValueError('session_ownership')
+            total+=facts.st_size
+        if total>ns['MAX_TOTAL']:raise ValueError('session_total_limit')
+        matches=[];read_bytes=0
+        for path in paths:
+            raw=v4_owned_read(path,min(ns['MAX_FILE'],ns['MAX_TOTAL']-read_bytes),actor,ns,window=True)
+            read_bytes+=len(raw)
+            serializer='php_serialize' if raw.startswith(b'a:') else 'php'
+            session=ns['decode_session'](raw,serializer)
+            for case in v4_target_cases(session,ns):matches.append((case,hashlib.sha256(raw).hexdigest()))
+        if len(matches)!=1:raise ValueError('exact_v4_case_missing' if not matches else 'exact_v4_case_ambiguous')
+        case,digest=matches[0]
+        report.update(status='retained_case_matched',case='v4-20261101-2A-age1',session_sha256=digest,
+                      retained_outcome=case,session_bytes_read=read_bytes,full_price_verified_current=False)
+    except Exception as error:
+        allowed={'config_section_unsupported','config_value_unsupported','config_sharded_path_unsupported',
+            'config_path_unsupported','config_value_ambiguous','config_ownership_or_mode','candidate_scope',
+            'candidate_ownership','project_owned_session_override_absent','project_owned_session_override_ambiguous',
+            'session_ownership','session_total_limit','exact_v4_case_missing','exact_v4_case_ambiguous',
+            'context_shape','context_reference_or_shape','saved_shape','search_shape','offers_shape','target_reference','target_key_binding',
+            'quote_reference_or_shape','public_shape','pairs_shape','pair_reference_or_shape','parser_pin','runtime_api_pin',
+            'session_window_changed','retained_file_changed'}
+        reason=str(error)
+        report['reason']=reason if reason in allowed else 'permission_or_retained_shape_unavailable'
+    return report
+"""
+
+REMOTE_V4_DISPATCH = r'''    if mode=='anex-v4-owned-session-readback':
+        if operation!='int-anex-v4-owned-session-20261101-v1' or source!='6dcfb5053793caba4f353facfa7a899a30df2d17':
+            fail('v4_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,session_writes=0,cache_writes=0)
+        result['anex_v4_readback']=v4_owned_session_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def remote_with_v4_readback(core):
+    remote=core.REMOTE
+    definition='def local_read(scopes):\n'
+    dispatch="    if mode=='local-readback':\n"
+    collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'v4_registration_source_drift')
+    reader=REMOTE_V4_READER.replace('@@V4_PARSER@@',repr(RIA_PINNED_READER_SOURCE))
+    remote=remote.replace(definition,reader+definition,1)
+    remote=remote.replace(dispatch,REMOTE_V4_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+V4_MODE+"','reconcile',")
+    ast.parse(remote)
+    return remote
+

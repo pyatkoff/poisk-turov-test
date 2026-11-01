@@ -1425,5 +1425,104 @@ class Ria3EvidenceTest(unittest.TestCase):
             exec(__import__('textwrap').dedent(extension.REMOTE_RIA3_DISPATCH),self.ns)
         self.ns['ria3_readback'].assert_not_called()
 
+class V4OwnedSessionTest(unittest.TestCase):
+    def setUp(self):
+        self.ns={'os':os,'pathlib':__import__('pathlib'),'hashlib':hashlib,'json':json,'re':re,'time':__import__('time')}
+        reader=extension.REMOTE_V4_READER.replace('@@V4_PARSER@@',repr(extension.RIA_PINNED_READER_SOURCE))
+        exec(compile(reader,'<v4-test>','exec'),self.ns)
+        self.parser={'__name__':'v4-decoder-test'}
+        exec(extension.RIA_PINNED_READER_SOURCE,self.parser)
+        self.created=self.ns['V4_START']+120
+        self.key='anex_online:'+'a'*64
+        self.offer={'offer_key':self.key,'kind':'concrete','hotel':{'name':'BEACH SAFARI NUBIAN RESORT'},'room':'Standard Room','meal':'AI',
+            'checkin':'2026-12-24','checkout':'2026-12-31','nights':7,'adults':2,'children':1,'infants':1,
+            'price':{'amount':'107581','currency':'RUB'}}
+        self.context={'gateway':{'saved_offers':{'created_at':self.created,
+            'search':{'checkin_begin':'2026-12-20','checkin_end':'2026-12-26','nights_from':7,'nights_till':7,
+                      'adults':2,'children':1,'child_ages':{0:1}},
+            'offers':{self.key:{'offer':self.offer}}}},'package_quotes':{}}
+        self.session={'anex_offer_contexts':{'PRIVATE_SEARCH':self.context}}
+
+    def cases(self):return self.ns['v4_target_cases'](self.session,self.parser)
+
+    def test_fixed_parser_and_closed_command(self):
+        self.assertEqual(extension.RIA_READER_SHA256,hashlib.sha256(extension.RIA_PINNED_READER_SOURCE.encode()).hexdigest())
+        import ast
+        tree=ast.parse((ROOT/'scripts/deploy/int_server_executor.py').read_text())
+        remote=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='REMOTE' for t in n.targets))
+        def reject(body):raise ValueError('ordinary')
+        core=types.SimpleNamespace(PREFIX='/run-int-server-v1 ',parse_command=reject,REMOTE=remote)
+        extension.register_parser(core)
+        body=core.PREFIX+extension.V4_SOURCE+' '+extension.V4_MODE+' '+extension.V4_OPERATION
+        command=core.parse_command(body)
+        self.assertEqual(command,{'source_sha':extension.V4_SOURCE,'mode':extension.V4_MODE,'operation_id':extension.V4_OPERATION})
+        for invalid in (body+' extra',body.replace(extension.V4_SOURCE,'a'*40),body.replace('-v1','-v2')):
+            with self.assertRaises(ValueError):core.parse_command(invalid)
+        extension.activate(core,command)
+        ast.parse(core.REMOTE)
+        self.assertIn('operation_exists_no_replay',core.REMOTE)
+        self.assertIn('v4_owned_session_readback()',core.REMOTE)
+        self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(),9)))+1024,65536)
+        self.assertNotIn('sudo',extension.REMOTE_V4_READER)
+
+    def test_ini_exact_absolute_no_interpolation_or_sharding(self):
+        parse=self.ns['v4_config_value']
+        self.assertEqual(parse('session.save_path = "/home/owner/sessions" ; comment'),'/home/owner/sessions')
+        self.assertEqual(parse("session.save_path='0;0600;/home/owner/sessions'"),'/home/owner/sessions')
+        self.assertIsNone(parse('memory_limit=256M'))
+        for value in ('[PATH=/x]\nsession.save_path=/home/x','session.save_path=$HOME/tmp','session.save_path=relative',
+                      'session.save_path="2;0600;/home/x"','session.save_path=/home/a\nsession.save_path=/home/b'):
+            with self.subTest(value=value),self.assertRaises(ValueError):parse(value)
+
+    def test_exact_retained_case_without_attempt_is_not_started(self):
+        result=self.cases()
+        self.assertEqual(result,[{'status':'quote_not_started','created_at':self.created,'supplier_stages':[]}])
+        self.assertNotIn('PRIVATE_',json.dumps(result))
+
+    def test_original_context_time_and_all_ages_are_required(self):
+        saved=self.context['gateway']['saved_offers']
+        for key,value in (('created_at',self.ns['V4_START']-1),('created_at',self.ns['V4_END']+1)):
+            with self.subTest(value=value):
+                saved[key]=value;self.assertEqual(self.cases(),[])
+        saved['created_at']=self.created
+        for ages in ({0:0},{0:2},{0:True},{0:1,1:8},{}):
+            saved['search']['child_ages']=ages;self.assertEqual(self.cases(),[])
+
+    def test_foreign_offer_conditions_and_counts_do_not_match(self):
+        for key,value in (('room','Suite'),('meal','BB'),('checkin','2026-12-25'),('adults',True),('children',0),('infants',0)):
+            before=self.offer[key]
+            with self.subTest(key=key):
+                self.offer[key]=value;self.assertEqual(self.cases(),[])
+            self.offer[key]=before
+
+    def test_unknown_and_completed_stages_are_retained_without_price_authority(self):
+        self.context['package_quotes'][self.key]={'version':2,'stages':{'start':'complete','transports':'unknown'},
+            'public':{'status':'quote_unknown','price':{'amount':'999999','currency':'RUB'}},'pairs':{}}
+        result=self.cases()[0]
+        self.assertEqual(result['status'],'quote_unknown')
+        self.assertEqual(result['supplier_stages'],[{'stage':'start','state':'complete'},{'stage':'transports','state':'unknown'}])
+        self.assertNotIn('price',result)
+
+    def test_reference_in_target_cannot_be_reported_as_missing(self):
+        self.context['package_quotes']=self.parser['Ref']()
+        with self.assertRaisesRegex(ValueError,'quote_reference_or_shape'):self.cases()
+
+    def test_same_semantic_tour_is_ambiguous_not_first_match(self):
+        key='anex_online:'+'b'*64
+        self.context['gateway']['saved_offers']['offers'][key]={'offer':dict(self.offer,offer_key=key)}
+        self.assertEqual(len(self.cases()),2)
+
+    def test_runtime_pin_hold_has_no_secret_or_supplier_activity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home=Path(directory).resolve();project=home/'www/anytoour.ru';runtime=project/'_preview/search3-anex-candidate';runtime.mkdir(parents=True)
+            api=runtime/'api-anex-search3-preview.php';api.write_bytes(b'PRIVATE_WRONG_API')
+            self.ns.update(home=home,project=project,runtime=runtime)
+            with mock.patch.object(os,'geteuid',return_value=api.stat().st_uid,create=True):result=self.ns['v4_owned_session_readback']()
+            self.assertEqual(result['reason'],'runtime_api_pin')
+            self.assertEqual(result['supplier_requests'],0);self.assertFalse(result['actor_escalation'])
+            self.assertNotIn('PRIVATE_',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
+
+
 if __name__ == '__main__':
     unittest.main()
+
