@@ -2747,10 +2747,12 @@ function resetFilters(){
 }
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
 function terminalizeSearchForVerification(reason='verification'){
+ // Freeze the UI snapshot; an in-flight provider publish must not replace expanded offers.
+ searchLifecycle.invalidate?.();
  if(searchResponse.providers)for(const key of Object.keys(searchResponse.providers))if(searchResponse.providers[key]==='loading')searchResponse.providers[key]='cancelled';
  searchResponse.pending=false;searchResponse.canContinue=false;searchResponse.retryRead=false;searchResponse.phase='cancelled';searchResponse.stopReason=reason;
 }
-function stopSearch(){clearSearchTimers();searchLifecycle.invalidate?.();terminalizeSearchForVerification('user');renderResults({keepFilters:true});}
+function stopSearch(){clearSearchTimers();terminalizeSearchForVerification('user');renderResults({keepFilters:true});}
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
  const opened=node.querySelector('details')?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
