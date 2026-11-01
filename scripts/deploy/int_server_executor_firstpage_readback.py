@@ -1549,10 +1549,10 @@ def v4_target_cases(session,ns):
                     and re.fullmatch(r'107581(?:\.0{1,2})?',str(money.get('amount')))):continue
             attempts=context.get('package_quotes',{})
             if not isinstance(attempts,dict):raise ValueError('quote_reference_or_shape')
-            attempt=attempts.get(key)
-            if attempt is None:
+            if key not in attempts:
                 matches.append({'status':'quote_not_started','created_at':created,'supplier_stages':[]})
                 continue
+            attempt=attempts[key]
             if not isinstance(attempt,dict):raise ValueError('quote_reference_or_shape')
             public=attempt.get('public',{})
             if not isinstance(public,dict):raise ValueError('public_shape')
@@ -1567,18 +1567,22 @@ def v4_target_cases(session,ns):
                 if not isinstance(pair,dict):raise ValueError('pair_reference_or_shape')
                 for stage,state in pair.get('stages',{}).items():
                     if stage in ('SetTransport','calcfull') and state in ('complete','unknown'):stages.append({'stage':stage,'state':state})
-            matches.append({'status':status,'created_at':created,'supplier_stages':stages})
+            # A stored public result is not canonical replay authority (e.g. sealed v2).
+            matches.append({'status':'quote_attempt_retained','stored_public_status':status,
+                            'sealed':attempt.get('sealed') if type(attempt.get('sealed')) is bool else None,
+                            'created_at':created,'supplier_stages':stages})
     return matches
 
-def v4_owned_read(path,limit,actor,ns,window=False):
+def v4_owned_read(path,limit,actor,ns,window=False,config=False):
     import stat
     ns['no_links'](path)
     before=os.lstat(path)
     fd=os.open(path,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0))
     try:
         opened=os.fstat(fd)
-        facts=lambda st:(st.st_dev,st.st_ino,st.st_uid,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+        facts=lambda st:(st.st_dev,st.st_ino,st.st_uid,st.st_mode,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
         if facts(before)!=facts(opened) or not stat.S_ISREG(opened.st_mode) or opened.st_uid!=actor:raise ValueError('session_ownership')
+        if config and opened.st_mode&0o022:raise ValueError('config_ownership_or_mode')
         if not 0<opened.st_size<=limit:raise ValueError('session_total_limit')
         if window and not V4_START<=opened.st_mtime<=V4_END:raise ValueError('session_window_changed')
         chunks=[];remaining=opened.st_size
@@ -1607,7 +1611,7 @@ def v4_owned_session_readback():
             if not config.exists():continue
             facts=os.lstat(config)
             if not stat.S_ISREG(facts.st_mode) or facts.st_uid!=actor or facts.st_mode&0o022:raise ValueError('config_ownership_or_mode')
-            raw=v4_owned_read(config,65536,actor,ns)
+            raw=v4_owned_read(config,65536,actor,ns,config=True)
             value=v4_config_value(raw.decode('utf-8'))
             if value is None:continue
             candidate=pathlib.Path(value)

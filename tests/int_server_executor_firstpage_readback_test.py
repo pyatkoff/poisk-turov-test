@@ -1499,9 +1499,28 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.context['package_quotes'][self.key]={'version':2,'stages':{'start':'complete','transports':'unknown'},
             'public':{'status':'quote_unknown','price':{'amount':'999999','currency':'RUB'}},'pairs':{}}
         result=self.cases()[0]
-        self.assertEqual(result['status'],'quote_unknown')
+        self.assertEqual(result['status'],'quote_attempt_retained')
+        self.assertEqual(result['stored_public_status'],'quote_unknown')
         self.assertEqual(result['supplier_stages'],[{'stage':'start','state':'complete'},{'stage':'transports','state':'unknown'}])
         self.assertNotIn('price',result)
+
+    def test_retained_null_is_unknown_not_absent(self):
+        self.context['package_quotes'][self.key]=None
+        with self.assertRaisesRegex(ValueError,'quote_reference_or_shape'):self.cases()
+
+    def test_sealed_verified_public_state_grants_no_verified_outcome(self):
+        self.context['package_quotes'][self.key]={'version':2,'sealed':True,'public':{'status':'quote_verified'},'stages':{},'pairs':{}}
+        result=self.cases()[0]
+        self.assertEqual(result['status'],'quote_attempt_retained');self.assertTrue(result['sealed'])
+        self.assertEqual(result['stored_public_status'],'quote_verified');self.assertNotIn('price',result)
+
+    def test_opened_config_mode_is_checked_before_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config=Path(directory)/'.user.ini';config.write_bytes(b'PRIVATE_CONFIG');config.chmod(0o666)
+            with mock.patch.object(os,'read') as read:
+                with self.assertRaisesRegex(ValueError,'config_ownership_or_mode'):
+                    self.ns['v4_owned_read'](config,65536,config.stat().st_uid,self.parser,config=True)
+                read.assert_not_called()
 
     def test_reference_in_target_cannot_be_reported_as_missing(self):
         self.context['package_quotes']=self.parser['Ref']()
