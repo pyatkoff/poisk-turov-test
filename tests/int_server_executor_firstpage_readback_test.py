@@ -1581,6 +1581,165 @@ class V4OwnedSessionTest(unittest.TestCase):
         self.assertNotIn('PRIVATE_',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
 
 
+class V4MappedConfigTest(unittest.TestCase):
+    setUp=V4OwnedSessionTest.setUp
+
+    def mapping(self,text):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        with mock.patch.object(Path,'resolve',autospec=True,side_effect=lambda path,*args,**kwargs:path):
+            return self.ns['v4_nginx_target'](self.ns['v4_nginx_parse'](text),Path('/home/owner/www/anytoour.ru'))
+
+    def server(self,extra='',host='anytoour.ru',root='/home/owner/www/anytoour.ru',address='unix:/run/php/php8.3-fpm.sock'):
+        return 'server { server_name '+host+'; root "'+root+'"; location ~ \\.php$ { fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; fastcgi_pass '+address+'; } '+extra+' }'
+
+    def test_exact_vhost_and_literal_socket(self):
+        self.assertEqual(self.mapping('http { '+self.server()+' }'),Path('/run/php/php8.3-fpm.sock'))
+
+    def test_redirect_and_same_pool_www_alias_are_not_ambiguous(self):
+        redirect='server { server_name anytoour.ru; root /home/owner/www/anytoour.ru; return 301 https://www.anytoour.ru$request_uri; }'
+        self.assertEqual(self.mapping(redirect+self.server(host='www.anytoour.ru')),Path('/run/php/php8.3-fpm.sock'))
+        self.assertEqual(self.mapping(self.server()+self.server(host='www.anytoour.ru')),Path('/run/php/php8.3-fpm.sock'))
+
+    def test_foreign_host_or_root_is_not_the_application_mapping(self):
+        for text in (self.server(host='other.example'),self.server(root='/var/www/other')):
+            with self.assertRaisesRegex(ValueError,'vhost_mapping_missing_or_ambiguous'):self.mapping(text)
+
+    def test_ambiguous_pool_alias_php_override_and_variables_fail_closed(self):
+        texts=(self.server(extra='location /static { alias /other; }'),self.server(extra='fastcgi_param PHP_VALUE "session.save_path=/other";'),
+            self.server(root='$dynamic'),
+            self.server()+self.server(host='www.anytoour.ru',address='unix:/run/php/other.sock'))
+        for text in texts:
+            with self.subTest(text=text),self.assertRaises(ValueError):self.mapping(text)
+
+    def test_endpoint_proxy_exact_override_and_rewrite_cannot_select_unrelated_php(self):
+        endpoint='/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+        cases=(self.server(extra='location ^~ /_preview/search3-anex-candidate/ { proxy_pass http://other_backend; }'),
+               self.server(extra='location = '+endpoint+' { deny all; }'),
+               self.server(extra='rewrite ^ /other.php last;'),
+               self.server(extra='location ~ ^/_preview/.*$ { proxy_pass http://other_backend; }'))
+        # The last regex follows the PHP regex and is irrelevant by Nginx order;
+        # put it first to exercise a real matching override.
+        cases=cases[:-1]+(cases[-1].replace('location ~ \\.php$', 'location ~ ^/_preview/.*$ { proxy_pass http://other_backend; } location ~ \\.php$'),)
+        for text in cases:
+            with self.subTest(text=text),self.assertRaises(ValueError):self.mapping(text)
+
+    def test_unrelated_location_does_not_change_selected_php_handler(self):
+        text=self.server(extra='location /unrelated { proxy_pass http://other_backend; }')
+        self.assertEqual(self.mapping(text),Path('/run/php/php8.3-fpm.sock'))
+
+    def test_unknown_optional_regex_prefix_cannot_be_ignored(self):
+        for pattern in ('^/x?.*','/\\.?'):
+            text=self.server().replace('location ~ \\.php$', 'location ~ '+pattern+' { proxy_pass http://other_backend; } location ~ \\.php$')
+            with self.assertRaises(ValueError):self.mapping(text)
+
+    def test_standard_static_and_hidden_rules_do_not_capture_api(self):
+        text=self.server().replace('location ~ \\.php$', 'location ~* \\.(css|js|woff2?)$ { expires 1d; } location ~ /\\.ht { deny all; } location ~ \\.php$')
+        self.assertEqual(self.mapping(text),Path('/run/php/php8.3-fpm.sock'))
+
+    def test_only_single_unix_upstream_is_supported(self):
+        text='upstream owned_php { server unix:/run/php/php8.3-fpm.sock; }'+self.server(address='owned_php')
+        self.assertEqual(self.mapping(text),Path('/run/php/php8.3-fpm.sock'))
+        with self.assertRaises(ValueError):self.mapping(self.server(address='127.0.0.1:9000'))
+
+    def test_quoted_comments_and_syntax_limits(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        parsed=self.ns['v4_nginx_parse']('server { # comment { ignored\n server_name anytoour.ru; root "/quoted/#name"; }')
+        self.assertEqual(parsed[0][2][1][1],['/quoted/#name'])
+        for text in ('server {','server_name x','server { root "unterminated; }','a {'*18+'}'*18):
+            with self.assertRaises(ValueError):self.ns['v4_nginx_parse'](text)
+
+    def test_pool_identity_and_quoted_session_path(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        pools=self.ns['v4_pool_sections']('[www]\nuser=www-data\nlisten=/run/php/php8.3-fpm.sock\nphp_admin_value[session.save_path]="0;0600;/var/lib/php/sessions" ; note')
+        self.assertEqual(pools[0]['user'],'www-data')
+        self.assertEqual(self.ns['v4_config_value']('session.save_path="'+pools[0]['php_admin_value[session.save_path]']+'"'),'/var/lib/php/sessions')
+        for text in ('[www]\nuser=a\nuser=b','[www]\n[www]','[www]\ninclude=/other'):
+            with self.assertRaises(ValueError):self.ns['v4_pool_sections'](text)
+
+    def test_fixed_mode_registration_and_carrier_size(self):
+        import ast
+        tree=ast.parse((ROOT/'scripts/deploy/int_server_executor.py').read_text())
+        remote=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='REMOTE' for t in n.targets))
+        def reject(body):raise ValueError('ordinary')
+        core=types.SimpleNamespace(PREFIX='/run-int-server-v1 ',parse_command=reject,REMOTE=remote)
+        extension.register_parser(core)
+        body=core.PREFIX+extension.V4_SOURCE+' '+extension.V4_MAP_MODE+' '+extension.V4_MAP_OPERATION
+        command=core.parse_command(body)
+        for invalid in (body+' /tmp/guess',body.replace(extension.V4_SOURCE,'a'*40),body.replace('-v1','-v2')):
+            with self.assertRaises(ValueError):core.parse_command(invalid)
+        extension.activate(core,command);ast.parse(core.REMOTE)
+        self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(),9)))+1024,65536)
+        self.assertIn('operation_exists_no_replay',core.REMOTE)
+        self.assertNotIn('sudo',extension.REMOTE_V4_MAP_READER)
+
+    @unittest.skipIf(os.name=='nt','POSIX ownership/config cache fixture; canonical CI is Linux')
+    def test_config_cache_bounds_and_changes_before_reread(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();config=root/'owned.conf';config.write_text('server { }');config.chmod(0o600)
+            budget={'files':set(),'bytes':0};reader=self.ns['v4_owned_read'];self.ns['v4_owned_read']=mock.Mock(wraps=reader)
+            first=self.ns['v4_config_trusted'](config,(root,),os.geteuid(),self.parser,budget)
+            second=self.ns['v4_config_trusted'](config,(root,),os.geteuid(),self.parser,budget)
+            self.assertEqual(first,second);self.assertEqual(self.ns['v4_owned_read'].call_count,1)
+            config.write_text('server { root /changed; }')
+            with self.assertRaisesRegex(ValueError,'config_changed'):self.ns['v4_config_trusted'](config,(root,),os.geteuid(),self.parser,budget)
+            self.assertEqual(self.ns['v4_owned_read'].call_count,1)
+
+    def test_untrusted_config_path_is_rejected_before_read(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        self.ns['v4_owned_read']=mock.Mock()
+        with self.assertRaisesRegex(ValueError,'config_path_scope'):
+            self.ns['v4_config_trusted'](Path('/outside/secret'),(Path('/allowed'),),7,self.parser,{'files':set(),'bytes':0})
+        self.ns['v4_owned_read'].assert_not_called()
+
+    def test_config_growth_cannot_exceed_remaining_budget_before_hold(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();config=root/'owned.conf';config.write_text('x')
+            small=types.SimpleNamespace(st_dev=1,st_ino=1,st_uid=7,st_mode=0o100600,st_size=1,st_mtime_ns=1,st_ctime_ns=1,st_mtime=1)
+            big=types.SimpleNamespace(**(vars(small)|{'st_size':262144}))
+            parent=types.SimpleNamespace(**(vars(small)|{'st_mode':0o40700,'st_size':0}))
+            calls=0
+            def lstat(path):
+                nonlocal calls
+                if Path(path)==config:
+                    calls+=1;return small if calls==1 else big
+                return parent
+            parser=dict(self.parser,no_links=mock.Mock())
+            budget={'files':set(),'bytes':2097151}
+            with mock.patch.object(os,'lstat',side_effect=lstat),mock.patch.object(os,'fstat',return_value=big), \
+                    mock.patch.object(os,'open',return_value=41),mock.patch.object(os,'close'),mock.patch.object(os,'read') as read:
+                with self.assertRaisesRegex(ValueError,'config_changed|session_total_limit'):
+                    self.ns['v4_config_trusted'](config,(root,),7,parser,budget)
+                read.assert_not_called()
+            self.assertEqual(budget['bytes'],2097151)
+
+    def test_repeated_fpm_include_stops_before_expansion(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        root=Path('/fixed-config')
+        configs={root/'php-fpm.conf':b'[global]\ninclude=child.conf\ninclude=child.conf\n',
+                 root/'child.conf':b'[global]\ninclude=leaf.conf\ninclude=leaf.conf\n',
+                 root/'leaf.conf':b'[global]\n'}
+        reader=mock.Mock(side_effect=lambda path,*args:(path,configs[path]))
+        self.ns['v4_config_trusted']=reader
+        self.ns['v4_config_matches']=lambda pattern,*args:[pattern]
+        with self.assertRaisesRegex(ValueError,'config_include_repeated'):
+            self.ns['v4_fpm_config_load'](root,7,self.parser,{'files':set(),'bytes':0})
+        self.assertEqual(reader.call_count,4)
+
+    @unittest.skipIf(os.name=='nt','POSIX ownership/include fixture; canonical CI is Linux')
+    def test_only_pools_in_main_fpm_include_graph_are_admitted(self):
+        exec(extension.REMOTE_V4_MAP_READER,self.ns)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();(root/'pool.d').mkdir();(root/'pool.d').chmod(0o700)
+            (root/'php-fpm.conf').write_text('[global]\ninclude='+str(root/'pool.d/active.conf')+'\n')
+            (root/'pool.d/active.conf').write_text('[active]\nuser=www-data\nlisten=/run/php/active.sock\n')
+            (root/'pool.d/inactive.conf').write_text('[inactive]\nuser=other\nlisten=/run/php/other.sock\n')
+            for path in root.rglob('*.conf'):path.chmod(0o600)
+            pools=self.ns['v4_fpm_config_load'](root,os.geteuid(),self.parser,{'files':set(),'bytes':0})
+            self.assertEqual([pool['listen'] for pool in pools if 'listen' in pool],['/run/php/active.sock'])
+
+
 if __name__ == '__main__':
     unittest.main()
 
