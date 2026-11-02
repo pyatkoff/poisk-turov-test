@@ -6,6 +6,8 @@ on:
     paths:
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/published-hotels-monitor-v1.php'
+      - 'tests/published-hotels-monitor-smoke.php'
       - '.github/workflows/sync-top500-priority-hotels.yml'
   workflow_dispatch:
     inputs:
@@ -31,6 +33,8 @@ jobs:
           set -euo pipefail
           php -l v2/data/sync-priority-hotels-v1.php
           php -l v2/data/top-hotels-v1.php
+          php -l v2/data/published-hotels-monitor-v1.php
+          php tests/published-hotels-monitor-smoke.php
           grep -Fq "v2_data_tv_get('/hotels/'.\$id)" v2/data/sync-priority-hotels-v1.php
           grep -Fq 'PRIORITY_HOTEL_SYNC_SUMMARY' v2/data/sync-priority-hotels-v1.php
           echo ANYTOUR_TOP500_PRIORITY_TOOLING_OK
@@ -71,7 +75,7 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
-          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php v2/data/sync-priority-hotels-v1.php v2/data/top500-coverage-v1.php "$remote:$root/data/"
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php v2/data/published-hotels-monitor-v1.php v2/data/sync-priority-hotels-v1.php v2/data/top500-coverage-v1.php "$remote:$root/data/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             php -l \"\$HOME/www/anytoour.ru/data/sync-priority-hotels-v1.php\" >/dev/null

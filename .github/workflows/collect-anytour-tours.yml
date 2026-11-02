@@ -17,6 +17,8 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/published-hotels-monitor-v1.php'
+      - 'tests/published-hotels-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -50,6 +52,8 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/published-hotels-monitor-v1.php'
+      - 'tests/published-hotels-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -135,6 +139,8 @@ jobs:
           php -l tests/price-intelligence-smoke.php >/dev/null
           php -l tests/seo-offer-image-smoke.php >/dev/null
           php -l v2/data/top-hotels-v1.php >/dev/null
+          php -l v2/data/published-hotels-monitor-v1.php >/dev/null
+          php tests/published-hotels-monitor-smoke.php
           php -l v2/data/rollup-price-daily-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-offer-snapshot-v1.php >/dev/null
@@ -222,6 +228,7 @@ jobs:
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
             v2/data/top-hotels-v1.php \
+            v2/data/published-hotels-monitor-v1.php \
             v2/data/sync-priority-hotels-v1.php \
             v2/data/top500-coverage-v1.php \
             v2/data/top500-daily-plan-v1.php \
