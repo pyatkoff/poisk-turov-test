@@ -67,12 +67,51 @@ function v2_published_native_hotel_monitor_bindings(): array
     ];
 }
 
+/** Four completed publications and 25 active native catalogue stock identities.
+ * The stock catalogue read confirms identity only, never availability or a price.
+ */
+function v2_publication_stock_monitor_bindings_20261102(): array
+{
+    return [
+        ['local_tv_id'=>358,'name'=>"RIXOS SHARM EL SHEIKH ADULTS ONLY"],
+        ['local_tv_id'=>37668,'name'=>"RIXOS PREMIUM SEAGATE"],
+        ['local_tv_id'=>174,'name'=>"PICKALBATROS DANA BEACH RESORT"],
+        ['local_tv_id'=>55574,'name'=>"PICKALBATROS WHITE BEACH RESORT"],
+        ['local_tv_id'=>383,'name'=>"JAZ GRAND MARSA (EX. JAZ GRAND RESTA)"],
+        ['local_tv_id'=>269,'name'=>"JAZ SAMAYA RESORT (EX. IBEROTEL SAMAYA)"],
+        ['local_tv_id'=>67897,'name'=>"JAZ MARAYA"],
+        ['local_tv_id'=>75725,'name'=>"JAZ COSTA MARES ADULT ONLY (EX. IBEROTEL COSTA MARES)"],
+        ['local_tv_id'=>108090,'name'=>"JAZ ELITE AMARA"],
+        ['local_tv_id'=>73342,'name'=>"JAZ SOMA BEACH (EX. SOLYMAR SOMA BEACH)"],
+        ['local_tv_id'=>278,'name'=>"JAZ BELVEDERE"],
+        ['local_tv_id'=>281,'name'=>"JAZ MIRABEL BEACH"],
+        ['local_tv_id'=>246,'name'=>"JAZ FAYROUZ RESORT (EX. HILTON SHARM FAYROUZ RESORT)"],
+        ['local_tv_id'=>384,'name'=>"JAZ NEO REEF MARSA (EX. SOLYMAR REEF MARSA)"],
+        ['local_tv_id'=>263,'name'=>"STEIGENBERGER CORAYA BEACH ADULTS ONLY 16+"],
+        ['local_tv_id'=>267,'name'=>"IBEROTEL MAKADI BEACH"],
+        ['local_tv_id'=>150,'name'=>"PICKALBATROS CITADEL RESORT SAHL HASHEESH"],
+        ['local_tv_id'=>172,'name'=>"PICKALBATROS SANDS PORT GHALIB"],
+        ['local_tv_id'=>275,'name'=>"PICKALBATROS THE PALACE PORT GHALIB"],
+        ['local_tv_id'=>173,'name'=>"PICKALBATROS OASIS PORT GHALIB"],
+        ['local_tv_id'=>110,'name'=>"PICKALBATROS JUNGLE AQUA PARK RESORT NEVERLAND"],
+        ['local_tv_id'=>57028,'name'=>"PICKALBATROS AQUA PARK SHARM"],
+        ['local_tv_id'=>125,'name'=>"PICKALBATROS AQUA BLU RESORT SHARM EL SHEIKH"],
+        ['local_tv_id'=>178,'name'=>"DESERT ROSE RESORT"],
+        ['local_tv_id'=>371,'name'=>"REEF OASIS BEACH RESORT"],
+        ['local_tv_id'=>132,'name'=>"BEACH ALBATROS RESORT HURGADA"],
+        ['local_tv_id'=>69155,'name'=>"STEIGENBERGER RESORT ALAYA MARSA ALAM ADULTS ONLY"],
+        ['local_tv_id'=>69409,'name'=>"STEIGENBERGER RESORT RAS SOMA"],
+        ['local_tv_id'=>4184,'name'=>"SENTIDO REEF OASIS SENSES RESORT (EX. REEF OASIS SENSES RESORT)"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
         v2_priority_hotel_ids(),
         array_column(v2_published_hotel_monitor_bindings(), 'local_tv_id'),
-        array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id')
+        array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id')
     )));
 }
 
@@ -83,6 +122,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
     $cohorts=[
         'accepted_typed_15'=>array_column(v2_published_hotel_monitor_bindings(),'local_tv_id'),
         'accepted_native_29'=>array_column(v2_published_native_hotel_monitor_bindings(),'local_tv_id'),
+        'publication_stock_20261102_29'=>array_column(v2_publication_stock_monitor_bindings_20261102(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
