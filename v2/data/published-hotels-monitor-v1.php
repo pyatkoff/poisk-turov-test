@@ -105,13 +105,37 @@ function v2_publication_stock_monitor_bindings_20261102(): array
     ];
 }
 
+/** Twelve new native catalogue stock identities from bounded accepted catalog reads.
+ * Goal: use the owner's existing collector for the next publication stock.
+ * Keep the 492, typed15, native29 and stock29 cohorts and pending target keys intact.
+ * This is an input addition only; no price, availability, quote or send acceptance.
+ */
+function v2_publication_stock_monitor_bindings_20261102b(): array
+{
+    return [
+        ['local_tv_id'=>389,'name'=>"PICKALBATROS ROYAL MODERNA SHARM EL SHEIKH"],
+        ['local_tv_id'=>109,'name'=>"PICKALBATROS AQUA VISTA RESORT"],
+        ['local_tv_id'=>293,'name'=>"PICKALBATROS LAGUNA VISTA BEACH"],
+        ['local_tv_id'=>107965,'name'=>"PICKALBATROS LAGUNA CLUB RESORT (EX. ALBATROS LAGUNA VISTA GARDEN)"],
+        ['local_tv_id'=>393,'name'=>"PICKALBATROS ROYAL GRAND RESORT ADULTS ONLY 16+"],
+        ['local_tv_id'=>78898,'name'=>"PICKALBATROS BLU SPA RESORT HURGHADA ADULTS ONLY 16+"],
+        ['local_tv_id'=>83105,'name'=>"PICKALBATROS VITA RESORT PORTOFINO MARSA ALAM"],
+        ['local_tv_id'=>79059,'name'=>"PICKALBATROS WATER VALLEY RESORT NEVERLAND HURGHADA"],
+        ['local_tv_id'=>115918,'name'=>"RIXOS RADAMIS SHARM EL SHEIKH"],
+        ['local_tv_id'=>56092,'name'=>"GRAVITY HOTEL & AQUA PARK HURGHADA"],
+        ['local_tv_id'=>80964,'name'=>"MERAKI RESORT SHARM EL SHEIKH"],
+        ['local_tv_id'=>107,'name'=>"BEACH ALBATROS RESORT MARSA ALAM"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
         v2_priority_hotel_ids(),
         array_column(v2_published_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id')
     )));
 }
 
@@ -123,6 +147,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'accepted_typed_15'=>array_column(v2_published_hotel_monitor_bindings(),'local_tv_id'),
         'accepted_native_29'=>array_column(v2_published_native_hotel_monitor_bindings(),'local_tv_id'),
         'publication_stock_20261102_29'=>array_column(v2_publication_stock_monitor_bindings_20261102(),'local_tv_id'),
+        'publication_stock_20261102b_12'=>array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
