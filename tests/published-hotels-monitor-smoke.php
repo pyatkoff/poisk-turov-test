@@ -1,0 +1,30 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../v2/data/published-hotels-monitor-v1.php';
+require_once __DIR__.'/../v2/data/top500-monthly-plan-v1.php';
+function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
+$base=v2_priority_hotel_ids();$all=v2_collection_priority_hotel_ids();
+check_monitor(count($base)===492 && count($all)===507,'owner roster or additive count changed');
+check_monitor(array_slice($all,0,count($base))===$base,'owner order changed');
+check_monitor(in_array(1146,$all,true)&&!in_array(516,$all,true),'AnyTour516 must use accepted local TV1146');
+$hotels=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Test country','is_active'=>1],$all);
+$departures=[['departure_id'=>1,'country_id'=>4,'is_active'=>1]];
+$before=v2_top500_monthly_plan($base,$hotels,$departures,'2026-11-02',2,1);
+$after=v2_append_published_hotel_monthly_plan($before,$hotels,$departures,'2026-11-02',2,1);
+check_monitor(array_slice($after['targets'],0,count($before['targets']))===$before['targets'],'existing target identity changed');
+check_monitor($after['hotel_count']===507&&$after['published_hotels']['searchable']===15,'new hotel coverage lost');
+$extra=array_slice($after['targets'],count($before['targets']));
+foreach($extra as $target)check_monitor(array_intersect($target['hotel_ids'],$base)===[],'supplement repeats an existing hotel');
+check_monitor(count(array_unique(array_column($after['targets'],'target_key')))===count($after['targets']),'target key collision');
+$now=strtotime('2026-11-02 12:00:00 UTC');$old=$before['targets'][0];
+$attempt=['id'=>77,'target_key'=>$old['target_key'],'status'=>'started','search_id'=>123456,'started_epoch'=>$now-60,'finished_epoch'=>0];
+$queue=v2_top500_monthly_queue($after['targets'],[$attempt],$now,24);
+$matched=array_values(array_filter($queue['targets'],static fn(array $t):bool=>$t['target_key']===$old['target_key']));
+check_monitor(count($matched)===1&&$matched[0]['resume_search_id']===123456&&$matched[0]['resume_attempt_id']===77,'existing incomplete search is not resumed');
+$withoutExtra=array_values(array_filter($hotels,static fn(array $h):bool=>in_array($h['id'],$base,true)));
+$held=v2_append_published_hotel_monthly_plan($before,$withoutExtra,$departures,'2026-11-02',2,1);
+check_monitor($held['targets']===$before['targets']&&$held['published_hotels']['state']==='awaiting_catalog_or_route'&&$held['published_hotels']['searchable']===0,'unavailable supplement blocks or falsely credits baseline');
+$inactive=$hotels;foreach($inactive as &$h){if($h['id']===1146)$h['is_active']=0;}unset($h);
+$partial=v2_append_published_hotel_monthly_plan($before,$inactive,$departures,'2026-11-02',2,1);
+check_monitor($partial['published_hotels']['searchable']===14&&in_array(1146,$partial['missing_catalog_ids'],true),'inactive additional hotel counted as searchable');
+echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed base_targets=unchanged existing_search=resumed supplement=additive unavailable=held calls=0 writes=0\n";

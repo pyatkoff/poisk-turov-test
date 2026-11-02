@@ -5,6 +5,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/db-v1.php';
 require_once __DIR__ . '/tourvisor-client-v1.php';
 require_once __DIR__ . '/top-hotels-v1.php';
+require_once __DIR__ . '/published-hotels-monitor-v1.php';
 
 function ph_arg(array $argv,string $name,string $default): string { foreach($argv as $arg){ if(str_starts_with($arg,'--'.$name.'=')) return substr($arg,strlen($name)+3); } return $default; }
 function ph_pick_hotel(array $row,int $id): array {
@@ -37,7 +38,7 @@ function ph_upsert(PDO $pdo,array $row,string $now): bool {
 }
 
 $limitRaw=filter_var(ph_arg($argv,'limit','500'),FILTER_VALIDATE_INT); $limit=$limitRaw===false?500:max(1,min(500,(int)$limitRaw));
-$pdo=v2_data_db(); $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids()))); $csv=implode(',',$ids);
+$pdo=v2_data_db(); $ids=array_values(array_unique(array_map('intval',v2_collection_priority_hotel_ids()))); $csv=implode(',',$ids);
 $present=$pdo->query("SELECT id FROM catalog_hotels WHERE id IN ($csv) AND is_active=1")->fetchAll(PDO::FETCH_COLUMN)?:[];
 $missing=array_values(array_diff($ids,array_map('intval',$present))); $batch=array_slice($missing,0,$limit); $now=(new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 if($batch===[]){echo "PRIORITY_HOTEL_SYNC_UP_TO_DATE total=".count($ids)."\n";exit(0);} 
