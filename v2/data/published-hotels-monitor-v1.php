@@ -147,6 +147,20 @@ function v2_publication_stock_monitor_bindings_20261102c(): array
     ];
 }
 
+/** Four active native stock identities from accepted bounded read41537721856.
+ * Add monitor inputs only; no published price or availability is asserted.
+ * Preserve all six prior cohorts and their unfinished monthly search identities.
+ */
+function v2_publication_stock_monitor_bindings_20261103(): array
+{
+    return [
+        ['local_tv_id'=>287,'name'=>"KEMPINSKI HOTEL SOMA BAY"],
+        ['local_tv_id'=>435,'name'=>"SHERATON SOMA BAY RESORT"],
+        ['local_tv_id'=>109149,'name'=>"THE BREAKERS DIVING & SURFING LODGE"],
+        ['local_tv_id'=>62505,'name'=>"ROBINSON SOMA BAY"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -155,7 +169,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261102c(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261102c(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103(), 'local_tv_id')
     )));
 }
 
@@ -169,6 +184,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261102_29'=>array_column(v2_publication_stock_monitor_bindings_20261102(),'local_tv_id'),
         'publication_stock_20261102b_12'=>array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id'),
         'publication_stock_20261102c_9'=>array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id'),
+        'publication_stock_20261103_4'=>array_column(v2_publication_stock_monitor_bindings_20261103(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];

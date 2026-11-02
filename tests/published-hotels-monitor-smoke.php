@@ -6,7 +6,8 @@ function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeExcep
 $base=v2_priority_hotel_ids();$all=v2_collection_priority_hotel_ids();
 $nextStock=array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id');
 $freshStock=array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id');
-check_monitor(count($base)===492 && count($all)===586,'owner roster or additive count changed');
+$latestStock=array_column(v2_publication_stock_monitor_bindings_20261103(),'local_tv_id');
+check_monitor(count($base)===492 && count($all)===590,'owner roster or additive count changed');
 check_monitor(array_slice($all,0,count($base))===$base,'owner order changed');
 check_monitor(in_array(1146,$all,true)&&!in_array(516,$all,true),'AnyTour516 must use accepted local TV1146');
 $hotels=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Test country','is_active'=>1],$all);
@@ -14,7 +15,7 @@ $departures=[['departure_id'=>1,'country_id'=>4,'is_active'=>1]];
 $before=v2_top500_monthly_plan($base,$hotels,$departures,'2026-11-02',2,1);
 $after=v2_append_published_hotel_monthly_plan($before,$hotels,$departures,'2026-11-02',2,1);
 check_monitor(array_slice($after['targets'],0,count($before['targets']))===$before['targets'],'existing target identity changed');
-check_monitor($after['hotel_count']===586&&$after['published_hotels']['searchable']===94,'new hotel coverage lost');
+check_monitor($after['hotel_count']===590&&$after['published_hotels']['searchable']===98,'new hotel coverage lost');
 $extra=array_slice($after['targets'],count($before['targets']));
 foreach($extra as $target)check_monitor(array_intersect($target['hotel_ids'],$base)===[],'supplement repeats an existing hotel');
 check_monitor(count(array_unique(array_column($after['targets'],'target_key')))===count($after['targets']),'target key collision');
@@ -28,7 +29,7 @@ $held=v2_append_published_hotel_monthly_plan($before,$withoutExtra,$departures,'
 check_monitor($held['targets']===$before['targets']&&$held['published_hotels']['state']==='awaiting_catalog_or_route'&&$held['published_hotels']['searchable']===0,'unavailable supplement blocks or falsely credits baseline');
 $inactive=$hotels;foreach($inactive as &$h){if($h['id']===1146)$h['is_active']=0;}unset($h);
 $partial=v2_append_published_hotel_monthly_plan($before,$inactive,$departures,'2026-11-02',2,1);
-check_monitor($partial['published_hotels']['searchable']===93&&in_array(1146,$partial['missing_catalog_ids'],true),'inactive additional hotel counted as searchable');
+check_monitor($partial['published_hotels']['searchable']===97&&in_array(1146,$partial['missing_catalog_ids'],true),'inactive additional hotel counted as searchable');
 // A new native cohort must not regroup the 15 already admitted hotels.
 $typed=array_column(v2_published_hotel_monitor_bindings(),'local_tv_id');
 $typedPlan=v2_top500_monthly_plan($typed,$hotels,$departures,'2026-11-02',2,1);
@@ -42,23 +43,23 @@ check_monitor(count($typedMatched)===1&&$typedMatched[0]['resume_search_id']===6
 $native=array_column(v2_published_native_hotel_monitor_bindings(),'local_tv_id');
 $stock=array_column(v2_publication_stock_monitor_bindings_20261102(),'local_tv_id');
 check_monitor(count($native)===29&&count(array_unique($native))===29&&array_intersect($typed,$native)===[],'native cohort scope is not disjoint');
-$onlyPrevious=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$native,true)&&!in_array($h['id'],array_merge($stock,$nextStock,$freshStock),true)));
+$onlyPrevious=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$native,true)&&!in_array($h['id'],array_merge($stock,$nextStock,$freshStock,$latestStock),true)));
 $heldNative=v2_append_published_hotel_monthly_plan($before,$onlyPrevious,$departures,'2026-11-02',2,1);
 check_monitor($heldNative['targets']===$previousTargets&&$heldNative['published_hotels']['searchable']===15&&$heldNative['published_hotels']['cohorts']['accepted_native_29']['searchable']===0,'missing native cohort blocked or falsely credited previous cohort');
-$onlyNative=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$typed,true)&&!in_array($h['id'],array_merge($stock,$nextStock,$freshStock),true)));
+$onlyNative=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$typed,true)&&!in_array($h['id'],array_merge($stock,$nextStock,$freshStock,$latestStock),true)));
 $heldTyped=v2_append_published_hotel_monthly_plan($before,$onlyNative,$departures,'2026-11-02',2,1);
 check_monitor($heldTyped['published_hotels']['searchable']===29&&$heldTyped['published_hotels']['cohorts']['accepted_typed_15']['searchable']===0,'missing typed cohort blocks valid native hotels');
 check_monitor(count($stock)===29&&count(array_unique($stock))===29&&array_intersect($stock,array_merge($base,$typed,$native))===[],'stock native identities overlap an older cohort');
 $nativePlan=v2_top500_monthly_plan($native,$hotels,$departures,'2026-11-02',2,1);
 $allPreviousTargets=array_merge($previousTargets,$nativePlan['targets']);
 check_monitor(array_slice($after['targets'],0,count($allPreviousTargets))===$allPreviousTargets,'previous native29 targets changed after stock admission');
-$withoutStock=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],array_merge($stock,$nextStock,$freshStock),true)));
+$withoutStock=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],array_merge($stock,$nextStock,$freshStock,$latestStock),true)));
 $heldStock=v2_append_published_hotel_monthly_plan($before,$withoutStock,$departures,'2026-11-02',2,1);
 check_monitor($heldStock['targets']===$allPreviousTargets&&$heldStock['published_hotels']['searchable']===44&&$heldStock['published_hotels']['cohorts']['publication_stock_20261102_29']['searchable']===0,'missing stock blocks or falsely credits accepted cohorts');
 // Exercise the actual country split used by the accepted typed bridge.
 $egyptTyped=[9374,241,240,268,1981,12111,498];
-$mixedHotels=array_map(static function(array $h)use($typed,$native,$stock,$nextStock,$freshStock,$egyptTyped):array{
-    $id=$h['id'];$country=in_array($id,$typed,true)?(in_array($id,$egyptTyped,true)?1:4):(in_array($id,array_merge($native,$stock,$nextStock,$freshStock),true)?1:($id%2?1:4));
+$mixedHotels=array_map(static function(array $h)use($typed,$native,$stock,$nextStock,$freshStock,$latestStock,$egyptTyped):array{
+    $id=$h['id'];$country=in_array($id,$typed,true)?(in_array($id,$egyptTyped,true)?1:4):(in_array($id,array_merge($native,$stock,$nextStock,$freshStock,$latestStock),true)?1:($id%2?1:4));
     $h['country_id']=$country;$h['country_name']=$country===1?'Egypt':'Turkey';return $h;
 },$hotels);
 $mixedDepartures=[['departure_id'=>1,'country_id'=>1,'is_active'=>1],['departure_id'=>1,'country_id'=>4,'is_active'=>1]];
@@ -78,7 +79,7 @@ check_monitor(count($nextStock)===12&&count(array_unique($nextStock))===12&&arra
 $stockPlan=v2_top500_monthly_plan($stock,$hotels,$departures,'2026-11-02',2,1);
 $previousWithStock=array_merge($allPreviousTargets,$stockPlan['targets']);
 check_monitor(array_slice($after['targets'],0,count($previousWithStock))===$previousWithStock,'new stock12 regroups previous 492/15/29/29 monthly targets');
-$withoutNext=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],array_merge($nextStock,$freshStock),true)));
+$withoutNext=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],array_merge($nextStock,$freshStock,$latestStock),true)));
 $heldNext=v2_append_published_hotel_monthly_plan($before,$withoutNext,$departures,'2026-11-02',2,1);
 check_monitor($heldNext['targets']===$previousWithStock&&$heldNext['published_hotels']['searchable']===73&&$heldNext['published_hotels']['cohorts']['publication_stock_20261102b_12']['searchable']===0,'missing new stock blocks or falsely credits previous stock');
 $stockTarget=$stockPlan['targets'][0];
@@ -95,7 +96,7 @@ check_monitor(array_intersect($freshStock,array_merge($base,$typed,$native,$stoc
 $nextPlan=v2_top500_monthly_plan($nextStock,$hotels,$departures,'2026-11-02',2,1);
 $allAdmittedTargets=array_merge($previousWithStock,$nextPlan['targets']);
 check_monitor(array_slice($after['targets'],0,count($allAdmittedTargets))===$allAdmittedTargets,'stock9 regrouped any previous monthly target');
-$withoutFresh=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$freshStock,true)));
+$withoutFresh=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],array_merge($freshStock,$latestStock),true)));
 $heldFresh=v2_append_published_hotel_monthly_plan($before,$withoutFresh,$departures,'2026-11-02',2,1);
 check_monitor($heldFresh['targets']===$allAdmittedTargets&&$heldFresh['published_hotels']['searchable']===85&&$heldFresh['published_hotels']['cohorts']['publication_stock_20261102c_9']['searchable']===0,'missing stock9 blocks or falsely credits admitted input');
 $nextTarget=$nextPlan['targets'][0];
@@ -106,4 +107,21 @@ check_monitor(count($nextMatched)===1&&$nextMatched[0]['resume_search_id']===135
 $mixedNext=v2_top500_monthly_plan($nextStock,$mixedHotels,$mixedDepartures,'2026-11-02',2,1);
 $mixedAllAdmitted=array_merge($mixedWithStock,$mixedNext['targets']);
 check_monitor(array_slice($mixedAfter['targets'],0,count($mixedAllAdmitted))===$mixedAllAdmitted,'stock9 regroups admitted mixed-country targets');
-echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=586 previous_492_15_29_29_12_targets=unchanged existing_search=resumed mixed_countries=preserved stock=additive calls=0 writes=0\n";
+// The new four must preserve all 586 admitted inputs and the stock9 in-flight search.
+check_monitor($latestStock===[287,435,109149,62505],'stock4 exact active native identities changed');
+check_monitor(array_intersect($latestStock,array_merge($base,$typed,$native,$stock,$nextStock,$freshStock))===[],'stock4 overlaps an admitted input');
+$freshPlan=v2_top500_monthly_plan($freshStock,$hotels,$departures,'2026-11-02',2,1);
+$previous586=array_merge($allAdmittedTargets,$freshPlan['targets']);
+check_monitor(array_slice($after['targets'],0,count($previous586))===$previous586,'stock4 regrouped any previous 586 monthly target');
+$withoutLatest=array_values(array_filter($hotels,static fn(array $h):bool=>!in_array($h['id'],$latestStock,true)));
+$heldLatest=v2_append_published_hotel_monthly_plan($before,$withoutLatest,$departures,'2026-11-02',2,1);
+check_monitor($heldLatest['targets']===$previous586&&$heldLatest['published_hotels']['searchable']===94&&$heldLatest['published_hotels']['cohorts']['publication_stock_20261103_4']['searchable']===0,'missing stock4 blocks or falsely credits admitted input');
+$freshTarget=$freshPlan['targets'][0];
+$freshAttempt=['id'=>103,'target_key'=>$freshTarget['target_key'],'status'=>'started','search_id'=>975310,'started_epoch'=>$now-60,'finished_epoch'=>0];
+$freshQueue=v2_top500_monthly_queue($after['targets'],[$freshAttempt],$now,24);
+$freshMatched=array_values(array_filter($freshQueue['targets'],static fn(array $t):bool=>$t['target_key']===$freshTarget['target_key']));
+check_monitor(count($freshMatched)===1&&$freshMatched[0]['resume_search_id']===975310&&$freshMatched[0]['resume_attempt_id']===103,'stock4 restarts an admitted stock9 search');
+$mixedFresh=v2_top500_monthly_plan($freshStock,$mixedHotels,$mixedDepartures,'2026-11-02',2,1);
+$mixed586=array_merge($mixedAllAdmitted,$mixedFresh['targets']);
+check_monitor(array_slice($mixedAfter['targets'],0,count($mixed586))===$mixed586,'stock4 regroups admitted mixed-country targets');
+echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=590 previous_492_15_29_29_12_9_targets=unchanged existing_search=resumed mixed_countries=preserved stock=additive calls=0 writes=0\n";
