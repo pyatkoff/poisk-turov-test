@@ -128,6 +128,25 @@ function v2_publication_stock_monitor_bindings_20261102b(): array
     ];
 }
 
+/** Nine new active native catalogue rows from accepted stock read41532640369.
+ * Add input only, preserve every admitted target and incomplete search.
+ * Combined Fanara Resort/Residence scope is not publication acceptance.
+ */
+function v2_publication_stock_monitor_bindings_20261102c(): array
+{
+    return [
+        ['local_tv_id'=>264,'name'=>"JAZ DAHABEYA (EX. IBEROTEL DAHABEYA)"],
+        ['local_tv_id'=>12107,'name'=>"JAZ FANARA RESORT & RESIDENCE (EX. IBEROTEL CLUB)"],
+        ['local_tv_id'=>13869,'name'=>"JAZ NEO SARAYA PALMS (EX. JAZ MAKADI SARAYA PALMS)"],
+        ['local_tv_id'=>245,'name'=>"JAZ SHARM DREAMS RESORT"],
+        ['local_tv_id'=>43204,'name'=>"STEIGENBERGER ALCAZAR"],
+        ['local_tv_id'=>13870,'name'=>"STEIGENBERGER MAKADI ADULTS ONLY"],
+        ['local_tv_id'=>282,'name'=>"JAZ MIRABEL CLUB"],
+        ['local_tv_id'=>1983,'name'=>"JAZ NEO SHARKS BAY (EX. JAZ SHARKS BAY)"],
+        ['local_tv_id'=>111801,'name'=>"JAZ ELITE ASTERIA"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -135,7 +154,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_published_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261102c(), 'local_tv_id')
     )));
 }
 
@@ -148,6 +168,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'accepted_native_29'=>array_column(v2_published_native_hotel_monitor_bindings(),'local_tv_id'),
         'publication_stock_20261102_29'=>array_column(v2_publication_stock_monitor_bindings_20261102(),'local_tv_id'),
         'publication_stock_20261102b_12'=>array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id'),
+        'publication_stock_20261102c_9'=>array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
