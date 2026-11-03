@@ -417,7 +417,7 @@ $hotels642=array_merge($hotels639,array_map(static fn(int $id):array=>['id'=>$id
 $full642=v2_append_published_hotel_monthly_plan($before,$hotels642,$departures,'2026-11-02',2,1);
 check_monitor($full642['hotel_count']===642&&$full642['published_hotels']['searchable']===150&&array_slice($full642['targets'],0,count($full639['targets']))===$full639['targets'],'batch29 regroups or loses639');
 $previous3Plan=v2_top500_monthly_plan($nextPublicationReserve3,$hotels642,$departures,'2026-11-02',2,1);$previous3Target=$previous3Plan['targets'][0];
-$previous3Attempt=['id'=>115,'target_key'=>$previous3Target['target_key'],'window_key'=>$previous3Target['window_key'],'state'=>'pending','page_number'=>1,'search_id'=>758765,'created_epoch'=>$now-100,'meta_json'=>json_encode(['monthly'=>true])];
+$previous3Attempt=['id'=>115,'target_key'=>$previous3Target['target_key'],'status'=>'started','search_id'=>758765,'started_epoch'=>$now-60,'finished_epoch'=>0];
 $queue642=v2_top500_monthly_queue($full642['targets'],[$previous3Attempt],$now,24);
 $resume642=array_values(array_filter($queue642['targets'],static fn(array $target):bool=>$target['target_key']===$previous3Target['target_key']));
 check_monitor(count($resume642)===1&&$resume642[0]['resume_search_id']===758765&&$resume642[0]['resume_attempt_id']===115,'batch29 restarts previous3 search');
