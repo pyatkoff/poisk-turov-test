@@ -287,6 +287,16 @@ function v2_publication_stock_monitor_bindings_20261103k(): array
     ];
 }
 
+/** Three proven native publication/reserve identities from accepted bounded catalogue reads. */
+function v2_publication_stock_monitor_bindings_20261103l(): array
+{
+    return [
+        ['local_tv_id'=>103124,'name'=>"IBEROTEL LUXOR"],
+        ['local_tv_id'=>488,'name'=>"THE THREE CORNERS FAYROUZ PLAZA BEACH RESORT"],
+        ['local_tv_id'=>102031,'name'=>"STEIGENBERGER NILE PALACE LUXOR"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -307,7 +317,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103h(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103i(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103j(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103k(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103k(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103l(), 'local_tv_id')
     )));
 }
 
@@ -333,6 +344,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103i_2'=>array_column(v2_publication_stock_monitor_bindings_20261103i(),'local_tv_id'),
         'publication_stock_20261103j_1'=>array_column(v2_publication_stock_monitor_bindings_20261103j(),'local_tv_id'),
         'publication_stock_20261103k_4'=>array_column(v2_publication_stock_monitor_bindings_20261103k(),'local_tv_id'),
+        'publication_stock_20261103l_3'=>array_column(v2_publication_stock_monitor_bindings_20261103l(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
