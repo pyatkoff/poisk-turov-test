@@ -3,7 +3,9 @@ declare(strict_types=1);
 require_once __DIR__.'/../v2/data/published-hotels-monitor-v1.php';
 require_once __DIR__.'/../v2/data/top500-monthly-plan-v1.php';
 function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
-$base=v2_priority_hotel_ids();$monitor642Ids=v2_collection_priority_hotel_ids();
+$base=v2_priority_hotel_ids();$monitor646Ids=v2_collection_priority_hotel_ids();
+$batch30Publication4=array_column(v2_publication_stock_monitor_bindings_20261103n(),'local_tv_id');
+$monitor642Ids=array_values(array_diff($monitor646Ids,$batch30Publication4));
 $batch29Publication3=array_column(v2_publication_stock_monitor_bindings_20261103m(),'local_tv_id');
 $monitor639Ids=array_values(array_diff($monitor642Ids,$batch29Publication3));
 $nextPublicationReserve3=array_column(v2_publication_stock_monitor_bindings_20261103l(),'local_tv_id');
@@ -432,4 +434,27 @@ check_monitor($partial642['hotel_count']===641&&$partial642['published_hotels'][
 $inactive642=$hotels642;foreach($inactive642 as &$hotel){if(in_array($hotel['id'],$batch29Publication3,true))$hotel['is_active']=0;}unset($hotel);
 $held642=v2_append_published_hotel_monthly_plan($before,$inactive642,$departures,'2026-11-02',2,1);
 check_monitor($held642['targets']===$full639['targets']&&$held642['hotel_count']===639&&$held642['published_hotels']['cohorts']['publication_stock_20261103m_3']['searchable']===0,'inactive batch29 falsely credits or changes639');
-echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=642 previous639_targets=unchanged existing_search=resumed mixed_countries=preserved batch29=3 calls=0 writes=0\n";
+
+check_monitor($batch30Publication4===[1291,15869,253,75377],'batch30 native identities changed');
+check_monitor(count($monitor646Ids)===646&&count(array_unique($monitor646Ids))===646&&array_slice($monitor646Ids,0,642)===$monitor642Ids,'previous642 changed or646 notunique');
+check_monitor(array_intersect($batch30Publication4,$monitor642Ids)===[],'batch30 overlaps642');
+$hotels646=array_merge($hotels642,array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Test country','is_active'=>1],$batch30Publication4));
+$full646=v2_append_published_hotel_monthly_plan($before,$hotels646,$departures,'2026-11-02',2,1);
+check_monitor($full646['hotel_count']===646&&$full646['published_hotels']['searchable']===154&&array_slice($full646['targets'],0,count($full642['targets']))===$full642['targets'],'batch30 regroups or loses642');
+$resume30Plan=v2_top500_monthly_plan($batch29Publication3,$hotels646,$departures,'2026-11-02',2,1);$resume30Target=$resume30Plan['targets'][0];
+$resume30Attempt=['id'=>116,'target_key'=>$resume30Target['target_key'],'status'=>'started','search_id'=>759876,'started_epoch'=>$now-60,'finished_epoch'=>0];
+$queue646=v2_top500_monthly_queue($full646['targets'],[$resume30Attempt],$now,24);
+$resume646=array_values(array_filter($queue646['targets'],static fn(array $target):bool=>$target['target_key']===$resume30Target['target_key']));
+check_monitor(count($resume646)===1&&$resume646[0]['resume_search_id']===759876&&$resume646[0]['resume_attempt_id']===116,'batch30 restarts batch29 search');
+$mixed646Hotels=array_merge($mixed642Hotels,array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>$id===253?1:4,'country_name'=>$id===253?'Egypt':'Turkey','is_active'=>1],$batch30Publication4));
+$mixed646=v2_append_published_hotel_monthly_plan($mixedBefore,$mixed646Hotels,$mixedDepartures,'2026-11-02',2,1);
+check_monitor(array_slice($mixed646['targets'],0,count($mixed642['targets']))===$mixed642['targets'],'batch30 regroups mixed642');
+$country646=array_column($mixed646Hotels,'country_id','id');
+foreach($mixed646['targets'] as $target){$countries=array_unique(array_map(static fn(int $id):int=>(int)$country646[$id],$target['hotel_ids']));check_monitor(count($countries)===1,'batch30 mixes countries');}
+$missing646=array_values(array_filter($hotels646,static fn(array $hotel):bool=>$hotel['id']!==1291));
+$partial646=v2_append_published_hotel_monthly_plan($before,$missing646,$departures,'2026-11-02',2,1);
+check_monitor($partial646['hotel_count']===645&&$partial646['published_hotels']['cohorts']['publication_stock_20261103n_4']['searchable']===3&&array_slice($partial646['targets'],0,count($full642['targets']))===$full642['targets'],'batch30 missing one blocks642 or peers');
+$inactive646=$hotels646;foreach($inactive646 as &$hotel){if(in_array($hotel['id'],$batch30Publication4,true))$hotel['is_active']=0;}unset($hotel);
+$held646=v2_append_published_hotel_monthly_plan($before,$inactive646,$departures,'2026-11-02',2,1);
+check_monitor($held646['targets']===$full642['targets']&&$held646['hotel_count']===642&&$held646['published_hotels']['cohorts']['publication_stock_20261103n_4']['searchable']===0,'inactive batch30 falsely credits or changes642');
+echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=646 previous642_targets=unchanged existing_search=resumed mixed_countries=preserved batch30=4 calls=0 writes=0\n";
