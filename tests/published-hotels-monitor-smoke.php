@@ -3,7 +3,10 @@ declare(strict_types=1);
 require_once __DIR__.'/../v2/data/published-hotels-monitor-v1.php';
 require_once __DIR__.'/../v2/data/top500-monthly-plan-v1.php';
 function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
-$base=v2_priority_hotel_ids();$allMonitorIds=v2_collection_priority_hotel_ids();
+$base=v2_priority_hotel_ids();$allExpandedMonitorIds=v2_collection_priority_hotel_ids();
+$promotedReserve=array_column(v2_publication_stock_monitor_bindings_20261103e(),'local_tv_id');
+// Preserve the complete admitted621 fixture for all previous checks.
+$allMonitorIds=array_values(array_diff($allExpandedMonitorIds,$promotedReserve));
 $freshReserve=array_column(v2_publication_stock_monitor_bindings_20261103d(),'local_tv_id');
 // Keep all previous620 fixture inputs and checks unchanged.
 $currentMonitorIds=array_values(array_diff($allMonitorIds,$freshReserve));
@@ -207,4 +210,29 @@ foreach($mixed621['targets'] as $target){$countries=array_unique(array_map(stati
 $inactive621=$hotels621;$inactive621[count($inactive621)-1]['is_active']=0;
 $held621=v2_append_published_hotel_monthly_plan($before,$inactive621,$departures,'2026-11-02',2,1);
 check_monitor($held621['targets']===$full620['targets']&&$held621['hotel_count']===620&&$held621['published_hotels']['cohorts']['publication_stock_20261103d_1']['searchable']===0&&$held621['published_hotels']['cohorts']['publication_stock_20261103d_1']['state']==='awaiting_catalog_or_route','inactive reserve changes or falsely credits previous620');
-echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=621 previous620_targets=unchanged existing_search=resumed mixed_countries=preserved reserve1=exact calls=0 writes=0\n";
+
+// The newly promoted reserve appends one cohort without regrouping any admitted621 input.
+check_monitor($promotedReserve===[68907],'promoted Amarina native identity changed');
+check_monitor(count($allExpandedMonitorIds)===622&&count(array_unique($allExpandedMonitorIds))===622,'622 unique inputs required');
+check_monitor(array_slice($allExpandedMonitorIds,0,621)===$allMonitorIds,'previous621 input order changed');
+check_monitor(array_intersect($promotedReserve,$allMonitorIds)===[],'promoted reserve overlaps previous621');
+$hotels622=array_merge($hotels621,[['id'=>68907,'country_id'=>4,'country_name'=>'Test country','is_active'=>1]]);
+$full622=v2_append_published_hotel_monthly_plan($before,$hotels622,$departures,'2026-11-02',2,1);
+check_monitor($full622['hotel_count']===622&&$full622['published_hotels']['searchable']===130,'622 actual fixture coverage lost');
+check_monitor(array_slice($full622['targets'],0,count($full621['targets']))===$full621['targets'],'Amarina regroups previous621 monthly targets');
+check_monitor($full621['published_hotels']['cohorts']['publication_stock_20261103e_1']['searchable']===0,'missing Amarina falsely credited');
+$reserve621Plan=v2_top500_monthly_plan($freshReserve,$hotels622,$departures,'2026-11-02',2,1);
+$reserve621Target=$reserve621Plan['targets'][0];
+$reserve621Attempt=['id'=>107,'target_key'=>$reserve621Target['target_key'],'status'=>'started','search_id'=>864212,'started_epoch'=>$now-60,'finished_epoch'=>0];
+$queue622=v2_top500_monthly_queue($full622['targets'],[$reserve621Attempt],$now,24);
+$resume622=array_values(array_filter($queue622['targets'],static fn(array $target):bool=>$target['target_key']===$reserve621Target['target_key']));
+check_monitor(count($resume622)===1&&$resume622[0]['resume_search_id']===864212&&$resume622[0]['resume_attempt_id']===107,'Amarina restarts admitted reserve621 search');
+$mixed622Hotels=array_merge($mixed621Hotels,[['id'=>68907,'country_id'=>1,'country_name'=>'Egypt','is_active'=>1]]);
+$mixed622=v2_append_published_hotel_monthly_plan($mixedBefore,$mixed622Hotels,$mixedDepartures,'2026-11-02',2,1);
+check_monitor(array_slice($mixed622['targets'],0,count($mixed621['targets']))===$mixed621['targets'],'Amarina regroups previous621 mixed-country targets');
+$country622=array_column($mixed622Hotels,'country_id','id');
+foreach($mixed622['targets'] as $target){$countries=array_unique(array_map(static fn(int $id):int=>(int)$country622[$id],$target['hotel_ids']));check_monitor(count($countries)===1,'Amarina cohort mixes Egypt and Turkey');}
+$inactive622=$hotels622;$inactive622[count($inactive622)-1]['is_active']=0;
+$held622=v2_append_published_hotel_monthly_plan($before,$inactive622,$departures,'2026-11-02',2,1);
+check_monitor($held622['targets']===$full621['targets']&&$held622['hotel_count']===621&&$held622['published_hotels']['cohorts']['publication_stock_20261103e_1']['searchable']===0&&$held622['published_hotels']['cohorts']['publication_stock_20261103e_1']['state']==='awaiting_catalog_or_route','inactive Amarina blocks or falsely credits admitted621');
+echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=622 previous621_targets=unchanged existing_search=resumed mixed_countries=preserved reserve1=exact calls=0 writes=0\n";
