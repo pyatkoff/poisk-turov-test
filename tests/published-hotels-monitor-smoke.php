@@ -206,5 +206,5 @@ $country621=array_column($mixed621Hotels,'country_id','id');
 foreach($mixed621['targets'] as $target){$countries=array_unique(array_map(static fn(int $id):int=>(int)$country621[$id],$target['hotel_ids']));check_monitor(count($countries)===1,'reserve mixes Egypt and Turkey');}
 $inactive621=$hotels621;$inactive621[count($inactive621)-1]['is_active']=0;
 $held621=v2_append_published_hotel_monthly_plan($before,$inactive621,$departures,'2026-11-02',2,1);
-check_monitor($held621['targets']===$full620['targets']&&$held621['hotel_count']===620&&in_array(60589,$held621['missing_catalog_ids'],true),'inactive reserve changes or falsely credits previous620');
+check_monitor($held621['targets']===$full620['targets']&&$held621['hotel_count']===620&&$held621['published_hotels']['cohorts']['publication_stock_20261103d_1']['searchable']===0&&$held621['published_hotels']['cohorts']['publication_stock_20261103d_1']['state']==='awaiting_catalog_or_route','inactive reserve changes or falsely credits previous620');
 echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=621 previous620_targets=unchanged existing_search=resumed mixed_countries=preserved reserve1=exact calls=0 writes=0\n";
