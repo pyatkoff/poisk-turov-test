@@ -3,7 +3,11 @@ declare(strict_types=1);
 require_once __DIR__.'/../v2/data/published-hotels-monitor-v1.php';
 require_once __DIR__.'/../v2/data/top500-monthly-plan-v1.php';
 function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
-$base=v2_priority_hotel_ids();$all=v2_collection_priority_hotel_ids();
+$base=v2_priority_hotel_ids();$currentMonitorIds=v2_collection_priority_hotel_ids();
+$legacySix=array_column(v2_legacy_publication_monitor_bindings_20261103(),'local_tv_id');
+$stockSix=array_column(v2_publication_stock_monitor_bindings_20261103c(),'local_tv_id');
+// Preserve the complete previous608 fixture;new cohorts intentionally lack catalog rows here.
+$all=array_values(array_diff($currentMonitorIds,array_merge($legacySix,$stockSix)));
 $nextStock=array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id');
 $freshStock=array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id');
 $latestStock=array_column(v2_publication_stock_monitor_bindings_20261103(),'local_tv_id');
@@ -145,4 +149,34 @@ check_monitor(array_slice($mixedAfter['targets'],0,count($mixed590))===$mixed590
 $inactiveReserve=$hotels;foreach($inactiveReserve as &$h){if($h['id']===$reserveStock[0])$h['is_active']=0;}unset($h);
 $partialReserve=v2_append_published_hotel_monthly_plan($before,$inactiveReserve,$departures,'2026-11-02',2,1);
 check_monitor($partialReserve['published_hotels']['searchable']===115&&in_array($reserveStock[0],$partialReserve['missing_catalog_ids'],true),'inactive stock18 hotel is falsely credited');
-echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=608 previous590_targets=unchanged existing_search=resumed mixed_countries=preserved stock=additive calls=0 writes=0\n";
+
+// Both new immutable cohorts preserve all608 admitted inputs and their pending searches.
+check_monitor($legacySix===[310,469,67910,381,68323,1971],'legacy native identity changed or alternate product selected');
+check_monitor($stockSix===[62504,231,15693,65779,932,497],'new stock exact identity changed');
+check_monitor(count($currentMonitorIds)===620&&count(array_unique($currentMonitorIds))===620,'620 unique inputs required');
+check_monitor(array_slice($currentMonitorIds,0,608)===$all,'previous608 input order changed');
+check_monitor(array_intersect(array_merge($legacySix,$stockSix),$all)===[],'new cohorts overlap old608');
+$allHotels=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Test country','is_active'=>1],$currentMonitorIds);
+$full620=v2_append_published_hotel_monthly_plan($before,$allHotels,$departures,'2026-11-02',2,1);
+check_monitor($full620['hotel_count']===620&&$full620['published_hotels']['searchable']===128,'620 actual fixture coverage lost');
+check_monitor(array_slice($full620['targets'],0,count($after['targets']))===$after['targets'],'new cohorts regrouped any previous608 target');
+$withoutNew=v2_append_published_hotel_monthly_plan($before,$hotels,$departures,'2026-11-02',2,1);
+check_monitor($withoutNew['targets']===$after['targets']&&$withoutNew['published_hotels']['searchable']===116,'missing both new cohorts blocks or credits previous608');
+check_monitor($withoutNew['published_hotels']['cohorts']['legacy_publication_20261103_6']['searchable']===0&&$withoutNew['published_hotels']['cohorts']['publication_stock_20261103c_6']['searchable']===0,'missing new inputs falsely credited');
+$onlyLegacy=array_values(array_filter($allHotels,static fn(array $hotel):bool=>!in_array($hotel['id'],$stockSix,true)));
+$legacyReady=v2_append_published_hotel_monthly_plan($before,$onlyLegacy,$departures,'2026-11-02',2,1);
+check_monitor($legacyReady['hotel_count']===614&&$legacyReady['published_hotels']['cohorts']['legacy_publication_20261103_6']['searchable']===6&&$legacyReady['published_hotels']['cohorts']['publication_stock_20261103c_6']['searchable']===0,'new stock availability blocks legacy cohort');
+$stock18Plan=v2_top500_monthly_plan($reserveStock,$allHotels,$departures,'2026-11-02',2,1);
+$oldTarget=$stock18Plan['targets'][0];$oldAttempt=['id'=>105,'target_key'=>$oldTarget['target_key'],'status'=>'started','search_id'=>864210,'started_epoch'=>$now-60,'finished_epoch'=>0];
+$queue620=v2_top500_monthly_queue($full620['targets'],[$oldAttempt],$now,24);
+$resumed=array_values(array_filter($queue620['targets'],static fn(array $target):bool=>$target['target_key']===$oldTarget['target_key']));
+check_monitor(count($resumed)===1&&$resumed[0]['resume_search_id']===864210&&$resumed[0]['resume_attempt_id']===105,'new cohorts restart admitted stock18 search');
+$mixed620Hotels=array_merge($mixedHotels,array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>1,'country_name'=>'Egypt','is_active'=>1],array_merge($legacySix,$stockSix)));
+$mixed620=v2_append_published_hotel_monthly_plan($mixedBefore,$mixed620Hotels,$mixedDepartures,'2026-11-02',2,1);
+check_monitor(array_slice($mixed620['targets'],0,count($mixedAfter['targets']))===$mixedAfter['targets'],'new cohorts regroup mixed-country previous608');
+$countryById=array_column($mixed620Hotels,'country_id','id');
+foreach($mixed620['targets'] as $target){$countries=array_unique(array_map(static fn(int $id):int=>(int)$countryById[$id],$target['hotel_ids']));check_monitor(count($countries)===1,'new cohorts mix Egypt/Turkey in one target');}
+$inactiveNew=$allHotels;foreach($inactiveNew as &$hotel){if($hotel['id']===$stockSix[0])$hotel['is_active']=0;}unset($hotel);
+$partial620=v2_append_published_hotel_monthly_plan($before,$inactiveNew,$departures,'2026-11-02',2,1);
+check_monitor($partial620['hotel_count']===619&&in_array($stockSix[0],$partial620['missing_catalog_ids'],true),'inactive new input falsely credited');
+echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=620 previous608_targets=unchanged existing_search=resumed mixed_countries=preserved legacy6=exact stock6=additive calls=0 writes=0\n";

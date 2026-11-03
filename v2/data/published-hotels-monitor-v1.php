@@ -189,6 +189,32 @@ function v2_publication_stock_monitor_bindings_20261103b(): array
     ];
 }
 
+/** Six accepted hotel titles resolved against the actual native catalog in bounded read41616228743. These are native identities,not invented legacy AnyTour integers. */
+function v2_legacy_publication_monitor_bindings_20261103(): array
+{
+    return [
+        ['local_tv_id'=>310,'name'=>"PICKALBATROS GOLF BEACH RESORT (EX. GOLF BEACH RESORT MANAGED BY RIXOS)"],
+        ['local_tv_id'=>469,'name'=>"SULTAN GARDENS RESORT"],
+        ['local_tv_id'=>67910,'name'=>"RIXOS PREMIUM MAGAWISH SUITES & VILLAS"],
+        ['local_tv_id'=>381,'name'=>"REHANA ROYAL BEACH RESORT AQUA PARK & SPA"],
+        ['local_tv_id'=>68323,'name'=>"SUNRISE SOLARA AQUA PARK RESORT (EX.CAESAR DREAMS RESORT BY SUNRISE)"],
+        ['local_tv_id'=>1971,'name'=>"PICKALBATROS PALACE RESORT SHARM EL SHEIKH (EX. CYRENE GRAND)"],
+    ];
+}
+
+/** Six newly admitted reserve identities proven in accepted bounded catalog reads. Input admission only;no price or availability assertion. */
+function v2_publication_stock_monitor_bindings_20261103c(): array
+{
+    return [
+        ['local_tv_id'=>62504,'name'=>"SINDBAD CLUB"],
+        ['local_tv_id'=>231,'name'=>"GRAND MAKADI"],
+        ['local_tv_id'=>15693,'name'=>"THE MAKADI SPA ADULTS ONLY 18+"],
+        ['local_tv_id'=>65779,'name'=>"TITANIC ROYAL HOTEL"],
+        ['local_tv_id'=>932,'name'=>"TITANIC PALACE RESORT & SPA"],
+        ['local_tv_id'=>497,'name'=>"TITANIC RESORT & AQUA PARK"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -199,7 +225,9 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102c(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103b(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103b(), 'local_tv_id'),
+        array_column(v2_legacy_publication_monitor_bindings_20261103(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103c(), 'local_tv_id')
     )));
 }
 
@@ -215,6 +243,8 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261102c_9'=>array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id'),
         'publication_stock_20261103_4'=>array_column(v2_publication_stock_monitor_bindings_20261103(),'local_tv_id'),
         'publication_stock_20261103b_18'=>array_column(v2_publication_stock_monitor_bindings_20261103b(),'local_tv_id'),
+        'legacy_publication_20261103_6'=>array_column(v2_legacy_publication_monitor_bindings_20261103(),'local_tv_id'),
+        'publication_stock_20261103c_6'=>array_column(v2_publication_stock_monitor_bindings_20261103c(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
