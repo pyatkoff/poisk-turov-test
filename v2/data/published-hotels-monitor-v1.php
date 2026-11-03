@@ -223,6 +223,14 @@ function v2_publication_stock_monitor_bindings_20261103d(): array
     ];
 }
 
+/** One promoted native reserve identity from an accepted catalog read. */
+function v2_publication_stock_monitor_bindings_20261103e(): array
+{
+    return [
+        ['local_tv_id'=>68907,'name'=>"AMARINA ABU SOMA RESORT & AQUAPARK"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -236,7 +244,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103b(), 'local_tv_id'),
         array_column(v2_legacy_publication_monitor_bindings_20261103(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103c(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103d(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103d(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103e(), 'local_tv_id')
     )));
 }
 
@@ -255,6 +264,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'legacy_publication_20261103_6'=>array_column(v2_legacy_publication_monitor_bindings_20261103(),'local_tv_id'),
         'publication_stock_20261103c_6'=>array_column(v2_publication_stock_monitor_bindings_20261103c(),'local_tv_id'),
         'publication_stock_20261103d_1'=>array_column(v2_publication_stock_monitor_bindings_20261103d(),'local_tv_id'),
+        'publication_stock_20261103e_1'=>array_column(v2_publication_stock_monitor_bindings_20261103e(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
