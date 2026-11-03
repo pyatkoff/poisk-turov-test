@@ -248,6 +248,17 @@ function v2_publication_stock_monitor_bindings_20261103g(): array
     ];
 }
 
+/** Four promoted native reserve identities from accepted country1 catalogue reads. */
+function v2_publication_stock_monitor_bindings_20261103h(): array
+{
+    return [
+        ['local_tv_id'=>73343,'name'=>"THE GRAND PALACE ADULTS ONLY 18+"],
+        ['local_tv_id'=>418,'name'=>"SERENITY ALPHA BEACH (EX. SERENITY MAKADI BEACH)"],
+        ['local_tv_id'=>464,'name'=>"STEIGENBERGER GOLF RESORT EL GOUNA"],
+        ['local_tv_id'=>103021,'name'=>"THE CHEDI EL GOUNA"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -264,7 +275,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103d(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103e(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103f(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103g(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103g(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103h(), 'local_tv_id')
     )));
 }
 
@@ -286,6 +298,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103e_1'=>array_column(v2_publication_stock_monitor_bindings_20261103e(),'local_tv_id'),
         'publication_stock_20261103f_2'=>array_column(v2_publication_stock_monitor_bindings_20261103f(),'local_tv_id'),
         'publication_stock_20261103g_1'=>array_column(v2_publication_stock_monitor_bindings_20261103g(),'local_tv_id'),
+        'publication_stock_20261103h_4'=>array_column(v2_publication_stock_monitor_bindings_20261103h(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
