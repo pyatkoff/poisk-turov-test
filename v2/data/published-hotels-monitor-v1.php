@@ -215,6 +215,14 @@ function v2_publication_stock_monitor_bindings_20261103c(): array
     ];
 }
 
+/** One promoted reserve identity from the accepted native catalog read. Input admission only. */
+function v2_publication_stock_monitor_bindings_20261103d(): array
+{
+    return [
+        ['local_tv_id'=>60589,'name'=>"JAZ NEO IVORY (EX. SOLYMAR IVORY SUITES)"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -227,7 +235,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103b(), 'local_tv_id'),
         array_column(v2_legacy_publication_monitor_bindings_20261103(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103c(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103c(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103d(), 'local_tv_id')
     )));
 }
 
@@ -245,6 +254,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103b_18'=>array_column(v2_publication_stock_monitor_bindings_20261103b(),'local_tv_id'),
         'legacy_publication_20261103_6'=>array_column(v2_legacy_publication_monitor_bindings_20261103(),'local_tv_id'),
         'publication_stock_20261103c_6'=>array_column(v2_publication_stock_monitor_bindings_20261103c(),'local_tv_id'),
+        'publication_stock_20261103d_1'=>array_column(v2_publication_stock_monitor_bindings_20261103d(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
