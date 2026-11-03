@@ -161,6 +161,34 @@ function v2_publication_stock_monitor_bindings_20261103(): array
     ];
 }
 
+/** Eighteen proven active native stock identities from bounded reads41603842788/41605170445.
+ * Append input only; preserve all590 previous IDs, monthly targets and incomplete searches.
+ * Stella465 is already in the original492 and is deliberately not repeated.
+ */
+function v2_publication_stock_monitor_bindings_20261103b(): array
+{
+    return [
+        ['local_tv_id'=>432,'name'=>"SHERATON MIRAMAR RESORT"],
+        ['local_tv_id'=>328,'name'=>"MOVENPICK RESORT & SPA EL GOUNA"],
+        ['local_tv_id'=>382,'name'=>"RENAISSANCE GOLDEN VIEW BEACH"],
+        ['local_tv_id'=>341,'name'=>"NUBIAN VILLAGE"],
+        ['local_tv_id'=>340,'name'=>"NUBIAN ISLAND"],
+        ['local_tv_id'=>272,'name'=>"CONTINENTAL HOTEL HURGHADA"],
+        ['local_tv_id'=>260,'name'=>"PARK REGENCY SHARM EL SHEIKH (EX. HYATT REGENCY SSH)"],
+        ['local_tv_id'=>21476,'name'=>"CLEOPATRA LUXURY RESORT MAKADI BAY (EX. ALDIANA MAKADI)"],
+        ['local_tv_id'=>4181,'name'=>"HILTON MARSA ALAM NUBIAN RESORT"],
+        ['local_tv_id'=>273,'name'=>"PALM ROYALE SOMA BAY (EX. SENTIDO PALM ROYALE)"],
+        ['local_tv_id'=>441,'name'=>"SIVA GRAND BEACH"],
+        ['local_tv_id'=>473,'name'=>"SUNNY DAYS EL PALACIO (EX. SUNNY DAYS RESORTS SPA & AQUA PARK)"],
+        ['local_tv_id'=>483,'name'=>"SUNRISE ROYAL MAKADI RESORT"],
+        ['local_tv_id'=>408,'name'=>"SAVOY SHARM EL SHEIKH"],
+        ['local_tv_id'=>249,'name'=>"HILTON PLAZA"],
+        ['local_tv_id'=>315,'name'=>"HURGADA MARRIOTT BEACH RESORT"],
+        ['local_tv_id'=>21477,'name'=>"MOVENPICK WATERPARK RESORT & SPA SOMA BAY"],
+        ['local_tv_id'=>250,'name'=>"SWISS INN RESORT HURGHADA (EX. HILTON RESORT)"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -170,7 +198,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102b(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102c(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103b(), 'local_tv_id')
     )));
 }
 
@@ -185,6 +214,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261102b_12'=>array_column(v2_publication_stock_monitor_bindings_20261102b(),'local_tv_id'),
         'publication_stock_20261102c_9'=>array_column(v2_publication_stock_monitor_bindings_20261102c(),'local_tv_id'),
         'publication_stock_20261103_4'=>array_column(v2_publication_stock_monitor_bindings_20261103(),'local_tv_id'),
+        'publication_stock_20261103b_18'=>array_column(v2_publication_stock_monitor_bindings_20261103b(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
