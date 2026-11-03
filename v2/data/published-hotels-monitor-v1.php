@@ -318,6 +318,15 @@ function v2_publication_stock_monitor_bindings_20261103n(): array
     ];
 }
 
+/** Two native hotel identities from the accepted bounded Turkey catalogue read. */
+function v2_publication_stock_monitor_bindings_20261103o(): array
+{
+    return [
+        ['local_tv_id'=>74503,'name'=>"NG PHASELIS BAY"],
+        ['local_tv_id'=>1582,'name'=>"VOYAGE BELEK GOLF & SPA"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -341,7 +350,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103k(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103l(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103m(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103n(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103n(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103o(), 'local_tv_id')
     )));
 }
 
@@ -370,6 +380,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103l_3'=>array_column(v2_publication_stock_monitor_bindings_20261103l(),'local_tv_id'),
         'publication_stock_20261103m_3'=>array_column(v2_publication_stock_monitor_bindings_20261103m(),'local_tv_id'),
         'publication_stock_20261103n_4'=>array_column(v2_publication_stock_monitor_bindings_20261103n(),'local_tv_id'),
+        'publication_stock_20261103o_2'=>array_column(v2_publication_stock_monitor_bindings_20261103o(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
