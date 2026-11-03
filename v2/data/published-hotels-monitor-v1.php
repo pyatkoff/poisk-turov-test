@@ -259,6 +259,15 @@ function v2_publication_stock_monitor_bindings_20261103h(): array
     ];
 }
 
+/** Two promoted El Gouna reserve identities from the accepted bounded catalogue read. */
+function v2_publication_stock_monitor_bindings_20261103i(): array
+{
+    return [
+        ['local_tv_id'=>129,'name'=>"COOKS CLUB EL GOUNA ADULTS ONLY 16+"],
+        ['local_tv_id'=>74258,'name'=>"CASA COOK EL GOUNA ADULTS ONLY"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -276,7 +285,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103e(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103f(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103g(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103h(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103h(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103i(), 'local_tv_id')
     )));
 }
 
@@ -299,6 +309,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103f_2'=>array_column(v2_publication_stock_monitor_bindings_20261103f(),'local_tv_id'),
         'publication_stock_20261103g_1'=>array_column(v2_publication_stock_monitor_bindings_20261103g(),'local_tv_id'),
         'publication_stock_20261103h_4'=>array_column(v2_publication_stock_monitor_bindings_20261103h(),'local_tv_id'),
+        'publication_stock_20261103i_2'=>array_column(v2_publication_stock_monitor_bindings_20261103i(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
