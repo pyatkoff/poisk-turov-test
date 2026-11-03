@@ -240,6 +240,14 @@ function v2_publication_stock_monitor_bindings_20261103f(): array
     ];
 }
 
+/** One promoted native reserve identity, proven in the accepted bounded catalogue read. */
+function v2_publication_stock_monitor_bindings_20261103g(): array
+{
+    return [
+        ['local_tv_id'=>235,'name'=>"GRAND RESORT HURGHADA"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -255,7 +263,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103c(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103d(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103e(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261103f(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261103f(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261103g(), 'local_tv_id')
     )));
 }
 
@@ -276,6 +285,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103d_1'=>array_column(v2_publication_stock_monitor_bindings_20261103d(),'local_tv_id'),
         'publication_stock_20261103e_1'=>array_column(v2_publication_stock_monitor_bindings_20261103e(),'local_tv_id'),
         'publication_stock_20261103f_2'=>array_column(v2_publication_stock_monitor_bindings_20261103f(),'local_tv_id'),
+        'publication_stock_20261103g_1'=>array_column(v2_publication_stock_monitor_bindings_20261103g(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
