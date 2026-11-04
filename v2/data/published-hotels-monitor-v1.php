@@ -366,6 +366,18 @@ function v2_publication_stock_monitor_bindings_20261104b(): array
     ];
 }
 
+function v2_publication_stock_monitor_bindings_20261104c(): array
+{
+    return [
+        ['local_tv_id'=>1659,'name'=>"TUI BLUE SARIGERME PARK"],
+        ['local_tv_id'=>21695,'name'=>"TUI BLUE SENO ADULTS ONLY 16+"],
+        ['local_tv_id'=>28668,'name'=>"RIXOS PREMIUM GOCEK ADULTS ONLY 13+"],
+        ['local_tv_id'=>55205,'name'=>"EFTALIA OCEAN"],
+        ['local_tv_id'=>1334,'name'=>"LEODIKYA KIRMAN PREMIUM (EX. KIRMAN LEODIKYA RESORT)"],
+        ['local_tv_id'=>1715,'name'=>"VOYAGE TORBA"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -394,7 +406,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261103p(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261103q(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261104(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261104b(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261104b(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261104c(), 'local_tv_id')
     )));
 }
 
@@ -428,6 +441,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261103q_5'=>array_column(v2_publication_stock_monitor_bindings_20261103q(),'local_tv_id'),
         'publication_stock_20261104_2'=>array_column(v2_publication_stock_monitor_bindings_20261104(),'local_tv_id'),
         'publication_stock_20261104b_4'=>array_column(v2_publication_stock_monitor_bindings_20261104b(),'local_tv_id'),
+        'publication_stock_20261104c_6'=>array_column(v2_publication_stock_monitor_bindings_20261104c(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
