@@ -401,6 +401,14 @@ function v2_publication_stock_monitor_bindings_20261105(): array
     ];
 }
 
+/** Actual batch51 publication41969870445; native78251 country4/active1 and paired in both channels. */
+function v2_publication_stock_monitor_bindings_20261105b(): array
+{
+    return [
+        ['local_tv_id'=>78251,'name'=>"CULLINAN BELEK (EX. CULLINAN GOLF RESORT BELEK)"],
+    ];
+}
+
 function v2_collection_priority_hotel_ids(): array
 {
     return array_values(array_unique(array_merge(
@@ -433,7 +441,8 @@ function v2_collection_priority_hotel_ids(): array
         array_column(v2_publication_stock_monitor_bindings_20261104c(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261104d(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261104e(), 'local_tv_id'),
-        array_column(v2_publication_stock_monitor_bindings_20261105(), 'local_tv_id')
+        array_column(v2_publication_stock_monitor_bindings_20261105(), 'local_tv_id'),
+        array_column(v2_publication_stock_monitor_bindings_20261105b(), 'local_tv_id')
     )));
 }
 
@@ -471,6 +480,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261104d_1'=>array_column(v2_publication_stock_monitor_bindings_20261104d(),'local_tv_id'),
         'publication_stock_20261104e_2'=>array_column(v2_publication_stock_monitor_bindings_20261104e(),'local_tv_id'),
         'publication_stock_20261105_1'=>array_column(v2_publication_stock_monitor_bindings_20261105(),'local_tv_id'),
+        'publication_stock_20261105b_1'=>array_column(v2_publication_stock_monitor_bindings_20261105b(),'local_tv_id'),
     ];
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
