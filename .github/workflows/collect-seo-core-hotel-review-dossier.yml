@@ -8,6 +8,8 @@ on:
       - 'v2/data/seo-core-hotel-cohort-source-v1.php'
       - 'v2/data/report-seo-core-hotel-cohort-v1.php'
       - '.github/workflows/collect-seo-core-hotel-review-dossier.yml'
+      - 'scripts/deploy/seo_evidence_gate.py'
+      - 'tests/seo_evidence_gate_test.py'
   workflow_run:
     workflows: ['Bootstrap AnyTour data database']
     types: [completed]
@@ -25,12 +27,24 @@ concurrency:
 jobs:
   collect:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Admit only proven SEO evidence work
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/deploy/seo_evidence_gate.py --target dossier
 
       - name: Validate review-only dossier tooling
+        if: steps.gate.outputs.run_contract == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -40,6 +54,7 @@ jobs:
           php tests/seo-core-hotel-cohort-smoke.php
 
       - name: Prepare SSH key
+        if: steps.gate.outputs.run_collection == 'true'
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
         shell: bash
@@ -56,6 +71,7 @@ jobs:
           ssh-keygen -y -f "$key" >/dev/null
 
       - name: Collect fresh production review dossier
+        if: steps.gate.outputs.run_collection == 'true'
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -69,6 +85,7 @@ jobs:
           scp "${opts[@]}" "$remote:/tmp/seo-top500-hotel-review-dossier.json" "$RUNNER_TEMP/seo-top500-hotel-review-dossier.json"
 
       - name: Fail closed unless all 500 records remain review-only
+        if: steps.gate.outputs.run_collection == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -111,6 +128,7 @@ jobs:
           PY
 
       - name: Upload review dossier artifact
+        if: steps.gate.outputs.run_collection == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: seo-top500-hotel-review-dossier

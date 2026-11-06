@@ -19,6 +19,9 @@ on:
       - 'tests/seo-hotel-pilot-readiness-status-cli-smoke.php'
       - 'tests/seo-hotel-pilot-gap-matrix-smoke.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
+      - '.github/workflows/collect-seo-core-hotel-review-dossier.yml'
+      - 'scripts/deploy/seo_evidence_gate.py'
+      - 'tests/seo_evidence_gate_test.py'
   push:
     branches: [main]
     paths:
@@ -34,6 +37,8 @@ on:
       - 'v2/data/report-seo-hotel-pilot-gap-matrix-v1.php'
       - 'tests/seo-hotel-pilot-gap-matrix-smoke.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
+      - 'scripts/deploy/seo_evidence_gate.py'
+      - 'tests/seo_evidence_gate_test.py'
 
 permissions:
   contents: read
@@ -45,11 +50,28 @@ concurrency:
 jobs:
   fast-contract:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      run_collection: ${{ steps.gate.outputs.run_collection }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Admit only proven SEO evidence work
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/deploy/seo_evidence_gate.py --target pilot
+      - name: Validate SEO evidence trigger boundaries
+        if: steps.gate.outputs.run_guard_tests == 'true'
+        run: python3 tests/seo_evidence_gate_test.py
       - name: Validate review-only live evidence collector
+        if: steps.gate.outputs.run_contract == 'true'
         run: |
           set -euo pipefail
           php -l v2/seo-hotel-pilot-live-evidence-v1.php >/dev/null
@@ -65,7 +87,7 @@ jobs:
           php tests/seo-hotel-pilot-gap-matrix-smoke.php
 
   live-evidence:
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.event_name != 'pull_request' && needs.fast-contract.outputs.run_collection == 'true'
     needs: fast-contract
     runs-on: ubuntu-latest
     timeout-minutes: 5
