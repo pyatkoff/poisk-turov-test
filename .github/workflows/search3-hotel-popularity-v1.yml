@@ -7,6 +7,8 @@ on:
       - 'v2/data/top500-anex-priority-v1.php'
       - 'app/integrations/anex-search-mapping-registry.php'
       - 'tests/top500-anex-namespace-smoke.php'
+      - 'tests/top500-anex-8401-regression.php'
+      - 'tests/search3-top500-anex-8401.cjs'
       - 'v2/data/top-hotels-v1.php'
       - 'v2/sales-leaders-v1.php'
       - 'diagnostics/sales_leaders_v1_test.php'
@@ -39,3 +41,4 @@ jobs:
           php tests/top500-daily-plan-smoke.php
           php tests/top500-anex-namespace-smoke.php
           node tests/search3-prototype-hotel-popularity-v1.cjs
+          node tests/search3-top500-anex-8401.cjs
