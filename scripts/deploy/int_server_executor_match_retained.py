@@ -19,6 +19,17 @@ MODES = {'match-retained-intake': 'common4-retained',
          'match-retained-acquire': 'anex105-current',
          'match-retained-anex-write': 'anex7-verified',
          'match-retained-anex-write-v2': 'anex7-reconciled'}
+# Historical accepted pairs from the owner's ANEX roster. This current read
+# grants no website/Online equivalence, canonical publication binding or write.
+OWNER_TOP500_CURRENT = {
+    'cohort': 'owner-top500-retained7-20261106',
+    'operation_id': 'int-andromeda-match-retained-current-20261106-v1',
+    'parent_operation_id': 'int-andromeda-match-retained-project-20261020-v2',
+    'parent_receipt_sha256': '4b7c04b3934def5554017a507310dad56d110e996043ce4a6bc03ec561c6b6b1',
+    'pairs': ((27611,1228,8),(8554,16794,9),(8595,1216,108),
+              (8476,1095,150),(8475,1014,159),(12901,1474,190),(14818,1015,209)),
+}
+
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php', 'scripts/diagnostics/hotel_match_retained_projection_v1.py', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py', 'v2/data/db-v1.php', 'scripts/diagnostics/hotel_match_retained_current_v1.php', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php', 'app/integrations/anex-search-mapping-registry.php', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'scripts/diagnostics/fixtures/hotel_match_retained_timeout60_scope_20261020.json', 'scripts/diagnostics/fixtures/hotel_match_retained_wide_scope_20261020.json', 'scripts/diagnostics/fixtures/hotel_match_retained_never13_scope_20261020.json', 'scripts/diagnostics/fixtures/hotel_match_retained_never9_scope_20261020.json')
 SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'fc0c7f1dc6d913dd83ac7713ba1572ca3f17921da16d11b57e246c289e3615e2', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py': '6b52756ce4417d9489d9c3ce9d94b0f250485c324e00e6eade566564e00caace', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py': '9690f85d2d7e5c5e66f946e83024c1df98ab7f4e35285e9b0cbd8acde72f385f', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php': '0156d1cad6a1f16d6eff5b5587993fafb61d8ad2854e5da3ef4f26b998aa8e06', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php': '4c6f232d139b2d88727be17727a072acefcb59b9a1aec5086b95c085318a04d4', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json': '458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31', 'scripts/diagnostics/fixtures/hotel_match_retained_timeout60_scope_20261020.json': '266f0791573661882104a39ec1b4206940cec16eefef29de4d2e0a11f52ede07', 'scripts/diagnostics/fixtures/hotel_match_retained_wide_scope_20261020.json': 'c83d38a5726d71e955743e133dd815e9898a9a3067ba6048c5e1c31076ee6379', 'scripts/diagnostics/fixtures/hotel_match_retained_never13_scope_20261020.json': '6886821dd545f24e1a3f35db2c3f9b87ede3597df9e73fd6aaae190c0f99dce5', 'scripts/diagnostics/fixtures/hotel_match_retained_never9_scope_20261020.json': '175e28a9cd21dc15ec9aed34d6acb0444370374116c3fbe38062715b519958b3'}
 
@@ -260,7 +271,7 @@ def catalogue_snapshot():
 def continuation_policy(cohort):
     if cohort in CONTINUATION_SCOPES:
         return CONTINUATION_SCOPES[cohort]
-    if cohort in MODES.values():
+    if cohort in MODES.values() or cohort == OWNER_TOP500_CURRENT['cohort']:
         return NEXT_SCOPE
     return catalogue_snapshot()[1].get(cohort,NEXT_SCOPE)
 
@@ -273,6 +284,16 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if len(parts) >= 4 and (parts[3] == OWNER_TOP500_CURRENT['cohort']
+                                or parts[2] == OWNER_TOP500_CURRENT['operation_id']):
+            profile = OWNER_TOP500_CURRENT
+            need(len(parts) == 5 and parts[1] == 'match-retained-current'
+                 and parts[2] == profile['operation_id'] and parts[3] == profile['cohort']
+                 and parts[4] == profile['parent_operation_id'], 'owner_top500_current_scope')
+            need(core.SHA_RE.fullmatch(parts[0]) is not None, 'retained_source_sha')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) >= 4 and parts[3] in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort'], OPERATOR_ALIAS_AUDIT['cohort']):
             profile = OPERATOR_ALIAS_AUDIT if parts[3] == OPERATOR_ALIAS_AUDIT['cohort'] else BINDING_RECONCILIATION_V2 if parts[3] == BINDING_RECONCILIATION_V2['cohort'] else BINDING_RECONCILIATION
             need(len(parts) == 5 and parts[1] == 'match-retained-readback'
@@ -914,8 +935,42 @@ def acquire_retained_target(stage):
     with os.fdopen(fd,'wb') as handle:handle.write(evidence);handle.flush();os.fsync(handle.fileno())
     return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
 
+def owner_top500_current_projection(data, profile):
+    # Raw helper rows remain in the private operation directory. Return only
+    # fixed expected-pair booleans: no other native IDs, anchors or trip context.
+    captured=data.get('captured_at_utc')
+    if (not isinstance(captured,str) or not re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)',captured)
+            or data.get('database_snapshot')!='repeatable-read-read-only'):fail('owner_top500_current_snapshot')
+    by_tv={r['tv_hotel_id']:r for r in data['rows']};rows=[]
+    for anex,tv,rank in profile['pairs']:
+        raw=by_tv[tv];target=raw.get('target');native=raw.get('direct_anex_native_ids')
+        if (not isinstance(native,list) or any(type(n) is not int or n<1 for n in native)
+                or (target is not None and (not isinstance(target,dict) or str(target.get('id'))!=str(tv)
+                    or str(target.get('is_active')) not in ('0','1')))):fail('owner_top500_current_row')
+        present=target is not None;active=present and str(target['is_active'])=='1'
+        if ((not present)!=(raw.get('state')=='target_missing')
+                or (present and not active and raw.get('state')!='target_ineligible')):fail('owner_top500_current_target')
+        eligible=present and active and raw.get('state')!='target_ineligible'
+        effective=anex in native
+        if eligible and effective and raw.get('state')!='already_effectively_linked':fail('owner_top500_current_effective')
+        state='target_missing' if not present else 'target_ineligible' if not eligible else 'matched_current' if effective else 'expected_pair_unresolved'
+        rows.append({'anex_hotel_id':anex,'tv_hotel_id':tv,'owner_rank':rank,'state':state,
+                     'effective_pair_present':effective,'target_present':present,
+                     'target_active':active,'target_eligible':eligible})
+    return {'schema_version':1,'state':'current_retained_read_only','captured_at_utc':captured,
+            'database_snapshot':'repeatable-read-read-only','parent_receipt_sha256':data['parent_receipt_sha256'],
+            'cohort_hotels':len(rows),'matched_current_pairs':sum(r['state']=='matched_current' for r in rows),'rows':rows,
+            'publication_admission':False,'website_online_bridge_verified':False,
+            'canonical_publication_binding_verified':False,'supplier_calls':0,'database_writes':0,
+            'mapping_writes':0,'safe_to_write_now':False}
+
 def current_retained_target(stage):
+    profile=globals().get('OWNER_TOP500_CURRENT',{})
+    bounded=(payload.get('cohort')==profile.get('cohort') or operation==profile.get('operation_id'))
     name=payload.get('target_operation_id','')
+    if bounded and (globals().get('mode')!='match-retained-current'
+                    or operation!=profile['operation_id'] or payload.get('cohort')!=profile['cohort']
+                    or name!=profile['parent_operation_id']):fail('owner_top500_current_scope')
     if not re.fullmatch(r'int-andromeda-match-retained-project-[0-9]{8}-v[1-9][0-9]*',name):fail('current_parent_name')
     target=private/name
     if target.is_symlink() or target.resolve()!=target:fail('current_parent_path')
@@ -934,6 +989,11 @@ def current_retained_target(stage):
     if (not isinstance(ids,list) or not 0<len(ids)<=10000 or any(type(v) is not int or v<1 for v in ids)
             or ids!=sorted(set(ids)) or len(ids)!=projection.get('cohort_hotels')):fail('current_parent_cohort')
     parent_hash=hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
+    if bounded:
+        if parent_hash!=profile['parent_receipt_sha256']:fail('owner_top500_current_parent_pin')
+        selected=sorted(p[1] for p in profile['pairs'])
+        if not set(selected).issubset(ids):fail('owner_top500_current_parent_membership')
+        ids=selected
     scope={'tv_hotel_ids':ids,'parent_receipt_sha256':parent_hash}
     fd=os.open(op/'current-scope.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,'wb') as handle:handle.write(json.dumps(scope,sort_keys=True).encode());handle.flush();os.fsync(handle.fileno())
@@ -959,6 +1019,7 @@ def current_retained_target(stage):
             or any(type(data.get(k)) is not int or data[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes'))
             or hashlib.sha256((target/'result.json').read_bytes()).hexdigest()!=parent_hash
             or hashlib.sha256(config.read_bytes()).hexdigest()!=before_hash):fail('current_result_binding')
+    if bounded:data=owner_top500_current_projection(data,profile)
     data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
         cohort=payload['cohort'],target_operation_id=name,current_raw_sha256=hashlib.sha256(run.stdout.encode()).hexdigest(),
         no_replay=True,new_database_reads=1)
@@ -1217,7 +1278,8 @@ def retained_readback():
     return out
 
 def run_match_retained(stage):
-    if ((payload.get('cohort')!=RETAINED_MODES.get(mode) and not (payload.get('cohort')==NEXT_SCOPE['cohort'] and mode in ('match-retained-acquire','match-retained-anex-write-v2','match-retained-readback')))
+    owner_current=(mode=='match-retained-current' and payload.get('cohort')==globals().get('OWNER_TOP500_CURRENT',{}).get('cohort'))
+    if ((payload.get('cohort')!=RETAINED_MODES.get(mode) and not owner_current and not (payload.get('cohort')==NEXT_SCOPE['cohort'] and mode in ('match-retained-acquire','match-retained-anex-write-v2','match-retained-readback')))
             or not re.fullmatch(r'[a-f0-9]{40}',str(payload.get('match_retained_control_sha','')))):
         fail('retained_remote_scope')
     if mode=='match-retained-project':return project_retained_target(stage)
@@ -2061,6 +2123,40 @@ def completed_operator_alias_audit(command, result, control_sha):
     except (KeyError,TypeError,ValueError,AttributeError): return False
 
 
+def completed_owner_top500_current(command, data):
+    p=OWNER_TOP500_CURRENT
+    fields={'schema_version','state','captured_at_utc','database_snapshot','parent_receipt_sha256',
+            'cohort_hotels','matched_current_pairs','rows','publication_admission','website_online_bridge_verified',
+            'canonical_publication_binding_verified','supplier_calls','database_writes','mapping_writes','safe_to_write_now',
+            'operation_id','source_sha','control_source_sha','cohort','target_operation_id','current_raw_sha256','no_replay','new_database_reads'}
+    if (command.get('mode')!='match-retained-current' or command.get('cohort')!=p['cohort']
+            or command.get('operation_id')!=p['operation_id'] or command.get('target_operation_id')!=p['parent_operation_id']
+            or set(data)!=fields or data.get('parent_receipt_sha256')!=p['parent_receipt_sha256']
+            or data.get('database_snapshot')!='repeatable-read-read-only'
+            or any(type(data.get(k)) is not int or data[k]!=v for k,v in
+                   (('schema_version',1),('cohort_hotels',len(p['pairs'])),('new_database_reads',1)))
+            or any(data.get(k) is not False for k in
+                   ('publication_admission','website_online_bridge_verified','canonical_publication_binding_verified'))
+            or not re.fullmatch(r'[a-f0-9]{64}',str(data.get('current_raw_sha256','')))):return False
+    captured=data.get('captured_at_utc')
+    if (not isinstance(captured,str) or not re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)',captured)
+            or dt.datetime.fromisoformat(captured.replace('Z','+00:00')).utcoffset()!=dt.timedelta(0)):return False
+    rows=data.get('rows')
+    if not isinstance(rows,list) or len(rows)!=len(p['pairs']):return False
+    for row,(anex,tv,rank) in zip(rows,p['pairs']):
+        if (not isinstance(row,dict) or set(row)!={'anex_hotel_id','tv_hotel_id','owner_rank','state',
+                                                 'effective_pair_present','target_present','target_active','target_eligible'}
+                or any(type(row.get(k)) is not int or row[k]!=v for k,v in
+                       (('anex_hotel_id',anex),('tv_hotel_id',tv),('owner_rank',rank)))
+                or any(type(row.get(k)) is not bool for k in
+                       ('effective_pair_present','target_present','target_active','target_eligible'))):return False
+        present=row['target_present'];active=row['target_active'];eligible=row['target_eligible']
+        if (active and not present) or (eligible and not active):return False
+        state='target_missing' if not present else 'target_ineligible' if not eligible else 'matched_current' if row['effective_pair_present'] else 'expected_pair_unresolved'
+        if row['state']!=state:return False
+    return type(data.get('matched_current_pairs')) is int and data['matched_current_pairs']==sum(r['state']=='matched_current' for r in rows)
+
+
 def completed_result(command, result, control_sha):
     if command.get('cohort') == FUNSUN_RU_IDENTITY_SCOPE['cohort']:
         return completed_bg_identity(command, result, control_sha, FUNSUN_RU_IDENTITY_SCOPE)
@@ -2096,6 +2192,8 @@ def completed_result(command, result, control_sha):
             if any(type(obj.get(k)) is not int or obj[k] != 0 for k in keys):
                 return False
         if command['mode'] in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') and data.get('target_operation_id')!=command.get('target_operation_id'):
+            return False
+        if (command.get('cohort')==OWNER_TOP500_CURRENT['cohort'] or command.get('operation_id')==OWNER_TOP500_CURRENT['operation_id']) and not completed_owner_top500_current(command,data):
             return False
         if command['mode']=='match-retained-acquire' and (type(data.get('supplier_calls')) is not int or not 0<=data['supplier_calls']<=400 or result.get('supplier_calls')!=data['supplier_calls']):return False
         if policy.get('scope_kind')=='never_selected_bounded' and command['mode']=='match-retained-acquire':
@@ -2213,7 +2311,7 @@ def activate(core, command):
         need(handler.count(anchor) == 1, 'funsun_ru_identity_dispatch_anchor')
         handler = handler.replace(anchor, "    if mode=='match-retained-acquire':return retained_funsun_ru_identity(stage)", 1)
         handler += funsun_ru_identity_handler()
-    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nOWNER_TOP500_CURRENT='+repr(OWNER_TOP500_CURRENT)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
     hashes=dict(SOURCE_HASHES)
