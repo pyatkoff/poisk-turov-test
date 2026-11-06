@@ -2,13 +2,13 @@
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache');
-// One ordered TOP500 cohort feeds collectors, legacy V2 and prototype ranking.
+// Only accepted ANEX-to-Tourvisor mappings feed hotel popularity.
 $priorityHotelIds = [];
 $popularitySource = dirname(__DIR__) . '/data/hotel-popularity-v1.php';
 if (is_file($popularitySource)) {
     require_once $popularitySource;
     if (function_exists('v2_hotel_popularity_legacy_ids')) {
-        foreach (v2_hotel_popularity_legacy_ids() as $id) {
+        foreach (v2_hotel_popularity_legacy_ids(v2_hotel_popularity_registry()) as $id) {
             $id = (int)$id;
             if ($id > 0) $priorityHotelIds[$id] = $id;
         }
