@@ -2437,6 +2437,183 @@ class OperatorAliasAuditTest(unittest.TestCase):
             with mock.patch.object(Path,'home',return_value=home),self.assertRaisesRegex(ValueError,'alias_candidate_bound'):s['retained_operator_alias_audit'](stage)
 
 
+
+class OwnerTop500CurrentTest(unittest.TestCase):
+    def fields(self):
+        p=m.OWNER_TOP500_CURRENT
+        return [SHA,'match-retained-current',p['operation_id'],p['cohort'],p['parent_operation_id']]
+
+    def fixture(self, root, missing_parent_target=False):
+        profile=copy.deepcopy(m.OWNER_TOP500_CURRENT)
+        private=root/'private';target=private/profile['parent_operation_id'];target.mkdir(parents=True)
+        op=private/profile['operation_id'];op.mkdir()
+        project=root/'project';project.mkdir();(project/'config.php').write_text('PRIVATE_CONFIG_SENTINEL')
+        ids=sorted([p[1] for p in profile['pairs']]+[999999])
+        if missing_parent_target:ids.remove(profile['pairs'][0][1])
+        projection={'state':'projected_read_only','cohort':'common4-retained','cohort_tv_hotel_ids':ids,
+                    'cohort_hotels':len(ids),'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+        parent={'state':'reprojected_retained_read_only','operation_id':profile['parent_operation_id'],
+                'source_sha':SHA,'projection':projection,'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+        prior={'status':'complete','mode':'match-retained-project','production_unchanged':True,
+               'operation_id':profile['parent_operation_id'],'source_sha':SHA,
+               'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+               'match_retained':{'data':parent,'evidence_sha256':hashlib.sha256(json.dumps(parent,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
+        (target/'result.json').write_text(json.dumps(prior))
+        (target/'reservation.json').write_text(json.dumps({'operation_id':profile['parent_operation_id'],'source_sha':SHA}))
+        profile['parent_receipt_sha256']=hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
+        command=dict(zip(('source_sha','mode','operation_id','cohort','target_operation_id'),self.fields()))
+        def fail(reason):raise ValueError(reason)
+        space={'OWNER_TOP500_CURRENT':profile,'RETAINED_MODES':m.MODES,'NEXT_SCOPE':m.NEXT_SCOPE,
+               'private':private,'project':project,'op':op,'operation':profile['operation_id'],
+               'mode':command['mode'],'source':SHA,'payload':dict(command,match_retained_control_sha=CONTROL),
+               'result':{},'re':__import__('re'),'json':json,'hashlib':hashlib,'os':os,
+               'subprocess':subprocess,'fail':fail,'safe_json':lambda path,bound:json.loads(path.read_text()),
+               'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound}
+        exec(m.REMOTE_HANDLER,space)
+        rows=[]
+        for index,(anex,tv,rank) in enumerate(profile['pairs']):
+            target_row={'id':str(tv),'is_active':'1','name':'PRIVATE_TARGET_SENTINEL'}
+            native=[anex];state='already_effectively_linked'
+            if index==1:native=[999999]
+            if index==5:target_row['is_active']='0';state='target_ineligible'
+            if index==6:target_row=None;native=[];state='target_missing'
+            rows.append({'tv_hotel_id':tv,'state':state,'target':target_row,'direct_anex_native_ids':native,
+                         'future_context':{'departure_date':'PRIVATE_TRIP_SENTINEL'},
+                         'anchors':[{'evidence_json':'PRIVATE_ANCHOR_SENTINEL'}],
+                         'accepted_provider_ids':{'other_provider':['PRIVATE_NATIVE_SENTINEL']}})
+        data={'state':'current_retained_read_only','captured_at_utc':'2026-11-06T10:00:00+00:00',
+              'database_snapshot':'repeatable-read-read-only','parent_receipt_sha256':profile['parent_receipt_sha256'],
+              'cohort_hotels':7,'rows':sorted(rows,key=lambda row:row['tv_hotel_id']),
+              'direct_anex_global_effective_native_ids':123456,'safe_to_write_now':False,
+              'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+        def child(*args,**kwargs):
+            scope=json.loads((op/'current-scope.json').read_text())
+            self.assertEqual(sorted(p[1] for p in profile['pairs']),scope['tv_hotel_ids'])
+            self.assertEqual(profile['parent_receipt_sha256'],scope['parent_receipt_sha256'])
+            self.assertIn('allow_url_fopen=0',args[0])
+            self.assertIn('disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen',args[0])
+            self.assertEqual(300,kwargs['timeout'])
+            return subprocess.CompletedProcess(args,0,json.dumps(data),'')
+        return profile,command,space,child,target,op,project,data
+
+    def result(self, command, evidence):
+        return dict(command,status='complete',production_unchanged=True,supplier_calls=0,
+                    database_writes=0,mapping_writes=0,match_retained=evidence)
+
+    def rehash(self, result):
+        data=result['match_retained']['data']
+        result['match_retained']['evidence_sha256']=hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+    def test_only_exact_current_operation_parent_and_cohort_are_admitted(self):
+        import base64,zlib
+        c=core();m.register_parser(c);fields=self.fields()
+        command=c.parse_command(c.PREFIX+' '.join(fields))
+        changes=((0,'z'*40),(1,'match-retained-acquire'),(1,'match-retained-anex-write-v2'),
+                 (1,'match-retained-readback'),(2,'int-andromeda-match-retained-current-20261106-v2'),
+                 (3,'common4-retained'),(3,'owner-top500-retained8-20261106'),
+                 (4,'int-andromeda-match-retained-project-20261020-v1'))
+        for index,value in changes:
+            bad=fields.copy();bad[index]=value
+            with self.subTest(index=index,value=value),self.assertRaises(ValueError):
+                c.parse_command(c.PREFIX+' '.join(bad))
+        for bad in (fields[:-1],fields+['999999']):
+            with self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaisesRegex(ValueError,'first_attempt'):
+            c.parse_command(c.PREFIX+' '.join(fields))
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE)
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def test_current_read_is_exact_private_and_preserves_parent_and_config(self):
+        with tempfile.TemporaryDirectory() as td:
+            p,command,space,child,target,op,project,raw=self.fixture(Path(td))
+            before={path:path.read_bytes() for path in [*target.iterdir(),project/'config.php']}
+            with mock.patch.object(subprocess,'run',side_effect=child) as run:
+                evidence=space['run_match_retained'](SOURCE)
+                self.assertEqual(1,run.call_count)
+                with self.assertRaises(FileExistsError):space['run_match_retained'](SOURCE)
+                self.assertEqual(1,run.call_count)
+            data=evidence['data']
+            self.assertEqual(4,data['matched_current_pairs'])
+            self.assertEqual(['matched_current','expected_pair_unresolved','matched_current','matched_current',
+                              'matched_current','target_ineligible','target_missing'],[r['state'] for r in data['rows']])
+            self.assertEqual(before,{path:path.read_bytes() for path in before})
+            for marker in ('PRIVATE_TARGET_SENTINEL','PRIVATE_TRIP_SENTINEL','PRIVATE_ANCHOR_SENTINEL','PRIVATE_NATIVE_SENTINEL'):
+                self.assertIn(marker,(op/'current-raw.json').read_text())
+                self.assertNotIn(marker,json.dumps(evidence))
+                self.assertNotIn(marker,(op/'retained-evidence.json').read_text())
+            self.assertNotIn('direct_anex_global_effective_native_ids',data)
+            self.assertEqual(0o600,(op/'current-raw.json').stat().st_mode & 0o777)
+            for key in ('publication_admission','website_online_bridge_verified','canonical_publication_binding_verified'):
+                self.assertIs(data[key],False)
+            with mock.patch.object(m,'OWNER_TOP500_CURRENT',p):
+                self.assertTrue(m.completed_result(command,self.result(command,evidence),CONTROL))
+
+    def test_parent_drift_unknown_missing_members_and_retarget_fail_before_database_read(self):
+        for case,reason in (('drift','parent_pin'),('unknown','parent_not_complete'),
+                            ('missing','parent_membership'),('mode','current_scope'),('cohort','current_scope')):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
+                p,command,space,child,target,op,project,raw=self.fixture(Path(td),missing_parent_target=case=='missing')
+                if case=='drift':
+                    with (target/'result.json').open('a') as handle:handle.write('\n')
+                elif case=='unknown':
+                    prior=json.loads((target/'result.json').read_text());prior['status']='unknown_no_replay'
+                    (target/'result.json').write_text(json.dumps(prior))
+                elif case=='mode':space['mode']='match-retained-acquire'
+                elif case=='cohort':space['payload']['cohort']='common4-retained'
+                with mock.patch.object(subprocess,'run') as run,self.assertRaisesRegex(ValueError,reason):
+                    space['current_retained_target'](SOURCE)
+                run.assert_not_called()
+                self.assertFalse((op/'current-scope.json').exists())
+                self.assertFalse((op/'current-raw.json').exists())
+
+    def test_malformed_or_nonzero_child_result_is_never_a_current_confirmation(self):
+        for case in ('extra_target','wrong_target','native_bool','write','wrong_snapshot'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
+                p,command,space,child,target,op,project,raw=self.fixture(Path(td))
+                if case=='extra_target':raw['rows'].append({'tv_hotel_id':999999})
+                elif case=='wrong_target':raw['rows'][0]['target']['id']='999999'
+                elif case=='native_bool':raw['rows'][0]['direct_anex_native_ids']=[True]
+                elif case=='write':raw['mapping_writes']=1
+                elif case=='wrong_snapshot':raw['database_snapshot']='read-write'
+                with mock.patch.object(subprocess,'run',side_effect=child),self.assertRaises(ValueError):
+                    space['run_match_retained'](SOURCE)
+                self.assertFalse((op/'retained-evidence.json').exists())
+
+    def test_completion_rejects_changed_pair_scope_admission_and_private_fields_even_with_valid_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            p,command,space,child,target,op,project,raw=self.fixture(Path(td))
+            with mock.patch.object(subprocess,'run',side_effect=child):
+                result=self.result(command,space['run_match_retained'](SOURCE))
+            patches=(
+                lambda d:d['rows'].pop(),
+                lambda d:d['rows'].reverse(),
+                lambda d:d['rows'][0].update(anex_hotel_id=999999),
+                lambda d:d['rows'][0].update(tv_hotel_id=999999),
+                lambda d:d['rows'][0].update(owner_rank=True),
+                lambda d:d['rows'][0].update(target_eligible=1),
+                lambda d:d['rows'][1].update(state='matched_current'),
+                lambda d:d['rows'][0].update(future_context={'private':'sentinel'}),
+                lambda d:d.update(anchors=['sentinel']),
+                lambda d:d.update(publication_admission=True),
+                lambda d:d.update(website_online_bridge_verified=True),
+                lambda d:d.update(canonical_publication_binding_verified=True),
+                lambda d:d.update(parent_receipt_sha256='f'*64),
+                lambda d:d.update(matched_current_pairs=True),
+                lambda d:d.update(new_database_reads=2),
+                lambda d:d.update(mapping_writes=1),
+                lambda d:d.update(captured_at_utc='2026-99-06T10:00:00Z'),
+            )
+            with mock.patch.object(m,'OWNER_TOP500_CURRENT',p):
+                for index,patch in enumerate(patches):
+                    with self.subTest(index=index):
+                        changed=copy.deepcopy(result);patch(changed['match_retained']['data']);self.rehash(changed)
+                        self.assertFalse(m.completed_result(command,changed,CONTROL))
+                changed=copy.deepcopy(command);changed['cohort']='common4-retained'
+                self.assertFalse(m.completed_result(changed,result,CONTROL))
+
 if __name__=='__main__':unittest.main()
 
 
