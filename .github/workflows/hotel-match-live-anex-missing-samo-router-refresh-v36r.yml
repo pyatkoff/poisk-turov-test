@@ -1,0 +1,153 @@
+name: MATCH refresh ANEX-present missing SAMO v36r
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php
+      - tests/hotel_match_live_anex_missing_samo_router_refresh_v36r_test.php
+      - .github/workflows/hotel-match-live-anex-missing-samo-router-refresh-v36r.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+env:
+  OP: hotel-match-live-anex-missing-samo-router-refresh-1971-20260926-v36r
+  BASE: 786514ccbb4047868a89f00bb2d06dfe5157ffb8
+  CLAIM: '5846661317'
+  SOURCE_ARTIFACT: '10879731888'
+  SOURCE_ARCHIVE_SHA: 2f9f7fa986ac6cadc38b0387ef5dbde0658d3427c6e582004f10444de43dca72
+  SOURCE_RESULT_SHA: b6d90db7baf96a07a927502ed7605799b6fdfd5af90c9ffc1b8dc0a05942d080
+  SOURCE_RECEIPT_SHA: 9895d089db148008737be4c126e6a0397f4980c4601a4064bd496fc118acc951
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-anex-missing-samo-router-refresh-v36r-20260926'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: php -l scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php
+      - run: php scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php --self-test
+      - run: php tests/hotel_match_live_anex_missing_samo_router_refresh_v36r_test.php
+      - run: |
+          set -euo pipefail
+          f=scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' "$f"
+          grep -Fq "REPEATABLE READ" "$f"
+          grep -Fq "V36R_EXPECTED_INPUT=234" "$f"
+          grep -Fq "V36R_EXPECTED_DAY='2026-09-26'" "$f"
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-anex-missing-samo-router-refresh-v36r-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate authority, exact v36 and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/source terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-live-anex-missing-samo-router-refresh-v36r.yml scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php tests/hotel_match_live_anex_missing_samo_router_refresh_v36r_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'234','REPEATABLE READ / READ ONLY','HTTP0','2026-09-26','stale-only']:
+              assert x.lower() in b.lower(),x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT/zip" -o input/source.zip
+          test "$(sha256sum input/source.zip|awk '{print $1}')" = "$SOURCE_ARCHIVE_SHA"
+          unzip -q input/source.zip -d input/source
+          result="$(find input/source -type f -name result.json -print -quit)"
+          receipt="$(find input/source -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          test "$(sha256sum "$result"|awk '{print $1}')" = "$SOURCE_RESULT_SHA"
+          test "$(sha256sum "$receipt"|awk '{print $1}')" = "$SOURCE_RECEIPT_SHA"
+          python3 - "$result" "$receipt" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          assert r['operation_id']=='hotel-match-live-anex-missing-samo-router-1971-20260925-v36'
+          assert r['state']=='completed_read_only' and r['input_count']==234
+          assert r['routed_future_context_count']==174 and r['no_future_context_count']==56 and r['current_direct_anex_lost_skip_count']==4
+          assert r['supplier_calls']==r['database_writes']==r['mapping_writes']==0
+          assert q['result_sha256']=='b6d90db7baf96a07a927502ed7605799b6fdfd5af90c9ffc1b8dc0a05942d080' and q['readback_verified'] is True
+          PY
+          cp "$result" input/source-result.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+
+      - name: Execute CURRENT supplier-free refresh
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" input/reservation.json "$remote:$rel/reservation.json"
+          scp "${opts[@]}" input/source-result.json "$remote:$rel/payload/source-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_RESULT=\"\$HOME/$rel/payload/source-result.json\" MATCH_SOURCE_RESULT_SHA='$SOURCE_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_live_anex_missing_samo_router_refresh_v36r.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest() and q['readback_verified'] is True
+          assert r['state']=='completed_read_only_v36_current_refresh' and r['input_count']==234
+          for k in ['provider_http_calls','tourvisor_calls','samo_calls','andromeda_calls','anex_calls','database_writes','mapping_writes']:assert r[k]==0,(k,r[k])
+          assert r['safe_to_write_now'] is False
+          print(json.dumps({k:r[k] for k in ['now_full_triple_count','still_tv_anex_missing_samo_count','lost_direct_anex_count','inactive_or_excluded_count','future_context_count','no_future_context_count','stale_only_count','context_group_count','batch_count','current_effective_anex_native_count','current_effective_anex_local_count']},sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-live-anex-missing-samo-refresh-v36r-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
