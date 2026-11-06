@@ -1,0 +1,219 @@
+name: MATCH post-acceptance full remaining queue
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-postaccept-full-queue.yml]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-postaccept-full-queue-1971-20260927-v1
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-postaccept-full-queue-1971-20260927-v1
+  BASE: b2e4411100917a7f0f9bd1461104705967db5779
+  RESERVATION: match-postaccept-full-queue-v1-reservation
+
+jobs:
+  census:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4000 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/live234-v65-current-audit-v66-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact-source owner and Security gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal reservation package/scripts/diagnostics package/app/integrations
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor "$BASE" HEAD
+          test "$(git diff --name-only "$BASE" HEAD)" = .github/workflows/hotel-match-postaccept-full-queue.yml
+          test "$(git hash-object scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php)" = 00534e07cbc6888eadaa3c45c279a5b0409d96e6
+          test "$(git hash-object scripts/diagnostics/hotel_match_business_live30_census_v3.php)" = 30a21ba87bd4124544de1961cd4d7199ec6aeef1
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/5850009886" >input/consent.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/consent.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for phrase in ('owner explicitly replied «Разрешаю»','fresh CURRENT validation','NOT permission to disable security gates'): assert phrase in c['body']
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks:
+                  check=max(checks,key=lambda r:r['id'])
+                  if check['status']=='completed':
+                      assert check['conclusion']=='success','security_not_success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Bind actual prior acceptance and build complete read-only package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10917472529/zip" -o input/prior.zip
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          raw=pathlib.Path('input/prior.zip').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='7e93943d5ed62c710110ab72192c890e095a85823286ee73bf740a94b4736c24'
+          pins={'result.json':'fc80461533923be8efd23384b91b698d99b1b5e58426b72dace687dd4ee99571','receipt.json':'6617c1e766766940282555de4a6f6094fc2c36acb6ffde27f56e3b15605197ba'}
+          with zipfile.ZipFile('input/prior.zip') as z:
+              for name,pin in pins.items():
+                  members=[i for i in z.infolist() if pathlib.PurePosixPath(i.filename).name==name]
+                  assert len(members)==1 and members[0].file_size<=8388608
+                  raw=z.read(members[0]);assert hashlib.sha256(raw).hexdigest()==pin
+                  pathlib.Path('package/prior-'+name).write_bytes(raw)
+          r=json.load(open('package/prior-result.json'));q=json.load(open('package/prior-receipt.json'))
+          assert r['state']=='committed_readback_verified' and r['database_writes']==14 and r['readback_verified'] is True
+          assert q['result_sha256']==pins['result.json'] and q['database_readback_verified'] is True
+          assert r['provider_http_calls']==q['provider_http_calls']==0 and r['no_replay'] is True
+          PY
+          cp scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php scripts/diagnostics/hotel_match_business_live30_census_v3.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          php package/scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php --self-test
+          php package/scripts/diagnostics/hotel_match_business_live30_census_v3.php --self-test
+          cat >package/census.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require_once __DIR__.'/scripts/diagnostics/hotel_match_tv_samo_anex_coverage_v2.php';
+          require_once __DIR__.'/scripts/diagnostics/hotel_match_business_live30_census_v3.php';
+          const POST_OP='hotel-match-postaccept-full-queue-1971-20260927-v1';
+          if(($argv[1]??'')==='--self-test'){
+              hmtsac_need(function_exists('hmtsac_execute')&&function_exists('run')&&class_exists('AnyTourAnexSearchMappingRegistry',false),'dependency_closure');
+              echo "POST_ACCEPT_PACKAGE_SELF_TEST_OK\n";exit;
+          }
+          hmtsac_need(($argv[1]??'')==='--execute','disabled');
+          $dir=(string)getenv('MATCH_OPERATION_DIR');$root=(string)getenv('ANYTOUR_ROOT');$head=(string)getenv('MATCH_SOURCE_SHA');
+          hmtsac_need(is_dir($root)&&!is_link($root)&&basename($root)==='anytoour.ru'&&is_dir($dir)&&!is_link($dir)&&basename($dir)===POST_OP&&preg_match('/^[0-9a-f]{40}$/D',$head)===1,'runtime_scope');
+          $reservation=json_decode((string)file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);
+          hmtsac_need(($reservation['operation']??'')===POST_OP&&($reservation['source_sha']??'')===$head&&($reservation['state']??'')==='reserved_before_db_read','reservation');
+          foreach(['execution-started.json','result.json','receipt.json'] as $name)hmtsac_need(!file_exists($dir.'/'.$name),'terminal_no_replay');
+          hmtsac_need(hash_file('sha256',__DIR__.'/prior-result.json')==='fc80461533923be8efd23384b91b698d99b1b5e58426b72dace687dd4ee99571','prior_result');
+          hmtsac_need(hash_file('sha256',__DIR__.'/prior-receipt.json')==='6617c1e766766940282555de4a6f6094fc2c36acb6ffde27f56e3b15605197ba','prior_receipt');
+          hmtsac_save($dir.'/execution-started.json',['operation'=>POST_OP,'source_sha'=>$head,'database_writes'=>0,'provider_http_calls'=>0]);
+          $out=['operation'=>POST_OP,'source_sha'=>$head,'prior_acceptance_result_sha256'=>'fc80461533923be8efd23384b91b698d99b1b5e58426b72dace687dd4ee99571','database_writes'=>0,'mapping_writes'=>0,'provider_http_calls'=>0,'no_replay'=>true];
+          try{
+              $bootstrap=$root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+              hmtsac_need(is_file($bootstrap)&&!is_link($bootstrap),'bootstrap');require_once $bootstrap;
+              $coverage=hmtsac_execute(v2_data_db());
+              hmtsac_need($coverage['state']==='completed_read_only_coverage','coverage_failed');
+              $coverage['calculation_library']=HMTSAC_OP;unset($coverage['operation']);
+              $out['coverage']=$coverage;
+              $queues=[];
+              foreach(['active_tv','live_30d'] as $basis){
+                  $c=$coverage[$basis]['counts'];$missing=$coverage[$basis]['missing'];$map=[];
+                  foreach($missing['missing_samo'] as $row){$i=(int)$row['tv_hotel_id'];$map[$i]=$row+['needs_samo'=>true,'needs_anex'=>false];}
+                  foreach($missing['missing_anex'] as $row){$i=(int)$row['tv_hotel_id'];if(!isset($map[$i]))$map[$i]=$row+['needs_samo'=>false,'needs_anex'=>false];$map[$i]['needs_anex']=true;}
+                  ksort($map,SORT_NUMERIC);hmtsac_need(count($map)===$c['tv_total']-$c['full_triple'],'queue_count');
+                  $queues[$basis]=['count'=>count($map),'rows'=>array_values($map)];
+              }
+              $out['remaining_queues']=$queues;
+              $business=null;$cfg=$root.'/_preview/search3-anex-candidate/.andromeda-private.php';
+              try{
+                  hmtsac_need(is_file($cfg)&&!is_link($cfg),'business_config');$config=require $cfg;
+                  hmtsac_need(is_array($config)&&is_string($config['catalog_path']??null),'business_catalog_path');
+                  $business=run(v2_data_db(),dirname($config['catalog_path']).'/searches',time()-30*86400);
+                  $business['calculation_library']=OP;unset($business['operation']);
+                  $out['business_live30']=$business;
+              }catch(Throwable $e){$out['business_live30']=['state'=>'unavailable','error_class'=>get_class($e),'note'=>'Coverage queue is valid; business observer totals are not asserted.'];}
+              $out['generated_at_utc']=gmdate('c');
+              $out['state']=$business!==null?'completed_read_only_full_queue':'completed_read_only_queue_business_unavailable';
+          }catch(Throwable $e){$out['state']='failed_read_only_full_queue';$out['error_class']=get_class($e);}
+          $hash=hmtsac_save($dir.'/result.json',$out);
+          hmtsac_save($dir.'/receipt.json',['operation'=>POST_OP,'source_sha'=>$head,'state'=>$out['state'],'result_sha256'=>$hash,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$hash,'database_writes'=>0,'mapping_writes'=>0,'provider_http_calls'=>0,'no_replay'=>true]);
+          echo hmtsac_json(['state'=>$out['state'],'live30'=>$out['coverage']['live_30d']['counts']??null,'business'=>$out['business_live30']??null])."\n";
+          exit(str_starts_with($out['state'],'completed_')?0:2);
+          PHP
+          php -l package/census.php
+          php package/census.php --self-test
+          (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) >input/package-sha256.txt
+      - name: Reserve distinct read-only full census
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$RESERVATION&per_page=100" >input/reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/reservations.json'))['total_count']==0,'terminal_no_replay'
+          r={'operation':os.environ['OP'],'state':'reserved_before_db_read','source_sha':os.environ['HEAD'],'run_id':int(os.environ['RUN_ID']),'owner_consent_comment':5850009886,'database_writes':0,'mapping_writes':0,'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ env.RESERVATION }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Read current catalogue and retained business observations, no writes or providers
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match-full-queue-key"; known="$RUNNER_TEMP/match-full-queue-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json input/package-sha256.txt "$remote:$rel/"
+          scp "${opts[@]}" package/*.json package/census.php "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" package/app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && sha256sum --check ../package-sha256.txt" >terminal/package-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/census.php\" --execute" >input/remote.stdout 2>input/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          set -e
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['readback_verified'] is True
+          for obj in (r,q):
+              assert obj['no_replay'] is True
+              for key in ('database_writes','mapping_writes','provider_http_calls'): assert obj[key]==0
+          print(json.dumps({'state':r['state'],'live30':r.get('coverage',{}).get('live_30d',{}).get('counts'),'business':r.get('business_live30')},ensure_ascii=False))
+          assert r['state'].startswith('completed_'),'read_only_census_failed'
+          for basis in ('active_tv','live_30d'):
+              c=r['coverage'][basis]['counts'];queue=r['remaining_queues'][basis]
+              assert queue['count']==len(queue['rows'])==c['tv_total']-c['full_triple']
+              assert len({x['tv_hotel_id'] for x in queue['rows']})==queue['count']
+              assert c['full_triple']+c['samo_only']+c['anex_only']+c['neither']==c['tv_total']
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-postaccept-full-queue-v1-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn

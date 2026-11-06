@@ -1,0 +1,209 @@
+{
+  "accepted_mapping_count": 0,
+  "baseline_proven_candidate_hotels": 3,
+  "candidate_pairs_reviewed": 161,
+  "candidate_rows": [
+    {
+      "andromeda_catalog_id": "2000123210",
+      "historical_review_reasons": [
+        "historical_canonical_category_discrepancy"
+      ],
+      "hotel_name": "KLEOPATRA ADA HOTEL",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 1299,
+      "native_proofs": {
+        "operator_315": "353603"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "5257",
+      "historical_review_reasons": [
+        "historical_source_accepted_other_target"
+      ],
+      "hotel_name": "SURAL HOTEL",
+      "independent_tv_lane_count": 2,
+      "local_hotel_id": 1540,
+      "native_proofs": {
+        "operator_315": "30843",
+        "operator_342": "22855"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "246797",
+      "historical_review_reasons": [],
+      "hotel_name": "NEPTUNE PWANI BEACH RESORT & SPA",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 27691,
+      "native_proofs": {
+        "operator_315": "782041"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000034442",
+      "historical_review_reasons": [],
+      "hotel_name": "INDIGO BEACH",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 45455,
+      "native_proofs": {
+        "operator_315": "848729"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000037585",
+      "historical_review_reasons": [],
+      "hotel_name": "HAWTHORN SUITES BY WYNDHAM",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 55945,
+      "native_proofs": {
+        "operator_315": "295561"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000093384",
+      "historical_review_reasons": [],
+      "hotel_name": "BLUESOTEL KRABI",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 56479,
+      "native_proofs": {
+        "operator_315": "399654"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000072730",
+      "historical_review_reasons": [],
+      "hotel_name": "VILLA BOUNTY (EX. HOTEL BOUNTY)",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 65714,
+      "native_proofs": {
+        "operator_315": "840211"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000087342",
+      "historical_review_reasons": [
+        "historical_source_pending"
+      ],
+      "hotel_name": "BORG EL ARAB BEACH RESORT",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 76753,
+      "native_proofs": {
+        "operator_315": "859965"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "131606",
+      "historical_review_reasons": [
+        "historical_source_accepted_other_target"
+      ],
+      "hotel_name": "JAZ MIRABEL PARK & CLUB",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 103125,
+      "native_proofs": {
+        "operator_315": "18682"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000090568",
+      "historical_review_reasons": [],
+      "hotel_name": "OZIBA BEACH RESORT",
+      "independent_tv_lane_count": 2,
+      "local_hotel_id": 113617,
+      "native_proofs": {
+        "operator_315": "853223",
+        "operator_342": "42085"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000103169",
+      "historical_review_reasons": [],
+      "hotel_name": "THE SIGNATURE HOTEL NHA TRANG",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 116886,
+      "native_proofs": {
+        "operator_315": "851935"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000090159",
+      "historical_review_reasons": [],
+      "hotel_name": "THE MORNING GLOW HANDWRITTEN COLLECTION",
+      "independent_tv_lane_count": 2,
+      "local_hotel_id": 121109,
+      "native_proofs": {
+        "operator_315": "853672",
+        "operator_342": "48617"
+      },
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000113715",
+      "historical_review_reasons": [
+        "historical_direct_anex_coordinate_conflict_gt5km"
+      ],
+      "hotel_name": "GRAND BAY HOTEL PHU QUOC",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 148230,
+      "native_proofs": {
+        "operator_342": "66674"
+      },
+      "safe_to_write_now": false
+    }
+  ],
+  "current_validation_performed": false,
+  "database_reads": 0,
+  "database_writes": 0,
+  "dossier_counts_by_exact_independent_tv_lanes": {
+    "0": 162,
+    "1": 10,
+    "2": 3
+  },
+  "expanded_proven_candidate_hotels": 13,
+  "full_report_sha256": "d04df3f221f39dd50b4f2d67fff25684e55b8323f4d1034eb70539fd2fa737da",
+  "history_summary_sha256": "e3f1da655f53910bf890050fd5517ead500759f05454361190b56c9550f6d1a8",
+  "input_artifacts": {
+    "bg": 10684769853,
+    "tv_tail": 10780823859,
+    "v63": 10907946061,
+    "v65": 10909959597
+  },
+  "input_count": 175,
+  "mapping_writes": 0,
+  "new_candidate_hotels_with_exact_proof": [
+    27691,
+    45455,
+    55945,
+    56479,
+    65714,
+    76753,
+    103125,
+    113617,
+    116886,
+    121109
+  ],
+  "provider_http_calls": 0,
+  "safe_to_write_now": false,
+  "schema": "match_retained175_expanded_tv_summary_v1",
+  "scope_limit": "v63 plus retained r1/r2; not the full TV catalogue or a fresh DB snapshot",
+  "tail_overlap_hotels": 45,
+  "tail_overlap_rows": 59,
+  "tv_input_rows": 812,
+  "tv_tail_zip_result_receipt": [
+    "b3a0d90bfedc809bb5f517bf05a01542204d2271cc56766d66023dd3e9499d2c",
+    "4cd23630e97bb31b81bb7e2980a85e51145fff862346fbee51d0e1a6e85bad24",
+    "045137933ee22e555deb1fe0a03d609f625da4d550e26164eef5bbfa90254df0"
+  ],
+  "tv_unique_edges": 801,
+  "tv_unique_hotels_with_evidence": 559,
+  "zero_proof_means": "no_proof_in_these_archives_not_global_absence"
+}

@@ -1,0 +1,57 @@
+{
+  "database_reads": 0,
+  "database_writes": 0,
+  "fresh_current_validation_performed": false,
+  "historical_hold_count": 3,
+  "historical_input_zip_pins": {
+    "anex": "b847b82f3a6ce6feb4110d42d12396631179dd0e5e4ce7bf9d48da55f0df651b",
+    "canonical": "35e79211da22b9d8f9a417d6ee4c27954d03e83ef89e471b3762fef8969e7aea",
+    "direct27": "c55fe548c7d223462f5c251137559108765eb4b877ff47a26371e90aac5aaf5f"
+  },
+  "historical_no_veto_count": 0,
+  "mapping_writes": 0,
+  "mode": "offline_historical_contradiction_screen_only",
+  "proven_candidates_input": 3,
+  "provider_http_calls": 0,
+  "rows": [
+    {
+      "andromeda_catalog_id": "2000123210",
+      "candidate_names": ["Kleopatra Ada"],
+      "historical_evidence": [{"kind": "historical_canonical_current", "reasons": ["category_discrepancy"], "source_star": "3", "target_category": 4}],
+      "historical_hold_reasons": ["historical_canonical_category_discrepancy"],
+      "historical_status": "hold",
+      "hotel_name": "KLEOPATRA ADA HOTEL",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 1299,
+      "next_gate": "fresh_CURRENT_manual_occupancy_evidence_review",
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "5257",
+      "candidate_names": ["Sural Resort"],
+      "historical_evidence": [{"classification": "accepted_other_target_conflict", "current_samo_identity": [{"catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99", "decision_status": "accepted", "evidence_sha256": "88c97562a00a87d11c99ad381eea9fd89bf5b288382dcf019cbbe3bbc3cf6e62", "external_hotel_id": "5257", "local_hotel_id": 1541, "supplier_namespace": "andromeda_catalog"}], "kind": "historical_direct27_current"}],
+      "historical_hold_reasons": ["historical_current_accepted_other_target_conflict"],
+      "historical_status": "hold",
+      "hotel_name": "SURAL HOTEL",
+      "independent_tv_lane_count": 2,
+      "local_hotel_id": 1540,
+      "next_gate": "fresh_CURRENT_manual_occupancy_evidence_review",
+      "safe_to_write_now": false
+    },
+    {
+      "andromeda_catalog_id": "2000113715",
+      "candidate_names": ["Grand Bay Hotel"],
+      "historical_evidence": [{"distance_m": 11523423, "kind": "historical_direct_anex_detail_hold", "native_anex_hotel_id": "44866", "reason": "coordinate_conflict_gt5km"}],
+      "historical_hold_reasons": ["historical_direct_anex_coordinate_conflict_gt5km"],
+      "historical_status": "hold",
+      "hotel_name": "GRAND BAY HOTEL PHU QUOC",
+      "independent_tv_lane_count": 1,
+      "local_hotel_id": 148230,
+      "next_gate": "fresh_CURRENT_manual_occupancy_evidence_review",
+      "safe_to_write_now": false
+    }
+  ],
+  "safe_to_write_now": false,
+  "schema": "match_retained175_history_crosscheck_v1",
+  "source_report_sha256": "01ef024f859be9464a12ffcdd196d8b12450d2980d4184c2a056548e578d738d"
+}
