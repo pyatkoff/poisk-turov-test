@@ -2,19 +2,40 @@ name: Bootstrap AnyTour data database
 
 # Idempotent production schema bootstrap for the private AnyTour data database.
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-anytour-data.yml'
+      - 'tests/anytour_data_bootstrap_delivery_test.py'
+      - 'v2/data/top500-anex-priority-v1.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
   push:
     branches: [main]
     paths:
       - 'v2/data/**'
+      - 'app/integrations/anex-search-mapping-registry.php'
       - '.github/workflows/bootstrap-anytour-data.yml'
   workflow_dispatch:
 
-concurrency:
-  group: bootstrap-anytour-data-production
-  cancel-in-progress: false
-
 jobs:
+  validate-bootstrap-delivery:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify data dependency delivery offline
+        run: python3 tests/anytour_data_bootstrap_delivery_test.py
+
   bootstrap-data:
+    if: github.event_name != 'pull_request'
+    concurrency:
+      group: bootstrap-anytour-data-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +47,7 @@ jobs:
           php -l v2/data/db-v1.php >/dev/null
           php -l v2/data/bootstrap-schema-v1.php >/dev/null
           php -l v2/data/db-doctor-v1.php >/dev/null
+          php -l app/integrations/anex-search-mapping-registry.php >/dev/null
           test -s v2/data/schema-v1.sql
           echo "ANYTOUR_DATA_TOOLING_OK"
 
@@ -57,11 +79,15 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
+          # Install the unchanged MATCH dependency before its TOP500 consumers.
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$root/app/integrations/"
           scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
             chmod 600 "$root/config.php"
+            php -l "$root/app/integrations/anex-search-mapping-registry.php" >/dev/null
             php -l "$root/data/db-v1.php" >/dev/null
             php -l "$root/data/bootstrap-schema-v1.php" >/dev/null
             php -l "$root/data/db-doctor-v1.php" >/dev/null
