@@ -7,9 +7,12 @@ PHP_TEST_COMMAND can supply a PHP executable and its extension options.
 """
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
@@ -21,13 +24,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = Path('app/integrations/anex-search-mapping-registry.php')
 HELPER = Path('v2/data/top500-anex-priority-v1.php')
-STEP = 'Copy data tooling and initialize schema'
+STEP = 'Copy data tooling and verify installed files'
+LEGACY_STEP = 'Copy data tooling and initialize schema'
+SCHEMA_STEP = 'Initialize changed schema and inspect database'
+SCOPE_PATH = ROOT / 'scripts/deploy/anytour_data_bootstrap_scope.py'
+spec = importlib.util.spec_from_file_location('bootstrap_scope', SCOPE_PATH)
+scope = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(scope)
 
 
-def copy_step(path: Path) -> str:
+def copy_step(path: Path, name=None) -> str:
     """Read this literal YAML block, without executing or expanding other steps."""
     lines = path.read_text().splitlines()
-    matches = [i for i, line in enumerate(lines) if line.strip() == '- name: ' + STEP]
+    names = (name,) if name else (STEP, LEGACY_STEP)
+    matches = [i for i, line in enumerate(lines) if line.strip() in ('- name: ' + item for item in names)]
     if len(matches) != 1:
         raise ValueError('expected one bootstrap copy step')
     start = matches[0]
@@ -83,8 +93,29 @@ def fake_transport(tool: str, args: list[str]) -> int:
             raise ValueError('unexpected SSH destination')
         command = args[1]
         if '\n' in command:
-            # This is the existing schema/doctor block. Retain it as data only.
-            record('schema_block_intercepted', command=command)
+            if 'bootstrap-schema-v1.php' in command or 'db-doctor-v1.php' in command:
+                # Preserve the old schema/doctor block as data; never execute it.
+                record('schema_block_intercepted', command=command)
+                return 0
+            if 'sha256sum --check --strict -' not in command:
+                raise ValueError('unexpected remote verification block')
+            lines = sys.stdin.read().splitlines()
+            expected = {}
+            for line in lines:
+                match = re.fullmatch(r'([0-9a-f]{64})  (.+)', line)
+                if not match or match[2] in expected:
+                    raise ValueError('invalid file readback manifest')
+                expected[match[2]] = match[1]
+            wanted = {str(REGISTRY), 'data/' + HELPER.name}
+            if set(expected) != wanted or len(lines) != len(wanted):
+                raise ValueError('unexpected readback file set')
+            for path, checksum in expected.items():
+                file = remote / path
+                if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest() != checksum:
+                    record('file_readback_failed', path=path)
+                    return 45
+            record('file_readback_verified', hashes=expected)
+            print('ANYTOUR_TOP500_FILE_READBACK_OK')
             return 0
         tokens = shlex.split(command)
         while tokens:
@@ -123,6 +154,9 @@ def fake_transport(tool: str, args: list[str]) -> int:
         if source != repo / REGISTRY:
             raise ValueError('unexpected dependency file')
         shutil.copy2(source, destination / source.name)
+        if os.environ.get('ANYTOUR_BOOTSTRAP_TEST_CORRUPTION') == '1':
+            with (destination / source.name).open('ab') as file:
+                file.write(b'\ncorrupted fixture\n')
         record('dependency_copied')
     return 0
 
@@ -167,17 +201,31 @@ class BootstrapDeliveryTest(unittest.TestCase):
                             + shlex.quote(str(Path(__file__).resolve()))
                             + ' --fake-' + tool + ' "$@"\n')
             shim.chmod(0o700)
+        for tool in ('sha256sum', 'sed'):
+            binary = shutil.which(tool)
+            self.assertIsNotNone(binary, tool + ' is required by the real copy step')
+            (binaries / tool).symlink_to(binary)
         self.env = dict(os.environ, PATH=str(binaries), HOST_VALUE='offline.invalid', USER_VALUE='fixture',
-                        RUNNER_TEMP=str(self.directory), ANYTOUR_BOOTSTRAP_TEST_REPO=str(self.repo),
+                        RUNNER_TEMP=str(self.directory), GITHUB_SHA='1' * 40,
+                        BOOTSTRAP_MODE='files-only', ANYTOUR_BOOTSTRAP_TEST_REPO=str(self.repo),
                         ANYTOUR_BOOTSTRAP_TEST_REMOTE=str(self.remote), ANYTOUR_BOOTSTRAP_TEST_LOG=str(self.log))
         self.env.pop('ANYTOUR_BOOTSTRAP_TEST_COPY_FAILURE', None)
+        self.env.pop('ANYTOUR_BOOTSTRAP_TEST_CORRUPTION', None)
 
-    def deliver(self, *, fail_copy=False):
+    def workflow(self):
+        return Path(os.environ.get('BOOTSTRAP_WORKFLOW', str(ROOT / '.github/workflows/bootstrap-anytour-data.yml')))
+
+    def deliver(self, *, fail_copy=False, corrupt=False, mode='files-only'):
         env = dict(self.env)
         if fail_copy:
             env['ANYTOUR_BOOTSTRAP_TEST_COPY_FAILURE'] = '1'
-        workflow = Path(os.environ.get('BOOTSTRAP_WORKFLOW', str(ROOT / '.github/workflows/bootstrap-anytour-data.yml')))
-        return subprocess.run(['/bin/bash', '-c', copy_step(workflow)], cwd=self.repo,
+        if corrupt:
+            env['ANYTOUR_BOOTSTRAP_TEST_CORRUPTION'] = '1'
+        if mode is None:
+            env.pop('BOOTSTRAP_MODE', None)
+        else:
+            env['BOOTSTRAP_MODE'] = mode
+        return subprocess.run(['/bin/bash', '-c', copy_step(self.workflow())], cwd=self.repo,
                               env=env, text=True, capture_output=True, timeout=15)
 
     def events(self):
@@ -200,7 +248,8 @@ class BootstrapDeliveryTest(unittest.TestCase):
         self.assertEqual((self.remote / 'data' / HELPER.name).read_bytes(), (ROOT / HELPER).read_bytes())
         self.assertEqual(self.read_delivered_identity(),
                          {'loaded': True, 'state': 'partially_resolved', 'ids': [900076]})
-        self.assertEqual(sum(event['kind'] == 'schema_block_intercepted' for event in events), 1)
+        self.assertEqual(sum(event['kind'] == 'file_readback_verified' for event in events), 1)
+        self.assertFalse(any(event['kind'] == 'schema_block_intercepted' for event in events))
 
     def test_missing_dependency_stays_unresolved(self):
         (self.remote / 'data').mkdir()
@@ -220,6 +269,128 @@ class BootstrapDeliveryTest(unittest.TestCase):
                 self.assertFalse((self.remote / 'data' / HELPER.name).exists())
                 self.assertFalse(any(event['kind'] in ('data_copy', 'schema_block_intercepted')
                                      for event in self.events()))
+
+    def test_files_only_never_runs_schema(self):
+        result = self.deliver()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any(event['kind'] == 'schema_block_intercepted' for event in self.events()),
+                         'files-only delivery attempted schema bootstrap or database diagnostics')
+        self.assertIn('ANYTOUR_DATA_SCHEMA_SKIPPED', result.stdout)
+        self.assertTrue(any(event['kind'] == 'file_readback_verified' for event in self.events()))
+
+    def test_invalid_scope_stops_before_transport(self):
+        for mode in (None, '', 'unknown'):
+            with self.subTest(mode=mode):
+                self.assertNotEqual(self.deliver(mode=mode).returncode, 0)
+                self.assertEqual(self.events(), [])
+
+    def test_corrupt_delivery_fails_readback(self):
+        result = self.deliver(corrupt=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(any(event['kind'] == 'file_readback_failed' for event in self.events()))
+        self.assertFalse(any(event['kind'] == 'schema_block_intercepted' for event in self.events()))
+
+    def test_schema_mode_keeps_explicit_initializer(self):
+        workflow = self.workflow().read_text()
+        header = workflow.split('- name: ' + SCHEMA_STEP, 1)[1].split('run: |', 1)[0]
+        self.assertIn("if: steps.scope.outputs.mode == 'schema'", header)
+        self.assertLess(workflow.index('- name: Select data delivery scope'),
+                        workflow.index('- name: Prepare SSH key'))
+        delivered = self.deliver(mode='schema')
+        self.assertEqual(delivered.returncode, 0, delivered.stderr)
+        self.assertNotIn('ANYTOUR_DATA_SCHEMA_SKIPPED', delivered.stdout)
+        result = subprocess.run(['/bin/bash', '-c', copy_step(self.workflow(), SCHEMA_STEP)],
+                                cwd=self.repo, env=self.env, text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        schema = [event for event in self.events() if event['kind'] == 'schema_block_intercepted']
+        self.assertEqual(len(schema), 1)
+        self.assertIn('php "$root/data/bootstrap-schema-v1.php"', schema[0]['command'])
+        self.assertIn('php "$root/data/db-doctor-v1.php"', schema[0]['command'])
+
+
+class BootstrapScopeTest(unittest.TestCase):
+    def test_closed_scope_and_malformed_diff(self):
+        self.assertEqual(scope.choose_scope('workflow_dispatch')['mode'], 'schema')
+        self.assertEqual(scope.choose_scope('push', list(scope.FILES_ONLY_PATHS))['mode'], 'files-only')
+        for path in ('v2/data/schema-v1.sql', 'v2/data/bootstrap-schema-v1.php', 'v2/data/db-v1.php',
+                     'v2/data/db-doctor-v1.php', 'unknown file.php', 'scripts/deploy/new-helper.py'):
+            with self.subTest(path=path):
+                self.assertEqual(scope.choose_scope('push', [str(HELPER), path])['mode'], 'schema')
+        self.assertEqual(scope.choose_scope('push', [str(HELPER)], [str(HELPER)])['mode'], 'schema')
+        self.assertEqual(scope.parse_paths(b'unknown file.php\0'), ['unknown file.php'])
+        for raw in (b'', b'path', b'path\0\0', b'path\0path\0', b'../path\0', b'\xff\0'):
+            with self.subTest(raw=raw), self.assertRaises(scope.ScopeError):
+                scope.parse_paths(raw)
+        for event in ('pull_request', 'workflow_run'):
+            with self.subTest(event=event), self.assertRaises(scope.ScopeError):
+                scope.choose_scope(event, [str(HELPER)])
+
+    def test_immutable_git_pins_and_mode_output(self):
+        with tempfile.TemporaryDirectory(prefix='anytour-bootstrap-git-') as temporary:
+            repo = Path(temporary)
+
+            def git(*args):
+                result = subprocess.run(['git', '-c', 'user.name=Offline fixture',
+                                         '-c', 'user.email=offline@example.invalid', *args],
+                                        cwd=repo, text=True, capture_output=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return result.stdout.strip()
+
+            def commit():
+                git('add', '-A')
+                git('commit', '-qm', 'offline fixture')
+                return git('rev-parse', 'HEAD')
+
+            git('init', '-q')
+            (repo / HELPER).parent.mkdir(parents=True)
+            (repo / HELPER).write_text('initial helper\n')
+            wrapper = repo / 'v2/data/top-hotels-v1.php'
+            wrapper.write_text('initial wrapper\n')
+            before = commit()
+            (repo / HELPER).write_text('changed helper\n')
+            after = commit()
+            event = {'before': before, 'after': after}
+            self.assertEqual(scope.inspect_scope('push', event, after, repo)['mode'], 'files-only')
+
+            event_path, output_path = repo / 'event.json', repo / 'scope-output'
+            event_path.write_text(json.dumps(event))
+            env = dict(os.environ, GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event_path),
+                       GITHUB_SHA=after, GITHUB_OUTPUT=str(output_path))
+            result = subprocess.run([sys.executable, str(SCOPE_PATH)], cwd=repo,
+                                    env=env, text=True, capture_output=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output_path.read_text(), 'mode=files-only\n')
+
+            tree = git('rev-parse', 'HEAD^{tree}')
+            unrelated = git('commit-tree', tree, '-m', 'unrelated root')
+            failures = [({'before': '0' * 40, 'after': after}, after),
+                        ({'before': 'f' * 40, 'after': after}, after),
+                        ({'before': unrelated, 'after': after}, after),
+                        ({'before': after, 'after': after}, after),
+                        ({'before': before, 'after': before}, after),
+                        (event, before), (event, 'A' * 40)]
+            for candidate, source in failures:
+                with self.subTest(candidate=candidate, source=source), self.assertRaises(scope.ScopeError):
+                    scope.inspect_scope('push', candidate, source, repo)
+            event_path.write_text(json.dumps({'before': 'f' * 40, 'after': after}))
+            output_path.unlink()
+            result = subprocess.run([sys.executable, str(SCOPE_PATH)], cwd=repo,
+                                    env=env, text=True, capture_output=True, timeout=15)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(output_path.exists(), 'invalid evidence must never publish a scope')
+            self.assertEqual(scope.inspect_scope('workflow_dispatch', {}, after, repo)['mode'], 'schema')
+
+            # Renaming between two allowed source paths still includes a deletion.
+            event_path.unlink()
+            (repo / REGISTRY).parent.mkdir(parents=True)
+            git('mv', str(HELPER), str(REGISTRY))
+            renamed = commit()
+            result = scope.inspect_scope('push', {'before': after, 'after': renamed}, renamed, repo)
+            self.assertEqual((result['mode'], result['changed_paths'], result['deleted_paths']), ('schema', 2, 1))
+            wrapper.unlink()
+            deleted = commit()
+            result = scope.inspect_scope('push', {'before': renamed, 'after': deleted}, deleted, repo)
+            self.assertEqual((result['mode'], result['deleted_paths']), ('schema', 1))
 
 
 if __name__ == '__main__':

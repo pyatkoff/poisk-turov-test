@@ -1,13 +1,15 @@
 name: Bootstrap AnyTour data database
 
-# Idempotent production schema bootstrap for the private AnyTour data database.
+# Deliver data dependencies; initialize the schema only when its scope requires it.
 on:
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/bootstrap-anytour-data.yml'
       - 'tests/anytour_data_bootstrap_delivery_test.py'
+      - 'scripts/deploy/anytour_data_bootstrap_scope.py'
       - 'v2/data/top500-anex-priority-v1.php'
+      - 'v2/data/top-hotels-v1.php'
       - 'app/integrations/anex-search-mapping-registry.php'
   push:
     branches: [main]
@@ -15,6 +17,7 @@ on:
       - 'v2/data/**'
       - 'app/integrations/anex-search-mapping-registry.php'
       - '.github/workflows/bootstrap-anytour-data.yml'
+      - 'scripts/deploy/anytour_data_bootstrap_scope.py'
   workflow_dispatch:
 
 jobs:
@@ -32,23 +35,39 @@ jobs:
         run: python3 tests/anytour_data_bootstrap_delivery_test.py
 
   bootstrap-data:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     concurrency:
       group: bootstrap-anytour-data-production
       cancel-in-progress: false
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Select data delivery scope
+        id: scope
+        run: python3 scripts/deploy/anytour_data_bootstrap_scope.py
 
       - name: Validate data tooling
+        env:
+          BOOTSTRAP_MODE: ${{ steps.scope.outputs.mode }}
         shell: bash
         run: |
           set -euo pipefail
-          php -l v2/data/db-v1.php >/dev/null
-          php -l v2/data/bootstrap-schema-v1.php >/dev/null
-          php -l v2/data/db-doctor-v1.php >/dev/null
+          case "$BOOTSTRAP_MODE" in files-only|schema) ;; *) exit 1 ;; esac
           php -l app/integrations/anex-search-mapping-registry.php >/dev/null
-          test -s v2/data/schema-v1.sql
+          php -l v2/data/top500-anex-priority-v1.php >/dev/null
+          if [[ "$BOOTSTRAP_MODE" == schema ]]; then
+            php -l v2/data/db-v1.php >/dev/null
+            php -l v2/data/bootstrap-schema-v1.php >/dev/null
+            php -l v2/data/db-doctor-v1.php >/dev/null
+            test -s v2/data/schema-v1.sql
+          fi
           echo "ANYTOUR_DATA_TOOLING_OK"
 
       - name: Prepare SSH key
@@ -67,13 +86,15 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Copy data tooling and initialize schema
+      - name: Copy data tooling and verify installed files
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          BOOTSTRAP_MODE: ${{ steps.scope.outputs.mode }}
         shell: bash
         run: |
           set -euo pipefail
+          case "$BOOTSTRAP_MODE" in files-only|schema) ;; *) exit 1 ;; esac
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
@@ -83,6 +104,31 @@ jobs:
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$root/app/integrations/"
           scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
+          sha256sum app/integrations/anex-search-mapping-registry.php v2/data/top500-anex-priority-v1.php \
+            | sed 's@  v2/data/@  data/@' \
+            | ssh "${opts[@]}" "$remote" '
+              set -euo pipefail
+              cd "$HOME/www/anytoour.ru"
+              sha256sum --check --strict -
+              php -l app/integrations/anex-search-mapping-registry.php >/dev/null
+              php -l data/top500-anex-priority-v1.php >/dev/null
+              echo "ANYTOUR_TOP500_FILE_READBACK_OK"
+            '
+          echo "ANYTOUR_DATA_DELIVERED source=$GITHUB_SHA mode=$BOOTSTRAP_MODE"
+          if [[ "$BOOTSTRAP_MODE" == files-only ]]; then
+            echo "ANYTOUR_DATA_SCHEMA_SKIPPED reason=delivery_inputs_only"
+          fi
+
+      - name: Initialize changed schema and inspect database
+        if: steps.scope.outputs.mode == 'schema'
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
