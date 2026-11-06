@@ -26,6 +26,7 @@ on:
       - 'tests/search3-hotel-content-browser.py'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
+      - 'app/integrations/anex-search-mapping-registry.php'
       - 'tests/site-preview-path-smoke.php'
       - 'tests/search-handoff-smoke.php'
       - 'tests/seo-price-calendar-ui-smoke.php'
@@ -145,6 +146,11 @@ jobs:
             --exclude='lead-price-v1.php' \
             --exclude='lead-idempotency-v1.php' \
             v2/ "$payload/"
+
+          # The TOP500 reader uses the unchanged MATCH resolver inside this package.
+          mkdir -p "$payload/app/integrations"
+          cp app/integrations/anex-search-mapping-registry.php "$payload/app/integrations/"
+          cmp app/integrations/anex-search-mapping-registry.php "$payload/app/integrations/anex-search-mapping-registry.php"
 
           test -f "$payload/index.php"
           test -f "$payload/home-entry-v1.php"
