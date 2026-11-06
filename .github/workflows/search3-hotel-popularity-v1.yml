@@ -7,6 +7,8 @@ on:
       - 'v2/data/top500-anex-priority-v1.php'
       - 'app/integrations/anex-search-mapping-registry.php'
       - 'tests/top500-anex-namespace-smoke.php'
+      - 'v2/data/top500-daily-plan-v1.php'
+      - 'tests/top500-daily-plan-smoke.php'
       - 'tests/top500-anex-8401-regression.php'
       - 'tests/search3-top500-anex-8401.cjs'
       - 'v2/data/top-hotels-v1.php'
@@ -30,7 +32,32 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select changed contract scope
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed_paths=$(mktemp)
+          trap 'rm -f "$changed_paths"' EXIT
+          git diff --no-renames --name-only -z "$BASE_SHA" "$HEAD_SHA" > "$changed_paths"
+          full=true
+          if [[ -s "$changed_paths" ]]; then
+            full=false
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                tests/top500-anex-8401-regression.php|tests/search3-top500-anex-8401.cjs|docs/project/top500-identity-audit-20261106.md|.github/workflows/search3-hotel-popularity-v1.yml) ;;
+                *) full=true ;;
+              esac
+            done < "$changed_paths"
+          fi
+          printf 'full=%s\n' "$full" >> "$GITHUB_OUTPUT"
       - name: Validate unified popularity cohort
+        if: steps.scope.outputs.full == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -41,4 +68,8 @@ jobs:
           php tests/top500-daily-plan-smoke.php
           php tests/top500-anex-namespace-smoke.php
           node tests/search3-prototype-hotel-popularity-v1.cjs
+      - name: Validate ANEX 8401 identity boundary
+        shell: bash
+        run: |
+          set -euo pipefail
           node tests/search3-top500-anex-8401.cjs
