@@ -17,6 +17,9 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/top500-anex-priority-v1.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
+      - 'tests/top500-anex-namespace-smoke.php'
       - 'v2/data/published-hotels-monitor-v1.php'
       - 'tests/published-hotels-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
@@ -52,6 +55,9 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/top500-anex-priority-v1.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
+      - 'tests/top500-anex-namespace-smoke.php'
       - 'v2/data/published-hotels-monitor-v1.php'
       - 'tests/published-hotels-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
@@ -148,7 +154,7 @@ jobs:
           php tests/top500-monthly-plan-smoke.php
           php tests/price-intelligence-smoke.php
           php tests/seo-offer-image-smoke.php
-          php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
+          php tests/top500-anex-namespace-smoke.php
           grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-anytour-tours.yml
           grep -Fq "'fresh-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq "'expires-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
@@ -212,6 +218,8 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
           scp "${opts[@]}" \
             local-tv-source/v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
@@ -228,6 +236,7 @@ jobs:
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
             v2/data/top-hotels-v1.php \
+            v2/data/top500-anex-priority-v1.php \
             v2/data/published-hotels-monitor-v1.php \
             v2/data/sync-priority-hotels-v1.php \
             v2/data/top500-coverage-v1.php \

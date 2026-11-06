@@ -3,12 +3,12 @@
 declare(strict_types=1);
 require_once __DIR__.'/top500-daily-plan-v1.php';
 
-function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, string $today, int $months = 12, int $departureId = 1): array
+function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, string $today, int $months = 12, int $departureId = 1, bool $allowEmpty = false): array
 {
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $today);
     if (!$date || $date->format('Y-m-d') !== $today || $months < 1 || $months > 18) throw new InvalidArgumentException('invalid monthly horizon');
     $first = $date->modify('+1 day');
-    $base = v2_top500_daily_plan($ids, $hotels, $departures, $first->format('Y-m-d'), $first->format('Y-m-d'), $departureId);
+    $base = v2_top500_daily_plan($ids, $hotels, $departures, $first->format('Y-m-d'), $first->format('Y-m-d'), $departureId, $allowEmpty);
     $anchor = $date->modify('first day of this month');
     $periods = []; $windows = [];
     for ($m = 0; $m < $months; $m++) {

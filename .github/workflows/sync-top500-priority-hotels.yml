@@ -6,6 +6,9 @@ on:
     paths:
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/top500-anex-priority-v1.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
+      - 'tests/top500-anex-namespace-smoke.php'
       - 'v2/data/published-hotels-monitor-v1.php'
       - 'tests/published-hotels-monitor-smoke.php'
       - '.github/workflows/sync-top500-priority-hotels.yml'
@@ -32,6 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/sync-priority-hotels-v1.php
+          php tests/top500-anex-namespace-smoke.php
           php -l v2/data/top-hotels-v1.php
           php -l v2/data/published-hotels-monitor-v1.php
           php tests/published-hotels-monitor-smoke.php
@@ -75,7 +79,9 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
-          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php v2/data/published-hotels-monitor-v1.php v2/data/sync-priority-hotels-v1.php v2/data/top500-coverage-v1.php "$remote:$root/data/"
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php v2/data/top500-anex-priority-v1.php v2/data/published-hotels-monitor-v1.php v2/data/sync-priority-hotels-v1.php v2/data/top500-coverage-v1.php "$remote:$root/data/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             php -l \"\$HOME/www/anytoour.ru/data/sync-priority-hotels-v1.php\" >/dev/null
