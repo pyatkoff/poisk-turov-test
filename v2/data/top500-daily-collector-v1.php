@@ -83,13 +83,17 @@ $pdo=v2_data_db();
 if((int)$pdo->query("SELECT GET_LOCK('anytour_top500_monthly_v1',0)")->fetchColumn()!==1){echo "TOP500_MONTHLY_BUSY\n";exit;}
 $deadline=microtime(true)+$maxSeconds;
 try {
-    $priorityIds=array_values(v2_collection_priority_hotel_ids());
+    $registry=v2_top500_registry($pdo);
+    v2_top500_log_resolution($registry);
+    $priorityIds=array_values(v2_collection_priority_hotel_ids($registry));
+    // Keep the established published cohorts intact even when TOP500 maps to them.
+    $topOnly=array_values(array_diff(v2_priority_hotel_ids($registry),v2_collection_priority_hotel_ids()));
     if(!$priorityIds)throw new RuntimeException('top500 priority list empty');
     $csv=implode(',',array_map('intval',$priorityIds));
     $hotelRows=$pdo->query("SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN ($csv) ORDER BY id")->fetchAll(PDO::FETCH_ASSOC)?:[];
     $departureRows=$pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[];
     $today=(string)$pdo->query('SELECT CURDATE()')->fetchColumn();
-    $plan=v2_top500_monthly_plan(v2_priority_hotel_ids(),$hotelRows,$departureRows,$today,$months,$departureId);
+    $plan=v2_top500_monthly_plan($topOnly,$hotelRows,$departureRows,$today,$months,$departureId,true);
     $plan=v2_append_published_hotel_monthly_plan($plan,$hotelRows,$departureRows,$today,$months,$departureId);
     if(isset($plan['published_hotels']))echo 'PUBLISHED_HOTEL_MONITOR '.json_encode($plan['published_hotels'],JSON_UNESCAPED_SLASHES)."\n";
     if($onlyMonth!==''&&!in_array($onlyMonth,$plan['months'],true))throw new InvalidArgumentException('target month outside horizon');

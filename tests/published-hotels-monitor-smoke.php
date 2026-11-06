@@ -3,7 +3,16 @@ declare(strict_types=1);
 require_once __DIR__.'/../v2/data/published-hotels-monitor-v1.php';
 require_once __DIR__.'/../v2/data/top500-monthly-plan-v1.php';
 function check_monitor(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
-$base=v2_priority_hotel_ids();$monitor674Ids=v2_collection_priority_hotel_ids();
+// Synthetic accepted TV targets preserve historical planner fixtures only.
+// This is NOT evidence of real ANEX/TV numeric identity or current TOP500 coverage.
+require_once __DIR__.'/../app/integrations/anex-search-mapping-registry.php';
+$fixtureRows=array_map(static fn(int $id):array=>[
+    'anex_hotel_id'=>$id,'catalog_hotel_id'=>$id,'existing_catalog_hotel_id'=>$id,
+    'match_class'=>'exact','approval_policy'=>'owner_exact_and_strong_20260908',
+    'enabled'=>1,'scope'=>'preview',
+],v2_top500_anex_ids());
+$fixtureRegistry=AnyTourAnexSearchMappingRegistry::fromRows($fixtureRows);
+$base=v2_priority_hotel_ids($fixtureRegistry);$monitor674Ids=v2_collection_priority_hotel_ids($fixtureRegistry);
 $batch51Publication1=array_column(v2_publication_stock_monitor_bindings_20261105b(),'local_tv_id');
 $monitor673Ids=array_values(array_diff($monitor674Ids,$batch51Publication1));
 $batch49Publication1=array_column(v2_publication_stock_monitor_bindings_20261105(),'local_tv_id');

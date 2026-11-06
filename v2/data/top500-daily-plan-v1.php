@@ -2,10 +2,10 @@
 /** Build a once-per-day collection plan for every currently searchable owner priority hotel. */
 declare(strict_types=1);
 
-function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $departureCountryRows, string $dateFrom, string $dateTo, int $preferredDepartureId = 1): array
+function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $departureCountryRows, string $dateFrom, string $dateTo, int $preferredDepartureId = 1, bool $allowEmpty = false): array
 {
     $priority = array_values(array_unique(array_filter(array_map('intval', $priorityHotelIds), static fn(int $id): bool => $id > 0)));
-    if ($priority === []) throw new InvalidArgumentException('priority hotel list is empty');
+    if ($priority === [] && !$allowEmpty) throw new InvalidArgumentException('priority hotel list is empty');
     if (count($priority) !== count($priorityHotelIds)) throw new InvalidArgumentException('priority hotel list must contain unique positive ids');
 
     $from = DateTimeImmutable::createFromFormat('!Y-m-d', $dateFrom);
@@ -63,7 +63,7 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
         }
         $eligible[] = $id;
     }
-    if ($eligible === []) throw new RuntimeException('no priority hotels have both a factual active catalog mapping and an active departure route');
+    if ($eligible === [] && !$allowEmpty) throw new RuntimeException('no priority hotels have both a factual active catalog mapping and an active departure route');
 
     $byCountry = [];
     foreach ($eligible as $id) {
@@ -102,7 +102,7 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
     if (count($covered) !== count($eligible)) throw new RuntimeException('daily plan does not cover every searchable priority hotel');
     $unavailableCount = count($missingCatalog) + count($noDeparture);
     return [
-        'state' => $unavailableCount === 0 ? 'top500_daily_exact_plan' : 'top500_daily_searchable_plan',
+        'state' => $eligible === [] ? 'top500_daily_no_searchable_hotels' : ($unavailableCount === 0 ? 'top500_daily_exact_plan' : 'top500_daily_searchable_plan'),
         'source_hotel_count' => count($priority),
         'catalog_hotel_count' => count($hotelById),
         'hotel_count' => count($eligible),

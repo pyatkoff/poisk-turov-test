@@ -409,10 +409,10 @@ function v2_publication_stock_monitor_bindings_20261105b(): array
     ];
 }
 
-function v2_collection_priority_hotel_ids(): array
+function v2_collection_priority_hotel_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
     return array_values(array_unique(array_merge(
-        v2_priority_hotel_ids(),
+        v2_priority_hotel_ids($registry),
         array_column(v2_published_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_published_native_hotel_monitor_bindings(), 'local_tv_id'),
         array_column(v2_publication_stock_monitor_bindings_20261102(), 'local_tv_id'),
@@ -449,7 +449,9 @@ function v2_collection_priority_hotel_ids(): array
 /** Keep every base and previously admitted cohort target intact. */
 function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, array $departures, string $today, int $months, int $departureId): array
 {
-    $seen=v2_priority_hotel_ids();
+    $seen=[];
+    foreach($plan['targets'] as $target) $seen=array_merge($seen,$target['hotel_ids']);
+    $seen=array_values(array_unique($seen));
     $cohorts=[
         'accepted_typed_15'=>array_column(v2_published_hotel_monitor_bindings(),'local_tv_id'),
         'accepted_native_29'=>array_column(v2_published_native_hotel_monitor_bindings(),'local_tv_id'),

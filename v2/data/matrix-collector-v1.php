@@ -42,7 +42,8 @@ function matrix_hotel_batch_coverage(PDO $pdo): array {
     return $map;
 }
 function matrix_priority_coverage(PDO $pdo): array {
-    $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids())));$set=array_fill_keys($ids,true);$csv=implode(',',$ids);
+    $registry=v2_top500_registry($pdo); v2_top500_log_resolution($registry);
+    $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids($registry))));$set=array_fill_keys($ids,true);$csv=implode(',',$ids)?:'0';
     $catalogRows=$pdo->query("SELECT id,is_active,country_id,country_name FROM catalog_hotels WHERE id IN (".$csv.")")->fetchAll(PDO::FETCH_ASSOC)?:[];$present=[];$active=[];$countries=[];
     foreach($catalogRows as $r){$id=(int)$r['id'];$present[$id]=true;if((int)$r['is_active']===1)$active[$id]=true;$country=(string)($r['country_name']?:$r['country_id']);if(!isset($countries[$country]))$countries[$country]=['present'=>0,'active'=>0];$countries[$country]['present']++;if((int)$r['is_active']===1)$countries[$country]['active']++;}
     $searched=[];$attempts=$pdo->query("SELECT hotel_ids_json,status FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND status IN ('success','empty') AND hotel_ids_json IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC)?:[];
@@ -54,12 +55,12 @@ function matrix_log_priority_coverage(PDO $pdo): void {
     $x=matrix_priority_coverage($pdo);echo "TOP500_COVERAGE total={$x['total']} catalog_present={$x['present']} active={$x['active']} searched={$x['searched']} observed={$x['observed']} missing={$x['missing']}\n";
     ksort($x['countries']);foreach($x['countries'] as $name=>$c){echo "TOP500_COUNTRY country=".str_replace(' ','_',trim((string)$name))." present={$c['present']} active={$c['active']}\n";}
 }
-function matrix_order_hotel_ids(array $ids): array { $rank=array_flip(v2_priority_hotel_ids()); usort($ids,static function(int $a,int $b)use($rank):int{$ra=$rank[$a]??PHP_INT_MAX;$rb=$rank[$b]??PHP_INT_MAX;return $ra===$rb?($a<=>$b):($ra<=>$rb);}); return $ids; }
+function matrix_order_hotel_ids(array $ids,array $priorityIds): array { $rank=array_flip($priorityIds); usort($ids,static function(int $a,int $b)use($rank):int{$ra=$rank[$a]??PHP_INT_MAX;$rb=$rank[$b]??PHP_INT_MAX;return $ra===$rb?($a<=>$b):($ra<=>$rb);}); return $ids; }
 function matrix_candidates(PDO $pdo,int $months): array {
-    $pairs=matrix_pairs($pdo,40);$windows=matrix_month_windows($months);$last=matrix_last_attempts($pdo);$coverage=matrix_hotel_batch_coverage($pdo);$c=[];$prioritySet=array_fill_keys(v2_priority_hotel_ids(),true);
+    $pairs=matrix_pairs($pdo,40);$windows=matrix_month_windows($months);$last=matrix_last_attempts($pdo);$coverage=matrix_hotel_batch_coverage($pdo);$c=[];$priorityIds=v2_priority_hotel_ids(v2_top500_registry($pdo));$prioritySet=array_fill_keys($priorityIds,true);
     foreach($pairs as $pair){
         $dep=(int)$pair['departure_id'];$country=(int)$pair['country_id'];
-        $hs=$pdo->prepare("SELECT id FROM catalog_hotels WHERE country_id=:country AND is_active=1 ORDER BY id");$hs->execute(['country'=>$country]);$ids=matrix_order_hotel_ids(array_map('intval',$hs->fetchAll(PDO::FETCH_COLUMN)?:[]));$batches=array_chunk($ids,30);
+        $hs=$pdo->prepare("SELECT id FROM catalog_hotels WHERE country_id=:country AND is_active=1 ORDER BY id");$hs->execute(['country'=>$country]);$ids=matrix_order_hotel_ids(array_map('intval',$hs->fetchAll(PDO::FETCH_COLUMN)?:[]),$priorityIds);$batches=array_chunk($ids,30);
         $rs=$pdo->prepare("SELECT id,name FROM catalog_regions WHERE country_id=:country AND is_active=1 ORDER BY id");$rs->execute(['country'=>$country]);$regions=$rs->fetchAll(PDO::FETCH_ASSOC)?:[];
         foreach($windows as $w){
             foreach($batches as $bi=>$batch){
