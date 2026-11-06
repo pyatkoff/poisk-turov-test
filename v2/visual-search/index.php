@@ -31,7 +31,7 @@ if (!$offline) {
     if (is_file($popularitySource)) {
         require_once $popularitySource;
         if (function_exists('v2_hotel_popularity_legacy_ids')) {
-            $ids = array_filter(array_map('intval', v2_hotel_popularity_legacy_ids()), fn($id) => $id > 0);
+            $ids = array_filter(array_map('intval', v2_hotel_popularity_legacy_ids(v2_hotel_popularity_registry())), fn($id) => $id > 0);
             $html = str_replace('<body>', '<body data-popular-hotel-legacy-ids="' . implode(',', $ids) . '">', $html);
         }
     }

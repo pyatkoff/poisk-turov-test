@@ -5,9 +5,10 @@ require_once __DIR__ . '/db-v1.php';
 require_once __DIR__ . '/top-hotels-v1.php';
 
 $pdo=v2_data_db();
-$ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids())));
+$registry=v2_top500_registry($pdo); v2_top500_log_resolution($registry);
+$ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids($registry))));
 $set=array_fill_keys($ids,true);
-$csv=implode(',',$ids);
+$csv=implode(',',$ids)?:'0';
 $catalogRows=$pdo->query("SELECT id,is_active,country_id,country_name,name FROM catalog_hotels WHERE id IN (".$csv.") ORDER BY country_name,name")->fetchAll(PDO::FETCH_ASSOC)?:[];
 $present=[];$active=[];$countries=[];
 foreach($catalogRows as $r){
