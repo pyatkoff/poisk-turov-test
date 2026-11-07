@@ -2256,6 +2256,7 @@ function anexApplicationReceipt(o,result,h){
   price,currency:'RUB',flights:Object.freeze([])});
 }
 let messengerOwners=null,messengerUi=null;
+const observedMaxHandoffs=new Set();
 function messengerAvailable(receipt){
  return data.live===true&&window.V2_CONFIG?.search3MessengerEnabled===true&&typeof data.messengerHandoff==='function'
   &&!!window.AnyTourSearch3MessengerContextV1&&!!window.AnyTourSearch3MessengerFlowV1
@@ -2342,8 +2343,19 @@ async function messengerOpen(platform){
   if(!sameMessengerReview(result.observation,ui.snapshot))return;
   if(!result.links)result=await messengerOwners.flow.create(ui.snapshot);
   if(!messengerActive(ui)||ui.mode!=='bots'||ui.intent!==intent)return;
-  const link=messengerOwners.flow.link(ui.snapshot,platform);
-  if(link&&sameMessengerReview(result.observation,ui.snapshot))window.location.assign(link);
+  const navigation=messengerOwners.flow.navigation(ui.snapshot,platform);
+  if(!navigation||!sameMessengerReview(result.observation,ui.snapshot))return;
+  window.location.assign(navigation.url);
+  if(platform==='max'&&!observedMaxHandoffs.has(navigation.operationId)){
+   // A page-local navigation request, separate from native arrival or customer text.
+   const observation=window.V2Runtime?.pageObservation?.();
+   if(observation){
+    observedMaxHandoffs.add(navigation.operationId);
+    window.dispatchEvent(new CustomEvent('search3:max-handoff-open',{
+     detail:Object.freeze({...observation,operationId:navigation.operationId})
+    }));
+   }
+  }
  }finally{ui.busy=false;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));}
 }
 async function messengerCheck(){
