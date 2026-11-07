@@ -17,14 +17,14 @@ function setup(route,{tv=false,manager=false}={}){
   let ctx,observation;
   const window={V2_CONFIG:{search3MessengerEnabled:true},AnyTourSearch3MessengerContextV1:old.owner.api,AnyTourSearch3MessengerFlowV1:flowRoot.AnyTourSearch3MessengerFlowV1,
     AnyTourPrototypeLead:{markup:()=>'<form id="prototype-lead-form"><input name="phone" required></form>',action:()=>'<button type="submit" form="prototype-lead-form">Проверить заявку</button>'},location:{assign:url=>navigation.push(url)},
-    V2Runtime:{pageObservation:()=>({pageRef:'4e64fa08-4eac-4419-bff1-cf1885980cf1',offsetMs:12})},dispatchEvent:event=>events.push(event)};
+    crypto:{randomUUID:()=>'4e64fa08-4eac-4419-bff1-cf1885980cf1'},dispatchEvent:event=>events.push(event)};
   const data={live:true,tourvisorHandoffSelection:(o,h)=>tv&&o.raw===input.offer.raw&&h===input.hotel?{selector:input.selector,party:input.requestParty}:null,messengerHandoff:async(action,fields)=>{
     calls.push({action,fields:plain(fields||{})});if(route){const reply=route(action,fields);if(reply!==undefined)return reply;}
     if(action==='handoff_token')return {ok:true,csrf};
     if(action==='handoff_freeze'){observation=observation||plain(ctx.test.snapshot());if(tv)observation.price.expiresAt=Math.floor(Date.now()/1000)+600;return {ok:true,data:{operation_id:id,state:'prepared',observation}};}
     return {ok:true,data:{operation_id:id,state:'ready',links}};
   }};
-  ctx=vm.createContext({window,data,CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},selectedOffer:input.offer,anexApplicationDraft:input.application,selectionGeneration:input.revision,modalType:tv?'selected-tour':'anex-application',
+  ctx=vm.createContext({window,data,performance:{now:()=>12},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},selectedOffer:input.offer,anexApplicationDraft:input.application,selectionGeneration:input.revision,modalType:tv?'selected-tour':'anex-application',
     leadReadyOffer:o=>o,flightPairFor:o=>o.flightChoiceId===null?null:o.variants?.[Number(o.flightChoiceId)],
     selectedTourHotel:()=>input.hotel,retainedProviderView:()=>retained,$:key=>key==='#modal'?modal:key==='#modal-body'?body:key==='#messenger-entry'?scope:key==='[data-messenger-phone-submit]'?submit:null});
   vm.runInContext(app.slice(start,end)+'\nglobalThis.test={available:messengerAvailable,markup:messengerContactHTML,bind:bindMessenger,open:messengerOpen,phone:messengerPhone,check:messengerCheck,snapshot:()=>messengerUi?.snapshot};',ctx);
@@ -77,7 +77,7 @@ test('Only an explicit MAX navigation records its exact server operation once pe
   assert.equal(Object.isFrozen(x.events[0].detail),true);
 });
 test('MAX navigation still works when the browser has no page observation',async()=>{
-  const x=setup();x.window.V2Runtime.pageObservation=()=>null;x.test.bind();await x.settled();
+  const x=setup();delete x.window.crypto;x.test.bind();await x.settled();
   await x.test.open('max');assert.deepEqual(x.navigation,[links.max]);assert.deepEqual(x.events,[]);
 });
 test('Explicit phone choice retains the same draft nodes and only then exposes submit',async()=>{

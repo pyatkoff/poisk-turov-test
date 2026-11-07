@@ -2257,6 +2257,7 @@ function anexApplicationReceipt(o,result,h){
 }
 let messengerOwners=null,messengerUi=null;
 const observedMaxHandoffs=new Set();
+let maxHandoffPageRef=null;
 function messengerAvailable(receipt){
  return data.live===true&&window.V2_CONFIG?.search3MessengerEnabled===true&&typeof data.messengerHandoff==='function'
   &&!!window.AnyTourSearch3MessengerContextV1&&!!window.AnyTourSearch3MessengerFlowV1
@@ -2335,6 +2336,16 @@ function messengerPhone(show){
  if(show)scope.querySelector('[name="phone"]')?.focus({preventScroll:true});
  else if(messengerUi?.scope===scope){renderMessenger(messengerUi,messengerOwners.flow.view(messengerUi.snapshot));$('#modal-body').scrollTop=0;}
 }
+function observeMaxHandoff(operationId){
+ if(observedMaxHandoffs.has(operationId))return;
+ try{maxHandoffPageRef??=window.crypto?.randomUUID?.();}catch{return;}
+ if(!maxHandoffPageRef)return;
+ observedMaxHandoffs.add(operationId);
+ // A page-local navigation request, separate from native arrival or customer text.
+ window.dispatchEvent(new CustomEvent('search3:max-handoff-open',{
+  detail:Object.freeze({pageRef:maxHandoffPageRef,offsetMs:Math.floor(performance.now()),operationId})
+ }));
+}
 async function messengerOpen(platform){
  const ui=messengerUi;if(!ui||!messengerActive(ui)||ui.mode!=='bots'||ui.busy||!['telegram','max'].includes(platform))return;
  const intent=++ui.intent;ui.busy=true;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));
@@ -2346,16 +2357,7 @@ async function messengerOpen(platform){
   const navigation=messengerOwners.flow.navigation(ui.snapshot,platform);
   if(!navigation||!sameMessengerReview(result.observation,ui.snapshot))return;
   window.location.assign(navigation.url);
-  if(platform==='max'&&!observedMaxHandoffs.has(navigation.operationId)){
-   // A page-local navigation request, separate from native arrival or customer text.
-   const observation=window.V2Runtime?.pageObservation?.();
-   if(observation){
-    observedMaxHandoffs.add(navigation.operationId);
-    window.dispatchEvent(new CustomEvent('search3:max-handoff-open',{
-     detail:Object.freeze({...observation,operationId:navigation.operationId})
-    }));
-   }
-  }
+  if(platform==='max')observeMaxHandoff(navigation.operationId);
  }finally{ui.busy=false;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));}
 }
 async function messengerCheck(){
