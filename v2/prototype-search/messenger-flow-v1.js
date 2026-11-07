@@ -142,8 +142,13 @@
       return op.pending;
     }
     // Recheck at the actual explicit click; a previously rendered view is historical.
-    const link=(snapshot,platform)=>['telegram','max'].includes(platform)?view(snapshot).links?.[platform]||null:null;
-    return Object.freeze({prepare,view,link,create:snapshot=>perform(snapshot,'handoff_create'),
+    function navigation(snapshot,platform){
+      const url=['telegram','max'].includes(platform)?view(snapshot).links?.[platform]:null;
+      if(!url)return null;
+      return Object.freeze({url,operationId:captures.get(snapshot).operation.id});
+    }
+    const link=(snapshot,platform)=>navigation(snapshot,platform)?.url??null;
+    return Object.freeze({prepare,view,link,navigation,create:snapshot=>perform(snapshot,'handoff_create'),
       status:snapshot=>perform(snapshot,'handoff_status'),revoke:snapshot=>perform(snapshot,'handoff_revoke')});
   }
   root.AnyTourSearch3MessengerFlowV1=Object.freeze({createSession,version:1});
