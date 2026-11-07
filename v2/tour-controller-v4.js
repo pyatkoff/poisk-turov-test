@@ -28,7 +28,8 @@ function selectFlight(index,focusChoice){const i=Number(index);if(!Number.isInte
     tour: currentTour,
     flight: flightVariants[i],
     index: i,
-    origin: 'flight_control'
+    origin: 'flight_control',
+    pageObservation: rt.pageObservation?.() ?? null
   });
 }
 async function loadFlights(tid){if(!tid)return;const expectedTourId=String(currentTour&&currentTour.id||'');if(!expectedTourId||String(tid)!==expectedTourId||flightLoadingTourId===expectedTourId)return;const run=++flightGeneration;flightLoadingTourId=expectedTourId;renderFlightLoading();try{const d=await api('flights',{tourId:tid,currency:'RUB'});if(run!==flightGeneration||String(currentTour&&currentTour.id||'')!==expectedTourId)return;flightVariants=Array.isArray(d)?d:(Array.isArray(d&&d.flights)?d.flights:[]);selectedFlightIndex=flightVariants.findIndex(v=>v&&v.isDefault);if(selectedFlightIndex<0)selectedFlightIndex=0;renderFlights();
@@ -37,7 +38,8 @@ async function loadFlights(tid){if(!tid)return;const expectedTourId=String(curre
       tour: currentTour,
       flight: flightVariants[selectedFlightIndex],
       index: selectedFlightIndex,
-      origin: 'default_assignment'
+      origin: 'default_assignment',
+      pageObservation: rt.pageObservation?.() ?? null
     });
   }
 }catch(e){if(run!==flightGeneration||String(currentTour&&currentTour.id||'')!==expectedTourId)return;renderFlightError(tid,e&&e.message||'ошибка загрузки');}finally{if(run===flightGeneration&&String(currentTour&&currentTour.id||'')===expectedTourId)flightLoadingTourId='';}}

@@ -61,7 +61,7 @@ async function submit(origin = 'unspecified') {
     rt.setSearchId(id);
     show('Поиск запущен · собираем предложения');
     // Origin describes the entry path, independently of the visitor's identity.
-    emit('started', { response, generation: run, origin }, id);
+    emit('started', { response, generation: run, origin, pageObservation: rt.pageObservation?.() ?? null }, id);
     pollTimer = setTimeout(() => poll(id, run), 1000);
   } catch (error) {
     if (run !== generation) return;

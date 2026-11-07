@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { webcrypto } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -12,7 +13,7 @@ class TestCustomEvent extends Event {
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-function fixture({ autoSearch = false, deferFirstSearch = false, markedDefault = true } = {}) {
+function fixture({ autoSearch = false, deferFirstSearch = false, markedDefault = true, cryptoAvailable = true } = {}) {
   const fields = {
     from: '1', country: '4', dateFrom: '2099-06-01', dateTo: '2099-06-03',
     daysFrom: '7', daysTill: '7', count_people: '2',
@@ -34,30 +35,36 @@ function fixture({ autoSearch = false, deferFirstSearch = false, markedDefault =
   const goals = [];
   const searches = [];
   const flights = [];
+  const requests = [];
   let timerId = 0;
   let searchCount = 0;
+  let offset = 100;
   let finishFirstSearch;
+  function response(data) {
+    return { ok: true, async json() { return data; }, clone() { return response(data); } };
+  }
   const window = Object.assign(new EventTarget(), {
     location: { search: autoSearch ? '?from=1&country=4&date_from=2099-06-01' : '' },
+    crypto: cryptoAvailable ? webcrypto : undefined,
     V2_CONFIG: { metrikaCounter: 98615635 },
-    V2Runtime: {
-      setSearchId() {},
-      async api(action) {
-        switch (action) {
-          case 'search_start':
-            searchCount++;
-            if (deferFirstSearch && searchCount === 1) {
-              return new Promise(resolve => { finishFirstSearch = resolve; });
-            }
-            return { searchId: searchCount };
-          case 'tour':
-            return { id: 'fixture-tour', price: 100000 };
-          case 'flights':
-            return { flights: [{ isDefault: markedDefault, price: 100000 }] };
-          default:
-            throw new Error('Unexpected API action: ' + action);
-        }
-      },
+    async fetch(url) {
+      const request = new URL(url, 'https://search3-fixture.invalid/');
+      requests.push(request);
+      const action = request.searchParams.get('action');
+      switch (action) {
+        case 'search_start':
+          searchCount++;
+          if (deferFirstSearch && searchCount === 1) {
+            return new Promise(resolve => { finishFirstSearch = data => resolve(response(data)); });
+          }
+          return response({ searchId: searchCount });
+        case 'tour':
+          return response({ id: 'fixture-tour', price: 100000 });
+        case 'flights':
+          return response({ flights: [{ isDefault: markedDefault, price: 100000 }] });
+        default:
+          throw new Error('Unexpected API action: ' + action);
+      }
     },
     V2Catalogs: { renderChildAges() {}, async init() {} },
     V2Results: {},
@@ -69,8 +76,9 @@ function fixture({ autoSearch = false, deferFirstSearch = false, markedDefault =
   window.addEventListener('v2:search-started', event => searches.push(event.detail));
   window.addEventListener('v2:flight-selected', event => flights.push(event.detail));
   const context = vm.createContext({
-    window, document, console, URLSearchParams, CustomEvent: TestCustomEvent,
-    performance: { now: () => 100 },
+    window, document, console, URL, URLSearchParams, CustomEvent: TestCustomEvent,
+    location: { href: 'https://search3-fixture.invalid/' },
+    performance: { now: () => offset++ },
     FormData: class {
       constructor(form) { this.elements = form.elements; }
       get(name) { return this.elements[name]?.value ?? null; }
@@ -82,11 +90,11 @@ function fixture({ autoSearch = false, deferFirstSearch = false, markedDefault =
     },
     clearTimeout(id) { timers.delete(id); },
   });
-  for (const module of ['analytics-v4.js', 'tour-controller-v4.js', 'search-lifecycle-v6.js']) {
+  for (const module of ['runtime-v3.js', 'analytics-v4.js', 'tour-controller-v4.js', 'search-lifecycle-v6.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'v2', module), 'utf8'), context, { filename: module });
   }
   return {
-    window, searches, flights, goals,
+    window, searches, flights, goals, requests,
     async runBootSearch() {
       await settle();
       const boot = Array.from(timers.entries()).filter(([, timer]) => timer.delay === 0);
@@ -134,6 +142,15 @@ function assertSearchGoals(f, searchIds) {
   await search.window.V2SearchLifecycle.submit('form_submit');
   assert.deepEqual(search.searches.map(event => event.origin), ['url_hydration', 'form_submit', 'unspecified']);
   assertSearchGoals(search, [1, 2, 3]);
+  await search.selectTour();
+  search.selectFirstFlight();
+  const pageRef = search.searches[0].pageObservation.pageRef;
+  assert.match(pageRef, /^[a-f0-9-]{36}$/);
+  const observations = [...search.searches, ...search.flights].map(event => event.pageObservation);
+  assert.ok(observations.every(observation => observation.pageRef === pageRef));
+  assert.ok(observations.every((observation, index) => index === 0 || observation.offsetMs >= observations[index - 1].offsetMs));
+  assert.ok(search.requests.every(request => !request.href.includes(pageRef)));
+  assert.ok(!JSON.stringify([search.goals, search.window.dataLayer]).includes(pageRef));
 
   const stale = fixture({ autoSearch: true, deferFirstSearch: true });
   await stale.runBootSearch();
@@ -141,6 +158,12 @@ function assertSearchGoals(f, searchIds) {
   await stale.finishSupersededSearch();
   assert.deepEqual(stale.searches.map(event => event.origin), ['form_submit']);
   assertSearchGoals(stale, [2]);
+  assert.notEqual(stale.searches[0].pageObservation.pageRef, pageRef);
+
+  const missingCrypto = fixture({ cryptoAvailable: false });
+  await missingCrypto.submitForm();
+  assert.equal(missingCrypto.searches[0].pageObservation, null);
+  assertSearchGoals(missingCrypto, [1]);
 
   for (const markedDefault of [true, false]) {
     const flight = fixture({ markedDefault });
