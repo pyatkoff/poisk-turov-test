@@ -1030,7 +1030,9 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
   }
 }
 async function run(browser, width, previous) {
-  const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
+  const page = await browser.newPage({ viewport: { width, height: 1000 }, timezoneId: 'UTC' }), errors = [];
+  // The offers and calendar expectations below use a fixed September 2026 fixture.
+  await page.clock.setFixedTime(new Date('2026-09-01T12:00:00Z'));
   const andromeda = { enabled: false, failSecond: false, requests: [], quoteRequests: [], held: null };
   const catalog = { recover: false, requests: [] };
   const hotelDetails = { requests: [] };
@@ -1110,7 +1112,7 @@ async function run(browser, width, previous) {
     // sibling can be inserted between raw/served snapshots (160px at 375px).
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     assert.equal(await page.locator('.catalog-recovery').isVisible(), true, 'blocked catalogs expose their canonical recovery before result measurement');
-    await setDates(page,'2026-09-21',await page.locator('[name=dateTo]').inputValue());
+    await setDates(page,'2026-09-21','2026-09-28');
     await setParty(page,3,await page.locator('#childAges select').evaluateAll(nodes=>nodes.map(node=>node.value)));
     catalog.recover = true;
     const catalogRetry = page.locator('.catalog-retry');
