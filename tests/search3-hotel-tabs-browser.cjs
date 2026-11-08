@@ -344,6 +344,8 @@ async function run(engine, width, height) {
     await recoveryStatus.getByText('Не удалось загрузить фото.', { exact: false }).waitFor();
     assert.equal(await recoveryImage.isVisible(), false, 'a failed photo does not leave a misleading old image');
     assert.equal(await originalPhoto.getAttribute('href'), recoveryImages.missing, 'original link belongs to the failed current image');
+    await recovery.locator(`.hotel-gallery-thumb img[src="${recoveryImages.missing}"]`).waitFor({ state: 'detached' });
+    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
     for (const action of await recoveryViewer.locator('button:visible, a:visible').all()) {
       const box = await action.boundingBox();
       assert.ok(box.height >= 44 && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'photo recovery actions remain reachable');
@@ -368,13 +370,11 @@ async function run(engine, width, height) {
     assert.equal(await recoveryImage.getAttribute('src'), beforeRecovery.photo, 'late response cannot replace the image in a reopened dialog');
     assert.equal(await recoveryImage.isVisible(), true);
     assert.equal(await recoveryStatus.isVisible(), false);
-    assert.equal(await recoveryViewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 1 из 4');
+    assert.equal(await recoveryViewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 1 из 3');
     await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-recovered.png`), animations: 'disabled' });
-    // Capture the error after releasing all held image requests, so screenshot
-    // readiness cannot become part of the controlled network delay.
     await nextPhoto.click();
-    await recoveryStatus.getByText('Не удалось загрузить фото.', { exact: false }).waitFor();
-    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
+    await recoveryImage.waitFor({ state: 'visible' });
+    assert.equal(await recoveryImage.getAttribute('src'), recoveryImages.slow, 'reopened viewer skips the removed thumbnail');
     await recovery.keyboard.press('Escape');
     await recoveryViewer.waitFor({ state: 'hidden' });
     const afterRecovery = await recoveryState();
