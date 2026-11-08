@@ -156,7 +156,7 @@ class Contracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             pub.checked_request(event, self.env)
 
-    def test_early_intent_derived_transaction_preserves_sibling_and_can_rollback(self):
+    def early_intent_transaction(self):
         pins = remote.EARLY_INTENT_PINS
         preview = remote.Preview.EARLY_INTENT
         manifest = self.source / 'control/manifest.json'
@@ -186,11 +186,46 @@ class Contracts(unittest.TestCase):
             self.upload = Path(upload.name)
         before = site.snapshot()
         q.update(archive=upload.name, before=before)
+        return site, q, after_files
+
+    def test_early_intent_derived_transaction_preserves_sibling_and_can_rollback(self):
+        site, q, after_files = self.early_intent_transaction()
         self.assertEqual(site.activate(q)['status'], 'activated')
         self.assertEqual(remote.inventory(site.target), after_files)
-        self.assertEqual(site.finish(q)['route'], preview.route)
+        self.assertEqual(site.finish(q)['route'], remote.Preview.EARLY_INTENT.route)
         self.assertEqual(site.finish(q, rollback=True)['status'], 'rolled_back_to_absence')
-        self.assertEqual(site.snapshot(), before)
+        self.assertEqual(site.snapshot(), q['before'])
+
+    def test_early_intent_rollback_after_interrupted_owner_write_uses_directory_identity(self):
+        site, q, files = self.early_intent_transaction()
+        rename = remote.rename_new
+
+        def interrupted_rename(source, target):
+            if target == site.owner:
+                raise RuntimeError('interrupted before owner marker')
+            return rename(source, target)
+
+        with patch.object(remote, 'rename_new', side_effect=interrupted_rename):
+            with self.assertRaisesRegex(RuntimeError, 'interrupted before owner marker'):
+                site.activate(q)
+        self.assertFalse(site.owner.exists())
+        self.assertEqual(remote.inventory(site.target), files)
+        with self.assertRaisesRegex(ValueError, 'outcome_unknown'):
+            site.finish(q)
+        with self.assertRaisesRegex(ValueError, 'different_activation_request'):
+            site.finish({**q, 'archive': '/tmp/other.tar.gz'}, rollback=True)
+
+        original = self.root / 'original-activation'
+        site.target.rename(original)
+        shutil.copytree(original, site.target)
+        self.assertEqual(remote.inventory(site.target), files)
+        with self.assertRaisesRegex(ValueError, 'different_target'):
+            site.finish(q, rollback=True)
+        self.assertEqual(remote.inventory(site.target), files)
+        shutil.rmtree(site.target)
+        original.rename(site.target)
+        self.assertEqual(site.finish(q, rollback=True)['status'], 'rolled_back_to_absence')
+        self.assertEqual(site.snapshot(), q['before'])
 
     def test_atomic_create_refuses_existing_empty_directory(self):
         source = self.root / 'source-directory'; source.mkdir()

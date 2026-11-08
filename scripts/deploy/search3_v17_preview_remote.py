@@ -234,6 +234,20 @@ class Site:
     def receipt(self, q):
         return self.parent / ('.' + self.preview.stem + '-receipt-' + str(q['deploy_run']))
 
+    def recorded_activation(self, q):
+        receipt = self.receipt(q)
+        need(receipt.is_dir() and not receipt.is_symlink(), 'missing_activation_receipt')
+        request = receipt / 'request.json'
+        activation = receipt / 'activation.json'
+        need(all(path.is_file() and not path.is_symlink() for path in (request, activation)),
+             'missing_activation_record')
+        need(json.loads(request.read_bytes()) == q, 'different_activation_request')
+        record = json.loads(activation.read_bytes())
+        target = self.target.lstat()
+        need(self.target.is_dir() and not self.target.is_symlink()
+             and (target.st_dev, target.st_ino) == (record['device'], record['inode']), 'different_target')
+        return record
+
     def activate(self, q):
         validate(q, self.preview); archive = Path(q['archive'])
         need(re.fullmatch('/tmp/' + re.escape(self.preview.stem) + r'\.[A-Za-z0-9_-]+\.tar\.gz', str(archive)), 'upload_path')
@@ -250,18 +264,24 @@ class Site:
                 safe_extract(archive, stage)
                 files = verify(stage, q, self.preview)
                 need(self.snapshot() == q['before'], 'predecessor_changed')
+                payload_digest = digest(json_bytes(files))
                 owner = json_bytes({'run': q['deploy_run'], 'source': q['source_sha'],
-                    'digest': digest(json_bytes(files)), 'status': 'activated'})
+                    'digest': payload_digest, 'status': 'activated'})
                 if self.preview is Preview.EARLY_INTENT:
                     # Prepare a complete owner record before making the directory visible.
                     owner_stage = stage / 'owner.json'
                     owner_stage.write_bytes(owner); owner_stage.chmod(0o600)
+                    staged = (stage / 'payload').stat()
+                    # Rename preserves the identity; matching bytes alone do not prove ownership.
+                    (receipt / 'activation.json').write_bytes(json_bytes({
+                        'device': staged.st_dev, 'inode': staged.st_ino, 'digest': payload_digest}))
                     rename_new(stage / 'payload', self.target)
                     try:
                         rename_new(owner_stage, self.owner)
                     except OSError:
                         # No other operation may claim these bytes. Leave a receipt
                         # and quarantine only the exact tree installed by this run.
+                        self.recorded_activation(q)
                         if inventory(self.target) == files:
                             rename_new(self.target, receipt / 'failed-payload')
                         raise
@@ -279,15 +299,25 @@ class Site:
     def finish(self, q, rollback=False):
         validate(q, self.preview)
         with self.lock():
+            need(not self.owner.is_symlink(), 'target_or_owner_link')
             owner = json.loads(self.owner.read_text()) if self.owner.exists() else None
+            recover = self.preview is Preview.EARLY_INTENT and rollback and os.path.lexists(self.target)
             if owner is None:
-                need(self.snapshot() == q['before'], 'outcome_unknown'); return {'status': 'not_activated'}
-            need(owner.get('run') == q['deploy_run'] and owner.get('source') == q['source_sha'], 'different_owner')
-            need(digest(json_bytes(inventory(self.target))) == owner['digest'], 'modified_target')
+                if not recover:
+                    need(self.snapshot() == q['before'], 'outcome_unknown'); return {'status': 'not_activated'}
+                expected = self.recorded_activation(q)['digest']
+            else:
+                need(owner.get('run') == q['deploy_run'] and owner.get('source') == q['source_sha'], 'different_owner')
+                expected = owner['digest']
+                if self.preview is Preview.EARLY_INTENT:
+                    need(self.recorded_activation(q)['digest'] == expected, 'different_activation_digest')
+            need(digest(json_bytes(inventory(self.target))) == expected, 'modified_target')
             if rollback:
                 # Only remove the exact newly created target; never any predecessor.
                 need(q['before']['target'] is None and q['before']['owner'] is None, 'not_new_target')
-                shutil.rmtree(self.target); self.owner.unlink()
+                shutil.rmtree(self.target)
+                if owner is not None:
+                    self.owner.unlink()
                 need(self.snapshot() == q['before'], 'rollback_readback')
                 result = {'status': 'rolled_back_to_absence'}
             else:
