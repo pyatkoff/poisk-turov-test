@@ -168,8 +168,11 @@ class Contracts(unittest.TestCase):
         (visual / 'index.php').write_text('<?php')
         (visual / 'index.html').write_text('NEXT fixture')
         target = self.root / 'early-derived'
-        q, archive = pub.derive(self.source, target, {**request(), **pins}, pins['source_ZIP_sha256'], preview)
         before_files = remote.inventory(self.source / 'payload')
+        with patch.object(shutil, 'copyfile', wraps=shutil.copyfile) as copyfile:
+            q, archive = pub.derive(self.source, target, {**request(), **pins},
+                                    pins['source_ZIP_sha256'], preview, original_files=before_files)
+        self.assertFalse(any(Path(call.args[0]).parent == visual for call in copyfile.call_args_list))
         after_files = remote.verify(target, q, preview)
         self.assertEqual(before_files.keys() - after_files.keys(), {'visual-search/index.php', 'visual-search/index.html'})
         self.assertEqual({k for k in after_files if before_files[k] != after_files[k]}, {'site-path-v1.php'})
@@ -252,6 +255,12 @@ class Contracts(unittest.TestCase):
         (self.source/'payload/extra.js').write_text(pub.OLD_ROUTE)
         with self.assertRaisesRegex(ValueError,'residual_old_preview_route'):
             pub.derive(self.source,self.root/'bad',request(),'d'*64)
+
+    def test_derived_copy_must_match_the_original_verified_inventory(self):
+        verified = remote.inventory(self.source / 'payload')
+        (self.source / 'payload/poisk-turov/index.php').write_text('changed since verification')
+        with self.assertRaisesRegex(ValueError, 'unexpected_payload_delta'):
+            pub.derive(self.source, self.root / 'changed', request(), 'd'*64, original_files=verified)
 
     def test_tampered_payload_and_manifest_fail(self):
         (self.root/'derived/payload/poisk-turov/index.php').write_text('tampered')

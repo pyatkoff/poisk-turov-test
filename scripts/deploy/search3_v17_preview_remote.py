@@ -69,13 +69,16 @@ def json_bytes(value):
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode()
 
 
-def inventory(root):
+def inventory(root, *, forbidden_bytes=None):
     need(root.is_dir() and not root.is_symlink(), 'invalid_inventory_root')
     result = {}
     for p in sorted(root.rglob('*')):
         need(not p.is_symlink() and (p.is_dir() or p.is_file()), 'linked_or_special_file')
         if p.is_file():
-            result[p.relative_to(root).as_posix()] = digest(p.read_bytes())
+            data = p.read_bytes()
+            if forbidden_bytes is not None:
+                need(forbidden_bytes not in data, 'residual_old_preview_route')
+            result[p.relative_to(root).as_posix()] = digest(data)
     return result
 
 

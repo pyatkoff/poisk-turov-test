@@ -55,22 +55,27 @@ def checked_request(event, env):
     return q
 
 
-def derive(source, output, request, zip_digest, preview=Preview.NEXT):
+def derive(source, output, request, zip_digest, preview=Preview.NEXT, *, original_files=None):
     """Input is the original artifact already verified by prepare_zip()."""
     need(not output.exists(), 'derived_output_exists')
-    shutil.copytree(source, output)
+    source_payload = source / 'payload'
+    if preview is Preview.EARLY_INTENT:
+        visual = source_payload / 'visual-search'
+        need(visual.is_dir() and not visual.is_symlink(), 'missing_next_visual_source')
+
+    def exclude_next_visual(directory, _names):
+        # Only the top-level NEXT-only subtree is omitted, never names elsewhere.
+        return ['visual-search'] if Path(directory) == source_payload else []
+
+    ignore = exclude_next_visual if preview is Preview.EARLY_INTENT else None
+    shutil.copytree(source, output, ignore=ignore)
     p = output / 'payload/site-path-v1.php'; before = p.read_text()
     old = '#^(/_preview/search3-site-candidate)(?:/|$)#'
     new = '#^(' + preview.route.rstrip('/') + ')(?:/|$)#'
     need(before.count(old) == 1, 'route_source_drift')
     p.write_text(before.replace(old, new))
-    if preview is Preview.EARLY_INTENT:
-        # This entry is reserved for NEXT. Its static index must also be absent.
-        shutil.rmtree(output / 'payload/visual-search')
-    for f in (output / 'payload').rglob('*'):
-        if f.is_file():
-            need(OLD_ROUTE.rstrip('/').encode() not in f.read_bytes(), 'residual_old_preview_route')
-    previous = inventory(source / 'payload'); files = inventory(output / 'payload')
+    previous = inventory(source_payload) if original_files is None else original_files
+    files = inventory(output / 'payload', forbidden_bytes=OLD_ROUTE.rstrip('/').encode())
     removed = {n for n in previous if preview is Preview.EARLY_INTENT and n.startswith('visual-search/')}
     need(previous.keys() - removed == files.keys()
          and {n for n in files if files[n] != previous[n]} == {'site-path-v1.php'}, 'unexpected_payload_delta')
@@ -81,8 +86,10 @@ def derive(source, output, request, zip_digest, preview=Preview.NEXT):
                       'ZIP_sha256': zip_digest, 'transform': preview.value + '-route-v1'})
     m['files'] = [{'path': n, 'sha256': h, 'size': (output / 'payload' / n).stat().st_size} for n, h in files.items()]
     m['file_count'] = len(files)
-    (output / 'control/manifest.json').write_bytes(json_bytes(m))
-    (output / 'control/payload.sha256').write_text(''.join(f'{files[n]}  ./{n}\n' for n in sorted(files)))
+    manifest = json_bytes(m)
+    checksums = ''.join(f'{files[n]}  ./{n}\n' for n in sorted(files)).encode()
+    (output / 'control/manifest.json').write_bytes(manifest)
+    (output / 'control/payload.sha256').write_bytes(checksums)
     raw = io.BytesIO()
     with tarfile.open(fileobj=raw, mode='w', format=tarfile.USTAR_FORMAT) as t:
         for name in ('control/manifest.json', 'control/payload.sha256', *('payload/' + n for n in files)):
@@ -91,8 +98,7 @@ def derive(source, output, request, zip_digest, preview=Preview.NEXT):
             t.addfile(info, io.BytesIO(data))
     archive = gzip.compress(raw.getvalue(), mtime=0)
     q = {**request, 'source_ZIP_sha256': zip_digest, 'archive_sha256': digest(archive),
-         'manifest_sha256': digest((output / 'control/manifest.json').read_bytes()),
-         'payload_sha256': digest((output / 'control/payload.sha256').read_bytes()), 'file_count': len(files)}
+         'manifest_sha256': digest(manifest), 'payload_sha256': digest(checksums), 'file_count': len(files)}
     verify(output, q, preview)
     return q, archive
 
@@ -147,8 +153,9 @@ def prepare():
     q, api, tree, zip_hash, preview = authorized()
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-next-prepare'; work.mkdir(mode=0o700)
     original = work / 'original'
-    prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    ready, archive = derive(original / 'release', work / 'derived', q, zip_hash, preview)
+    original_files = prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
+    ready, archive = derive(original / 'release', work / 'derived', q, zip_hash, preview,
+                            original_files=original_files)
     render_checks(work / 'derived', preview)
     retained = work / 'retained'; retained.mkdir()
     (retained / 'next-preview.tar.gz').write_bytes(archive)
@@ -216,8 +223,9 @@ def publish():
     q, api, tree, zip_hash, preview = authorized()
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-next-publish'; work.mkdir(mode=0o700)
     original = work / 'original'
-    prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    expected_q, archive = derive(original / 'release', work / 'expected', q, zip_hash, preview)
+    original_files = prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
+    expected_q, archive = derive(original / 'release', work / 'expected', q, zip_hash, preview,
+                                 original_files=original_files)
     # Retained artifact belongs to this same trusted-main run; compare independently re-derived bytes.
     artifact_id = os.environ['READY_ARTIFACT_ID']
     need(re.fullmatch('[1-9][0-9]{0,14}', artifact_id), 'ready_artifact_id')
