@@ -3,6 +3,7 @@ const { webcrypto } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { summarizeEarlyIntent } = require('./v2_early_intent_shadow.cjs');
 
 class TestCustomEvent extends Event {
   constructor(type, { detail } = {}) {
@@ -152,6 +153,33 @@ function assertSearchGoals(f, searchIds) {
   assert.ok(search.requests.every(request => !request.href.includes(pageRef)));
   assert.ok(!JSON.stringify([search.goals, search.window.dataLayer]).includes(pageRef));
 
+  const manualFlight = search.flights[1];
+  const cutoff = manualFlight.pageObservation.offsetMs;
+  const scope = { pageRef, beforeOffsetMs: cutoff + 1 };
+  const automaticOnly = summarizeEarlyIntent({
+    ...scope, searches: [search.searches[0], search.searches[2]], flights: [search.flights[0]],
+  });
+  assert.equal(automaticOnly.intent, 'unknown');
+  assert.equal(automaticOnly.automation, 'unknown');
+  assert.deepEqual(automaticOnly.evidence, {
+    formSubmit: false, flightControl: false, urlHydration: true, defaultFlightAssignment: true,
+  });
+  const beforeFlight = summarizeEarlyIntent({ ...scope, beforeOffsetMs: cutoff, searches: search.searches, flights: search.flights });
+  assert.equal(beforeFlight.intent, 'manual_action_observed');
+  assert.equal(beforeFlight.evidence.formSubmit, true);
+  assert.equal(beforeFlight.evidence.flightControl, false);
+  const allActions = summarizeEarlyIntent({ ...scope, searches: search.searches, flights: search.flights });
+  assert.equal(allActions.evidence.flightControl, true);
+  assert.deepEqual(summarizeEarlyIntent({ ...scope, searches: [...search.searches, search.searches[1]],
+    flights: [...search.flights, manualFlight] }), allActions);
+  assert.deepEqual(summarizeEarlyIntent({ ...scope, searches: [], flights: [
+    { ...manualFlight, pageObservation: { ...manualFlight.pageObservation, offsetMs: cutoff + 1 } },
+    { ...manualFlight, pageObservation: { ...manualFlight.pageObservation, offsetMs: -1 } },
+    { ...manualFlight, tour: {} },
+  ] }).evidence, { formSubmit: false, flightControl: false, urlHydration: false, defaultFlightAssignment: false });
+  assert.equal(summarizeEarlyIntent({ ...scope, pageRef: null, searches: search.searches, flights: search.flights }).scope, 'unknown');
+  assert.throws(() => summarizeEarlyIntent({ ...scope, searches: Array(257), flights: [] }), RangeError);
+
   const stale = fixture({ autoSearch: true, deferFirstSearch: true });
   await stale.runBootSearch();
   await stale.submitForm();
@@ -159,6 +187,7 @@ function assertSearchGoals(f, searchIds) {
   assert.deepEqual(stale.searches.map(event => event.origin), ['form_submit']);
   assertSearchGoals(stale, [2]);
   assert.notEqual(stale.searches[0].pageObservation.pageRef, pageRef);
+  assert.equal(summarizeEarlyIntent({ ...scope, searches: stale.searches, flights: [] }).intent, 'unknown');
 
   const missingCrypto = fixture({ cryptoAvailable: false });
   await missingCrypto.submitForm();
