@@ -1,4 +1,4 @@
-name: Create separate public next Search3 preview
+name: Create a separate public Search3 preview
 
 on:
   pull_request:
@@ -35,10 +35,11 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
-      github.event_name == 'issue_comment' && github.event.issue.number == 4217 &&
+      github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, '/create-search3-next-preview ')
+      ((github.event.issue.number == 4217 && startsWith(github.event.comment.body, '/create-search3-next-preview ')) ||
+      (github.event.issue.number == 4709 && startsWith(github.event.comment.body, '/create-search3-early-intent-preview ')))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -70,7 +71,7 @@ jobs:
         id: retain
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-next-ready-${{ github.run_id }}
+          name: ${{ startsWith(github.event.comment.body, '/create-search3-early-intent-preview ') && 'search3-early-intent' || 'search3-next' }}-ready-${{ github.run_id }}
           path: ${{ runner.temp }}/search3-next-prepare/retained/
           if-no-files-found: error
           retention-days: 30
@@ -97,7 +98,7 @@ jobs:
           persist-credentials: false
       - name: Recheck next preview transaction
         run: python3 tests/search3_v17_preview_test.py
-      - name: Create only the new next preview from retained bytes
+      - name: Create only the checked preview from retained bytes
         env:
           GH_TOKEN: ${{ github.token }}
           READY_ARTIFACT_ID: ${{ needs.prepare-next-preview.outputs.artifact_id }}
@@ -109,7 +110,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-next-deployment-${{ github.run_id }}
+          name: ${{ startsWith(github.event.comment.body, '/create-search3-early-intent-preview ') && 'search3-early-intent' || 'search3-next' }}-deployment-${{ github.run_id }}
           path: ${{ runner.temp }}/search3-next-publish/evidence.json
           if-no-files-found: warn
           retention-days: 30

@@ -1,9 +1,11 @@
-"""Create-only transaction for the owner-authorized next preview.
+"""Create-only transactions for two fixed Search3 preview routes.
 
 No configurable destination, production writes, source execution or overwrite.
 An existing/unknown target requires a separate reviewed update, never takeover.
 """
 from __future__ import annotations
+import ctypes
+from enum import Enum
 import hashlib
 import json
 import os
@@ -15,8 +17,32 @@ import tarfile
 import tempfile
 from contextlib import contextmanager
 
-ROUTE = '/_preview/search3-next-candidate/'
-NAME = 'search3-next-candidate'
+class Preview(Enum):
+    NEXT = 'next'
+    EARLY_INTENT = 'early-intent'
+
+    @property
+    def stem(self):
+        return 'search3-' + self.value
+
+    @property
+    def name_on_site(self):
+        return self.stem + '-candidate'
+
+    @property
+    def route(self):
+        return '/_preview/' + self.name_on_site + '/'
+
+
+ROUTE = Preview.NEXT.route
+NAME = Preview.NEXT.name_on_site
+EARLY_INTENT_PINS = {
+    'source_sha': '8aeee2a4fef23024b95aa5a809ed6a1bd6fa2950',
+    'source_tree': '65d3165fb2ea0d2a8a2c584b11f45055eeea8159',
+    'build_run': 42471104556,
+    'artifact_id': 13612859870,
+    'source_ZIP_sha256': '7e125c03398f5b9823fb768bc7ebdb481364da6e4d3c05d9cf9b816e53f0b9c5',
+}
 REQUIRED = ('index.php', 'search-page-v2.php', 'poisk-turov/index.php', 'assets.php',
     'api-v2.php', 'lead-adapter-v2.php', 'lead-bridge-v1.php', 'lead-receiver-v1.php',
     'lead-price-v1.php', 'lead-idempotency-v1.php', 'analytics-config.php',
@@ -84,7 +110,7 @@ def safe_extract(archive, target):
                 dest.chmod(0o644)
 
 
-def validate(q):
+def validate(q, preview=Preview.NEXT):
     for k in ('source_sha', 'source_tree', 'release_sha'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{40}', q[k]), 'invalid_' + k)
     for k in ('artifact_id', 'build_run', 'deploy_run'):
@@ -93,20 +119,23 @@ def validate(q):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{64}', q[k]), 'invalid_' + k)
     need(q.get('attempt') == 1, 'no_replay')
     need(type(q.get('file_count')) is int and 0 < q['file_count'] < 10000, 'invalid_file_count')
+    if preview is Preview.EARLY_INTENT:
+        need(all(q.get(k) == v for k, v in EARLY_INTENT_PINS.items()), 'early_intent_pins')
 
 
-def verify(root, q):
-    validate(q)
+def verify(root, q, preview=Preview.NEXT):
+    validate(q, preview)
     manifest_bytes = (root / 'control/manifest.json').read_bytes()
     checksums = (root / 'control/payload.sha256').read_bytes()
     need(digest(manifest_bytes) == q['manifest_sha256'] and digest(checksums) == q['payload_sha256'], 'control_hash')
     m = json.loads(manifest_bytes)
-    need(m.get('schema_version') == 1 and m.get('target') == 'search3-next-preview'
-         and m.get('route') == ROUTE and m.get('source_sha') == q['source_sha']
+    need(m.get('schema_version') == 1 and m.get('target') == preview.stem + '-preview'
+         and m.get('route') == preview.route and m.get('source_sha') == q['source_sha']
          and m.get('source_tree_sha') == q['source_tree'], 'manifest_identity')
-    need(m.get('invariants') == INVARIANTS, 'manifest_invariants')
+    need(m.get('invariants') == {**INVARIANTS, 'preview_lead_path': preview.route + 'preview-lead-disabled.php'},
+         'manifest_invariants')
     need(m.get('derived_from') == {'artifact_id': q['artifact_id'], 'build_run': q['build_run'],
-                                 'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'next-route-v1'}, 'derivation_identity')
+                                 'ZIP_sha256': q['source_ZIP_sha256'], 'transform': preview.value + '-route-v1'}, 'derivation_identity')
     expected = {}
     for f in m['files']:
         name = str(safe_name(f['path']))
@@ -118,26 +147,46 @@ def verify(root, q):
     need(checksums == ''.join(f'{expected[n]}  ./{n}\n' for n in sorted(expected)).encode(), 'checksums_inventory')
     need(all(p not in expected for p in ('config.php', 'api.php', 'api-v2.php', 'lead-adapter.php',
         'lead-adapter-v2.php', 'lead-bridge-v1.php', 'lead-receiver-v1.php')), 'protected_payload_endpoint')
+    if preview is Preview.EARLY_INTENT:
+        need(not any(name.startswith('visual-search/') for name in expected), 'next_visual_present')
     need(all(p in expected for p in ('.htaccess', 'preview-lead-disabled.php', 'search-page-v2.php',
         'data/hotel-details-read-v1.php', 'data/hotel-presentation-read-v1.php', 'poisk-turov/index.php')), 'missing_guard_or_catalog')
     need('metrikaCounter=0' in (root / 'payload/search-page-v2.php').read_text(), 'counter_not_zero')
-    need('#^(/_preview/search3-next-candidate)(?:/|$)#' in (root / 'payload/site-path-v1.php').read_text(), 'wrong_route_helper')
+    need('#^(' + preview.route.rstrip('/') + ')(?:/|$)#' in (root / 'payload/site-path-v1.php').read_text(), 'wrong_route_helper')
     return expected
 
 
+def rename_new(source, target):
+    # On Linux, plain rename can replace an empty directory created after the
+    # preflight. Refuse any target at the atomic rename itself.
+    current_directory = -100  # AT_FDCWD
+    no_replace = 1  # RENAME_NOREPLACE
+    rename = ctypes.CDLL(None, use_errno=True).renameat2
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    if rename(current_directory, os.fsencode(source), current_directory, os.fsencode(target), no_replace):
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), str(target))
+
+
 class Site:
-    def __init__(self, root):
-        self.root = Path(root); self.parent = self.root / '_preview'; self.target = self.parent / NAME
+    def __init__(self, root, preview=Preview.NEXT):
+        self.preview = preview
+        self.root = Path(root); self.parent = self.root / '_preview'; self.target = self.parent / preview.name_on_site
         for p in (self.root, self.parent):
             need(p.is_dir() and not p.is_symlink(), 'invalid_site_root')
         need(self.root.name == 'anytoour.ru', 'wrong_project')
-        self.owner = self.parent / '.search3-next-owner'
+        self.owner = self.parent / ('.' + preview.stem + '-owner')
         need(not self.target.is_symlink() and not self.owner.is_symlink(), 'target_or_owner_link')
 
     @contextmanager
     def lock(self):
-        p = self.parent / '.search3-next-lock'
-        need(not (self.parent / '.search3-site-lock').exists() and not (self.parent / '.search3-local-lock').exists() and not (self.parent / '.search3-v17-lock').exists() and not (self.parent / '.search3-v18-lock').exists(), 'existing_preview_busy')
+        p = self.parent / ('.' + self.preview.stem + '-lock')
+        busy = ['site', 'local', 'v17', 'v18']
+        if self.preview is Preview.EARLY_INTENT:
+            busy += ['next', 'design-v2']
+        exists = os.path.lexists if self.preview is Preview.EARLY_INTENT else Path.exists
+        need(not any(exists(self.parent / ('.search3-' + name + '-lock')) for name in busy),
+             'existing_preview_busy')
         p.mkdir(mode=0o700)
         try:
             yield
@@ -154,8 +203,13 @@ class Site:
                 need(p.is_file(), 'protected_not_file'); result[name] = digest(p.read_bytes())
             else:
                 need(name not in REQUIRED, 'protected_missing'); result[name] = None
-        for name in ('search3-site-candidate', 'search3-candidate', 'search3-local-candidate', 'search3-v17-candidate', 'search3-v18-candidate'):
+        siblings = ['search3-site-candidate', 'search3-candidate', 'search3-local-candidate', 'search3-v17-candidate', 'search3-v18-candidate']
+        if self.preview is Preview.EARLY_INTENT:
+            siblings += [Preview.NEXT.name_on_site, 'search3-design-v2-candidate']
+        for name in siblings:
             p = self.parent / name
+            if self.preview is Preview.EARLY_INTENT:
+                need(not p.is_symlink(), 'protected_link')
             result['preview:' + name] = digest(json_bytes(inventory(p))) if p.exists() else None
         return result
 
@@ -166,7 +220,7 @@ class Site:
 
     def binding(self, q, remove=False):
         name = q['name']; nonce = q['nonce']
-        need(re.fullmatch(r'search3-next-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt', name)
+        need(re.fullmatch(re.escape(self.preview.stem) + r'-bind-[1-9][0-9]*-[0-9a-f]{24}\.txt', name)
              and re.fullmatch('[0-9a-f]{64}', nonce), 'binding_input')
         p = self.parent / name
         if remove:
@@ -178,27 +232,42 @@ class Site:
         return {'status': 'removed' if remove else 'bound'}
 
     def receipt(self, q):
-        return self.parent / ('.search3-next-receipt-' + str(q['deploy_run']))
+        return self.parent / ('.' + self.preview.stem + '-receipt-' + str(q['deploy_run']))
 
     def activate(self, q):
-        validate(q); archive = Path(q['archive'])
-        need(re.fullmatch(r'/tmp/search3-next\.[A-Za-z0-9_-]+\.tar\.gz', str(archive)), 'upload_path')
+        validate(q, self.preview); archive = Path(q['archive'])
+        need(re.fullmatch('/tmp/' + re.escape(self.preview.stem) + r'\.[A-Za-z0-9_-]+\.tar\.gz', str(archive)), 'upload_path')
         need(archive.is_file() and not archive.is_symlink() and digest(archive.read_bytes()) == q['archive_sha256'], 'upload_digest')
-        stage = self.parent / ('.search3-next-stage-' + str(q['deploy_run']))
+        stage = self.parent / ('.' + self.preview.stem + '-stage-' + str(q['deploy_run']))
         with self.lock():
             need(self.snapshot() == q['before'], 'predecessor_changed')
             need(not self.target.exists() and not self.target.is_symlink() and not self.owner.exists(), 'create_only_target_exists')
             receipt = self.receipt(q)
-            need(not receipt.exists() and not receipt.is_symlink(), 'previous_outcome_unknown')
+            need(not os.path.lexists(receipt) and not os.path.lexists(stage), 'previous_outcome_unknown')
             receipt.mkdir(mode=0o700)
             (receipt / 'request.json').write_bytes(json_bytes(q))
-            safe_extract(archive, stage)
             try:
-                files = verify(stage, q)
+                safe_extract(archive, stage)
+                files = verify(stage, q, self.preview)
                 need(self.snapshot() == q['before'], 'predecessor_changed')
-                (stage / 'payload').rename(self.target)
-                self.owner.write_bytes(json_bytes({'run': q['deploy_run'], 'source': q['source_sha'],
-                    'digest': digest(json_bytes(files)), 'status': 'activated'})); self.owner.chmod(0o600)
+                owner = json_bytes({'run': q['deploy_run'], 'source': q['source_sha'],
+                    'digest': digest(json_bytes(files)), 'status': 'activated'})
+                if self.preview is Preview.EARLY_INTENT:
+                    # Prepare a complete owner record before making the directory visible.
+                    owner_stage = stage / 'owner.json'
+                    owner_stage.write_bytes(owner); owner_stage.chmod(0o600)
+                    rename_new(stage / 'payload', self.target)
+                    try:
+                        rename_new(owner_stage, self.owner)
+                    except OSError:
+                        # No other operation may claim these bytes. Leave a receipt
+                        # and quarantine only the exact tree installed by this run.
+                        if inventory(self.target) == files:
+                            rename_new(self.target, receipt / 'failed-payload')
+                        raise
+                else:
+                    (stage / 'payload').rename(self.target)
+                    self.owner.write_bytes(owner); self.owner.chmod(0o600)
                 shutil.copyfile(stage / 'control/manifest.json', receipt / 'manifest.json')
                 need(inventory(self.target) == files and self.protected() == q['before']['protected'], 'activation_readback')
                 return {'status': 'activated', 'files': len(files)}
@@ -208,7 +277,7 @@ class Site:
                 archive.unlink(missing_ok=True)
 
     def finish(self, q, rollback=False):
-        validate(q)
+        validate(q, self.preview)
         with self.lock():
             owner = json.loads(self.owner.read_text()) if self.owner.exists() else None
             if owner is None:
@@ -224,20 +293,22 @@ class Site:
             else:
                 need(self.protected() == q['before']['protected'], 'production_or_existing_preview_drift')
                 owner['status'] = 'published'; self.owner.write_bytes(json_bytes(owner))
-                result = {'status': 'published', 'source_sha': q['source_sha'], 'route': ROUTE, 'existing_preview_unchanged': True}
+                result = {'status': 'published', 'source_sha': q['source_sha'], 'route': self.preview.route, 'existing_preview_unchanged': True}
             (self.receipt(q) / 'result.json').write_bytes(json_bytes(result))
             return result
 
 
 def main():
-    need(len(sys.argv) == 3 and len(sys.argv[2]) < 131072, 'usage')
-    action = sys.argv[1]; q = json.loads(sys.argv[2]); site = Site(Path.home() / 'www/anytoour.ru')
+    need(len(sys.argv) in (3, 4) and len(sys.argv[2]) < 131072, 'usage')
+    need(len(sys.argv) == 3 or sys.argv[3] == Preview.EARLY_INTENT.value, 'fixed_target')
+    preview = Preview.EARLY_INTENT if len(sys.argv) == 4 else Preview.NEXT
+    action = sys.argv[1]; q = json.loads(sys.argv[2]); site = Site(Path.home() / 'www/anytoour.ru', preview)
     if action == 'snapshot':
         result = site.snapshot()
     elif action in ('bind', 'unbind'):
         result = site.binding(q, action == 'unbind')
     elif action == 'upload':
-        fd, name = tempfile.mkstemp(prefix='search3-next.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
+        fd, name = tempfile.mkstemp(prefix=preview.stem + '.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
         result = {'archive': name}
     elif action == 'activate':
         result = site.activate(q)

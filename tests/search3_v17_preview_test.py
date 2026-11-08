@@ -139,6 +139,67 @@ class Contracts(unittest.TestCase):
             event=copy.deepcopy(self.event); event['comment']['body']=body
             with self.subTest(body=body),self.assertRaises(ValueError): pub.checked_request(event,self.env)
 
+    def test_early_intent_command_has_its_own_issue_and_exact_artifact(self):
+        event = copy.deepcopy(self.event)
+        pins = remote.EARLY_INTENT_PINS
+        body = f"{pub.EARLY_INTENT_PREFIX}{pins['source_sha']} {'b' * 40} {pins['build_run']} {pins['artifact_id']}"
+        event['issue']['number'] = pub.EARLY_INTENT_ISSUE
+        event['comment']['body'] = body
+        self.assertEqual(pub.checked_request(event, self.env)['artifact_id'], pins['artifact_id'])
+        for invalid in (self.event['comment']['body'], body + ' /poisk-turov/',
+                        body.replace(str(pins['artifact_id']), '999'), body.replace(pins['source_sha'], 'a' * 40)):
+            event['comment']['body'] = invalid
+            with self.subTest(body=invalid), self.assertRaises(ValueError):
+                pub.checked_request(event, self.env)
+        event['issue']['number'] = 4217
+        event['comment']['body'] = body
+        with self.assertRaises(ValueError):
+            pub.checked_request(event, self.env)
+
+    def test_early_intent_derived_transaction_preserves_sibling_and_can_rollback(self):
+        pins = remote.EARLY_INTENT_PINS
+        preview = remote.Preview.EARLY_INTENT
+        manifest = self.source / 'control/manifest.json'
+        control = json.loads(manifest.read_bytes())
+        control.update(source_sha=pins['source_sha'], source_tree_sha=pins['source_tree'])
+        manifest.write_bytes(remote.json_bytes(control))
+        visual = self.source / 'payload/visual-search'
+        visual.mkdir()
+        (visual / 'index.php').write_text('<?php')
+        (visual / 'index.html').write_text('NEXT fixture')
+        target = self.root / 'early-derived'
+        q, archive = pub.derive(self.source, target, {**request(), **pins}, pins['source_ZIP_sha256'], preview)
+        before_files = remote.inventory(self.source / 'payload')
+        after_files = remote.verify(target, q, preview)
+        self.assertEqual(before_files.keys() - after_files.keys(), {'visual-search/index.php', 'visual-search/index.html'})
+        self.assertEqual({k for k in after_files if before_files[k] != after_files[k]}, {'site-path-v1.php'})
+        with self.assertRaisesRegex(ValueError, 'early_intent_pins'):
+            remote.verify(target, {**q, 'artifact_id': 123}, preview)
+        with self.assertRaisesRegex(ValueError, 'manifest_identity'):
+            remote.verify(target, q)
+        site = remote.Site(self.site.root, preview)
+        self.site.target.mkdir()
+        (self.site.target / 'keep.txt').write_text('existing NEXT preview')
+        self.assertIn('preview:search3-next-candidate', site.protected())
+        with tempfile.NamedTemporaryFile(prefix='search3-early-intent.', suffix='.tar.gz', dir='/tmp', delete=False) as upload:
+            upload.write(archive)
+            self.upload = Path(upload.name)
+        before = site.snapshot()
+        q.update(archive=upload.name, before=before)
+        self.assertEqual(site.activate(q)['status'], 'activated')
+        self.assertEqual(remote.inventory(site.target), after_files)
+        self.assertEqual(site.finish(q)['route'], preview.route)
+        self.assertEqual(site.finish(q, rollback=True)['status'], 'rolled_back_to_absence')
+        self.assertEqual(site.snapshot(), before)
+
+    def test_atomic_create_refuses_existing_empty_directory(self):
+        source = self.root / 'source-directory'; source.mkdir()
+        target = self.root / 'occupied-directory'; target.mkdir()
+        with self.assertRaises(FileExistsError):
+            remote.rename_new(source, target)
+        self.assertTrue(source.is_dir())
+        self.assertTrue(target.is_dir())
+
     def test_exact_one_file_derivative_and_determinism(self):
         before=remote.inventory(self.source/'payload'); after=remote.inventory(self.root/'derived/payload')
         self.assertEqual(set(before),set(after))
