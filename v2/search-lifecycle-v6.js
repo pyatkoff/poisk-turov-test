@@ -144,7 +144,7 @@ async function boot(){
   if(validation){show(validation);return;}
   const queuedGeneration=generation;
   setTimeout(()=>{
-   if(generation===queuedGeneration)submit({historyMode:'replace'});
+   if(generation===queuedGeneration)return submit({historyMode:'replace'});
   },0);
  }
 }
