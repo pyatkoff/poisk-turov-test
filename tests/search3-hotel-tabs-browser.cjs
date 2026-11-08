@@ -345,7 +345,8 @@ async function run(engine, width, height) {
     assert.equal(await recoveryImage.isVisible(), false, 'a failed photo does not leave a misleading old image');
     assert.equal(await originalPhoto.getAttribute('href'), recoveryImages.missing, 'original link belongs to the failed current image');
     await recovery.locator(`.hotel-gallery-thumb img[src="${recoveryImages.missing}"]`).waitFor({ state: 'detached' });
-    await recovery.screenshot({ path: path.join(output, `${engine}-${width}x${height}-photo-error.png`), animations: 'disabled' });
+    // A screenshot can wait for document readiness while the slow photo is held.
+    fs.writeFileSync(path.join(output, `${engine}-${width}x${height}-photo-error.html`), await recovery.content());
     for (const action of await recoveryViewer.locator('button:visible, a:visible').all()) {
       const box = await action.boundingBox();
       assert.ok(box.height >= 44 && box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'photo recovery actions remain reachable');
