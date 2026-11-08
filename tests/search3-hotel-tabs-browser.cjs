@@ -27,6 +27,8 @@ async function run(engine, width, height) {
   const recoveryImages = { missing: origin + '/fixture-gallery-missing.svg', slow: origin + '/fixture-gallery-slow.svg', good: origin + '/fixture-gallery-good.svg' };
   let releaseSlowPhoto, slowRequests = 0, slowPhotoTimer, slowPhotoExpired = false;
   const slowPhotoGate = new Promise(resolve => { releaseSlowPhoto = resolve; }), slowReplies = [];
+  let releaseMissingPhoto;
+  const missingPhotoGate = new Promise(resolve => { releaseMissingPhoto = resolve; });
   const scenarioQuery = new URLSearchParams(query);
   if (width === 390) {
     scenarioQuery.set('child_count', '3');
@@ -37,7 +39,11 @@ async function run(engine, width, height) {
     const request = route.request(), url = new URL(request.url());
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (url.origin !== origin) return route.abort();
-    if (url.href === recoveryImages.missing) return route.fulfill({ status: 404, body: 'Missing fictional photo' });
+    if (url.href === recoveryImages.missing) {
+      // Let the viewer capture the pending thumbnail before the card removes it on error.
+      await missingPhotoGate;
+      return route.fulfill({ status: 404, body: 'Missing fictional photo' });
+    }
     if (url.href === recoveryImages.good) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: svg('#c7dfb5') });
     if (url.href === recoveryImages.slow) {
       slowRequests++;
@@ -333,6 +339,8 @@ async function run(engine, width, height) {
     await recovery.keyboard.press('Tab');
     assert.equal(await closePhotos.evaluate(el => el === document.activeElement), true, 'forward Tab wraps to the dialog close action');
     await nextPhoto.click();
+    assert.equal(await originalPhoto.getAttribute('href'), recoveryImages.missing, 'viewer selects the pending image');
+    releaseMissingPhoto();
     await recoveryStatus.getByText('Не удалось загрузить фото.', { exact: false }).waitFor();
     assert.equal(await recoveryImage.isVisible(), false, 'a failed photo does not leave a misleading old image');
     assert.equal(await originalPhoto.getAttribute('href'), recoveryImages.missing, 'original link belongs to the failed current image');
@@ -516,7 +524,7 @@ async function run(engine, width, height) {
     }
     fs.writeFileSync(path.join(output, `${engine}-${width}-failure.json`), JSON.stringify({ error: String(error), errors, failures, calls: calls.map(({ page: _, ...call }) => call) }, null, 2));
     throw error;
-  } finally { clearTimeout(slowPhotoTimer); releaseSlowPhoto(); await browser.close(); }
+  } finally { clearTimeout(slowPhotoTimer); releaseSlowPhoto(); releaseMissingPhoto(); await browser.close(); }
 }
 (async () => {
   for (const width of [1440, 375, 390, 430]) await run('chromium', width, width === 390 ? 500 : 900);
