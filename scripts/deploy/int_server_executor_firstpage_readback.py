@@ -37,8 +37,10 @@ V4_CGI_RESTORE_MODE = 'anex-v4-cgi-restore-only'
 V4_CGI_RESTORE_OPERATION = 'int-anex-v4-cgi-restore-20261110-v1'
 V4_CGI_CONT_MODE = 'anex-v4-cgi-retained-continuation'
 V4_CGI_CONT_OPERATION = 'int-anex-v4-cgi-retained-continuation-20261110-v1'
+V4_CGI_LOG_MODE = 'anex-v4-cgi-errorlog-incident'
+V4_CGI_LOG_OPERATION = 'int-anex-v4-cgi-errorlog-20261110-v1'
 MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE,
-         V4_CGI_MODE, V4_CGI_RESTORE_MODE, V4_CGI_CONT_MODE)
+         V4_CGI_MODE, V4_CGI_RESTORE_MODE, V4_CGI_CONT_MODE, V4_CGI_LOG_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -68,6 +70,7 @@ def register_parser(core) -> None:
             V4_CGI_MODE: (V4_SOURCE, V4_CGI_OPERATION),
             V4_CGI_RESTORE_MODE: (V4_SOURCE, V4_CGI_RESTORE_OPERATION),
             V4_CGI_CONT_MODE: (V4_SOURCE, V4_CGI_CONT_OPERATION),
+            V4_CGI_LOG_MODE: (V4_SOURCE, V4_CGI_LOG_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -471,6 +474,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 
 def remote_with_readback(core, mode: str = MODE) -> str:
+    if mode == V4_CGI_LOG_MODE: return remote_with_v4_cgi_errorlog(core)
     if mode == V4_CGI_CONT_MODE: return remote_with_v4_cgi_continuation(core)
     if mode in (V4_CGI_MODE, V4_CGI_RESTORE_MODE): return remote_with_v4_cgi_readback(core, mode)
     if mode == V4_MAP_MODE: return remote_with_v4_map_readback(core)
@@ -3002,3 +3006,176 @@ def remote_with_v4_cgi_continuation(core):
     remote=remote.replace(collectors,"    if mode not in ('"+V4_CGI_CONT_MODE+"','reconcile',")
     ast.parse(remote);return remote
 
+
+
+# One fixed ANEX metadata-probe incident candidate; never discover log locations.
+REMOTE_V4_CGI_LOG_READER = r'''
+import datetime as v4log_dt
+import stat as v4log_stat
+
+V4_CGI_LOG_CHILD = 'int-anex-v4-cgi-retained-continuation-20261110-v1'
+V4_CGI_LOG_CHILD_SHA = 'b67f629f2e6813baa8298d8553edb1a4d580824888b800878a388d37a80371bc'
+V4_CGI_LOG_START = 1794325959
+V4_CGI_LOG_END = 1794325975
+V4_CGI_LOG_MAX_BYTES = 262144
+V4_CGI_LOG_MAX_LINES = 2048
+
+def v4_log_no_links(path,actor):
+    for parent in reversed(path.parents):
+        st=os.lstat(parent)
+        sticky_root=st.st_uid==0 and st.st_mode&0o1000
+        if (not v4log_stat.S_ISDIR(st.st_mode) or st.st_uid not in (0,actor)
+                or st.st_mode&0o022 and not sticky_root):
+            raise ValueError('v4_log_parent_contract')
+
+def v4_log_facts(st):
+    return (st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode,st.st_nlink,
+        st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+
+def v4_log_read(path,actor,maximum,tail=False,permissions=None):
+    v4_log_no_links(path,actor)
+    before=os.lstat(path)
+    if (not v4log_stat.S_ISREG(before.st_mode) or before.st_uid!=actor
+            or before.st_nlink!=1 or before.st_mode&0o022
+            or permissions is not None and before.st_mode&0o777!=permissions
+            or not tail and not 0<before.st_size<=maximum):
+        raise ValueError('v4_log_file_contract')
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        with os.fdopen(fd,'rb',closefd=False) as stream:
+            if v4_log_facts(os.fstat(fd))!=v4_log_facts(before):
+                raise ValueError('v4_log_file_changed')
+            offset=max(0,before.st_size-maximum) if tail else 0
+            stream.seek(offset);raw=stream.read(min(maximum,before.st_size))
+            if (len(raw)!=before.st_size-offset
+                    or v4_log_facts(os.fstat(fd))!=v4_log_facts(before)
+                    or v4_log_facts(os.lstat(path))!=v4_log_facts(before)):
+                raise ValueError('v4_log_file_changed')
+    finally: os.close(fd)
+    return raw,offset>0
+
+def v4_log_timestamp(value,zone):
+    if zone in ('UTC','GMT'): tz=v4log_dt.timezone.utc
+    elif zone in ('Europe/Moscow','Europe/Kaliningrad'):
+        try:
+            from zoneinfo import ZoneInfo
+            tz=ZoneInfo(zone)
+        except (ImportError,KeyError): return None
+    else:
+        match=re.fullmatch(r'([+-])(\d{2}):?(\d{2})',zone)
+        if not match: return None
+        hours,minutes=int(match[2]),int(match[3])
+        if hours>23 or minutes>59: return None
+        offset=v4log_dt.timedelta(hours=hours,minutes=minutes)
+        tz=v4log_dt.timezone(offset if match[1]=='+' else -offset)
+    try:
+        return int(v4log_dt.datetime.strptime(value,'%d-%b-%Y %H:%M:%S').replace(tzinfo=tz).timestamp())
+    except ValueError: return None
+
+def v4_log_category(severity,message):
+    if 'Permission denied' in message: return 'permission_denied'
+    if 'open_basedir restriction in effect' in message: return 'open_basedir'
+    if re.search(r'Allowed memory size of \d+ bytes exhausted',message): return 'memory_exhausted'
+    if re.search(r'Maximum execution time of \d+ seconds exceeded',message): return 'execution_timeout'
+    if 'failed to open stream' in message: return 'open_stream_failed'
+    if 'Call to undefined function ' in message: return 'undefined_function'
+    if severity=='Parse error': return 'parse_error'
+    if re.match(r'Uncaught (?:Error|Exception|TypeError|RuntimeException)\b',message): return 'uncaught_error'
+    return 'other_php_diagnostic'
+
+def v4_cgi_errorlog_incident():
+    actor=os.geteuid()
+    report={'status':'hold','stage':'child_receipt','candidate':'project_error_log',
+        'own_http_requests':0,'own_api_writes':0,'own_supplier_requests':0,'own_database_operations':0,
+        'own_session_content_reads':0,'own_session_writes':0,'actor_escalation':False,
+        'original_http_status':'unknown','unique_request_attribution':False,
+        'original_supplier_calls':'unknown','original_cgi_startup_side_effects':'unverified',
+        'full_price_verified_current':False,'candidate_read_invoked':False,
+        'record_utc_window':[V4_CGI_LOG_START,V4_CGI_LOG_END]}
+    try:
+        child=private/V4_CGI_LOG_CHILD
+        v4_log_no_links(child/'result.json',actor)
+        for parent in (private,child):
+            st=os.lstat(parent)
+            if not v4log_stat.S_ISDIR(st.st_mode) or st.st_uid!=actor or st.st_mode&0o777!=0o700:
+                raise ValueError('v4_log_private_scope')
+        raw,_=v4_log_read(child/'result.json',actor,16384,permissions=0o600)
+        saved=json.loads(raw)
+        canonical=json.dumps(saved,sort_keys=True,separators=(',',':')).encode()
+        if hashlib.sha256(canonical).hexdigest()!=V4_CGI_LOG_CHILD_SHA:
+            raise ValueError('v4_log_child_receipt_pin')
+        inner=saved.get('anex_v4_cgi_continuation',{})
+        if (saved.get('source_sha')!='6dcfb5053793caba4f353facfa7a899a30df2d17'
+                or saved.get('operation_id')!=V4_CGI_LOG_CHILD
+                or saved.get('mode')!='anex-v4-cgi-retained-continuation' or saved.get('status')!='complete'
+                or inner.get('reason')!='v4_cgi_cont_metadata_absent' or inner.get('metadata_present') is not False
+                or inner.get('retained_read_invoked') is not False or inner.get('api_original_verified') is not True
+                or inner.get('gate_closed_verified') is not True):
+            raise ValueError('v4_log_child_state')
+        report.update(child_receipt_verified=True,child_result_sha256=V4_CGI_LOG_CHILD_SHA)
+        report['stage']='candidate_tail';candidate=project/'error_log'
+        try: os.lstat(candidate)
+        except FileNotFoundError:
+            report.update(candidate_present=False,reason='v4_log_candidate_absent')
+            return report
+        report['candidate_present']=True
+        report['candidate_read_invoked']=True
+        raw,partial=v4_log_read(candidate,actor,V4_CGI_LOG_MAX_BYTES,tail=True)
+        tail_read_bytes=len(raw)
+        if partial: raw=raw.split(b'\n',1)[1] if b'\n' in raw else b''
+        lines=raw.splitlines()
+        if len(lines)>V4_CGI_LOG_MAX_LINES: raise ValueError('v4_log_line_bound')
+        api=str(runtime/'api-anex-search3-preview.php')
+        pattern=re.compile(r'^\[(\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2}) ([^\]\s]{1,64})\] PHP '
+            r'(Warning|Fatal error|Parse error|Notice|Deprecated|Strict Standards|Recoverable fatal error): '
+            r'(.*) in '+re.escape(api)+r'(?: on line ([1-9]\d{0,8})|:([1-9]\d{0,8}))$')
+        categories={};severities={};diagnostics={};matches=0;unproven=0;undecodable=0;line_bound=0
+        for rawline in lines:
+            try: line=rawline.decode('utf-8')
+            except UnicodeDecodeError: undecodable+=1;continue
+            match=pattern.fullmatch(line)
+            if not match: continue
+            timestamp=v4_log_timestamp(match[1],match[2])
+            if timestamp is None: unproven+=1;continue
+            if not V4_CGI_LOG_START<=timestamp<V4_CGI_LOG_END: continue
+            matches+=1;category=v4_log_category(match[3],match[4])
+            categories[category]=categories.get(category,0)+1
+            severities[match[3]]=severities.get(match[3],0)+1
+            api_line=int(match[5] or match[6])
+            if api_line>10000: line_bound+=1;continue
+            key=(api_line,match[3],category);diagnostics[key]=diagnostics.get(key,0)+1
+        report.update(status='scoped_candidate_checked',tail_bytes_read=tail_read_bytes,
+            parsed_tail_bytes=len(raw),tail_lines=len(lines),undecodable_lines=undecodable,
+            partial_first_line_discarded=partial,exact_api_records=matches,category_counts=categories,
+            severity_counts=severities,unproven_timezone_records=unproven,
+            diagnostic_counts=[{'api_line':line,'severity':severity,'category':category,'count':count}
+                for (line,severity,category),count in sorted(diagnostics.items())],
+            out_of_bound_api_line_records=line_bound,api_line_basis='recorded_runtime_api_line',
+            coverage='bounded_candidate_tail_only',record_absence_proves_http_absence=False)
+    except Exception as error:
+        reason=str(error)
+        if isinstance(error,PermissionError): reason='v4_log_permission_denied'
+        elif isinstance(error,FileNotFoundError): reason='v4_log_required_path_absent'
+        elif not re.fullmatch(r'v4_log_[a-z_]{1,64}',reason): reason='v4_log_guard_hold'
+        report['reason']=reason
+    return report
+'''
+
+REMOTE_V4_CGI_LOG_DISPATCH = r'''    if mode=='anex-v4-cgi-errorlog-incident':
+        if operation!='int-anex-v4-cgi-errorlog-20261110-v1' or source!='6dcfb5053793caba4f353facfa7a899a30df2d17':
+            fail('v4_log_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,session_writes=0,cache_writes=0)
+        result['anex_v4_cgi_errorlog_incident']=v4_cgi_errorlog_incident()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+'''
+
+
+def remote_with_v4_cgi_errorlog(core):
+    remote=core.REMOTE;definition='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n";collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'v4_log_registration_source_drift')
+    remote=remote.replace(definition,REMOTE_V4_CGI_LOG_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_V4_CGI_LOG_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+V4_CGI_LOG_MODE+"','reconcile',")
+    ast.parse(remote);return remote
