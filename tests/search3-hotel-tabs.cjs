@@ -12,11 +12,11 @@ async function setup(suffix = '', options = {}) {
   const button = {}, calls = [], profileReads = [], renders = [], timers = [], events = [], status = {}, results = { querySelector: () => null };
   const form = { elements, querySelector: selector => selector === '.primary' ? button : null, querySelectorAll: () => [], addEventListener() {} };
   const nodes = { tourSearch: form, status, results, selectedTour: {}, resultsTools: {} };
-  const location = new URL('https://anytoour.ru' + (options.path || path) + '?' + new URLSearchParams(fields) + suffix);
+  const location = new URL('https://anytoour.ru' + (options.path || path) + (options.catalogReady ? '' : '?' + new URLSearchParams(fields)) + suffix);
   const document = { body: { classList: { contains: () => true } }, getElementById: id => nodes[id] };
-  const window = { location, history: { state: null, replaceState() {}, pushState() {} }, addEventListener() {}, dispatchEvent: e => events.push(e.type),
+  const window = { location, history: { state: null, replaceState() {}, pushState(_state, _title, url) { if (options.catalogReady) location.href = url; } }, addEventListener() {}, dispatchEvent: e => events.push(e.type),
     V2Runtime: { setSearchId() {}, api: async (action, params) => { calls.push({ action, params }); if (options.fail) throw new Error('expired'); return action === 'search_start' ? { searchId: 42 } : action==='search_results'&&!options.empty ? [{id:101,tours:[{id:'exact-offer',provider:'tourvisor',price:125000}]}] : []; } },
-    V2Results: { render(list) { renders.push(list); } }, V2Catalogs: { renderChildAges() {}, init: async () => {}, updateServiceCount() {} },
+    V2Results: { render(list) { renders.push(list); } }, V2Catalogs: { renderChildAges() {}, init: async () => options.catalogReady, updateServiceCount() {} },
     Search3CanonicalProfilesV1: { current: () => options.noProfileOwner ? null : ({ readProfile: async id => { profileReads.push(id); if(options.profileRead)return options.profileRead(id); return {id}; } }) } };
   const context = { window, document, URL, URLSearchParams, Intl, console, Date, FormData: class { get(key) { return elements[key]?.value || ''; } getAll(key) { const value = this.get(key); return value ? [value] : []; } }, CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init.detail; } }, setTimeout: fn => (timers.push(fn), timers.length), clearTimeout() {}, requestAnimationFrame() {} };
   vm.runInNewContext(source, context);
@@ -24,6 +24,16 @@ async function setup(suffix = '', options = {}) {
   return { lifecycle: window.V2SearchLifecycle, calls, profileReads, renders, timers, events, status };
 }
 (async () => {
+  let finishCatalogs;
+  const catalogReady = new Promise(resolve => { finishCatalogs = resolve; });
+  const early = await setup('', { catalogReady });
+  await early.lifecycle.submit();
+  finishCatalogs();
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  assert.equal(early.timers.length, 1, 'late catalog boot must not queue another search from the submitted URL');
+  assert.deepEqual(early.calls.map(call => call.action), ['search_start']);
+  assert.equal(early.lifecycle.searchId, 42);
+
   const fresh = await setup('&utm_source=owner&yclid=example');
   assert.equal(fresh.timers.length, 1, 'first direct URL retains its legitimate initial submit');
   await fresh.timers[0]();

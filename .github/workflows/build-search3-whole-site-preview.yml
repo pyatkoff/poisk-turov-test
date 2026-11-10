@@ -64,7 +64,7 @@ jobs:
   build-preview-artifact:
     # Build once on the working PR; release/docs retain that exact source artifact.
     if: ${{ !github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check out exact PR head
