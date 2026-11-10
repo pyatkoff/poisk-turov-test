@@ -1,0 +1,123 @@
+name: Search3 one authorized live capture
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [release/search3-production-ready-v1]
+    paths:
+      - '.github/workflows/search3-capture-live-once.yml'
+      - 'tools/search3-capture/run-live-once.cjs'
+      - 'tools/search3-capture/seal-live-evidence.cjs'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: search3-live-capture-20261110-v1
+  cancel-in-progress: false
+
+jobs:
+  one-live-session:
+    if: >-
+      ${{ github.event.number == 5009 && github.event.pull_request.draft &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.ref == 'verify/search3-capture-offline-20261110' &&
+          github.event.before == '49e6af9780d0e48d1a7d4ffd55f655652c75e5a8' &&
+          github.run_attempt == '1' &&
+          contains(github.event.pull_request.body, format('search3-live-approved-head:{0}', github.event.pull_request.head.sha)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CAPTURE_TOOL_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
+      LIVE_ENCRYPTED_DIR: ${{ runner.temp }}/search3-live-encrypted-20261110
+    steps:
+      - name: Check out the exact authorized head
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify the unchanged recorder and bounded runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check <<'SHA256'
+          ff6986e260b00cf8f3f755a61cf70ea2c4ff2a3e17c0700e49fbec66b9f9dd62  tools/search3-capture/recorder.cjs
+          96b8738ef4ae846e3d6b878157a5757caf3f01f71c05b28b83b8c45880d35cd4  tools/search3-capture/run-live-once.cjs
+          e9706c3090fb94531c78bf26c09f88346a674cd6d13db3faa2033ef59202ea69  tools/search3-capture/seal-live-evidence.cjs
+          SHA256
+          node --check tools/search3-capture/run-live-once.cjs
+          node --check tools/search3-capture/seal-live-evidence.cjs
+      - name: Require the exact PR, original attempt, no earlier live run and successful Security guard
+        id: admission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'JS'
+          const base='https://api.github.com/repos/pyatkoff/poisk-turov-test';
+          const sha=process.env.CAPTURE_TOOL_SOURCE_SHA,run=Number(process.env.GITHUB_RUN_ID);
+          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Cache-Control':'no-cache'};
+          const read=async suffix=>{const r=await fetch(base+suffix,{headers,signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Admission read failed: '+r.status);return r.json();};
+          (async()=>{
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1'||!Number.isSafeInteger(run)||!sha)throw Error('Original attempt required');
+            const pr=await read('/pulls/5009');
+            if(!pr.draft||pr.state!=='open'||pr.merged||pr.head.sha!==sha||pr.base.sha!=='04b48814e34b245b8b11018c2c2340bbc5a3ec18'||!pr.body.includes('search3-live-approved-head:'+sha))throw Error('PR admission changed');
+            const files=await read('/pulls/5009/files?per_page=100');
+            const expected=['.github/workflows/search3-capture-offline.yml','.github/workflows/search3-capture-live-once.yml','tools/search3-capture/recorder.cjs','tools/search3-capture/verify-offline.cjs','tools/search3-capture/run-live-once.cjs','tools/search3-capture/seal-live-evidence.cjs'];
+            if(files.length!==6||files.some(f=>f.status!=='added'||!expected.includes(f.filename)))throw Error('PR paths changed');
+            const commit=await read('/commits/'+sha);
+            if(commit.parents.length!==1||commit.parents[0].sha!=='49e6af9780d0e48d1a7d4ffd55f655652c75e5a8')throw Error('Parent changed');
+            const current=await read('/actions/runs/'+run);
+            const prior=await read('/actions/workflows/'+current.workflow_id+'/runs?branch=verify%2Fsearch3-capture-offline-20261110&per_page=100');
+            if(prior.total_count>100||prior.workflow_runs.some(r=>r.id!==run))throw Error('Live operation already has another run; no replay');
+            const deadline=Date.now()+120000;
+            for(;;){
+              const rs=await read('/actions/runs?head_sha='+sha+'&per_page=100');
+              if(rs.total_count>100)throw Error('Run inventory incomplete');
+              if(rs.workflow_runs.some(r=>r.run_attempt!==1))throw Error('Rerun detected');
+              const guard=rs.workflow_runs.filter(r=>r.name==='Security guard');
+              if(guard.length>1)throw Error('Multiple guard runs');
+              if(guard.length===1&&guard[0].status==='completed'){
+                if(guard[0].conclusion!=='success')throw Error('Security guard did not pass');
+                console.log('ONE_ORIGINAL_LIVE_OPERATION_ADMITTED');return;
+              }
+              if(Date.now()>deadline)throw Error('Security guard not confirmed in budget');
+              await new Promise(resolve=>setTimeout(resolve,4000));
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          JS
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install the already accepted pinned browser tooling
+        run: npm install --prefix "$RUNNER_TEMP/capture-tools" --ignore-scripts --no-audit --no-fund --no-save playwright@1.55.0
+      - name: Inspect Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/capture-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
+      - name: Install only missing browser system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/capture-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Chromium
+        run: "$RUNNER_TEMP/capture-tools/node_modules/.bin/playwright install chromium"
+      - name: One form submission and one selected tour within the external time limit
+        env:
+          NODE_PATH: ${{ runner.temp }}/capture-tools/node_modules
+          SEARCH3_LIVE_OPERATION: search3-live-capture-20261110-v1
+        run: timeout --signal=TERM --kill-after=5s 295s node tools/search3-capture/run-live-once.cjs
+      - name: Encrypt the original evidence with the owner's public key
+        if: ${{ always() && steps.admission.outcome == 'success' }}
+        id: seal
+        run: node tools/search3-capture/seal-live-evidence.cjs
+      - name: Retain encrypted evidence only
+        if: ${{ always() && steps.seal.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-live-private-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-live-encrypted-20261110/
+          if-no-files-found: error
+          retention-days: 30
