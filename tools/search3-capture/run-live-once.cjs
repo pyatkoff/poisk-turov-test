@@ -103,7 +103,7 @@ async function viewport(width) {
     phase = 'published_source_read';
     for (const [file, expected] of Object.entries(pins)) {
       const response = await fetch(origin + prefix + file, { redirect: 'error', signal: AbortSignal.timeout(10000) });
-      if (!response.ok()) throw fixedError('PUBLISHED_SOURCE_HTTP_FAILURE');
+      if (!response.ok) throw fixedError('PUBLISHED_SOURCE_HTTP_FAILURE');
       const bytes = Buffer.from(await response.arrayBuffer());
       const actual = hash(bytes); sourceReads.push({ file, status: response.status, sha256: actual });
       if (actual !== expected) throw fixedError('PUBLISHED_SOURCE_PIN_MISMATCH');

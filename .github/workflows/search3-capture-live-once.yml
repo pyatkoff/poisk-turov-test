@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           sha256sum --check <<'SHA256'
           ff6986e260b00cf8f3f755a61cf70ea2c4ff2a3e17c0700e49fbec66b9f9dd62  tools/search3-capture/recorder.cjs
-          7b5cfee90a107adecbe9ca5222e453a5119b01a268ead846cff25dcf973a909e  tools/search3-capture/run-live-once.cjs
+          3fdff4ccb0100f6408b8f497dba0da99c4aa3c14275400e6d3efd5b3939c3116  tools/search3-capture/run-live-once.cjs
           4f1e1771c2168295d01fb076b33d924777aa60ecd293df9d99046e000d7d61fd  tools/search3-capture/seal-live-evidence.cjs
           SHA256
           node --check tools/search3-capture/run-live-once.cjs
