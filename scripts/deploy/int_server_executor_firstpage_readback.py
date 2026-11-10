@@ -35,8 +35,10 @@ V4_CGI_MODE = 'anex-v4-cgi-retained-readback'
 V4_CGI_OPERATION = 'int-anex-v4-cgi-retained-20261110-v1'
 V4_CGI_RESTORE_MODE = 'anex-v4-cgi-restore-only'
 V4_CGI_RESTORE_OPERATION = 'int-anex-v4-cgi-restore-20261110-v1'
+V4_CGI_CONT_MODE = 'anex-v4-cgi-retained-continuation'
+V4_CGI_CONT_OPERATION = 'int-anex-v4-cgi-retained-continuation-20261110-v1'
 MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE,
-         V4_CGI_MODE, V4_CGI_RESTORE_MODE)
+         V4_CGI_MODE, V4_CGI_RESTORE_MODE, V4_CGI_CONT_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -65,6 +67,7 @@ def register_parser(core) -> None:
             V4_MAP_MODE: (V4_SOURCE, V4_MAP_OPERATION),
             V4_CGI_MODE: (V4_SOURCE, V4_CGI_OPERATION),
             V4_CGI_RESTORE_MODE: (V4_SOURCE, V4_CGI_RESTORE_OPERATION),
+            V4_CGI_CONT_MODE: (V4_SOURCE, V4_CGI_CONT_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -468,6 +471,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 
 def remote_with_readback(core, mode: str = MODE) -> str:
+    if mode == V4_CGI_CONT_MODE: return remote_with_v4_cgi_continuation(core)
     if mode in (V4_CGI_MODE, V4_CGI_RESTORE_MODE): return remote_with_v4_cgi_readback(core, mode)
     if mode == V4_MAP_MODE: return remote_with_v4_map_readback(core)
     if mode == V4_MODE: return remote_with_v4_readback(core)
@@ -2859,5 +2863,142 @@ def remote_with_v4_cgi_readback(core,mode):
     remote=remote.replace(definition,reader+REMOTE_V4_CGI_READER+definition,1)
     remote=remote.replace(dispatch,REMOTE_V4_CGI_DISPATCH+dispatch,1)
     remote=remote.replace(collectors,"    if mode not in ('"+mode+"','reconcile',")
+    ast.parse(remote);return remote
+
+
+# Original-attempt continuation: no probe, gate mutation, API mutation or replay.
+REMOTE_V4_CGI_CONT_READER = r'''
+V4_CGI_CONT_OPERATION = 'int-anex-v4-cgi-retained-continuation-20261110-v1'
+V4_CGI_CONT_PARENT_SHA = '281c0165c099af06ab58ab9f498da63fb73bdd46273e11c1ff6a2c1ae2cf5816'
+
+def v4_cgi_continuation_readback():
+    import stat
+    actor=os.geteuid(); ns=v4_cgi_ns(); parent=private/V4_CGI_PARENT
+    report={'status':'hold','stage':'parent_receipt','metadata_parent_operation_id':V4_CGI_PARENT,
+        'own_http_requests':0,'own_api_writes':0,'own_supplier_requests':0,'own_database_operations':0,
+        'own_session_writes':0,'actor_escalation':False,'retained_read_invoked':False,
+        'parent_supplier_calls':'unknown','parent_database_writes':'unknown',
+        'parent_cgi_startup_side_effects':'unverified','full_price_verified_current':False,'historical_gross':None}
+    real_read=v4_cgi_read; real_write=v4_cgi_write; cache={}; binding_digest=None; binding_writes=0
+    limits={'reservation.json':16384,'cgi-intent.json':16384,'result.json':16384,
+        'cgi-gate':128,'cgi-api-original.php':262144,'cgi-metadata.json':16384}
+    fixed={parent/name:limit for name,limit in limits.items()}
+    def read_once(path,owner,parser,maximum=262144,permissions=None):
+        if path not in fixed: return real_read(path,owner,parser,maximum,permissions)
+        if owner!=actor or parser is not ns or maximum>fixed[path] or permissions!=0o600:
+            raise ValueError('v4_cgi_cont_parent_read_scope')
+        if path not in cache:
+            identity=v4_cgi_identity(path,actor,ns,fixed[path],0o600)
+            raw=real_read(path,actor,ns,fixed[path],0o600)
+            if v4_cgi_identity(path,actor,ns,fixed[path],0o600)!=identity:
+                raise ValueError('v4_cgi_cont_parent_changed')
+            cache[path]=(raw,identity)
+        elif v4_cgi_identity(path,actor,ns,fixed[path],0o600)!=cache[path][1]:
+            raise ValueError('v4_cgi_cont_parent_changed')
+        return cache[path][0]
+    def parent_unchanged():
+        for path,(_,identity) in cache.items():
+            if v4_cgi_identity(path,actor,ns,fixed[path],0o600)!=identity:
+                raise ValueError('v4_cgi_cont_parent_changed')
+    def write_binding(path,raw):
+        nonlocal binding_digest,binding_writes
+        if path!=op/'v4-case-binding.json' or binding_writes:
+            raise ValueError('v4_cgi_cont_write_scope')
+        value=json.loads(raw)
+        if (not isinstance(value,dict) or value.get('operation_id')!=V4_CGI_PARENT
+                or value.get('case')!='v4-20261101-2A-age1'
+                or value.get('source_sha')!='6dcfb5053793caba4f353facfa7a899a30df2d17'):
+            raise ValueError('v4_cgi_cont_binding_shape')
+        value.update(operation_id=V4_CGI_CONT_OPERATION,metadata_parent_operation_id=V4_CGI_PARENT,
+            metadata_parent_result_sha256=V4_CGI_CONT_PARENT_SHA,
+            metadata_sha256=hashlib.sha256(cache[parent/'cgi-metadata.json'][0]).hexdigest(),
+            read_admission_basis='original_cgi_metadata_first_content_read')
+        encoded=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+        real_write(path,encoded);binding_writes+=1;binding_digest=hashlib.sha256(encoded).hexdigest()
+    globals()['v4_cgi_read']=read_once
+    globals()['v4_cgi_write']=write_binding
+    try:
+        ns['no_links'](private)
+        trust=os.lstat(private)
+        if not stat.S_ISDIR(trust.st_mode) or trust.st_uid!=actor or trust.st_mode&0o777!=0o700:
+            raise ValueError('v4_cgi_cont_private_scope')
+        intent=v4_cgi_load_intent(parent,actor,ns)
+        result=json.loads(read_once(parent/'result.json',actor,ns,16384,0o600))
+        canonical=json.dumps(result,sort_keys=True,separators=(',',':')).encode()
+        if hashlib.sha256(canonical).hexdigest()!=V4_CGI_CONT_PARENT_SHA:
+            raise ValueError('v4_cgi_cont_parent_receipt_pin')
+        inner=result.get('anex_v4_cgi_readback',{})
+        if (result.get('operation_id')!=V4_CGI_PARENT or result.get('mode')!='anex-v4-cgi-retained-readback'
+                or result.get('source_sha')!='6dcfb5053793caba4f353facfa7a899a30df2d17' or result.get('status')!='complete'
+                or inner.get('status')!='hold' or inner.get('stage')!='metadata_probe'
+                or inner.get('reason')!='v4_cgi_guard_hold' or inner.get('api_restored') is not True
+                or inner.get('gate_closed') is not True or inner.get('runtime_probe_writes')!=2):
+            raise ValueError('v4_cgi_cont_parent_state')
+        if read_once(parent/'cgi-gate',actor,ns,128,0o600)!=b'CLOSED\n':
+            raise ValueError('v4_cgi_cont_gate_not_closed')
+        backup=read_once(parent/'cgi-api-original.php',actor,ns,262144,0o600)
+        if hashlib.sha256(backup).hexdigest()!=V4_CGI_API_SHA:
+            raise ValueError('v4_cgi_cont_backup_pin')
+        api=runtime/'api-anex-search3-preview.php'
+        api_identity=v4_cgi_identity(api,actor,ns)
+        if api_identity[2:5]!=intent['original_identity'][2:5] or hashlib.sha256(real_read(api,actor,ns)).hexdigest()!=V4_CGI_API_SHA:
+            raise ValueError('v4_cgi_cont_api_not_original')
+        try: os.lstat(parent/'v4-case-binding.json')
+        except FileNotFoundError: pass
+        else: raise ValueError('v4_cgi_cont_parent_content_already_recorded')
+        report.update(parent_receipt_verified=True,metadata_parent_result_sha256=V4_CGI_CONT_PARENT_SHA,
+            api_original_verified=True,gate_closed_verified=True)
+        report['stage']='retained_metadata'
+        try: os.lstat(parent/'cgi-metadata.json')
+        except FileNotFoundError:
+            report.update(metadata_present=False,reason='v4_cgi_cont_metadata_absent')
+            return report
+        report['metadata_present']=True
+        v4_cgi_dependencies(actor,ns)
+        root,serializer,root_identity=v4_cgi_metadata(parent,intent,actor,ns)
+        parent_unchanged()
+        if v4_cgi_identity(api,actor,ns)!=api_identity:
+            raise ValueError('v4_cgi_cont_api_changed')
+        report.update(metadata_parent_sha256=hashlib.sha256(cache[parent/'cgi-metadata.json'][0]).hexdigest(),
+            runtime_metadata='validated_original_capture',serializer=serializer,
+            session_root_sha256=hashlib.sha256(str(root).encode()).hexdigest())
+        report['stage']='first_retained_content'
+        report['retained_read_invoked']=True
+        retained=v4_cgi_retained(root,serializer,actor,ns,root_identity)
+        parent_unchanged()
+        if not retained.get('binding_record_saved') or binding_writes!=1 or binding_digest is None:
+            raise ValueError('v4_cgi_cont_binding_missing')
+        retained['binding_record_sha256']=binding_digest
+        report.update(retained)
+    except Exception as error:
+        reason=str(error)
+        if isinstance(error,PermissionError): reason='v4_cgi_cont_permission_denied'
+        elif isinstance(error,json.JSONDecodeError): reason='v4_cgi_cont_metadata_or_parent_json_invalid'
+        elif not re.fullmatch(r'v4_cgi_[a-z_]{1,64}',reason): reason='v4_cgi_cont_guard_hold'
+        report['reason']=reason
+    finally:
+        globals()['v4_cgi_read']=real_read
+        globals()['v4_cgi_write']=real_write
+    return report
+'''
+
+REMOTE_V4_CGI_CONT_DISPATCH = r'''    if mode=='anex-v4-cgi-retained-continuation':
+        if operation!='int-anex-v4-cgi-retained-continuation-20261110-v1' or source!='6dcfb5053793caba4f353facfa7a899a30df2d17':
+            fail('v4_cgi_cont_sealed_scope')
+        result.update(supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,session_writes=0,cache_writes=0)
+        result['anex_v4_cgi_continuation']=v4_cgi_continuation_readback()
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+'''
+
+
+def remote_with_v4_cgi_continuation(core):
+    remote=core.REMOTE;definition='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n";collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'v4_cgi_cont_registration_source_drift')
+    reader=REMOTE_V4_READER.replace('@@V4_PARSER@@',repr(RIA_PINNED_READER_SOURCE))
+    remote=remote.replace(definition,reader+REMOTE_V4_CGI_READER+REMOTE_V4_CGI_CONT_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_V4_CGI_CONT_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+V4_CGI_CONT_MODE+"','reconcile',")
     ast.parse(remote);return remote
 
