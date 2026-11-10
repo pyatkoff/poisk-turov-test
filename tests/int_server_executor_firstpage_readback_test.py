@@ -2463,6 +2463,8 @@ class V4CgiLogEvidenceTest(unittest.TestCase):
         self.assertEqual(4,result['exact_api_records'])
         self.assertEqual({'permission_denied':3,'undefined_function':1},result['category_counts'])
         self.assertEqual(1,result['unproven_timezone_records'])
+        self.assertEqual([{'api_line':17,'severity':'Warning','category':'permission_denied','count':3},
+                          {'api_line':33,'severity':'Fatal error','category':'undefined_function','count':1}],result['diagnostic_counts'])
         self.assertFalse(result['unique_request_attribution']);self.assertEqual('unknown',result['original_http_status'])
         self.assertFalse(result['record_absence_proves_http_absence'])
         self.assertEqual([self.receipt,self.log],[call.args[0] for call in self.reader.call_args_list])
@@ -2472,6 +2474,14 @@ class V4CgiLogEvidenceTest(unittest.TestCase):
         for field in ('own_http_requests','own_api_writes','own_supplier_requests','own_database_operations',
                       'own_session_content_reads','own_session_writes'):
             self.assertEqual(0,result[field])
+
+    def test_same_pass_source_lines_are_bounded_and_still_private(self):
+        self.write_log(self.line(suffix=' on line 10000')+self.line(suffix=':10001')+self.line(suffix=' on line 0'))
+        result=self.run_read()
+        self.assertEqual(2,result['exact_api_records']);self.assertEqual(1,result['out_of_bound_api_line_records'])
+        self.assertEqual([{'api_line':10000,'severity':'Warning','category':'permission_denied','count':1}],result['diagnostic_counts'])
+        self.assertNotIn(str(self.api),json.dumps(result));self.assertNotIn('PRIVATE_CANARY',json.dumps(result))
+        self.assertLessEqual(len(result['diagnostic_counts']),2048)
 
     def test_only_explicit_finite_timezone_rules(self):
         stamp=self.ns['v4_log_timestamp']

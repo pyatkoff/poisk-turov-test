@@ -3128,8 +3128,8 @@ def v4_cgi_errorlog_incident():
         api=str(runtime/'api-anex-search3-preview.php')
         pattern=re.compile(r'^\[(\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2}) ([^\]\s]{1,64})\] PHP '
             r'(Warning|Fatal error|Parse error|Notice|Deprecated|Strict Standards|Recoverable fatal error): '
-            r'(.*) in '+re.escape(api)+r'(?: on line [1-9]\d{0,8}|:[1-9]\d{0,8})$')
-        categories={};severities={};matches=0;unproven=0;undecodable=0
+            r'(.*) in '+re.escape(api)+r'(?: on line ([1-9]\d{0,8})|:([1-9]\d{0,8}))$')
+        categories={};severities={};diagnostics={};matches=0;unproven=0;undecodable=0;line_bound=0
         for rawline in lines:
             try: line=rawline.decode('utf-8')
             except UnicodeDecodeError: undecodable+=1;continue
@@ -3141,10 +3141,16 @@ def v4_cgi_errorlog_incident():
             matches+=1;category=v4_log_category(match[3],match[4])
             categories[category]=categories.get(category,0)+1
             severities[match[3]]=severities.get(match[3],0)+1
+            api_line=int(match[5] or match[6])
+            if api_line>10000: line_bound+=1;continue
+            key=(api_line,match[3],category);diagnostics[key]=diagnostics.get(key,0)+1
         report.update(status='scoped_candidate_checked',tail_bytes_read=tail_read_bytes,
             parsed_tail_bytes=len(raw),tail_lines=len(lines),undecodable_lines=undecodable,
             partial_first_line_discarded=partial,exact_api_records=matches,category_counts=categories,
             severity_counts=severities,unproven_timezone_records=unproven,
+            diagnostic_counts=[{'api_line':line,'severity':severity,'category':category,'count':count}
+                for (line,severity,category),count in sorted(diagnostics.items())],
+            out_of_bound_api_line_records=line_bound,api_line_basis='recorded_runtime_api_line',
             coverage='bounded_candidate_tail_only',record_absence_proves_http_absence=False)
     except Exception as error:
         reason=str(error)
