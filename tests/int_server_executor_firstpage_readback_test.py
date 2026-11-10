@@ -1890,6 +1890,7 @@ class V4CgiEvidenceTest(unittest.TestCase):
             'startup':{'session_status':1,'auto_start':'0','prepend_empty':True,'append_empty':True},
             'config_contract':True,'config_hashes':{'outer':hashlib.sha256(cfg).hexdigest()},
             'save_handler':'files','save_path':str(self.sessions),'serializer':'php',
+            'effective_path':str(self.sessions),'path_basis':'cgi_files_configured','php_version_id':80300,
             'session_root':{'path':str(self.sessions),'identity':self.root_identity()}}
 
     def test_actual_serializer_and_cgi_root_namespace_are_required(self):
@@ -1902,6 +1903,21 @@ class V4CgiEvidenceTest(unittest.TestCase):
         for field,value,reason in variants:
             bad=copy.deepcopy(metadata);bad[field]=value;self.private_write('cgi-metadata.json',bad)
             with self.subTest(field=field),self.assertRaisesRegex(ValueError,reason):
+                self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+        bad=copy.deepcopy(metadata);bad['session_root']['identity'][1]+=1
+        self.private_write('cgi-metadata.json',bad)
+        with self.assertRaisesRegex(ValueError,'namespace'):
+            self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+
+    def test_empty_default_uses_only_attested_cgi_tempdir_basis_and_namespace(self):
+        intent=self.prepare();metadata=self.metadata(intent)
+        metadata.update(save_path='',path_basis='cgi_files_empty_path_runtime_tempdir',php_version_id=80323)
+        self.private_write('cgi-metadata.json',metadata)
+        self.assertEqual(self.sessions,self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)[0])
+        for fields in ({'path_basis':'guessed_tmp'},{'php_version_id':80200},{'effective_path':''},
+                       {'save_path':' '},{'save_path':'0;0600;'}):
+            bad=dict(metadata,**fields);self.private_write('cgi-metadata.json',bad)
+            with self.subTest(fields=fields),self.assertRaises(ValueError):
                 self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
         bad=copy.deepcopy(metadata);bad['session_root']['identity'][1]+=1
         self.private_write('cgi-metadata.json',bad)
@@ -1927,8 +1943,23 @@ class V4CgiEvidenceTest(unittest.TestCase):
         self.assertEqual([self.ns['V4_START'],now],result['file_mtime_window'])
         self.assertEqual([self.ns['V4_START'],self.ns['V4_END']],result['original_context_window'])
         self.assertIsNone(result['historical_gross']);self.assertFalse(result['full_price_verified_current'])
+        binding=self.op/'v4-case-binding.json';private=json.loads(binding.read_bytes())
+        self.assertEqual(0o600,binding.stat().st_mode&0o777)
+        self.assertEqual(str(path),private['session_file']);self.assertEqual('php_serialize',private['serializer'])
+        self.assertEqual(hashlib.sha256(binding.read_bytes()).hexdigest(),result['binding_record_sha256'])
+        self.assertNotIn(str(path),json.dumps(result));self.assertNotIn(str(self.sessions),json.dumps(result))
+
         with mock.patch.object(self.ns['time'],'time',return_value=now),self.assertRaises(Exception):
             self.ns['v4_cgi_retained'](self.sessions,'php',self.actor,self.parser,self.root_identity())
+
+    def test_ambiguous_match_has_no_private_binding_record(self):
+        for name in ('a','b'):
+            path=self.sessions/('sess_'+name*26)
+            path.write_bytes(RiaReadbackEvidenceTest.php(self.session));path.chmod(0o600)
+            os.utime(path,(self.created,self.created))
+        with self.assertRaisesRegex(ValueError,'case_ambiguous'):
+            self.ns['v4_cgi_retained'](self.sessions,'php_serialize',self.actor,self.parser,self.root_identity())
+        self.assertFalse((self.op/'v4-case-binding.json').exists())
 
     def test_all_candidate_bounds_precede_content_without_truncation(self):
         for i in range(33):
@@ -1941,6 +1972,107 @@ class V4CgiEvidenceTest(unittest.TestCase):
                 self.ns['v4_cgi_retained'](self.sessions,'php',self.actor,self.parser,self.root_identity())
             read.assert_not_called()
         finally:self.ns['v4_owned_read']=original
+
+
+    def test_writable_session_modes_fail_full_preflight_and_opened_read(self):
+        raw=RiaReadbackEvidenceTest.php(self.session)
+        path=self.sessions/('sess_'+'a'*26)
+        for permissions in (0o660,0o666):
+            path.write_bytes(raw);path.chmod(permissions);os.utime(path,(self.created,self.created))
+            read=mock.Mock(side_effect=AssertionError('candidate content must not open'))
+            original=self.ns['v4_owned_read'];self.ns['v4_owned_read']=read
+            try:
+                with self.subTest(mode=permissions),self.assertRaisesRegex(ValueError,'candidate_contract'):
+                    self.ns['v4_cgi_retained'](self.sessions,'php_serialize',self.actor,self.parser,self.root_identity())
+                read.assert_not_called()
+            finally:self.ns['v4_owned_read']=original
+        path.chmod(0o600)
+        def change_mode(*args,**kwargs):
+            path.chmod(0o666)
+            self.assertTrue(kwargs['config'])
+            return original(*args,**kwargs)
+        self.ns['v4_owned_read']=change_mode
+        try:
+            with mock.patch.object(os,'read',side_effect=AssertionError('unsafe opened bytes')), \
+                    self.assertRaisesRegex(ValueError,'config_ownership_or_mode'):
+                self.ns['v4_cgi_retained'](self.sessions,'php_serialize',self.actor,self.parser,self.root_identity())
+        finally:self.ns['v4_owned_read']=original
+
+    def test_root_and_ancestors_have_explicit_owner_and_sticky_write_policy(self):
+        self.sessions.chmod(0o777)
+        try:
+            with self.assertRaisesRegex(ValueError,'root_writable'):
+                self.ns['v4_cgi_root_trust'](self.sessions,self.actor,self.parser)
+        finally:self.sessions.chmod(0o700)
+        actual=os.lstat
+        def root_stat(path):
+            st=actual(path)
+            if Path(path)!=self.sessions:return st
+            return types.SimpleNamespace(st_mode=0o41777,st_uid=0)
+        with mock.patch.object(os,'lstat',side_effect=root_stat):
+            self.assertTrue(self.ns['v4_cgi_root_trust'](self.sessions,self.actor,self.parser))
+        def foreign(path):
+            st=actual(path)
+            if Path(path)!=self.sessions:return st
+            return types.SimpleNamespace(st_mode=0o40700,st_uid=max(1,self.actor+1))
+        with mock.patch.object(os,'lstat',side_effect=foreign),self.assertRaisesRegex(ValueError,'root_trust'):
+            self.ns['v4_cgi_root_trust'](self.sessions,self.actor,self.parser)
+        path=self.sessions/('sess_'+'a'*26);path.write_bytes(b'x');path.chmod(0o644);os.utime(path,(self.created,self.created))
+        self.ns['v4_cgi_root_trust']=lambda *args:True
+        read=mock.Mock(side_effect=AssertionError('shared-root session must be 0600'));self.ns['v4_owned_read']=read
+        with self.assertRaisesRegex(ValueError,'candidate_contract'):
+            self.ns['v4_cgi_retained'](self.sessions,'php',self.actor,self.parser,self.root_identity())
+        read.assert_not_called()
+
+    def test_temp_cleanup_preserves_foreign_inode_and_reports_unlink_failure(self):
+        path=self.private_write('temporary-fixture',b'owned')
+        identity=self.ns['v4_cgi_identity'](path,self.actor,self.parser)
+        path.unlink();self.private_write('temporary-fixture',b'foreign-new-inode')
+        with self.assertRaisesRegex(ValueError,'temp_cleanup_foreign'):
+            self.ns['v4_cgi_cleanup_temp'](path,identity,self.actor,self.parser)
+        self.assertEqual(b'foreign-new-inode',path.read_bytes())
+        identity=self.ns['v4_cgi_identity'](path,self.actor,self.parser)
+        with mock.patch.object(Path,'unlink',side_effect=PermissionError('PRIVATE_CLEANUP_CANARY')), \
+                self.assertRaisesRegex(ValueError,'temp_cleanup_failed'):
+            self.ns['v4_cgi_cleanup_temp'](path,identity,self.actor,self.parser)
+        self.assertTrue(path.exists())
+
+    def test_directory_durability_failure_cannot_ack_or_open_content(self):
+        self.ns['v4_cgi_dependencies']=mock.Mock()
+        self.ns['v4_cgi_http']=mock.Mock()
+        self.ns['v4_cgi_metadata']=mock.Mock()
+        self.ns['v4_cgi_retained']=mock.Mock()
+        self.ns['v4_cgi_sync_dirs']=mock.Mock(side_effect=OSError('PRIVATE_FSYNC_CANARY'))
+        with mock.patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0)):
+            result=self.ns['v4_cgi_readback']()
+        self.assertEqual('hold',result['status']);self.assertFalse(result['api_restored'])
+        self.assertTrue(result['restore_only_required'])
+        self.ns['v4_cgi_http'].assert_not_called();self.ns['v4_cgi_metadata'].assert_not_called()
+        self.ns['v4_cgi_retained'].assert_not_called()
+        self.assertNotIn('PRIVATE_FSYNC_CANARY',json.dumps(result))
+
+    def test_successful_whole_fixture_restores_and_closes_before_retained_content(self):
+        path=self.sessions/('sess_'+'a'*26);path.write_bytes(RiaReadbackEvidenceTest.php(self.session))
+        path.chmod(0o600);os.utime(path,(self.created,self.created))
+        self.ns['v4_cgi_dependencies']=mock.Mock()
+        self.ns['v4_cgi_http']=mock.Mock()
+        order=[];reader=self.ns['v4_cgi_retained']
+        def metadata(*args):
+            self.assertEqual(self.original,self.api.read_bytes())
+            self.assertEqual(b'CLOSED\n',(self.op/'cgi-gate').read_bytes())
+            order.append('metadata')
+            return self.sessions,'php_serialize',self.root_identity()
+        def retained(*args):
+            self.assertEqual(['metadata'],order);self.assertEqual(self.original,self.api.read_bytes())
+            self.assertEqual(b'CLOSED\n',(self.op/'cgi-gate').read_bytes())
+            order.append('retained');return reader(*args)
+        self.ns['v4_cgi_metadata']=metadata;self.ns['v4_cgi_retained']=retained
+        with mock.patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0)), \
+                mock.patch.object(self.ns['time'],'sleep'):
+            result=self.ns['v4_cgi_readback']()
+        self.assertEqual('retained_case_matched',result['status']);self.assertEqual(['metadata','retained'],order)
+        self.assertTrue(result['api_restored']);self.assertEqual(2,result['runtime_probe_writes'])
+        self.ns['v4_cgi_http'].assert_called_once();self.assertFalse(result['full_price_verified_current'])
 
     @unittest.skipUnless(shutil.which('php'),'native PHP syntax/tokenizer guard in existing CI')
     def test_native_retained_wrapper_gate_and_literal_config_without_imports(self):
@@ -1975,6 +2107,30 @@ class V4CgiEvidenceTest(unittest.TestCase):
         out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
         self.assertEqual(out.stdout,'{"ok":true}');self.assertFalse(canary.exists())
         self.assertFalse(json.loads((self.op/'cgi-metadata.json').read_bytes())['config_contract'])
+        for label,changes in [('wrong_nonce',{'nonce_hash':'b'*64}),('expired',{'deadline':int(time.time())-1}),
+                              ('other_uid',{'uid':self.actor+1}),('wrong_script',{'script':str(self.api)+'-other'})]:
+            (self.op/'cgi-metadata.json').unlink()
+            bad=dict(spec,**changes)
+            code=self.ns['V4_CGI_PHP'].replace('@@SPEC@@',base64.b64encode(json.dumps(bad).encode()).decode())
+            code=code.replace('php_sapi_name()',"'cgi-fcgi'")
+            self.api.write_text(self.ns['V4_CGI_HEADER'].decode()+server+code+"throw new Exception('IMPORT_CANARY');\n")
+            out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
+            with self.subTest(guard=label):
+                self.assertEqual((out.returncode,out.stdout,out.stderr),(0,'{"ok":false}',''))
+                self.assertFalse((self.op/'cgi-metadata.json').exists());self.assertFalse(canary.exists())
+            # Keep the next fixture's output path absent without reopening a live gate.
+            if label!='wrong_script':self.private_write('cgi-metadata.json',b'unit-placeholder')
+        # A real warning and malformed config cannot leak path/text into the HTTP-shaped body.
+        (self.runtime/'.anex-private.php').write_text("<?php define('MALFORMED', ")
+        code=self.ns['V4_CGI_PHP'].replace('@@SPEC@@',base64.b64encode(json.dumps(spec).encode()).decode())
+        code=code.replace('php_sapi_name()',"'cgi-fcgi'").replace(
+            "        v4cneed($v4buffered === true",
+            "        trigger_error('PRIVATE_PATH_WARNING_CANARY', E_USER_WARNING);\n        v4cneed($v4buffered === true")
+        self.api.write_text(self.ns['V4_CGI_HEADER'].decode()+server+code)
+        out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
+        self.assertEqual((out.returncode,out.stdout,out.stderr),(0,'{"ok":true}',''))
+        self.assertFalse(json.loads((self.op/'cgi-metadata.json').read_bytes())['config_contract'])
+
 
 
 if __name__ == '__main__':
