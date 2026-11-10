@@ -130,3 +130,80 @@ jobs:
           path: ${{ runner.temp }}/search3-live-encrypted-20261110/
           if-no-files-found: error
           retention-days: 30
+
+  one-static-read:
+    name: One separately authorized static JS read
+    if: >-
+      ${{ github.event.number == 5009 && github.event.pull_request.draft &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.ref == 'verify/search3-capture-offline-20261110' &&
+          github.event.before == '91b94eb21cd0db891a8301192d3c102f1a5cfbe5' &&
+          github.run_attempt == '1' &&
+          contains(github.event.pull_request.body, format('search3-static-read-approved-head:{0}', github.event.pull_request.head.sha)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      DIAGNOSTIC_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out the exact static diagnostic head
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify the prepared diagnostic bytes
+        run: |
+          sha256sum --check <<'SHA256'
+          6a436bbffb2ab3e8cf9f55e88d32eed398709f4b8c5bef0b12f3b477b05b0bad  tools/search3-capture/read-static-once.cjs
+          SHA256
+          node --check tools/search3-capture/read-static-once.cjs
+      - name: Admit only this original static read and successful Security guard
+        id: static-admission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'JS'
+          const base='https://api.github.com/repos/pyatkoff/poisk-turov-test';
+          const sha=process.env.DIAGNOSTIC_HEAD_SHA,run=Number(process.env.GITHUB_RUN_ID);
+          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Cache-Control':'no-cache'};
+          const read=async suffix=>{const r=await fetch(base+suffix,{headers,signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Admission read failed: '+r.status);return r.json();};
+          (async()=>{
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1'||!Number.isSafeInteger(run))throw Error('Original attempt required');
+            const pr=await read('/pulls/5009');
+            if(!pr.draft||pr.state!=='open'||pr.merged||pr.head.sha!==sha||pr.base.sha!=='04b48814e34b245b8b11018c2c2340bbc5a3ec18'||!pr.body.includes('search3-static-read-approved-head:'+sha)||pr.body.includes('search3-live-approved-head:'))throw Error('PR admission changed');
+            const commit=await read('/commits/'+sha);
+            const expected=['.github/workflows/search3-capture-live-once.yml','tools/search3-capture/read-static-once.cjs'];
+            if(commit.parents.length!==1||commit.parents[0].sha!=='91b94eb21cd0db891a8301192d3c102f1a5cfbe5'||commit.files.length!==2||commit.files.some(f=>!expected.includes(f.filename)))throw Error('Diagnostic delta changed');
+            const current=await read('/actions/runs/'+run);
+            const prior=await read('/actions/workflows/'+current.workflow_id+'/runs?branch=verify%2Fsearch3-capture-offline-20261110&per_page=100');
+            const known=[42838424344,42839568270];
+            if(prior.total_count!==3||prior.workflow_runs.length!==3||prior.workflow_runs.some(r=>r.run_attempt!==1||(r.id!==run&&!known.includes(r.id))))throw Error('Another operation exists; no replay');
+            const deadline=Date.now()+60000;
+            for(;;){
+              const rs=await read('/actions/runs?head_sha='+sha+'&per_page=100');
+              if(rs.total_count>100||rs.workflow_runs.some(r=>r.run_attempt!==1))throw Error('Run inventory invalid');
+              const guard=rs.workflow_runs.filter(r=>r.name==='Security guard');
+              if(guard.length>1)throw Error('Multiple guard runs');
+              if(guard.length===1&&guard[0].status==='completed'){
+                if(guard[0].conclusion!=='success')throw Error('Security guard did not pass');
+                console.log('ONE_STATIC_GET_ADMITTED_NO_BROWSER_NO_SUPPLIER');return;
+              }
+              if(Date.now()>deadline)throw Error('Security guard not confirmed in budget');
+              await new Promise(resolve=>setTimeout(resolve,4000));
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          JS
+      - name: Read the fixed static JS once with a ten-second network limit
+        env:
+          SEARCH3_STATIC_OPERATION: search3-static-read-20261110-v1
+        run: timeout --signal=TERM --kill-after=1s 12s node tools/search3-capture/read-static-once.cjs
+      - name: Retain the original static diagnostic receipt
+        if: ${{ always() && steps.static-admission.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-static-read-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: static-read-diagnostic.json
+          if-no-files-found: error
+          retention-days: 30
