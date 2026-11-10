@@ -31,7 +31,12 @@ V4_OPERATION = 'int-anex-v4-owned-session-20261101-v1'
 V4_SOURCE = '6dcfb5053793caba4f353facfa7a899a30df2d17'
 V4_MAP_MODE = 'anex-v4-vhost-session-readback'
 V4_MAP_OPERATION = 'int-anex-v4-vhost-session-20261101-v1'
-MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE)
+V4_CGI_MODE = 'anex-v4-cgi-retained-readback'
+V4_CGI_OPERATION = 'int-anex-v4-cgi-retained-20261110-v1'
+V4_CGI_RESTORE_MODE = 'anex-v4-cgi-restore-only'
+V4_CGI_RESTORE_OPERATION = 'int-anex-v4-cgi-restore-20261110-v1'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE,
+         V4_CGI_MODE, V4_CGI_RESTORE_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -58,6 +63,8 @@ def register_parser(core) -> None:
             RIA3_MODE: (RIA3_SOURCE, RIA3_OPERATION),
             V4_MODE: (V4_SOURCE, V4_OPERATION),
             V4_MAP_MODE: (V4_SOURCE, V4_MAP_OPERATION),
+            V4_CGI_MODE: (V4_SOURCE, V4_CGI_OPERATION),
+            V4_CGI_RESTORE_MODE: (V4_SOURCE, V4_CGI_RESTORE_OPERATION),
         }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
@@ -461,6 +468,7 @@ REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-
 
 
 def remote_with_readback(core, mode: str = MODE) -> str:
+    if mode in (V4_CGI_MODE, V4_CGI_RESTORE_MODE): return remote_with_v4_cgi_readback(core, mode)
     if mode == V4_MAP_MODE: return remote_with_v4_map_readback(core)
     if mode == V4_MODE: return remote_with_v4_readback(core)
     need(mode in MODES, 'firstpage_registration_mode')
@@ -2083,5 +2091,773 @@ def remote_with_v4_map_readback(core):
     remote=remote.replace(definition,REMOTE_RIA_READER+reader+REMOTE_V4_MAP_READER+definition,1)
     remote=remote.replace(dispatch,REMOTE_V4_MAP_DISPATCH+dispatch,1)
     remote=remote.replace(collectors,"    if mode not in ('"+V4_MAP_MODE+"','reconcile',")
+    ast.parse(remote);return remote
+
+
+# One new runtime-bound read; prior sealed readers and programs remain unchanged.
+REMOTE_V4_CGI_READER = r'''
+V4_CGI_PARENT = 'int-anex-v4-cgi-retained-20261110-v1'
+V4_CGI_RESTORE = 'int-anex-v4-cgi-restore-20261110-v1'
+V4_CGI_API_SHA = '0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4'
+V4_CGI_HEADER = b'<?php\ndeclare(strict_types=1);\n'
+V4_CGI_DEPS = (
+    'anex-package-quote-runtime.php','anex-package-quote-client.php','anex-package-quote-handoff.php',
+    'anex-normalizer.php','search3-messenger-handoff.php','three-provider-meal-family.php',
+    'anex-additional-prices-batch.php','anex-program-observation-runtime.php',
+    'tourvisor-selected-tour-handoff.php','anex-anytour-offer-autosave.php',
+    'anex-apd-cache-runtime.php','anex-program-apd-store.php','anex-apd-prewarm.php',
+)
+
+# This branch executes in the exact installed handler, before every original require.
+# No cookie/session opening, imports, supplier transport or settings mutation.
+V4_CGI_PHP = r"""
+if (array_key_exists('HTTP_X_ANYTOUR_V4_METADATA', $_SERVER)) {
+    $v4level = ob_get_level();
+    set_error_handler(static function() { return true; });
+    $v4buffered = ob_start(); $v4ok = false;
+    $v4c = json_decode(base64_decode('@@SPEC@@', true), true);
+    $v4g = null; $v4m = null; $v4oldMask = null;
+    function v4cneed($ok) { if (!$ok) throw new RuntimeException('v4_cgi_guard'); }
+    function v4ctoken($ts, &$i, $text) { v4cneed(($ts[$i++][1] ?? null) === $text); }
+    function v4cname($ts, &$i) {
+        $t = $ts[$i++] ?? null;
+        v4cneed(is_array($t) && $t[0] === T_CONSTANT_ENCAPSED_STRING);
+        v4cneed(preg_match('/\A[\'"][A-Z][A-Z0-9_]{0,127}[\'"]\z/D', $t[1]) === 1);
+        return substr($t[1], 1, -1);
+    }
+    function v4cdefine($ts, &$i) {
+        v4ctoken($ts, $i, 'define'); v4ctoken($ts, $i, '(');
+        $name = v4cname($ts, $i); v4ctoken($ts, $i, ',');
+        $v = $ts[$i++] ?? null;
+        v4cneed(is_array($v) && (in_array($v[0], [T_CONSTANT_ENCAPSED_STRING,T_LNUMBER,T_DNUMBER], true)
+            || ($v[0] === T_STRING && in_array(strtolower($v[1]), ['true','false','null'], true))));
+        v4ctoken($ts, $i, ')'); v4ctoken($ts, $i, ';'); return $name;
+    }
+    function v4cconfig($path, $uid, $bootstrap, &$hashes, $ordinal) {
+        clearstatcache(true,$path); v4cneed(realpath($path) === $path);
+        $s = @lstat($path);
+        v4cneed(is_array($s) && ($s['mode'] & 0170000) === 0100000 && $s['uid'] === $uid
+            && ($s['mode'] & 0022) === 0 && $s['nlink'] === 1 && $s['size'] > 0 && $s['size'] <= 65536);
+        $raw = @file_get_contents($path, false, null, 0, 65537);
+        v4cneed(is_string($raw) && strlen($raw) === $s['size']);
+        clearstatcache(true,$path); $after = @lstat($path);
+        v4cneed(is_array($after));
+        foreach (['dev','ino','mode','uid','gid','size','mtime','ctime','nlink'] as $field) v4cneed($s[$field] === $after[$field]);
+        $ts = [];
+        foreach (token_get_all($raw, TOKEN_PARSE) as $t) {
+            $id = is_array($t) ? $t[0] : 0; $text = is_array($t) ? $t[1] : $t;
+            if ($id === T_INLINE_HTML) v4cneed(trim($text) === '');
+            elseif (!in_array($id, [T_OPEN_TAG,T_CLOSE_TAG,T_WHITESPACE,T_COMMENT,T_DOC_COMMENT], true))
+                $ts[] = [$id,$text];
+        }
+        $i = 0; $count = 0; $follow = false;
+        while ($i < count($ts)) {
+            $id = $ts[$i][0];
+            if ($id === T_DECLARE) {
+                v4cneed($count === 0); ++$i; v4ctoken($ts,$i,'('); v4ctoken($ts,$i,'strict_types');
+                v4ctoken($ts,$i,'='); v4cneed(in_array($ts[$i++][1] ?? null,['0','1'],true));
+                v4ctoken($ts,$i,')'); v4ctoken($ts,$i,';');
+            } elseif ($id === T_REQUIRE_ONCE) {
+                v4cneed($ordinal === 0 && !$follow); ++$i;
+                foreach (['dirname','(','__DIR__',',','4',')','.'] as $word) v4ctoken($ts,$i,$word);
+                v4cneed(($ts[$i++][1] ?? null) === "'/.anytoour-anex/search3-preview.php'");
+                v4ctoken($ts,$i,';'); $follow = true;
+            } elseif ($id === T_IF) {
+                ++$i; foreach (['(','!','defined','('] as $word) v4ctoken($ts,$i,$word);
+                $name = v4cname($ts,$i); v4ctoken($ts,$i,')'); v4ctoken($ts,$i,')');
+                $brace = ($ts[$i][1] ?? null) === '{'; if ($brace) ++$i;
+                v4cneed(v4cdefine($ts,$i) === $name); if ($brace) v4ctoken($ts,$i,'}');
+            } else v4cdefine($ts,$i);
+            ++$count; v4cneed($count <= 128);
+        }
+        v4cneed($count > 0);
+        $hashes[$ordinal === 0 ? 'outer' : 'bootstrap'] = hash('sha256',$raw);
+        if ($follow) v4cconfig($bootstrap,$uid,$bootstrap,$hashes,1);
+    }
+    try {
+        v4cneed($v4buffered === true && is_array($v4c) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+            && ($_SERVER['HTTP_HOST'] ?? '') === 'anytoour.ru'
+            && ($_SERVER['QUERY_STRING'] ?? '') === ''
+            && is_string($_SERVER['HTTP_X_ANYTOUR_V4_METADATA'])
+            && hash_equals($v4c['nonce_hash'], hash('sha256',$_SERVER['HTTP_X_ANYTOUR_V4_METADATA']))
+            && time() <= $v4c['deadline']);
+        v4cneed(function_exists('posix_geteuid') && posix_geteuid() === $v4c['uid']);
+        v4cneed(__FILE__ === $v4c['script'] && ($_SERVER['SCRIPT_FILENAME'] ?? '') === $v4c['script']);
+        $v4g = @fopen($v4c['gate'],'rb'); v4cneed(is_resource($v4g));
+        $v4s = fstat($v4g);
+        v4cneed(($v4s['mode'] & 0170000) === 0100000 && ($v4s['mode'] & 0777) === 0600
+            && $v4s['uid'] === $v4c['uid'] && $v4s['nlink'] === 1
+            && [$v4s['dev'],$v4s['ino'],$v4s['uid'],$v4s['gid'],$v4s['mode']] === $v4c['gate_identity']
+            && flock($v4g,LOCK_SH|LOCK_NB));
+        v4cneed(stream_get_contents($v4g,128) === "OPEN\n".$v4c['nonce_hash']."\n" && time() <= $v4c['deadline']);
+        $v4startup = ['session_status'=>session_status(),'auto_start'=>(string)ini_get('session.auto_start'),
+            'prepend_empty'=>ini_get('auto_prepend_file') === '', 'append_empty'=>ini_get('auto_append_file') === ''];
+        $v4safe = $v4startup['session_status'] === PHP_SESSION_NONE
+            && in_array($v4startup['auto_start'],['','0'],true)
+            && $v4startup['prepend_empty'] && $v4startup['append_empty'];
+        $v4hashes = []; $v4config = false;
+        if ($v4safe) {
+            try { v4cconfig($v4c['config'],$v4c['uid'],$v4c['bootstrap'],$v4hashes,0); $v4config = true; }
+            catch (Throwable $v4ignored) { $v4hashes = []; }
+        }
+        $v4root = null; $v4candidate = null; $v4basis = 'unavailable';
+        $v4path = (string)ini_get('session.save_path');
+        if ((string)ini_get('session.save_handler') === 'files'
+            && in_array((string)ini_get('session.serialize_handler'),['php','php_serialize'],true)) {
+            $v4basis = $v4path === '' ? 'cgi_files_empty_path_runtime_tempdir' : 'cgi_files_configured';
+            $v4effective = $v4path === '' ? sys_get_temp_dir() : $v4path;
+            $v4parts = explode(';',$v4effective);
+            if (count($v4parts) === 1) $v4candidate = $v4effective;
+            elseif (count($v4parts) === 3 && $v4parts[0] === '0'
+                && preg_match('/\A[0-7]{3,4}\z/D',$v4parts[1]) === 1) $v4candidate = $v4parts[2];
+            if (is_string($v4candidate) && strlen($v4candidate) > 1 && strlen($v4candidate) <= 1024
+                && $v4candidate[0] === '/' && preg_match('/[\\\\\x00-\x20\x7f]/',$v4candidate) === 0
+                && !in_array('..',explode('/',$v4candidate),true) && realpath($v4candidate) === $v4candidate) {
+                clearstatcache(true,$v4candidate); $v4rs = @lstat($v4candidate);
+                if (is_array($v4rs) && ($v4rs['mode'] & 0170000) === 0040000)
+                    $v4root = ['path'=>$v4candidate,'identity'=>[$v4rs['dev'],$v4rs['ino'],$v4rs['uid'],$v4rs['gid'],$v4rs['mode']]];
+            }
+        }
+        $v4data = ['schema_version'=>1,'operation_id'=>$v4c['operation_id'],'nonce_hash'=>$v4c['nonce_hash'],
+            'at'=>time(),'uid'=>posix_geteuid(),'sapi'=>php_sapi_name(),'script'=>__FILE__,
+            'script_sha256'=>hash_file('sha256',__FILE__),'startup'=>$v4startup,
+            'config_contract'=>$v4config,'config_hashes'=>$v4hashes,
+            'save_handler'=>(string)ini_get('session.save_handler'),
+            'save_path'=>(string)ini_get('session.save_path'),
+            'serializer'=>(string)ini_get('session.serialize_handler'),'session_root'=>$v4root,
+            'effective_path'=>$v4candidate,'path_basis'=>$v4basis,'php_version_id'=>PHP_VERSION_ID];
+        v4cneed(time() <= $v4c['deadline']);
+        $v4raw = json_encode($v4data,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        v4cneed(strlen($v4raw) <= 16384);
+        $v4oldMask = umask(0077);
+        $v4m = @fopen($v4c['metadata'],'xb');
+        umask($v4oldMask); $v4oldMask = null;
+        v4cneed(is_resource($v4m)); $v4s = fstat($v4m);
+        v4cneed(($v4s['mode'] & 0777) === 0600 && $v4s['uid'] === $v4c['uid'] && $v4s['nlink'] === 1);
+        $v4offset = 0;
+        while ($v4offset < strlen($v4raw)) {
+            $v4written = @fwrite($v4m,substr($v4raw,$v4offset));
+            v4cneed(is_int($v4written) && $v4written > 0); $v4offset += $v4written;
+        }
+        v4cneed(fflush($v4m)); fclose($v4m); $v4m = null;
+        flock($v4g,LOCK_UN); fclose($v4g); $v4g = null;
+        $v4ok = true;
+    } catch (Throwable $v4ignored) {
+        if ($v4oldMask !== null) umask($v4oldMask);
+        if (is_resource($v4m)) fclose($v4m);
+        if (is_resource($v4g)) { flock($v4g,LOCK_UN); fclose($v4g); }
+    }
+    while (ob_get_level() > $v4level) ob_end_clean();
+    restore_error_handler();
+    header('Content-Type: application/json'); header('Cache-Control: private, no-store');
+    http_response_code($v4ok ? 200 : 403); echo $v4ok ? '{"ok":true}' : '{"ok":false}';
+    exit;
+}
+"""
+
+def v4_cgi_ns():
+    if hashlib.sha256(V4_PARSER_SOURCE.encode()).hexdigest() != 'e75beb5c112fae08592a6c2308db38ee1f2d8d5aecffb49d118f856b303e1aad':
+        raise ValueError('v4_cgi_parser_pin')
+    ns = {'__name__':'fixed_v4_cgi_decoder'}
+    exec(compile(V4_PARSER_SOURCE,'<fixed-v4-cgi-decoder>','exec'),ns)
+    ns.update(START=V4_START,END=V4_END)
+    return ns
+
+def v4_cgi_identity(path,actor,ns,maximum=262144,permissions=None):
+    import stat
+    ns['no_links'](path)
+    s = os.lstat(path)
+    if (not stat.S_ISREG(s.st_mode) or s.st_uid != actor or s.st_nlink != 1
+            or s.st_mode & 0o022 or not 0 < s.st_size <= maximum
+            or (permissions is not None and s.st_mode & 0o777 != permissions)):
+        raise ValueError('v4_cgi_file_contract')
+    return [s.st_dev,s.st_ino,s.st_uid,s.st_gid,s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_nlink]
+
+def v4_cgi_read(path,actor,ns,maximum=262144,permissions=None):
+    before = v4_cgi_identity(path,actor,ns,maximum,permissions)
+    raw = v4_owned_read(path,maximum,actor,ns,config=True,expected_facts=tuple([before[0],before[1],before[2],before[4],before[5],before[6],before[7]]))
+    if v4_cgi_identity(path,actor,ns,maximum,permissions) != before: raise ValueError('v4_cgi_file_changed')
+    return raw
+
+def v4_cgi_write(path,raw):
+    fd = os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600)
+    try:
+        offset = 0
+        while offset < len(raw):
+            written = os.write(fd,raw[offset:])
+            if written < 1: raise ValueError('v4_cgi_private_write')
+            offset += written
+        os.fsync(fd)
+    finally: os.close(fd)
+    directory = os.open(path.parent,os.O_RDONLY|getattr(os,'O_DIRECTORY',0))
+    try: os.fsync(directory)
+    finally: os.close(directory)
+
+
+def v4_cgi_sync_file(path,identity,actor,ns):
+    if v4_cgi_identity(path,actor,ns) != identity: raise ValueError('v4_cgi_sync_file_changed')
+    fd = os.open(path,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0))
+    try:
+        st = os.fstat(fd)
+        actual = [st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode,st.st_size,st.st_mtime_ns,st.st_ctime_ns,st.st_nlink]
+        if actual != identity: raise ValueError('v4_cgi_sync_file_changed')
+        os.fsync(fd)
+    finally: os.close(fd)
+    if v4_cgi_identity(path,actor,ns) != identity: raise ValueError('v4_cgi_sync_file_changed')
+
+def v4_cgi_sync_dirs(*paths):
+    import stat
+    for path in dict.fromkeys(paths):
+        fd = os.open(path,os.O_RDONLY|getattr(os,'O_DIRECTORY',0)|getattr(os,'O_NOFOLLOW',0))
+        try:
+            if not stat.S_ISDIR(os.fstat(fd).st_mode): raise ValueError('v4_cgi_sync_directory')
+            os.fsync(fd)
+        finally: os.close(fd)
+
+def v4_cgi_cleanup_temp(path,identity,actor,ns):
+    try:
+        ns['no_links'](path.parent)
+        try: os.lstat(path)
+        except FileNotFoundError: return
+        current = v4_cgi_identity(path,actor,ns)
+    except Exception: raise ValueError('v4_cgi_temp_cleanup_unproven') from None
+    if identity is None or current != identity: raise ValueError('v4_cgi_temp_cleanup_foreign')
+    try:
+        path.unlink()
+        v4_cgi_sync_dirs(path.parent)
+    except Exception: raise ValueError('v4_cgi_temp_cleanup_failed') from None
+
+def v4_cgi_root_trust(root,actor,ns):
+    import stat
+    ns['no_links'](root); shared = False
+    for path in (root,*root.parents):
+        st = os.lstat(path)
+        if not stat.S_ISDIR(st.st_mode) or st.st_uid not in (0,actor):
+            raise ValueError('v4_cgi_root_trust')
+        if st.st_mode & 0o022:
+            if st.st_uid != 0 or not st.st_mode & stat.S_ISVTX: raise ValueError('v4_cgi_root_writable')
+            shared = True
+    return shared
+
+def v4_cgi_close_gate(parent,intent,actor,ns):
+    import fcntl
+    path = parent/'cgi-gate'
+    identity = v4_cgi_identity(path,actor,ns,128,0o600)
+    fd = os.open(path,os.O_RDWR|getattr(os,'O_NOFOLLOW',0))
+    try:
+        s = os.fstat(fd)
+        if [s.st_dev,s.st_ino] != identity[:2]: raise ValueError('v4_cgi_gate_changed')
+        deadline = time.monotonic()+10
+        while True:
+            try: fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB); break
+            except BlockingIOError:
+                if time.monotonic() >= deadline: raise ValueError('v4_cgi_gate_close_timeout')
+                time.sleep(.025)
+        value = os.read(fd,129)
+        if value not in (('OPEN\n'+intent['nonce_hash']+'\n').encode(),b'CLOSED\n'):
+            raise ValueError('v4_cgi_gate_shape')
+        os.lseek(fd,0,os.SEEK_SET); os.write(fd,b'CLOSED\n'); os.ftruncate(fd,7); os.fsync(fd)
+        if v4_cgi_identity(path,actor,ns,128,0o600)[:2] != identity[:2]: raise ValueError('v4_cgi_gate_changed')
+    finally: os.close(fd)
+
+def v4_cgi_load_intent(parent,actor,ns):
+    import stat
+    ns['no_links'](parent)
+    s = os.lstat(parent)
+    if not stat.S_ISDIR(s.st_mode) or s.st_uid != actor or s.st_mode & 0o777 != 0o700:
+        raise ValueError('v4_cgi_private_scope')
+    reservation = json.loads(v4_cgi_read(parent/'reservation.json',actor,ns,16384,0o600))
+    if (not isinstance(reservation,dict) or reservation.get('operation_id') != V4_CGI_PARENT
+            or reservation.get('source_sha') != '6dcfb5053793caba4f353facfa7a899a30df2d17'
+            or reservation.get('mode') != 'anex-v4-cgi-retained-readback'
+            or type(reservation.get('reserved_at')) is not int):
+        raise ValueError('v4_cgi_parent_reservation')
+    value = json.loads(v4_cgi_read(parent/'cgi-intent.json',actor,ns,16384,0o600))
+    keys = {'schema_version','parent_operation','source_sha','original_sha256','wrapper_sha256',
+        'wrapper_identity','original_identity','nonce_hash','deadline'}
+    if (not isinstance(value,dict) or set(value) != keys or value['schema_version'] != 1
+            or value['parent_operation'] != V4_CGI_PARENT or value['source_sha'] != '6dcfb5053793caba4f353facfa7a899a30df2d17'
+            or value['original_sha256'] != V4_CGI_API_SHA
+            or any(not isinstance(value[k],str) or re.fullmatch('[a-f0-9]{64}',value[k]) is None
+                   for k in ('wrapper_sha256','nonce_hash'))
+            or type(value['deadline']) is not int or not reservation['reserved_at'] <= value['deadline'] <= reservation['reserved_at']+180
+            or any(not isinstance(value[k],list) or len(value[k]) != 9
+                   or any(type(n) is not int for n in value[k]) for k in ('wrapper_identity','original_identity'))
+            or value['original_identity'][2] != actor or value['wrapper_identity'][2] != actor
+            or value['original_identity'][3:5] != value['wrapper_identity'][3:5]):
+        raise ValueError('v4_cgi_intent_shape')
+    return value
+
+def v4_cgi_same_staged(actual,expected):
+    # rename may update ctime; stable inode/owner/group/mode/size/mtime and digest are pinned.
+    return actual[:7]+actual[8:] == expected[:7]+expected[8:]
+
+def v4_cgi_restore(parent,actor,ns):
+    intent = v4_cgi_load_intent(parent,actor,ns)
+    v4_cgi_close_gate(parent,intent,actor,ns)
+    api = runtime/'api-anex-search3-preview.php'
+    current = v4_cgi_identity(api,actor,ns)
+    raw = v4_cgi_read(api,actor,ns)
+    original = v4_cgi_read(parent/'cgi-api-original.php',actor,ns,262144,0o600)
+    if hashlib.sha256(original).hexdigest() != V4_CGI_API_SHA: raise ValueError('v4_cgi_backup_pin')
+    expected = intent['original_identity']
+    if current[2:5] != expected[2:5]: raise ValueError('v4_cgi_restore_owner')
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest == V4_CGI_API_SHA:
+        v4_cgi_sync_file(api,current,actor,ns); v4_cgi_sync_dirs(parent,api.parent)
+        return {'status':'already_original','gate_closed':True,'api_restored':True}
+    if digest != intent['wrapper_sha256'] or not v4_cgi_same_staged(current,intent['wrapper_identity']):
+        raise ValueError('v4_cgi_restore_foreign_writer')
+    temp = stage_target_bytes(parent/'cgi-restored.php',original,expected[4]&0o777)
+    staged = None
+    try:
+        staged = v4_cgi_identity(temp,actor,ns)
+        if staged[0] != current[0] or staged[2:5] != expected[2:5]: raise ValueError('v4_cgi_restore_group')
+        v4_cgi_sync_file(temp,staged,actor,ns)
+        if v4_cgi_identity(api,actor,ns) != current: raise ValueError('v4_cgi_restore_foreign_writer')
+        os.replace(temp,api)
+        v4_cgi_sync_dirs(parent,api.parent)
+        restored = v4_cgi_identity(api,actor,ns)
+        if restored[2:5] != expected[2:5] or hashlib.sha256(v4_cgi_read(api,actor,ns)).hexdigest() != V4_CGI_API_SHA:
+            raise ValueError('v4_cgi_restore_verification')
+    finally:
+        v4_cgi_cleanup_temp(temp,staged,actor,ns)
+    return {'status':'restored','gate_closed':True,'api_restored':True}
+
+def v4_cgi_http(nonce):
+    import urllib.request
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs): return None
+    opener = urllib.request.build_opener(NoRedirect)
+    request = urllib.request.Request(
+        'https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php',
+        data=b'',method='POST',headers={'X-AnyTour-V4-Metadata':nonce,'Content-Type':'text/plain','Accept':'application/json'})
+    with opener.open(request,timeout=15) as response:
+        raw = response.read(129)
+        if (response.status != 200 or len(raw) > 128 or response.headers.get_all('Set-Cookie',[])
+                or 'no-store' not in response.headers.get('Cache-Control','')
+                or response.headers.get_content_type() != 'application/json'
+                or json.loads(raw) != {'ok':True}):
+            raise ValueError('v4_cgi_http_shape')
+
+def v4_cgi_dependencies(actor,ns):
+    # These accepted, pinned top-level imports contain definitions only. Never execute them.
+    paths = [('v2/data/hotel-details-v1.php',runtime/'data/hotel-details-v1.php')]
+    paths += [('app/integrations/'+name,runtime/'app/integrations'/name) for name in V4_CGI_DEPS]
+    for relative,path in paths:
+        expected = files.get(relative)
+        raw = v4_cgi_read(path,actor,ns,2097152)
+        if not isinstance(expected,str) or hashlib.sha256(raw).hexdigest() != expected:
+            raise ValueError('v4_cgi_dependency_pin')
+        if any(word in raw for word in (b'session.save_path',b'session.save_handler',b'session.serialize_handler',
+                b'session_set_save_handler',b'session_save_path(',b'session_module_name(')):
+            raise ValueError('v4_cgi_dependency_storage_override')
+
+def v4_cgi_metadata(parent,intent,actor,ns):
+    metadata = json.loads(v4_cgi_read(parent/'cgi-metadata.json',actor,ns,16384,0o600))
+    keys = {'schema_version','operation_id','nonce_hash','at','uid','sapi','script','script_sha256',
+            'startup','config_contract','config_hashes','save_handler','save_path','serializer','session_root',
+            'effective_path','path_basis','php_version_id'}
+    startup = metadata.get('startup') if isinstance(metadata,dict) else None
+    if (not isinstance(metadata,dict) or set(metadata) != keys or metadata['schema_version'] != 1
+            or metadata['operation_id'] != V4_CGI_PARENT or metadata['nonce_hash'] != intent['nonce_hash']
+            or metadata['uid'] != actor or type(metadata['uid']) is not int
+            or type(metadata['at']) is not int or not intent['deadline']-60 <= metadata['at'] <= intent['deadline']
+            or metadata['sapi'] != 'cgi-fcgi' or metadata['script'] != str(runtime/'api-anex-search3-preview.php')
+            or metadata['script_sha256'] != intent['wrapper_sha256']):
+        raise ValueError('v4_cgi_metadata_binding')
+    if (not isinstance(startup,dict) or set(startup) != {'session_status','auto_start','prepend_empty','append_empty'}
+            or startup['session_status'] != 1 or type(startup['session_status']) is not int
+            or startup['auto_start'] not in ('','0') or startup['prepend_empty'] is not True or startup['append_empty'] is not True):
+        raise ValueError('v4_cgi_startup_unproven')
+    if metadata['config_contract'] is not True: raise ValueError('v4_cgi_private_config_unproven')
+    hashes = metadata['config_hashes']
+    if not isinstance(hashes,dict) or set(hashes) not in ({'outer'},{'outer','bootstrap'}): raise ValueError('v4_cgi_private_config_unproven')
+    paths = {'outer':runtime/'.anex-private.php','bootstrap':home/'.anytoour-anex/search3-preview.php'}
+    for index,digest in hashes.items():
+        if not isinstance(digest,str) or hashlib.sha256(v4_cgi_read(paths[index],actor,ns,65536)).hexdigest() != digest:
+            raise ValueError('v4_cgi_private_config_changed')
+    if metadata['save_handler'] != 'files': raise ValueError('v4_cgi_session_handler_unsupported')
+    serializer = metadata['serializer']
+    if serializer not in ('php','php_serialize'): raise ValueError('v4_cgi_session_serializer_unsupported')
+    value = metadata['save_path']; effective = metadata['effective_path']
+    if not isinstance(value,str) or len(value) > 1024 or type(metadata['php_version_id']) is not int:
+        raise ValueError('v4_cgi_session_path_unavailable')
+    if value == '':
+        # PHP 8.3 mod_files and sys_get_temp_dir use the same CGI php_get_temporary_directory().
+        if (metadata['path_basis'] != 'cgi_files_empty_path_runtime_tempdir'
+                or not 80300 <= metadata['php_version_id'] < 80400
+                or not isinstance(effective,str) or not effective):
+            raise ValueError('v4_cgi_default_path_unproven')
+        candidate = v4_config_value('session.save_path='+json.dumps(effective))
+    else:
+        if metadata['path_basis'] != 'cgi_files_configured': raise ValueError('v4_cgi_session_path_unavailable')
+        candidate = v4_config_value('session.save_path='+json.dumps(value))
+        if candidate != effective: raise ValueError('v4_cgi_session_path_unavailable')
+    if not candidate: raise ValueError('v4_cgi_session_path_unavailable')
+    root = pathlib.Path(candidate); ns['no_links'](root)
+    if root.resolve(strict=True) != root or root in (pathlib.Path(root.anchor),home,project,runtime) or project in root.parents:
+        raise ValueError('v4_cgi_session_path_scope')
+    root_fact = metadata['session_root']
+    import stat
+    st = os.lstat(root)
+    identity = [st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode]
+    if (not stat.S_ISDIR(st.st_mode) or not isinstance(root_fact,dict) or set(root_fact) != {'path','identity'}
+            or root_fact['path'] != str(root) or root_fact['identity'] != identity
+            or any(type(n) is not int for n in root_fact['identity'])):
+        raise ValueError('v4_cgi_root_namespace_unproven')
+    v4_cgi_root_trust(root,actor,ns)
+    return root,serializer,identity
+
+
+V4_CGI_MONEY_ENCODER = r"""
+error_reporting(0);
+function v4munpack($x,&$nodes,$depth=0) {
+    if (++$nodes > 120000 || $depth > 64 || !is_array($x) || array_keys($x)!==['t','v'])
+        throw new RuntimeException('shape');
+    $t=$x['t'];$v=$x['v'];
+    if ($t==='n' && $v===null) return null;
+    if ($t==='b' && is_bool($v)) return $v;
+    if ($t==='s' && is_string($v)) return $v;
+    if ($t==='i' && is_string($v) && preg_match('/\A-?(?:0|[1-9][0-9]*)\z/D',$v)===1
+        && (string)(int)$v===$v) return (int)$v;
+    if ($t==='d' && is_string($v) && is_numeric($v) && is_finite((float)$v)) return (float)$v;
+    if ($t==='a' && is_array($v) && array_is_list($v)) {
+        $out=[];
+        foreach($v as $pair) {
+            if(!is_array($pair)||array_keys($pair)!==[0,1]) throw new RuntimeException('shape');
+            $key=v4munpack($pair[0],$nodes,$depth+1);
+            if((!is_string($key)&&!is_int($key))||array_key_exists($key,$out)) throw new RuntimeException('key');
+            $out[$key]=v4munpack($pair[1],$nodes,$depth+1);
+        }
+        return $out;
+    }
+    throw new RuntimeException('type');
+}
+try {
+    $raw=stream_get_contents(STDIN,1048577);
+    if(!is_string($raw)||strlen($raw)>1048576) throw new RuntimeException('bound');
+    $data=json_decode($raw,true,256,JSON_THROW_ON_ERROR);
+    if(!is_array($data)||array_keys($data)!==['binding','maps','id']||!is_string($data['id'])
+        ||!is_array($data['maps'])||count($data['maps'])>3) throw new RuntimeException('shape');
+    $nodes=0;$binding=v4munpack($data['binding'],$nodes);$refs=[];
+    foreach($data['maps'] as $wire) {
+        $map=v4munpack($wire,$nodes);
+        if(!is_array($map)||count($map)!==2) throw new RuntimeException('map');
+        $sorted=$map;ksort($sorted,SORT_NUMERIC);
+        if($sorted!==$map) throw new RuntimeException('map');
+        $refs[]='anex_quote:'.hash('sha256',$data['id']."\0".json_encode($map,JSON_THROW_ON_ERROR));
+    }
+    echo json_encode(['context_digest'=>hash('sha256',json_encode($binding,JSON_THROW_ON_ERROR)),
+        'pair_refs'=>$refs],JSON_THROW_ON_ERROR);
+} catch(Throwable $ignored) { echo '{"ok":false}';exit(1); }
+"""
+
+def v4_cgi_wire(value,depth=0,counter=None):
+    import math
+    counter = [0] if counter is None else counter; counter[0] += 1
+    if counter[0] > 120000 or depth > 64: raise ValueError('v4_cgi_history_encoding_bound')
+    if value is None: return {'t':'n','v':None}
+    if type(value) is bool: return {'t':'b','v':value}
+    if type(value) is int: return {'t':'i','v':str(value)}
+    if type(value) is float and math.isfinite(value): return {'t':'d','v':repr(value)}
+    if isinstance(value,str): return {'t':'s','v':value}
+    if isinstance(value,dict):
+        pairs=[]
+        for key,item in value.items():
+            if type(key) not in (str,int): raise ValueError('v4_cgi_history_encoding_type')
+            pairs.append([v4_cgi_wire(key,depth+1,counter),v4_cgi_wire(item,depth+1,counter)])
+        return {'t':'a','v':pairs}
+    raise ValueError('v4_cgi_history_encoding_type')
+
+def v4_cgi_php_hashes(binding,maps,calculation_id):
+    payload={'binding':v4_cgi_wire(binding),'maps':[v4_cgi_wire(m) for m in maps],'id':calculation_id}
+    raw=json.dumps(payload,separators=(',',':'),allow_nan=False).encode()
+    if len(raw)>1048576: raise ValueError('v4_cgi_history_encoding_bound')
+    child=subprocess.run(['php','-n','-d','display_errors=0','-d','allow_url_fopen=0',
+        '-d','auto_prepend_file=','-d','auto_append_file=','-d','opcache.enable_cli=0',
+        '-r',V4_CGI_MONEY_ENCODER],input=raw,capture_output=True,timeout=5)
+    if child.returncode or child.stderr or len(child.stdout)>1024: raise ValueError('v4_cgi_history_php_encoding')
+    result=json.loads(child.stdout)
+    if (not isinstance(result,dict) or set(result)!={'context_digest','pair_refs'}
+            or not isinstance(result['context_digest'],str) or re.fullmatch('[a-f0-9]{64}',result['context_digest']) is None
+            or not isinstance(result['pair_refs'],list) or len(result['pair_refs'])!=len(maps)
+            or any(not isinstance(ref,str) or re.fullmatch('anex_quote:[a-f0-9]{64}',ref) is None for ref in result['pair_refs'])):
+        raise ValueError('v4_cgi_history_php_encoding')
+    return result
+
+def v4_cgi_php_same(a,b):
+    if type(a) is not type(b): return False
+    if isinstance(a,dict):
+        return (list(a.keys())==list(b.keys()) and all(type(x) is type(y) for x,y in zip(a,b))
+            and all(v4_cgi_php_same(a[k],b[k]) for k in a))
+    return a==b
+
+def v4_cgi_history_diagnostic(value,stage):
+    return (isinstance(value,dict) and value.get('action')==stage
+        and type(value.get('http_status')) is int and value['http_status']==200
+        and type(value.get('curl_errno')) is int and value['curl_errno']==0
+        and type(value.get('response_bytes')) is int and 0<value['response_bytes']<=2097152
+        and type(value.get('elapsed_ms')) is int and 0<=value['elapsed_ms']<=120000)
+
+def v4_cgi_historical_gross(session,ns):
+    unknown={'status':'unknown','amount':None,'historical_only':True,'current_validity':False,
+        'raw_participant_documents_retained':False,'reason':'v4_cgi_history_unverified'}
+    try:
+        if len(v4_target_cases(session,ns))!=1: raise ValueError('v4_cgi_history_identity')
+        contexts=session.get('anex_offer_contexts')
+        if contexts is None: contexts={'legacy':session.get('offer_context')}
+        located=[]
+        for context_ref,context in contexts.items():
+            gateway=context['gateway'];saved=gateway['saved_offers'];attempts=context.get('package_quotes',{})
+            if not isinstance(attempts,dict) or len(attempts)>40: raise ValueError('v4_cgi_history_attempt_bound')
+            for key in attempts:
+                if key not in saved['offers']: continue
+                candidate=dict(context);cg=dict(gateway);cs=dict(saved);cs['offers']={key:saved['offers'][key]}
+                cg['saved_offers']=cs;candidate['gateway']=cg
+                view={'anex_context_generation':session.get('anex_context_generation'),'anex_offer_contexts':{context_ref:candidate}}
+                if len(v4_target_cases(view,ns))==1: located.append((context,key,saved['offers'][key]))
+        if len(located)!=1: raise ValueError('v4_cgi_history_attempt_missing')
+        context,key,entry=located[0];offer=entry['offer'];saved=context['gateway']['saved_offers']
+        snapshot=context['gateway']['search'];search=snapshot['context'];attempt=context['package_quotes'][key]
+        public_failure=attempt.get('public') if isinstance(attempt,dict) else None
+        if isinstance(public_failure,dict) and public_failure.get('status') in ('quote_failed','quote_unknown','quote_expired'):
+            reasons={'ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_TRANSPORT_UNCONFIRMED','ANEX_QUOTE_PRICE_UNCONFIRMED',
+                'ANEX_QUOTE_SUPPLIER_REJECTED','ANEX_QUOTE_HTTP_ERROR','ANEX_QUOTE_TRANSPORT_ERROR','ANEX_QUOTE_INVALID_RESPONSE',
+                'ANEX_QUOTE_CLIENT_UNAVAILABLE','ANEX_QUOTE_RATE_LIMIT','ANEX_QUOTE_UNKNOWN','ANEX_QUOTE_EXPIRED'}
+            if public_failure.get('reason') in reasons: unknown['quote_reason']=public_failure['reason']
+            if public_failure.get('failure_stage') in ('start','transports','SetTransport','calcfull'):
+                unknown['failure_stage']=public_failure['failure_stage']
+        if ns['has_reference'](attempt): raise ValueError('v4_cgi_history_reference')
+        known=[row for row in v4_values(snapshot['offers']) if isinstance(row,dict) and row.get('offer_key')==key]
+        currency=search.get('currency_id')
+        if (len(known)!=1 or not isinstance(known[0].get('supplier_offer_id'),str) or not known[0]['supplier_offer_id']
+                or type(currency) not in (str,int) or str(currency)==''
+                or v4_values(search.get('child_ages'))!=[1]
+                or type(saved.get('expires_at')) is not int or saved['expires_at']<=saved['created_at']):
+            raise ValueError('v4_cgi_history_binding')
+        expiry=attempt.get('expires_at');pairs=attempt.get('pairs');choices=attempt.get('choices');stages=attempt.get('stages')
+        if (type(attempt.get('version')) is not int or attempt['version']!=2 or attempt.get('sealed') is not False
+                or 'active_pair' not in attempt or attempt['active_pair'] is not None
+                or type(expiry) is not int or not saved['created_at']<expiry<=saved['expires_at']
+                or not isinstance(pairs,dict) or not 1<=len(pairs)<=3 or not isinstance(choices,dict) or not 1<=len(choices)<=40
+                or type(attempt.get('reserved_calls')) is not int or attempt['reserved_calls']!=2+2*len(pairs)
+                or not isinstance(stages,dict) or set(stages)!={'start','transports','SetTransport','calcfull'}
+                or any(state!='complete' for state in stages.values())
+                or not isinstance(attempt.get('id'),str) or re.fullmatch('[1-9][0-9]{12}',attempt['id']) is None):
+            raise ValueError('v4_cgi_history_attempt_unready')
+        diagnostics=attempt.get('diagnostics',{})
+        if not all(v4_cgi_history_diagnostic(diagnostics.get(stage),stage) for stage in stages):
+            raise ValueError('v4_cgi_history_diagnostics')
+        maps=[];refs=[]
+        for ref,pair in pairs.items():
+            choice=choices.get(ref)
+            if (not isinstance(ref,str) or re.fullmatch('anex_quote:[a-f0-9]{64}',ref) is None
+                    or not isinstance(pair,dict) or set(pair)!={'stages','diagnostics','public'}
+                    or pair['stages']!={'SetTransport':'complete','calcfull':'complete'}
+                    or not isinstance(choice,dict) or set(choice)!={'selection','public'}):
+                raise ValueError('v4_cgi_history_pair')
+            if not all(v4_cgi_history_diagnostic(pair['diagnostics'].get(stage),stage) for stage in ('SetTransport','calcfull')):
+                raise ValueError('v4_cgi_history_diagnostics')
+            selection=choice['selection'];display=choice['public'];public=pair['public']
+            if (not isinstance(selection,dict) or len(selection)!=2
+                    or any(type(route) not in (int,str) or re.fullmatch('[0-9]{1,3}',str(route)) is None
+                        or not isinstance(uid,str) or not 0<len(uid.encode())<=2048 or re.search(r'[\x00-\x20\x7f]',uid)
+                        for route,uid in selection.items())
+                    or not isinstance(display,dict) or list(display)!=['choice_ref','legs','current']
+                    or display['choice_ref']!=ref or type(display['current']) is not bool
+                    or not isinstance(display['legs'],dict) or list(display['legs'])!=[0,1]
+                    or any(type(k) is not int for k in display['legs'])):
+                raise ValueError('v4_cgi_history_choice')
+            for leg in display['legs'].values():
+                if (not isinstance(leg,dict) or list(leg)!=['label'] or not isinstance(leg['label'],str)
+                        or not 0<len(leg['label'].encode())<=4096 or re.search(r'[\x00-\x1f\x7f]',leg['label'])):
+                    raise ValueError('v4_cgi_history_leg')
+            price=public.get('price') if isinstance(public,dict) else None
+            verified=public.get('verified_at') if isinstance(public,dict) else None
+            if (not isinstance(price,dict) or list(price)!=['amount','currency','basis']
+                    or not isinstance(price['amount'],str) or re.fullmatch(r'[0-9]{1,10}(?:\.[0-9]{1,2})?',price['amount']) is None
+                    or int(price['amount'].replace('.',''))<=0 or price['currency']!='RUB'
+                    or price['basis']!='supplier_gross_package' or type(verified) is not int
+                    or not saved['created_at']<=verified<expiry
+                    or not v4_cgi_php_same(public,{'status':'quote_verified','final_price_verified':True,
+                        'selection_state':'preview_only','price':price,'choice':display,'verified_at':verified,'expires_at':expiry})):
+                raise ValueError('v4_cgi_history_price')
+            refs.append(ref);maps.append(selection)
+        last=attempt.get('public')
+        selected=last.get('choice',{}).get('choice_ref') if isinstance(last,dict) else None
+        if (selected not in pairs or not v4_cgi_php_same(last,pairs[selected]['public'])
+                or not all(v4_cgi_php_same(diagnostics[stage],pairs[selected]['diagnostics'][stage])
+                    for stage in ('SetTransport','calcfull'))):
+            raise ValueError('v4_cgi_history_public_conflict')
+        binding={'generation':context['generation'],'search_ref':saved['search_ref'],'offer_ref':key,
+            'offer':offer,'supplier_offer_id':known[0]['supplier_offer_id'],'currency_id':str(currency),
+            'child_ages':search['child_ages']}
+        hashed=v4_cgi_php_hashes(binding,maps,attempt['id'])
+        if hashed['context_digest']!=attempt.get('context_digest') or hashed['pair_refs']!=refs:
+            raise ValueError('v4_cgi_history_digest')
+        return {'status':'verified_historical_runtime_result','amount':last['price']['amount'],'currency':'RUB',
+            'basis':'supplier_gross_package','verified_at':last['verified_at'],'expires_at':expiry,
+            'legs':[{'label':leg['label']} for leg in last['choice']['legs'].values()],
+            'party':{'adults':2,'children':0,'infants':1},'child_ages':[1],
+            'historical_only':True,'current_validity':False,'proof_basis':'accepted_runtime_retained_result',
+            'raw_participant_documents_retained':False}
+    except Exception as error:
+        reason=str(error)
+        if re.fullmatch('v4_cgi_history_[a-z_]{1,64}',reason): unknown['reason']=reason
+        return unknown
+
+
+def v4_cgi_retained(root,serializer,actor,ns,root_identity):
+    import stat
+    def root_unchanged():
+        v4_cgi_root_trust(root,actor,ns); st = os.lstat(root)
+        if (not stat.S_ISDIR(st.st_mode) or [st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode] != root_identity):
+            raise ValueError('v4_cgi_root_changed')
+    root_unchanged()
+    strict_file_mode = v4_cgi_root_trust(root,actor,ns)
+    admission = int(time.time()); entries = 0; paths = []; total = 0
+    # New CGI-bound admission: only file mtime is widened; original context window stays fixed.
+    with os.scandir(root) as scan:
+        for entry in scan:
+            entries += 1
+            if entries > 4096: raise ValueError('v4_cgi_directory_bound')
+            st = entry.stat(follow_symlinks=False)
+            if (not ns['NAME'].fullmatch(entry.name) or st.st_uid != actor
+                    or not V4_START <= st.st_mtime <= admission): continue
+            if (entry.is_symlink() or not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+                    or st.st_mode & 0o022 or (strict_file_mode and stat.S_IMODE(st.st_mode) != 0o600)
+                    or not 0 < st.st_size <= ns['MAX_FILE']): raise ValueError('v4_cgi_candidate_contract')
+            fact = (st.st_dev,st.st_ino,st.st_uid,st.st_mode,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+            paths.append((pathlib.Path(entry.path),fact)); total += st.st_size
+            if len(paths) > 32 or total > ns['MAX_TOTAL']: raise ValueError('v4_cgi_candidate_bound')
+    matches = []; read_bytes = 0
+    for path,fact in sorted(paths):
+        root_unchanged()
+        raw = v4_owned_read(path,min(ns['MAX_FILE'],ns['MAX_TOTAL']-read_bytes),actor,ns,
+            window=False,config=True,expected_facts=fact)
+        read_bytes += len(raw)
+        session = ns['decode_session'](raw,serializer)
+        for case in v4_target_cases(session,ns): matches.append((case,hashlib.sha256(raw).hexdigest(),path,fact,session))
+    root_unchanged()
+    if len(matches) != 1: raise ValueError('v4_cgi_case_missing' if not matches else 'v4_cgi_case_ambiguous')
+    case,digest,matched_path,matched_facts,matched_session = matches[0]
+    historical = v4_cgi_historical_gross(matched_session,ns)
+    binding = {'schema_version':1,'case':'v4-20261101-2A-age1','operation_id':V4_CGI_PARENT,
+        'source_sha':'6dcfb5053793caba4f353facfa7a899a30df2d17','session_file':str(matched_path),
+        'serializer':serializer,'session_root':str(root),'root_identity':root_identity,
+        'file_stat_fields':['dev','ino','uid','mode','size','mtime_ns','ctime_ns'],
+        'file_stat':list(matched_facts),'session_sha256':digest,'read_admission_timestamp':admission,
+        'original_context_window':[V4_START,V4_END]}
+    binding_bytes = json.dumps(binding,sort_keys=True,separators=(',',':')).encode()
+    v4_cgi_write(op/'v4-case-binding.json',binding_bytes)
+    return {'status':'retained_case_matched','binding_record_saved':True,
+        'binding_record_sha256':hashlib.sha256(binding_bytes).hexdigest(),'case':'v4-20261101-2A-age1','retained_outcome':case,
+        'session_sha256':digest,'session_bytes_read':read_bytes,'candidate_files':len(paths),
+        'read_admission_timestamp':admission,'file_mtime_window':[V4_START,admission],
+        'original_context_window':[V4_START,V4_END],'full_price_verified_current':False,'historical_gross':historical}
+
+def v4_cgi_reason(error):
+    if isinstance(error,PermissionError): return 'retained_permission_denied'
+    if isinstance(error,FileNotFoundError): return 'retained_path_unavailable'
+    reason = str(error)
+    if re.fullmatch(r'v4_cgi_[a-z_]{1,64}',reason): return reason
+    return 'v4_cgi_guard_hold'
+
+def v4_cgi_readback():
+    import secrets,stat
+    actor = os.geteuid(); ns = v4_cgi_ns()
+    report = {'status':'hold','stage':'runtime_pin','actor_escalation':False,'script_supplier_intents':0,
+        'script_session_open_intents':0,'cgi_startup_side_effects':'unverified','historical_gross':None,
+        'full_price_verified_current':False,'runtime_probe_writes':0,'api_restored':False}
+    parent = op; api = runtime/'api-anex-search3-preview.php'; temp = None; staged = None; intent_written = False
+    try:
+        ns['no_links'](parent)
+        facts = os.lstat(parent)
+        if not stat.S_ISDIR(facts.st_mode) or facts.st_uid != actor or facts.st_mode&0o777 != 0o700:
+            raise ValueError('v4_cgi_private_scope')
+        original = v4_cgi_read(api,actor,ns)
+        if hashlib.sha256(original).hexdigest() != V4_CGI_API_SHA or not original.startswith(V4_CGI_HEADER):
+            raise ValueError('v4_cgi_runtime_api_pin')
+        prior = v4_cgi_identity(api,actor,ns); v4_cgi_dependencies(actor,ns)
+        nonce = secrets.token_hex(32); nonce_hash = hashlib.sha256(nonce.encode()).hexdigest(); deadline = int(time.time())+60
+        v4_cgi_write(parent/'cgi-api-original.php',original)
+        v4_cgi_write(parent/'cgi-gate',('OPEN\n'+nonce_hash+'\n').encode())
+        gate_stat = os.lstat(parent/'cgi-gate')
+        spec = {'operation_id':V4_CGI_PARENT,'nonce_hash':nonce_hash,'uid':actor,'deadline':deadline,'script':str(api),
+            'gate':str(parent/'cgi-gate'),'metadata':str(parent/'cgi-metadata.json'),
+            'gate_identity':[gate_stat.st_dev,gate_stat.st_ino,gate_stat.st_uid,gate_stat.st_gid,gate_stat.st_mode],
+            'config':str(runtime/'.anex-private.php'),'bootstrap':str(home/'.anytoour-anex/search3-preview.php')}
+        branch = V4_CGI_PHP.replace('@@SPEC@@',base64.b64encode(json.dumps(spec,separators=(',',':')).encode()).decode()).encode()
+        wrapper = V4_CGI_HEADER+branch+original[len(V4_CGI_HEADER):]
+        temp = stage_target_bytes(parent/'cgi-wrapper.php',wrapper,prior[4]&0o777)
+        staged = v4_cgi_identity(temp,actor,ns)
+        if staged[0] != prior[0] or staged[2:5] != prior[2:5]: raise ValueError('v4_cgi_stage_group')
+        v4_cgi_sync_file(temp,staged,actor,ns)
+        lint = subprocess.run(['php','-l',str(temp)],capture_output=True,timeout=20)
+        if lint.returncode: raise ValueError('v4_cgi_probe_lint')
+        intent = {'schema_version':1,'parent_operation':V4_CGI_PARENT,'source_sha':source,'original_sha256':V4_CGI_API_SHA,
+            'wrapper_sha256':hashlib.sha256(wrapper).hexdigest(),'wrapper_identity':staged,
+            'original_identity':prior,'nonce_hash':nonce_hash,'deadline':deadline}
+        v4_cgi_write(parent/'cgi-intent.json',json.dumps(intent,sort_keys=True,separators=(',',':')).encode())
+        intent_written = True; report['stage'] = 'metadata_probe'
+        if v4_cgi_identity(api,actor,ns) != prior: raise ValueError('v4_cgi_activation_drift')
+        os.replace(temp,api); temp = None; report['runtime_probe_writes'] = 1
+        v4_cgi_sync_dirs(parent,api.parent)
+        if not v4_cgi_same_staged(v4_cgi_identity(api,actor,ns),staged): raise ValueError('v4_cgi_activation_drift')
+        time.sleep(3)  # One settle before the sole POST; never retry or change OPcache settings.
+        if time.time()+15 > deadline: raise ValueError('v4_cgi_probe_deadline')
+        v4_cgi_http(nonce)
+    except Exception as error: report['reason'] = v4_cgi_reason(error)
+    finally:
+        if intent_written:
+            try:
+                restored = v4_cgi_restore(parent,actor,ns); report.update(api_restored=True,gate_closed=True)
+                report['runtime_probe_writes'] += restored['status'] == 'restored'
+            except Exception as error:
+                report.update(reason=v4_cgi_reason(error),api_restored=False,restore_only_required=True)
+        if temp is not None:
+            try: v4_cgi_cleanup_temp(temp,staged,actor,ns)
+            except Exception as error: report.update(reason=v4_cgi_reason(error),temporary_cleanup_failed=True)
+    if 'reason' in report or not report['api_restored']: return report
+    try:
+        report['stage'] = 'runtime_metadata'
+        intent = v4_cgi_load_intent(parent,actor,ns)
+        root,serializer,root_identity = v4_cgi_metadata(parent,intent,actor,ns)
+        report.update(cgi_startup_side_effects='none_observed',runtime_metadata='validated',
+            session_root_sha256=hashlib.sha256(str(root).encode()).hexdigest(),serializer=serializer)
+        report['stage'] = 'exact_retained_case'
+        report.update(v4_cgi_retained(root,serializer,actor,ns,root_identity))
+    except Exception as error: report['reason'] = v4_cgi_reason(error)
+    return report
+
+def v4_cgi_restore_only():
+    report = {'status':'hold','actor_escalation':False,'session_content_reads':0,'script_supplier_intents':0}
+    try:
+        report.update(v4_cgi_restore(private/V4_CGI_PARENT,os.geteuid(),v4_cgi_ns()))
+        report['status'] = 'restored_only'; report['full_price_verified_current'] = False
+    except Exception as error: report['reason'] = v4_cgi_reason(error)
+    return report
+'''
+
+REMOTE_V4_CGI_DISPATCH = r'''    if mode in ('anex-v4-cgi-retained-readback','anex-v4-cgi-restore-only'):
+        expected_operation = 'int-anex-v4-cgi-retained-20261110-v1' if mode=='anex-v4-cgi-retained-readback' else 'int-anex-v4-cgi-restore-20261110-v1'
+        if operation!=expected_operation or source!='6dcfb5053793caba4f353facfa7a899a30df2d17':fail('v4_cgi_sealed_scope')
+        result['anex_v4_cgi_readback']=v4_cgi_readback() if mode=='anex-v4-cgi-retained-readback' else v4_cgi_restore_only()
+        safe = mode=='anex-v4-cgi-restore-only' or result['anex_v4_cgi_readback'].get('cgi_startup_side_effects')=='none_observed'
+        result.update(supplier_calls=0 if safe else 'unknown',database_reads=0 if safe else 'unknown',database_writes=0 if safe else 'unknown')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+'''
+
+
+def remote_with_v4_cgi_readback(core,mode):
+    remote=core.REMOTE;definition='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n";collectors="    if mode not in ('reconcile',"
+    need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collectors)==2,'v4_cgi_registration_source_drift')
+    reader=REMOTE_V4_READER.replace('@@V4_PARSER@@',repr(RIA_PINNED_READER_SOURCE))
+    remote=remote.replace(definition,reader+REMOTE_V4_CGI_READER+definition,1)
+    remote=remote.replace(dispatch,REMOTE_V4_CGI_DISPATCH+dispatch,1)
+    remote=remote.replace(collectors,"    if mode not in ('"+mode+"','reconcile',")
     ast.parse(remote);return remote
 
