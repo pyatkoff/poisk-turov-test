@@ -1741,6 +1741,242 @@ class V4MappedConfigTest(unittest.TestCase):
             self.assertEqual([pool['listen'] for pool in pools if 'listen' in pool],['/run/php/active.sock'])
 
 
+
+class V4CgiCommandTest(unittest.TestCase):
+    def test_closed_commands_keep_stock_guards_and_every_prior_program(self):
+        import ast
+        source=(ROOT/'scripts/deploy/int_server_executor_firstpage_readback.py').read_text()
+        baseline=source.split('\n# One new runtime-bound read;',1)[0]
+        current="""V4_CGI_MODE = 'anex-v4-cgi-retained-readback'
+V4_CGI_OPERATION = 'int-anex-v4-cgi-retained-20261110-v1'
+V4_CGI_RESTORE_MODE = 'anex-v4-cgi-restore-only'
+V4_CGI_RESTORE_OPERATION = 'int-anex-v4-cgi-restore-20261110-v1'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE,
+         V4_CGI_MODE, V4_CGI_RESTORE_MODE)"""
+        prior="MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE, RIA_MODE, RIA2_MODE, RIA3_MODE, V4_MODE, V4_MAP_MODE)"
+        baseline=baseline.replace(current,prior).replace(
+            "            V4_CGI_MODE: (V4_SOURCE, V4_CGI_OPERATION),\n            V4_CGI_RESTORE_MODE: (V4_SOURCE, V4_CGI_RESTORE_OPERATION),\n",'').replace(
+            "    if mode in (V4_CGI_MODE, V4_CGI_RESTORE_MODE): return remote_with_v4_cgi_readback(core, mode)\n",'')
+        raw=baseline.encode()
+        self.assertEqual(hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),
+                         '572f1578fc94431df740a5d099f580b76478146f')
+        old=types.ModuleType('frozen_before_cgi');exec(compile(baseline,'<frozen-before-cgi>','exec'),old.__dict__)
+        for mode in old.MODES:
+            core=load('int_server_executor')
+            self.assertEqual(old.remote_with_readback(core,mode),extension.remote_with_readback(core,mode))
+        for mode,operation in ((extension.V4_CGI_MODE,extension.V4_CGI_OPERATION),
+                               (extension.V4_CGI_RESTORE_MODE,extension.V4_CGI_RESTORE_OPERATION)):
+            core=load('int_server_executor');extension.register_parser(core)
+            body=core.PREFIX+extension.V4_SOURCE+' '+mode+' '+operation
+            command=core.parse_command(body)
+            for wrong in (body+' /tmp/guess',body.replace(extension.V4_SOURCE,'a'*40),
+                          body.replace(operation,operation+'-retry'),body.replace(operation,extension.V4_OPERATION)):
+                with self.assertRaises(ValueError):core.parse_command(wrong)
+            extension.activate(core,command);ast.parse(core.REMOTE)
+            self.assertIn('operation_exists_no_replay',core.REMOTE)
+            self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(),9)))+1024,65536)
+            self.assertIn("data=b'',method='POST'",core.REMOTE)
+            self.assertNotIn('sudo',extension.REMOTE_V4_CGI_READER)
+            self.assertNotIn('tv_token',extension.REMOTE_V4_CGI_READER)
+            wrapper=load('int_server_executor_anex_secret_transport')
+            self.assertNotIn(mode,wrapper.SUPPLIER_SLOT_MODES)
+            self.assertNotIn(mode,wrapper.DIRECT_ANEX_MODES)
+
+
+@unittest.skipIf(os.name=='nt','POSIX actor, locks and atomic replacement; canonical CI is Linux')
+class V4CgiEvidenceTest(unittest.TestCase):
+    def setUp(self):
+        import ast
+        V4OwnedSessionTest.setUp(self)
+        exec(extension.REMOTE_V4_CGI_READER,self.ns)
+        self.temp=tempfile.TemporaryDirectory(prefix='v4-cgi-unit-');self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name).resolve()
+        self.runtime=self.root/'www/anytoour.ru/_preview/search3-anex-candidate';self.runtime.mkdir(parents=True)
+        self.private=self.root/'.anytoour-int-executor';self.private.mkdir(mode=0o700)
+        self.op=self.private/extension.V4_CGI_OPERATION;self.op.mkdir(mode=0o700)
+        self.sessions=self.root/'sessions';self.sessions.mkdir(mode=0o700)
+        self.actor=os.geteuid()
+        self.api=self.runtime/'api-anex-search3-preview.php'
+        self.original=self.ns['V4_CGI_HEADER']+b"echo 'normal-original';\n"
+        self.api.write_bytes(self.original);self.api.chmod(0o644)
+        self.ns.update(home=self.root,project=self.root/'www/anytoour.ru',runtime=self.runtime,
+            private=self.private,op=self.op,source=extension.V4_SOURCE,operation=extension.V4_CGI_OPERATION,
+            base64=base64,subprocess=subprocess)
+        self.ns['V4_CGI_API_SHA']=hashlib.sha256(self.original).hexdigest()
+        remote=load('int_server_executor').REMOTE
+        node=next(n for n in ast.parse(remote).body if isinstance(n,ast.FunctionDef) and n.name=='stage_target_bytes')
+        exec(compile(ast.Module(body=[node],type_ignores=[]),'<stock-stage>','exec'),self.ns)
+        self.private_write('reservation.json',{'operation_id':extension.V4_CGI_OPERATION,
+            'source_sha':extension.V4_SOURCE,'mode':extension.V4_CGI_MODE,'reserved_at':int(__import__('time').time())})
+        (self.runtime/'.anex-private.php').write_text("<?php\ndefine('SAFE_LITERAL','value');\n")
+        (self.runtime/'.anex-private.php').chmod(0o600)
+
+    def private_write(self,name,value):
+        path=self.op/name
+        raw=value if isinstance(value,bytes) else json.dumps(value,separators=(',',':')).encode()
+        path.write_bytes(raw);path.chmod(0o600);return path
+
+    def root_identity(self):
+        st=self.sessions.stat();return [st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode]
+
+    def prepare(self):
+        original_identity=self.ns['v4_cgi_identity'](self.api,self.actor,self.parser)
+        wrapper=self.original+b'# harmless fixture wrapper\n'
+        self.private_write('cgi-api-original.php',self.original)
+        self.private_write('cgi-gate',b'OPEN\n'+b'a'*64+b'\n')
+        self.api.write_bytes(wrapper)
+        intent={'schema_version':1,'parent_operation':extension.V4_CGI_OPERATION,'source_sha':extension.V4_SOURCE,
+            'original_sha256':self.ns['V4_CGI_API_SHA'],'wrapper_sha256':hashlib.sha256(wrapper).hexdigest(),
+            'wrapper_identity':self.ns['v4_cgi_identity'](self.api,self.actor,self.parser),
+            'original_identity':original_identity,'nonce_hash':'a'*64,'deadline':int(__import__('time').time())+60}
+        self.private_write('cgi-intent.json',intent);return intent
+
+    def test_actual_private_read_checks_expected_stat_and_permissions(self):
+        path=self.private_write('fixed.json',b'bounded')
+        self.assertEqual(b'bounded',self.ns['v4_cgi_read'](path,self.actor,self.parser,16,0o600))
+        path.chmod(0o644)
+        with self.assertRaisesRegex(ValueError,'v4_cgi_file_contract'):
+            self.ns['v4_cgi_read'](path,self.actor,self.parser,16,0o600)
+
+    def test_guarded_restore_and_interrupted_restore_only_never_read_sessions(self):
+        self.prepare()
+        http=mock.Mock(side_effect=AssertionError('restore must not use HTTP'))
+        self.ns['v4_cgi_http']=http
+        self.ns['v4_cgi_retained']=mock.Mock(side_effect=AssertionError('restore must not read sessions'))
+        self.ns['operation']=extension.V4_CGI_RESTORE_OPERATION
+        result=self.ns['v4_cgi_restore_only']()
+        self.assertEqual('restored_only',result['status'])
+        self.assertTrue(result['api_restored']);self.assertEqual(self.original,self.api.read_bytes())
+        self.assertEqual(b'CLOSED\n',(self.op/'cgi-gate').read_bytes())
+        self.assertEqual(0,result['session_content_reads']);http.assert_not_called()
+        self.ns['v4_cgi_retained'].assert_not_called()
+
+    def test_foreign_writer_is_never_overwritten_even_with_same_file_inode(self):
+        self.prepare();self.api.write_bytes(b'foreign-writer-canary')
+        with self.assertRaisesRegex(ValueError,'v4_cgi_restore_foreign_writer'):
+            self.ns['v4_cgi_restore'](self.op,self.actor,self.parser)
+        self.assertEqual(b'foreign-writer-canary',self.api.read_bytes())
+
+    def test_failed_probe_restores_original_before_any_metadata_or_session_read(self):
+        self.ns['v4_cgi_dependencies']=mock.Mock()
+        self.ns['v4_cgi_http']=mock.Mock(side_effect=ValueError('PRIVATE_HTTP_ERROR_CANARY'))
+        self.ns['v4_cgi_metadata']=mock.Mock(side_effect=AssertionError('must not read metadata after failed POST'))
+        self.ns['v4_cgi_retained']=mock.Mock(side_effect=AssertionError('must not read sessions'))
+        with mock.patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0)), \
+                mock.patch.object(self.ns['time'],'sleep'):
+            result=self.ns['v4_cgi_readback']()
+        self.assertTrue(result['api_restored']);self.assertEqual(self.original,self.api.read_bytes())
+        self.assertEqual(2,result['runtime_probe_writes'])
+        self.assertEqual('unverified',result['cgi_startup_side_effects'])
+        self.assertNotIn('PRIVATE_HTTP_ERROR_CANARY',json.dumps(result))
+        self.ns['v4_cgi_http'].assert_called_once()
+        self.ns['v4_cgi_metadata'].assert_not_called();self.ns['v4_cgi_retained'].assert_not_called()
+
+    def test_gate_lock_timeout_does_not_restore_or_read_content(self):
+        import fcntl
+        self.prepare();before=self.api.read_bytes()
+        with mock.patch.object(fcntl,'flock',side_effect=BlockingIOError), \
+                mock.patch.object(self.ns['time'],'monotonic',side_effect=[0,11]):
+            with self.assertRaisesRegex(ValueError,'v4_cgi_gate_close_timeout'):
+                self.ns['v4_cgi_restore'](self.op,self.actor,self.parser)
+        self.assertEqual(before,self.api.read_bytes())
+        self.assertTrue((self.op/'cgi-gate').read_bytes().startswith(b'OPEN\n'))
+
+    def metadata(self,intent):
+        cfg=(self.runtime/'.anex-private.php').read_bytes()
+        return {'schema_version':1,'operation_id':extension.V4_CGI_OPERATION,'nonce_hash':intent['nonce_hash'],
+            'at':intent['deadline']-30,'uid':self.actor,'sapi':'cgi-fcgi','script':str(self.api),
+            'script_sha256':intent['wrapper_sha256'],
+            'startup':{'session_status':1,'auto_start':'0','prepend_empty':True,'append_empty':True},
+            'config_contract':True,'config_hashes':{'outer':hashlib.sha256(cfg).hexdigest()},
+            'save_handler':'files','save_path':str(self.sessions),'serializer':'php',
+            'session_root':{'path':str(self.sessions),'identity':self.root_identity()}}
+
+    def test_actual_serializer_and_cgi_root_namespace_are_required(self):
+        intent=self.prepare();metadata=self.metadata(intent)
+        self.private_write('cgi-metadata.json',metadata)
+        root,serializer,identity=self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+        self.assertEqual((root,serializer,identity),(self.sessions,'php',self.root_identity()))
+        variants=[('serializer','php_binary','serializer'),('save_handler','redis','handler'),
+            ('save_path','','path'),('config_contract',False,'config')]
+        for field,value,reason in variants:
+            bad=copy.deepcopy(metadata);bad[field]=value;self.private_write('cgi-metadata.json',bad)
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,reason):
+                self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+        bad=copy.deepcopy(metadata);bad['session_root']['identity'][1]+=1
+        self.private_write('cgi-metadata.json',bad)
+        with self.assertRaisesRegex(ValueError,'namespace'):
+            self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+
+    def test_startup_session_or_prepend_is_not_declared_zero(self):
+        intent=self.prepare();metadata=self.metadata(intent)
+        for field,value in [('session_status',2),('auto_start','1'),('prepend_empty',False),('append_empty',False)]:
+            bad=copy.deepcopy(metadata);bad['startup'][field]=value;self.private_write('cgi-metadata.json',bad)
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'startup_unproven'):
+                self.ns['v4_cgi_metadata'](self.op,intent,self.actor,self.parser)
+
+    def test_new_file_window_keeps_original_context_window_and_explicit_serializer(self):
+        raw=RiaReadbackEvidenceTest.php(self.session)
+        path=self.sessions/('sess_'+'a'*26);path.write_bytes(raw);path.chmod(0o600)
+        late=self.ns['V4_END']+86400;os.utime(path,(late,late))
+        now=late+10
+        with mock.patch.object(self.ns['time'],'time',return_value=now):
+            result=self.ns['v4_cgi_retained'](self.sessions,'php_serialize',self.actor,self.parser,self.root_identity())
+        self.assertEqual('retained_case_matched',result['status'])
+        self.assertEqual('quote_not_started',result['retained_outcome']['status'])
+        self.assertEqual([self.ns['V4_START'],now],result['file_mtime_window'])
+        self.assertEqual([self.ns['V4_START'],self.ns['V4_END']],result['original_context_window'])
+        self.assertIsNone(result['historical_gross']);self.assertFalse(result['full_price_verified_current'])
+        with mock.patch.object(self.ns['time'],'time',return_value=now),self.assertRaises(Exception):
+            self.ns['v4_cgi_retained'](self.sessions,'php',self.actor,self.parser,self.root_identity())
+
+    def test_all_candidate_bounds_precede_content_without_truncation(self):
+        for i in range(33):
+            path=self.sessions/('sess_'+str(i).zfill(26));path.write_bytes(b'x');path.chmod(0o600)
+            os.utime(path,(self.created,self.created))
+        read=mock.Mock(side_effect=AssertionError('no file content before full preflight'))
+        original=self.ns['v4_owned_read'];self.ns['v4_owned_read']=read
+        try:
+            with self.assertRaisesRegex(ValueError,'candidate_bound'):
+                self.ns['v4_cgi_retained'](self.sessions,'php',self.actor,self.parser,self.root_identity())
+            read.assert_not_called()
+        finally:self.ns['v4_owned_read']=original
+
+    @unittest.skipUnless(shutil.which('php'),'native PHP syntax/tokenizer guard in existing CI')
+    def test_native_retained_wrapper_gate_and_literal_config_without_imports(self):
+        import time
+        nonce='unit-only-nonce';digest=hashlib.sha256(nonce.encode()).hexdigest()
+        self.private_write('cgi-gate',('OPEN\n'+digest+'\n').encode())
+        st=(self.op/'cgi-gate').stat()
+        spec={'operation_id':extension.V4_CGI_OPERATION,'nonce_hash':digest,'uid':self.actor,'deadline':int(time.time())+60,
+            'script':str(self.api),'gate':str(self.op/'cgi-gate'),'metadata':str(self.op/'cgi-metadata.json'),
+            'config':str(self.runtime/'.anex-private.php'),'bootstrap':str(self.root/'.anytoour-anex/search3-preview.php'),
+            'gate_identity':[st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode]}
+        # Unit-only CLI fact substitution; production has no bypass or configurable SAPI.
+        branch=self.ns['V4_CGI_PHP'].replace('@@SPEC@@',base64.b64encode(json.dumps(spec).encode()).decode())
+        branch=branch.replace('php_sapi_name()',"'cgi-fcgi'")
+        server="$_SERVER['HTTP_X_ANYTOUR_V4_METADATA']='unit-only-nonce';$_SERVER['REQUEST_METHOD']='POST';"+\
+            "$_SERVER['HTTP_HOST']='anytoour.ru';$_SERVER['QUERY_STRING']='';$_SERVER['SCRIPT_FILENAME']=__FILE__;\n"
+        self.api.write_text(self.ns['V4_CGI_HEADER'].decode()+server+branch+"throw new Exception('SUPPLIER_IMPORT_CANARY');\n")
+        out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
+        self.assertEqual((out.returncode,out.stdout,out.stderr),(0,'{"ok":true}',''))
+        saved=(self.op/'cgi-metadata.json').read_bytes();data=json.loads(saved)
+        self.assertTrue(data['config_contract']);self.assertEqual(self.actor,data['uid'])
+        self.assertEqual('cgi-fcgi',data['sapi']);self.assertNotIn(str(self.root),out.stdout)
+        (self.op/'cgi-gate').write_bytes(b'CLOSED\n')
+        out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
+        self.assertEqual(out.stdout,'{"ok":false}')
+        self.assertEqual(saved,(self.op/'cgi-metadata.json').read_bytes())
+        # Reopening is test-only; a dangerous dynamic call remains unexecuted, not token-whitelisted.
+        (self.op/'cgi-gate').write_bytes(('OPEN\n'+digest+'\n').encode())
+        (self.op/'cgi-metadata.json').unlink()
+        canary=self.root/'must-not-be-written'
+        (self.runtime/'.anex-private.php').write_text("<?php ('file_put_contents')("+repr(str(canary))+",'bad');")
+        out=subprocess.run(['php',str(self.api)],capture_output=True,text=True,timeout=10)
+        self.assertEqual(out.stdout,'{"ok":true}');self.assertFalse(canary.exists())
+        self.assertFalse(json.loads((self.op/'cgi-metadata.json').read_bytes())['config_contract'])
+
+
 if __name__ == '__main__':
     unittest.main()
 
