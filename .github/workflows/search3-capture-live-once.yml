@@ -24,15 +24,13 @@ jobs:
       ${{ github.event.number == 5009 && github.event.pull_request.draft &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.ref == 'verify/search3-capture-offline-20261110' &&
-          github.event.before == '49e6af9780d0e48d1a7d4ffd55f655652c75e5a8' &&
+          github.event.before == 'd6e64e1203102afc7ba9d386fe2353682887a4f0' &&
           github.run_attempt == '1' &&
           contains(github.event.pull_request.body, format('search3-live-approved-head:{0}', github.event.pull_request.head.sha)) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       CAPTURE_TOOL_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
-      LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
-      LIVE_ENCRYPTED_DIR: ${{ runner.temp }}/search3-live-encrypted-20261110
     steps:
       - name: Check out the exact authorized head
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -68,10 +66,17 @@ jobs:
             const expected=['.github/workflows/search3-capture-offline.yml','.github/workflows/search3-capture-live-once.yml','tools/search3-capture/recorder.cjs','tools/search3-capture/verify-offline.cjs','tools/search3-capture/run-live-once.cjs','tools/search3-capture/seal-live-evidence.cjs'];
             if(files.length!==6||files.some(f=>f.status!=='added'||!expected.includes(f.filename)))throw Error('PR paths changed');
             const commit=await read('/commits/'+sha);
-            if(commit.parents.length!==1||commit.parents[0].sha!=='49e6af9780d0e48d1a7d4ffd55f655652c75e5a8')throw Error('Parent changed');
+            if(commit.parents.length!==1||commit.parents[0].sha!=='d6e64e1203102afc7ba9d386fe2353682887a4f0')throw Error('Parent changed');
             const current=await read('/actions/runs/'+run);
             const prior=await read('/actions/workflows/'+current.workflow_id+'/runs?branch=verify%2Fsearch3-capture-offline-20261110&per_page=100');
-            if(prior.total_count>100||prior.workflow_runs.some(r=>r.id!==run))throw Error('Live operation already has another run; no replay');
+            if(prior.total_count>100)throw Error('Prior run inventory incomplete');
+            const earlier=prior.workflow_runs.filter(r=>r.id!==run);
+            if(earlier.length!==1)throw Error('Expected exactly the documented pre-job configuration rejection');
+            const rejected=earlier[0];
+            if(rejected.id!==42838424344||rejected.head_sha!=='d6e64e1203102afc7ba9d386fe2353682887a4f0'||rejected.run_attempt!==1||rejected.event!=='push'||rejected.conclusion!=='failure')throw Error('Another live operation exists; no replay');
+            const rejectedJobs=await read('/actions/runs/42838424344/jobs?filter=all&per_page=100');
+            const rejectedArtifacts=await read('/actions/runs/42838424344/artifacts?per_page=100');
+            if(rejectedJobs.total_count!==0||rejectedArtifacts.total_count!==0)throw Error('Previous browser execution cannot be excluded');
             const deadline=Date.now()+120000;
             for(;;){
               const rs=await read('/actions/runs?head_sha='+sha+'&per_page=100');
@@ -107,11 +112,15 @@ jobs:
       - name: One form submission and one selected tour within the external time limit
         env:
           NODE_PATH: ${{ runner.temp }}/capture-tools/node_modules
+          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
           SEARCH3_LIVE_OPERATION: search3-live-capture-20261110-v1
         run: timeout --signal=TERM --kill-after=5s 295s node tools/search3-capture/run-live-once.cjs
       - name: Encrypt the original evidence with the owner's public key
         if: ${{ always() && steps.admission.outcome == 'success' }}
         id: seal
+        env:
+          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
+          LIVE_ENCRYPTED_DIR: ${{ runner.temp }}/search3-live-encrypted-20261110
         run: node tools/search3-capture/seal-live-evidence.cjs
       - name: Retain encrypted evidence only
         if: ${{ always() && steps.seal.outcome == 'success' }}
