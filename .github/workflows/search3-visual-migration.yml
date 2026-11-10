@@ -102,7 +102,7 @@ jobs:
   browser-matrix:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Existing full journey plus the five-width LOCAL SQL/API/browser acceptance.
     timeout-minutes: 40
     steps:
