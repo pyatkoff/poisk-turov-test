@@ -68,10 +68,23 @@ async function snapshot(page) {
     await document.fonts.ready;
     for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
     scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    // Focus/filter actions can leave a pending scroll-anchor adjustment. Measure
-    // both representations at a settled document origin, not during that scroll.
-    for (let i = 0; i < 2; i++) await new Promise(r => requestAnimationFrame(r));
-    scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    // Focus/filter actions can adjust the scroll anchor after a reset. Reapply
+    // the measurement origin and require it to remain stable across frames.
+    const deadline = performance.now() + 2000;
+    let settledFrames = 0;
+    while (settledFrames < 3) {
+      await new Promise(r => requestAnimationFrame(r));
+      if (scrollX === 0 && scrollY === 0) settledFrames++;
+      else {
+        settledFrames = 0;
+        scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      }
+      if (performance.now() > deadline) throw new Error(
+        'result snapshot did not settle at origin: ' + JSON.stringify({
+          width: innerWidth, scrollX, scrollY, settledFrames,
+          focus: document.activeElement && document.activeElement.className
+        }));
+    }
   });
   await page.waitForFunction(() => scrollX === 0 && scrollY === 0);
   return page.evaluate(() => {
