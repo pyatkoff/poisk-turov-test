@@ -1742,10 +1742,18 @@ class V4MappedConfigTest(unittest.TestCase):
 
 
 
+
+def before_v4_continuation_source(source):
+    source=source.split('\n# Original-attempt continuation:',1)[0]
+    source=source.replace("V4_CGI_CONT_MODE = 'anex-v4-cgi-retained-continuation'\nV4_CGI_CONT_OPERATION = 'int-anex-v4-cgi-retained-continuation-20261110-v1'\n",'')
+    source=source.replace("         V4_CGI_MODE, V4_CGI_RESTORE_MODE, V4_CGI_CONT_MODE)","         V4_CGI_MODE, V4_CGI_RESTORE_MODE)")
+    source=source.replace("            V4_CGI_CONT_MODE: (V4_SOURCE, V4_CGI_CONT_OPERATION),\n",'')
+    return source.replace("    if mode == V4_CGI_CONT_MODE: return remote_with_v4_cgi_continuation(core)\n",'')
+
 class V4CgiCommandTest(unittest.TestCase):
     def test_closed_commands_keep_stock_guards_and_every_prior_program(self):
         import ast
-        source=(ROOT/'scripts/deploy/int_server_executor_firstpage_readback.py').read_text()
+        source=before_v4_continuation_source((ROOT/'scripts/deploy/int_server_executor_firstpage_readback.py').read_text())
         baseline=source.split('\n# One new runtime-bound read;',1)[0]
         current="""V4_CGI_MODE = 'anex-v4-cgi-retained-readback'
 V4_CGI_OPERATION = 'int-anex-v4-cgi-retained-20261110-v1'
@@ -2226,6 +2234,141 @@ class V4CgiEvidenceTest(unittest.TestCase):
         self.assertEqual((out.returncode,out.stdout,out.stderr),(0,'{"ok":true}',''))
         self.assertFalse(json.loads((self.op/'cgi-metadata.json').read_bytes())['config_contract'])
 
+
+
+
+ORIGINAL_V4_CGI_RESULT_JSON = "{\"anex_v4_cgi_readback\":{\"actor_escalation\":false,\"api_restored\":true,\"cgi_startup_side_effects\":\"unverified\",\"full_price_verified_current\":false,\"gate_closed\":true,\"historical_gross\":null,\"reason\":\"v4_cgi_guard_hold\",\"runtime_probe_writes\":2,\"script_session_open_intents\":0,\"script_supplier_intents\":0,\"stage\":\"metadata_probe\",\"status\":\"hold\"},\"booking_calls\":0,\"database_reads\":\"unknown\",\"database_writes\":\"unknown\",\"lead_calls\":0,\"mode\":\"anex-v4-cgi-retained-readback\",\"operation_id\":\"int-anex-v4-cgi-retained-20261110-v1\",\"production_after\":{\"index.php\":\"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f\",\"v2/api-v2.php\":null,\"v2/index.php\":null,\"v2/lead-adapter-v2.php\":null},\"production_before\":{\"index.php\":\"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f\",\"v2/api-v2.php\":null,\"v2/index.php\":null,\"v2/lead-adapter-v2.php\":null},\"production_unchanged\":true,\"schema_version\":1,\"source_sha\":\"6dcfb5053793caba4f353facfa7a899a30df2d17\",\"status\":\"complete\",\"supplier_calls\":\"unknown\"}"
+
+
+class V4CgiContinuationCommandTest(unittest.TestCase):
+    def test_fixed_child_scope_all_previous_programs_and_remote_size(self):
+        import ast
+        source=(ROOT/'scripts/deploy/int_server_executor_firstpage_readback.py').read_text()
+        baseline=before_v4_continuation_source(source);raw=baseline.encode()
+        self.assertEqual('3bfcb61f22e00e4949ee160fc3646f13fbda9cb5',
+            hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest())
+        prior=types.ModuleType('before_v4_retained_continuation')
+        exec(compile(baseline,'<before-continuation>','exec'),prior.__dict__)
+        for mode in prior.MODES:
+            core=load('int_server_executor')
+            self.assertEqual(prior.remote_with_readback(core,mode),extension.remote_with_readback(core,mode))
+        core=load('int_server_executor');extension.register_parser(core)
+        body=core.PREFIX+extension.V4_SOURCE+' '+extension.V4_CGI_CONT_MODE+' '+extension.V4_CGI_CONT_OPERATION
+        command=core.parse_command(body)
+        for invalid in (body+' /tmp/other',body.replace(extension.V4_SOURCE,'a'*40),
+                        body.replace(extension.V4_CGI_CONT_OPERATION,extension.V4_CGI_OPERATION),
+                        body.replace('-v1','-v2')):
+            with self.assertRaises(ValueError):core.parse_command(invalid)
+        extension.activate(core,command);ast.parse(core.REMOTE)
+        self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(),9)))+1024,65536)
+        self.assertIn('operation_exists_no_replay',core.REMOTE)
+        self.assertNotIn('v4_cgi_http(',extension.REMOTE_V4_CGI_CONT_READER)
+        self.assertNotIn('v4_cgi_restore(',extension.REMOTE_V4_CGI_CONT_READER)
+        self.assertNotIn('stage_target_bytes(',extension.REMOTE_V4_CGI_CONT_READER)
+        wrapper=load('int_server_executor_anex_secret_transport')
+        self.assertNotIn(extension.V4_CGI_CONT_MODE,wrapper.SUPPLIER_SLOT_MODES)
+        self.assertNotIn(extension.V4_CGI_CONT_MODE,wrapper.DIRECT_ANEX_MODES)
+
+
+@unittest.skipIf(os.name=='nt','POSIX owned retained-control fixtures; canonical CI is Linux')
+class V4CgiContinuationEvidenceTest(unittest.TestCase):
+    private_write=V4CgiEvidenceTest.private_write
+    root_identity=V4CgiEvidenceTest.root_identity
+    prepare=V4CgiEvidenceTest.prepare
+    metadata=V4CgiEvidenceTest.metadata
+
+    def setUp(self):
+        import time
+        V4CgiEvidenceTest.setUp(self)
+        exec(extension.REMOTE_V4_CGI_CONT_READER,self.ns)
+        self.parent=self.op;intent=self.prepare()
+        # Authenticated metadata is old. Current time must never revive/re-run its nonce.
+        intent['deadline']=int(time.time())-300
+        self.private_write('reservation.json',{'operation_id':extension.V4_CGI_OPERATION,'source_sha':extension.V4_SOURCE,
+            'mode':extension.V4_CGI_MODE,'reserved_at':intent['deadline']-60})
+        self.private_write('cgi-intent.json',intent)
+        self.private_write('result.json',json.loads(ORIGINAL_V4_CGI_RESULT_JSON))
+        self.private_write('cgi-metadata.json',self.metadata(intent))
+        (self.parent/'cgi-gate').write_bytes(b'CLOSED\n')
+        self.api.write_bytes(self.original)
+        self.child=self.private/extension.V4_CGI_CONT_OPERATION;self.child.mkdir(mode=0o700)
+        self.ns.update(op=self.child,operation=extension.V4_CGI_CONT_OPERATION)
+        self.ns['v4_cgi_dependencies']=mock.Mock()
+        self.http=mock.Mock(side_effect=AssertionError('continuation must not call HTTP'))
+        self.restore=mock.Mock(side_effect=AssertionError('continuation must not restore or mutate API'))
+        self.ns['v4_cgi_http']=self.http;self.ns['v4_cgi_restore']=self.restore
+        self.source_read=self.ns['v4_cgi_read']
+        self.read=mock.Mock(wraps=self.source_read);self.ns['v4_cgi_read']=self.read
+        self.owned=mock.Mock(wraps=self.ns['v4_owned_read']);self.ns['v4_owned_read']=self.owned
+        self.session_path=self.sessions/('sess_'+'a'*26)
+        self.session_path.write_bytes(RiaReadbackEvidenceTest.php(self.session));self.session_path.chmod(0o600)
+        os.utime(self.session_path,(self.created,self.created))
+
+    def parent_snapshot(self):
+        return {path.name:path.read_bytes() for path in self.parent.iterdir() if path.is_file()}
+
+    def session_reads(self):
+        return [call for call in self.owned.call_args_list if Path(call.args[0]).parent==self.sessions]
+
+    def run_read(self):
+        return self.ns['v4_cgi_continuation_readback']()
+
+    def test_original_metadata_is_read_once_first_content_and_child_provenance_only(self):
+        before=self.parent_snapshot();api=self.api.read_bytes()
+        result=self.run_read()
+        self.assertEqual('retained_case_matched',result['status'],result)
+        self.assertTrue(result['retained_read_invoked']);self.assertEqual(1,len(self.session_reads()))
+        self.assertEqual(1,sum(call.args[0]==self.parent/'cgi-metadata.json' for call in self.read.call_args_list))
+        self.assertEqual(before,self.parent_snapshot());self.assertEqual(api,self.api.read_bytes())
+        self.http.assert_not_called();self.restore.assert_not_called()
+        record=self.child/'v4-case-binding.json';binding=json.loads(record.read_bytes())
+        self.assertEqual(0o600,record.stat().st_mode&0o777)
+        self.assertEqual(extension.V4_CGI_CONT_OPERATION,binding['operation_id'])
+        self.assertEqual(extension.V4_CGI_OPERATION,binding['metadata_parent_operation_id'])
+        self.assertEqual(self.ns['V4_CGI_CONT_PARENT_SHA'],binding['metadata_parent_result_sha256'])
+        self.assertEqual(hashlib.sha256(record.read_bytes()).hexdigest(),result['binding_record_sha256'])
+        self.assertEqual('unknown',result['parent_supplier_calls'])
+        self.assertEqual('unverified',result['parent_cgi_startup_side_effects'])
+        self.assertEqual(0,result['own_http_requests']);self.assertEqual(0,result['own_api_writes'])
+        for private in (str(self.parent),str(self.sessions),str(self.session_path)):
+            self.assertNotIn(private,json.dumps(result))
+
+    def test_absent_metadata_is_precise_terminal_without_content_or_parent_writes(self):
+        (self.parent/'cgi-metadata.json').unlink();before=self.parent_snapshot();api=self.api.read_bytes()
+        result=self.run_read()
+        self.assertEqual('v4_cgi_cont_metadata_absent',result['reason'],result)
+        self.assertFalse(result['retained_read_invoked']);self.assertFalse(result['metadata_present'])
+        self.assertEqual([],self.session_reads());self.assertEqual(before,self.parent_snapshot())
+        self.assertEqual(api,self.api.read_bytes());self.assertFalse((self.child/'v4-case-binding.json').exists())
+        self.http.assert_not_called();self.restore.assert_not_called()
+
+    def test_partial_wrong_nonce_parent_receipt_or_open_gate_never_reach_contents(self):
+        snapshots=self.parent_snapshot()
+        cases=[('cgi-metadata.json',b'{'),('cgi-metadata.json',json.dumps(dict(json.loads(snapshots['cgi-metadata.json']),nonce_hash='b'*64)).encode()),
+            ('result.json',json.dumps(dict(json.loads(snapshots['result.json']),status='unknown')).encode()),
+            ('cgi-gate',b'OPEN\n'+b'a'*64+b'\n')]
+        for name,raw in cases:
+            for filename,data in snapshots.items():self.private_write(filename,data)
+            self.private_write(name,raw);before=self.parent_snapshot();self.owned.reset_mock();self.read.reset_mock()
+            result=self.run_read()
+            with self.subTest(file=name):
+                self.assertEqual('hold',result['status'],result);self.assertFalse(result['retained_read_invoked'])
+                self.assertEqual([],self.session_reads());self.assertEqual(before,self.parent_snapshot())
+                self.assertFalse((self.child/'v4-case-binding.json').exists())
+                self.assertLessEqual(sum(call.args[0]==self.parent/'cgi-metadata.json' for call in self.read.call_args_list),1)
+        self.http.assert_not_called();self.restore.assert_not_called()
+
+    def test_parent_change_after_metadata_validation_is_hold_before_content(self):
+        validate=self.ns['v4_cgi_metadata']
+        def change(*args):
+            result=validate(*args)
+            path=self.parent/'cgi-metadata.json';path.write_bytes(path.read_bytes()+b' ')
+            return result
+        self.ns['v4_cgi_metadata']=change
+        result=self.run_read()
+        self.assertEqual('v4_cgi_cont_parent_changed',result['reason'],result)
+        self.assertFalse(result['retained_read_invoked']);self.assertEqual([],self.session_reads())
+        self.http.assert_not_called();self.restore.assert_not_called()
 
 
 if __name__ == '__main__':
