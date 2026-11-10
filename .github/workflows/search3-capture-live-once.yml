@@ -24,9 +24,9 @@ jobs:
       ${{ github.event.number == 5009 && github.event.pull_request.draft &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.ref == 'verify/search3-capture-offline-20261110' &&
-          github.event.before == 'd6e64e1203102afc7ba9d386fe2353682887a4f0' &&
+          github.event.before == '9effbd20d3902dd5d23b4ed94b96b60f5af02fd6' &&
           github.run_attempt == '1' &&
-          contains(github.event.pull_request.body, format('search3-live-approved-head:{0}', github.event.pull_request.head.sha)) }}
+          contains(github.event.pull_request.body, format('search3-live-v2-approved-head:{0}', github.event.pull_request.head.sha)) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -43,12 +43,12 @@ jobs:
           set -euo pipefail
           sha256sum --check <<'SHA256'
           ff6986e260b00cf8f3f755a61cf70ea2c4ff2a3e17c0700e49fbec66b9f9dd62  tools/search3-capture/recorder.cjs
-          96b8738ef4ae846e3d6b878157a5757caf3f01f71c05b28b83b8c45880d35cd4  tools/search3-capture/run-live-once.cjs
-          e9706c3090fb94531c78bf26c09f88346a674cd6d13db3faa2033ef59202ea69  tools/search3-capture/seal-live-evidence.cjs
+          7b5cfee90a107adecbe9ca5222e453a5119b01a268ead846cff25dcf973a909e  tools/search3-capture/run-live-once.cjs
+          4f1e1771c2168295d01fb076b33d924777aa60ecd293df9d99046e000d7d61fd  tools/search3-capture/seal-live-evidence.cjs
           SHA256
           node --check tools/search3-capture/run-live-once.cjs
           node --check tools/search3-capture/seal-live-evidence.cjs
-      - name: Require the exact PR, original attempt, no earlier live run and successful Security guard
+      - name: Require the new owner admission, exact PR, original attempt and successful Security guard
         id: admission
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,22 +61,23 @@ jobs:
           (async()=>{
             if(process.env.GITHUB_RUN_ATTEMPT!=='1'||!Number.isSafeInteger(run)||!sha)throw Error('Original attempt required');
             const pr=await read('/pulls/5009');
-            if(!pr.draft||pr.state!=='open'||pr.merged||pr.head.sha!==sha||pr.base.sha!=='04b48814e34b245b8b11018c2c2340bbc5a3ec18'||!pr.body.includes('search3-live-approved-head:'+sha))throw Error('PR admission changed');
+            if(!pr.draft||pr.state!=='open'||pr.merged||pr.head.sha!==sha||pr.base.sha!=='04b48814e34b245b8b11018c2c2340bbc5a3ec18'||!pr.body.includes('search3-live-v2-approved-head:'+sha))throw Error('PR admission changed');
             const files=await read('/pulls/5009/files?per_page=100');
-            const expected=['.github/workflows/search3-capture-offline.yml','.github/workflows/search3-capture-live-once.yml','tools/search3-capture/recorder.cjs','tools/search3-capture/verify-offline.cjs','tools/search3-capture/run-live-once.cjs','tools/search3-capture/seal-live-evidence.cjs'];
-            if(files.length!==6||files.some(f=>f.status!=='added'||!expected.includes(f.filename)))throw Error('PR paths changed');
+            const expected=['.github/workflows/search3-capture-offline.yml','.github/workflows/search3-capture-live-once.yml','tools/search3-capture/recorder.cjs','tools/search3-capture/verify-offline.cjs','tools/search3-capture/run-live-once.cjs','tools/search3-capture/seal-live-evidence.cjs','tools/search3-capture/read-static-once.cjs'];
+            if(files.length!==7||files.some(f=>f.status!=='added'||!expected.includes(f.filename)))throw Error('PR paths changed');
             const commit=await read('/commits/'+sha);
-            if(commit.parents.length!==1||commit.parents[0].sha!=='d6e64e1203102afc7ba9d386fe2353682887a4f0')throw Error('Parent changed');
+            if(commit.parents.length!==1||commit.parents[0].sha!=='9effbd20d3902dd5d23b4ed94b96b60f5af02fd6')throw Error('Parent changed');
             const current=await read('/actions/runs/'+run);
             const prior=await read('/actions/workflows/'+current.workflow_id+'/runs?branch=verify%2Fsearch3-capture-offline-20261110&per_page=100');
             if(prior.total_count>100)throw Error('Prior run inventory incomplete');
             const earlier=prior.workflow_runs.filter(r=>r.id!==run);
-            if(earlier.length!==1)throw Error('Expected exactly the documented pre-job configuration rejection');
-            const rejected=earlier[0];
-            if(rejected.id!==42838424344||rejected.head_sha!=='d6e64e1203102afc7ba9d386fe2353682887a4f0'||rejected.run_attempt!==1||rejected.event!=='push'||rejected.conclusion!=='failure')throw Error('Another live operation exists; no replay');
-            const rejectedJobs=await read('/actions/runs/42838424344/jobs?filter=all&per_page=100');
-            const rejectedArtifacts=await read('/actions/runs/42838424344/artifacts?per_page=100');
-            if(rejectedJobs.total_count!==0||rejectedArtifacts.total_count!==0)throw Error('Previous browser execution cannot be excluded');
+            const known = new Map([
+              [42838424344, ['d6e64e1203102afc7ba9d386fe2353682887a4f0', 'failure']],
+              [42839568270, ['91b94eb21cd0db891a8301192d3c102f1a5cfbe5', 'failure']],
+              [42844742939, ['9effbd20d3902dd5d23b4ed94b96b60f5af02fd6', 'success']]
+            ]);
+            if(earlier.length!==known.size||earlier.some(r=>!known.has(r.id)||r.run_attempt!==1||r.head_sha!==known.get(r.id)[0]||r.conclusion!==known.get(r.id)[1]))throw Error('Unknown or repeated earlier operation; no replay');
+            if(pr.body.includes('search3-live-approved-head:')||pr.body.includes('search3-static-read-approved-head:'))throw Error('Previous admission must remain consumed');
             const deadline=Date.now()+120000;
             for(;;){
               const rs=await read('/actions/runs?head_sha='+sha+'&per_page=100');
@@ -86,7 +87,7 @@ jobs:
               if(guard.length>1)throw Error('Multiple guard runs');
               if(guard.length===1&&guard[0].status==='completed'){
                 if(guard[0].conclusion!=='success')throw Error('Security guard did not pass');
-                console.log('ONE_ORIGINAL_LIVE_OPERATION_ADMITTED');return;
+                console.log('ONE_SEPARATELY_AUTHORIZED_V2_LIVE_OPERATION_ADMITTED');return;
               }
               if(Date.now()>deadline)throw Error('Security guard not confirmed in budget');
               await new Promise(resolve=>setTimeout(resolve,4000));
@@ -112,22 +113,22 @@ jobs:
       - name: One form submission and one selected tour within the external time limit
         env:
           NODE_PATH: ${{ runner.temp }}/capture-tools/node_modules
-          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
-          SEARCH3_LIVE_OPERATION: search3-live-capture-20261110-v1
+          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110-v2
+          SEARCH3_LIVE_OPERATION: search3-live-capture-20261110-v2
         run: timeout --signal=TERM --kill-after=5s 295s node tools/search3-capture/run-live-once.cjs
       - name: Encrypt the original evidence with the owner's public key
         if: ${{ always() && steps.admission.outcome == 'success' }}
         id: seal
         env:
-          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110
-          LIVE_ENCRYPTED_DIR: ${{ runner.temp }}/search3-live-encrypted-20261110
+          LIVE_EVIDENCE_DIR: ${{ runner.temp }}/search3-live-evidence-20261110-v2
+          LIVE_ENCRYPTED_DIR: ${{ runner.temp }}/search3-live-encrypted-20261110-v2
         run: node tools/search3-capture/seal-live-evidence.cjs
       - name: Retain encrypted evidence only
         if: ${{ always() && steps.seal.outcome == 'success' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: search3-live-private-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/search3-live-encrypted-20261110/
+          path: ${{ runner.temp }}/search3-live-encrypted-20261110-v2/
           if-no-files-found: error
           retention-days: 30
 

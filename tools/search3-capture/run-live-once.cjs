@@ -5,7 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { chromium } = require('playwright');
 const { attachRecorder } = require('./recorder.cjs');
-const operation = 'search3-live-capture-20261110-v1';
+const operation = 'search3-live-capture-20261110-v2';
 const origin = 'https://anytoour.ru';
 const prefix = '/_preview/search3-early-intent-candidate/';
 const pageURL = origin + prefix + 'poisk-turov/';
@@ -19,7 +19,7 @@ const trip = { from: '1', country: '4', dateFrom: '2026-11-18', dateTo: '2026-11
   daysFrom: '7', daysTill: '7', count_people: '2', child_count: '0' };
 const actions = ['search_start', 'search_continue', 'search_status', 'search_results', 'tour', 'flights'];
 const started = Date.now();
-let browser, context, page, recorder, root, failure = null, phase = 'admission';
+let browser, context, page, recorder, root, failure = null, failureDetails = null, phase = 'admission';
 let firstId = null, selectedId = null, terminal = false, browserStartedAt = null, browserClosedAt = null;
 let submitClicks = 0, tourClicks = 0;
 const counts = Object.fromEntries(actions.map(a => [a, 0]));
@@ -160,7 +160,11 @@ async function viewport(width) {
     save('selected-ui.json', state);
     if (state.searchId !== firstId || JSON.stringify(state.fields) !== JSON.stringify(trip)) throw fixedError('SEARCH_CONTEXT_CHANGED');
     phase = 'captured';
-  } catch (error) { if (!failure) failure = error.code || 'SESSION_INCOMPLETE_AT_' + phase.toUpperCase(); }
+  } catch (error) {
+    const safe = value => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,100}$/.test(value) ? value : null;
+    failureDetails = { phase, name: safe(error.name), code: safe(error.code), causeName: safe(error.cause?.name), causeCode: safe(error.cause?.code) };
+    if (!failure) failure = safe(error.code) || 'SESSION_INCOMPLETE_AT_' + phase.toUpperCase();
+  }
   finally {
     let summary = null;
     if (recorder) { try { summary = await recorder.finish(); } catch { failure ||= 'RECORDER_FINISH_FAILED'; } }
@@ -175,7 +179,7 @@ async function viewport(width) {
         summary?.pendingBodies || !summary?.closedAt || summary?.contextCloseFailed) failure ||= 'INCOMPLETE_NETWORK_EVIDENCE';
     if (browserStartedAt && (!browserClosedAt || browserClosedAt - browserStartedAt > 300000)) failure ||= 'BROWSER_TIME_BOUND_UNPROVEN';
     const report = { status: failure ? 'LIVE_CAPTURE_INCOMPLETE' : 'LIVE_CAPTURE_COMPLETED', failure, operation,
-      phase, generatedAt: new Date().toISOString(), sourceSha, toolSourceSha: process.env.CAPTURE_TOOL_SOURCE_SHA,
+      phase, failureDetails, generatedAt: new Date().toISOString(), sourceSha, toolSourceSha: process.env.CAPTURE_TOOL_SOURCE_SHA,
       startedAt: new Date(started).toISOString(), browserStartedAt, browserClosedAt, elapsedMs: Date.now() - started,
       browserElapsedMs: browserClosedAt && browserStartedAt ? browserClosedAt - browserStartedAt : null,
       submitClicks, tourClicks, browserRequestCounts: counts, firstSearchId: firstId, selectedTourId: selectedId,

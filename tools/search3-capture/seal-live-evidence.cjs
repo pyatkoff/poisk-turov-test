@@ -8,7 +8,7 @@ const root=process.env.LIVE_EVIDENCE_DIR,out=process.env.LIVE_ENCRYPTED_DIR;
  if(!root||!out||!path.isAbsolute(root)||!path.isAbsolute(out)||root===out)throw Error('EVIDENCE_PATHS_REQUIRED');
  fs.mkdirSync(out,{mode:0o700});
  const head=process.env.CAPTURE_TOOL_SOURCE_SHA,run=process.env.GITHUB_RUN_ID;
- const aad=Buffer.from(JSON.stringify({operation:'search3-live-capture-20261110-v1',head,run}));
+ const aad=Buffer.from(JSON.stringify({operation:'search3-live-capture-20261110-v2',head,run}));
  if(!fs.existsSync(root)){
   fs.writeFileSync(path.join(out,'public-status.json'),JSON.stringify({status:'LIVE_SCRIPT_NOT_INVOKED',head,run})+'\n',{flag:'wx'});
   return;
