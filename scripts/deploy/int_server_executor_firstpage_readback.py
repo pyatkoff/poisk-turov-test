@@ -2315,8 +2315,11 @@ def v4_cgi_sync_dirs(*paths):
         finally: os.close(fd)
 
 def v4_cgi_cleanup_temp(path,identity,actor,ns):
-    try: current = v4_cgi_identity(path,actor,ns)
-    except FileNotFoundError: return
+    try:
+        ns['no_links'](path.parent)
+        try: os.lstat(path)
+        except FileNotFoundError: return
+        current = v4_cgi_identity(path,actor,ns)
     except Exception: raise ValueError('v4_cgi_temp_cleanup_unproven') from None
     if identity is None or current != identity: raise ValueError('v4_cgi_temp_cleanup_foreign')
     try:
@@ -2506,6 +2509,205 @@ def v4_cgi_metadata(parent,intent,actor,ns):
     v4_cgi_root_trust(root,actor,ns)
     return root,serializer,identity
 
+
+V4_CGI_MONEY_ENCODER = r"""
+error_reporting(0);
+function v4munpack($x,&$nodes,$depth=0) {
+    if (++$nodes > 120000 || $depth > 64 || !is_array($x) || array_keys($x)!==['t','v'])
+        throw new RuntimeException('shape');
+    $t=$x['t'];$v=$x['v'];
+    if ($t==='n' && $v===null) return null;
+    if ($t==='b' && is_bool($v)) return $v;
+    if ($t==='s' && is_string($v)) return $v;
+    if ($t==='i' && is_string($v) && preg_match('/\A-?(?:0|[1-9][0-9]*)\z/D',$v)===1
+        && (string)(int)$v===$v) return (int)$v;
+    if ($t==='d' && is_string($v) && is_numeric($v) && is_finite((float)$v)) return (float)$v;
+    if ($t==='a' && is_array($v) && array_is_list($v)) {
+        $out=[];
+        foreach($v as $pair) {
+            if(!is_array($pair)||array_keys($pair)!==[0,1]) throw new RuntimeException('shape');
+            $key=v4munpack($pair[0],$nodes,$depth+1);
+            if((!is_string($key)&&!is_int($key))||array_key_exists($key,$out)) throw new RuntimeException('key');
+            $out[$key]=v4munpack($pair[1],$nodes,$depth+1);
+        }
+        return $out;
+    }
+    throw new RuntimeException('type');
+}
+try {
+    $raw=stream_get_contents(STDIN,1048577);
+    if(!is_string($raw)||strlen($raw)>1048576) throw new RuntimeException('bound');
+    $data=json_decode($raw,true,256,JSON_THROW_ON_ERROR);
+    if(!is_array($data)||array_keys($data)!==['binding','maps','id']||!is_string($data['id'])
+        ||!is_array($data['maps'])||count($data['maps'])>3) throw new RuntimeException('shape');
+    $nodes=0;$binding=v4munpack($data['binding'],$nodes);$refs=[];
+    foreach($data['maps'] as $wire) {
+        $map=v4munpack($wire,$nodes);
+        if(!is_array($map)||count($map)!==2) throw new RuntimeException('map');
+        $sorted=$map;ksort($sorted,SORT_NUMERIC);
+        if($sorted!==$map) throw new RuntimeException('map');
+        $refs[]='anex_quote:'.hash('sha256',$data['id']."\0".json_encode($map,JSON_THROW_ON_ERROR));
+    }
+    echo json_encode(['context_digest'=>hash('sha256',json_encode($binding,JSON_THROW_ON_ERROR)),
+        'pair_refs'=>$refs],JSON_THROW_ON_ERROR);
+} catch(Throwable $ignored) { echo '{"ok":false}';exit(1); }
+"""
+
+def v4_cgi_wire(value,depth=0,counter=None):
+    import math
+    counter = [0] if counter is None else counter; counter[0] += 1
+    if counter[0] > 120000 or depth > 64: raise ValueError('v4_cgi_history_encoding_bound')
+    if value is None: return {'t':'n','v':None}
+    if type(value) is bool: return {'t':'b','v':value}
+    if type(value) is int: return {'t':'i','v':str(value)}
+    if type(value) is float and math.isfinite(value): return {'t':'d','v':repr(value)}
+    if isinstance(value,str): return {'t':'s','v':value}
+    if isinstance(value,dict):
+        pairs=[]
+        for key,item in value.items():
+            if type(key) not in (str,int): raise ValueError('v4_cgi_history_encoding_type')
+            pairs.append([v4_cgi_wire(key,depth+1,counter),v4_cgi_wire(item,depth+1,counter)])
+        return {'t':'a','v':pairs}
+    raise ValueError('v4_cgi_history_encoding_type')
+
+def v4_cgi_php_hashes(binding,maps,calculation_id):
+    payload={'binding':v4_cgi_wire(binding),'maps':[v4_cgi_wire(m) for m in maps],'id':calculation_id}
+    raw=json.dumps(payload,separators=(',',':'),allow_nan=False).encode()
+    if len(raw)>1048576: raise ValueError('v4_cgi_history_encoding_bound')
+    child=subprocess.run(['php','-n','-d','display_errors=0','-d','allow_url_fopen=0',
+        '-d','auto_prepend_file=','-d','auto_append_file=','-d','opcache.enable_cli=0',
+        '-r',V4_CGI_MONEY_ENCODER],input=raw,capture_output=True,timeout=5)
+    if child.returncode or child.stderr or len(child.stdout)>1024: raise ValueError('v4_cgi_history_php_encoding')
+    result=json.loads(child.stdout)
+    if (not isinstance(result,dict) or set(result)!={'context_digest','pair_refs'}
+            or not isinstance(result['context_digest'],str) or re.fullmatch('[a-f0-9]{64}',result['context_digest']) is None
+            or not isinstance(result['pair_refs'],list) or len(result['pair_refs'])!=len(maps)
+            or any(not isinstance(ref,str) or re.fullmatch('anex_quote:[a-f0-9]{64}',ref) is None for ref in result['pair_refs'])):
+        raise ValueError('v4_cgi_history_php_encoding')
+    return result
+
+def v4_cgi_php_same(a,b):
+    if type(a) is not type(b): return False
+    if isinstance(a,dict):
+        return (list(a.keys())==list(b.keys()) and all(type(x) is type(y) for x,y in zip(a,b))
+            and all(v4_cgi_php_same(a[k],b[k]) for k in a))
+    return a==b
+
+def v4_cgi_history_diagnostic(value,stage):
+    return (isinstance(value,dict) and value.get('action')==stage
+        and type(value.get('http_status')) is int and value['http_status']==200
+        and type(value.get('curl_errno')) is int and value['curl_errno']==0
+        and type(value.get('response_bytes')) is int and 0<value['response_bytes']<=2097152
+        and type(value.get('elapsed_ms')) is int and 0<=value['elapsed_ms']<=120000)
+
+def v4_cgi_historical_gross(session,ns):
+    unknown={'status':'unknown','amount':None,'historical_only':True,'current_validity':False,
+        'raw_participant_documents_retained':False,'reason':'v4_cgi_history_unverified'}
+    try:
+        if len(v4_target_cases(session,ns))!=1: raise ValueError('v4_cgi_history_identity')
+        contexts=session.get('anex_offer_contexts')
+        if contexts is None: contexts={'legacy':session.get('offer_context')}
+        located=[]
+        for context_ref,context in contexts.items():
+            gateway=context['gateway'];saved=gateway['saved_offers'];attempts=context.get('package_quotes',{})
+            if not isinstance(attempts,dict) or len(attempts)>40: raise ValueError('v4_cgi_history_attempt_bound')
+            for key in attempts:
+                if key not in saved['offers']: continue
+                candidate=dict(context);cg=dict(gateway);cs=dict(saved);cs['offers']={key:saved['offers'][key]}
+                cg['saved_offers']=cs;candidate['gateway']=cg
+                view={'anex_context_generation':session.get('anex_context_generation'),'anex_offer_contexts':{context_ref:candidate}}
+                if len(v4_target_cases(view,ns))==1: located.append((context,key,saved['offers'][key]))
+        if len(located)!=1: raise ValueError('v4_cgi_history_attempt_missing')
+        context,key,entry=located[0];offer=entry['offer'];saved=context['gateway']['saved_offers']
+        snapshot=context['gateway']['search'];search=snapshot['context'];attempt=context['package_quotes'][key]
+        public_failure=attempt.get('public') if isinstance(attempt,dict) else None
+        if isinstance(public_failure,dict) and public_failure.get('status') in ('quote_failed','quote_unknown','quote_expired'):
+            reasons={'ANEX_QUOTE_IDENTITY_UNCONFIRMED','ANEX_QUOTE_TRANSPORT_UNCONFIRMED','ANEX_QUOTE_PRICE_UNCONFIRMED',
+                'ANEX_QUOTE_SUPPLIER_REJECTED','ANEX_QUOTE_HTTP_ERROR','ANEX_QUOTE_TRANSPORT_ERROR','ANEX_QUOTE_INVALID_RESPONSE',
+                'ANEX_QUOTE_CLIENT_UNAVAILABLE','ANEX_QUOTE_RATE_LIMIT','ANEX_QUOTE_UNKNOWN','ANEX_QUOTE_EXPIRED'}
+            if public_failure.get('reason') in reasons: unknown['quote_reason']=public_failure['reason']
+            if public_failure.get('failure_stage') in ('start','transports','SetTransport','calcfull'):
+                unknown['failure_stage']=public_failure['failure_stage']
+        if ns['has_reference'](attempt): raise ValueError('v4_cgi_history_reference')
+        known=[row for row in v4_values(snapshot['offers']) if isinstance(row,dict) and row.get('offer_key')==key]
+        currency=search.get('currency_id')
+        if (len(known)!=1 or not isinstance(known[0].get('supplier_offer_id'),str) or not known[0]['supplier_offer_id']
+                or type(currency) not in (str,int) or str(currency)==''
+                or v4_values(search.get('child_ages'))!=[1]
+                or type(saved.get('expires_at')) is not int or saved['expires_at']<=saved['created_at']):
+            raise ValueError('v4_cgi_history_binding')
+        expiry=attempt.get('expires_at');pairs=attempt.get('pairs');choices=attempt.get('choices');stages=attempt.get('stages')
+        if (type(attempt.get('version')) is not int or attempt['version']!=2 or attempt.get('sealed') is not False
+                or 'active_pair' not in attempt or attempt['active_pair'] is not None
+                or type(expiry) is not int or not saved['created_at']<expiry<=saved['expires_at']
+                or not isinstance(pairs,dict) or not 1<=len(pairs)<=3 or not isinstance(choices,dict) or not 1<=len(choices)<=40
+                or type(attempt.get('reserved_calls')) is not int or attempt['reserved_calls']!=2+2*len(pairs)
+                or not isinstance(stages,dict) or set(stages)!={'start','transports','SetTransport','calcfull'}
+                or any(state!='complete' for state in stages.values())
+                or not isinstance(attempt.get('id'),str) or re.fullmatch('[1-9][0-9]{12}',attempt['id']) is None):
+            raise ValueError('v4_cgi_history_attempt_unready')
+        diagnostics=attempt.get('diagnostics',{})
+        if not all(v4_cgi_history_diagnostic(diagnostics.get(stage),stage) for stage in stages):
+            raise ValueError('v4_cgi_history_diagnostics')
+        maps=[];refs=[]
+        for ref,pair in pairs.items():
+            choice=choices.get(ref)
+            if (not isinstance(ref,str) or re.fullmatch('anex_quote:[a-f0-9]{64}',ref) is None
+                    or not isinstance(pair,dict) or set(pair)!={'stages','diagnostics','public'}
+                    or pair['stages']!={'SetTransport':'complete','calcfull':'complete'}
+                    or not isinstance(choice,dict) or set(choice)!={'selection','public'}):
+                raise ValueError('v4_cgi_history_pair')
+            if not all(v4_cgi_history_diagnostic(pair['diagnostics'].get(stage),stage) for stage in ('SetTransport','calcfull')):
+                raise ValueError('v4_cgi_history_diagnostics')
+            selection=choice['selection'];display=choice['public'];public=pair['public']
+            if (not isinstance(selection,dict) or len(selection)!=2
+                    or any(type(route) not in (int,str) or re.fullmatch('[0-9]{1,3}',str(route)) is None
+                        or not isinstance(uid,str) or not 0<len(uid.encode())<=2048 or re.search(r'[\x00-\x20\x7f]',uid)
+                        for route,uid in selection.items())
+                    or not isinstance(display,dict) or list(display)!=['choice_ref','legs','current']
+                    or display['choice_ref']!=ref or type(display['current']) is not bool
+                    or not isinstance(display['legs'],dict) or list(display['legs'])!=[0,1]
+                    or any(type(k) is not int for k in display['legs'])):
+                raise ValueError('v4_cgi_history_choice')
+            for leg in display['legs'].values():
+                if (not isinstance(leg,dict) or list(leg)!=['label'] or not isinstance(leg['label'],str)
+                        or not 0<len(leg['label'].encode())<=4096 or re.search(r'[\x00-\x1f\x7f]',leg['label'])):
+                    raise ValueError('v4_cgi_history_leg')
+            price=public.get('price') if isinstance(public,dict) else None
+            verified=public.get('verified_at') if isinstance(public,dict) else None
+            if (not isinstance(price,dict) or list(price)!=['amount','currency','basis']
+                    or not isinstance(price['amount'],str) or re.fullmatch(r'[0-9]{1,10}(?:\.[0-9]{1,2})?',price['amount']) is None
+                    or int(price['amount'].replace('.',''))<=0 or price['currency']!='RUB'
+                    or price['basis']!='supplier_gross_package' or type(verified) is not int
+                    or not saved['created_at']<=verified<expiry
+                    or not v4_cgi_php_same(public,{'status':'quote_verified','final_price_verified':True,
+                        'selection_state':'preview_only','price':price,'choice':display,'verified_at':verified,'expires_at':expiry})):
+                raise ValueError('v4_cgi_history_price')
+            refs.append(ref);maps.append(selection)
+        last=attempt.get('public')
+        selected=last.get('choice',{}).get('choice_ref') if isinstance(last,dict) else None
+        if (selected not in pairs or not v4_cgi_php_same(last,pairs[selected]['public'])
+                or not all(v4_cgi_php_same(diagnostics[stage],pairs[selected]['diagnostics'][stage])
+                    for stage in ('SetTransport','calcfull'))):
+            raise ValueError('v4_cgi_history_public_conflict')
+        binding={'generation':context['generation'],'search_ref':saved['search_ref'],'offer_ref':key,
+            'offer':offer,'supplier_offer_id':known[0]['supplier_offer_id'],'currency_id':str(currency),
+            'child_ages':search['child_ages']}
+        hashed=v4_cgi_php_hashes(binding,maps,attempt['id'])
+        if hashed['context_digest']!=attempt.get('context_digest') or hashed['pair_refs']!=refs:
+            raise ValueError('v4_cgi_history_digest')
+        return {'status':'verified_historical_runtime_result','amount':last['price']['amount'],'currency':'RUB',
+            'basis':'supplier_gross_package','verified_at':last['verified_at'],'expires_at':expiry,
+            'legs':[{'label':leg['label']} for leg in last['choice']['legs'].values()],
+            'party':{'adults':2,'children':0,'infants':1},'child_ages':[1],
+            'historical_only':True,'current_validity':False,'proof_basis':'accepted_runtime_retained_result',
+            'raw_participant_documents_retained':False}
+    except Exception as error:
+        reason=str(error)
+        if re.fullmatch('v4_cgi_history_[a-z_]{1,64}',reason): unknown['reason']=reason
+        return unknown
+
+
 def v4_cgi_retained(root,serializer,actor,ns,root_identity):
     import stat
     def root_unchanged():
@@ -2536,10 +2738,11 @@ def v4_cgi_retained(root,serializer,actor,ns,root_identity):
             window=False,config=True,expected_facts=fact)
         read_bytes += len(raw)
         session = ns['decode_session'](raw,serializer)
-        for case in v4_target_cases(session,ns): matches.append((case,hashlib.sha256(raw).hexdigest(),path,fact))
+        for case in v4_target_cases(session,ns): matches.append((case,hashlib.sha256(raw).hexdigest(),path,fact,session))
     root_unchanged()
     if len(matches) != 1: raise ValueError('v4_cgi_case_missing' if not matches else 'v4_cgi_case_ambiguous')
-    case,digest,matched_path,matched_facts = matches[0]
+    case,digest,matched_path,matched_facts,matched_session = matches[0]
+    historical = v4_cgi_historical_gross(matched_session,ns)
     binding = {'schema_version':1,'case':'v4-20261101-2A-age1','operation_id':V4_CGI_PARENT,
         'source_sha':'6dcfb5053793caba4f353facfa7a899a30df2d17','session_file':str(matched_path),
         'serializer':serializer,'session_root':str(root),'root_identity':root_identity,
@@ -2552,7 +2755,7 @@ def v4_cgi_retained(root,serializer,actor,ns,root_identity):
         'binding_record_sha256':hashlib.sha256(binding_bytes).hexdigest(),'case':'v4-20261101-2A-age1','retained_outcome':case,
         'session_sha256':digest,'session_bytes_read':read_bytes,'candidate_files':len(paths),
         'read_admission_timestamp':admission,'file_mtime_window':[V4_START,admission],
-        'original_context_window':[V4_START,V4_END],'full_price_verified_current':False,'historical_gross':None}
+        'original_context_window':[V4_START,V4_END],'full_price_verified_current':False,'historical_gross':historical}
 
 def v4_cgi_reason(error):
     if isinstance(error,PermissionError): return 'retained_permission_denied'

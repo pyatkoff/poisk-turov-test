@@ -1845,8 +1845,8 @@ class V4CgiEvidenceTest(unittest.TestCase):
         self.ns['v4_cgi_retained']=mock.Mock(side_effect=AssertionError('restore must not read sessions'))
         self.ns['operation']=extension.V4_CGI_RESTORE_OPERATION
         result=self.ns['v4_cgi_restore_only']()
-        self.assertEqual('restored_only',result['status'])
-        self.assertTrue(result['api_restored']);self.assertEqual(self.original,self.api.read_bytes())
+        self.assertEqual('restored_only',result['status'],result)
+        self.assertTrue(result['api_restored'],result);self.assertEqual(self.original,self.api.read_bytes())
         self.assertEqual(b'CLOSED\n',(self.op/'cgi-gate').read_bytes())
         self.assertEqual(0,result['session_content_reads']);http.assert_not_called()
         self.ns['v4_cgi_retained'].assert_not_called()
@@ -1865,7 +1865,7 @@ class V4CgiEvidenceTest(unittest.TestCase):
         with mock.patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0)), \
                 mock.patch.object(self.ns['time'],'sleep'):
             result=self.ns['v4_cgi_readback']()
-        self.assertTrue(result['api_restored']);self.assertEqual(self.original,self.api.read_bytes())
+        self.assertTrue(result['api_restored'],result);self.assertEqual(self.original,self.api.read_bytes())
         self.assertEqual(2,result['runtime_probe_writes'])
         self.assertEqual('unverified',result['cgi_startup_side_effects'])
         self.assertNotIn('PRIVATE_HTTP_ERROR_CANARY',json.dumps(result))
@@ -1942,7 +1942,7 @@ class V4CgiEvidenceTest(unittest.TestCase):
         self.assertEqual('quote_not_started',result['retained_outcome']['status'])
         self.assertEqual([self.ns['V4_START'],now],result['file_mtime_window'])
         self.assertEqual([self.ns['V4_START'],self.ns['V4_END']],result['original_context_window'])
-        self.assertIsNone(result['historical_gross']);self.assertFalse(result['full_price_verified_current'])
+        self.assertEqual('unknown',result['historical_gross']['status']);self.assertFalse(result['full_price_verified_current'])
         binding=self.op/'v4-case-binding.json';private=json.loads(binding.read_bytes())
         self.assertEqual(0o600,binding.stat().st_mode&0o777)
         self.assertEqual(str(path),private['session_file']);self.assertEqual('php_serialize',private['serializer'])
@@ -2037,6 +2037,16 @@ class V4CgiEvidenceTest(unittest.TestCase):
             self.ns['v4_cgi_cleanup_temp'](path,identity,self.actor,self.parser)
         self.assertTrue(path.exists())
 
+    def test_temp_cleanup_accepts_absence_after_atomic_rename_only_with_trusted_parent(self):
+        path=self.private_write('temporary-before-rename',b'owned-atomic-fixture')
+        identity=self.ns['v4_cgi_identity'](path,self.actor,self.parser)
+        activated=self.op/'renamed-fixture';os.replace(path,activated)
+        self.ns['v4_cgi_cleanup_temp'](path,identity,self.actor,self.parser)
+        self.assertEqual(b'owned-atomic-fixture',activated.read_bytes())
+        with mock.patch.dict(self.parser,{'no_links':mock.Mock(side_effect=RuntimeError('untrusted parent'))}), \
+                self.assertRaisesRegex(ValueError,'temp_cleanup_unproven'):
+            self.ns['v4_cgi_cleanup_temp'](path,identity,self.actor,self.parser)
+
     def test_directory_durability_failure_cannot_ack_or_open_content(self):
         self.ns['v4_cgi_dependencies']=mock.Mock()
         self.ns['v4_cgi_http']=mock.Mock()
@@ -2070,9 +2080,94 @@ class V4CgiEvidenceTest(unittest.TestCase):
         with mock.patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0)), \
                 mock.patch.object(self.ns['time'],'sleep'):
             result=self.ns['v4_cgi_readback']()
-        self.assertEqual('retained_case_matched',result['status']);self.assertEqual(['metadata','retained'],order)
-        self.assertTrue(result['api_restored']);self.assertEqual(2,result['runtime_probe_writes'])
+        self.assertEqual('retained_case_matched',result['status'],result);self.assertEqual(['metadata','retained'],order)
+        self.assertTrue(result['api_restored'],result);self.assertEqual(2,result['runtime_probe_writes'])
         self.ns['v4_cgi_http'].assert_called_once();self.assertFalse(result['full_price_verified_current'])
+
+
+    def priced_session(self,two_pairs=False):
+        self.offer['hotel_place']='2ADL+1INF'
+        saved=self.context['gateway']['saved_offers'];saved['expires_at']=self.created+1200
+        saved['search']['currency_id']=1
+        self.context['gateway']['search']['context']['currency_id']=1
+        self.context['gateway']['search']['offers'][0]['supplier_offer_id']='unit-private-supplier-claim'
+        saved['offers'][self.key]['supplier_currency_id']='3'
+        binding={'generation':1,'search_ref':self.ref,'offer_ref':self.key,'offer':self.offer,
+            'supplier_offer_id':'unit-private-supplier-claim','currency_id':'1',
+            'child_ages':self.context['gateway']['search']['context']['child_ages']}
+        maps=[{0:'unit-private-forward-uid',1:'unit-private-return-uid'}]
+        if two_pairs:maps.append({0:'unit-private-other-forward',1:'unit-private-other-return'})
+        encoded=self.ns['v4_cgi_php_hashes'](binding,maps,'1234567890123')
+        def diagnostic(stage):
+            return {'action':stage,'http_status':200,'curl_errno':0,'response_bytes':640,'elapsed_ms':123}
+        diagnostics={stage:diagnostic(stage) for stage in ('start','transports','SetTransport','calcfull')}
+        pairs={};choices={}
+        for index,(ref,selection) in enumerate(zip(encoded['pair_refs'],maps)):
+            display={'choice_ref':ref,'legs':{0:{'label':'Unit outbound flight'},1:{'label':'Unit return flight'}},'current':False}
+            public={'status':'quote_verified','final_price_verified':True,'selection_state':'preview_only',
+                'price':{'amount':'149876.50' if index==0 else '151234.00','currency':'RUB','basis':'supplier_gross_package'},
+                'choice':display,'verified_at':self.created+90+index,'expires_at':self.created+600}
+            choices[ref]={'selection':selection,'public':display}
+            pairs[ref]={'stages':{'SetTransport':'complete','calcfull':'complete'},
+                'diagnostics':{stage:diagnostic(stage) for stage in ('SetTransport','calcfull')},'public':public}
+        attempt={'version':2,'context_digest':encoded['context_digest'],'reserved_calls':2+2*len(pairs),
+            'pairs':pairs,'active_pair':None,'sealed':False,'id':'1234567890123','expires_at':self.created+600,
+            'stages':{stage:'complete' for stage in diagnostics},'diagnostics':diagnostics,
+            'choices':choices,'public':pairs[encoded['pair_refs'][-1]]['public']}
+        self.context['package_quotes'][self.key]=attempt
+        return attempt,binding
+
+    @unittest.skipUnless(shutil.which('php'),'native PHP canonical money-digest unit fixture')
+    def test_verified_family_gross_is_projected_in_same_read_historical_only(self):
+        self.priced_session(two_pairs=True)
+        path=self.sessions/('sess_'+'a'*26);path.write_bytes(RiaReadbackEvidenceTest.php(self.session))
+        path.chmod(0o600);os.utime(path,(self.created,self.created))
+        result=self.ns['v4_cgi_retained'](self.sessions,'php_serialize',self.actor,self.parser,self.root_identity())
+        gross=result['historical_gross']
+        self.assertEqual(('verified_historical_runtime_result','151234.00','RUB','supplier_gross_package'),
+            (gross['status'],gross['amount'],gross['currency'],gross['basis']),gross)
+        self.assertEqual({'adults':2,'children':0,'infants':1},gross['party'])
+        self.assertTrue(gross['historical_only']);self.assertFalse(gross['current_validity'])
+        self.assertFalse(gross['raw_participant_documents_retained'])
+        self.assertEqual('accepted_runtime_retained_result',gross['proof_basis'])
+        self.assertTrue(result['binding_record_saved']);self.assertFalse(result['full_price_verified_current'])
+        for private in ('unit-private','1234567890123',self.ref,self.key,'anex_quote:'):
+            self.assertNotIn(private,json.dumps(result))
+
+    @unittest.skipUnless(shutil.which('php'),'native PHP canonical digest conflict unit fixture')
+    def test_incomplete_or_conflicting_gross_stays_unknown_never_listing(self):
+        attempt,binding=self.priced_session()
+        original=copy.deepcopy(attempt);ref=next(iter(attempt['pairs']))
+        variants=[
+            lambda a:a.update(sealed=True),
+            lambda a:a.update(active_pair=ref),
+            lambda a:a.update(reserved_calls=8),
+            lambda a:a['stages'].update(calcfull='unknown'),
+            lambda a:a['pairs'][ref]['stages'].update(calcfull='unknown'),
+            lambda a:a['pairs'][ref]['diagnostics']['calcfull'].update(action='SetTransport'),
+            lambda a:a['public'].update(price={'amount':'107581','currency':'RUB','basis':'listing'}),
+            lambda a:a.update(public=copy.deepcopy(a['public'])|{'price':dict(a['public']['price'],amount='1')}),
+            lambda a:a['choices'][ref]['selection'].update({0:'foreign-uid'}),
+            lambda a:a.update(context_digest=self.ns['v4_cgi_php_hashes'](dict(binding,currency_id=1),[],a['id'])['context_digest']),
+        ]
+        for index,change in enumerate(variants):
+            bad=copy.deepcopy(original);change(bad);self.context['package_quotes'][self.key]=bad
+            gross=self.ns['v4_cgi_historical_gross'](self.session,self.parser)
+            with self.subTest(case=index):
+                self.assertEqual('unknown',gross['status'],gross);self.assertIsNone(gross['amount'])
+                self.assertNotIn('107581',json.dumps(gross))
+        failed=copy.deepcopy(original);failed.update(public={'status':'quote_failed','reason':'ANEX_QUOTE_HTTP_ERROR','failure_stage':'calcfull'})
+        self.context['package_quotes'][self.key]=failed
+        failure=self.ns['v4_cgi_historical_gross'](self.session,self.parser)
+        self.assertEqual(('unknown','ANEX_QUOTE_HTTP_ERROR','calcfull'),(failure['status'],failure['quote_reason'],failure['failure_stage']))
+        self.context['package_quotes'].clear()
+        self.assertEqual('unknown',self.ns['v4_cgi_historical_gross'](self.session,self.parser)['status'])
+
+    @unittest.skipUnless(shutil.which('php'),'native PHP array key/number encoding fixture')
+    def test_php_native_encoder_rejects_colliding_keys_and_integer_overflow(self):
+        for binding in ({0:'integer-key','0':'numeric-string-key'},{'too_big':2**100}):
+            with self.subTest(binding=binding),self.assertRaisesRegex(ValueError,'history_php_encoding'):
+                self.ns['v4_cgi_php_hashes'](binding,[],'1234567890123')
 
     @unittest.skipUnless(shutil.which('php'),'native PHP syntax/tokenizer guard in existing CI')
     def test_native_retained_wrapper_gate_and_literal_config_without_imports(self):
