@@ -2301,7 +2301,8 @@ class V4CgiContinuationEvidenceTest(unittest.TestCase):
         self.read=mock.Mock(wraps=self.source_read);self.ns['v4_cgi_read']=self.read
         self.owned=mock.Mock(wraps=self.ns['v4_owned_read']);self.ns['v4_owned_read']=self.owned
         self.session_path=self.sessions/('sess_'+'a'*26)
-        self.session_path.write_bytes(RiaReadbackEvidenceTest.php(self.session));self.session_path.chmod(0o600)
+        self.session_path.write_bytes(b''.join(key.encode()+b'|'+RiaReadbackEvidenceTest.php(value)
+            for key,value in self.session.items()));self.session_path.chmod(0o600)
         os.utime(self.session_path,(self.created,self.created))
 
     def parent_snapshot(self):
@@ -2332,6 +2333,17 @@ class V4CgiContinuationEvidenceTest(unittest.TestCase):
         self.assertEqual(0,result['own_http_requests']);self.assertEqual(0,result['own_api_writes'])
         for private in (str(self.parent),str(self.sessions),str(self.session_path)):
             self.assertNotIn(private,json.dumps(result))
+
+    def test_original_php_serialize_metadata_uses_whole_array_wire(self):
+        metadata=json.loads((self.parent/'cgi-metadata.json').read_bytes());metadata['serializer']='php_serialize'
+        self.private_write('cgi-metadata.json',metadata)
+        self.session_path.write_bytes(RiaReadbackEvidenceTest.php(self.session));self.session_path.chmod(0o600)
+        os.utime(self.session_path,(self.created,self.created))
+        result=self.run_read()
+        self.assertEqual('retained_case_matched',result['status'],result)
+        self.assertEqual('php_serialize',result['serializer']);self.assertEqual(1,len(self.session_reads()))
+        self.assertEqual(1,sum(call.args[0]==self.parent/'cgi-metadata.json' for call in self.read.call_args_list))
+        self.http.assert_not_called();self.restore.assert_not_called()
 
     def test_absent_metadata_is_precise_terminal_without_content_or_parent_writes(self):
         (self.parent/'cgi-metadata.json').unlink();before=self.parent_snapshot();api=self.api.read_bytes()
