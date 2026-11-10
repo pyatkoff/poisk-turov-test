@@ -37,11 +37,11 @@ class Preview(Enum):
 ROUTE = Preview.NEXT.route
 NAME = Preview.NEXT.name_on_site
 EARLY_INTENT_PINS = {
-    'source_sha': '8aeee2a4fef23024b95aa5a809ed6a1bd6fa2950',
-    'source_tree': '65d3165fb2ea0d2a8a2c584b11f45055eeea8159',
-    'build_run': 42471104556,
-    'artifact_id': 13612859870,
-    'source_ZIP_sha256': '7e125c03398f5b9823fb768bc7ebdb481364da6e4d3c05d9cf9b816e53f0b9c5',
+    'source_sha': '041b339df4fcddbea8d015919a9de5a0bf3039aa',
+    'source_tree': 'bb0aa2dd9b107361c3bd89b5adae1353b17f25ce',
+    'build_run': 42788390713,
+    'artifact_id': 13751303566,
+    'source_ZIP_sha256': '3d6ef5a92eb8f54b4d4e08f2cc1505e66f83797fb9d19df9571b364b40c105c9',
 }
 REQUIRED = ('index.php', 'search-page-v2.php', 'poisk-turov/index.php', 'assets.php',
     'api-v2.php', 'lead-adapter-v2.php', 'lead-bridge-v1.php', 'lead-receiver-v1.php',
