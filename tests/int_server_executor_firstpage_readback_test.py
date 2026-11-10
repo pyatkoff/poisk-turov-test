@@ -1743,7 +1743,16 @@ class V4MappedConfigTest(unittest.TestCase):
 
 
 
+def before_v4_log_source(source):
+    source=source.split('\n\n# One fixed ANEX metadata-probe incident candidate;',1)[0]
+    source=source.replace("V4_CGI_LOG_MODE = 'anex-v4-cgi-errorlog-incident'\nV4_CGI_LOG_OPERATION = 'int-anex-v4-cgi-errorlog-20261110-v1'\n",'')
+    source=source.replace('V4_CGI_CONT_MODE, V4_CGI_LOG_MODE)','V4_CGI_CONT_MODE)')
+    source=source.replace("            V4_CGI_LOG_MODE: (V4_SOURCE, V4_CGI_LOG_OPERATION),\n",'')
+    return source.replace("    if mode == V4_CGI_LOG_MODE: return remote_with_v4_cgi_errorlog(core)\n",'')
+
+
 def before_v4_continuation_source(source):
+    source=before_v4_log_source(source)
     source=source.split('\n# Original-attempt continuation:',1)[0]
     source=source.replace("V4_CGI_CONT_MODE = 'anex-v4-cgi-retained-continuation'\nV4_CGI_CONT_OPERATION = 'int-anex-v4-cgi-retained-continuation-20261110-v1'\n",'')
     source=source.replace("         V4_CGI_MODE, V4_CGI_RESTORE_MODE, V4_CGI_CONT_MODE)","         V4_CGI_MODE, V4_CGI_RESTORE_MODE)")
@@ -2382,6 +2391,158 @@ class V4CgiContinuationEvidenceTest(unittest.TestCase):
         self.assertFalse(result['retained_read_invoked']);self.assertEqual([],self.session_reads())
         self.http.assert_not_called();self.restore.assert_not_called()
 
+
+ORIGINAL_V4_CGI_CHILD_RESULT_JSON = "{\"anex_v4_cgi_continuation\":{\"actor_escalation\":false,\"api_original_verified\":true,\"full_price_verified_current\":false,\"gate_closed_verified\":true,\"historical_gross\":null,\"metadata_parent_operation_id\":\"int-anex-v4-cgi-retained-20261110-v1\",\"metadata_parent_result_sha256\":\"281c0165c099af06ab58ab9f498da63fb73bdd46273e11c1ff6a2c1ae2cf5816\",\"metadata_present\":false,\"own_api_writes\":0,\"own_database_operations\":0,\"own_http_requests\":0,\"own_session_writes\":0,\"own_supplier_requests\":0,\"parent_cgi_startup_side_effects\":\"unverified\",\"parent_database_writes\":\"unknown\",\"parent_receipt_verified\":true,\"parent_supplier_calls\":\"unknown\",\"reason\":\"v4_cgi_cont_metadata_absent\",\"retained_read_invoked\":false,\"stage\":\"retained_metadata\",\"status\":\"hold\"},\"booking_calls\":0,\"cache_writes\":0,\"database_reads\":0,\"database_writes\":0,\"lead_calls\":0,\"mode\":\"anex-v4-cgi-retained-continuation\",\"operation_id\":\"int-anex-v4-cgi-retained-continuation-20261110-v1\",\"production_after\":{\"index.php\":\"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f\",\"v2/api-v2.php\":null,\"v2/index.php\":null,\"v2/lead-adapter-v2.php\":null},\"production_before\":{\"index.php\":\"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f\",\"v2/api-v2.php\":null,\"v2/index.php\":null,\"v2/lead-adapter-v2.php\":null},\"production_unchanged\":true,\"runtime_writes\":0,\"schema_version\":1,\"session_writes\":0,\"source_sha\":\"6dcfb5053793caba4f353facfa7a899a30df2d17\",\"status\":\"complete\",\"supplier_calls\":0}"
+
+
+class V4CgiLogCommandTest(unittest.TestCase):
+    def test_fixed_log_incident_preserves_every_prior_program_and_carrier(self):
+        import ast
+        source=(ROOT/'scripts/deploy/int_server_executor_firstpage_readback.py').read_text()
+        baseline=before_v4_log_source(source);raw=baseline.encode()
+        self.assertEqual('24ccafe18fe6d7c5609afe95aca0aca49c79872f',
+            hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest())
+        prior=types.ModuleType('before_v4_log');exec(compile(baseline,'<before-v4-log>','exec'),prior.__dict__)
+        for mode in prior.MODES:
+            core=load('int_server_executor')
+            self.assertEqual(prior.remote_with_readback(core,mode),extension.remote_with_readback(core,mode))
+        core=load('int_server_executor');extension.register_parser(core)
+        body=core.PREFIX+extension.V4_SOURCE+' '+extension.V4_CGI_LOG_MODE+' '+extension.V4_CGI_LOG_OPERATION
+        command=core.parse_command(body)
+        for invalid in (body+' error_log.1',body.replace(extension.V4_SOURCE,'a'*40),
+                        body.replace('-v1','-v2'),body.replace(extension.V4_CGI_LOG_OPERATION,extension.V4_CGI_CONT_OPERATION)):
+            with self.assertRaises(ValueError):core.parse_command(invalid)
+        extension.activate(core,command);ast.parse(core.REMOTE)
+        self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(),9)))+1024,65536)
+        self.assertIn('operation_exists_no_replay',core.REMOTE)
+        reader=extension.REMOTE_V4_CGI_LOG_READER
+        for forbidden in ('scandir','glob(','listdir','urlopen','subprocess','v4_cgi_http','session_start',
+                          '.user.ini','/var/log','error_log.1','readlink'):
+            self.assertNotIn(forbidden,reader)
+        wrapper=load('int_server_executor_anex_secret_transport')
+        self.assertNotIn(extension.V4_CGI_LOG_MODE,wrapper.SUPPLIER_SLOT_MODES)
+        self.assertNotIn(extension.V4_CGI_LOG_MODE,wrapper.DIRECT_ANEX_MODES)
+
+
+@unittest.skipIf(os.name=='nt','POSIX owned fixed-log fixtures; canonical CI is Linux')
+class V4CgiLogEvidenceTest(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+        self.actor=os.geteuid();self.project=self.root/'site';self.project.mkdir()
+        self.runtime=self.project/'_preview/search3-anex-candidate';self.runtime.mkdir(parents=True)
+        self.private=self.root/'private';self.private.mkdir(mode=0o700)
+        self.child=self.private/extension.V4_CGI_CONT_OPERATION;self.child.mkdir(mode=0o700)
+        self.receipt=self.child/'result.json';self.receipt.write_text(ORIGINAL_V4_CGI_CHILD_RESULT_JSON);self.receipt.chmod(0o600)
+        self.log=self.project/'error_log';self.api=self.runtime/'api-anex-search3-preview.php'
+        self.ns={'os':os,'pathlib':__import__('pathlib'),'hashlib':hashlib,'re':re,'json':json,
+            'private':self.private,'project':self.project,'runtime':self.runtime}
+        exec(extension.REMOTE_V4_CGI_LOG_READER,self.ns)
+        self.reader=mock.Mock(wraps=self.ns['v4_log_read']);self.ns['v4_log_read']=self.reader
+
+    def tearDown(self):self.temp.cleanup()
+
+    def write_log(self,raw):
+        self.log.write_bytes(raw if isinstance(raw,bytes) else raw.encode());self.log.chmod(0o600)
+
+    def line(self,time='15:52:40',zone='UTC',severity='Warning',message='Permission denied PRIVATE_CANARY',suffix=None):
+        return '[10-Nov-2026 '+time+' '+zone+'] PHP '+severity+': '+message+' in '+str(self.api)+(suffix or ' on line 17')+'\n'
+
+    def run_read(self):return self.ns['v4_cgi_errorlog_incident']()
+
+    def test_exact_candidate_window_timezones_suffixes_and_private_sanitization(self):
+        self.write_log(self.line(time='15:52:38')+self.line(time='15:52:39')+
+            self.line(time='15:52:54',severity='Fatal error',message='Call to undefined function SECRET_FN()',suffix=':33')+
+            self.line(time='15:52:55')+self.line(time='18:52:40',zone='+0300')+
+            self.line(time='15:52:40',zone='GMT')+
+            self.line(message='mentions '+str(self.api),suffix=' on line 17 EXTRA')+
+            self.line(zone='Unapproved/Zone')+
+            '[10-Nov-2026 15:52:40 UTC] harmless message in '+str(self.api)+' on line 17\n'+
+            self.line().replace(str(self.api),str(self.api)+'-other'))
+        before=self.log.read_bytes();receipt=self.receipt.read_bytes();result=self.run_read()
+        self.assertEqual('scoped_candidate_checked',result['status'],result)
+        self.assertEqual(4,result['exact_api_records'])
+        self.assertEqual({'permission_denied':3,'undefined_function':1},result['category_counts'])
+        self.assertEqual(1,result['unproven_timezone_records'])
+        self.assertFalse(result['unique_request_attribution']);self.assertEqual('unknown',result['original_http_status'])
+        self.assertFalse(result['record_absence_proves_http_absence'])
+        self.assertEqual([self.receipt,self.log],[call.args[0] for call in self.reader.call_args_list])
+        self.assertEqual(before,self.log.read_bytes());self.assertEqual(receipt,self.receipt.read_bytes())
+        for private in (str(self.root),'PRIVATE_CANARY','SECRET_FN','on line 17'):
+            self.assertNotIn(private,json.dumps(result))
+        for field in ('own_http_requests','own_api_writes','own_supplier_requests','own_database_operations',
+                      'own_session_content_reads','own_session_writes'):
+            self.assertEqual(0,result[field])
+
+    def test_only_explicit_finite_timezone_rules(self):
+        stamp=self.ns['v4_log_timestamp']
+        expected=self.ns['V4_CGI_LOG_START']+1
+        for time,zone in [('15:52:40','UTC'),('15:52:40','GMT'),('18:52:40','+03:00'),('10:52:40','-0500')]:
+            self.assertEqual(expected,stamp('10-Nov-2026 '+time,zone))
+        for zone in ('Europe/Moscow','Europe/Kaliningrad'):
+            try:
+                from zoneinfo import ZoneInfo
+                ZoneInfo(zone)
+            except (ImportError,KeyError):continue
+            time='18:52:40' if zone=='Europe/Moscow' else '17:52:40'
+            self.assertEqual(expected,stamp('10-Nov-2026 '+time,zone))
+        for zone in ('MSK','America/Los_Angeles','+2500','+0360',''):
+            self.assertIsNone(stamp('10-Nov-2026 15:52:40',zone))
+        self.assertIsNone(stamp('31-Feb-2026 15:52:40','UTC'))
+
+    def test_absent_empty_or_unrelated_candidate_does_not_prove_http_absence(self):
+        result=self.run_read()
+        self.assertEqual('v4_log_candidate_absent',result['reason'])
+        self.assertFalse(result['candidate_present']);self.assertFalse(result['candidate_read_invoked'])
+        self.assertEqual(1,self.reader.call_count)
+        for raw in (b'',b'unrelated\n',self.line().replace(str(self.api),str(self.api)+'-else').encode()):
+            self.write_log(raw);self.reader.reset_mock();result=self.run_read()
+            self.assertEqual('scoped_candidate_checked',result['status'],result)
+            self.assertEqual(0,result['exact_api_records'])
+            self.assertFalse(result['record_absence_proves_http_absence'])
+            self.assertEqual(2,self.reader.call_count)
+
+    def test_receipt_pin_or_permissions_fail_before_candidate_read(self):
+        self.write_log(self.line());original=self.receipt.read_bytes()
+        for raw,mode in ((b'{}',0o600),(original,0o660),(original,0o666)):
+            self.receipt.write_bytes(raw);self.receipt.chmod(mode);self.reader.reset_mock()
+            result=self.run_read()
+            self.assertEqual('hold',result['status'],result);self.assertFalse(result['candidate_read_invoked'])
+            self.assertEqual([self.receipt],[call.args[0] for call in self.reader.call_args_list])
+
+    def test_candidate_links_modes_and_foreign_owner_are_rejected_before_open(self):
+        self.write_log(self.line());read=self.reader._mock_wraps
+        for mode in (0o660,0o666):
+            self.log.chmod(mode)
+            with self.subTest(mode=mode),mock.patch.object(os,'open',wraps=os.open) as opened:
+                with self.assertRaisesRegex(ValueError,'file_contract'):read(self.log,self.actor,262144,tail=True)
+                opened.assert_not_called()
+        self.log.chmod(0o600)
+        with mock.patch.object(os,'open',wraps=os.open) as opened:
+            with self.assertRaisesRegex(ValueError,'(?:file|parent)_contract'):read(self.log,self.actor+1,262144,tail=True)
+            opened.assert_not_called()
+        linked=self.project/'private-target';self.log.rename(linked);self.log.symlink_to(linked)
+        with self.assertRaisesRegex(ValueError,'file_contract'):read(self.log,self.actor,262144,tail=True)
+        self.log.unlink();os.link(linked,self.log)
+        with self.assertRaisesRegex(ValueError,'file_contract'):read(self.log,self.actor,262144,tail=True)
+
+    def test_tail_byte_and_line_bounds_and_changed_file_hold(self):
+        self.write_log(b'x'*270000+b'\n'+self.line().encode())
+        result=self.run_read()
+        self.assertEqual('scoped_candidate_checked',result['status'],result)
+        self.assertTrue(result['partial_first_line_discarded']);self.assertLessEqual(result['tail_bytes_read'],262144)
+        self.assertEqual(1,result['exact_api_records'])
+        self.write_log(b'\xff\n'+self.line().encode());result=self.run_read()
+        self.assertEqual(1,result['undecodable_lines']);self.assertEqual(1,result['exact_api_records'])
+        self.write_log(b'x'*270000);result=self.run_read()
+        self.assertEqual(262144,result['tail_bytes_read']);self.assertEqual(0,result['parsed_tail_bytes'])
+        self.write_log(b'\n'*2049);result=self.run_read()
+        self.assertEqual('v4_log_line_bound',result['reason'])
+        self.write_log(self.line());st=self.log.stat()
+        fields=('st_dev','st_ino','st_uid','st_gid','st_mode','st_nlink','st_size','st_mtime_ns','st_ctime_ns')
+        changed=types.SimpleNamespace(**{name:getattr(st,name) for name in fields});changed.st_mtime_ns+=1
+        with mock.patch.object(os,'fstat',side_effect=[st,changed]):
+            with self.assertRaisesRegex(ValueError,'file_changed'):
+                self.reader._mock_wraps(self.log,self.actor,262144,tail=True)
 
 if __name__ == '__main__':
     unittest.main()
