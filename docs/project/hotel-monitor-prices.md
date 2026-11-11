@@ -76,3 +76,32 @@ fake storage/provider boundaries and checks coalescing, exact attribution,
 resumption, request/observer caps, partial/error/empty states and uncertain writes.
 This test is not proof that production has completed its daily sweep. Actual
 runtime logs/coverage and final package-price proof remain separate requirements.
+
+
+## Accepted/published Site roster, 11 November 2026
+
+The fresh owner-private Site12 export (registry217) contains605 unique retained
+Tourvisor bindings for509 already published and96 accepted/queued hotel pairs.
+The last original monitor run reported579 searchable source hotels; these totals
+alone do not identify missing hotels or prove a current MATCH projection.
+
+The collector now loads the union of its historical inputs and this fixed605-ID
+consumer roster, then appends only IDs not already assigned to TOP500 or a prior
+publication cohort. Each candidate still requires an active factual catalogue
+row and departure route. Names, countries and numeric equality across namespaces
+are not used to create a binding. No accepted post, price snapshot, hold or Site
+record is changed. This is an append-only roster snapshot, not recurring Site sync.
+
+The historical182-ID exclusion from the TOP500 base stays unchanged. Putting the
+new roster into that exclusion would move hotels out of existing batches and
+invalidate their target keys. Only catalogue loading includes the new union;
+legacy base/cohort target membership and unfinished search IDs remain intact.
+New inputs use the installed compatible-request packing,30-hotel cap and64-request
+pass budget. No new workflow, cadence, provider request type or quote is introduced.
+The next original scheduled run must report the exact new roster cohort's
+requested/searchable counts; source tests do not prove production coverage.
+
+Source projection SHA256 (UUID, typed TV ID, status, queued, sorted by TV ID):
+`83e81812a15ce16a1a792ab58c2d58d5c5a7de23928cee98344be8646cc3746a`.
+Sorted comma-separated Tourvisor ID SHA256:
+`436b553ce4c9a7776d771ffbdfd2097e5ed37d7274cc569b78b8719750aa02c9`.

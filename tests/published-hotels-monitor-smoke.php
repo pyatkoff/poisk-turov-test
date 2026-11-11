@@ -725,5 +725,38 @@ check_monitor($partial674['targets']===$previous673For51['targets']&&$partial674
 $inactive674=$hotels674;foreach($inactive674 as &$hotel){if($hotel['id']===78251)$hotel['is_active']=0;}unset($hotel);
 $held674=v2_append_published_hotel_monthly_plan($before,$inactive674,$departures,'2026-11-05',2,1);
 check_monitor($held674['targets']===$previous673For51['targets']&&$held674['hotel_count']===673&&$held674['published_hotels']['cohorts']['publication_stock_20261105b_1']['searchable']===0,'inactive78251 falsely credits or changes673');
+
+// The Site consumer roster is an additional input, never a replacement TOP500 mapping.
+$siteIds=v2_sites_hotel_monitor_ids_20261111();
+check_monitor(count($siteIds)===605&&count(array_unique($siteIds))===605&&hash('sha256',implode(',',$siteIds))==='436b553ce4c9a7776d771ffbdfd2097e5ed37d7274cc569b78b8719750aa02c9','exact accepted Site Tourvisor roster changed');
+$allInput=v2_all_hotel_monitor_input_ids($fixtureRegistry);
+check_monitor(array_slice($allInput,0,count($monitor674Ids))===$monitor674Ids&&array_diff($siteIds,$allInput)===[],'new catalogue input loses historical order or a Site hotel');
+check_monitor(v2_collection_priority_hotel_ids($fixtureRegistry)===$monitor674Ids,'Site roster changes historical TOP500 exclusion');
+$newSiteIds=array_values(array_diff($siteIds,$monitor674Ids));
+check_monitor(count($newSiteIds)>0,'fixture must exercise additional Site hotels');
+$siteRows=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Test country','is_active'=>1],$newSiteIds);
+$siteHotels=array_merge($hotels674,$siteRows);
+$legacyPlan=v2_append_published_hotel_monthly_plan($before,$siteHotels,$departures,'2026-11-05',2,1);
+$sitePlan=v2_append_published_hotel_monthly_plan($before,$siteHotels,$departures,'2026-11-05',2,1,true);
+check_monitor(array_slice($sitePlan['targets'],0,count($legacyPlan['targets']))===$legacyPlan['targets'],'Site expansion changes existing target keys/hotel sets');
+check_monitor($sitePlan['hotel_count']===$legacyPlan['hotel_count']+count($newSiteIds),'Site input duplicates already monitored hotels');
+check_monitor($sitePlan['published_hotels']['cohorts']['sites_registry217_20261111']['requested']===count($newSiteIds),'overlap charged twice');
+$seenSite=[];$seenWindow=[];
+foreach($sitePlan['targets'] as $target){
+ foreach($target['hotel_ids'] as $id){$k=$target['date_from'].':'.$target['date_to'].':'.$id;check_monitor(!isset($seenWindow[$k]),'hotel appears in two logical searches for one window');$seenWindow[$k]=true;$seenSite[$id]=true;}
+ check_monitor(count($target['hotel_ids'])<=30,'Site cohort increases hotel cap');
+}
+check_monitor(array_diff($siteIds,array_keys($seenSite))===[],'accepted/published hotel absent from plan with valid catalogue/route');
+$siteQueue=v2_top500_monthly_queue($sitePlan['targets'],[$resume51Attempt],$now,24);
+$siteResume=array_values(array_filter($siteQueue['targets'],static fn(array $t):bool=>$t['target_key']===$resume51Target['target_key']));
+check_monitor(count($siteResume)===1&&$siteResume[0]['resume_search_id']===763218&&$siteResume[0]['resume_attempt_id']===128,'Site expansion restarts old pending search');
+$withoutSite=v2_append_published_hotel_monthly_plan($before,$hotels674,$departures,'2026-11-05',2,1,true);
+check_monitor($withoutSite['targets']===$full674['targets']&&$withoutSite['published_hotels']['cohorts']['sites_registry217_20261111']['searchable']===0,'missing Site catalogue rows credited or old plan blocked');
+$unroutedSite=$siteHotels;foreach($unroutedSite as &$hotel){if(in_array($hotel['id'],$newSiteIds,true))$hotel['country_id']=999;}unset($hotel);
+$heldSite=v2_append_published_hotel_monthly_plan($before,$unroutedSite,$departures,'2026-11-05',2,1,true);
+check_monitor($heldSite['targets']===$full674['targets']&&$heldSite['published_hotels']['cohorts']['sites_registry217_20261111']['searchable']===0,'missing route falsely credited');
+$collectorSource=file_get_contents(__DIR__.'/../v2/data/top500-daily-collector-v1.php');
+check_monitor(str_contains($collectorSource,'$priorityIds=v2_all_hotel_monitor_input_ids($registry);')&&str_contains($collectorSource,'$topOnly=array_values(array_diff(v2_priority_hotel_ids($registry),v2_collection_priority_hotel_ids()));'),'collector does not preserve old TOP500 targets');
+echo "SITES_HOTEL_MONITOR_OK roster=605 previous_targets=unchanged duplicates=0 native_scope=preserved supplier_calls=0\n";
 echo "PUBLISHED_HOTEL_MONITOR_OK namespace=typed_and_native count=674 previous673_targets=unchanged existing_search=resumed mixed_countries=preserved batch51=1 calls=0 writes=0\n";
 
