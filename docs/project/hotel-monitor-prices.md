@@ -116,10 +116,19 @@ post receipts. No new task, cron, worker, publication, supplier request, quote,
 Site mutation or credential is introduced. Manual runs and workflow retries do
 not invoke this callback. Collection cadence, request caps and LOCAL pins remain unchanged.
 
-The initial automatic scope is the six previously verified pairs: Tourvisor
-1183,117935,27426,13869,1151,1173. This is not automatic coverage of all509 posts.
-The existing full hotel monitor roster is unchanged. Expansion requires accepted
-post/native/feed bindings and commercial templates, not another price search.
+The callback roster contains 481 pairs, including the original six. A read-only
+runtime pass on 11 November verified all 481 original post receipts, typed native
+IDs, retained buttons/photos and feed destinations. The remaining 28 of 509
+published hotels still need unambiguous original receipt/template bindings; they
+are not treated as missing from the hotel database. The existing monitor search
+roster and physical request budget are unchanged.
+
+Each callback edits at most 30 pairs within 480 seconds, prioritizing never-updated
+pairs, then the oldest completed pairs. It uses retained price observations only.
+An exact tour with a later saved operator rejection or room conflict stays held
+until a newer observation; other hotels continue. Empty or stale observations
+remain unpriced. These bounds do not establish daily coverage of every hotel and
+date range: actual collector coverage and callback receipts remain authoritative.
 
 Completed record IDs are skipped. A subsequent automated caption is trusted only
 when the actual completed journal matches current publication/version/text/URL;
@@ -132,5 +141,5 @@ are preserved and are not falsely reported as current channel versions.
 
 Source tests execute the real workflow shell with inert boundaries for scheduled
 success, supplier failure, manual invocation, rerun and callback failure. Runtime
-inspection verifies the six bindings without edits. A merged callback is enabled
+inspection verifies all 481 bindings without edits. A merged callback is enabled
 for the next natural pass; only its actual receipt proves automatic execution.
