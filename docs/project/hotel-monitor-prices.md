@@ -24,10 +24,10 @@ not a new price check; source-age semantics remain database-relative.
 
 This endpoint does **not** prove a current final total, flights, mandatory extras,
 availability or global market minimum. All such booleans remain false/unknown.
-The existing authorised final-quote/publisher boundary may consume these retained
-tour candidates without a second date-range search. No new quote operation is
-introduced or executed by this change. A consumer cannot release a sales price
-until that boundary supplies a current final-price proof for the same conditions.
+Under Pavel's later explicit approval, the existing publisher uses the cheapest
+retained monitor observation directly, with its exact party, date, nights, room,
+meal and observation time. A second quote is not required. The displayed amount
+is a found "from" price; fuel is not added separately and availability is not asserted.
 
 Coverage counts completed requested date windows from latest attempts for each
 stable monthly key; success and empty are distinct from failure/timeout/unknown.
@@ -105,3 +105,32 @@ Source projection SHA256 (UUID, typed TV ID, status, queued, sorted by TV ID):
 `83e81812a15ce16a1a792ab58c2d58d5c5a7de23928cee98344be8646cc3746a`.
 Sorted comma-separated Tourvisor ID SHA256:
 `436b553ce4c9a7776d771ffbdfd2097e5ed37d7274cc569b78b8719750aa02c9`.
+
+## Existing collector completion callback, 11 November 2026
+
+After a successful original scheduled pass, the same SSH session invokes the
+reviewed callback from `pyatkoff/max-search-bot` at the immutable SHA pinned in
+the workflow. Its existing editor changes both existing channel messages, then
+its existing feed writer patches the three existing XML files from those actual
+post receipts. No new task, cron, worker, publication, supplier request, quote,
+Site mutation or credential is introduced. Manual runs and workflow retries do
+not invoke this callback. Collection cadence, request caps and LOCAL pins remain unchanged.
+
+The initial automatic scope is the six previously verified pairs: Tourvisor
+1183,117935,27426,13869,1151,1173. This is not automatic coverage of all509 posts.
+The existing full hotel monitor roster is unchanged. Expansion requires accepted
+post/native/feed bindings and commercial templates, not another price search.
+
+Completed record IDs are skipped. A subsequent automated caption is trusted only
+when the actual completed journal matches current publication/version/text/URL;
+manual drift is held. Unknown post outcomes stop, and unknown feed outcomes are
+read back by exact hashes without replay. Runtime descendants are allowed only
+with all22 reviewed publishing surface blobs unchanged and a clean checkout.
+Private journals retain each stage before the next mutation. Public feed hashes
+are checked before marking completion. The Site's older publication snapshots
+are preserved and are not falsely reported as current channel versions.
+
+Source tests execute the real workflow shell with inert boundaries for scheduled
+success, supplier failure, manual invocation, rerun and callback failure. Runtime
+inspection verifies the six bindings without edits. A merged callback is enabled
+for the next natural pass; only its actual receipt proves automatic execution.
