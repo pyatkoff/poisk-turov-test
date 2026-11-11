@@ -85,7 +85,7 @@ $deadline=microtime(true)+$maxSeconds;
 try {
     $registry=v2_top500_registry($pdo);
     v2_top500_log_resolution($registry);
-    $priorityIds=array_values(v2_collection_priority_hotel_ids($registry));
+    $priorityIds=v2_all_hotel_monitor_input_ids($registry);
     // Keep the established published cohorts intact even when TOP500 maps to them.
     $topOnly=array_values(array_diff(v2_priority_hotel_ids($registry),v2_collection_priority_hotel_ids()));
     if(!$priorityIds)throw new RuntimeException('top500 priority list empty');
@@ -94,7 +94,7 @@ try {
     $departureRows=$pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[];
     $today=(string)$pdo->query('SELECT CURDATE()')->fetchColumn();
     $plan=v2_top500_monthly_plan($topOnly,$hotelRows,$departureRows,$today,$months,$departureId,true);
-    $plan=v2_append_published_hotel_monthly_plan($plan,$hotelRows,$departureRows,$today,$months,$departureId);
+    $plan=v2_append_published_hotel_monthly_plan($plan,$hotelRows,$departureRows,$today,$months,$departureId,true);
     if(isset($plan['published_hotels']))echo 'PUBLISHED_HOTEL_MONITOR '.json_encode($plan['published_hotels'],JSON_UNESCAPED_SLASHES)."\n";
     if($onlyMonth!==''&&!in_array($onlyMonth,$plan['months'],true))throw new InvalidArgumentException('target month outside horizon');
     $attempts=top500_monthly_attempts($pdo);$now=(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn();
