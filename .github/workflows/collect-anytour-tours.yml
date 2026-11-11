@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'v2/data/price-observer-v1.php'
+      - 'v2/data/hotel-monitor-prices-v1.php'
+      - 'v2/data/hotel-monitor-prices-read-v1.php'
+      - 'tests/hotel-monitor-prices-smoke.php'
       - 'v2/data/price-segment-v1.php'
       - 'v2/data/price-confidence-v1.php'
       - 'v2/data/price-intelligence-v1.php'
@@ -43,6 +46,9 @@ on:
     branches: [main]
     paths:
       - 'v2/data/price-observer-v1.php'
+      - 'v2/data/hotel-monitor-prices-v1.php'
+      - 'v2/data/hotel-monitor-prices-read-v1.php'
+      - 'tests/hotel-monitor-prices-smoke.php'
       - 'v2/data/price-segment-v1.php'
       - 'v2/data/price-confidence-v1.php'
       - 'v2/data/price-intelligence-v1.php'
@@ -136,6 +142,9 @@ jobs:
           php -l tests/top500-daily-plan-smoke.php >/dev/null
           php -l tests/top500-monthly-plan-smoke.php >/dev/null
           php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/hotel-monitor-prices-v1.php >/dev/null
+          php -l v2/data/hotel-monitor-prices-read-v1.php >/dev/null
+          php tests/hotel-monitor-prices-smoke.php
           php -l v2/data/price-segment-v1.php >/dev/null
           php -l v2/data/price-intelligence-v1.php >/dev/null
           php -l v2/data/price-intelligence-read-v1.php >/dev/null
@@ -227,6 +236,8 @@ jobs:
             local-tv-source/v2/data/hotel-details-v1.php \
             local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/price-segment-v1.php \
+            v2/data/hotel-monitor-prices-v1.php \
+            v2/data/hotel-monitor-prices-read-v1.php \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
             v2/data/migrate-price-daily-exact-v1.php \
