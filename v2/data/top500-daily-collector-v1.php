@@ -112,21 +112,28 @@ try {
             echo 'SEO_PAGE_GAP_PLAN '.json_encode(['published_paths'=>count($paths),'empty_pages'=>count(array_unique(array_column($gapPlan,'page_key'))),'due_windows'=>count($gapTargets),'reserve'=>$gapReserve],JSON_UNESCAPED_SLASHES)."\n";
         }catch(Throwable $e){$gapError=1;fwrite(STDERR,'SEO_PAGE_GAP_PLAN_FAILED code='.$e->getCode().' '.mb_substr($e->getMessage(),0,300)."\n");}
     }
-    $passTargets=v2_seasonal_gap_pass_targets($queue['targets'],$gapTargets,$budget,$gapReserve,$onlyMonth,$onlyCountry);
+    $executionTargets=v2_top500_execution_targets($queue['targets']);
+    $passTargets=v2_seasonal_gap_pass_targets($executionTargets,v2_top500_execution_targets($gapTargets),$budget,$gapReserve,$onlyMonth,$onlyCountry);
     echo 'TOP500_MONTHLY_PLAN '.json_encode(['source_hotels'=>$plan['source_hotel_count'],'searchable_hotels'=>$plan['hotel_count'],'missing_catalog'=>$plan['missing_catalog_ids'],'no_departure'=>$plan['no_departure_hotels'],'months'=>$plan['months'],'window_days'=>7,'total_targets'=>$plan['batch_count'],'fresh'=>$queue['fresh'],'pending'=>$queue['pending'],'budget'=>$budget],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
-    $processed=0; $failed=$gapError; $partial=0; $writtenTotal=0;$gapProcessed=0;
+    echo 'TOP500_EXECUTION_PLAN '.json_encode(['logical_due'=>count($queue['targets']),'physical_due'=>count($executionTargets),'pass_requests'=>count($passTargets),'hotel_cap'=>30,'request_budget'=>$budget],JSON_UNESCAPED_SLASHES)."\n";
+    $processed=0; $logicalProcessed=0; $failed=$gapError; $partial=0; $writtenTotal=0;$gapProcessed=0;
     foreach($passTargets as $target){
         if($processed>=$budget||microtime(true)>=$deadline)break;
         $processed++;if(isset($target['page_key']))$gapProcessed++;
         $searchId=$target['resume_search_id'];
-        $attemptId=$target['resume_attempt_id']??top500_daily_attempt_start($pdo,$target);
-        $trusted=[]; $written=0;
-        echo 'TOP500_MONTHLY_START key='.$target['target_key'].' resume='.($searchId??0)."\n";
+        $attemptIds=[];$memberWritten=[];$memberRows=[];
+        foreach($target['_logical_targets'] as $member){
+            $key=$member['target_key'];$attemptIds[$key]=$member['resume_attempt_id']??top500_daily_attempt_start($pdo,$member);
+            $memberWritten[$key]=0;$memberRows[$key]=0;
+        }
+        $logicalProcessed+=count($attemptIds);
+        echo 'TOP500_MONTHLY_START key='.$target['target_key'].' resume='.($searchId??0).' logical_targets='.count($attemptIds).' hotels='.count($target['hotel_ids'])."\n";
         try {
             if($searchId===null){
                 $searchId=top500_daily_search_id(top500_daily_get('/tours/search',v2_top500_target_search_params($target)));
                 if($searchId===null)throw new RuntimeException('no searchId');
-                $pdo->prepare('UPDATE tour_matrix_collection_attempts SET search_id=:search_id WHERE id=:id')->execute(['search_id'=>$searchId,'id'=>$attemptId]);
+                $bind=$pdo->prepare('UPDATE tour_matrix_collection_attempts SET search_id=:search_id WHERE id=:id');
+                foreach($attemptIds as $attemptId)$bind->execute(['search_id'=>$searchId,'id'=>$attemptId]);
             }
             $complete=false;
             for($poll=0;$poll<$pollAttempts&&microtime(true)<$deadline;$poll++){
@@ -136,21 +143,35 @@ try {
             // Incomplete searches can already contain useful trusted prices.
             // Persist them now, but do not label the target complete or empty.
             $rows=top500_daily_fetch_results($searchId);
-            foreach($rows as $hotel)if(is_array($hotel)&&v2_top500_target_accepts_hotel($target,$hotel))$trusted[]=$hotel;
-            $observed=v2_data_observe_search_results($trusted,['searchId'=>$searchId,'departureId'=>(int)$target['departure_id'],'countryId'=>(int)$target['country_id'],'adults'=>2,'childs'=>[],'currency'=>'RUB','source'=>'scheduled_monitor','maxHotels'=>5000,'maxTours'=>50000]);
-            $written=(int)($observed['written']??0); $writtenTotal+=$written;
-            $status=$complete?($trusted===[]?'empty':'success'):'timeout';
             if(!$complete)$partial++;
-            top500_daily_attempt_finish($pdo,$attemptId,$status,$searchId,count($trusted),$written,$complete?null:'partial results saved; resume existing search');
-            echo 'TOP500_MONTHLY_RESULT key='.$target['target_key'].' status='.$status.' returned_hotels='.count($trusted).' written='.$written."\n";
-            if(isset($target['page_key']))echo 'SEO_PAGE_GAP_RESULT '.json_encode(['page_key'=>$target['page_key'],'path'=>$target['page_path'],'search_id'=>$searchId,'from'=>$target['date_from'],'to'=>$target['date_to'],'status'=>$status,'returned_hotels'=>count($trusted),'written'=>$written],JSON_UNESCAPED_SLASHES)."\n";
+            $remainingTours=50000;
+            $outcomes=v2_top500_execution_outcomes($target,$rows,$complete);
+            foreach($outcomes as $outcome){
+                $member=$outcome['target'];$key=$member['target_key'];$trusted=$outcome['rows'];
+                $memberRows[$key]=count($trusted);
+                // Disjoint member hotel sets: each returned hotel is observed once.
+                // Retain the total per-search 50,000-tour write envelope.
+                if($trusted!==[]&&$remainingTours>0){
+                    $observed=v2_data_observe_search_results($trusted,['searchId'=>$searchId,'departureId'=>(int)$member['departure_id'],'countryId'=>(int)$member['country_id'],'adults'=>2,'childs'=>[],'currency'=>'RUB','source'=>'scheduled_monitor','maxHotels'=>5000,'maxTours'=>$remainingTours]);
+                    $memberWritten[$key]=(int)($observed['written']??0);$writtenTotal+=$memberWritten[$key];
+                    $remainingTours-=max(0,(int)($observed['seen']??0));
+                }
+            }
         }catch(Throwable $e){
-            top500_daily_attempt_finish($pdo,$attemptId,'failure',$searchId,count($trusted),$written,$e->getMessage());
+            foreach($attemptIds as $key=>$attemptId)top500_daily_attempt_finish($pdo,$attemptId,'failure',$searchId,$memberRows[$key],$memberWritten[$key],$e->getMessage());
             $failed++;
             fwrite(STDERR,'TOP500_MONTHLY_ERROR key='.$target['target_key'].' '.str_replace(["\r","\n"],' ',mb_substr($e->getMessage(),0,800))."\n");
+            continue;
+        }
+        // A completion write failure stops the pass; do not repeat uncertain writes.
+        foreach($outcomes as $outcome){
+            $member=$outcome['target'];$key=$member['target_key'];$status=$outcome['status'];
+            top500_daily_attempt_finish($pdo,$attemptIds[$key],$status,$searchId,$memberRows[$key],$memberWritten[$key],$complete?null:'partial results saved; resume existing search');
+            echo 'TOP500_MONTHLY_RESULT key='.$key.' status='.$status.' returned_hotels='.$memberRows[$key].' written='.$memberWritten[$key]."\n";
+            if(isset($member['page_key']))echo 'SEO_PAGE_GAP_RESULT '.json_encode(['page_key'=>$member['page_key'],'path'=>$member['page_path'],'search_id'=>$searchId,'from'=>$member['date_from'],'to'=>$member['date_to'],'status'=>$status,'returned_hotels'=>$memberRows[$key],'written'=>$memberWritten[$key]],JSON_UNESCAPED_SLASHES)."\n";
         }
     }
     $after=v2_top500_monthly_queue($plan['targets'],top500_monthly_attempts($pdo),(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn(),$freshHours);
-    echo 'TOP500_MONTHLY_DONE '.json_encode(['processed'=>$processed,'page_gap_processed'=>$gapProcessed,'failed'=>$failed,'partial'=>$partial,'observations_written'=>$writtenTotal,'fresh_targets'=>$after['fresh'],'pending_targets'=>$after['pending'],'complete'=>$after['pending']===0,'months'=>$after['months']],JSON_UNESCAPED_SLASHES)."\n";
+    echo 'TOP500_MONTHLY_DONE '.json_encode(['processed'=>$processed,'logical_processed'=>$logicalProcessed,'page_gap_processed'=>$gapProcessed,'failed'=>$failed,'partial'=>$partial,'observations_written'=>$writtenTotal,'fresh_targets'=>$after['fresh'],'pending_targets'=>$after['pending'],'complete'=>$after['pending']===0,'months'=>$after['months']],JSON_UNESCAPED_SLASHES)."\n";
 }finally{$pdo->query("SELECT RELEASE_LOCK('anytour_top500_monthly_v1')");}
 if($failed>0)exit(2);

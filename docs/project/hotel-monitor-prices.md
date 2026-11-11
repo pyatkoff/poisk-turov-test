@@ -44,3 +44,35 @@ Validation: `php tests/hotel-monitor-prices-smoke.php`. Existing collector workf
 validates these files on PR and copies them only in its existing production job
 after an authorised merge. PR execution cannot run the production job. No workflow
 dispatch, server execution, MAIN/DEPLOY reservation or merge is part of source prep.
+
+## Compatible execution within the existing budget
+
+The retained 10 November run42922035872 planned2,958 weekly logical targets,
+with64requests per pass. Many publication cohorts contain only1–4hotels. Their
+immutable keys preserve history but need not each consume a separate search.
+Even24nominal passes cannot refresh2,958separate searches within24hours. Actual
+scheduled-run gaps are an additional limitation; cron configuration is not proof
+of daily execution or completed coverage.
+
+`v2_top500_execution_targets` packs due hotel cohorts with identical departure,
+country, dates and search conditions into the existing maximum30hotel request.
+It changes execution only: every original target key, hotel membership and
+attempt remains separate. Already fresh/deferred targets stay excluded by the
+original queue. Resumed searches can share work only with the same retained
+search ID and scope; they never join a new search or another known search.
+Seasonal page searches keep their existing reserve inside the same request cap.
+
+Each original attempt records the actual shared search ID and its own filtered
+results. A sibling finding cannot make an empty hotel cohort successful. Partial
+and failed searches remain incomplete. Disjoint results reach the unchanged
+observer once, with the total50,000tour envelope preserved. A completion-write
+failure stops execution without retrying an uncertain update. Original logical
+coverage counts are retained; logs separately report physical requests and
+logical targets processed. No cadence, budget, hotel whitelist, namespace,
+supplier API contract, price/fuel policy, schema, publisher or schedule changes.
+
+The native monthly smoke executes the actual collector loop against deterministic
+fake storage/provider boundaries and checks coalescing, exact attribution,
+resumption, request/observer caps, partial/error/empty states and uncertain writes.
+This test is not proof that production has completed its daily sweep. Actual
+runtime logs/coverage and final package-price proof remain separate requirements.

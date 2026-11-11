@@ -2,6 +2,7 @@
 /** Calendar-wide TOP500 queue. No network, DB mutations or page-publication policy. */
 declare(strict_types=1);
 require_once __DIR__.'/top500-daily-plan-v1.php';
+require_once __DIR__.'/seasonal-page-gap-plan-v1.php';
 
 function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, string $today, int $months = 12, int $departureId = 1, bool $allowEmpty = false): array
 {
@@ -91,4 +92,56 @@ function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int 
         ((int)($b['resume_search_id'] !== null) <=> (int)($a['resume_search_id'] !== null))
         ?: ($a['_age'] <=> $b['_age']) ?: ($a['_order'] <=> $b['_order']));
     return ['targets'=>$due,'fresh'=>$fresh,'pending'=>count($due)+$deferred,'deferred'=>$deferred,'months'=>$months];
+}
+
+/** Pack execution only: logical keys, hotel sets and existing attempt IDs stay intact.
+ * New compatible hotel searches share at most the existing 30-hotel cap. A known
+ * unfinished search may share execution only with that same search ID and scope.
+ * Gap searches remain standalone. First eligible target order is retained.
+ */
+function v2_top500_execution_targets(array $targets): array
+{
+    $result=[]; $bins=[]; $seen=[]; $resumeScopes=[];
+    foreach($targets as $target){
+        $key=(string)($target['target_key']??'');
+        if($key===''||isset($seen[$key]))throw new InvalidArgumentException('duplicate or missing logical target');
+        $seen[$key]=true;
+        $params=v2_top500_target_search_params($target);
+        $resume=$target['resume_search_id']??null;
+        if($resume!==null&&(!is_int($resume)||$resume<=0||!is_int($target['resume_attempt_id']??null)||$target['resume_attempt_id']<=0))throw new InvalidArgumentException('invalid retained search identity');
+        $hotelBatch=($target['criterion']??'')==='hotel_batch'&&!isset($target['page_key']);
+        $scope=$params;unset($scope['hotelIds']);$scope['criterion']=$target['criterion'];
+        $scopeKey=json_encode($scope,JSON_THROW_ON_ERROR);
+        if($resume!==null){
+            if(isset($resumeScopes[$resume])&&$resumeScopes[$resume]!==$scopeKey)throw new InvalidArgumentException('retained search scope conflict');
+            $resumeScopes[$resume]=$scopeKey;
+        }
+        $signature=$scopeKey.':'.($resume===null?'new':'resume:'.$resume);
+        $slot=null;
+        if($hotelBatch)foreach($bins[$signature]??[] as $index){
+            $ids=$result[$index]['hotel_ids'];
+            if(count($ids)+count($params['hotelIds'])<=30&&!array_intersect($ids,$params['hotelIds'])){$slot=$index;break;}
+        }
+        if($slot===null){
+            $target['_logical_targets']=[$target];
+            $result[]=$target;$slot=count($result)-1;
+            if($hotelBatch){$result[$slot]['hotel_ids']=$params['hotelIds'];$bins[$signature][]=$slot;}
+        }else{
+            $result[$slot]['hotel_ids']=array_merge($result[$slot]['hotel_ids'],$params['hotelIds']);
+            $result[$slot]['_logical_targets'][]=$target;
+        }
+    }
+    return $result;
+}
+
+/** A sibling finding must not turn an empty logical hotel cohort into success. */
+function v2_top500_execution_outcomes(array $execution,array $rows,bool $complete):array
+{
+    $outcomes=[];
+    foreach($execution['_logical_targets'] as $target){
+        $trusted=[];
+        foreach($rows as $hotel)if(is_array($hotel)&&v2_top500_target_accepts_hotel($target,$hotel))$trusted[]=$hotel;
+        $outcomes[]=['target'=>$target,'rows'=>$trusted,'status'=>$complete?($trusted===[]?'empty':'success'):'timeout'];
+    }
+    return $outcomes;
 }
