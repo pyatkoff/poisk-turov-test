@@ -57,4 +57,5 @@ $prior=[];
 foreach($initial as $i=>$target)if(in_array($target['month'],['2026-09','2026-10'],true))$prior[]=['id'=>$i+1,'target_key'=>$target['target_key'],'status'=>'success','started_epoch'=>$now-10,'finished_epoch'=>$now-1,'search_id'=>1000+$i];
 $continued=v2_top500_monthly_queue($many['targets'],$prior,$now);
 monthly_check(count(array_filter(array_slice($continued['targets'],0,64),static fn($t)=>$t['country_id']===4&&$t['month']==='2026-11'))>0,'prior successes retained while November advances');
+require_once __DIR__.'/top500-monthly-execution-smoke.php';
 echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 no_starvation=1 many_countries=40 explicit_missing=1\n";
