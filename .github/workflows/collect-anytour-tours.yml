@@ -42,6 +42,7 @@ on:
       - 'v2/seo-price-promo-v1.css'
       - '.github/workflows/collect-anytour-tours.yml'
       - 'tests/local_tv_capture_workflow_test.py'
+      - 'tests/monitor_price_hook_workflow_test.py'
   push:
     branches: [main]
     paths:
@@ -83,6 +84,7 @@ on:
       - 'v2/seo-price-promo-v1.css'
       - '.github/workflows/collect-anytour-tours.yml'
       - 'tests/local_tv_capture_workflow_test.py'
+      - 'tests/monitor_price_hook_workflow_test.py'
   schedule:
     # Small resumable passes; each successful/empty target is refreshed once/24h.
     - cron: '12 * * * *'
@@ -129,6 +131,13 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - name: Exact existing post and feed publisher callback
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: c8d0b55564755617f1a7459cb2b2669515897089
+          path: hotel-price-publisher
+          persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
         shell: bash
         run: |
@@ -171,6 +180,11 @@ jobs:
           grep -Fq 'segmentFingerprint' v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq 'hotelImage' v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq 'picturelink' v2/data/price-observer-v1.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
   collect-production:
@@ -186,6 +200,19 @@ jobs:
           ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
           path: local-tv-source
           persist-credentials: false
+      - name: Exact existing post and feed publisher callback
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: c8d0b55564755617f1a7459cb2b2669515897089
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Bundle the reviewed existing publisher callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -238,6 +265,7 @@ jobs:
             v2/data/price-segment-v1.php \
             v2/data/hotel-monitor-prices-v1.php \
             v2/data/hotel-monitor-prices-read-v1.php \
+            "$RUNNER_TEMP/monitor-price-hook.php" \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
             v2/data/migrate-price-daily-exact-v1.php \
@@ -287,5 +315,8 @@ jobs:
             php \"\$root/rollup-price-daily-v1.php\" --days=31
             php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            if [ \"\$collector_status\" -eq 0 ] && [ '${{ github.event_name }}' = 'schedule' ] && [ '${{ github.run_attempt }}' = '1' ]; then
+              php \"\$root/monitor-price-hook.php\" || collector_status=\$?
+            fi
             exit \"\$collector_status\"
           "
