@@ -320,4 +320,3 @@ jobs:
             fi
             exit \"\$collector_status\"
           "
-
