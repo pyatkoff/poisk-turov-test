@@ -135,7 +135,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 8f7faaeea18e2d5e1d6d07d660c761c51ccf7a6c
+          ref: 534415f2cd76d088e3044adfdd51123b2af8d2c6
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -182,6 +182,7 @@ jobs:
           grep -Fq 'picturelink' v2/data/price-observer-v1.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
           python3 tests/monitor_price_hook_workflow_test.py
@@ -191,7 +192,8 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Existing collection (25 min) plus one bounded post-maintenance cycle and setup.
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - name: Exact reviewed LOCAL observation hook
@@ -204,7 +206,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 8f7faaeea18e2d5e1d6d07d660c761c51ccf7a6c
+          ref: 534415f2cd76d088e3044adfdd51123b2af8d2c6
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -306,6 +308,7 @@ jobs:
             # A failed supplier batch must not prevent good partial/user data
             # already in the DB from reaching SEO snapshots.
             collector_status=0
+            collection_started_at=\"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
             php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --months='$MATRIX_MONTHS_VALUE' --budget='$MONTHLY_BUDGET_VALUE' --max-seconds=1500 --only-month='$TARGET_MONTH_VALUE' --only-country='$TARGET_COUNTRY_VALUE' || collector_status=\$?
             if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
               php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE' || collector_status=\$?
@@ -316,7 +319,7 @@ jobs:
             php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             if [ \"\$collector_status\" -eq 0 ] && [ '${{ github.event_name }}' = 'schedule' ] && [ '${{ github.run_attempt }}' = '1' ]; then
-              php \"\$root/monitor-price-hook.php\" || collector_status=\$?
+              ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
             fi
             exit \"\$collector_status\"
           "
