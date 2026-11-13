@@ -135,7 +135,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 038ae01b7d4eb9ffc9d895e1512af2d8b74a3d93
+          ref: a39ac351b174378ceb9fc6cd84c85d3f2053b30a
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -206,7 +206,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 038ae01b7d4eb9ffc9d895e1512af2d8b74a3d93
+          ref: a39ac351b174378ceb9fc6cd84c85d3f2053b30a
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
