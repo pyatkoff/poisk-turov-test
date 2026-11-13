@@ -138,6 +138,22 @@ sentence is retained. Incomplete or unknown source receipts stop the pass. Roste
 registration does not itself assert a new price or a completed natural update.
 Proof: `max-search-bot/tools/direct_demand/operations/monitor-price-legacy5-20261113-proof.json`.
 
+The remaining23 published pairs are now connected, taking569 to592 and matching
+the entire accepted published set. All previous569 rows and their uncompressed
+JSON prefix remain byte-identical. Twenty additions use genuine original sender
+receipts. The three early pairs TV381, TV67910 and TV68323 use their original
+completed8November caption batches, pinned to the actual operation, manifest,
+installed source and all50 confirmed members. The driver reads each shared batch
+once; the existing editor independently rechecks it before writing. Exact message,
+photo, button and token identity and the accepted current caption/version remain
+mandatory. These three do not acquire invented publisher IDs or sender receipts.
+Seven accepted individual closing sentences remain bound to their exact native
+hotel IDs. TV268 retains its later correction4001/4002. The existing meal-condition
+filter and subsequent completed-monitor-journal checks are unchanged. There are
+still no new posts, schedule or supplier searches in this registration. Full
+registration is separate from fresh observation coverage and actual price updates.
+Proof: `max-search-bot/tools/direct_demand/operations/monitor-price-remaining23-20261113-proof.json`.
+
 Since the owner correction of 13 November, each new successful original scheduled
 collector admits maintenance at any Moscow hour, including a later collector on
 the same day. The existing `--nightly` argument and `nightly_cycle` journal field
