@@ -118,10 +118,25 @@ not invoke this callback. Collection cadence, request caps and LOCAL pins remain
 
 The initial callback roster contained 481 pairs, including the original six. A read-only
 runtime pass on 11 November verified all 481 original post receipts, typed native
-IDs, retained buttons/photos and feed destinations. The remaining 28 of 509
-published hotels still need unambiguous original receipt/template bindings; they
-are not treated as missing from the hotel database. The existing monitor search
+IDs, retained buttons/photos and feed destinations. At that checkpoint, 28 of 509
+published hotels lacked unambiguous original receipt/template bindings; they
+were not treated as missing from the hotel database. The existing monitor search
 roster and physical request budget are unchanged.
+
+On 13 November the published set reached 592 pairs and the callback roster 564.
+Five existing legacy pairs are now bound, taking the roster to 569: TV310, TV469,
+TV498, TV1971 and TV1981. The first 564 rows, corrected templates and baselines are
+preserved exactly; 23 published pairs remain outside this maintenance roster.
+These five use their original completed legacy price journals and exact manifest
+hashes, provider photo signatures, publication/message identities and token/button
+hashes. Publisher IDs remain explicitly null for TV310/469/1971, while TV498 maps
+to publisher228 and TV1981 to publisher877. No sender receipt or PNG hash is
+invented. The driver and existing editor share the same bounded proof validator.
+The first edit requires the exact accepted 8 November editorial version and text;
+later edits require the ordinary completed monitor journal. The accepted closing
+sentence is retained. Incomplete or unknown source receipts stop the pass. Roster
+registration does not itself assert a new price or a completed natural update.
+Proof: `max-search-bot/tools/direct_demand/operations/monitor-price-legacy5-20261113-proof.json`.
 
 Since the owner correction of 13 November, each new successful original scheduled
 collector admits maintenance at any Moscow hour, including a later collector on
