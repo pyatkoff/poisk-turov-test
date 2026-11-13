@@ -116,15 +116,27 @@ post receipts. No new task, cron, worker, publication, supplier request, quote,
 Site mutation or credential is introduced. Manual runs and workflow retries do
 not invoke this callback. Collection cadence, request caps and LOCAL pins remain unchanged.
 
-The callback roster contains 481 pairs, including the original six. A read-only
+The initial callback roster contained 481 pairs, including the original six. A read-only
 runtime pass on 11 November verified all 481 original post receipts, typed native
 IDs, retained buttons/photos and feed destinations. The remaining 28 of 509
 published hotels still need unambiguous original receipt/template bindings; they
 are not treated as missing from the hotel database. The existing monitor search
 roster and physical request budget are unchanged.
 
-Each callback edits at most 30 pairs within 480 seconds, prioritizing never-updated
-pairs, then the oldest completed pairs. It uses retained price observations only.
+Since the owner correction of 13 November, each new successful original scheduled
+collector admits maintenance at any Moscow hour, including a later collector on
+the same day. The existing `--nightly` argument and `nightly_cycle` journal field
+remain compatible names; neither the hour nor the calendar date limits admission.
+Repeated collector IDs are rejected using the same append-only journal, including
+an older ID after a later run. An unfinished cycle or pending/unknown operation
+still blocks a new pass regardless of its date; the collection clock cannot move
+backwards. No separate replay registry is introduced.
+
+The scheduled callback can process the full pinned roster within the existing
+1,800-second budget, reserving the final 300 seconds to finish the current pair.
+It prioritizes never-updated pairs, then the oldest completed pairs. The existing
+non-scheduled CLI limit remains 30 pairs / 480 seconds. All paths use retained
+price observations only; the callback does not collect or quote prices again.
 An exact tour with a later saved operator rejection or room conflict stays held
 until a newer observation; other hotels continue. Empty or stale observations
 remain unpriced. These bounds do not establish daily coverage of every hotel and
@@ -143,3 +155,4 @@ Source tests execute the real workflow shell with inert boundaries for scheduled
 success, supplier failure, manual invocation, rerun and callback failure. Runtime
 inspection verifies all 481 bindings without edits. A merged callback is enabled
 for the next natural pass; only its actual receipt proves automatic execution.
+
