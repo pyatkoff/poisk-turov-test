@@ -132,6 +132,17 @@ an older ID after a later run. An unfinished cycle or pending/unknown operation
 still blocks a new pass regardless of its date; the collection clock cannot move
 backwards. No separate replay registry is introduced.
 
+One original interrupted cycle (`43336135923`) has an explicit forward-only
+metadata closeout: its accepted recovery `43352649982` already completed the
+original post/feed operation but deliberately retained the cycle marker. Under
+the same lock, the callback must match both complete original journal hashes,
+byte/line counts, the completed child receipt and the exact global completion.
+Only then it appends `interrupted_reconciled` with the saved recovery binding.
+It never labels the partial sweep completed, replays the recovery or edits posts
+for that closeout. Changed evidence and unrelated unfinished cycles stay blocked.
+This is forward-only: a source predating this terminal safely stops on it; any
+rollback must retain the terminal reader instead of re-enabling the old gate.
+
 The scheduled callback can process the full pinned roster within the existing
 1,800-second budget, reserving the final 300 seconds to finish the current pair.
 It prioritizes never-updated pairs, then the oldest completed pairs. The existing
