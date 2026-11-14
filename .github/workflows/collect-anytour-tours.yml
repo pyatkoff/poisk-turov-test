@@ -314,12 +314,12 @@ jobs:
               php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE' || collector_status=\$?
             fi
             php \"\$root/top500-coverage-v1.php\"
-            php \"\$root/rollup-price-daily-v1.php\" --days=31
-            php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
-            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             if [ \"\$collector_status\" -eq 0 ] && [ '${{ github.event_name }}' = 'schedule' ] && [ '${{ github.run_attempt }}' = '1' ]; then
               ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
             fi
+            php \"\$root/rollup-price-daily-v1.php\" --days=31
+            php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
+            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             exit \"\$collector_status\"
           "
 
