@@ -252,7 +252,7 @@ jobs:
           test "$MATRIX_MONTHS_VALUE" -ge 1 && test "$MATRIX_MONTHS_VALUE" -le 18
           test "$MONTHLY_BUDGET_VALUE" -ge 1 && test "$MONTHLY_BUDGET_VALUE" -le 100
           test "$TARGET_COUNTRY_VALUE" -ge 0 && test "$TARGET_COUNTRY_VALUE" -le 1000000
-          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
