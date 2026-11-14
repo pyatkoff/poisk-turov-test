@@ -32,6 +32,50 @@ $q=v2_top500_monthly_queue($targets,$attempts,$now);
 monthly_check($q['fresh']===2 && $q['pending']===4 && $q['deferred']===1,'honest states');
 monthly_check(in_array(104,array_column($q['targets'],'resume_search_id'),true),'timeout resumes known search');
 monthly_check(in_array(103,array_column($q['targets'],'resume_search_id'),true),'failed known search resumes after cooldown');
+// A retained provider search may disappear before our six-hour resume window.
+// Only the exact LOCAL client formatter is terminal; never infer it from a body.
+$goneTarget=$targets[2];
+$goneAttempt=['id'=>42,'target_key'=>$goneTarget['target_key'],'status'=>'failure',
+    'started_epoch'=>$now-2000,'finished_epoch'=>$now-901,'search_id'=>14162884988];
+foreach(range(1,4) as $httpAttempt){
+    $a=$goneAttempt+['error_text'=>'Tourvisor HTTP 410 after '.$httpAttempt.' attempt(s)'];$saved=$a;
+    $gone=v2_top500_monthly_queue([$goneTarget],[$a],$now);
+    monthly_check($gone['fresh']===0&&$gone['pending']===1&&$gone['deferred']===0&&count($gone['targets'])===1,'HTTP410 stays due, not successful');
+    $next=$gone['targets'][0];
+    monthly_check($next['target_key']===$goneTarget['target_key']&&$next['resume_search_id']===null&&$next['resume_attempt_id']===null,'HTTP410 receives a new attempt on the next pass');
+    monthly_check($a===$saved&&$a['status']==='failure'&&$a['search_id']===14162884988&&$a['id']===42,'HTTP410 original failure and search identity retained');
+}
+$a=$goneAttempt+['error_text'=>'Tourvisor HTTP 410 after 1 attempt(s)'];$a['finished_epoch']=$now-899;$saved=$a;
+$cooldown=v2_top500_monthly_queue([$goneTarget],[$a],$now);
+monthly_check($cooldown['targets']===[]&&$cooldown['fresh']===0&&$cooldown['pending']===1&&$cooldown['deferred']===1&&$a===$saved,'HTTP410 keeps the failure cooldown');
+$a['finished_epoch']=$now-900;
+$cooled=v2_top500_monthly_queue([$goneTarget],[$a],$now);
+monthly_check(count($cooled['targets'])===1&&$cooled['targets'][0]['resume_search_id']===null,'HTTP410 cooldown boundary creates no retained resume');
+foreach([
+    'Tourvisor HTTP 500 after 1 attempt(s)',
+    'Tourvisor HTTP 429 after 4 attempt(s)',
+    'Tourvisor HTTP 503 after 4 attempt(s)',
+    'Tourvisor connection error after 4 attempts: operation timed out',
+    'response body mentions 410',
+    'prefix Tourvisor HTTP 410 after 1 attempt(s)',
+    'Tourvisor HTTP 410 after 1 attempt(s) response body',
+    'Tourvisor HTTP 410 after 0 attempt(s)',
+    'Tourvisor HTTP 410 after 5 attempt(s)',
+    'Tourvisor HTTP 410 after 01 attempt(s)',
+    'Tourvisor HTTP 410 after 1 attempts',
+    "Tourvisor HTTP 410 after 1 attempt(s)\n",
+    " Tourvisor HTTP 410 after 1 attempt(s)",
+    410,null,
+] as $message){
+    $a=$goneAttempt+['error_text'=>$message];$saved=$a;
+    $retry=v2_top500_monthly_queue([$goneTarget],[$a],$now);
+    monthly_check($retry['targets'][0]['resume_search_id']===14162884988&&$retry['targets'][0]['resume_attempt_id']===42&&$a===$saved,'noncanonical/other failure retains known search');
+}
+foreach(['timeout','started'] as $status){
+    $a=$goneAttempt+['error_text'=>'partial results saved; resume existing search'];$a['status']=$status;$saved=$a;
+    $retry=v2_top500_monthly_queue([$goneTarget],[$a],$now);
+    monthly_check($retry['targets'][0]['resume_search_id']===14162884988&&$retry['targets'][0]['resume_attempt_id']===42&&$a===$saved,'ordinary incomplete search still resumes');
+}
 $expiry=v2_top500_monthly_queue($targets,$attempts,$now+90000);
 monthly_check($expiry['fresh']===0 && count($expiry['targets'])===6,'completed pairs become due again');
 $changed=$hotels; $changed[0]['is_active']=0;
@@ -58,4 +102,4 @@ foreach($initial as $i=>$target)if(in_array($target['month'],['2026-09','2026-10
 $continued=v2_top500_monthly_queue($many['targets'],$prior,$now);
 monthly_check(count(array_filter(array_slice($continued['targets'],0,64),static fn($t)=>$t['country_id']===4&&$t['month']==='2026-11'))>0,'prior successes retained while November advances');
 require_once __DIR__.'/top500-monthly-execution-smoke.php';
-echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 no_starvation=1 many_countries=40 explicit_missing=1\n";
+echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 http410_terminal=1 no_starvation=1 many_countries=40 explicit_missing=1\n";
