@@ -80,9 +80,13 @@ function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int 
         if (($status === 'started' && $searchId <= 0 && $started > $now - 3600) || ($status === 'failure' && $finished > $now - 900)) {
             $deferred++; continue;
         }
-        // Reuse a known incomplete search instead of issuing the same new search
-        // after a time budget/deploy interruption. Expired old sessions may restart.
-        $resume = in_array($status, ['started','timeout','failure'], true) && $searchId > 0 && $started >= $now - 21600;
+        // Only the canonical LOCAL client HTTP error proves a retained resource
+        // is gone. Keep the failed attempt and cooldown; the next ordinary pass
+        // may create a new attempt instead of resuming that expired search ID.
+        $searchGone = $status === 'failure' && is_string($a['error_text'] ?? null)
+            && preg_match('/\ATourvisor HTTP 410 after [1-4] attempt\(s\)\z/D', $a['error_text']) === 1;
+        // Reuse other known incomplete searches after a budget/deploy interruption.
+        $resume = !$searchGone && in_array($status, ['started','timeout','failure'], true) && $searchId > 0 && $started >= $now - 21600;
         $target['resume_search_id'] = $resume ? $searchId : null;
         $target['resume_attempt_id'] = $resume ? (int)$a['id'] : null;
         $target['_order'] = $i; $target['_age'] = $started;
