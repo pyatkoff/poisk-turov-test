@@ -35,7 +35,7 @@ function v2_hmp_request(array $query, string $today): array
         'nightsFrom'=>5, 'nightsTo'=>14, 'adults'=>2, 'childrenCount'=>0, 'currency'=>'RUB'];
 }
 
-/** Keep every actual room/operator/tour product before taking each hotel's cheapest observations. */
+/** Keep every actual room/operator/tour product with known meal terms before taking each hotel's cheapest observations. */
 function v2_hmp_offer_sql(int $count): string
 {
     if ($count < 1 || $count > 100) throw new InvalidArgumentException('Invalid hotel bound');
@@ -51,6 +51,7 @@ function v2_hmp_offer_sql(int $count): string
             AND o.departure_date BETWEEN ? AND ? AND o.nights BETWEEN 5 AND 14
             AND o.adults=2 AND o.children_count=0 AND COALESCE(o.child_ages_signature,'')=''
             AND o.source='scheduled_monitor' AND o.currency='RUB' AND o.price>0
+            AND o.meal_id IN (2,3,4,5,7,9)
             AND o.tour_id IS NOT NULL AND o.tour_id<>''
             AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
     ), hotel_rows AS (
