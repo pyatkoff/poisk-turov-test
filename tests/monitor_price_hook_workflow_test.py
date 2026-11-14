@@ -3,12 +3,40 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+REAL_PHP = shutil.which('php')
+# Original stdout from run 43642921435, job 132594373152, 2026-11-14 21:42:20 UTC.
+ACTUAL_PARTIAL_RECEIPT = (
+    'TOP500_MONTHLY_DONE {"processed":64,"logical_processed":76,"page_gap_processed":0,'
+    '"failed":1,"partial":1,"observations_written":24440,"fresh_targets":436,'
+    '"pending_targets":2699,"complete":false,"months":{'
+    '"2026-11":{"total":165,"fresh":8,"pending":157},'
+    '"2026-12":{"total":275,"fresh":39,"pending":236},'
+    '"2027-01":{"total":275,"fresh":40,"pending":235},'
+    '"2027-02":{"total":220,"fresh":39,"pending":181},'
+    '"2027-03":{"total":275,"fresh":40,"pending":235},'
+    '"2027-04":{"total":275,"fresh":40,"pending":235},'
+    '"2027-05":{"total":275,"fresh":38,"pending":237},'
+    '"2027-06":{"total":275,"fresh":38,"pending":237},'
+    '"2027-07":{"total":275,"fresh":39,"pending":236},'
+    '"2027-08":{"total":275,"fresh":39,"pending":236},'
+    '"2027-09":{"total":275,"fresh":38,"pending":237},'
+    '"2027-10":{"total":275,"fresh":38,"pending":237}}}\n'
+)
+
+def completed_partial(**changes):
+    receipt = {'processed': 2, 'logical_processed': 2, 'page_gap_processed': 0,
+               'failed': 1, 'partial': 0, 'observations_written': 7,
+               'fresh_targets': 1, 'pending_targets': 1, 'complete': False,
+               'months': {'2026-11': {'total': 2, 'fresh': 1, 'pending': 1}}}
+    receipt.update(changes)
+    return 'TOP500_MONTHLY_DONE ' + json.dumps(receipt, separators=(',', ':')) + '\n'
 
 def actual_shell(event, attempt):
     source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
@@ -40,19 +68,36 @@ class ExistingCollectorHook(unittest.TestCase):
         self.assertIn('\n    needs: validate\n', production)
         self.assertIn('    timeout-minutes: 65', production.splitlines())
 
-    def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0):
+    def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0,
+                 collector_stdout='', collector_stderr='', tee=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
             scripts = {
                 'scp': '#!/usr/bin/env python3\nimport sys\n',
                 'ssh': "#!/usr/bin/env python3\nimport subprocess,sys\nraise SystemExit(subprocess.run(['bash','-c',sys.argv[-1]]).returncode)\n",
+                'tee': '''#!/usr/bin/env python3
+import os,sys
+from pathlib import Path
+raw=sys.stdin.buffer.read()
+Path(sys.argv[1]).write_bytes(raw)
+sys.stdout.buffer.write(raw)
+raise SystemExit(int(os.environ['TEE_STATUS']))
+''',
                 'php': '''#!/usr/bin/env python3
 import json,os,sys
 from pathlib import Path
 a=sys.argv[1:]
+# Exercise the workflow's real receipt parser; only external operations are inert.
+if a[0]=='-r':
+    native=os.environ.get('REAL_PHP')
+    if not native:raise SystemExit('PHP CLI unavailable: receipt parser was not executed')
+    os.execv(native,[native,*a])
 with open(os.environ['HOOK_TEST_LOG'],'a') as f:f.write(json.dumps(a)+'\\n')
 name=Path(a[0]).name
-if name=='top500-daily-collector-v1.php':raise SystemExit(int(os.environ['COLLECTOR_STATUS']))
+if name=='top500-daily-collector-v1.php':
+    sys.stdout.write(os.environ['COLLECTOR_STDOUT'])
+    sys.stderr.write(os.environ['COLLECTOR_STDERR'])
+    raise SystemExit(int(os.environ['COLLECTOR_STATUS']))
 if name=='rollup-price-daily-exact-v1.php':raise SystemExit(int(os.environ['EXACT_ROLLUP_STATUS']))
 if name=='monitor-price-hook.php':
     Path(os.environ['HOOK_CONTEXT_LOG']).write_text(json.dumps({'collection_started_at':os.environ.get('ANYTOUR_MONITOR_COLLECTION_STARTED_AT'),'collector_run_id':os.environ.get('ANYTOUR_MONITOR_COLLECTOR_RUN_ID')}))
@@ -63,7 +108,9 @@ if name=='monitor-price-hook.php':
             env=dict(os.environ, PATH=str(binary)+os.pathsep+os.environ['PATH'], RUNNER_TEMP=str(root),
                      HOST_VALUE='fixture.invalid', USER_VALUE='fixture', BUDGET_VALUE='2', MATRIX_BUDGET_VALUE='9',
                      MATRIX_MONTHS_VALUE='12', MONTHLY_BUDGET_VALUE='64', TARGET_MONTH_VALUE='', TARGET_COUNTRY_VALUE='0',
-                     HOOK_TEST_LOG=str(log), HOOK_CONTEXT_LOG=str(root/'hook-context.json'), COLLECTOR_STATUS=str(collector), HOOK_STATUS=str(hook), EXACT_ROLLUP_STATUS=str(exact_rollup))
+                     HOOK_TEST_LOG=str(log), HOOK_CONTEXT_LOG=str(root/'hook-context.json'), COLLECTOR_STATUS=str(collector), HOOK_STATUS=str(hook), EXACT_ROLLUP_STATUS=str(exact_rollup),
+                     COLLECTOR_STDOUT=collector_stdout, COLLECTOR_STDERR=collector_stderr,
+                     TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '')
             result=subprocess.run(['bash','-c',actual_shell(event,attempt)],env=env,cwd=ROOT,capture_output=True,text=True,timeout=10)
             calls=[json.loads(line) for line in log.read_text().splitlines()]
             self.hook_context=json.loads((root/'hook-context.json').read_text()) if (root/'hook-context.json').exists() else None
@@ -90,6 +137,74 @@ if name=='monitor-price-hook.php':
         self.assertNotIn('monitor-price-hook.php',names)
         self.assertIn('build-seo-offer-snapshots-v1.php',names)
 
+    @unittest.skipUnless(REAL_PHP, 'PHP CLI required to verify the real completion receipt parser')
+    def test_completed_partial_runs_hook_and_preserves_collector_failure(self):
+        result,names,_=self.run_pass(collector=2,collector_stdout='TOP500_MONTHLY_PLAN {}\n'+ACTUAL_PARTIAL_RECEIPT)
+        self.assertEqual(result.returncode,2,result.stderr)
+        self.assertEqual(names.count('monitor-price-hook.php'),1)
+        self.assertIn('TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2',result.stdout)
+        self.assertEqual(names[names.index('monitor-price-hook.php')+1:],['rollup-price-daily-v1.php','rollup-price-daily-exact-v1.php','build-seo-offer-snapshots-v1.php'])
+
+    @unittest.skipUnless(REAL_PHP, 'PHP CLI required to verify the real completion receipt parser')
+    def test_unproven_partial_receipts_do_not_start_post_edits(self):
+        receipt=completed_partial()
+        invalid={
+            'malformed': 'TOP500_MONTHLY_DONE {\n',
+            'duplicate': receipt+receipt,
+            'trailing_output': receipt+'unexpected output\n',
+            'truncated': receipt[:-1],
+            'zero_processed': completed_partial(processed=0),
+            'zero_failures': completed_partial(failed=0),
+            'zero_written': completed_partial(observations_written=0),
+            'boolean_counter': completed_partial(failed=True),
+            'duplicate_json_key': receipt.replace('"failed":1','"failed":0,"failed":1'),
+            'unknown_field': completed_partial(extra=1),
+            'inconsistent_coverage': completed_partial(pending_targets=2),
+        }
+        for reason,output in invalid.items():
+            with self.subTest(reason=reason):
+                result,names,_=self.run_pass(collector=2,collector_stdout=output)
+                self.assertEqual(result.returncode,2,result.stderr)
+                self.assertNotIn('monitor-price-hook.php',names)
+                self.assertNotIn('TOP500_MONTHLY_COMPLETED_PARTIAL',result.stdout)
+                self.assertIn('build-seo-offer-snapshots-v1.php',names)
+        result,names,_=self.run_pass(collector=2,collector_stderr=receipt)
+        self.assertEqual(result.returncode,2)
+        self.assertNotIn('monitor-price-hook.php',names,'stderr cannot supply the completion receipt')
+
+    def test_terminal_receipt_does_not_override_fatal_or_unknown_exit(self):
+        for status in (1,3,130,255):
+            with self.subTest(status=status):
+                result,names,_=self.run_pass(collector=status,collector_stdout=completed_partial())
+                self.assertEqual(result.returncode,status,result.stderr)
+                self.assertNotIn('monitor-price-hook.php',names)
+
+    def test_failed_capture_cannot_admit_even_a_complete_receipt(self):
+        for status in (0,2):
+            with self.subTest(collector=status):
+                result,names,_=self.run_pass(collector=status,collector_stdout=completed_partial(),tee=7)
+                self.assertEqual(result.returncode,status or 7,result.stderr)
+                self.assertIn(f'TOP500_MONTHLY_CAPTURE_FAILED collector_status={status} tee_status=7',result.stdout)
+                self.assertNotIn('monitor-price-hook.php',names)
+                self.assertEqual(names[names.index('top500-daily-collector-v1.php')+1:],
+                                 ['top500-coverage-v1.php','rollup-price-daily-v1.php',
+                                  'rollup-price-daily-exact-v1.php','build-seo-offer-snapshots-v1.php'])
+
+    def test_partial_receipt_keeps_manual_and_replay_guards(self):
+        for event,attempt in (('workflow_dispatch',1),('schedule',2)):
+            with self.subTest(event=event,attempt=attempt):
+                result,names,_=self.run_pass(event=event,attempt=attempt,collector=2,collector_stdout=completed_partial())
+                self.assertEqual(result.returncode,2,result.stderr)
+                self.assertNotIn('monitor-price-hook.php',names)
+                self.assertNotIn('TOP500_MONTHLY_COMPLETED_PARTIAL',result.stdout)
+
+    @unittest.skipUnless(REAL_PHP, 'PHP CLI required to verify the real completion receipt parser')
+    def test_partial_hook_failure_is_visible_and_aggregates_still_run(self):
+        result,names,_=self.run_pass(collector=2,collector_stdout=completed_partial(),hook=7)
+        self.assertEqual(result.returncode,7,result.stderr)
+        self.assertEqual(names.count('monitor-price-hook.php'),1)
+        self.assertIn('build-seo-offer-snapshots-v1.php',names)
+
     def test_manual_search_does_not_trigger_automatic_post_edits(self):
         result,names,_=self.run_pass(event='workflow_dispatch')
         self.assertEqual(result.returncode,0)
@@ -114,3 +229,4 @@ if name=='monitor-price-hook.php':
         self.assertNotIn('build-seo-offer-snapshots-v1.php',names)
 
 if __name__=='__main__':unittest.main()
+
