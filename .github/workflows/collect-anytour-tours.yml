@@ -306,17 +306,64 @@ jobs:
             php \"\$root/top500-coverage-v1.php\"
             # A failed supplier batch must not prevent good partial/user data
             # already in the DB from reaching SEO snapshots.
-            collector_status=0
             collection_started_at=\"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --months='$MATRIX_MONTHS_VALUE' --budget='$MONTHLY_BUDGET_VALUE' --max-seconds=1500 --only-month='$TARGET_MONTH_VALUE' --only-country='$TARGET_COUNTRY_VALUE' || collector_status=\$?
+            collector_log=\"\$(mktemp)\"
+            trap 'rm -f \"\$collector_log\"' EXIT
+            set +e
+            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --months='$MATRIX_MONTHS_VALUE' --budget='$MONTHLY_BUDGET_VALUE' --max-seconds=1500 --only-month='$TARGET_MONTH_VALUE' --only-country='$TARGET_COUNTRY_VALUE' | tee \"\$collector_log\"
+            collector_pipeline=(\"\${PIPESTATUS[@]}\")
+            set -e
+            collector_status=\"\${collector_pipeline[0]}\"
+            if [ \"\${collector_pipeline[1]}\" -ne 0 ]; then
+              echo \"TOP500_MONTHLY_CAPTURE_FAILED collector_status=\$collector_status tee_status=\${collector_pipeline[1]}\"
+              if [ \"\$collector_status\" -eq 0 ]; then collector_status=\"\${collector_pipeline[1]}\"; fi
+            fi
             if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
               php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE' || collector_status=\$?
               php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE' || collector_status=\$?
             fi
             php \"\$root/top500-coverage-v1.php\"
-            if [ \"\$collector_status\" -eq 0 ] && [ '${{ github.event_name }}' = 'schedule' ] && [ '${{ github.run_attempt }}' = '1' ]; then
-              ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
+            if [ '${{ github.event_name }}' = 'schedule' ] && [ '${{ github.run_attempt }}' = '1' ] && [ \"\${collector_pipeline[1]}\" -eq 0 ]; then
+              completed_partial=0
+              # DONE alone is insufficient: the collector's exit 2 is after finally/RELEASE_LOCK.
+              # Accept only its complete stdout receipt and retain that nonzero outcome.
+              if [ \"\$collector_status\" -eq 2 ] && php -r '
+                try {
+                  \$raw=file_get_contents(\$argv[1],false,null,0,1048577);
+                  if(\$raw===false||strlen(\$raw)>1048576||!str_ends_with(\$raw,chr(10)))exit(1);
+                  \$prefix=\"TOP500_MONTHLY_DONE \";
+                  \$lines=explode(chr(10),substr(\$raw,0,-1));
+                  \$done=array_values(array_filter(\$lines,static fn(string \$line):bool=>str_starts_with(\$line,\$prefix)));
+                  if(count(\$done)!==1||end(\$lines)!==\$done[0])exit(1);
+                  \$encoded=substr(\$done[0],strlen(\$prefix));
+                  \$receipt=json_decode(\$encoded,true,32,JSON_THROW_ON_ERROR);
+                  \$numbers=[\"processed\",\"logical_processed\",\"page_gap_processed\",\"failed\",\"partial\",\"observations_written\",\"fresh_targets\",\"pending_targets\"];
+                  if(!is_array(\$receipt)||array_keys(\$receipt)!==array_merge(\$numbers,[\"complete\",\"months\"]))exit(1);
+                  if(json_encode(\$receipt,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)!==\$encoded)exit(1);
+                  foreach(\$numbers as \$key)if(!is_int(\$receipt[\$key])||\$receipt[\$key]<0)exit(1);
+                  if(\$receipt[\"processed\"]<1||\$receipt[\"failed\"]<1||\$receipt[\"observations_written\"]<1
+                    ||!is_bool(\$receipt[\"complete\"])||\$receipt[\"complete\"]!==(\$receipt[\"pending_targets\"]===0)
+                    ||!is_array(\$receipt[\"months\"]))exit(1);
+                  \$fresh=0;\$pending=0;
+                  foreach(\$receipt[\"months\"] as \$month=>\$coverage){
+                    if(!is_string(\$month)||preg_match(\"/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D\",\$month)!==1
+                      ||!is_array(\$coverage)||array_keys(\$coverage)!==[\"total\",\"fresh\",\"pending\"])exit(1);
+                    foreach(\$coverage as \$count)if(!is_int(\$count)||\$count<0)exit(1);
+                    if(\$coverage[\"total\"]!==\$coverage[\"fresh\"]+\$coverage[\"pending\"])exit(1);
+                    \$fresh+=\$coverage[\"fresh\"];\$pending+=\$coverage[\"pending\"];
+                  }
+                  if(\$fresh!==\$receipt[\"fresh_targets\"]||\$pending!==\$receipt[\"pending_targets\"])exit(1);
+                }catch(Throwable \$error){exit(1);}
+              ' \"\$collector_log\"; then
+                completed_partial=1
+                echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
+              fi
+              if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
+                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
+              fi
             fi
+            rm -f \"\$collector_log\"
+            trap - EXIT
             php \"\$root/rollup-price-daily-v1.php\" --days=31
             php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
