@@ -121,10 +121,6 @@ on:
         default: '0'
         type: string
 
-concurrency:
-  group: anytour-scheduled-tour-collector
-  cancel-in-progress: false
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -191,6 +187,9 @@ jobs:
   collect-production:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: validate
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     # Existing collection (25 min) plus one bounded post-maintenance cycle and setup.
     timeout-minutes: 65

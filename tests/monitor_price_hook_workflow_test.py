@@ -22,6 +22,24 @@ def actual_shell(event, attempt):
     return textwrap.dedent('\n'.join(lines)).replace('${{ github.event_name }}', event).replace('${{ github.run_attempt }}', str(attempt)).replace('${{ github.run_id }}', '43205530035')
 
 class ExistingCollectorHook(unittest.TestCase):
+    def test_only_production_owns_the_existing_collector_lock(self):
+        source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
+        top, jobs = source.split('\njobs:\n', 1)
+        validate, production = jobs.split('\n  collect-production:\n', 1)
+        self.assertNotIn('\nconcurrency:', top, 'PR validation must not wait for the production lock')
+        self.assertNotIn('\n    concurrency:', validate, 'validation must not acquire the production lock')
+        self.assertIn('\n    concurrency:\n      group: anytour-scheduled-tour-collector\n      cancel-in-progress: false\n', production)
+        self.assertEqual(source.count('group: anytour-scheduled-tour-collector'), 1)
+        self.assertEqual(source.count('\n    concurrency:'), 1)
+
+    def test_production_keeps_its_event_and_successful_validation_gate(self):
+        source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
+        production = source.split('\n  collect-production:\n', 1)[1].split('\n    steps:\n', 1)[0]
+        self.assertEqual([line for line in production.splitlines() if line.startswith('    if:')],
+                         ["    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'"])
+        self.assertIn('\n    needs: validate\n', production)
+        self.assertIn('    timeout-minutes: 65', production.splitlines())
+
     def run_pass(self, event='schedule', attempt=1, collector=0, hook=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
