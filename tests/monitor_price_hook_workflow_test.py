@@ -60,6 +60,14 @@ class ExistingCollectorHook(unittest.TestCase):
         self.assertEqual(source.count('group: anytour-scheduled-tour-collector'), 1)
         self.assertEqual(source.count('\n    concurrency:'), 1)
 
+    def test_observer_deploy_uses_single_reviewed_source(self):
+        source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
+        production = source.split('  collect-production:', 1)[1]
+        self.assertIn('            v2/data/price-observer-v1.php \\\n', production)
+        self.assertNotIn('local-tv-source/v2/data/price-observer-v1.php', production)
+        self.assertEqual(production.count('            v2/data/price-observer-v1.php \\\n'), 1)
+        self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", production)
+
     def test_production_keeps_its_event_and_successful_validation_gate(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
         production = source.split('\n  collect-production:\n', 1)[1].split('\n    steps:\n', 1)[0]
