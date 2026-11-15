@@ -98,7 +98,7 @@ try {
     if(isset($plan['published_hotels']))echo 'PUBLISHED_HOTEL_MONITOR '.json_encode($plan['published_hotels'],JSON_UNESCAPED_SLASHES)."\n";
     if($onlyMonth!==''&&!in_array($onlyMonth,$plan['months'],true))throw new InvalidArgumentException('target month outside horizon');
     $attempts=top500_monthly_attempts($pdo);$now=(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn();
-    $queue=v2_top500_monthly_queue($plan['targets'],$attempts,$now,$freshHours);
+    $queue=v2_top500_monthly_queue($plan['targets'],$attempts,$now,$freshHours,v2_sites_hotel_monitor_ids_20261111());
     $gapTargets=[];$gapError=0;
     if($gapReserve>0){
         try{
@@ -171,7 +171,7 @@ try {
             if(isset($member['page_key']))echo 'SEO_PAGE_GAP_RESULT '.json_encode(['page_key'=>$member['page_key'],'path'=>$member['page_path'],'search_id'=>$searchId,'from'=>$member['date_from'],'to'=>$member['date_to'],'status'=>$status,'returned_hotels'=>$memberRows[$key],'written'=>$memberWritten[$key]],JSON_UNESCAPED_SLASHES)."\n";
         }
     }
-    $after=v2_top500_monthly_queue($plan['targets'],top500_monthly_attempts($pdo),(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn(),$freshHours);
+    $after=v2_top500_monthly_queue($plan['targets'],top500_monthly_attempts($pdo),(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn(),$freshHours,v2_sites_hotel_monitor_ids_20261111());
     echo 'TOP500_MONTHLY_DONE '.json_encode(['processed'=>$processed,'logical_processed'=>$logicalProcessed,'page_gap_processed'=>$gapProcessed,'failed'=>$failed,'partial'=>$partial,'observations_written'=>$writtenTotal,'fresh_targets'=>$after['fresh'],'pending_targets'=>$after['pending'],'complete'=>$after['pending']===0,'months'=>$after['months']],JSON_UNESCAPED_SLASHES)."\n";
 }finally{$pdo->query("SELECT RELEASE_LOCK('anytour_top500_monthly_v1')");}
 if($failed>0)exit(2);

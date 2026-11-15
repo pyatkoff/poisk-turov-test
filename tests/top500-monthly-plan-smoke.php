@@ -76,6 +76,18 @@ foreach(['timeout','started'] as $status){
     $retry=v2_top500_monthly_queue([$goneTarget],[$a],$now);
     monthly_check($retry['targets'][0]['resume_search_id']===14162884988&&$retry['targets'][0]['resume_attempt_id']===42&&$a===$saved,'ordinary incomplete search still resumes');
 }
+// Published cohorts must outrank never-visited nonpublished targets without
+// changing logical identities, cooldowns, or retained search resumes.
+$priorityTargets=array_slice($plan['targets'],0,4);
+foreach ($priorityTargets as $i => &$priorityTarget) $priorityTarget['hotel_ids'] = [10000 + $i];
+unset($priorityTarget);
+$priorityHotel=$priorityTargets[3]['hotel_ids'][0];
+$priorityQueue=v2_top500_monthly_queue($priorityTargets,[],$now,24,[$priorityHotel]);
+monthly_check($priorityQueue['targets'][0]['target_key']===$priorityTargets[3]['target_key'], 'published missing window gets first turn');
+$priorityAttempt=['id'=>88,'target_key'=>$priorityTargets[1]['target_key'],'status'=>'timeout','started_epoch'=>$now-100,'finished_epoch'=>$now-20,'search_id'=>1234];
+$resumePriority=v2_top500_monthly_queue($priorityTargets,[$priorityAttempt],$now,24,[$priorityHotel]);
+monthly_check($resumePriority['targets'][0]['resume_search_id']===1234,'existing retained search remains first');
+monthly_check($resumePriority['targets'][1]['target_key']===$priorityTargets[3]['target_key'],'published cohort follows retained search');
 $expiry=v2_top500_monthly_queue($targets,$attempts,$now+90000);
 monthly_check($expiry['fresh']===0 && count($expiry['targets'])===6,'completed pairs become due again');
 $changed=$hotels; $changed[0]['is_active']=0;
