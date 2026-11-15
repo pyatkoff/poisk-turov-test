@@ -266,6 +266,7 @@ jobs:
             v2/data/price-segment-v1.php \
             v2/data/hotel-monitor-prices-v1.php \
             v2/data/hotel-monitor-prices-read-v1.php \
+            v2/data/price-observer-v1.php \
             "$RUNNER_TEMP/monitor-price-hook.php" \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
