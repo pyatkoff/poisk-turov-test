@@ -2,6 +2,19 @@
 declare(strict_types=1);
 require_once __DIR__.'/../v2/data/hotel-monitor-prices-v1.php';
 function hmp_check(bool $ok,string $label): void {if(!$ok)throw new RuntimeException($label);}
+require_once __DIR__.'/../v2/data/price-observer-v1.php';
+// SQLite supplies a deterministic NOW() stand-in to prove the observer uses
+// the database session clock, not PHP's process timezone.
+$clockDb=new PDO('sqlite::memory:');
+$clockDb->sqliteCreateFunction('NOW',static fn():string=>'2026-11-15 04:56:40',0);
+$originalTimezone=date_default_timezone_get();
+date_default_timezone_set('Pacific/Honolulu');
+try {
+    hmp_check(v2_price_observer_db_now($clockDb)==='2026-11-15 04:56:40','observer uses DB clock despite PHP timezone');
+} finally {
+    date_default_timezone_set($originalTimezone);
+}
+
 $scope=v2_hmp_request(['tourvisorHotelIds'=>['325','212'],'departureId'=>'1','dateFrom'=>'2026-11-12','dateTo'=>'2027-10-31'],'2026-11-11');
 hmp_check($scope['tourvisorHotelIds']===[212,325] && $scope['nightsFrom']===5,'explicit typed scope');
 foreach([
