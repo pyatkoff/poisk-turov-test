@@ -56,7 +56,7 @@ function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, st
 }
 
 /** Latest attempt per stable batch key; empty != failed != never requested. */
-function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int $freshHours = 24): array
+function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int $freshHours = 24, array $publishedHotelIds = []): array
 {
     if ($freshHours < 1 || $freshHours > 72) throw new InvalidArgumentException('invalid refresh interval');
     $latest = [];
@@ -64,6 +64,7 @@ function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int 
         $key = (string)($a['target_key'] ?? '');
         if ($key !== '' && (!isset($latest[$key]) || (int)($a['id'] ?? 0) > (int)($latest[$key]['id'] ?? 0))) $latest[$key] = $a;
     }
+    $publishedSet = array_fill_keys(array_map('intval', $publishedHotelIds), true);
     $due = []; $fresh = 0; $deferred = 0; $months = [];
     foreach ($targets as $i => $target) {
         $period = $target['month'];
@@ -90,10 +91,15 @@ function v2_top500_monthly_queue(array $targets, array $attempts, int $now, int 
         $target['resume_search_id'] = $resume ? $searchId : null;
         $target['resume_attempt_id'] = $resume ? (int)$a['id'] : null;
         $target['_order'] = $i; $target['_age'] = $started;
+        $target['_published'] = false;
+        foreach ($target['hotel_ids'] ?? [] as $hotelId) {
+            if (isset($publishedSet[(int)$hotelId])) { $target['_published'] = true; break; }
+        }
         $due[] = $target;
     }
     usort($due, static fn(array $a, array $b): int =>
         ((int)($b['resume_search_id'] !== null) <=> (int)($a['resume_search_id'] !== null))
+        ?: ((int)$b['_published'] <=> (int)$a['_published'])
         ?: ($a['_age'] <=> $b['_age']) ?: ($a['_order'] <=> $b['_order']));
     return ['targets'=>$due,'fresh'=>$fresh,'pending'=>count($due)+$deferred,'deferred'=>$deferred,'months'=>$months];
 }
