@@ -131,7 +131,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 4515125523cda3e37d454a6ad4a3e8cce68ca2c2
+          ref: 69e55ac744c6127c83bfe59865b36d2d12a6f3f3
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -179,6 +179,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-link.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
           python3 tests/monitor_price_hook_workflow_test.py
@@ -205,7 +206,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 4515125523cda3e37d454a6ad4a3e8cce68ca2c2
+          ref: 69e55ac744c6127c83bfe59865b36d2d12a6f3f3
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -369,4 +370,3 @@ jobs:
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             exit \"\$collector_status\"
           "
-
