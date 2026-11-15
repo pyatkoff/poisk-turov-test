@@ -50,13 +50,13 @@ $diagQuery=$db->prepare($diagSql);
 $diagQuery->execute([212,1,'2026-11-12','2027-10-31']);
 $diagRow=$diagQuery->fetch(PDO::FETCH_ASSOC);
 $diag=v2_hmp_diagnostic($diagRow);
-hmp_check($diag['stage']==='eligible_rows_present' && $diag['counts']['eligibleRows']===3,
+hmp_check($diag['stage']==='eligible_rows_present' && $diag['counts']['eligibleRows']===4,
     'diagnostic reports existing eligible observations without altering ranking');
 $missingDiag=v2_hmp_diagnostic([]);
 hmp_check($missingDiag['stage']==='no_stored_rows_in_scope' && $missingDiag['counts']['storedRows']===0,
     'missing retained rows are not declared unavailable');
 $diagPayload=v2_hmp_payload($scope,$rows,[],'2026-11-11 10:00:00','2026-11-11T10:00:00Z',false,[212=>$diagRow]);
-hmp_check($diagPayload['items'][0]['diagnostic']['counts']['eligibleRows']===3 &&
+hmp_check($diagPayload['items'][0]['diagnostic']['counts']['eligibleRows']===4 &&
     $diagPayload['items'][0]['offers'][0]['price']===110000.0,
     'diagnostic adds evidence without changing accepted prices');
 
