@@ -105,6 +105,8 @@ jobs:
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$root/app/integrations/"
           scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
           sha256sum app/integrations/anex-search-mapping-registry.php v2/data/top500-anex-priority-v1.php \
+            v2/data/price-observer-v1.php v2/data/top500-monthly-plan-v1.php \
+            v2/data/top500-daily-collector-v1.php v2/data/hotel-monitor-prices-v1.php \
             | sed 's@  v2/data/@  data/@' \
             | ssh "${opts[@]}" "$remote" '
               set -euo pipefail
@@ -112,7 +114,12 @@ jobs:
               sha256sum --check --strict -
               php -l app/integrations/anex-search-mapping-registry.php >/dev/null
               php -l data/top500-anex-priority-v1.php >/dev/null
+              php -l data/price-observer-v1.php >/dev/null
+              php -l data/top500-monthly-plan-v1.php >/dev/null
+              php -l data/top500-daily-collector-v1.php >/dev/null
+              php -l data/hotel-monitor-prices-v1.php >/dev/null
               echo "ANYTOUR_TOP500_FILE_READBACK_OK"
+              echo "ANYTOUR_MONITOR_FILES_READBACK_OK"
             '
           echo "ANYTOUR_DATA_DELIVERED source=$GITHUB_SHA mode=$BOOTSTRAP_MODE"
           if [[ "$BOOTSTRAP_MODE" == files-only ]]; then

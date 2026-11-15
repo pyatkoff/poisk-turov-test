@@ -24,6 +24,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = Path('app/integrations/anex-search-mapping-registry.php')
 HELPER = Path('v2/data/top500-anex-priority-v1.php')
+MONITOR_FILES = tuple(Path('v2/data') / name for name in (
+    'price-observer-v1.php', 'top500-monthly-plan-v1.php',
+    'top500-daily-collector-v1.php', 'hotel-monitor-prices-v1.php'))
 STEP = 'Copy data tooling and verify installed files'
 LEGACY_STEP = 'Copy data tooling and initialize schema'
 SCHEMA_STEP = 'Initialize changed schema and inspect database'
@@ -106,7 +109,7 @@ def fake_transport(tool: str, args: list[str]) -> int:
                 if not match or match[2] in expected:
                     raise ValueError('invalid file readback manifest')
                 expected[match[2]] = match[1]
-            wanted = {str(REGISTRY), 'data/' + HELPER.name}
+            wanted = {str(REGISTRY), 'data/' + HELPER.name} | {'data/' + p.name for p in MONITOR_FILES}
             if set(expected) != wanted or len(lines) != len(wanted):
                 raise ValueError('unexpected readback file set')
             for path, checksum in expected.items():
@@ -116,6 +119,7 @@ def fake_transport(tool: str, args: list[str]) -> int:
                     return 45
             record('file_readback_verified', hashes=expected)
             print('ANYTOUR_TOP500_FILE_READBACK_OK')
+            print('ANYTOUR_MONITOR_FILES_READBACK_OK')
             return 0
         tokens = shlex.split(command)
         while tokens:
@@ -188,7 +192,7 @@ class BootstrapDeliveryTest(unittest.TestCase):
         self.repo = self.directory / 'source'
         self.remote = self.directory / 'fake-host'
         self.log = self.directory / 'transport.jsonl'
-        for path in (HELPER, REGISTRY):
+        for path in (HELPER, REGISTRY, *MONITOR_FILES):
             (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / path, self.repo / path)
         self.remote.mkdir()
