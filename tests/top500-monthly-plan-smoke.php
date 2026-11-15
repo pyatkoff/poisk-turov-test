@@ -79,6 +79,8 @@ foreach(['timeout','started'] as $status){
 // Published cohorts must outrank never-visited nonpublished targets without
 // changing logical identities, cooldowns, or retained search resumes.
 $priorityTargets=array_slice($plan['targets'],0,4);
+foreach ($priorityTargets as $i => &$priorityTarget) $priorityTarget['hotel_ids'] = [10000 + $i];
+unset($priorityTarget);
 $priorityHotel=$priorityTargets[3]['hotel_ids'][0];
 $priorityQueue=v2_top500_monthly_queue($priorityTargets,[],$now,24,[$priorityHotel]);
 monthly_check($priorityQueue['targets'][0]['target_key']===$priorityTargets[3]['target_key'], 'published missing window gets first turn');
