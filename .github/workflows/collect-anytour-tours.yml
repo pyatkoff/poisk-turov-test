@@ -260,7 +260,6 @@ jobs:
           scp "${opts[@]}" \
             local-tv-source/v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
-            local-tv-source/v2/data/price-observer-v1.php \
             local-tv-source/v2/data/hotel-details-v1.php \
             local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/price-segment-v1.php \
