@@ -61,6 +61,61 @@ function v2_hmp_offer_sql(int $count): string
         FROM hotel_rows h WHERE h.hotel_rank<=3 ORDER BY h.hotel_id,h.hotel_rank";
 }
 
+/** Diagnostic counts only: same stored rows, no supplier request and no price fallback.
+ * Counts are cumulative filter stages, not mutually exclusive rejection reasons.
+ */
+function v2_hmp_diagnostic_sql(int $count): string
+{
+    if ($count < 1 || $count > 100) throw new InvalidArgumentException('Invalid hotel bound');
+    $marks = implode(',', array_fill(0, $count, '?'));
+    return "SELECT o.hotel_id,
+        COUNT(*) storedRows,
+        SUM(CASE WHEN o.source='scheduled_monitor' THEN 1 ELSE 0 END) scheduledRows,
+        SUM(CASE WHEN o.source='scheduled_monitor'
+            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            THEN 1 ELSE 0 END) freshScheduledRows,
+        SUM(CASE WHEN o.source='scheduled_monitor'
+            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
+            AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
+            THEN 1 ELSE 0 END) matchingPartyRows,
+        SUM(CASE WHEN o.source='scheduled_monitor'
+            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
+            AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
+            AND o.meal_id IN (2,3,4,5,7,9)
+            THEN 1 ELSE 0 END) knownMealRows,
+        SUM(CASE WHEN o.source='scheduled_monitor'
+            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
+            AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
+            AND o.meal_id IN (2,3,4,5,7,9)
+            AND o.tour_id IS NOT NULL AND o.tour_id<>''
+            THEN 1 ELSE 0 END) eligibleRows,
+        MAX(CASE WHEN o.source='scheduled_monitor' THEN o.observed_at END) lastScheduledObservedAt
+        FROM tour_price_observations o
+        WHERE o.hotel_id IN ($marks) AND o.departure_id=?
+            AND o.departure_date BETWEEN ? AND ?
+        GROUP BY o.hotel_id";
+}
+
+function v2_hmp_diagnostic(array $row): array
+{
+    $keys=['storedRows','scheduledRows','freshScheduledRows','matchingPartyRows','knownMealRows','eligibleRows'];
+    $counts=[];
+    foreach ($keys as $key) $counts[$key]=max(0,(int)($row[$key]??0));
+    $stage='no_stored_rows_in_scope';
+    if ($counts['storedRows']>0) $stage='no_scheduled_monitor_rows';
+    if ($counts['scheduledRows']>0) $stage='no_fresh_scheduled_rows';
+    if ($counts['freshScheduledRows']>0) $stage='no_matching_party_terms';
+    if ($counts['matchingPartyRows']>0) $stage='no_supported_meal_terms';
+    if ($counts['knownMealRows']>0) $stage='missing_tour_identity';
+    if ($counts['eligibleRows']>0) $stage='eligible_rows_present';
+    return ['stage'=>$stage,'counts'=>$counts,
+        'lastScheduledObservedAt'=>$row['lastScheduledObservedAt']??null,
+        'semantics'=>'stored-row filter evidence only; never proof of supplier unavailability'];
+}
+
 /** Completed window coverage is separate from availability, full price and whole-market coverage. */
 function v2_hmp_coverage(array $attempts, array $scope, int $hotelId, string $dbNow, bool $truncated): array
 {
@@ -112,7 +167,7 @@ function v2_hmp_offer(array $r, string $generatedAt): array
     return $offer;
 }
 
-function v2_hmp_payload(array $scope, array $rows, array $attempts, string $dbNow, string $generatedAt, bool $truncated): array
+function v2_hmp_payload(array $scope, array $rows, array $attempts, string $dbNow, string $generatedAt, bool $truncated, array $diagnostics = []): array
 {
     $byHotel = [];
     foreach ($rows as $r) $byHotel[(int)$r['hotel_id']][] = v2_hmp_offer($r,$generatedAt);
@@ -120,7 +175,8 @@ function v2_hmp_payload(array $scope, array $rows, array $attempts, string $dbNo
     foreach ($scope['tourvisorHotelIds'] as $id) {
         $offers = $byHotel[$id] ?? [];
         $items[] = ['tourvisorHotelId'=>$id, 'state'=>$offers?'observed':'no_fresh_observation', 'offers'=>$offers,
-            'coverage'=>v2_hmp_coverage($attempts,$scope,$id,$dbNow,$truncated)];
+            'coverage'=>v2_hmp_coverage($attempts,$scope,$id,$dbNow,$truncated),
+            'diagnostic'=>v2_hmp_diagnostic($diagnostics[$id]??[])];
     }
     return ['ok'=>true, 'format'=>'anytour-hotel-monitor-prices-v1', 'generatedAt'=>$generatedAt, 'scope'=>$scope,
         'identityNamespace'=>'tourvisor', 'source'=>'scheduled_monitor', 'observationWindowHours'=>24,
@@ -144,5 +200,9 @@ function v2_hmp_read(PDO $pdo, array $query): array
     $q->execute([$scope['departureId'],$scope['dateFrom'],$scope['dateTo']]);
     $attempts = $q->fetchAll(PDO::FETCH_ASSOC); $truncated = count($attempts)>10000;
     $attempts = array_slice($attempts,0,10000);
-    return v2_hmp_payload($scope,$rows,$attempts,$dbNow,$generatedAt,$truncated);
+    $q = $pdo->prepare(v2_hmp_diagnostic_sql(count($scope['tourvisorHotelIds'])));
+    $q->execute([...$scope['tourvisorHotelIds'],$scope['departureId'],$scope['dateFrom'],$scope['dateTo']]);
+    $diagnostics=[];
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) $diagnostics[(int)$row['hotel_id']]=$row;
+    return v2_hmp_payload($scope,$rows,$attempts,$dbNow,$generatedAt,$truncated,$diagnostics);
 }

@@ -56,6 +56,23 @@ $again=v2_hmp_offer($rows[0],'2026-11-11T11:00:00Z');
 hmp_check($offer['recordId']===$again['recordId'],'stable observation identity');
 
 
+// Diagnostic is a read-only count of existing rows, not an alternative price.
+$diagSql=str_replace(['DATE_SUB(NOW(),INTERVAL 24 HOUR)','NOW()'],
+    ["'2026-11-10 10:00:00'","'2026-11-11 10:00:00'"],v2_hmp_diagnostic_sql(1));
+$diagQuery=$db->prepare($diagSql);
+$diagQuery->execute([212,1,'2026-11-12','2027-10-31']);
+$diagRow=$diagQuery->fetch(PDO::FETCH_ASSOC);
+$diag=v2_hmp_diagnostic($diagRow);
+hmp_check($diag['stage']==='eligible_rows_present' && $diag['counts']['eligibleRows']===4,
+    'diagnostic reports existing eligible observations without altering ranking');
+$missingDiag=v2_hmp_diagnostic([]);
+hmp_check($missingDiag['stage']==='no_stored_rows_in_scope' && $missingDiag['counts']['storedRows']===0,
+    'missing retained rows are not declared unavailable');
+$diagPayload=v2_hmp_payload($scope,$rows,[],'2026-11-11 10:00:00','2026-11-11T10:00:00Z',false,[212=>$diagRow]);
+hmp_check($diagPayload['items'][0]['diagnostic']['counts']['eligibleRows']===4 &&
+    $diagPayload['items'][0]['offers'][0]['price']===110000.0,
+    'diagnostic adds evidence without changing accepted prices');
+
 // TV43060 from the original 14 Nov saved response: two valid breakfasts followed
 // by a higher price with meal=NULL. A bad third offer must not poison the minimum.
 $incidentBase=[4113155,43060,1,9,'2026-12-14',5,2,0,'',3,692456,'standard room king bed',11,'RUB',
