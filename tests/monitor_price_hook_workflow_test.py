@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -50,6 +51,20 @@ def actual_shell(event, attempt):
     return textwrap.dedent('\n'.join(lines)).replace('${{ github.event_name }}', event).replace('${{ github.run_attempt }}', str(attempt)).replace('${{ github.run_id }}', '43205530035')
 
 class ExistingCollectorHook(unittest.TestCase):
+    def test_validation_and_production_pin_the_same_publisher_commit(self):
+        source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
+        blocks = re.split(r'(?m)^      - ', source)[1:]
+        publishers = [block for block in blocks
+                      if re.search(r'(?m)^          repository: pyatkoff/max-search-bot$', block)]
+        self.assertEqual(len(publishers), 2, 'validation and production must each check out the publisher')
+        refs = []
+        for block in publishers:
+            values = re.findall(r'(?m)^          ref:\s*(\S+)\s*$', block)
+            self.assertEqual(len(values), 1, 'each publisher checkout needs one explicit ref')
+            self.assertRegex(values[0], r'\A[0-9a-f]{40}\Z', 'publisher ref must be an immutable commit')
+            refs.append(values[0])
+        self.assertEqual(refs[0], refs[1], 'production must use the publisher checked by validation')
+
     def test_only_production_owns_the_existing_collector_lock(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
         top, jobs = source.split('\njobs:\n', 1)
@@ -77,11 +92,18 @@ class ExistingCollectorHook(unittest.TestCase):
         self.assertIn('    timeout-minutes: 65', production.splitlines())
 
     def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0,
-                 collector_stdout='', collector_stderr='', tee=0):
+                 collector_stdout='', collector_stderr='', tee=0, scp=0, scp_fail_at=1):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
             scripts = {
-                'scp': '#!/usr/bin/env python3\nimport sys\n',
+                'scp': '''#!/usr/bin/env python3
+import json,os,sys
+from pathlib import Path
+log=Path(os.environ['SCP_TEST_LOG'])
+call_number=len(log.read_text().splitlines())+1 if log.exists() else 1
+with log.open('a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')
+raise SystemExit(int(os.environ['SCP_STATUS']) if call_number==int(os.environ['SCP_FAIL_AT']) else 0)
+''',
                 'ssh': "#!/usr/bin/env python3\nimport subprocess,sys\nraise SystemExit(subprocess.run(['bash','-c',sys.argv[-1]]).returncode)\n",
                 'tee': '''#!/usr/bin/env python3
 import os,sys
@@ -118,11 +140,25 @@ if name=='monitor-price-hook.php':
                      MATRIX_MONTHS_VALUE='12', MONTHLY_BUDGET_VALUE='64', TARGET_MONTH_VALUE='', TARGET_COUNTRY_VALUE='0',
                      HOOK_TEST_LOG=str(log), HOOK_CONTEXT_LOG=str(root/'hook-context.json'), COLLECTOR_STATUS=str(collector), HOOK_STATUS=str(hook), EXACT_ROLLUP_STATUS=str(exact_rollup),
                      COLLECTOR_STDOUT=collector_stdout, COLLECTOR_STDERR=collector_stderr,
-                     TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '')
+                     TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '',
+                     SCP_TEST_LOG=str(root/'scp-calls.jsonl'), SCP_STATUS=str(scp), SCP_FAIL_AT=str(scp_fail_at))
             result=subprocess.run(['bash','-c',actual_shell(event,attempt)],env=env,cwd=ROOT,capture_output=True,text=True,timeout=10)
-            calls=[json.loads(line) for line in log.read_text().splitlines()]
+            calls=[json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+            scp_log=root/'scp-calls.jsonl'
+            self.scp_calls=[json.loads(line) for line in scp_log.read_text().splitlines()] if scp_log.exists() else []
             self.hook_context=json.loads((root/'hook-context.json').read_text()) if (root/'hook-context.json').exists() else None
             return result,[Path(a[0]).name for a in calls],calls
+
+    def test_failed_scp_stops_before_any_production_php(self):
+        for failed_copy in (1, 2):
+            with self.subTest(failed_copy=failed_copy):
+                result,names,_=self.run_pass(scp=23,scp_fail_at=failed_copy)
+                self.assertEqual(result.returncode,23,result.stderr)
+                self.assertEqual(len(self.scp_calls),failed_copy)
+                if failed_copy==2:
+                    self.assertIn('v2/data/hotel-monitor-prices-v1.php',self.scp_calls[-1])
+                self.assertEqual(names,[], 'failed copy must not reach collection, callback or aggregates')
+                self.assertIsNone(self.hook_context)
 
     def test_success_runs_once_after_collection_before_aggregates(self):
         result,names,calls=self.run_pass()
