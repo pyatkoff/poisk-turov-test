@@ -26,6 +26,7 @@ on:
       - 'v2/data/published-hotels-monitor-v1.php'
       - 'tests/published-hotels-monitor-smoke.php'
       - 'tests/published-expansion20-monitor-smoke.php'
+      - 'tests/published-expansion32-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -69,6 +70,7 @@ on:
       - 'v2/data/published-hotels-monitor-v1.php'
       - 'tests/published-hotels-monitor-smoke.php'
       - 'tests/published-expansion20-monitor-smoke.php'
+      - 'tests/published-expansion32-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -133,7 +135,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: c6e6b7fc57d599ae7fcf8bba4aed1ed3315a00b0
+          ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -164,6 +166,7 @@ jobs:
           php -l v2/data/published-hotels-monitor-v1.php >/dev/null
           php tests/published-hotels-monitor-smoke.php
           php tests/published-expansion20-monitor-smoke.php
+          php tests/published-expansion32-monitor-smoke.php
           php -l v2/data/rollup-price-daily-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-offer-snapshot-v1.php >/dev/null
@@ -188,6 +191,7 @@ jobs:
           php -l hotel-price-publisher/tools/direct_demand/operations/inspect-monitor-price-pending-20261116.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-link.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion20.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
           python3 tests/monitor_price_hook_workflow_test.py
@@ -214,7 +218,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: c6e6b7fc57d599ae7fcf8bba4aed1ed3315a00b0
+          ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback

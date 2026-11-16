@@ -493,9 +493,17 @@ function v2_published_expansion20_monitor_ids_20261116(): array
     return [88169,547,15774,12125,57335,2480,2417,2418,2468,12127,27481,23289,50262,72939,2489,85417,2466,2460,99713,43676];
 }
 
+/** Thirty-two published pairs: publication43922854551, binding43927951309, routes43928966057, feeds43929964963.
+ * Exact Tourvisor namespace. Append after earlier cohorts without regrouping old targets.
+ */
+function v2_published_expansion32_monitor_ids_20261116(): array
+{
+    return [548,2947,4032,43675,48263,82790,24743,66547,60232,78033,43569,78002,2451,63208,2491,2470,64954,2479,2493,76318,53617,12124,76011,65108,123308,65938,80008,2436,2444,2445,218,63191];
+}
+
 function v2_all_hotel_monitor_input_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
-    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116())));
+    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116())));
 }
 
 /** Keep every base and previously admitted cohort target intact. */
@@ -538,6 +546,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
     ];
     if($includeSitesRoster)$cohorts['sites_registry217_20261111']=v2_sites_hotel_monitor_ids_20261111();
     if($includeSitesRoster)$cohorts['published_expansion20_20261116']=v2_published_expansion20_monitor_ids_20261116();
+    if($includeSitesRoster)$cohorts['published_expansion32_20261116']=v2_published_expansion32_monitor_ids_20261116();
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
     foreach($cohorts as $cohort=>$ids){
