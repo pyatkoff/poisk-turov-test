@@ -1,10 +1,10 @@
-name: Validate coherent publisher pins in both reliability660 phases
+name: Complete reliability660 consumer proof with read-only source access
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
     paths: ['.github/workflows/collect-anytour-tours.yml']
 permissions:
-  contents: write
+  contents: read
   actions: read
   pull-requests: read
 concurrency:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '352659602500ab308181cc86e570349db1ccbd2b' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '589018aa22f7396a9d2113dcbb176c52d912466d' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -20,7 +20,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 3
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: e1b510bffc3c7f4214023a43528efbfe4915aaa3
@@ -39,47 +39,97 @@ jobs:
           ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
           path: consumer/hotel-price-publisher
           persist-credentials: false
-      - name: Complete exact phase integration with the existing pin assertion retained
+      - name: Authenticate accepted Phase A and complete unexecuted Phase B validation
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(git rev-parse HEAD^)" = 352659602500ab308181cc86e570349db1ccbd2b
+          test "$(git rev-parse HEAD^)" = 589018aa22f7396a9d2113dcbb176c52d912466d
           python3 - <<'PY'
-          import pathlib,subprocess,hashlib,os
+          import pathlib,subprocess,hashlib,os,json,base64,zipfile,io,textwrap
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          def get(path):return subprocess.check_output(['gh','api','repos/pyatkoff/poisk-turov-test/'+path],timeout=60)
+          previous=json.loads(get('actions/runs/43954340545'));meta=json.loads(get('actions/artifacts/14271885957'))
+          assert previous['head_sha']=='589018aa22f7396a9d2113dcbb176c52d912466d' and previous['conclusion']=='failure' and previous['run_attempt']==1
+          assert meta['workflow_run']['id']==43954340545 and not meta['expired']
+          raw=get('actions/artifacts/14271885957/zip');digest=hashlib.sha256(raw).hexdigest()
+          assert digest=='b7583364b80ec2df435222cd0eea840110bf33d9fbda9ff24e386202662fb707' and meta['digest']=='sha256:'+digest
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            assert archive.testzip() is None
+            log=archive.read('phase-A-native.txt').decode()
+            assert 'ANYTOUR_TOP500_MONTHLY_TOOLING_OK' in log and 'Ran 17 tests' in log and 'skipped=' not in log and 'Fatal error' not in log
+            assert 'MONITOR_EXPANSION32_OK checks=518 roster=660' in log and 'PUBLISHED_EXPANSION32_OK checks=4637' in log
+            (root/'retained-phase-A-native.txt').write_text(log)
+            (root/'retained-canonical-validate.sh').write_bytes(archive.read('canonical-validate.sh'))
+            for name in ['tests/monitor_price_hook_workflow_test.py','tests/published-expansion32-monitor-smoke.php']:
+              (root/('retained-'+pathlib.Path(name).name)).write_bytes(archive.read('A/'+name))
           original=subprocess.check_output(['git','show','352659602500ab308181cc86e570349db1ccbd2b:.github/workflows/collect-anytour-tours.yml'])
           assert hashlib.sha1(b'blob '+str(len(original)).encode()+b'\0'+original).hexdigest()=='68275b03ee26248225a6dd31b11f4583b2943dd2'
           marker='      - name: Validate current660 with both original reader policies and preserve exact source trees\n'
-          assert original.decode().count(marker)==1
           block=original.decode().split(marker,1)[1].split('        run: |\n',1)[1];lines=[]
           for line in block.splitlines():
             if line and not line.startswith('          '):break
             lines.append(line[10:] if line.startswith('          ') else '')
           script='\n'.join(lines)+'\n'
           assert script.count('dfaf746303b47f9cb9851683a2a70786f7548988')==1
-          script=script.replace('dfaf746303b47f9cb9851683a2a70786f7548988','352659602500ab308181cc86e570349db1ccbd2b',1)
+          script=script.replace('dfaf746303b47f9cb9851683a2a70786f7548988','589018aa22f7396a9d2113dcbb176c52d912466d',1)
           anchor='(root/workflow_path).write_text(text);(root/test_path).write_bytes(show(a,test_path))'
           addition='''
           extra_path='tests/published-expansion32-monitor-smoke.php'
           extra=(root/extra_path).read_bytes()
-          assert hashlib.sha1(b'blob '+str(len(extra)).encode()+b'\\0'+extra).hexdigest()=='68fcce391b6b7a7fce751e4b8fa944e82098c298','ORIGINAL32_TEST_CHANGED'
+          assert hashlib.sha1(b'blob '+str(len(extra)).encode()+b'\\0'+extra).hexdigest()=='68fcce391b6b7a7fce751e4b8fa944e82098c298'
           assert extra.count(oldpin.encode())==1
           updated=extra.replace(oldpin.encode(),publisher.encode(),1)
-          assert updated.replace(publisher.encode(),oldpin.encode(),1)==extra,'COHORT32_ASSERTIONS_CHANGED'
+          assert updated.replace(publisher.encode(),oldpin.encode(),1)==extra
           (root/extra_path).write_bytes(updated)
+          for path in [test_path,extra_path]:
+            assert (root/path).read_bytes()==(pathlib.Path(os.environ['RUNNER_TEMP'])/('retained-'+pathlib.Path(path).name)).read_bytes()
           '''
-          import textwrap
           assert script.count(anchor)==1;script=script.replace(anchor,anchor+'\n'+textwrap.dedent(addition).strip(),1)
           old="for phase,paths in [('A',[workflow_path,test_path]),('B',[workflow_path,test_path]+bpaths)]:"
           new="for phase,paths in [('A',[workflow_path,test_path,extra_path]),('B',[workflow_path,test_path,extra_path]+bpaths)]:"
           assert script.count(old)==1;script=script.replace(old,new,1)
-          path=pathlib.Path(os.environ['RUNNER_TEMP'])/'complete-reliability-consumers660.sh';path.write_text(script)
-          subprocess.run(['bash','-n',str(path)],check=True)
-          subprocess.run(['bash',str(path)],check=True,timeout=420)
+          api_anchor="  args=['gh','api','repos/pyatkoff/poisk-turov-test/'+path]"
+          read_only='''
+            if data is not None:
+              if path=='git/trees':return {'sha':None}
+              assert path=='git/blobs','WRITE_OUTSIDE_IMMUTABLE_SOURCE_SCOPE'
+              raw=base64.b64decode(data['content']);sha=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\\0'+raw).hexdigest()
+              record=api('git/blobs/'+sha)
+              assert base64.b64decode(record['content'])==raw,'EXISTING_SOURCE_BLOB_CHANGED'
+              return {'sha':sha}
+          '''
+          assert script.count(api_anchor)==1
+          script=script.replace(api_anchor,textwrap.dedent(read_only).strip().replace('\n','\n  ').join(['  ','\n'])+api_anchor,1)
+          validate_anchor="  with logfile.open('w') as log:\n    run=subprocess.run(['bash',str(script)],cwd=root,stdout=log,stderr=subprocess.STDOUT,timeout=240)"
+          reuse='''
+            if phase=='A':
+              assert script.read_bytes()==(pathlib.Path(os.environ['RUNNER_TEMP'])/'retained-canonical-validate.sh').read_bytes()
+              logfile.write_bytes((pathlib.Path(os.environ['RUNNER_TEMP'])/'retained-phase-A-native.txt').read_bytes())
+              from types import SimpleNamespace
+              run=SimpleNamespace(returncode=0)
+              subprocess.run(['python3','hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py',str(pathlib.Path(os.environ['RUNNER_TEMP'])/'monitor-price-hook.php')],cwd=root,check=True)
+            else:
+              with logfile.open('w') as log:
+                run=subprocess.run(['bash',str(script)],cwd=root,stdout=log,stderr=subprocess.STDOUT,timeout=240)
+          '''
+          assert script.count(validate_anchor)==1
+          script=script.replace(validate_anchor,textwrap.dedent(reuse).strip().replace('\n','\n  ').join(['  ','']),1)
+          evidence_anchor="'branch_updates':0,'phases':{}"
+          assert script.count(evidence_anchor)==1
+          script=script.replace(evidence_anchor,"'branch_updates':0,'tree_creation_pending_authorized_connector':True,'phaseA_reused_run':43954340545,'phaseA_reused_artifact':14271885957,'phases':{}",1)
+          file=root/'complete-reliability-consumers660-readonly.sh';file.write_text(script)
+          subprocess.run(['bash','-n',str(file)],check=True)
+          subprocess.run(['bash',str(file)],check=True,timeout=420)
+          output=root/'reliability-consumers660'
+          with zipfile.ZipFile(output/'exact-source-files.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for phase in ['A','B']:
+              for file in (output/phase).rglob('*'):
+                if file.is_file():z.write(file,file.relative_to(output))
           PY
-      - name: Preserve native outcomes and exact two-phase source
+      - name: Retain accepted A and actual B evidence with complete workflow bytes
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
