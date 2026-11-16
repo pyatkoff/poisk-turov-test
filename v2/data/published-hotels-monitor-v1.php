@@ -485,9 +485,17 @@ function v2_sites_hotel_monitor_ids_20261111(): array
     ];
 }
 
+/** Twenty published pairs: original43860879803, native read43871777544, accepted feeds43874344520.
+ * Exact Tourvisor IDs; append AFTER all existing cohorts, never alter TOP500 exclusions.
+ */
+function v2_published_expansion20_monitor_ids_20261116(): array
+{
+    return [88169,547,15774,12125,57335,2480,2417,2418,2468,12127,27481,23289,50262,72939,2489,85417,2466,2460,99713,43676];
+}
+
 function v2_all_hotel_monitor_input_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
-    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111())));
+    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116())));
 }
 
 /** Keep every base and previously admitted cohort target intact. */
@@ -529,6 +537,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
         'publication_stock_20261105b_1'=>array_column(v2_publication_stock_monitor_bindings_20261105b(),'local_tv_id'),
     ];
     if($includeSitesRoster)$cohorts['sites_registry217_20261111']=v2_sites_hotel_monitor_ids_20261111();
+    if($includeSitesRoster)$cohorts['published_expansion20_20261116']=v2_published_expansion20_monitor_ids_20261116();
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
     foreach($cohorts as $cohort=>$ids){
