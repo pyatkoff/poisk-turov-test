@@ -199,7 +199,7 @@ Completed record IDs are skipped. A subsequent automated caption is trusted only
 when the actual completed journal matches current publication/version/text/URL;
 manual drift is held. Unknown post outcomes stop, and unknown feed outcomes are
 read back by exact hashes without replay. Runtime descendants are allowed only
-with all22 reviewed publishing surface blobs unchanged and a clean checkout.
+with all23 reviewed publishing surface blobs unchanged and a clean checkout.
 Private journals retain each stage before the next mutation. Public feed hashes
 are checked before marking completion. The Site's older publication snapshots
 are preserved and are not falsely reported as current channel versions.
