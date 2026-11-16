@@ -110,7 +110,8 @@ function catalogueItems(key) {
           url: img.src, width: img.naturalWidth, height: img.naturalHeight
         })));
         assert.deepEqual(record.interiors, interiors.map(asset => ({ url: asset.url, width: 1024, height: 683 })));
-        await page.evaluate(() => scrollTo(0, 0));
+        await page.evaluate(() => scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+        assert.equal(await page.evaluate(() => scrollY), 0, 'hero capture must start at the top after lazy-image checks');
         record.geometry = await page.evaluate(() => ({
           width: innerWidth, scrollWidth: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
           photoWidth: document.querySelector('.jaz-hero__photo img').naturalWidth,
