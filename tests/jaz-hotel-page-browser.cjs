@@ -19,6 +19,13 @@ const photoUrl = 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-maka
 const photo = fs.readFileSync(path.join(output, 'jaz-real-photo.jpg'));
 const logo = fs.readFileSync(path.join(output, 'anytour-logo.svg'));
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+// Existing AnyTour99 gallery, checked 2026-11-16; these are not category-specific photos.
+const interiors = [
+  { id: '19573321', sha256: '741f915e2485a645cea442534213dbe32931373d1bc1ddd3a55cd85cf0884ab7' },
+  { id: '19573324', sha256: '9f01e75f1e39679bf861dfdab80015b1c7be2504d9258064058d6530608fc4e8' },
+  { id: '19573318', sha256: '52daec89203df841421e05b85cfa019933730c9a0bed8ea810a77029833cc1d4' }
+].map(asset => ({ ...asset, url: `https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-${asset.id}.jpg` }));
+const photoAssets = new Map([[photoUrl, photo]]);
 const futureDate = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 const dateFrom = futureDate(90), dateTo = futureDate(97);
 const hotel = {
@@ -34,7 +41,7 @@ trip.append('child_age[]', '17');
 const report = {
   sourceSha: process.env.SEARCH3_SOURCE_SHA || null,
   scope: 'served copied SITE payload with catalogue/API fixtures; no live supplier or physical-device claim',
-  assets: { photo: { url: photoUrl, sha256: sha256(photo) }, logo: { url: 'https://anytoour.ru/images/logo.svg', sha256: sha256(logo) } },
+  assets: { photo: { url: photoUrl, sha256: sha256(photo) }, interiors, logo: { url: 'https://anytoour.ru/images/logo.svg', sha256: sha256(logo) } },
   cases: [], passed: false
 };
 
@@ -49,6 +56,16 @@ function catalogueItems(key) {
 (async () => {
   let browser;
   try {
+    // Only these three fixed, previously inspected image URLs are fetched outside the browser.
+    // The browser still cannot reach any live catalogue, supplier or lead endpoint.
+    await Promise.all(interiors.map(async asset => {
+      const response = await fetch(asset.url, { signal: AbortSignal.timeout(30000) });
+      assert.equal(response.status, 200, `interior photo ${asset.id} is unavailable`);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.equal(sha256(bytes), asset.sha256, `interior photo ${asset.id} changed since visual acceptance`);
+      fs.writeFileSync(path.join(output, `jaz-${asset.id}.jpg`), bytes);
+      photoAssets.set(asset.url, bytes);
+    }));
     browser = await chromium.launch({ headless: true });
     for (const viewport of [{ width: 430, height: 932 }, { width: 1280, height: 720 }]) {
       const page = await browser.newPage({ viewport, hasTouch: viewport.width === 430 });
@@ -57,7 +74,7 @@ function catalogueItems(key) {
       page.on('pageerror', error => record.errors.push(String(error)));
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
-        if (url.href === photoUrl) return route.fulfill({ status: 200, contentType: 'image/jpeg', body: photo });
+        if (photoAssets.has(url.href)) return route.fulfill({ status: 200, contentType: 'image/jpeg', body: photoAssets.get(url.href) });
         if (url.origin === baseUrl.origin && url.pathname === '/images/logo.svg') {
           return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: logo });
         }
@@ -85,6 +102,16 @@ function catalogueItems(key) {
         assert.match(await page.locator('meta[name="robots"]').getAttribute('content'), /noindex/);
         assert.equal(await page.locator('main h1').count(), 1);
         await page.locator('.jaz-hero__photo img').evaluate(img => img.decode());
+        for (const img of await page.locator('.jaz-gallery img').all()) {
+          await img.scrollIntoViewIfNeeded();
+          await img.evaluate(element => element.decode());
+        }
+        record.interiors = await page.locator('.jaz-gallery img').evaluateAll(images => images.map(img => ({
+          url: img.src, width: img.naturalWidth, height: img.naturalHeight
+        })));
+        assert.deepEqual(record.interiors, interiors.map(asset => ({ url: asset.url, width: 1024, height: 683 })));
+        await page.evaluate(() => scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+        assert.equal(await page.evaluate(() => scrollY), 0, 'hero capture must start at the top after lazy-image checks');
         record.geometry = await page.evaluate(() => ({
           width: innerWidth, scrollWidth: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
           photoWidth: document.querySelector('.jaz-hero__photo img').naturalWidth,
@@ -102,6 +129,7 @@ function catalogueItems(key) {
         assert.deepEqual(searchUrl.searchParams.getAll('child_age[]'), ['0', '17']);
         await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-full.png`), fullPage: true, animations: 'disabled' });
         await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-hero.png`), animations: 'disabled' });
+        await page.locator('#interiors').screenshot({ path: path.join(output, `jaz-${viewport.width}-interiors.png`), animations: 'disabled' });
         await page.locator('#rooms').screenshot({ path: path.join(output, `jaz-${viewport.width}-rooms.png`), animations: 'disabled' });
         await page.locator('.jaz-sources summary').click();
         assert.ok(await page.locator('.jaz-sources details').evaluate(element => element.open));

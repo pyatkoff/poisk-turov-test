@@ -23,6 +23,12 @@
 .jaz-section-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:20px}
 .jaz-section-heading h2{margin:7px 0 0;max-width:640px;font-size:clamp(27px,2.6vw,34px);line-height:1.13}
 .jaz-section-heading>p{max-width:310px;margin:0;color:var(--at-muted);font-size:14px;line-height:1.55}
+.jaz-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.jaz-gallery figure{min-width:0;margin:0}
+.jaz-gallery a{display:block;overflow:hidden;border-radius:16px;background:var(--at-soft-blue)}
+.jaz-gallery img{display:block;width:100%;height:auto;aspect-ratio:1024/683;object-fit:cover}
+.jaz-gallery figcaption{margin-top:10px;color:var(--at-ink);font-size:14px;font-weight:700;line-height:1.4}
+.jaz-gallery+.jaz-caption{max-width:85ch}
 .jaz-rooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .jaz-room{display:flex;flex-direction:column;min-width:0;padding:24px;border:1px solid var(--at-line);border-radius:18px;background:#fff}
 .jaz-room__heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -37,7 +43,7 @@
 .jaz-room-note{display:grid;grid-template-columns:170px minmax(0,1fr);gap:18px;margin-top:16px;padding:18px 22px;border-radius:14px;background:var(--at-soft-blue);font-size:14px;line-height:1.6}
 .jaz-room-note strong{color:var(--at-brand)}
 .jaz-room-note p{margin:0;color:var(--at-muted)}
-.jaz-location{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}
+.jaz-location{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
 .jaz-location article{padding:22px 0;border-top:1px solid var(--at-line)}
 .jaz-location h3{margin:0 0 10px;font-size:20px;line-height:1.25}
 .jaz-location p{margin:0;max-width:62ch;color:var(--at-muted);font-size:15px;line-height:1.65}
@@ -79,6 +85,10 @@
   .jaz-hero__actions .sp-primary{width:100%;justify-content:center}
   .jaz-caption{margin-top:8px;font-size:12px}
   .jaz-section-heading h2{font-size:27px}
+  .jaz-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
+  .jaz-gallery figure:first-child{grid-column:1/-1}
+  .jaz-gallery a{border-radius:12px}
+  .jaz-gallery figcaption{margin-top:7px;font-size:13px}
   .jaz-rooms{grid-template-columns:1fr;gap:12px}
   .jaz-room{padding:20px}
   .jaz-room__heading{align-items:center;flex-direction:row}
