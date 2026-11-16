@@ -53,7 +53,7 @@ function v2_hmp_offer_sql(int $count): string
             AND o.source='scheduled_monitor' AND o.currency='RUB' AND o.price>0
             AND o.meal_id IN (2,3,4,5,7,9)
             AND o.tour_id IS NOT NULL AND o.tour_id<>''
-            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
     ), hotel_rows AS (
         SELECT e.*,ROW_NUMBER() OVER (PARTITION BY e.hotel_id ORDER BY e.price ASC,e.observed_at DESC,e.id DESC) hotel_rank
         FROM exact_rows e WHERE e.exact_rank=1
@@ -72,21 +72,21 @@ function v2_hmp_diagnostic_sql(int $count): string
         COUNT(*) storedRows,
         SUM(CASE WHEN o.source='scheduled_monitor' THEN 1 ELSE 0 END) scheduledRows,
         SUM(CASE WHEN o.source='scheduled_monitor'
-            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
             THEN 1 ELSE 0 END) freshScheduledRows,
         SUM(CASE WHEN o.source='scheduled_monitor'
-            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
             AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
             AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
             THEN 1 ELSE 0 END) matchingPartyRows,
         SUM(CASE WHEN o.source='scheduled_monitor'
-            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
             AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
             AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
             AND o.meal_id IN (2,3,4,5,7,9)
             THEN 1 ELSE 0 END) knownMealRows,
         SUM(CASE WHEN o.source='scheduled_monitor'
-            AND o.observed_at BETWEEN DATE_SUB(NOW(),INTERVAL 24 HOUR) AND NOW()
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
             AND o.nights BETWEEN 5 AND 14 AND o.adults=2 AND o.children_count=0
             AND COALESCE(o.child_ages_signature,'')='' AND o.currency='RUB' AND o.price>0
             AND o.meal_id IN (2,3,4,5,7,9)
@@ -159,7 +159,7 @@ function v2_hmp_offer(array $r, string $generatedAt): array
     // Stable identity excludes export time. Fuel is retained, never added to an unproved total.
     $offer['recordId'] = hash('sha256', json_encode($offer, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
     $offer['ageSecondsAtExport'] = $age;
-    $offer['expiresAt'] = (new DateTimeImmutable($generatedAt))->modify('+'.max(0,min(900,86400-$age)).' seconds')->format('Y-m-d\TH:i:s\Z');
+    $offer['expiresAt'] = (new DateTimeImmutable($generatedAt))->modify('+'.max(0,min(900,129600-$age)).' seconds')->format('Y-m-d\TH:i:s\Z');
     $offer['currentPriceVerified'] = false;
     $offer['fullPackagePriceVerified'] = false;
     $offer['fuelIncluded'] = null;
@@ -179,7 +179,7 @@ function v2_hmp_payload(array $scope, array $rows, array $attempts, string $dbNo
             'diagnostic'=>v2_hmp_diagnostic($diagnostics[$id]??[])];
     }
     return ['ok'=>true, 'format'=>'anytour-hotel-monitor-prices-v1', 'generatedAt'=>$generatedAt, 'scope'=>$scope,
-        'identityNamespace'=>'tourvisor', 'source'=>'scheduled_monitor', 'observationWindowHours'=>24,
+        'identityNamespace'=>'tourvisor', 'source'=>'scheduled_monitor', 'observationWindowHours'=>36,
         'timeBasis'=>'database-relative; stored observation timezone is not asserted',
         'supplierRequests'=>0, 'writes'=>0, 'items'=>$items,
         'missingSemantics'=>'unknown_not_no_tours', 'automaticDispatch'=>false];
