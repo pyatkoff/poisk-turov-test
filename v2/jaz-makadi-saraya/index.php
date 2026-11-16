@@ -8,7 +8,8 @@ require_once __DIR__ . '/handoff.php';
  * Accepted corpus: max-search-bot1170, commit0fd3aa2d8a4c5ea53fb15c06cfeaa0ace633313a,
  * knowledge/hotels/anytour-99-apartments.json, SHA256934f2c3b98b2b509ab845feeb6bb0e9d50c570906ac29fb515da8a04f0ae8bdb.
  * Identity: AnyTour99/rev1 -> local-tv268/rev3, country1/region5.
- * No current price, availability, exact room-code binding or room photography.
+ * Interior photos: existing canonical AnyTour99 catalogue gallery, read2026-11-16.
+ * No current price, availability, exact room-code or photo-to-category binding.
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
@@ -20,6 +21,11 @@ header('X-Robots-Tag: noindex, nofollow');
 $handoff = jaz_makadi_saraya_handoff($_GET);
 $searchUrl = $handoff['url'];
 $photoUrl = 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573305.jpg';
+$galleryPhotos = [
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573321.jpg', 'caption' => 'Гостиная', 'alt' => 'Гостиная в JAZ Makadi Saraya: диван, столик и выход на террасу'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573324.jpg', 'caption' => 'Обеденная зона', 'alt' => 'Обеденный стол и гостиная за аркой в JAZ Makadi Saraya'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573318.jpg', 'caption' => 'Спальня', 'alt' => 'Спальня с двумя кроватями в JAZ Makadi Saraya'],
+];
 $officialUrl = 'https://www.jazhotels.com/hoteldetail/20-egypt-hurghada-makadi-bay-jaz-makadi-saraya-resort/overview';
 $factsheetUrl = 'https://partner.jazhotels.com/Images/uploads/gallery/Downloads/JazMakadiSaraya/JAZ%20Makadi%20Saraya%20-Factsheet.pdf.pdf';
 $intouristUrl = 'https://intourist.ru/info/egypt/hurgada/makadi-bej/hotel/jaz-makadi-saraya';
@@ -33,7 +39,7 @@ $hotelSchema = [
     'alternateName' => 'Iberotel Makadi Saraya Resort',
     'url' => 'https://anytoour.ru/jaz-makadi-saraya/',
     'sameAs' => $officialUrl,
-    'image' => $photoUrl,
+    'image' => array_merge([$photoUrl], array_column($galleryPhotos, 'url')),
     'address' => [
         '@type' => 'PostalAddress',
         'streetAddress' => 'Makadi Bay, Madinat Makadi, P.O. Box 178',
@@ -68,7 +74,7 @@ sp_breadcrumbs([
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
         <div class="jaz-hero__body">
-            <p class="jaz-lead">Когда в поездке хочется больше места: апартаменты с гостиной, кухней и одной или двумя спальнями.</p>
+            <p class="jaz-lead">Больше места для отдыха вместе: апартаменты с гостиной, кухней и одной или двумя спальнями.</p>
             <ul class="jaz-facts" aria-label="Главное перед выбором">
                 <li>Апартаменты 70 и 100 м²</li>
                 <li>Вторая береговая линия</li>
@@ -77,24 +83,42 @@ sp_breadcrumbs([
                 <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Найти тур в этот отель</a>
                 <a class="jaz-text-link" href="#rooms">Сравнить номера <span aria-hidden="true">↓</span></a>
             </div>
-            <p class="jaz-caption">Отель уже выбран. Даты, состав гостей и актуальные предложения — в поиске.</p>
+            <p class="jaz-caption">Отель уже выбран. В поиске можно указать свои даты и всех гостей.</p>
             <?php foreach ($handoff['notices'] as $notice): ?>
                 <p class="jaz-handoff-notice"><?=sp_e($notice)?></p>
             <?php endforeach; ?>
         </div>
     </section>
 
+    <section id="interiors" aria-labelledby="interiors-title">
+        <div class="jaz-section-heading">
+            <div><span class="jaz-eyebrow">Фотографии отеля</span><h2 id="interiors-title">Загляните внутрь</h2></div>
+            <p>Гостиная, обеденная зона и спальня. Нажмите на фото, чтобы рассмотреть детали.</p>
+        </div>
+        <div class="jaz-gallery">
+            <?php foreach ($galleryPhotos as $galleryPhoto): ?>
+                <figure>
+                    <a href="<?=sp_e($galleryPhoto['url'])?>" target="_blank" rel="noreferrer" aria-label="<?=sp_e('Открыть фото: ' . $galleryPhoto['caption'])?>">
+                        <img src="<?=sp_e($galleryPhoto['url'])?>" width="1024" height="683" alt="<?=sp_e($galleryPhoto['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+                    <figcaption><?=sp_e($galleryPhoto['caption'])?></figcaption>
+                </figure>
+            <?php endforeach; ?>
+        </div>
+        <p class="jaz-caption">На фото — интерьеры отеля из каталога Tourvisor. Номер в вашем туре может отличаться; категория этих снимков не указана.</p>
+    </section>
+
     <section id="rooms" aria-labelledby="rooms-title">
         <div class="jaz-section-heading">
             <div><span class="jaz-eyebrow">Номера и апартаменты</span><h2 id="rooms-title">Выберите подходящую планировку</h2></div>
-            <p>Сравните площадь и спальни. Названия категорий — из описания Интуриста.</p>
+            <p>Сравните площадь, число спален и места для отдыха.</p>
         </div>
         <div class="jaz-rooms">
             <article class="jaz-room">
                 <div class="jaz-room__heading"><h3>Одна спальня</h3><span class="jaz-room__area">70 <small>м²</small></span></div>
                 <p class="jaz-room__name">One-Bedroom Apartment</p>
                 <dl>
-                    <div><dt>Пространство</dt><dd>Спальня, гостиная, кухня и обеденная зона</dd></div>
+                    <div><dt>Кроме спальни</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
                     <div><dt>Кровати</dt><dd>Двуспальная либо две односпальные</dd></div>
                 </dl>
                 <p class="jaz-room__choice">Если достаточно одной спальни и хочется отдельной гостиной.</p>
@@ -103,7 +127,7 @@ sp_breadcrumbs([
                 <div class="jaz-room__heading"><h3>Две спальни</h3><span class="jaz-room__area">100 <small>м²</small></span></div>
                 <p class="jaz-room__name">Two-Bedroom Apartment</p>
                 <dl>
-                    <div><dt>Пространство</dt><dd>Две спальни, гостиная, кухня и обеденная зона</dd></div>
+                    <div><dt>Кроме двух спален</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
                     <div><dt>Кровати</dt><dd>Двуспальная и две односпальные</dd></div>
                 </dl>
                 <p class="jaz-room__choice">Если нужны две спальни и больше места для вашей компании.</p>
@@ -112,28 +136,32 @@ sp_breadcrumbs([
                 <div class="jaz-room__heading"><h3>Family Deluxe</h3><span class="jaz-room__area">55 <small>м²</small></span></div>
                 <p class="jaz-room__name">Семейный номер</p>
                 <dl>
-                    <div><dt>Размещение</dt><dd>В описании — «2+2» или «3+1», до четырёх гостей</dd></div>
-                    <div><dt>Что проверить</dt><dd>Допустимый возраст детей по условиям тура</dd></div>
+                    <div><dt>Размещение</dt><dd>До четырёх гостей по схемам «2+2» или «3+1»</dd></div>
+                    <div><dt>Для поездки с детьми</dt><dd>Возрастные условия зависят от выбранного тура</dd></div>
                 </dl>
                 <p class="jaz-room__choice">Для пяти гостей эта категория не подтверждена.</p>
             </article>
         </div>
         <div class="jaz-room-note">
-            <strong>Перед выбором номера</strong>
-            <p>Состав гостей, дополнительные места и закрывающиеся двери между комнатами нужно уточнить по конкретному туру. Для пятого гостя в апартаментах отдельно проверьте спальное место и возрастные условия. Описания категорий не гарантируют их наличие на ваши даты.</p>
+            <strong>Ваш состав гостей</strong>
+            <p>Укажите всех гостей и возраст каждого ребёнка. До бронирования проверьте дополнительные кровати и закрывающиеся двери между комнатами; для пятого гостя — его спальное место.</p>
         </div>
     </section>
 
     <section id="location" aria-labelledby="location-title">
-        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Расположение и территория</span><h2 id="location-title">Что учесть перед поездкой</h2></div></div>
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Отдых в Макади-Бей</span><h2 id="location-title">Пляж, кухня и территория</h2></div></div>
         <div class="jaz-location">
             <article>
                 <h3>До пляжа нужно пройти</h3>
-                <p>Интурист указывает вторую береговую линию и 300 м до пляжа, Corendon — около 500 м. Точный маршрут не измерен.</p>
+                <p>Отель на второй береговой линии. В описаниях указано от 300 до 500 м до пляжа. Если важен короткий путь к морю, уточните маршрут перед бронированием.</p>
+            </article>
+            <article>
+                <h3>Кухня в апартаментах</h3>
+                <p>Кухня, обеденный стол и микроволновая печь позволяют перекусить в номере. Питание в ресторанах и включённые услуги смотрите в условиях тура.</p>
             </article>
             <article>
                 <h3>Корпуса без лифтов</h3>
-                <p>По описанию Corendon, в отеле 13 корпусов до трёх этажей, лифтов нет. Если важен доступ без лестниц, заранее проверьте этаж номера и путь к нему.</p>
+                <p>13 корпусов высотой до трёх этажей. Если едете с коляской или вам трудно подниматься по лестницам, заранее уточните этаж номера и путь к нему.</p>
             </article>
         </div>
         <div class="jaz-address">
@@ -147,7 +175,7 @@ sp_breadcrumbs([
         <div>
             <span class="jaz-eyebrow">Следующий шаг</span>
             <h2 id="search-title">Сравните туры в этот отель</h2>
-            <p>JAZ Makadi Saraya уже выбран в поиске. Проверьте город вылета, даты и состав гостей — и посмотрите предложения для своей поездки.</p>
+            <p>Выберите даты, город вылета и состав гостей. JAZ Makadi Saraya уже будет указан в поиске.</p>
             <p class="jaz-search__availability">Цена и наличие проверяются на ваши даты. Если предложений нет, попробуйте соседние даты или другую длительность. Сохранённое ранее предложение нужно проверить заново.</p>
         </div>
         <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Найти тур в этот отель <span aria-hidden="true">→</span></a>
@@ -157,9 +185,10 @@ sp_breadcrumbs([
         <details>
             <summary>Источники и подробности о номерах</summary>
             <div class="jaz-sources__body">
-                <p>Это JAZ Makadi Saraya Resort, ранее Iberotel Makadi Saraya Resort. Saraya Palms и Makadina — другие отели. Фотография показывает территорию, а не выбранную категорию номера.</p>
+                <p>Это JAZ Makadi Saraya Resort, ранее Iberotel Makadi Saraya Resort. Saraya Palms и Makadina — другие отели. Фотографии территории и интерьеров взяты из галереи этого отеля в каталоге Tourvisor; категории номеров и даты съёмки не указаны. Галерея проверена 16 ноября 2026 года.</p>
                 <p>Интурист описывает эти категории с видом на сад или бассейн и публикует максимум «4+1» для One-Bedroom Apartment и «5+1» для Two-Bedroom Apartment. Возрастные условия и все дополнительные места не раскрыты; пятое спальное место отдельно не описано. Закрывающиеся внутренние двери не подтверждены. Названия категорий у разных операторов не устанавливают точного соответствия номеру в туре.</p>
-                <p>Питание, включённые услуги и допустимый состав гостей определяются условиями выбранного предложения.</p>
+                <p>Площади и названия категорий приведены по Интуристу. Питание, включённые услуги и допустимый состав гостей определяются условиями выбранного предложения. Описание категории не подтверждает её наличие на ваши даты.</p>
+                <p>Расстояние до пляжа в источниках различается: Интурист — 300 м, Corendon — около 500 м. Точный маршрут не измерен.</p>
                 <ul>
                     <li><a href="<?=sp_e($factsheetUrl)?>" rel="noreferrer">Официальный factsheet JAZ</a> — категории апартаментов, обеденный стол и микроволновая печь. Прочитан 19 октября 2026 года.</li>
                     <li><a href="<?=sp_e($intouristUrl)?>" rel="noreferrer">Карточка Интуриста</a> — площади, планировки, опубликованная вместимость и пляж. Прочитана 19 октября 2026 года.</li>
