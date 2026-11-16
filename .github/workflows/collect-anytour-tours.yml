@@ -133,7 +133,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: db99af43e8ab11b3675fdbf7875da6e8ea6849ee
+          ref: 7e78534adc884b3ecd92c09fe8a65d406b2fa209
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -182,6 +182,10 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-driver-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-reconcile-stale-feed-20261116.php
+          php -l hotel-price-publisher/tools/direct_demand/operations/inspect-monitor-price-pending-20261116.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-link.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion20.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
@@ -210,7 +214,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: db99af43e8ab11b3675fdbf7875da6e8ea6849ee
+          ref: 7e78534adc884b3ecd92c09fe8a65d406b2fa209
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
