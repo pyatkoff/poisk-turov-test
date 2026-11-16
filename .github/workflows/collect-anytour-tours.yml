@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == 'b8e7749c8c8e56a0de53b59cf5a1b7085fbbe1ca' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == '69f8ae379e34a8d5220c33693f9dabc543c55388' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(git rev-parse HEAD^)" = b8e7749c8c8e56a0de53b59cf5a1b7085fbbe1ca
+          test "$(git rev-parse HEAD^)" = 69f8ae379e34a8d5220c33693f9dabc543c55388
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/main --jq .object.sha)" = dfb72ea60bbc68036295787ec63de75fbfea581f
           umask 077
           mkdir "$RUNNER_TEMP/expansion20-source"
