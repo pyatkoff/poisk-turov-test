@@ -9,12 +9,14 @@ require_once __DIR__ . '/handoff.php';
  * knowledge/hotels/anytour-99-apartments.json, SHA256934f2c3b98b2b509ab845feeb6bb0e9d50c570906ac29fb515da8a04f0ae8bdb.
  * Identity: AnyTour99/rev1 -> local-tv268/rev3, country1/region5.
  * Interior photos: existing canonical AnyTour99 catalogue gallery, read2026-11-16.
+ * Hotel facilities: same canonical snapshot (SHA256066c84f1c89bfc5b58fb74cc55004e81de5816bd672268d11725dd022ad54fe3)
+ * cross-checked with official factsheet pp4/5/7, read2026-11-16; source update date unknown.
  * No current price, availability, exact room-code or photo-to-category binding.
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
     'JAZ Makadi Saraya — номера, апартаменты и туры | AnyTour',
-    'JAZ Makadi Saraya Resort в Макади-Бей: сравнение апартаментов 70 и 100 м² и Family Deluxe, особенности пляжа и переход к турам на ваши даты.'
+    'JAZ Makadi Saraya Resort в Макади-Бей: апартаменты 70 и 100 м², Family Deluxe, бассейны, детский клуб, рестораны и туры на ваши даты.'
 );
 $context['robots'] = v2_seo_robots_content(false);
 header('X-Robots-Tag: noindex, nofollow');
@@ -31,6 +33,8 @@ $factsheetUrl = 'https://partner.jazhotels.com/Images/uploads/gallery/Downloads/
 $intouristUrl = 'https://intourist.ru/info/egypt/hurgada/makadi-bej/hotel/jaz-makadi-saraya';
 $corendonUrl = 'https://www.corendon.nl/egypte/rode-zee/hurghada/makadi-bay/jaz-makadi-saraya-resort';
 $pageCssUrl = v2_site_href('/jaz-makadi-saraya/page.css') . '?v=' . v2_asset_content_version(__DIR__ . '/page.css');
+$viewerCssUrl = v2_site_href('/hotel-photo-viewer-v1.css') . '?v=' . v2_asset_content_version(dirname(__DIR__) . '/hotel-photo-viewer-v1.css');
+$galleryScriptUrl = v2_site_href('/jaz-makadi-saraya/gallery.js') . '?v=' . v2_asset_content_version(__DIR__ . '/gallery.js');
 $hotelSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'Hotel',
@@ -51,7 +55,9 @@ $hotelSchema = [
 
 sp_head($context);
 ?>
+<link rel="stylesheet" href="<?=sp_e($viewerCssUrl)?>">
 <link rel="stylesheet" href="<?=sp_e($pageCssUrl)?>">
+<script src="<?=sp_e($galleryScriptUrl)?>" defer></script>
 <?php
 sp_header($context);
 sp_breadcrumbs([
@@ -68,9 +74,14 @@ sp_breadcrumbs([
             <h1 id="hotel-title">JAZ Makadi Saraya Resort</h1>
         </div>
         <figure class="jaz-hero__photo">
-            <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
-                 alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
-                 fetchpriority="high" decoding="async">
+            <a href="<?=sp_e($photoUrl)?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+               data-photo-caption="Территория отеля" data-photo-note="Фото из каталога Tourvisor"
+               aria-label="Открыть фото: Территория отеля">
+                <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
+                     alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
+                     fetchpriority="high" decoding="async">
+                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 4 фото</span>
+            </a>
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
         <div class="jaz-hero__body">
@@ -78,6 +89,7 @@ sp_breadcrumbs([
             <ul class="jaz-facts" aria-label="Главное перед выбором">
                 <li>Апартаменты 70 и 100 м²</li>
                 <li>Вторая береговая линия</li>
+                <li>Детский клуб и бассейны</li>
             </ul>
             <div class="jaz-hero__actions">
                 <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Найти тур в этот отель</a>
@@ -98,7 +110,9 @@ sp_breadcrumbs([
         <div class="jaz-gallery">
             <?php foreach ($galleryPhotos as $galleryPhoto): ?>
                 <figure>
-                    <a href="<?=sp_e($galleryPhoto['url'])?>" target="_blank" rel="noreferrer" aria-label="<?=sp_e('Открыть фото: ' . $galleryPhoto['caption'])?>">
+                    <a href="<?=sp_e($galleryPhoto['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($galleryPhoto['caption'])?>" data-photo-note="Интерьер отеля; категория номера не указана"
+                       aria-label="<?=sp_e('Открыть фото: ' . $galleryPhoto['caption'])?>">
                         <img src="<?=sp_e($galleryPhoto['url'])?>" width="1024" height="683" alt="<?=sp_e($galleryPhoto['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption><?=sp_e($galleryPhoto['caption'])?></figcaption>
@@ -148,8 +162,27 @@ sp_breadcrumbs([
         </div>
     </section>
 
+    <section id="stay" aria-labelledby="stay-title">
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Бассейны, детский клуб и рестораны</h2></div></div>
+        <div class="jaz-stay">
+            <article>
+                <h3>Бассейны</h3>
+                <p>В отеле три бассейна и два детских бассейна.</p>
+            </article>
+            <article>
+                <h3>Детский клуб</h3>
+                <p>Для детей есть JAZY Kids Club.</p>
+            </article>
+            <article>
+                <h3>Рестораны</h3>
+                <p>Главные рестораны — Sunflower и Al Nakhil. В Sunflower питание организовано по системе «шведский стол».</p>
+            </article>
+        </div>
+        <p class="jaz-caption">Тип питания и включённые услуги проверяйте в условиях выбранного тура. Перед бронированием уточните работу бассейнов, расписание детского клуба и возрастные ограничения на даты поездки.</p>
+    </section>
+
     <section id="location" aria-labelledby="location-title">
-        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Отдых в Макади-Бей</span><h2 id="location-title">Пляж, кухня и территория</h2></div></div>
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Пляж, кухня и территория</span><h2 id="location-title">Что учесть перед поездкой</h2></div></div>
         <div class="jaz-location">
             <article>
                 <h3>До пляжа нужно пройти</h3>
@@ -183,14 +216,14 @@ sp_breadcrumbs([
 
     <section class="jaz-sources" aria-label="Источники и подробности">
         <details>
-            <summary>Источники и подробности о номерах</summary>
+            <summary>Источники и подробности об отеле</summary>
             <div class="jaz-sources__body">
                 <p>Это JAZ Makadi Saraya Resort, ранее Iberotel Makadi Saraya Resort. Saraya Palms и Makadina — другие отели. Фотографии территории и интерьеров взяты из галереи этого отеля в каталоге Tourvisor; категории номеров и даты съёмки не указаны. Галерея проверена 16 ноября 2026 года.</p>
                 <p>Интурист описывает эти категории с видом на сад или бассейн и публикует максимум «4+1» для One-Bedroom Apartment и «5+1» для Two-Bedroom Apartment. Возрастные условия и все дополнительные места не раскрыты; пятое спальное место отдельно не описано. Закрывающиеся внутренние двери не подтверждены. Названия категорий у разных операторов не устанавливают точного соответствия номеру в туре.</p>
                 <p>Площади и названия категорий приведены по Интуристу. Питание, включённые услуги и допустимый состав гостей определяются условиями выбранного предложения. Описание категории не подтверждает её наличие на ваши даты.</p>
                 <p>Расстояние до пляжа в источниках различается: Интурист — 300 м, Corendon — около 500 м. Точный маршрут не измерен.</p>
                 <ul>
-                    <li><a href="<?=sp_e($factsheetUrl)?>" rel="noreferrer">Официальный factsheet JAZ</a> — категории апартаментов, обеденный стол и микроволновая печь. Прочитан 19 октября 2026 года.</li>
+                    <li><a href="<?=sp_e($factsheetUrl)?>" rel="noreferrer">Официальный factsheet JAZ</a> — категории апартаментов, обеденный стол и микроволновая печь; бассейны (стр. 4), детский клуб (стр. 5), рестораны и шведский стол в Sunflower (стр. 7). Прочитан 19 октября и повторно 16 ноября 2026 года. Работа услуг на даты поездки отдельно не проверена.</li>
                     <li><a href="<?=sp_e($intouristUrl)?>" rel="noreferrer">Карточка Интуриста</a> — площади, планировки, опубликованная вместимость и пляж. Прочитана 19 октября 2026 года.</li>
                     <li><a href="<?=sp_e($corendonUrl)?>" rel="noreferrer">Карточка Corendon</a> — корпуса, лифты и другая оценка расстояния до пляжа. Прочитана 20 октября; раздел о корпусах — отдельно 25 октября 2026 года.</li>
                 </ul>

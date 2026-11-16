@@ -70,11 +70,15 @@ function catalogueItems(key) {
     for (const viewport of [{ width: 430, height: 932 }, { width: 1280, height: 720 }]) {
       const page = await browser.newPage({ viewport, hasTouch: viewport.width === 430 });
       const record = { viewport, passed: false, searchStartAttempts: 0, errors: [], requests: [] };
+      let failedPhotoUrl = null, failedPhotoRequests = 0;
       report.cases.push(record);
       page.on('pageerror', error => record.errors.push(String(error)));
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
-        if (photoAssets.has(url.href)) return route.fulfill({ status: 200, contentType: 'image/jpeg', body: photoAssets.get(url.href) });
+        if (photoAssets.has(url.href)) {
+          if (url.href === failedPhotoUrl) { failedPhotoRequests++; return route.abort('failed'); }
+          return route.fulfill({ status: 200, contentType: 'image/jpeg', body: photoAssets.get(url.href) });
+        }
         if (url.origin === baseUrl.origin && url.pathname === '/images/logo.svg') {
           return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: logo });
         }
@@ -101,6 +105,12 @@ function catalogueItems(key) {
         assert.match(response.headers()['x-robots-tag'] || '', /noindex/);
         assert.match(await page.locator('meta[name="robots"]').getAttribute('content'), /noindex/);
         assert.equal(await page.locator('main h1').count(), 1);
+        const serverHtml = await response.text();
+        record.stay = await page.locator('#stay').innerText();
+        for (const fact of [/JAZY/, /Sunflower/, /Al Nakhil/]) {
+          assert.match(serverHtml, fact, 'hotel stay facts must be in the server HTML');
+          assert.match(record.stay, fact, 'hotel stay facts must be visible in their section');
+        }
         await page.locator('.jaz-hero__photo img').evaluate(img => img.decode());
         for (const img of await page.locator('.jaz-gallery img').all()) {
           await img.scrollIntoViewIfNeeded();
@@ -131,6 +141,111 @@ function catalogueItems(key) {
         await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-hero.png`), animations: 'disabled' });
         await page.locator('#interiors').screenshot({ path: path.join(output, `jaz-${viewport.width}-interiors.png`), animations: 'disabled' });
         await page.locator('#rooms').screenshot({ path: path.join(output, `jaz-${viewport.width}-rooms.png`), animations: 'disabled' });
+        await page.locator('#stay').screenshot({ path: path.join(output, `jaz-${viewport.width}-stay.png`), animations: 'disabled' });
+
+        const photoLinks = page.locator('[data-jaz-photo]');
+        const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url)];
+        const expectedCaptions = ['Территория отеля', 'Гостиная', 'Обеденная зона', 'Спальня'];
+        const photos = await photoLinks.evaluateAll(elements => elements.map(element => ({
+          href: element.href, caption: element.dataset.photoCaption, note: element.dataset.photoNote,
+          alt: element.querySelector('img').alt, target: element.target,
+          safeOriginal: element.relList.contains('noopener') && element.relList.contains('noreferrer')
+        })));
+        assert.deepEqual(photos.map(item => item.href), expectedPhotos);
+        assert.deepEqual(photos.map(item => item.caption), expectedCaptions);
+        assert.deepEqual(photos.map(item => item.note), ['Фото из каталога Tourvisor', ...interiors.map(() => 'Интерьер отеля; категория номера не указана')]);
+        assert.ok(photos.every(item => item.target === '_blank' && item.safeOriginal), 'original photo fallbacks must remain available');
+        const viewer = page.locator('dialog.jaz-photo-viewer');
+        const activate = locator => viewport.width === 430 ? locator.tap() : locator.click();
+        let photoPopups = 0;
+        page.on('popup', popup => { photoPopups++; popup.close().catch(() => {}); });
+        const checkPhoto = async index => {
+          await page.waitForFunction(expected => {
+            const dialog = document.querySelector('dialog.jaz-photo-viewer');
+            const image = dialog?.querySelector('img');
+            return dialog?.open && dialog.dataset.photoState === 'loaded' && image?.src === expected && image.naturalWidth > 0 && !image.hidden;
+          }, expectedPhotos[index]);
+          const state = await viewer.evaluate(dialog => ({
+            src: dialog.querySelector('img').src, alt: dialog.querySelector('img').alt,
+            title: dialog.querySelector('h2').textContent, note: dialog.querySelector('.jaz-viewer-note').textContent,
+            counter: dialog.querySelector('.hotel-photo-viewer__counter').textContent,
+            original: dialog.querySelector('.hotel-photo-viewer__original').href,
+            box: dialog.getBoundingClientRect().toJSON(), scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth
+          }));
+          assert.equal(state.src, expectedPhotos[index]);
+          assert.equal(state.original, expectedPhotos[index]);
+          assert.equal(state.alt, photos[index].alt);
+          assert.equal(state.title, photos[index].caption);
+          assert.equal(state.note, photos[index].note);
+          assert.equal(state.counter, `Фото ${index + 1} из 4`);
+          assert.ok(state.box.left >= 0 && state.box.top >= 0 && state.box.right <= viewport.width + 1 && state.box.bottom <= viewport.height + 1, 'photo viewer must fit the viewport');
+          assert.ok(state.scrollWidth <= state.clientWidth + 1, 'horizontal overflow in the photo viewer');
+          assert.equal(page.url(), url, 'photo viewer must retain the hotel page query');
+          return state;
+        };
+        record.viewer = [];
+        for (const index of [0, 2]) {
+          const opener = photoLinks.nth(index);
+          await opener.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+          const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+          await activate(opener);
+          const selected = await checkPhoto(index);
+          await activate(viewer.locator('[data-photo-step="1"]'));
+          await checkPhoto((index + 1) % 4);
+          await activate(viewer.locator('[data-photo-step="-1"]'));
+          await checkPhoto(index);
+          if (index === 0) {
+            await activate(viewer.locator('[data-photo-step="-1"]'));
+            await checkPhoto(3);
+            await activate(viewer.locator('[data-photo-step="1"]'));
+            await checkPhoto(0);
+          } else {
+            await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-viewer.png`), animations: 'disabled' });
+          }
+          await activate(viewer.locator('.hotel-photo-viewer__close'));
+          await viewer.waitFor({ state: 'hidden' });
+          const after = await page.evaluate(() => ({ x: scrollX, y: scrollY, locked: document.documentElement.classList.contains('hotel-photo-viewer-open') }));
+          assert.ok(Math.abs(after.x - before.x) <= 1 && Math.abs(after.y - before.y) <= 1, 'closing photos must restore the page position');
+          assert.equal(after.locked, false, 'closing photos must release the page scroll');
+          assert.ok(await opener.evaluate(element => document.activeElement === element), 'closing photos must return to the opener');
+          assert.equal(page.url(), url);
+          assert.deepEqual(await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href'))), links);
+          record.viewer.push({ openedIndex: index, selected, closed: true, contextRetained: true, scrollRestored: true });
+        }
+        assert.equal(photoPopups, 0, 'ordinary photo activation must stay in the page');
+        if (viewport.width === 430) {
+          // One transport-failure fixture. Reload the same query so a decoded
+          // thumbnail cannot hide the failed request; do not fabricate error events.
+          failedPhotoUrl = expectedPhotos[1];
+          await page.reload({ waitUntil: 'networkidle' });
+          const opener = photoLinks.nth(1);
+          await opener.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+          const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+          await activate(opener);
+          await page.waitForFunction(() => {
+            const dialog = document.querySelector('dialog.jaz-photo-viewer');
+            return dialog?.open && dialog.dataset.photoState === 'error';
+          });
+          assert.ok(failedPhotoRequests > 0, 'the failed image request must actually be exercised');
+          assert.equal(await viewer.locator('img').isVisible(), false, 'a failed image must not leave the previous photo visible');
+          assert.match(await viewer.locator('.hotel-photo-viewer__status').innerText(), /Не удалось загрузить фото/);
+          assert.equal(await viewer.locator('.hotel-photo-viewer__original').getAttribute('href'), expectedPhotos[1]);
+          assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 2 из 4');
+          assert.equal(page.url(), url);
+          await page.screenshot({ path: path.join(output, 'jaz-430-viewer-error.png'), animations: 'disabled' });
+          failedPhotoUrl = null;
+          await activate(viewer.locator('[data-photo-step="1"]'));
+          await checkPhoto(2);
+          await activate(viewer.locator('.hotel-photo-viewer__close'));
+          await viewer.waitFor({ state: 'hidden' });
+          const after = await page.evaluate(() => ({ x: scrollX, y: scrollY, locked: document.documentElement.classList.contains('hotel-photo-viewer-open') }));
+          assert.ok(Math.abs(after.x - before.x) <= 1 && Math.abs(after.y - before.y) <= 1, 'photo failure recovery must retain the page position');
+          assert.equal(after.locked, false);
+          assert.ok(await opener.evaluate(element => document.activeElement === element));
+          assert.equal(page.url(), url);
+          assert.equal(photoPopups, 0);
+          record.viewerRecovery = { failedUrl: expectedPhotos[1], failedRequests: failedPhotoRequests, recoveredIndex: 2, contextRetained: true, passed: true };
+        }
         await page.locator('.jaz-sources summary').click();
         assert.ok(await page.locator('.jaz-sources details').evaluate(element => element.open));
         await page.locator('.jaz-sources summary').click();
