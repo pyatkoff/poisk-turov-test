@@ -1,4 +1,4 @@
-name: Read completed660 outcome and release state without production
+name: Read original660 receipt without terminal control output
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '10ad184a7ec7a79cf62e4e71e3de30009ecc6c95' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == 'c9cbb2bc427ebf9c017ecb12d166a4499dcd45d0' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Extract exact original outcome; no collector, server or provider execution
+      - name: Read original results and live release metadata only
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -25,28 +25,31 @@ jobs:
           umask 077
           mkdir "$RUNNER_TEMP/completed660"
           python3 - <<'PY'
-          import subprocess,json,pathlib,os,hashlib,re,datetime
+          import subprocess,json,pathlib,os,hashlib,re,gzip
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'completed660'
-          def raw(repo,path):return subprocess.check_output(['gh','api','repos/pyatkoff/'+repo+'/'+path],timeout=60)
+          def raw(repo,path,ansi=False):
+            args=['gh','api']+(['--allow-escape-sequences'] if ansi else [])+['repos/pyatkoff/'+repo+'/'+path]
+            return subprocess.check_output(args,timeout=60)
           def api(repo,path):return json.loads(raw(repo,path))
           repo='poisk-turov-test';run=api(repo,'actions/runs/43949874410');jobs=api(repo,'actions/runs/43949874410/jobs?per_page=100')
-          assert run['id']==43949874410 and run['event']=='schedule' and run['run_attempt']==1 and run['head_sha']=='e1b510bffc3c7f4214023a43528efbfe4915aaa3' and run['status']=='completed'
-          job=next(j for j in jobs['jobs'] if j['id']==133589639199)
-          assert job['run_id']==run['id'] and job['status']=='completed'
-          logs=raw(repo,'actions/jobs/133589639199/logs');text=logs.decode('utf-8-sig');markers=[]
+          assert run['event']=='schedule' and run['run_attempt']==1 and run['head_sha']=='e1b510bffc3c7f4214023a43528efbfe4915aaa3' and run['status']=='completed'
+          job=next(j for j in jobs['jobs'] if j['id']==133589639199);assert job['status']=='completed'
+          logs=raw(repo,'actions/jobs/133589639199/logs',True)
+          # Capture raw log bytes privately; never execute or emit its terminal controls.
+          (out/'original-production.log.gz').write_bytes(gzip.compress(logs,mtime=0))
+          text=logs.decode('utf-8-sig');markers=[]
           for line in text.splitlines():
-            if 'MONITOR_POST_FEED_RESULT=' in line:
-              tail=line.split('MONITOR_POST_FEED_RESULT=',1)[1]
-              try:value=json.JSONDecoder().raw_decode(tail)[0]
-              except json.JSONDecodeError:continue
-              if isinstance(value,dict):markers.append({'timestamp':line.split(' ',1)[0],'result':value})
-          assert len(markers)==1,('ORIGINAL_RESULT_MARKER_COUNT',len(markers))
-          selected=[l for l in text.splitlines() if not '\x1b' in l and any(k in l for k in ['TOP500_DAILY_RESULT=','TOP500_MONTHLY_RESULT=','observations_saved','saved_observations','MONITOR_POST_FEED_RESULT=','ANYTOUR_TOP500'])]
-          record={'run':{k:run[k] for k in ['id','head_sha','event','run_attempt','status','conclusion','created_at','updated_at']},'job':{k:job[k] for k in ['id','name','status','conclusion','started_at','completed_at']},'log_bytes':len(logs),'log_sha256':hashlib.sha256(logs).hexdigest(),'original_result':markers[0],'original_selected_lines':selected,'inspection_calls_only':True,'production_calls':0}
+            if 'MONITOR_POST_FEED_RESULT=' not in line:continue
+            tail=line.split('MONITOR_POST_FEED_RESULT=',1)[1]
+            try:value=json.JSONDecoder().raw_decode(tail)[0]
+            except json.JSONDecodeError:continue
+            if isinstance(value,dict):markers.append({'timestamp':line.split(' ',1)[0],'result':value})
+          record={'run':{k:run[k] for k in ['id','head_sha','event','run_attempt','status','conclusion','created_at','updated_at']},'job':{k:job[k] for k in ['id','name','status','conclusion','started_at','completed_at']},'log_bytes':len(logs),'log_sha256':hashlib.sha256(logs).hexdigest(),'results':markers,'production_calls':0}
           (out/'original-run.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n')
+          assert len(markers)==1,('ORIGINAL_MARKERS',len(markers))
           result=markers[0]['result'];short={k:v for k,v in result.items() if not isinstance(v,(dict,list))}
           short['nested_keys']={k:(list(v) if isinstance(v,dict) else len(v)) for k,v in result.items() if isinstance(v,(dict,list))}
-          print('ORIGINAL_RESULT_SUMMARY='+json.dumps(short,ensure_ascii=False))
+          print('ORIGINAL_RESULT_SUMMARY='+json.dumps(short,ensure_ascii=True))
           state={}
           for r in ['max-search-bot','poisk-turov-test']:
             state[r]={'main':api(r,'git/ref/heads/main')['object']['sha'],'active_runs':[]}
@@ -56,10 +59,9 @@ jobs:
           comments=api('max-search-bot','issues/1122/comments?since=2026-11-16T18:00:00Z&per_page=100')
           state['coordination']=[{'id':c['id'],'updated_at':c['updated_at'],'body':c['body']} for c in comments if c['id']!=6633089481 and any(x in c['body'].lower() for x in ['publisher','выпуск','1575','1582'])]
           (out/'current-release-state.json').write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n')
-          print('FRESH_RELEASE_SUMMARY='+json.dumps({k:v for k,v in state.items() if k!='coordination'},ensure_ascii=False))
-          print('COORDINATION_IDS='+json.dumps([{'id':x['id'],'updated_at':x['updated_at'],'start':x['body'][:200]} for x in state['coordination']],ensure_ascii=False))
+          print('READ_ONLY_SNAPSHOT_SAVED production_calls=0')
           PY
-      - name: Retain bounded source results and exact release records
+      - name: Retain original outcome and exact coordination records
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
