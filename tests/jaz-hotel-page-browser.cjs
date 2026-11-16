@@ -107,6 +107,20 @@ function catalogueItems(key) {
         assert.equal(await page.locator('main h1').count(), 1);
         const serverHtml = await response.text();
         record.stay = await page.locator('#stay').innerText();
+        const quickNav = await page.locator('.jaz-quick-nav a').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
+        assert.deepEqual(quickNav, ['#interiors', '#rooms', '#stay', '#location', '#questions']);
+        assert.match(serverHtml, /Частые вопросы о JAZ Makadi Saraya/, 'FAQ must be in server-rendered HTML');
+        assert.match(serverHtml, /Семейный отдых в Макади-Бей/, 'main benefit must be in server-rendered HTML');
+        assert.equal(await page.locator('#questions details').count(), 6);
+        const firstQuestion = page.locator('#questions details').first();
+        await firstQuestion.locator('summary').click();
+        assert.equal(await firstQuestion.evaluate(element => element.open), true);
+        assert.match(await firstQuestion.innerText(), /300–500 м/);
+        await page.locator('#questions').screenshot({ path: path.join(output, `jaz-${viewport.width}-questions.png`), animations: 'disabled' });
+        await firstQuestion.locator('summary').click();
+        assert.equal(await firstQuestion.evaluate(element => element.open), false);
+        assert.equal(await page.locator('.jaz-room-step a').getAttribute('href'), '#search-title');
+        record.wayfinding = { nav: quickNav, faqQuestions: 6, faqToggle: true, searchCtAs: 2, roomStepAnchor: true };
         for (const fact of [/JAZY/, /Sunflower/, /Al Nakhil/]) {
           assert.match(serverHtml, fact, 'hotel stay facts must be in the server HTML');
           assert.match(record.stay, fact, 'hotel stay facts must be visible in their section');
@@ -131,8 +145,8 @@ function catalogueItems(key) {
         assert.equal(record.geometry.photoWidth, 1024, 'accepted photo did not load');
         assert.ok(record.geometry.cta.height >= 44, 'primary CTA is too short for ordinary taps');
         const links = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
-        assert.equal(links.length, 2);
-        assert.equal(links[0], links[1], 'hero and lower CTA lost their common trip context');
+        assert.equal(links.length, 2, 'both official hotel search links must be retained');
+        assert.ok(links.every(link => link === links[0]), 'hotel CTAs must share the same validated trip context');
         const searchUrl = new URL(links[0], baseUrl.origin);
         assert.equal(searchUrl.pathname, baseUrl.pathname + '/poisk-turov/');
         assert.equal(searchUrl.searchParams.get('search3_restore'), '1');

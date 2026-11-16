@@ -15,8 +15,8 @@ require_once __DIR__ . '/handoff.php';
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
-    'JAZ Makadi Saraya — номера, апартаменты и туры | AnyTour',
-    'JAZ Makadi Saraya Resort в Макади-Бей: апартаменты 70 и 100 м², Family Deluxe, бассейны, детский клуб, рестораны и туры на ваши даты.'
+    'JAZ Makadi Saraya Resort — пляж, номера и туры | AnyTour',
+    'JAZ Makadi Saraya Resort в Макади-Бей: пляж, номера 55–100 м², бассейны, JAZY Kids Club, питание и проверка туров на ваши даты.'
 );
 $context['robots'] = v2_seo_robots_content(false);
 header('X-Robots-Tag: noindex, nofollow');
@@ -85,22 +85,31 @@ sp_breadcrumbs([
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
         <div class="jaz-hero__body">
-            <p class="jaz-lead">Больше места для отдыха вместе: апартаменты с гостиной, кухней и одной или двумя спальнями.</p>
-            <ul class="jaz-facts" aria-label="Главное перед выбором">
+            <p class="jaz-lead"><strong>Семейный отдых в Макади-Бей.</strong> Апартаменты с одной или двумя спальнями, бассейны для взрослых и детей и JAZY Kids Club.</p>
+            <ul class="jaz-facts" aria-label="Главные особенности отеля">
                 <li>Апартаменты 70 и 100 м²</li>
-                <li>Вторая береговая линия</li>
-                <li>Детский клуб и бассейны</li>
+                <li>3 бассейна и 2 детских</li>
+                <li>Пляж на второй линии</li>
             </ul>
             <div class="jaz-hero__actions">
-                <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Найти тур в этот отель</a>
+                <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты</a>
                 <a class="jaz-text-link" href="#rooms">Сравнить номера <span aria-hidden="true">↓</span></a>
             </div>
-            <p class="jaz-caption">Отель уже выбран. В поиске можно указать свои даты и всех гостей.</p>
+            <p class="jaz-caption">JAZ уже выбран в форме. Указанные условия поездки сохраняются при переходе в поиск.</p>
             <?php foreach ($handoff['notices'] as $notice): ?>
                 <p class="jaz-handoff-notice"><?=sp_e($notice)?></p>
             <?php endforeach; ?>
         </div>
     </section>
+
+    <nav class="jaz-quick-nav" aria-label="Разделы страницы отеля">
+        <span>На странице:</span>
+        <a href="#interiors">Фотографии</a>
+        <a href="#rooms">Номера</a>
+        <a href="#stay">Бассейны и питание</a>
+        <a href="#location">Пляж</a>
+        <a href="#questions">Частые вопросы</a>
+    </nav>
 
     <section id="interiors" aria-labelledby="interiors-title">
         <div class="jaz-section-heading">
@@ -119,7 +128,7 @@ sp_breadcrumbs([
                 </figure>
             <?php endforeach; ?>
         </div>
-        <p class="jaz-caption">На фото — интерьеры отеля из каталога Tourvisor. Номер в вашем туре может отличаться; категория этих снимков не указана.</p>
+        <p class="jaz-caption">Это фотографии интерьеров отеля, а не подтверждённые снимки конкретных категорий номеров.</p>
     </section>
 
     <section id="rooms" aria-labelledby="rooms-title">
@@ -157,13 +166,20 @@ sp_breadcrumbs([
             </article>
         </div>
         <div class="jaz-room-note">
-            <strong>Ваш состав гостей</strong>
-            <p>Укажите всех гостей и возраст каждого ребёнка. До бронирования проверьте дополнительные кровати и закрывающиеся двери между комнатами; для пятого гостя — его спальное место.</p>
+            <strong>Важно при выборе номера</strong>
+            <p>Вместимость зависит от возраста детей и дополнительных спальных мест. Для апартаментов отдельно проверьте двери между комнатами и размещение пятого гостя.</p>
+        </div>
+        <div class="jaz-room-step">
+            <div>
+                <strong>Сравнили планировки?</strong>
+                <p>Проверьте доступные туры на свои даты. Конкретная категория номера и размещение указаны в условиях предложения.</p>
+            </div>
+            <a class="sp-primary" href="#search-title">К подбору тура <span aria-hidden="true">↓</span></a>
         </div>
     </section>
 
     <section id="stay" aria-labelledby="stay-title">
-        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Бассейны, детский клуб и рестораны</h2></div></div>
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Для отдыха всей семьёй</h2></div></div>
         <div class="jaz-stay">
             <article>
                 <h3>Бассейны</h3>
@@ -178,23 +194,23 @@ sp_breadcrumbs([
                 <p>Главные рестораны — Sunflower и Al Nakhil. В Sunflower питание организовано по системе «шведский стол».</p>
             </article>
         </div>
-        <p class="jaz-caption">Тип питания и включённые услуги проверяйте в условиях выбранного тура. Перед бронированием уточните работу бассейнов, расписание детского клуба и возрастные ограничения на даты поездки.</p>
+        <p class="jaz-caption">Тип питания и доступность услуг зависят от выбранного тура и дат поездки. Расписание и возрастные условия детского клуба указаны не для всех тарифов.</p>
     </section>
 
     <section id="location" aria-labelledby="location-title">
-        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Пляж, кухня и территория</span><h2 id="location-title">Что учесть перед поездкой</h2></div></div>
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">Пляж, кухня и территория</span><h2 id="location-title">Пляж и особенности размещения</h2></div></div>
         <div class="jaz-location">
             <article>
                 <h3>До пляжа нужно пройти</h3>
-                <p>Отель на второй береговой линии. В описаниях указано от 300 до 500 м до пляжа. Если важен короткий путь к морю, уточните маршрут перед бронированием.</p>
+                <p>Отель расположен на второй береговой линии. По данным источников, до пляжа около 300–500 м. Путь зависит от вашего корпуса и маршрута.</p>
             </article>
             <article>
                 <h3>Кухня в апартаментах</h3>
-                <p>Кухня, обеденный стол и микроволновая печь позволяют перекусить в номере. Питание в ресторанах и включённые услуги смотрите в условиях тура.</p>
+                <p>В апартаментах описаны кухня, обеденный стол и микроволновая печь. Включённое питание определяется условиями конкретного тура.</p>
             </article>
             <article>
                 <h3>Корпуса без лифтов</h3>
-                <p>13 корпусов высотой до трёх этажей. Если едете с коляской или вам трудно подниматься по лестницам, заранее уточните этаж номера и путь к нему.</p>
+                <p>13 корпусов высотой до трёх этажей, без лифтов. С коляской или при ограниченной подвижности важны этаж и путь к номеру.</p>
             </article>
         </div>
         <div class="jaz-address">
@@ -207,11 +223,43 @@ sp_breadcrumbs([
     <section class="jaz-search" aria-labelledby="search-title" data-offer-state="unverified">
         <div>
             <span class="jaz-eyebrow">Следующий шаг</span>
-            <h2 id="search-title">Сравните туры в этот отель</h2>
-            <p>Выберите даты, город вылета и состав гостей. JAZ Makadi Saraya уже будет указан в поиске.</p>
-            <p class="jaz-search__availability">Цена и наличие проверяются на ваши даты. Если предложений нет, попробуйте соседние даты или другую длительность. Сохранённое ранее предложение нужно проверить заново.</p>
+            <h2 id="search-title">Узнайте варианты на свои даты</h2>
+            <p>JAZ Makadi Saraya уже выбран. Укажите город вылета, даты и всех гостей — поиск сохранит переданные условия.</p>
+            <p class="jaz-search__availability">На странице нет подтверждённой цены или наличия конкретного тура. Стоимость и категория номера зависят от выбранного предложения; если вариантов нет, попробуйте соседние даты.</p>
         </div>
-        <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Найти тур в этот отель <span aria-hidden="true">→</span></a>
+        <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты <span aria-hidden="true">→</span></a>
+    </section>
+
+    <section id="questions" class="jaz-questions" aria-labelledby="questions-title">
+        <div class="jaz-section-heading">
+            <div><span class="jaz-eyebrow">Ответы перед поездкой</span><h2 id="questions-title">Частые вопросы о JAZ Makadi Saraya</h2></div>
+        </div>
+        <div class="jaz-questions__grid">
+            <details>
+                <summary>Далеко ли от отеля до пляжа?</summary>
+                <p>JAZ Makadi Saraya находится на второй береговой линии в Макади-Бей. Источники указывают примерно 300–500 м; точный путь от корпуса зависит от маршрута.</p>
+            </details>
+            <details>
+                <summary>Какие апартаменты и семейные номера есть?</summary>
+                <p>В описаниях есть One-Bedroom Apartment 70 м², Two-Bedroom Apartment 100 м² и Family Deluxe 55 м². Конкретная категория, спальные места и вместимость определяются условиями тура.</p>
+            </details>
+            <details>
+                <summary>Есть ли бассейны и занятия для детей?</summary>
+                <p>В описании отеля указаны три бассейна, два детских и клуб JAZY Kids Club. Работу услуг, расписание и возрастные условия нужно сопоставить с датами поездки.</p>
+            </details>
+            <details>
+                <summary>Что известно о питании?</summary>
+                <p>В Sunflower предусмотрен шведский стол, также указан ресторан Al Nakhil. Какие рестораны и услуги включены, зависит от выбранного тарифа.</p>
+            </details>
+            <details>
+                <summary>Есть ли лифты в корпусах?</summary>
+                <p>По данным гостиничного описания, корпуса до трёх этажей и без лифтов. При необходимости заранее выбирайте подходящий этаж и маршрут.</p>
+            </details>
+            <details>
+                <summary>Как посмотреть цену тура в этот отель?</summary>
+                <p>Откройте подбор туров, укажите даты, вылет и состав гостей. На этой странице нет подтверждённой текущей цены: она должна относиться к конкретному предложению с известными условиями.</p>
+            </details>
+        </div>
     </section>
 
     <section class="jaz-sources" aria-label="Источники и подробности">
