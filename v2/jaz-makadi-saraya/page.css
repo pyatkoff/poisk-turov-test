@@ -114,3 +114,29 @@
   .jaz-search .sp-primary{width:100%;justify-content:center;white-space:normal}
   .jaz-sources summary{font-size:15px}
 }
+
+/* SITE1719 phase4: concise wayfinding, a mid-page conversion step and readable FAQs. */
+.jaz-lead strong{color:var(--at-ink)}
+.jaz-quick-nav{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;padding:0 4px;color:var(--at-muted);font-size:13px;line-height:1.4}
+.jaz-quick-nav>span{font-weight:750}
+.jaz-quick-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 12px;border:1px solid var(--at-line);border-radius:999px;background:#fff;color:var(--at-ink);font-weight:700;text-decoration:none}
+.jaz-quick-nav a:hover,.jaz-quick-nav a:focus-visible{border-color:var(--at-brand);color:var(--at-brand)}
+.jaz-room-step{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:16px;padding:20px 24px;border:1px solid var(--at-line);border-radius:16px;background:#fff}
+.jaz-room-step strong{display:block;color:var(--at-ink);font-size:17px}
+.jaz-room-step p{margin:6px 0 0;max-width:66ch;color:var(--at-muted);font-size:13px;line-height:1.55}
+.jaz-room-step .sp-primary{flex:none;min-height:46px}
+.jaz-questions__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.jaz-questions__grid details{min-width:0;border:1px solid var(--at-line);border-radius:14px;background:#fff}
+.jaz-questions__grid summary{padding:18px 20px;color:var(--at-ink);font-size:15px;font-weight:750;line-height:1.5;cursor:pointer}
+.jaz-questions__grid details[open]{border-color:var(--at-line-strong)}
+.jaz-questions__grid p{margin:0;padding:0 20px 20px;color:var(--at-muted);font-size:14px;line-height:1.65}
+@media(max-width:600px){
+  .jaz-quick-nav{gap:7px;padding:0}
+  .jaz-quick-nav>span{width:100%}
+  .jaz-quick-nav a{font-size:12px;min-height:40px;padding:7px 10px}
+  .jaz-room-step{display:grid;gap:14px;padding:18px}
+  .jaz-room-step .sp-primary{width:100%;justify-content:center}
+  .jaz-questions__grid{grid-template-columns:1fr;gap:10px}
+  .jaz-questions__grid summary{padding:16px;font-size:14px}
+  .jaz-questions__grid p{padding:0 16px 16px;font-size:13px}
+}
