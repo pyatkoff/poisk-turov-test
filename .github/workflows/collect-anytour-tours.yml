@@ -1,4 +1,4 @@
-name: Validate exact660 consumer without production
+name: Validate both existing reliability phases on660 without production
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
@@ -6,85 +6,114 @@ on:
 permissions:
   contents: write
   actions: read
+  pull-requests: read
 concurrency:
   group: anytour-monitor660-source-preparation
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '45fd075f2a2b89f3f4991ad95b709f19039aaefc' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == 'dfaf746303b47f9cb9851683a2a70786f7548988' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 2
           persist-credentials: false
+          fetch-depth: 2
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: fd8565b2286f8ba253c847e70970fbaea5ffa0e9
+          ref: e1b510bffc3c7f4214023a43528efbfe4915aaa3
           path: consumer
           persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 7bbbbe5143e689a794f05874ef4f4e1eebd63e88
+          path: original-phases
+          persist-credentials: false
+          fetch-depth: 8
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: b3d5dca2a7c8cecee88db1404cb2a8c28d26841e
+          ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
           path: consumer/hotel-price-publisher
           persist-credentials: false
-      - name: Check exact base and generate five scoped consumer files
+      - name: Validate current660 with both original reader policies and preserve exact source trees
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(git rev-parse HEAD^)" = 45fd075f2a2b89f3f4991ad95b709f19039aaefc
-          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/main --jq .object.sha)" = fd8565b2286f8ba253c847e70970fbaea5ffa0e9
-          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/source/1142-monitor660-20261116 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(git -C consumer/hotel-price-publisher rev-parse HEAD)" = b3d5dca2a7c8cecee88db1404cb2a8c28d26841e
+          test "$(git rev-parse HEAD^)" = dfaf746303b47f9cb9851683a2a70786f7548988
           umask 077
-          mkdir "$RUNNER_TEMP/consumer660"
-          python3 -m py_compile tools/prepare_monitor660_consumer_20261116.py
-          python3 tools/prepare_monitor660_consumer_20261116.py consumer "$RUNNER_TEMP/consumer660"
-          git -C consumer diff --check
-          git -C consumer diff --binary > "$RUNNER_TEMP/consumer660/consumer.patch"
-      - name: Run the complete final canonical native validation shell
-        shell: bash
-        working-directory: consumer
-        run: |
-          set -euo pipefail
-          php -l tests/published-expansion32-monitor-smoke.php
-          bash "$RUNNER_TEMP/consumer660/canonical-validate.sh" 2>&1 | tee "$RUNNER_TEMP/consumer660/native-validation.txt"
+          mkdir "$RUNNER_TEMP/reliability-consumers660"
           python3 - <<'PY'
-          import pathlib,hashlib,os
-          p=pathlib.Path(os.environ['RUNNER_TEMP'])
-          raw=(p/'monitor-price-hook.php').read_bytes()
-          assert len(raw)==608018 and hashlib.sha256(raw).hexdigest()=='dd85c064745f77f2b72b637fa4b572562ffcc2a318c2f35578c016e6f5e88e72'
-          print('CONSUMER_EXACT660_BUNDLE_VERIFIED production_calls=0')
+          import pathlib,subprocess,json,hashlib,base64,os
+          root=pathlib.Path('consumer');historical=pathlib.Path('original-phases');out=pathlib.Path(os.environ['RUNNER_TEMP'])/'reliability-consumers660'
+          main='e1b510bffc3c7f4214023a43528efbfe4915aaa3';base='fd8565b2286f8ba253c847e70970fbaea5ffa0e9'
+          a='761794711c76d0cba222af79af794ec8c71f6f96';b='7bbbbe5143e689a794f05874ef4f4e1eebd63e88';publisher='a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68'
+          workflow_path='.github/workflows/collect-anytour-tours.yml';test_path='tests/monitor_price_hook_workflow_test.py'
+          bpaths=['docs/project/hotel-monitor-prices.md','tests/hotel-monitor-prices-smoke.php','v2/data/hotel-monitor-prices-v1.php']
+          def api(path,data=None):
+            args=['gh','api','repos/pyatkoff/poisk-turov-test/'+path]
+            if data is not None:args+=['--method','POST','--input','-']
+            return json.loads(subprocess.check_output(args,input=None if data is None else json.dumps(data).encode(),timeout=60))
+          for branch,sha in [('main',main),('fix/anytour-price-bridge-20261116',a),('fix/anytour-monitor-freshness-36h-20261116',b),('source/1142-monitor660-20261116',os.environ['GITHUB_SHA'])]:
+            assert api('git/ref/heads/'+branch)['object']['sha']==sha,('HEAD_CHANGED',branch)
+          def show(ref,path):return subprocess.check_output(['git','-C',str(historical),'show',ref+':'+path])
+          assert set(subprocess.check_output(['git','-C',str(historical),'diff','--name-only',base,a],text=True).splitlines())=={workflow_path,test_path}
+          assert set(subprocess.check_output(['git','-C',str(historical),'diff','--name-only',a,b],text=True).splitlines())==set(bpaths)
+          assert (root/test_path).read_bytes()==show(base,test_path),'CONCURRENT_TEST_CHANGE'
+          original=(root/workflow_path).read_text();text=original
+          oldpin='b3d5dca2a7c8cecee88db1404cb2a8c28d26841e'
+          assert text.count('ref: '+oldpin)==2
+          text=text.replace('ref: '+oldpin,'ref: '+publisher)
+          anchor='          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php\n'
+          additions=''.join('          '+s+'\n' for s in ['php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php','php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-driver-reliability.php','php hotel-price-publisher/tools/direct_demand/operations/test-reconcile-stale-feed-20261116.php','php -l hotel-price-publisher/tools/direct_demand/operations/inspect-monitor-price-pending-20261116.php'])
+          assert text.count(anchor)==1 and additions not in text
+          text=text.replace(anchor,anchor+additions,1)
+          assert text.split('  collect-production:\n',1)[1].replace(publisher,oldpin)==original.split('  collect-production:\n',1)[1],'PRODUCTION_BODY_CHANGED'
+          assert text.split('  schedule:\n',1)[1].split('\njobs:',1)[0]==original.split('  schedule:\n',1)[1].split('\njobs:',1)[0],'SCHEDULE_CHANGED'
+          assert text.count('tests/published-expansion32-monitor-smoke.php')==3 and text.count('test-monitor-price-expansion32.php')==1
+          (root/workflow_path).write_text(text);(root/test_path).write_bytes(show(a,test_path))
+          for path in bpaths:assert (root/path).read_bytes()==show(a,path),('CONCURRENT_READER_CHANGE',path)
+          marker='      - name: Validate daily freshness and full-month TOP500 coverage\n        shell: bash\n        run: |\n';assert text.count(marker)==1
+          lines=[]
+          for line in text.split(marker,1)[1].splitlines():
+            if line and not line.startswith('          '):break
+            lines.append(line[10:] if line.startswith('          ') else '')
+          assert 'echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK' in lines
+          script=out/'canonical-validate.sh';script.write_text('\n'.join(lines)+'\n');script=script.resolve()
+          tree_base=api('git/commits/'+main)['tree']['sha'];evidence={'main':main,'publisher':publisher,'draftA_before':a,'draftB_before':b,'production_connections':0,'supplier_calls':0,'post_writes':0,'feed_writes':0,'branch_updates':0,'phases':{}}
+          for phase,paths in [('A',[workflow_path,test_path]),('B',[workflow_path,test_path]+bpaths)]:
+            if phase=='B':
+              for path in bpaths:(root/path).write_bytes(show(b,path))
+            logfile=out/('phase-'+phase+'-native.txt')
+            with logfile.open('w') as log:
+              run=subprocess.run(['bash',str(script)],cwd=root,stdout=log,stderr=subprocess.STDOUT,timeout=240)
+            output=logfile.read_text();print('PHASE_'+phase+'_NATIVE\n'+output,flush=True)
+            assert run.returncode==0 and 'ANYTOUR_TOP500_MONTHLY_TOOLING_OK' in output and 'Ran 17 tests' in output and 'skipped=' not in output,('NATIVE_VALIDATION_FAILED',phase,run.returncode)
+            module=(pathlib.Path(os.environ['RUNNER_TEMP'])/'monitor-price-hook.php').read_bytes()
+            assert len(module)==613581 and hashlib.sha256(module).hexdigest()=='41e9f0151f97691f91258ebb37714090ba0798c76db18c3870ff93bcc23d0c9a','PUBLISHER_BUNDLE_CHANGED'
+            subprocess.run(['git','-C',str(root),'diff','--check'],check=True)
+            entries=[]
+            for path in paths:
+              raw=(root/path).read_bytes();blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+              saved=api('git/blobs',{'content':base64.b64encode(raw).decode(),'encoding':'base64'});assert saved['sha']==blob
+              entries.append({'path':path,'mode':'100644','type':'blob','sha':blob})
+              dest=out/phase/path;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(raw)
+            tree=api('git/trees',{'base_tree':tree_base,'tree':entries})
+            evidence['phases'][phase]={'tree_sha':tree['sha'],'files':entries,'reader_hours':24 if phase=='A' else 36,'roster':660,'module_sha256':hashlib.sha256(module).hexdigest()}
+            (out/'tested-trees.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          print('RELIABILITY_CONSUMERS660_READY='+json.dumps(evidence,separators=(',',':')))
           PY
-      - name: Retain checked source objects without moving main or creating production runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import pathlib,json,hashlib,base64,subprocess,os
-          w=pathlib.Path(os.environ['RUNNER_TEMP'])/'consumer660';m=json.loads((w/'manifest.json').read_bytes());rows=[]
-          assert m['base']=='fd8565b2286f8ba253c847e70970fbaea5ffa0e9' and len(m['files'])==5
-          for r in m['files']:
-            raw=(w/'files'/r['path']).read_bytes();assert hashlib.sha256(raw).hexdigest()==r['sha256']
-            data=json.dumps({'content':base64.b64encode(raw).decode(),'encoding':'base64'}).encode()
-            result=json.loads(subprocess.check_output(['gh','api','--method','POST','repos/pyatkoff/poisk-turov-test/git/blobs','--input','-'],input=data,timeout=60));assert result['sha']==r['sha']
-            rows.append({**r,'mode':'100644','type':'blob'})
-          (w/'git-blobs.json').write_text(json.dumps({'base':m['base'],'publisher':m['publisher'],'blobs':rows,'branch_updates':0,'production_calls':0,'supplier_calls':0},indent=2)+'\n')
-          print('CONSUMER660_SOURCE_READY='+json.dumps(rows,separators=(',',':')))
-          PY
-      - name: Preserve exact original result and generated source
+      - name: Preserve native outcomes and exact two-phase source
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: consumer660-source-${{ github.run_id }}
-          path: ${{ runner.temp }}/consumer660/
+          name: reliability-consumers660-${{ github.run_id }}
+          path: ${{ runner.temp }}/reliability-consumers660/
           retention-days: 30
           if-no-files-found: error
