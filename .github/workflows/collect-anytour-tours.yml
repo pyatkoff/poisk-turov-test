@@ -1,4 +1,4 @@
-name: Read original660 receipt without terminal control output
+name: Read existing price release ownership without production
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
@@ -12,60 +12,43 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == 'c9cbb2bc427ebf9c017ecb12d166a4499dcd45d0' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == 'fb6636bdbe5bb4ca3242a7b9e588ca204adc2127' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 3
     steps:
-      - name: Read original results and live release metadata only
+      - name: Read bounded complete coordination inventory and current source status
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           umask 077
-          mkdir "$RUNNER_TEMP/completed660"
+          mkdir "$RUNNER_TEMP/price-owner"
           python3 - <<'PY'
-          import subprocess,json,pathlib,os,hashlib,re,gzip
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'completed660'
-          def raw(repo,path,ansi=False):
-            args=['gh','api']+(['--allow-escape-sequences'] if ansi else [])+['repos/pyatkoff/'+repo+'/'+path]
-            return subprocess.check_output(args,timeout=60)
-          def api(repo,path):return json.loads(raw(repo,path))
-          repo='poisk-turov-test';run=api(repo,'actions/runs/43949874410');jobs=api(repo,'actions/runs/43949874410/jobs?per_page=100')
-          assert run['event']=='schedule' and run['run_attempt']==1 and run['head_sha']=='e1b510bffc3c7f4214023a43528efbfe4915aaa3' and run['status']=='completed'
-          job=next(j for j in jobs['jobs'] if j['id']==133589639199);assert job['status']=='completed'
-          logs=raw(repo,'actions/jobs/133589639199/logs',True)
-          # Capture raw log bytes privately; never execute or emit its terminal controls.
-          (out/'original-production.log.gz').write_bytes(gzip.compress(logs,mtime=0))
-          text=logs.decode('utf-8-sig');markers=[]
-          for line in text.splitlines():
-            if 'MONITOR_POST_FEED_RESULT=' not in line:continue
-            tail=line.split('MONITOR_POST_FEED_RESULT=',1)[1]
-            try:value=json.JSONDecoder().raw_decode(tail)[0]
-            except json.JSONDecodeError:continue
-            if isinstance(value,dict):markers.append({'timestamp':line.split(' ',1)[0],'result':value})
-          record={'run':{k:run[k] for k in ['id','head_sha','event','run_attempt','status','conclusion','created_at','updated_at']},'job':{k:job[k] for k in ['id','name','status','conclusion','started_at','completed_at']},'log_bytes':len(logs),'log_sha256':hashlib.sha256(logs).hexdigest(),'results':markers,'production_calls':0}
-          (out/'original-run.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n')
-          assert len(markers)==1,('ORIGINAL_MARKERS',len(markers))
-          result=markers[0]['result'];short={k:v for k,v in result.items() if not isinstance(v,(dict,list))}
-          short['nested_keys']={k:(list(v) if isinstance(v,dict) else len(v)) for k,v in result.items() if isinstance(v,(dict,list))}
-          print('ORIGINAL_RESULT_SUMMARY='+json.dumps(short,ensure_ascii=True))
-          state={}
-          for r in ['max-search-bot','poisk-turov-test']:
-            state[r]={'main':api(r,'git/ref/heads/main')['object']['sha'],'active_runs':[]}
-            for status in ['in_progress','queued','waiting']:
-              data=api(r,'actions/runs?status='+status+'&per_page=100')
-              state[r]['active_runs'] += [{k:x[k] for k in ['id','name','path','head_sha','status','event']} for x in data['workflow_runs']]
-          comments=api('max-search-bot','issues/1122/comments?since=2026-11-16T18:00:00Z&per_page=100')
-          state['coordination']=[{'id':c['id'],'updated_at':c['updated_at'],'body':c['body']} for c in comments if c['id']!=6633089481 and any(x in c['body'].lower() for x in ['publisher','выпуск','1575','1582'])]
-          (out/'current-release-state.json').write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n')
-          print('READ_ONLY_SNAPSHOT_SAVED production_calls=0')
+          import subprocess,json,pathlib,os,re,datetime
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'price-owner'
+          def api(path):return json.loads(subprocess.check_output(['gh','api','repos/pyatkoff/max-search-bot/'+path],timeout=15))
+          comments=[]
+          for page in range(1,21):
+            batch=api('issues/1122/comments?per_page=100&page='+str(page));assert isinstance(batch,list)
+            comments.extend(batch)
+            if len(batch)<100:break
+          else:raise ValueError('incomplete_inventory')
+          assert len({c['id'] for c in comments})==len(comments)
+          publishers=[];candidates=[]
+          for c in comments:
+            b=c['body'];r={k:c[k] for k in ['id','created_at','updated_at','body']};r['owner_id']=c['user']['id']
+            if re.fullmatch(r'PR\d+: (?:выпуск занят|установлено, выпуск свободен)',b):publishers.append(r)
+            elif c['id']!=6633089481 and re.search(r'1575|1574|36.?h|36.?час|мониторинг.?цен|price.reliability|1142.owner|CONTENT33',b,re.I):candidates.append(r)
+          result={'observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'main':api('git/ref/heads/main')['object']['sha'],'inventory_count':len(comments),'inventory_complete':True,'publishers':publishers,'price_candidates':candidates,'source':api('pulls/1575'),'production_calls':0,'writes':0}
+          (out/'ownership.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print('OWNERSHIP_SUMMARY='+json.dumps({'count':len(comments),'active_publishers':[r for r in publishers if r['body'].endswith('выпуск занят')],'price_candidate_ids':[r['id'] for r in candidates]},ensure_ascii=True))
           PY
-      - name: Retain original outcome and exact coordination records
+      - name: Retain bounded ownership snapshot
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: completed660-original-outcome-${{ github.run_id }}
-          path: ${{ runner.temp }}/completed660/
+          name: existing-price-owner-${{ github.run_id }}
+          path: ${{ runner.temp }}/price-owner/
           retention-days: 14
           if-no-files-found: error
