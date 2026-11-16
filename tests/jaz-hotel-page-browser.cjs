@@ -119,7 +119,8 @@ function catalogueItems(key) {
         await page.locator('#questions').screenshot({ path: path.join(output, `jaz-${viewport.width}-questions.png`), animations: 'disabled' });
         await firstQuestion.locator('summary').click();
         assert.equal(await firstQuestion.evaluate(element => element.open), false);
-        record.wayfinding = { nav: quickNav, faqQuestions: 6, faqToggle: true, searchCtAs: 3 };
+        assert.equal(await page.locator('.jaz-room-step a').getAttribute('href'), '#search-title');
+        record.wayfinding = { nav: quickNav, faqQuestions: 6, faqToggle: true, searchCtAs: 2, roomStepAnchor: true };
         for (const fact of [/JAZY/, /Sunflower/, /Al Nakhil/]) {
           assert.match(serverHtml, fact, 'hotel stay facts must be in the server HTML');
           assert.match(record.stay, fact, 'hotel stay facts must be visible in their section');
@@ -144,7 +145,7 @@ function catalogueItems(key) {
         assert.equal(record.geometry.photoWidth, 1024, 'accepted photo did not load');
         assert.ok(record.geometry.cta.height >= 44, 'primary CTA is too short for ordinary taps');
         const links = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
-        assert.equal(links.length, 3, 'top, after-room and lower CTA must all retain the hotel context');
+        assert.equal(links.length, 2, 'both official hotel search links must be retained');
         assert.ok(links.every(link => link === links[0]), 'hotel CTAs must share the same validated trip context');
         const searchUrl = new URL(links[0], baseUrl.origin);
         assert.equal(searchUrl.pathname, baseUrl.pathname + '/poisk-turov/');

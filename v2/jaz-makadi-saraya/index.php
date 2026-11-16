@@ -174,7 +174,7 @@ sp_breadcrumbs([
                 <strong>Сравнили планировки?</strong>
                 <p>Проверьте доступные туры на свои даты. Конкретная категория номера и размещение указаны в условиях предложения.</p>
             </div>
-            <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Посмотреть туры</a>
+            <a class="sp-primary" href="#search-title">К подбору тура <span aria-hidden="true">↓</span></a>
         </div>
     </section>
 
