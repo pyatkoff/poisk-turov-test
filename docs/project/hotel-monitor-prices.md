@@ -9,8 +9,9 @@ reviewed LOCAL hook are unchanged. This change adds a DB-only adapter, no collec
 The four explicit fields are required; 1–100 unique Tourvisor IDs, one departure,
 future dates within 18 calendar months. Scope is the monitor's 5–14 nights, two
 adults, no children, RUB. It reads only `scheduled_monitor` observations within
-24 database-relative hours, returning up to three cheapest retained products per
-hotel. Each latest exact room/meal/operator/tour segment participates in ranking;
+strictly less than 36 database-relative hours, excluding future timestamps and
+returning up to three cheapest retained products per hotel. Each latest exact
+room/meal/operator/tour segment participates in ranking;
 no catalogue join or ANEX/legacy/name-based link is invented. Names come from the
 consumer's already accepted identity, not numeric equality in another table.
 
@@ -21,6 +22,14 @@ used by the feed and corresponding post draft. Do not add fuel to this amount or
 reuse the old SEO snapshot as a complete minimum: neither proves a final package.
 Stored naive observation timezone is explicitly unasserted. Export UTC time is
 not a new price check; source-age semantics remain database-relative.
+
+The 36-hour observation lifetime is separate from both collection cadence and
+the existing 24-hour completed-window coverage cutoff; neither changes here.
+An exported candidate expires after at most 15 minutes, capped by its remaining
+observation lifetime: `min(900, max(0, 129600 - ageSecondsAtExport))` seconds.
+At exactly 36 hours the observation is already ineligible. Re-export cannot
+extend its source lifetime or change its `recordId`. `observationWindowHours=36`
+describes this eligibility window, not a promise of complete collection coverage.
 
 This endpoint does **not** prove a current final total, flights, mandatory extras,
 availability or global market minimum. All such booleans remain false/unknown.
@@ -174,14 +183,16 @@ for that closeout. Changed evidence and unrelated unfinished cycles stay blocked
 This is forward-only: a source predating this terminal safely stops on it; any
 rollback must retain the terminal reader instead of re-enabling the old gate.
 
-The scheduled callback can process the full pinned roster within the existing
+The scheduled callback considers the full pinned roster within the existing
 1,800-second budget, reserving the final 300 seconds to finish the current pair.
+It stops admitting work at that boundary; a complete sweep is not guaranteed.
 It prioritizes never-updated pairs, then the oldest completed pairs. The existing
 non-scheduled CLI limit remains 30 pairs / 480 seconds. All paths use retained
 price observations only; the callback does not collect or quote prices again.
 An exact tour with a later saved operator rejection or room conflict stays held
 until a newer observation; other hotels continue. Empty or stale observations
-remain unpriced. These bounds do not establish daily coverage of every hotel and
+are skipped. This admission rule does not remove an old numeric price already
+present in a static post or feed. These bounds do not establish daily coverage of every hotel and
 date range: actual collector coverage and callback receipts remain authoritative.
 
 Completed record IDs are skipped. A subsequent automated caption is trusted only
@@ -195,6 +206,27 @@ are preserved and are not falsely reported as current channel versions.
 
 Source tests execute the real workflow shell with inert boundaries for scheduled
 success, supplier failure, manual invocation, rerun and callback failure. Runtime
-inspection verifies all 481 bindings without edits. A merged callback is enabled
+inspection verifies the pinned roster's bindings without edits. A merged callback is enabled
 for the next natural pass; only its actual receipt proves automatic execution.
+
+## Activating the 36-hour observation contract
+
+The compatible publisher bridge is reviewed separately in
+[max-search-bot PR1574](https://github.com/pyatkoff/max-search-bot/pull/1574).
+First pin both publisher checkouts to the same reviewed immutable bridge while
+the installed reader still exports the 24-hour contract. Obtain a read-only
+server receipt of that exact bundle's hash, size and admitted roster, and ensure
+no old consumer or queued old delivery can restore a 24-only publisher.
+
+Only then activate this reader's 36-hour SQL/metadata/expiry changes. The current
+SCP transfers the reader before the bundle; a combined merge without a verified
+installed bridge is not an atomic cutover. Bootstrap can also install the reader
+independently and must respect the same prerequisite. Merge/build success alone
+does not prove installation. Activation uses the next ordinary scheduled pass;
+no collector/editor rerun is required as a test.
+
+The bridge continues to read historical 24-hour receipts under their recorded
+limit. A wider policy does not change record IDs or reopen a terminal operation.
+Returning the reader to 24 hours is compatible with the bridge; a 24-only
+publisher must not replace it while the reader exports 36-hour snapshots.
 
