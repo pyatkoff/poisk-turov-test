@@ -1,68 +1,94 @@
-name: Read canonical price release admission without acquiring publisher
+name: Read current site price reader without production writes
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
     paths: ['.github/workflows/collect-anytour-tours.yml']
-permissions:
-  contents: read
-  actions: read
-  pull-requests: read
+permissions: {contents: read, actions: read}
 concurrency:
   group: anytour-monitor660-source-preparation
   cancel-in-progress: false
 jobs:
-  validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '8cfd43b99ee0d4276d9bc27a246dda7b207efe9e' && github.run_attempt == 1
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '3bbea4d6943400d4bf5b783c0d4388ec3e8989a5' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Authenticate source checks and call the unchanged canonical admission reader
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: "${{ github.sha }}", persist-credentials: false, fetch-depth: 2}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: "45ad1616caa1f7f96afb879439c8a21e9d345027", path: before, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: "9c552ba1783c740ff59c01d1c01ef13cdda43b92", path: after, persist-credentials: false}
+      - name: Check exact source and read only deployed file
         env:
           GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
         shell: bash
         run: |
           set -euo pipefail
           umask 077
-          mkdir "$RUNNER_TEMP/admission1575"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD^)" = 3bbea4d6943400d4bf5b783c0d4388ec3e8989a5
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/main --jq .object.sha)" = 9c552ba1783c740ff59c01d1c01ef13cdda43b92
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/source/1142-monitor660-20261116 --jq .object.sha)" = "$GITHUB_SHA"
+          test "$(git -C before hash-object v2/data/hotel-monitor-prices-v1.php)" = 25dfa4b5fda449b4d70bcf182811ce18db7c401f
+          test "$(git -C after hash-object v2/data/hotel-monitor-prices-v1.php)" = c93745ffdd95d04516563487b3fbcae3ff4a7306
+          php -l before/v2/data/hotel-monitor-prices-v1.php >/dev/null
+          php -l after/v2/data/hotel-monitor-prices-v1.php >/dev/null
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_KEY"
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9_.:-]+$ && "$DEPLOY_HOST" != -* ]]
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z0-9_-]+$ ]]
+          key="$RUNNER_TEMP/reader_key"
+          if [[ "$DEPLOY_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          w="$RUNNER_TEMP/reader36"
+          mkdir "$w"
+          ssh-keyscan -T 10 -t ed25519,ecdsa,rsa "$DEPLOY_HOST" 2>/dev/null | grep -v '^#' > "$w/known_hosts"
+          test -s "$w/known_hosts"
+          cat > "$w/reader.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $home=getenv('HOME');$p=$home.'/www/anytoour.ru/data/hotel-monitor-prices-v1.php';
+          if(!$home||is_link($p)||!is_file($p)||!is_readable($p)){echo '{"ok":false,"reason":"missing_or_unsafe"}';exit(2);}
+          $f=fopen($p,'rb');if(!$f){echo '{"ok":false,"reason":"open_failed"}';exit(2);}
+          $s=fstat($f);$raw=stream_get_contents($f,262145);fclose($f);
+          if(!is_array($s)||$s['size']<=0||$s['size']>262144||!is_string($raw)||strlen($raw)!==$s['size']){echo '{"ok":false,"reason":"size_mismatch"}';exit(2);}
+          $out=['ok'=>true,'bytes'=>strlen($raw),'blob'=>sha1('blob '.strlen($raw)."\0".$raw),'sha256'=>hash('sha256',$raw),'mode'=>decoct($s['mode']&0777),'writes'=>0,'db_calls'=>0];
+          echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          PHP
+          ssh -i "$key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$w/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=12 "$DEPLOY_USER@$DEPLOY_HOST" php < "$w/reader.php" > "$w/remote.json"
           python3 - <<'PY'
-          import subprocess,json,pathlib,os,base64,hashlib,re,datetime
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'admission1575'
-          def api(path):return json.loads(subprocess.check_output(['gh','api','repos/pyatkoff/max-search-bot/'+path],timeout=15))
-          head='94a90e85656da931e1693eb5e42c26974c3c5502';base='025d3fd8e949ea0c6de4db9e764b7d061039db7d'
-          pr=api('pulls/1575');assert pr['head']['sha']==head and pr['base']['sha']==base and not pr['draft'] and pr['state']=='open'
-          assert api('git/ref/heads/main')['object']['sha']==base
-          checks=[]
-          for rid in [43962560845,43962560767,43962560848]:
-            r=api('actions/runs/'+str(rid));assert r['head_sha']==head and r['event']=='pull_request' and r['run_attempt']==1
-            checks.append({k:r[k] for k in ['id','name','status','conclusion','head_sha','run_attempt','event']})
-          record={'head':head,'base':base,'source_checks':checks,'source_checks_passed':all(r['status']=='completed' and r['conclusion']=='success' for r in checks),'writes':0,'production_calls':0}
-          (out/'admission.json').write_text(json.dumps(record,indent=2)+'\n')
-          assert record['source_checks_passed'],'SOURCE_CHECKS_NOT_COMPLETE'
-          source=api('contents/tools/release_priority.js?ref='+base);code=base64.b64decode(source['content'])
-          assert hashlib.sha1(b'blob '+str(len(code)).encode()+b'\0'+code).hexdigest()=='3e99ee1bb51fc9536cf6214fde82c7a8f03a13d8'
-          file=out/'release_priority.js';file.write_bytes(code)
-          env=dict(os.environ,GITHUB_REPOSITORY='pyatkoff/max-search-bot',GITHUB_TOKEN=os.environ['GH_TOKEN'])
-          decision=subprocess.run(['node',str(file),'--admit','1575',head,base],env=env,capture_output=True,text=True,timeout=60)
-          (out/'canonical-admission.txt').write_text(decision.stdout+decision.stderr)
-          assert decision.returncode==0,('CANONICAL_ADMISSION_REFUSED',decision.stderr)
-          comments=[]
-          for page in range(1,21):
-            batch=api('issues/1122/comments?per_page=100&page='+str(page));comments.extend(batch)
-            if len(batch)<100:break
-          else:raise ValueError('incomplete_inventory')
-          publishers=[{'id':c['id'],'owner_id':c['user']['id'],'updated_at':c['updated_at'],'body':c['body']} for c in comments if re.fullmatch(r'PR\d+: выпуск занят',c['body'])]
-          owned=next(c for c in comments if c['id']==6930365076)
-          assert owned['user']['id']==226193297 and owned['body'].startswith('PRICE1142 / PR1575 — SOURCE завершён, publisher НЕ занят.')
-          assert api('git/ref/heads/main')['object']['sha']==base and api('pulls/1575')['head']['sha']==head
-          record.update(observed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),canonical_admission=decision.stdout,inventory_complete=True,inventory_count=len(comments),active_publishers=publishers,own_record={'id':owned['id'],'owner_id':owned['user']['id'],'updated_at':owned['updated_at']},publisher_acquisition_allowed=not publishers)
-          (out/'admission.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n')
-          print('CANONICAL1575='+json.dumps(record,ensure_ascii=True))
+          import json,hashlib,pathlib,os,base64
+          w=pathlib.Path(os.environ['RUNNER_TEMP'])/'reader36'
+          old=pathlib.Path('before/v2/data/hotel-monitor-prices-v1.php').read_bytes()
+          new=pathlib.Path('after/v2/data/hotel-monitor-prices-v1.php').read_bytes()
+          remote=json.loads((w/'remote.json').read_text())
+          assert remote['ok'] and remote['writes']==0 and remote['db_calls']==0
+          pins=[]
+          for line in (w/'known_hosts').read_text().splitlines():
+            p=line.split()
+            if len(p)==3:
+              pins.append({'kind':p[1],'sha256':'SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(p[2])).digest()).decode().rstrip('=')})
+          assert pins
+          data={'old_sha256':hashlib.sha256(old).hexdigest(),'new_sha256':hashlib.sha256(new).hexdigest(),'old_blob':'25dfa4b5fda449b4d70bcf182811ce18db7c401f','new_blob':'c93745ffdd95d04516563487b3fbcae3ff4a7306','remote':remote,'old_exact_match':remote['sha256']==hashlib.sha256(old).hexdigest(),'new_already_installed':remote['sha256']==hashlib.sha256(new).hexdigest(),'host_fingerprints':pins,'production_writes':0}
+          (w/'proof.json').write_text(json.dumps(data,indent=2)+'\n')
+          print('PRICE_READER_READ_ONLY '+json.dumps({k:data[k] for k in ('old_exact_match','new_already_installed','production_writes')}))
           PY
-      - name: Retain exact read-only admission
+      - name: Retain read-only evidence without credentials
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: canonical1575-admission-${{ github.run_id }}
-          path: ${{ runner.temp }}/admission1575/
+          name: reader36-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/reader36/proof.json
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: ignore
+      - name: Remove runner credential
+        if: always()
+        run: rm -f "$RUNNER_TEMP/reader_key"
