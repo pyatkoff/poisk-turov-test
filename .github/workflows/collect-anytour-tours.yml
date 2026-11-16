@@ -1,4 +1,4 @@
-name: Read existing price release ownership without production
+name: Read canonical price release admission without acquiring publisher
 on:
   push:
     branches: ['source/1142-monitor660-20261116']
@@ -12,43 +12,57 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == 'fb6636bdbe5bb4ca3242a7b9e588ca204adc2127' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.event.before == '8cfd43b99ee0d4276d9bc27a246dda7b207efe9e' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Read bounded complete coordination inventory and current source status
+      - name: Authenticate source checks and call the unchanged canonical admission reader
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           umask 077
-          mkdir "$RUNNER_TEMP/price-owner"
+          mkdir "$RUNNER_TEMP/admission1575"
           python3 - <<'PY'
-          import subprocess,json,pathlib,os,re,datetime
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'price-owner'
+          import subprocess,json,pathlib,os,base64,hashlib,re,datetime
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'admission1575'
           def api(path):return json.loads(subprocess.check_output(['gh','api','repos/pyatkoff/max-search-bot/'+path],timeout=15))
+          head='94a90e85656da931e1693eb5e42c26974c3c5502';base='025d3fd8e949ea0c6de4db9e764b7d061039db7d'
+          pr=api('pulls/1575');assert pr['head']['sha']==head and pr['base']['sha']==base and not pr['draft'] and pr['state']=='open'
+          assert api('git/ref/heads/main')['object']['sha']==base
+          checks=[]
+          for rid in [43962560845,43962560767,43962560848]:
+            r=api('actions/runs/'+str(rid));assert r['head_sha']==head and r['event']=='pull_request' and r['run_attempt']==1
+            checks.append({k:r[k] for k in ['id','name','status','conclusion','head_sha','run_attempt','event']})
+          record={'head':head,'base':base,'source_checks':checks,'source_checks_passed':all(r['status']=='completed' and r['conclusion']=='success' for r in checks),'writes':0,'production_calls':0}
+          (out/'admission.json').write_text(json.dumps(record,indent=2)+'\n')
+          assert record['source_checks_passed'],'SOURCE_CHECKS_NOT_COMPLETE'
+          source=api('contents/tools/release_priority.js?ref='+base);code=base64.b64decode(source['content'])
+          assert hashlib.sha1(b'blob '+str(len(code)).encode()+b'\0'+code).hexdigest()=='3e99ee1bb51fc9536cf6214fde82c7a8f03a13d8'
+          file=out/'release_priority.js';file.write_bytes(code)
+          env=dict(os.environ,GITHUB_REPOSITORY='pyatkoff/max-search-bot',GITHUB_TOKEN=os.environ['GH_TOKEN'])
+          decision=subprocess.run(['node',str(file),'--admit','1575',head,base],env=env,capture_output=True,text=True,timeout=60)
+          (out/'canonical-admission.txt').write_text(decision.stdout+decision.stderr)
+          assert decision.returncode==0,('CANONICAL_ADMISSION_REFUSED',decision.stderr)
           comments=[]
           for page in range(1,21):
-            batch=api('issues/1122/comments?per_page=100&page='+str(page));assert isinstance(batch,list)
-            comments.extend(batch)
+            batch=api('issues/1122/comments?per_page=100&page='+str(page));comments.extend(batch)
             if len(batch)<100:break
           else:raise ValueError('incomplete_inventory')
-          assert len({c['id'] for c in comments})==len(comments)
-          publishers=[];candidates=[]
-          for c in comments:
-            b=c['body'];r={k:c[k] for k in ['id','created_at','updated_at','body']};r['owner_id']=c['user']['id']
-            if re.fullmatch(r'PR\d+: (?:выпуск занят|установлено, выпуск свободен)',b):publishers.append(r)
-            elif c['id']!=6633089481 and re.search(r'1575|1574|36.?h|36.?час|мониторинг.?цен|price.reliability|1142.owner|CONTENT33',b,re.I):candidates.append(r)
-          result={'observed_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'main':api('git/ref/heads/main')['object']['sha'],'inventory_count':len(comments),'inventory_complete':True,'publishers':publishers,'price_candidates':candidates,'source':api('pulls/1575'),'production_calls':0,'writes':0}
-          (out/'ownership.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-          print('OWNERSHIP_SUMMARY='+json.dumps({'count':len(comments),'active_publishers':[r for r in publishers if r['body'].endswith('выпуск занят')],'price_candidate_ids':[r['id'] for r in candidates]},ensure_ascii=True))
+          publishers=[{'id':c['id'],'owner_id':c['user']['id'],'updated_at':c['updated_at'],'body':c['body']} for c in comments if re.fullmatch(r'PR\d+: выпуск занят',c['body'])]
+          owned=next(c for c in comments if c['id']==6930365076)
+          assert owned['user']['id']==226193297 and owned['body'].startswith('PRICE1142 / PR1575 — SOURCE завершён, publisher НЕ занят.')
+          assert api('git/ref/heads/main')['object']['sha']==base and api('pulls/1575')['head']['sha']==head
+          record.update(observed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),canonical_admission=decision.stdout,inventory_complete=True,inventory_count=len(comments),active_publishers=publishers,own_record={'id':owned['id'],'owner_id':owned['user']['id'],'updated_at':owned['updated_at']},publisher_acquisition_allowed=not publishers)
+          (out/'admission.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n')
+          print('CANONICAL1575='+json.dumps(record,ensure_ascii=True))
           PY
-      - name: Retain bounded ownership snapshot
+      - name: Retain exact read-only admission
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: existing-price-owner-${{ github.run_id }}
-          path: ${{ runner.temp }}/price-owner/
+          name: canonical1575-admission-${{ github.run_id }}
+          path: ${{ runner.temp }}/admission1575/
           retention-days: 14
           if-no-files-found: error
