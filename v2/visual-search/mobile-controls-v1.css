@@ -577,6 +577,7 @@ html:not(.quality-text-200) #results:not(.results-pristine) .results-heading:has
 
 
  .mobile-bottom>.mobile-sort{display:none}
+ .mobile-bottom>[data-action="top"] .mobile-nav-label{white-space:normal;text-align:center}
  .calendar-heading{gap:8px}
  .calendar-heading .text-button{padding-inline:4px;font-size:.875rem;min-height:44px}
 

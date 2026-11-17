@@ -1730,6 +1730,42 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
     if(r.resourceType()==='image'){await route.abort();return;}
     forbidden.push(u.pathname);await route.abort();
    });
+   {
+    await page.goto(origin+base+'visual-search/?scenario=price-change&searched=1');
+    const offer=page.locator('.hotel-card [data-card-entry="true"]').first();
+    await offer.waitFor();
+    const offerKey=await offer.getAttribute('data-key');
+    if(width===430){
+     const edit=page.locator('.mobile-bottom').getByRole('button',{name:'Изменить поиск'});
+     await edit.click();
+     await page.locator('#search-return:visible').click();
+     assert.equal(await offer.getAttribute('data-key'),offerKey,'editing and cancelling preserves the offered tour');
+    }
+    await offer.click();
+    const footer=page.locator('#modal-footer');
+    const total=footer.locator('#detail-total');
+    await footer.locator('[data-action="start-lead"]').waitFor();
+    assert.equal(await page.locator('#detail-total').count(),1);
+    assert.equal((await total.textContent()).replace(/\D/g,''),'186400');
+    assert.equal(await footer.locator('.tour-fuel-disclosure').count(),1,'fuel terms beside the selected-tour amount');
+    await footer.locator('[data-action="start-lead"]').click();
+    const approve=footer.locator('[data-action="accept-selected-price"]');
+    await approve.waitFor();
+    assert.equal(await approve.getAttribute('data-key'),offerKey);
+    assert.equal((await total.textContent()).replace(/\D/g,''),'195400');
+    assert.match((await footer.locator('.tour-price-history').textContent()).replace(/\s/g,''),/Ввыдаче186400/);
+    assert.equal(await page.locator('#modal-body .quote-price-change').count(),0,'changed amount and original listing are together by the action');
+    assert.equal(await page.locator('#prototype-lead-form').count(),0,'visitor must accept a changed price');
+    const box=await approve.boundingBox();
+    assert(box&&box.y>=0&&box.y+box.height<=height+1,'price acceptance fits on screen');
+    if(height===720||width===430)await page.screenshot({path:path.join(evidence,'tour-price-review-'+tag+'.png')});
+    await approve.click();
+    await page.locator('#prototype-lead-form').waitFor();
+    assert.equal((await amount()).replace(/\D/g,''),'195400');
+    await page.locator('#modal-back').click();
+    await footer.locator('[data-action="confirm-tour"]').waitFor();
+    assert.equal((await total.textContent()).replace(/\D/g,''),'195400','return retains the accepted amount');
+   }
    await page.goto(origin+base+'visual-search/?scenario=flights&searched=1');
    await page.locator('.hotel-card [data-action="hotel-details"]').first().click();
    await page.locator('.hotel-room-card').first().waitFor();
