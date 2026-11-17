@@ -65,6 +65,17 @@ class ExistingCollectorHook(unittest.TestCase):
             refs.append(values[0])
         self.assertEqual(refs[0], refs[1], 'production must use the publisher checked by validation')
 
+    def test_price27316_compatible_bundle_is_checked_before_production_copy(self):
+        source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
+        expected = '5bd038a50c756b951f9bbc29055b9bf755469066fb9e2719083cd544271abd7e'
+        self.assertEqual(source.count('ref: 9bb50fbc3a45c6a9d7a605f08075bf896b0a6d1a'), 2)
+        guard = 'test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' + "' '" + ' -f1)" = ' + expected
+        self.assertEqual(source.count(guard), 2)
+        self.assertIn('php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php', source)
+        production = source.split('\n  collect-production:\n', 1)[1]
+        self.assertLess(production.index(guard), production.index('      - name: Prepare SSH key'))
+        self.assertIn('"$RUNNER_TEMP/monitor-price-hook.php"', production.split('          scp ', 1)[1])
+
     def test_only_production_owns_the_existing_collector_lock(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
         top, jobs = source.split('\njobs:\n', 1)
