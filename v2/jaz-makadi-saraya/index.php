@@ -28,8 +28,9 @@ $galleryPhotos = [
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573324.jpg', 'caption' => 'Обеденная зона', 'alt' => 'Обеденный стол и гостиная за аркой в JAZ Makadi Saraya'],
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573318.jpg', 'caption' => 'Спальня', 'alt' => 'Спальня с двумя кроватями в JAZ Makadi Saraya'],
 ];
-/* Exact /hotel/20 official photo-pool captions; production use needs a verified media license.
- * No assumption that a category image proves the 55/70/100 sqm floor plan or a bookable code. */
+/* Exact /hotel/20 official photo-pool captions; owner requested use in preview on 2026-11-17.
+ * Attribution remains; no assumption that a category image proves the 55/70/100 sqm floor plan or a bookable code.
+ * Owner instruction is not a separate third-party license grant. */
 $officialPhotoPool = 'https://partner.jazhotels.com/hotel/20';
 $officialMedia = [
     ['caption' => 'One-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010907One%20Bedroom%20Apartment%20-%20Living%20Room%20Garden%20View.png', 'alt' => 'Гостиная One-Bedroom Apartment в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
@@ -335,7 +336,7 @@ sp_breadcrumbs([
         <details>
             <summary>Источники и подробности об отеле</summary>
             <div class="jaz-sources__body">
-                <p>Официальные фотографии категорий, бассейна, детского клуба и Sunflower — из <a href="<?=sp_e($officialPhotoPool)?>" rel="noreferrer">медиатеки JAZ Makadi Saraya</a> (отель №20). Снимки подписаны по категориям самим JAZ, но не подтверждают совпадение с конкретным номером или стоимостью тура. © Jaz Hotel Group; право повторного коммерческого использования требует проверки.</p>
+                <p>Официальные фотографии категорий, бассейна, детского клуба и Sunflower — из <a href="<?=sp_e($officialPhotoPool)?>" rel="noreferrer">медиатеки JAZ Makadi Saraya</a> (отель №20). Снимки подписаны по категориям самим JAZ, но не подтверждают совпадение с конкретным номером или стоимостью тура. Фотографии © Jaz Hotel Group.</p>
                 <p>Это JAZ Makadi Saraya Resort, ранее Iberotel Makadi Saraya Resort. Saraya Palms и Makadina — другие отели. Фотографии территории и интерьеров взяты из галереи этого отеля в каталоге Tourvisor; категории номеров и даты съёмки не указаны. Галерея проверена 16 ноября 2026 года.</p>
                 <p>Интурист описывает эти категории с видом на сад или бассейн и публикует максимум «4+1» для One-Bedroom Apartment и «5+1» для Two-Bedroom Apartment. Возрастные условия и все дополнительные места не раскрыты; пятое спальное место отдельно не описано. Закрывающиеся внутренние двери не подтверждены. Названия категорий у разных операторов не устанавливают точного соответствия номеру в туре.</p>
                 <p>Площади и названия категорий приведены по Интуристу. Питание, включённые услуги и допустимый состав гостей определяются условиями выбранного предложения. Описание категории не подтверждает её наличие на ваши даты.</p>
