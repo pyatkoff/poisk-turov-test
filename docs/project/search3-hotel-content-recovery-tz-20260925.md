@@ -1,5 +1,66 @@
 # AnyTour Search3 — восстановление фото и описаний отелей
 
+## LOCAL #4191 — проект допуска новой партии, 09.10.2026
+
+**Статус: DRAFT_NOT_EXECUTABLE.** Это предмет отдельного ревью служебного контракта по поручению владельца «давай»; runnable команда, новый operation ID, регистрация или разрешение доступа не добавляются. `safe_to_plan=false`, `safe_to_apply=false`. Исторический HC-1 ниже сохранён; его шаги и старые блокеры не являются очередью к повторному запуску.
+
+Рабочая основа этого проекта — release `d6ad28a36c96bc0123e86072a20e68003ecc3f1e`; прочитанный control — main `640a80c7aff2c965c79972a53b1cfe3568f2840d`. Каноническая координация [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217), текущая задача [#4191](https://github.com/pyatkoff/poisk-turov-test/issues/4191) OPEN. Свежие pins и claims перепроверяются перед каждым будущим разрешённым шагом. Исторический operational документ остаётся [на main](https://github.com/pyatkoff/poisk-turov-test/blob/640a80c7aff2c965c79972a53b1cfe3568f2840d/docs/project/local-profile-mass-plan-4191.md); его completed-пары не переносятся в новый допуск.
+
+### Подтверждённый пробел
+
+Существующий `AnyTourProfileEnrichmentV1` поддерживает партии до250, но planner допускает только четыре исторические пары operation/batch; основная apply-регистрация — exact36/71/130, source320 имеет отдельный consumed scope. Нового admitted CURRENT entrypoint для выбранной партии нет. Защиты работают по назначению; отсутствие общей команды не объявлено ошибкой.
+
+[Selected250 receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6084914903) подтверждает56 читаемых accepted canonical links и194 без active readable bridge/target. Среди56:28 empty12,17 partial,11 complete12;54 revision1 и2 revision2. Это public presentation, без private source/provenance/manual/exclusion proof. Ни56, ни250 не допущены к collector, planner или writer. 194 не передаются в create/MATCH этим пакетом; отсутствие bridge не обозначается SOURCE_MISSING.
+
+[Metadata250 terminal receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6056087504) относится к другой, закрытой исторической партии:250 PHASE3_INDEPENDENCE_UNPROVEN, source cards0, plans0, writes0. Её private список не содержится в public artifact; hashes/counts не заменяют точные ID. Повторно выполнять эту consumed серверную операцию нельзя. Уже сохранённые sealed receipts могут использоваться как evidence через допустимое чтение; это не повтор операции.
+
+### Вход и доказательства будущего допуска
+
+Рассматривается одна точная партия от1 до250 существующих canonical-профилей. Private roster связывает собственный AnyTour ID, принятый local ID и подтверждённый TV source ID через действующий identity owner; равенство чисел и название отеля не служат доказательством. Пары и source identities уникальны. Размер250 — предел, а не обязательная первая партия.
+
+| Private evidence | Обязательное содержание |
+| --- | --- |
+| Identity | Точные own/local/TV identities, accepted-link provenance и hashes, без новой связи или rebind |
+| CURRENT before-image | Revision, profile/alias hashes, история content operations, защита manual/editorial данных; revision2 не допускается правилом historical revision1 по аналогии |
+| Exclusions | Доступные полные exact manifests/receipts D1, historical366, source320, phase1/phase2 и остальных consumed/blocked scopes; оба пространства own и local/source; неизвестное не заменяется пустым списком |
+| UNKNOWN independence | Положительное доказательство непересечения с phase3, покрывающее обе стороны identity; отсутствие такого доказательства удерживает всю предлагаемую source-партию |
+| Retained source | Только после допустимой identity/exclusion классификации: существующая full TV card, её принадлежность тому же отелю, fingerprint/full-card hash, freshness и import provenance |
+| Sealing | Schema version, source/control pins, точный roster/digest, ссылки и hashes доказательств, время наблюдения; данные private, наружу только counts/holds/digests |
+
+Метаданные и source material рассматриваются через отдельный действительно допущенный контракт. Этот проект не открывает новый private reader или доступ к материалам stopped операции. Private receipt с count/digest без самого допустимого exact roster не удовлетворяет проверке пересечений.
+
+**Недостающий критерий independence:** существующее sealed доказательство должно задавать полный исторический universe, связанный с фактической семантикой старого selector и всем возможным интервалом его исполнения, и доказывать, что все потенциально затронутые own/local/source identities входили в него; новая партия исключает его в обоих пространствах. Другой возможный предмет отдельного ревью — authoritative immutable first-creation/commit evidence обеих identities после доказанной последней возможной активности старой операции, с полной проверкой отсутствия reuse, backdating, rebind и позднего продолжения. Такой evidence пока не найден; даты created_at/updated_at сами по себе не достаточны. Проект не разрешает строить новую реконструкцию stopped/UNKNOWN операции ради этого доказательства.
+
+Исторические9142 deferred не являются полным phase3 universe: её код предусматривал новый CURRENT snapshot. Пустые поля, revision1, нулевой prior-operation count, более мелкая партия и новая дата также не доказывают independence. Missing phase3 plan/started/receipt остаются NOT_RECORDED с count/digest=null; отсутствие файла не доказывает нулевые последствия. Положительный proof сейчас **не установлен ни для одного admitted cohort**; число действительно изменённых профилей этим проектом0.
+
+### Последовательность и границы полномочий
+
+| Этап | Проверяемый результат | Граница |
+| --- | --- | --- |
+| Ревью этого проекта | Согласованные требования и неустранённые evidence gaps | Документация; нет runnable command/admission |
+| Отдельный metadata/exclusion contract | Допустимый exact private roster, CURRENT metadata и положительный proof либо HOLD | Собственный admission; source cards/plans/apply/collector0; input seal до config/DB |
+| Отдельный retained plan contract | Existing owner формирует missing-only diff и sealed plan для admitted identities, сохраняет before-images | Непустые/ручные значения сохраняются; private source read отдельно допустим; supplier HTTP и writes0 |
+| Отдельный exact apply contract | Перед первой записью повторены все owner plans/hashes/CAS/source/provenance проверки и exclusive consume; каждый COMMIT прочитан обратно | Только существующий writer; profile+provenance одной транзакцией; реальные verified/unknown эффекты раздельно |
+| Приёмка данных | Те же own ID/revisions/fields через canonical endpoint и NEXT desktop/mobile | DB, endpoint и UI результаты отдельны; URL фото не равен успешной загрузке |
+
+Новая регистрация не может принимать произвольные caller ID/count/digest overrides или переименованную историческую команду. Plan не даёт права apply; review не даёт права CURRENT read. Если source material отсутствует, будущая retained-партия получает SOURCE_MISSING и не начинает supplier acquisition автоматически. Предлагаемый missing-only scope ограничен `description`, `primaryImage`, `images`. Остальные поля не допущены этим проектом. Выбор режима/флага SyncImported существующего owner сам по себе не расширяет этот scope и не разрешает замену непустых значений. Размер партии до250 не расширяет лимит конкретного owner scope: текущий explicit fill-missing contentScope допускает до20 targets; более крупный roster разбивается на допустимые exact scopes с общей проверкой всех планов до первой записи. Переключение флага ради увеличения лимита или замены значения не допускается.
+
+### HOLD и проверяемая приёмка будущей реализации
+
+- Недоступный/неполный exact exclusion manifest, недоказанное покрытие UNKNOWN, identity conflict/rebind, private digest drift или отсутствие допустимого reader → HOLD до source planning.
+- Manual/editorial данные, prior-operation provenance и revision drift → удержание строки по действующей owner policy; исторический revision1 контракт не расширяется на revision2.
+- Некорректная/несвежая source card или несоответствие ID/hash → SOURCE_PROVENANCE_HELD; пригодность не выводится из public DTO.
+- Completed/consumed/reserved или неоднозначная операция → не повторять apply, не менять имя/доставку. Потеря отчёта после COMMIT не означает0 writes; отдельно разрешённое чтение durable provenance может сверять exact будущий план без повторной записи.
+
+При реализации отдельного admitted контракта существующие тестовые owners должны проверять: обе identity области; duplicate/cross-pair/extra authority rejection; incomplete exclusions и UNKNOWN proof; input seal до подключения; source/manual/profile/alias drift; all-preflights-before-first-write; consume/no-replay; сбои до и после COMMIT; расхождение post-COMMIT readback и truthful partial/unknown counters. Тесты не устанавливают CURRENT пригодность реальной партии.
+
+Отдельное launcher-ревью на перечисленных pins:12 существующих Python-проверок parser/STOP/metadata receipts PASS; local exact metadata blobs сверены с GitHub. Native PHP/full CI/операционная приёмка в этом ревью не запускались. CI wiring recovery/inspection/metadata сохранён в stock wrapper test loader.
+
+[STOP6047119931](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6047119931), [#4464 DORMANT/BLOCKED](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6047185367), phase3 UNKNOWN/no-replay, HC-1 D1 и все прежние terminal ограничения сохраняются. Проект не снимает tool-safety отказ и не является его повтором или альтернативным исполнителем. Следующий implementation/admission рассматривается только при допустимом конкретном proof; сейчас source/control/workflow/runtime/DB/supplier/lead changes0.
+
+---
+
+
 **Техническое задание HC-1 · версия 1.0 · 25.09.2026**
 
 ## 1. Результат, основание и границы
