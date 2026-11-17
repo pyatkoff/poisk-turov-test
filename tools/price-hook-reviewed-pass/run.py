@@ -22,43 +22,51 @@ def main():
  ssh('umask 077; mkdir '+scratch,'scratch')
  for src in [ROOT/'install.php',ROOT/'feeds.php',tmp/'monitor-price-hook.php']:
   p=subprocess.run(['scp',*opts,str(src),remote+':'+scratch+'/'],capture_output=True);need(p.returncode==0,'stage_failed_no_retry')
- old=parse(ssh('php '+scratch+'/install.php inspect-old '+scratch+'/monitor-price-hook.php | tee '+scratch+'/preimage.json','inspect-old'));need(old['ok'] is True,'inspect_old_not_ok')
- before=parse(ssh('php '+scratch+'/feeds.php','feeds-before'));need(before['ok'] is True,'feeds_before_not_ok')
+ ready=parse(ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-start'));need(ready['ok'] is True,'installed_readback_failed')
+ before=parse(ssh('php '+scratch+'/feeds.php','feeds-start'));need(before['ok'] is True,'feeds_before_not_ok')
  config=json.loads((ROOT/'config.json').read_text());prefix=set(config['prefix_offer_ids']);need(len(prefix)==20,'prefix_scope_invalid')
- need(prefix<=before['files']['hotel-posts-all.xml']['rows'].keys(),'prefix_missing_before_install')
+ need(prefix<=before['files']['hotel-posts-all.xml']['rows'].keys(),'prefix_missing_before_pass')
  for name,digest in config['original_feed_preimages'].items():need(before['files'][name]['sha256']==digest,'original_feed_preimage_changed')
- admit.main()
- installed=parse(ssh('php '+scratch+'/install.php install '+scratch+'/monitor-price-hook.php '+scratch+'/preimage.json','install'));need(installed['ok'] is True,'install_not_ok')
- # Inspect-new rechecks pending/cycle/runtime under the hook journal lock. Do not
- # invoke default as a recovery path. Shared collector concurrency stays held.
- ready=parse(ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-installed'));need(ready['ok'] is True,'installed_readback_failed')
- admit.main()
- # Exactly-once intent; a disconnected native process is UNKNOWN, never repeated.
- command="set -euo pipefail; set -C; printf '%s\\n' '{\"run_id\":\""+os.environ['GITHUB_RUN_ID']+"\",\"mode\":\"default_saved_price_once\"}' > "+OP+"/pass-started.json; set +C; set +e; php "+TARGET+" > "+OP+"/pass.stdout; status=$?; set -e; cat "+OP+"/pass.stdout; exit $status"
- # Do not impose 480s hard timeout. Hook's original admission budget is unchanged.
- raw=ssh(command,'pass',False)
- # Always collect read-only outcomes after the one invocation, even nonzero or
- # disconnected/UNKNOWN. Never retry the price hook or infer nonexecution.
- afterraw=ssh('php '+scratch+'/feeds.php','feeds-after',False)
- postraw=ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-final',False)
- lines=[l.split(b'=',1)[1] for l in raw.splitlines() if l.startswith(b'MONITOR_POST_FEED_RESULT=')];need(len(lines)==1,'pass_result_ambiguous_unknown')
- result=json.loads(lines[0]);(out/'pass-result.json').write_bytes(lines[0]+b'\n')
- after=parse(afterraw);post=parse(postraw)
- need(after['ok'] is True and post['ok'] is True,'final_readback_not_clear')
  bundle=(tmp/'monitor-price-hook.php').read_text();encoded=re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',bundle)[1]
  rows=json.loads(gzip.decompress(base64.b64decode(encoded)))['rows'];bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(bytv)==660,'roster_invalid')
- updated={x['tourvisor_hotel_id'] for x in result.get('updates',[])};need(updated<=bytv.keys(),'updated_scope_invalid')
- allowed=set()
- for tv in updated:allowed.update(bytv[tv]['feed_binding']['offer_ids'].values())
- config=json.loads((ROOT/'config.json').read_text());prefix=set(config['prefix_offer_ids']);need(len(prefix)==20,'prefix_scope_invalid')
- for name,b in before['files'].items():
-  a=after['files'][name];need(list(a['rows'])==list(b['rows']),'feed_members_changed');need(a['envelope']==b['envelope'],'feed_envelope_changed')
-  for k,v in b['rows'].items():
-   need(a['rows'][k]['stable']==v['stable'],'feed_nonprice_changed')
-   if k not in allowed or k in prefix:need(a['rows'][k]['full']==v['full'],'unselected_or_prefix_offer_changed')
- need(prefix<=before['files']['hotel-posts-all.xml']['rows'].keys(),'prefix_missing')
- status=json.loads((out/'pass.status.json').read_text())['returncode']
- accepted=status==0 and result.get('ok') is True and result.get('installed_sha')==admit.APP and result.get('roster_pairs')==660 and result.get('budget_seconds')==480 and 0<=result.get('updated_pairs',-1)<=30 and all(result.get(k)==0 for k in ['new_posts','supplier_calls','site_writes']) and not any(result.get(k) for k in ['error','child_failure','pending','preflight_block','error_counts'])
- summary={'ok':accepted,'run_id':os.environ['GITHUB_RUN_ID'],'source':'d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a','installed_hook':NEW,'updated_pairs':result.get('updated_pairs'),'scanned_pairs':result.get('scanned_pairs'),'held_pairs':result.get('held_pairs'),'error_counts':result.get('error_counts'),'remaining_unscanned_pairs':result.get('remaining_unscanned_pairs'),'roster_pairs':660,'feed_counts':[670,670,1340],'tail_prefix10_preserved':True,'full_nightly_cycle_claimed':False}
- (out/'summary.json').write_text(json.dumps(summary)+'\n');need(accepted,'pass_not_cleanly_accepted_review_original')
+ original_before=before;seen_operations=set(config['previous_operations']);seen_hotels=set(config['previous_scanned_ids']);summaries=[]
+ # Two new default passes only. Existing per-pass 30/480s policy is unchanged.
+ # Each is admitted afresh and gets a unique exclusive marker. No nightly/replay.
+ for index in range(1,3):
+  admit.main()
+  ready=parse(ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-prepass-'+str(index)));need(ready['ok'] is True,'prepass_not_clear')
+  label='pass-'+str(index)
+  # Exactly-once intent; a disconnected native process is UNKNOWN, never repeated.
+  command="set -euo pipefail; set -C; printf '%s\\n' '{\"run_id\":\""+os.environ['GITHUB_RUN_ID']+"\",\"mode\":\"default_saved_price_once\"}' > "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+"-started.json; set +C; set +e; php "+TARGET+" > "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+".stdout; status=$?; set -e; cat "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+".stdout; exit $status"
+  # Do not impose 480s hard timeout. Hook's original admission budget is unchanged.
+  raw=ssh(command,label,False)
+  # Always collect read-only outcomes after the one invocation, even nonzero or
+  # disconnected/UNKNOWN. Never retry the price hook or infer nonexecution.
+  afterraw=ssh('php '+scratch+'/feeds.php','feeds-after-'+str(index),False)
+  postraw=ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-final-'+str(index),False)
+  lines=[l.split(b'=',1)[1] for l in raw.splitlines() if l.startswith(b'MONITOR_POST_FEED_RESULT=')];need(len(lines)==1,'pass_result_ambiguous_unknown')
+  result=json.loads(lines[0]);(out/(label+'-result.json')).write_bytes(lines[0]+b'\n')
+  after=parse(afterraw);post=parse(postraw)
+  need(after['ok'] is True and post['ok'] is True,'final_readback_not_clear')
+  bundle=(tmp/'monitor-price-hook.php').read_text();encoded=re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',bundle)[1]
+  rows=json.loads(gzip.decompress(base64.b64decode(encoded)))['rows'];bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(bytv)==660,'roster_invalid')
+  updated={x['tourvisor_hotel_id'] for x in result.get('updates',[])};need(updated<=bytv.keys(),'updated_scope_invalid')
+  allowed=set()
+  for tv in updated:allowed.update(bytv[tv]['feed_binding']['offer_ids'].values())
+  config=json.loads((ROOT/'config.json').read_text());prefix=set(config['prefix_offer_ids']);need(len(prefix)==20,'prefix_scope_invalid')
+  for name,b in before['files'].items():
+   a=after['files'][name];need(list(a['rows'])==list(b['rows']),'feed_members_changed');need(a['envelope']==b['envelope'],'feed_envelope_changed')
+   for k,v in b['rows'].items():
+    need(a['rows'][k]['stable']==v['stable'],'feed_nonprice_changed')
+    if k not in allowed or k in prefix:need(a['rows'][k]['full']==v['full'],'unselected_or_prefix_offer_changed')
+  need(prefix<=before['files']['hotel-posts-all.xml']['rows'].keys(),'prefix_missing')
+  status=json.loads((out/(label+'.status.json')).read_text())['returncode']
+  accepted=status==0 and result.get('ok') is True and result.get('installed_sha')==admit.APP and result.get('roster_pairs')==660 and result.get('budget_seconds')==480 and 0<=result.get('updated_pairs',-1)<=30 and all(result.get(k)==0 for k in ['new_posts','supplier_calls','site_writes']) and not any(result.get(k) for k in ['error','child_failure','pending','preflight_block','error_counts'])
+  summary={'ok':accepted,'run_id':os.environ['GITHUB_RUN_ID'],'source':'d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a','installed_hook':NEW,'updated_pairs':result.get('updated_pairs'),'scanned_pairs':result.get('scanned_pairs'),'held_pairs':result.get('held_pairs'),'error_counts':result.get('error_counts'),'remaining_unscanned_pairs':result.get('remaining_unscanned_pairs'),'roster_pairs':660,'feed_counts':[670,670,1340],'tail_prefix10_preserved':True,'pass_index':index,'full_nightly_cycle_claimed':False}
+  (out/('summary-'+str(index)+'.json')).write_text(json.dumps(summary)+'\n');need(accepted,'pass_not_cleanly_accepted_review_original')
+  operations={u['operation'] for u in result.get('updates',[])};need(not(operations & seen_operations),'operation_repeated');seen_operations|=operations
+  seen_hotels.update(updated);seen_hotels.update(x['tourvisor_hotel_id'] for x in result.get('deferred',[]));seen_hotels.update(result.get('unchanged_ids',[]));seen_hotels.update(result.get('held_ids',[]));summary['cumulative_unique_scanned']=len(seen_hotels)
+  summaries.append(summary);(out/'continuation-summary.json').write_text(json.dumps({'ok':True,'verified_passes':summaries,'updated_pairs':sum(x['updated_pairs'] for x in summaries),'stopped_complete_scan':result.get('scan_complete') is True})+'\n')
+  if result.get('scan_complete') is True:break
+  before=after
 if __name__=='__main__':main()

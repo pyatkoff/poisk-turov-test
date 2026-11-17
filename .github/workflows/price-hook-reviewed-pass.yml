@@ -1,4 +1,4 @@
-name: One original reviewed saved-price acceptance
+name: Two new bounded saved-price continuation passes
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   issues: read
 jobs:
   accept:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5ecbb946fbfb6b780daed665e371a490f61a93a2'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0f1e6900bbce74d8a75b57dc64af9aa92dc43053'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -62,7 +62,7 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Fresh admission, atomic installation, one original saved-price pass
+      - name: Fresh admission, two new default passes without reinstallation
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}

@@ -9,12 +9,12 @@ def need(v,why):
 def api(repo,path):return json.loads(subprocess.check_output(['gh','api','--method','GET','repos/pyatkoff/'+repo+'/'+path],timeout=40))
 def main():
  c=json.loads((BASE/'config.json').read_text());e=json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text())
- need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']==MAIN,'original_event_required')
+ need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']=='0f1e6900bbce74d8a75b57dc64af9aa92dc43053','original_event_required')
  need(api('poisk-turov-test','git/ref/heads/'+BRANCH)['object']['sha']==os.environ['GITHUB_SHA'],'carrier_moved')
  need(api('poisk-turov-test','git/ref/heads/main')['object']['sha']==MAIN,'consumer_main_moved')
  need(api('max-search-bot','git/ref/heads/main')['object']['sha']==APP,'runtime_main_moved')
  need(api('max-search-bot','git/ref/heads/audit/price660-27316-resume-readiness-20261117')['object']['sha']=='567506b5b852b8229b9c2777281df5570c91b5cc','feed_carrier_moved')
- claim=api('poisk-turov-test','issues/comments/6964035359');need(claim['user']['id']==226193297 and hashlib.sha256(claim['body'].encode()).hexdigest()==c['claim_sha256'],'claim_changed')
+ claim=api('poisk-turov-test','issues/comments/6964376497');need(claim['user']['id']==226193297 and hashlib.sha256(claim['body'].encode()).hexdigest()==c['claim_sha256'],'claim_changed')
  permit=api('max-search-bot','issues/comments/6957283506');p=json.loads(permit['body']);need(permit['user']['id']==226193297 and p['write_permission']=='NONE' and p['execution_run_id']==44194475794 and p['writer_started'] is False,'feed_permit_not_closed')
  for rid in [44187866614,44190041893,44190041835,44190042006]:
   r=api('max-search-bot','actions/runs/'+str(rid));need(r['head_sha']==APP and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','runtime_not_accepted')
