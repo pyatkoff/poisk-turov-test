@@ -184,7 +184,7 @@ function catalogueItems(key) {
         const quickNav = await page.locator('.jaz-quick-nav a').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.deepEqual(quickNav, ['#price-example', '#interiors', '#rooms', '#stay', '#location', '#questions']);
         assert.match(serverHtml, /Частые вопросы о JAZ Makadi Saraya/, 'FAQ must be in server-rendered HTML');
-        assert.match(serverHtml, /Курортный отель в Макади-Бей/, 'hotel positioning must be in server-rendered HTML');
+        assert.equal(await page.locator('.jaz-hero .jaz-lead').count(), 0, 'no family/room sales pitch before the price');
         assert.match(serverHtml, /Найдённая минимальная цена/, 'minimum price must be visible in server HTML even before client fetch');
         assert.equal(await page.locator('#questions details').count(), 6);
         const firstQuestion = page.locator('#questions details').first();
@@ -271,6 +271,8 @@ function catalogueItems(key) {
         assert.match(priceWarnings, /14/);
         assert.match(priceWarnings, /Наличие не проверено/);
         assert.match(await pricePanel.locator('.jaz-price__tag').innerText(), /не итоговая стоимость/);
+        const mainCtaTop = await page.locator('[data-hotel-search]').first().evaluate(el => el.getBoundingClientRect().top);
+        if (viewport.width === 430) assert.ok(mainCtaTop < viewport.height, 'main hotel CTA must follow the minimum price within first mobile screen');
         const priceLink = new URL(await pricePanel.locator('[data-price-search-link]').getAttribute('href'), baseUrl.origin);
         assert.equal(priceLink.pathname, baseUrl.pathname + '/poisk-turov/');
         assert.equal(priceLink.searchParams.get('hotel'), '268');

@@ -200,3 +200,27 @@
  .jaz-room-photos{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
  .jaz-room-photos figcaption{font-size:11px;overflow-wrap:anywhere}
 }
+
+/* SITE1719 phase7 review: one compact observed minimum, immediately followed by tour search. */
+.jaz-hero .jaz-price{margin-top:3px;padding:11px 14px}
+.jaz-hero .jaz-price h2{margin-top:2px;font-size:19px}
+.jaz-hero .jaz-price__action{display:block}
+.jaz-hero .jaz-price__result{margin:5px 0 0;padding:5px 0 0}
+.jaz-hero .jaz-price__amount{margin-top:0;font-size:clamp(31px,3.2vw,40px)}
+.jaz-hero .jaz-price__tag{display:block;margin-top:3px;color:var(--at-muted);font-size:11px}
+.jaz-hero .jaz-price__result p{margin-top:4px;font-size:11px;line-height:1.35}
+.jaz-hero .jaz-price__result a{min-height:34px;margin-top:4px;font-weight:750}
+.jaz-hero .jaz-price__details{margin:3px 0 0}
+.jaz-hero .jaz-price__details summary{font-size:11px;color:var(--at-muted);cursor:pointer}
+.jaz-hero .jaz-price__details .jaz-price__source{margin:4px 0 0;font-size:11px}
+.jaz-hero .jaz-price__status{margin:5px 0 0;font-size:11px}
+.jaz-hero .jaz-price[data-price-state="observed"] .jaz-price__status{display:none}
+.jaz-hero .jaz-price__button{min-height:28px;margin:0;padding:2px 0;font-size:11px}
+.jaz-hero__body .jaz-hero__actions{margin-top:8px}
+.jaz-hero__body .jaz-facts{margin-top:7px}
+@media(max-width:600px){
+ .jaz-hero .jaz-price{padding:10px 12px}
+ .jaz-hero .jaz-price h2{font-size:18px}
+ .jaz-hero .jaz-price__amount{font-size:34px}
+ .jaz-hero .jaz-price__result p{font-size:10.5px}
+}

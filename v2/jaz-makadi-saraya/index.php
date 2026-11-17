@@ -99,38 +99,36 @@ sp_breadcrumbs([
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
         <div class="jaz-hero__body">
-            <p class="jaz-lead">Курортный отель в Макади-Бей: бассейны, рестораны и пляж на второй линии. Посмотрите минимальную найденную цену и подберите тур на свои даты.</p>
             <div id="price-example" class="jaz-price" aria-label="Минимальная найденная цена"
-                     data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
-                     data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
-                <div>
-                    <span class="jaz-eyebrow">Цены на туры</span>
-                    <h2 id="jaz-price-title">Найдённая минимальная цена</h2>
-                    <p>Самая низкая свежая цена из мониторинга <strong>с вылетом из Москвы, на двоих</strong> за ближайший год.</p>
-                    <p class="jaz-caption">Не окончательная стоимость тура: доплаты и наличие проверяются отдельно.</p>
-                </div>
-                <div class="jaz-price__action">
-                    <button type="button" class="jaz-price__button" data-price-load>Обновить найденную цену</button>
-                    <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Проверяем свежие цены…</p>
-                    <div class="jaz-price__result" data-price-result hidden>
-                        <span class="jaz-price__tag">Минимум среди свежих наблюдений — не итоговая стоимость</span>
-                        <strong class="jaz-price__amount" data-price-amount></strong>
-                        <p data-price-terms></p>
-                        <p class="jaz-price__warning" data-price-extra></p>
+             data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
+             data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
+            <span class="jaz-eyebrow">Туры из Москвы · двое взрослых</span>
+            <h2 id="jaz-price-title">Найдённая минимальная цена</h2>
+            <div class="jaz-price__action">
+                <div class="jaz-price__result" data-price-result hidden>
+                    <strong class="jaz-price__amount" data-price-amount></strong>
+                    <span class="jaz-price__tag">Найдено в мониторинге — не итоговая стоимость</span>
+                    <p data-price-terms></p>
+                    <p class="jaz-price__warning" data-price-extra></p>
+                    <a class="jaz-text-link" data-price-search-link href="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>" hidden>Проверить туры на эти даты <span aria-hidden="true">→</span></a>
+                    <details class="jaz-price__details">
+                        <summary>Когда найдена цена</summary>
                         <p class="jaz-price__source" data-price-source></p>
-                        <a class="jaz-text-link" data-price-search-link href="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>" hidden>Проверить туры на эти даты <span aria-hidden="true">→</span></a>
-                    </div>
+                    </details>
                 </div>
+                <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Проверяем свежие цены…</p>
+                <button type="button" class="jaz-price__button" data-price-load>Обновить цену</button>
+            </div>
+        </div>
+            <div class="jaz-hero__actions">
+                <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты</a>
+                <a class="jaz-text-link" href="#interiors">Посмотреть фотографии <span aria-hidden="true">↓</span></a>
             </div>
             <ul class="jaz-facts" aria-label="Главные особенности отеля">
                 <li>3 бассейна и 2 детских</li>
                 <li>Пляж на второй линии</li>
                 <li>JAZY Kids Club</li>
             </ul>
-            <div class="jaz-hero__actions">
-                <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты</a>
-                <a class="jaz-text-link" href="#interiors">Посмотреть фотографии <span aria-hidden="true">↓</span></a>
-            </div>
             <p class="jaz-caption">JAZ уже выбран в форме. Указанные условия поездки сохраняются при переходе в поиск.</p>
             <?php foreach ($handoff['notices'] as $notice): ?>
                 <p class="jaz-handoff-notice"><?=sp_e($notice)?></p>
