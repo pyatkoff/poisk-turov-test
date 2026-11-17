@@ -944,8 +944,14 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="all-offers"][data-id="501"]');click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn+2,'an explicit new search invalidates the old TV selection');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/120000/);
- assert.match(q('.tour-fuel-disclosure').textContent,/Сбор уточняется/,'blank pair fuel never becomes zero or inherits the tour amount');
- click('[data-action="confirm-tour"]');await settle();assert.match(q('.tour-fuel-disclosure').textContent,/Сбор уточняется/,'application retains unknown fuel');
+ const assertUnknownFuel=()=>{
+  const disclosure=q('.tour-fuel-disclosure');
+  assert.equal(disclosure.querySelector('summary').textContent.trim(),'Детали цены');
+  assert.match(disclosure.textContent,/Разбивка по сборам не указана/);
+  assert.doesNotMatch(disclosure.textContent,/Без доплаты|включён в цену|[0-9]/i,'missing fuel supplies neither a value nor an inclusion claim');
+ };
+ assertUnknownFuel();
+ click('[data-action="confirm-tour"]');await settle();assertUnknownFuel();
  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/120000/,'unknown fuel never changes the offered total');
  click('[data-action="close-modal"]');await settle();
  // A flight price cannot inherit the tour's fuel-inclusion assurance when its own fee is absent.

@@ -1762,8 +1762,8 @@ function fuelIncludedInPrice(o){
 }
 function fuelText(o){const n=fuelAmount(o);return n===null?'Сбор уточняется':n===0?'Без доплаты по сбору':money(n)+(fuelIncludedInPrice(o)?' · включён в цену':' · включение в цену уточняется');}
 function selectedPriceStatus(o,includeFuel=true){
- if(o?.priceAcceptancePending)return 'Новая цена · подтвердите';
- if(o.provider==='fixture'&&o.raw?.prototypeConditions)return o.loading?'Проверяем условия · демо':o.quoteError?'Цена не подтверждена · демо':o.priceAcceptancePending?'Новая цена · подтвердите':o.tour?'Условия проверены · демо':'Цена из выдачи · демо';
+ if(o?.priceAcceptancePending)return 'Цена после актуализации';
+ if(o.provider==='fixture'&&o.raw?.prototypeConditions)return o.loading?'Проверяем условия · демо':o.quoteError?'Цена не подтверждена · демо':o.tour?'Условия проверены · демо':'Цена из выдачи · демо';
  if(o.provider==='fixture')return 'Демонстрационная цена';
  if(o.provider==='recorded')return 'Цена из записи';
  if(o.quoteError)return 'Цена из выдачи · не подтверждена';
@@ -1771,11 +1771,19 @@ function selectedPriceStatus(o,includeFuel=true){
  if(!flightPairFor(o))return 'Цена предложения · перелёт уточняется';
  if(!includeFuel)return 'Цена с выбранными рейсами';
  const fuel=fuelAmount(o);
- return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами · сбор уточняется':fuelIncludedInPrice(o)?'Цена с выбранными рейсами · сбор включён':'Цена с выбранными рейсами · включение сбора уточняется';
+ return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами':fuelIncludedInPrice(o)?'Цена с выбранными рейсами · сбор включён':'Цена с выбранными рейсами · включение сбора уточняется';
 }
 function fuelDisclosureHTML(o){
- const n=fuelAmount(o);
- return `<details class="tour-fuel-disclosure"><summary id="detail-fuel-summary"><span>Топливный сбор</span><strong>${esc(fuelText(o))}</strong></summary><p>${n===null?'Размер сбора и его включение в цену нужно проверить.':n===0?'По данным предложения. Другие возможные доплаты требуют проверки.':fuelIncludedInPrice(o)?'Уже учтён в показанной стоимости тура. Дополнительно прибавлять его не нужно.':'Не указано, входит ли сбор в цену предложения или оплачивается дополнительно.'}</p></details>`;
+ const amount=fuelAmount(o);
+ let summary='<span>Детали цены</span>';
+ let description='Разбивка по сборам не указана.';
+ if(amount!==null){
+  summary=`<span>Топливный сбор</span><strong>${esc(fuelText(o))}</strong>`;
+  if(amount===0)description='По этому предложению топливной доплаты нет.';
+  else if(fuelIncludedInPrice(o))description='Топливный сбор уже входит в показанную цену.';
+  else description='Не указано, входит ли сбор в цену предложения или оплачивается дополнительно.';
+ }
+ return `<details class="tour-fuel-disclosure"><summary id="detail-fuel-summary">${summary}</summary><p>${description}</p></details>`;
 }
 function withFlightPair(o,id){
  const variant=flightPairFor({...o,flightChoiceId:id});if(!variant)return null;
@@ -1931,7 +1939,10 @@ function quotePriceChangeHTML(o,compact=false,checkedTotal=data.amount(o?.tour?.
  if(!quoteChanged&&!pairChanged&&before===after)return '';
  if(besideTotal){
   const history=[];
-  if(before!==after)history.push('В выдаче '+money(before));
+  if(before!==after){
+   const difference=after-before;
+   history.push('На '+money(Math.abs(difference))+(difference>0?' дороже':' дешевле'),'В выдаче '+money(before));
+  }
   if(quoteChanged&&checked!==after)history.push('После проверки '+money(checked));
   return history.length?`<p class="tour-price-history" role="status">${history.join(' · ')}</p>`:'';
  }
