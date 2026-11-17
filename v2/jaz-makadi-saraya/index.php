@@ -28,6 +28,19 @@ $galleryPhotos = [
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573324.jpg', 'caption' => 'Обеденная зона', 'alt' => 'Обеденный стол и гостиная за аркой в JAZ Makadi Saraya'],
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573318.jpg', 'caption' => 'Спальня', 'alt' => 'Спальня с двумя кроватями в JAZ Makadi Saraya'],
 ];
+/* Extra hotel-level frames from accepted AnyTour99/rev1 canonical image inventory.
+ * No photo-to-room-code/category claims; reuse remains scoped to isolated preview. */
+$extraGalleryPhotos = [
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573300.jpg', 'caption' => 'Фото отеля 1', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 1'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573302.jpg', 'caption' => 'Фото отеля 2', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 2'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573306.jpg', 'caption' => 'Фото отеля 3', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 3'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573310.jpg', 'caption' => 'Фото отеля 4', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 4'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573312.jpg', 'caption' => 'Фото отеля 5', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 5'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573315.jpg', 'caption' => 'Фото отеля 6', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 6'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573317.jpg', 'caption' => 'Фото отеля 7', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 7'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573320.jpg', 'caption' => 'Фото отеля 8', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 8'],
+    ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573325.jpg', 'caption' => 'Фото отеля 9', 'alt' => 'Дополнительное фото JAZ Makadi Saraya Resort, кадр 9'],
+];
 $officialUrl = 'https://www.jazhotels.com/hoteldetail/20-egypt-hurghada-makadi-bay-jaz-makadi-saraya-resort/overview';
 $factsheetUrl = 'https://partner.jazhotels.com/Images/uploads/gallery/Downloads/JazMakadiSaraya/JAZ%20Makadi%20Saraya%20-Factsheet.pdf.pdf';
 $intouristUrl = 'https://intourist.ru/info/egypt/hurgada/makadi-bej/hotel/jaz-makadi-saraya';
@@ -43,7 +56,7 @@ $hotelSchema = [
     'alternateName' => 'Iberotel Makadi Saraya Resort',
     'url' => 'https://anytoour.ru/jaz-makadi-saraya/',
     'sameAs' => $officialUrl,
-    'image' => array_merge([$photoUrl], array_column($galleryPhotos, 'url')),
+    'image' => array_merge([$photoUrl], array_column($galleryPhotos, 'url'), array_column($extraGalleryPhotos, 'url')),
     'address' => [
         '@type' => 'PostalAddress',
         'streetAddress' => 'Makadi Bay, Madinat Makadi, P.O. Box 178',
@@ -80,7 +93,7 @@ sp_breadcrumbs([
                 <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
                      alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
                      fetchpriority="high" decoding="async">
-                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 4 фото</span>
+                <span class="jaz-photo-hint" aria-hidden="true">Смотреть <?=sp_e((string)(1 + count($galleryPhotos) + count($extraGalleryPhotos)))?> фото</span>
             </a>
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
@@ -128,7 +141,22 @@ sp_breadcrumbs([
                 </figure>
             <?php endforeach; ?>
         </div>
-        <p class="jaz-caption">Это фотографии интерьеров отеля, а не подтверждённые снимки конкретных категорий номеров.</p>
+        <details class="jaz-gallery-more">
+            <summary>Посмотреть ещё <?=count($extraGalleryPhotos)?> фото отеля</summary>
+            <div class="jaz-gallery jaz-gallery--more">
+                <?php foreach ($extraGalleryPhotos as $extraPhoto): ?>
+                    <figure>
+                        <a href="<?=sp_e($extraPhoto['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                           data-photo-caption="<?=sp_e($extraPhoto['caption'])?>" data-photo-note="Фото отеля из каталога; категория и дата съёмки неизвестны"
+                           aria-label="<?=sp_e('Открыть фото: ' . $extraPhoto['caption'])?>">
+                            <img src="<?=sp_e($extraPhoto['url'])?>" width="1024" height="683" alt="<?=sp_e($extraPhoto['alt'])?>" loading="lazy" decoding="async">
+                        </a>
+                        <figcaption><?=sp_e($extraPhoto['caption'])?></figcaption>
+                    </figure>
+                <?php endforeach; ?>
+            </div>
+        </details>
+        <p class="jaz-caption">Фотографии из каталога JAZ Makadi Saraya Resort. Категории номеров на этих снимках не установлены: выбирайте номер по условиям конкретного тура.</p>
     </section>
 
     <section id="rooms" aria-labelledby="rooms-title">
