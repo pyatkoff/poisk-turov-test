@@ -47,6 +47,7 @@ $corendonUrl = 'https://www.corendon.nl/egypte/rode-zee/hurghada/makadi-bay/jaz-
 $pageCssUrl = v2_site_href('/jaz-makadi-saraya/page.css') . '?v=' . v2_asset_content_version(__DIR__ . '/page.css');
 $viewerCssUrl = v2_site_href('/hotel-photo-viewer-v1.css') . '?v=' . v2_asset_content_version(dirname(__DIR__) . '/hotel-photo-viewer-v1.css');
 $galleryScriptUrl = v2_site_href('/jaz-makadi-saraya/gallery.js') . '?v=' . v2_asset_content_version(__DIR__ . '/gallery.js');
+$priceScriptUrl = v2_site_href('/jaz-makadi-saraya/price-observation.js') . '?v=' . v2_asset_content_version(__DIR__ . '/price-observation.js');
 $hotelSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'Hotel',
@@ -70,6 +71,7 @@ sp_head($context);
 <link rel="stylesheet" href="<?=sp_e($viewerCssUrl)?>">
 <link rel="stylesheet" href="<?=sp_e($pageCssUrl)?>">
 <script src="<?=sp_e($galleryScriptUrl)?>" defer></script>
+<script src="<?=sp_e($priceScriptUrl)?>" defer></script>
 <?php
 sp_header($context);
 sp_breadcrumbs([
@@ -120,6 +122,7 @@ sp_breadcrumbs([
         <a href="#rooms">Номера</a>
         <a href="#stay">Бассейны и питание</a>
         <a href="#location">Пляж</a>
+        <a href="#price-example">Ценовой ориентир</a>
         <a href="#questions">Частые вопросы</a>
     </nav>
 
@@ -287,6 +290,29 @@ sp_breadcrumbs([
             <span class="jaz-eyebrow">Адрес отеля</span>
             <address>Makadi Bay, Madinat Makadi, P.O. Box 178, Hurghada, Red Sea, Egypt</address>
             <a href="<?=sp_e($officialUrl)?>" rel="noreferrer">Страница отеля JAZ <span aria-hidden="true">↗</span></a>
+        </div>
+    </section>
+
+    <section id="price-example" class="jaz-price" aria-labelledby="jaz-price-title"
+             data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
+             data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
+        <div>
+            <span class="jaz-eyebrow">Цены на туры</span>
+            <h2 id="jaz-price-title">Какие цены находили?</h2>
+            <p>Посмотрите пример для <strong>двух взрослых с вылетом из Москвы</strong> в ближайшие четыре месяца. Для семьи цена будет другой.</p>
+            <p class="jaz-caption">Это наблюдение мониторинга, а не подтверждённая итоговая цена. Наличие и доплаты проверяются в поиске.</p>
+        </div>
+        <div class="jaz-price__action">
+            <button type="button" class="jaz-price__button" data-price-load>Показать ценовой ориентир</button>
+            <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Данные загрузятся только после нажатия.</p>
+            <div class="jaz-price__result" data-price-result hidden>
+                <span class="jaz-price__tag">Найденная цена — не итоговая стоимость</span>
+                <strong class="jaz-price__amount" data-price-amount></strong>
+                <p data-price-terms></p>
+                <p class="jaz-price__warning" data-price-extra></p>
+                <p class="jaz-price__source" data-price-source></p>
+                <a class="jaz-text-link" data-price-search-link href="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>" hidden>Проверить туры на эти даты <span aria-hidden="true">→</span></a>
+            </div>
         </div>
     </section>
 
