@@ -208,7 +208,9 @@ function catalogueItems(key) {
         }
         const officialImgs = page.locator('.jaz-official-photo img');
         assert.equal(await officialImgs.count(), officialMedia.length, 'must show exactly 6 official media candidates');
-        assert.equal(await page.locator('.jaz-official-photo figcaption').count(), 0, 'source/rights boilerplate must not clutter commercial cards');
+        assert.deepEqual(await page.locator('.jaz-official-photo figcaption').allInnerTexts(),
+          ['One-Bedroom Apartment', 'Two-Bedroom Apartment', 'Family Deluxe'],
+          'compact room photos must carry exact hotel-category captions');
         assert.match(await page.locator('.jaz-photo-hint').innerText(), /10 фото/, 'hero photo count must include new images');
         for (const img of await officialImgs.all()) {
           await img.scrollIntoViewIfNeeded();
