@@ -3,9 +3,10 @@
 .jaz-page>section{margin:0!important;min-width:0;scroll-margin-top:88px}
 .jaz-page h1,.jaz-page h2,.jaz-page h3{color:var(--at-ink);letter-spacing:-.035em;text-wrap:balance}
 .jaz-eyebrow{display:block;color:var(--at-brand);font-size:12px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;line-height:1.5}
-.jaz-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"heading photo" "body photo";column-gap:36px;padding:30px;border:1px solid var(--at-line);border-radius:24px;background:#fff;box-shadow:0 12px 36px rgba(31,51,112,.055)}
+.jaz-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"heading photo" "price photo" "body photo";column-gap:36px;padding:30px;border:1px solid var(--at-line);border-radius:24px;background:#fff;box-shadow:0 12px 36px rgba(31,51,112,.055)}
 .jaz-hero__heading{grid-area:heading;align-self:end}
 .jaz-hero h1{margin:10px 0 0;font-size:clamp(34px,3.8vw,48px);line-height:1.03}
+.jaz-hero__price{grid-area:price;min-width:0;align-self:start}
 .jaz-hero__body{grid-area:body;align-self:start;min-width:0}
 .jaz-lead{margin:18px 0 0;color:var(--at-muted);font-size:17px;line-height:1.55}
 .jaz-facts{display:flex;flex-wrap:wrap;gap:8px 18px;padding:0;margin:18px 0 0;list-style:none;color:var(--at-ink);font-size:13px;line-height:1.5;font-weight:700}
@@ -84,7 +85,7 @@
 }
 @media(max-width:600px){
   .jaz-page{gap:28px}
-  .jaz-hero{grid-template-columns:1fr;grid-template-areas:"heading" "photo" "body";gap:20px;padding:20px;border-radius:18px}
+  .jaz-hero{grid-template-columns:1fr;grid-template-areas:"heading" "price" "body" "photo";gap:12px;padding:18px;border-radius:18px}
   .jaz-hero h1{font-size:36px;max-width:360px}
   .jaz-hero__photo img{aspect-ratio:1.85;border-radius:12px}
   .jaz-hero__photo>a{border-radius:12px}
@@ -223,4 +224,26 @@
  .jaz-hero .jaz-price h2{font-size:18px}
  .jaz-hero .jaz-price__amount{font-size:34px}
  .jaz-hero .jaz-price__result p{font-size:10.5px}
+}
+
+/* SITE1719 phase8: price and search action before the image on a phone. */
+@media(max-width:600px){
+  .jaz-hero__heading{align-self:start}
+  .jaz-hero__body{display:flex;flex-direction:column;gap:8px}
+  .jaz-hero__body .jaz-hero__actions{order:0;margin-top:0}
+  .jaz-hero__body .jaz-facts{order:1;margin-top:0}
+  .jaz-hero__body .jaz-caption{order:2;margin-top:0}
+  .jaz-hero__photo{margin-top:0}
+  .jaz-hero__photo img{aspect-ratio:2/1}
+}
+@media(max-width:400px){
+  .jaz-hero{padding:14px;gap:9px}
+  .jaz-hero h1{font-size:32px;line-height:1.04}
+  .jaz-hero .jaz-price{padding:8px 10px}
+  .jaz-hero .jaz-price h2{font-size:17px}
+  .jaz-hero .jaz-price__amount{font-size:31px}
+  .jaz-hero .jaz-price__result p{font-size:10px;line-height:1.28}
+  .jaz-hero .jaz-price__result a{margin-top:2px}
+  .jaz-hero .jaz-price__button{min-height:26px}
+  .jaz-hero__actions .sp-primary{min-height:48px}
 }

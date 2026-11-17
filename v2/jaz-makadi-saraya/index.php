@@ -87,19 +87,7 @@ sp_breadcrumbs([
             <span class="jaz-eyebrow">Египет · Макади-Бей</span>
             <h1 id="hotel-title">JAZ Makadi Saraya Resort</h1>
         </div>
-        <figure class="jaz-hero__photo">
-            <a href="<?=sp_e($photoUrl)?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
-               data-photo-caption="Территория отеля" data-photo-note="Фото из каталога Tourvisor"
-               aria-label="Открыть фото: Территория отеля">
-                <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
-                     alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
-                     fetchpriority="high" decoding="async">
-                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 10 фото</span>
-            </a>
-            <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
-        </figure>
-        <div class="jaz-hero__body">
-            <div id="price-example" class="jaz-price" aria-label="Минимальная найденная цена"
+        <div id="price-example" class="jaz-price jaz-hero__price" aria-label="Минимальная найденная цена"
              data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
              data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
             <span class="jaz-eyebrow">Туры из Москвы · двое взрослых</span>
@@ -120,6 +108,7 @@ sp_breadcrumbs([
                 <button type="button" class="jaz-price__button" data-price-load>Обновить цену</button>
             </div>
         </div>
+        <div class="jaz-hero__body">
             <div class="jaz-hero__actions">
                 <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты</a>
                 <a class="jaz-text-link" href="#interiors">Посмотреть фотографии <span aria-hidden="true">↓</span></a>
@@ -134,6 +123,17 @@ sp_breadcrumbs([
                 <p class="jaz-handoff-notice"><?=sp_e($notice)?></p>
             <?php endforeach; ?>
         </div>
+        <figure class="jaz-hero__photo">
+            <a href="<?=sp_e($photoUrl)?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+               data-photo-caption="Территория отеля" data-photo-note="Фото из каталога Tourvisor"
+               aria-label="Открыть фото: Территория отеля">
+                <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
+                     alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
+                     fetchpriority="high" decoding="async">
+                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 10 фото</span>
+            </a>
+            <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
+        </figure>
     </section>
 
     <nav class="jaz-quick-nav" aria-label="Разделы страницы отеля">

@@ -121,8 +121,8 @@ function catalogueItems(key) {
       photoAssets.set(asset.url, bytes);
     }));
     browser = await chromium.launch({ headless: true });
-    for (const viewport of [{ width: 430, height: 932 }, { width: 1280, height: 720 }]) {
-      const page = await browser.newPage({ viewport, hasTouch: viewport.width === 430 });
+    for (const viewport of [{ width: 375, height: 812 }, { width: 430, height: 932 }, { width: 1280, height: 720 }]) {
+      const page = await browser.newPage({ viewport, hasTouch: viewport.width <= 430 });
       const record = { viewport, passed: false, searchStartAttempts: 0, errors: [], requests: [] };
       let failedPhotoUrl = null, failedPhotoRequests = 0;
       let priceScenario = 'observed';
@@ -231,11 +231,21 @@ function catalogueItems(key) {
         record.geometry = await page.evaluate(() => ({
           width: innerWidth, scrollWidth: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
           photoWidth: document.querySelector('.jaz-hero__photo img').naturalWidth,
-          cta: document.querySelector('[data-hotel-search]').getBoundingClientRect().toJSON()
+          cta: document.querySelector('[data-hotel-search]').getBoundingClientRect().toJSON(),
+          price: document.querySelector('[data-jaz-price-example]').getBoundingClientRect().toJSON(),
+          photo: document.querySelector('.jaz-hero__photo').getBoundingClientRect().toJSON()
         }));
         assert.ok(record.geometry.scrollWidth <= viewport.width + 1, 'horizontal overflow on hotel page');
         assert.equal(record.geometry.photoWidth, 1024, 'accepted photo did not load');
         assert.ok(record.geometry.cta.height >= 44, 'primary CTA is too short for ordinary taps');
+        if (viewport.width <= 430) {
+          assert.ok(record.geometry.price.bottom <= record.geometry.cta.top, 'mobile price must be above main CTA');
+          assert.ok(record.geometry.photo.top >= record.geometry.cta.bottom - 1, 'mobile photo must be after CTA');
+          assert.ok(record.geometry.cta.bottom <= viewport.height - 16,
+            'mobile first-screen CTA must fit '+viewport.width+'x'+viewport.height);
+        } else {
+          assert.ok(record.geometry.photo.left >= record.geometry.cta.right - 1, 'desktop photo must stay in right column');
+        }
         const links = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.equal(links.length, 2, 'both official hotel search links must be retained');
         assert.ok(links.every(link => link === links[0]), 'hotel CTAs must share the same validated trip context');
@@ -257,7 +267,7 @@ function catalogueItems(key) {
         assert.ok(await pricePanel.locator('[data-price-result]').isVisible());
         assert.match(serverHtml, /Найдённая минимальная цена/);
         const priceTop = await pricePanel.evaluate(element => element.getBoundingClientRect().top);
-        if (viewport.width === 430) assert.ok(priceTop < viewport.height, 'minimum price block must be in first mobile viewport');
+        if (viewport.width <= 430) assert.ok(priceTop < viewport.height, 'minimum price block must be in first mobile viewport');
         const originalSearchLinks = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.equal(originalSearchLinks.length, 2);
         assert.deepEqual(record.priceRequests[0].hotelIds, ['268']);
@@ -362,7 +372,7 @@ function catalogueItems(key) {
         ]);
         assert.ok(photos.every(item => item.target === '_blank' && item.safeOriginal), 'original photo fallbacks must remain available');
         const viewer = page.locator('dialog.jaz-photo-viewer');
-        const activate = locator => viewport.width === 430 ? locator.tap() : locator.click();
+        const activate = locator => viewport.width <= 430 ? locator.tap() : locator.click();
         let photoPopups = 0;
         page.on('popup', popup => { photoPopups++; popup.close().catch(() => {}); });
         const checkPhoto = async index => {
