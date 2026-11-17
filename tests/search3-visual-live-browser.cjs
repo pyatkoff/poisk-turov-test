@@ -1188,10 +1188,10 @@ const calendarViewportFitJourney=async(browser,origin,base,evidence)=>{
    // Read the installed fixture horizon, then stress a complete six-week month.
    // The marked mixed graph and intercepted transport never reach suppliers.
    await page.goto(origin+base+'visual-search/?scenario=mixed');await page.locator('.search-submit:not(:disabled)').waitFor({state:'attached'});
-   const start=await page.evaluate(()=>window.AnyTourPrototypeData.clockStart||new Date(Date.now()+86400000).toISOString().slice(0,10)),end=shift(start,180);
+   const start=await page.evaluate(()=>window.AnyTourPrototypeData.clockStart),end=shift(start,180);
    let range=null;
    for(let offset=0;offset<7&&!range;offset++){
-    const first=new Date(day.slice(0,7)+'-01T12:00:00Z');first.setUTCMonth(first.getUTCMonth()+offset);
+    const first=new Date(start.slice(0,7)+'-01T12:00:00Z');first.setUTCMonth(first.getUTCMonth()+offset);
     const year=first.getUTCFullYear(),month=first.getUTCMonth(),count=new Date(Date.UTC(year,month+1,0)).getUTCDate(),weeks=Math.ceil(((first.getUTCDay()+6)%7+count)/7),key=iso(first),next=iso(new Date(Date.UTC(year,month+1,1,12))),last=iso(new Date(Date.UTC(year,month+2,0,12)));
     if(weeks===6&&key.slice(0,8)+'04'>=start&&last<=end)range={month:key,next,from:key.slice(0,8)+'04',to:key.slice(0,8)+'10',cancelFrom:key.slice(0,8)+'12',cancelTo:key.slice(0,8)+'14',draftFrom:key.slice(0,8)+'28',draftTo:key.slice(0,8)+'30',weeks};
    }
@@ -1759,6 +1759,13 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
     const box=await approve.boundingBox();
     assert(box&&box.y>=0&&box.y+box.height<=height+1,'price acceptance fits on screen');
     if(height===720||width===430)await page.screenshot({path:path.join(evidence,'tour-price-review-'+tag+'.png')});
+    const fee=footer.locator('.tour-fuel-disclosure');
+    await fee.locator('summary').click();
+    assert.equal(await fee.evaluate(el=>el.open),true);
+    assert.match(await fee.textContent(),/уточняется/);
+    const opened=await approve.boundingBox();
+    assert(opened&&opened.y>=0&&opened.y+opened.height<=height+1,'expanded fuel terms keep acceptance visible');
+    await fee.locator('summary').click();
     await approve.click();
     await page.locator('#prototype-lead-form').waitFor();
     assert.equal((await amount()).replace(/\D/g,''),'195400');
