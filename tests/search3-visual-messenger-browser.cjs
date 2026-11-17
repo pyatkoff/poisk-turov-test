@@ -74,6 +74,15 @@ async function tourvisorJourney({browser,origin,base,output}){
  for(const width of [430,1280]){
   const height=width===1280?720:900,transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:true}),calls=[],errors=[],forbidden=[],navigations=[],shots=[];
   const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const maxObservations=[];
+  let receiveMaxObservation;
+  const maxObserved=new Promise(resolve=>receiveMaxObservation=resolve);
+  await page.exposeFunction('captureFixtureMaxObservation',observation=>{
+   maxObservations.push(observation);receiveMaxObservation();
+  });
+  await page.addInitScript(()=>{
+   window.addEventListener('search3:max-handoff-open',event=>window.captureFixtureMaxObservation(event.detail));
+  });
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=tv_fixture_only',max:'https://max.ru/id9704048781_bot?start=tv_fixture_only'};
   let releaseCreate,startedCreate;const createGate=new Promise(resolve=>releaseCreate=resolve),creating=new Promise(resolve=>startedCreate=resolve);
   const ready=()=>page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('[data-action="messenger-open"]')];return buttons.length===2&&buttons.every(b=>!b.disabled);});
@@ -158,6 +167,13 @@ async function tourvisorJourney({browser,origin,base,output}){
    assert.equal(tv.calls.filter(c=>c.action==='tv_token').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_tour').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_flights').length,1);assert.equal(tv.calls.filter(c=>c.action==='tv_select').length,2,'only manager and the exact chosen pair');
    assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(tv.calls[0].action,'tv_token');assert.deepEqual(tv.calls.find(c=>c.action==='tv_search').body.params.childs,[0,12]);
    await Promise.all([page.waitForURL(links.max),page.locator('[data-action="messenger-open"][data-platform="max"]').click()]);assert.deepEqual(navigations,[links.max]);
+   await waitFor(maxObserved,'page-local MAX observation');
+   assert.equal(maxObservations.length,1);
+   const [observation]=maxObservations;
+   assert.deepEqual(Object.keys(observation).sort(),['offsetMs','operationId','pageRef']);
+   assert.equal(observation.operationId,calls.find(call=>call.action==='handoff_create').body.operation_id);
+   assert.match(observation.pageRef,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+   assert(Number.isSafeInteger(observation.offsetMs)&&observation.offsetMs>=0);
    assert.equal(calls.filter(c=>c.action==='handoff_create').length,1);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    records.push({provider:'tourvisor',width,height,party:{adults:3,enteredChildAges:[12,0],requestChildAges:[0,12]},managerAmount:'90000',pairAmount:'133500.5',managerSelector:first,pairSelector:pairFreeze,actions:tv.calls.map(c=>c.action),rootTVSearchQuoteHTTP:0,quoteCalls:1,flightCalls:1,selectCalls:2,createCalls:1,draftRetained:true,consentResetOnPair:true,lateNavigationCancelled:true,externalNavigationIntercepted:1,shots});
   }catch(error){await page.screenshot({path:path.join(output,`tv-failure-${width}.png`)}).catch(()=>{});fs.writeFileSync(path.join(output,`tv-failure-${width}.json`),JSON.stringify({message:error.message,errors,forbidden,calls,tv:tv.calls,shots},null,2));throw error;}

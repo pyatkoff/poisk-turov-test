@@ -439,7 +439,9 @@ DEPENDENCY_CHILD;
         [$status, $stdout, $stderr] = search3_dependency_child($script, $directory);
         $errorLog = is_file($directory . '/child-error.log') ? (string)file_get_contents($directory . '/child-error.log') : '';
         if (!empty($scenario['baseline'])) {
-            search3_dependency_assert($status !== 0 && str_contains($stderr . $errorLog, 'Cannot redeclare v2_hotel_detail_object'), $name . ': distinct-copy fatal was not reproduced');
+            // Newer PHP versions include "function" in the redeclaration error.
+            $redeclaration = preg_match('/Cannot redeclare (?:function )?v2_hotel_detail_object\(\)/', $stderr . $errorLog) === 1;
+            search3_dependency_assert($status !== 0 && $redeclaration, $name . ': distinct-copy fatal was not reproduced');
         } else {
             search3_dependency_assert($status === 0, $name . ': guarded hook failed: ' . $stderr . $errorLog);
             search3_dependency_assert(json_decode($stdout, true, 512, JSON_THROW_ON_ERROR) === [
