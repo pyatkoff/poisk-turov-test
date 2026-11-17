@@ -15,8 +15,8 @@ require_once __DIR__ . '/handoff.php';
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
-    'JAZ Makadi Saraya Resort — пляж, номера и туры | AnyTour',
-    'JAZ Makadi Saraya Resort в Макади-Бей: пляж, номера 55–100 м², бассейны, JAZY Kids Club, питание и проверка туров на ваши даты.'
+    'JAZ Makadi Saraya Resort — туры, цены и фото | AnyTour',
+    'JAZ Makadi Saraya Resort, Макади-Бей: минимальная найденная цена из мониторинга, условия тура, фотографии, бассейны и поиск на свои даты.'
 );
 $context['robots'] = v2_seo_robots_content(false);
 header('X-Robots-Tag: noindex, nofollow');
@@ -99,16 +99,36 @@ sp_breadcrumbs([
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
         <div class="jaz-hero__body">
-            <p class="jaz-lead"><strong>Семейный отдых в Макади-Бей.</strong> Апартаменты с одной или двумя спальнями, бассейны для взрослых и детей и JAZY Kids Club.</p>
-            <ul class="jaz-facts" aria-label="Главные особенности отеля">
-                <li>Апартаменты 70 и 100 м²</li>
-                <li>3 бассейна и 2 детских</li>
-                <li>Пляж на второй линии</li>
-            </ul>
+            <div id="price-example" class="jaz-price" aria-label="Минимальная найденная цена"
+             data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
+             data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
+            <span class="jaz-eyebrow">Туры из Москвы · двое взрослых</span>
+            <h2 id="jaz-price-title">Найдённая минимальная цена</h2>
+            <div class="jaz-price__action">
+                <div class="jaz-price__result" data-price-result hidden>
+                    <strong class="jaz-price__amount" data-price-amount></strong>
+                    <span class="jaz-price__tag">Найдено в мониторинге — не итоговая стоимость</span>
+                    <p data-price-terms></p>
+                    <p class="jaz-price__warning" data-price-extra></p>
+                    <a class="jaz-text-link" data-price-search-link href="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>" hidden>Проверить туры на эти даты <span aria-hidden="true">→</span></a>
+                    <details class="jaz-price__details">
+                        <summary>Когда найдена цена</summary>
+                        <p class="jaz-price__source" data-price-source></p>
+                    </details>
+                </div>
+                <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Проверяем свежие цены…</p>
+                <button type="button" class="jaz-price__button" data-price-load>Обновить цену</button>
+            </div>
+        </div>
             <div class="jaz-hero__actions">
                 <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты</a>
-                <a class="jaz-text-link" href="#rooms">Сравнить номера <span aria-hidden="true">↓</span></a>
+                <a class="jaz-text-link" href="#interiors">Посмотреть фотографии <span aria-hidden="true">↓</span></a>
             </div>
+            <ul class="jaz-facts" aria-label="Главные особенности отеля">
+                <li>3 бассейна и 2 детских</li>
+                <li>Пляж на второй линии</li>
+                <li>JAZY Kids Club</li>
+            </ul>
             <p class="jaz-caption">JAZ уже выбран в форме. Указанные условия поездки сохраняются при переходе в поиск.</p>
             <?php foreach ($handoff['notices'] as $notice): ?>
                 <p class="jaz-handoff-notice"><?=sp_e($notice)?></p>
@@ -118,11 +138,11 @@ sp_breadcrumbs([
 
     <nav class="jaz-quick-nav" aria-label="Разделы страницы отеля">
         <span>На странице:</span>
+        <a href="#price-example">Цены</a>
         <a href="#interiors">Фотографии</a>
         <a href="#rooms">Номера</a>
         <a href="#stay">Бассейны и питание</a>
         <a href="#location">Пляж</a>
-        <a href="#price-example">Ценовой ориентир</a>
         <a href="#questions">Частые вопросы</a>
     </nav>
 
@@ -148,81 +168,26 @@ sp_breadcrumbs([
 
     <section id="rooms" aria-labelledby="rooms-title">
         <div class="jaz-section-heading">
-            <div><span class="jaz-eyebrow">Номера и апартаменты</span><h2 id="rooms-title">Выберите подходящую планировку</h2></div>
-            <p>Сравните площадь, число спален и места для отдыха.</p>
+            <div><span class="jaz-eyebrow">Номера</span><h2 id="rooms-title">Как выглядят номера</h2></div>
+            <p>Есть разные категории размещения. Выбирайте подходящую по условиям и стоимости конкретного тура.</p>
         </div>
-        <div class="jaz-rooms">
-            <article class="jaz-room">
-                <div class="jaz-room__heading"><h3>Одна спальня</h3><span class="jaz-room__area">70 <small>м²</small></span></div>
-                <p class="jaz-room__name">One-Bedroom Apartment</p>
-                <?php $media = $officialMedia[0]; ?>
+        <div class="jaz-room-photos">
+            <?php foreach (array_slice($officialMedia, 0, 3) as $media): ?>
                 <figure class="jaz-official-photo">
                     <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
                        data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-
+                    <figcaption><?=sp_e($media['caption'])?></figcaption>
                 </figure>
-                <dl>
-                    <div><dt>Кроме спальни</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
-                    <div><dt>Кровати</dt><dd>Двуспальная либо две односпальные</dd></div>
-                </dl>
-                <p class="jaz-room__choice">Если достаточно одной спальни и хочется отдельной гостиной.</p>
-            </article>
-            <article class="jaz-room">
-                <div class="jaz-room__heading"><h3>Две спальни</h3><span class="jaz-room__area">100 <small>м²</small></span></div>
-                <p class="jaz-room__name">Two-Bedroom Apartment</p>
-                <?php $media = $officialMedia[1]; ?>
-                <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
-                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
-                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
-                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
-                    </a>
-
-                </figure>
-                <dl>
-                    <div><dt>Кроме двух спален</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
-                    <div><dt>Кровати</dt><dd>Двуспальная и две односпальные</dd></div>
-                </dl>
-                <p class="jaz-room__choice">Если нужны две спальни и больше места для вашей компании.</p>
-            </article>
-            <article class="jaz-room">
-                <div class="jaz-room__heading"><h3>Family Deluxe</h3><span class="jaz-room__area">55 <small>м²</small></span></div>
-                <p class="jaz-room__name">Семейный номер</p>
-                <?php $media = $officialMedia[2]; ?>
-                <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
-                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
-                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
-                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
-                    </a>
-
-                </figure>
-                <dl>
-                    <div><dt>Размещение</dt><dd>До четырёх гостей по схемам «2+2» или «3+1»</dd></div>
-                    <div><dt>Для поездки с детьми</dt><dd>Возрастные условия зависят от выбранного тура</dd></div>
-                </dl>
-                <p class="jaz-room__choice">Для пяти гостей эта категория не подтверждена.</p>
-            </article>
+            <?php endforeach; ?>
         </div>
-        <p class="jaz-caption">Снимки категорий взяты из официальной медиатеки JAZ. Конкретные номер, вид из окна и спальные места уточняются по выбранному туру.</p>
-        <div class="jaz-room-note">
-            <strong>Важно при выборе номера</strong>
-            <p>Вместимость зависит от возраста детей и дополнительных спальных мест. Для апартаментов отдельно проверьте двери между комнатами и размещение пятого гостя.</p>
-        </div>
-        <div class="jaz-room-step">
-            <div>
-                <strong>Сравнили планировки?</strong>
-                <p>Проверьте доступные туры на свои даты. Конкретная категория номера и размещение указаны в условиях предложения.</p>
-            </div>
-            <a class="sp-primary" href="#search-title">К подбору тура <span aria-hidden="true">↓</span></a>
-        </div>
+        <p class="jaz-caption">Это фотографии категорий из медиатеки отеля, а не подтверждённые фотографии номера в найденном туре.</p>
     </section>
 
     <section id="stay" aria-labelledby="stay-title">
-        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Для отдыха всей семьёй</h2></div></div>
+        <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Что есть в отеле</h2></div></div>
         <div class="jaz-stay">
             <article>
 
@@ -293,35 +258,12 @@ sp_breadcrumbs([
         </div>
     </section>
 
-    <section id="price-example" class="jaz-price" aria-labelledby="jaz-price-title"
-             data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
-             data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
-        <div>
-            <span class="jaz-eyebrow">Цены на туры</span>
-            <h2 id="jaz-price-title">Какие цены находили?</h2>
-            <p>Посмотрите пример для <strong>двух взрослых с вылетом из Москвы</strong> в ближайшие четыре месяца. Для семьи цена будет другой.</p>
-            <p class="jaz-caption">Это наблюдение мониторинга, а не подтверждённая итоговая цена. Наличие и доплаты проверяются в поиске.</p>
-        </div>
-        <div class="jaz-price__action">
-            <button type="button" class="jaz-price__button" data-price-load>Показать ценовой ориентир</button>
-            <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Данные загрузятся только после нажатия.</p>
-            <div class="jaz-price__result" data-price-result hidden>
-                <span class="jaz-price__tag">Найденная цена — не итоговая стоимость</span>
-                <strong class="jaz-price__amount" data-price-amount></strong>
-                <p data-price-terms></p>
-                <p class="jaz-price__warning" data-price-extra></p>
-                <p class="jaz-price__source" data-price-source></p>
-                <a class="jaz-text-link" data-price-search-link href="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>" hidden>Проверить туры на эти даты <span aria-hidden="true">→</span></a>
-            </div>
-        </div>
-    </section>
-
     <section class="jaz-search" aria-labelledby="search-title" data-offer-state="unverified">
         <div>
             <span class="jaz-eyebrow">Следующий шаг</span>
             <h2 id="search-title">Узнайте варианты на свои даты</h2>
             <p>JAZ Makadi Saraya уже выбран. Укажите город вылета, даты и всех гостей — поиск сохранит переданные условия.</p>
-            <p class="jaz-search__availability">На странице нет подтверждённой цены или наличия конкретного тура. Стоимость и категория номера зависят от выбранного предложения; если вариантов нет, попробуйте соседние даты.</p>
+            <p class="jaz-search__availability">Цена «от» выше взята из сохранённого мониторинга и может включать неизвестные доплаты; актуальную стоимость и наличие проверьте в результатах поиска.</p>
         </div>
         <a class="sp-primary" data-hotel-search href="<?=sp_e($searchUrl)?>">Проверить туры на свои даты <span aria-hidden="true">→</span></a>
     </section>
@@ -336,8 +278,8 @@ sp_breadcrumbs([
                 <p>JAZ Makadi Saraya находится на второй береговой линии в Макади-Бей. Источники указывают примерно 300–500 м; точный путь от корпуса зависит от маршрута.</p>
             </details>
             <details>
-                <summary>Какие апартаменты и семейные номера есть?</summary>
-                <p>В описаниях есть One-Bedroom Apartment 70 м², Two-Bedroom Apartment 100 м² и Family Deluxe 55 м². Конкретная категория, спальные места и вместимость определяются условиями тура.</p>
+                <summary>Какие номера есть в отеле?</summary>
+                <p>В описаниях есть стандартные номера и апартаменты, включая One-Bedroom, Two-Bedroom и Family Deluxe. Доступные категории, размещение и стоимость зависят от выбранного тура.</p>
             </details>
             <details>
                 <summary>Есть ли бассейны и занятия для детей?</summary>
