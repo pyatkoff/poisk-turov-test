@@ -184,7 +184,8 @@ function catalogueItems(key) {
         const quickNav = await page.locator('.jaz-quick-nav a').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.deepEqual(quickNav, ['#price-example', '#interiors', '#rooms', '#stay', '#location', '#questions']);
         assert.match(serverHtml, /Частые вопросы о JAZ Makadi Saraya/, 'FAQ must be in server-rendered HTML');
-        assert.match(serverHtml, /Семейный отдых в Макади-Бей/, 'main benefit must be in server-rendered HTML');
+        assert.match(serverHtml, /Курортный отель в Макади-Бей/, 'hotel positioning must be in server-rendered HTML');
+        assert.match(serverHtml, /Найдённая минимальная цена/, 'minimum price must be visible in server HTML even before client fetch');
         assert.equal(await page.locator('#questions details').count(), 6);
         const firstQuestion = page.locator('#questions details').first();
         await firstQuestion.locator('summary').click();
