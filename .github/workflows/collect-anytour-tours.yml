@@ -250,7 +250,7 @@ jobs:
           BUDGET_VALUE: ${{ inputs.budget || '2' }}
           MATRIX_BUDGET_VALUE: ${{ inputs.matrix_budget || '9' }}
           MATRIX_MONTHS_VALUE: ${{ inputs.matrix_months || '12' }}
-          MONTHLY_BUDGET_VALUE: ${{ inputs.monthly_budget || '64' }}
+          MONTHLY_BUDGET_VALUE: ${{ inputs.monthly_budget || '100' }}
           TARGET_MONTH_VALUE: ${{ inputs.target_month || '' }}
           TARGET_COUNTRY_VALUE: ${{ inputs.target_country || '0' }}
         shell: bash
