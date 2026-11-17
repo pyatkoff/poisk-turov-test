@@ -86,6 +86,12 @@ class NextUpdateContracts(local_tests.UpdateContracts):
             self.assertRegex(workflow, r'\(github\.event\.issue\.number == ' + str(issue)
                              + r" && startsWith\(github\.event\.comment\.body, '" + re.escape(prefix) + r"'\)\)")
 
+    def test_archive_derivation_uses_the_same_pinned_runner_in_both_jobs(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/update-search3-local-preview.yml').read_text()
+        for job in ('prepare-local-preview-update', 'publish-local-preview-update'):
+            with self.subTest(job=job):
+                self.assertRegex(workflow, rf'(?m)^  {job}:\n(?:    .*\n)*?    runs-on: ubuntu-24\.04$')
+
     def test_command_rejects_create_replay_path_and_bad_pins(self):
         good = self.event['comment']['body']
         bad = [good+'\n', good+' /tmp/x', good.replace(pub.NEXT_PREFIX,'/create-search3-next-preview '),
