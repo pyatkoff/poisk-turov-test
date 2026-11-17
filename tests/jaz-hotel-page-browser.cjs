@@ -82,7 +82,7 @@ function priceObservationFixture(url, mode) {
       childrenCount: mode === 'wrong-party' ? 1 : 0, currency: 'RUB'
     },
     items: [{
-      tourvisorHotelId: 268,
+      tourvisorHotelId: mode === 'wrong-hotel' ? 269 : 268,
       state: mode === 'empty' ? 'no_fresh_observation' : 'observed',
       offers: mode === 'empty' ? [] : [offer]
     }]
@@ -248,6 +248,7 @@ function catalogueItems(key) {
         const pricePanel = page.locator('[data-jaz-price-example]');
         assert.equal(await pricePanel.count(), 1);
         assert.equal(record.priceRequests.length, 0, 'price API requested without user action');
+        const originalSearchLinks = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
         assert.match(serverHtml, /Пример найденной цены/);
         await pricePanel.locator('[data-price-load]').click();
@@ -288,6 +289,10 @@ function catalogueItems(key) {
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
         assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false, 'wrong-party offer shown');
+        priceScenario = 'wrong-hotel';
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
+        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false, 'different hotel price shown');
         priceScenario = 'empty';
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
@@ -296,10 +301,11 @@ function catalogueItems(key) {
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'error');
         assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
-        assert.equal(record.priceRequests.length, 5);
+        assert.equal(record.priceRequests.length, 6);
+        assert.deepEqual(await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href'))), originalSearchLinks, 'price example replaced visitor search links');
         assert.equal(record.searchStartAttempts, 0);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
-        record.priceFallbacks = { expired: true, wrongParty: true, missing: true, error: true };
+        record.priceFallbacks = { expired: true, wrongParty: true, wrongHotel: true, missing: true, error: true };
 
         const photoLinks = page.locator('[data-jaz-photo]');
         const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url), ...officialMedia.map(asset => asset.url)];
