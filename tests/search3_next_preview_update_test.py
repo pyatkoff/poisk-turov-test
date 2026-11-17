@@ -90,52 +90,7 @@ class NextUpdateContracts(local_tests.UpdateContracts):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/update-search3-local-preview.yml').read_text()
         for job in ('prepare-local-preview-update', 'publish-local-preview-update'):
             with self.subTest(job=job):
-                self.assertRegex(workflow, rf'(?m)^  {job}:\n(?:    .*\n)*?    runs-on: ubuntu-24\.04
-        good = self.event['comment']['body']
-        bad = [good+'\n', good+' /tmp/x', good.replace(pub.NEXT_PREFIX,'/create-search3-next-preview '),
-               good.replace(pub.NEXT_PREFIX,'/update-search3-production-preview '),
-               good.replace(' 456 ',' 0 '),good.replace('a'*40,PREVIOUS,1),good.replace(PREVIOUS,'main')]
-        for body in bad:
-            event=copy.deepcopy(self.event); event['comment']['body']=body
-            with self.subTest(body=body), self.assertRaises(ValueError): pub.checked_request(event,self.env)
-
-    def test_existing_lock_not_stolen(self):
-        q=self.staged(); (self.site.parent/'.search3-next-lock').mkdir()
-        with self.assertRaises(FileExistsError): self.site.activate_update(q)
-
-    def test_other_preview_lock_blocks_update(self):
-        q=self.staged(); (self.site.parent/'.search3-local-lock').mkdir()
-        with self.assertRaisesRegex(ValueError,'existing_preview_busy'): self.site.activate_update(q)
-        self.assertEqual((self.site.target/'old.txt').read_text(),'published predecessor')
-
-    def test_binding_fixed_namespace(self):
-        q={'name':'search3-next-update-bind-789-'+'e'*24+'.txt','nonce':'f'*64}
-        self.site.binding(q); self.site.binding(q,True)
-        for name in ('../index.php',q['name'].replace('next','local')):
-            with self.assertRaises(ValueError): self.site.binding({**q,'name':name})
-
-    def test_wrong_target_request_cannot_swap(self):
-        q=self.staged()
-        for value in ('local','/tmp/next','production'):
-            with self.assertRaisesRegex(ValueError,'wrong_preview_target'):
-                self.site.activate_update({**q,'preview_target':value})
-        self.assertEqual((self.site.target/'old.txt').read_text(),'published predecessor')
-
-    def test_cross_target_manifest_denied(self):
-        local_root=self.root/'derived'
-        with self.assertRaisesRegex(ValueError,'manifest_identity'):
-            remote.verify(local_root,{**self.q,'preview_target':'next',
-                'manifest_sha256':remote.digest((local_root/'control/manifest.json').read_bytes()),
-                'payload_sha256':remote.digest((local_root/'control/payload.sha256').read_bytes())})
-
-    def test_unknown_target_denied(self):
-        for value in ('production','../local',None):
-            with self.assertRaisesRegex(ValueError,'unknown_preview_target'): remote.select_target(value)
-
-
-if __name__=='__main__':
-    unittest.main()
-)
+                self.assertRegex(workflow, rf'(?m)^  {job}:\n(?:    .*\n)*?    runs-on: ubuntu-24\.04$')
 
     def test_command_rejects_create_replay_path_and_bad_pins(self):
         good = self.event['comment']['body']
