@@ -158,7 +158,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <dl>
                     <div><dt>Кроме спальни</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
@@ -176,7 +176,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <dl>
                     <div><dt>Кроме двух спален</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
@@ -194,7 +194,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <dl>
                     <div><dt>Размещение</dt><dd>До четырёх гостей по схемам «2+2» или «3+1»</dd></div>
@@ -229,7 +229,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <h3>Бассейны</h3>
                 <p>В отеле три бассейна и два детских бассейна.</p>
@@ -243,7 +243,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <h3>Детский клуб</h3>
                 <p>Для детей есть JAZY Kids Club.</p>
@@ -257,7 +257,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    
+
                 </figure>
                 <h3>Рестораны</h3>
                 <p>Главные рестораны — Sunflower и Al Nakhil. В Sunflower питание организовано по системе «шведский стол».</p>
