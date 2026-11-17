@@ -182,7 +182,7 @@ function catalogueItems(key) {
         const serverHtml = await response.text();
         record.stay = await page.locator('#stay').innerText();
         const quickNav = await page.locator('.jaz-quick-nav a').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
-        assert.deepEqual(quickNav, ['#interiors', '#rooms', '#stay', '#location', '#price-example', '#questions']);
+        assert.deepEqual(quickNav, ['#price-example', '#interiors', '#rooms', '#stay', '#location', '#questions']);
         assert.match(serverHtml, /Частые вопросы о JAZ Makadi Saraya/, 'FAQ must be in server-rendered HTML');
         assert.match(serverHtml, /Семейный отдых в Макади-Бей/, 'main benefit must be in server-rendered HTML');
         assert.equal(await page.locator('#questions details').count(), 6);
@@ -193,8 +193,9 @@ function catalogueItems(key) {
         await page.locator('#questions').screenshot({ path: path.join(output, `jaz-${viewport.width}-questions.png`), animations: 'disabled' });
         await firstQuestion.locator('summary').click();
         assert.equal(await firstQuestion.evaluate(element => element.open), false);
-        assert.equal(await page.locator('.jaz-room-step a').getAttribute('href'), '#search-title');
-        record.wayfinding = { nav: quickNav, faqQuestions: 6, faqToggle: true, searchCtAs: 2, roomStepAnchor: true };
+        assert.equal(await page.locator('.jaz-room-photos img').count(), 3, 'room images must remain but long comparison is removed');
+        assert.equal(await page.locator('.jaz-room dl').count(), 0, 'room spec cards are no longer primary');
+        record.wayfinding = { nav: quickNav, faqQuestions: 6, faqToggle: true, searchCtAs: 2, compactRooms: true };
         for (const fact of [/JAZY/, /Sunflower/, /Al Nakhil/]) {
           assert.match(serverHtml, fact, 'hotel stay facts must be in the server HTML');
           assert.match(record.stay, fact, 'hotel stay facts must be visible in their section');
@@ -247,15 +248,18 @@ function catalogueItems(key) {
         // Price observation is opt-in. A page visit never reads the monitor or starts a supplier search.
         const pricePanel = page.locator('[data-jaz-price-example]');
         assert.equal(await pricePanel.count(), 1);
-        assert.equal(record.priceRequests.length, 0, 'price API requested without user action');
-        const originalSearchLinks = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
-        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
-        assert.match(serverHtml, /Какие цены находили\?/);
-        await pricePanel.locator('[data-price-load]').click();
+        assert.ok(await pricePanel.evaluate(element => !!element.closest('.jaz-hero')), 'lowest price must be in hero');
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'observed');
-        assert.equal(record.priceRequests.length, 1);
+        assert.equal(record.priceRequests.length, 1, 'one automatic read-only monitor export per page view');
+        assert.ok(await pricePanel.locator('[data-price-result]').isVisible());
+        assert.match(serverHtml, /Найдённая минимальная цена/);
+        const priceTop = await pricePanel.evaluate(element => element.getBoundingClientRect().top);
+        if (viewport.width === 430) assert.ok(priceTop < viewport.height, 'minimum price block must be in first mobile viewport');
+        const originalSearchLinks = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
+        assert.equal(originalSearchLinks.length, 2);
         assert.deepEqual(record.priceRequests[0].hotelIds, ['268']);
         assert.equal(record.priceRequests[0].departure, '1');
+        assert.match(await pricePanel.locator('[data-price-amount]').innerText(), /^от\s/);
         assert.match((await pricePanel.locator('[data-price-amount]').innerText()).replace(/\D/g, ''), /^109971$/);
         const priceDetails = await pricePanel.locator('[data-price-terms]').innerText();
         assert.match(priceDetails, /Москва/);
@@ -308,6 +312,7 @@ function catalogueItems(key) {
         assert.equal(page.url(), url, 'price example Back lost original trip URL');
         assert.deepEqual(await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href'))), originalSearchLinks);
         record.priceHandoff = { form: exampleForm, backRetained: true, supplierStarts: 0 };
+        const readsBeforeFallbacks = record.priceRequests.length;
         priceScenario = 'expired';
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
@@ -328,7 +333,7 @@ function catalogueItems(key) {
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'error');
         assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
-        assert.equal(record.priceRequests.length, 6);
+        assert.equal(record.priceRequests.length, readsBeforeFallbacks + 5, 'five distinct fallback refreshes required');
         assert.deepEqual(await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href'))), originalSearchLinks, 'price example replaced visitor search links');
         assert.equal(record.searchStartAttempts, 0);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
