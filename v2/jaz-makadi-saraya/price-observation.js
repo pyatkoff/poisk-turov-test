@@ -8,7 +8,7 @@
     begin.setUTCHours(0, 0, 0, 0);
     begin.setUTCDate(begin.getUTCDate() + 1);
     const end = new Date(begin);
-    end.setUTCDate(end.getUTCDate() + 119);
+    end.setUTCDate(end.getUTCDate() + 364);
     return { from: day(begin), to: day(end) };
   }
   function validAmount(n) { return typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100000000; }
@@ -74,9 +74,9 @@
       root.dataset.priceState = state;
       status.textContent = message;
     }
-    button.addEventListener('click', async function () {
+    async function loadPrice() {
       if (button.disabled) return;
-      hide('loading', 'Читаем сохранённые наблюдения. Новый поиск у поставщика не запускается.');
+      hide('loading', 'Ищем минимальную свежую цену…');
       button.disabled = true;
       const range = windowRange();
       try {
@@ -117,21 +117,21 @@
         else target.searchParams.delete('food');
         const observedDate = new Date(offer.departureDate + 'T12:00:00Z');
         const prettyDate = observedDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-        amount.textContent = formatRub(offer.price);
+        amount.textContent = 'от ' + formatRub(offer.price);
         terms.textContent = 'Москва · ' + prettyDate + ' · ' + offer.nights + ' ночей · 2 взрослых, без детей'
           + (offer.mealId === 7 ? ' · всё включено' : '')
           + ' · номер: ' + (offer.roomType.trim() || 'категория по условиям тура');
         extra.textContent = (offer.fuelCharge === null
           ? 'Возможные доплаты не подтверждены.'
           : 'В записи указан топливный сбор ' + formatRub(offer.fuelCharge) + '; включён ли он в сумму, неизвестно.')
-          + ' Наличие не проверено. Категория номера может отличаться от семейных апартаментов.';
+          + ' Наличие не проверено. Категория и условия номера зависят от найденного тура.';
         source.textContent = 'Запись мониторинга: ' + String(offer.observedAtRaw || '').slice(0, 35)
           + ' (часовой пояс неизвестен).';
         link.href = target.href;
         link.hidden = false;
         result.hidden = false;
         root.dataset.priceState = 'observed';
-        status.textContent = 'Найден ориентир по цене; предложение проверьте в поиске.';
+        status.textContent = 'Минимальная найденная цена для указанных условий.';
         root.dataset.priceExpiry = String(Date.parse(offer.expiresAt));
         const expiresIn = Date.parse(offer.expiresAt) - Date.now();
         timeout = setTimeout(function () {
@@ -143,7 +143,11 @@
         button.disabled = false;
         button.textContent = 'Обновить ценовой ориентир';
       }
-    });
+    }
+    button.addEventListener('click', loadPrice);
+    // Show the lowest accepted observed price without requiring an extra click.
+    // This performs one read-only DB-only export, never a supplier search.
+    void loadPrice();
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible' && timeout !== null) {
         const current = root.dataset.priceState;
