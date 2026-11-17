@@ -135,7 +135,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
+          ref: 9bb50fbc3a45c6a9d7a605f08075bf896b0a6d1a
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -185,6 +185,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-driver-reliability.php
           php hotel-price-publisher/tools/direct_demand/operations/test-reconcile-stale-feed-20261116.php
@@ -194,6 +195,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 5bd038a50c756b951f9bbc29055b9bf755469066fb9e2719083cd544271abd7e
           python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
@@ -218,7 +220,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: a1dc3f6712dc74d97bf90ab46a747ed3b2db4e68
+          ref: 9bb50fbc3a45c6a9d7a605f08075bf896b0a6d1a
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -227,6 +229,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 5bd038a50c756b951f9bbc29055b9bf755469066fb9e2719083cd544271abd7e
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
