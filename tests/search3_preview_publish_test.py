@@ -61,19 +61,19 @@ class Authorization(unittest.TestCase):
         self.env = dict(GITHUB_REPOSITORY=publish.REPO,GITHUB_REF='refs/heads/main',GITHUB_ACTOR='pyatkoff',
                         GITHUB_TRIGGERING_ACTOR='pyatkoff',GITHUB_ACTOR_ID='226193297',GITHUB_RUN_ATTEMPT='1',GITHUB_EVENT_NAME='issue_comment')
         self.event = dict(repository={'id':1345518271,'full_name':publish.REPO},sender={'id':226193297,'login':'pyatkoff'},
-                          action='created',issue={'number':4217},comment={'user':{'id':226193297},'author_association':'OWNER',
+                          action='created',issue={'number':4709},comment={'user':{'id':226193297},'author_association':'OWNER',
                           'body':f'/publish-search3-preview {SOURCE} {RELEASE} 456 123'})
 
     def test_owner_command(self):
         self.assertEqual(publish.checked_command(self.event,self.env)['artifact_id'],123)
 
-    def test_publisher_and_recovery_accept_only_current_coordination_issue(self):
+    def test_publisher_successor_and_legacy_recovery_issue_are_separate(self):
         repair_env = {**self.env, 'GITHUB_SHA': 'd' * 40}
-        for number in (4217, 3419, 2530, 996, 997, 1646):
+        for number in (4709, 4217, 3419, 2530, 996, 997, 1646):
             event = copy.deepcopy(self.event)
             event['issue']['number'] = number
             with self.subTest(issue=number, command='publish'):
-                if number == 4217:
+                if number == publish.COORDINATION_ISSUE:
                     self.assertEqual(publish.checked_command(event, self.env)['artifact_id'], 123)
                 else:
                     with self.assertRaisesRegex(ValueError, 'coordinator_command_only'):
@@ -97,6 +97,7 @@ class Authorization(unittest.TestCase):
             for command in ('publish', 'recovery'):
                 event = copy.deepcopy(self.event)
                 if command == 'recovery':
+                    event['issue']['number'] = 4217
                     event['comment']['body'] = repair.PREFIX + env['GITHUB_SHA']
                 parent = event
                 parts = name.split('.')
@@ -111,12 +112,15 @@ class Authorization(unittest.TestCase):
 
     def test_workflow_coordination_guards_match_shared_authorization(self):
         root = Path(__file__).resolve().parents[1] / '.github/workflows'
-        for name, count in (('deploy-search3-whole-site-preview.yml', 2),
-                            ('create-search3-local-preview.yml', 1),
-                            ('inspect-search3-local-preview.yml', 1)):
+        # Move only the owner publisher command; independent recovery stays on
+        # its legacy issue and must not accidentally inherit this migration.
+        publish_guards = re.findall(r'github\.event\.issue\.number == (\d+)',
+                                    (root / 'deploy-search3-whole-site-preview.yml').read_text())
+        self.assertEqual(publish_guards, ['4709', '4217'])
+        for name in ('create-search3-local-preview.yml', 'inspect-search3-local-preview.yml'):
             with self.subTest(workflow=name):
                 guards = re.findall(r'github\.event\.issue\.number == (\d+)', (root / name).read_text())
-                self.assertEqual(guards, [str(publish.COORDINATION_ISSUE)] * count)
+                self.assertEqual(guards, ['4217'])
         create = (root / 'create-search3-v17-preview.yml').read_text()
         self.assertEqual(re.findall(r'github\.event\.issue\.number == (\d+)', create), ['4217', '4709'])
         for issue, prefix in [(4217, 'next'), (4709, 'early-intent')]:
@@ -125,7 +129,7 @@ class Authorization(unittest.TestCase):
         update_guards = re.findall(r'github\.event\.issue\.number == (\d+)',
                                   (root / 'update-search3-local-preview.yml').read_text())
         self.assertEqual(update_guards, ['4217', '4709'])
-        self.assertEqual(publish.COORDINATION_ISSUE, 4217)
+        self.assertEqual(publish.COORDINATION_ISSUE, 4709)
 
     def test_manual(self):
         self.env['GITHUB_EVENT_NAME']='workflow_dispatch'
@@ -316,6 +320,7 @@ class LeadRouteRecovery(unittest.TestCase):
         fixture_auth = Authorization(); fixture_auth.setUp()
         env = {**fixture_auth.env, 'GITHUB_SHA': 'd' * 40}
         event = copy.deepcopy(fixture_auth.event)
+        event['issue']['number'] = 4217
         event['comment']['body'] = repair.PREFIX + env['GITHUB_SHA']
         self.assertEqual(repair.checked_repair(event, env), env['GITHUB_SHA'])
         for key, value in [('GITHUB_SHA', 'e' * 40), ('GITHUB_RUN_ATTEMPT', '2'),
