@@ -11,7 +11,7 @@ require_once __DIR__ . '/handoff.php';
  * Interior photos: existing canonical AnyTour99 catalogue gallery, read2026-11-16.
  * Hotel facilities: same canonical snapshot (SHA256066c84f1c89bfc5b58fb74cc55004e81de5816bd672268d11725dd022ad54fe3)
  * cross-checked with official factsheet pp4/5/7, read2026-11-16; source update date unknown.
- * No current price, availability, exact room-code or photo-to-category binding.
+ * No current price, availability, exact room-code or photo-to-bookable-55/70/100 sqm binding.
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
@@ -158,7 +158,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <dl>
                     <div><dt>Кроме спальни</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
@@ -176,7 +176,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <dl>
                     <div><dt>Кроме двух спален</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
@@ -194,7 +194,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <dl>
                     <div><dt>Размещение</dt><dd>До четырёх гостей по схемам «2+2» или «3+1»</dd></div>
@@ -229,7 +229,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <h3>Бассейны</h3>
                 <p>В отеле три бассейна и два детских бассейна.</p>
@@ -243,7 +243,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <h3>Детский клуб</h3>
                 <p>Для детей есть JAZY Kids Club.</p>
@@ -257,7 +257,7 @@ sp_breadcrumbs([
                        aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
-                    <figcaption>Фото категории из медиатеки JAZ</figcaption>
+                    
                 </figure>
                 <h3>Рестораны</h3>
                 <p>Главные рестораны — Sunflower и Al Nakhil. В Sunflower питание организовано по системе «шведский стол».</p>

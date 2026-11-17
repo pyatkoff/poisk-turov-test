@@ -145,7 +145,6 @@
 .jaz-official-photo{margin:16px 0;min-width:0}
 .jaz-official-photo a{display:block;overflow:hidden;border-radius:12px;background:var(--at-soft-blue)}
 .jaz-official-photo img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
-.jaz-official-photo figcaption{margin-top:8px;color:var(--at-muted);font-size:12px;line-height:1.45}
 .jaz-stay .jaz-official-photo{margin:0 0 14px}
 .jaz-rooms+.jaz-caption{max-width:95ch}
 @media(max-width:600px){.jaz-official-photo img{aspect-ratio:16/10}}
