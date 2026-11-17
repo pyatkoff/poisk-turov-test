@@ -25,6 +25,17 @@ const interiors = [
   { id: '19573324', sha256: '9f01e75f1e39679bf861dfdab80015b1c7be2504d9258064058d6530608fc4e8' },
   { id: '19573318', sha256: '52daec89203df841421e05b85cfa019933730c9a0bed8ea810a77029833cc1d4' }
 ].map(asset => ({ ...asset, url: `https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-${asset.id}.jpg` }));
+const extraPhotos = [
+  { id: '19573300', caption: 'Фото отеля 1', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573300.jpg' },
+  { id: '19573302', caption: 'Фото отеля 2', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573302.jpg' },
+  { id: '19573306', caption: 'Фото отеля 3', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573306.jpg' },
+  { id: '19573310', caption: 'Фото отеля 4', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573310.jpg' },
+  { id: '19573312', caption: 'Фото отеля 5', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573312.jpg' },
+  { id: '19573315', caption: 'Фото отеля 6', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573315.jpg' },
+  { id: '19573317', caption: 'Фото отеля 7', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573317.jpg' },
+  { id: '19573320', caption: 'Фото отеля 8', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573320.jpg' },
+  { id: '19573325', caption: 'Фото отеля 9', url: 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573325.jpg' },
+];
 const photoAssets = new Map([[photoUrl, photo]]);
 const futureDate = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 const dateFrom = futureDate(90), dateTo = futureDate(97);
@@ -64,6 +75,15 @@ function catalogueItems(key) {
       const bytes = Buffer.from(await response.arrayBuffer());
       assert.equal(sha256(bytes), asset.sha256, `interior photo ${asset.id} changed since visual acceptance`);
       fs.writeFileSync(path.join(output, `jaz-${asset.id}.jpg`), bytes);
+      photoAssets.set(asset.url, bytes);
+    }));
+    await Promise.all(extraPhotos.map(async asset => {
+      const response = await fetch(asset.url, { signal: AbortSignal.timeout(30000) });
+      assert.equal(response.status, 200, 'extra exact-hotel image unavailable ' + asset.id);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.ok(bytes.length > 6000 && bytes.length < 8000000, 'extra image size outside safe bounds ' + asset.id);
+      asset.sha256 = sha256(bytes);
+      fs.writeFileSync(path.join(output, 'jaz-extra-' + asset.id + '.jpg'), bytes);
       photoAssets.set(asset.url, bytes);
     }));
     browser = await chromium.launch({ headless: true });
@@ -130,7 +150,20 @@ function catalogueItems(key) {
           await img.scrollIntoViewIfNeeded();
           await img.evaluate(element => element.decode());
         }
-        record.interiors = await page.locator('.jaz-gallery img').evaluateAll(images => images.map(img => ({
+        const extras = page.locator('.jaz-gallery-more');
+        assert.equal(await extras.count(), 1);
+        await extras.locator('summary').click();
+        assert.equal(await extras.evaluate(el => el.open), true, 'extra gallery disclosure must open on tap/click');
+        for (const img of await page.locator('.jaz-gallery--more img').all()) {
+          await img.scrollIntoViewIfNeeded();
+          await img.evaluate(el => el.decode());
+        }
+        record.extraGallery = await page.locator('.jaz-gallery--more img').evaluateAll(images => images.map(img => ({
+          src: img.src, width: img.naturalWidth, height: img.naturalHeight
+        })));
+        assert.deepEqual(record.extraGallery.map(item => item.src), extraPhotos.map(item => item.url));
+        assert.ok(record.extraGallery.every(item => item.width >= 400 && item.height >= 260));
+        record.interiors = await page.locator('#interiors > .jaz-gallery img').evaluateAll(images => images.map(img => ({
           url: img.src, width: img.naturalWidth, height: img.naturalHeight
         })));
         assert.deepEqual(record.interiors, interiors.map(asset => ({ url: asset.url, width: 1024, height: 683 })));
@@ -154,12 +187,13 @@ function catalogueItems(key) {
         await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-full.png`), fullPage: true, animations: 'disabled' });
         await page.screenshot({ path: path.join(output, `jaz-${viewport.width}-hero.png`), animations: 'disabled' });
         await page.locator('#interiors').screenshot({ path: path.join(output, `jaz-${viewport.width}-interiors.png`), animations: 'disabled' });
+        await page.locator('.jaz-gallery--more').screenshot({ path: path.join(output, `jaz-${viewport.width}-extra-gallery.png`), animations: 'disabled' });
         await page.locator('#rooms').screenshot({ path: path.join(output, `jaz-${viewport.width}-rooms.png`), animations: 'disabled' });
         await page.locator('#stay').screenshot({ path: path.join(output, `jaz-${viewport.width}-stay.png`), animations: 'disabled' });
 
         const photoLinks = page.locator('[data-jaz-photo]');
-        const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url)];
-        const expectedCaptions = ['Территория отеля', 'Гостиная', 'Обеденная зона', 'Спальня'];
+        const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url), ...extraPhotos.map(asset => asset.url)];
+        const expectedCaptions = ['Территория отеля', 'Гостиная', 'Обеденная зона', 'Спальня', ...extraPhotos.map(asset => asset.caption)];
         const photos = await photoLinks.evaluateAll(elements => elements.map(element => ({
           href: element.href, caption: element.dataset.photoCaption, note: element.dataset.photoNote,
           alt: element.querySelector('img').alt, target: element.target,
@@ -167,7 +201,11 @@ function catalogueItems(key) {
         })));
         assert.deepEqual(photos.map(item => item.href), expectedPhotos);
         assert.deepEqual(photos.map(item => item.caption), expectedCaptions);
-        assert.deepEqual(photos.map(item => item.note), ['Фото из каталога Tourvisor', ...interiors.map(() => 'Интерьер отеля; категория номера не указана')]);
+        assert.deepEqual(photos.map(item => item.note), [
+          'Фото из каталога Tourvisor',
+          ...interiors.map(() => 'Интерьер отеля; категория номера не указана'),
+          ...extraPhotos.map(() => 'Фото отеля из каталога; категория и дата съёмки неизвестны')
+        ]);
         assert.ok(photos.every(item => item.target === '_blank' && item.safeOriginal), 'original photo fallbacks must remain available');
         const viewer = page.locator('dialog.jaz-photo-viewer');
         const activate = locator => viewport.width === 430 ? locator.tap() : locator.click();
@@ -191,26 +229,26 @@ function catalogueItems(key) {
           assert.equal(state.alt, photos[index].alt);
           assert.equal(state.title, photos[index].caption);
           assert.equal(state.note, photos[index].note);
-          assert.equal(state.counter, `Фото ${index + 1} из 4`);
+          assert.equal(state.counter, `Фото ${index + 1} из ${expectedPhotos.length}`);
           assert.ok(state.box.left >= 0 && state.box.top >= 0 && state.box.right <= viewport.width + 1 && state.box.bottom <= viewport.height + 1, 'photo viewer must fit the viewport');
           assert.ok(state.scrollWidth <= state.clientWidth + 1, 'horizontal overflow in the photo viewer');
           assert.equal(page.url(), url, 'photo viewer must retain the hotel page query');
           return state;
         };
         record.viewer = [];
-        for (const index of [0, 2]) {
+        for (const index of [0, 2, 5, 12]) {
           const opener = photoLinks.nth(index);
           await opener.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
           const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
           await activate(opener);
           const selected = await checkPhoto(index);
           await activate(viewer.locator('[data-photo-step="1"]'));
-          await checkPhoto((index + 1) % 4);
+          await checkPhoto((index + 1) % expectedPhotos.length);
           await activate(viewer.locator('[data-photo-step="-1"]'));
           await checkPhoto(index);
           if (index === 0) {
             await activate(viewer.locator('[data-photo-step="-1"]'));
-            await checkPhoto(3);
+            await checkPhoto(expectedPhotos.length - 1);
             await activate(viewer.locator('[data-photo-step="1"]'));
             await checkPhoto(0);
           } else {
@@ -244,7 +282,7 @@ function catalogueItems(key) {
           assert.equal(await viewer.locator('img').isVisible(), false, 'a failed image must not leave the previous photo visible');
           assert.match(await viewer.locator('.hotel-photo-viewer__status').innerText(), /Не удалось загрузить фото/);
           assert.equal(await viewer.locator('.hotel-photo-viewer__original').getAttribute('href'), expectedPhotos[1]);
-          assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 2 из 4');
+          assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), `Фото 2 из ${expectedPhotos.length}`);
           assert.equal(page.url(), url);
           await page.screenshot({ path: path.join(output, 'jaz-430-viewer-error.png'), animations: 'disabled' });
           failedPhotoUrl = null;
