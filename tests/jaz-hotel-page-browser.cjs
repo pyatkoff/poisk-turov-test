@@ -250,7 +250,7 @@ function catalogueItems(key) {
         assert.equal(record.priceRequests.length, 0, 'price API requested without user action');
         const originalSearchLinks = await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
         assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
-        assert.match(serverHtml, /Пример найденной цены/);
+        assert.match(serverHtml, /Какие цены находили\?/);
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'observed');
         assert.equal(record.priceRequests.length, 1);
@@ -262,7 +262,8 @@ function catalogueItems(key) {
         assert.match(priceDetails, /superior room garden view/);
         const priceWarnings = await pricePanel.locator('[data-price-extra]').innerText();
         assert.match(priceWarnings, /14/);
-        assert.match(priceWarnings, /не итоговая стоимость/);
+        assert.match(priceWarnings, /Наличие не проверено/);
+        assert.match(await pricePanel.locator('.jaz-price__tag').innerText(), /не итоговая стоимость/);
         const priceLink = new URL(await pricePanel.locator('[data-price-search-link]').getAttribute('href'), baseUrl.origin);
         assert.equal(priceLink.pathname, baseUrl.pathname + '/poisk-turov/');
         assert.equal(priceLink.searchParams.get('hotel'), '268');
@@ -281,6 +282,32 @@ function catalogueItems(key) {
         assert.equal(priceLink.searchParams.has('price_from'), false);
         await pricePanel.screenshot({ path: path.join(output, `jaz-${viewport.width}-price.png`), animations: 'disabled' });
         record.priceObserved = { amount: 109971, fuel: 14011, link: priceLink.href, requests: record.priceRequests.length };
+        // The example link must restore the example's own criteria in Search3,
+        // never the original family trip, and must not auto-start supplier search.
+        await pricePanel.locator('[data-price-search-link]').click();
+        await page.waitForURL(url => url.pathname === baseUrl.pathname + '/poisk-turov/');
+        await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1');
+        await page.waitForFunction(() => document.getElementById('status')?.textContent.includes('Параметры сохранённого поиска восстановлены'));
+        const exampleForm = await page.locator('#tourSearch').evaluate(form => ({
+          from: form.elements.from.value, country: form.elements.country.value,
+          region: form.elements.region.value, hotel: form.elements.hotel.value,
+          dateFrom: form.elements.dateFrom.value, dateTo: form.elements.dateTo.value,
+          nightsFrom: form.elements.daysFrom.value, nightsTill: form.elements.daysTill.value,
+          adults: form.elements.count_people.value, children: form.elements.child_count.value,
+          food: form.elements.food.value,
+          ages: [...form.querySelectorAll('[name="child_age[]"]')].map(x => x.value)
+        }));
+        assert.deepEqual(exampleForm, {
+          from: '1', country: '1', region: '5', hotel: '268',
+          dateFrom: futureDate(65), dateTo: futureDate(65),
+          nightsFrom: '5', nightsTill: '5', adults: '2',
+          children: '0', food: '7', ages: []
+        });
+        assert.equal(record.searchStartAttempts, 0, 'observed-price handoff auto-started supplier search');
+        await page.goBack({ waitUntil: 'networkidle' });
+        assert.equal(page.url(), url, 'price example Back lost original trip URL');
+        assert.deepEqual(await page.locator('[data-hotel-search]').evaluateAll(elements => elements.map(element => element.getAttribute('href'))), originalSearchLinks);
+        record.priceHandoff = { form: exampleForm, backRetained: true, supplierStarts: 0 };
         priceScenario = 'expired';
         await pricePanel.locator('[data-price-load]').click();
         await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');

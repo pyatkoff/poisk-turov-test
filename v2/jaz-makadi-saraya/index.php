@@ -297,16 +297,16 @@ sp_breadcrumbs([
              data-jaz-price-example data-price-endpoint="/data/hotel-monitor-prices-read-v1.php"
              data-price-search="<?=sp_e(jaz_makadi_saraya_handoff([])['url'])?>">
         <div>
-            <span class="jaz-eyebrow">Цены на отдых</span>
-            <h2 id="jaz-price-title">Пример найденной цены</h2>
-            <p>Посмотрите ценовой ориентир из сохранённого мониторинга: <strong>Москва, двое взрослых без детей, вылет в ближайшие 120 дней.</strong> Для семьи стоимость будет другой.</p>
-            <p class="jaz-caption">Мониторинг не проверяет итоговую стоимость с доплатами и наличие. Наблюдение показывается только пока действует запись, без нового поиска у поставщика.</p>
+            <span class="jaz-eyebrow">Цены на туры</span>
+            <h2 id="jaz-price-title">Какие цены находили?</h2>
+            <p>Посмотрите пример для <strong>двух взрослых с вылетом из Москвы</strong> в ближайшие четыре месяца. Для семьи цена будет другой.</p>
+            <p class="jaz-caption">Это наблюдение мониторинга, а не подтверждённая итоговая цена. Наличие и доплаты проверяются в поиске.</p>
         </div>
         <div class="jaz-price__action">
-            <button type="button" class="jaz-price__button" data-price-load>Посмотреть найденный ориентир</button>
+            <button type="button" class="jaz-price__button" data-price-load>Показать ценовой ориентир</button>
             <p class="jaz-price__status" data-price-status role="status" aria-live="polite">Данные загрузятся только после нажатия.</p>
             <div class="jaz-price__result" data-price-result hidden>
-                <span class="jaz-price__tag">Цена из мониторинга, не подтверждённая для бронирования</span>
+                <span class="jaz-price__tag">Найденная цена — не итоговая стоимость</span>
                 <strong class="jaz-price__amount" data-price-amount></strong>
                 <p data-price-terms></p>
                 <p class="jaz-price__warning" data-price-extra></p>

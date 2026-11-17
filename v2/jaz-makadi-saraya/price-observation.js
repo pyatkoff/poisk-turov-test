@@ -122,16 +122,16 @@
           + (offer.mealId === 7 ? ' · всё включено' : '')
           + ' · номер: ' + (offer.roomType.trim() || 'категория по условиям тура');
         extra.textContent = (offer.fuelCharge === null
-          ? 'Обязательные доплаты не подтверждены.'
-          : 'В записи отдельно указан топливный сбор ' + formatRub(offer.fuelCharge) + '; включение в цену не подтверждено.')
-          + ' Это не итоговая стоимость и не проверенное наличие. Пример не относится к семейным апартаментам без подтверждения номера.';
-        source.textContent = 'Наблюдение мониторинга: ' + String(offer.observedAtRaw || '').slice(0, 35)
-          + ' (часовой пояс записи не определён). Источник не подтверждает бронирование.';
+          ? 'Возможные доплаты не подтверждены.'
+          : 'В записи указан топливный сбор ' + formatRub(offer.fuelCharge) + '; включён ли он в сумму, неизвестно.')
+          + ' Наличие не проверено. Категория номера может отличаться от семейных апартаментов.';
+        source.textContent = 'Запись мониторинга: ' + String(offer.observedAtRaw || '').slice(0, 35)
+          + ' (часовой пояс неизвестен).';
         link.href = target.href;
         link.hidden = false;
         result.hidden = false;
         root.dataset.priceState = 'observed';
-        status.textContent = 'Найден ценовой ориентир, не подтверждённое предложение к бронированию.';
+        status.textContent = 'Найден ориентир по цене; предложение проверьте в поиске.';
         root.dataset.priceExpiry = String(Date.parse(offer.expiresAt));
         const expiresIn = Date.parse(offer.expiresAt) - Date.now();
         timeout = setTimeout(function () {
