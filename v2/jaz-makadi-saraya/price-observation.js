@@ -68,6 +68,7 @@
     function hide(state, message) {
       if (timeout !== null) clearTimeout(timeout);
       timeout = null;
+      delete root.dataset.priceExpiry;
       result.hidden = true;
       link.hidden = true;
       root.dataset.priceState = state;
@@ -131,6 +132,7 @@
         result.hidden = false;
         root.dataset.priceState = 'observed';
         status.textContent = 'Найден ценовой ориентир, не подтверждённое предложение к бронированию.';
+        root.dataset.priceExpiry = String(Date.parse(offer.expiresAt));
         const expiresIn = Date.parse(offer.expiresAt) - Date.now();
         timeout = setTimeout(function () {
           hide('expired', 'Ценовое наблюдение устарело. Нажмите кнопку для обновления или откройте подбор.');

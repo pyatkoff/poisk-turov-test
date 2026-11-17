@@ -53,6 +53,42 @@ const report = {
   cases: [], passed: false
 };
 
+
+function priceObservationFixture(url, mode) {
+  const date = futureDate(65);
+  const now = new Date();
+  const offer = {
+    tourvisorHotelId: 268, tourId: '16307652173334', searchId: '14177077157',
+    observationId: '4360819', departureId: 1, countryId: 1,
+    departureDate: date, nights: 5, adults: 2, childrenCount: 0,
+    mealId: 7, roomId: 813214, roomType: 'superior room garden view',
+    operatorId: 16, price: 109971, fuelCharge: 14011, currency: 'RUB',
+    observedAtRaw: new Date(Date.now() - 120000).toISOString().replace('T', ' ').slice(0, 19),
+    source: 'scheduled_monitor', priceKind: 'listing_observation',
+    recordId: 'a'.repeat(64), ageSecondsAtExport: 120,
+    expiresAt: new Date(Date.now() + (mode === 'expired' ? -60000 : 550000)).toISOString(),
+    currentPriceVerified: false, fullPackagePriceVerified: false,
+    fuelIncluded: null, availabilityVerified: false
+  };
+  return {
+    ok: true, format: 'anytour-hotel-monitor-prices-v1',
+    generatedAt: now.toISOString(), identityNamespace: 'tourvisor',
+    source: 'scheduled_monitor', observationWindowHours: 36,
+    supplierRequests: 0, writes: 0, automaticDispatch: false,
+    scope: {
+      tourvisorHotelIds: [268], departureId: 1,
+      dateFrom: url.searchParams.get('dateFrom'), dateTo: url.searchParams.get('dateTo'),
+      nightsFrom: 5, nightsTo: 14, adults: 2,
+      childrenCount: mode === 'wrong-party' ? 1 : 0, currency: 'RUB'
+    },
+    items: [{
+      tourvisorHotelId: 268,
+      state: mode === 'empty' ? 'no_fresh_observation' : 'observed',
+      offers: mode === 'empty' ? [] : [offer]
+    }]
+  };
+}
+
 function catalogueItems(key) {
   return key === 'countries' ? [{ id: 1, name: 'Египет' }]
     : key === 'regions' ? [{ id: 5, name: 'Макади-Бей' }]
@@ -89,6 +125,8 @@ function catalogueItems(key) {
       const page = await browser.newPage({ viewport, hasTouch: viewport.width === 430 });
       const record = { viewport, passed: false, searchStartAttempts: 0, errors: [], requests: [] };
       let failedPhotoUrl = null, failedPhotoRequests = 0;
+      let priceScenario = 'observed';
+      record.priceRequests = [];
       report.cases.push(record);
       page.on('pageerror', error => record.errors.push(String(error)));
       await page.route('**/*', async route => {
@@ -103,6 +141,24 @@ function catalogueItems(key) {
         // Never permit the browser to reach a live catalogue, supplier or lead endpoint.
         if (url.origin !== baseUrl.origin || request.method() !== 'GET') return route.abort();
         const action = url.searchParams.get('action');
+        if (url.pathname === '/data/hotel-monitor-prices-read-v1.php') {
+          record.priceRequests.push({
+            method: request.method(),
+            hotelIds: url.searchParams.getAll('tourvisorHotelIds[]'),
+            departure: url.searchParams.get('departureId'),
+            from: url.searchParams.get('dateFrom'),
+            to: url.searchParams.get('dateTo'),
+            mode: priceScenario
+          });
+          assert.equal(request.method(), 'GET', 'price observer must be GET-only');
+          if (priceScenario === 'error') {
+            return route.fulfill({ status: 503, contentType: 'application/json', body: '{"ok":false}' });
+          }
+          return route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify(priceObservationFixture(url, priceScenario))
+          });
+        }
         if (url.pathname.startsWith('/data/')) {
           const key = url.pathname.includes('departures') ? 'departures' : url.pathname.includes('hotel') ? 'hotels' : action;
           record.requests.push({ type: 'catalogue-fixture', path: url.pathname, action: key });
@@ -126,7 +182,7 @@ function catalogueItems(key) {
         const serverHtml = await response.text();
         record.stay = await page.locator('#stay').innerText();
         const quickNav = await page.locator('.jaz-quick-nav a').evaluateAll(elements => elements.map(element => element.getAttribute('href')));
-        assert.deepEqual(quickNav, ['#interiors', '#rooms', '#stay', '#location', '#questions']);
+        assert.deepEqual(quickNav, ['#interiors', '#rooms', '#stay', '#location', '#price-example', '#questions']);
         assert.match(serverHtml, /Частые вопросы о JAZ Makadi Saraya/, 'FAQ must be in server-rendered HTML');
         assert.match(serverHtml, /Семейный отдых в Макади-Бей/, 'main benefit must be in server-rendered HTML');
         assert.equal(await page.locator('#questions details').count(), 6);
@@ -188,6 +244,62 @@ function catalogueItems(key) {
         await page.locator('#interiors').screenshot({ path: path.join(output, `jaz-${viewport.width}-interiors.png`), animations: 'disabled' });
         await page.locator('#rooms').screenshot({ path: path.join(output, `jaz-${viewport.width}-rooms.png`), animations: 'disabled' });
         await page.locator('#stay').screenshot({ path: path.join(output, `jaz-${viewport.width}-stay.png`), animations: 'disabled' });
+        // Price observation is opt-in. A page visit never reads the monitor or starts a supplier search.
+        const pricePanel = page.locator('[data-jaz-price-example]');
+        assert.equal(await pricePanel.count(), 1);
+        assert.equal(record.priceRequests.length, 0, 'price API requested without user action');
+        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
+        assert.match(serverHtml, /Пример найденной цены/);
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'observed');
+        assert.equal(record.priceRequests.length, 1);
+        assert.deepEqual(record.priceRequests[0].hotelIds, ['268']);
+        assert.equal(record.priceRequests[0].departure, '1');
+        assert.match((await pricePanel.locator('[data-price-amount]').innerText()).replace(/\D/g, ''), /^109971$/);
+        const priceDetails = await pricePanel.locator('[data-price-terms]').innerText();
+        assert.match(priceDetails, /Москва/);
+        assert.match(priceDetails, /superior room garden view/);
+        const priceWarnings = await pricePanel.locator('[data-price-extra]').innerText();
+        assert.match(priceWarnings, /14/);
+        assert.match(priceWarnings, /не итоговая стоимость/);
+        const priceLink = new URL(await pricePanel.locator('[data-price-search-link]').getAttribute('href'), baseUrl.origin);
+        assert.equal(priceLink.pathname, baseUrl.pathname + '/poisk-turov/');
+        assert.equal(priceLink.searchParams.get('hotel'), '268');
+        assert.equal(priceLink.searchParams.get('country'), '1');
+        assert.equal(priceLink.searchParams.get('region'), '5');
+        assert.equal(priceLink.searchParams.get('from'), '1');
+        assert.equal(priceLink.searchParams.get('count_people'), '2');
+        assert.equal(priceLink.searchParams.get('child_count'), '0');
+        assert.equal(priceLink.searchParams.get('dateFrom'), futureDate(65));
+        assert.equal(priceLink.searchParams.get('dateTo'), futureDate(65));
+        assert.equal(priceLink.searchParams.get('daysFrom'), '5');
+        assert.equal(priceLink.searchParams.get('daysTill'), '5');
+        assert.equal(priceLink.searchParams.get('food'), '7');
+        assert.equal(priceLink.searchParams.get('search3_restore'), '1');
+        assert.equal(priceLink.searchParams.has('child_age[]'), false);
+        assert.equal(priceLink.searchParams.has('price_from'), false);
+        await pricePanel.screenshot({ path: path.join(output, `jaz-${viewport.width}-price.png`), animations: 'disabled' });
+        record.priceObserved = { amount: 109971, fuel: 14011, link: priceLink.href, requests: record.priceRequests.length };
+        priceScenario = 'expired';
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
+        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false, 'expired offer still shown');
+        priceScenario = 'wrong-party';
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
+        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false, 'wrong-party offer shown');
+        priceScenario = 'empty';
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'empty');
+        assert.match(await pricePanel.locator('[data-price-status]').innerText(), /не означает, что туров нет/);
+        priceScenario = 'error';
+        await pricePanel.locator('[data-price-load]').click();
+        await page.waitForFunction(() => document.querySelector('[data-jaz-price-example]')?.dataset.priceState === 'error');
+        assert.equal(await pricePanel.locator('[data-price-result]').isVisible(), false);
+        assert.equal(record.priceRequests.length, 5);
+        assert.equal(record.searchStartAttempts, 0);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+        record.priceFallbacks = { expired: true, wrongParty: true, missing: true, error: true };
 
         const photoLinks = page.locator('[data-jaz-photo]');
         const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url), ...officialMedia.map(asset => asset.url)];
