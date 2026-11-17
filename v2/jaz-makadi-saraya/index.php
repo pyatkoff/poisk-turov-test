@@ -32,12 +32,12 @@ $galleryPhotos = [
  * No assumption that a category image proves the 55/70/100 sqm floor plan or a bookable code. */
 $officialPhotoPool = 'https://partner.jazhotels.com/hotel/20';
 $officialMedia = [
-    ['caption' => 'One-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010907One%20Bedroom%20Apartment%20-%20Living%20Room%20Garden%20View.png', 'alt' => 'Гостиная One-Bedroom Apartment в JAZ Makadi Saraya'],
-    ['caption' => 'Two-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010906Two%20Bedroom%20Apartment%20-%20Living%20Garden%20View%20(2).png', 'alt' => 'Гостиная Two-Bedroom Apartment в JAZ Makadi Saraya'],
-    ['caption' => 'Family Deluxe', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/000957Family%20Deluxe%20-%20Queen%20Garden%20View%20Living.png', 'alt' => 'Гостиная Family Deluxe в JAZ Makadi Saraya'],
-    ['caption' => 'Бассейны', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010900Drone%20-%20Saraya%20Resort%20Pool%20Overview.png', 'alt' => 'Вид сверху на бассейны JAZ Makadi Saraya'],
-    ['caption' => 'JAZY Kids Club', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010943Jazy%20Kids%20Club.png', 'alt' => 'Детский клуб JAZY в JAZ Makadi Saraya'],
-    ['caption' => 'Sunflower', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010908Sunflower%20Main%20Restaurant%20-%20Indoor.png', 'alt' => 'Ресторан Sunflower в JAZ Makadi Saraya'],
+    ['caption' => 'One-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010907One%20Bedroom%20Apartment%20-%20Living%20Room%20Garden%20View.png', 'alt' => 'Гостиная One-Bedroom Apartment в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Two-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010906Two%20Bedroom%20Apartment%20-%20Living%20Garden%20View%20(2).png', 'alt' => 'Гостиная Two-Bedroom Apartment в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Family Deluxe', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/000957Family%20Deluxe%20-%20Queen%20Garden%20View%20Living.png', 'alt' => 'Гостиная Family Deluxe в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Бассейны', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010900Drone%20-%20Saraya%20Resort%20Pool%20Overview.png', 'alt' => 'Вид сверху на бассейны JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
+    ['caption' => 'JAZY Kids Club', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010943Jazy%20Kids%20Club.png', 'alt' => 'Детский клуб JAZY в JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
+    ['caption' => 'Sunflower', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010908Sunflower%20Main%20Restaurant%20-%20Indoor.png', 'alt' => 'Ресторан Sunflower в JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
 ];
 $officialUrl = 'https://www.jazhotels.com/hoteldetail/20-egypt-hurghada-makadi-bay-jaz-makadi-saraya-resort/overview';
 $factsheetUrl = 'https://partner.jazhotels.com/Images/uploads/gallery/Downloads/JazMakadiSaraya/JAZ%20Makadi%20Saraya%20-Factsheet.pdf.pdf';
@@ -91,7 +91,7 @@ sp_breadcrumbs([
                 <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
                      alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
                      fetchpriority="high" decoding="async">
-                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 4 фото</span>
+                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 10 фото</span>
             </a>
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
@@ -153,7 +153,9 @@ sp_breadcrumbs([
                 <p class="jaz-room__name">One-Bedroom Apartment</p>
                 <?php $media = $officialMedia[0]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
@@ -169,7 +171,9 @@ sp_breadcrumbs([
                 <p class="jaz-room__name">Two-Bedroom Apartment</p>
                 <?php $media = $officialMedia[1]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
@@ -185,7 +189,9 @@ sp_breadcrumbs([
                 <p class="jaz-room__name">Семейный номер</p>
                 <?php $media = $officialMedia[2]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
@@ -218,7 +224,9 @@ sp_breadcrumbs([
 
                 <?php $media = $officialMedia[3]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
@@ -230,7 +238,9 @@ sp_breadcrumbs([
 
                 <?php $media = $officialMedia[4]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
@@ -242,7 +252,9 @@ sp_breadcrumbs([
 
                 <?php $media = $officialMedia[5]; ?>
                 <figure class="jaz-official-photo">
-                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" aria-label="<?=sp_e('Открыть официальное фото: ' . $media['caption'])?>">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
                         <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
                     </a>
                     <figcaption>Фото категории из медиатеки JAZ</figcaption>
