@@ -2250,6 +2250,8 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-dialog .tour-section-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0}
 .tour-dialog .tour-section h3{font-size:1rem;line-height:1.4;margin:0}
 .tour-dialog .flight-summary{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.tour-overview>.tour-main-details:only-child{grid-column:1/-1}
+.tour-dialog .tour-overview>.flight-summary{min-width:0;padding:20px;border:1px solid var(--line);border-radius:16px}
 .tour-dialog .flight-summary .secondary{min-height:44px;padding:10px 14px;font-size:.875rem;line-height:1.4;white-space:normal}
 .tour-dialog .flight-summary .secondary svg{display:none}
 .tour-dialog .flight-summary>p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}
@@ -2329,6 +2331,11 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 
 .tour-fuel-disclosure>summary>strong{margin-left:auto;overflow-wrap:anywhere}
 
+.selected-tour-total>.tour-price-history{grid-column:1/-1;margin:2px 0 0;padding:0;font-size:.8125rem;line-height:1.4;color:#79521d}
+.tour-dialog .selected-tour-total>.tour-fuel-disclosure{grid-column:1/-1;margin:4px 0 0;padding:0;font-size:.8125rem}
+.selected-tour-total>.tour-fuel-disclosure>summary{gap:4px 8px}
+.selected-tour-total>.tour-fuel-disclosure>summary>strong{margin-left:0}
+.selected-tour-total>.tour-fuel-disclosure>p{max-width:44ch}
 .tour-fuel-disclosure>summary:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
 
 .tour-fuel-disclosure>summary::after{content:'⌄';color:var(--brand);flex:none}
@@ -2485,6 +2492,7 @@ details.application-review .chosen-trip{display:none}
  .tour-dialog .price-breakdown{padding:0;border:0;border-radius:0;background:none}
  .tour-dialog .price-breakdown>h3{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
  .tour-dialog .price-party,.tour-dialog .price-line.total,.tour-dialog .price-assurance{display:none}
+ .tour-dialog .tour-overview>.flight-summary{padding:12px;border-radius:12px}
  .tour-dialog .tour-selection-hint{margin:0 0 10px}
  .tour-dialog .tour-fuel-disclosure{margin:0;padding:0;border:0}
  .application-review{padding:10px;border:1px solid var(--line);border-radius:12px}

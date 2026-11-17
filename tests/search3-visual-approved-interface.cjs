@@ -77,11 +77,16 @@ async function run(width,monthRange=null){
  assert.equal(d.querySelector('#all-offers-list [data-action="offer-group"]'),null);assert.equal(rows[0].querySelector('.primary').textContent.trim(),'Выбрать тур');assert.match($('#modal-body .offer-list-context').textContent,/RIA SUITES HOTEL/);
  for(const row of rows){assert.match(row.textContent,/Завтраки/);assert.match(row.textContent,/Standard/);assert.equal(row.hidden,false);}
  const chosen=rows.find(row=>row.getAttribute('aria-label').includes('FUN&SUN')),key=chosen.dataset.offerKey;
+ const assertChosenTotal=()=>{
+  assert.equal($('#modal').dataset.offerKey,key,'The displayed total belongs to the selected FUN&SUN offer');
+  assert.equal(d.querySelectorAll('#modal #detail-total').length,1,'The exact selected total appears once');
+  assert.equal($('#modal-footer #detail-total').textContent.replace(/\s/g,''),'99938₽','Show the selected total beside its action');
+ };
  chosen.querySelector('[data-action="offer"]').click();await pause();
- assert.match($('#modal-body').textContent.replace(/\s/g,''),/99938₽/);
+ assertChosenTotal();
  action('modal-back');await pause();
  const retained=$('#all-offers-list .is-selected');assert.equal(retained.dataset.offerKey,key);assert.match(retained.textContent,/✓ Выбран/);assert.equal(retained.querySelector('.primary').textContent.trim(),'Смотреть тур');
- retained.querySelector('.primary').click();await pause();assert.match($('#modal-body').textContent.replace(/\s/g,''),/99938₽/);action('modal-back');await pause();await close();
+ retained.querySelector('.primary').click();await pause();assertChosenTotal();action('modal-back');await pause();await close();
  assert.match($('#cards [data-action="all-offers"][data-id="3678"]').closest('.hotel-card').textContent.replace(/\s/g,''),/96953₽/);
  action('edit-search','#applied-search');
  assert.equal($('#search-form').hidden,false);assert.equal(d.querySelector('#quick-stars [data-value="2"]'),null);

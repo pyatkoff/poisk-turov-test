@@ -1000,7 +1000,12 @@ test('mixed region and subregion OR is split only for native providers and union
   }
  });
  await h.data.regions('4');
- await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});
+ // The terminal union below is for four projected branch profiles. Their
+ // catalogue reads finish independently of the fixture's manual Tourvisor poll.
+ const branchProfiles=[301,302,401,402].map(id=>profile(id).id);
+ await waitFor(()=>branchProfiles.every(id=>h.latest().some(hotel=>hotel.id===id)),'both branches of each native provider must be visible before the terminal poll');
+ await h.poll();await flush();
  const tv=h.calls.find(call=>call.action==='search_start').params;
  assert.deepEqual(Array.from(tv.regionIds),['21']);assert.deepEqual(Array.from(tv.subregionIds),['2101'],'Tourvisor keeps canonical mixed OR');
  assert.equal(h.dbBodies.length,0,'mixed live supplier scope does not query LOCAL offers');
