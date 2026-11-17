@@ -1,0 +1,311 @@
+name: One new ordinary bounded coverage and price cycle
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-coverage-once.yml']
+permissions:
+  contents: read
+  actions: read
+  issues: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Exact existing post and feed publisher callback
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Validate daily freshness and full-month TOP500 coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/sync-priority-hotels-v1.php >/dev/null
+          php -l v2/data/top500-daily-plan-v1.php >/dev/null
+          php -l v2/data/top500-monthly-plan-v1.php >/dev/null
+          php -l v2/data/top500-daily-collector-v1.php >/dev/null
+          php -l v2/data/seasonal-page-gap-plan-v1.php >/dev/null
+          php tests/seasonal-page-gap-plan-smoke.php --registry
+          php -l tests/top500-daily-plan-smoke.php >/dev/null
+          php -l tests/top500-monthly-plan-smoke.php >/dev/null
+          php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/hotel-monitor-prices-v1.php >/dev/null
+          php -l v2/data/hotel-monitor-prices-read-v1.php >/dev/null
+          php tests/hotel-monitor-prices-smoke.php
+          php -l v2/data/price-segment-v1.php >/dev/null
+          php -l v2/data/price-intelligence-v1.php >/dev/null
+          php -l v2/data/price-intelligence-read-v1.php >/dev/null
+          php -l v2/data/migrate-price-daily-exact-v1.php >/dev/null
+          php -l v2/data/migrate-hotel-media-v1.php >/dev/null
+          php -l v2/data/rollup-price-daily-exact-v1.php >/dev/null
+          php -l tests/price-intelligence-smoke.php >/dev/null
+          php -l tests/seo-offer-image-smoke.php >/dev/null
+          php -l v2/data/top-hotels-v1.php >/dev/null
+          php -l v2/data/published-hotels-monitor-v1.php >/dev/null
+          php tests/published-hotels-monitor-smoke.php
+          php tests/published-expansion20-monitor-smoke.php
+          php tests/published-expansion32-monitor-smoke.php
+          php -l v2/data/rollup-price-daily-v1.php >/dev/null
+          php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
+          php -l v2/seo-offer-snapshot-v1.php >/dev/null
+          php tests/top500-daily-plan-smoke.php
+          php tests/top500-monthly-plan-smoke.php
+          php tests/price-intelligence-smoke.php
+          php tests/seo-offer-image-smoke.php
+          php tests/top500-anex-namespace-smoke.php
+          grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-anytour-tours.yml
+          grep -Fq "'fresh-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq "'expires-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq 'max_observed_price_exact_comparable_segment' v2/data/price-intelligence-v1.php
+          grep -Fq 'segmentFingerprint' v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq 'hotelImage' v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq 'picturelink' v2/data/price-observer-v1.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-driver-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-reconcile-stale-feed-20261116.php
+          php -l hotel-price-publisher/tools/direct_demand/operations/inspect-monitor-price-pending-20261116.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-link.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion20.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 9a263ce130a6b0c9ad0c9f435575d45f77fa2e62370ab72200d8cfef0bb4a7ae
+          python3 tests/monitor_price_hook_workflow_test.py
+          echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
+
+  collect-production:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5897f28543147aa6c6f494aeb9b1b30a4424a63a'
+    needs: validate
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    # Existing collection (25 min) plus one bounded post-maintenance cycle and setup.
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Exact reviewed LOCAL observation hook
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
+          path: local-tv-source
+          persist-credentials: false
+      - name: Exact existing post and feed publisher callback
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Bundle the reviewed existing publisher callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 9a263ce130a6b0c9ad0c9f435575d45f77fa2e62370ab72200d8cfef0bb4a7ae
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Read-only admission before one new ordinary collection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PRICE_PREFLIGHT_ONLY: '1'
+        run: python3 tools/price-hook-reviewed-pass/run.py
+      - name: Collect due TOP500 months and refresh production aggregates
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          BUDGET_VALUE: ${{ inputs.budget || '2' }}
+          MATRIX_BUDGET_VALUE: ${{ inputs.matrix_budget || '9' }}
+          MATRIX_MONTHS_VALUE: ${{ inputs.matrix_months || '12' }}
+          MONTHLY_BUDGET_VALUE: ${{ inputs.monthly_budget || '64' }}
+          TARGET_MONTH_VALUE: ${{ inputs.target_month || '' }}
+          TARGET_COUNTRY_VALUE: ${{ inputs.target_country || '0' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          [[ "$BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_MONTHS_VALUE" =~ ^[0-9]+$ ]]
+          [[ "$MONTHLY_BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$TARGET_COUNTRY_VALUE" =~ ^[0-9]+$ ]]
+          [[ -z "$TARGET_MONTH_VALUE" || "$TARGET_MONTH_VALUE" =~ ^[0-9]{4}-(0[1-9]|1[0-2])$ ]]
+          test "$BUDGET_VALUE" -ge 0 && test "$BUDGET_VALUE" -le 20
+          test "$MATRIX_BUDGET_VALUE" -ge 1 && test "$MATRIX_BUDGET_VALUE" -le 30
+          test "$MATRIX_MONTHS_VALUE" -ge 1 && test "$MATRIX_MONTHS_VALUE" -le 18
+          test "$MONTHLY_BUDGET_VALUE" -ge 1 && test "$MONTHLY_BUDGET_VALUE" -le 100
+          test "$TARGET_COUNTRY_VALUE" -ge 0 && test "$TARGET_COUNTRY_VALUE" -le 1000000
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          remote="$USER_VALUE@$HOST_VALUE"
+          remote_dir='~/www/anytoour.ru/data'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
+          scp "${opts[@]}" \
+            local-tv-source/v2/data/db-v1.php \
+            local-tv-source/v2/data/tourvisor-client-v1.php \
+            local-tv-source/v2/data/hotel-details-v1.php \
+            local-tv-source/v2/data/local-tv-catalog-v1.php \
+            v2/data/price-segment-v1.php \
+            v2/data/hotel-monitor-prices-v1.php \
+            v2/data/hotel-monitor-prices-read-v1.php \
+            v2/data/price-observer-v1.php \
+            "$RUNNER_TEMP/monitor-price-hook.php" \
+            v2/data/price-confidence-v1.php \
+            v2/data/price-intelligence-v1.php \
+            v2/data/migrate-price-daily-exact-v1.php \
+            v2/data/migrate-hotel-media-v1.php \
+            v2/data/rollup-price-daily-exact-v1.php \
+            v2/data/migrate-collection-attempts-v1.php \
+            v2/data/scheduled-collector-v1.php \
+            v2/data/migrate-matrix-collection-v1.php \
+            v2/data/top-hotels-v1.php \
+            v2/data/top500-anex-priority-v1.php \
+            v2/data/published-hotels-monitor-v1.php \
+            v2/data/sync-priority-hotels-v1.php \
+            v2/data/top500-coverage-v1.php \
+            v2/data/top500-daily-plan-v1.php \
+            v2/data/top500-monthly-plan-v1.php \
+            v2/data/seasonal-page-gap-plan-v1.php \
+            v2/data/top500-daily-collector-v1.php \
+            v2/data/matrix-collector-v1.php \
+            v2/data/rollup-price-daily-v1.php \
+            v2/data/build-seo-offer-snapshots-v1.php \
+            "$remote:$remote_dir/"
+          ssh "${opts[@]}" "$remote" "
+            set -euo pipefail
+            root=\"\$HOME/www/anytoour.ru/data\"
+            php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
+            php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
+            php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null
+            php -l \"\$root/seasonal-page-gap-plan-v1.php\" >/dev/null
+            php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
+            php \"\$root/migrate-collection-attempts-v1.php\"
+            php \"\$root/migrate-matrix-collection-v1.php\"
+            php \"\$root/migrate-price-daily-exact-v1.php\"
+            php \"\$root/migrate-hotel-media-v1.php\"
+            reconcile_status=0
+            php \"\$root/sync-priority-hotels-v1.php\" --limit=500 || reconcile_status=\$?
+            if [ \"\$reconcile_status\" -ne 0 ]; then echo \"PRIORITY_HOTEL_SYNC_WARNING status=\$reconcile_status\"; fi
+            php \"\$root/top500-coverage-v1.php\"
+            # A failed supplier batch must not prevent good partial/user data
+            # already in the DB from reaching SEO snapshots.
+            collection_started_at=\"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            collector_log=\"\$(mktemp)\"
+            trap 'rm -f \"\$collector_log\"' EXIT
+            set +e
+            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --months='$MATRIX_MONTHS_VALUE' --budget='$MONTHLY_BUDGET_VALUE' --max-seconds=1500 --only-month='$TARGET_MONTH_VALUE' --only-country='$TARGET_COUNTRY_VALUE' | tee \"\$collector_log\"
+            collector_pipeline=(\"\${PIPESTATUS[@]}\")
+            set -e
+            collector_status=\"\${collector_pipeline[0]}\"
+            if [ \"\${collector_pipeline[1]}\" -ne 0 ]; then
+              echo \"TOP500_MONTHLY_CAPTURE_FAILED collector_status=\$collector_status tee_status=\${collector_pipeline[1]}\"
+              if [ \"\$collector_status\" -eq 0 ]; then collector_status=\"\${collector_pipeline[1]}\"; fi
+            fi
+            if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
+              php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE' || collector_status=\$?
+              php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE' || collector_status=\$?
+            fi
+            php \"\$root/top500-coverage-v1.php\"
+            if [ '${{ github.event_name }}' = 'push' ] && [ '${{ github.run_attempt }}' = '1' ] && [ \"\${collector_pipeline[1]}\" -eq 0 ]; then
+              completed_partial=0
+              # DONE alone is insufficient: the collector's exit 2 is after finally/RELEASE_LOCK.
+              # Accept only its complete stdout receipt and retain that nonzero outcome.
+              if [ \"\$collector_status\" -eq 2 ] && php -r '
+                try {
+                  \$raw=file_get_contents(\$argv[1],false,null,0,1048577);
+                  if(\$raw===false||strlen(\$raw)>1048576||!str_ends_with(\$raw,chr(10)))exit(1);
+                  \$prefix=\"TOP500_MONTHLY_DONE \";
+                  \$lines=explode(chr(10),substr(\$raw,0,-1));
+                  \$done=array_values(array_filter(\$lines,static fn(string \$line):bool=>str_starts_with(\$line,\$prefix)));
+                  if(count(\$done)!==1||end(\$lines)!==\$done[0])exit(1);
+                  \$encoded=substr(\$done[0],strlen(\$prefix));
+                  \$receipt=json_decode(\$encoded,true,32,JSON_THROW_ON_ERROR);
+                  \$numbers=[\"processed\",\"logical_processed\",\"page_gap_processed\",\"failed\",\"partial\",\"observations_written\",\"fresh_targets\",\"pending_targets\"];
+                  if(!is_array(\$receipt)||array_keys(\$receipt)!==array_merge(\$numbers,[\"complete\",\"months\"]))exit(1);
+                  if(json_encode(\$receipt,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)!==\$encoded)exit(1);
+                  foreach(\$numbers as \$key)if(!is_int(\$receipt[\$key])||\$receipt[\$key]<0)exit(1);
+                  if(\$receipt[\"processed\"]<1||\$receipt[\"failed\"]<1||\$receipt[\"observations_written\"]<1
+                    ||!is_bool(\$receipt[\"complete\"])||\$receipt[\"complete\"]!==(\$receipt[\"pending_targets\"]===0)
+                    ||!is_array(\$receipt[\"months\"]))exit(1);
+                  \$fresh=0;\$pending=0;
+                  foreach(\$receipt[\"months\"] as \$month=>\$coverage){
+                    if(!is_string(\$month)||preg_match(\"/\A[0-9]{4}-(0[1-9]|1[0-2])\z/D\",\$month)!==1
+                      ||!is_array(\$coverage)||array_keys(\$coverage)!==[\"total\",\"fresh\",\"pending\"])exit(1);
+                    foreach(\$coverage as \$count)if(!is_int(\$count)||\$count<0)exit(1);
+                    if(\$coverage[\"total\"]!==\$coverage[\"fresh\"]+\$coverage[\"pending\"])exit(1);
+                    \$fresh+=\$coverage[\"fresh\"];\$pending+=\$coverage[\"pending\"];
+                  }
+                  if(\$fresh!==\$receipt[\"fresh_targets\"]||\$pending!==\$receipt[\"pending_targets\"])exit(1);
+                }catch(Throwable \$error){exit(1);}
+              ' \"\$collector_log\"; then
+                completed_partial=1
+                echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
+              fi
+              if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
+                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
+              fi
+            fi
+            rm -f \"\$collector_log\"
+            trap - EXIT
+            php \"\$root/rollup-price-daily-v1.php\" --days=31
+            php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
+            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            exit \"\$collector_status\"
+          "
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: price-coverage-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/price-result/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Cleanup original connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts" "$RUNNER_TEMP/anytoour_key"

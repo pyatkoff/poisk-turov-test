@@ -1,9 +1,9 @@
 {
-  "claim_sha256": "04f905bb8bea5463f2467c720b3c4aa838801b00de3ad5b404ffc578cd31404e",
+  "claim_sha256": "4cb145987601b1bf0af45154f6e31b3d71195eb527b9b2f08c07b2dd4cf346ca",
   "route_attestation": {
     "repo": "pyatkoff/tour-max",
     "head": "bbef3101f8c8f6eae15355c0d6fa4b8c1848dfa2",
-    "at": "2026-11-17T23:47:43.239423+00:00",
+    "at": "2026-11-17T23:59:14.186856+00:00",
     "counts": {
       "in_progress": 0,
       "queued": 0,
@@ -15,8 +15,8 @@
   "files": {
     "install.php": "0e80daa0764b5cf155a4b8fdaed6bd707f9303270cda77fba809ac651abffffd",
     "feeds.php": "0d1ffa9b7a8f388e0d624a53830ee0d712b5989a58a74add80fded08e8472c63",
-    "run.py": "2f9662cf90a6e04838f20f580edc44f42865f55ecf1fed11da9b13f66ca66226",
-    "admit.py": "c125a37c6e53c7a5cbe1ed0365459a2034793b20394544a58b6a96c530a27c64"
+    "run.py": "2c3338d8e78e630d1e0bfa0de0ef6bee470f91fa3dc7f433c090c3f2b0b7eb2f",
+    "admit.py": "5f41e4fd2e46dbd38f62cceb83238b3e2a1c80995e08a65a5524b9f5db2d6f9d"
   },
   "prefix_offer_ids": [
     "tg_12120",
@@ -41,9 +41,9 @@
     "max_7458"
   ],
   "original_feed_preimages": {
-    "hotel-posts-telegram.xml": "3e4ceda0c803bb13da3d940cfd7e86469d00f17c2f05e7cc1947697881cced5e",
-    "hotel-posts-max.xml": "84f446ef62cd99189556cc47e424b967b456e280d2c4fa4d7225a6c14fd5fa0c",
-    "hotel-posts-all.xml": "9b8987d94b1674f11bbaf0b322a4351d7c15c5f8b1297bed9ef6b0abe0dbad23"
+    "hotel-posts-telegram.xml": "91ce2085e22ebe867ad608e375a4d11928c2903a240d54d1ebb16bb1aa7e8017",
+    "hotel-posts-max.xml": "3f8360c90a56618d6451bef642489674157f00b1dc9cabfcf17c970a1af0efc6",
+    "hotel-posts-all.xml": "b78b40a12541ddbf10afa68efa14afb99c934d5f088f1d93d66608793ffc953f"
   },
   "prefix_evidence": {
     "run_id": 44163849869,

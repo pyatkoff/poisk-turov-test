@@ -1,4 +1,4 @@
-"""No retries, replay, provider collection or synthetic nightly identity."""
+"""Read-only preflight only; never executes a hook or collector."""
 import base64,gzip,hashlib,json,os,pathlib,re,subprocess,sys
 import admit
 ROOT=pathlib.Path(__file__).parent
@@ -8,6 +8,7 @@ NEW='9a263ce130a6b0c9ad0c9f435575d45f77fa2e62370ab72200d8cfef0bb4a7ae'
 def need(v,m):
  if not v:raise RuntimeError(m)
 def main():
+ need(os.environ.get('PRICE_PREFLIGHT_ONLY')=='1','read_only_mode_required')
  os.umask(0o077);tmp=pathlib.Path(os.environ['RUNNER_TEMP']);out=tmp/'price-result';out.mkdir(exist_ok=False)
  host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];need(re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user),'host_invalid')
  opts=['-i',str(tmp/'channel_key'),'-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes','-o','GlobalKnownHostsFile=/dev/null','-o','UserKnownHostsFile='+str(tmp/'channel_known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=30','-o','ServerAliveCountMax=6']
@@ -29,44 +30,5 @@ def main():
  for name,digest in config['original_feed_preimages'].items():need(before['files'][name]['sha256']==digest,'original_feed_preimage_changed')
  bundle=(tmp/'monitor-price-hook.php').read_text();encoded=re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',bundle)[1]
  rows=json.loads(gzip.decompress(base64.b64decode(encoded)))['rows'];bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(bytv)==660,'roster_invalid')
- original_before=before;seen_operations=set(config['previous_operations']);seen_hotels=set(config['previous_scanned_ids']);summaries=[]
- # Two new default passes only. Existing per-pass 30/480s policy is unchanged.
- # Each is admitted afresh and gets a unique exclusive marker. No nightly/replay.
- for index in range(1,3):
-  admit.main()
-  ready=parse(ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-prepass-'+str(index)));need(ready['ok'] is True,'prepass_not_clear')
-  label='pass-'+str(index)
-  # Exactly-once intent; a disconnected native process is UNKNOWN, never repeated.
-  command="set -euo pipefail; set -C; printf '%s\\n' '{\"run_id\":\""+os.environ['GITHUB_RUN_ID']+"\",\"mode\":\"default_saved_price_once\"}' > "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+"-started.json; set +C; set +e; php "+TARGET+" > "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+".stdout; status=$?; set -e; cat "+OP+"/pass-continuation-"+os.environ['GITHUB_RUN_ID']+"-"+str(index)+".stdout; exit $status"
-  # Do not impose 480s hard timeout. Hook's original admission budget is unchanged.
-  raw=ssh(command,label,False)
-  # Always collect read-only outcomes after the one invocation, even nonzero or
-  # disconnected/UNKNOWN. Never retry the price hook or infer nonexecution.
-  afterraw=ssh('php '+scratch+'/feeds.php','feeds-after-'+str(index),False)
-  postraw=ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-final-'+str(index),False)
-  lines=[l.split(b'=',1)[1] for l in raw.splitlines() if l.startswith(b'MONITOR_POST_FEED_RESULT=')];need(len(lines)==1,'pass_result_ambiguous_unknown')
-  result=json.loads(lines[0]);(out/(label+'-result.json')).write_bytes(lines[0]+b'\n')
-  after=parse(afterraw);post=parse(postraw)
-  need(after['ok'] is True and post['ok'] is True,'final_readback_not_clear')
-  bundle=(tmp/'monitor-price-hook.php').read_text();encoded=re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',bundle)[1]
-  rows=json.loads(gzip.decompress(base64.b64decode(encoded)))['rows'];bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(bytv)==660,'roster_invalid')
-  updated={x['tourvisor_hotel_id'] for x in result.get('updates',[])};need(updated<=bytv.keys(),'updated_scope_invalid')
-  allowed=set()
-  for tv in updated:allowed.update(bytv[tv]['feed_binding']['offer_ids'].values())
-  config=json.loads((ROOT/'config.json').read_text());prefix=set(config['prefix_offer_ids']);need(len(prefix)==20,'prefix_scope_invalid')
-  for name,b in before['files'].items():
-   a=after['files'][name];need(list(a['rows'])==list(b['rows']),'feed_members_changed');need(a['envelope']==b['envelope'],'feed_envelope_changed')
-   for k,v in b['rows'].items():
-    need(a['rows'][k]['stable']==v['stable'],'feed_nonprice_changed')
-    if k not in allowed or k in prefix:need(a['rows'][k]['full']==v['full'],'unselected_or_prefix_offer_changed')
-  need(prefix<=before['files']['hotel-posts-all.xml']['rows'].keys(),'prefix_missing')
-  status=json.loads((out/(label+'.status.json')).read_text())['returncode']
-  accepted=status==0 and result.get('ok') is True and result.get('installed_sha')==admit.APP and result.get('roster_pairs')==660 and result.get('budget_seconds')==480 and 0<=result.get('updated_pairs',-1)<=30 and all(result.get(k)==0 for k in ['new_posts','supplier_calls','site_writes']) and not any(result.get(k) for k in ['error','child_failure','pending','preflight_block','error_counts'])
-  summary={'ok':accepted,'run_id':os.environ['GITHUB_RUN_ID'],'source':'d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a','installed_hook':NEW,'updated_pairs':result.get('updated_pairs'),'scanned_pairs':result.get('scanned_pairs'),'held_pairs':result.get('held_pairs'),'error_counts':result.get('error_counts'),'remaining_unscanned_pairs':result.get('remaining_unscanned_pairs'),'roster_pairs':660,'feed_counts':[670,670,1340],'tail_prefix10_preserved':True,'pass_index':index,'full_nightly_cycle_claimed':False}
-  (out/('summary-'+str(index)+'.json')).write_text(json.dumps(summary)+'\n');need(accepted,'pass_not_cleanly_accepted_review_original')
-  operations={u['operation'] for u in result.get('updates',[])};need(not(operations & seen_operations),'operation_repeated');seen_operations|=operations
-  seen_hotels.update(updated);seen_hotels.update(x['tourvisor_hotel_id'] for x in result.get('deferred',[]));seen_hotels.update(result.get('unchanged_ids',[]));seen_hotels.update(result.get('held_ids',[]));summary['cumulative_unique_scanned']=len(seen_hotels)
-  summaries.append(summary);(out/'continuation-summary.json').write_text(json.dumps({'ok':True,'verified_passes':summaries,'updated_pairs':sum(x['updated_pairs'] for x in summaries),'stopped_complete_scan':result.get('scan_complete') is True})+'\n')
-  if result.get('scan_complete') is True:break
-  before=after
+ (out/'preflight-summary.json').write_text(json.dumps({'ok':True,'mode':'read_only_before_new_collection','roster_pairs':660,'feed_counts':[670,670,1340],'pending_null':True,'collector_runs':0,'post_writes':0,'supplier_calls':0})+'\n')
 if __name__=='__main__':main()
