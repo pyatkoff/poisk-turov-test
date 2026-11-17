@@ -148,3 +148,27 @@
 .jaz-stay .jaz-official-photo{margin:0 0 14px}
 .jaz-rooms+.jaz-caption{max-width:95ch}
 @media(max-width:600px){.jaz-official-photo img{aspect-ratio:16/10}}
+
+/* SITE1719 phase6: opt-in retained observation, explicitly not current price or availability. */
+.jaz-price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;padding:26px 30px;border:1px solid var(--at-line);border-radius:20px;background:#fff}
+.jaz-price h2{margin:8px 0 12px;font-size:clamp(26px,2.6vw,32px)}
+.jaz-price p{margin:10px 0 0;color:var(--at-muted);font-size:14px;line-height:1.6}
+.jaz-price p strong{color:var(--at-ink)}
+.jaz-price__action{min-width:0}
+.jaz-price__button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 20px;border:0;border-radius:11px;background:var(--at-brand);color:#fff;font:inherit;font-size:14px;font-weight:750;cursor:pointer}
+.jaz-price__button:disabled{opacity:.65;cursor:wait}
+.jaz-price__button:focus-visible{outline:3px solid var(--at-accent);outline-offset:3px}
+.jaz-price .jaz-price__status{margin:10px 0 0;font-size:13px}
+.jaz-price__result{min-width:0;margin-top:16px;padding:20px;border:1px solid var(--at-line);border-radius:14px;background:var(--at-soft-blue)}
+.jaz-price__tag{color:var(--at-brand);font-size:12px;font-weight:700}
+.jaz-price__amount{display:block;margin-top:10px;color:var(--at-ink);font-size:clamp(26px,3vw,34px);font-weight:800}
+.jaz-price__result p{margin:9px 0 0}
+.jaz-price__result .jaz-price__warning{color:var(--at-ink);font-size:13px}
+.jaz-price__result .jaz-price__source{font-size:12px}
+.jaz-price__result a{margin-top:8px}
+.jaz-price [hidden]{display:none!important}
+@media(max-width:760px){
+  .jaz-price{grid-template-columns:1fr;gap:18px;padding:20px}
+  .jaz-price__button{width:100%}
+  .jaz-price__result{padding:16px}
+}
