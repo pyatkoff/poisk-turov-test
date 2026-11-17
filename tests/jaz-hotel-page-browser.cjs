@@ -25,6 +25,14 @@ const interiors = [
   { id: '19573324', sha256: '9f01e75f1e39679bf861dfdab80015b1c7be2504d9258064058d6530608fc4e8' },
   { id: '19573318', sha256: '52daec89203df841421e05b85cfa019933730c9a0bed8ea810a77029833cc1d4' }
 ].map(asset => ({ ...asset, url: `https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-${asset.id}.jpg` }));
+const officialMedia = [
+  { caption: 'One-Bedroom Apartment', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010907One%20Bedroom%20Apartment%20-%20Living%20Room%20Garden%20View.png' },
+  { caption: 'Two-Bedroom Apartment', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010906Two%20Bedroom%20Apartment%20-%20Living%20Garden%20View%20(2).png' },
+  { caption: 'Family Deluxe', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/000957Family%20Deluxe%20-%20Queen%20Garden%20View%20Living.png' },
+  { caption: 'Бассейны', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010900Drone%20-%20Saraya%20Resort%20Pool%20Overview.png' },
+  { caption: 'JAZY Kids Club', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010943Jazy%20Kids%20Club.png' },
+  { caption: 'Sunflower', url: 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010908Sunflower%20Main%20Restaurant%20-%20Indoor.png' },
+];
 const photoAssets = new Map([[photoUrl, photo]]);
 const futureDate = days => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 const dateFrom = futureDate(90), dateTo = futureDate(97);
@@ -41,7 +49,7 @@ trip.append('child_age[]', '17');
 const report = {
   sourceSha: process.env.SEARCH3_SOURCE_SHA || null,
   scope: 'served copied SITE payload with catalogue/API fixtures; no live supplier or physical-device claim',
-  assets: { photo: { url: photoUrl, sha256: sha256(photo) }, interiors, logo: { url: 'https://anytoour.ru/images/logo.svg', sha256: sha256(logo) } },
+  assets: { photo: { url: photoUrl, sha256: sha256(photo) }, interiors, officialMedia, logo: { url: 'https://anytoour.ru/images/logo.svg', sha256: sha256(logo) } },
   cases: [], passed: false
 };
 
@@ -66,6 +74,16 @@ function catalogueItems(key) {
       fs.writeFileSync(path.join(output, `jaz-${asset.id}.jpg`), bytes);
       photoAssets.set(asset.url, bytes);
     }));
+    await Promise.all(officialMedia.map(async asset => {
+      const response = await fetch(asset.url, { signal: AbortSignal.timeout(30000) });
+      assert.equal(response.status, 200, 'official photo unreachable: ' + asset.caption);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.ok(bytes.length > 1000 && bytes.length < 8000000, 'official photo size unexpected');
+      asset.sha256 = sha256(bytes);
+      asset.size = bytes.length;
+      fs.writeFileSync(path.join(output, 'jaz-official-' + officialMedia.indexOf(asset) + '.png'), bytes);
+      photoAssets.set(asset.url, bytes);
+    }));
     browser = await chromium.launch({ headless: true });
     for (const viewport of [{ width: 430, height: 932 }, { width: 1280, height: 720 }]) {
       const page = await browser.newPage({ viewport, hasTouch: viewport.width === 430 });
@@ -77,7 +95,7 @@ function catalogueItems(key) {
         const request = route.request(), url = new URL(request.url());
         if (photoAssets.has(url.href)) {
           if (url.href === failedPhotoUrl) { failedPhotoRequests++; return route.abort('failed'); }
-          return route.fulfill({ status: 200, contentType: 'image/jpeg', body: photoAssets.get(url.href) });
+          return route.fulfill({ status: 200, contentType: url.pathname.endsWith('.png') ? 'image/png' : 'image/jpeg', body: photoAssets.get(url.href) });
         }
         if (url.origin === baseUrl.origin && url.pathname === '/images/logo.svg') {
           return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: logo });
@@ -130,6 +148,20 @@ function catalogueItems(key) {
           await img.scrollIntoViewIfNeeded();
           await img.evaluate(element => element.decode());
         }
+        const officialImgs = page.locator('.jaz-official-photo img');
+        assert.equal(await officialImgs.count(), officialMedia.length, 'must show exactly 6 official media candidates');
+        assert.equal(await page.locator('.jaz-official-photo figcaption').count(), 0, 'source/rights boilerplate must not clutter commercial cards');
+        assert.match(await page.locator('.jaz-photo-hint').innerText(), /10 фото/, 'hero photo count must include new images');
+        for (const img of await officialImgs.all()) {
+          await img.scrollIntoViewIfNeeded();
+          await img.evaluate(element => element.decode());
+        }
+        record.officialMedia = await officialImgs.evaluateAll(images => images.map(image => ({
+          src: image.src, width: image.naturalWidth, height: image.naturalHeight
+        })));
+        assert.deepEqual(record.officialMedia.map(x => x.src), officialMedia.map(x => x.url));
+        assert.ok(record.officialMedia.every(x => x.width >= 300 && x.height >= 200), 'official photos did not decode');
+        assert.match(serverHtml, /partner.jazhotels.com\/hotel\/20/, 'exact-hotel source missing');
         record.interiors = await page.locator('.jaz-gallery img').evaluateAll(images => images.map(img => ({
           url: img.src, width: img.naturalWidth, height: img.naturalHeight
         })));
@@ -158,16 +190,21 @@ function catalogueItems(key) {
         await page.locator('#stay').screenshot({ path: path.join(output, `jaz-${viewport.width}-stay.png`), animations: 'disabled' });
 
         const photoLinks = page.locator('[data-jaz-photo]');
-        const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url)];
-        const expectedCaptions = ['Территория отеля', 'Гостиная', 'Обеденная зона', 'Спальня'];
+        const expectedPhotos = [photoUrl, ...interiors.map(asset => asset.url), ...officialMedia.map(asset => asset.url)];
+        const expectedCaptions = ['Территория отеля', 'Гостиная', 'Обеденная зона', 'Спальня', ...officialMedia.map(asset => asset.caption)];
         const photos = await photoLinks.evaluateAll(elements => elements.map(element => ({
           href: element.href, caption: element.dataset.photoCaption, note: element.dataset.photoNote,
           alt: element.querySelector('img').alt, target: element.target,
           safeOriginal: element.relList.contains('noopener') && element.relList.contains('noreferrer')
         })));
         assert.deepEqual(photos.map(item => item.href), expectedPhotos);
+        assert.equal(photos.length, 10, 'all four accepted and six official assets must be viewable in one dialog');
         assert.deepEqual(photos.map(item => item.caption), expectedCaptions);
-        assert.deepEqual(photos.map(item => item.note), ['Фото из каталога Tourvisor', ...interiors.map(() => 'Интерьер отеля; категория номера не указана')]);
+        assert.deepEqual(photos.map(item => item.note), [
+          'Фото из каталога Tourvisor',
+          ...interiors.map(() => 'Интерьер отеля; категория номера не указана'),
+          ...officialMedia.map((_, index) => index < 3 ? 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены' : 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат')
+        ]);
         assert.ok(photos.every(item => item.target === '_blank' && item.safeOriginal), 'original photo fallbacks must remain available');
         const viewer = page.locator('dialog.jaz-photo-viewer');
         const activate = locator => viewport.width === 430 ? locator.tap() : locator.click();
@@ -191,26 +228,26 @@ function catalogueItems(key) {
           assert.equal(state.alt, photos[index].alt);
           assert.equal(state.title, photos[index].caption);
           assert.equal(state.note, photos[index].note);
-          assert.equal(state.counter, `Фото ${index + 1} из 4`);
+          assert.equal(state.counter, `Фото ${index + 1} из ${expectedPhotos.length}`);
           assert.ok(state.box.left >= 0 && state.box.top >= 0 && state.box.right <= viewport.width + 1 && state.box.bottom <= viewport.height + 1, 'photo viewer must fit the viewport');
           assert.ok(state.scrollWidth <= state.clientWidth + 1, 'horizontal overflow in the photo viewer');
           assert.equal(page.url(), url, 'photo viewer must retain the hotel page query');
           return state;
         };
         record.viewer = [];
-        for (const index of [0, 2]) {
+        for (const index of [0, 2, 4, 7, 9]) {
           const opener = photoLinks.nth(index);
           await opener.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
           const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
           await activate(opener);
           const selected = await checkPhoto(index);
           await activate(viewer.locator('[data-photo-step="1"]'));
-          await checkPhoto((index + 1) % 4);
+          await checkPhoto((index + 1) % expectedPhotos.length);
           await activate(viewer.locator('[data-photo-step="-1"]'));
           await checkPhoto(index);
           if (index === 0) {
             await activate(viewer.locator('[data-photo-step="-1"]'));
-            await checkPhoto(3);
+            await checkPhoto(expectedPhotos.length - 1);
             await activate(viewer.locator('[data-photo-step="1"]'));
             await checkPhoto(0);
           } else {
@@ -244,7 +281,7 @@ function catalogueItems(key) {
           assert.equal(await viewer.locator('img').isVisible(), false, 'a failed image must not leave the previous photo visible');
           assert.match(await viewer.locator('.hotel-photo-viewer__status').innerText(), /Не удалось загрузить фото/);
           assert.equal(await viewer.locator('.hotel-photo-viewer__original').getAttribute('href'), expectedPhotos[1]);
-          assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), 'Фото 2 из 4');
+          assert.equal(await viewer.locator('.hotel-photo-viewer__counter').innerText(), `Фото 2 из ${expectedPhotos.length}`);
           assert.equal(page.url(), url);
           await page.screenshot({ path: path.join(output, 'jaz-430-viewer-error.png'), animations: 'disabled' });
           failedPhotoUrl = null;

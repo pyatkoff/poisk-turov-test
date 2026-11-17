@@ -140,3 +140,11 @@
   .jaz-questions__grid summary{padding:16px;font-size:14px}
   .jaz-questions__grid p{padding:0 16px 16px;font-size:13px}
 }
+
+/* SITE1719 phase5 media candidates: official photos; production reuse requires rights verification. */
+.jaz-official-photo{margin:16px 0;min-width:0}
+.jaz-official-photo a{display:block;overflow:hidden;border-radius:12px;background:var(--at-soft-blue)}
+.jaz-official-photo img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
+.jaz-stay .jaz-official-photo{margin:0 0 14px}
+.jaz-rooms+.jaz-caption{max-width:95ch}
+@media(max-width:600px){.jaz-official-photo img{aspect-ratio:16/10}}

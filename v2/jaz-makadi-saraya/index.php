@@ -11,7 +11,7 @@ require_once __DIR__ . '/handoff.php';
  * Interior photos: existing canonical AnyTour99 catalogue gallery, read2026-11-16.
  * Hotel facilities: same canonical snapshot (SHA256066c84f1c89bfc5b58fb74cc55004e81de5816bd672268d11725dd022ad54fe3)
  * cross-checked with official factsheet pp4/5/7, read2026-11-16; source update date unknown.
- * No current price, availability, exact room-code or photo-to-category binding.
+ * No current price, availability, exact room-code or photo-to-bookable-55/70/100 sqm binding.
  */
 $context = sp_context(
     '/jaz-makadi-saraya/',
@@ -27,6 +27,18 @@ $galleryPhotos = [
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573321.jpg', 'caption' => 'Гостиная', 'alt' => 'Гостиная в JAZ Makadi Saraya: диван, столик и выход на террасу'],
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573324.jpg', 'caption' => 'Обеденная зона', 'alt' => 'Обеденный стол и гостиная за аркой в JAZ Makadi Saraya'],
     ['url' => 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573318.jpg', 'caption' => 'Спальня', 'alt' => 'Спальня с двумя кроватями в JAZ Makadi Saraya'],
+];
+/* Exact /hotel/20 official photo-pool captions; owner requested use in preview on 2026-11-17.
+ * Attribution remains; no assumption that a category image proves the 55/70/100 sqm floor plan or a bookable code.
+ * Owner instruction is not a separate third-party license grant. */
+$officialPhotoPool = 'https://partner.jazhotels.com/hotel/20';
+$officialMedia = [
+    ['caption' => 'One-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010907One%20Bedroom%20Apartment%20-%20Living%20Room%20Garden%20View.png', 'alt' => 'Гостиная One-Bedroom Apartment в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Two-Bedroom Apartment', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010906Two%20Bedroom%20Apartment%20-%20Living%20Garden%20View%20(2).png', 'alt' => 'Гостиная Two-Bedroom Apartment в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Family Deluxe', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/000957Family%20Deluxe%20-%20Queen%20Garden%20View%20Living.png', 'alt' => 'Гостиная Family Deluxe в JAZ Makadi Saraya', 'note' => 'Официальная фотография категории; конкретный номер, площадь и вид при бронировании не подтверждены'],
+    ['caption' => 'Бассейны', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010900Drone%20-%20Saraya%20Resort%20Pool%20Overview.png', 'alt' => 'Вид сверху на бассейны JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
+    ['caption' => 'JAZY Kids Club', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010943Jazy%20Kids%20Club.png', 'alt' => 'Детский клуб JAZY в JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
+    ['caption' => 'Sunflower', 'url' => 'https://partner.jazhotels.com/Images/uploads/gallery/photos/new/010908Sunflower%20Main%20Restaurant%20-%20Indoor.png', 'alt' => 'Ресторан Sunflower в JAZ Makadi Saraya', 'note' => 'Официальная фотография инфраструктуры; доступность и включение услуг зависят от тарифа и дат'],
 ];
 $officialUrl = 'https://www.jazhotels.com/hoteldetail/20-egypt-hurghada-makadi-bay-jaz-makadi-saraya-resort/overview';
 $factsheetUrl = 'https://partner.jazhotels.com/Images/uploads/gallery/Downloads/JazMakadiSaraya/JAZ%20Makadi%20Saraya%20-Factsheet.pdf.pdf';
@@ -80,7 +92,7 @@ sp_breadcrumbs([
                 <img src="<?=sp_e($photoUrl)?>" width="1024" height="554"
                      alt="Территория JAZ Makadi Saraya: бассейн и невысокие корпуса"
                      fetchpriority="high" decoding="async">
-                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 4 фото</span>
+                <span class="jaz-photo-hint" aria-hidden="true">Смотреть 10 фото</span>
             </a>
             <figcaption>Территория отеля · фото из каталога Tourvisor</figcaption>
         </figure>
@@ -140,6 +152,15 @@ sp_breadcrumbs([
             <article class="jaz-room">
                 <div class="jaz-room__heading"><h3>Одна спальня</h3><span class="jaz-room__area">70 <small>м²</small></span></div>
                 <p class="jaz-room__name">One-Bedroom Apartment</p>
+                <?php $media = $officialMedia[0]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <dl>
                     <div><dt>Кроме спальни</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
                     <div><dt>Кровати</dt><dd>Двуспальная либо две односпальные</dd></div>
@@ -149,6 +170,15 @@ sp_breadcrumbs([
             <article class="jaz-room">
                 <div class="jaz-room__heading"><h3>Две спальни</h3><span class="jaz-room__area">100 <small>м²</small></span></div>
                 <p class="jaz-room__name">Two-Bedroom Apartment</p>
+                <?php $media = $officialMedia[1]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <dl>
                     <div><dt>Кроме двух спален</dt><dd>Гостиная, кухня и обеденная зона</dd></div>
                     <div><dt>Кровати</dt><dd>Двуспальная и две односпальные</dd></div>
@@ -158,6 +188,15 @@ sp_breadcrumbs([
             <article class="jaz-room">
                 <div class="jaz-room__heading"><h3>Family Deluxe</h3><span class="jaz-room__area">55 <small>м²</small></span></div>
                 <p class="jaz-room__name">Семейный номер</p>
+                <?php $media = $officialMedia[2]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <dl>
                     <div><dt>Размещение</dt><dd>До четырёх гостей по схемам «2+2» или «3+1»</dd></div>
                     <div><dt>Для поездки с детьми</dt><dd>Возрастные условия зависят от выбранного тура</dd></div>
@@ -165,6 +204,7 @@ sp_breadcrumbs([
                 <p class="jaz-room__choice">Для пяти гостей эта категория не подтверждена.</p>
             </article>
         </div>
+        <p class="jaz-caption">Снимки категорий взяты из официальной медиатеки JAZ. Конкретные номер, вид из окна и спальные места уточняются по выбранному туру.</p>
         <div class="jaz-room-note">
             <strong>Важно при выборе номера</strong>
             <p>Вместимость зависит от возраста детей и дополнительных спальных мест. Для апартаментов отдельно проверьте двери между комнатами и размещение пятого гостя.</p>
@@ -182,14 +222,44 @@ sp_breadcrumbs([
         <div class="jaz-section-heading"><div><span class="jaz-eyebrow">В отеле</span><h2 id="stay-title">Для отдыха всей семьёй</h2></div></div>
         <div class="jaz-stay">
             <article>
+
+                <?php $media = $officialMedia[3]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <h3>Бассейны</h3>
                 <p>В отеле три бассейна и два детских бассейна.</p>
             </article>
             <article>
+
+                <?php $media = $officialMedia[4]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <h3>Детский клуб</h3>
                 <p>Для детей есть JAZY Kids Club.</p>
             </article>
             <article>
+
+                <?php $media = $officialMedia[5]; ?>
+                <figure class="jaz-official-photo">
+                    <a href="<?=sp_e($media['url'])?>" target="_blank" rel="noopener noreferrer" data-jaz-photo
+                       data-photo-caption="<?=sp_e($media['caption'])?>" data-photo-note="<?=sp_e($media['note'])?>"
+                       aria-label="<?=sp_e('Открыть фото: ' . $media['caption'])?>">
+                        <img src="<?=sp_e($media['url'])?>" width="800" height="533" alt="<?=sp_e($media['alt'])?>" loading="lazy" decoding="async">
+                    </a>
+
+                </figure>
                 <h3>Рестораны</h3>
                 <p>Главные рестораны — Sunflower и Al Nakhil. В Sunflower питание организовано по системе «шведский стол».</p>
             </article>
@@ -266,6 +336,7 @@ sp_breadcrumbs([
         <details>
             <summary>Источники и подробности об отеле</summary>
             <div class="jaz-sources__body">
+                <p>Официальные фотографии категорий, бассейна, детского клуба и Sunflower — из <a href="<?=sp_e($officialPhotoPool)?>" rel="noreferrer">медиатеки JAZ Makadi Saraya</a> (отель №20). Снимки подписаны по категориям самим JAZ, но не подтверждают совпадение с конкретным номером или стоимостью тура. Фотографии © Jaz Hotel Group.</p>
                 <p>Это JAZ Makadi Saraya Resort, ранее Iberotel Makadi Saraya Resort. Saraya Palms и Makadina — другие отели. Фотографии территории и интерьеров взяты из галереи этого отеля в каталоге Tourvisor; категории номеров и даты съёмки не указаны. Галерея проверена 16 ноября 2026 года.</p>
                 <p>Интурист описывает эти категории с видом на сад или бассейн и публикует максимум «4+1» для One-Bedroom Apartment и «5+1» для Two-Bedroom Apartment. Возрастные условия и все дополнительные места не раскрыты; пятое спальное место отдельно не описано. Закрывающиеся внутренние двери не подтверждены. Названия категорий у разных операторов не устанавливают точного соответствия номеру в туре.</p>
                 <p>Площади и названия категорий приведены по Интуристу. Питание, включённые услуги и допустимый состав гостей определяются условиями выбранного предложения. Описание категории не подтверждает её наличие на ваши даты.</p>
