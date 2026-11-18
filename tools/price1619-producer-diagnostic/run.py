@@ -3,9 +3,9 @@ import hashlib,json,os,re,shlex,subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 BRANCH='audit/price4294-producer-read-20261118'
-BEFORE='cf51437cd2d823dc1fb65937c57668b3d6b492e3'
+BEFORE='4e7f4df3928d617d7cb652738da510f9be707d97'
 ALLOWED_ERRORS={'isolated_sql_unbound','isolated_sql_not_proven_idle','isolated_sql_snapshot_too_late','isolated_sql_env_shape','isolated_sql_unavailable','producer_failed_closed','git_read_failed','producer_runtime_warning','producer_args','producer_identity','producer_config_hash','producer_closed','runtime_dirty','runtime_changed','path_changed','busy','file_replaced','incomplete','file_changed','preimage_changed','pending_changed','missing','native_evidence_changed','process_read_failed','process_read_incomplete','process_line_unknown','native_collector_busy','consumer_db_source_changed','consumer_db_function_missing','consumer_db_unavailable','consumer_config_missing','canonical_collector_sql_lock_busy','consumer_path_changed','consumer_changed','staged_bundle_changed','journal_identity_changed'}
-EXPECTED={'producer.php':'c9b1c556fb79e2385d0d73b404fc3c62e27b9041576686a4ec454916308b9690','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
+EXPECTED={'producer.php':'67601c7d5d70eba51ac358bf19c3d7d0501662e36d0b966687b2dd2ca4679491','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
 def need(v,m):
  if not v:raise RuntimeError(m)
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -24,15 +24,18 @@ def sanitized(raw,stderr,rc,run,head):
    if v.get('warning_file') in {'producer.php','config.php','db-v1.php','ChannelPostRuntime.php','ChannelPostRegistryService.php','ConversationDb.php','other'}:out['warning_file']=v['warning_file']
    for k in ('warning_severity','warning_line'):
     if type(v.get(k)) is int and v[k]>=0:out[k]=v[k]
-  enums={'child_warning_kind':{'constant_already_defined','undefined_array_key','deprecated','other'},'child_warning_file':{'config.php','db-v1.php','other'},'pdo_state_class':{'08','28','42','HY','IM','other'},'identity_target':{'db','config'},'producer_phase':{'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'},'throwable_kind':{'pdo','error','exception','other'},'sql_transport':{'env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'},'sql_phase':{'path','identity','db_pin','include_db','connect_config','query','owner','config_included','identity_after','output','worker_guard'},'sql_kind':{'guard','config_warning','pdo','error','loader','missing_driver','lock_busy','shape'}}
+  enums={'ps_probe':{'failed','observed'},'owner_class':{'null','int_positive','numeric_string_positive','zero','false','other'},'owner_probe':{'not_positive','connection','processlist','observed','failed'},'owner_probe_error':{'pdo','error','exception'},'owner_command':{'Sleep','Query','Execute','Connect','Daemon','Binlog Dump','Killed','other'},'child_warning_kind':{'constant_already_defined','undefined_array_key','deprecated','other'},'child_warning_file':{'config.php','db-v1.php','other'},'pdo_state_class':{'08','28','42','HY','IM','other'},'identity_target':{'db','config'},'producer_phase':{'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'},'throwable_kind':{'pdo','error','exception','other'},'sql_transport':{'env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'},'sql_phase':{'path','identity','db_pin','include_db','connect_config','query','owner','config_included','identity_after','output','worker_guard'},'sql_kind':{'guard','config_warning','pdo','error','loader','missing_driver','lock_busy','shape'}}
   for k,allowed in enums.items():
    if isinstance(v.get(k),str) and v[k] in allowed:out[k]=v[k]
-  for k in ('identity_exists','identity_is_link','identity_realpath_equal','parent_mysql_available','child_mysql_available','transport_timeout','transport_output_bounds','transport_stderr_nonempty'):
+  for k in ('owner_equals_connection_id','owner_visible','identity_exists','identity_is_link','identity_realpath_equal','parent_mysql_available','child_mysql_available','transport_timeout','transport_output_bounds','transport_stderr_nonempty'):
    if type(v.get(k)) is bool:out[k]=v[k]
   for k in ('child_warning_line','child_warning_severity','parent_php_version_id','child_php_version_id','transport_exitcode'):
    if type(v.get(k)) is int and -1<=v[k]<=1000000:out[k]=v[k]
+  for k in ('timer_count','timer_elapsed_max','owner_seconds','collector_count','monitor_count','recover_count','collector_elapsed_max','monitor_elapsed_max','recover_elapsed_max'):
+   if type(v.get(k)) is int and 0<=v[k]<=2147483647:out[k]=v[k]
   if type(v.get('pdo_driver_code')) is int and v['pdo_driver_code'] in {1045,1049,2002,2006,2013}:out['pdo_driver_code']=v['pdo_driver_code']
   if isinstance(v.get('transport_stderr_sha256'),str) and re.fullmatch('[a-f0-9]{64}',v['transport_stderr_sha256']):out['transport_stderr_sha256']=v['transport_stderr_sha256']
+  if 'timer_receipts' in v:out['timer_receipts']=timer_projection(v['timer_receipts'])
   return out
  p=v.get('producer');need(isinstance(p,dict),'producer_shape_invalid')
  for key in ('runtime_sha','head_sha'):
@@ -46,7 +49,28 @@ def sanitized(raw,stderr,rc,run,head):
  for key in ('global_pin','child_pin'):
   pin=p.get(key);need(isinstance(pin,dict) and set(pin)=={'sha256','bytes','lines'} and isinstance(pin['sha256'],str) and re.fullmatch('[a-f0-9]{64}',pin['sha256']) and all(type(pin[k]) is int and pin[k]>=0 for k in ('bytes','lines')),'producer_pin_invalid');out[key]=pin
  feeds=p.get('feed_shas');need(isinstance(feeds,dict) and set(feeds)=={'telegram','max','all'} and all(isinstance(x,str) and re.fullmatch('[a-f0-9]{64}',x) for x in feeds.values()),'producer_feeds_invalid');out['feed_shas']=feeds
+ for k in ('collector_count','monitor_count','recover_count','timer_count','collector_elapsed_max','monitor_elapsed_max','recover_elapsed_max','timer_elapsed_max'):
+  if type(p.get(k)) is int and 0<=p[k]<=2147483647:out[k]=p[k]
+ if p.get('ps_probe') in {'observed','failed'}:out['ps_probe']=p['ps_probe']
+ if 'timer_receipts' in p:out['timer_receipts']=timer_projection(p['timer_receipts'])
  out['ok']=True;return out
+
+def timer_projection(v):
+ out={}
+ if not isinstance(v,dict):return out
+ for name in ('last-check','last-collection','last-error'):
+  row=v.get(name)
+  if not isinstance(row,dict):continue
+  clean={}
+  if row.get('read_status') in {'observed','missing','unavailable'}:clean['read_status']=row['read_status']
+  for k in ('started_at','finished_at'):
+   if isinstance(row.get(k),str) and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|[+-][0-9]{2}:[0-9]{2})',row[k]):clean[k]=row[k]
+  if row.get('state') in {'busy','recent','collected','partial','failed'}:clean['state']=row['state']
+  if type(row.get('exit')) is int and -1<=row['exit']<=255:clean['exit']=row['exit']
+  result=row.get('result')
+  if isinstance(result,dict):clean['result']={k:result[k] for k in ('processed','logical_processed','observations_written','failed','partial','fresh_targets','pending_targets') if type(result.get(k)) is int and 0<=result[k]<=2147483647}
+  out[name]=clean
+ return out
 
 def retained(command,path):return 'set -C; if { '+command+'; native_rc=$?; } > '+shlex.quote(path)+'; then cat '+shlex.quote(path)+' || exit 96; exit "$native_rc"; else exit 97; fi'
 def main():
