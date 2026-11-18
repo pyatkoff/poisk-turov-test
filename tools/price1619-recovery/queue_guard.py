@@ -53,7 +53,7 @@ def verify(get, own_repo, own_id, own_head, expected_mains, base=ROOT, status_ge
      need(expected_mains[repo]!=p['head_sha'],'queued_main_guard_not_blocked')
     if p['classification']=='exact_required_artifact_unavailable':
      calls+=1;need(calls<200,'queue_read_budget_exceeded')
-     status=status_get(repo,p['artifact_id']);need(type(status) is int and status in (404,410),'required_artifact_not_proven_unavailable')
+     artifact_http_status=status_get(repo,p['artifact_id']);need(type(artifact_http_status) is int and artifact_http_status in (404,410),'required_artifact_not_proven_unavailable')
     accepted.append(p['id'])
  # Every reviewed transitive workflow/helper source is checked at immutable ref.
  for s in proof['source_proofs']:

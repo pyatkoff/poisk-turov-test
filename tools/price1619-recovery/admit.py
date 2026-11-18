@@ -15,7 +15,7 @@ import time
 APP_REPO = 'pyatkoff/max-search-bot'
 CARRIER_REPO = 'pyatkoff/poisk-turov-test'
 CARRIER = 'audit/price4294-evidence-20261118'
-BEFORE = '182e93f3c253d9f69f8913e5c1bb82ff79c0ec4e'
+BEFORE = '848e74736431d7be1ce2a4a55229a4d2be8d793b'
 FIX_RUNTIME = '92bd28bea3f8e00bffb154b267104640fd53ce17'
 RUNTIME = 'bd8e248f7138ea75cb9fda2dcf44beb631c633a5'
 CURRENT_PR_HEAD = '69856883ce0b4b511e0b08d178eac7cefbe43dfe'
