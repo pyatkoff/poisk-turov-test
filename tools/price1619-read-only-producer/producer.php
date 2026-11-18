@@ -5,6 +5,38 @@ function git4294(array $args):string{
  if(!is_resource($p))throw new RuntimeException('git_read_failed');fclose($pipes[0]);$out=stream_get_contents($pipes[1],2000001);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
  if(proc_close($p)!==0||strlen($out)>2000000)throw new RuntimeException('git_read_failed');return trim($out);
 }
+function producer_process_diagnostic():array {
+ $out=['ps_probe'=>'failed'];$p=proc_open(['ps','-eo','pid=,etimes=,args='],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+ if(!is_resource($p))return $out;fclose($pipes[0]);stream_set_blocking($pipes[1],false);stream_set_blocking($pipes[2],false);$raw='';$err='';$deadline=microtime(true)+5;$exit=null;$bad=false;
+ try{while(true){$raw.=stream_get_contents($pipes[1],2097153);$err.=stream_get_contents($pipes[2],4097);if(strlen($raw)>2097152||strlen($err)>4096||microtime(true)>$deadline){$bad=true;proc_terminate($p,9);break;}$status=proc_get_status($p);if(!$status['running']){$exit=$status['exitcode'];$raw.=stream_get_contents($pipes[1],2097153);$err.=stream_get_contents($pipes[2],4097);break;}usleep(10000);}}
+ finally{fclose($pipes[1]);fclose($pipes[2]);$closed=proc_close($p);}
+ if($bad||($exit??$closed)!==0||strlen($raw)>2097152||$err!=='')return $out;
+ $out=['ps_probe'=>'observed','collector_count'=>0,'monitor_count'=>0,'timer_count'=>0,'timer_elapsed_max'=>0,'recover_count'=>0,'collector_elapsed_max'=>0,'monitor_elapsed_max'=>0,'recover_elapsed_max'=>0];
+ foreach(explode("\n",trim($raw)) as $line){if(!preg_match('/\A\s*([0-9]+)\s+([0-9]+)\s+(.+)\z/D',$line,$m))return ['ps_probe'=>'failed'];if((int)$m[1]===getmypid())continue;
+  // Only actual PHP command lines, never shell/SSH text containing a script name.
+  if(!preg_match('~\A(?:\S*/)?php[0-9.]*\s~',$m[3]))continue;
+  foreach(['timer'=>'hotel-price-timer-v1\.php','collector'=>'(?:collect-anytour|top500-daily-collector)[A-Za-z0-9_.-]*\.php','monitor'=>'(?:published-hotels-monitor|monitor-price-hook|monitor-price-after-collection)[A-Za-z0-9_.-]*\.php','recover'=>'recover\.php'] as $key=>$pattern)if(preg_match('~(?:^|[ /])'.$pattern.'(?:\s|$)~',$m[3])){$out[$key.'_count']++;$out[$key.'_elapsed_max']=max($out[$key.'_elapsed_max'],min((int)$m[2],2147483647));}
+ }
+ return $out;
+}
+function producer_timer_projection(array $v):array {
+ $out=[];
+ foreach(['started_at','finished_at'] as $k)if(is_string($v[$k]??null)&&preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|[+-][0-9]{2}:[0-9]{2})\z/D',$v[$k]))$out[$k]=$v[$k];
+ if(in_array($v['state']??null,['busy','recent','collected','partial','failed'],true))$out['state']=$v['state'];
+ if(is_int($v['exit']??null)&&$v['exit']>=-1&&$v['exit']<=255)$out['exit']=$v['exit'];
+ foreach(['processed','logical_processed','observations_written','failed','partial','fresh_targets','pending_targets'] as $k)if(is_int($v['result'][$k]??null)&&$v['result'][$k]>=0&&$v['result'][$k]<=2147483647)$out['result'][$k]=$v['result'][$k];
+ return $out;
+}
+function producer_timer_diagnostic():array {
+ $out=[];$dir='/var/www/anytoour/data/hotel-price-monitor';
+ foreach(['last-check','last-collection','last-error'] as $name){$path=$dir.'/'.$name.'.json';$f=null;
+  try{clearstatcache(true,$path);if(!file_exists($path)){$out[$name]=['read_status'=>'missing'];continue;}if(is_link($path)||!is_file($path)||realpath($path)!==$path)throw new RuntimeException('closed');
+   $f=fopen($path,'rb');if(!is_resource($f)||!flock($f,LOCK_SH|LOCK_NB))throw new RuntimeException('closed');$before=fstat($f);$raw=stream_get_contents($f,65537);$after=fstat($f);clearstatcache(true,$path);$named=lstat($path);
+   if(strlen($raw)>65536||!feof($f))throw new RuntimeException('closed');foreach(['dev','ino','size','mtime','ctime'] as $k)if($before[$k]!==$after[$k]||$before[$k]!==$named[$k])throw new RuntimeException('closed');$v=json_decode($raw,true,16,JSON_THROW_ON_ERROR);if(!is_array($v))throw new RuntimeException('closed');$out[$name]=['read_status'=>'observed']+producer_timer_projection($v);
+  }catch(Throwable $e){$out[$name]=['read_status'=>'unavailable'];}finally{if(is_resource($f)){flock($f,LOCK_UN);fclose($f);}}
+ }
+ return $out;
+}
 function producer_safe_error(Throwable $error):string {
  if($error instanceof PDOException)return 'producer_failed_closed';
  $allowed=['git_read_failed', 'producer_runtime_warning', 'producer_args', 'producer_identity', 'producer_config_hash', 'producer_closed', 'runtime_dirty', 'runtime_changed', 'path_changed', 'busy', 'file_replaced', 'incomplete', 'file_changed', 'preimage_changed', 'pending_changed', 'missing', 'native_evidence_changed', 'process_read_failed', 'process_read_incomplete', 'process_line_unknown', 'native_collector_busy', 'isolated_sql_unbound', 'isolated_sql_not_proven_idle', 'isolated_sql_snapshot_too_late', 'isolated_sql_env_shape', 'isolated_sql_unavailable', 'consumer_db_source_changed', 'consumer_db_function_missing', 'consumer_db_unavailable', 'consumer_config_missing', 'canonical_collector_sql_lock_busy', 'consumer_path_changed', 'consumer_changed', 'staged_bundle_changed', 'journal_identity_changed'];
@@ -37,12 +69,13 @@ must4294(($c['producer_enabled']??null)===true,'producer_closed');
 
 // Immutable pure caller; capture original collector environment before any app bootstrap.
 $caller=__DIR__.'/subprocess.php';
-must4294(!is_link($caller)&&is_file($caller)&&hash_file('sha256',$caller)==='62f2b7429b6ddd88d1caae0e02997d37afcdccfbdedc6ae470d93739fb3b612b','isolated_sql_unbound');
+must4294(!is_link($caller)&&is_file($caller)&&hash_file('sha256',$caller)==='158deacfe49eec015a159caf899c5ad0354121b97855a15525fb419c9bdc35aa','isolated_sql_unbound');
 require $caller;
 $originalConsumerEnv=isolated_consumer_env_snapshot();
 // Positive native idle proof runs read-only before registry/admission/recovery operations.
+$processDiagnostic=producer_process_diagnostic();$processDiagnostic['timer_receipts']=producer_timer_diagnostic();
 $phase='consumer_sql';
-$sqlProof=isolated_consumer_sql_probe(__DIR__.'/probe-worker.php','920b9cb29583c587079d71869b38c98119cd35e758a470117d9d1f51daf7c038',$originalConsumerEnv);
+$sqlProof=isolated_consumer_sql_probe(__DIR__.'/probe-worker.php','9346c494e38cda72f231b5410a7795672f7642c2262c9da8bb33d04f8524156f',$originalConsumerEnv);
 unset($originalConsumerEnv);
 must4294(($sqlProof['consumer_db_sha256']??null)===($c['consumer_db_sha256']??null),'consumer_db_source_changed');
 $sqlActive=$sqlProof['sql_active_collectors'];
@@ -107,6 +140,7 @@ $phase='final_identity';
 foreach($identities as [$f,$path,$before]){clearstatcache(true,$path);$after=fstat($f);$named=lstat($path);foreach(['ino','dev','size','mtime','ctime'] as $field)must4294($before[$field]===$after[$field]&&$before[$field]===$named[$field],'journal_identity_changed');}
 $phase='output';
 $producer=['consumer_db_sha256'=>hash_file('sha256',$dbFile),'run_id'=>(int)$runId,'head_sha'=>$head,'runtime_sha'=>'bd8e248f7138ea75cb9fda2dcf44beb631c633a5','observed_at_epoch'=>$sqlProof['observed_at_epoch'],'operation'=>$op,'global_pin'=>array_intersect_key($out['global'],array_flip(['sha256','bytes','lines'])),'child_pin'=>array_intersect_key($out['child'],array_flip(['sha256','bytes','lines'])),'feed_shas'=>$out['feeds'],'staged_bundle_sha256'=>$c['staged_bundle_sha256'],'cohort_sha256'=>$hashes['cohort_sha256'],'collector_sha256'=>$hashes['collector_sha256'],'native_active_collectors'=>$active,'sql_active_collectors'=>$sqlActive,'unknown_collectors'=>false];
+$producer+=$processDiagnostic;
 echo json_encode(['native_gzip_base64'=>base64_encode(gzencode($raw,9)),'native_sha256'=>hash('sha256',$raw),'producer'=>$producer],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
 foreach(array_reverse($handles) as $f){flock($f,LOCK_UN);fclose($f);}
 
@@ -116,6 +150,7 @@ foreach(array_reverse($handles) as $f){flock($f,LOCK_UN);fclose($f);}
  $safePhase=producer_warning_metadata($phase,0,'',0)['warning_phase'];
  $kind=$error instanceof PDOException?'pdo':($error instanceof Error?'error':($error instanceof Exception?'exception':'other'));
  $failure=['ok'=>false,'error'=>producer_safe_error($error),'read_only'=>true,'producer_phase'=>$safePhase,'throwable_kind'=>$kind];
+ if(isset($processDiagnostic))$failure+=$processDiagnostic;
  if(isset($GLOBALS['sql_meta']))$failure+=$GLOBALS['sql_meta'];
  if(isset($GLOBALS['sql_transport'])&&in_array($GLOBALS['sql_transport'],['env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'],true))$failure['sql_transport']=$GLOBALS['sql_transport'];
  if(isset($GLOBALS['sql_diag']))$failure+=array_intersect_key($GLOBALS['sql_diag'],array_flip(['sql_phase','sql_kind']));

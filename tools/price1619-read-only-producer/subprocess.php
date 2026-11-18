@@ -42,6 +42,11 @@ function isolated_consumer_sql_probe(string $worker,string $expectedSha,array $o
   foreach(['child_warning_line','child_warning_severity'] as $k)if(is_int($diag[$k]??null)&&$diag[$k]>=0&&$diag[$k]<=1000000)$GLOBALS['sql_meta'][$k]=$diag[$k];
   if(is_int($diag['pdo_driver_code']??null)&&in_array($diag['pdo_driver_code'],[1045,1049,2002,2006,2013],true))$GLOBALS['sql_meta']['pdo_driver_code']=$diag['pdo_driver_code'];
  }
+ if(is_array($diag)){
+  foreach(['owner_class'=>['null','int_positive','numeric_string_positive','zero','false','other'],'owner_probe'=>['not_positive','connection','processlist','observed','failed'],'owner_probe_error'=>['pdo','error','exception'],'owner_command'=>['Sleep','Query','Execute','Connect','Daemon','Binlog Dump','Killed','other']] as $k=>$values)if(in_array($diag[$k]??null,$values,true))$GLOBALS['sql_meta'][$k]=$diag[$k];
+  foreach(['owner_equals_connection_id','owner_visible'] as $k)if(is_bool($diag[$k]??null))$GLOBALS['sql_meta'][$k]=$diag[$k];
+  if(is_int($diag['owner_seconds']??null)&&$diag['owner_seconds']>=0&&$diag['owner_seconds']<=2147483647)$GLOBALS['sql_meta']['owner_seconds']=$diag['owner_seconds'];
+ }
  if(is_array($diag)&&is_int($diag['child_php_version_id']??null)&&is_bool($diag['child_mysql_available']??null))$GLOBALS['sql_meta']+=array_intersect_key($diag,array_flip(['child_php_version_id','child_mysql_available']));
  if($failed||($exit??$closed)!==0||strlen($out)>4096||$err!=='')throw new RuntimeException('isolated_sql_not_proven_idle');
  try{$r=json_decode($out,true,16,JSON_THROW_ON_ERROR);}catch(Throwable $e){throw new RuntimeException('isolated_sql_not_proven_idle');}
