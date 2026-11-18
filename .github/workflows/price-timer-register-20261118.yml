@@ -1,0 +1,139 @@
+name: Register and observe the installed hotel price timer
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-timer-register-20261118.yml']
+permissions:
+  contents: read
+  issues: read
+  actions: read
+jobs:
+  register:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7ca3c2063c364daffb5d475f9f0645f09ac8332e'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Confirm the original PRICE operation and current carrier head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/6976069382 > "$RUNNER_TEMP/price-claim.json"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          claim = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'price-claim.json').read_text())
+          assert claim['user']['login'] == 'pyatkoff' and claim['issue_url'].endswith('/issues/4709')
+          assert hashlib.sha256(claim['body'].encode()).hexdigest() == 'ed4a6e48eaac48526ae577ef4d31195021b402fbabdd915bc4f124f848455114', 'price claim changed'
+          PY
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+          readback="$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44286139812 --jq '[.head_sha,.conclusion,(.run_attempt|tostring)] | join(" ")')"
+          test "$readback" = "c1f4023fb100874ce598fbce9bdd1e9601873325 success 1"
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Verify deployed sources and register the service user's catch-up
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          cd /var/www/anytoour/data/www/anytoour.ru/data
+          test "$(pwd -P)" = '/var/www/anytoour/data/www/anytoour.ru/data'
+          for file in hotel-price-timer-v1.php top500-daily-collector-v1.php seasonal-page-gap-plan-v1.php hotel-monitor-prices-v1.php; do test ! -L "$file"; done
+          sha256sum --check --strict - <<'SUMS'
+          790bd7750365be5168c424a74fda867a7341508fdcb327a0cd86448a89e6bf6c  hotel-price-timer-v1.php
+          940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816  top500-daily-collector-v1.php
+          a87365ba0f790ba51d24a796ce62060e7adacea5ec8ff5bee6c822afb48848b8  seasonal-page-gap-plan-v1.php
+          f52cbd32064b3ad8c8aef40e721036ded4ed27d5114d7546177e9af49b03b3fd  hotel-monitor-prices-v1.php
+          SUMS
+          test -x /usr/bin/php
+          /usr/bin/php hotel-price-timer-v1.php --status
+          /usr/bin/php hotel-price-timer-v1.php --install
+          /usr/bin/php hotel-price-timer-v1.php --status | /usr/bin/php -r '$r=json_decode(stream_get_contents(STDIN),true,32,JSON_THROW_ON_ERROR);if(($r["registered"]??null)!==true)exit(1);echo "TIMER_READBACK ",json_encode($r),"\\n";'
+          REMOTE
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
+  observe:
+    needs: register
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    steps:
+      - name: Wait for the next real service cron minute
+        run: |
+          set -euo pipefail
+          now=$(date -u +%s)
+          echo "REGISTRATION_COMPLETE_EPOCH=$now" >> "$GITHUB_ENV"
+          sleep "$((900-(now%900)+22))"
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Read the service cron receipt and confirm its time
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" '/usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status' > "$RUNNER_TEMP/native-receipt.json"
+          python3 - <<'PY'
+          import datetime, json, os, pathlib
+          r=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'native-receipt.json').read_text())
+          print('SERVER_TIMER_STATUS', json.dumps(r,ensure_ascii=False))
+          probe=r.get('last-check') or {}
+          assert r.get('registered') is True and probe.get('state') in ('recent','busy','collected','partial'), 'natural tick not observed yet'
+          assert datetime.datetime.fromisoformat(probe['started_at']).timestamp() >= int(os.environ['REGISTRATION_COMPLETE_EPOCH']), 'stale receipt'
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
