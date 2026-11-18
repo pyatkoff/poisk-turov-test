@@ -6,6 +6,8 @@ on:
     paths:
       - 'v2/data/price-observer-v1.php'
       - 'v2/data/hotel-monitor-prices-v1.php'
+      - 'v2/data/hotel-price-timer-v1.php'
+      - 'tests/hotel-price-timer-smoke.php'
       - 'v2/data/hotel-monitor-prices-read-v1.php'
       - 'tests/hotel-monitor-prices-smoke.php'
       - 'v2/data/price-segment-v1.php'
@@ -52,6 +54,8 @@ on:
     paths:
       - 'v2/data/price-observer-v1.php'
       - 'v2/data/hotel-monitor-prices-v1.php'
+      - 'v2/data/hotel-price-timer-v1.php'
+      - 'tests/hotel-price-timer-smoke.php'
       - 'v2/data/hotel-monitor-prices-read-v1.php'
       - 'tests/hotel-monitor-prices-smoke.php'
       - 'v2/data/price-segment-v1.php'
@@ -158,6 +162,7 @@ jobs:
           php -l v2/data/hotel-monitor-prices-v1.php >/dev/null
           php -l v2/data/hotel-monitor-prices-read-v1.php >/dev/null
           php tests/hotel-monitor-prices-smoke.php
+          php tests/hotel-price-timer-smoke.php
           php -l v2/data/price-segment-v1.php >/dev/null
           php -l v2/data/price-intelligence-v1.php >/dev/null
           php -l v2/data/price-intelligence-read-v1.php >/dev/null

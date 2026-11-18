@@ -40,13 +40,46 @@ function v2_seasonal_page_gap_plan(array $records, array $departures, array $fre
 }
 
 /** The gap reserve is part of the existing pass budget, not additional searches. */
-function v2_seasonal_gap_pass_targets(array $hotelTargets,array $gapTargets,int $budget,int $reserve=8,string $onlyMonth='',int $onlyCountry=0):array
+function v2_seasonal_gap_pass_targets(array $hotelTargets,array $gapTargets,int $budget,int $reserve=8,string $onlyMonth='',int $onlyCountry=0,array $hotelsWithoutPrice=[]):array
 {
     if($budget<1||$budget>100||$reserve<0||$reserve>8)throw new InvalidArgumentException('invalid gap budget');
     $accept=static fn(array $t):bool=>($onlyMonth===''||$t['month']===$onlyMonth)&&($onlyCountry===0||(int)$t['country_id']===$onlyCountry);
     $hotelTargets=array_values(array_filter($hotelTargets,$accept));$gapTargets=array_values(array_filter($gapTargets,$accept));
     $gapCount=min(count($gapTargets),$reserve,max(0,$budget-($hotelTargets?1:0)));
-    return array_merge(array_slice($gapTargets,0,$gapCount),array_slice($hotelTargets,0,$budget-$gapCount));
+    $hotelBudget = $budget - $gapCount;
+    if ($hotelsWithoutPrice && $hotelBudget > 1) {
+        $hotelTargets = v2_prioritize_missing_hotel_prices($hotelTargets, $hotelsWithoutPrice, $hotelBudget);
+    }
+    return array_merge(array_slice($gapTargets,0,$gapCount),array_slice($hotelTargets,0,$hotelBudget));
+}
+
+/** Reserve up to half of the hotel slots for a first price. Keep retained search IDs first
+ * and the original all-month order for the rest. Never split a physical supplier search. */
+function v2_prioritize_missing_hotel_prices(array $targets, array $missing, int $budget): array
+{
+    $first = [];
+    $candidates = [];
+    foreach ($targets as $index => $target) {
+        if (($target['resume_search_id'] ?? null) !== null) {
+            $first[$index] = $target;
+            foreach ($target['hotel_ids'] as $id) unset($missing[$target['departure_id']][$id]);
+        } elseif ($target['criterion'] === 'hotel_batch') {
+            $candidates[] = $index;
+        }
+    }
+    $slots = intdiv(max(0, $budget - count($first)), 2);
+    usort($candidates, static fn(int $a, int $b): int =>
+        strcmp($targets[$a]['date_from'], $targets[$b]['date_from']) ?: ($a <=> $b));
+    foreach ($candidates as $index) {
+        if ($slots === 0) break;
+        $city = $targets[$index]['departure_id'];
+        $ids = $targets[$index]['hotel_ids'];
+        if (!array_intersect_key($missing[$city] ?? [], array_flip($ids))) continue;
+        $first[$index] = $targets[$index];
+        foreach ($ids as $id) unset($missing[$city][$id]);
+        --$slots;
+    }
+    return array_values($first + $targets);
 }
 
 /** Preserve existing hotel-ID search parameters; gap targets use verified scope. */
