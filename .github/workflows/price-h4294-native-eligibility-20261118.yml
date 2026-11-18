@@ -1,7 +1,7 @@
-name: Inspect current native Telegram confirmation eligibility for hotel 4294
+name: Read original pending 4294 evidence without mutations
 on:
   push:
-    branches: ['ops/price-hook-reviewed-pass-20261117']
+    branches: ['audit/price4294-evidence-20261118']
     paths: ['.github/workflows/price-h4294-native-eligibility-20261118.yml']
 permissions:
   contents: read
@@ -9,20 +9,20 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '6d7c655fd367b64f4aca728348b96d7a034505b6'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0000000000000000000000000000000000000000'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 85
+    timeout-minutes: 8
     steps:
       - name: Check current PRICE admission and original carrier
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          gh api repos/pyatkoff/poisk-turov-test/issues/comments/6979052387 --jq .body | grep -F 'Принимаю адресное окно'
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/audit/price4294-evidence-20261118 --jq .object.sha)" = "$GITHUB_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/6979279879 --jq .body | grep -F '#1619 platform repair'
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -48,68 +48,47 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Inspect live roster then publish saved minima until a full scan or window end
+      - name: Read exact original journals and current registry only
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
-          import subprocess, json, pathlib, gzip, hashlib, re, base64, datetime, urllib.parse, xml.etree.ElementTree as ET
-          root=pathlib.Path('/var/www/anytoour/data')
-          app=root/'www/app.anytoour.ru'
-          native=root/'www/anytoour.ru/data'
-          print('HEAD',subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip())
-          print('TIME',datetime.datetime.now(datetime.timezone.utc).isoformat())
-          j=root/'channel-post-operations/monitor-price-after-collection-v1.jsonl'
-          print('JOURNAL',hashlib.sha256(j.read_bytes()).hexdigest())
-          subprocess.run(['php'],input="<?php\n$root='/var/www/anytoour/data/www/app.anytoour.ru';chdir($root);ob_start();require $root.'/config.php';require_once $root.'/services/ChannelPostRuntime.php';require_once $root.'/services/ChannelPostAdminService.php';ob_end_clean();\n$dir='/var/www/anytoour/data/channel-post-operations';\n$op='commercial-monitor-price-h4294-f72863a3310b60862a907f040008fd46c82e7e044485488e9eece8adb1237e24';\n$f=$dir.'/'.$op.'/receipt.jsonl';if(hash_file('sha256',$f)!=='86946ce11d552eb55f9362d2342fa96097cc8f8e32df92a90706cc36ffad986b') throw new Exception('receipt changed');\n$lines=file($f,FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES);$s=json_decode(end($lines),true,64,JSON_THROW_ON_ERROR);$r=new ChannelPostRegistryService(ConversationDb::connection());\nforeach($s['posts'] as $entry){$plan=$entry['plan'];$p=$r->publication($plan['publication_id']);$isTg=$plan['platform']==='telegram';$msg=$entry['provider_response']['data']['result']??null;$native=$isTg&&$msg?ChannelPostIncomingAdapter::telegramSnapshot($msg):null;\necho \"REGISTRY \",json_encode(['platform'=>$p['platform'],'id'=>$p['publication_id'],'version'=>$p['version_id'],'state'=>$p['state'],'reason'=>$p['error_reason'],'kind'=>$p['snapshot']['metadata']['observation_kind']??null,'price_record'=>$p['snapshot']['metadata']['monitor_price_record_id']??null,'claimed'=>!empty($p['claim_token']),'provider_button_writes'=>$p['write_attempts'],'attempt_count'=>$p['attempt_count'],'price_text_matches'=>$p['snapshot']['text']===$plan['text'],'same_returned_text'=>$native?($native['text']===$plan['text']):null,'exact_returned_button'=>$native?ChannelPostIncomingAdapter::containsOnlyButton($native,ChannelPostButtonTransport::buttonUrl($p),'✈️ Узнать стоимость тура'):null,'exact_registered_button'=>ChannelPostIncomingAdapter::containsOnlyButton($p['snapshot'],ChannelPostButtonTransport::buttonUrl($p),'✈️ Узнать стоимость тура'),'same_returned_photo'=>$native?($native['attachments']===$p['snapshot']['attachments']):null,'tg_retry_eligible'=>$isTg?ChannelPostRegistryService::telegramReadFailureRecoveryEligible($p):null],JSON_UNESCAPED_SLASHES),\"\\n\";}\n".encode(),check=True)
-          print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode())
-          hook=(native/'monitor-price-hook.php').read_bytes()
-          roster=json.loads(gzip.decompress(base64.b64decode(re.search(rb'const HOOK_ROSTER_GZIP_B64="([^"]+)"',hook)[1])))['rows']
-          now=datetime.datetime.now(datetime.timezone.utc)
-          def http(url):
-              return subprocess.check_output(['curl','-fsS','--max-time','45',url])
-          def category(o):
-              text=o.findtext('description') or ''
-              dt=re.search(r'Цена найдена мониторингом (\d\d\.\d\d\.\d{4}), (\d\d:\d\d)',text)
-              dep=re.search(r'Вылет из Москвы (\d\d\.\d\d\.\d{4})',text)
-              seen=datetime.datetime.strptime(' '.join(dt.groups()),'%d.%m.%Y %H:%M').replace(tzinfo=datetime.timezone(datetime.timedelta(hours=3))) if dt else None
-              return (o.findtext('price'),seen.isoformat() if seen else None,dep[1] if dep else None,bool(seen and o.findtext('price') and 0<=(now-seen).total_seconds()<129600))
-          feed={}
-          hashes={}
-          for platform in ('telegram','max','all'):
-              name='hotel-posts-'+platform+'.xml'
-              xml=http('https://app.anytoour.ru/feed/'+name)
-              assert xml==(app/'feed'/name).read_bytes()
-              hashes[platform]=hashlib.sha256(xml).hexdigest()
-              offers=ET.fromstring(xml).findall('.//offer')
-              feed[platform]={r.attrib['id']:category(r) for r in offers}
-              assert len(feed[platform])==len(offers)
-          assert feed['all']=={**feed['max'],**feed['telegram']}
-          print('HASHES',hashes)
-          stats=dict(fresh=0,old=0,missing=0,past=0,in_source=0,ready=0,new123_source=0,scanned=0)
-          for index in range(0,len(roster),30):
-              rows=roster[index:index+30]
-              q=[('tourvisorHotelIds['+str(n)+']',str(r['tourvisor_hotel_id'])) for n,r in enumerate(rows)]
-              q += [('departureId','1'),('dateFrom','2026-11-19'),('dateTo','2027-10-31')]
-              data=json.loads(http('https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'+urllib.parse.urlencode(q)))
-              items={v['tourvisorHotelId']:v for v in data['items']}
-              for n,row in enumerate(rows):
-                  ident=row['tourvisor_hotel_id']; bindings=row['feed_binding']['offer_ids']
-                  a=feed['telegram'][bindings['telegram']]
-                  assert a==feed['max'][bindings['max']]
-                  price,stamp,dep,fresh=a
-                  eligible=any(x['ageSecondsAtExport']<129600 for x in items[ident]['offers'])
-                  stats['scanned']+=1
-                  stats['fresh' if fresh else ('old' if price else 'missing')]+=1
-                  stats['past']+=int(bool(dep and datetime.datetime.strptime(dep,'%d.%m.%Y').date()<now.date()))
-                  stats['ready']+=int(eligible and not fresh);stats['in_source']+=int(eligible)
-                  if index+n>=877:stats['new123_source']+=int(eligible)
-                  if ident==4294:print('TARGET',ident,a,[(o['price'],o['recordId']) for o in items[ident]['offers']])
-          print('CENSUS',json.dumps(stats))
-          
-          PY
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root);
+          if(trim((string)shell_exec('git status --porcelain --untracked-files=no'))!=='')throw new Exception('runtime_dirty');
+          if(trim((string)shell_exec('git rev-parse HEAD'))!=='9ba896c12ae9ce0f7d6e5d31564bcf8830ebbeac')throw new Exception('runtime_changed');
+          ob_start();require $root.'/config.php';require_once $root.'/services/ChannelPostRuntime.php';ob_end_clean();
+          $dir='/var/www/anytoour/data/channel-post-operations';
+          $op='commercial-monitor-price-h4294-f72863a3310b60862a907f040008fd46c82e7e044485488e9eece8adb1237e24';
+          $handles=[];$out=['operation'=>$op,'read_only'=>true];
+          foreach(['global'=>[$dir.'/monitor-price-after-collection-v1.jsonl','2f45a4f2d5c964d7cda1d7264931b14acf96239dc5586b5fad7bc19b73f78de1'],'child'=>[$dir.'/'.$op.'/receipt.jsonl','86946ce11d552eb55f9362d2342fa96097cc8f8e32df92a90706cc36ffad986b']] as $key=>[$path,$sha]){
+           if(is_link($path)||realpath($path)!==$path)throw new Exception('path_changed');
+           $f=fopen($path,'rb');if(!$f||!flock($f,LOCK_SH|LOCK_NB))throw new Exception('busy');$handles[]=$f;
+           $before=fstat($f);$named=lstat($path);if($before['ino']!==$named['ino']||$before['dev']!==$named['dev'])throw new Exception('file_replaced');
+           $h=hash_init('sha256');$last='';$n=0;while(($line=fgets($f,4194305))!==false){if(!str_ends_with($line,"\n"))throw new Exception('incomplete');hash_update($h,$line);$last=$line;$n++;}
+           clearstatcache(true,$path);$after=fstat($f);$named=lstat($path);foreach(['ino','dev','size','mtime','ctime'] as $field)if($before[$field]!==$after[$field]||$before[$field]!==$named[$field])throw new Exception('file_changed');
+           if(hash_final($h)!==$sha)throw new Exception('preimage_changed');
+           $out[$key]=['sha256'=>$sha,'bytes'=>ftell($f),'lines'=>$n,'last_sha256'=>hash('sha256',$last),'last'=>json_decode($last,true,64,JSON_THROW_ON_ERROR)];
+          }
+          if(($out['global']['last']['pending']['operation']??null)!==$op)throw new Exception('pending_changed');
+          $pdo=ConversationDb::connection();$r=new ChannelPostRegistryService($pdo);$out['publications']=[];
+          foreach($out['child']['last']['posts'] as $entry){
+           $id=$entry['plan']['publication_id'];$p=$r->publication($id);if(!$p)throw new Exception('missing');
+           $event=$p['snapshot']['metadata']['source_event_id']??'';
+           $q=$pdo->prepare('SELECT version_id FROM post_observations WHERE publication_id=? AND source_event_key=?');$q->execute([$id,hash('sha256',$event)]);
+           $observation=$q->fetch(PDO::FETCH_ASSOC);
+           $q=$pdo->prepare('SELECT * FROM post_versions WHERE id=? AND publication_id=?');$q->execute([$entry['plan']['old_version_id'],$id]);
+           $out['publications'][]=['publication'=>$p,'observation'=>$observation,'previous_version'=>$q->fetch(PDO::FETCH_ASSOC)];
+          }
+          foreach(['telegram','max','all'] as $platform)$out['feeds'][$platform]=hash_file('sha256',$root.'/feed/hotel-posts-'.$platform.'.xml');
+          $g=$out['global']['last'];$out['global']['last']=['schema'=>$g['schema']??null,'pending'=>$g['pending']??null,'nightly_cycle'=>$g['nightly_cycle']??null,'holds'=>$g['holds']??null,'completed_count'=>count($g['completed']??[]),'completed_sha256'=>hash('sha256',json_encode($g['completed']??[],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR))];
+          $raw=json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+          echo 'READ4294_SHA256='.hash('sha256',$raw),"\n",'READ4294_BASE64='.base64_encode(gzencode($raw,9)),"\n";
+          foreach(array_reverse($handles) as $f){flock($f,LOCK_UN);fclose($f);}
+          PHP
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
