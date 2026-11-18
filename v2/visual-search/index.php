@@ -9,7 +9,7 @@ if (!str_starts_with((string)($_SERVER['SCRIPT_NAME'] ?? ''), '/_preview/search3
 }
 $html = file_get_contents(__DIR__ . '/index.html');
 $scenario = is_string($_GET['scenario'] ?? null) ? $_GET['scenario'] : '';
-$offline = in_array($scenario, ['snapshot', 'flights', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired', 'flight-error', 'empty', 'recorded'], true);
+$offline = in_array($scenario, ['snapshot', 'journey', 'flights', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired', 'flight-error', 'empty', 'recorded'], true);
 if (!$offline) {
     // Reuse the functional owners. This route has no second search/price/lead transport.
     $scripts = [

@@ -75,6 +75,10 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
+const openFormOptions=async page=>{
+ const toggle=page.locator('#search-options-toggle');
+ if(await toggle.isVisible()&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+};
 const localCivilDateJourney=async(browser,origin,base,evidence)=>{
  const records=[],instant=Date.parse('2026-10-18T22:30:00Z');
  for(const width of [390,1280]){
@@ -86,6 +90,13 @@ const localCivilDateJourney=async(browser,origin,base,evidence)=>{
    const initial=await page.evaluate(()=>({from:window.AnyTourPrototypeData.initialSearch.from,to:window.AnyTourPrototypeData.initialSearch.to,localDay:new Date().getDate(),localHour:new Date().getHours()}));assert.deepEqual(initial,{from:'2026-11-02',to:'2026-11-08',localDay:19,localHour:0});
    const label=await page.locator('#dates-label').textContent(),url=page.url();assert.match(label,/2–8 ноября/);
    assert.equal(await page.locator('#results.results-pristine .results-heading').isVisible(),false,'one initial instruction remains instead of repeating the search prompt');
+   if(width===390){
+    assert.equal(await page.locator('#search-options-toggle').getAttribute('aria-expanded'),'false');
+    assert(await page.locator('#quick-stars [data-value="4"]').isVisible());
+    assert.equal(await page.locator('#quick-budget').isVisible(),false);
+    const originBox=await page.locator('#departure-button').boundingBox(),destinationBox=await page.locator('#country').boundingBox();
+    assert(Math.abs(originBox.y-destinationBox.y)<=1&&destinationBox.x>=originBox.x+originBox.width,'mobile route shares one row');
+   }
    if(width===1280){
     const boxes=await page.evaluate(()=>{const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{top:r.top,bottom:r.bottom,right:r.right,left:r.left,height:r.height};};return{submit:rect('#search-form .search-submit'),meal:rect('#quick-meal'),budget:rect('#quick-budget')};});
     assert(boxes.submit.top>=boxes.meal.top-1&&boxes.submit.bottom<=boxes.meal.bottom+1,'desktop Find stays beside the preference controls instead of taking another row');
@@ -640,6 +651,7 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
  await editResultSearch(page,width);
+ await openFormOptions(page);
  const formValueStates=[];
  const formValues=async label=>{
   if(width!==390)return;
@@ -673,6 +685,14 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  assert((await page.locator('#meal-label').textContent()).includes(mealValue),'approved form displays selected meal');
  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('200000');await page.locator('[data-action="apply-budget"]').click();
  assert.match(await page.locator('#budget-label').textContent(),/200\s*000/,'approved form displays the total budget');
+ if(width<=760){
+  const toggle=page.locator('#search-options-toggle');
+  await toggle.click();
+  assert.equal(await page.locator('#quick-budget').isVisible(),false);
+  assert((await toggle.innerText()).includes(mealValue),'the closed disclosure retains the chosen meal');
+  assert.match(await toggle.innerText(),/200\s*000/,'the closed disclosure retains the party budget');
+  await openFormOptions(page);
+ }
  await formValues('applied');
  if(width===390){
   await page.setViewportSize({width:360,height:900});
@@ -728,6 +748,7 @@ const mobileQuickFieldLayout=async(page,width)=>{
  if(width!==390)return;
  await page.setViewportSize({width:360,height:900});
  try{
+  await openFormOptions(page);
   const boxes=await page.locator('#quick-budget').evaluate(field=>{
    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom};},value=field.querySelector('strong'),label=field.querySelector('span:not(.chevron)'),arrow=field.querySelector('.chevron');
    const range=document.createRange();range.selectNodeContents(value);const textBox=range.getBoundingClientRect();
@@ -2062,6 +2083,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   assert.equal(reloadedBudgetRequest.priceFrom,150000);assert.equal(reloadedBudgetRequest.priceTo,180000);
   assert.doesNotMatch(await page.locator('#date-calendar').textContent(),/97,5/,'reload cannot reopen an unbounded calendar');
   await page.locator('[data-action="close-modal"]').click();
+  await openFormOptions(page);
   await page.locator('#quick-budget').click();
   await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');
   await page.locator('[data-action="apply-budget"]').click();
