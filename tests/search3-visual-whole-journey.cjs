@@ -99,7 +99,6 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await page.locator('#modal-back').click();
    await page.locator('#hotel-detail-offers').waitFor();
    assert.equal(await sum(page.locator('#hotel-detail-min')),'170 800 ₽');
-   await frame('Возврат к выбранному туру');
    await page.locator('#hotel-detail-offers').click();
    await form.waitFor();
    assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
@@ -107,6 +106,18 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await page.locator('[data-action="close-modal"]').click();
    assert.equal(await page.locator('.hotel-card').count(),2);
    assert.equal(new URL(page.url()).searchParams.get('stars'),'4');
+   const selected=card.locator('.current-card-selection');
+   assert.equal(await sum(card.locator('.starting-price strong')),'154 800 ₽');
+   assert.equal(await sum(selected.locator('.card-selection-price strong')),'170 800 ₽');
+   assert.match(await sum(selected),/Семейный номер.*Всё включено/);
+   await selected.getByRole('button',{name:/Продолжить выбранный тур/}).click();
+   const footer=page.locator('#modal-footer');
+   assert.equal(await sum(footer.locator('#detail-total')),'170 800 ₽');
+   assert.match(await sum(footer.locator('.tour-price-history')),/Этот тур в поиске 169 500 ₽/i);
+   await frame('Цена при возврате к туру');
+   await footer.locator('[data-action="confirm-tour"]').click();
+   assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
+   assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    await saveJourney(page,frames,width,evidence);
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');

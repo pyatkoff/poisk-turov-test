@@ -80,6 +80,16 @@ function approvedPriceOriginRegressions(){
  const offset=render({total:186400});assert(offset.includes('195400'),'cheap pair does not hide a genuine checked quote change');
  const pairOnly=render({tour:{price:186400},total:187700});assert.match(pairOnly,/Цена с выбранным перелётом/);assert.doesNotMatch(pairOnly,/после проверки/);
  const quoteOnly=render({flightChoiceId:null,total:195400});assert.match(quoteOnly,/Цена изменилась после проверки/);assert.doesNotMatch(quoteOnly,/196700/);
+ const footer=extra=>win.priceOrigin({...offer,...extra},true,undefined,true);
+ assert.match(both,/Этот тур в поиске 186400 → после проверки 195400/);
+ assert.match(both,/С выбранной парой 196700/);
+ assert.match(footer({}),/На 10300 дороже · Этот тур в поиске 186400 · После проверки 195400/);
+ assert.match(footer({total:186400}),/После проверки 195400/);
+ assert.doesNotMatch(footer({total:186400}),/На 0/);
+ const noCheckedPrice={tour:null,total:186400};
+ assert.equal(render(noCheckedPrice),'','a selected pair at the original tour price needs no price history');
+ assert.equal(footer(noCheckedPrice),'');
+ assert.match(render({...noCheckedPrice,total:187700}),/Этот тур в поиске 186400 → с выбранной парой 187700/);
  assert.equal(render({loading:true}),'');assert.equal(render({quoteError:'unavailable'}),'');assert.equal(render({pricePending:true}),'');
  const provider=render({tour:{price:999999},total:106059,flightChoiceId:null,quoteListingTotal:95643},106059);assert(provider.includes('106059'));assert(provider.includes('95643'));assert.doesNotMatch(provider,/999999|выбранной парой/,'provider receipt is authoritative, not generic tour.price');
  box.window.close();console.log('PASS approved191 price origins: quote/pair/both/offset/unknown/provider authority; actual source owner, no HTTP');

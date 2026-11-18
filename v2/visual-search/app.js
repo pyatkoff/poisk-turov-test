@@ -1955,21 +1955,22 @@ function acceptSelectedOfferPrice(key){
 function quotePriceChangeHTML(o,compact=false,checkedTotal=data.amount(o?.tour?.price),besideTotal=false){
  const before=data.amount(o?.quoteListingTotal),checked=data.amount(checkedTotal),after=o?.pricePending?null:data.amount(o?.total);
  if(o?.loading||o?.quoteError||!before||!after)return '';
- const quoteChanged=!!checked&&checked!==before,pairChanged=!!flightPairFor(o)&&after!==checked;
+ const quoteChanged=!!checked&&checked!==before,pairChanged=!!flightPairFor(o)&&after!==(checked??before);
  if(!quoteChanged&&!pairChanged&&before===after)return '';
+ const listing='Этот тур в поиске '+money(before);
  if(besideTotal){
   const history=[];
   if(before!==after){
    const difference=after-before;
-   history.push('На '+money(Math.abs(difference))+(difference>0?' дороже':' дешевле'),'В выдаче '+money(before));
+   history.push('На '+money(Math.abs(difference))+(difference>0?' дороже':' дешевле'),listing);
   }
   if(quoteChanged&&checked!==after)history.push('После проверки '+money(checked));
   return history.length?`<p class="tour-price-history" role="status">${history.join(' · ')}</p>`:'';
  }
  const party=compact?'за всех':'за всех туристов',facts=[];
- if(quoteChanged)facts.push(`<span>В выдаче ${money(before)} → после проверки ${money(checked)} ${party}.</span>`);
- if(pairChanged)facts.push(`<span>${quoteChanged?'С выбранной парой ':checked?'Цена предложения '+money(checked)+' → с выбранной парой ':'В выдаче '+money(before)+' → с выбранной парой '}${money(after)} ${party}.</span>`);
- else if(!quoteChanged)facts.push(`<span>В выдаче ${money(before)} → выбранный вариант ${money(after)} ${party}.</span>`);
+ if(quoteChanged)facts.push(`<span>${listing} → после проверки ${money(checked)} ${party}.</span>`);
+ if(pairChanged)facts.push(`<span>${quoteChanged?'С выбранной парой ':listing+' → с выбранной парой '}${money(after)} ${party}.</span>`);
+ else if(!quoteChanged)facts.push(`<span>${listing} → выбранный вариант ${money(after)} ${party}.</span>`);
  else if(after!==checked)facts.push(`<span>Текущий итог ${money(after)} ${party}.</span>`);
  const title=o.priceAcceptancePending||quoteChanged&&!pairChanged?'Цена изменилась после проверки':pairChanged?'Цена с выбранным перелётом':'Цена выбранного варианта';
  return `<p class="quote-price-change${compact?' compact':''}" role="status"><strong>${title}</strong>${facts.join('')}${o.priceAcceptancePending?'<span>Подтвердите новую цену, чтобы продолжить. Другой тур не подставлен.</span>':''}</p>`;
