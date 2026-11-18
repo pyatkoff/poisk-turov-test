@@ -47,7 +47,8 @@ for (const [file, expected] of Object.entries(manifest.sourceFiles)) {
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex'), (manifest.adaptedFiles[file]||expected), file + ' differs from reviewed Site');
 }
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-assert.match(html, /Живой поиск ещё не подключён/);
+assert.match(html, /сохранённые предложения и учебные примеры/i);
+assert.match(html, /Заявка в этом режиме учебная/);
 assert.match(html, /noindex, nofollow, noarchive/);
 assert.doesNotMatch(html, /live-data\.js|href="\.\/(?:review\.html|v17\/)/);
 const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
