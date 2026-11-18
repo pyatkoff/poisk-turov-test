@@ -1,4 +1,4 @@
-name: Confirm original 4294 edit and finish only its pending feed
+name: Install only verified compatible price hook
 on:
   push:
     branches: ['audit/price4294-evidence-20261118']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'b2ad1e9cb73490017838e9980c84ace981391721'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '859f39c139aac64d22439a65740e8ce5ec55cae8'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -25,11 +25,11 @@ jobs:
           test "$GITHUB_REPOSITORY" = pyatkoff/poisk-turov-test
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$GITHUB_EVENT_NAME" = push
-          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = b2ad1e9cb73490017838e9980c84ace981391721
+          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = 859f39c139aac64d22439a65740e8ce5ec55cae8
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/audit/price4294-evidence-20261118 --jq .object.sha)" = "$GITHUB_SHA"
-          mkdir "$RUNNER_TEMP/recovery-launch"
+          mkdir "$RUNNER_TEMP/hook-install-launch"
           for name in run.py launch-CLOSED.json route-attestation.json; do
-            gh api --method GET -H 'Accept: application/vnd.github.raw+json' "repos/pyatkoff/poisk-turov-test/contents/tools/price1619-recovery-launch/$name?ref=$GITHUB_SHA" > "$RUNNER_TEMP/recovery-launch/$name"
+            gh api --method GET -H 'Accept: application/vnd.github.raw+json' "repos/pyatkoff/poisk-turov-test/contents/tools/price1619-hook-install-launch/$name?ref=$GITHUB_SHA" > "$RUNNER_TEMP/hook-install-launch/$name"
           done
       - name: Prepare unchanged server connection and host pin
         env:
@@ -56,19 +56,19 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Fresh private producer and admission then one recovery call
+      - name: Fresh private producer and admission then one hook installation
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 "$RUNNER_TEMP/recovery-launch/run.py"
+        run: python3 "$RUNNER_TEMP/hook-install-launch/run.py"
       - name: Upload only allowlisted terminal receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: price4294-sanitized-${{ github.run_id }}
-          path: ${{ runner.temp }}/recovery-sanitized/terminal.json
+          name: price1619-hook-sanitized-${{ github.run_id }}
+          path: ${{ runner.temp }}/hook-install-sanitized/terminal.json
           if-no-files-found: warn
           retention-days: 7
       - name: Cleanup connection material only
