@@ -906,7 +906,7 @@
   },
   "route_attestation": {
     "repo": "pyatkoff/tour-max",
-    "at": "2026-11-18T03:23:34.254260Z",
+    "at": "2026-11-18T03:37:56.027894Z",
     "counts": {
       "in_progress": 0,
       "queued": 0,
@@ -918,7 +918,7 @@
   },
   "files": {
     "run.py": "b6f33def0c18c5782e9c5d0810b1dc24348835eb7f50f660e034ead82d59b48c",
-    "admit.py": "4d49c4a70807c4bf16c27b1087aee2bf56d918dd3637d2868aa2280e3da72999",
+    "admit.py": "676fe0fc7103377e34ba94c61b248d12b107a0dab402279aef06f69fd36047d1",
     "feeds.php": "35b282644662d26c9886c14b3ca1bdd2327d548728fd70fad1cd462125b7b63d",
     "read-journal.php": "3f10bf4c79173d6dd5e9cabf0d16b30b6cd1caa531a8bf08b32678603f4975bc",
     "paired-install.php": "57e35a14e56c60cd7eb8e441d8dfe54c55ec475b64badc98e64d7ec67c478157",
