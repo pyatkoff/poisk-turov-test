@@ -501,9 +501,19 @@ function v2_published_expansion32_monitor_ids_20261116(): array
     return [548,2947,4032,43675,48263,82790,24743,66547,60232,78033,43569,78002,2451,63208,2491,2470,64954,2479,2493,76318,53617,12124,76011,65108,123308,65938,80008,2436,2444,2445,218,63191];
 }
 
+/** Exact native catalog_hotels IDs from accepted registry217 and completed feed877.
+ * Frozen original217 inventory SHA256 c8cee3897d32ae513b537ba55ce4d8fe5d850017789b60fea53eca8a9f9ce565.
+ * Append only after old cohorts; preserve historical TOP500 exclusions and target keys.
+ * Catalogue activity and departure eligibility are still checked by the existing planner.
+ */
+function v2_published_expansion217_monitor_ids_20261117(): array
+{
+    return [12120,64957,76029,66198,49750,123247,48184,32322,28272,7458,2490,2458,113544,73477,2588,2611,2612,2610,2931,78456,7831,2948,57536,61241,17424,17423,23718,22940,97001,74509,4283,52337,64648,78669,60788,2435,2481,24744,50261,78006,26043,2922,64130,42647,2457,65341,49084,75538,82649,37376,1148,75100,80478,27646,1150,40222,306,83106,113,108,133,123365,76125,76121,1028,1071,1149,1563,28460,112391,127009,17603,17682,66450,37470,99608,102321,37165,72910,82106,103273,1980,266,159,344,125550,143790,76208,104626,2554,65170,80397,82023,2549,2553,8917,8999,56236,110597,2519,2591,2936,8945,13837,80431,78845,8918,37172,17683,28662,83059,75658,60787,2592,2681,49850,65031,4522,8916,13840,99319,110940,102527,103272,32226,69179,112603,77942,46724,13996,63901,13845,45287,44984,23290,38640,128487,68939,77515,69774,23283,76032,2478,132068,158417,22740,78200,538,792,2984,4202,7898,66860,598,669,3022,4294,4309,4343,7856,8171,9395,12170,526,599,685,689,697,761,791,3021,22836,33310,57466,70051,542,596,649,706,765,768,825,4270,9404,35036,77358,60433,61611,126119,104035,126601,9230,32341,32412,41498,57025,61623,73257,4966,61615,65164,132294,7443,43689,54914,57672,61583,14130,46747,71241,108234,4919,82212,7449,69260,47460,64775];
+}
+
 function v2_all_hotel_monitor_input_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
-    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116())));
+    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117())));
 }
 
 /** Keep every base and previously admitted cohort target intact. */
@@ -547,6 +557,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
     if($includeSitesRoster)$cohorts['sites_registry217_20261111']=v2_sites_hotel_monitor_ids_20261111();
     if($includeSitesRoster)$cohorts['published_expansion20_20261116']=v2_published_expansion20_monitor_ids_20261116();
     if($includeSitesRoster)$cohorts['published_expansion32_20261116']=v2_published_expansion32_monitor_ids_20261116();
+    if($includeSitesRoster)$cohorts['published_expansion217_20261117']=v2_published_expansion217_monitor_ids_20261117();
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
     foreach($cohorts as $cohort=>$ids){
