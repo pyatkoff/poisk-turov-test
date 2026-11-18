@@ -3,8 +3,9 @@ import hashlib,json,os,re,shlex,subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 BRANCH='audit/price4294-producer-read-20261118'
+BEFORE='12a81d714e63ce41c8ef00e0470347f68a0a328b'
 ALLOWED_ERRORS={'producer_failed_closed','git_read_failed','producer_runtime_warning','producer_args','producer_identity','producer_config_hash','producer_closed','runtime_dirty','runtime_changed','path_changed','busy','file_replaced','incomplete','file_changed','preimage_changed','pending_changed','missing','native_evidence_changed','process_read_failed','process_read_incomplete','process_line_unknown','native_collector_busy','consumer_db_source_changed','consumer_db_function_missing','consumer_db_unavailable','consumer_config_missing','canonical_collector_sql_lock_busy','consumer_path_changed','consumer_changed','staged_bundle_changed','journal_identity_changed'}
-EXPECTED={'producer.php':'a583c6ef10002d048cf983a79c91913ca61914e585bf5c427810c9074e5dc80a','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
+EXPECTED={'producer.php':'920ad9ab773dfc43a89b0cdb4d5379ea91c0c5a98a24b8b7d788f749a0f82270','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
 def need(v,m):
  if not v:raise RuntimeError(m)
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -16,7 +17,14 @@ def sanitized(raw,stderr,rc,run,head):
  except (ValueError,UnicodeDecodeError):v={}
  if not isinstance(v,dict):v={}
  if rc!=0:
-  out['error']=v.get('error') if v.get('error') in ALLOWED_ERRORS else 'producer_failed_closed';return out
+  out['error']=v.get('error') if v.get('error') in ALLOWED_ERRORS else 'producer_failed_closed'
+  if out['error']=='producer_runtime_warning':
+   if v.get('warning_kind') in {'constant_already_defined','undefined_array_key','deprecated','other'}:out['warning_kind']=v['warning_kind']
+   if v.get('warning_phase') in {'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'}:out['warning_phase']=v['warning_phase']
+   if v.get('warning_file') in {'producer.php','config.php','db-v1.php','ChannelPostRuntime.php','ChannelPostRegistryService.php','ConversationDb.php','other'}:out['warning_file']=v['warning_file']
+   for k in ('warning_severity','warning_line'):
+    if type(v.get(k)) is int and v[k]>=0:out[k]=v[k]
+  return out
  p=v.get('producer');need(isinstance(p,dict),'producer_shape_invalid')
  for key in ('runtime_sha','head_sha'):
   need(isinstance(p.get(key),str) and re.fullmatch('[a-f0-9]{40}',p[key]),'producer_identity_invalid');out[key]=p[key]
@@ -35,7 +43,7 @@ def retained(command,path):return 'set -C; if { '+command+'; native_rc=$?; } > '
 def main():
  os.umask(0o077);plan=json.loads((ROOT/'plan-CLOSED.json').read_bytes());need(plan.get('enabled') is True,'diagnostic_closed')
  e=os.environ;event=json.loads(Path(e['GITHUB_EVENT_PATH']).read_bytes())
- need(e['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and e['GITHUB_ACTOR']=='pyatkoff' and e['GITHUB_EVENT_NAME']=='push' and e['GITHUB_RUN_ATTEMPT']=='1' and event['before']=='0'*40 and event['ref']=='refs/heads/'+BRANCH,'original_create_required')
+ need(e['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and e['GITHUB_ACTOR']=='pyatkoff' and e['GITHUB_EVENT_NAME']=='push' and e['GITHUB_RUN_ATTEMPT']=='1' and event['before']==BEFORE and event['ref']=='refs/heads/'+BRANCH,'original_successor_required')
  run=e['GITHUB_RUN_ID'];head=e['GITHUB_SHA'];need(re.fullmatch('[1-9][0-9]*',run) and re.fullmatch('[a-f0-9]{40}',head),'original_identity_invalid')
  current=json.loads(checked(['gh','api','--method','GET','repos/pyatkoff/poisk-turov-test/git/ref/heads/'+BRANCH],timeout=40));need(current['object']['sha']==head,'carrier_moved')
  base=Path(e['RUNNER_TEMP'])/'producer-read-private';base.mkdir(mode=0o700)

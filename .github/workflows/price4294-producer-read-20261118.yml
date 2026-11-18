@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0000000000000000000000000000000000000000'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '12a81d714e63ce41c8ef00e0470347f68a0a328b'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = 0000000000000000000000000000000000000000
+          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = 12a81d714e63ce41c8ef00e0470347f68a0a328b
           mkdir "$RUNNER_TEMP/producer-diagnostic"
           for name in run.py plan-CLOSED.json; do
             gh api --method GET -H 'Accept: application/vnd.github.raw+json' "repos/pyatkoff/poisk-turov-test/contents/tools/price1619-producer-diagnostic/$name?ref=$GITHUB_SHA" > "$RUNNER_TEMP/producer-diagnostic/$name"
