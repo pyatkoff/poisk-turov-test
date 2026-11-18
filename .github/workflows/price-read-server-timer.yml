@@ -10,7 +10,7 @@ jobs:
   read:
     if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.ref == 'refs/heads/ops/price-hook-reviewed-pass-20261117'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 12
     steps:
       - name: Prepare unchanged server connection and host pin
         env:
@@ -44,6 +44,33 @@ jobs:
         run: |
           set -euo pipefail
           opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          try {
+              require_once 'db-v1.php';
+              $pdo = v2_data_db();
+              $check = $pdo->prepare('SELECT IS_USED_LOCK(?) IS NOT NULL');
+              $limit = microtime(true) + 480;
+              $previous = null;
+              do {
+                  $check->execute(['anytour_top500_monthly_v1']);
+                  $state = $check->fetchColumn();
+                  $check->closeCursor();
+                  if (!in_array((string)$state, ['0','1'], true)) throw new RuntimeException('missing_lock_state');
+                  $busy = (bool)$state;
+                  if ($busy !== $previous) {
+                      echo 'COLLECTOR_LOCK ', json_encode(['checked_at'=>gmdate('c'), 'busy'=>$busy], JSON_THROW_ON_ERROR), PHP_EOL;
+                      $previous = $busy;
+                  }
+                  if (!$busy || microtime(true) >= $limit) break;
+                  sleep(10);
+              } while (true);
+          } catch (Throwable $e) {
+              fwrite(STDERR, 'lock_read_failed '.get_class($e).PHP_EOL);
+              exit(1);
+          }
+          PHP
           ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" '/usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status' > "$RUNNER_TEMP/native-receipt.json"
           python3 - <<'PY'
           import datetime, json, os, pathlib
@@ -72,7 +99,14 @@ jobs:
               $plan = v2_append_published_hotel_monthly_plan($plan, $catalog, $routes, $clock['today'], 12, 1, true);
               $attempts = $pdo->query("SELECT a.id,a.target_key,a.status,a.search_id,UNIX_TIMESTAMP(a.started_at) AS started_epoch,UNIX_TIMESTAMP(a.finished_at) AS finished_epoch,a.error_text FROM tour_matrix_collection_attempts a JOIN (SELECT target_key,MAX(id) AS id FROM tour_matrix_collection_attempts WHERE target_key LIKE 'monthly:%' AND started_at>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY target_key) last_attempt ON a.id=last_attempt.id")->fetchAll();
               $recent = $pdo->query("SELECT hotel_ids_json FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND departure_id=1 AND date_to>CURDATE() AND nights_from=5 AND nights_to=14 AND status IN ('success','empty') AND finished_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND finished_at<=NOW() AND search_id>0")->fetchAll(PDO::FETCH_COLUMN);
+              $activity = $pdo->query("SELECT UNIX_TIMESTAMP(MAX(started_at)) AS last_start, UNIX_TIMESTAMP(MAX(finished_at)) AS last_finish, IS_USED_LOCK('anytour_top500_monthly_v1') IS NOT NULL AS lock_busy FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND started_at >= DATE_SUB(NOW(),INTERVAL 6 HOUR)")->fetch();
               $pdo->exec('ROLLBACK');
+              echo 'COLLECTOR_ACTIVITY ', json_encode([
+                  'checked_at' => gmdate('c',(int)$clock['epoch']),
+                  'last_start' => $activity['last_start'] === null ? null : gmdate('c',(int)$activity['last_start']),
+                  'last_finish' => $activity['last_finish'] === null ? null : gmdate('c',(int)$activity['last_finish']),
+                  'lock_busy' => (bool)$activity['lock_busy'],
+              ], JSON_THROW_ON_ERROR), PHP_EOL;
               $searched = [];
               foreach ($recent as $raw) foreach (json_decode($raw,true,512,JSON_THROW_ON_ERROR) as $id) $searched[(int)$id] = true;
               $planned = [];
