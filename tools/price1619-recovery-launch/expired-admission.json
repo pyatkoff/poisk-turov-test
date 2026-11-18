@@ -1,0 +1,9 @@
+{
+  "schema": "price4294-admission-revocation-v1",
+  "original_run_id": 44320210881,
+  "original_head": "f6c429c75cb2406125a4a55f55b7f493558486e1",
+  "route_observed_at_epoch": 1795010576,
+  "route_deadline_epoch": 1795010876,
+  "reason": "Queued behind actual scheduled collector; original route admission expired",
+  "disposition": "No rerun; await original terminal and inspect outcome before a fresh original admission"
+}
