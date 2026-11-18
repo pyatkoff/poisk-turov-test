@@ -59,13 +59,11 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
     if(u.origin!==origin||!u.pathname.startsWith(base)||/\/(?:api-|data\/)|\.php$/.test(u.pathname)){
      external.push(u.pathname);await route.abort();return;
     }
-    if(u.pathname===base+'visual-search/index.html'){
-     const response=await route.fetch();
-     await route.fulfill({response,contentType:'text/html; charset=utf-8'});return;
-    }
     await route.continue();
    });
-   await page.goto(origin+base+'visual-search/index.html?scenario=journey');
+   const response=await page.goto(origin+base+'visual-search/?scenario=journey');
+   assert.equal(response.status(),200);
+   await page.locator('.search-submit:not(:disabled)').waitFor();
    const stars=page.locator('#quick-stars [data-value="4"]');
    await stars.click();
    assert.equal(await stars.getAttribute('aria-pressed'),'true');

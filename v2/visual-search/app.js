@@ -1,14 +1,9 @@
 'use strict';
 (() => {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const prototypeVersion=227;
-const designRevision=91;
 // Optional shortlisting is paused by the owner. Keep stored choices intact, but
 // keep every visible route focused on search → hotel → exact tour.
 const optionalShortlistEnabled=false;
-$('.prototype-lab strong').textContent='Дизайн · пакет '+designRevision;
- $('#prototype-version').textContent='Дизайн · пакет '+designRevision;
-$('.footer-inner>span').textContent='Дизайн · пакет '+designRevision+' · 14.10.2026 · исходник v'+prototypeVersion;
 const paths = {
  sort:'<path d="M8 4v16m-4-4 4 4 4-4M14 5h6M14 10h4M14 15h2"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>',
@@ -72,8 +67,8 @@ const offerActionLabel=o=>data.preview||!needsRefresh(o)?'Выбрать тур'
 const refreshOfferActionLabel=o=>o.cached?'Найти актуальные туры':'Проверить этот тур';
 const refreshOfferNotice=o=>data.live?'Предложение из текущего поиска. Проверьте цену, наличие и рейсы для этих условий.':'Снимок от 23.09.2026. Цена и наличие не обновляются.';
 const aboutDisclosureHTML=()=>data.live
- ? `<p class="modal-intro">Версия v${prototypeVersion} получает актуальные предложения только из живого поиска Tourvisor и прямого ANEX. База не подменяет живую выдачу: ранее найденные цены используются только в календаре.</p><p class="modal-intro">Для конкретного предложения выполняется доступная поставщику актуализация цены, наличия и рейсов. Неподтверждённая или расчётная сумма показывается с явным статусом и не выдаётся за финально подтверждённую.</p><p class="modal-intro">Формы заявки доступны только для проверки сценария: данные не отправляются туроператору, бронирование и оплата отключены.</p>`
- : `<p class="modal-intro">Демонстрационный сценарий v${prototypeVersion} работает на сохранённых и учебных данных. Цены и наличие не обновляются, сценарии рейсов могут быть вымышленными.</p><p class="modal-intro">Формы заявки доступны только для проверки интерфейса: данные не отправляются, бронирование и оплата отключены.</p>`;
+ ? '<p class="modal-intro">В выдаче — предложения подключённых поставщиков. Календарь показывает ранее найденные цены и помогает выбрать даты.</p><p class="modal-intro">При выборе тура проверяем у поставщика стоимость, наличие мест и условия перелёта. Рядом с суммой указано, подтверждена ли цена.</p><p class="modal-intro">Чтобы передать выбранный тур менеджеру, откройте Telegram или MAX из заявки и запустите бота.</p>'
+ : '<p class="modal-intro">В этом сценарии используются сохранённые предложения и учебные примеры. Цены, наличие мест и рейсы приведены для знакомства с поиском.</p><p class="modal-intro">Заявка в этом режиме учебная. Она позволяет проверить выбор тура и возврат к нему.</p>';
 const cachedPriceNote=o=>data.scenario==='live'?'Цена из базы AnyTour · наличие требует проверки':'Цена из снимка 23.09.2026 · наличие не проверяется';
 const unknownInfantCharge=o=>o?.provider==='anex'&&o.raw?.infantCharge?.status==='unknown';
 const priceNote=o=>o.provider==='recorded'?(o.recordingKind==='demo'?'Демонстрационная запись · не для бронирования':'Загруженная запись · не для бронирования'):o.provider==='fixture'?'Демонстрационная цена · не для бронирования':o.cached?cachedPriceNote(o):unknownInfantCharge(o)?'Цена из поиска · доплата за младенца уточняется':needsRefresh(o)?'Цена из текущего поиска · требует подтверждения':'Цена предложения · сборы уточняются';
@@ -3103,7 +3098,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'only-favorites':state.onlyFavorites=true;closeModal();renderResults();$('#results').scrollIntoView({behavior:scrollBehavior()});break;
  case 'show-hotel':{const h=hotels.find(h=>h.id===id);state.search.country=h.country;draft=structuredClone(state.search);draftDestination=null;state.filters=defaultFilters();state.filters.hotelId=h.id;state.onlyFavorites=false;state.selectedDate=null;closeModal();syncFilters();updateURL();$('#results').scrollIntoView({behavior:scrollBehavior()});break}
  case 'operator-info':toast('Туроператор: '+b.dataset.operator);break;
- case 'about':showModal('about','Версия для проверки','ANYTOUR SEARCH3',aboutDisclosureHTML());break;
+ case 'about':showModal('about','О данных','',aboutDisclosureHTML());break;
  }
 });
 document.addEventListener('keydown',e=>{
