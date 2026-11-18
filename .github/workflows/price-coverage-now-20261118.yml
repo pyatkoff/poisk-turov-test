@@ -1,0 +1,127 @@
+name: Collect current hotel prices on the installed monitor
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-coverage-now-20261118.yml']
+permissions:
+  contents: read
+  issues: read
+jobs:
+  collect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4b1247a97487b553917ec54502b402da6b81e5bf'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 38
+    steps:
+      - name: Confirm the original PRICE operation and current carrier head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/6975257965 > "$RUNNER_TEMP/price-claim.json"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          claim = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'price-claim.json').read_text())
+          assert claim['user']['login'] == 'pyatkoff' and claim['issue_url'].endswith('/issues/4709')
+          assert hashlib.sha256(claim['body'].encode()).hexdigest() == '37d61281c525b54b7059d9b9095521f20e049bc6fec4c3a5a337d7731990d47d', 'price claim changed'
+          PY
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Collect existing due ranges for published hotels
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -se' <<'REMOTE' | tee "$RUNNER_TEMP/price-coverage.log"
+          set -euo pipefail
+          data=/var/www/anytoour/data/www/anytoour.ru/data
+          cd "$data"
+          upcoming=$(TZ=Europe/Moscow date -d "$(TZ=Europe/Moscow date +%Y-%m-01) +1 month" +%Y-%m)
+          verify_source() {
+            for file in top500-daily-collector-v1.php published-hotels-monitor-v1.php top500-monthly-plan-v1.php seasonal-page-gap-plan-v1.php; do
+              test "$(realpath "$file")" = "$data/$file"
+            done
+            sha256sum --status -c <<'SUMS'
+          16df63f1b83ee8422d304a14cb81e3b64bdd83deedd63ea9f251406d13d97686  top500-daily-collector-v1.php
+          3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c  published-hotels-monitor-v1.php
+          70a3230ca6d6dfeaebc865cdb7801df2835919e09d6fac8082cf78b3c2300207  top500-monthly-plan-v1.php
+          3e1ef84ae88979f6e31691241dce13d01fdc40fd41138679043de3b83b616a5f  seasonal-page-gap-plan-v1.php
+          SUMS
+          }
+          run_segment() {
+            local country=$1 month=$2 budget=$3 seconds=$4
+            verify_source
+            echo "PRICE_SEGMENT country=$country month=${month:-all} search_budget=$budget seconds=$seconds"
+            set +e
+            php top500-daily-collector-v1.php --preferred-departure-id=1 --months=12 --budget="$budget" --max-seconds="$seconds" --only-month="$month" --only-country="$country" --page-gap-reserve=0 2>&1 |
+              awk '/^TOP500_MONTHLY_(PLAN |DONE |BUSY$)|^TOP500_EXECUTION_PLAN / { print; fflush() }
+                /^TOP500_MONTHLY_DONE / { done++ } END { if (done != 1) exit 3 }'
+            local pipe_codes=("${PIPESTATUS[@]}")
+            set -e
+            test "${pipe_codes[1]}" -eq 0 || { echo "Segment missing terminal result"; return 1; }
+            case "${pipe_codes[0]}" in
+              0) ;;
+              2) had_errors=1 ;;
+              *) echo "Collector exited ${pipe_codes[0]}"; return 1 ;;
+            esac
+          }
+          had_errors=0
+          run_segment 1 "$upcoming" 18 260
+          run_segment 2 "$upcoming" 24 350
+          run_segment 16 "$upcoming" 16 250
+          run_segment 0 "" 42 640
+          exit "$had_errors"
+          REMOTE
+      - name: Save actual coverage and observations
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          log = pathlib.Path(os.environ['RUNNER_TEMP']) / 'price-coverage.log'
+          if log.exists():
+              rows = [json.loads(line.removeprefix('TOP500_MONTHLY_DONE ')) for line in log.read_text().splitlines() if line.startswith('TOP500_MONTHLY_DONE ')]
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  for label in ('processed', 'logical_processed', 'observations_written', 'failed', 'partial'):
+                      print(f'{label}: {sum(row[label] for row in rows)}', file=summary)
+                  print(f'completed segments: {len(rows)}/4', file=summary)
+              print('PRICE_COVERAGE_TERMINAL', json.dumps({'segments': len(rows), 'totals': {key: sum(row[key] for row in rows) for key in ('processed','logical_processed','observations_written','failed','partial')}}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: hotel-price-coverage-${{ github.run_id }}
+          path: ${{ runner.temp }}/price-coverage.log
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Cleanup original connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
