@@ -1,0 +1,20 @@
+{
+  "claim_sha256": "95fc40ba376f06ff6726e55705bc0cb15dd5041739f0a6f8c38f6cca7be77ba5",
+  "route_attestation": {
+    "repo": "pyatkoff/tour-max",
+    "head": "bbef3101f8c8f6eae15355c0d6fa4b8c1848dfa2",
+    "at": "2026-11-18T00:35:55.811608+00:00",
+    "counts": {
+      "in_progress": 0,
+      "queued": 0,
+      "waiting": 0,
+      "pending": 0,
+      "requested": 0
+    }
+  },
+  "files": {
+    "read.php": "73ee647790ca3d8fea321dc54279e09bce6972cc279dd1e43a91fb5a13f2708d",
+    "run.py": "e7fa6642acd0eb9b864100cf407d70c1735c1a0d9c1720dde1de5d38e8abf7ac",
+    "admit.py": "fc8b3cdd608695af57148ad2906ac3ea6f3e79bc5b2e247e6b610a658939f08a"
+  }
+}
