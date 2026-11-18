@@ -521,9 +521,48 @@ function v2_published_expansion123_monitor_ids_20261118(): array
     return [797,839,7897,8094,660,2074,2075,4262,4446,7935,8117,12201,45733,57720,74940,630,766,8127,43827,44661,56478,57867,58088,80057,574,595,632,126428,2968,3018,13110,796,42509,66861,45232,47213,77818,82631,102191,112772,116451,128830,103063,46569,68194,126101,68663,69130,82751,23723,66681,80225,80955,98713,104973,111414,4090,22785,22789,23721,82067,4076,4077,131884,70778,126417,52256,65253,15862,41494,22718,541,2006,9385,3006,82422,81140,8020,51931,74110,113553,115812,121699,140013,143372,15852,2986,4203,4403,8105,8169,15857,23264,23738,23755,70050,4235,8170,22777,22845,8019,13935,47185,49176,49287,55570,53706,23756,40895,43494,52090,66666,68971,74114,79323,79954,80233,110848,111489,118713,119052,127988,66375];
 }
 
+/** Existing W6–W10 publication IDs outside the native calendar at run 44331338774. */
+function v2_published_tail234_monitor_ids_20261118(): array
+{
+    return [
+        143, 164, 234, 236, 307, 330, 331, 356, 357, 359, 372, 438,
+        1000, 1064, 1078, 1083, 1108, 1111, 1321, 1428, 1489, 1517, 1518, 1589,
+        1615, 1618, 1679, 1683, 1703, 2139, 2161, 2335, 2357, 2404, 2424, 2429,
+        2433, 2437, 2462, 2477, 2483, 2495, 2497, 2511, 2522, 2572, 2583, 2584,
+        2590, 2593, 2600, 2601, 2602, 2603, 2635, 2643, 2680, 2685, 2686, 2721,
+        2750, 2763, 2765, 2766, 2776, 2794, 2803, 2826, 2921, 3418, 4518, 4533,
+        4542, 4546, 4549, 5399, 5545, 8420, 8859, 8923, 8987, 8988, 11742, 11743,
+        11744, 11746, 11749, 11751, 11753, 11765, 11770, 11773, 11774, 11775, 11781, 11786,
+        11788, 11791, 11792, 11794, 11802, 11832, 11836, 11842, 11847, 11851, 11873, 11882,
+        12104, 12126, 13853, 13875, 13890, 15799, 15910, 16318, 16776, 16943, 17489, 17513,
+        17608, 22676, 23285, 23287, 24940, 26844, 27478, 28400, 28470, 28505, 30609, 32333,
+        33531, 33549, 33574, 35174, 37209, 39260, 40880, 43238, 43649, 43701, 43743, 44491,
+        44669, 45544, 46068, 46323, 46727, 47023, 48795, 50834, 51240, 52409, 56003, 56078,
+        56424, 57476, 57682, 57802, 58743, 58744, 58808, 59084, 59539, 59548, 60231, 60233,
+        63106, 64061, 64110, 64124, 64330, 64360, 64918, 64955, 64998, 65342, 65906, 66299,
+        67048, 67099, 69424, 70138, 71388, 73082, 73509, 73893, 73896, 73995, 74019, 74644,
+        75042, 75504, 75800, 76109, 76112, 76226, 76288, 76311, 76458, 76819, 76940, 77595,
+        77650, 77685, 77810, 78210, 78834, 78929, 78938, 78964, 79460, 79690, 79974, 80748,
+        82504, 82538, 82676, 103733, 104048, 108317, 109335, 109586, 113978, 115677, 118906, 121821,
+        122841, 122961, 126132, 127349, 135441, 135442,
+    ];
+}
+
+function v2_published_expansion_monitor_ids(): array
+{
+    return array_merge(
+        v2_sites_hotel_monitor_ids_20261111(),
+        v2_published_expansion20_monitor_ids_20261116(),
+        v2_published_expansion32_monitor_ids_20261116(),
+        v2_published_expansion217_monitor_ids_20261117(),
+        v2_published_expansion123_monitor_ids_20261118(),
+        v2_published_tail234_monitor_ids_20261118(),
+    );
+}
+
 function v2_all_hotel_monitor_input_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
-    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118())));
+    return array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_published_expansion_monitor_ids())));
 }
 
 /** Keep every base and previously admitted cohort target intact. */
@@ -569,6 +608,7 @@ function v2_append_published_hotel_monthly_plan(array $plan, array $hotels, arra
     if($includeSitesRoster)$cohorts['published_expansion32_20261116']=v2_published_expansion32_monitor_ids_20261116();
     if($includeSitesRoster)$cohorts['published_expansion217_20261117']=v2_published_expansion217_monitor_ids_20261117();
     if($includeSitesRoster)$cohorts['published_expansion123_20261118']=v2_published_expansion123_monitor_ids_20261118();
+    if($includeSitesRoster)$cohorts['published_tail234_20261118']=v2_published_tail234_monitor_ids_20261118();
     $keys=array_fill_keys(array_column($plan['targets'],'target_key'),true);
     $summary=['requested'=>0,'searchable'=>0,'state'=>'awaiting_catalog_or_route','hotel_ids'=>[],'cohorts'=>[]];
     foreach($cohorts as $cohort=>$ids){

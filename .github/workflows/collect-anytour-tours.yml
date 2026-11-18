@@ -31,6 +31,7 @@ on:
       - 'tests/published-expansion32-monitor-smoke.php'
       - 'tests/published-expansion217-monitor-smoke.php'
       - 'tests/published-expansion123-monitor-smoke.php'
+      - 'tests/published-tail234-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -79,6 +80,7 @@ on:
       - 'tests/published-expansion32-monitor-smoke.php'
       - 'tests/published-expansion217-monitor-smoke.php'
       - 'tests/published-expansion123-monitor-smoke.php'
+      - 'tests/published-tail234-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -178,6 +180,7 @@ jobs:
           php tests/published-expansion32-monitor-smoke.php
           php tests/published-expansion217-monitor-smoke.php
           php tests/published-expansion123-monitor-smoke.php
+          php tests/published-tail234-monitor-smoke.php
           php -l v2/data/rollup-price-daily-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-offer-snapshot-v1.php >/dev/null
