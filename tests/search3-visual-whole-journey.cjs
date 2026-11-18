@@ -5,15 +5,15 @@ const path = require('node:path');
 
 // Keep a visual record of one continuous session at each size. Small contact
 // sheets fit the existing acceptance archive without duplicating full frames.
-async function saveJourney(page, frames, width, evidence) {
+async function saveJourney(page, frames, width, evidence, options = {}) {
  const sheet = await page.context().newPage();
  try {
-  const result = await sheet.evaluate(async ({frames,width}) => {
-   const tileWidth = width < 600 ? 320 : 512;
+  const tileWidth = options.tileWidth || (width < 600 ? 320 : 512);
+  const result = await sheet.evaluate(async ({frames,tileWidth}) => {
    const pad = 12, heading = 34;
    const tiles = await Promise.all(frames.map(async frame => {
     const img = new Image();
-    img.src = 'data:image/jpeg;base64,' + frame.image;
+    img.src = 'data:image/' + (frame.format || 'jpeg') + ';base64,' + frame.image;
     await img.decode();
     return {img,label:frame.label};
    }));
@@ -33,18 +33,42 @@ async function saveJourney(page, frames, width, evidence) {
     ctx.drawImage(img,x,y + heading,tileWidth,tileHeight);
    });
    return canvas.toDataURL('image/webp',0.77).split(',')[1];
-  },{frames,width});
-  fs.writeFileSync(path.join(evidence,'whole-search-'+width+'.webp'),Buffer.from(result,'base64'));
+  },{frames,tileWidth});
+  fs.writeFileSync(path.join(evidence,options.filename || 'whole-search-'+width+'.webp'),Buffer.from(result,'base64'));
  } finally { await sheet.close(); }
 }
 
 module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  if (process.platform === 'linux') {
   const root = process.env.SEARCH3_VISUAL_ASSET_ROOT || path.resolve(__dirname, '../v2');
-  require('node:child_process').execFileSync('xvfb-run', [
-   '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-   path.join(__dirname, 'search3-visual-firefox-rdm.cjs'), root, evidence,
-  ], {stdio: 'inherit', timeout: 180000});
+  const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'search3-rdm-'));
+  const raw = path.join(temp, 'firefox-rdm');
+  const retained = path.join(evidence, 'firefox-rdm');
+  fs.mkdirSync(retained, {recursive:true});
+  try {
+   require('node:child_process').execFileSync('xvfb-run', [
+    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
+    path.join(__dirname, 'search3-visual-firefox-rdm.cjs'), root, temp,
+   ], {stdio:'inherit', timeout:180000});
+   const report = JSON.parse(fs.readFileSync(path.join(raw, 'result.json'), 'utf8'));
+   const labels = ['Параметры поиска', 'Выдача с фильтром 4★', 'Номера и питание',
+    'Выбор перелёта', 'Итог тура и заявка', 'Цена при возврате к туру'];
+   assert.equal(report.selection.frames.length, labels.length);
+   const frames = report.selection.frames.map((file, i) => ({
+    label: labels[i], format: 'png', image: fs.readFileSync(path.join(raw, file)).toString('base64'),
+   }));
+   const page = await browser.newPage();
+   const filename = 'whole-search-firefox-430.webp';
+   try { await saveJourney(page, frames, 430, retained, {filename, tileWidth:430}); }
+   finally { await page.close(); }
+   report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
+   report.selection.contactSheet = filename;
+   fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
+  } catch (error) {
+   const last = path.join(raw,'last-state.png');
+   if (fs.existsSync(last)) fs.copyFileSync(last,path.join(retained,'last-state.png'));
+   throw error;
+  } finally { fs.rmSync(temp,{recursive:true,force:true}); }
  }
  for(const width of [430,1280]){
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
