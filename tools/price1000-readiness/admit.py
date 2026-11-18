@@ -5,6 +5,12 @@ APP='cc017ee5bb669f4c7c13efc91d5c5812a50e55f2'
 def need(v,m):
  if not v:raise RuntimeError(m)
 def api(repo,path):return json.loads(subprocess.check_output(['gh','api','--method','GET','repos/pyatkoff/'+repo+'/'+path],timeout=40))
+def validate_manifest(c):
+ files=set(c['files']);expected=set(c['expected_files'])
+ if c.get('phase')=='readiness':
+  need(files==expected=={'run.py','admit.py','feeds.php'},'incomplete_manifest')
+ else:
+  need(files==expected and len(files)>=4,'incomplete_manifest')
 def main():
  c=json.loads((BASE/'config.json').read_text());e=json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text());need(c.get('enabled') is True,'gate_closed')
  need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']==c['event_before'],'original_event_required')
@@ -22,7 +28,7 @@ def main():
   for status in ['in_progress','queued','waiting','pending','requested']:
    r=api('max-search-bot',path+'&status='+status+'&per_page=100');need(r['total_count']==0 and r['workflow_runs']==[],'competing_native_run')
  now=datetime.datetime.now(datetime.timezone.utc);a=c['route_attestation'];at=datetime.datetime.fromisoformat(a['at'].replace('Z','+00:00'));need(a['repo']=='pyatkoff/tour-max' and a['head']=='a65e667241ce3e910d33a50b3f3e2ce1bc9f66a0' and a['counts']=={s:0 for s in ['in_progress','queued','waiting','pending','requested']} and 0<=(now-at).total_seconds()<=600,'route_attestation_stale_or_busy')
- need(set(c['files'])==set(c['expected_files']) and len(c['files'])>=4,'incomplete_manifest')
+ validate_manifest(c)
  for n,d in c['files'].items():need(hashlib.sha256((BASE/n).read_bytes()).hexdigest()==d,'source_changed')
  print(json.dumps({'ok':True,'at':now.isoformat(),'runtime':APP,'consumer_main':c['consumer_main'],'event_before':c['event_before'],'route':a,'concurrency':'anytour-scheduled-tour-collector'}))
 if __name__=='__main__':main()

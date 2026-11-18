@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "claim_id": 6973002012,
-  "claim_sha256": "5152aaeda76b595e5e50a0c685c64ccbfffebd336b631e2b2d1d8a04e5ea5807",
+  "claim_id": 6973125368,
+  "claim_sha256": "77193d6fa839ee5fa6728d3ad190551994aa3b87955b42498871a6c239d860e2",
   "accepted_ci_runs": [],
   "accepted_ci_head": "NOT_YET_MERGED_READONLY_ONLY",
   "native_before_shas": {
@@ -1026,7 +1026,7 @@
   "route_attestation": {
     "repo": "pyatkoff/tour-max",
     "head": "a65e667241ce3e910d33a50b3f3e2ce1bc9f66a0",
-    "at": "2026-11-18T08:17:43.984628Z",
+    "at": "2026-11-18T08:24:11.690452Z",
     "counts": {
       "in_progress": 0,
       "queued": 0,
@@ -1037,7 +1037,7 @@
   },
   "files": {
     "run.py": "9eef2a087f2122cd5bd49c63a01b74ad965f502e9b367327d271b1b2b660296b",
-    "admit.py": "81f511d8b8d161dc025cbeeaac9505686afd58204f1c5a568f0280c6fa672f00",
+    "admit.py": "f73b7ca190bb8c455b55cde456a23824008e1838d1870e0a8509fbe32abd9d0d",
     "feeds.php": "a0aceeab7636c2be01a462cf1bca3c44aee8e1e9de06833fccda5a025cf13823"
   },
   "installer_template_sha256": "57e35a14e56c60cd7eb8e441d8dfe54c55ec475b64badc98e64d7ec67c478157",
@@ -2535,7 +2535,7 @@
   "expected_cycle_sha256": "9e5a5918c3e04dc99e6a0fc2365d5b46b9f569a250479f805a590f98555eff33",
   "phase": "readiness",
   "consumer_main": "f9e3a423990297f7b07014c301eb5e1b18fcec36",
-  "event_before": "f767095344e5268c5ddfd26c71358a43b71bbaf4",
+  "event_before": "8e9f4ec81359e96eb18ae383622c1df24685da68",
   "expected_files": [
     "run.py",
     "admit.py",

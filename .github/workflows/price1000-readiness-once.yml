@@ -9,7 +9,7 @@ permissions:
   issues: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'f767095344e5268c5ddfd26c71358a43b71bbaf4'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '8e9f4ec81359e96eb18ae383622c1df24685da68'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -20,7 +20,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate guarded runner and read-only checks
-        run: php -l tools/price1000-readiness/feeds.php && python3 -m py_compile tools/price1000-readiness/*.py
+        run: php -l tools/price1000-readiness/feeds.php && python3 -m py_compile tools/price1000-readiness/*.py && python3 tools/price1000-readiness/test_manifest.py
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
