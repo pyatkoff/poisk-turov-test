@@ -1774,7 +1774,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
     assert.equal(await approve.getAttribute('data-key'),offerKey);
     assert.equal((await total.textContent()).replace(/\D/g,''),'195400');
     const visiblePrice=(await footer.innerText()).replace(/\s+/g,' ');
-    assert.match(visiblePrice,/В выдаче 186 400 ₽/);
+    assert.match(visiblePrice,/Этот тур в поиске 186 400 ₽/);
     assert.match(visiblePrice,/на 9 000 ₽ дороже/i,'show the increase before accepting');
     assert.doesNotMatch(visiblePrice,/сбор уточняется/i,'an unknown breakdown must not imply a pending surcharge');
     assert.equal(await page.locator('#modal-body .quote-price-change').count(),0,'changed amount and original listing are together by the action');
