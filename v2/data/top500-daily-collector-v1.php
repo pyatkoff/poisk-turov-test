@@ -98,7 +98,7 @@ try {
     if(isset($plan['published_hotels']))echo 'PUBLISHED_HOTEL_MONITOR '.json_encode($plan['published_hotels'],JSON_UNESCAPED_SLASHES)."\n";
     if($onlyMonth!==''&&!in_array($onlyMonth,$plan['months'],true))throw new InvalidArgumentException('target month outside horizon');
     $attempts=top500_monthly_attempts($pdo);$now=(int)$pdo->query('SELECT UNIX_TIMESTAMP()')->fetchColumn();
-    $queue=v2_top500_monthly_queue($plan['targets'],$attempts,$now,$freshHours,array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117()));
+    $queue=v2_top500_monthly_queue($plan['targets'],$attempts,$now,$freshHours,array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118()));
     $gapTargets=[];$gapError=0;
     if($gapReserve>0){
         try{

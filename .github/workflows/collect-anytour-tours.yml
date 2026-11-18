@@ -28,6 +28,7 @@ on:
       - 'tests/published-expansion20-monitor-smoke.php'
       - 'tests/published-expansion32-monitor-smoke.php'
       - 'tests/published-expansion217-monitor-smoke.php'
+      - 'tests/published-expansion123-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -73,6 +74,7 @@ on:
       - 'tests/published-expansion20-monitor-smoke.php'
       - 'tests/published-expansion32-monitor-smoke.php'
       - 'tests/published-expansion217-monitor-smoke.php'
+      - 'tests/published-expansion123-monitor-smoke.php'
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
@@ -137,7 +139,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: e47d578bde03698554428016120a22ceb5272baf
+          ref: 8a520bf90a0755633d539b97ef57c34b1816793e
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -170,6 +172,7 @@ jobs:
           php tests/published-expansion20-monitor-smoke.php
           php tests/published-expansion32-monitor-smoke.php
           php tests/published-expansion217-monitor-smoke.php
+          php tests/published-expansion123-monitor-smoke.php
           php -l v2/data/rollup-price-daily-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-offer-snapshot-v1.php >/dev/null
@@ -187,7 +190,9 @@ jobs:
           grep -Fq 'picturelink' v2/data/price-observer-v1.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-contract.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
+          python3 hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion1000-prefix.py
           python3 hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion877.py
+          python3 hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion1000.py
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-nightly-policy.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php
@@ -199,7 +204,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 483f9f1cd853fdf1808523e72d466e2acd0866ec6ae35de049ada38b5cc128f9
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = d605b8292a8d380d328d585f90d388a254d1dc780188e4b0edbfc92b6c407c30
           python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
@@ -224,7 +229,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: e47d578bde03698554428016120a22ceb5272baf
+          ref: 8a520bf90a0755633d539b97ef57c34b1816793e
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -233,7 +238,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 483f9f1cd853fdf1808523e72d466e2acd0866ec6ae35de049ada38b5cc128f9
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = d605b8292a8d380d328d585f90d388a254d1dc780188e4b0edbfc92b6c407c30
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
