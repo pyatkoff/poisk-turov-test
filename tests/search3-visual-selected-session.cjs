@@ -285,7 +285,7 @@ module.exports=async function({browser,origin,base,evidence}){
    const summary=(await decision.innerText()).replace(/\s+/g,' ');
    assert.match(summary,/1 300/,'difference is relative to the applied pair');
    assert.match(summary,/20 кг/,'checked baggage is visible at confirmation');
-   assert.match(summary,/SVO/,'outbound airport belongs to the draft pair');
+   assert.match(summary,/Шереметьево \(SVO\)/,'outbound airport belongs to the draft pair');
    assert.match(summary,/06:05/,'outbound time belongs to the same pair');
    assert.equal(await decision.evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
    if(width===430)await page.screenshot({path:path.join(evidence,'flight-decision-430.png')});

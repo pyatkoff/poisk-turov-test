@@ -2085,11 +2085,17 @@ function flightDecisionText(offer,previousTotal,priceStatus){
  const pair=flightPairFor(offer);
  if(!pair||offer.pricePending)return priceStatus;
  const departure=pair.forward?.[0]?.departure;
- const airport=data.text(departure?.port);
+ let airport=data.text(departure?.port);
+ const code=/^(?:Москва\s*·\s*)?(SVO|VKO|DME|ZIA)$/i.exec(airport)?.[1].toUpperCase();
+ if(code){
+  const names={SVO:'Шереметьево',VKO:'Внуково',DME:'Домодедово',ZIA:'Жуковский'};
+  airport=names[code]+' ('+code+')';
+ }
  const time=window.AnyTourFlightDisplayV1.departureMinute(pair.forward)===null?'':departure.time;
  const outbound=[airport,time].filter(Boolean).join(', ');
  const allowance=window.AnyTourFlightDisplayV1.pairAllowance(pair,'baggage');
- const baggage=allowance.includes('-й рейс')?'Багаж по участкам — в деталях рейса':allowance==='без багажа'?'Без багажа':'Багаж: '+allowance;
+ const variableBaggage=[pair.forward,pair.backward].some(legs=>new Set((legs||[]).map(leg=>window.AnyTourFlightPickerV18.allowanceValue(leg,'baggage'))).size>1);
+ const baggage=variableBaggage?'Багаж различается по участкам':allowance==='без багажа'?'Без багажа':'Багаж: '+allowance;
  const delta=previousTotal?offer.total-previousTotal:null;
  let change=priceStatus;
  if(delta===0)change='Цена тура прежняя';

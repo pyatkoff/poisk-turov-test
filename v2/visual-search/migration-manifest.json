@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "5666ebcfc58e6dfb470583406f3c81311a055ef336778bb0507a4ba42e0dcec6",
+    "app.js": "79e9248d6f5687659845d20fbdc78f67b086193f9d744df84aabf38eea57f4ed",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "bee059e622de5c7e3ce658b324fd052103d0ff52c5ab089fea37212acb404179",
     "styles.css": "8cd5e37ab5bcfbb8efec1db72da34a0146770e3be5863b6a14a3ae602820433d",
