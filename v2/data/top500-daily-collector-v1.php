@@ -5,6 +5,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__.'/db-v1.php';
 require_once __DIR__.'/tourvisor-client-v1.php';
 require_once __DIR__.'/price-observer-v1.php';
+require_once __DIR__.'/hotel-monitor-prices-v1.php';
 require_once __DIR__.'/top-hotels-v1.php';
 require_once __DIR__.'/top500-monthly-plan-v1.php';
 require_once __DIR__.'/published-hotels-monitor-v1.php';
@@ -75,6 +76,7 @@ $pollSeconds=top500_daily_int($argv,'poll-seconds',2,1,10);
 $departureId=top500_daily_int($argv,'preferred-departure-id',1,1,1000000);
 $onlyMonth=(string)top500_daily_arg($argv,'only-month','');
 $onlyCountry=top500_daily_int($argv,'only-country',0,0,1000000);
+$idleMinutes=top500_daily_int($argv,'if-idle-minutes',0,0,120);
 if($onlyMonth!==''&&!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D',$onlyMonth))throw new InvalidArgumentException('invalid target month');
 
 $pdo=v2_data_db();
@@ -83,6 +85,20 @@ $pdo=v2_data_db();
 if((int)$pdo->query("SELECT GET_LOCK('anytour_top500_monthly_v1',0)")->fetchColumn()!==1){echo "TOP500_MONTHLY_BUSY\n";exit;}
 $deadline=microtime(true)+$maxSeconds;
 try {
+    // A server catch-up may fill a missed scheduled pass. Decide while holding the
+    // same advisory lock as every supplier run, before creating any attempt.
+    if ($idleMinutes > 0) {
+        $recent = $pdo->query("SELECT 1 FROM tour_matrix_collection_attempts
+            WHERE status IN ('success','empty','timeout') AND criterion='hotel_batch'
+              AND target_key LIKE 'monthly:%'
+              AND started_at >= DATE_SUB(NOW(),INTERVAL 7 HOUR)
+              AND finished_at BETWEEN DATE_SUB(NOW(),INTERVAL $idleMinutes MINUTE) AND NOW()
+            LIMIT 1")->fetchColumn();
+        if ($recent) {
+            echo "TOP500_MONTHLY_RECENT idle_minutes=$idleMinutes\n";
+            return;
+        }
+    }
     $registry=v2_top500_registry($pdo);
     v2_top500_log_resolution($registry);
     $priorityIds=v2_all_hotel_monitor_input_ids($registry);
@@ -113,7 +129,24 @@ try {
         }catch(Throwable $e){$gapError=1;fwrite(STDERR,'SEO_PAGE_GAP_PLAN_FAILED code='.$e->getCode().' '.mb_substr($e->getMessage(),0,300)."\n");}
     }
     $executionTargets=v2_top500_execution_targets($queue['targets']);
-    $passTargets=v2_seasonal_gap_pass_targets($executionTargets,v2_top500_execution_targets($gapTargets),$budget,$gapReserve,$onlyMonth,$onlyCountry);
+    // Group by the actual departure so a price from a different city cannot mask a gap.
+    $idsByDeparture = [];
+    foreach ($executionTargets as $target) {
+        if ($target['criterion'] !== 'hotel_batch') continue;
+        foreach ($target['hotel_ids'] as $id) $idsByDeparture[$target['departure_id']][$id] = true;
+    }
+    $missingPrices = [];
+    foreach ($idsByDeparture as $city => $ids) {
+        foreach (array_chunk(array_keys($ids), 100) as $chunk) {
+            $where = v2_hmp_eligible_where(count($chunk));
+            $query = $pdo->prepare("SELECT DISTINCT o.hotel_id FROM tour_price_observations o WHERE $where");
+            $query->execute([...$chunk, $city, $plan['date_from'], $plan['date_to']]);
+            foreach (array_diff($chunk, $query->fetchAll(PDO::FETCH_COLUMN)) as $id) $missingPrices[$city][$id] = true;
+        }
+    }
+    $passTargets=v2_seasonal_gap_pass_targets($executionTargets,v2_top500_execution_targets($gapTargets),$budget,$gapReserve,$onlyMonth,$onlyCountry,$missingPrices);
+    echo 'TOP500_PRICE_GAPS '.json_encode(['departure_hotel_pairs_without_eligible_observation'=>array_sum(array_map('count',$missingPrices)),
+        'observation_window_hours'=>36,'within_due_hotel_batches'=>true],JSON_THROW_ON_ERROR)."\n";
     echo 'TOP500_MONTHLY_PLAN '.json_encode(['source_hotels'=>$plan['source_hotel_count'],'searchable_hotels'=>$plan['hotel_count'],'missing_catalog'=>$plan['missing_catalog_ids'],'no_departure'=>$plan['no_departure_hotels'],'months'=>$plan['months'],'window_days'=>7,'total_targets'=>$plan['batch_count'],'fresh'=>$queue['fresh'],'pending'=>$queue['pending'],'budget'=>$budget],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
     echo 'TOP500_EXECUTION_PLAN '.json_encode(['logical_due'=>count($queue['targets']),'physical_due'=>count($executionTargets),'pass_requests'=>count($passTargets),'hotel_cap'=>30,'request_budget'=>$budget],JSON_UNESCAPED_SLASHES)."\n";
     $processed=0; $logicalProcessed=0; $failed=$gapError; $partial=0; $writtenTotal=0;$gapProcessed=0;

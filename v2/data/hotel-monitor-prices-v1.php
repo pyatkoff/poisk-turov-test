@@ -35,25 +35,31 @@ function v2_hmp_request(array $query, string $today): array
         'nightsFrom'=>5, 'nightsTo'=>14, 'adults'=>2, 'childrenCount'=>0, 'currency'=>'RUB'];
 }
 
-/** Keep every actual room/operator/tour product with known meal terms before taking each hotel's cheapest observations. */
-function v2_hmp_offer_sql(int $count): string
+/** The collector and publisher use identical eligibility when deciding whether a hotel has a price. */
+function v2_hmp_eligible_where(int $count): string
 {
     if ($count < 1 || $count > 100) throw new InvalidArgumentException('Invalid hotel bound');
     $marks = implode(',', array_fill(0, $count, '?'));
+    return "o.hotel_id IN ($marks) AND o.departure_id=?
+            AND o.departure_date BETWEEN ? AND ? AND o.nights BETWEEN 5 AND 14
+            AND o.adults=2 AND o.children_count=0 AND COALESCE(o.child_ages_signature,'')=''
+            AND o.source='scheduled_monitor' AND o.currency='RUB' AND o.price>0
+            AND o.meal_id IN (2,3,4,5,7,9)
+            AND o.tour_id IS NOT NULL AND o.tour_id<>''
+            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()";
+}
+
+/** Keep every actual room/operator/tour product with known meal terms before taking each hotel's cheapest observations. */
+function v2_hmp_offer_sql(int $count): string
+{
+    $where = v2_hmp_eligible_where($count);
     return "WITH exact_rows AS (
         SELECT o.*, ROW_NUMBER() OVER (
             PARTITION BY o.departure_id,o.hotel_id,o.departure_date,o.nights,o.adults,o.children_count,
                 o.child_ages_signature,o.meal_id,o.room_id,o.room_type,o.operator_id,o.currency,o.tour_id
             ORDER BY o.observed_at DESC,o.id DESC
         ) exact_rank
-        FROM tour_price_observations o
-        WHERE o.hotel_id IN ($marks) AND o.departure_id=?
-            AND o.departure_date BETWEEN ? AND ? AND o.nights BETWEEN 5 AND 14
-            AND o.adults=2 AND o.children_count=0 AND COALESCE(o.child_ages_signature,'')=''
-            AND o.source='scheduled_monitor' AND o.currency='RUB' AND o.price>0
-            AND o.meal_id IN (2,3,4,5,7,9)
-            AND o.tour_id IS NOT NULL AND o.tour_id<>''
-            AND o.observed_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND o.observed_at<=NOW()
+        FROM tour_price_observations o WHERE $where
     ), hotel_rows AS (
         SELECT e.*,ROW_NUMBER() OVER (PARTITION BY e.hotel_id ORDER BY e.price ASC,e.observed_at DESC,e.id DESC) hotel_rank
         FROM exact_rows e WHERE e.exact_rank=1

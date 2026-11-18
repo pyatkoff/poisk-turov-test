@@ -114,4 +114,19 @@ foreach($initial as $i=>$target)if(in_array($target['month'],['2026-09','2026-10
 $continued=v2_top500_monthly_queue($many['targets'],$prior,$now);
 monthly_check(count(array_filter(array_slice($continued['targets'],0,64),static fn($t)=>$t['country_id']===4&&$t['month']==='2026-11'))>0,'prior successes retained while November advances');
 require_once __DIR__.'/top500-monthly-execution-smoke.php';
+// Twelve dates for one missing hotel must leave room for first prices at other
+// hotels, without sacrificing retained searches, seasonal work or the long horizon.
+$coverageTargets = [];
+foreach ([[10,'2027-09-01'],[20,'2027-06-01'],[30,'2026-12-01'],[30,'2026-12-08'],[40,'2026-12-01'],[50,'2026-12-01'],[60,'2026-12-01']] as $i => [$hotel,$date]) {
+    $coverageTargets[] = ['criterion'=>'hotel_batch','target_key'=>"p$i",'hotel_ids'=>[$hotel],
+        'departure_id'=>$hotel===50?2:1,'date_from'=>$date,'country_id'=>1,'month'=>substr($date,0,7),
+        'resume_search_id'=>$hotel===10?123:null];
+}
+$missing = [1=>array_fill_keys([30,40,50,60],true)];
+$ranked = v2_prioritize_missing_hotel_prices($coverageTargets,$missing,5);
+monthly_check(array_column($ranked,'target_key')===['p0','p2','p4','p1','p3','p5','p6'],'retained first, distinct missing hotels next, whole horizon and original keys kept');
+$withGap = v2_seasonal_gap_pass_targets($coverageTargets,[['target_key'=>'seo','month'=>'2026-12','country_id'=>1]],4,1,'2026-12',1,$missing);
+monthly_check(array_column($withGap,'target_key')===['seo','p2','p3','p4'],'filter before assigning gap and hotel budgets');
+$otherCity = v2_prioritize_missing_hotel_prices([$coverageTargets[1],$coverageTargets[5]],$missing,2);
+monthly_check($otherCity[0]['target_key']==='p1','another departure cannot give a hotel price priority');
 echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 http410_terminal=1 no_starvation=1 many_countries=40 explicit_missing=1\n";
