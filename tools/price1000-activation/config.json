@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "claim_id": 6973228191,
-  "claim_sha256": "0e7fd44d9303928fc254db5faf711f5f9d0ea689d146b3ed62fc589e0f8e5f98",
+  "claim_id": 6973501297,
+  "claim_sha256": "296bfb934a3b87131b84ebbc7ea8337db06303f716c426671a17b824b3ee3197",
   "accepted_ci_runs": [
     44266853405,
     44266851969,
@@ -1031,27 +1031,31 @@
     "repo": "pyatkoff/tour-max",
     "branch": "audit/anytour-hotel-feed-routing-20261104",
     "head": "a65e667241ce3e910d33a50b3f3e2ce1bc9f66a0",
-    "at": "2026-11-18T08:29:52Z",
     "counts": {
       "in_progress": 0,
       "queued": 0,
       "waiting": 0,
       "pending": 0,
       "requested": 0
-    }
+    },
+    "at": "2026-11-18T08:43:03.647Z"
   },
   "files": {
-    "admit.py": "2e3ac7608bfd623a8c935e6239fab2e2a8a60699e1e3ab09b15a6ebeebeaf94d",
-    "run.py": "43b0e5e2052e2d8a2b365838f30a8f710179107c7be4b2d9a6f90bc3499e3e3a",
-    "paired-install.php": "ce2e216bb6790229671f73747ff0690243448011bbd8bada8039667d2da2c5fb",
+    "admit.py": "59e785c542f0b27b2cb72fabd743b7dfe89b98212b86d7b51f179a0edea57076",
+    "run.py": "b4641751c4a7d6bfa56e7753f85264b7cb669692e567048bb19cb41655d6d38b",
+    "paired-install.php": "4063be31daed4e881acec5823e71fb7a904a8d0101dcb96c1a2b76cd57467446",
     "read-journal.php": "386ee371478c51214f80bc6430021d7342685ee9df50448e2afe74ab8028ffa3",
     "feeds.php": "a0aceeab7636c2be01a462cf1bca3c44aee8e1e9de06833fccda5a025cf13823",
     "expected-cycle.json": "9e5a5918c3e04dc99e6a0fc2365d5b46b9f569a250479f805a590f98555eff33",
-    "postpass_verify.py": "e771de6b9c822649b2bcbfd5501607922cf85512d251ada698a13826792aecb9",
-    "test_postpass_verify.py": "96e7fb8ab852f99739ebd783011354ce4bd3053ae15a3b1a11c385e97543e87d",
-    "test_runner.py": "e6456d759ae397b56e917fd8ff73db8655a39ca768ba18e6cb8c65047a47c923"
+    "postpass_verify.py": "95df2df9daa65c910607b59569564602216146be091138108c8937afa8efe2ff",
+    "test_postpass_verify.py": "786c9806a8bb70f8a772a5c504e267436aeec9a0eed0da75b8fa59f793a42c55",
+    "test_runner.py": "e6456d759ae397b56e917fd8ff73db8655a39ca768ba18e6cb8c65047a47c923",
+    "expiry_classification.py": "4c8123964b22f60b6cb975b7ba1104265cfee9069063a8e20b90855746b57b0e",
+    "test_expiry_classification.py": "a295b9f4f8d5fa7d6b38a4ca11890ee3c5ef266ab3bf9600acb44b4483ff5cc5",
+    "test-expiry-classification.php": "0204a9fc5926656f478f096f0412620c2ab7cfdc1a6f1ba10cec28ac40db010a",
+    "expiry-inspect-fixture.json": "277319a3c9c6c3d7ce15fa37708cc6970de21c3cb22fc493b95474c1944db123"
   },
-  "installer_template_sha256": "ce2e216bb6790229671f73747ff0690243448011bbd8bada8039667d2da2c5fb",
+  "installer_template_sha256": "4063be31daed4e881acec5823e71fb7a904a8d0101dcb96c1a2b76cd57467446",
   "native_after_shas": {
     "hook": "d605b8292a8d380d328d585f90d388a254d1dc780188e4b0edbfc92b6c407c30",
     "cohort": "3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c",
@@ -2554,9 +2558,13 @@
     "expected-cycle.json",
     "postpass_verify.py",
     "test_postpass_verify.py",
-    "test_runner.py"
+    "test_runner.py",
+    "expiry_classification.py",
+    "test_expiry_classification.py",
+    "test-expiry-classification.php",
+    "expiry-inspect-fixture.json"
   ],
   "consumer_main": "9df828357acd0bc2d48be6073ab19e7fd1980e22",
-  "event_before": "283886695c6bd92368974828a5723cb0518b7343",
+  "event_before": "68769e5f3c55ecb7493e9743ebec3846c1c1634e",
   "bootstrap_run": 44267298182
 }

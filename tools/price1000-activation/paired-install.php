@@ -124,6 +124,40 @@ if(($argv[1]??null)==='--self-test'){
 const EXPECTED_NATIVE_RECEIPT_SHA='UNSET';
 const EXPECTED_NATIVE_RESULT_SHA='UNSET';
 const PAIRED_FILES=['published-hotels-monitor-v1.php'=>['old'=>'e90579f6e12470c6b1ae415f4f888b78ad990125eeb0f59be845ce84ffe3d9df','new'=>'3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c','bytes'=>37619],'top500-daily-collector-v1.php'=>['old'=>'c7ec457c2ff11b7824d481813c5d8d6a62fc22f46d49e6a5addaae91011dddae','new'=>'16df63f1b83ee8422d304a14cb81e3b64bdd83deedd63ea9f251406d13d97686','bytes'=>14151],'monitor-price-hook.php'=>['old'=>OLD_SHA,'new'=>NEW_SHA,'bytes'=>NEW_BYTES]];
+function price1000_inspection_errors_classified(array $r):bool {
+    if(array_key_exists('error',$r)&&$r['error']!==null&&$r['error']!=='')return false;
+    foreach(['child_failure','pending','preflight_block','skipped'] as $k)if(!empty($r[$k]))return false;
+    foreach(['verified_ids','eligible_ids','held_ids','unchanged_ids','updates','deferred'] as $k)
+        if(!isset($r[$k])||!is_array($r[$k])||!array_is_list($r[$k]))return false;
+    foreach(['error_counts','deferred_counts'] as $k)if(!isset($r[$k])||!is_array($r[$k]))return false;
+    $sets=[];
+    foreach(['verified_ids','eligible_ids','held_ids','unchanged_ids'] as $key){
+        $sets[$key]=[];
+        foreach($r[$key] as $id){if(!is_int($id)||$id<=0||isset($sets[$key][$id]))return false;$sets[$key][$id]=true;}
+    }
+    $updated=[];
+    foreach($r['updates'] as $row){
+        $id=is_array($row)?($row['tourvisor_hotel_id']??null):null;
+        if(!is_int($id)||$id<=0||isset($updated[$id]))return false;$updated[$id]=true;
+    }
+    $counts=[];$seen=[];$expired=[];
+    foreach($r['deferred'] as $row){
+        if(!is_array($row)||count($row)!==2||!array_key_exists('tourvisor_hotel_id',$row)||!array_key_exists('reason',$row))return false;
+        $id=$row['tourvisor_hotel_id'];$reason=$row['reason'];
+        if(!is_int($id)||$id<=0||isset($seen[$id])||!isset($sets['verified_ids'][$id])
+            ||!in_array($reason,['no_fresh_observation','abandoned_before_write','abandoned_before_write_record','monitor_price_expired'],true))return false;
+        $seen[$id]=true;$counts[$reason]=($counts[$reason]??0)+1;
+        if($reason==='monitor_price_expired'){
+            if(isset($sets['eligible_ids'][$id])||isset($sets['held_ids'][$id])||isset($sets['unchanged_ids'][$id])||isset($updated[$id]))return false;
+            $expired[]=$id;
+        }
+    }
+    $reported=$r['deferred_counts'];ksort($reported);ksort($counts);
+    if($reported!==$counts)return false;
+    $errors=count($expired)>0?['monitor_price_expired'=>count($expired)]:[];
+    return $r['error_counts']===$errors;
+}
+
 function paired_readiness(array $admission,array $ids,array $pin,int $now):void {
  $r=$admission['native_result']??[];
  must(($admission['native_result_sha256']??null)===EXPECTED_NATIVE_RESULT_SHA&&($admission['candidate_hook']??null)===NEW_SHA,'native_result_binding_changed');
@@ -132,7 +166,7 @@ function paired_readiness(array $admission,array $ids,array $pin,int $now):void 
  must(($r['roster_pairs']??null)===1000&&($r['scanned_pairs']??null)===1000&&($r['journal_read']??null)===$pin,'native_scope_changed');
  $got=$r['verified_ids']??[];sort($got);sort($ids);must(count($got)===1000&&$got===$ids,'native_verified_ids_changed');
  foreach(['new_posts','supplier_calls','site_writes','updated_pairs','held_pairs'] as $k)must(($r[$k]??null)===0,'native_not_read_only');
- must(empty($r['error_counts'])&&empty($r['error']),'native_errors');
+ must(price1000_inspection_errors_classified($r),'native_errors');
 
 }
 function paired_phase(array $hashes,array $spec,int $done):bool {

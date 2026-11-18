@@ -1,5 +1,6 @@
 """Pure fail-closed verifier; no network, files or mutation."""
 import re,hashlib
+from expiry_classification import classify_expired
 APP='cc017ee5bb669f4c7c13efc91d5c5812a50e55f2'
 def need(v,m):
  if not v:raise RuntimeError(m)
@@ -7,7 +8,8 @@ def verify(result,before,after,journal,config,rows):
  need(result.get('ok') is True and result.get('installed_sha')==APP and result.get('roster_pairs')==1000 and result.get('budget_seconds')==480,'pass_scope_changed')
  count=result.get('updated_pairs');need(type(count) is int and 0<=count<=30,'pair_limit_changed')
  need(all(result.get(k)==0 for k in ['new_posts','supplier_calls','site_writes']),'unexpected_write')
- need(not any(result.get(k) for k in ['error','child_failure','pending','preflight_block','error_counts']),'pass_errors')
+ try:classification=classify_expired(result,mode='default',admitted_verified_ids=config['expected_ids'])
+ except ValueError as e:raise RuntimeError('pass_classification_'+str(e)) from None
  need(journal.get('ok') is True and journal.get('prefix_verified') is True and 'pending' in journal and journal['pending'] is None and journal.get('cycle_state')=='preflight_blocked' and journal.get('cycle_collector_run_id')=='44236272559' and journal.get('writes')==0,'journal_not_verified')
  need(journal['pin']['bytes']>=config['journal_pin']['bytes'] and journal['pin']['lines']>=config['journal_pin']['lines'],'journal_shrunk')
  bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(rows)==len(bytv)==1000 and set(bytv)==set(config['expected_ids']),'roster_changed')
@@ -35,4 +37,4 @@ def verify(result,before,after,journal,config,rows):
    if key not in allowed:need(a['rows'][key]['full']==value['full'],'unselected_offer_changed')
  scan=updated|set(result.get('unchanged_ids',[]))|set(result.get('held_ids',[]))|{x['tourvisor_hotel_id'] for x in result.get('deferred',[])}
  need(scan<=set(bytv),'scan_scope_changed')
- return {'ok':True,'roster_pairs':1000,'updated_pairs':count,'confirmed_messages':2*count,'new_price_operations':len(ops),'updated_ids':sorted(updated),'operations':sorted(ops),'new_distinct_hotels':len(updated-set(config['previous_updated_hotel_ids'])),'cumulative_distinct_updated_hotels':len(updated|set(config['previous_updated_hotel_ids'])),'scanned_pairs':result.get('scanned_pairs'),'new_scanned_ids':sorted(scan-set(config['previous_scanned_ids'])),'cumulative_unique_scanned':len(scan|set(config['previous_scanned_ids'])),'journal':journal,'feed_counts':[1000,1000,2000],'all1000_fresh_claimed':False}
+ return {'ok':True,'expiry_classification':classification,'roster_pairs':1000,'updated_pairs':count,'confirmed_messages':2*count,'new_price_operations':len(ops),'updated_ids':sorted(updated),'operations':sorted(ops),'new_distinct_hotels':len(updated-set(config['previous_updated_hotel_ids'])),'cumulative_distinct_updated_hotels':len(updated|set(config['previous_updated_hotel_ids'])),'scanned_pairs':result.get('scanned_pairs'),'new_scanned_ids':sorted(scan-set(config['previous_scanned_ids'])),'cumulative_unique_scanned':len(scan|set(config['previous_scanned_ids'])),'journal':journal,'feed_counts':[1000,1000,2000],'all1000_fresh_claimed':False}

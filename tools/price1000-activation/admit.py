@@ -27,7 +27,7 @@ def main():
   for status in ['in_progress','queued','waiting','pending','requested']:
    r=api('max-search-bot',path+'&status='+status+'&per_page=100');need(r['total_count']==0 and r['workflow_runs']==[],'competing_native_run')
  now=datetime.datetime.now(datetime.timezone.utc);a=c['route_attestation'];at=datetime.datetime.fromisoformat(a['at'].replace('Z','+00:00'));need(a['repo']=='pyatkoff/tour-max' and a['head']=='a65e667241ce3e910d33a50b3f3e2ce1bc9f66a0' and a['counts']=={s:0 for s in ['in_progress','queued','waiting','pending','requested']} and 0<=(now-at).total_seconds()<=600,'route_attestation_stale_or_busy')
- need(set(c['files'])==set(c['expected_files'])=={'admit.py','run.py','paired-install.php','read-journal.php','feeds.php','expected-cycle.json','postpass_verify.py','test_postpass_verify.py','test_runner.py'},'incomplete_manifest')
+ need(set(c['files'])==set(c['expected_files'])=={'admit.py','run.py','paired-install.php','read-journal.php','feeds.php','expected-cycle.json','postpass_verify.py','test_postpass_verify.py','test_runner.py','expiry_classification.py','test_expiry_classification.py','test-expiry-classification.php','expiry-inspect-fixture.json'},'incomplete_manifest')
  for n,d in c['files'].items():need(hashlib.sha256((BASE/n).read_bytes()).hexdigest()==d,'source_changed')
  print(json.dumps({'ok':True,'at':now.isoformat(),'runtime':APP,'consumer_main':c['consumer_main'],'event_before':c['event_before'],'route':a,'concurrency':'anytour-scheduled-tour-collector'}))
 if __name__=='__main__':main()

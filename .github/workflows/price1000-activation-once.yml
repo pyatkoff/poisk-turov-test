@@ -9,7 +9,7 @@ permissions:
   issues: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '283886695c6bd92368974828a5723cb0518b7343'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '68769e5f3c55ecb7493e9743ebec3846c1c1634e'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -24,10 +24,12 @@ jobs:
           python3 -m py_compile tools/price1000-activation/*.py
           php -l tools/price1000-activation/paired-install.php
           php tools/price1000-activation/paired-install.php --self-test
+          php tools/price1000-activation/test-expiry-classification.php tools/price1000-activation/expiry-inspect-fixture.json tools/price1000-activation/paired-install.php
           php -l tools/price1000-activation/read-journal.php
           php -l tools/price1000-activation/feeds.php
           python3 tools/price1000-activation/test_runner.py
           python3 tools/price1000-activation/test_postpass_verify.py
+          python3 tools/price1000-activation/test_expiry_classification.py
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot

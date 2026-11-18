@@ -2,6 +2,7 @@
 import base64,gzip,hashlib,json,os,pathlib,re,subprocess,sys,time
 import admit
 import postpass_verify
+from expiry_classification import classify_expired
 ROOT=pathlib.Path(__file__).parent
 def need(v,m):
  if not v:raise RuntimeError(m)
@@ -54,7 +55,9 @@ def main():
  need(result.get('ok') is True and result.get('mode')=='read_only_hook_inspection' and result.get('installed_sha')==admit.APP,'inspection_failed')
  need(result.get('roster_pairs')==1000 and result.get('scanned_pairs')==1000 and len(verified)==1000 and verified==expected,'full1000_context_not_verified')
  need(all(result.get(k)==0 for k in ['new_posts','supplier_calls','site_writes','updated_pairs','held_pairs']),'read_only_scope_changed')
- need(not result.get('error_counts') and not result.get('error') and result.get('journal_read')==config['journal_pin'],'read_only_journal_or_errors_changed')
+ classification=classify_expired(result,mode='inspect',admitted_verified_ids=config['expected_ids'])
+ need(result.get('journal_read')==config['journal_pin'],'read_only_journal_changed')
+ (out/'readiness-expiry-classification.json').write_text(json.dumps(classification)+'\n')
  need(json.loads((out/'inspect1000.status.json').read_text())['returncode']==0,'inspect_native_nonzero')
  summary={'ok':True,'mode':'read_only_1000_admission','verified_ids':sorted(verified),'eligible_pairs':result.get('eligible_pairs'),'unchanged_pairs':result.get('unchanged_pairs'),'deferred_counts':result.get('deferred_counts'),'old_code_and_journal_unchanged':before==after,'feeds_unchanged':True,'post_writes':0,'feed_writes':0,'supplier_calls':0,'installed_old_hook':config['native_before_shas']['hook'],'candidate_hook':config['candidate_hook'],'run_id':os.environ['GITHUB_RUN_ID']}
  (out/'readiness-summary.json').write_text(json.dumps(summary)+'\n')

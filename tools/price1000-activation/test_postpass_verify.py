@@ -9,6 +9,7 @@ rid='a'*64;op='commercial-monitor-price-h1-'+rid
 posts=[]
 for platform,url in [('max','max1'),('telegram','tg1')]:posts.append({'platform':platform,'state':'sent','body_photo_button_verified':True,'existing_message_reused':True,'content_updated':True,'price_link_verified':True,'post_url':url,'logical_id':'h1','publication_id':1,'version_id':3,'previous_version_id':2,'message_id':'1','price_link_url':'url','button_url':'url','text':'text','text_sha256':hashlib.sha256(b'text').hexdigest(),'monitor_price':{'record_id':rid,'tourvisor_hotel_id':1,'price':100}})
 r={'ok':True,'installed_sha':APP,'roster_pairs':1000,'budget_seconds':480,'updated_pairs':1,'new_posts':0,'supplier_calls':0,'site_writes':0,'updates':[{'tourvisor_hotel_id':1,'record_id':rid,'operation':op,'posts':posts,'price':100}],'scanned_pairs':1}
+r.update(held_pairs=0,held_ids=[],verified_ids=[1],eligible_ids=[1],unchanged_ids=[],eligible_pairs=1,unchanged_pairs=0,deferred=[],deferred_counts=[],error_counts=[])
 a=copy.deepcopy(f)
 for file in a['files'].values():
  for k,v in file['rows'].items():
