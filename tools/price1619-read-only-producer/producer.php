@@ -7,7 +7,7 @@ function git4294(array $args):string{
 }
 function producer_safe_error(Throwable $error):string {
  if($error instanceof PDOException)return 'producer_failed_closed';
- $allowed=['git_read_failed', 'producer_runtime_warning', 'producer_args', 'producer_identity', 'producer_config_hash', 'producer_closed', 'runtime_dirty', 'runtime_changed', 'path_changed', 'busy', 'file_replaced', 'incomplete', 'file_changed', 'preimage_changed', 'pending_changed', 'missing', 'native_evidence_changed', 'process_read_failed', 'process_read_incomplete', 'process_line_unknown', 'native_collector_busy', 'consumer_db_source_changed', 'consumer_db_function_missing', 'consumer_db_unavailable', 'consumer_config_missing', 'canonical_collector_sql_lock_busy', 'consumer_path_changed', 'consumer_changed', 'staged_bundle_changed', 'journal_identity_changed'];
+ $allowed=['git_read_failed', 'producer_runtime_warning', 'producer_args', 'producer_identity', 'producer_config_hash', 'producer_closed', 'runtime_dirty', 'runtime_changed', 'path_changed', 'busy', 'file_replaced', 'incomplete', 'file_changed', 'preimage_changed', 'pending_changed', 'missing', 'native_evidence_changed', 'process_read_failed', 'process_read_incomplete', 'process_line_unknown', 'native_collector_busy', 'isolated_sql_unbound', 'isolated_sql_not_proven_idle', 'isolated_sql_snapshot_too_late', 'isolated_sql_env_shape', 'isolated_sql_unavailable', 'consumer_db_source_changed', 'consumer_db_function_missing', 'consumer_db_unavailable', 'consumer_config_missing', 'canonical_collector_sql_lock_busy', 'consumer_path_changed', 'consumer_changed', 'staged_bundle_changed', 'journal_identity_changed'];
  return in_array($error->getMessage(),$allowed,true)?$error->getMessage():'producer_failed_closed';
 }
 function producer_warning_metadata(string $phase,int $severity,string $file,int $line,string $message=''):array {
@@ -34,6 +34,19 @@ must4294(ctype_digit($runId)&&preg_match('/\A[a-f0-9]{40}\z/D',$head)===1,'produ
 must4294(!is_link($configFile)&&is_file($configFile)&&hash_file('sha256',$configFile)===$configSha,'producer_config_hash');
 $c=json_decode(file_get_contents($configFile),true,512,JSON_THROW_ON_ERROR);
 must4294(($c['producer_enabled']??null)===true,'producer_closed');
+
+// Immutable pure caller; capture original collector environment before any app bootstrap.
+$caller=__DIR__.'/subprocess.php';
+must4294(!is_link($caller)&&is_file($caller)&&hash_file('sha256',$caller)==='62f2b7429b6ddd88d1caae0e02997d37afcdccfbdedc6ae470d93739fb3b612b','isolated_sql_unbound');
+require $caller;
+$originalConsumerEnv=isolated_consumer_env_snapshot();
+// Positive native idle proof runs read-only before registry/admission/recovery operations.
+$phase='consumer_sql';
+$sqlProof=isolated_consumer_sql_probe(__DIR__.'/probe-worker.php','920b9cb29583c587079d71869b38c98119cd35e758a470117d9d1f51daf7c038',$originalConsumerEnv);
+unset($originalConsumerEnv);
+must4294(($sqlProof['consumer_db_sha256']??null)===($c['consumer_db_sha256']??null),'consumer_db_source_changed');
+$sqlActive=$sqlProof['sql_active_collectors'];
+$dbFile='/var/www/anytoour/data/www/anytoour.ru/data/db-v1.php';
 
 $phase='runtime';
 $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root);
@@ -83,17 +96,7 @@ $active=0;foreach(explode("\n",trim($processes)) as $line){
  if(preg_match('/(?:collect-anytour|top500-daily-collector|published-hotels-monitor|monitor-price-hook|monitor-price-after-collection|recover\.php)/i',$m[2]))$active++;
 }
 must4294($active===0,'native_collector_busy');
-// The collector requires __DIR__.'/db-v1.php' at its deployed /data path.
-$phase='consumer_db';
-$dbFile='/var/www/anytoour/data/www/anytoour.ru/data/db-v1.php';
-must4294(!is_link($dbFile)&&is_file($dbFile)&&hash_file('sha256',$dbFile)===($c['consumer_db_sha256']??null),'consumer_db_source_changed');
-ob_start();try {require_once $dbFile;must4294(function_exists('v2_data_db'),'consumer_db_function_missing');
-$phase='consumer_config';
-must4294(is_file('/var/www/anytoour/data/www/anytoour.ru/config.php'),'consumer_config_missing');
-$phase='consumer_sql';
-$collectorDb=v2_data_db();must4294($collectorDb instanceof PDO,'consumer_db_unavailable');
-$lockOwner=$collectorDb->query("SELECT IS_USED_LOCK('anytour_top500_monthly_v1')")->fetchColumn();
-must4294($lockOwner===null,'canonical_collector_sql_lock_busy');$sqlActive=0;}finally{ob_end_clean();}
+// Consumer SQL was proven in isolated PHP before app/config; never load its config here.
 $phase='consumer_code';
 $consumer='/var/www/anytoour/data/www/anytoour.ru/data/';$hashes=[];
 foreach(['monitor-price-hook.php'=>'canonical_hook_sha256','published-hotels-monitor-v1.php'=>'cohort_sha256','top500-daily-collector-v1.php'=>'collector_sha256'] as $file=>$key){
@@ -103,14 +106,19 @@ must4294(hash_file('sha256',__DIR__.'/staged-bundle.php')===$c['staged_bundle_sh
 $phase='final_identity';
 foreach($identities as [$f,$path,$before]){clearstatcache(true,$path);$after=fstat($f);$named=lstat($path);foreach(['ino','dev','size','mtime','ctime'] as $field)must4294($before[$field]===$after[$field]&&$before[$field]===$named[$field],'journal_identity_changed');}
 $phase='output';
-$producer=['consumer_db_sha256'=>hash_file('sha256',$dbFile),'run_id'=>(int)$runId,'head_sha'=>$head,'runtime_sha'=>'bd8e248f7138ea75cb9fda2dcf44beb631c633a5','observed_at_epoch'=>time(),'operation'=>$op,'global_pin'=>array_intersect_key($out['global'],array_flip(['sha256','bytes','lines'])),'child_pin'=>array_intersect_key($out['child'],array_flip(['sha256','bytes','lines'])),'feed_shas'=>$out['feeds'],'staged_bundle_sha256'=>$c['staged_bundle_sha256'],'cohort_sha256'=>$hashes['cohort_sha256'],'collector_sha256'=>$hashes['collector_sha256'],'native_active_collectors'=>$active,'sql_active_collectors'=>$sqlActive,'unknown_collectors'=>false];
+$producer=['consumer_db_sha256'=>hash_file('sha256',$dbFile),'run_id'=>(int)$runId,'head_sha'=>$head,'runtime_sha'=>'bd8e248f7138ea75cb9fda2dcf44beb631c633a5','observed_at_epoch'=>$sqlProof['observed_at_epoch'],'operation'=>$op,'global_pin'=>array_intersect_key($out['global'],array_flip(['sha256','bytes','lines'])),'child_pin'=>array_intersect_key($out['child'],array_flip(['sha256','bytes','lines'])),'feed_shas'=>$out['feeds'],'staged_bundle_sha256'=>$c['staged_bundle_sha256'],'cohort_sha256'=>$hashes['cohort_sha256'],'collector_sha256'=>$hashes['collector_sha256'],'native_active_collectors'=>$active,'sql_active_collectors'=>$sqlActive,'unknown_collectors'=>false];
 echo json_encode(['native_gzip_base64'=>base64_encode(gzencode($raw,9)),'native_sha256'=>hash('sha256',$raw),'producer'=>$producer],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
 foreach(array_reverse($handles) as $f){flock($f,LOCK_UN);fclose($f);}
 
 } catch(Throwable $error) {
  while(ob_get_level()>$initialBuffer)ob_end_clean();
  foreach(array_reverse($handles) as $handle)if(is_resource($handle)){flock($handle,LOCK_UN);fclose($handle);}
- $failure=['ok'=>false,'error'=>producer_safe_error($error),'read_only'=>true];
+ $safePhase=producer_warning_metadata($phase,0,'',0)['warning_phase'];
+ $kind=$error instanceof PDOException?'pdo':($error instanceof Error?'error':($error instanceof Exception?'exception':'other'));
+ $failure=['ok'=>false,'error'=>producer_safe_error($error),'read_only'=>true,'producer_phase'=>$safePhase,'throwable_kind'=>$kind];
+ if(isset($GLOBALS['sql_meta']))$failure+=$GLOBALS['sql_meta'];
+ if(isset($GLOBALS['sql_transport'])&&in_array($GLOBALS['sql_transport'],['env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'],true))$failure['sql_transport']=$GLOBALS['sql_transport'];
+ if(isset($GLOBALS['sql_diag']))$failure+=array_intersect_key($GLOBALS['sql_diag'],array_flip(['sql_phase','sql_kind']));
  if($failure['error']==='producer_runtime_warning'&&is_array($warning))$failure+=$warning;
  echo json_encode($failure),"\n";exit(2);
 }
