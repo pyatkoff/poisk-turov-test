@@ -81,6 +81,29 @@ def retain_native_stdout(command_text, output_path):
     path=shlex.quote(output_path)
     return 'set -C; if { '+command_text+'; native_rc=$?; } > '+path+'; then cat '+path+' || exit 96; exit "$native_rc"; else exit 97; fi'
 
+def capture_readonly_producer(args, base, run_id, head):
+    # Read-only diagnostics are retained before interpreting exit status. No retry.
+    try:
+        proc=subprocess.run(args,capture_output=True,timeout=240)
+        raw,stderr,rc=proc.stdout,proc.stderr,proc.returncode
+    except subprocess.TimeoutExpired as exc:
+        raw,stderr,rc=exc.stdout or b'',exc.stderr or b'',None
+    (base/'producer-stdout.private.json').write_bytes(raw)
+    (base/'producer-stderr.private.log').write_bytes(stderr)
+    if rc != 0:
+        error='producer_failed_closed' if rc is not None else 'producer_timeout'
+        try:
+            value=json.loads(raw)
+            if isinstance(value,dict) and value.get('error') in {
+                'producer_failed_closed', 'git_read_failed', 'producer_runtime_warning', 'producer_args', 'producer_identity', 'producer_config_hash', 'producer_closed', 'runtime_dirty', 'runtime_changed', 'path_changed', 'busy', 'file_replaced', 'incomplete', 'file_changed', 'preimage_changed', 'pending_changed', 'missing', 'native_evidence_changed', 'process_read_failed', 'process_read_incomplete', 'process_line_unknown', 'native_collector_busy', 'consumer_db_source_changed', 'consumer_db_function_missing', 'consumer_db_unavailable', 'consumer_config_missing', 'canonical_collector_sql_lock_busy', 'consumer_path_changed', 'consumer_changed', 'staged_bundle_changed', 'journal_identity_changed'}:
+                error=value['error']
+        except (ValueError,UnicodeDecodeError):pass
+        public_terminal({'run_id':run_id,'head':head,'phase':'producer','returncode':rc,
+                         'error':error,'native_write_attempted':False,'ok':False,
+                         'raw_sha256':sha(raw),'stderr_sha256':sha(stderr)})
+        raise RuntimeError('producer_preflight_failed_no_writer')
+    return raw
+
 def main():
     os.umask(0o077)
     plan=json.loads((ROOT/'launch-CLOSED.json').read_bytes())
@@ -126,7 +149,9 @@ def main():
     staged_lines=ssh('sha256sum '+' '.join(shlex.quote(scratch+'/'+s['name']) for s in sources)).decode().splitlines()
     need(len(staged_lines)==len(sources),'remote_manifest_incomplete')
     for line,s in zip(staged_lines,sources): need(line.split()[0]==s['sha256'] and line.split()[1]==scratch+'/'+s['name'],'remote_stage_changed')
-    observed=ssh('php '+shlex.quote(scratch+'/producer.php')+' '+shlex.quote(scratch+'/producer-config.json')+' '+run+' '+head+' '+producer_sha)
+    producer_cmd='php '+shlex.quote(scratch+'/producer.php')+' '+shlex.quote(scratch+'/producer-config.json')+' '+run+' '+head+' '+producer_sha
+    producer_retained=retain_native_stdout(producer_cmd,scratch+'/producer-result.private.json')
+    observed=capture_readonly_producer(['ssh',*opts,remote,'unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES ANYTOUR_MONITOR_HOOK_INSPECT; export GIT_OPTIONAL_LOCKS=0; '+producer_retained],base,run,head)
     need(len(observed)<=2000000,'producer_output_bound')
     result=json.loads(observed)
     raw=decode_evidence(result)
