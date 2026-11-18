@@ -24,6 +24,7 @@ on:
       - 'v2/data/schema-v1.sql'
       - 'v2/bundle-manifest-v1.php'
       - 'diagnostics/search_results_recovery_test.cjs'
+      - 'diagnostics/v2_event_origin_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
       - '.github/workflows/deploy-anytoour.yml'
       - '.github/workflows/validate-v2-core.yml'
@@ -168,6 +169,9 @@ jobs:
           grep -Fq 'Загрузить результаты ещё раз' v2/search-progress-ux-v1.js
           grep -Fq 'Повторно запускать поиск не нужно.' v2/search-progress-ux-v1.js
           echo CONTINUE_SEARCH_UX_OK
+
+      - name: Validate search and flight observation context
+        run: node diagnostics/v2_event_origin_test.cjs
 
       - name: Validate empty-result relaxation cascade
         shell: bash
