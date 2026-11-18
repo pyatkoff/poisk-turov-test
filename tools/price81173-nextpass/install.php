@@ -55,7 +55,7 @@ function write_new(string $path,string $raw,int $mode=0600):void{
     finally{fclose($f);}
 }
 function journal_line($f,string $path):array {
-    $stat=fstat($f);must(is_array($stat)&&$stat['size']>0&&$stat['size']<=536870912,'journal_size_invalid');
+    $stat=fstat($f);must(is_array($stat)&&$stat['size']>0&&$stat['size']<=1073741824,'journal_size_invalid');
     // The accepted reader validates every historical cycle and hashes the original
     // prefix under the same lock. No journal bytes are rewritten or appended.
     $history=monitor_hook_read_history($f);

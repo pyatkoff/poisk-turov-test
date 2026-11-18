@@ -9,7 +9,7 @@ def need(v,why):
 def api(repo,path):return json.loads(subprocess.check_output(['gh','api','--method','GET','repos/pyatkoff/'+repo+'/'+path],timeout=40))
 def main():
  c=json.loads((BASE/'config.json').read_text());e=json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text());need(c.get('enabled') is True and isinstance(c.get('claim_id'),int) and c['claim_id']>0,'new_claim_not_enabled')
- need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']=='3b9076828e90ae6db84567b83b4f5408a52bdac4','original_event_required')
+ need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']=='a7b6624d461ed5b5d7fd575bb382ffdb66baca46','original_event_required')
  need(api('poisk-turov-test','git/ref/heads/'+BRANCH)['object']['sha']==os.environ['GITHUB_SHA'],'carrier_moved')
  need(api('poisk-turov-test','git/ref/heads/main')['object']['sha']==MAIN,'consumer_main_moved')
  need(api('max-search-bot','git/ref/heads/main')['object']['sha']==APP,'runtime_main_moved')
@@ -20,7 +20,7 @@ def main():
   r=api('max-search-bot','actions/runs/'+str(rid));need(r['head_sha']==APP and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','runtime_not_accepted')
  for rid in [44210439753,44210439721]:
   r=api('poisk-turov-test','actions/runs/'+str(rid));need(r['head_sha']=='b8fe8d744a691bc45d5cc0f5808f32c756702e42' and r['status']=='completed' and r['conclusion']=='success','source_ci_not_accepted')
- r=api('poisk-turov-test','actions/runs/44212085635');need(r['head_sha']=='3b9076828e90ae6db84567b83b4f5408a52bdac4' and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','previous_continuation_not_success')
+ r=api('poisk-turov-test','actions/runs/44214431961');need(r['head_sha']=='a7b6624d461ed5b5d7fd575bb382ffdb66baca46' and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','previous_continuation_not_success')
  for path in ['actions/runs?branch=audit%2Fprice660-27316-resume-readiness-20261117','actions/runs?branch=audit%2Fcontent100-bot-publication-20261101','actions/runs?head_sha='+APP]:
   for status in ['in_progress','queued','waiting','pending','requested']:
    r=api('max-search-bot',path+'&status='+status+'&per_page=100');need(r['total_count']==0 and r['workflow_runs']==[],'competing_max_run')

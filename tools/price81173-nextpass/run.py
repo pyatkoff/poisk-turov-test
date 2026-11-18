@@ -30,9 +30,9 @@ def main():
  bundle=(tmp/'monitor-price-hook.php').read_text();encoded=re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',bundle)[1]
  rows=json.loads(gzip.decompress(base64.b64decode(encoded)))['rows'];bytv={r['tourvisor_hotel_id']:r for r in rows};need(len(bytv)==660,'roster_invalid')
  original_before=before;seen_operations=set(config['previous_operations']);seen_hotels=set(config['previous_scanned_ids']);seen_updated_hotels=set(config['previous_updated_hotel_ids']);initial_scanned=set(seen_hotels);initial_updated=set(seen_updated_hotels);summaries=[]
- # One new default pass only. Existing per-pass 30/480s policy is unchanged.
+ # Two new default passes only. Existing per-pass 30/480s policy is unchanged.
  # Each is admitted afresh and gets a unique exclusive marker. No nightly/replay.
- for index in range(1,2):
+ for index in range(1,3):
   admit.main()
   ready=parse(ssh('php '+scratch+'/install.php inspect-new '+scratch+'/monitor-price-hook.php','inspect-prepass-'+str(index)));need(ready['ok'] is True,'prepass_not_clear')
   label='pass-'+str(index)
