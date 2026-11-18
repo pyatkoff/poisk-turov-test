@@ -918,11 +918,11 @@
   },
   "files": {
     "run.py": "328963b790a04bb7936b770e5a595ab0f7dd13dee78de10ad98a6852e18d7440",
-    "admit.py": "a90ac8699392b7c4713ea28d6adfc741301d71379a1235d5f7430cf970ce3325",
+    "admit.py": "a79c46ad921b43aeb2b5be3c675f5fbfff3f0a2d7a8c43faf313cc3ad4466ab2",
     "feeds.php": "35b282644662d26c9886c14b3ca1bdd2327d548728fd70fad1cd462125b7b63d",
     "read-journal.php": "3f10bf4c79173d6dd5e9cabf0d16b30b6cd1caa531a8bf08b32678603f4975bc",
     "paired-install.php": "cbc8afc9580a52c4aa50d8968774e438a9f301ed013a589242275e98fed93ce2",
-    "test_runner.py": "a6f1174b4db5ddff1a6fd4a43b7265986a0e853cc237af847d93e835fa627e4f",
+    "test_runner.py": "0865fc88232eb203ef2896a8a49c66d2b243ccfe09b0ffaf3d246e6321e1d04a",
     "postpass_verify.py": "f13e8a9b61a99c75eb9baf1c00f3745eee883a0c76985c07d4bcac6a342df300",
     "test_postpass_verify.py": "f3519f1feead6300f36621af236200447727858cdc964c21b26f7c1737cef2a1"
   },

@@ -30,6 +30,8 @@ check(s.index("afterraw=ssh(")>s.index("journalraw=ssh("))
 check(s.index("price=json.loads")>s.index("afterraw=ssh("))
 check("readiness_stale" not in s) # No local override or waived expiry.
 check("installer_template_sha256" in s and "'bound_sha256'" in s)
-w=(ROOT/'workflow.yml').read_text();check('anytour-scheduled-tour-collector' in w and 'cancel-in-progress: false' in w);check('f0dddbdb8c8a4f8f8f12aaaad6df12f6d713dc04' in w);check('e47d578bde03698554428016120a22ceb5272baf' in w);check('if: always()' in w)
+workflow=ROOT.parents[1]/'.github/workflows/price877-activation-once.yml'
+if not workflow.exists():workflow=ROOT/'workflow.yml'
+w=workflow.read_text();check('anytour-scheduled-tour-collector' in w and 'cancel-in-progress: false' in w);check('f0dddbdb8c8a4f8f8f12aaaad6df12f6d713dc04' in w);check('e47d578bde03698554428016120a22ceb5272baf' in w);check('if: always()' in w)
 check(s.index('inspect_completed_at=int(time.time())')>s.index("raw=ssh('php '+scratch+'/monitor-price-hook.php --inspect'"));check(s.index('inspect_completed_at=int(time.time())')<s.index("after=pins('native-after')"))
 print({'ok':True,'checks':checks,'network_calls':0,'production_calls':0})
