@@ -1,0 +1,70 @@
+name: Read-only original 4294 producer diagnostic
+on:
+  push:
+    branches: ['audit/price4294-producer-read-20261118']
+    paths: ['.github/workflows/price4294-producer-read-20261118.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0000000000000000000000000000000000000000'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exact original diagnostic wiring
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = 0000000000000000000000000000000000000000
+          mkdir "$RUNNER_TEMP/producer-diagnostic"
+          for name in run.py plan-CLOSED.json; do
+            gh api --method GET -H 'Accept: application/vnd.github.raw+json' "repos/pyatkoff/poisk-turov-test/contents/tools/price1619-producer-diagnostic/$name?ref=$GITHUB_SHA" > "$RUNNER_TEMP/producer-diagnostic/$name"
+          done
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Invoke read-only producer once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 "$RUNNER_TEMP/producer-diagnostic/run.py"
+      - name: Upload only sanitized diagnostic
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: price4294-producer-read-${{ github.run_id }}
+          path: ${{ runner.temp }}/producer-read-sanitized/terminal.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
