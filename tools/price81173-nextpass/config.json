@@ -1,9 +1,9 @@
 {
-  "claim_sha256": "7778972611c3bfa1b46ae9a4164b094c110300e89661a9270bca8696cd966830",
+  "claim_sha256": "fb4bf3061a2344ac241b625529ec728e47c70828cd459ac268afcad9a4c878e8",
   "route_attestation": {
     "repo": "pyatkoff/tour-max",
     "head": "bbef3101f8c8f6eae15355c0d6fa4b8c1848dfa2",
-    "at": "2026-11-18T01:34:13.863527+00:00",
+    "at": "2026-11-18T01:37:27.176769+00:00",
     "counts": {
       "in_progress": 0,
       "queued": 0,
@@ -13,13 +13,13 @@
     }
   },
   "files": {
-    "run.py": "a49000e69d72ee07107879cccc2ccd2015b8d8d32904c8bfd1aabe77d03fa937",
-    "admit.py": "726f943eee458360bac4e972caf5a5f7b3b2e57f66a10cbc10c7d67452bd4c41",
+    "run.py": "8ad67bd0fafd6d5447d49a00c807f33799bfb7b6e17bf939991c5be588a58dd9",
+    "admit.py": "236d87c29b03dc66df50f68c92c6222e7fdcc99161749d89d4d6fe581089177c",
     "feeds.php": "a1298861d76167ddc2b0e3e2e733d36d4a0bd04a95888698836c67e2523f148b",
     "install.php": "d5b9c63eae1552460bb29a78e6fa500f1363b08e402e7d438c946d4a47fea291"
   },
   "enabled": true,
-  "claim_id": 6966296311,
+  "claim_id": 6966350566,
   "original_feed_preimages": {
     "hotel-posts-telegram.xml": "7be309347601efd9f4fbb67bb8ad5050c81ffae7574a6951527ee2ed6ae732d6",
     "hotel-posts-max.xml": "f933b749aaa0269d9a1ae43fea0ced08ee511eefa0d6f6b6b263cae156d2a24e",

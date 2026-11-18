@@ -18,6 +18,12 @@ def main():
   if check:need(p.returncode==0,label+'_failed_no_retry')
   return p.stdout
  def parse(raw):return json.loads(raw)
+ diagnostics={}
+ for path in ['actions/workflows/346454799','actions/permissions']:
+  try:
+   value=admit.api('poisk-turov-test',path);diagnostics[path]={k:value[k] for k in ['id','name','path','state','created_at','updated_at','enabled','allowed_actions'] if k in value}
+  except Exception as error:diagnostics[path]={'read_error_type':type(error).__name__}
+ (out/'schedule-diagnostics.json').write_text(json.dumps(diagnostics)+'\n')
  admit.main()
  ssh('umask 077; mkdir '+scratch,'scratch')
  for src in [ROOT/'install.php',ROOT/'feeds.php',tmp/'monitor-price-hook.php']:
