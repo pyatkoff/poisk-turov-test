@@ -368,6 +368,7 @@ const {JSDOM}=require('jsdom');
   const infantOffer={...first,raw:{infantCharge:{status:'unknown'}}};
   const infantCard=JSDOM.fragment(owner.card({...row,offers:[infantOffer]}));
   assert.equal(infantCard.querySelector('.starting-price>span').textContent,provider==='anex'?'Цена из поиска за 2 взр.':'За 2 взр. · весь тур');
+  if(provider==='anex')assert.match(infantCard.querySelector('.fuel-note').textContent,/не подтвердил, входит ли доплата за младенца/);
   const more=html.match(/<div class="hotel-more has-variants">([\s\S]*?)<\/div>/)?.[1];assert(more);
   assert.equal((more.match(/<button /g)||[]).length,1,'only the subordinate list action remains in the card footer');
   assert.match(more,/class="text-button card-all-offers"/);assert.match(more,/data-action="all-offers" data-id="501"/);
