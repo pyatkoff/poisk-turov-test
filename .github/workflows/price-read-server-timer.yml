@@ -124,6 +124,20 @@ jobs:
               }
               $q = v2_top500_monthly_queue($plan['targets'], $attempts, (int)$clock['epoch'], 24);
               if (array_sum(array_map('array_sum',$pending)) !== $q['pending']) throw new RuntimeException('pending_total_mismatch');
+              $retainedSearches = [];
+              $retainedTargets = 0;
+              foreach ($q['targets'] as $target) {
+                  $searchId = $target['resume_search_id'] ?? null;
+                  if ($searchId === null) continue;
+                  $retainedSearches[$searchId] = true;
+                  $retainedTargets++;
+              }
+              echo 'RETAINED_SEARCH_QUEUE ', json_encode([
+                  'as_of'=>gmdate('c',(int)$clock['epoch']),
+                  'ready_logical_targets_with_search_id'=>$retainedTargets,
+                  'distinct_saved_search_ids'=>count($retainedSearches),
+                  'deferred_logical_targets'=>$q['deferred'],
+              ], JSON_THROW_ON_ERROR), PHP_EOL;
               foreach (['PLAN_IDS'=>array_keys($planned),'COMPLETED_MONTHLY_IDS_36H'=>array_keys($searched),'PENDING_BY_ROUTE_MONTH'=>$pending,'NATIVE_QUEUE'=>['as_of'=>gmdate('c',(int)$clock['epoch']),'targets'=>$plan['batch_count'],'fresh'=>$q['fresh'],'pending'=>$q['pending'],'deferred'=>$q['deferred']]] as $label=>$data)
                   echo $label, ' ', json_encode($data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR), PHP_EOL;
           } catch (Throwable $e) {
