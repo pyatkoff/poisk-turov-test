@@ -107,7 +107,7 @@ const q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 const input=(s,value)=>{q(s).value=value;q(s).dispatchEvent(new w.Event('input',{bubbles:true}));};
 const settle=()=>new Promise(resolve=>setTimeout(resolve,100));
 const cardsHTML=()=>{const clone=q('#cards').cloneNode(true);clone.querySelectorAll('.current-card-selection').forEach(n=>n.remove());return clone.innerHTML;};
-const edit=()=>click('#applied-search [data-action="edit-search"]');
+const edit=()=>click(w.innerWidth<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]');
 const cancel=()=>click('#search-return');
 (async()=>{
  await settle();
@@ -218,6 +218,7 @@ const cancel=()=>click('#search-return');
  assert.equal(cardsHTML(),original,'opening the editor retains the result inventory');
  assert.equal(w.location.search,originalURL,'opening the editor keeps applied URL conditions');
  assert.equal(d.activeElement,q('#departure-button'),'existing editor focus is preserved');
+ click('#search-options-toggle');
  click('#quick-stars [data-value="5"]');
  click('#quick-budget');input('#budget-max','200 000');click('[data-action="apply-budget"]');await settle();
  assert.equal(cardsHTML(),original,'Edits must not repaint results or reset pagination');

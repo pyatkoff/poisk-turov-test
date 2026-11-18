@@ -85,6 +85,10 @@ const server=http.createServer((req,res)=>{
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
    for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
+    if(name==='meals'){
+     const more=page.locator('#search-options-toggle');
+     if(await more.isVisible()&&await more.getAttribute('aria-expanded')==='false')await more.click();
+    }
     await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
     if(name==='dates'){
      const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});

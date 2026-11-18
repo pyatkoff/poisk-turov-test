@@ -498,6 +498,7 @@ async function pickerRetainedDraftRegressions(){
  q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
  click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
+ click('#search-options-toggle');
  click('#search-form [data-action="meals"]');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
  click('#search-form [data-action="meals"]');assert.deepEqual([...d.querySelectorAll('[data-meal-choice]')].map(x=>x.value),['','Всё включено','Завтраки']);
  click('[data-meal-choice][value=""]');click('[data-action="apply-meals"]');await settle();
@@ -568,10 +569,10 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(starts(),0,'invalid budget blocks the first desktop search');assert.equal(d.activeElement,q('#max-price'));
  q('#max-price').value='';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));w.innerWidth=390;w.dispatchEvent(new w.Event('resize'));
  click('[data-action="about"]');
- assert.match(q('#modal-body').textContent,/живого поиска Tourvisor и прямого ANEX/);
- assert.match(q('#modal-body').textContent,/База не подменяет живую выдачу/);
- assert.match(q('#modal-body').textContent,/Неподтверждённая или расчётная сумма/);
- assert.match(q('#modal-body').textContent,/данные не отправляются туроператору/);
+ assert.match(q('#modal-body').textContent,/предложения подключённых поставщиков/);
+ assert.match(q('#modal-body').textContent,/Календарь показывает ранее найденные цены/);
+ assert.match(q('#modal-body').textContent,/проверяем у поставщика стоимость, наличие мест и условия перелёта/);
+ assert.match(q('#modal-body').textContent,/передать выбранный тур менеджеру, откройте Telegram или MAX из заявки и запустите бота/);
  assert.doesNotMatch(q('#modal-body').textContent,/сохранённые реальные предложения|проверка цены и наличия.+не подключена/i);
  assert.equal(starts(),0,'opening live disclosure never starts a supplier search');click('[data-action="close-modal"]');await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
  click('#search-form [data-action="dates"]');await settle();assert.equal(starts(),0);

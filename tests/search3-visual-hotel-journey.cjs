@@ -35,7 +35,7 @@ function verifyResultCardEntry(){
   const calls=[],c={b:{dataset:{key:clicked.key,...(cardEntry?{cardEntry:'true'}:{})}},hotelOfferDraft:{hotelId:9,key:'old'},selectionGeneration:3,selectedOffer:previous,state:{search:{}},
    offerFromKey:key=>[first,clicked].find(o=>o.key===key),cancelHotelOfferCheck:()=>calls.push('cancel'),
    openHotelDetails:(id,route)=>calls.push({type:'rooms',id,route,draft:c.hotelOfferDraft}),openOffer:(key,retained)=>calls.push({type:'offer',key,retained}),sameSelectedTourConditions:()=>false,searchKey:()=>''};
-  vm.createContext(c);vm.runInContext("function dispatch(){switch('offer'){"+dispatcher+"}}",c);c.dispatch();
+  vm.createContext(c);vm.runInContext(slice("function cardOpensRooms(","function cardHTML(")+"function dispatch(){switch('offer'){"+dispatcher+"}}",c);c.dispatch();
   if(cardEntry&&['tourvisor','anex'].includes(provider)){
    const entry=calls.find(x=>x?.type==='rooms');assert(entry,provider+' result card enters existing hotel rooms');assert.equal(entry.id,7);assert.equal(entry.route.entryOfferKey,clicked.key);
    if(provider==='tourvisor'){assert.equal(entry.draft.key,clicked.key,'clicked exact row, never first offer');assert.equal(entry.draft.hotelId,7);assert.equal(c.selectionGeneration,4);assert.equal(calls.filter(x=>x==='cancel').length,1);}
@@ -46,15 +46,31 @@ function verifyResultCardEntry(){
  }
  const room={open:false},other={open:false},more={setAttribute:(name,value)=>{more[name]=value;}},key='clicked-second';
  const row={dataset:{offerKey:key},closest:selector=>selector==='.room-overview'?room:selector==='.hotel-room-more'?more:null};
- const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},hotels:[{id:7}],modalType:'hotel-details',
+ const hotel={id:7,offers:[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]};
+ const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},hotels:[hotel],modalType:'hotel-details',
   $:selector=>selector==='#modal'?{open:true}:null,$$:selector=>selector==='.room-offer-choice'?[{dataset:{offerKey:'first'},closest:()=>other},row]:[],
-  hotelDetailsOwner:()=>({openHotelDetails:()=>[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms(){}};
- vm.createContext(c);vm.runInContext(slice('function renderHotelDetails(){','function positionHotelRooms(){'),c);c.renderHotelDetails();
+  hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
+ vm.createContext(c);vm.runInContext(slice('function openHotelDetails(id,','function positionHotelRooms('),c);c.renderHotelDetails();
  assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
- console.log('PASS exact TV result-card rooms entry; ANEX/direct/unsupported routes preserved; supplier calls0');
+ // A previous room from this same hotel is still retained when the user
+ // chooses an exact ANEX price in the results. Reopening must bind that price.
+ hotel.offers[1]={key,provider:'anex',raw:{anexKind:'concrete'}};
+ c.hotelOfferDraft={hotelId:7,key:'first'};c.selectionGeneration=4;c.cancelHotelOfferCheck=()=>{};
+ c.showModal=()=>{};c.$=selector=>selector==='#modal'?{open:true,classList:{add(){}}}:null;
+ room.open=false;delete more.open;c.openHotelDetails(7,{entryOfferKey:key});
+ assert.equal(c.hotelOfferDraft.key,key);assert.equal(c.hotelOfferDraft.hotelId,7);assert.equal(c.selectionGeneration,5);
+ assert.equal(room.open,true);assert.equal(more.open,'');assert.equal(c.hotelDetailsView.roomEntryPending,false);
+ let top=null;
+ const body={scrollTop:0,clientHeight:380,getBoundingClientRect:()=>({top:10}),scrollTo:position=>{top=position.top;}};
+ c.$=selector=>({'#modal-body':body,'#hotel-rooms-heading':{getBoundingClientRect:()=>({top:100})},'.hotel-section-nav':{offsetHeight:40}})[selector];
+ c.syncHotelSectionNavigation=()=>{};vm.runInContext(slice('function positionHotelRooms(','let renderedCardLimit='),c);
+ const anchor=(start,bottom)=>({getBoundingClientRect:()=>({top:start}),querySelector:()=>({getBoundingClientRect:()=>({bottom})})});
+ c.positionHotelRooms(anchor(150,290));assert.equal(top,34,'a nearby selected offer keeps the section heading in view');
+ c.positionHotelRooms(anchor(1000,1550));assert(top>=1000-10-56&&1550-10-top<=body.clientHeight,'the action of a long tail offer is visible');
+ console.log('PASS exact TV and ANEX result-card rooms entry; selected key, room and scroll target agree; supplier calls0');
 }
 async function verifyChoiceComposition(){
- const {c,listing,nodes}=setup();
+ const {c,listing,nodes,calls}=setup();
  const panel={hidden:false,insertBefore:node=>{node.parentElement=panel;},querySelector:()=>null},label={hidden:true,append:node=>{node.parentElement=label;}},classes=new Set(),choice={textContent:'',classList:{toggle(){}},setAttribute(){}};
  const row={dataset:{offerKey:listing.key},classList:{toggle:(name,on)=>on?classes.add(name):classes.delete(name)},setAttribute(){},removeAttribute(){},querySelector:selector=>({'.hotel-room-price':panel,'.room-choice-selected':label,'[data-action="select-hotel-offer"]':choice})[selector]};
  nodes['#hotel-detail-price-status']={textContent:''};nodes['#hotel-detail-offers']={dataset:{},disabled:false,textContent:''};
@@ -68,6 +84,17 @@ async function verifyChoiceComposition(){
  c.selectedOffer={...listing,quoteError:'temporary'};sync();assert.equal(button.disabled,false);assert.equal(button.textContent,'Повторить проверку');assert.equal(button.dataset.action,'continue-hotel-offer');assert.equal(button.dataset.key,listing.key,'a temporary failure retains its explicit retry');
  c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600};sync();assert.equal(button.textContent,'Продолжить');assert.equal(button.dataset.action,'continue-hotel-offer');
  c.hotelOfferDraft=null;sync();assert.equal(panel.hidden,false,'alternatives recover their own comparable price/action');assert.equal(label.hidden,true);assert.strictEqual(choice.parentElement,panel,'unselected toggle returns to its original price panel');
+ const breakfast={...listing,key:'breakfast',meal:'BB',total:235000};
+ c.hotelOffers=()=>[listing,breakfast];nodes['#hotel-room-meal']={value:'BB'};c.syncHotelOfferSelection(1);
+ assert.equal(nodes['#hotel-detail-min'].textContent,'235000','footer price stays inside the current meal filter when refreshed');
+ nodes['#hotel-room-meal'].value='HB';c.syncHotelOfferSelection(1);
+ assert.equal(button.dataset.action,'clear-hotel-room-meal');assert.equal(button.disabled,false);assert.match(status.textContent,/с другим питанием/);
+ assert.equal(nodes['#hotel-detail-min'].textContent,'Нет предложений','an alternative meal cannot supply a price for the missing choice');
+ const control=nodes['#hotel-room-meal'];control.dataset={id:'1'};let focused=false;control.focus=()=>{focused=true;};
+ c.renderHotelRooms=(id,meal='')=>{assert.equal(id,1);control.value=meal;c.syncHotelOfferSelection(id);};
+ const recovery=app.match(/^ case 'clear-hotel-room-meal':[^\n]+/m)[0];
+ vm.runInContext(`switch('clear-hotel-room-meal'){${recovery}}`,c);
+ assert.equal(control.value,'');assert(focused);assert.equal(button.dataset.action,'hotel-section');assert.equal(calls.quote+calls.expand+calls.flights,0);
  for(const outcome of ['healthy','empty','error']){
   const {c,calls,listing}=setup();c.selectedOffer={...listing,tour:{price:198600},quoteListingTotal:198600,flightsLoaded:true,variants:outcome==='empty'?[]:[{}],flightsError:outcome==='error'?'temporary':''};
   await c.openHotelFlights('one');assert.equal(calls.quote,0);assert.equal(calls.flights,Number(outcome!=='healthy'),outcome+' uses the existing explicit retry owner');assert.equal(c.selectedOffer.flightChoiceId,undefined,'inventory reopening never chooses a default');

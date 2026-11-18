@@ -9,7 +9,7 @@ if (!str_starts_with((string)($_SERVER['SCRIPT_NAME'] ?? ''), '/_preview/search3
 }
 $html = file_get_contents(__DIR__ . '/index.html');
 $scenario = is_string($_GET['scenario'] ?? null) ? $_GET['scenario'] : '';
-$offline = in_array($scenario, ['snapshot', 'flights', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired', 'flight-error', 'empty', 'recorded'], true);
+$offline = in_array($scenario, ['snapshot', 'journey', 'flights', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired', 'flight-error', 'empty', 'recorded'], true);
 if (!$offline) {
     // Reuse the functional owners. This route has no second search/price/lead transport.
     $scripts = [
@@ -24,9 +24,8 @@ if (!$offline) {
     ];
     $graph = implode("\n  ", array_map(fn($src) => '<script src="' . $src . '"' . ($src === '../prototype-search/config.js' ? ' data-local-tv-catalog="enabled" data-search3-messenger="enabled" data-search3-tv-session="enabled"' : '') . ' defer></script>', $scripts));
     $html = preg_replace('/<script src="\.\/fixture-data\.js" defer><\/script>.*?<script src="\.\/app\.js" defer><\/script>/s', $graph, $html);
-    $html = str_replace('Прототип · цены требуют проверки', 'Версия для проверки · живой поиск', $html);
-    $html = str_replace('Сохранённая выдача и демонстрационные сценарии. Живой поиск ещё не подключён. Заявки и оплата отключены.',
-        'Актуальные предложения — Tourvisor и прямой ANEX. Календарь показывает ранее найденные цены из базы. Поиск начинается только по нажатию «Найти туры». Чтобы передать выбранный тур менеджеру, перейдите в Telegram или MAX и запустите бота. Бронирование и оплата на сайте не выполняются.', $html);
+    $html = str_replace('Здесь сохранённые предложения и учебные примеры. Цены и рейсы приведены для знакомства с поиском. Заявка в этом режиме учебная.',
+        'Календарь показывает ранее найденные цены. При выборе тура проверяем стоимость и условия у поставщика. Чтобы передать тур менеджеру, откройте Telegram или MAX из заявки и запустите бота.', $html);
     $popularitySource = dirname(__DIR__) . '/data/hotel-popularity-v1.php';
     if (is_file($popularitySource)) {
         require_once $popularitySource;

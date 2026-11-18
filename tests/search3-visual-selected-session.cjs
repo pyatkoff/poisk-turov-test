@@ -40,6 +40,8 @@ module.exports=async function({browser,origin,base,evidence}){
   const calls=()=>transport.calls.length;
   const telephone=async()=>{
    await page.locator('#prototype-lead-form').waitFor({state:'attached'});
+   const route=page.locator('.application-choice .application-route');
+   assert.equal(await route.textContent(),'Москва → Белек, Турция',provider+' keeps the selected route visible at contact and on return');
    const action=page.locator('[data-action="messenger-phone"]');
    if(await action.count()){
     assert.equal(await action.isVisible(),true);assert.equal(await page.locator('#prototype-lead-form').isVisible(),false,'telephone remains an explicit option');
@@ -309,6 +311,7 @@ module.exports=async function({browser,origin,base,evidence}){
    // The searched fixture has the approved form collapsed. Enter its existing
    // edit flow before operating fields; hidden controls are not user actions.
    await page.waitForFunction(()=>history.scrollRestoration==='auto');await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();assert.equal(await page.locator('#search-form').isVisible(),true,'the existing edit action exposes the full form');
+   if(width<=760)await page.locator('#search-options-toggle').click();
    const mealBefore=await page.locator('#quick-meal').textContent(),budgetBefore=await page.locator('#quick-budget').textContent();await page.locator('#quick-meal').click();await page.locator('#meal-query').fill('no-such-meal');await keyboard(420,64);await geometry('#meal-query','[data-action="apply-meals"]','meals');assert.equal(await page.locator('#meal-no-match').isVisible(),true);await page.screenshot({path:path.join(evidence,'picker-keyboard-meals-'+width+'.png')});await close();assert.equal(await page.locator('#quick-meal').textContent(),mealBefore,'meal query/Cancel does not change applied selection');
    await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('-1');await keyboard(420);await geometry('#budget-min','[data-action="apply-budget"]','budget-invalid');assert.equal(await page.locator('[data-action="apply-budget"]').isDisabled(),true);await keyboard(900);assert.equal(await page.locator('#budget-min').inputValue(),'-1');assert.equal(await page.locator('#budget-min').evaluate(el=>el===document.activeElement),true);await close();assert.equal(await page.locator('#quick-budget').textContent(),budgetBefore,'invalid budget/Cancel preserves the form');
    assert.equal(await page.locator('.form-all-filters').count(),0,'the retired duplicate form route is absent; the primary budget viewport path remains covered above');
@@ -325,6 +328,7 @@ module.exports=async function({browser,origin,base,evidence}){
  const tasks=[...jobs.map(args=>()=>scenario(...args)),...[360,390,430,768,1280].map(width=>()=>flightSession(width))],failures=[];let next=0;
  await Promise.all(Array.from({length:4},async()=>{for(;;){const task=tasks[next++];if(!task)return;try{await task();}catch(error){failures.push(error);}}}));
  if(failures.length)throw new AggregateError(failures,'Compiled selected-session acceptance failed');
+ await require('./search3-visual-whole-journey.cjs')({browser,origin,base,evidence});
  const receipt={published:false,live_data:false,engine:'Chromium',physical_device:false,duration_ms:Date.now()-started,records};
  fs.writeFileSync(path.join(evidence,'selected-session.json'),JSON.stringify(receipt,null,2)+'\n');
  console.log('PASS compiled selected session',JSON.stringify({cases:records.length,duration_ms:receipt.duration_ms,expiry_at_five_widths:true,retained_contact_focus:true,same_hotel_scope_return:true,supplier_HTTP:0,real_leads:0}));return receipt;

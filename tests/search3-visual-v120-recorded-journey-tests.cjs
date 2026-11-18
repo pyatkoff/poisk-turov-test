@@ -140,6 +140,8 @@ const continueToFlights=async()=>{
 
    click('[data-action="close-modal"]');await settle();
   }
+  const firstCard=d.querySelector('.hotel-card [data-action="offer"]').closest('.hotel-card');
+  const expectedRoute=d.querySelector('#origin-label').textContent+' → '+firstCard.querySelector('.hotel-location>span').textContent;
   click('.hotel-card [data-action="offer"]');await settle(130);await continueToFlights();
   if(scenario==='mixed'){
    const before=d.querySelector('#modal-footer .footer-total strong').textContent;
@@ -160,6 +162,8 @@ const continueToFlights=async()=>{
   const form=d.querySelector('#prototype-lead-form');assert(form,scenario+' reaches contact check');
   const review=d.querySelector('.application-review-card');assert(review,scenario+' uses the approved contact summary');
   const heading=review.querySelector('.application-review-heading');
+  assert.equal(heading.querySelector('.application-route').textContent,expectedRoute,scenario+' confirms the same departure and destination as the selected listing');
+  assert.equal(!!review.querySelector('[data-action="change-room"]'),scenario==='mixed',scenario+' offers to change the stay only when other rooms or meals are available');
   assert.equal(heading.querySelector('span').textContent+heading.querySelector('small').textContent,chosenConditions,scenario+' carries the same dates, nights and party into the application');
   assert.equal(heading.querySelector('.application-review-stay').textContent,exactRows['Номер']+' · '+exactRows['Питание'],scenario+' exposes the full exact room and meal before contacts');
   const detailRows=Object.fromEntries([...review.querySelectorAll('details.application-review > dl > div')].map(row=>[row.querySelector('dt').textContent.replace('Туроператор','Оператор'),row.querySelector('dd').textContent]));
