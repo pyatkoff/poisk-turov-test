@@ -38,7 +38,7 @@ must4294(($c['producer_enabled']??null)===true,'producer_closed');
 $phase='runtime';
 $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root);
 if(git4294(['status','--porcelain','--untracked-files=no'])!=='')throw new Exception('runtime_dirty');
-if(git4294(['rev-parse','HEAD'])!=='92bd28bea3f8e00bffb154b267104640fd53ce17')throw new Exception('runtime_changed');
+if(git4294(['rev-parse','HEAD'])!=='bd8e248f7138ea75cb9fda2dcf44beb631c633a5')throw new Exception('runtime_changed');
 $phase='app_config';
 ob_start();require $root.'/config.php';require_once $root.'/services/ChannelPostRuntime.php';ob_end_clean();
 $dir='/var/www/anytoour/data/channel-post-operations';
@@ -103,7 +103,7 @@ must4294(hash_file('sha256',__DIR__.'/staged-bundle.php')===$c['staged_bundle_sh
 $phase='final_identity';
 foreach($identities as [$f,$path,$before]){clearstatcache(true,$path);$after=fstat($f);$named=lstat($path);foreach(['ino','dev','size','mtime','ctime'] as $field)must4294($before[$field]===$after[$field]&&$before[$field]===$named[$field],'journal_identity_changed');}
 $phase='output';
-$producer=['consumer_db_sha256'=>hash_file('sha256',$dbFile),'run_id'=>(int)$runId,'head_sha'=>$head,'runtime_sha'=>'92bd28bea3f8e00bffb154b267104640fd53ce17','observed_at_epoch'=>time(),'operation'=>$op,'global_pin'=>array_intersect_key($out['global'],array_flip(['sha256','bytes','lines'])),'child_pin'=>array_intersect_key($out['child'],array_flip(['sha256','bytes','lines'])),'feed_shas'=>$out['feeds'],'staged_bundle_sha256'=>$c['staged_bundle_sha256'],'cohort_sha256'=>$hashes['cohort_sha256'],'collector_sha256'=>$hashes['collector_sha256'],'native_active_collectors'=>$active,'sql_active_collectors'=>$sqlActive,'unknown_collectors'=>false];
+$producer=['consumer_db_sha256'=>hash_file('sha256',$dbFile),'run_id'=>(int)$runId,'head_sha'=>$head,'runtime_sha'=>'bd8e248f7138ea75cb9fda2dcf44beb631c633a5','observed_at_epoch'=>time(),'operation'=>$op,'global_pin'=>array_intersect_key($out['global'],array_flip(['sha256','bytes','lines'])),'child_pin'=>array_intersect_key($out['child'],array_flip(['sha256','bytes','lines'])),'feed_shas'=>$out['feeds'],'staged_bundle_sha256'=>$c['staged_bundle_sha256'],'cohort_sha256'=>$hashes['cohort_sha256'],'collector_sha256'=>$hashes['collector_sha256'],'native_active_collectors'=>$active,'sql_active_collectors'=>$sqlActive,'unknown_collectors'=>false];
 echo json_encode(['native_gzip_base64'=>base64_encode(gzencode($raw,9)),'native_sha256'=>hash('sha256',$raw),'producer'=>$producer],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
 foreach(array_reverse($handles) as $f){flock($f,LOCK_UN);fclose($f);}
 
