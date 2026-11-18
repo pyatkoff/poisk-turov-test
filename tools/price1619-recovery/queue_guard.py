@@ -2,7 +2,7 @@
 import base64,hashlib,json,re,subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
-ALLOW_SHA='7c233b8336fbc2d8349f90179f9f0e65a01ebac6d29878e0093afedfad71e49e'
+ALLOW_SHA='4bb2527281405ee384f6aae5597a747e862338f885b3e282582906ffa719bdd9'
 STATUSES=('in_progress','queued','waiting','pending','requested')
 REPOS=('pyatkoff/max-search-bot','pyatkoff/poisk-turov-test')
 KEYS=('id','head_sha','event','path','run_attempt','status','workflow_id','head_branch','referenced_workflows')
