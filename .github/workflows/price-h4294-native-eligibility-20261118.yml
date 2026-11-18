@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cf14636f9b93735cc9072151da1b4a4152b0c719'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '27a2915b74d7ebf7c1dbbe1a1274370e77d0afda'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -25,7 +25,7 @@ jobs:
           test "$GITHUB_REPOSITORY" = pyatkoff/poisk-turov-test
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$GITHUB_EVENT_NAME" = push
-          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = cf14636f9b93735cc9072151da1b4a4152b0c719
+          test "$(jq -r .before "$GITHUB_EVENT_PATH")" = 27a2915b74d7ebf7c1dbbe1a1274370e77d0afda
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/audit/price4294-evidence-20261118 --jq .object.sha)" = "$GITHUB_SHA"
           mkdir "$RUNNER_TEMP/recovery-launch"
           for name in run.py launch-CLOSED.json route-attestation.json; do

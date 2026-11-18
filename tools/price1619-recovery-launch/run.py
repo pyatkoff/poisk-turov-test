@@ -81,6 +81,32 @@ def retain_native_stdout(command_text, output_path):
     path=shlex.quote(output_path)
     return 'set -C; if { '+command_text+'; native_rc=$?; } > '+path+'; then cat '+path+' || exit 96; exit "$native_rc"; else exit 97; fi'
 
+ALLOWED_ERRORS={'isolated_sql_unbound','isolated_sql_not_proven_idle','isolated_sql_snapshot_too_late','isolated_sql_env_shape','isolated_sql_unavailable','producer_failed_closed','git_read_failed','producer_runtime_warning','producer_args','producer_identity','producer_config_hash','producer_closed','runtime_dirty','runtime_changed','path_changed','busy','file_replaced','incomplete','file_changed','preimage_changed','pending_changed','missing','native_evidence_changed','process_read_failed','process_read_incomplete','process_line_unknown','native_collector_busy','consumer_db_source_changed','consumer_db_function_missing','consumer_db_unavailable','consumer_config_missing','canonical_collector_sql_lock_busy','consumer_path_changed','consumer_changed','staged_bundle_changed','journal_identity_changed'}
+
+def producer_failure_metadata(raw):
+ out={}
+ try:v=json.loads(raw)
+ except (ValueError,UnicodeDecodeError):v={}
+ if not isinstance(v,dict):v={}
+ error=v.get('error')
+ out['error']=error if isinstance(error,str) and error in ALLOWED_ERRORS else 'producer_failed_closed'
+ if out['error']=='producer_runtime_warning':
+  if isinstance(v.get('warning_kind'),str) and v.get('warning_kind') in {'constant_already_defined','undefined_array_key','deprecated','other'}:out['warning_kind']=v['warning_kind']
+  if isinstance(v.get('warning_phase'),str) and v.get('warning_phase') in {'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'}:out['warning_phase']=v['warning_phase']
+  if isinstance(v.get('warning_file'),str) and v.get('warning_file') in {'producer.php','config.php','db-v1.php','ChannelPostRuntime.php','ChannelPostRegistryService.php','ConversationDb.php','other'}:out['warning_file']=v['warning_file']
+  for k in ('warning_severity','warning_line'):
+   if type(v.get(k)) is int and v[k]>=0:out[k]=v[k]
+ enums={'child_warning_kind':{'constant_already_defined','undefined_array_key','deprecated','other'},'child_warning_file':{'config.php','db-v1.php','other'},'pdo_state_class':{'08','28','42','HY','IM','other'},'identity_target':{'db','config'},'producer_phase':{'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'},'throwable_kind':{'pdo','error','exception','other'},'sql_transport':{'env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'},'sql_phase':{'path','identity','db_pin','include_db','connect_config','query','owner','config_included','identity_after','output','worker_guard'},'sql_kind':{'guard','config_warning','pdo','error','loader','missing_driver','lock_busy','shape'}}
+ for k,allowed in enums.items():
+  if isinstance(v.get(k),str) and v[k] in allowed:out[k]=v[k]
+ for k in ('identity_exists','identity_is_link','identity_realpath_equal','parent_mysql_available','child_mysql_available','transport_timeout','transport_output_bounds','transport_stderr_nonempty'):
+  if type(v.get(k)) is bool:out[k]=v[k]
+ for k in ('child_warning_line','child_warning_severity','parent_php_version_id','child_php_version_id','transport_exitcode'):
+  if type(v.get(k)) is int and -1<=v[k]<=1000000:out[k]=v[k]
+ if type(v.get('pdo_driver_code')) is int and v['pdo_driver_code'] in {1045,1049,2002,2006,2013}:out['pdo_driver_code']=v['pdo_driver_code']
+ if isinstance(v.get('transport_stderr_sha256'),str) and re.fullmatch('[a-f0-9]{64}',v['transport_stderr_sha256']):out['transport_stderr_sha256']=v['transport_stderr_sha256']
+ return out
+
 def capture_readonly_producer(args, base, run_id, head):
     # Read-only diagnostics are retained before interpreting exit status. No retry.
     try:
@@ -91,15 +117,10 @@ def capture_readonly_producer(args, base, run_id, head):
     (base/'producer-stdout.private.json').write_bytes(raw)
     (base/'producer-stderr.private.log').write_bytes(stderr)
     if rc != 0:
-        error='producer_failed_closed' if rc is not None else 'producer_timeout'
-        try:
-            value=json.loads(raw)
-            if isinstance(value,dict) and value.get('error') in {
-                'producer_failed_closed', 'git_read_failed', 'producer_runtime_warning', 'producer_args', 'producer_identity', 'producer_config_hash', 'producer_closed', 'runtime_dirty', 'runtime_changed', 'path_changed', 'busy', 'file_replaced', 'incomplete', 'file_changed', 'preimage_changed', 'pending_changed', 'missing', 'native_evidence_changed', 'process_read_failed', 'process_read_incomplete', 'process_line_unknown', 'native_collector_busy', 'consumer_db_source_changed', 'consumer_db_function_missing', 'consumer_db_unavailable', 'consumer_config_missing', 'canonical_collector_sql_lock_busy', 'consumer_path_changed', 'consumer_changed', 'staged_bundle_changed', 'journal_identity_changed'}:
-                error=value['error']
-        except (ValueError,UnicodeDecodeError):pass
+        metadata=producer_failure_metadata(raw)
+        if rc is None: metadata['error']='producer_timeout'
         public_terminal({'run_id':run_id,'head':head,'phase':'producer','returncode':rc,
-                         'error':error,'native_write_attempted':False,'ok':False,
+                         **metadata,'native_write_attempted':False,'ok':False,
                          'raw_sha256':sha(raw),'stderr_sha256':sha(stderr)})
         raise RuntimeError('producer_preflight_failed_no_writer')
     return raw
