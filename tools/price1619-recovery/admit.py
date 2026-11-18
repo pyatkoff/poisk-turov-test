@@ -3,6 +3,7 @@ No install, dispatch, database or native command is executed by this module.
 Binding receipts is a separate reviewed action; config never updates itself.
 """
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -22,7 +23,8 @@ OP = 'commercial-monitor-price-h4294-f72863a3310b60862a907f040008fd46c82e7e04448
 STATUSES = ('in_progress', 'queued', 'waiting', 'pending', 'requested')
 REQUIRED_EXECUTOR_FILES = frozenset({'admit.py', 'pure.php', 'recover.php', 'safe-result.php',
     'editor-pure-proof.php', 'verify-release.js', 'release_priority.js',
-    'deployment_release.js', 'release_slot_close.js'})
+    'deployment_release.js', 'release_slot_close.js', 'queue_guard.py', 'allowlist.json',
+    'MAX-classification.json', 'POISK-classification.json'})
 
 def need(value, error):
     if not value:
@@ -76,7 +78,7 @@ def pinned_comment(get, repo, cid, expected, author):
 def canonical_release(base):
     return json.loads(subprocess.check_output(['node', str(base / 'verify-release.js')], timeout=240, cwd=base))
 
-def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None, clock=None):
+def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None, clock=None, verify_queue=None):
     clock = time.time if clock is None else clock
     now = int(clock()) if now is None else now
     need(c.get('enabled') is True and helper.get('enabled') is True, 'gate_closed')
@@ -132,12 +134,11 @@ def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None
         for kind in ('claim', 'ack'):
             pinned_comment(get, binding[kind + '_repo'], claim[kind + '_id'], claim[kind + '_body_sha256'], binding[kind + '_author_id'])
     need(set(c['gha_repositories']) == {APP_REPO, CARRIER_REPO}, 'gha_scope_unbound')
-    for repo in c['gha_repositories']:
-        for status in STATUSES:
-            page = get(repo, 'actions/runs?status=' + status + '&per_page=100')
-            runs = page['workflow_runs']
-            need(page['total_count'] == len(runs) <= 100, 'runs_truncated')
-            need(all(repo == CARRIER_REPO and r['id'] == rid and r['head_sha'] == head and r['run_attempt'] == 1 for r in runs), 'other_GHA_active')
+    if verify_queue is None:
+        queue_spec = importlib.util.spec_from_file_location('finite_queue_guard', base / 'queue_guard.py')
+        queue_module = importlib.util.module_from_spec(queue_spec); queue_spec.loader.exec_module(queue_module)
+        verify_queue = queue_module.verify
+    queue_proof = verify_queue(get, CARRIER_REPO, rid, head, c['queue_expected_mains'], base)
     route = receipt(base, c['route_attestation'])
     need(route == c['expected_route_attestation'] and route.get('repo') == 'pyatkoff/tour-max'
          and route.get('source') == 'private_connector' and sha(route.get('head'), 40)
@@ -163,7 +164,7 @@ def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None
             'no_active_collectors': True, 'route_idle': True, 'price_window_owned': True,
             'technical_release_accepted': True, 'technical_publisher_free': True,
             'helper_config_payload_sha256': digest(canon(h)), 'admission_config_sha256': digest(canon(c)),
-            'manifest_sha256': digest(canon(files)), 'route_attestation_sha256': c['route_attestation']['sha256'],
+            'manifest_sha256': digest(canon(files)), 'queue_relevance_proof': queue_proof, 'route_attestation_sha256': c['route_attestation']['sha256'],
             'route_observed_at_epoch': route['observed_at_epoch']}
 
 def main():

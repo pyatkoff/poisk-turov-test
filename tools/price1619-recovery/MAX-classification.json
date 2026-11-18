@@ -1,0 +1,295 @@
+{
+  "schema": "price1619-exact-queued-ci-proof-v1",
+  "observed_at_utc": "2026-11-18T13:52:14.045428+00:00",
+  "total_count": 9,
+  "rows": [
+    {
+      "id": 43097373885,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/channel-post-context.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 384242777,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "277978baaf410c72372b8faea7f74a9f085ba8fdb5d7b153b6643e4881eb7942",
+      "workflow_blob_sha": "a0aa24a09b164edad26c278b29e2a4ae1d402a67",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [
+        {
+          "path": "pyatkoff/max-search-bot/.github/workflows/ci-change-scope.yml@6b83edba119ffc7061f432589d63344c87438d9e",
+          "sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+          "ref": "refs/pull/1493/merge"
+        }
+      ],
+      "reason": "Hosted browser fixture and isolated localhost MySQL registry tests; no production credentials or production concurrency; reusable scope only local git and outputs.",
+      "evidence": {
+        "43097373885-run.json": "9d69a244c18a09f6ef78b23b617fc6bbbc03651d1e61d6d590325e25caa176ad",
+        "43097373885-jobs.json": "56741fb4a3b1df6a72718545dc05c0c6fdafd42dfa3015a32ea015143c7e76a6",
+        "43097373885-workflow.json": "dc1266ac74e6cac5005e8027a165d6db833d624f9d4067f227356efbfb13acc5",
+        "43097373885-merge-workflow.json": "af3073fadd2eb6ac17a63ebe52f57dbb23d745a89aa45b9f1b07c78ded83b671"
+      }
+    },
+    {
+      "id": 43097373883,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/workspace-sound.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 363300483,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "f2ac71144414b911a4091c20fcb482e38911d582a0b082ed0d792f127e0437a4",
+      "workflow_blob_sha": "f44b0626653224584260d4ded79f2207c52c3e1a",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [
+        {
+          "path": "pyatkoff/max-search-bot/.github/workflows/ci-change-scope.yml@6b83edba119ffc7061f432589d63344c87438d9e",
+          "sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+          "ref": "refs/pull/1493/merge"
+        }
+      ],
+      "reason": "Hosted browser/localhost HTTP and isolated MySQL fixtures; no production credentials; CI-only concurrency.",
+      "evidence": {
+        "43097373883-run.json": "b8c6ae507950ef45859b42fb52c462c033567843387bbf2e68651067b91fd252",
+        "43097373883-jobs.json": "077f677891fe85d163848a8ebdbb560d1650f64f56a6868be8a43a7b045698ac",
+        "43097373883-workflow.json": "51852b696cae22c1c524428fb7407588a2976615ce3c1fc215a19c9eb5c4fc46",
+        "43097373883-merge-workflow.json": "91cd1a549eb8caa6bc8e701cee74ee031212670658059f0b618320623a83a5bd"
+      }
+    },
+    {
+      "id": 43097373914,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/retired-domain-guard.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 348353174,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "66ac194e95cf25de4b915bf378c25dc2cf33b05c4378b4c2ebdc229ca4a92a0b",
+      "workflow_blob_sha": "fa0391596dde3f8a39e734d2e71d1fdb4597633a",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [],
+      "reason": "Hosted checkout and git grep only; contents read; no executable repository helper or production access.",
+      "evidence": {
+        "43097373914-run.json": "3fddcbf652b881898880e78ee899c8abdf16b2a0588cb68cdf2035959c55e82f",
+        "43097373914-jobs.json": "03d73ef45ac0a240df40b5e7c866e0451f2ba890f0e11de1024506faeed2ec0e",
+        "43097373914-workflow.json": "7717a9733c09d8e11f7a87f76f70d4fbb946f5ba63412e07e532ec4939136497",
+        "43097373914-merge-workflow.json": "74f65722959b80f73d8823c50fe790685bf8b9dd25908c5cbbcf3a1a733e7c16"
+      }
+    },
+    {
+      "id": 43097373916,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/regression-tests.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 340550044,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "317c2cbd9f597414a3207d7181beb8661cb881c98e1f85aaa32a793166e43b2e",
+      "workflow_blob_sha": "2fda7db90df62742eb44fc7b2ecd8c0684e406fb",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [
+        {
+          "path": "pyatkoff/max-search-bot/.github/workflows/ci-change-scope.yml@6b83edba119ffc7061f432589d63344c87438d9e",
+          "sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+          "ref": "refs/pull/1493/merge"
+        }
+      ],
+      "reason": "Hosted lint/test matrix, isolated localhost MySQL; final release_priority.js has GET-only GitHub reads and no publisher acquisition or mutation; no deployment credentials or production concurrency.",
+      "evidence": {
+        "43097373916-run.json": "7a7b95673ca0072e518e3529810affcb87f825af74c5483c5a9b54efcf548e29",
+        "43097373916-jobs.json": "3a46beb98d6bccc6a8cd900d5760b36ab30077b9c424ed50517a52895a22604d",
+        "43097373916-workflow.json": "d8a34e5dba07a825bdfd20cd03b2aa7cbb512798799d05edc73b6efcc5b0f86f",
+        "43097373916-merge-workflow.json": "7e95bc62ba84f46547afdca77fa16a758dec75c8f996a161a2e0f0c8da39a9e7"
+      }
+    },
+    {
+      "id": 43097374035,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/workspace-v2-visual-qa.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 343986842,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "2a3d3613ccc558314cdd1b532533657557dea417da6609eaae931c62fb0004c9",
+      "workflow_blob_sha": "0fd9d7cdcae949d8f54bae569dee6b3ce4aae926",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [
+        {
+          "path": "pyatkoff/max-search-bot/.github/workflows/ci-change-scope.yml@6b83edba119ffc7061f432589d63344c87438d9e",
+          "sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+          "ref": "refs/pull/1493/merge"
+        }
+      ],
+      "reason": "Hosted isolated browser containers and localhost4173 fixtures; GitHub read token for packages/artifact reuse only; scoped visual concurrency, no production access.",
+      "evidence": {
+        "43097374035-run.json": "7ae624eb31c6422a97f3d9868a7444e1b7a8e3382e0ec65471ed6ff0a53ad7e4",
+        "43097374035-jobs.json": "1345ad332c48dc521c5c0a4b2bc025a4860a89cc211ebc629ca13ba895b65a48",
+        "43097374035-workflow.json": "42d45c08e8e9041d903e54d507e2456827629845ee85c51d6442a7909bc1e010",
+        "43097374035-merge-workflow.json": "36036c307881cb1ecc585abbedaa8566ecb0cc3a5d06c378a0de95f119335489"
+      }
+    },
+    {
+      "id": 43097373867,
+      "head_sha": "837cc8068d5680190e878eeab0e27c8078707dc1",
+      "event": "pull_request",
+      "path": ".github/workflows/publish-appleservice39-pilot.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 411288987,
+      "head_branch": "feature/manager2-file-preflight-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "119b369e381f6f5ff6d2c17966334b32b83ca059f32dcc699317bfff86e3f5d5",
+      "workflow_blob_sha": "98203a496fa5c74850427409d8ffb383d80ae59e",
+      "reviewed_merge_sha": "6b83edba119ffc7061f432589d63344c87438d9e",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [],
+      "reason": "This exact event=pull_request can execute only regression. Production publish job if event==workflow_dispatch AND ref==refs/heads/main is false; its SSH secret and production-deploy concurrency unreachable.",
+      "evidence": {
+        "43097373867-run.json": "be67f3942f14ff8fadcf82fe5a3633a2d40b4d2ce831457adc92f4c32d465175",
+        "43097373867-jobs.json": "340f006200279caeec67e43658181d8275ddd6c8873b4c3fe634d7ca689f1b4a",
+        "43097373867-workflow.json": "1e45922a0a11ae60ad3dc627d79871dd5ad852baf1dd4c089c93c85163280354",
+        "43097373867-merge-workflow.json": "c90bc098137fcb2d6ca3b6b417be4dd41fda67f0d8bfcb740b2bd1afa289209e"
+      }
+    },
+    {
+      "id": 43097356777,
+      "head_sha": "a40f92d641bf36a7b1db955df03835c1a3cd77f2",
+      "event": "pull_request",
+      "path": ".github/workflows/retired-domain-guard.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 348353174,
+      "head_branch": "fix/modeled-frozen-outcomes-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "66ac194e95cf25de4b915bf378c25dc2cf33b05c4378b4c2ebdc229ca4a92a0b",
+      "workflow_blob_sha": "fa0391596dde3f8a39e734d2e71d1fdb4597633a",
+      "reviewed_merge_sha": "8171b9369e0be115c102ee433adf58f94c190275",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [],
+      "reason": "Hosted checkout and git grep only; contents read; no executable repository helper or production access.",
+      "evidence": {
+        "43097356777-run.json": "4f6cf2112fcd266700e2d5d41dc4db61a3eb28b9ba7787441f885715966ba729",
+        "43097356777-jobs.json": "fd2b4b011214b22fa274f120dc466034a4b2471c63fa2ef7662c69e618ed3889",
+        "43097356777-workflow.json": "112115e600db5fa9eff0a9fef10043cee99a529cdd0e7d7a12701b3e4c4108f6",
+        "43097356777-merge-workflow.json": "944bfa3b71f549fc8625ad4ceebd389b0cb8a058238c4331d6014ca154430c53"
+      }
+    },
+    {
+      "id": 43097356829,
+      "head_sha": "a40f92d641bf36a7b1db955df03835c1a3cd77f2",
+      "event": "pull_request",
+      "path": ".github/workflows/regression-tests.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 340550044,
+      "head_branch": "fix/modeled-frozen-outcomes-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "317c2cbd9f597414a3207d7181beb8661cb881c98e1f85aaa32a793166e43b2e",
+      "workflow_blob_sha": "2fda7db90df62742eb44fc7b2ecd8c0684e406fb",
+      "reviewed_merge_sha": "8171b9369e0be115c102ee433adf58f94c190275",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [
+        {
+          "path": "pyatkoff/max-search-bot/.github/workflows/ci-change-scope.yml@8171b9369e0be115c102ee433adf58f94c190275",
+          "sha": "8171b9369e0be115c102ee433adf58f94c190275",
+          "ref": "refs/pull/1492/merge"
+        }
+      ],
+      "reason": "Hosted lint/test matrix, isolated localhost MySQL; final release_priority.js has GET-only GitHub reads and no publisher acquisition or mutation; no deployment credentials or production concurrency.",
+      "evidence": {
+        "43097356829-run.json": "97e4b2c7fecb510ba85582f4a204d691fcfa3106e55cf7b0677b2c66859af0a2",
+        "43097356829-jobs.json": "f98ab3c87559eb53637493a43cea04cec8175a7b18752fb901394c9b4784951c",
+        "43097356829-workflow.json": "156eddc34e74daa515507f840196c0411c6108696c1aff3c6181dafad2dc3276",
+        "43097356829-merge-workflow.json": "84f5d798bf93dc1ba44f3995151976967eca97039d200c089e6183e9e9498e4b"
+      }
+    },
+    {
+      "id": 43097357094,
+      "head_sha": "a40f92d641bf36a7b1db955df03835c1a3cd77f2",
+      "event": "pull_request",
+      "path": ".github/workflows/max-channel-attribution.yml",
+      "run_attempt": 1,
+      "status": "queued",
+      "workflow_id": 385615339,
+      "head_branch": "fix/modeled-frozen-outcomes-20261111",
+      "repository": "pyatkoff/max-search-bot",
+      "classification": "disjoint_ci_for_exact_queued_attempt",
+      "jobs_total_count": 0,
+      "workflow_source_sha256": "b3412052410d7a9649877cb87f9ee4fafb1f079510e62a6ffff888dd61d6b4e5",
+      "workflow_blob_sha": "b408b97e183ee64de1a279a76ed8de70ef47f0b5",
+      "reviewed_merge_sha": "8171b9369e0be115c102ee433adf58f94c190275",
+      "workflow_at_head_equals_merge": true,
+      "referenced_workflows": [],
+      "reason": "Hosted native integration means isolated mysql8 service with fixture-only credentials and localhost HTTP test server, not production; contents read only.",
+      "evidence": {
+        "43097357094-run.json": "ea92a12bdc3e09cf0b52573a9c79eb714fe1794a6dc4c87060b85479c028e6d4",
+        "43097357094-jobs.json": "8d17165a364e428661b99d3c6757f1cfd1d47b3ee1985ba2e6833d70ca1bb84e",
+        "43097357094-workflow.json": "16366687ceeccfe7331f62bf11bff923b616d8bde9dfb10489e23fab65aabee9",
+        "43097357094-merge-workflow.json": "7c53ac7e494d6ac467b5c4cf723d0c208044f151b40e4af8c0a53ef455b4efb2"
+      }
+    }
+  ],
+  "helper_evidence": {
+    "6b83edba119ffc7061f432589d63344c87438d9e-scope.json": {
+      "response_sha256": "f4a355bdefa4c34b032c85782ed0191fa6e2cb1cc24e9f18590b2d4ebefb541f",
+      "source_sha256": "080f26f7842bf1362e2083d07e483b6cc08923b53f06a09d5ea27c67bbf94274",
+      "source_blob_sha": "7950496685c8d7810da34ea502d2a9807b59605b"
+    },
+    "8171b9369e0be115c102ee433adf58f94c190275-scope.json": {
+      "response_sha256": "9630dd263312040a32ea494e80cb1a605eb4fef4a0ece4b13a8bd6985439f54e",
+      "source_sha256": "080f26f7842bf1362e2083d07e483b6cc08923b53f06a09d5ea27c67bbf94274",
+      "source_blob_sha": "7950496685c8d7810da34ea502d2a9807b59605b"
+    },
+    "6b83edba119ffc7061f432589d63344c87438d9e-ci_change_scope.js.json": {
+      "response_sha256": "2937e390c7254e64ca316bda1a484e3d208d32263051771075e8cb59b50d8835",
+      "source_sha256": "3f71c84300953e291c038136a437403741912689572328a96fd51e25dfaa8c61",
+      "source_blob_sha": "eae98dd8b347d2355e7ca6577e1826f060fbf34d"
+    },
+    "6b83edba119ffc7061f432589d63344c87438d9e-release_priority.js.json": {
+      "response_sha256": "5432138edb1865f432b5d609096ecb041ba5afe4b31922350a0b20099e1b732f",
+      "source_sha256": "8f68413ab4c4636221856cd52d2c9d52f18bf581b48b6ab242b049ebb29192a0",
+      "source_blob_sha": "3e99ee1bb51fc9536cf6214fde82c7a8f03a13d8"
+    },
+    "8171b9369e0be115c102ee433adf58f94c190275-ci_change_scope.js.json": {
+      "response_sha256": "9dcfcf4ce46c8d41a2bfd550ad676605524eecff1b9b40b687fa022695f093bd",
+      "source_sha256": "3f71c84300953e291c038136a437403741912689572328a96fd51e25dfaa8c61",
+      "source_blob_sha": "eae98dd8b347d2355e7ca6577e1826f060fbf34d"
+    },
+    "8171b9369e0be115c102ee433adf58f94c190275-release_priority.js.json": {
+      "response_sha256": "5c422b09fb418d3f94fdb44201a1d3cc6481e3731b2c5105e29f8a4bed771f0e",
+      "source_sha256": "8f68413ab4c4636221856cd52d2c9d52f18bf581b48b6ab242b049ebb29192a0",
+      "source_blob_sha": "3e99ee1bb51fc9536cf6214fde82c7a8f03a13d8"
+    }
+  },
+  "admission_rule": "Only these exact repository/id/head_sha/path/workflow_id/event=pull_request/run_attempt=1/status=queued/head_branch/referenced_workflows tuples. Re-fetch direct run and complete jobs list=0. Source workflow immutable SHA/hash unchanged. Any new ID, changed head/attempt/event/status (including in_progress), incomplete pagination, unknown or reachable production job => STOP. No age-based waiver. Keep fresh production runtime, native+SQL idle, locks, claims and route guards unchanged."
+}
