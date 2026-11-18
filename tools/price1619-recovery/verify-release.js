@@ -1,7 +1,7 @@
 'use strict';
 // GET-only canonical release acceptance. No publisher acquisition/renewal/closure.
 const R = require('./release_priority');
-const runtime = '92bd28bea3f8e00bffb154b267104640fd53ce17';
+const runtime = 'bd8e248f7138ea75cb9fda2dcf44beb631c633a5';
 const token = process.env.GITHUB_TOKEN;
 if (!token) throw Error('github_token_missing');
 const getOnly = (url, opts = {}) => {
@@ -12,6 +12,6 @@ const getOnly = (url, opts = {}) => {
 const context = {repository: 'pyatkoff/max-search-bot', baseSha: runtime, now: Date.now()};
 R.verifyPreviousRelease(context, token, getOnly).then(() => {
   console.log(JSON.stringify({schema:'price4294-canonical-release-v1',repository:context.repository,
-    repository_sha:runtime,deploy_run_id:44313794213,technical_release_accepted:true,
+    repository_sha:runtime,deploy_run_id:44329290180,technical_release_accepted:true,
     technical_publisher_free:true,verifier:'verifyPreviousRelease',publisher_override:false}));
 }).catch(e => {console.error(e.message);process.exitCode=1;});

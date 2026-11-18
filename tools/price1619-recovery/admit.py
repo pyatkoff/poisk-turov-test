@@ -15,16 +15,20 @@ import time
 APP_REPO = 'pyatkoff/max-search-bot'
 CARRIER_REPO = 'pyatkoff/poisk-turov-test'
 CARRIER = 'audit/price4294-evidence-20261118'
-BEFORE = '536f8f0dd9a28b08b07950bfb5153e633db3c274'
-RUNTIME = '92bd28bea3f8e00bffb154b267104640fd53ce17'
+BEFORE = 'cf14636f9b93735cc9072151da1b4a4152b0c719'
+FIX_RUNTIME = '92bd28bea3f8e00bffb154b267104640fd53ce17'
+RUNTIME = 'bd8e248f7138ea75cb9fda2dcf44beb631c633a5'
+CURRENT_PR_HEAD = '69856883ce0b4b511e0b08d178eac7cefbe43dfe'
+RUNTIME_DIFF_PATHS = ('docs/PROJECT_FUNNEL.md', 'services/ConversationRecorder.php', 'services/ProjectFunnelStatusReader.php', 'services/RepairMaxWebhookService.php', 'tests/run_project_funnel_conversions_regression.php', 'tests/run_repair_max_webhook_regression.php')
+HOOK_RUNTIME_PIN_PATHS = ('integrations/ChannelPostApiTransport.php', 'migrations/033_channel_post_context.sql', 'migrations/036_channel_post_member_delivery.sql', 'migrations/040_channel_post_reconciliation.sql', 'services/ChannelPostAdminService.php', 'services/ChannelPostAutomationService.php', 'services/ChannelPostButtonTransport.php', 'services/ChannelPostEntryService.php', 'services/ChannelPostMaxAlbumRecovery.php', 'services/ChannelPostMediaService.php', 'services/ChannelPostMemberDeliveryService.php', 'services/ChannelPostReconciliationService.php', 'services/ChannelPostReconciliationState.php', 'services/ChannelPostRegistryService.php', 'services/ChannelPostRuntime.php', 'services/ChannelPostTelegramAlbum.php', 'services/ChannelPostWebhookConfigService.php', 'services/ConversationDb.php', 'services/MaxTlsConfig.php', 'services/MaxTransport.php', 'services/ProjectConfig.php', 'services/ConversationRecordClock.php', 'services/ProjectConfiguration.php')
 PR_HEAD = 'e7d90c7b8b91926fe7b150d58cb71b53f10776dc'
-DEPLOY = 44313794213
+DEPLOY = 44329290180
 OP = 'commercial-monitor-price-h4294-f72863a3310b60862a907f040008fd46c82e7e044485488e9eece8adb1237e24'
 STATUSES = ('in_progress', 'queued', 'waiting', 'pending', 'requested')
 REQUIRED_EXECUTOR_FILES = frozenset({'admit.py', 'pure.php', 'recover.php', 'safe-result.php',
     'editor-pure-proof.php', 'verify-release.js', 'release_priority.js',
     'deployment_release.js', 'release_slot_close.js', 'queue_guard.py', 'allowlist.json',
-    'MAX-classification.json', 'POISK-classification.json'})
+    'MAX-classification.json', 'POISK-classification.json', 'subprocess.php', 'probe-worker.php', 'probe-core.php'})
 
 def need(value, error):
     if not value:
@@ -78,6 +82,25 @@ def pinned_comment(get, repo, cid, expected, author):
 def canonical_release(base):
     return json.loads(subprocess.check_output(['node', str(base / 'verify-release.js')], timeout=240, cwd=base))
 
+def verify_current_runtime(get, c):
+    # The original fix proof above is retained. This is a separate current-release gate.
+    pr = get(APP_REPO, 'pulls/1598')
+    need(pr.get('merged') is True and pr.get('head', {}).get('sha') == CURRENT_PR_HEAD
+         and pr.get('merge_commit_sha') == RUNTIME, 'current_PR_not_accepted')
+    cis = c.get('current_ci_runs', [])
+    need(isinstance(cis, list) and len(cis) >= 2 and len({x['run_id'] for x in cis}) == len(cis), 'current_ci_unbound')
+    for ci in cis:
+        terminal(get, APP_REPO, ci['run_id'], CURRENT_PR_HEAD, ci['path'])
+    diff = get(APP_REPO, 'compare/' + FIX_RUNTIME + '...' + RUNTIME)
+    files = diff.get('files')
+    need(diff.get('status') == 'ahead' and diff.get('merge_base_commit', {}).get('sha') == FIX_RUNTIME
+         and isinstance(files, list) and len(files) == len(RUNTIME_DIFF_PATHS)
+         and len({f.get('filename') for f in files}) == len(files)
+         and {f.get('filename') for f in files} == set(RUNTIME_DIFF_PATHS)
+         and all(f.get('status') == 'modified' and 'previous_filename' not in f for f in files)
+         and len(HOOK_RUNTIME_PIN_PATHS) == 23
+         and not set(RUNTIME_DIFF_PATHS).intersection(HOOK_RUNTIME_PIN_PATHS), 'runtime_diff_out_of_scope')
+
 def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None, clock=None, verify_queue=None):
     clock = time.time if clock is None else clock
     now = int(clock()) if now is None else now
@@ -110,7 +133,8 @@ def evaluate(c, helper, env, event, base, get=api, now=None, verify_release=None
         terminal(get, APP_REPO, ci['run_id'], PR_HEAD, ci['path'])
     pr = get(APP_REPO, 'pulls/1620')
     need(pr.get('merged') is True and pr.get('head', {}).get('sha') == PR_HEAD
-         and pr.get('merge_commit_sha') == RUNTIME, 'PR_not_accepted')
+         and pr.get('merge_commit_sha') == FIX_RUNTIME, 'PR_not_accepted')
+    verify_current_runtime(get, c)
     release = helper['technical_release_proof']
     need(release.get('application_sha') == RUNTIME and release.get('deploy_run_id') == DEPLOY, 'release_unbound')
     deploy = terminal(get, APP_REPO, DEPLOY, RUNTIME, c['deploy_workflow_path'])

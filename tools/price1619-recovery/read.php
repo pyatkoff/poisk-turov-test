@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root);
 if(trim((string)shell_exec('git status --porcelain --untracked-files=no'))!=='')throw new Exception('runtime_dirty');
-if(trim((string)shell_exec('git rev-parse HEAD'))!=='92bd28bea3f8e00bffb154b267104640fd53ce17')throw new Exception('runtime_changed');
+if(trim((string)shell_exec('git rev-parse HEAD'))!=='bd8e248f7138ea75cb9fda2dcf44beb631c633a5')throw new Exception('runtime_changed');
 ob_start();require $root.'/config.php';require_once $root.'/services/ChannelPostRuntime.php';ob_end_clean();
 $dir='/var/www/anytoour/data/channel-post-operations';
 $op='commercial-monitor-price-h4294-f72863a3310b60862a907f040008fd46c82e7e044485488e9eece8adb1237e24';
