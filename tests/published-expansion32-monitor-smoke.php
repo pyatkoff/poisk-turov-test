@@ -61,6 +61,6 @@ check32(!isset($without['published_hotels']['cohorts'][$cohort]),'new_cohort_ign
 $caller=file_get_contents(__DIR__.'/../v2/data/top500-daily-collector-v1.php');
 check32(str_contains($caller,"array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116())"),'actual_caller_missing32');
 $workflow=file_get_contents(__DIR__.'/../.github/workflows/collect-anytour-tours.yml');
-check32(substr_count($workflow,'ref: d2c5d98df27ced1cfc6c7961673eeb5f3c2d529a')===2,'publisher_source_not_pinned_twice');
+check32(substr_count($workflow,'ref: 4fde5c5a8fedcd17882589628a1f466c9e629d4e')===2,'publisher_source_not_pinned_twice');
 check32(str_contains($workflow,"- cron: '12 * * * *'")&&str_contains($workflow,"MONTHLY_BUDGET_VALUE: $"."{{ inputs.monthly_budget || '64' }}"),'schedule_or_budget_changed');
 echo 'PUBLISHED_EXPANSION32_OK checks='.$checks32.' exact_native_ids=32 old20_targets=preserved existing_search=resumed supplier_calls=0 writes=0',PHP_EOL;
