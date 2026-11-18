@@ -24,6 +24,7 @@ async function run(width,monthRange=null){
  await pause();await pause();
  const $=selector=>{const node=d.querySelector(selector);assert.ok(node,selector);return node;};
  const click=selector=>$(selector).click();
+ const edit=()=>click(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]');
  const input=(selector,value)=>{const node=$(selector);node.value=value;node.dispatchEvent(new w.Event('input',{bubbles:true}));};
  const action=(name,scope='#modal')=>click(scope+' [data-action="'+name+'"]');
  const close=async()=>{action('close-modal');await pause();};
@@ -88,7 +89,7 @@ async function run(width,monthRange=null){
  const retained=$('#all-offers-list .is-selected');assert.equal(retained.dataset.offerKey,key);assert.match(retained.textContent,/✓ Выбран/);assert.equal(retained.querySelector('.primary').textContent.trim(),'Смотреть тур');
  retained.querySelector('.primary').click();await pause();assertChosenTotal();action('modal-back');await pause();await close();
  assert.match($('#cards [data-action="all-offers"][data-id="3678"]').closest('.hotel-card').textContent.replace(/\s/g,''),/96953₽/);
- action('edit-search','#applied-search');
+ edit();
  assert.equal($('#search-form').hidden,false);assert.equal(d.querySelector('#quick-stars [data-value="2"]'),null);
  assert.deepEqual([...d.querySelectorAll('#quick-stars button')].map(b=>b.textContent),['Любая','3★','4★','5★']);
  const initial={dates:$('#dates-label').textContent,nights:$('#nights-label').textContent,party:$('#guests-label').textContent};
@@ -112,6 +113,7 @@ async function run(width,monthRange=null){
  action('apply-guests');await pause();assert.equal($('#guests-label').textContent,'2 взр. · 2 реб.');assert.match($('#guests-detail').textContent,/До 1 года и 8 лет/);
  action('nights','#search-form');click('[data-action="night-preset"][data-value="7"]');action('apply-nights');await pause();assert.equal($('#form-ages-recheck').hidden,false);assert.match($('#guests-detail').textContent,/До 1 года и 8 лет/);action('guests','#search-form');assert.match($('#guest-age-help').textContent,/на возвращение/);action('apply-guests');await pause();assert.equal($('#form-ages-recheck').hidden,true);
  // Budget validates integers and order, keeps zero, and cancels in isolation.
+ if(width<=760)click('#search-options-toggle');
  action('budget','#search-form');input('#budget-max','150,000');assert.equal($('[data-action="apply-budget"]').disabled,true);input('#budget-max','0');assert.equal($('[data-action="apply-budget"]').disabled,false);assert.equal($('#budget-summary').textContent,'До 0 ₽');input('#budget-min','250 000');input('#budget-max','200 000');assert.equal($('[data-action="apply-budget"]').disabled,true);await close();assert.equal($('#budget-label').textContent,'Без ограничений');
  action('budget','#search-form');input('#budget-max','200 000');action('apply-budget');await pause();assert.match($('#budget-label').textContent,/200/);
  // AI and UAI are independent exact choices, Russian names are primary.
@@ -131,9 +133,9 @@ async function run(width,monthRange=null){
  const kept={direction:$('#destination-detail').textContent,dates:$('#dates-label').textContent,nights:$('#nights-label').textContent,ages:$('#guests-detail').textContent};click('#quick-stars [data-action="any-stars"]');action('meals','#search-form');click('[data-meal-choice][value=""]');action('apply-meals');action('budget','#search-form');input('#budget-min','');input('#budget-max','');action('apply-budget');await pause();assert.equal($('#meal-label').textContent,'Любое');assert.equal($('#budget-label').textContent,'Без ограничений');assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');for(const [id,value] of [['destination-detail',kept.direction],['dates-label',kept.dates],['nights-label',kept.nights],['guests-detail',kept.ages]])assert.equal($('#'+id).textContent,value);
  // Return to snapshot matching party/dates, submit both exact hotels, verify URL/result state.
  action('guests','#search-form');action('children-minus');action('children-minus');action('apply-guests');await pause();action('dates','#search-form');click('[data-action="day-pick"][data-date="2026-10-01"]');click('[data-action="day-pick"][data-date="2026-10-07"]');action('apply-dates');await pause();$('.search-submit').click();await pause();await pause();assert.equal($('#search-form').hidden,true);assert.match(w.location.search,/hotels=3678%7C5227/);assert.match($('#results-summary').textContent,/2 отеля/);assert.match($('#cards').textContent,/RIA SUITES HOTEL/);assert.match($('#cards').textContent,/FOUR-G HOTEL/);
- const committed=w.location.search;action('edit-search','#applied-search');click('#quick-stars [data-value="5"]');action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
+ const committed=w.location.search;edit();click('#quick-stars [data-value="5"]');action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
  // A pending change from an exact hotel set to the country cannot reuse old counts.
- action('edit-search','#applied-search');action('destination','#search-form');action('destination-all');action('confirm-destination');action('apply-destination');await pause();action('meals','#search-form');assert.equal($('#meal-result-preview').textContent,'Любой выбранный вариант');await close();action('budget','#search-form');assert.match($('#budget-preview').textContent,/после поиска с новыми условиями/);await close();action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
+ edit();action('destination','#search-form');action('destination-all');action('confirm-destination');action('apply-destination');await pause();action('meals','#search-form');assert.equal($('#meal-result-preview').textContent,'Любой выбранный вариант');await close();action('budget','#search-form');assert.match($('#budget-preview').textContent,/после поиска с новыми условиями/);await close();action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
  assert.deepEqual(errors,[],'No errors from actual Site scripts');
  const result={width,checks:'PASS: open price rail, exact saved calendar minimum, independent offers and selected-tour return, drafts/cancellation, 22-date bound, cross-year label, nights, child zero/unset/nested Back, return-age recheck, meals, integer/zero/order budgets, canonical filters, direction replacement, multi-hotel OR, submit and return',local_fetches:reads,provider_requests:0,real_leads:0,browser_layout:false};dom.window.close();return result;
 }

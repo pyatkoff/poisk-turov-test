@@ -50,6 +50,9 @@ async function actualSession(){
   await pause();assert.equal(String(route().flightChoiceId),'0');assert.doesNotMatch(d.querySelector('.flight-summary').textContent,/Рейс уточнит менеджер/);
   click('[data-action="confirm-tour"]');assert.equal(d.querySelector('[name="phone"]').value,'79991234567');assert.equal(d.querySelector('[name="consent"]').checked,false);
   click('[data-action="close-modal"]');await pause();assert.deepEqual(viewportState(),{bounded:false,top:'',height:''});resize(900);
+  click('#compact-search .secondary[data-action="top"]');
+  assert.equal(d.querySelector('#search-form').hidden,false);
+  click('#search-options-toggle');
   const originalMeal=d.querySelector('#quick-meal').textContent,originalBudget=d.querySelector('#quick-budget').textContent;
   click('#quick-meal');const meal=d.querySelector('#meal-query');meal.focus();meal.value='no-such-meal';meal.dispatchEvent(new w.Event('input',{bubbles:true}));resize(420,64);assert.equal(viewportState().bounded,true);assert.equal(meal.value,'no-such-meal');assert.equal(d.activeElement,meal);assert.equal(d.querySelector('#meal-no-match').hidden,false);resize(900);assert.equal(d.activeElement,meal);click('[data-action="close-modal"]');await pause();assert.equal(d.querySelector('#quick-meal').textContent,originalMeal);
   click('#quick-budget');const min=d.querySelector('#budget-min');min.focus();min.value='-1';min.dispatchEvent(new w.Event('input',{bubbles:true}));resize(420);assert.equal(viewportState().bounded,true);assert.equal(min.getAttribute('aria-invalid'),'true');assert.equal(d.querySelector('[data-action="apply-budget"]').disabled,true);resize(900);assert.equal(min.value,'-1');assert.equal(d.activeElement,min);click('[data-action="close-modal"]');await pause();assert.equal(d.querySelector('#quick-budget').textContent,originalBudget);

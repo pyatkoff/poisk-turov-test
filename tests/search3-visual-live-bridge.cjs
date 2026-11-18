@@ -498,6 +498,7 @@ async function pickerRetainedDraftRegressions(){
  q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
  click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
+ click('#search-options-toggle');
  click('#search-form [data-action="meals"]');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
  click('#search-form [data-action="meals"]');assert.deepEqual([...d.querySelectorAll('[data-meal-choice]')].map(x=>x.value),['','Всё включено','Завтраки']);
  click('[data-meal-choice][value=""]');click('[data-action="apply-meals"]');await settle();

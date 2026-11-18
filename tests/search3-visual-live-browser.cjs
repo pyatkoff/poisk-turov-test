@@ -748,7 +748,6 @@ const mobileQuickFieldLayout=async(page,width)=>{
  if(width!==390)return;
  await page.setViewportSize({width:360,height:900});
  try{
-  await openFormOptions(page);
   const boxes=await page.locator('#quick-budget').evaluate(field=>{
    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom};},value=field.querySelector('strong'),label=field.querySelector('span:not(.chevron)'),arrow=field.querySelector('.chevron');
    const range=document.createRange();range.selectNodeContents(value);const textBox=range.getBoundingClientRect();
@@ -2030,8 +2029,16 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
    receipts.push({width,targeted_hotel_picker:true,supplier_requests:0,lead_requests:0});return;
   }
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
-  const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
+  const hydrationControls=page.locator('#search-form .search-primary button:visible,#quick-stars button:visible,#quick-meal:visible,#quick-budget:visible,#search-form .search-submit:visible');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
+  if(width<=760){
+   const toggle=page.locator('#search-options-toggle');
+   await toggle.press('Enter');
+   assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+   assert.equal(await page.locator('#quick-meal').isVisible(),true);
+   assert.equal(await page.locator('#quick-budget').isVisible(),true);
+  }
+  assert(await hydrationControls.count()>0);
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
   assert.equal(await page.locator('#destination-label').textContent(),'Загружаем направления…','initial destination never exposes a missing catalog value');
   assert.doesNotMatch(await page.locator('#country').getAttribute('aria-label'),/undefined|null/i,'initial destination accessible name stays truthful');
@@ -2042,6 +2049,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
+  await openFormOptions(page);
   await mobileQuickFieldLayout(page,width);
   assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
   assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','a locked pre-hydration control cannot replace URL state');
