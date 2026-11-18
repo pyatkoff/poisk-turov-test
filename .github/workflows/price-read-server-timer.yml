@@ -77,8 +77,17 @@ jobs:
           r=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'native-receipt.json').read_text())
           print('SERVER_TIMER_STATUS', json.dumps(r,ensure_ascii=False))
           assert r.get('registered') is True
+          collection = r.get('last-collection')
+          bounds = [0, 0] if collection is None else [
+              int(datetime.datetime.fromisoformat(collection[key]).timestamp())
+              for key in ('started_at', 'finished_at')
+          ]
+          assert 0 <= bounds[0] <= bounds[1]
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'collection-window').write_text(f'{bounds[0]} {bounds[1]}\n')
           PY
-          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
+          read -r cycle_from cycle_to < "$RUNNER_TEMP/collection-window"
+          [[ "$cycle_from" =~ ^[0-9]+$ && "$cycle_to" =~ ^[0-9]+$ ]]
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0 -- $cycle_from $cycle_to" <<'PHP'
           <?php
           declare(strict_types=1);
           try {
@@ -100,7 +109,28 @@ jobs:
               $attempts = $pdo->query("SELECT a.id,a.target_key,a.status,a.search_id,UNIX_TIMESTAMP(a.started_at) AS started_epoch,UNIX_TIMESTAMP(a.finished_at) AS finished_epoch,a.error_text FROM tour_matrix_collection_attempts a JOIN (SELECT target_key,MAX(id) AS id FROM tour_matrix_collection_attempts WHERE target_key LIKE 'monthly:%' AND started_at>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY target_key) last_attempt ON a.id=last_attempt.id")->fetchAll();
               $recent = $pdo->query("SELECT hotel_ids_json FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND departure_id=1 AND date_to>CURDATE() AND nights_from=5 AND nights_to=14 AND status IN ('success','empty') AND finished_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND finished_at<=NOW() AND search_id>0")->fetchAll(PDO::FETCH_COLUMN);
               $activity = $pdo->query("SELECT UNIX_TIMESTAMP(MAX(started_at)) AS last_start, UNIX_TIMESTAMP(MAX(finished_at)) AS last_finish, IS_USED_LOCK('anytour_top500_monthly_v1') IS NOT NULL AS lock_busy FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND started_at >= DATE_SUB(NOW(),INTERVAL 6 HOUR)")->fetch();
+              $incomplete = $pdo->prepare("SELECT country_id,date_from,date_to,status,search_id,rows_received,observations_written,error_text,UNIX_TIMESTAMP(finished_at) AS finished_epoch FROM tour_matrix_collection_attempts WHERE (target_key LIKE 'monthly:%' OR target_key LIKE 'page_gap:%') AND status IN ('failure','timeout') AND finished_at BETWEEN FROM_UNIXTIME(?) AND FROM_UNIXTIME(?) ORDER BY id");
+              $incomplete->execute([(int)$argv[1],(int)$argv[2]]);
+              $incompleteRows = $incomplete->fetchAll(PDO::FETCH_ASSOC);
               $pdo->exec('ROLLBACK');
+              $diagnoses = [];
+              foreach ($incompleteRows as $row) {
+                  $error = (string)$row['error_text'];
+                  $kind = 'other';
+                  if (preg_match('/^Tourvisor HTTP ([0-9]{3}) after [0-9]+ attempt\\(s\\)$/D',$error,$matched)) $kind = 'http_'.$matched[1];
+                  elseif (str_starts_with($error,'Tourvisor connection error')) $kind = 'connection';
+                  elseif ($error === 'partial results saved; resume existing search') $kind = 'partial_saved';
+                  elseif ($error === 'no searchId') $kind = 'no_search_id';
+                  elseif ($error === 'Invalid Tourvisor JSON response') $kind = 'invalid_json';
+                  elseif ($error === 'unrecognized Tourvisor result shape; not an empty search') $kind = 'unrecognized_shape';
+                  $diagnoses[] = [
+                      'country_id'=>(int)$row['country_id'], 'date_from'=>$row['date_from'], 'date_to'=>$row['date_to'],
+                      'status'=>$row['status'], 'cause'=>$kind, 'has_saved_search_id'=>(int)$row['search_id']>0,
+                      'rows_received'=>(int)$row['rows_received'], 'attempt_observations_written'=>(int)$row['observations_written'],
+                      'finished_at'=>gmdate('c',(int)$row['finished_epoch']),
+                  ];
+              }
+              echo 'CYCLE_INCOMPLETE_ATTEMPTS ',json_encode(['from_epoch'=>(int)$argv[1],'to_epoch'=>(int)$argv[2],'logical_attempts'=>$diagnoses],JSON_THROW_ON_ERROR),PHP_EOL;
               echo 'COLLECTOR_ACTIVITY ', json_encode([
                   'checked_at' => gmdate('c',(int)$clock['epoch']),
                   'last_start' => $activity['last_start'] === null ? null : gmdate('c',(int)$activity['last_start']),
