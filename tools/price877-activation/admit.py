@@ -9,7 +9,7 @@ def need(v,why):
 def api(repo,path):return json.loads(subprocess.check_output(['gh','api','--method','GET','repos/pyatkoff/'+repo+'/'+path],timeout=40))
 def main():
  c=json.loads((BASE/'config.json').read_text());e=json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text());need(c.get('enabled') is True and isinstance(c.get('claim_id'),int) and c['claim_id']>0,'new_claim_not_enabled')
- need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']=='791dd2a91dcea6c659e865bd2a36072a57e95a75','original_event_required')
+ need(os.environ['GITHUB_REPOSITORY']=='pyatkoff/poisk-turov-test' and os.environ['GITHUB_ACTOR']=='pyatkoff' and os.environ['GITHUB_RUN_ATTEMPT']=='1' and os.environ['GITHUB_EVENT_NAME']=='push' and e['before']=='86151564b0cc211680dd25d9b7d5554c8eecc236','original_event_required')
  need(api('poisk-turov-test','git/ref/heads/'+BRANCH)['object']['sha']==os.environ['GITHUB_SHA'],'carrier_moved')
  need(api('poisk-turov-test','git/ref/heads/main')['object']['sha']==MAIN,'consumer_main_moved')
  need(api('max-search-bot','git/ref/heads/main')['object']['sha']==APP,'runtime_main_moved')
@@ -20,6 +20,7 @@ def main():
  permit=api('max-search-bot','issues/comments/6957283506');p=json.loads(permit['body']);need(permit['user']['id']==226193297 and p['decision']=='NONE' and p['state']=='COMPLETED_VERIFIED' and p['execution_run_id']==44224540179 and p['verified_pairs']==877 and p['remaining_hotels']==0 and p['previous_native_receipt_sha256']=='78318d0d578714b6073e31eb3eed9999d1d0c7f20ef83dc1f7c1906a5f4ce632','feed_permit_not_closed')
  for rid in [44187866614,44190041893,44190041835,44190042006]:
   r=api('max-search-bot','actions/runs/'+str(rid));need(r['head_sha']==APP and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','runtime_not_accepted')
+ r=api('poisk-turov-test','actions/runs/44229038736');need(r['head_sha']==MAIN and r['status']=='completed' and r['conclusion']=='success' and r['run_attempt']==1,'bootstrap_not_accepted')
  for rid in c['accepted_ci_runs']:
   r=api('poisk-turov-test','actions/runs/'+str(rid));need(r['head_sha']==c['accepted_ci_head'] and r['status']=='completed' and r['conclusion']=='success','source_ci_not_accepted')
  r=api('poisk-turov-test','actions/runs/44217252234');need(r['head_sha']=='7361540b2839029cda2b4f4e2a01fadbdba35bd5' and r['run_attempt']==1 and r['status']=='completed' and r['conclusion']=='success','previous_continuation_not_success')

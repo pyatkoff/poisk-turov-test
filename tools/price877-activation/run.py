@@ -81,11 +81,11 @@ def main():
  install=parse(installraw);installed=parse(newraw)
  for label,value in [('paired-install',install),('paired-inspect-new',installed)]:
   need(json.loads((out/(label+'.status.json')).read_text())['returncode']==0 and value.get('ok') is True,'installation_not_verified_no_pass')
- need(install.get('code_replacements')==3 and install.get('journal_unchanged') is True,'installation_incomplete')
+ need(install.get('code_replacements')==1 and install.get('consumer_code_writes')==0 and install.get('journal_unchanged') is True,'installation_incomplete')
  postinstallfeeds=parse(ssh('php '+scratch+'/feeds.php','feeds-after-install'))
  need(postinstallfeeds==feeds,'installation_changed_feeds')
  admit.main()
- op='/var/www/anytoour/data/channel-post-operations/price877-code-only-20261118-1'
+ op='/var/www/anytoour/data/channel-post-operations/price877-hook-only-20261118-1'
  command=price_command(op,os.environ['GITHUB_RUN_ID'])
  passraw=ssh(command,'price-pass',False)
  # Unconditional readbacks, including after nonzero/SSH UNKNOWN. No writer repeat.

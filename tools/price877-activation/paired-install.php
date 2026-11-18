@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Reviewed code-only installation. Never invokes the installed hook.
-const OPERATION='price877-code-only-20261118-1';
+const OPERATION='price877-hook-only-20261118-1';
 const ACTIVATION_ENABLED=false;
 const EXPECTED_JOURNAL_PIN=['sha256'=>'bf5fe94d5918ef120ce42cd744681a7937f37cb38049290b59e95230128ed9bb','bytes'=>555175465,'lines'=>5094];
 const EXPECTED_FEED_SHAS=['hotel-posts-telegram.xml'=>'fb538d1089af33dae4c4426fdc036dbf9baad64f85ec5b34bbbc396df9babdf7','hotel-posts-max.xml'=>'2045ec2426687eb4cd5a6cfe7cb8359cc31d32400da362aef63851a89eaa3dc1','hotel-posts-all.xml'=>'e839a591b19600330d36ce7c17f4a38e6e1114520cc4f905398df0dbb05b81bc'];
@@ -136,13 +136,17 @@ function paired_readiness(array $admission,array $ids,array $pin,int $now):void 
 
 }
 function paired_phase(array $hashes,array $spec,int $done):bool {
- if($done<0||$done>count($spec))return false;$i=0;
- foreach($spec as $name=>$s){if(($hashes[$name]??null)!==$s[$i++<$done?'new':'old'])return false;}return count($hashes)===count($spec);
+ if(!in_array($done,[0,1],true)||count($hashes)!==3||count($spec)!==3)return false;
+ foreach($spec as $name=>$p){
+  $key=$name==='monitor-price-hook.php'&&$done===0?'old':'new';
+  if(($hashes[$name]??null)!==$p[$key])return false;
+ }
+ return true;
 }
 function paired_deadline(int $nativeAt,int $baselineAt,int $now):void {must($nativeAt<=$now&&$baselineAt<=$now&&$now<=min($nativeAt,$baselineAt)+300,'phase_readiness_expired');}
 // PAIRED_MAIN
 ini_set('display_errors','0');umask(0077);$lock=null;$done=0;
-$out=['ok'=>false,'operation'=>OPERATION,'code_replacements'=>0,'post_writes'=>0,'feed_writes'=>0,'global_journal_writes'=>0,'collector_runs'=>0,'module_executions'=>0];
+$out=['ok'=>false,'operation'=>OPERATION,'code_replacements'=>0,'post_writes'=>0,'feed_writes'=>0,'global_journal_writes'=>0,'collector_runs'=>0,'module_executions'=>0,'consumer_code_writes'=>0];
 try{
  must(ACTIVATION_ENABLED,'activation_not_enabled');
  must(preg_match('/\A[a-f0-9]{64}\z/D',EXPECTED_NATIVE_RECEIPT_SHA)===1&&preg_match('/\A[a-f0-9]{64}\z/D',EXPECTED_NATIVE_RESULT_SHA)===1,'native_receipt_pins_missing');
@@ -151,7 +155,7 @@ try{
  $out['mode']=$mode;$app='/var/www/anytoour/data/www/app.anytoour.ru';$dir='/var/www/anytoour/data/www/anytoour.ru/data';$root='/var/www/anytoour/data/channel-post-operations';$op=$root.'/'.OPERATION;
  foreach([$app,$dir,$root] as $d)must(!is_link($d)&&realpath($d)===$d,'root_changed');
  $inputs=['monitor-price-hook.php'=>$argv[2],'published-hotels-monitor-v1.php'=>$argv[3],'top500-daily-collector-v1.php'=>$argv[4]];
- $spec=PAIRED_FILES;$staged=[];$original=[];$stats=[];
+ $spec=PAIRED_FILES;$writeSpec=['monitor-price-hook.php'=>$spec['monitor-price-hook.php']];$staged=[];$original=[];$stats=[];
  foreach($spec as $name=>$p){[$raw]=readfile_exact($inputs[$name],2000000);must(hash('sha256',$raw)===$p['new']&&strlen($raw)===$p['bytes'],'candidate_changed');$staged[$name]=$raw;}
  [$receipt]=readfile_exact($argv[5],2000000);must(hash('sha256',$receipt)===EXPECTED_NATIVE_RECEIPT_SHA,'native_receipt_changed');$r=json_decode($receipt,true,64,JSON_THROW_ON_ERROR);
  $bundle=$staged['monitor-price-hook.php'];preg_match('/const HOOK_ROSTER_GZIP_B64="([A-Za-z0-9+\/=]+)";/',$bundle,$m);$rows=json_decode(gzdecode(base64_decode($m[1],true)),true,64,JSON_THROW_ON_ERROR)['rows'];
@@ -163,21 +167,21 @@ try{
  must(preg_match('/const HOOK_RUNTIME_PINS_B64="([A-Za-z0-9+\/=]+)";/',$bundle,$m)===1,'runtime_pins_missing');$pins=json_decode(base64_decode($m[1],true),true,32,JSON_THROW_ON_ERROR);must(count($pins)===23,'runtime_pins_changed');
  foreach($pins as $path=>$sha){must(preg_match('~\A(?:services|integrations|migrations)/[A-Za-z0-9_-]+\.(?:php|sql)\z~D',$path)===1,'runtime_path_invalid');[$raw]=readfile_exact($app.'/'.$path,2000000);must(hash('sha1','blob '.strlen($raw)."\0".$raw)===$sha,'runtime_pin_changed');}
  $hashes=[];foreach($spec as $name=>$p){[$raw,$stat]=readfile_exact($dir.'/'.$name,2000000);$hashes[$name]=hash('sha256',$raw);$original[$name]=$raw;$stats[$name]=$stat;}
- must(paired_phase($hashes,$spec,$new?3:0),'mixed_or_changed_code_stop');
+ must(paired_phase($hashes,$spec,$new?1:0),'mixed_or_changed_code_stop');
  if(!$new)validate_append_roster($original['monitor-price-hook.php'],$bundle);
  activation_feeds($app);must(active_collectors()===0,'active_collectors_stop');
  $out+=['journal'=>$journal,'code_hashes'=>$hashes,'observed_at_epoch'=>time(),'native_receipt_sha'=>EXPECTED_NATIVE_RECEIPT_SHA,'app_head'=>APP_SHA];
- if($new){[$prior]=readfile_exact($op.'/result.json',2000000);$prior=json_decode($prior,true,64,JSON_THROW_ON_ERROR);must(($prior['ok']??null)===true&&($prior['operation']??null)===OPERATION&&($prior['code_replacements']??null)===3&&($prior['code_hashes']??null)===$hashes&&($prior['journal']??null)===$journal,'installation_receipt_invalid');}
+ if($new){[$prior]=readfile_exact($op.'/result.json',2000000);$prior=json_decode($prior,true,64,JSON_THROW_ON_ERROR);must(($prior['ok']??null)===true&&($prior['operation']??null)===OPERATION&&($prior['code_replacements']??null)===1&&($prior['code_hashes']??null)===$hashes&&($prior['journal']??null)===$journal,'installation_receipt_invalid');}
  else must(!file_exists($op)&&!is_link($op),'operation_exists_no_replay');
  if($install){
   [$rr]=readfile_exact($argv[6],2000000);$pre=json_decode($rr,true,64,JSON_THROW_ON_ERROR);
   must(($pre['ok']??null)===true&&($pre['mode']??null)==='inspect-old'&&($pre['operation']??null)===OPERATION&&($pre['journal']??null)===$journal&&($pre['code_hashes']??null)===$hashes&&($pre['native_receipt_sha']??null)===EXPECTED_NATIVE_RECEIPT_SHA&&is_int($pre['observed_at_epoch']??null)&&$pre['observed_at_epoch']<=time()&&time()-$pre['observed_at_epoch']<=300,'baseline_readiness_changed');
   must(mkdir($op,0700),'operation_create_failed');
-  foreach($spec as $name=>$p){write_new($op.'/original-'.$name,$original[$name]);$tmp=$dir.'/.'.OPERATION.'.'.$name.'.tmp';write_new($tmp,$staged[$name]);$st=lstat($tmp);if($st['uid']!==$stats[$name]['uid'])must(chown($tmp,$stats[$name]['uid']),'owner_failed');if($st['gid']!==$stats[$name]['gid'])must(chgrp($tmp,$stats[$name]['gid']),'group_failed');must(chmod($tmp,$stats[$name]['mode']&0777),'mode_failed');}
-  foreach($spec as $name=>$p){
+  foreach($writeSpec as $name=>$p){write_new($op.'/original-'.$name,$original[$name]);$tmp=$dir.'/.'.OPERATION.'.'.$name.'.tmp';write_new($tmp,$staged[$name]);$st=lstat($tmp);if($st['uid']!==$stats[$name]['uid'])must(chown($tmp,$stats[$name]['uid']),'owner_failed');if($st['gid']!==$stats[$name]['gid'])must(chgrp($tmp,$stats[$name]['gid']),'group_failed');must(chmod($tmp,$stats[$name]['mode']&0777),'mode_failed');}
+  foreach($writeSpec as $name=>$p){
    must(active_collectors()===0,'collector_started_stop');must(journal_line($lock,$j)===$journal,'journal_changed_stop');activation_feeds($app);
    must(gitread($app,['rev-parse','HEAD'])===APP_SHA&&gitread($app,['status','--porcelain','--untracked-files=no'])==='','runtime_changed');
-   $actual=[];foreach($spec as $n=>$q){[$v,$st]=readfile_exact($dir.'/'.$n,2000000);$actual[$n]=hash('sha256',$v);must($st['uid']===$stats[$n]['uid']&&$st['gid']===$stats[$n]['gid']&&($st['mode']&0777)===($stats[$n]['mode']&0777),'permissions_changed');if($actual[$n]===$q['old'])must($st['ino']===$stats[$n]['ino'],'target_inode_changed');}must(paired_phase($actual,$spec,$done),'phase_state_changed');
+   $actual=[];foreach($spec as $n=>$q){[$v,$st]=readfile_exact($dir.'/'.$n,2000000);$actual[$n]=hash('sha256',$v);must($st['uid']===$stats[$n]['uid']&&$st['gid']===$stats[$n]['gid']&&($st['mode']&0777)===($stats[$n]['mode']&0777),'permissions_changed');if($n!=='monitor-price-hook.php'||$actual[$n]===$q['old'])must($st['ino']===$stats[$n]['ino'],'target_inode_changed');}must(paired_phase($actual,$spec,$done),'phase_state_changed');
    paired_deadline($r['observed_at_epoch'],$pre['observed_at_epoch'],time());
    $phase=['index'=>$done+1,'file'=>$name,'before'=>$p['old'],'after'=>$p['new'],'journal'=>$journal];write_new($op.'/phase-'.($done+1).'-intent.json',json_encode($phase,JSON_THROW_ON_ERROR)."\n");
    $tmp=$dir.'/.'.OPERATION.'.'.$name.'.tmp';[$v,$st]=readfile_exact($tmp,2000000);must(hash('sha256',$v)===$p['new']&&$st['uid']===$stats[$name]['uid']&&$st['gid']===$stats[$name]['gid']&&($st['mode']&0777)===($stats[$name]['mode']&0777),'staged_file_changed');
@@ -186,11 +190,11 @@ try{
    [$v,$st]=readfile_exact($dir.'/'.$name,2000000);must(hash('sha256',$v)===$p['new']&&$st['uid']===$stats[$name]['uid']&&$st['gid']===$stats[$name]['gid']&&($st['mode']&0777)===($stats[$name]['mode']&0777),'installed_readback_failed');
    write_new($op.'/phase-'.$done.'-result.json',json_encode($phase+['verified'=>true],JSON_THROW_ON_ERROR)."\n");$hashes[$name]=$p['new'];
   }
-  $hashes=[];foreach($spec as $name=>$p){[$v,$st]=readfile_exact($dir.'/'.$name,2000000);$hashes[$name]=hash('sha256',$v);must($st['uid']===$stats[$name]['uid']&&$st['gid']===$stats[$name]['gid']&&($st['mode']&0777)===($stats[$name]['mode']&0777),'final_permissions_changed');}must(paired_phase($hashes,$spec,3),'final_code_readback_failed');
+  $hashes=[];foreach($spec as $name=>$p){[$v,$st]=readfile_exact($dir.'/'.$name,2000000);$hashes[$name]=hash('sha256',$v);must($st['uid']===$stats[$name]['uid']&&$st['gid']===$stats[$name]['gid']&&($st['mode']&0777)===($stats[$name]['mode']&0777),'final_permissions_changed');if($name!=='monitor-price-hook.php')must($st['ino']===$stats[$name]['ino']&&$st['dev']===$stats[$name]['dev']&&$st['mtime']===$stats[$name]['mtime']&&$st['ctime']===$stats[$name]['ctime'],'preserved_consumer_identity_changed');}must(paired_phase($hashes,$spec,1),'final_code_readback_failed');
   must(active_collectors()===0,'collector_started_after_commit');must(gitread($app,['rev-parse','HEAD'])===APP_SHA&&gitread($app,['status','--porcelain','--untracked-files=no'])==='','runtime_changed_after_commit');
-  must(journal_line($lock,$j)===$journal,'journal_changed_after_commit');activation_feeds($app);$out['code_hashes']=$hashes;$out['journal_unchanged']=true;$out['backup_retained']=true;
+  must(journal_line($lock,$j)===$journal,'journal_changed_after_commit');activation_feeds($app);$out['code_hashes']=$hashes;$out['journal_unchanged']=true;$out['backup_retained']=true;$out['preserved_consumer_files']=['published-hotels-monitor-v1.php','top500-daily-collector-v1.php'];
   $out['ok']=true;write_new($op.'/result.json',json_encode($out,JSON_THROW_ON_ERROR)."\n");
  }else $out['ok']=true;
-}catch(Throwable $e){$out['ok']=false;$out['error']=preg_match('/\A[a-z0-9_]+\z/D',$e->getMessage())?$e->getMessage():'paired_installation_failed';$out['mutation_outcome']=$done>0?'PARTIAL_OR_COMPLETE_REPLACEMENT_UNKNOWN_REVIEW_REQUIRED':'no_target_replacement';}
+}catch(Throwable $e){$out['ok']=false;$out['error']=preg_match('/\A[a-z0-9_]+\z/D',$e->getMessage())?$e->getMessage():'hook_only_installation_failed';$out['mutation_outcome']=$done>0?'PARTIAL_OR_COMPLETE_REPLACEMENT_UNKNOWN_REVIEW_REQUIRED':'no_target_replacement';}
 finally{if(is_resource($lock)){flock($lock,LOCK_UN);fclose($lock);}}
 echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";exit($out['ok']?0:2);

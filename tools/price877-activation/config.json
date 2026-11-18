@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "claim_id": 6967941581,
-  "claim_sha256": "83c9aa50a2b62e91ab46f1d1d763f23537a6e2399263a127933248b589e69895",
+  "claim_id": 6968048006,
+  "claim_sha256": "0f8c8f60d52d7c033a2d2e0bd47b0ffd4dea9567590ba631415a9846decc9e9c",
   "accepted_ci_runs": [
     44227807355,
     44227807322,
@@ -10,8 +10,8 @@
   "accepted_ci_head": "f0dddbdb8c8a4f8f8f12aaaad6df12f6d713dc04",
   "native_before_shas": {
     "hook": "1ad41a8a3a8d10632e0e6127289481675f655c7f7f9a5bbe39b698c03e73e592",
-    "cohort": "cf33320708bdc911e944a560324566c562f4fefb97f3a601497f8ca0a86c8ae8",
-    "collector": "dfe1e1bee0485aee375807ccfcd6f4b3a81090798dd5bc2a6073c672f52226b1",
+    "cohort": "e90579f6e12470c6b1ae415f4f888b78ad990125eeb0f59be845ce84ffe3d9df",
+    "collector": "c7ec457c2ff11b7824d481813c5d8d6a62fc22f46d49e6a5addaae91011dddae",
     "journal": "bf5fe94d5918ef120ce42cd744681a7937f37cb38049290b59e95230128ed9bb"
   },
   "journal_pin": {
@@ -906,7 +906,7 @@
   },
   "route_attestation": {
     "repo": "pyatkoff/tour-max",
-    "at": "2026-11-18T03:16:34.145900Z",
+    "at": "2026-11-18T03:23:34.254260Z",
     "counts": {
       "in_progress": 0,
       "queued": 0,
@@ -917,16 +917,16 @@
     "head": "bbef3101f8c8f6eae15355c0d6fa4b8c1848dfa2"
   },
   "files": {
-    "run.py": "328963b790a04bb7936b770e5a595ab0f7dd13dee78de10ad98a6852e18d7440",
-    "admit.py": "a79c46ad921b43aeb2b5be3c675f5fbfff3f0a2d7a8c43faf313cc3ad4466ab2",
+    "run.py": "b6f33def0c18c5782e9c5d0810b1dc24348835eb7f50f660e034ead82d59b48c",
+    "admit.py": "4d49c4a70807c4bf16c27b1087aee2bf56d918dd3637d2868aa2280e3da72999",
     "feeds.php": "35b282644662d26c9886c14b3ca1bdd2327d548728fd70fad1cd462125b7b63d",
     "read-journal.php": "3f10bf4c79173d6dd5e9cabf0d16b30b6cd1caa531a8bf08b32678603f4975bc",
-    "paired-install.php": "cbc8afc9580a52c4aa50d8968774e438a9f301ed013a589242275e98fed93ce2",
+    "paired-install.php": "57e35a14e56c60cd7eb8e441d8dfe54c55ec475b64badc98e64d7ec67c478157",
     "test_runner.py": "0865fc88232eb203ef2896a8a49c66d2b243ccfe09b0ffaf3d246e6321e1d04a",
     "postpass_verify.py": "f13e8a9b61a99c75eb9baf1c00f3745eee883a0c76985c07d4bcac6a342df300",
     "test_postpass_verify.py": "f3519f1feead6300f36621af236200447727858cdc964c21b26f7c1737cef2a1"
   },
-  "installer_template_sha256": "cbc8afc9580a52c4aa50d8968774e438a9f301ed013a589242275e98fed93ce2",
+  "installer_template_sha256": "57e35a14e56c60cd7eb8e441d8dfe54c55ec475b64badc98e64d7ec67c478157",
   "native_after_shas": {
     "hook": "483f9f1cd853fdf1808523e72d466e2acd0866ec6ae35de049ada38b5cc128f9",
     "cohort": "e90579f6e12470c6b1ae415f4f888b78ad990125eeb0f59be845ce84ffe3d9df",
