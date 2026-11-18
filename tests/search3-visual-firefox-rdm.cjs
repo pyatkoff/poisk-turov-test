@@ -11,6 +11,7 @@ const journey = require('./search3-firefox-journey.cjs');
 
 const base = '/_preview/search3-next-candidate/';
 const entry = base + 'visual-search/';
+const snapshot = entry + 'fixtures/live-search-2026-09-23.json';
 const mime = {
   '.css': 'text/css', '.js': 'text/javascript', '.woff2': 'font/woff2',
   '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png',
@@ -36,13 +37,14 @@ async function run() {
     };
     if (req.method !== 'GET') return reject();
     if (url.pathname === entry && url.searchParams.get('scenario') === 'journey') {
-      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; report-uri /blocked-request");
+      const allowedSnapshot = 'http://127.0.0.1:' + server.address().port + snapshot;
+      res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ${allowedSnapshot}; form-action 'none'; base-uri 'none'; report-uri /blocked-request`);
       res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'}).end(html);
       return;
     }
     if (url.pathname === '/favicon.ico') { res.writeHead(204).end(); return; }
     const file = path.resolve(root, '.' + url.pathname.slice(base.length - 1));
-    const type = mime[path.extname(file)];
+    const type = url.pathname === snapshot ? 'application/json' : mime[path.extname(file)];
     if (!url.pathname.startsWith(base) || !file.startsWith(root + path.sep) ||
         !type || !fs.existsSync(file) || !fs.statSync(file).isFile()) return reject();
     const bytes = fs.readFileSync(file);
