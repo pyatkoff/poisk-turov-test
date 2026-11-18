@@ -1,0 +1,129 @@
+name: Read original receipts after the third PRICE pass
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-window-receipt-states-20261118.yml']
+permissions:
+  contents: read
+  issues: read
+  actions: read
+jobs:
+  apply:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '926212f982e9642468dc71473508ee7311843594'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    steps:
+      - name: Check current PRICE admission and original carrier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/6977782579 --jq .body | grep -F 'PRICE принимает конечное окно'
+      - name: Prepare unchanged server connection and host pin
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'):continue
+            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception:continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Inspect live roster then publish saved minima until a full scan or window end
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
+          import base64, datetime, gzip, hashlib, json, os, pathlib, re, subprocess, sys, time
+          import xml.etree.ElementTree as ET
+          os.umask(0o077)
+          root=pathlib.Path('/var/www/anytoour/data')
+          app=root/'www/app.anytoour.ru'
+          native=root/'www/anytoour.ru/data'
+          hook=native/'monitor-price-hook.php'
+          journal=root/'channel-post-operations/monitor-price-after-collection-v1.jsonl'
+          art=root/'channel-post-operations'/('priority1000-'+sys.argv[1])
+          
+          def digest(p):
+              with p.open('rb') as f:
+                  h=hashlib.sha256()
+                  for block in iter(lambda:f.read(1048576),b''): h.update(block)
+              return h.hexdigest()
+          def check(condition, message):
+              if not condition: raise RuntimeError(message)
+          def pins():
+              for name,sha in [('monitor-price-hook.php','d605b8292a8d380d328d585f90d388a254d1dc780188e4b0edbfc92b6c407c30'),('published-hotels-monitor-v1.php','3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c'),('top500-daily-collector-v1.php','940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816')]:
+                  p=native/name
+                  check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='67aa3aef0debacfea01e845029b38a0db2f20b0d','runtime_changed')
+          def feeds():
+              info={}
+              for key,size in [('telegram',1000),('max',1000),('all',2000)]:
+                  name='hotel-posts-'+key+'.xml'
+                  p=app/'feed'/name
+                  data=p.read_bytes()
+                  public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name])
+                  check(public==data,'public_price_feed_mismatch_'+key)
+                  rows=ET.fromstring(data).findall('.//offer')
+                  check(len(rows)==len({o.get('id') for o in rows})==size,'feed_size_or_duplicate')
+                  info[key]=hashlib.sha256(data).hexdigest()
+              return info
+          def native_run(stage, inspect=False):
+              with (art/(stage+'.raw')).open('xb') as f:
+                  proc=subprocess.run(['php',str(hook)]+(['--inspect'] if inspect else []),stdout=f)
+              rows=[x.split('=',1)[1] for x in (art/(stage+'.raw')).read_text().splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')]
+              check(len(rows)==1,'native_receipt_missing')
+              v=json.loads(rows[0])
+              print('NATIVE',stage,json.dumps({k:v.get(k) for k in ('ok','error','roster_pairs','updated_pairs','eligible_pairs','held_pairs','scanned_pairs','remaining_unscanned_pairs','deferred_counts')}),flush=True)
+              return proc.returncode,v
+          def report():
+              print('HANDOFF',json.dumps({'journal':digest(journal),'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds()}),flush=True)
+          pins()
+          report()
+          print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip())
+          with journal.open('rb') as j:
+              for line in j:
+                  if line.strip(): last=line
+          state=json.loads(last)
+          p=state.get('pending') or {}
+          print('PENDING',json.dumps({k:p.get(k) for k in ('phase','operation','tourvisor_hotel_id','child_failure')}))
+          if p:
+              op=p['operation']
+              check(re.fullmatch(r'commercial-monitor-price-h[0-9]+-[0-9a-f]{64}',op),'unexpected_operation')
+              child=journal.parent/op/'receipt.jsonl'
+              print('CHILD_EXISTS',child.is_file())
+              if child.is_file():
+                  check(child.resolve()==child,'child_path')
+                  for line in child.open():
+                      j=json.loads(line)
+                      print('CHILD',json.dumps({'posts':[[x.get('state'),x.get('publication_id'),x.get('version_id'),{k:v for k,v in (x.get('button_result') or {}).items() if k in ('state','reason','error_code','outcome','http_status')},sorted(x.keys())] for x in (j['posts'].values() if isinstance(j['posts'],dict) else j['posts'])],'configs':len(j.get('configs',[])),'complete':j.get('complete'),'terminal':j.get('terminal',{}).get('state')}))
+              print('CHILD_PIN',digest(child) if child.is_file() else None)
+              source=hook.read_text()
+              roster=json.loads(gzip.decompress(base64.b64decode(re.search(r'const HOOK_ROSTER_GZIP_B64="([^"]+)"',source)[1])))['rows']
+              row=next(x for x in roster if x['tourvisor_hotel_id']==p['tourvisor_hotel_id'])
+              print('POST_LINKS',json.dumps(row['posts']))
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
