@@ -3,9 +3,9 @@ import hashlib,json,os,re,shlex,subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 BRANCH='audit/price4294-producer-read-20261118'
-BEFORE='12a81d714e63ce41c8ef00e0470347f68a0a328b'
-ALLOWED_ERRORS={'producer_failed_closed','git_read_failed','producer_runtime_warning','producer_args','producer_identity','producer_config_hash','producer_closed','runtime_dirty','runtime_changed','path_changed','busy','file_replaced','incomplete','file_changed','preimage_changed','pending_changed','missing','native_evidence_changed','process_read_failed','process_read_incomplete','process_line_unknown','native_collector_busy','consumer_db_source_changed','consumer_db_function_missing','consumer_db_unavailable','consumer_config_missing','canonical_collector_sql_lock_busy','consumer_path_changed','consumer_changed','staged_bundle_changed','journal_identity_changed'}
-EXPECTED={'producer.php':'920ad9ab773dfc43a89b0cdb4d5379ea91c0c5a98a24b8b7d788f749a0f82270','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
+BEFORE='cf51437cd2d823dc1fb65937c57668b3d6b492e3'
+ALLOWED_ERRORS={'isolated_sql_unbound','isolated_sql_not_proven_idle','isolated_sql_snapshot_too_late','isolated_sql_env_shape','isolated_sql_unavailable','producer_failed_closed','git_read_failed','producer_runtime_warning','producer_args','producer_identity','producer_config_hash','producer_closed','runtime_dirty','runtime_changed','path_changed','busy','file_replaced','incomplete','file_changed','preimage_changed','pending_changed','missing','native_evidence_changed','process_read_failed','process_read_incomplete','process_line_unknown','native_collector_busy','consumer_db_source_changed','consumer_db_function_missing','consumer_db_unavailable','consumer_config_missing','canonical_collector_sql_lock_busy','consumer_path_changed','consumer_changed','staged_bundle_changed','journal_identity_changed'}
+EXPECTED={'producer.php':'c9b1c556fb79e2385d0d73b404fc3c62e27b9041576686a4ec454916308b9690','staged-bundle.php':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'}
 def need(v,m):
  if not v:raise RuntimeError(m)
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -24,6 +24,15 @@ def sanitized(raw,stderr,rc,run,head):
    if v.get('warning_file') in {'producer.php','config.php','db-v1.php','ChannelPostRuntime.php','ChannelPostRegistryService.php','ConversationDb.php','other'}:out['warning_file']=v['warning_file']
    for k in ('warning_severity','warning_line'):
     if type(v.get(k)) is int and v[k]>=0:out[k]=v[k]
+  enums={'child_warning_kind':{'constant_already_defined','undefined_array_key','deprecated','other'},'child_warning_file':{'config.php','db-v1.php','other'},'pdo_state_class':{'08','28','42','HY','IM','other'},'identity_target':{'db','config'},'producer_phase':{'bootstrap','runtime','app_config','global_read','child_read','registry','local_feeds','evidence','processes','consumer_db','consumer_config','consumer_sql','consumer_code','bundle','final_identity','output','unknown'},'throwable_kind':{'pdo','error','exception','other'},'sql_transport':{'env','spawn','capture','timeout_or_bound','stderr','child_exit','parse'},'sql_phase':{'path','identity','db_pin','include_db','connect_config','query','owner','config_included','identity_after','output','worker_guard'},'sql_kind':{'guard','config_warning','pdo','error','loader','missing_driver','lock_busy','shape'}}
+  for k,allowed in enums.items():
+   if isinstance(v.get(k),str) and v[k] in allowed:out[k]=v[k]
+  for k in ('identity_exists','identity_is_link','identity_realpath_equal','parent_mysql_available','child_mysql_available','transport_timeout','transport_output_bounds','transport_stderr_nonempty'):
+   if type(v.get(k)) is bool:out[k]=v[k]
+  for k in ('child_warning_line','child_warning_severity','parent_php_version_id','child_php_version_id','transport_exitcode'):
+   if type(v.get(k)) is int and -1<=v[k]<=1000000:out[k]=v[k]
+  if type(v.get('pdo_driver_code')) is int and v['pdo_driver_code'] in {1045,1049,2002,2006,2013}:out['pdo_driver_code']=v['pdo_driver_code']
+  if isinstance(v.get('transport_stderr_sha256'),str) and re.fullmatch('[a-f0-9]{64}',v['transport_stderr_sha256']):out['transport_stderr_sha256']=v['transport_stderr_sha256']
   return out
  p=v.get('producer');need(isinstance(p,dict),'producer_shape_invalid')
  for key in ('runtime_sha','head_sha'):
@@ -47,7 +56,7 @@ def main():
  run=e['GITHUB_RUN_ID'];head=e['GITHUB_SHA'];need(re.fullmatch('[1-9][0-9]*',run) and re.fullmatch('[a-f0-9]{40}',head),'original_identity_invalid')
  current=json.loads(checked(['gh','api','--method','GET','repos/pyatkoff/poisk-turov-test/git/ref/heads/'+BRANCH],timeout=40));need(current['object']['sha']==head,'carrier_moved')
  base=Path(e['RUNNER_TEMP'])/'producer-read-private';base.mkdir(mode=0o700)
- need({x['name'] for x in plan['sources']}=={'producer.php','staged-bundle.php','producer-config.json'} and len(plan['sources'])==3,'exact_three_sources_required')
+ need({x['name'] for x in plan['sources']}=={'producer.php','staged-bundle.php','producer-config.json','probe-core.php','probe-worker.php','subprocess.php'} and len(plan['sources'])==6,'exact_six_sources_required')
  for source in plan['sources']:
   need(source['repository']=='pyatkoff/poisk-turov-test' and re.fullmatch('[a-f0-9]{40}',source['ref']),'source_unbound')
   raw=checked(['gh','api','--method','GET','-H','Accept: application/vnd.github.raw+json','repos/'+source['repository']+'/contents/'+source['path']+'?ref='+source['ref']],timeout=40)
@@ -61,7 +70,7 @@ def main():
  scratch=checked(['ssh',*opts,remote,'umask 077; mktemp -d /tmp/price4294-producer-read.XXXXXXXX'],timeout=30).decode().strip();need(re.fullmatch(r'/tmp/price4294-producer-read\.[A-Za-z0-9]+',scratch),'scratch_invalid')
  for source in plan['sources']:checked(['scp',*opts,str(base/source['name']),remote+':'+scratch+'/'+source['name']],timeout=60)
  remote_sums=checked(['ssh',*opts,remote,'sha256sum '+' '.join(shlex.quote(scratch+'/'+s['name']) for s in plan['sources'])],timeout=30).decode().splitlines()
- need(len(remote_sums)==3,'remote_sources_incomplete')
+ need(len(remote_sums)==6,'remote_sources_incomplete')
  for line,source in zip(remote_sums,plan['sources']):need(line.split()==[source['sha256'],scratch+'/'+source['name']],'remote_source_changed')
  cmd='php '+shlex.quote(scratch+'/producer.php')+' '+shlex.quote(scratch+'/producer-config.json')+' '+run+' '+head+' '+sha((base/'producer-config.json').read_bytes())
  try:
