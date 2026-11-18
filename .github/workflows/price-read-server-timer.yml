@@ -51,6 +51,52 @@ jobs:
           print('SERVER_TIMER_STATUS', json.dumps(r,ensure_ascii=False))
           assert r.get('registered') is True
           PY
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          try {
+              require_once 'db-v1.php';
+              require_once 'published-hotels-monitor-v1.php';
+              require_once 'top500-monthly-plan-v1.php';
+              $pdo = v2_data_db();
+              $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+              $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+              $clock = $pdo->query('SELECT CURDATE() AS today, UNIX_TIMESTAMP() AS epoch')->fetch();
+              $registry = v2_top500_registry($pdo);
+              if ($registry === null) throw new RuntimeException('identity_registry_unavailable');
+              $ids = v2_all_hotel_monitor_input_ids($registry);
+              $top = array_values(array_diff(v2_priority_hotel_ids($registry), v2_collection_priority_hotel_ids()));
+              $catalog = $pdo->query('SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN ('.implode(',',array_map('intval',$ids)).') ORDER BY id')->fetchAll();
+              $routes = $pdo->query('SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id')->fetchAll();
+              $plan = v2_top500_monthly_plan($top, $catalog, $routes, $clock['today'], 12, 1, true);
+              $plan = v2_append_published_hotel_monthly_plan($plan, $catalog, $routes, $clock['today'], 12, 1, true);
+              $attempts = $pdo->query("SELECT a.id,a.target_key,a.status,a.search_id,UNIX_TIMESTAMP(a.started_at) AS started_epoch,UNIX_TIMESTAMP(a.finished_at) AS finished_epoch,a.error_text FROM tour_matrix_collection_attempts a JOIN (SELECT target_key,MAX(id) AS id FROM tour_matrix_collection_attempts WHERE target_key LIKE 'monthly:%' AND started_at>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY target_key) last_attempt ON a.id=last_attempt.id")->fetchAll();
+              $recent = $pdo->query("SELECT hotel_ids_json FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND departure_id=1 AND date_to>CURDATE() AND nights_from=5 AND nights_to=14 AND status IN ('success','empty') AND finished_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND finished_at<=NOW() AND search_id>0")->fetchAll(PDO::FETCH_COLUMN);
+              $pdo->exec('ROLLBACK');
+              $searched = [];
+              foreach ($recent as $raw) foreach (json_decode($raw,true,512,JSON_THROW_ON_ERROR) as $id) $searched[(int)$id] = true;
+              $planned = [];
+              $directions = [];
+              foreach ($plan['targets'] as $target) {
+                  $direction = $target['departure_id'].'/'.$target['country_id'].' '.$target['country_name'];
+                  $directions[$direction][] = $target;
+                  foreach ($target['hotel_ids'] as $id) $planned[(int)$id] = true;
+              }
+              if (count($planned) !== $plan['hotel_count']) throw new RuntimeException('plan_identity_count');
+              $pending = [];
+              foreach ($directions as $direction => $targets) {
+                  $q = v2_top500_monthly_queue($targets, $attempts, (int)$clock['epoch'], 24);
+                  $pending[$direction] = array_map(static fn(array $m): int => $m['pending'], $q['months']);
+              }
+              $q = v2_top500_monthly_queue($plan['targets'], $attempts, (int)$clock['epoch'], 24);
+              if (array_sum(array_map('array_sum',$pending)) !== $q['pending']) throw new RuntimeException('pending_total_mismatch');
+              foreach (['PLAN_IDS'=>array_keys($planned),'COMPLETED_MONTHLY_IDS_36H'=>array_keys($searched),'PENDING_BY_ROUTE_MONTH'=>$pending,'NATIVE_QUEUE'=>['as_of'=>gmdate('c',(int)$clock['epoch']),'targets'=>$plan['batch_count'],'fresh'=>$q['fresh'],'pending'=>$q['pending'],'deferred'=>$q['deferred']]] as $label=>$data)
+                  echo $label, ' ', json_encode($data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR), PHP_EOL;
+          } catch (Throwable $e) {
+              fwrite(STDERR, 'queue_read_failed '.get_class($e).' '.basename($e->getFile()).':'.$e->getLine().PHP_EOL);
+              exit(1);
+          }
+          PHP
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
