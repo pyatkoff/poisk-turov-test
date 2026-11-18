@@ -39,6 +39,13 @@ async function saveJourney(page, frames, width, evidence) {
 }
 
 module.exports = async function wholeSearch({browser,origin,base,evidence}) {
+ if (process.platform === 'linux') {
+  const root = process.env.SEARCH3_VISUAL_ASSET_ROOT || path.resolve(__dirname, '../v2');
+  require('node:child_process').execFileSync('xvfb-run', [
+   '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
+   path.join(__dirname, 'search3-visual-firefox-rdm.cjs'), root, evidence,
+  ], {stdio: 'inherit', timeout: 180000});
+ }
  for(const width of [430,1280]){
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
   const page=await context.newPage();
