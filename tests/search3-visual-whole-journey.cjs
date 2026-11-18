@@ -5,8 +5,8 @@ const path = require('node:path');
 
 // Keep a visual record of one continuous session at each size. Small contact
 // sheets fit the existing acceptance archive without duplicating full frames.
-async function saveJourney(page, frames, width, evidence, options = {}) {
- const sheet = await page.context().newPage();
+async function saveJourney(context, frames, width, evidence, options = {}) {
+ const sheet = await context.newPage();
  try {
   const tileWidth = options.tileWidth || (width < 600 ? 320 : 512);
   const result = await sheet.evaluate(async ({frames,tileWidth}) => {
@@ -57,10 +57,11 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    const frames = report.selection.frames.map((file, i) => ({
     label: labels[i], format: 'png', image: fs.readFileSync(path.join(raw, file)).toString('base64'),
    }));
-   const page = await browser.newPage();
    const filename = 'whole-search-firefox-430.webp';
-   try { await saveJourney(page, frames, 430, retained, {filename, tileWidth:430}); }
-   finally { await page.close(); }
+   const context = await browser.newContext();
+   try {
+    await saveJourney(context, frames, 430, retained, {filename, tileWidth:430});
+   } finally { await context.close(); }
    report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
    report.selection.contactSheet = filename;
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
@@ -150,7 +151,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
    assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
-   await saveJourney(page,frames,width,evidence);
+   await saveJourney(context,frames,width,evidence);
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');
   } finally { await context.close(); }
  }
