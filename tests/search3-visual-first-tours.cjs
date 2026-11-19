@@ -64,7 +64,7 @@ function makeDelivery(transport, scenario) {
     call.completed = Date.now();
     return response;
   }
-  return {calls,amounts,reply};
+  return {calls,amounts,reply,tv};
 }
 
 // All critical timestamps are sampled by the rendered page, independently of
@@ -214,3 +214,4 @@ async function run() {
     result.groups.map(g=>({scenario:g.scenario.name,dom:g.dom,visible:g.visible})));
 }
 if (require.main===module) run().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports={makeDelivery,until,summary,offerKeys};
