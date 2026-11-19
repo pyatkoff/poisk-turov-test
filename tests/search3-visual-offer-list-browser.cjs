@@ -85,7 +85,7 @@ const server=http.createServer((req,res)=>{
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
    for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
-    if(name==='meals'){
+    if(name==='budget'){
      const more=page.locator('#search-options-toggle');
      if(await more.isVisible()&&await more.getAttribute('aria-expanded')==='false')await more.click();
     }
@@ -261,6 +261,25 @@ const server=http.createServer((req,res)=>{
     }catch(error){receipt.status='failed';receipt.error=error.message;save();await page.screenshot({path:path.join(evidence,`${prefix}-failure-${width}.png`)});throw error;}finally{page.off('request',observe);}
    };
    await familyJourney(900);if(width===1280)await familyJourney(720);await page.setViewportSize({width,height:900});
+   if(width===430||width===1280){
+    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=journey`);
+    const meal=page.locator('#quick-meal'),toggle=page.locator('#search-options-toggle');
+    await page.locator('.search-submit:not(:disabled)').waitFor();
+    if(width===430)assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    await meal.click();
+    await page.locator('[data-meal-choice][value="Всё включено"]').check();
+    await page.locator('[data-action="apply-meals"]').click();
+    await page.locator('.search-submit').click();
+    const card=page.locator('#hotel-900002');
+    await card.waitFor();
+    assert.equal((await card.locator('.starting-price strong').innerText()).replace(/\D/g,''),'161600');
+    assert.equal(new URL(page.url()).searchParams.get('meals'),'Всё включено');
+    await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
+    if(width===430)assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    assert.equal(await meal.locator('strong').innerText(),'Всё включено');
+    await meal.click();
+    assert(await page.locator('[data-meal-choice][value="Всё включено"]').isChecked());
+   }
    if(width===430||width===1280){
     const snapshot=new URL(base+'visual-search/', 'http://127.0.0.1:'+server.address().port);
     snapshot.search='scenario=snapshot&searched=1&hotels=2618';

@@ -93,6 +93,7 @@ const localCivilDateJourney=async(browser,origin,base,evidence)=>{
    if(width===390){
     assert.equal(await page.locator('#search-options-toggle').getAttribute('aria-expanded'),'false');
     assert(await page.locator('#quick-stars [data-value="4"]').isVisible());
+    assert(await page.locator('#quick-meal').isVisible());
     assert.equal(await page.locator('#quick-budget').isVisible(),false);
     const originBox=await page.locator('#departure-button').boundingBox(),destinationBox=await page.locator('#country').boundingBox();
     assert(Math.abs(originBox.y-destinationBox.y)<=1&&destinationBox.x>=originBox.x+originBox.width,'mobile route shares one row');
@@ -661,17 +662,15 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
     const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
     return{fields:buttons.map(button=>{const value=button.querySelector('strong'),range=document.createRange();range.selectNodeContents(value);return{button:rect(button),label:rect(button.querySelector('span')),value:rect(value),text:value.textContent,textRects:[...range.getClientRects()].map(b=>({x:b.x,y:b.y,right:b.right,bottom:b.bottom})),overflow:button.scrollWidth>button.clientWidth+1};}),documentOverflow:document.documentElement.scrollWidth>innerWidth};
    });
-   if(label==='default'&&viewportWidth===360){
-    await page.evaluate(()=>{
-     const visit=rules=>{for(const rule of rules){if(rule.cssRules)visit(rule.cssRules);if(rule.selectorText==='#search-form .quick-field'&&rule.style.alignContent==='stretch'){window.__formValueBaseline={rule,css:rule.style.cssText};rule.style.alignContent='start';rule.style.removeProperty('align-self');rule.style.removeProperty('grid-template-rows');}}};
-     for(const sheet of document.styleSheets)visit(sheet.cssRules);if(!window.__formValueBaseline)throw Error('Existing mobile value-row rule not found');
-    });
-    try{const baseline=await measure();assert(Math.abs(baseline.fields[0].value.height-baseline.fields[1].value.height)>5,'old declarations reproduce unequal default value boxes on360px');formValueStates.push({label:'baseline-old-declarations',width:viewportWidth,...baseline});await page.screenshot({path:path.join(evidence,'form-values-baseline-360.png')});}
-    finally{await page.evaluate(()=>{const saved=window.__formValueBaseline;saved.rule.style.cssText=saved.css;delete window.__formValueBaseline;});}
-   }
    const boxes=await measure();assert.equal(boxes.fields.length,2);assert.equal(boxes.documentOverflow,false,label+' has no horizontal form overflow at '+viewportWidth);
    for(const field of boxes.fields){assert(field.button.width>=44&&field.button.height>=44,label+' retains the whole row click target');assert.equal(field.overflow,false);assert(field.textRects.length&&field.textRects.every(text=>text.x>=field.button.x-1&&text.right<=field.button.right+1&&text.y>=field.button.y-1&&text.bottom<=field.button.bottom+1),label+' keeps complete value text inside its control at '+viewportWidth);}
-   if(viewportWidth<=760){const [meal,budget]=boxes.fields;assert(Math.abs(meal.value.y-budget.value.y)<=1&&Math.abs(meal.value.bottom-budget.value.bottom)<=1,label+' aligns both value boxes at '+viewportWidth);assert(Math.abs(meal.label.y-budget.label.y)<=1,label+' aligns both field labels');}
+   if(viewportWidth<=760){
+    const [meal,budget]=boxes.fields;
+    const stars=await page.locator('#quick-stars').boundingBox();
+    const more=await page.locator('#search-options-toggle').boundingBox();
+    assert(meal.button.y>=stars.y+stars.height-1&&more.y>=meal.button.bottom-1&&budget.button.y>=more.y+more.height-1,'mobile order is stars, meal, more options, then budget');
+    for(const field of [meal,budget])assert(Math.abs(field.button.x-more.x)<=1&&Math.abs(field.button.width-more.width)<=1,'meal and budget each use a full mobile row at '+viewportWidth);
+   }
    formValueStates.push({label,width:viewportWidth,...boxes});await page.screenshot({path:path.join(evidence,`form-values-${label}-${viewportWidth}.png`)});
   }
   await page.setViewportSize({width,height:900});
@@ -689,7 +688,8 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
   const toggle=page.locator('#search-options-toggle');
   await toggle.click();
   assert.equal(await page.locator('#quick-budget').isVisible(),false);
-  assert((await toggle.innerText()).includes(mealValue),'the closed disclosure retains the chosen meal');
+  assert((await page.locator('#quick-meal').innerText()).includes(mealValue),'the chosen meal remains visible in its own control');
+  assert(!(await toggle.innerText()).includes(mealValue),'the disclosure summary contains only secondary settings');
   assert.match(await toggle.innerText(),/200\s*000/,'the closed disclosure retains the party budget');
   await openFormOptions(page);
  }
@@ -2043,6 +2043,9 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   if(width<=760){
    const toggle=page.locator('#search-options-toggle');
+   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+   assert(await page.locator('#quick-meal').isVisible());
+   assert.equal(await page.locator('#quick-budget').isVisible(),false);
    await toggle.press('Enter');
    assert.equal(await toggle.getAttribute('aria-expanded'),'true');
    assert.equal(await page.locator('#quick-meal').isVisible(),true);

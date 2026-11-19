@@ -89,6 +89,41 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     frames.push(file);
   }
 
+  async function checkVisibleMeal() {
+    const meal = 'Всё включено';
+    const choice = '[data-meal-choice][value="' + meal + '"]';
+    const closedOptions = '#search-options-toggle[aria-expanded="false"]';
+    await driver.go(url);
+    await driver.wait('.search-submit:not(:disabled)');
+    await driver.wait(closedOptions);
+    assert.equal(await text('#meal-label'), 'Любое');
+    assert.ok(await driver.evaluate(`(() => {
+      const rect = document.querySelector('#quick-meal').getBoundingClientRect();
+      return rect.width > 0 && rect.height >= 44 && rect.top >= 0 && rect.bottom <= innerHeight;
+    })()`), 'meal is directly visible on the first mobile screen');
+    await driver.click('#quick-meal');
+    await driver.click(choice);
+    await driver.wait(choice + ':checked');
+    await driver.click('[data-action="apply-meals"]');
+    await driver.wait(closedOptions);
+    assert.equal(await text('#meal-label'), meal);
+    await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
+    await documentGuard('selected-meal');
+    const file = 'selected-meal-430.png';
+    await driver.screenshot(path.join(evidence, file));
+
+    await driver.click('.search-submit');
+    await driver.wait(card + ' [data-card-entry]');
+    assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
+    assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("meals")'), meal);
+    await driver.click('#compact-search .secondary[data-action="top"]');
+    await driver.wait(closedOptions);
+    assert.equal(await text('#meal-label'), meal);
+    await driver.click('#quick-meal');
+    await driver.wait(choice + ':checked');
+    return file;
+  }
+
   async function checkReturnedRoomPrices() {
     const standard = '.hotel-room-card[data-room="Стандартный номер"]';
     const breakfast = standard + ' [data-action="select-hotel-offer"][data-key="journey-900002-0"]';
@@ -223,6 +258,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   await documentGuard('restored-contact');
   const returnedRoomFrame = await checkReturnedRoomPrices();
   const similarRoomsFrame = await compareLongRoomNames({driver, url, evidence, documentGuard});
-  return {frames, similarRoomsFrame, returnedRoomFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  const selectedMealFrame = await checkVisibleMeal();
+  return {frames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };

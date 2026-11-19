@@ -326,14 +326,15 @@ function updateSearchUI(){
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
  const budget=budgetText();
  $('#budget-label').textContent=budget;
- $('#search-options-value').textContent=[meals,state.filters.min>0||state.filters.max!==null?budget:''].filter(Boolean).join(' · ');
+ $('#search-options-value').textContent=state.filters.min>0||state.filters.max!==null?budget:'';
  $('.search-submit').disabled=!catalogReady||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  renderCatalogError();
 }
 function renderCatalogError(){
  let node=$('#catalog-error');
- if(!node){node=document.createElement('p');node.id='catalog-error';node.className='error-text';node.setAttribute('role','alert');$('#search-form .search-actions').before(node);}
+ if(!node){node=document.createElement('p');node.id='catalog-error';node.className='error-text';node.setAttribute('role','alert');$('#search-form .search-primary').after(node);}
  const focus=focusReference(document.activeElement,node),retrying=node.dataset.catalogRetry==='pending',bootstrapPending=retrying&&!catalogReady&&!catalogError;
+ $('#search-options-toggle').disabled=bootstrapPending;
  const bootstrapFailed=!!catalogError&&!urlStateHydrated,countryFailed=!!catalogError&&!!catalogDeparture,hotelMissing=urlStateHydrated&&!data.preview&&destinationIds(currentDraftDestination()).some(id=>!destinationHotel(id)?.legacyIds.length);
  const restoring=hotelMissing&&hotelRestorePending&&!countryFailed;
  node.hidden=!bootstrapPending&&!bootstrapFailed&&!countryFailed&&!hotelMissing;node.setAttribute('role',bootstrapPending||restoring?'status':'alert');node.classList.toggle('error-text',!bootstrapPending&&!restoring);node.classList.toggle('picker-caption',bootstrapPending||restoring);
@@ -894,7 +895,7 @@ function cardHTML({hotel:h,offers,rating=ratingValue(h)}){
 
 function refreshOpenHotelRooms(){
  if(modalType!=='hotel-details')return;
- const body=$('#modal-body'),id=Number($('.hotel-section-nav')?.dataset.hotelId);if(!id)return;
+ const body=$('#modal-body'),nav=body.querySelector('.hotel-section-nav'),id=Number(nav?.dataset.hotelId);if(!id)return;
  const focused=document.activeElement,focus=focusReference(focused,body),scroll=body.scrollTop;
  const openRooms=[...body.querySelectorAll('.room-overview[open],article.hotel-room-card')].map(room=>room.dataset.room);
  const expandedMore=[...body.querySelectorAll('.hotel-room-more[open]')].map(more=>more.closest('[data-room]').dataset.room);
@@ -906,6 +907,11 @@ function refreshOpenHotelRooms(){
  if(summaryRoom!==null&&summaryRoom!==undefined){const room=[...body.querySelectorAll('.hotel-room-card[data-room]')].find(room=>room.dataset.room===summaryRoom);room?.querySelector(summaryMore?'.hotel-room-more>summary':':scope>summary')?.focus({preventScroll:true});}
  else if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#hotel-room-count'),body);
  body.scrollTop=scroll;
+ // The queued section update can resize the scrollport by hiding or showing the footer.
+ // Finish the passive refresh before the next input, preserving deliberate entry into a room.
+ if(!hotelDetailsView?.roomEntryPending)queueMicrotask(()=>{
+  if(body.contains(nav)&&body.scrollTop!==scroll)body.scrollTop=scroll;
+ });
 }
 function syncHotelFlightSelection(row,listing,preserve=false){
  let preview=row.querySelector('.room-flight-preview');
