@@ -1,4 +1,4 @@
-name: PRICE 1500 retry canonical queue inspection read-only
+name: PRICE 1558 read-only ads19 release and timer proof
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'f7c1519990de47dcf515c3aeebcf35308fbaf887'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '108161d81685bf914e66ae3bf962510636355add'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -64,7 +64,25 @@ jobs:
               for b in iter(lambda:f.read(1048576),b''): h.update(b)
             return h.hexdigest()
           pins={'hook':sha(native/'monitor-price-hook.php'),'cohort':sha(native/'published-hotels-monitor-v1.php'),'collector':sha(native/'top500-daily-collector-v1.php')}
-          assert pins=={'hook':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','cohort':'3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c','collector':'940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'}
+          assert pins['hook'] in {'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','416f6eba3ec547941ca489cce83f977e66c1540861e7d21a0cd2178ea3d4baf4'}
+          assert pins['cohort']=='3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c' and pins['collector']=='940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'
+          redirects={174:('https://t.me/any_toour/67','https://t.me/anytour/1792'),12107:('https://t.me/any_toour/556','https://t.me/anytour/809'),132:('https://t.me/any_toour/78','https://t.me/anytour/17'),469:('https://t.me/any_toour/12','https://t.me/anytour/19'),12111:('https://t.me/any_toour/24','https://t.me/anytour/23'),70048:('https://t.me/any_toour/523','https://t.me/anytour/37'),82606:('https://t.me/any_toour/248','https://t.me/anytour/48'),1344:('https://t.me/any_toour/411','https://t.me/anytour/82'),260:('https://t.me/any_toour/118','https://t.me/anytour/192'),415:('https://t.me/any_toour/472','https://t.me/anytour/1754'),2493:('https://t.me/any_toour/661','https://t.me/anytour/196'),3452:('https://t.me/any_toour/220','https://t.me/anytour/1148'),4181:('https://t.me/any_toour/555','https://t.me/anytour/204'),37668:('https://t.me/any_toour/66','https://t.me/anytour/402'),43676:('https://t.me/any_toour/642','https://t.me/anytour/414'),64895:('https://t.me/any_toour/49','https://t.me/anytour/993'),73974:('https://t.me/any_toour/207','https://t.me/anytour/455'),74503:('https://t.me/any_toour/146','https://t.me/anytour/474'),99713:('https://t.me/any_toour/641','https://t.me/anytour/483')}
+          states={}
+          for name in ('telegram','all'):
+            path=app/'feed'/('hotel-posts-'+name+'.xml')
+            local=path.read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+path.name]); assert local==public
+            urls={o.attrib['id']:o.findtext('url') for o in ET.fromstring(local).findall('.//offer')}
+            oldn=newn=other=0
+            for h,(old_url,new_url) in redirects.items():
+              value=urls.get('tg_'+str(h))
+              if value==old_url: oldn+=1
+              elif value==new_url: newn+=1
+              else: other+=1
+            states[name]={'old':oldn,'new':newn,'other':other,'sha256':hashlib.sha256(local).hexdigest()}
+          timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
+          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
+          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
+          raise SystemExit(0)
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_TIMER_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
