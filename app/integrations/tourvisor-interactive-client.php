@@ -38,7 +38,8 @@ final class TourvisorInteractiveClient
         if ($value === null || $value === '') return null;
         if (!is_int($value) && !is_string($value)) self::fail('Invalid integer search parameter');
         $v = filter_var($value, FILTER_VALIDATE_INT);
-        return $v === false ? null : (int)$v;
+        if ($v === false) self::fail('Invalid integer search parameter');
+        return (int)$v;
     }
 
     private static function integer($value, int $min, int $max, string $name): int
