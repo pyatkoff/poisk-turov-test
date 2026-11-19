@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   recover:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '024f73f244801c98c8daaa253c8cb4a7f4ed72cd'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '85959c361d8b70da090eacc1b3ae8138bbe4bcf1'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -59,7 +59,7 @@ jobs:
           import pathlib,subprocess
           root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
           source=(native/'monitor-price-hook.php').read_text()
-          stop=source.find('$inspect='); assert stop>0
+          stop=source.rfind('\n$inspect='); assert stop>0
           prefix=source[:stop].replace("__DIR__",repr(str(native)))
           recovery=r'''
           function rec_need(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
