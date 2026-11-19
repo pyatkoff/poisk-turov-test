@@ -191,6 +191,27 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  c.dom.window.close();
 }
 {
+ const labels={AI:'Всё включено',UAI:'Ультра всё включено',BB:'Завтраки',HB:'Полупансион',FB:'Полный пансион',RO:'Без питания'};
+ const c=environment('<dialog id="modal"><div id="modal-body"></div><div id="modal-footer"></div></dialog>');
+ Object.assign(c,{mealNames:Object.fromEntries(Object.values(labels).map(label=>[label,label])),
+  pickerFilters:()=>({meals:['Завтраки']}),boundedHistoryStrings:()=>null,boundedHistoryText:()=>'',mealPreviewModel:()=>null,
+  compareMealLabels:(a,b)=>a.localeCompare(b,'ru'),showModal:(_type,_title,_kicker,body)=>{c.$('#modal-body').innerHTML=body;}});
+ context(c);vm.runInContext(functions(source,['openMeals','updateMealCounts','updateMealPicker']),c);
+ c.openMeals();
+ function matches(term){
+  c.$('#meal-query').value=term;c.updateMealPicker();
+  return c.$$('.meal-option').filter(row=>!row.hidden).map(row=>row.querySelector('input').value).filter(Boolean);
+ }
+ for(const [code,label] of Object.entries(labels)){
+  for(const query of [code,code.toLowerCase(),' '+code.toLowerCase()+' '])assert.deepEqual(matches(query),[label],query);
+ }
+ assert.deepEqual(matches('завтр'),['Завтраки']);
+ assert.deepEqual(matches('неизвестный код'),[]);assert.equal(c.$('#meal-no-match').hidden,false);
+ assert.equal(matches('').length,6);assert.equal(c.$('#meal-no-match').hidden,true);
+ assert.deepEqual(c.$$('.meal-option input:checked').map(input=>input.value),['Завтраки'],'search preserves the active selection');
+ c.dom.window.close();
+}
+{
  const calls=[],c={filterDraft:null,modalType:'meals',updateDrawerPreview:()=>calls.push('drawer'),updateBudgetPreview:()=>calls.push('budget'),updateMealCounts:()=>7,updateMealPicker:value=>calls.push(['meal',value])};
  context(c);vm.runInContext(functions(source,['refreshResultPickerPreviews']),c);c.refreshResultPickerPreviews();assert.deepEqual(calls,[['meal',7]],'result refresh forwards the same-call meal inventory');
  assert.equal((appSource.match(/updateMealPicker\(updateMealCounts\(\)\)/g)||[]).length,2,'both meal open and result refresh reuse the same-call inventory');

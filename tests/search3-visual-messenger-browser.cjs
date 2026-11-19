@@ -132,7 +132,7 @@ async function tourvisorJourney({browser,origin,base,output}){
     assert(layout.recap.right<=layout.contact.left+1,'the recap and contact methods share two desktop columns');
     assert(Math.abs(layout.recap.top-layout.contact.top)<=1,'the desktop columns start together');
    }
-   assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
+   assert.equal(await page.locator('#modal-title').textContent(),'Связь по выбранному туру');assert.match((await amount()).replace(/\s/g,''),/90000/);
    assert.match((await page.locator('.application-review-heading small').textContent()).replace(/\s+/g,' '),/12 лет, до года/,'the entered child order stays visible while its canonical request order is compared');
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
    // Retained ordinary INT screenshot: full Russian labels must not paint over
@@ -344,7 +344,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
    assert.match(await page.locator('.selection-steps li').last().textContent(),/Связь/);await capture('verified');
    await page.locator('[data-action="anex-application-preview"]').click();
    await page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('[data-action="messenger-open"]')];return buttons.length===2&&buttons.every(button=>!button.disabled);});
-   assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');
+   assert.equal(await page.locator('#modal-title').textContent(),'Связь по выбранному туру');
    assert.match(await page.locator('.selection-steps li').last().textContent(),/Связь/);
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
    assert.deepEqual(calls.map(call=>call.action),['handoff_token','handoff_freeze']);assert.deepEqual(navigations,[]);

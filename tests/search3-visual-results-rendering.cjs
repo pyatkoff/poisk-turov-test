@@ -576,7 +576,7 @@ function calendarDOM(code=source){
  try{
   family.setPrice(1,100000);
   const units=family.ctx.document.querySelector('#calendar-units');
-  for(const [ages,expected] of [[[],'От, тыс. ₽ · весь тур'],[[1],'Минимальные цены, тыс. ₽'],[[7,0],'Минимальные цены, тыс. ₽'],[[2],'От, тыс. ₽ · весь тур']]){
+  for(const [ages,expected] of [[[],'От, тыс. ₽ · весь тур'],[[1],'От, тыс. ₽ · доплата за младенца уточняется'],[[7,0],'От, тыс. ₽ · доплата за младенца уточняется'],[[2],'От, тыс. ₽ · весь тур']]){
    family.ctx.state.search.ages=ages;family.render();
    assert.equal(units.textContent,expected);
    assert.equal(family.strip.querySelectorAll('.date-price.best').length,2,'both tied daily minima retain their amounts regardless of party');

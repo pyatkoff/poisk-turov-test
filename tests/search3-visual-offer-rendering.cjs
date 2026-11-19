@@ -4,9 +4,21 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 function offerOwner(source){const start=source.indexOf('function offerSelectionHint('),end=source.indexOf('function openFlightPicker(',start);assert(start>=0&&end>start);return source.slice(start,end);}
-function owner(source){const start=source.indexOf('function terminalOfferQuote('),end=source.indexOf('function offerQuoteFailure(',start);assert(start>=0&&end>start);return source.slice(start,end)+offerOwner(source);}
+function owner(source){const start=source.indexOf('function terminalOfferQuote('),end=source.indexOf('function offerQuoteFailure(',start);assert(start>=0&&end>start);return (source.match(/^const unknownInfantCharge=.*$/m)?.[0]||'')+'\n'+source.slice(start,end)+offerOwner(source);}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const moneyFormat=new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1});
+{
+ const status=source.slice(source.indexOf('function selectedPriceStatus('),source.indexOf('function fuelDisclosureHTML('));
+ const footer=source.slice(source.indexOf('function offerDetailFooterHTML('),source.indexOf('function tourHeroHTML('));
+ const scope=vm.createContext({money:value=>value+' ₽'});
+ vm.runInContext(source.match(/^const unknownInfantCharge=.*$/m)[0]+'\n'+status+footer,scope);
+ const listing={provider:'anex',adults:2,ages:[1],total:121000,raw:{infantCharge:{status:'unknown'}}};
+ const preview=scope.offerDetailFooterHTML(listing,'',scope.selectedPriceStatus(listing));
+ assert.match(preview,/Цена из поиска<\/span><strong>121000 ₽/);
+ assert.match(preview,/Доплата за младенца уточняется/);assert.doesNotMatch(preview,/за всех/i);
+ const verified=scope.offerDetailFooterHTML({total:157594},'','Подтверждённая цена');
+ assert.match(verified,/За всех туристов<\/span><strong>157594 ₽/);assert.doesNotMatch(verified,/младенца/);
+}
 function observe(source,s){
  const calls=[],dom=new Map();const o={key:'offer<&"',provider:s.provider,hotelId:7,total:133500.5,operator:'Operator<&',room:'Room<&',ages:[0,17],day:'2026-10-14',returnDay:'2026-10-21',nights:7,
   loading:!!(s.flags&1),flightsLoading:!!(s.flags&2),quoteError:s.flags&4?'Ошибка<&':'',pricePending:!!(s.flags&8),

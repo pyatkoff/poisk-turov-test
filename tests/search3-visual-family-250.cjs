@@ -71,7 +71,12 @@ function firstScreen() {
     return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,visible:r.height>0&&r.width>0&&
       r.top>=0&&r.left>=0&&r.bottom<=innerHeight+1&&r.right<=innerWidth+1&&(hit===el||el.contains(hit))};
   };
-  return {scroll:document.querySelector('#modal-body').scrollTop,hotel:box('.application-review-heading strong'),
+  const title=document.querySelector('#modal-title'), text=document.createRange();
+  text.selectNodeContents(title);
+  const ink=text.getBoundingClientRect(),back=document.querySelector('#modal-back').getBoundingClientRect();
+  const close=document.querySelector('#modal [data-action="close-modal"]').getBoundingClientRect();
+  return {title:title.textContent,titleFits:ink.width>0&&ink.left>=back.right-1&&ink.right<=close.left+1&&ink.top>=0&&ink.bottom<=innerHeight,
+    scroll:document.querySelector('#modal-body').scrollTop,hotel:box('.application-review-heading strong'),
     stay:box('.application-review-stay'),party:box('.application-review-heading small'),
     base:box('.application-price-breakdown dd'),total:box('.application-price-breakdown [data-price-part="total"] dd'),
     telegram:box('[data-action="messenger-open"][data-platform="telegram"]'),max:box('[data-action="messenger-open"][data-platform="max"]')};
@@ -127,6 +132,8 @@ async function family250(driver,engine,size,root,html,output,summaryFirst=false)
     assert.deepEqual(amounts,[basePrice,supplement,basePrice+supplement]);
     assert.equal(price(await text(totalSelector)),basePrice+supplement);
     const layout=await read('('+firstScreen.toString()+')()');
+    assert.equal(layout.title,'Связь по выбранному туру');
+    assert.ok(layout.titleFits,'contact title fits between navigation controls: '+JSON.stringify(layout));
     assert.equal(layout.scroll,0,'measure the initial application viewport');
     assert.ok(layout.hotel.visible&&layout.stay.visible&&layout.total.visible&&layout.telegram.visible&&layout.max.visible,JSON.stringify(layout));
     if(size[0]===430){
