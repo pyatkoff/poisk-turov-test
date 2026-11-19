@@ -1,4 +1,4 @@
-name: Reconcile scheduled PRICE 20-pair write
+name: Count source freshness after scheduled PRICE write
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cf22d788a6b8a874482bab151f43374db921ab3c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd210e22d57cc80d9e5312715e742ca0cc3094337'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -70,7 +70,40 @@ jobs:
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
-          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'unchanged_pairs':result['unchanged_pairs'],'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
+          source_php=r'''<?php
+          declare(strict_types=1);
+          $root='/var/www/anytoour/data/www/anytoour.ru/data';
+          require_once $root.'/db-v1.php';
+          require_once $root.'/hotel-monitor-prices-v1.php';
+          require_once $root.'/top-hotels-v1.php';
+          require_once $root.'/top500-monthly-plan-v1.php';
+          require_once $root.'/published-hotels-monitor-v1.php';
+          $pdo=v2_data_db();
+          $registry=v2_top500_registry($pdo);
+          $priorityIds=v2_all_hotel_monitor_input_ids($registry);
+          $topOnly=array_values(array_diff(v2_priority_hotel_ids($registry),v2_collection_priority_hotel_ids()));
+          $csv=implode(',',array_map('intval',$priorityIds));
+          $hotelRows=$pdo->query("SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN ($csv) ORDER BY id")->fetchAll(PDO::FETCH_ASSOC)?:[];
+          $departureRows=$pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[];
+          $today=(string)$pdo->query('SELECT CURDATE()')->fetchColumn();
+          $plan=v2_top500_monthly_plan($topOnly,$hotelRows,$departureRows,$today,12,1,true);
+          $plan=v2_append_published_hotel_monthly_plan($plan,$hotelRows,$departureRows,$today,12,1,true);
+          $idsByDeparture=[];
+          foreach($plan['targets'] as $target)foreach($target['hotel_ids'] as $id)$idsByDeparture[(int)$target['departure_id']][(int)$id]=true;
+          $fresh=[];
+          foreach($idsByDeparture as $city=>$ids)foreach(array_chunk(array_keys($ids),100) as $chunk){
+            $where=v2_hmp_eligible_where(count($chunk));
+            $q=$pdo->prepare("SELECT DISTINCT o.hotel_id FROM tour_price_observations o WHERE $where");
+            $q->execute([...$chunk,$city,$plan['date_from'],$plan['date_to']]);
+            foreach($q->fetchAll(PDO::FETCH_COLUMN) as $id)$fresh[(int)$id]=true;
+          }
+          ksort($fresh,SORT_NUMERIC);
+          echo json_encode(['source_hotels'=>(int)$plan['source_hotel_count'],'searchable_hotels'=>(int)$plan['hotel_count'],'fresh_unique_hotels'=>count($fresh),'without_fresh_unique_hotels'=>(int)$plan['hotel_count']-count($fresh),'date_from'=>$plan['date_from'],'date_to'=>$plan['date_to']],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+          ?>'''
+          source_run=subprocess.run(['php'],input=source_php,text=True,capture_output=True,check=True)
+          source=json.loads(source_run.stdout)
+          print('SOURCE_PRICE_CENSUS='+json.dumps(source,separators=(',',':')))
+          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'unchanged_pairs':result['unchanged_pairs'],'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'source':source,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
