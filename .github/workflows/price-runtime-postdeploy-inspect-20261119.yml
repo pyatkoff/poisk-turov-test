@@ -1,4 +1,4 @@
-name: PRICE 1654 read-only installed hook and public freshness proof
+name: PRICE 1750 read-only timer, three feeds and main19 proof
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '61ae376386a24d9d30da1c3e4b00cdf42a1af8cc'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'f106f8f048cfee7b4032bf8ba05e96a30da92ae7'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44535278294 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:2e7c8db9d64fea552a813b07279e55c32e9e69da"
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44542421611 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:57e2aad5dd82e3a7b53c3ffb77e14d8f84f23e17"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 --jq .body | grep -F 'общий редактор возвращён PRICE'
       - name: Prepare pinned server connection
         env:
@@ -57,7 +57,7 @@ jobs:
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
           import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
           root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
-          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='2e7c8db9d64fea552a813b07279e55c32e9e69da'
+          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='57e2aad5dd82e3a7b53c3ffb77e14d8f84f23e17'
           def sha(p):
             h=hashlib.sha256()
             with p.open('rb') as f:
@@ -79,9 +79,31 @@ jobs:
               elif value==new_url: newn+=1
               else: other+=1
             states[name]={'old':oldn,'new':newn,'other':other,'sha256':hashlib.sha256(local).hexdigest()}
+          stable_root=ET.fromstring((app/'feed'/'hotel-posts-telegram.xml').read_bytes())
+          special_bytes=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/hotel-posts-telegram-main19.php'])
+          special_root=ET.fromstring(special_bytes)
+          stable_offers={o.attrib['id']:o for o in stable_root.findall('.//offer')}
+          special_offers={o.attrib['id']:o for o in special_root.findall('.//offer')}
+          assert len(stable_offers)==len(special_offers)==1000 and stable_offers.keys()==special_offers.keys()
+          special_counts={'old':0,'new':0,'other':0}
+          for h,(old_url,new_url) in redirects.items():
+            value=special_offers['tg_'+str(h)].findtext('url')
+            special_counts['old' if value==old_url else 'new' if value==new_url else 'other']+=1
+          for offer_id,a in stable_offers.items():
+            b=special_offers[offer_id]
+            assert a.attrib==b.attrib
+            ach=[(x.tag,x.attrib,x.text or '') for x in a]
+            bch=[(x.tag,x.attrib,x.text or '') for x in b]
+            assert len(ach)==len(bch)
+            for av,bv in zip(ach,bch):
+              assert av[:2]==bv[:2]
+              if av[0]=='url' and offer_id in {'tg_'+str(h) for h in redirects}:
+                assert av[2]==redirects[int(offer_id[3:])][0] and bv[2]==redirects[int(offer_id[3:])][1]
+              else:
+                assert av[2]==bv[2]
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
-          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
+          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
           result={'eligible_ids':[],'unchanged_ids':[],'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'deferred_counts':{},'pending':None}
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
