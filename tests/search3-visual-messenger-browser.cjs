@@ -118,12 +118,26 @@ async function tourvisorJourney({browser,origin,base,output}){
    const card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');await card.click();await row().waitFor({state:'visible'});await capture('rooms');
    assert.equal(tv.calls.some(c=>c.action==='tv_tour'||c.action==='tv_flights'),false,'room entry spends no quote or flights');
    await row().locator('[data-action="select-hotel-offer"]').click();await ready();await capture('manager-methods',true);
+   const layout=await page.locator('.application-layout').evaluate(el=>{
+    const [recap,contact,more]=el.children;
+    const rect=node=>{const {top,bottom,left,right}=node.getBoundingClientRect();return {top,bottom,left,right};};
+    return {order:[recap.className,contact.className,more.className],recap:rect(recap),contact:rect(contact),more:rect(more),scroll:el.closest('#modal-body').scrollTop};
+   });
+   assert.deepEqual(layout.order,['application-recap','application-contact','application-more'],'reading and keyboard order follow the booking flow');
+   assert.equal(layout.scroll,0,'the first view starts at the selected tour');
+   if(width<=760){
+    assert(layout.recap.bottom<=layout.contact.top+1,'the recap precedes the contact methods');
+    assert(layout.contact.bottom<=layout.more.top+1,'additional details follow the contact methods');
+   }else{
+    assert(layout.recap.right<=layout.contact.left+1,'the recap and contact methods share two desktop columns');
+    assert(Math.abs(layout.recap.top-layout.contact.top)<=1,'the desktop columns start together');
+   }
    assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
    assert.match((await page.locator('.application-review-heading small').textContent()).replace(/\s+/g,' '),/12 лет, до года/,'the entered child order stays visible while its canonical request order is compared');
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
    // Retained ordinary INT screenshot: full Russian labels must not paint over
    // operator/placement values. Use the same fictional contact journey, no new calls.
-   const details=page.locator('.application-review-card>details.application-review');
+   const details=page.locator('.application-more>details.application-review');
    await details.locator(':scope > summary').click();
    const conditionRows=await details.locator('.saved-stay-summary>div').evaluateAll(rows=>rows.map(row=>{
     const dt=row.querySelector('dt'),dd=row.querySelector('dd'),range=document.createRange();range.selectNodeContents(dt);

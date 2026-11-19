@@ -2373,7 +2373,11 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-dialog .error-text,.tour-dialog .saved-tour-notice{font-size:.875rem;line-height:1.5;margin:0;padding:12px;border-radius:10px}
 .application-dialog #prototype-lead-form{display:flex;flex-direction:column}
 
-.application-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.application-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"recap contact" "more contact";grid-template-rows:min-content auto;column-gap:28px;align-items:start}
+.application-recap{grid-area:recap}
+.application-contact{grid-area:contact}
+.application-more{grid-area:more}
+html.quality-text-200 .application-layout{grid-template-areas:"recap" "contact" "more";row-gap:14px}
 .application-review,.application-contact{min-width:0}
 .application-review{padding:18px;border:1px solid var(--line);border-radius:14px;background:#f7f9fd}
 .application-review>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;list-style:none;cursor:pointer;min-height:44px}
@@ -2396,9 +2400,11 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-review-heading>span,.application-review-heading>small{font-size:.875rem;line-height:1.5;color:var(--muted)}
 
 .application-review-toggle{color:var(--brand);font-size:.875rem;flex-shrink:0}
-.application-review-card{padding:18px;border:1px solid var(--line);border-radius:14px;background:#f7f9fd}
-.application-review-card>.application-review{padding:0;margin:12px 0;border:0;border-radius:0;background:transparent}
-.application-review-card>.application-review .saved-stay-summary{margin-top:12px}
+.application-recap,.application-more{min-width:0;padding:18px;border:1px solid var(--line);background:#f7f9fd}
+.application-recap{padding-bottom:0;border-bottom:0;border-radius:14px 14px 0 0}
+.application-more{padding-top:0;border-top:0;border-radius:0 0 14px 14px}
+.application-more>.application-review{padding:0;margin:12px 0;border:0;border-radius:0;background:transparent}
+.application-more>.application-review .saved-stay-summary{margin-top:12px}
 .application-review-card .application-review-stay{color:var(--ink);font-weight:600}
 .application-dialog .application-cost{display:block;margin:12px 0;padding:10px 12px;background:#fff;border-color:var(--line);color:var(--ink)}
 .application-cost>strong{font-size:.875rem}
@@ -2519,11 +2525,14 @@ details.application-review .chosen-trip{display:none}
 
 .tour-flight-editing .tour-fuel-disclosure>summary{display:flex;justify-content:space-between;align-items:center;gap:12px}
 
-.application-layout{grid-template-columns:minmax(0,1fr);gap:12px}
-.application-review-card>.application-review-heading{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
-.application-review-card>.application-review-heading>:is(strong,.application-route,.application-review-stay){flex-basis:100%}
-.application-review-card>.application-review-heading>small{padding-inline-start:10px;border-inline-start:1px solid var(--line)}
-.application-review-card>.application-review{margin:6px 0}
+.application-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"recap" "contact" "more";gap:16px}
+.application-recap{padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.application-recap>.application-review-heading{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.application-recap>.application-review-heading>:is(strong,.application-route,.application-review-stay){flex-basis:100%}
+.application-recap>.application-review-heading>small{padding-inline-start:10px;border-inline-start:1px solid var(--line)}
+.application-recap>.application-cost{margin:10px 0 0}
+.application-more{padding:8px 0 0;border:0;border-top:1px solid var(--line);border-radius:0;background:transparent}
+.application-more>.application-review{margin:0}
 
 
  .tour-price-details{position:static;padding-top:16px;border-top:1px solid var(--line)}
@@ -2807,4 +2816,3 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
 }
 /* The supported retained-tour contact choice uses the existing button tokens. */
 .messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0 12px}.messenger-methods>[data-action="messenger-open"]{min-width:0;min-height:52px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:52px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
-@media(max-width:760px){.application-layout:has(.messenger-entry) .application-contact{order:-1}}
