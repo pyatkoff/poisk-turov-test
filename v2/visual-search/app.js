@@ -1173,6 +1173,7 @@ function positionHotelRooms(row=null){
 }
 
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
+let renderedSearchStatus=null;
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -1246,6 +1247,7 @@ function renderResults(options={}){
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
+ renderedSearchStatus={response:searchResponse,total};
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){
@@ -3016,7 +3018,10 @@ function renderSearchStatus(items,total){
  }
  node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>${delivery}<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
  if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))(node.querySelector(`[data-action="${focusedAction}"]`)||(focusedAction==='continue-search'?node.querySelector('[data-action="stop-search"]'):null))?.focus({preventScroll:true});
- if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
+ if(!items.length&&r.pending){
+  const cards=$('#cards');
+  if(!cards.firstElementChild?.classList.contains('search-skeleton'))cards.innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
+ }
 }
 
 function prepareSearchRun(options={}){
@@ -3069,8 +3074,17 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  prepare:prepareSearchRun,
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
- afterEvent:event=>{if(event?.type==='results')searchResponse.currentInventory=true;renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();if(event?.type==='results'&&modalType==='gallery')renderGallery();},
- afterStart:()=>renderResults(),
+ afterEvent(event,response){
+  if(!searchEditSession&&response.pending&&renderedSearchStatus?.response===response&&(event?.type==='provider'||event?.type==='progress')){
+   renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
+  }else{
+   if(event?.type==='results')response.currentInventory=true;
+   renderResults();updateSearchUI();
+  }
+  if(modalType==='dates')refreshCalendarPrices();
+  if(event?.type==='results'&&modalType==='gallery')renderGallery();
+ },
+ afterStart(response){if(renderedSearchStatus?.response!==response)renderResults();},
  afterFailure:()=>renderResults(),
  commit(event){
   if(event?.submitter?.matches('.search-submit')&&$('#search-form').hidden)return false;

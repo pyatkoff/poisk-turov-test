@@ -36,6 +36,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  context.stopSearch();render();assert.match(notice().textContent,/Поиск остановлен/,'explicit Stop remains truthful');
  context.searchResponse={phase:'complete',canContinue:true,providers:{tourvisor:'partial'}};render();notice().querySelector('[data-action="continue-search"]').focus();
  context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
+ const placeholder=d.querySelector('#cards .search-skeleton');assert(placeholder);render([]);assert.strictEqual(d.querySelector('#cards .search-skeleton'),placeholder,'progress updates retain the existing loading placeholder');
  assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
  assert.doesNotMatch(notice().textContent,/Вариантов до фильтров/,'retained previous-run offers cannot become current source counts before this generation receives results');context.searchResponse.currentInventory=true;render([]);assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'accepted progressive inventory supplies counts during loading');context.hotels=[];
  for(const status of ['unknown','error','partial']){context.searchResponse={phase:'error',pending:false,providers:{tourvisor:status}};render([]);assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'unconfirmed empty source is not reported as received zero: '+status);}
@@ -148,6 +149,26 @@ function observe(source,s){
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
+  if(s.progressive){
+   Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery')});
+   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure:')+'})',ctx);
+   const event=type=>handlers.afterEvent({type},ctx.searchResponse);
+   const count=name=>trace.filter(entry=>entry[0]===name).length;
+   ctx.searchResponse={key:'current',pending:true};trace.length=0;
+   event('loading');event('provider');event('provider');event('provider');handlers.afterStart(ctx.searchResponse);event('progress');
+   assert.equal(count('results'),1,'synchronous loading followed by statuses and afterStart only lays out the initial scope once');
+   assert.equal(count('renderSearchStatus'),5,'each pending source/progress update reaches its status owner');
+   items.push({hotel:{id:3},offers:[{key:'third'}]});event('results');assert(ctx.searchResponse.currentInventory);
+   assert.equal(count('results'),2,'incoming inventory is visible during its own event');
+   event('provider');assert.equal(count('results'),2);assert.equal(trace.at(-1)[0],'renderSearchStatus');assert.equal(trace.at(-1)[2],4,'the status receives the updated filtered offer total');
+   ctx.modalType='dates';event('progress');assert.equal(count('results'),2);assert.equal(count('refreshCalendarPrices'),1,'the open result date picker follows pending progress');
+   ctx.searchEditSession=true;event('provider');
+   assert.equal(count('results'),2,'an edited form retains the existing inventory');assert.equal(count('refreshCalendarPrices'),2,'active date/draft refresh is preserved');
+   ctx.modalType='';ctx.searchEditSession=false;
+   for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
+   assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
+   ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+  }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
  if(s.paginate||s.paginateAll){
@@ -263,6 +284,8 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace('!offerView.departure||o.day===offerView.departure', 'true||o.day===offerView.departure')),'list departure scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+observe(source,{kind:'results',count:2,progressive:true});
+console.log('PASS progressive result presentation: one initial scope, immediate new inventory, retained status counts, edits, continuation and terminal states');
 
 // Loading another card page used to repeat the entire result inventory and
 // page-level rendering cascade. Compare the actual fast path against that
