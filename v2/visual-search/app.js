@@ -1142,7 +1142,7 @@ function renderHotelDetails(){
    }
    view.roomEntryPending=group;
    positionHotelRooms(row);
-   entryScroll=$('#modal-body').scrollTop;
+   if(localRefresh)entryScroll=$('#modal-body')?.scrollTop??null;
    if(group){
     hotelOfferDraft={hotelId:view.id,key:entry.key};selectedOffer={...entry};view.checkKey=entry.key;
     refreshLiveHotel(view.id);
