@@ -1,0 +1,102 @@
+name: PRICE final timer and public feed readback
+on:
+  push:
+    branches: ['ops/price-apply-promoted-1632-20261120-0214']
+    paths: ['.github/workflows/price-final-readback-20261120-0256.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Prepare pinned connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); rows=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': rows.append(line)
+          assert rows
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/known').write_text('\n'.join(rows)+'\n')
+          PY
+      - name: Read installed timer receipt
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/known" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" "set -euo pipefail; test "\$(cd /var/www/anytoour/data/www/app.anytoour.ru && git rev-parse HEAD)" = e262bf139da2b78623e1be3a891630fd10924180; printf 'HOTEL_PRICE_TIMER_STATUS='; /usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status"
+      - name: Read all three public feeds with strict 36 hour proof
+        run: |
+          set -euo pipefail
+          for name in telegram max all; do curl -fsS --max-time 40 "https://app.anytoour.ru/feed/hotel-posts-$name.xml" > "$RUNNER_TEMP/$name.xml"; done
+          python3 - <<'PY'
+          import os,pathlib,hashlib,xml.etree.ElementTree as ET,re,json
+          from collections import Counter
+          from datetime import datetime,timedelta
+          from decimal import Decimal
+          from zoneinfo import ZoneInfo
+          root=pathlib.Path(os.environ['RUNNER_TEMP']); moscow=ZoneInfo('Europe/Moscow'); now=datetime.now(moscow); cutoff=now-timedelta(hours=36)
+          stamp_re=re.compile(r'^Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}) МСК\.',re.MULTILINE)
+          depart_re=re.compile(r'^✈️ Вылет из Москвы (\d{2}\.\d{2}\.\d{4}) ·',re.MULTILINE)
+          price_re=re.compile(r'^💰 От ([\d \u00a0\u202f]+(?:,\d{1,2})?) ₽ за двоих\s*$',re.MULTILINE)
+          def one(p,t):
+            m=p.findall(t); return m[0] if len(m)==1 else None
+          def amount(v):
+            if not v:return None
+            v=re.sub(r'[\s\u00a0\u202f]','',v).replace(',','.')
+            try:d=Decimal(v)
+            except:return None
+            return d if d>0 else None
+          def read(name):
+            data=(root/(name+'.xml')).read_bytes(); rows=ET.fromstring(data).findall('.//offer'); out={}
+            for o in rows:
+              m=re.fullmatch(r'(tg|max)_(\d+)',o.attrib['id']); assert m
+              text=o.findtext('description',default=''); obs=one(stamp_re,text); dep=one(depart_re,text)
+              try:obs=datetime.strptime(obs,'%d.%m.%Y, %H:%M').replace(tzinfo=moscow) if obs else None
+              except:obs=None
+              try:dep=datetime.strptime(dep,'%d.%m.%Y').date() if dep else None
+              except:dep=None
+              out[(m[1],int(m[2]))]=(amount(o.findtext('price')),amount(one(price_re,text)),obs,dep,o.findtext('currencyId'))
+            return data,rows,out
+          feeds={}; parsed={}
+          for name,expected in [('telegram',1000),('max',1000),('all',2000)]:
+            data,rows,out=read(name); assert len(rows)==len({o.attrib['id'] for o in rows})==expected
+            feeds[name]={'rows':len(rows),'sha256':hashlib.sha256(data).hexdigest()}; parsed[name]=out
+          tg=parsed['telegram']; mx=parsed['max']; allrows=parsed['all']; assert allrows==tg|mx
+          ids={h for p,h in tg if p=='tg'}; assert len(ids)==1000
+          counts=Counter(); expired=[]
+          for h in ids:
+            a=tg['tg',h]; b=mx['max',h]
+            if any(v[3] is not None and v[3]<now.date() for v in (a,b)):expired.append(h)
+            if a[0] is None and b[0] is None:status='no_amount'
+            elif a!=b or a[0] is None:status='platform_mismatch'
+            elif a[4]!='RUB' or a[1]!=a[0] or a[2] is None or a[3] is None:status='amount_without_matching_monitor_proof'
+            elif a[3]<now.date():status='past_departure'
+            elif a[2]+timedelta(minutes=1)<=cutoff:status='stale_observation'
+            elif a[2]<=cutoff:status='freshness_cutoff_within_display_minute'
+            else:status='fresh_published'
+            counts[status]+=1
+          print('PRICE_FINAL_PUBLIC='+json.dumps({'as_of_moscow':now.isoformat(),'feeds':feeds,'unique_hotels':len(ids),
+            'classifications':dict(counts),'past_departure_hotel_ids':sorted(expired),'unscanned_hotels':0},ensure_ascii=False,separators=(',',':')))
+          PY
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known"
