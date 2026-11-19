@@ -13,7 +13,7 @@ const searchApi=prefix+'api-andromeda-search3-preview.php';
 const quoteApi=prefix+'api-andromeda-quote-preview.php';
 const ref='offer_'+'d'.repeat(64);
 const amount=119000, raised=125500, supplierDelay=180;
-const card='#hotel-'+profile.id+' [data-card-entry][data-key^="andromeda%3A"]';
+const card='#hotel-'+profile.id+' h3 [data-action="hotel-details"]';
 const second='#modal-footer [data-action="refresh-hotel"]:not(:disabled)';
 
 function quoteFixture(transport,scenario) {
@@ -85,10 +85,13 @@ async function check(driver,engine,root,html,output,scenario,shot,expectedClicks
     // origin, with the same endpoint names as the existing live-browser fixture.
     await driver.evaluate('Object.assign(V2_CONFIG,'+JSON.stringify({andromedaApi:searchApi,andromedaQuoteApi:quoteApi})+') && true');
     replay.allowClick();await driver.click('.search-submit:not(:disabled)');
-    const key=await until(driver,'document.querySelector('+JSON.stringify(card)+')?.dataset.key && document.querySelector("#search-status").hidden && document.querySelector('+JSON.stringify(card)+').dataset.key',12000);
-    assert.ok(key,'FUN&SUN hotel entry missing '+JSON.stringify(replay.blocked));
+    assert.ok(await until(driver,'document.querySelector('+JSON.stringify(card)+') && document.querySelector("#search-status").hidden',12000),'hotel entry missing '+JSON.stringify(replay.blocked));
     await driver.click(card);
+    const key=await until(driver,'document.querySelector(\'[data-offer-key^="andromeda%3A"]\')?.dataset.offerKey',6000);
+    assert.ok(key,'FUN&SUN row missing '+JSON.stringify(replay.blocked));
     const choice='[data-action="select-hotel-offer"][data-key="'+key+'"]',row='[data-offer-key="'+key+'"]';
+    const closed='details.hotel-room-card[data-room="SAMO STANDARD"]:not([open]) > summary';
+    if(await driver.evaluate('!!document.querySelector('+JSON.stringify(closed)+')'))await driver.click(closed);
     assert.ok(await until(driver,'document.querySelector('+JSON.stringify(choice)+')?.textContent.trim()==="Проверить цену"',6000));
     const original=await driver.evaluate('document.querySelector('+JSON.stringify(row)+').textContent');
     assert.match(original,/Всё включено/);assert.match(original.replace(/\s/g,''),/119000₽/);
