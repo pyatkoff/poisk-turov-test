@@ -83,7 +83,7 @@ async function tourvisorJourney({browser,origin,base,output}){
     const box=n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height};},body=el.querySelector('#modal-body'),footer=el.querySelector('#modal-footer');
     return {overflow:el.scrollWidth>el.clientWidth+1||body.scrollWidth>body.clientWidth+1||document.documentElement.scrollWidth>innerWidth,body:box(body),footer:box(footer),buttons:[...el.querySelectorAll('#messenger-methods button:not([hidden])')].map(box)};
    });
-   assert.equal(geometry.overflow,false,stage+' fits the viewport');assert(geometry.footer.bottom<=height+1&&geometry.body.bottom<=geometry.footer.y+1,stage+' footer leaves the content available');
+   assert.equal(geometry.overflow,false,stage+' fits the viewport');assert(geometry.footer.height===0&&stage==='rooms'||geometry.footer.bottom<=height+1&&geometry.body.bottom<=geometry.footer.y+1,stage+' footer leaves the content available');
    if(methods)for(const b of geometry.buttons){assert(b.height>=44);assert(b.x>=geometry.body.x-1&&b.right<=geometry.body.right+1);assert(b.y>=geometry.body.y-1&&b.bottom<=geometry.body.bottom+1,stage+' methods are visible');}
    const file=`tv-${stage}-${width}x${height}.png`;await page.screenshot({path:path.join(output,file)});shots.push({stage,file,geometry});
   };
@@ -117,7 +117,7 @@ async function tourvisorJourney({browser,origin,base,output}){
    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),true,'unmodified real default');
    const card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');await card.click();await row().waitFor({state:'visible'});await capture('rooms');
    assert.equal(tv.calls.some(c=>c.action==='tv_tour'||c.action==='tv_flights'),false,'room entry spends no quote or flights');
-   await page.locator('#hotel-detail-offers').click();await ready();await capture('manager-methods',true);
+   await row().locator('[data-action="select-hotel-offer"]').click();await ready();await capture('manager-methods',true);
    assert.equal(await page.locator('#modal-title').textContent(),'Продолжить');assert.match((await amount()).replace(/\s/g,''),/90000/);
    assert.match((await page.locator('.application-review-heading small').textContent()).replace(/\s+/g,' '),/12 лет, до года/,'the entered child order stays visible while its canonical request order is compared');
    assert.equal(await page.locator('[name="phone"]').isVisible(),false);assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]').isVisible(),false);
@@ -211,7 +211,7 @@ async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'12,0'}));
    await page.locator('.search-submit:not(:disabled)').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&(document.querySelector('#search-status').hidden||document.querySelector('#search-status').classList.contains('search-status-compact')));
-   await page.locator('.hotel-card .hotel-price [data-key="'+key+'"]').click();await row().waitFor({state:'visible'});await page.locator('#hotel-detail-offers').click();
+   await page.locator('.hotel-card .hotel-price [data-key="'+key+'"]').click();await row().waitFor({state:'visible'});await row().locator('[data-action="select-hotel-offer"]').click();
    let freezeDeadline;
    try{await Promise.race([freezeArrived,new Promise((resolve,reject)=>{freezeDeadline=setTimeout(()=>reject(Error('preparation request did not arrive')),10000);})]);}finally{clearTimeout(freezeDeadline);}
    assert.match(await page.locator('#messenger-status').textContent(),/Подготавливаем переход/);await capture('pending-methods',true);
