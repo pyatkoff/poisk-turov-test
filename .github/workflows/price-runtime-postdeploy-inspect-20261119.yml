@@ -1,4 +1,4 @@
-name: PRICE read 38 promoted post prices without writes
+name: PRICE inspect original editor bindings of 38 promoted posts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '17ffb315de170c3579618f7546c7dff5c1f86327'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '56708ea4e43bc6f6d6a416af34d4b5e370098c6d'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -48,70 +48,58 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read publicly visible prices of 38 exact posts
+      - name: Read native editor publication identities and claims
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
-          TARGET_ROWS=[[174,"max","https://max.ru/anytour/AaHzN34rD6Q"],[174,"telegram","https://t.me/anytour/1792"],[12107,"max","https://max.ru/anytour/AZwjaZt4Kz8"],[12107,"telegram","https://t.me/anytour/809"],[132,"max","https://max.ru/anytour/AZ5qgiujRlo"],[132,"telegram","https://t.me/anytour/17"],[469,"max","https://max.ru/anytour/AZ6sX9HGLTk"],[469,"telegram","https://t.me/anytour/19"],[12111,"max","https://max.ru/anytour/AZ6wa60cTlw"],[12111,"telegram","https://t.me/anytour/23"],[70048,"max","https://max.ru/anytour/AZ61r6_QcAI"],[70048,"telegram","https://t.me/anytour/37"],[82606,"max","https://max.ru/anytour/AZ7KT8ynMm8"],[82606,"telegram","https://t.me/anytour/48"],[1344,"max","https://max.ru/anytour/AZ7PcvbibFA"],[1344,"telegram","https://t.me/anytour/82"],[260,"max","https://max.ru/anytour/AZ7UVbXteP8"],[260,"telegram","https://t.me/anytour/192"],[415,"max","https://max.ru/anytour/AaFUVxlGPTg"],[415,"telegram","https://t.me/anytour/1754"],[2493,"max","https://max.ru/anytour/AZ7Z4K9JJNQ"],[2493,"telegram","https://t.me/anytour/196"],[3452,"max","https://max.ru/anytour/AZ7pU2e2Znw"],[3452,"telegram","https://t.me/anytour/1148"],[4181,"max","https://max.ru/anytour/AZ8DSRZpHNw"],[4181,"telegram","https://t.me/anytour/204"],[37668,"max","https://max.ru/anytour/AZ8r4R9vT_Q"],[37668,"telegram","https://t.me/anytour/402"],[43676,"max","https://max.ru/anytour/AZ9k6MvNF94"],[43676,"telegram","https://t.me/anytour/414"],[64895,"max","https://max.ru/anytour/AZ-OUsaPJjg"],[64895,"telegram","https://t.me/anytour/993"],[73974,"max","https://max.ru/anytour/AZ-tLRx7Jzw"],[73974,"telegram","https://t.me/anytour/455"],[74503,"max","https://max.ru/anytour/AZ_MDV0gO_I"],[74503,"telegram","https://t.me/anytour/474"],[99713,"max","https://max.ru/anytour/AZ_RB3FVXFc"],[99713,"telegram","https://t.me/anytour/483"]]
-          from concurrent.futures import ThreadPoolExecutor
-          import json, re, subprocess, html
-          from html.parser import HTMLParser
-
-          class TelegramPost(HTMLParser):
-            def __init__(self, post):
-              super().__init__(convert_charrefs=True)
-              self.post=post
-              self.scope=0
-              self.capture=0
-              self.caption=[]
-              self.photo=0
-              self.button=0
-            def handle_starttag(self, tag, attrs):
-              a=dict(attrs); classes=a.get('class','').split()
-              if tag=='div':
-                if a.get('data-post')==self.post:
-                  self.scope=1
-                elif self.scope:
-                  self.scope+=1
-                if self.capture:
-                  self.capture+=1
-                elif self.scope and 'tgme_widget_message_text' in classes:
-                  self.capture=1
-              if self.scope and 'tgme_widget_message_photo_wrap' in classes: self.photo+=1
-              if self.scope and 'tgme_widget_message_inline_button' in classes: self.button+=1
-              if self.capture and tag=='br': self.caption.append('\n')
-            def handle_endtag(self, tag):
-              if tag=='div':
-                if self.scope: self.scope-=1
-                if self.capture: self.capture-=1
-            def handle_data(self, data):
-              if self.capture: self.caption.append(data)
-
-          def check(row):
-            hotel, platform, url=row
-            try:
-              embed=url+'?embed=1&mode=tme' if platform=='telegram' else url
-              raw=subprocess.check_output(['curl','-fsS','--max-time','16',embed],stderr=subprocess.DEVNULL).decode()
-              if platform=='telegram':
-                parsed=TelegramPost('anytour/'+url.rsplit('/',1)[1])
-                parsed.feed(raw)
-                caption=''.join(parsed.caption)
-                if not caption: return [hotel,platform,'unreadable']
-                photo=parsed.photo
-                button=parsed.button
-              else:
-                m=re.search(r'message:\{text:("(?:[^"\\]|\\.)*")',raw)
-                if not m: return [hotel,platform,'unreadable']
-                caption=json.loads(m[1]); photo=None; button=None
-              return [hotel,platform,'read',bool(re.search(r'\d[\d \u00a0\u202f]*\s*₽|Цена найдена мониторингом',caption)),len(caption.encode('utf-16-le'))//2,photo,button]
-            except (OSError,subprocess.SubprocessError,ValueError):
-              return [hotel,platform,'unreadable']
-          with ThreadPoolExecutor(max_workers=8) as pool:
-            results=list(pool.map(check, TARGET_ROWS))
-          print('PROMOTED_PUBLIC_PRICE_PREFLIGHT='+json.dumps(results,separators=(',',':')))
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" php <<'PY'
+          <?php
+          declare(strict_types=1);
+          chdir('/var/www/anytoour/data/www/app.anytoour.ru');
+          ob_start();
+          require getcwd().'/config.php';
+          require_once getcwd().'/services/ChannelPostRuntime.php';
+          require_once getcwd().'/services/ChannelPostRegistryService.php';
+          require_once getcwd().'/services/ChannelPostButtonTransport.php';
+          ob_end_clean();
+          $pdo=ConversationDb::connection();
+          $registry=new ChannelPostRegistryService($pdo);
+          $rows=[[174,'max','https://max.ru/anytour/AaHzN34rD6Q'],[174,'telegram','https://t.me/anytour/1792'],[12107,'max','https://max.ru/anytour/AZwjaZt4Kz8'],[12107,'telegram','https://t.me/anytour/809'],[132,'max','https://max.ru/anytour/AZ5qgiujRlo'],[132,'telegram','https://t.me/anytour/17'],[469,'max','https://max.ru/anytour/AZ6sX9HGLTk'],[469,'telegram','https://t.me/anytour/19'],[12111,'max','https://max.ru/anytour/AZ6wa60cTlw'],[12111,'telegram','https://t.me/anytour/23'],[70048,'max','https://max.ru/anytour/AZ61r6_QcAI'],[70048,'telegram','https://t.me/anytour/37'],[82606,'max','https://max.ru/anytour/AZ7KT8ynMm8'],[82606,'telegram','https://t.me/anytour/48'],[1344,'max','https://max.ru/anytour/AZ7PcvbibFA'],[1344,'telegram','https://t.me/anytour/82'],[260,'max','https://max.ru/anytour/AZ7UVbXteP8'],[260,'telegram','https://t.me/anytour/192'],[415,'max','https://max.ru/anytour/AaFUVxlGPTg'],[415,'telegram','https://t.me/anytour/1754'],[2493,'max','https://max.ru/anytour/AZ7Z4K9JJNQ'],[2493,'telegram','https://t.me/anytour/196'],[3452,'max','https://max.ru/anytour/AZ7pU2e2Znw'],[3452,'telegram','https://t.me/anytour/1148'],[4181,'max','https://max.ru/anytour/AZ8DSRZpHNw'],[4181,'telegram','https://t.me/anytour/204'],[37668,'max','https://max.ru/anytour/AZ8r4R9vT_Q'],[37668,'telegram','https://t.me/anytour/402'],[43676,'max','https://max.ru/anytour/AZ9k6MvNF94'],[43676,'telegram','https://t.me/anytour/414'],[64895,'max','https://max.ru/anytour/AZ-OUsaPJjg'],[64895,'telegram','https://t.me/anytour/993'],[73974,'max','https://max.ru/anytour/AZ-tLRx7Jzw'],[73974,'telegram','https://t.me/anytour/455'],[74503,'max','https://max.ru/anytour/AZ_MDV0gO_I'],[74503,'telegram','https://t.me/anytour/474'],[99713,'max','https://max.ru/anytour/AZ_RB3FVXFc'],[99713,'telegram','https://t.me/anytour/483']];
+          $result=[];
+          $held=$pdo->prepare("SELECT COUNT(*) FROM post_versions WHERE publication_id=? AND (state IN ('claimed','write_started','unknown') OR claim_token IS NOT NULL OR claimed_at IS NOT NULL)");
+          foreach ($rows as [$hotel,$platform,$url]) {
+              $isMax=$platform==='max';
+              $channel=$isMax ? '-68765999669267' : '-1001845835645';
+              $scope=$isMax ? 4 : 6;
+              $publicKey=substr($url,strrpos($url,'/')+1);
+              if($isMax){
+                  $midEnd=bin2hex(base64_decode(strtr($publicKey,'-_','+/'),true));
+                  $q=$pdo->prepare("SELECT id,external_message_id FROM post_publications WHERE post_channel_id=? AND RIGHT(external_message_id,16)=?");
+                  $q->execute([$scope,$midEnd]);
+              } else {
+                  $q=$pdo->prepare("SELECT id,external_message_id FROM post_publications WHERE post_channel_id=? AND external_message_id=?");
+                  $q->execute([$scope,$publicKey]);
+              }
+              $found=$q->fetchAll(PDO::FETCH_ASSOC);
+              if(count($found)!==1){$result[]=[$hotel,$platform,count($found)===0?'registry_missing':'registry_ambiguous'];continue;}
+              $id=(int)$found[0]['id'];
+              $post=$registry->publication($id);
+              if(!is_array($post)||$post['project_key']!=='anytour'||$post['platform']!==$platform||$post['channel_id']!==$channel){
+                  $result[]=[$hotel,$platform,'identity_mismatch'];continue;
+              }
+              $held->execute([$id]);
+              $snapshot=$post['snapshot'];
+              $photo=$snapshot['attachments']??[];
+              $button=ChannelPostButtonTransport::buttonUrl($post);
+              $result[]=[$hotel,$platform,$post['state'],$id,(int)$post['version_id'],
+                  (int)$held->fetchColumn(),count($photo)===1&&($photo[0]['type']??'')==='image',
+                  is_string($button)&&$button!=='',
+                  ($snapshot['post_url']??'')===$url,count($snapshot['markup']??[]),
+                  is_array($snapshot['keyboard']??null)?count($snapshot['keyboard']):null];
+          }
+          echo 'PROMOTED_NATIVE_EDITOR_PREFLIGHT='.json_encode($result,JSON_THROW_ON_ERROR),PHP_EOL;
           PY
       - name: Cleanup connection material
         if: always()
