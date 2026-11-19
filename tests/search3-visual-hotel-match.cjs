@@ -57,7 +57,12 @@ module.exports = async function checkHotelMatches(driver, engine, size, root, ht
     assert.ok(await until(driver, 'window.__firstOpen?.readyMs > 0', 10000), 'search is usable');
     assert.equal(await driver.evaluate('location.pathname'), entry);
     assert.match(await driver.evaluate('document.title'), /^AnyTour/);
-    await driver.evaluate("window.hotelMatchErrors=[];window.addEventListener('error',e=>{if(e.error)window.hotelMatchErrors.push(e.message)});true");
+    await driver.evaluate(`(() => {
+      window.hotelMatchErrors = [];
+      window.addEventListener('error', event => {
+        if (event.error) window.hotelMatchErrors.push(event.message);
+      });
+    })()`);
     replay.allowClick();
     await driver.click('.search-submit:not(:disabled)');
     const readState = 'Array.from(document.querySelectorAll("#cards .hotel-card"), c => ({id:c.id, reasons:Array.from(c.querySelectorAll(".hotel-match-line li"), e => e.textContent)}))';
