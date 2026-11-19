@@ -106,7 +106,12 @@ foreach([[0,0,8],['0','0','8'],[0],[17],[],'0'] as $ages){
 }
 // JSON true must not become one adult/night/identity/filter before supplier dispatch.
 foreach(['departureId','countryId','adults','nightsFrom','nightsTo','arrivalId','priceFrom','priceTo'] as $field){
-    foreach([true,false,1.0,1.5,[],(object)['value'=>1]] as $index=>$value){
+    $invalid=[true,false,1.0,1.5,[],(object)['value'=>1]];
+    // A supplied, unparseable filter must not disappear from the supplier query.
+    if (in_array($field,['priceFrom','priceTo','arrivalId'],true)) {
+        array_push($invalid,'100 000','1.5','unknown',str_repeat('9',24));
+    }
+    foreach($invalid as $index=>$value){
         $badParams=$params;$badParams[$field]=$value;$badState=['keep'=>'untouched'];$attempts=0;$writes=0;
         $badInput=['provider'=>'tourvisor','action'=>'tv_search','request_id'=>md5('numeric-'.$field.'-'.$index),
             'csrf'=>str_repeat('c',64),'params'=>$badParams];
@@ -132,6 +137,10 @@ tvg_ok(array_intersect_key($parsed,array_flip(['departureId','countryId','nights
     ===['departureId'=>1,'countryId'=>4,'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'arrivalId'=>1,'priceFrom'=>0,'priceTo'=>500000]
     && $parsed['onlyCharter']===true && $parsed['onlyDirect']===false,
     'integer strings, literal zero price and separate boolean flags remain compatible');
+$query=[];
+parse_str(\AnyTour\TourvisorInteractiveClient::query($parsed),$query);
+tvg_ok($query['priceFrom']==='0' && $query['priceTo']==='500000' && $query['arrivalId']==='1',
+    'explicit zero, ceiling and arrival filter reach the supplier query');
 foreach([null,''] as $empty){
     $validParams=array_replace($params,['arrivalId'=>$empty,'priceFrom'=>$empty,'priceTo'=>$empty]);
     $parsed=\AnyTour\TourvisorInteractiveClient::searchParams($validParams);
