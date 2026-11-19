@@ -55,6 +55,8 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.match(await text(family), /Всё включено/i);
   assert.equal(await text(family + ' .hotel-room-price > strong'), '169 500 ₽');
   await driver.wait('[data-target="hotel-rooms-heading"][aria-current="location"]');
+  const headingGap = await driver.evaluate('document.querySelector("#hotel-rooms-heading").getBoundingClientRect().top - document.querySelector(".hotel-section-nav").getBoundingClientRect().bottom');
+  assert.ok(headingGap >= -1 && headingGap <= 32, 'room heading starts immediately below the tabs on entry: ' + headingGap);
   const visibleRates = await driver.evaluate(`Array.from(document.querySelectorAll('.hotel-room-card[data-room="Стандартный номер"] .hotel-room-price > strong')).filter(price=>{
     const box=price.getBoundingClientRect(),nav=document.querySelector('.hotel-section-nav').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect();
     return box.height>0 && box.top>=nav.bottom-1 && box.bottom<=body.bottom+1;

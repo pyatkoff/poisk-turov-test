@@ -225,6 +225,11 @@
     line-height:1.65;
   }
 
+  /* Let the final section reach the sticky tabs even when only a few rates fit. */
+  .hotel-details-dialog .hotel-room-section {
+    min-block-size:calc(94dvh - 8rem);
+  }
+
   .hotel-details-dialog .hotel-room-meal-filter {
     font-size:.875rem;
   }
