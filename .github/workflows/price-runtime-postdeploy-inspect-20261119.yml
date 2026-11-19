@@ -1,4 +1,4 @@
-name: PRICE 1856 read terminal collector state after SSH reset
+name: PRICE 1858 confirm server collector terminal or overrun
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'fd86e07e7f5490f72726283b73512ad67a6e4401'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0eb3bdc62a3fc83227d66377faffac1f64cb656f'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
