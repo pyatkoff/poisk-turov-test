@@ -1,4 +1,4 @@
-name: PRICE 1200 read-only timer and published price audit
+name: PRICE read-only published observation and departure proof
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '982fb3609df751c414af6b7d6415d1d1a7aa02c3'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cb0ad976058c77efd688cb5084d59b3dec44e1a3'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -72,59 +72,102 @@ jobs:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
           import re
           from collections import Counter
-          from datetime import datetime, timezone, timedelta
+          from datetime import datetime, timedelta
+          from decimal import Decimal
           from zoneinfo import ZoneInfo
-          now=datetime.now(timezone.utc)
-          def audit_feed(rows):
-            def normalized(name):
-              return re.sub(r'[^a-z0-9а-яё]+','',name.casefold())
-            keys=Counter()
-            counts=Counter()
-            hotels=set()
-            fresh=set()
-            expired_departures=set()
-            without_amount=set()
-            stale=set()
-            unparsed_observation=set()
-            for row in rows:
-              h=re.fullmatch(r'(?:tg|max|telegram)[_-](\d+)',row.attrib.get('id',''))
-              if not h:
-                counts['unmapped_offers']+=1
-                continue
-              h=int(h[1]); hotels.add(h)
-              values={normalized(c.get('name',c.tag)): (c.text or '').strip() for c in row}
-              keys.update(values.keys())
-              value=next((values[k] for k in ('price','tourprice','priceamount','цена') if values.get(k)), '')
-              amount=re.sub(r'[\s\u00a0\u202f]','',value).replace(',','.')
-              valid_amount=bool(re.fullmatch(r'\d+(?:\.\d+)?',amount) and float(amount)>0)
-              if not valid_amount: without_amount.add(h)
-              dep=next((values[k] for k in ('departuredate','departdate','flightdate','tourdeparturedate','датавылета') if values.get(k)), '')
-              if dep:
-                try:
-                  if datetime.fromisoformat(dep).date()<now.astimezone(ZoneInfo('Europe/Moscow')).date(): expired_departures.add(h)
-                except ValueError: counts['unparsed_departure_offers']+=1
-              else: counts['unmarked_departure_offers']+=1
-              ts=next((values[k] for k in ('priceobservedat','observedat','tourobservedat','observationtimestamp','датанаблюдения','времянаблюдения') if values.get(k)), '')
-              if not ts:
-                counts['unmarked_observation_offers']+=1
-                continue
+
+          moscow=ZoneInfo('Europe/Moscow')
+          now=datetime.now(moscow)
+          cutoff=now-timedelta(hours=36)
+          stamp_re=re.compile(r'^Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}) МСК\.',re.MULTILINE)
+          departure_re=re.compile(r'^✈️ Вылет из Москвы (\d{2}\.\d{2}\.\d{4}) ·',re.MULTILINE)
+          caption_price_re=re.compile(r'^💰 От ([\d \u00a0\u202f]+(?:,\d{1,2})?) ₽ за двоих\s*$',re.MULTILINE)
+
+          def unique_match(pattern, text):
+            matched=pattern.findall(text)
+            return matched[0] if len(matched)==1 else None
+
+          def decimal_amount(value):
+            if not value:
+              return None
+            value=re.sub(r'[\s\u00a0\u202f]','',value).replace(',','.')
+            if re.fullmatch(r'\d+(?:\.\d+)?',value):
+              amount=Decimal(value)
+              if amount>0:
+                return amount
+            return None
+
+          def read_offers(name):
+            rows={}
+            file=app/'feed'/('hotel-posts-'+name+'.xml')
+            data=file.read_bytes()
+            assert hashlib.sha256(data).hexdigest()==feeds[name],'feed_changed_after_public_readback'
+            for offer in ET.fromstring(data).findall('.//offer'):
+              match=re.fullmatch(r'(tg|max)_(\d+)',offer.attrib['id'])
+              assert match,'hotel_offer_identity_unrecognized'
+              key=(match[1],int(match[2]))
+              assert key not in rows,'duplicate_hotel_platform'
+              description=offer.findtext('description',default='')
+              amount=decimal_amount(offer.findtext('price'))
+              caption_amount=decimal_amount(unique_match(caption_price_re,description))
+              observed_text=unique_match(stamp_re,description)
+              departure_text=unique_match(departure_re,description)
               try:
-                observed=datetime.fromisoformat(ts.replace('Z','+00:00'))
-                if observed.tzinfo is None: raise ValueError('observation timezone not in feed')
+                observed=datetime.strptime(observed_text,'%d.%m.%Y, %H:%M').replace(tzinfo=moscow) if observed_text else None
               except ValueError:
-                unparsed_observation.add(h); continue
-              age=now-observed
-              if age<timedelta(0): counts['future_observation_offers']+=1
-              elif age>=timedelta(hours=36): stale.add(h)
-              elif valid_amount: fresh.add(h)
-            return {'rows':len(rows),'hotel_ids':len(hotels),'fresh_amount_unique':len(fresh),
-              'stale_observation_unique':len(stale),'past_departure_unique':len(expired_departures),
-              'missing_or_invalid_amount_unique':len(without_amount),'invalid_observation_unique':len(unparsed_observation),
-              'unknown':dict(counts),'field_occurrences':dict(keys)}
-          xml_audit={}
-          for k in ('telegram','max','all'):
-            xml_audit[k]=audit_feed(ET.parse(app/'feed'/('hotel-posts-'+k+'.xml')).getroot().findall('.//offer'))
-          print('PUBLIC_XML_PRICE_FIELDS='+json.dumps(xml_audit,ensure_ascii=False,separators=(',',':')))
+                observed=None
+              try:
+                departure=datetime.strptime(departure_text,'%d.%m.%Y').date() if departure_text else None
+              except ValueError:
+                departure=None
+              rows[key]=(amount,caption_amount,observed,departure,offer.findtext('currencyId'),offer.findtext('url'))
+            return rows
+
+          tg=read_offers('telegram')
+          mx=read_offers('max')
+          all_rows=read_offers('all')
+          assert not tg.keys()&mx.keys() and all_rows==tg|mx,'combined_feed_offer_mismatch'
+          hotel_ids={h for platform,h in tg if platform=='tg'}
+          assert len(hotel_ids)==1000 and set(mx)=={('max',h) for h in hotel_ids},'hotel_roster_mismatch'
+          eligible=set(result['eligible_ids'])
+          unchanged=set(result['unchanged_ids'])
+          assert eligible|unchanged<=hotel_ids,'price_receipt_roster_mismatch'
+          counts=Counter()
+          queued=Counter()
+          expired_ids=[]
+          for h in hotel_ids:
+            a=tg['tg',h][:5]
+            b=mx['max',h][:5]
+            has_price=[entry[0] is not None for entry in (a,b)]
+            if any(entry[3] is not None and entry[3]<now.date() for entry in (a,b)):
+              counts['past_departure_any_platform']+=1
+              expired_ids.append(h)
+            if not any(has_price):
+              status='no_amount'
+            elif not all(has_price) or a!=b:
+              status='platform_mismatch'
+            else:
+              amount,caption_amount,observed,departure,currency=a
+              if currency!='RUB' or caption_amount!=amount or observed is None or departure is None:
+                status='amount_without_matching_monitor_proof'
+              elif observed>now:
+                status='observation_in_future'
+              elif departure<now.date():
+                status='past_departure'
+              elif observed+timedelta(minutes=1)<=cutoff:
+                status='stale_observation'
+              elif observed<=cutoff:
+                status='freshness_cutoff_within_display_minute'
+              else:
+                status='fresh_published'
+            counts[status]+=1
+            if h in eligible:
+              queued[status]+=1
+          print('PUBLIC_XML_PRICE_FIELDS='+json.dumps({
+            'as_of_moscow':now.isoformat(),'cutoff_moscow':cutoff.isoformat(),
+            'unique_hotels':len(hotel_ids),'offers_per_feed':[len(tg),len(mx),len(all_rows)],
+            'classifications':dict(counts),'queued_by_public_status':dict(queued),
+            'past_departure_hotel_ids':sorted(expired_ids)},ensure_ascii=False,separators=(',',':')))
           source_php=r'''<?php
           declare(strict_types=1);
           $root='/var/www/anytoour/data/www/anytoour.ru/data';
