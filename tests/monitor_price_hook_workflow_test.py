@@ -103,9 +103,13 @@ class ExistingCollectorHook(unittest.TestCase):
         self.assertIn('    timeout-minutes: 65', production.splitlines())
 
     def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0,
-                 collector_stdout='', collector_stderr='', tee=0, scp=0, scp_fail_at=1):
+                 collector_stdout='', collector_stderr='', tee=0, scp=0, scp_fail_at=1,
+                 promoted_installed=False, promoted_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
+            promoted = root / 'apply_promoted_hotel_prices.php'
+            if promoted_installed:
+                promoted.touch()
             scripts = {
                 'scp': '''#!/usr/bin/env python3
 import json,os,sys
@@ -140,6 +144,7 @@ if name=='top500-daily-collector-v1.php':
     sys.stderr.write(os.environ['COLLECTOR_STDERR'])
     raise SystemExit(int(os.environ['COLLECTOR_STATUS']))
 if name=='rollup-price-daily-exact-v1.php':raise SystemExit(int(os.environ['EXACT_ROLLUP_STATUS']))
+if name=='apply_promoted_hotel_prices.php':raise SystemExit(int(os.environ['PROMOTED_STATUS']))
 if name=='monitor-price-hook.php':
     Path(os.environ['HOOK_CONTEXT_LOG']).write_text(json.dumps({'collection_started_at':os.environ.get('ANYTOUR_MONITOR_COLLECTION_STARTED_AT'),'collector_run_id':os.environ.get('ANYTOUR_MONITOR_COLLECTOR_RUN_ID')}))
     raise SystemExit(int(os.environ['HOOK_STATUS']))
@@ -152,13 +157,33 @@ if name=='monitor-price-hook.php':
                      HOOK_TEST_LOG=str(log), HOOK_CONTEXT_LOG=str(root/'hook-context.json'), COLLECTOR_STATUS=str(collector), HOOK_STATUS=str(hook), EXACT_ROLLUP_STATUS=str(exact_rollup),
                      COLLECTOR_STDOUT=collector_stdout, COLLECTOR_STDERR=collector_stderr,
                      TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '',
-                     SCP_TEST_LOG=str(root/'scp-calls.jsonl'), SCP_STATUS=str(scp), SCP_FAIL_AT=str(scp_fail_at))
-            result=subprocess.run(['bash','-c',actual_shell(event,attempt)],env=env,cwd=ROOT,capture_output=True,text=True,timeout=10)
+                     SCP_TEST_LOG=str(root/'scp-calls.jsonl'), SCP_STATUS=str(scp), SCP_FAIL_AT=str(scp_fail_at),
+                     PROMOTED_STATUS=str(promoted_status))
+            script = actual_shell(event,attempt).replace(
+                r'\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php', str(promoted))
+            result=subprocess.run(['bash','-c',script],env=env,cwd=ROOT,capture_output=True,text=True,timeout=10)
             calls=[json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
             scp_log=root/'scp-calls.jsonl'
             self.scp_calls=[json.loads(line) for line in scp_log.read_text().splitlines()] if scp_log.exists() else []
             self.hook_context=json.loads((root/'hook-context.json').read_text()) if (root/'hook-context.json').exists() else None
             return result,[Path(a[0]).name for a in calls],calls
+
+    def test_promoted_editor_is_installed_and_serial_after_successful_hook(self):
+        result, names, calls = self.run_pass(promoted_installed=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(names.count('apply_promoted_hotel_prices.php'), 1)
+        self.assertEqual(names.index('apply_promoted_hotel_prices.php'), names.index('monitor-price-hook.php') + 1)
+        self.assertEqual(calls[names.index('apply_promoted_hotel_prices.php')][1:], ['--apply'])
+        for params in [dict(hook=5), dict(event='workflow_dispatch'), dict(attempt=2)]:
+            with self.subTest(params=params):
+                _, names, _ = self.run_pass(promoted_installed=True, **params)
+                self.assertNotIn('apply_promoted_hotel_prices.php', names)
+
+    def test_promoted_failure_does_not_repeat_or_stop_aggregates(self):
+        result, names, _ = self.run_pass(promoted_installed=True, promoted_status=8)
+        self.assertEqual(result.returncode, 8, result.stderr)
+        self.assertEqual(names.count('apply_promoted_hotel_prices.php'), 1)
+        self.assertIn('rollup-price-daily-exact-v1.php', names)
 
     def test_failed_scp_stops_before_any_production_php(self):
         for failed_copy in (1, 2):
