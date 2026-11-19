@@ -33,6 +33,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.equal(await driver.count('.hotel-card'), 0, 'Blank search initially');
   await driver.click(stars);
   await driver.wait(stars + '[aria-pressed="true"]');
+  assert.equal(await driver.count('#cards:empty'), 1);
   await frame('01-search');
 
   await driver.click('.search-submit');
@@ -41,6 +42,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   const names = await driver.evaluate(`Array.from(document.querySelectorAll('.hotel-card-name'), el => el.textContent.trim()).sort()`);
   assert.deepEqual(names, ['Coast Club · демо', 'Palm Garden · демо']);
   assert.equal(await text(card + ' .starting-price strong'), '154 800 ₽');
+  assert.equal(await text(card + ' .starting-from'), 'от');
   assert.equal(await text(card + ' [data-card-entry]'), 'Номера и цены');
   await align(card, 'start');
   await frame('02-results');
@@ -60,6 +62,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   await driver.wait(pair);
   await driver.click(pair);
   await driver.wait(pair + ':checked');
+  assert.match(await text('[data-flight-index="1"] .flight-comparison'), /1\s?300.*06:05.*20\s?кг/);
   assert.match(await text('#flight-price-change'), /1 300 ₽.*20 кг.*Шереметьево.*06:05/);
   await align('[data-flight-index="1"]', 'center');
   await frame('04-flights');

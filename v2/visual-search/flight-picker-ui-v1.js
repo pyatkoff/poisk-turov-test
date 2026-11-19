@@ -6,25 +6,42 @@ function departurePeriod(segments) {
     const minutes = departureMinute(segments);
     return minutes === null ? 'unknown' : minutes < 360 ? 'night' : minutes < 720 ? 'morning' : minutes < 1080 ? 'day' : 'evening';
   }
-function priceDifference(total, selectedTotal, selected, money) {
+function priceDifference(total, selectedTotal, selected, money, tourPrice) {
+    if (tourPrice > 0) {
+      if (!(total > 0)) return '';
+      const delta = total - tourPrice;
+      return delta === 0 ? 'Без доплаты' : (delta > 0 ? '+' : '−') + money(Math.abs(delta)) + ' к туру';
+    }
     if (!(total > 0)) return 'Выбор после уточнения цены';
     if (selected) return 'Выбрано';
     if (!(selectedTotal > 0)) return '';
     const delta = total - selectedTotal;
     return delta === 0 ? 'Такая же цена' : `На ${money(Math.abs(delta))} ${delta > 0 ? 'дороже' : 'дешевле'} выбранного`;
   }
+function comparisonBaggage(pair) {
+    const {allowanceValue, directionAllowance} = window.AnyTourFlightPickerV18;
+    if ([pair.forward, pair.backward].some(legs =>
+      new Set((legs || []).map(leg => allowanceValue(leg, 'baggage'))).size > 1)) return 'Разный багаж по участкам';
+    const outbound = directionAllowance(pair.forward, 'baggage');
+    const inbound = directionAllowance(pair.backward, 'baggage');
+    if (outbound !== inbound) return `Багаж туда — ${outbound}, обратно — ${inbound}`;
+    return outbound === 'без багажа' ? 'Без багажа' : 'Багаж ' + outbound;
+  }
 function timeFilters() {
     return `<details class="flight-time-filters"><summary>Время вылета и сортировка <span data-flight-time-count></span></summary><div class="flight-time-fields">${[['forward','Туда'],['backward','Обратно']].map(([direction,label])=>`<label>${label}<select data-flight-time="${direction}"><option value="">Любое время</option><option value="night">Ночью · 00:00–05:59</option><option value="morning">Утром · 06:00–11:59</option><option value="day">Днём · 12:00–17:59</option><option value="evening">Вечером · 18:00–23:59</option><option value="unknown">Время уточняется</option></select></label>`).join('')}</div><label class="flight-sort-label">Порядок<select data-flight-sort><option value="price">Сначала дешевле</option><option value="original">Исходный порядок</option></select></label><p>Время местное. Для перелёта с пересадкой учитывается вылет первого рейса.</p></details>`;
   }
 function render(o, selected, helpers) {
     const {esc, money, price, legHTML, fuelText} = helpers;
+    const tourPrice = [o.total, o.quoteListingTotal].map(Number).find(value => Number.isFinite(value) && value > 0) || 0;
     const selectedVariant = selected == null ? null : o.variants?.[Number(selected)];
     const selectedTotal = selectedVariant ? price(o.tour, selectedVariant) : null;
-    return `<details class="flight-filter-panel"><summary>Фильтры и сортировка <span data-flight-filter-count></span></summary><div class="flight-filter-panel-body"><div class="flight-search-row"><label><span class="sr-only">Найти авиакомпанию, рейс или аэропорт</span><input type="search" data-flight-query placeholder="Авиакомпания, рейс или аэропорт" autocomplete="off"></label></div><div class="flight-picker-tools"><div class="flight-quick-filters"><label><input type="checkbox" data-flight-filter="direct"> Без пересадок</label><label><input type="checkbox" data-flight-filter="baggage"> С багажом</label></div></div>${timeFilters()}<button type="button" class="primary flight-filter-apply" data-flight-show-results>Показать варианты</button></div></details><div class="flight-result-summary"><p class="flight-filter-state" aria-live="polite"></p><button type="button" class="text-button" data-flight-selected>К выбранному</button></div><fieldset class="flight-options flight-options-compact"><legend class="sr-only">Пары рейсов туда и обратно. Цена всего тура за всех туристов.</legend>${o.variants.map((v, i) => {
+    return `<details class="flight-filter-panel"><summary>Фильтры и сортировка <span data-flight-filter-count></span></summary><div class="flight-filter-panel-body"><div class="flight-search-row"><label><span class="sr-only">Найти авиакомпанию, рейс или аэропорт</span><input type="search" data-flight-query placeholder="Авиакомпания, рейс или аэропорт" autocomplete="off"></label></div><div class="flight-picker-tools"><div class="flight-quick-filters"><label><input type="checkbox" data-flight-filter="direct"> Без пересадок</label><label><input type="checkbox" data-flight-filter="baggage"> С багажом</label></div></div>${timeFilters()}<button type="button" class="primary flight-filter-apply" data-flight-show-results>Показать варианты</button></div></details><div class="flight-result-summary"><p class="flight-filter-state" aria-live="polite"></p><button type="button" class="text-button" data-flight-selected>К выбранному</button></div><fieldset class="flight-options flight-options-compact" data-tour-price="${esc(tourPrice)}"><legend class="sr-only">Пары рейсов туда и обратно. Цена всего тура за всех туристов.</legend>${o.variants.map((v, i) => {
       const total = price(o.tour, v);
       const bags = [...(v.forward || []), ...(v.backward || [])].map(f => f.baggage);
+      const departure = departureMinute(v.forward) === null ? 'Вылет уточняется' : 'Вылет ' + v.forward[0].departure.time;
+      const difference = priceDifference(total, selectedTotal, String(i) === String(selected), money, tourPrice);
       const bag = 'Багаж: ' + pairAllowance(v, 'baggage'), carryOn = 'Ручная кладь: ' + pairAllowance(v, 'carryOn');
-      return `<article class="flight-option flight-option-compact" data-flight-index="${i}" data-flight-forward-time="${departurePeriod(v.forward)}" data-flight-backward-time="${departurePeriod(v.backward)}" data-flight-search="${esc([...(v.forward||[]),...(v.backward||[])].map(f=>[helpers.text(f.company),f.number,helpers.text(f.departure?.port),helpers.text(f.arrival?.port)].filter(Boolean).join(' ')).join(' '))}" data-flight-price="${total || ''}" data-flight-direct="${v.forward?.length === 1 && v.backward?.length === 1}" data-flight-baggage="${!!v.forward?.length && !!v.backward?.length && bags.every(n => Number(n) > 0)}"><label class="flight-choice-row"><input type="radio" name="flight-pair" value="${i}" ${String(i) === String(selected) ? 'checked' : ''}><span class="sr-only">Вариант ${i + 1}.</span>${pairRoutes(v, helpers)}<div class="flight-price"><strong>${total ? money(total) : 'Цена уточняется'}</strong><small>весь тур за всех</small><em data-flight-difference>${esc(priceDifference(total, selectedTotal, String(i) === String(selected), money))}</em></div></label><details><summary aria-label="Подробнее о варианте ${i + 1}: ${esc(bag)}. ${esc(carryOn)}"><span class="flight-allowances"><span>${esc(bag)}</span><span>${esc(carryOn)}</span></span><span class="flight-details-label">Подробнее</span></summary><div class="flight-expanded">${legHTML(v.forward, 'Туда') + legHTML(v.backward, 'Обратно')}<p>Топливный сбор: ${fuelText({...o, flightChoiceId: String(i)})}</p></div></details></article>`;
+      return `<article class="flight-option flight-option-compact" data-flight-index="${i}" data-flight-forward-time="${departurePeriod(v.forward)}" data-flight-backward-time="${departurePeriod(v.backward)}" data-flight-search="${esc([...(v.forward||[]),...(v.backward||[])].map(f=>[helpers.text(f.company),f.number,helpers.text(f.departure?.port),helpers.text(f.arrival?.port)].filter(Boolean).join(' ')).join(' '))}" data-flight-price="${total || ''}" data-flight-direct="${v.forward?.length === 1 && v.backward?.length === 1}" data-flight-baggage="${!!v.forward?.length && !!v.backward?.length && bags.every(n => Number(n) > 0)}"><label class="flight-choice-row"><input type="radio" name="flight-pair" value="${i}" ${String(i) === String(selected) ? 'checked' : ''}><span class="sr-only">Вариант ${i + 1}.</span>${pairRoutes(v, helpers)}<div class="flight-price"><strong>${total ? money(total) : 'Цена уточняется'}</strong><small>весь тур за всех</small></div><div class="flight-comparison"><span data-flight-difference>${esc(difference)}</span><span>${esc(departure)}</span><span>${esc(comparisonBaggage(v))}</span></div></label><details><summary aria-label="Подробнее о варианте ${i + 1}: ${esc(bag)}. ${esc(carryOn)}"><span class="flight-allowances"><span>${esc(carryOn)}</span></span><span class="flight-details-label">Подробнее</span></summary><div class="flight-expanded">${legHTML(v.forward, 'Туда') + legHTML(v.backward, 'Обратно')}<p>Топливный сбор: ${fuelText({...o, flightChoiceId: String(i)})}</p></div></details></article>`;
     }).join('')}</fieldset><button type="button" class="secondary flight-load-more" data-flight-load-more hidden></button>`;
   }
 function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽', restored = null, changed = null) {
@@ -79,8 +96,8 @@ function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽'
       else if(selectedBeyondLimit)status.append(document.createTextNode(' · Выбранный перелёт ниже в списке.'));
       loadMore.hidden=!remaining;loadMore.textContent=remaining?`Показать ещё ${Math.min(pageSize,remaining)} · останется ${Math.max(0,remaining-pageSize)}`:'';
       const selectedRow=list.querySelector('input:checked')?.closest('.flight-option');
-      const selectedTotal=Number(selectedRow?.dataset.flightPrice);
-      rows.forEach(row=>{row.querySelector('[data-flight-difference]').textContent=priceDifference(Number(row.dataset.flightPrice),selectedTotal,row===selectedRow,money);});
+      const selectedTotal=Number(selectedRow?.dataset.flightPrice), tourPrice=Number(list.dataset?.tourPrice);
+      rows.forEach(row=>{row.querySelector('[data-flight-difference]').textContent=priceDifference(Number(row.dataset.flightPrice),selectedTotal,row===selectedRow,money,tourPrice);});
       const firstVisible=matching.find(row=>!row.hidden);
       selectedButton.hidden=!selectedRow||(!hiddenSelection&&!selectedBeyondLimit&&selectedRow===firstVisible);
       selectedButton.textContent=hiddenSelection?'Сбросить фильтры и показать выбранный':'К выбранному';

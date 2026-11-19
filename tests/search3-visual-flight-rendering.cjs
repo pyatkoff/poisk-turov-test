@@ -24,6 +24,7 @@ const cases = freeze([
   ['missing-routes', {testTotal: null}],
   ['empty-routes', pair([], [], null)],
   ['one-direction', pair([segment()], [], 110000)],
+  ['different-bags', pair([segment()], [segment({baggage:15})])],
   ['connections', pair([segment(), segment({departure: {port: 'BBB'}, arrival: {port: 'CCC'}})], [segment()])],
   ['airport-change', pair([segment(), segment({departure: {port: 'XXX'}, arrival: {port: 'CCC'}})], [segment()])],
   ['placeholder', pair([segment({number: 'EX000', baggage: 0, carryOn: '0', departure: {time: '00:00'}, arrival: {time: '00:00'}})], [segment()])],
@@ -73,8 +74,16 @@ function collect(code) {
     output.push({name, summary});
     for (const selected of [null, '0', '1', '12', '99']) {
       priceCalls.length = 0; fuelCalls.length = 0;
-      const offer = freeze({tour: {id: name}, variants: [candidate, alternative]});
+      const offer = freeze({tour: {id: name}, total:123456.5, variants: [candidate, alternative]});
       const html = api.render(offer, selected, helpers);
+      const [brief, second] = Array.from(html.matchAll(/<div class="flight-comparison">(.+?)<\/div>/g), match => match[1]);
+      assert.ok(second.includes('+6543.50 ₽ к туру'), 'drafting a different pair keeps the original tour price as its reference');
+      if (name === 'same-carrier') assert.match(brief, /Без доплаты.*Вылет 09:10.*Багаж 20 кг/);
+      if (name === 'different-bags') assert.match(brief, /Багаж туда — 20 кг, обратно — 15 кг/);
+      if (name === 'mixed-allowances') assert.match(brief, /Разный багаж по участкам/);
+      if (name === 'one-direction') assert.match(brief, /−13456.50 ₽ к туру.*Багаж туда — 20 кг, обратно — уточняется/);
+      if (name === 'missing-routes') assert.match(brief, /data-flight-difference><\/span><span>Вылет уточняется<\/span><span>Багаж уточняется/);
+      if (name === 'placeholder') assert.match(brief, /Вылет уточняется.*Багаж туда — уточняется, обратно — 20 кг/);
       assert.equal(routes(html, '<div class="flight-price">'), summaryRoutes, `${name}: picker/summary route parity`);
       assert.equal((html.match(/class="flight-option flight-option-compact"/g) || []).length, 2);
       assert.ok(html.includes('data-flight-index="0"')); assert.ok(html.includes('data-flight-index="1"'));

@@ -100,16 +100,19 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await stars.click();
    assert.equal(await stars.getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('.hotel-card').count(),0);
+   assert.equal(await page.locator('#cards:empty').count(),1,'the ready form has no duplicate prompt');
    await frame('Параметры поиска');
    await page.locator('.search-submit').click();
    const card=page.locator('#hotel-900002');
    await card.waitFor();
    assert.equal(await page.locator('.hotel-card').count(),2,'both matching four-star hotels');
+   assert.equal(await sum(card.locator('.starting-from')),'от');
    await card.evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
    await frame('Выдача с фильтром 4★');
    await card.getByRole('button',{name:/Номера и цены/}).click();
    const family=page.locator('.hotel-room-card[data-room="Семейный номер"]');
    await family.scrollIntoViewIfNeeded();
+   assert.equal(await page.locator('#hotel-detail-offers').isVisible(),false,'browsing rooms does not offer a different tour in the footer');
    await frame('Номера и питание');
    await family.locator('[data-action="select-hotel-offer"]').click();
    const form=page.locator('#prototype-lead-form');
@@ -117,6 +120,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'169 500 ₽');
    await page.locator('[data-action="contact-flights"]').click();
    await page.locator('[name="flight-pair"][value="1"]').check();
+   assert.match(await sum(page.locator('[data-flight-index="1"] .flight-comparison')),/1\s?300.*06:05.*20\s?кг/);
    assert.match(await sum(page.locator('#flight-price-change')),/1 300 ₽.*20 кг.*Шереметьево.*06:05/);
    await frame('Выбор перелёта');
    await page.locator('[data-action="apply-flight"]').click();

@@ -1845,7 +1845,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
   const row=()=>page.locator('.room-offer-choice[data-offer-key="'+key+'"]'),amount=()=>page.locator('#modal-footer .footer-total>strong').textContent();
   const capture=async name=>{
    const geometry=await page.locator('#modal').evaluate(el=>{const body=el.querySelector('#modal-body'),b=body.getBoundingClientRect(),f=el.querySelector('#modal-footer').getBoundingClientRect(),title=el.querySelector('#modal-title');return{horizontalOverflow:el.scrollWidth>el.clientWidth+1,bodyBottom:b.bottom,bodyHeight:b.height,bodyScroll:body.scrollTop,footerTop:f.top,footerBottom:f.bottom,footerHeight:f.height,viewport:innerHeight,title:title.textContent,titleClipped:title.scrollWidth>title.clientWidth+1};});
-   assert.equal(geometry.horizontalOverflow,false);assert(geometry.bodyBottom<=geometry.footerTop+1);assert(geometry.footerBottom<=geometry.viewport+1);
+   assert.equal(geometry.horizontalOverflow,false);assert(geometry.footerHeight===0&&name==='rooms'||geometry.bodyBottom<=geometry.footerTop+1);assert(geometry.footerBottom<=geometry.viewport+1);
    await page.screenshot({path:path.join(evidence,'tv-card-'+name+'-'+tag+'.png')});return geometry;
   };
   try{
@@ -1881,11 +1881,11 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    const legacy=await capture('legacy-details');assert.equal(quoteCalls(),0);assert.equal(flightCalls(),0);
    await page.locator('[data-action="close-modal"]').click();await card.evaluate(el=>el.dataset.cardEntry='true');
    await card.click();await row().waitFor({state:'visible'});
-   assert.equal(await row().getAttribute('aria-current'),'true');
-   assert.equal(await page.locator('#hotel-detail-offers').getAttribute('data-key'),key);assert.equal(await row().evaluate(el=>el.closest('[data-room]').dataset.room),'STANDARD SEA VIEW');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/Цена.*провер/);assert.equal(await row().locator('.hotel-room-price').isVisible(),false);assert.equal(await row().locator('.room-choice-selected').isVisible(),true);assert(await row().locator('[data-action="select-hotel-offer"]').evaluate(el=>el.getBoundingClientRect().height>=43.5),'same selected room toggle retains a usable pointer target');assert.equal(await page.locator('#hotel-detail-offers').textContent(),'Проверить тур');
+   assert.equal(await row().getAttribute('aria-current'),null);
+   assert.equal(await page.locator('#hotel-detail-offers').getAttribute('data-key'),null);assert.equal(await row().evaluate(el=>el.closest('[data-room]').dataset.room),'STANDARD SEA VIEW');assert.match(await row().locator('.room-offer-price-status').textContent(),/Цена.*провер/);assert.equal(await row().locator('.hotel-room-price').isVisible(),true);assert.equal(await row().locator('.room-choice-selected').isVisible(),false);assert(await row().locator('[data-action="select-hotel-offer"]').evaluate(el=>el.getBoundingClientRect().height>=43.5),'room choice retains a usable pointer target');
    assert.equal(quoteCalls(),0,'room entry does not fetch or verify a price');assert.equal(flightCalls(),0,'room entry does not request flights');
    const selected=await capture('rooms');
-   await page.locator('#hotel-detail-offers').click();await page.locator('#modal[open] #prototype-lead-form').waitFor();
+   await row().locator('[data-action="select-hotel-offer"]').click();await page.locator('#modal[open] #prototype-lead-form').waitFor();
    assert.equal(quoteCalls(),1);assert.equal(flightCalls(),0,'ordinary continuation leaves flight choice to manager');assert.match(await amount(),/90\s*000/);assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер|Перелёт уточнит менеджер/);
    await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional retained card draft');await page.locator('[name="consent"]').click();
    const manager=await capture('manager-contact'),beforeReturn=transport.calls.length;
@@ -1935,7 +1935,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
    if(width===430){await page.locator('#apply-filters').click();await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open'));}
    const before=await snapshot(),card=page.locator('.hotel-card .hotel-price [data-key="'+key+'"]');
    await card.click();await row().waitFor({state:'visible'});assert.equal(await row().locator('[data-action="hotel-flights"]').count(),1);
-   await page.locator('#hotel-detail-offers').click();await started;await page.waitForFunction(()=>document.querySelector('#hotel-detail-offers')?.disabled);
+   await row().locator('[data-action="select-hotel-offer"]').click();await started;await page.waitForFunction(()=>document.querySelector('#hotel-detail-offers')?.disabled);
    assert.equal(quoteCalls(),1);assert.equal(await row().locator('[data-action="hotel-flights"]').count(),0,'pending quote does not advertise an action its handler rejects');
    assert.match(await row().locator('.room-flight-preview [role="status"]').textContent(),/Проверяем цену тура/);
    release();await page.waitForFunction(()=>document.querySelector('#hotel-detail-offers')?.textContent==='К результатам');

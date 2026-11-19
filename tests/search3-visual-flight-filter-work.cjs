@@ -128,8 +128,16 @@ if(baseline)assert.deepEqual(actual,records(baseline),'actual bind visible state
 assert(JSON.stringify(actual)!==JSON.stringify(records(source.replace("(!baggage||row.dataset.flightBaggage==='true')",'true'))),'baggage mutation detected');
 const work=model(source,{count:1000,uniform:true});work.context.normalizations=0;work.controls.get('[data-flight-query]').value='еж air aaa return';work.fire('[data-flight-query]','input');assert.equal(work.context.normalizations,1001,'one query and one normalization per row');
 const changed=changedRecords(source),dom=domRecords(source);
+const comparison=model(source,{count:4,selected:0});
+comparison.list.dataset={tourPrice:'100000'};
+comparison.fire('[data-flight-query]','input');
+const originalDelta=comparison.rows[1].difference.textContent;
+assert.match(originalDelta,/^\+300.*к туру$/);
+comparison.rows[0].input.checked=false;comparison.rows[1].input.checked=true;
+comparison.container.handlers.change({target:comparison.rows[1].input});
+assert.equal(comparison.rows[1].difference.textContent,originalDelta,'choosing a pair retains its delta from the committed tour');
 if(process.argv.includes('--capture'))console.log('CAPTURE original changed/DOM digests',hash(changed),hash(dom));
-else{assert.equal(hash(changed),'6d255be2935c046bb0e3b069ab0bbf94cfc8544aad2211f7c7717b6774fdaf4a','original dynamic-data and child-node repair states');assert.equal(hash(dom),'94583c42c8b29ded66f9113f54053786978378bd7e62ecf1fb694c339e23b152','original real DOM, selection, focus and scroll states');}
+else{assert.equal(hash(changed),'6d255be2935c046bb0e3b069ab0bbf94cfc8544aad2211f7c7717b6774fdaf4a','original dynamic-data and child-node repair states');assert.equal(hash(dom),'3a28b67bf589b49ddf11f0098ef18cda4d1ee26e15750aaed6b9eb8085f2fac5','comparison row DOM, selection, focus and scroll states');}
 if(baseline){assert.deepEqual(changed,changedRecords(baseline));assert.deepEqual(dom,domRecords(baseline,{legacyCopy:true,legacyResetFocus:true}));}
 for(const [before,after] of [
  ['Пары рейсов туда и обратно. Цена всего тура за всех туристов.','Пары рейсов туда и обратно. Цена билета.'],

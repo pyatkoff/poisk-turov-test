@@ -38,8 +38,7 @@ function verifyResultCardEntry(){
   vm.createContext(c);vm.runInContext(slice("function cardOpensRooms(","function cardHTML(")+"function dispatch(){switch('offer'){"+dispatcher+"}}",c);c.dispatch();
   if(cardEntry&&['tourvisor','anex'].includes(provider)){
    const entry=calls.find(x=>x?.type==='rooms');assert(entry,provider+' result card enters existing hotel rooms');assert.equal(entry.id,7);assert.equal(entry.route.entryOfferKey,clicked.key);
-   if(provider==='tourvisor'){assert.equal(entry.draft.key,clicked.key,'clicked exact row, never first offer');assert.equal(entry.draft.hotelId,7);assert.equal(c.selectionGeneration,4);assert.equal(calls.filter(x=>x==='cancel').length,1);}
-   else assert.equal(c.hotelOfferDraft.key,'old','ANEX group refresh remains its existing owner');
+   assert.equal(c.hotelOfferDraft.key,'old','the result card delegates entry without selecting a room');
    assert.equal(calls.some(x=>x?.type==='offer'),false);
   }else assert.equal(calls.at(-1).type,'offer','explicit details and unsupported sources retain their old route');
   assert.strictEqual(c.selectedOffer,previous,'entry does not mint or overwrite a quote, flight choice or browser price');
@@ -47,18 +46,17 @@ function verifyResultCardEntry(){
  const room={open:false},other={open:false},more={setAttribute:(name,value)=>{more[name]=value;}},key='clicked-second';
  const row={dataset:{offerKey:key},closest:selector=>selector==='.room-overview'?room:selector==='.hotel-room-more'?more:null};
  const hotel={id:7,offers:[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]};
- const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},hotels:[hotel],modalType:'hotel-details',
+ const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},selectedOffer:null,hotels:[hotel],modalType:'hotel-details',
   $:selector=>selector==='#modal'?{open:true}:null,$$:selector=>selector==='.room-offer-choice'?[{dataset:{offerKey:'first'},closest:()=>other},row]:[],
   hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
  vm.createContext(c);vm.runInContext(slice('function openHotelDetails(id,','function positionHotelRooms('),c);c.renderHotelDetails();
  assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
- // A previous room from this same hotel is still retained when the user
- // chooses an exact ANEX price in the results. Reopening must bind that price.
+ // Opening the list anchors the clicked offer without marking an unverified room as chosen.
  hotel.offers[1]={key,provider:'anex',raw:{anexKind:'concrete'}};
  c.hotelOfferDraft={hotelId:7,key:'first'};c.selectionGeneration=4;c.cancelHotelOfferCheck=()=>{};
  c.showModal=()=>{};c.$=selector=>selector==='#modal'?{open:true,classList:{add(){}}}:null;
  room.open=false;delete more.open;c.openHotelDetails(7,{entryOfferKey:key});
- assert.equal(c.hotelOfferDraft.key,key);assert.equal(c.hotelOfferDraft.hotelId,7);assert.equal(c.selectionGeneration,5);
+ assert.equal(c.hotelOfferDraft,null);assert.equal(c.hotelDetailsView.entryKey,key,'the clicked offer is an entry anchor until a room is chosen');assert.equal(c.selectionGeneration,5);
  assert.equal(room.open,true);assert.equal(more.open,'');assert.equal(c.hotelDetailsView.roomEntryPending,false);
  let top=null;
  const body={scrollTop:0,clientHeight:380,getBoundingClientRect:()=>({top:10}),scrollTo:position=>{top=position.top;}};
