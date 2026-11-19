@@ -1642,7 +1642,7 @@ function dateSelectionPriceModel(){
  const from=dateDraft.from,to=dateDraft.to,values=[];
  if(from&&to&&from<=to&&(dateObj(to)-dateObj(from))/86400000<=21){for(let day=from;day<=to;day=addDays(day,1)){const p=calendarPrice(day);if(Number.isFinite(p)&&p>0)values.push({day,price:p});}}
  const phase=calendarSelectionPhase();
- const note=phase==='loading'?'Загружаем подсказки цен…':phase==='error'?'Даты можно выбрать без цены.':phase==='idle'?'Подсказка цены ещё не загружена.':phase==='invalid'?'Выберите корректные даты вылета.':'— для этих условий цены не сохранены';
+ const note=phase==='loading'?'Загружаем подсказки цен…':phase==='error'?'Даты можно выбрать без цены.':phase==='idle'?'Подсказка цены ещё не загружена.':phase==='invalid'?'Выберите корректные даты вылета.':'Поиск покажет, есть ли туры на выбранные даты.';
  return {values,phase,note};
 }
 function dateSelectionPriceHTML({values,phase,note}){
@@ -1651,8 +1651,8 @@ function dateSelectionPriceHTML({values,phase,note}){
   const label=phase==='error'?'Минимум среди загруженных цен':'Минимум';
   return `<span class="calendar-minimum">${label}: ${dateText(minimum.day)} · <strong>${money(minimum.price)}</strong>${phase==='loading'?'<small>Загрузка продолжается.</small>':''}</span>`;
  }
- if(phase==='error')return `<span>${note}</span>`;
- return `<span>${note}<small>${phase==='complete'?'Даты можно выбрать: это не означает, что туров нет.':phase==='invalid'?'':'Даты можно выбрать, не дожидаясь цены.'}</small></span>`;
+ if(phase==='complete'||phase==='error')return `<span>${note}</span>`;
+ return `<span>${note}<small>${phase==='invalid'?'':'Даты можно выбрать, не дожидаясь цены.'}</small></span>`;
 }
 function renderDateSelectionPrice(){
  const node=$('#date-selection-price');if(!node)return;const model=dateSelectionPriceModel();
@@ -2259,9 +2259,9 @@ function contactFlightAllowance(pair,field,label){
 }
 function finalFlightDetailsHTML(o,pair){
  const legs=savedFlightLegs(o);if(!legs.length)return savedFlightSummaryHTML(o);
- const summary=legs.map((leg,i)=>`${i?'Обратно':'Туда'} ${leg.times}`).join(' · ');
+ const summary=legs.map((leg,i)=>`<span>${i?'Обратно':'Туда'} ${esc(leg.times)}</span>`).join(' ');
  const baggage=contactFlightAllowance(pair,'baggage','Багаж'),carryOn=contactFlightAllowance(pair,'carryOn','Ручная кладь');
- return `<details class="summary-flight-details" ${innerWidth>760?'open':''}><summary><span>Рейсы и багаж</span><small>${esc(summary)}<span class="selected-flight-line">${esc(baggage)} · ${esc(carryOn)}</span></small></summary>${savedFlightSummaryHTML(o)}</details>`;
+ return `<details class="summary-flight-details" ${innerWidth>760?'open':''}><summary><span>Рейсы и багаж</span><small class="summary-flight-times">${summary}<span class="selected-flight-line">${esc(baggage)} · ${esc(carryOn)}</span></small></summary>${savedFlightSummaryHTML(o)}</details>`;
 }
 function andromedaFlightRoute(f){
  const point=p=>[data.text(p?.town),data.text(p?.port)].filter(Boolean).join(' · ')||'Аэропорт уточняется';

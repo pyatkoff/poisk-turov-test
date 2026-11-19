@@ -99,6 +99,29 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  await capture('family-result-age', 'Новая выдача · 10 лет');
 }
 
+async function checkSelectedFlightTimes(page, selector, layout) {
+ await page.evaluate(() => document.fonts.ready.then(() => true));
+ const times = await page.locator(selector).evaluateAll(nodes => nodes.map(node => {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const lines = [...range.getClientRects()];
+  const box = node.getBoundingClientRect();
+  const ink = range.getBoundingClientRect();
+  return {text:node.textContent, lines:lines.length, top:ink.top, left:ink.left, right:ink.right,
+   fits:ink.width > 0 && ink.left >= box.left - 1 && ink.right <= box.right + 1};
+ }));
+ const viewport = JSON.stringify(page.viewportSize());
+ const expected = layout === 'summary' ? ['Туда 06:05 → 10:40', 'Обратно 08:05 → 12:40'] : ['06:05 → 10:40', '08:05 → 12:40'];
+ assert.deepEqual(times.map(time => time.text), expected);
+ assert.ok(times.every(time => time.lines === 1 && time.fits), 'each departure and arrival fits on one line at ' + viewport + ': ' + JSON.stringify(times));
+ const [outbound, inbound] = times;
+ if (layout === 'columns') {
+  assert.ok(outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1, 'both directions align side by side at ' + viewport);
+ } else if (layout === 'rows') {
+  assert.ok(inbound.top > outbound.top, 'flight directions have separate rows at ' + viewport);
+ }
+}
+
 // Keep a visual record of one continuous session at each size. Small contact
 // sheets fit the existing acceptance archive without duplicating full frames.
 async function saveJourney(context, frames, width, evidence, options = {}) {
@@ -297,8 +320,20 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    const footer=page.locator('#modal-footer');
    assert.equal(await sum(footer.locator('#detail-total')),'170 800 ₽');
    assert.match(await sum(footer.locator('.tour-price-history')),/Этот тур в поиске 169 500 ₽/i);
+   const tourTimes='.tour-overview .chosen-flight-pair .flight-compact-leg > strong';
+   await checkSelectedFlightTimes(page,tourTimes,width===1280?'columns':'rows');
    await frame('Цена при возврате к туру');
+   if(width===1280){
+    await page.setViewportSize({width:901,height:720});
+    await checkSelectedFlightTimes(page,tourTimes,'rows');
+    await page.setViewportSize({width,height:720});
+    await checkSelectedFlightTimes(page,tourTimes,'columns');
+   }
    await footer.locator('[data-action="confirm-tour"]').click();
+   await checkSelectedFlightTimes(page,'.application-flight-overview .summary-flight-times > span:not(.selected-flight-line)','summary');
+   if(width===430)await flightDetails.locator('summary').click();
+   await checkSelectedFlightTimes(page,'.application-flight-overview .saved-flight-times','rows');
+   if(width===1280)await page.setViewportSize({width,height:800});
    assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
    assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
