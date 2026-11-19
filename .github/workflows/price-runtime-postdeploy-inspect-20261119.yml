@@ -1,4 +1,4 @@
-name: PRICE final admission after required CI
+name: PRICE verify the bound publisher before merging PR 1631
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -10,7 +10,7 @@ permissions:
   issues: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == 'e7e7312bc45938e56a3031209561acf7137ecf1b' && github.run_attempt == 1
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == '79e962534d79e4810ba5cc94f877d76deea07b73' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
@@ -25,4 +25,4 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          GITHUB_REPOSITORY=pyatkoff/max-search-bot node tools/release_priority.js --admit 1631 774d5bb4d30c4e14ae819e0fbe97c5ea336d600e c9b4d97a945f88e068b71a9af6c948013434e050
+          GITHUB_REPOSITORY=pyatkoff/max-search-bot node tools/release_priority.js --admit 1631 774d5bb4d30c4e14ae819e0fbe97c5ea336d600e c9b4d97a945f88e068b71a9af6c948013434e050 --publisher 6682640708 226193297 2026-11-19T19:06:46Z
