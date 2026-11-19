@@ -191,17 +191,23 @@ const choiceStart=hotelSource.indexOf('function roomOfferChoiceHTML('),choiceEnd
 const selectionStart=source.indexOf('function syncHotelOfferSelection('),selectionEnd=source.indexOf('function observeHotelRoomChoices(',selectionStart);
 const dispatchStart=source.indexOf("case 'select-hotel-offer':"),dispatchEnd=source.indexOf("case 'continue-hotel-offer':",dispatchStart);
 assert(choiceStart>=0&&choiceEnd>choiceStart&&selectionStart>=0&&selectionEnd>selectionStart&&dispatchStart>=0&&dispatchEnd>dispatchStart);
-const exactRows=[0,1].map(i=>({key:'exact-room-'+i,hotelId:7,raw:{id:i},room:'Family '+i,meal:i?'BB':'AI',day:'2026-10-01',returnDay:'2026-10-08',nights:7,operator:'Operator '+i,total:125000+i*1500}));
-for(const initial of [null,exactRows[0],exactRows[1]]){
+for(const priceDifference of [0,1500])for(const selectedIndex of [null,0,1]){
+ const exactRows=[0,1].map(i=>({key:'exact-room-'+i,hotelId:7,raw:{id:i},room:'STANDARD MAINBUILDING WITHOUT BALCONY GARDEN VIEW',meal:'AI',day:'2026-10-01',returnDay:i?'2026-10-09':'2026-10-08',nights:7+i,flight:i?'regular':'charter',operator:'FUN&SUN',total:243950+i*priceDifference}));
+ const initial=selectedIndex===null?null:exactRows[selectedIndex];
  const makeNode=()=>{const attributes=new Map(),classes=new Set();return{dataset:{},textContent:'',classList:{toggle:(key,on)=>on?classes.add(key):classes.delete(key),contains:key=>classes.has(key)},setAttribute:(key,value)=>attributes.set(key,String(value)),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key)};};
  const footer=Object.fromEntries(['#hotel-detail-min','#hotel-detail-price-status','#hotel-detail-offers'].map(key=>[key,makeNode()]));let rows=[],remembered=0;const continued=[];
  const ctx={modalType:'hotel-details',hotelDetailsView:null,selectionGeneration:0,context:{selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null},selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null,hotels:[{id:7}],state:{search:{}},
-  esc:String,displayMealLabel:o=>o.meal,mealLabel:o=>o.meal,dateText:String,nightsText:String,flightLabel:()=>'',guestsText:()=> '2 взрослых',money:value=>value+' ₽',operatorBadge:String,sameSelectedTourConditions:()=>false,needsRefresh:()=>false,selectedPriceStatus:()=>'',cardPriceNote:()=>'Цена из выдачи · требует проверки',
+  esc:String,displayMealLabel:o=>o.meal,mealLabel:o=>o.meal,dateText:String,nightsText:n=>n+' ночей',flightLabel:o=>o.flight==='regular'?'Регулярный':'Чартер',guestsText:()=> '2 взрослых',money:value=>value+' ₽',operatorBadge:String,sameSelectedTourConditions:()=>false,needsRefresh:()=>false,selectedPriceStatus:()=>'',cardPriceNote:()=>'Цена из выдачи · требует проверки',
   data:{amount:value=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):null},syncHotelFlightSelection:()=>{},continueHotelOffer:key=>continued.push(key),hotelOffers:()=>exactRows,offerFromKey:key=>exactRows.find(o=>o.key===key),rememberUIRoute:()=>remembered++,$:key=>key==='.hotel-section-nav'?{dataset:{hotelId:'7'}}:footer[key],$$:()=>rows,document:{activeElement:null}};
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function hotelOfferCheckActive('),source.indexOf('function renderOfferProgress('))+hotelSource.slice(choiceStart,choiceEnd)+source.slice(selectionStart,selectionEnd)+"function dispatchChoice(b){const action='select-hotel-offer';switch(action){"+source.slice(dispatchStart,dispatchEnd)+'}}',ctx);
  rows=exactRows.map(offer=>{const html=ctx.roomOfferChoiceHTML(offer),row=makeNode(),button=makeNode(),tag=html.match(/<button\b[^>]*data-action="select-hotel-offer"[^>]*>/)[0];row.dataset.offerKey=offer.key;row.choiceLabel=makeNode();row.choiceLabel.append=node=>{node.parentElement=row.choiceLabel;};row.pricePanel=makeNode();row.pricePanel.insertBefore=node=>{node.parentElement=row.pricePanel;};row.pricePanel.querySelector=()=>null;row.querySelector=selector=>selector==='.room-choice-selected'?row.choiceLabel:selector==='.hotel-room-price'?row.pricePanel:button;button.dataset.key=offer.key;for(const name of ['aria-label','aria-pressed'])button.setAttribute(name,tag.match(new RegExp(name+'="([^"]*)"'))[1]);button.textContent=initial?.key===offer.key?'Выбрано':'Выбрать';return row;});
  const names=rows.map(row=>row.querySelector().getAttribute('aria-label'));
- names.forEach((name,i)=>{const o=exactRows[i];assert.equal(name,`Выбрать: ${o.room}, ${o.meal}, ${o.day}, ${o.operator}, ${o.total} ₽`,'stable accessible name includes exact conditions even when initially selected');});
+ names.forEach((name,i)=>{
+  const o=exactRows[i],flight=i?'Регулярный':'Чартер';
+  const terms=`${o.room}, ${o.meal}, ${o.day} → ${o.returnDay} · ${o.nights} ночей, ${flight}, ${o.operator}, ${o.total} ₽`;
+  assert.equal(name,'Проверить цену: '+terms,'checking the price names the exact same-priced tariff');
+  assert(ctx.roomOfferChoiceHTML(o).includes('aria-label="Подробности тура: '+terms+'"'),'opening details names the same return date, duration and flight');
+ });
  assert.notEqual(names[0],names[1],'different exact offers remain distinguishable');
  for(const offer of [exactRows[0],exactRows[1],exactRows[0]]){
   const button=rows.find(row=>row.dataset.offerKey===offer.key).querySelector();ctx.document.activeElement=button;ctx.dispatchChoice(button);

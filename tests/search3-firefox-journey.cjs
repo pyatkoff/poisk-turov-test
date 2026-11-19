@@ -3,6 +3,68 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
+async function compareLongRoomNames({driver, url, evidence, documentGuard}) {
+  const prefix = 'Семейный люкс с отдельной гостиной и просторной террасой с видом на ';
+  const rates = [
+    {room: prefix + 'сад', price: 154800, key: 'long-room-garden'},
+    {room: prefix + 'море', price: 155100, key: 'long-room-sea'},
+  ];
+  await driver.go(url);
+  await driver.wait('.search-submit:not(:disabled)');
+  await driver.evaluate(`(async () => {
+    const data = window.AnyTourPrototypeData, search = data.initialSearch;
+    let hotel;
+    await data.search(search, event => {
+      if (event.type === 'results') hotel = event.hotels.find(item => item.id === 900002);
+    });
+    const template = hotel.offers[0], entries = [];
+    hotel.offers = [];
+    for (const {room, price, key} of ${JSON.stringify(rates)}) {
+      const offer = {...template, room, total: price, key};
+      const quote = await data.quote(offer);
+      entries.push({offerKey: key, quote, flights: (await data.flights(quote)).slice(0, 1)});
+      hotel.offers.push(offer);
+    }
+    window.AnyTourRecording.load({schemaVersion: 1, kind: 'demo', currency: 'RUB',
+      capturedAt: new Date().toISOString(), countryName: 'Турция', source: 'Firefox room comparison',
+      search, hotels: [hotel], entries});
+    await data.setScenario('recorded');
+  })()`);
+  await driver.click('.search-submit');
+  await driver.click('#hotel-900002 [data-action="hotel-details"]');
+  const roomsTab = '[data-target="hotel-rooms-heading"]';
+  await driver.click(roomsTab);
+  await driver.wait(roomsTab + '[aria-current="location"]');
+  for (const {room, price, key} of rates) {
+    const card = '.hotel-room-card[data-room="' + room + '"]';
+    const choice = card + ' [data-action="select-hotel-offer"][data-key="' + key + '"]';
+    await driver.wait(choice);
+    assert.equal(await driver.text(card + ' h4'), room);
+    assert.equal(Number((await driver.text(card + ' .hotel-room-price strong')).replace(/\D/g, '')), price);
+    if(price>rates[0].price)assert.equal(await driver.text(card + ' .room-price-difference'), 'На 300 ₽ выше минимума');
+    const fits = await driver.evaluate(`(() => {
+      const card = document.querySelector(${JSON.stringify(card)}), title = card.querySelector('h4');
+      const range = document.createRange(), text = title.firstChild;
+      range.setStart(text, text.length - ${room.length - prefix.length});
+      range.setEnd(text, text.length);
+      const word = range.getBoundingClientRect(), box = title.getBoundingClientRect();
+      const hit = document.elementFromPoint(word.x + word.width / 2, word.y + word.height / 2);
+      return word.width > 0 && word.height > 0 && word.left >= box.left - 1 &&
+        word.right <= box.right + 1 && word.bottom <= box.bottom + 1 &&
+        title.contains(hit) && card.scrollWidth <= card.clientWidth + 1;
+    })()`);
+    assert.ok(fits, 'the distinguishing word is visible inside its own room card: ' + room);
+  }
+  await documentGuard('similar-long-rooms');
+  const file = 'similar-long-rooms-430.png';
+  await driver.screenshot(path.join(evidence, file));
+  await driver.click('[data-action="select-hotel-offer"][data-key="' + rates[1].key + '"]');
+  await driver.wait('#prototype-lead-form');
+  assert.ok((await driver.text('.application-review-heading')).includes(rates[1].room));
+  assert.equal(Number((await driver.text('#modal-footer .footer-total > strong')).replace(/\D/g, '')), rates[1].price);
+  return file;
+}
+
 module.exports = async function firefoxJourney({driver, origin, base, evidence, documentGuard}) {
   const url = new URL(base + 'visual-search/?scenario=journey', origin).href;
   const card = '#hotel-900002';
@@ -122,6 +184,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.equal(await driver.value(phone), '70000000000');
   assert.equal(await text(total), '170 800 ₽');
   await documentGuard('restored-contact');
-  return {frames, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  const similarRoomsFrame = await compareLongRoomNames({driver, url, evidence, documentGuard});
+  return {frames, similarRoomsFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };

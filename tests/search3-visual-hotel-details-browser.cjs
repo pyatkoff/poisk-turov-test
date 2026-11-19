@@ -121,7 +121,7 @@ const server=http.createServer((req,res)=>{
    assert.equal(await room.evaluate(el=>el.tagName!=='DETAILS'||el.open),true);const choice=room.locator('[data-action="select-hotel-offer"]').first(),key=await choice.getAttribute('data-key');assert(key);const listingPrice=await choice.locator('..').locator('strong').textContent();
    await page.screenshot({path:path.join(evidence,`hotel-${width}.png`)});
    const currentRoom=()=>page.locator('.hotel-room-card').filter({has:page.locator('[data-action="select-hotel-offer"][data-key="'+key+'"]')});
-   const toggleNames=()=>page.locator('[data-action="select-hotel-offer"]').evaluateAll(buttons=>buttons.map(b=>[b.dataset.key,b.getAttribute('aria-label')])),namesBefore=await toggleNames();assert(namesBefore.length>1);for(const [,name]of namesBefore)assert.match(name,/^Выбрать: /,'toggle name is independent of selected state');
+   const toggleNames=()=>page.locator('[data-action="select-hotel-offer"]').evaluateAll(buttons=>buttons.map(b=>[b.dataset.key,b.getAttribute('aria-label')])),namesBefore=await toggleNames();assert(namesBefore.length>1);for(const [,name]of namesBefore)assert.match(name,/^Проверить цену: /,'the stable name starts with the available price action');
    for(const disclosure of await page.locator('.room-overview,.hotel-room-more').all())if(!await disclosure.evaluate(el=>el.open))await disclosure.locator(':scope > summary').click();
    const alternate=page.locator(`[data-action="select-hotel-offer"]:not([data-key="${key}"])`).first();
    // The approved route continues immediately. Exercise the same three exact
@@ -132,6 +132,8 @@ const server=http.createServer((req,res)=>{
     const visiblePrice=page.locator('#modal .footer-total strong:visible').first();assert.equal(await visiblePrice.textContent(),exactPrice,'one explicit exact room reaches its own checked whole-party price');
     await page.locator('[data-action="modal-back"]').click();await page.locator('#hotel-room-count').waitFor();
     assert.equal(await target.getAttribute('data-key'),exactKey);assert.equal(await target.getAttribute('aria-pressed'),'true');assert.equal(await target.textContent(),'✓ Ваш выбранный тур');assert.equal(await page.locator('[data-action="select-hotel-offer"][aria-pressed="true"]').count(),1);assert.deepEqual(await toggleNames(),namesBefore,'A→B→A keeps accessible names stable');
+    const selectedName=namesBefore.find(([offerKey])=>offerKey===exactKey)[1];
+    assert(await target.locator('..').getByRole('button',{name:selectedName,exact:true}).isVisible(),'Back keeps the named selected action outside the hidden price block');
    }
    assert.equal(await choice.getAttribute('aria-pressed'),'true');
    await choice.click();await page.locator('#prototype-lead-form').waitFor();const visiblePrice=page.locator('#modal .footer-total strong:visible').first();assert.equal(await visiblePrice.textContent(),listingPrice,'visible price keeps the exact chosen offer');assert((await page.locator('#modal').innerText()).includes(selected),'selected offer keeps the exact room visible in contacts');

@@ -71,6 +71,16 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
     for(const value of [offer.day,offer.returnDay,offer.flight,offer.operator])assert(row.textContent.includes(value),'differing terms belong to their exact offer: '+value);
    }
    assert(!rows[0].textContent.includes(changed.operator)&&!rows[1].textContent.includes(standard.operator));
+   const differences=()=>Array.from(cards.querySelectorAll('.room-price-difference'),el=>el.textContent);
+   assert.deepEqual(differences(),[],'identical totals need no difference label');
+   offers=[standard,{...changed,total:standard.total+1535}];
+   owner.renderHotelRooms(1);
+   assert.deepEqual(differences(),['На 1535 ₽ выше минимума']);
+   owner.renderHotelRooms(1,changed.meal);
+   assert.deepEqual(differences(),[],'filtering out the cheapest offer resets the minimum');
+   offers[1]={...offers[1],ages:[7]};
+   owner.renderHotelRooms(1);
+   assert.deepEqual(differences(),[],'different guest parties are not compared');
   }
   dom.window.close();
  }return output;

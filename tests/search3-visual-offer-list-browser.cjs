@@ -261,6 +261,33 @@ const server=http.createServer((req,res)=>{
     }catch(error){receipt.status='failed';receipt.error=error.message;save();await page.screenshot({path:path.join(evidence,`${prefix}-failure-${width}.png`)});throw error;}finally{page.off('request',observe);}
    };
    await familyJourney(900);if(width===1280)await familyJourney(720);await page.setViewportSize({width,height:900});
+   if(width===430||width===1280){
+    const snapshot=new URL(base+'visual-search/', 'http://127.0.0.1:'+server.address().port);
+    snapshot.search='scenario=snapshot&searched=1&hotels=2618';
+    await page.goto(snapshot.href);
+    await page.locator('#hotel-2618 [data-card-entry]').click();
+    const rooms=page.locator('.hotel-room-card');
+    await rooms.first().waitFor();
+    assert.equal(await rooms.count(),2);
+    for(const [name,amount] of [['standard room without balcony',138444],['standard room with balcony',139979]]){
+     const room=rooms.filter({has:page.getByRole('heading',{name,exact:true})});
+     const action=room.locator('[data-action="select-hotel-offer"]');
+     const price=await room.locator('.hotel-room-price strong').innerText();
+     assert.equal(Number(price.replace(/\D/g,'')),amount);
+     assert((await action.getAttribute('aria-label')).includes(name));
+     const difference=room.locator('.room-price-difference');
+     if(amount===139979)assert.match(await difference.innerText(),/На 1\s535 ₽ выше минимума/);
+     else assert.equal(await difference.count(),0);
+     const contained=await room.locator('h4').evaluate(heading=>{
+      const bounds=heading.getBoundingClientRect(),range=document.createRange();
+      range.selectNodeContents(heading);
+      return [...range.getClientRects()].every(r=>r.left>=bounds.left-1&&r.right<=bounds.right+1&&r.bottom<=bounds.bottom+1);
+     });
+     assert(contained, 'the full room name and its distinguishing terms fit inside the heading');
+    }
+    await rooms.first().evaluate(room=>room.scrollIntoView({block:'start',behavior:'instant'}));
+    await shot('snapshot-balcony-room-comparison');
+   }
    // Verify the real retained long-name corpus separately from the mixed demo journey.
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=snapshot&searched=1`);await page.waitForFunction(()=>document.querySelector('#results-summary')?.textContent.includes('1047'));await page.evaluate(()=>document.fonts.ready);
    const realCardScan=await page.locator('.hotel-card').evaluateAll(cards=>cards.slice(0,24).map(card=>{const rect=el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};},entry=card.querySelector('[data-card-entry]'),profile=card.querySelector('h3 [data-action="hotel-details"]'),summary=card.querySelector('.card-minimum-offer'),footer=card.querySelector('.hotel-more'),variants=card.querySelector('.card-all-offers');return{id:card.dataset.hotelId,key:entry.dataset.key,total:card.querySelector('.starting-price strong').textContent,title:profile.textContent,geography:card.querySelector('.hotel-location').textContent,trip:card.querySelector('.price-trip-summary').textContent,room:card.querySelector('.card-room').textContent,operator:card.querySelector('.card-offer-flight .operator-logo').dataset.operator,card:rect(card),summary:rect(summary),profile:rect(profile),footerPresent:!!footer,infoEntries:card.querySelectorAll('[data-action="hotel-details"]').length,footerVisible:!!footer?.getClientRects().length,variants:variants&&rect(variants)};}));
