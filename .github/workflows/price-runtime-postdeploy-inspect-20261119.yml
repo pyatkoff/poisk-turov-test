@@ -1,4 +1,4 @@
-name: PRICE 1457 public feed impact after partial collection
+name: PRICE 1500 retry canonical queue inspection read-only
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '2c4a694708e3766540ec9f624eb0a4c457f1a6d9'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'f7c1519990de47dcf515c3aeebcf35308fbaf887'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -68,11 +68,13 @@ jobs:
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_TIMER_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
-          # The immediately preceding read-only hook inspection ended before scanning with
-          # hook_http_read_failed after reading the 1.18 GB journal. Continue the
-          # independent XML/source/timer proof without repeating that expensive call.
-          result={'ok':False,'error':'prior_hook_http_read_failed','roster_pairs':1000,'scanned_pairs':0,'updated_pairs':0,'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'eligible_ids':[],'unchanged_ids':[],'deferred_counts':{},'pending':None}
-          print('MONITOR_POST_FEED_RESULT='+json.dumps(result,separators=(',',':')))
+          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--inspect'],capture_output=True,text=True)
+          print(p.stdout,end='')
+          assert p.returncode==0
+          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
+          assert result['updated_pairs']==0 and result['site_writes']==0 and result['supplier_calls']==0
+          print('PRICE_QUEUE_RETRY='+json.dumps(result,separators=(',',':')))
+          raise SystemExit(0)
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
