@@ -1,4 +1,4 @@
-name: PRICE 1851 wait active server collector and read terminal state
+name: PRICE 1856 read terminal collector state after SSH reset
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '39622400d38c38dc14919ac78b37abe19d63467e'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'fd86e07e7f5490f72726283b73512ad67a6e4401'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -101,12 +101,6 @@ jobs:
                 assert av[2]==redirects[int(offer_id[3:])][0] and bv[2]==redirects[int(offer_id[3:])][1]
               else:
                 assert av[2]==bv[2]
-          import time
-          for _ in range(24):
-            active=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php'],capture_output=True,text=True)
-            if not any('pgrep -af' not in x for x in active.stdout.splitlines()): break
-            time.sleep(30)
-          else: raise RuntimeError('collector_did_not_finish_within_read_window')
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
