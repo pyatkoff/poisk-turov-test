@@ -7,7 +7,8 @@ const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const keySource=app.match(/const offerGroupKey=[^;]+;/)?.[0];
 const noteSource=app.match(/const sharedOfferNote=[\s\S]*?};/)?.[0];
 assert(keySource&&noteSource,'use the actual unchanged application collaborators');
-const helpers=vm.runInNewContext(keySource+noteSource+'({offerGroupKey,sharedOfferNote})',{offerMetaNote:o=>o.note});
+const infantSource=app.match(/^const unknownInfantCharge=[^\n]+/m)[0];
+const helpers=vm.runInNewContext(keySource+noteSource+infantSource+'({offerGroupKey,sharedOfferNote,unknownInfantCharge})',{offerMetaNote:o=>o.note});
 const key=helpers.offerGroupKey;
 function referenceInventory(hotels,hotelOffers,offerView,offerGroupKey){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h);
@@ -178,7 +179,7 @@ assert(source.includes('<select id="offer-departure"><option value="">Все д�
 const hoisted=" const commonNote=reuseRows?currentCommonNote:groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
 const legacyNotes=source.replace(hoisted," const commonNote=reuseRows?currentCommonNote:'';\n")
- .replace('entry=offerRowEntry(o,commonNote);','entry=offerRowEntry(o,sharedOfferNote(all));');
+ .replace('entry=offerRowEntry(o,commonNote);','entry=offerRowEntry(o,currentCommonNote=sharedOfferNote(all));');
 const legacyCounts=legacyNotes
  .replace('  const counts=currentRefinementInventory.get(field).counts;\n','')
  .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value)||0)}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
@@ -201,7 +202,7 @@ function render(code,all,view,shortlist=false,reset=false,mount=false,precompute
  const context={$:node,$$:()=>[],byId:id=>node('#'+id),hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
   paintGeneratedRoots:(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');},appendGeneratedRoots:(container,entries)=>{appendCalls++;container.innerHTML=container.innerHTML.replace(/<button class="text-button group-more"[\s\S]*?<\/button>$/,'')+entries.map(entry=>entry.markup).join('');return true;},
   sharedOfferNote:input=>{assert.strictEqual(input,currentRows,'shared note uses current all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
-  mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>{rowMarkupCalls++;return '';},offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
+  mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,unknownInfantCharge:helpers.unknownInfantCharge,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>{rowMarkupCalls++;return '';},offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
  const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(code,sandbox);
  const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset,precomputed);
  const snapshot=()=>JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView}));
@@ -227,6 +228,24 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
   const previous=render(priorSource,all,{...view,mode:'list'},true,reset);
   assert.deepEqual(retainedListSnapshot(after.snapshot),retainedListSnapshot(previous.snapshot),'before/after list markup, refinements, state and route output');
   assert.deepEqual([after.noteCalls,after.noteVisits,after.keyCalls],[previous.noteCalls,previous.noteVisits,previous.keyCalls],'retained same-render list work');
+ }
+}
+{
+ const listing={...offer(0),key:'anex-family',provider:'anex',room:'ANEX room',total:107581,note:'Цена из поиска · доплата за младенца уточняется',raw:{infantCharge:{status:'unknown'}}};
+ const other={...listing,key:'other-family',provider:'tourvisor',room:'Other room',note:'Рейсы и багаж — при выборе',raw:{}};
+ const page=render(source,[other],baseView(),false,false,true);
+ const node=(snapshot,selector)=>snapshot.dom.find(([key])=>key===selector)[1];
+ const rowsHTML=snapshot=>node(snapshot,'#all-offers-list').html;
+ assert.doesNotMatch(node(page.snapshot,'#modal-body').html,/Все цены за всех туристов/);
+ const sole=page.rerender([listing]).snapshot;
+ assert.equal(node(sole,'#offer-price-note').text,listing.note,'provider refresh updates the common qualification');
+ assert.match(rowsHTML(sole),/107581 · доплата за младенца уточняется/);
+ for(const [room,unknown,regular] of [['',true,true],[listing.room,true,false],[other.room,false,true]]){
+  const mixed=page.rerender([other,listing],{room}).snapshot,html=rowsHTML(mixed);
+  assert.equal(html.includes('107581 · доплата за младенца уточняется'),unknown,'only the unresolved row retains its warning');
+  assert.equal(html.includes('107581 за всех туристов'),regular,'equal totals do not transfer price status between suppliers');
+  assert.equal(node(mixed,'#offer-price-note').text,'Сборы уточняются при выборе');
+  if(unknown)assert(html.includes(listing.note),'mixed results display the exact listing note on its row');
  }
 }
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());

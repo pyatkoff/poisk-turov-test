@@ -132,6 +132,18 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'170 800 ₽');
    await frame('Итог тура и заявка');
    await form.locator('[name="phone"]').fill('70000000000');
+   await page.locator('[data-action="contact-flights"]').click();
+   const reopenedPair=page.locator('[data-flight-index="1"]');
+   await reopenedPair.waitFor();
+   assert.ok(await reopenedPair.getByRole('radio').isChecked());
+   assert.equal(await sum(page.locator('[data-flight-index="0"] [data-flight-difference]')),'Без доплаты');
+   assert.equal(await sum(reopenedPair.locator('[data-flight-difference]')),'+1 300 ₽ к туру');
+   assert.equal(await sum(page.locator('#flight-total')),'170 800 ₽');
+   if(width===430)await reopenedPair.screenshot({path:path.join(evidence,'reopened-flight-price-430.jpg'),quality:74});
+   await page.locator('[data-action="apply-flight"]').click();
+   await form.waitFor();
+   assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'170 800 ₽');
+   assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
    await page.locator('#modal-back').click();
    await page.locator('#hotel-detail-offers').waitFor();
    assert.equal(await sum(page.locator('#hotel-detail-min')),'170 800 ₽');

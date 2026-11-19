@@ -82,6 +82,15 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
 
   await driver.fill(phone, '70000000000');
   assert.equal(await driver.value(phone), '70000000000');
+  await driver.click('[data-action="contact-flights"]');
+  await driver.wait(pair + ':checked');
+  assert.equal(await text('[data-flight-index="0"] [data-flight-difference]'), 'Без доплаты');
+  assert.equal(await text('[data-flight-index="1"] [data-flight-difference]'), '+1 300 ₽ к туру');
+  assert.equal(await text('#flight-total'), '170 800 ₽');
+  await driver.click('[data-action="apply-flight"]');
+  await driver.wait(contact);
+  assert.equal(await text(total), '170 800 ₽');
+  assert.equal(await driver.value(phone), '70000000000');
   await driver.click('#modal-back');
   await driver.wait('#hotel-detail-offers');
   assert.equal(await text('#hotel-detail-min'), '170 800 ₽');

@@ -40,6 +40,20 @@ const routes = (html, end) => {
   assert.ok(start >= 0 && stop > start, 'expected existing route wrapper');
   return html.slice(start, stop);
 };
+function checkReopenedPrices(api, candidate, helpers) {
+  const offer = {tour: {id: 'reopened'}, quoteListingTotal: 120000, total: 130000,
+    flightChoiceId: '1', variants: [candidate, alternative]};
+  const labels = (checked, listing) => {
+    const reopened = {...offer, tour: {...offer.tour, price: checked}, quoteListingTotal: listing};
+    const html = api.render(reopened, reopened.flightChoiceId, {...helpers, amount: value => Number(value?.value ?? value)});
+    return Array.from(html.matchAll(/<span data-flight-difference>([^<]*)<\/span>/g), match => match[1]);
+  };
+  for (const checked of [123456.5, {value: '123456.50', currency: 'RUB'}]) {
+    assert.deepEqual(labels(checked, offer.quoteListingTotal), ['Без доплаты', '+6543.50 ₽ к туру']);
+  }
+  assert.deepEqual(labels({value: 0}, 123456.5), ['Без доплаты', '+6543.50 ₽ к туру']);
+  assert.deepEqual(labels(undefined, 0), ['На 6543.50 ₽ дешевле выбранного', 'Выбрано']);
+}
 function collect(code) {
   const window = {};
   vm.runInNewContext(code, {window}, {filename: sourcePath});
@@ -54,6 +68,10 @@ function collect(code) {
       legHTML: (segments, label) => `<p>${esc(label)}: ${esc(JSON.stringify(segments || []))}</p>`,
       fuelText(offer) {fuelCalls.push([offer.tour.id, offer.flightChoiceId]); return 'уточняется';}
     };
+    if (name === 'same-carrier') {
+      checkReopenedPrices(api, candidate, helpers);
+      priceCalls.length = 0; fuelCalls.length = 0;
+    }
     const summary = api.pairSummary(candidate, helpers);
     const summaryRoutes = routes(summary, '<div class="chosen-flight-allowances">');
     assert.equal(priceCalls.length, 0, 'summary cannot calculate a price');
