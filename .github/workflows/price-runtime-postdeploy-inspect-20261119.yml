@@ -1,4 +1,4 @@
-name: PRICE 1135 read-only timer and feed census
+name: PRICE 1200 read-only timer and published price audit
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '645c4af765a9fc7d428cbb6c7f7087d02db8b3c5'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '982fb3609df751c414af6b7d6415d1d1a7aa02c3'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -70,6 +70,61 @@ jobs:
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
+          import re
+          from collections import Counter
+          from datetime import datetime, timezone, timedelta
+          from zoneinfo import ZoneInfo
+          now=datetime.now(timezone.utc)
+          def audit_feed(rows):
+            def normalized(name):
+              return re.sub(r'[^a-z0-9а-яё]+','',name.casefold())
+            keys=Counter()
+            counts=Counter()
+            hotels=set()
+            fresh=set()
+            expired_departures=set()
+            without_amount=set()
+            stale=set()
+            unparsed_observation=set()
+            for row in rows:
+              h=re.fullmatch(r'(?:tg|max|telegram)[_-](\d+)',row.attrib.get('id',''))
+              if not h:
+                counts['unmapped_offers']+=1
+                continue
+              h=int(h[1]); hotels.add(h)
+              values={normalized(c.get('name',c.tag)): (c.text or '').strip() for c in row}
+              keys.update(values.keys())
+              value=next((values[k] for k in ('price','tourprice','priceamount','цена') if values.get(k)), '')
+              amount=re.sub(r'[\s\u00a0\u202f]','',value).replace(',','.')
+              valid_amount=bool(re.fullmatch(r'\d+(?:\.\d+)?',amount) and float(amount)>0)
+              if not valid_amount: without_amount.add(h)
+              dep=next((values[k] for k in ('departuredate','departdate','flightdate','tourdeparturedate','датавылета') if values.get(k)), '')
+              if dep:
+                try:
+                  if datetime.fromisoformat(dep).date()<now.astimezone(ZoneInfo('Europe/Moscow')).date(): expired_departures.add(h)
+                except ValueError: counts['unparsed_departure_offers']+=1
+              else: counts['unmarked_departure_offers']+=1
+              ts=next((values[k] for k in ('priceobservedat','observedat','tourobservedat','observationtimestamp','датанаблюдения','времянаблюдения') if values.get(k)), '')
+              if not ts:
+                counts['unmarked_observation_offers']+=1
+                continue
+              try:
+                observed=datetime.fromisoformat(ts.replace('Z','+00:00'))
+                if observed.tzinfo is None: raise ValueError('observation timezone not in feed')
+              except ValueError:
+                unparsed_observation.add(h); continue
+              age=now-observed
+              if age<timedelta(0): counts['future_observation_offers']+=1
+              elif age>=timedelta(hours=36): stale.add(h)
+              elif valid_amount: fresh.add(h)
+            return {'rows':len(rows),'hotel_ids':len(hotels),'fresh_amount_unique':len(fresh),
+              'stale_observation_unique':len(stale),'past_departure_unique':len(expired_departures),
+              'missing_or_invalid_amount_unique':len(without_amount),'invalid_observation_unique':len(unparsed_observation),
+              'unknown':dict(counts),'field_occurrences':dict(keys)}
+          xml_audit={}
+          for k in ('telegram','max','all'):
+            xml_audit[k]=audit_feed(ET.parse(app/'feed'/('hotel-posts-'+k+'.xml')).getroot().findall('.//offer'))
+          print('PUBLIC_XML_PRICE_FIELDS='+json.dumps(xml_audit,ensure_ascii=False,separators=(',',':')))
           source_php=r'''<?php
           declare(strict_types=1);
           $root='/var/www/anytoour/data/www/anytoour.ru/data';
