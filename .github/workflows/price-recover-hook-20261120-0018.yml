@@ -1,0 +1,133 @@
+name: PRICE recover post-feed hook after missed scheduled event
+on:
+  push:
+    branches: ['ops/price-recover-hook-20261120-0018']
+    paths: ['.github/workflows/price-recover-hook-20261120-0018.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4c35360cf1371083b64041ac0c77a1ad66e4118d'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - name: Verify recovered source run and current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/branches/main --jq .commit.sha)" = "4c35360cf1371083b64041ac0c77a1ad66e4118d"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44612528423 --jq '.status+":"+(.conclusion//"")+":"+(.head_sha//"")')" = "completed:success:4c35360cf1371083b64041ac0c77a1ad66e4118d"
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Apply recovered queue and verify public feeds
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
+          import pathlib,subprocess,json,os,hashlib,xml.etree.ElementTree as ET,re
+          from collections import Counter
+          from datetime import datetime,timedelta
+          from decimal import Decimal
+          from zoneinfo import ZoneInfo
+          native=pathlib.Path('/var/www/anytoour/data/www/anytoour.ru/data')
+          app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
+          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
+          active=[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]
+          assert not active,'PRICE_PROCESS_ACTIVE_STOP'
+          env=dict(os.environ)
+          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T20:51:00+00:00'
+          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='44612528423'
+          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--nightly'],capture_output=True,text=True,env=env)
+          print(p.stdout,end=''); print(p.stderr,end='')
+          assert p.returncode==0
+          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
+          assert result['ok'] is True and result['remaining_unscanned_pairs']==0 and result['site_writes']==0 and result['supplier_calls']==0
+          print('PRICE_RECOVERED_QUEUE='+json.dumps(result,separators=(',',':')))
+          promoted=app/'tools'/'apply_promoted_hotel_prices.php'
+          assert promoted.is_file()
+          q=subprocess.run(['php',str(promoted),'--apply'],capture_output=True,text=True)
+          print(q.stdout,end=''); print(q.stderr,end='')
+          assert q.returncode==0
+          feeds={}
+          for key,count in [('telegram',1000),('max',1000),('all',2000)]:
+            path=app/'feed'/('hotel-posts-'+key+'.xml')
+            data=path.read_bytes()
+            public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+path.name])
+            assert data==public
+            rows=ET.fromstring(data).findall('.//offer')
+            assert len(rows)==len({o.attrib['id'] for o in rows})==count
+            feeds[key]=hashlib.sha256(data).hexdigest()
+          moscow=ZoneInfo('Europe/Moscow'); now=datetime.now(moscow); cutoff=now-timedelta(hours=36)
+          stamp_re=re.compile(r'^Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}) МСК\.',re.MULTILINE)
+          depart_re=re.compile(r'^✈️ Вылет из Москвы (\d{2}\.\d{2}\.\d{4}) ·',re.MULTILINE)
+          price_re=re.compile(r'^💰 От ([\d \u00a0\u202f]+(?:,\d{1,2})?) ₽ за двоих\s*$',re.MULTILINE)
+          def one(p,t):
+            m=p.findall(t); return m[0] if len(m)==1 else None
+          def amount(v):
+            if not v:return None
+            v=re.sub(r'[\s\u00a0\u202f]','',v).replace(',','.')
+            try:d=Decimal(v)
+            except:return None
+            return d if d>0 else None
+          def read(name):
+            out={}
+            for o in ET.fromstring((app/'feed'/('hotel-posts-'+name+'.xml')).read_bytes()).findall('.//offer'):
+              m=re.fullmatch(r'(tg|max)_(\d+)',o.attrib['id']); assert m
+              text=o.findtext('description',default='')
+              obs=one(stamp_re,text); dep=one(depart_re,text)
+              try:obs=datetime.strptime(obs,'%d.%m.%Y, %H:%M').replace(tzinfo=moscow) if obs else None
+              except:obs=None
+              try:dep=datetime.strptime(dep,'%d.%m.%Y').date() if dep else None
+              except:dep=None
+              out[(m[1],int(m[2]))]=(amount(o.findtext('price')),amount(one(price_re,text)),obs,dep,o.findtext('currencyId'))
+            return out
+          tg=read('telegram'); mx=read('max'); allrows=read('all'); assert allrows==tg|mx
+          ids={h for p,h in tg if p=='tg'}; assert len(ids)==1000
+          counts=Counter(); expired=[]
+          for h in ids:
+            a=tg['tg',h]; b=mx['max',h]
+            if any(v[3] is not None and v[3]<now.date() for v in (a,b)):expired.append(h)
+            if a[0] is None and b[0] is None:status='no_amount'
+            elif a!=b or a[0] is None:status='platform_mismatch'
+            elif a[4]!='RUB' or a[1]!=a[0] or a[2] is None or a[3] is None:status='amount_without_matching_monitor_proof'
+            elif a[3]<now.date():status='past_departure'
+            elif a[2]+timedelta(minutes=1)<=cutoff:status='stale_observation'
+            elif a[2]<=cutoff:status='freshness_cutoff_within_display_minute'
+            else:status='fresh_published'
+            counts[status]+=1
+          print('PRICE_RECOVERY_TERMINAL='+json.dumps({'as_of_moscow':now.isoformat(),'source_run':44612528423,'feeds':feeds,'classifications':dict(counts),'past_departure_hotel_ids':sorted(expired)},ensure_ascii=False,separators=(',',':')))
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
