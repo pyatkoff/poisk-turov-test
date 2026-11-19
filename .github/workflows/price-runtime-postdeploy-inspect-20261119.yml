@@ -1,4 +1,4 @@
-name: Count source freshness after scheduled PRICE write
+name: PRICE 0755 read-only timer and feed census
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd210e22d57cc80d9e5312715e742ca0cc3094337'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '6797d141dadbf08bcdd46fbca3dacef492ed6156'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
