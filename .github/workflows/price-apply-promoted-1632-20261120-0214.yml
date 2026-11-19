@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c40ccbc9869ffed342d5fa1211ba1e28452f7370'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'acb135a8a4a7b879e5a11bac7d7c27a0d6678279'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -34,13 +34,13 @@ jobs:
           done
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636995332 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
           gh run view 44636995332 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/first-write.log"
-          grep -Fq '"results":{"already_current":26,"held_before_write":18,"updated":5,"provider_verified_public_pending":7}' "$RUNNER_TEMP/first-write.log"
-          grep -Fq '"hotel_id":1074,"reason":"missing_or_ambiguous_price_block"' "$RUNNER_TEMP/first-write.log"
-          ! grep -Fq '"unknown_after_write"' "$RUNNER_TEMP/first-write.log"
+          grep -Fq 'Z PROMOTED_PRICE_TERMINAL={' "$RUNNER_TEMP/first-write.log"
+          grep -Fq 'AssertionError: PROMOTED_PUBLIC_VERIFICATION_INCOMPLETE' "$RUNNER_TEMP/first-write.log"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44639224871 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
           gh run view 44639224871 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/second-write.log"
-          grep -Fq '"results":{"already_current":38,"held_before_write":15,"updated":2,"provider_verified_public_pending":1}' "$RUNNER_TEMP/second-write.log"
-          ! grep -Fq '"unknown_after_write"' "$RUNNER_TEMP/second-write.log"
+          grep -Fq 'Z PROMOTED_PRICE_TERMINAL={' "$RUNNER_TEMP/second-write.log"
+          grep -Fq 'AssertionError: PROMOTED_NEW_PUBLIC_VERIFICATION_INCOMPLETE' "$RUNNER_TEMP/second-write.log"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44639843379 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
