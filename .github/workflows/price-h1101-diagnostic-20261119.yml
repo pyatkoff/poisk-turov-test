@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3137b02bd2785592901cade393f2d8facf5bf5e0'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9c3f131e284914a7e70745f1f713f13462264746'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -83,9 +83,7 @@ jobs:
           env=dict(os.environ); env['PRICE_BUNDLE']=encoded
           proc=subprocess.run(['php'],input=php.encode(),capture_output=True,env=env); print(proc.stdout.decode(),end=''); print(proc.stderr.decode(),end=''); assert proc.returncode==0
           def get(url): return subprocess.check_output(['curl','-fsS','--max-time','45',url])
-          source_url='https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'+urllib.parse.urlencode([('tourvisorHotelIds[0]','1101'),('departureId','1'),('dateFrom','2026-11-19'),('dateTo','2027-10-31')])
-          source=json.loads(get(source_url)); item=source['items'][0]
-          print('SOURCE',json.dumps({'searches':source.get('searches'),'rows':source.get('rows'),'hotel':item.get('tourvisorHotelId'),'offers':[{'recordId':o.get('recordId'),'price':o.get('price'),'observedAt':o.get('observedAt'),'ageSecondsAtExport':o.get('ageSecondsAtExport'),'departureDate':o.get('departureDate')} for o in item.get('offers',[])]},separators=(',',':')))
+          print('SOURCE',json.dumps({'hotel':1101,'monitor_snapshot':state.get('monitor_snapshot'),'record_id':max_entry['plan']['monitor_price']['record_id'],'price':max_entry['plan']['monitor_price']['price'],'observed_at':max_entry['plan']['monitor_price']['observed_at'],'departure_date':max_entry['plan']['monitor_price']['offer']['departureDate']},separators=(',',':')))
           feeds={}; hashes={}
           for platform in ('telegram','max','all'):
             name='hotel-posts-'+platform+'.xml'; raw=get('https://app.anytoour.ru/feed/'+name); assert raw==(app/'feed'/name).read_bytes(); hashes[platform]=hashlib.sha256(raw).hexdigest(); feeds[platform]={o.attrib['id']:o for o in ET.fromstring(raw).findall('.//offer')}
