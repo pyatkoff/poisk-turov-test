@@ -1,4 +1,4 @@
-name: PRICE 0950 read-only timer and feed census
+name: PRICE 1050 read-only timer and feed census
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'a3aeb65fa30042a9518141cc92ddc23d5705353c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9587c657148f991ad80da747ac126c8f70852920'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
