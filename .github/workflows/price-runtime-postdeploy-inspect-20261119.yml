@@ -1,4 +1,4 @@
-name: Inspect PRICE after accepted production deploy
+name: Final read-only PRICE census after completed window
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c9588c4d8bc70bf4f38960ad46bb9ff45a846337'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '69903604abab3a9d223a2c795e361f035bc551ab'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
