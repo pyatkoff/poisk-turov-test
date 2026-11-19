@@ -94,7 +94,11 @@ async function run(width,monthRange=null){
  assert.deepEqual([...d.querySelectorAll('#quick-stars button')].map(b=>b.textContent),['Любая','3★','4★','5★']);
  const initial={dates:$('#dates-label').textContent,nights:$('#nights-label').textContent,party:$('#guests-label').textContent};
  // Departure is a draft until the explicit footer action; empty query preserves it.
- action('departure','#search-form');input('#departure-query','Несуществующий');assert.match($('#departure-results').textContent,/Нет совпадений/);assert.match($('#departure-summary').textContent,/Москва/);action('clear-departure-query');await close();assert.equal($('#origin-label').textContent,'Москва');
+ action('departure','#search-form');
+ assert.equal($('#modal-title').textContent,'Город вылета');
+ assert.equal($('#departure-query').labels[0].textContent.trim(),'Город вылета');
+ assert.doesNotMatch($('#modal-body').textContent,/Поиск по городам вылета/);
+ input('#departure-query','Несуществующий');assert.match($('#departure-results').textContent,/Нет совпадений/);assert.match($('#departure-summary').textContent,/Москва/);action('clear-departure-query');await close();assert.equal($('#origin-label').textContent,'Москва');
  // Calendar cancellation, maximum inclusive interval, invalid end, month/year crossing.
  action('dates','#search-form');await pause();assert.equal($('.date-choice-tools').classList.contains('scope-expanded'),false,'Calendar context must stay visible without a removed disclosure');assert.match($('#date-selection-price').textContent,/Минимум: 5 окт/,'Async prices preserve the exact minimum footer');assert.match($('.date-source').textContent,/Снимок 23.09/);click('[data-action="day-pick"][data-date="2026-10-05"]');await close();assert.equal($('#dates-label').textContent,initial.dates);
  action('dates','#search-form');click('[data-action="day-pick"][data-date="2026-10-05"]');click('[data-action="day-pick"][data-date="2026-10-28"]');assert.match($('#date-error').textContent,/22 дат/);assert.equal($('[data-action="day-pick"][data-date="2026-10-05"]').getAttribute('aria-pressed'),'true');
@@ -114,7 +118,14 @@ async function run(width,monthRange=null){
  action('nights','#search-form');click('[data-action="night-preset"][data-value="7"]');action('apply-nights');await pause();assert.equal($('#form-ages-recheck').hidden,false);assert.match($('#guests-detail').textContent,/До 1 года и 8 лет/);action('guests','#search-form');assert.match($('#guest-age-help').textContent,/на возвращение/);action('apply-guests');await pause();assert.equal($('#form-ages-recheck').hidden,true);
  // Budget validates integers and order, keeps zero, and cancels in isolation.
  if(width<=760)click('#search-options-toggle');
- action('budget','#search-form');input('#budget-max','150,000');assert.equal($('[data-action="apply-budget"]').disabled,true);input('#budget-max','0');assert.equal($('[data-action="apply-budget"]').disabled,false);assert.equal($('#budget-summary').textContent,'До 0 ₽');input('#budget-min','250 000');input('#budget-max','200 000');assert.equal($('[data-action="apply-budget"]').disabled,true);await close();assert.equal($('#budget-label').textContent,'Без ограничений');
+ action('budget','#search-form');
+ assert.equal($('#budget-min').labels[0].textContent.trim(),'От, ₽');
+ assert.equal($('#budget-max').labels[0].textContent.trim(),'До, ₽');
+ assert.doesNotMatch($('#modal').textContent,/Сумма в рублях/);
+ const budgetScope=/за весь тур (?:и|для) всех туристов/gi;
+ assert.equal($('#modal').textContent.match(budgetScope)?.length,1);
+ assert.match($('#budget-summary').parentElement.textContent,budgetScope);
+ input('#budget-max','150,000');assert.equal($('[data-action="apply-budget"]').disabled,true);input('#budget-max','0');assert.equal($('[data-action="apply-budget"]').disabled,false);assert.equal($('#budget-summary').textContent,'До 0 ₽');input('#budget-min','250 000');input('#budget-max','200 000');assert.equal($('[data-action="apply-budget"]').disabled,true);await close();assert.equal($('#budget-label').textContent,'Без ограничений');
  action('budget','#search-form');input('#budget-max','200 000');action('apply-budget');await pause();assert.match($('#budget-label').textContent,/200/);
  // AI and UAI are independent exact choices, Russian names are primary.
  action('meals','#search-form');for(const meal of ['Всё включено','Ультра всё включено']){const box=$('[data-meal-choice][value="'+meal+'"]');box.checked=true;box.dispatchEvent(new w.Event('change',{bubbles:true}));}

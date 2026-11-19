@@ -473,7 +473,7 @@ function restoredDestinationChoice(value){
 }
 function openDeparture(restore=null){
  departureChoice=data.catalog.departures.some(x=>data.text(x)===restore?.choice)?restore.choice:draft.origin;
- showModal('departure','Город вылета','',`<div class="destination-search"><label class="sr-only" for="departure-query">Город вылета</label>${icon('search')}<input class="input" id="departure-query" type="search" placeholder="Город вылета" autocomplete="off"><button class="icon-button destination-clear" data-action="clear-departure-query" aria-label="Очистить запрос города" hidden>${icon('x')}</button></div><p class="picker-caption">Поиск по городам вылета</p><div id="departure-results"></div>`);
+ showModal('departure','Город вылета','',`<div class="destination-search"><label class="sr-only" for="departure-query">Город вылета</label>${icon('search')}<input class="input" id="departure-query" type="search" placeholder="Город вылета" autocomplete="off"><button class="icon-button destination-clear" data-action="clear-departure-query" aria-label="Очистить запрос города" hidden>${icon('x')}</button></div><div id="departure-results"></div>`);
  $('#modal').classList.add('departure-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="departure-summary"></strong><small>Остальные параметры сохранятся</small></div><button class="primary picker-apply" data-action="apply-departure"></button>';
  $('#departure-query').value=boundedHistoryText(restore?.query,'');renderDepartures();if(innerWidth>760)$('#departure-query').focus({preventScroll:true});
 }
@@ -670,7 +670,7 @@ function minimumHotelOfferTotal(model){
 }
 function recoverySuggestions(model){
  const f=model.filters,candidates=[];
- const count=(specs)=>{if(!specs.length)return false;const models=specs.map(spec=>{const next=structuredClone(model);spec.change(next);return next;}),counts=countMatchingHotelGroups(models);for(let i=0;i<specs.length&&candidates.length<3;i++)if(counts[i]){const {key,title,description='Остальные условия сохранятся'}=specs[i];candidates.push({key,title,description,count:counts[i],model:models[i]});}return candidates.length===3;};
+ const count=(specs)=>{if(!specs.length)return false;const models=specs.map(spec=>{const next=structuredClone(model);spec.change(next);return next;}),counts=countMatchingHotelGroups(models);for(let i=0;i<specs.length&&candidates.length<3;i++)if(counts[i]){const {key,title,description}=specs[i];candidates.push({key,title,description,count:counts[i],model:models[i]});}return candidates.length===3;};
  const first=[];
  if(f.max!==null){const minimum=minimumHotelOfferTotal(model);if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;first.push({key:'budget',title:`Бюджет до ${money(ceiling)}`,change:m=>m.filters.max=ceiling});}}
  if(f.min>0)first.push({key:'minimum',title:`Убрать бюджет «от ${money(f.min)}»`,change:m=>m.filters.min=0});
@@ -687,7 +687,17 @@ function recoverySuggestions(model){
  if(!candidates.length)count([{key:'reset',title:'Сбросить все фильтры',description:'Город, страна, диапазон дат и туристы сохранятся',change:m=>{m.filters=defaultFilters();m.onlyFavorites=false;m.selectedDate=null}}]);
  return candidates;
 }
-function recoveryHTML(choices,source){return `<div class="recovery-options">${choices.map((c,i)=>`<button class="recovery-choice" data-action="recover-filters" data-source="${source}" data-recovery-key="${c.key}" data-value="${i}"><span><strong>${esc(c.title)}</strong><small>${esc(c.description)}</small></span><span class="recovery-count">${hotelCountText(c.count)} ${icon('arrow')}</span></button>`).join('')}</div>`;}
+function recoveryHTML(choices,source){
+ if(!choices.length)return '';
+ const buttons=choices.map((c,i)=>{
+  const detail=c.description?`<small>${esc(c.description)}</small>`:'';
+  return `<button class="recovery-choice" data-action="recover-filters" data-source="${source}" data-recovery-key="${c.key}" data-value="${i}"><span><strong>${esc(c.title)}</strong>${detail}</span><span class="recovery-count">${hotelCountText(c.count)} ${icon('arrow')}</span></button>`;
+ });
+ return `<div class="recovery-options">${buttons.join('')}</div>`;
+}
+function recoveryIntro(choices){
+ return choices.some(choice=>!choice.description)?'<p>Измените одно условие. Остальные сохранятся.</p>':'';
+}
 function syncFilterResetState(model=editingFilterModel()){
  const active=filterChipData(model).length>0||!!currentFilterBudgetEdit(model.filters)&&!readBudgetFields($('#min-price'),$('#max-price')).valid;
  $$('#filter-panel [data-action="reset"]').forEach(button=>{button.disabled=!active;button.setAttribute('aria-label',active?'Сбросить выбранные фильтры':'Сбросить — фильтры не выбраны');});
@@ -717,7 +727,10 @@ function emptyResultsHTML(){
  }
  const model=appliedFilterModel(),chips=filterChipData(model),response=responseFor(state.search);if(response.phase==='error')return '';
  if(searchDeliveryIncomplete(response)){emptySuggestions=[];return `<div class="empty recovery-empty" role="status">${icon('search')}<h3>${response.pending?'Подбираем туры по вашим условиям':'Поиск пока не завершён'}</h3><p>${response.pending?'Предложения появятся здесь по мере загрузки.':'Отсутствие результатов пока не означает, что подходящих туров нет.'}</p><p class="empty-preserved">Даты, туристы и фильтры сохранены.</p>${response.pending?'':response.canContinue?`<button class="secondary" data-action="continue-search">${response.retryRead?'Проверить результат':'Продолжить поиск'}</button>`:'<button class="secondary" data-action="retry-search">Повторить поиск</button>'}</div>`;}
- emptySuggestions=recoverySuggestions(model);const calendarContext=emptyCalendarContext();return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3><p>${emptySuggestions.length?'Вот какие изменения вернут отели в выдачу:':'Попробуйте другие даты или направление.'}</p><div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество рассчитано по уже загруженным предложениям. При изменении фильтров даты поездки и туристы сохранятся.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions"><button class="primary" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
+ emptySuggestions=recoverySuggestions(model);
+ const intro=emptySuggestions.length?recoveryIntro(emptySuggestions):'<p>Попробуйте другие даты или направление.</p>';
+ const calendarContext=emptyCalendarContext();
+ return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3>${intro}<div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество отелей рассчитано по уже загруженным предложениям.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions"><button class="primary" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
 function updateDrawerPreview(knownCount){
  if(!filterDraft)return;
  const count=knownCount??countMatchingHotels(filterDraft),chips=filterChipData(filterDraft),pristine=!state.hasSearched&&!state.onlyFavorites,response=responseFor(state.search),incomplete=!pristine&&searchDeliveryIncomplete(response);
@@ -726,7 +739,9 @@ function updateDrawerPreview(knownCount){
  $('#drawer-context').textContent=`${esc(countryNames[state.search.country]||'')} · ${departureScopeText()} · ${durationText()} · ${guestsText()}`;
  paintGeneratedRoots($('#drawer-selected'),chips.map(c=>({id:'',markup:`<button class="active-filter" data-action="remove-draft-filter" data-key="${c.key}" data-value="${esc(c.value)}" aria-label="Убрать: ${esc(c.label)}">${esc(c.label)}${icon('x')}</button>`})));
  drawerSuggestions=count||pristine||incomplete?[]:recoverySuggestions(filterDraft);
- paintGeneratedRoots($('#drawer-recovery'),count||pristine||incomplete?[]:[{id:'',markup:'<p>Можно изменить одно из условий:</p>'},{id:'',markup:recoveryHTML(drawerSuggestions.slice(0,2),'drawer')}]);
+ const visibleSuggestions=drawerSuggestions.slice(0,2);
+ const recoveryBlocks=[recoveryIntro(visibleSuggestions),recoveryHTML(visibleSuggestions,'drawer')];
+ paintGeneratedRoots($('#drawer-recovery'),recoveryBlocks.filter(Boolean).map(markup=>({id:'',markup})));
  if(incomplete){$('#filter-preview-count').textContent=count?`${hotelCountText(count)} среди полученных предложений`:'Результат поиска пока не подтверждён';$('#drawer-recovery').innerHTML=count?'':`<p>${response.pending?'Поиск ещё идёт. Условия можно сохранить и дождаться предложений.':'Получены не все предложения. Условия можно сохранить без изменений.'}</p>`;}
  const canRecover=!count&&drawerSuggestions.length>0,button=$('#apply-filters');button.dataset.action=canRecover?'review-filter-recovery':'apply-filters';button.textContent=canRecover?'Как вернуть отели':pristine||!count?'Сохранить условия':`Показать отели (${count})`;button.setAttribute('aria-describedby','filter-preview-count');
  showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));
@@ -1541,7 +1556,7 @@ function updateBudgetPreview(){
 }
 function openBudget(restore=null){
  const minText=boundedHistoryText(restore?.minText,pickerFilters().min?String(pickerFilters().min):'',32),maxText=boundedHistoryText(restore?.maxText,String(pickerFilters().max??''),32);
- showModal('budget','Бюджет','',`<p class="modal-intro">За весь тур для всех туристов</p><p class="picker-caption">Сумма в рублях · ₽</p><div class="form-row"><label>От, ₽<input type="text" inputmode="numeric" class="input" id="budget-min" placeholder="Без минимума" value="${esc(minText)}" aria-describedby="budget-error"></label><label>До, ₽<input type="text" inputmode="numeric" class="input" id="budget-max" value="${esc(maxText)}" placeholder="Без максимума" aria-describedby="budget-error"></label></div><div class="budget-presets">${[150000,200000,null].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n??''}" aria-pressed="false">${n===null?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p><div class="budget-feedback"><p id="budget-preview" role="status" aria-live="polite"></p><button class="text-button" id="budget-recovery" data-action="budget-adjust-max" hidden></button></div><p class="budget-price-note">Цены и наличие уточняются при выборе тура.</p>`);
+ showModal('budget','Бюджет','',`<div class="form-row"><label>От, ₽<input type="text" inputmode="numeric" class="input" id="budget-min" placeholder="Без минимума" value="${esc(minText)}" aria-describedby="budget-error"></label><label>До, ₽<input type="text" inputmode="numeric" class="input" id="budget-max" value="${esc(maxText)}" placeholder="Без максимума" aria-describedby="budget-error"></label></div><div class="budget-presets">${[150000,200000,null].map(n=>`<button class="chip" data-action="budget-preset" data-value="${n??''}" aria-pressed="false">${n===null?'Без ограничений':'До '+money(n)}</button>`).join('')}</div><p class="error-text" id="budget-error" role="alert"></p><div class="budget-feedback"><p id="budget-preview" role="status" aria-live="polite"></p><button class="text-button" id="budget-recovery" data-action="budget-adjust-max" hidden></button></div><p class="budget-price-note">Цены и наличие уточняются при выборе тура.</p>`);
  $('#modal').classList.add('budget-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="budget-summary"></strong><small>Цена за весь тур и всех туристов</small></div><button class="primary picker-apply" data-action="apply-budget">Применить бюджет</button>';updateBudgetPreview();
  if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;
 }
