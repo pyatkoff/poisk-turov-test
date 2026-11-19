@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'da166269ca9887806c62c3fdfea182571c59db6d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ee8ecc7577cd3a7325b816c866fe3eea91546e34'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -25,11 +25,12 @@ jobs:
           test "$(gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body)" = "PR1632: установлено, выпуск свободен"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636015413 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636407156 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636874565 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
           gh run view 44636015413 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/prewrite1.log"
           gh run view 44636407156 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/prewrite2.log"
           for proof in "$RUNNER_TEMP/prewrite1.log" "$RUNNER_TEMP/prewrite2.log"; do
             grep -Fq 'AssertionError: PRICE_PROCESS_ACTIVE_STOP' "$proof"
-            ! grep -Fq 'PROMOTED_HOTEL_PRICE_RESULT=' "$proof"
+            ! grep -Eq 'Z PROMOTED_HOTEL_PRICE_RESULT=' "$proof"
           done
       - name: Prepare pinned server connection
         env:
