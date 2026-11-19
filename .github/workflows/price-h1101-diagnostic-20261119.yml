@@ -1,0 +1,100 @@
+name: Inspect uncertain PRICE outcome for hotel 1101
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-h1101-diagnostic-20261119.yml']
+permissions:
+  contents: read
+  issues: read
+  actions: read
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '196569d6fd53e7f4dc2443ffcc665905cc12ba30'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Verify current PRICE admission and branch lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6994187631 | python3 -c "import sys,json,hashlib; b=json.load(sys.stdin)['body']; assert hashlib.sha256(b.encode()).hexdigest()=='27a30de414586bd83db0a7284993b38675edd64ef004bc913908f33fca6d9d3e'; assert 'ЯВНАЯ ПЕРЕДАЧА общего редактора PRICE' in b and 'CONTENT writers0' in b and 'W21 sender НЕ запускаем' in b"
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Read exact pending operation, native posts, source and XML
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
+          import subprocess,json,pathlib,gzip,hashlib,re,base64,datetime,urllib.parse,xml.etree.ElementTree as ET
+          root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'; private=root/'channel-post-operations'
+          assert subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='bd8e248f7138ea75cb9fda2dcf44beb631c633a5'
+          print('TIME_UTC',datetime.datetime.now(datetime.timezone.utc).isoformat())
+          global_path=private/'monitor-price-after-collection-v1.jsonl'; global_state=json.loads(global_path.read_text().strip().splitlines()[-1])
+          assert global_state['pending']['phase']=='post_started' and global_state['pending']['tourvisor_hotel_id']==1101
+          op='commercial-monitor-price-h1101-97ef202cdf0daa8d110778946b07b6bfcd4cd512af9159859cfcc8492f1e5a75'; assert global_state['pending']['operation']==op
+          child=private/op/'receipt.jsonl'; assert hashlib.sha256(child.read_bytes()).hexdigest()=='a79c12a758f80e7e42118181ad9585fda787f35d432aca25a333a244ebb421c9'
+          state=json.loads(child.read_text().strip().splitlines()[-1])
+          hook=(native/'monitor-price-hook.php').read_bytes(); rows=json.loads(gzip.decompress(base64.b64decode(re.search(rb'const HOOK_ROSTER_GZIP_B64="([^"]+)"',hook)[1])))['rows']; row=next(r for r in rows if r['tourvisor_hotel_id']==1101)
+          approved={}
+          for platform in ('max','telegram'):
+            approved[platform]=json.loads((private/row['original_publication_operation']/(platform+'-'+row['logical_id']+'-approved.json')).read_text())
+          max_entry=next(e for e in state['posts'].values() if e.get('plan',{}).get('platform')=='max')
+          bundle={'operation':op,'state':state,'row':row,'approved':approved,'max_plan':max_entry['plan']}; encoded=base64.b64encode(json.dumps(bundle,separators=(',',':')).encode()).decode()
+          php=r'''<?php
+          $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root); ob_start(); require $root.'/config.php'; require_once $root.'/services/ChannelPostRuntime.php'; require_once $root.'/services/ChannelPostEntryService.php'; require_once $root.'/services/ChannelPostReconciliationService.php'; ob_end_clean();
+          $b=json_decode(base64_decode($argv[1],true),true,256,JSON_THROW_ON_ERROR); $r=new ChannelPostRegistryService(ConversationDb::connection());
+          foreach(['max','telegram'] as $platform){$proof=$b['approved'][$platform]['receipt']; $p=$r->publication((int)$proof['publication_id']); if(!$p)throw new Exception('publication_missing'); $plan=$platform==='max'?$b['max_plan']:null;
+            $safe=['platform'=>$platform,'publication_id'=>$p['publication_id'],'version_id'=>$p['version_id'],'config_version'=>$p['channel']['config_version'],'message_id'=>$p['external_message_id'],'post_url'=>$p['snapshot']['post_url'],'state'=>$p['state'],'reason'=>$p['error_reason'],'attempt_count'=>$p['attempt_count'],'write_attempts'=>$p['write_attempts'],'claimed'=>!empty($p['claim_token']),'content_hash'=>ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),'text_sha256'=>hash('sha256',$p['snapshot']['text']),'photo_sha256'=>hash('sha256',json_encode($p['snapshot']['attachments'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),'price_record'=>$p['snapshot']['metadata']['monitor_price_record_id']??null,'observation_kind'=>$p['snapshot']['metadata']['observation_kind']??null,'exact_button'=>ChannelPostIncomingAdapter::containsOnlyButton($p['snapshot'],ChannelPostButtonTransport::buttonUrl($p),(string)$p['channel']['button_text'])]; if($plan)$safe['matches_intended_text']=$p['snapshot']['text']===$plan['text']; echo 'REGISTRY '.json_encode($safe,JSON_UNESCAPED_SLASHES)."\n";
+            if($platform==='max'){$identity=ChannelPostRuntime::identity('max'); $preview=(new ChannelPostReconciliationService(ConversationDb::connection()))->confirmReadFailure($identity,$p['channel_id'],$p['publication_id'],$p['version_id'],(int)$p['channel']['config_version'],ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),false); echo 'MAX_GET_ONLY_PREVIEW '.json_encode($preview,JSON_UNESCAPED_SLASHES)."\n";}
+          }
+          ?>'''
+          proc=subprocess.run(['php','-',encoded],input=php.encode(),capture_output=True); print(proc.stdout.decode(),end=''); print(proc.stderr.decode(),end=''); assert proc.returncode==0
+          def get(url): return subprocess.check_output(['curl','-fsS','--max-time','45',url])
+          source_url='https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'+urllib.parse.urlencode([('tourvisorHotelIds[0]','1101'),('departureId','1'),('dateFrom','2026-11-19'),('dateTo','2027-10-31')])
+          source=json.loads(get(source_url)); item=source['items'][0]
+          print('SOURCE',json.dumps({'searches':source.get('searches'),'rows':source.get('rows'),'hotel':item.get('tourvisorHotelId'),'offers':[{'recordId':o.get('recordId'),'price':o.get('price'),'observedAt':o.get('observedAt'),'ageSecondsAtExport':o.get('ageSecondsAtExport'),'departureDate':o.get('departureDate')} for o in item.get('offers',[])]},separators=(',',':')))
+          feeds={}; hashes={}
+          for platform in ('telegram','max','all'):
+            name='hotel-posts-'+platform+'.xml'; raw=get('https://app.anytoour.ru/feed/'+name); assert raw==(app/'feed'/name).read_bytes(); hashes[platform]=hashlib.sha256(raw).hexdigest(); feeds[platform]={o.attrib['id']:o for o in ET.fromstring(raw).findall('.//offer')}
+          assert set(feeds['all'])==set(feeds['telegram'])|set(feeds['max'])
+          out={}
+          for platform in ('telegram','max'):
+            oid=row['feed_binding']['offer_ids'][platform]; o=feeds[platform][oid]; out[platform]={'offer_id':oid,'price':o.findtext('price'),'description_sha256':hashlib.sha256((o.findtext('description') or '').encode()).hexdigest(),'description':o.findtext('description')}; assert oid in feeds['all']
+          print('FEEDS',json.dumps({'hashes':hashes,'rows':{k:len(v) for k,v in feeds.items()},'target':out},ensure_ascii=False,separators=(',',':')))
+          print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip())
+          print('READ_ONLY_OK')
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
