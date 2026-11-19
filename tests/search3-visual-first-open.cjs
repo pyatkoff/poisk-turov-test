@@ -78,7 +78,7 @@ async function openReplay(root, html, catalogDelayMs) {
         navigation = performance.now();
         return respond(200, 'text/html; charset=utf-8', html);
       }
-      if (url.pathname === '/favicon.ico' || url.pathname === '/blank') return respond(200, 'text/html', '<!doctype html><title>Local</title>');
+      if (url.pathname === '/favicon.ico' || url.pathname === '/blank') return respond(200, 'text/html', '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local</title>');
       if (!url.pathname.endsWith('.php')) {
         const file = path.resolve(root, '.' + url.pathname.slice(base.length - 1));
         const type = types[path.extname(file)];
