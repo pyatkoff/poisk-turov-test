@@ -79,7 +79,7 @@ add('catalog loading',{kind:'price',catalogLoading:true,prices:[120]});add('cata
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after passive route/calendar observations');
-if(!process.argv.includes('--capture'))assert.equal(digest,'4cdf1f3c9c3dec913b41f90fb3f7f6687ca36c5e239d28ee0ee1d495c72d4c5d','approved calendar and retained provider context observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,'49d887b13ccc9c6dcfa6aef1a593b85461f78e5d3c3e09c26cba55061734853f','approved calendar and retained provider context observations');
 assert.equal(crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,203))).digest('hex'),'351941150be5e80e8a32a115c77132f8abb8563acf191ed81e99d66d4ce316cb','unchanged b74ac0 provider-view history records');
 const messengerScenario={kind:'restore',type:'anex-application',viewType:'anex-quote',verified:true,messengerMethods:true};
 const messengerRestore=observe(source,messengerScenario),scrollOf=result=>result.dom.find(([key])=>key==='#modal-body')[1].scrollTop;

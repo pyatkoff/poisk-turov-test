@@ -3,6 +3,30 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+async function checkPhoneFlightOptions(evaluate) {
+ const rows = await evaluate(`(() => {
+  return [...document.querySelectorAll('.flight-option-compact')].slice(0, 3).map(option =>
+   [...option.querySelectorAll('.flight-choice-row .flight-compact-leg')].map(leg => {
+    const time = leg.querySelector('strong'), stops = leg.querySelector('.flight-route-stops');
+    const range = document.createRange();
+    range.selectNodeContents(time);
+    const ink = range.getBoundingClientRect(), box = leg.getBoundingClientRect();
+    return {text:time.textContent, top:ink.top, left:ink.left, right:ink.right,
+     fits:range.getClientRects().length === 1 && ink.width > 0 && ink.left >= box.left - 1 && ink.right <= box.right + 1,
+     stopsVisible:stops.getBoundingClientRect().height > 0 && stops.textContent.trim() !== ''};
+   })
+  );
+ })()`);
+ assert.equal(rows.length, 3);
+ for (const pair of rows) {
+  assert.equal(pair.length, 2);
+  assert.ok(pair.every(leg => leg.fits && leg.stopsVisible), 'times and stops remain readable: ' + JSON.stringify(pair));
+  const [outbound, inbound] = pair;
+  assert.ok(outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1,
+   'outbound and return times line up for comparison: ' + JSON.stringify(pair));
+ }
+}
+
 async function checkFamilyResultRecap(driver, url, width, capture) {
  const entry = new URL(url);
  entry.searchParams.set('adults', '2');
@@ -51,6 +75,7 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.equal(await text(flightHeading), 'Перелёт', 'the tour starts without a selected flight');
  await driver.click('[data-action="contact-flights"]');
  await driver.click('[name="flight-pair"][value="1"]');
+ if (width === 430) await checkPhoneFlightOptions(script => driver.evaluate(script));
  await driver.click('[data-action="apply-flight"]');
  await driver.wait('#prototype-lead-form');
  assert.equal(await text(flightHeading), 'Перелёт выбран', 'the flight section confirms the selected pair');
@@ -97,6 +122,33 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.match(await text(card), /Всё включено/);
  await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
  await capture('family-result-age', 'Новая выдача · 10 лет');
+}
+
+async function checkSelectedFlightTimes(page, selector, layout) {
+ await page.evaluate(() => document.fonts.ready.then(() => true));
+ const times = await page.locator(selector).evaluateAll(nodes => nodes.map(node => {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const lines = [...range.getClientRects()];
+  const box = node.getBoundingClientRect();
+  const ink = range.getBoundingClientRect();
+  return {text:node.textContent, lines:lines.length, top:ink.top, bottom:ink.bottom, left:ink.left, right:ink.right,
+   fits:ink.width > 0 && ink.left >= box.left - 1 && ink.right <= box.right + 1};
+ }));
+ const viewport = JSON.stringify(page.viewportSize());
+ const expected = layout === 'summary' ? ['Туда 06:05 → 10:40', 'Обратно 08:05 → 12:40'] : ['06:05 → 10:40', '08:05 → 12:40'];
+ assert.deepEqual(times.map(time => time.text), expected);
+ assert.ok(times.every(time => time.lines === 1 && time.fits), 'each departure and arrival fits on one line at ' + viewport + ': ' + JSON.stringify(times));
+ const [outbound, inbound] = times;
+ const inColumns = outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1;
+ const inRows = inbound.top >= outbound.bottom - 1;
+ if (layout === 'columns') {
+  assert.ok(inColumns, 'both directions align side by side at ' + viewport);
+ } else if (layout === 'rows') {
+  assert.ok(inRows, 'flight directions have separate rows at ' + viewport);
+ } else if (layout === 'adaptive') {
+  assert.ok(inColumns || inRows, 'both directions remain separate at ' + viewport);
+ }
 }
 
 // Keep a visual record of one continuous session at each size. Small contact
@@ -248,6 +300,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'169 500 ₽');
    await page.locator('[data-action="contact-flights"]').click();
    await page.locator('[name="flight-pair"][value="1"]').check();
+   if(width===430)await checkPhoneFlightOptions(script=>page.evaluate(script));
    assert.match(await sum(page.locator('[data-flight-index="1"] .flight-comparison')),/1\s?300.*06:05.*20\s?кг/);
    assert.match(await sum(page.locator('#flight-price-change')),/1 300 ₽.*20 кг.*Шереметьево.*06:05/);
    await frame('Выбор перелёта');
@@ -297,8 +350,20 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    const footer=page.locator('#modal-footer');
    assert.equal(await sum(footer.locator('#detail-total')),'170 800 ₽');
    assert.match(await sum(footer.locator('.tour-price-history')),/Этот тур в поиске 169 500 ₽/i);
+   const tourTimes='.tour-overview .chosen-flight-pair .flight-compact-leg > strong';
+   await checkSelectedFlightTimes(page,tourTimes,width===1280?'columns':'rows');
    await frame('Цена при возврате к туру');
+   if(width===1280){
+    await page.setViewportSize({width:901,height:720});
+    await checkSelectedFlightTimes(page,tourTimes,'adaptive');
+    await page.setViewportSize({width,height:720});
+    await checkSelectedFlightTimes(page,tourTimes,'columns');
+   }
    await footer.locator('[data-action="confirm-tour"]').click();
+   await checkSelectedFlightTimes(page,'.application-flight-overview .summary-flight-times > span:not(.selected-flight-line)','summary');
+   if(width===430)await flightDetails.locator('summary').click();
+   await checkSelectedFlightTimes(page,'.application-flight-overview .saved-flight-times','rows');
+   if(width===1280)await page.setViewportSize({width,height:800});
    assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
    assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);

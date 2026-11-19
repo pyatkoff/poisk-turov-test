@@ -1445,6 +1445,9 @@ dialog.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:min
 .summary-flight-details>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:54px;cursor:pointer;list-style:none}
 .summary-flight-details>summary::-webkit-details-marker{display:none}.summary-flight-details>summary>span{font-weight:700}.summary-flight-details>summary>small{color:var(--muted);line-height:1.4;text-align:right}.summary-flight-details>summary::after{content:'⌄';color:var(--brand);font-size:18px;flex-shrink:0}.summary-flight-details[open]>summary::after{transform:rotate(180deg)}
 .summary-flight-details[open]>summary .selected-flight-line{display:none}
+.summary-flight-times{display:flex;min-width:0;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.summary-flight-times>.selected-flight-line{flex-basis:100%}
+@media(max-width:760px){.summary-flight-times{justify-content:flex-start}}
 .selected-flight-summary{min-width:0;padding:8px 0}.selected-flight-line{display:block;font-size:14px;line-height:1.5;font-weight:400;overflow-wrap:anywhere;margin-top:6px}.selected-flight-line strong{font-weight:650}
 .summary-flight-details .saved-flight-summary{border-top:1px solid var(--line);padding-top:12px}.handoff-summary-after-form{margin-top:8px}
 .hotel-detail-photos.photo-count-1{grid-template-columns:1fr}.hotel-detail-photos.photo-count-2 button:nth-child(2){grid-row:1/3}
@@ -2027,7 +2030,14 @@ dialog.hotel-details-dialog:has(.hotel-section-nav [data-target="hotel-rooms-hea
 @media(max-width:760px){
  .flight-option-compact .flight-choice-row{grid-template-columns:18px minmax(0,1fr);gap:5px 9px}
  .flight-choice-row .flight-comparison{grid-column:2;grid-row:2;justify-content:flex-start}
- .flight-choice-row .flight-compact-routes{grid-column:1/-1;grid-row:3;margin-top:3px}
+ .flight-choice-row .flight-compact-routes{grid-column:1/-1;grid-row:3;margin-top:3px;row-gap:0}
+ /* Share rows for the date, time, airports and optional connection and carrier. */
+ .flight-choice-row .flight-compact-leg{grid-row:span 5;grid-template-rows:subgrid;row-gap:0}
+ .flight-choice-row .flight-compact-leg>*+*{margin-block-start:1px}
+ .flight-choice-row .flight-pair-carriers{margin-block-start:8px}
+}
+@media(max-width:480px){
+ .flight-choice-row .flight-route-stops{flex-basis:100%;margin-inline-start:0}
 }
 
 @media(max-width:760px){
@@ -2260,6 +2270,11 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-dialog .flight-summary{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
 .tour-overview>.tour-main-details:only-child{grid-column:1/-1}
 .tour-dialog .tour-overview>.flight-summary{min-width:0;padding:20px;border:1px solid var(--line);border-radius:16px}
+@media(min-width:901px){
+ .tour-overview{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+ .tour-overview .flight-compact-routes{grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));align-items:start}
+ .tour-overview .flight-route-stops{flex-basis:100%}
+}
 .tour-dialog .flight-summary .secondary{min-height:44px;padding:10px 14px;font-size:.875rem;line-height:1.4;white-space:normal}
 .tour-dialog .flight-summary .secondary svg{display:none}
 .tour-dialog .flight-summary>p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}
