@@ -116,6 +116,24 @@ function collect(code) {
   return output;
 }
 const output = collect(source);
+{
+  const app = fs.readFileSync(path.resolve(__dirname, '../v2/visual-search/app.js'), 'utf8');
+  const start = app.indexOf('function contactFlightAllowance('), end = app.indexOf('function finalFlightDetailsHTML(', start);
+  assert.ok(start >= 0 && end > start);
+  const window = {};
+  vm.runInNewContext(source, {window});
+  const summary = vm.runInNewContext('(' + app.slice(start, end).trim() + ')', {window});
+  const pairs = Object.fromEntries(cases);
+  assert.equal(summary(pairs['same-carrier'], 'baggage', 'Багаж'), 'Багаж 20 кг');
+  assert.equal(summary(pairs['same-carrier'], 'carryOn', 'Ручная кладь'), 'Ручная кладь 5 кг');
+  assert.equal(summary(pairs['different-bags'], 'baggage', 'Багаж'), 'Багаж туда — 20 кг, обратно — 15 кг');
+  assert.equal(summary(pairs['placeholder'], 'baggage', 'Багаж'), 'Багаж туда — уточняется, обратно — 20 кг');
+  assert.equal(summary(pairs['mixed-allowances'], 'carryOn', 'Ручная кладь'), 'Ручная кладь различается по участкам');
+  assert.equal(summary(pairs['unknown-facts'], 'baggage', 'Багаж'), 'Багаж уточняется');
+  const noBags = pair([segment({baggage: 0, carryOn: '0'})], [segment({baggage: 0, carryOn: '0'})]);
+  assert.equal(summary(noBags, 'baggage', 'Багаж'), 'Без багажа');
+  assert.equal(summary(noBags, 'carryOn', 'Ручная кладь'), 'Без ручной клади');
+}
 if (process.argv[2]) {
   assert.equal(process.argv[2], '--compare', 'expected --compare /path/to/exact-baseline.js');
   assert.ok(process.argv[3], 'baseline path required');

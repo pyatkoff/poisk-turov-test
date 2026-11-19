@@ -89,6 +89,40 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     frames.push(file);
   }
 
+  async function checkReturnedRoomPrices() {
+    const standard = '.hotel-room-card[data-room="Стандартный номер"]';
+    const breakfast = standard + ' [data-action="select-hotel-offer"][data-key="journey-900002-0"]';
+    const allInclusive = standard + ' [data-offer-key="journey-900002-1"] .room-price-difference';
+    await driver.go(url);
+    await driver.click('.search-submit:not(:disabled)');
+    await driver.click(card + ' [data-card-entry]');
+    await driver.wait(breakfast);
+    assert.equal(await text(allInclusive), 'На 6 800 ₽ выше минимума');
+    await driver.click(breakfast);
+    await driver.wait(contact);
+    assert.equal(await text(total), '154 800 ₽');
+    await driver.click('[data-action="contact-flights"]');
+    await driver.click(pair);
+    await driver.wait(pair + ':checked');
+    await driver.click('[data-action="apply-flight"]');
+    await driver.wait(contact);
+    assert.equal(await text(total), '156 100 ₽');
+    await driver.click('#modal-back');
+    await driver.wait(standard + '[open]');
+    assert.equal(await text('#hotel-detail-min'), '156 100 ₽');
+    assert.equal(await text(allInclusive), 'На 5 500 ₽ выше минимума');
+    assert.equal(await text(family + ' .room-price-difference'), 'На 13 400 ₽ выше минимума');
+    await driver.click(standard + ' > summary');
+    await driver.wait(standard + ':not([open]) .room-overview-price');
+    assert.equal(await text(standard + ' .room-overview-price'), 'от 156 100 ₽');
+    await driver.click('[data-target="hotel-rooms-heading"]');
+    await driver.wait('[data-target="hotel-rooms-heading"][aria-current="location"]');
+    await documentGuard('returned-room-minimum');
+    const file = 'returned-room-minimum-430.png';
+    await driver.screenshot(path.join(evidence, file));
+    return file;
+  }
+
   if (await driver.evaluate('location.href') !== url) await driver.go(url);
   await driver.wait('.search-submit:not(:disabled)');
   await documentGuard('initial');
@@ -145,6 +179,9 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.match(heading, /Palm Garden/);
   assert.match(heading, /Москва.*Кемер.*Турция/);
   assert.match(heading, /Семейный номер.*Всё включено/);
+  const flightSummary = '.application-flight-overview .summary-flight-details:not([open]) > summary';
+  await driver.wait(flightSummary);
+  assert.match(await text(flightSummary), /Багаж 20 кг/i, 'selected baggage is visible before opening flight details');
   assert.equal(await text(total), '170 800 ₽');
   await frame('05-contact');
 
@@ -184,7 +221,8 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.equal(await driver.value(phone), '70000000000');
   assert.equal(await text(total), '170 800 ₽');
   await documentGuard('restored-contact');
+  const returnedRoomFrame = await checkReturnedRoomPrices();
   const similarRoomsFrame = await compareLongRoomNames({driver, url, evidence, documentGuard});
-  return {frames, similarRoomsFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  return {frames, similarRoomsFrame, returnedRoomFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };

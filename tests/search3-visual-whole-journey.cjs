@@ -64,7 +64,9 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    } finally { await context.close(); }
    report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
    report.selection.contactSheet = filename;
-   fs.copyFileSync(path.join(raw, report.selection.similarRoomsFrame), path.join(retained, report.selection.similarRoomsFrame));
+   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame]){
+    fs.copyFileSync(path.join(raw,file), path.join(retained,file));
+   }
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
   } catch (error) {
    const last = path.join(raw,'last-state.png');
@@ -127,6 +129,14 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    }));
    assert.deepEqual(offers.map(o=>[o.meal,o.price]),[['Завтраки','154 800 ₽'],['Всё включено','161 600 ₽']]);
    assert.ok(offers.every(o=>o.sameLine&&o.visible&&o.gap>=0&&o.gap<=360),'both meals and exact prices can be compared on entry at '+width+'px: '+JSON.stringify(offers));
+   if(width===430){
+    const difference=standard.nth(1).locator('.room-price-difference');
+    const lines=await difference.evaluate(el=>{
+     const range=document.createRange();range.selectNodeContents(el);
+     return new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size;
+    });
+    assert.equal(lines,1,'the price difference fits on one line beside the meal on a phone');
+   }
    await frame('Номера и питание');
    await family.locator('[data-action="select-hotel-offer"]').click();
    const form=page.locator('#prototype-lead-form');
@@ -143,6 +153,13 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.match(await sum(heading),/Palm Garden/);
    assert.match(await sum(heading),/Москва.*Кемер.*Турция/);
    assert.match(await sum(heading),/Семейный номер.*Всё включено/);
+   const flightDetails=page.locator('.application-flight-overview .summary-flight-details');
+   if(width===430){
+    assert.equal(await flightDetails.evaluate(el=>el.open),false);
+    assert.match(await sum(flightDetails.locator('summary')),/Багаж 20 кг/);
+   }else{
+    assert.match(await sum(flightDetails),/Багаж\s*20 кг/);
+   }
    assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'170 800 ₽');
    await frame('Итог тура и заявка');
    await form.locator('[name="phone"]').fill('70000000000');
