@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   recover:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '28ef7f0af1ff3abf46e84a9294a90baa44aed35a'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '97b4b035d8677cb1d0abde352404f4f3641f1914'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -20,8 +20,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$(gh api repos/pyatkoff/poisk-turov-test/branches/main --jq .commit.sha)" = "4c35360cf1371083b64041ac0c77a1ad66e4118d"
-          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44612528423 --jq '.status+":"+(.conclusion//"")+":"+(.head_sha//"")')" = "completed:success:4c35360cf1371083b64041ac0c77a1ad66e4118d"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/branches/main --jq .commit.sha)" = "e68fe088764521c7ff6b605403ca7f2ebb7e4dd6"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44619336712 --jq '.status+":"+(.conclusion//"")+":"+(.head_sha//"")')" = "completed:failure:4c35360cf1371083b64041ac0c77a1ad66e4118d"
+          gh run view 44619336712 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/source-run.log"
+          grep -Fq 'TOP500_MONTHLY_DONE {"processed":64,"logical_processed":106,"page_gap_processed":0,"failed":0,"partial":0,"observations_written":29343' "$RUNNER_TEMP/source-run.log"
+          grep -Fq 'MONITOR_POST_FEED_RESULT={"ok":false' "$RUNNER_TEMP/source-run.log"
+          grep -Fq '"updated_pairs":0' "$RUNNER_TEMP/source-run.log"
+          grep -Fq '"error":"hook_publishing_surface_changed"' "$RUNNER_TEMP/source-run.log"
       - name: Check out compatible existing publisher callback
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -94,8 +99,8 @@ jobs:
           active=[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]
           assert not active,'PRICE_PROCESS_ACTIVE_STOP'
           env=dict(os.environ)
-          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T20:51:00+00:00'
-          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='44612528423'
+          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T21:48:07+00:00'
+          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='44619336712'
           p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--nightly'],capture_output=True,text=True,env=env)
           print(p.stdout,end=''); print(p.stderr,end='')
           assert p.returncode==0
@@ -154,7 +159,7 @@ jobs:
             elif a[2]<=cutoff:status='freshness_cutoff_within_display_minute'
             else:status='fresh_published'
             counts[status]+=1
-          print('PRICE_RECOVERY_TERMINAL='+json.dumps({'as_of_moscow':now.isoformat(),'source_run':44612528423,'feeds':feeds,'classifications':dict(counts),'past_departure_hotel_ids':sorted(expired)},ensure_ascii=False,separators=(',',':')))
+          print('PRICE_RECOVERY_TERMINAL='+json.dumps({'as_of_moscow':now.isoformat(),'source_run':44619336712,'feeds':feeds,'classifications':dict(counts),'past_departure_hotel_ids':sorted(expired)},ensure_ascii=False,separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
