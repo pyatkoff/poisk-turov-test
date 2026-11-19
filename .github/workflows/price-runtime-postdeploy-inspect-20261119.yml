@@ -1,4 +1,4 @@
-name: PRICE 1900 diagnose overrun collector read-only
+name: PRICE 1905 read active collector terminal progress
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c45193378857747b52e1bd3351c2422371cca713'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '2717390fd930257674119c580d7e60072aabe0b7'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
