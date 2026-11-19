@@ -27,6 +27,19 @@ async function checkPhoneFlightOptions(evaluate) {
  }
 }
 
+// Check what the traveler can actually see in the captured viewport, including
+// clipping and overlays from sticky headers, footers, and the mobile toolbar.
+async function assertVisibleInFrame(driver, selector, count) {
+ const hidden = await driver.evaluate(`Array.from(document.querySelectorAll(${JSON.stringify(selector)}), element => {
+  const rect = element.getBoundingClientRect();
+  const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  return rect.width > 0 && rect.height > 0 && rect.left >= -1 && rect.right <= innerWidth + 1
+   && rect.top >= -1 && rect.bottom <= innerHeight + 1 && element.contains(hit) ? null : element.textContent;
+ })`);
+ assert.equal(hidden.length, count, 'expected elements for ' + selector);
+ assert.deepEqual(hidden.filter(value => value !== null), [], 'content must be visible in the screenshot: ' + selector);
+}
+
 async function checkFamilyResultRecap(driver, url, width, capture) {
  const entry = new URL(url);
  entry.searchParams.set('adults', '2');
@@ -84,6 +97,18 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.match(await text('.application-review-heading'), /7 лет/);
  assert.match(await text('.application-review-heading'), /Palm Garden.*Кемер/);
  assert.equal(await text(total), '170 800 ₽');
+ const breakdown = '.application-price-breakdown';
+ const priceParts = [
+  ['tour', 'Тур в поиске', '169 500 ₽'],
+  ['flight', 'Выбранный перелёт', '+1 300 ₽'],
+  ['total', 'Итого за всех', '170 800 ₽'],
+ ];
+ for (const [part, label, amount] of priceParts) {
+  const row = breakdown + ' [data-price-part="' + part + '"]';
+  assert.equal(await text(row + ' dt'), label);
+  assert.equal(await text(row + ' dd'), amount);
+ }
+ await assertVisibleInFrame(driver, breakdown + ' dt, ' + breakdown + ' dd', 6);
  await capture('family-contact', 'Заявка на тур · 7 лет');
  await driver.click('[data-action="close-modal"]');
  await driver.wait(selected);
@@ -91,8 +116,25 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.equal(await text(selected + ' .card-selection-price strong'), '170 800 ₽');
  assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
  assert.match(await text(recap), /7 лет/);
- await driver.evaluate(`document.querySelector(${JSON.stringify(selected)}).scrollIntoView({block:"center", behavior:"instant"})`);
+ await driver.evaluate(`document.querySelector(${JSON.stringify(card)}).scrollIntoView({block:"start", behavior:"instant"})`);
+ const selectionPrecedesPhotos = await driver.evaluate(`(() => {
+  const hotel = document.querySelector(${JSON.stringify(card)});
+  const selection = hotel.querySelector('.current-card-selection');
+  return selection.getBoundingClientRect().bottom <= hotel.querySelector('.hotel-photos').getBoundingClientRect().top + 1;
+ })()`);
+ assert.ok(selectionPrecedesPhotos, 'the saved tour precedes the hotel photos');
+ const resume = selected + ' [data-card-selection]';
+ await assertVisibleInFrame(driver, selected + ' .card-selection-price strong, ' + resume, 2);
  await capture('family-return', 'Выбранный тур в выдаче');
+ await driver.click(resume);
+ await driver.wait('#detail-total');
+ assert.equal(await text('#detail-total'), '170 800 ₽');
+ await driver.click('#modal-footer [data-action="confirm-tour"]');
+ await driver.wait('#prototype-lead-form');
+ assert.match(await text('.application-review-heading'), /Семейный номер.*Всё включено/);
+ assert.match(await text('.summary-flight-details > summary'), /06:05 → 10:40.*08:05 → 12:40/);
+ assert.equal(await text(total), '170 800 ₽');
+ await driver.click('[data-action="close-modal"]');
 
  await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
  await driver.click(edit);
@@ -208,6 +250,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    }));
    const filename = 'whole-search-firefox-430.webp';
    const familyFilename = 'family-edit-journey-430.webp';
+   assert.equal(report.selection.familyFrames.length, 4);
    const familyFrames = report.selection.familyFrames.map(({file,label}) => ({
     label, format:'png', image:fs.readFileSync(path.join(raw,file)).toString('base64'),
    }));
@@ -220,7 +263,8 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    report.selection.contactSheet = filename;
    report.selection.familyContactSheet = familyFilename;
    report.selection.familyFrames = report.selection.familyFrames.map(({file,label}) => ({stage:path.parse(file).name, label}));
-   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame, report.selection.departureFilterFrame]){
+   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame,
+    report.selection.departureFilterFrame, 'family-return-430.png', 'family-contact-430.png']){
     fs.copyFileSync(path.join(raw,file), path.join(retained,file));
    }
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
@@ -234,13 +278,14 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
   const page=await context.newPage();
   const failures=[],external=[],frames=[];
-  const frame=async (label,collection=frames)=>{
+  const frame=async (label,collection=frames,file)=>{
    await page.evaluate(()=>document.fonts.ready.then(()=>true));
    assert.equal(await page.evaluate(()=>{
     const modal=document.querySelector('dialog[open]');
     return document.documentElement.scrollWidth>innerWidth+1||Boolean(modal&&modal.scrollWidth>modal.clientWidth+1);
    }),false,label+' fits '+width+'px');
-   collection.push({label,image:(await page.screenshot({type:'jpeg',quality:80})).toString('base64')});
+   const picture=await page.screenshot(file ? {path:path.join(evidence,file),type:'png'} : {type:'jpeg',quality:80});
+   collection.push({label,format:file?'png':'jpeg',image:picture.toString('base64')});
   };
   const sum=async locator=>(await locator.innerText()).replace(/\s+/g,' ').trim();
   page.on('pageerror',error=>failures.push(error.message));
@@ -367,6 +412,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await form.locator('[name="phone"]').inputValue(),'70000000000');
    assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
+   assert.equal(frames.length,6);
    await saveJourney(context,frames,width,evidence);
    if(width===1280){
     const familyFrames=[];
@@ -374,7 +420,9 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
      go:url=>page.goto(url), click:selector=>page.locator(selector).click(), fill:(selector,value)=>page.locator(selector).fill(value),
      wait:selector=>page.locator(selector).waitFor(), text:selector=>page.locator(selector).innerText(),
      count:selector=>page.locator(selector).count(), evaluate:script=>page.evaluate(script)
-    },origin+base+'visual-search/?scenario=journey',width,(_stage,label)=>frame(label,familyFrames));
+    },origin+base+'visual-search/?scenario=journey',width,(stage,label)=>
+     frame(label,familyFrames,['family-contact','family-return'].includes(stage) ? stage+'-'+width+'.png' : undefined));
+    assert.equal(familyFrames.length,4);
     await saveJourney(context,familyFrames,width,evidence,{filename:'family-edit-journey-1280.webp'});
     assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    }

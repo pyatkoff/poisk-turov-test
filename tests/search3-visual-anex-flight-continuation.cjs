@@ -598,6 +598,10 @@ async function compactAnexScenario(width){
    assert.equal(q('[data-action="anex-additional-prices"]'),null,'retained APD requires no repeated supplier request');
    click('[data-action="anex-application-preview"]');
    const form=q('#prototype-lead-form');assert(form);assert.match(q('#modal-footer').textContent,zero?/121\s*000/:/123\s*000/);
+   const parts=()=>Object.fromEntries([...d.querySelectorAll('.application-price-breakdown [data-price-part]')].map(el=>[el.dataset.pricePart,el.querySelector('dd').textContent.replace(/\s/g,'')]));
+   const expectedParts={tour:'121000₽',party:zero?'0₽':'+2000₽',total:zero?'121000₽':'123000₽'};
+   assert.deepEqual(parts(),expectedParts,'the estimate retains the operator-provided breakdown, including an explicit zero charge');
+   assert.equal(q('[data-price-part="total"] dt').textContent,'Расчётная сумма');
    assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);assert.match(q('#modal-body').textContent,/Расчётная стоимость требует подтверждения оператором/);
    form.elements.phone.value='+79990000000';form.elements.consent.checked=true;
    form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
@@ -609,6 +613,7 @@ async function compactAnexScenario(width){
    assert.equal(q('#prototype-lead-form').elements.phone.value,'+79990000000');
    assert.equal(q('#prototype-lead-form').elements.consent.checked,false);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
    assert.equal(q('#modal-body').scrollTop,73);assert.match(q('#modal-footer').textContent,zero?/121\s*000/:/123\s*000/);
+   assert.deepEqual(parts(),expectedParts,'restoring the exact application retains its estimate');
    assert.equal(transport.calls.length,beforeForward,'browser Forward never repeats current/APD/flights or submits a lead');
    const before=transport.calls.length;
    click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="anex-application-preview"]');
