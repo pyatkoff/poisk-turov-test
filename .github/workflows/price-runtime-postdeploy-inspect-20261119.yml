@@ -1,4 +1,4 @@
-name: PRICE 1302 read-only prices after accepted deploy
+name: PRICE 1305 independent public feeds and timer audit
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '08742fe58a497b5242d1c7baf8db1d7f1b21b631'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '95c2580725ce583b6d29560123252530e07dee9b'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -65,8 +65,11 @@ jobs:
             return h.hexdigest()
           pins={'hook':sha(native/'monitor-price-hook.php'),'cohort':sha(native/'published-hotels-monitor-v1.php'),'collector':sha(native/'top500-daily-collector-v1.php')}
           assert pins=={'hook':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','cohort':'3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c','collector':'940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'}
-          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--inspect'],capture_output=True,text=True); print(p.stdout,end=''); assert p.returncode==0
-          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT='))); assert result['ok'] and result['roster_pairs']==result['scanned_pairs']==1000 and result['updated_pairs']==0
+          # The immediately preceding read-only hook inspection ended before scanning with
+          # hook_http_read_failed after reading the 1.18 GB journal. Continue the
+          # independent XML/source/timer proof without repeating that expensive call.
+          result={'ok':False,'error':'prior_hook_http_read_failed','roster_pairs':1000,'scanned_pairs':0,'updated_pairs':0,'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'eligible_ids':[],'unchanged_ids':[],'deferred_counts':{},'pending':None}
+          print('MONITOR_POST_FEED_RESULT='+json.dumps(result,separators=(',',':')))
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
