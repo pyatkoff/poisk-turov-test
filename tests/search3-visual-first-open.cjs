@@ -64,8 +64,9 @@ function catalogName(url, body) {
   return '';
 }
 
-async function openReplay(root, html, catalogDelayMs) {
+async function openReplay(root, html, catalogDelayMs, searchFixture) {
   const transport = fixture(), catalog = [], blocked = [], scripts = {}, requests = [];
+  const delivery = searchFixture?.(transport);
   let navigation = 0, clicked = false;
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -101,6 +102,7 @@ async function openReplay(root, html, catalogDelayMs) {
         return respond(200, 'application/json', JSON.stringify(data));
       }
       assert.ok(clicked, 'unexpected request before search: ' + url.pathname);
+      if (delivery) return respond(200, 'application/json', JSON.stringify(await delivery.reply(url, body, req.method, payload)));
       if (url.pathname === '/_preview/search3-anex-candidate/api-anex-search3-preview.php') {
         if (req.method === 'GET' && url.searchParams.get('action') === 'tv_token') {
           return respond(200, 'application/json', JSON.stringify({ok:true,provider:'tourvisor',csrf:'a'.repeat(64)}));
@@ -119,7 +121,7 @@ async function openReplay(root, html, catalogDelayMs) {
     }
   });
   await new Promise((resolve,reject) => {server.once('error', reject);server.listen(0, '127.0.0.1', resolve);});
-  return {origin:'http://127.0.0.1:' + server.address().port, blocked, scripts, catalog, requests,
+  return {origin:'http://127.0.0.1:' + server.address().port, blocked, scripts, catalog, requests, delivery,
     allowClick() {clicked = true;},
     async close() {server.closeAllConnections();await new Promise(resolve => server.close(resolve));}};
 }
@@ -169,44 +171,55 @@ async function measure(driver, engine, size, root, html, evidence) {
   return groups;
 }
 
-function emitFirstOpenFile(directory, name) {
+function emitFirstOpenFile(directory, name, tag = 'SEARCH3_FIRST_OPEN_FRAME') {
   const bytes = fs.readFileSync(path.join(directory, name));
   const digest = sha(bytes), encoded = bytes.toString('base64');
   const parts = Math.ceil(encoded.length / 3000);
   for (let index = 0; index < parts; index++) {
-    console.log('SEARCH3_FIRST_OPEN_FRAME', name, digest, (index + 1) + '/' + parts,
+    console.log(tag, name, digest, (index + 1) + '/' + parts,
       encoded.slice(index * 3000, (index + 1) * 3000));
   }
 }
 
-async function run() {
-  const root=fs.realpathSync(process.argv[2]), evidence=path.resolve(process.argv[3]);
-  fs.mkdirSync(evidence,{recursive:true});
+function liveEntry(root) {
   const php='$_SERVER["SCRIPT_NAME"]=$argv[1]; include $argv[2];';
   const original=execFileSync('php',['-r',php,entry+'index.php',path.join(root,'visual-search/index.php')]).toString();
   assert.ok(original.includes('data-search3-tv-session="enabled"') && original.includes('prototype-search/data.js?v='));
   const html=original.replace(/<head\b[^>]*>/i, head => head + '<script>(' + observeFirstOpen.toString() + ')()</script>');
   assert.notEqual(html, original);
-  const report={source:execFileSync('git',['rev-parse','HEAD'],{cwd:__dirname,encoding:'utf8'}).trim(), entrySHA256:sha(original),
-    method:'Navigation start to the first animation frame with a hydrated, enabled search, all six parameter labels, visible meal control and submit. Every navigation uses a fresh loopback origin and no-store responses. Fixed delay per catalog response; browser process and OS are warm. Suppliers and leads are offline.',
-    engines:{}};
+  return {html, entrySHA256:sha(original), source:execFileSync('git',['rev-parse','HEAD'],{cwd:__dirname,encoding:'utf8'}).trim()};
+}
+
+async function measureEngines(root, html, collect) {
+  const engines = {};
   const browser=await chromium.launch({headless:true,args:['--proxy-server=127.0.0.1:9','--proxy-bypass-list=127.0.0.1;localhost']});
   try {
     const page=await browser.newPage({viewport:{width:1280,height:800}});
-    report.engines.chromium={version:browser.version(),viewport:[1280,800],groups:await measure({
+    engines.chromium={version:browser.version(),viewport:[1280,800],groups:await collect({
       go:url=>page.goto(url),evaluate:expr=>page.evaluate(expr),click:selector=>page.locator(selector).click(),
-      screenshot:file=>page.screenshot({path:file})},'chromium-1280',[1280,800],root,html,evidence)};
+      screenshot:file=>page.screenshot({path:file})},'chromium-1280',[1280,800])};
   } finally {await browser.close();}
   const firefox=await startFirefox(), landing=await openReplay(root,html,0);
   try {
     await firefox.go(landing.origin+'/blank');
     const rdm=await firefox.enableResponsiveMode();
-    report.engines.firefox={version:firefox.capabilities.browserVersion,rdm,viewport:[430,932],
-      groups:await measure(firefox,'firefox-rdm-430',[430,932],root,html,evidence)};
+    engines.firefox={version:firefox.capabilities.browserVersion,rdm,viewport:[430,932],
+      groups:await collect(firefox,'firefox-rdm-430',[430,932])};
   } finally {await landing.close();await firefox.quit();}
+  return engines;
+}
+
+async function run() {
+  const root=fs.realpathSync(process.argv[2]), evidence=path.resolve(process.argv[3]);
+  fs.mkdirSync(evidence,{recursive:true});
+  const {html, source, entrySHA256}=liveEntry(root);
+  const report={source,entrySHA256,
+    method:'Navigation start to the first animation frame with a hydrated, enabled search, all six parameter labels, visible meal control and submit. Every navigation uses a fresh loopback origin and no-store responses. Fixed delay per catalog response; browser process and OS are warm. Suppliers and leads are offline.',
+    engines:await measureEngines(root,html,(driver,engine,size)=>measure(driver,engine,size,root,html,evidence))};
   fs.writeFileSync(path.join(evidence,'result.json.gz'),gzipSync(JSON.stringify(report,null,2)));
   for (const name of ['chromium-1280.png','firefox-rdm-430.png','result.json.gz']) emitFirstOpenFile(evidence,name);
   for (const [engine,run] of Object.entries(report.engines)) console.log('PASS first open',engine,
     run.groups.map(g=>({catalogDelayMs:g.catalogDelayMs,n:g.count,medianMs:g.medianMs,minMs:g.minMs,maxMs:g.maxMs})));
 }
 if (require.main === module) run().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports = {entry, sha, openReplay, liveEntry, measureEngines, emitFirstOpenFile};
