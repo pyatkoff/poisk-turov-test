@@ -1,4 +1,4 @@
-name: PRICE 1951 inspect 1945 server timer read-only
+name: PRICE 2051 read active 2045 collector
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,14 +8,14 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '8c245e95e7306353073136bc5511a37adb3eb63c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9bbc9ce976bd0fe2ff37676abc9d9d12c572bbff'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Verify terminal PRICE receipt
+      - name: Verify prior PRICE terminal
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -48,29 +48,21 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read timer and active process without writes
+      - name: Read collector state without writes
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
-          import pathlib,subprocess,hashlib,json
+          import pathlib,subprocess,json
           native=pathlib.Path('/var/www/anytoour/data/www/anytoour.ru/data')
-          app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           p=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           lines=[x for x in p.stdout.splitlines() if 'pgrep -af' not in x]
           pids=[x.split(None,1)[0] for x in lines if x.split(None,1)[0].isdigit()]
           ps=subprocess.run(['ps','-o','pid=,ppid=,stat=,etime=,lstart=,cmd=','-p',','.join(pids)],capture_output=True,text=True) if pids else None
-          feeds={}
-          for n in ('telegram','max','all'):
-            path=app/'feed'/('hotel-posts-'+n+'.xml')
-            data=path.read_bytes()
-            public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+path.name])
-            assert data==public
-            feeds[n]={'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
-          print('PRICE_1945_TIMER_READ='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':lines,'ps':ps.stdout.splitlines() if ps else [],'feeds':feeds},separators=(',',':')))
+          print('PRICE_2045_COLLECTOR_READ='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':lines,'ps':ps.stdout.splitlines() if ps else []},separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
