@@ -1005,10 +1005,19 @@ function syncHotelSectionNavigation(){
  if(modalType!=='hotel-details')return;
  const body=$('#modal-body'),nav=$('.hotel-section-nav');if(!nav)return;
  const links=[...nav.querySelectorAll('[data-target]')],threshold=body.getBoundingClientRect().top+nav.offsetHeight+28;
+ const scroll=body.scrollTop,height=body.clientHeight;
  let current=links[0];
  for(const link of links){const target=document.getElementById(link.dataset.target);if(target&&target.getBoundingClientRect().top<=threshold)current=link;}
- if(body.scrollHeight>body.clientHeight&&body.scrollTop+body.clientHeight>=body.scrollHeight-3)current=links.at(-1);
+ if(body.scrollHeight>height&&scroll+height>=body.scrollHeight-3)current=links.at(-1);
  for(const link of links){if(link===current)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');}
+ // Hiding the room jump footer enlarges the viewport and can lower its maximum scroll offset.
+ const rooms=body.querySelector('.hotel-room-section');if(!rooms)return;
+ const reserved=parseFloat(rooms.style.marginBottom)||0,newHeight=body.clientHeight;
+ if(!reserved&&newHeight<=height)return;
+ const naturalMax=Math.max(0,body.scrollHeight-reserved-newHeight);
+ const needed=Math.min(reserved+Math.max(0,newHeight-height),Math.max(0,Math.ceil(scroll-naturalMax)));
+ if(needed!==reserved)rooms.style.marginBottom=needed?needed+'px':'';
+ if(needed&&body.scrollTop!==scroll)body.scrollTop=scroll;
 }
 function scheduleHotelNavigation(){
  if(modalType!=='hotel-details'||hotelNavigationFrame)return;

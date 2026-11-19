@@ -1102,18 +1102,43 @@ async function formPickerActionJourney(browser,origin,base,evidence){
  console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, no retired form-filter route, month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
 }
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
-// The hotel footer is controlled by IntersectionObserver. Two animation frames
-// can still capture its intermediate layout after Playwright scrolls a summary.
+// The active hotel section controls the footer. Wait for its layout as well as the scroll offset.
 const settledHotelScroll=page=>page.locator('#modal-body').evaluate(async el=>{
- let previous='',stable=0;const samples=[];
+ const footer=document.querySelector('#modal-footer'),samples=[];let previous='',stable=0;
  for(let frame=0;frame<120;frame++){
   await new Promise(resolve=>requestAnimationFrame(resolve));
-  const sample=[el.scrollTop,el.clientHeight,el.scrollHeight,document.querySelector('#modal-footer').hidden];
+  const sample=[el.scrollTop,el.clientHeight,el.scrollHeight,footer.hidden,footer.getBoundingClientRect().height];
   const key=JSON.stringify(sample);samples.push(sample);stable=key===previous?stable+1:0;previous=key;
-  if(stable>=4)return {scroll:el.scrollTop,samples};
+  if(stable>=4)return {scroll:el.scrollTop,maximum:el.scrollHeight-el.clientHeight,samples};
  }
  throw new Error('Hotel layout did not settle: '+JSON.stringify(samples.slice(-10)));
 });
+async function assertHotelFooterScrollRange(page,width){
+ const body=page.locator('#modal-body'),footer=page.locator('#modal-footer'),roomsTab=page.locator('.hotel-section-nav [data-target="hotel-rooms-heading"]');
+ const overview=async()=>{
+  await body.evaluate(el=>el.scrollTo({top:0,behavior:'instant'}));
+  await page.locator('.hotel-section-nav [aria-current="location"]:not([data-target="hotel-rooms-heading"])').waitFor({state:'visible'});
+  await footer.locator('#hotel-detail-offers[data-action="hotel-section"]').waitFor({state:'visible'});
+  const layout=await settledHotelScroll(page);
+  assert.equal(layout.scroll,0,'overview returns to the top at width '+width);
+  return layout;
+ };
+ const top=await overview();
+ assert(top.maximum>0,'the hotel fixture has scrollable rooms at width '+width);
+ const reached=await body.evaluate(el=>{
+  el.scrollTo({top:el.scrollHeight,behavior:'instant'});
+  return el.scrollTop;
+ });
+ assert(Math.abs(reached-top.maximum)<=1,'reaches the bottom while the hotel footer is still visible at width '+width);
+ await roomsTab.and(page.locator('[aria-current="location"]')).waitFor({state:'visible'});
+ await footer.waitFor({state:'hidden'});
+ assert.equal(await footer.evaluate(el=>el.getBoundingClientRect().height),0,'the room footer releases its layout space at width '+width);
+ const rooms=await settledHotelScroll(page);
+ assert(rooms.maximum>=reached-1,'rooms retain the scroll range reached with the footer visible at width '+width);
+ assert.equal(rooms.scroll,reached,'hiding the room footer preserves the reached position at width '+width);
+ const returned=await overview();
+ assert.equal(returned.maximum,top.maximum,'returning to the overview restores the original scroll range at width '+width);
+}
 const forwardProviderApplication=async(page,transport,room,price)=>{
  const before=transport.calls.length;
  const scroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});
@@ -2494,6 +2519,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`hotel-scroll-layout-${width}.json`),JSON.stringify({before:hotelLayoutBefore,after:hotelLayoutAfter},null,2));
   assert.equal(hotelLayoutAfter.scroll,hotelScroll,'late source preserves settled hotel scroll at width '+width);
   await page.screenshot({path:path.join(evidence,`progressive-hotel-${width}.png`)});
+  if(width===768||width===1280)await assertHotelFooterScrollRange(page,width);
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');
   assert.match(await page.locator('#hotel-detail-offers').getAttribute('data-key'),/^andromeda%3A/);
