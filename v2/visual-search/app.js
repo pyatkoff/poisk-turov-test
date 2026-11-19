@@ -51,7 +51,7 @@ const flightDateText = s=>{const raw=String(s||'');const iso=/^\d{8}$/.test(raw)
 const rangeText = (a,b)=>a===b?dateText(a):a.slice(0,4)!==b.slice(0,4)?`${dateText(a)} ${a.slice(0,4)} — ${dateText(b)} ${b.slice(0,4)}`:`${dateText(a)} — ${dateText(b)}`;
 const departureRangeText=(a,b)=>a.slice(0,7)===b.slice(0,7)?(a===b?'':Number(a.slice(8))+'–')+dateObj(b).toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'}):rangeText(a,b);
 const nightsText = n=>`${n} ${n%10===1&&n!==11?'ночь':n%10>=2&&n%10<=4&&(n<12||n>14)?'ночи':'ночей'}`;
-const childAgeText = n=>n===0?'до года':`${n} ${n%10===1&&n!==11?'год':n%10>=2&&n%10<=4&&(n<12||n>14)?'года':'лет'}`;
+const childAgeText = n=>n===null?'возраст не указан':n===0?'до года':`${n} ${n%10===1&&n!==11?'год':n%10>=2&&n%10<=4&&(n<12||n>14)?'года':'лет'}`;
 const childAgesText = ages=>ages.map(childAgeText).join(', ');
 const childAgesLabel = (ages,lowercase=false)=>`${lowercase?'возраст':'Возраст'} ${ages.length===1?'ребёнка':'детей'}: ${childAgesText(ages)}`;
 const countryNames={};
@@ -163,6 +163,7 @@ const destinationIds=d=>validIds(d?.hotelIds?.length?d.hotelIds:d?.hotelId?[d.ho
 function setDestinationIds(d,ids){d.hotelIds=validIds(ids);d.hotelId=d.hotelIds.length===1?d.hotelIds[0]:0;}
 const pickerFilters=()=>state.filters;
 const partyLabel=s=>s.ages.length?`${s.adults} взр. · ${s.ages.length} реб.`:`${s.adults} ${s.adults===1?'взрослый':'взрослых'}`;
+const appliedPartyLabel=s=>s.ages.length?`${partyLabel(s)} (${childAgesText(s.ages)})`:partyLabel(s);
 function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
 function updateURL(){if(searchEditSession||!urlStateHydrated)return;const p=new URLSearchParams();p.set('scenario',data.scenario);for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(destinationIds(f).length>1)p.set('hotels',destinationIds(f).join('|'));if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
@@ -203,7 +204,7 @@ function appendGeneratedRoots(container,entries,remove){
 }
 function renderSummary(){
  const s=state.search,d=appliedDestination(),ids=destinationIds(d),route=ids.length?(countryNames[d.country]||destinationLabel(d)):destinationLabel(d);
- paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут${ids.length?' · '+hotelCountText(ids.length):''}</small><strong>${esc(s.origin)}<span>→</span>${esc(route)}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-label="Изменить поиск: ${esc(s.origin)} → ${esc(destinationLabel(d,true))}" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить поиск</button></div>`}]);
+ paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут${ids.length?' · '+hotelCountText(ids.length):''}</small><strong>${esc(s.origin)}<span>→</span>${esc(route)}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${s.ages.length?appliedPartyLabel(s):guestsText(s)}</dd></div></dl><button class="secondary" data-action="edit-search" aria-label="Изменить поиск: ${esc(s.origin)} → ${esc(destinationLabel(d,true))}" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить поиск</button></div>`}]);
 }
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing','form-visible');updateCompactSearch();}
 function editSearch(){
@@ -1118,7 +1119,7 @@ function renderResultHeadings(items,total,pristine){
  $('#compact-route').textContent=`${state.search.origin} → ${countryNames[destination.country]||destinationLabel(destination)}`;
  $('#compact-search .secondary[data-action="top"]').setAttribute('aria-label',`Изменить поиск: ${state.search.origin} → ${destinationLabel(destination,true)}`);
  $('#compact-route').title=`${state.search.origin} → ${destinationLabel(destination,true)}`;
- $('#compact-details').textContent=`${selection?selection+' · ':''}Вылет ${departureScopeValue()} · ${durationText()} · ${partyLabel(state.search)}`;
+ $('#compact-details').textContent=`${selection?selection+' · ':''}Вылет ${departureScopeValue()} · ${durationText()} · ${appliedPartyLabel(state.search)}`;
 
  $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;
  $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':'Отели и туры';

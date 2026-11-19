@@ -259,6 +259,14 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   const returnedRoomFrame = await checkReturnedRoomPrices();
   const similarRoomsFrame = await compareLongRoomNames({driver, url, evidence, documentGuard});
   const selectedMealFrame = await checkVisibleMeal();
-  return {frames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  const familyFrames = [];
+  await require('./search3-visual-whole-journey.cjs').checkFamilyResultRecap(driver, url, 430, async (stage, label) => {
+    await documentGuard(stage);
+    const file = stage + '-430.png';
+    await driver.screenshot(path.join(evidence, file));
+    familyFrames.push({file, label});
+  });
+  const familyResultFrame = 'family-result-age-430.png';
+  return {frames, familyFrames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, familyResultFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };

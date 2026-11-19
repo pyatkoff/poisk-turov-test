@@ -71,6 +71,9 @@ for(const name of ['andromedaApplicationReceipt','anexApplicationReceipt']){
  const owner=section(app,`function ${name}(`,name==='andromedaApplicationReceipt'?'function openAndromedaVerified(':'function openAnexApplicationPreview(');
  assert.match(owner,/meal:String\(mealLabel\(o\)\|\|''\)/,name+' keeps the raw lead receipt owner');assert.doesNotMatch(owner,/displayMealLabel|roomLabel/,name+' receipt has no presentation projection');
 }
+const appliedPartyLabel=vm.runInNewContext(
+ section(app,'const childAgeText =','const childAgesLabel =')+section(app,'const partyLabel=','function finishFilterPicker()')+'\nappliedPartyLabel'
+);
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
@@ -95,11 +98,11 @@ function observe(source,s){
   };
   const n=new Proxy(target,{set:(t,k,v)=>{record('write',key,k,v);t[k]=v;return true;}});nodes.set(key,n);return n;
  }
- const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:[0,17]};
+ const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:s.ages??[0,17]};
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
  ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
    selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
-   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
+   draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
@@ -243,7 +246,7 @@ for(const [index,row]of actual.entries()){
  const nodes=new Map(row.result.dom),day=scenario.selected?'date:2026-10-15':'2026-10-14 — 2026-10-16';
  assert.equal(nodes.get('#compact-route').textContent,'Москва<& → Турция');
  assert.equal(nodes.get('#compact-route').title,'Москва<& → Кемер');
- assert.equal(nodes.get('#compact-details').textContent,'Вылет '+day+' · 7–10 ночей · 2 взрослых');
+ assert.equal(nodes.get('#compact-details').textContent,'Вылет '+day+' · 7–10 ночей · 2 взр. · 2 реб. (до года, 17 лет)');
  assert.equal(nodes.get('#results-title').textContent,scenario.pristine?'Ваш следующий отдых':'Отели и туры');
  assert(row.result.trace.some(c=>c[0]==='attribute'&&c[1]==='#compact-search .secondary[data-action="top"]'&&c[2]==='aria-label'&&c[3]==='Изменить поиск: Москва<& → Кемер'));
 }
@@ -389,7 +392,7 @@ const {JSDOM}=require('jsdom');
 function summaryDOM({full=false,code=source}={}){
  const dom=new JSDOM('<section id="search"><form id="search-form"></form><div class="intro"></div><div id="applied-search"></div></section>'),document=dom.window.document,summary=document.querySelector('#applied-search');let parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
- const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,MutationObserver:dom.window.MutationObserver,esc,
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,MutationObserver:dom.window.MutationObserver,esc,appliedPartyLabel,
   $:selector=>document.querySelector(selector),icon:name=>`<i data-icon="${name}"></i>`,
   state:{search:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},filters:{stars:[],meals:[],min:0,max:null}},
   destinationIds:()=>[],hotelCountText:n=>n+' отелей',countryNames:{'4':'Турция','1':'Египет','9':'Направление'},appliedDestination:()=>section(code,'function renderSummary(){','function editSearch(){').includes('destinationIds')?{country:ctx.state.search.country,resorts:[],hotelIds:[]}:ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
@@ -402,6 +405,26 @@ function summaryDOM({full=false,code=source}={}){
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(summary,{childList:true});
  return {dom,ctx,summary,render:()=>{ctx.renderSummary();return observer.takeRecords();},parsed:()=>parsed,
   close:()=>{observer.disconnect();dom.window.close();}};
+}
+{
+ const current=summaryDOM(),draftAges=[13];
+ try{
+  const {ctx,summary}=current;
+  vm.runInContext(app.match(/^const guestsText=[^\n]+/m)[0],ctx);
+  const checks=[
+   {ages:[7],desktop:'2 взр. · 1 реб. (7 лет)',mobile:'2 взр. · 1 реб. (7 лет)'},
+   {ages:[10],desktop:'2 взр. · 1 реб. (10 лет)',mobile:'2 взр. · 1 реб. (10 лет)'},
+   {ages:[0,10],desktop:'2 взр. · 2 реб. (до года, 10 лет)',mobile:'2 взр. · 2 реб. (до года, 10 лет)'},
+   {ages:[],desktop:'2 взр.',mobile:'2 взрослых'}
+  ];
+  for(const {ages,desktop,mobile} of checks){
+   ctx.state.search.ages=ages;ctx.draft={...ctx.state.search,ages:draftAges};current.render();
+   const party=[...summary.querySelectorAll('.applied-trip dt')].find(node=>node.textContent==='Туристы');
+   assert.equal(party.nextElementSibling.textContent,desktop,'desktop recap shows the applied party');
+   const heading=observe(source,{kind:'results',ages,draftAges});
+   assert.equal(new Map(heading.dom).get('#compact-details').textContent,'Вылет 2026-10-14 — 2026-10-16 · 7–10 ночей · '+mobile,'compact recap shows the applied party');
+  }
+ }finally{current.close();}
 }
 const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
 const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
