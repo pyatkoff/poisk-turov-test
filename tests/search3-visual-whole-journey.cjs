@@ -112,7 +112,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await card.getByRole('button',{name:/Номера и цены/}).click();
    const family=page.locator('.hotel-room-card[data-room="Семейный номер"]');
    await family.scrollIntoViewIfNeeded();
-   assert.equal(await page.locator('#hotel-detail-offers').isVisible(),false,'browsing rooms does not offer a different tour in the footer');
+   await page.locator('#hotel-detail-offers').waitFor({state:'hidden'});
    await frame('Номера и питание');
    await family.locator('[data-action="select-hotel-offer"]').click();
    const form=page.locator('#prototype-lead-form');

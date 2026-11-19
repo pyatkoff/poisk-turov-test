@@ -53,6 +53,8 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   assert.match(await text(family), /Всё включено/i);
   assert.equal(await text(family + ' .hotel-room-price > strong'), '169 500 ₽');
   await align(family, 'start');
+  await driver.wait('[data-target="hotel-rooms-heading"][aria-current="location"]');
+  assert.equal(await driver.evaluate('document.querySelector("#hotel-detail-offers").getClientRects().length'), 0);
   await frame('03-rooms');
 
   await driver.click(chooseRoom);
