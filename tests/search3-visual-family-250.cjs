@@ -64,7 +64,20 @@ function familyTransport(transport) {
   }};
 }
 
-async function family250(driver,engine,size,root,html,output) {
+function firstScreen() {
+  const box=selector=>{
+    const el=document.querySelector(selector);
+    const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,visible:r.height>0&&r.width>0&&
+      r.top>=0&&r.left>=0&&r.bottom<=innerHeight+1&&r.right<=innerWidth+1&&(hit===el||el.contains(hit))};
+  };
+  return {scroll:document.querySelector('#modal-body').scrollTop,hotel:box('.application-review-heading strong'),
+    stay:box('.application-review-stay'),party:box('.application-review-heading small'),
+    base:box('.application-price-breakdown dd'),total:box('.application-price-breakdown [data-price-part="total"] dd'),
+    telegram:box('[data-action="messenger-open"][data-platform="telegram"]'),max:box('[data-action="messenger-open"][data-platform="max"]')};
+}
+
+async function family250(driver,engine,size,root,html,output,summaryFirst=false) {
   const replay=await openReplay(root,html,0,familyTransport);
   const read=expression=>driver.evaluate(expression);
   const query=selector=>'document.querySelector('+JSON.stringify(selector)+')';
@@ -113,6 +126,13 @@ async function family250(driver,engine,size,root,html,output) {
     const amounts=await read("Array.from(document.querySelectorAll('.application-price-breakdown dd'),e=>Number(e.textContent.replace(/\\D/g,'')))");
     assert.deepEqual(amounts,[basePrice,supplement,basePrice+supplement]);
     assert.equal(price(await text(totalSelector)),basePrice+supplement);
+    const layout=await read('('+firstScreen.toString()+')()');
+    assert.equal(layout.scroll,0,'measure the initial application viewport');
+    assert.ok(layout.hotel.visible&&layout.stay.visible&&layout.total.visible&&layout.telegram.visible&&layout.max.visible,JSON.stringify(layout));
+    if(size[0]===430){
+      if(summaryFirst)assert.ok(layout.total.bottom<=layout.telegram.top&&layout.stay.bottom<=layout.telegram.top&&layout.party.visible,JSON.stringify(layout));
+      else assert.ok(layout.telegram.bottom<layout.hotel.top,JSON.stringify(layout));
+    }else assert.ok(layout.hotel.right<=layout.telegram.left,JSON.stringify(layout));
     if(output)await driver.screenshot(path.join(output,engine+'-family-total.png'));
     await choose('#modal-back');await wait(selected+'[aria-current="true"]');
     assert.equal(await read(query('#hotel-room-meal')+'.value'),meal);
@@ -125,14 +145,14 @@ async function family250(driver,engine,size,root,html,output) {
     assert.equal(fx.requests.filter(a=>a==='tv_tour').length,1);assert.equal(fx.requests.filter(a=>a==='tv_flights').length,1);
     assert.deepEqual(replay.blocked,[]);
     return {engine,size,offers:offers.length,matchingFamilyOffers:familyAI.length,room,meal,chosen:chosen.id,
-      base:basePrice,supplement,total:basePrice+supplement,returnFlight:1,submitted:false};
+      base:basePrice,supplement,total:basePrice+supplement,returnFlight:1,submitted:false,layout};
   } finally {await replay.close();}
 }
 
 async function main() {
   const root=fs.realpathSync(process.argv[2]),output=path.resolve(process.argv[3]);fs.mkdirSync(output,{recursive:true});
   const {source,html}=liveEntry(root);
-  const engines=await measureEngines(root,html,(driver,engine,size)=>family250(driver,engine,size,root,html,output));
+  const engines=await measureEngines(root,html,(driver,engine,size)=>family250(driver,engine,size,root,html,output,process.argv[4]==='summary-first'));
   fs.writeFileSync(path.join(output,'family-250.json'),JSON.stringify({source,engines},null,2));
   for(const file of ['family-250.json','chromium-1280-family-total.png','firefox-rdm-430-family-total.png'])emitFirstOpenFile(output,file,'SEARCH3_FAMILY_250_FRAME');
   console.log('PASS family 250',JSON.stringify(engines));

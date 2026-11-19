@@ -28,6 +28,49 @@ function setup(provider='tourvisor',kind='concrete'){
  };
  vm.createContext(c);vm.runInContext(owners,c);return {c,calls,listing,hotel,views,nodes};
 }
+async function verifyAndromedaRoomQuote(){
+ for(const outcome of ['verified','flights','unavailable','close','back','cached']){
+  const {c,listing,calls,nodes}=setup('andromeda'),gate=deferred(),seen=[];
+  listing.raw.quoteRequired=true;listing.raw.selectionEnabled=false;listing.cached=outcome==='cached';
+  c.needsRefresh=()=>true;c.data.verifyAndromeda=o=>{assert.strictEqual(o.raw,listing.raw);calls.quote++;return gate.promise;};
+  c.openAndromedaVerified=(o,quote)=>seen.push([o.key,quote.state]);
+  c.openAndromedaFlightChoice=(o,quote)=>seen.push([o.key,quote.state]);
+  c.applyAndromedaFlightChoice=()=>assert.fail('the room click cannot accept even a sole flight pair');
+  assert.equal(calls.quote,0);
+  c.continueHotelOffer(listing.key);
+  if(outcome==='cached'){assert.equal(calls.quote,0);continue;}
+  assert.equal(calls.quote,1);assert.equal(c.selectedOffer.loading,true);
+  c.continueHotelOffer(listing.key);assert.equal(calls.quote,1,'repeated room intent shares the pending selection');
+  if(outcome==='close')nodes['#modal'].open=false;
+  if(outcome==='back')c.modalType='all-offers';
+  if(outcome==='unavailable')gate.reject(Object.assign(Error('Тур недоступен'),{code:'offer_unavailable',retryable:false}));
+  else gate.resolve(outcome==='flights'?{state:'flight_selection_required',flights:[{direction:'0'},{direction:'1'}]}:{state:'quote_verified'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls.contacts,0);
+  if(outcome==='unavailable')assert.equal(c.selectedOffer.quoteErrorTerminal,true);
+  assert.deepEqual(seen,outcome==='verified'?[[listing.key,'quote_verified']]:outcome==='flights'?[[listing.key,'flight_selection_required']]:[]);
+ }
+ const {c,listing,nodes}=setup('andromeda'),view={type:'andromeda-verified',result:{state:'quote_verified'}};
+ let applications=0;
+ Object.assign(c,{icon:()=>'',andromedaQuoteCurrent:()=>true,andromedaApplicationReceipt:()=>c.andromedaApplicationDraft,
+  retainedProviderView:()=>view,providerApplicationBodyHTML:()=>'',providerApplicationFooterHTML:()=>'',
+  window:{AnyTourPrototypeLead:{bindProviderApplication:()=>applications++}},showModal:type=>{c.modalType=type;}});
+ nodes['#modal'].classList={add(){}};
+ vm.runInContext(slice('function andromedaApplicationAction(','function showAndromedaExpired(')
+  +slice('function openAndromedaApplicationPreview(','async function applyAndromedaFlightChoice('),c);
+ for(const delta of [100,-100,0]){
+  c.modalType='andromeda-verified';delete view.acceptedApplicationPrice;
+  const price=listing.total+delta,receipt=c.andromedaApplicationDraft={price,offerRef:'one',flights:[]},before=applications;
+  const action=c.andromedaApplicationAction(listing,receipt);
+  if(delta){
+   assert.ok(action.includes('data-accept-price="'+price+'"'));assert.ok(action.includes('Принять'));
+   c.openAndromedaApplicationPreview();c.openAndromedaApplicationPreview(String(listing.total));assert.equal(applications,before);
+   c.openAndromedaApplicationPreview(String(price));assert.equal(view.acceptedApplicationPrice,price);
+  }else{assert.ok(!action.includes('data-accept-price'));c.openAndromedaApplicationPreview();}
+  assert.equal(applications,before+1);
+ }
+ console.log('PASS one explicit Andromeda room check, pending/close/back/cache, explicit flight selection and exact changed price acceptance');
+}
 function verifyResultCardEntry(){
  const dispatcher=slice("case 'offer':{const key=b.dataset.key", "case 'start-lead':");
  for(const provider of ['tourvisor','anex','andromeda','fixture'])for(const cardEntry of [false,true]){
@@ -256,6 +299,7 @@ async function run(){
  {const {c,calls}=setup('anex');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1);assert.equal(calls.offerScreens,0,'current/additional checks stay inline');assert.equal(calls.flights,0);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false,'calculated estimate never becomes verified');assert.equal(calls.contacts,0,'changed estimate needs a deliberate continue');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1,'return reuses the retained result');}
  {const {c,calls,views,listing}=setup('anex');views.set('one',{offer:listing,type:'anex-current',result:{state:'current'},error:'UNKNOWN',pending:false});await c.refreshLiveHotel(1);assert.equal(calls.verify,0);assert.equal(calls.additional,0,'an UNKNOWN current result is never retried automatically');}
  verifyResultCardEntry();
+ await verifyAndromedaRoomQuote();
  await verifyChoiceComposition();
  await verifyTerminalRecovery();
  await verifySite215Journey();

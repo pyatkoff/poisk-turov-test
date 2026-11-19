@@ -251,7 +251,11 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    ], {stdio:'inherit', timeout:180000});
    require('node:child_process').execFileSync('xvfb-run', [
     '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-family-250.cjs'), root, path.join(temp,'family-250'),
+    path.join(__dirname, 'search3-visual-single-quote.cjs'), root, path.join(temp,'single-quote'), '1',
+   ], {stdio:'inherit', timeout:180000});
+   require('node:child_process').execFileSync('xvfb-run', [
+    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
+    path.join(__dirname, 'search3-visual-family-250.cjs'), root, path.join(temp,'family-250'), 'summary-first',
    ], {stdio:'inherit', timeout:180000});
    require('node:child_process').execFileSync('xvfb-run', [
     '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
