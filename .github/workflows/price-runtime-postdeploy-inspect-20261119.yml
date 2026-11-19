@@ -1,4 +1,4 @@
-name: PRICE 1858 confirm server collector terminal or overrun
+name: PRICE 1900 diagnose overrun collector read-only
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0eb3bdc62a3fc83227d66377faffac1f64cb656f'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c45193378857747b52e1bd3351c2422371cca713'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -103,7 +103,16 @@ jobs:
                 assert av[2]==bv[2]
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
-          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
+          active_lines=[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]
+          active_pids=[x.split(None,1)[0] for x in active_lines if x.split(None,1)[0].isdigit()]
+          ps=subprocess.run(['ps','-o','pid=,ppid=,stat=,etime=,lstart=,cmd=','-p',','.join(active_pids)],capture_output=True,text=True) if active_pids else None
+          wchan={}
+          for pid in active_pids:
+            p=pathlib.Path('/proc')/pid/'wchan'
+            try: wchan[pid]=p.read_text().strip()
+            except Exception: wchan[pid]=None
+          print('PRICE_ACTIVE_PROCESS_DIAGNOSTIC='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'ps':ps.stdout.splitlines() if ps else [],'wchan':wchan},separators=(',',':')))
+          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':active_lines},separators=(',',':')))
           result={'eligible_ids':[],'unchanged_ids':[],'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'deferred_counts':{},'pending':None}
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
