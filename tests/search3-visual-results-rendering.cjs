@@ -138,7 +138,8 @@ function observe(source,s){
  // The real bulk algorithm is characterized in calendar-inventory.cjs.
  ctx.calendarMinimums=(days,options,observations)=>days.map(day=>ctx.calendarMinimum(day,options,observations));
  ctx.setComparisonQuotes=value=>{ctx.comparisonQuotes=value;};
- const observedOwner=owner(source,s.kind);
+ const destinationNameOwner=s.kind==='results'&&source.includes('function appliedDestinationNameHTML(')?section(source,'function appliedDestinationNameHTML(','function collapseSearch('):'';
+ const observedOwner=destinationNameOwner+owner(source,s.kind);
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
@@ -427,6 +428,36 @@ function summaryDOM({full=false,code=source}={}){
  }finally{current.close();}
 }
 const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
+{
+ const current=summaryDOM(),{ctx,summary}=current,hotel='Coast Club <b>Семейный</b> & "Spa"';
+ try{
+  ctx.document.body.insertAdjacentHTML('beforeend','<div id="compact-search"><strong id="compact-route"></strong><span id="compact-details"></span><button class="secondary" data-action="top"></button></div><div id="results"><span id="route-label"></span><h2 id="results-title"></h2><p id="results-summary"></p><span class="sort-label"></span><span class="mobile-sort"></span></div>');
+  Object.assign(ctx,{destinationIds:d=>d.hotelIds,destinationHotel:id=>id===501?{name:hotel,country:'4',resort:'Белек'}:null,
+   hotelRestorePending:true,hotelCountText:n=>n===1?'1 отель':n+' отеля',catalogReady:true,departureScopeValue:()=> '12–18 октября',departureScopeText:()=> 'Вылет 12–18 октября'});
+  vm.runInContext(section(app,'function destinationLabel(','function recentDestinations(')+section(app,'function renderResultHeadings(','function paintResultCards('),ctx);
+  const cases=[
+   {hotelIds:[501],resorts:[],name:hotel,route:'Турция'},
+   {hotelIds:[],resorts:['Кемер'],name:'Кемер',route:'Турция'},
+   {hotelIds:[501,502],resorts:[],count:'2 отеля',route:'Турция'},
+   {hotelIds:[],resorts:['Кемер','Белек'],count:'2 курорта',route:'Турция · 2 курорта'},
+   {hotelIds:[502],resorts:[],count:'1 отель',route:'Турция'},
+   {hotelIds:[],resorts:[],count:'',route:'Турция'}
+  ];
+  for(const {hotelIds,resorts,name,count,route} of cases){
+   ctx.appliedDestination=()=>({country:'4',hotelId:hotelIds.length===1?hotelIds[0]:0,hotelIds,resorts});
+   current.render();ctx.renderResultHeadings([{}],1,false);
+   const compact=ctx.$('#compact-details');
+   assert.equal(summary.querySelector('.applied-route strong').textContent,'Москва→'+route);
+   assert.equal(ctx.$('#compact-route').textContent,'Москва → Турция');
+   for(const view of [summary,compact]){
+    const label=view.querySelector('.applied-destination-name');
+    assert.equal(label?.textContent,name);assert.equal(label?.title,name);
+   }
+   assert(compact.textContent.startsWith((name||count||'')+(name||count?' · ':'')+'Вылет 12–18 октября'));
+   assert(compact.textContent.includes('2 взрослых'));
+  }
+ }finally{current.close();}
+}
 const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
 const historicalSummary="function renderSummary(){const s=state.search;paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class=\"applied-main\"><div class=\"applied-route\"><span class=\"summary-icon\">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class=\"applied-trip\"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class=\"secondary\" data-action=\"edit-search\" aria-controls=\"search-form\" aria-expanded=\"false\">${icon('sliders')} Изменить поиск</button></div>`}]);}";
 const historicalSummarySource=source.replace(section(source,'function renderSummary(){','function editSearch(){'),()=>historicalSummary+'\n');

@@ -13,24 +13,56 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  const recap = width === 430 ? '#compact-details' : '#applied-search .applied-trip';
  const edit = width === 430 ? '#compact-search .secondary[data-action="top"]' : '#applied-search [data-action="edit-search"]';
  const total = '#modal-footer .footer-total > strong';
+ const flightHeading = '.application-flight-heading h3';
+ const floatingFlightNotice = () => driver.evaluate('document.querySelector("#toast:not([hidden])")?.textContent === "Перелёт выбран"');
  const text = async selector => (await driver.text(selector)).replace(/\s+/g, ' ').trim();
 
  await driver.go(entry.href);
+ const chooseHotel = width === 430;
+ const place = chooseHotel ? 'Palm Garden · демо' : 'Кемер';
+ const route = (chooseHotel ? '#compact-details' : '#applied-search') + ' .applied-destination-name';
+ await driver.click('#search-form [data-action="destination"]:not(:disabled)');
+ if (chooseHotel) {
+  await driver.fill('#destination-query', 'Palm');
+  await driver.click('[data-action="destination-hotel"][data-id="900002"]');
+ } else {
+  await driver.click('[data-action="destination-resort"][data-value="Кемер"]');
+ }
+ await driver.click('[data-action="apply-destination"]');
+ assert.equal(await text('#destination-detail'), place);
  await driver.click('.search-submit:not(:disabled)');
  await driver.wait(card + ' [data-card-entry]');
+ assert.equal(await text(route), place);
+ const placeFits = await driver.evaluate(`(() => {
+  const name = document.querySelector(${JSON.stringify(route)});
+  const box = name.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(name);
+  const ink = range.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 && box.left >= 0 && box.right <= innerWidth + 1
+   && ink.left >= box.left - 1 && ink.right <= box.right + 1;
+ })()`);
+ assert.equal(placeFits, true, 'the chosen destination is legible at ' + width + 'px');
+ assert.equal(await driver.count('.hotel-card'), 1);
  assert.match(await text(recap), /7 лет/);
  assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
  await driver.click(card + ' [data-card-entry]');
  await driver.click('[data-room="Семейный номер"] [data-action="select-hotel-offer"]');
+ assert.equal(await text(flightHeading), 'Перелёт', 'the tour starts without a selected flight');
  await driver.click('[data-action="contact-flights"]');
  await driver.click('[name="flight-pair"][value="1"]');
  await driver.click('[data-action="apply-flight"]');
  await driver.wait('#prototype-lead-form');
+ assert.equal(await text(flightHeading), 'Перелёт выбран', 'the flight section confirms the selected pair');
+ assert.match(await text('.summary-flight-details > summary'), /06:05 → 10:40.*08:05 → 12:40/);
+ assert.equal(await floatingFlightNotice(), false, 'flight feedback leaves the application form and total unobstructed');
  assert.match(await text('.application-review-heading'), /7 лет/);
+ assert.match(await text('.application-review-heading'), /Palm Garden.*Кемер/);
  assert.equal(await text(total), '170 800 ₽');
  await capture('family-contact', 'Заявка на тур · 7 лет');
  await driver.click('[data-action="close-modal"]');
  await driver.wait(selected);
+ assert.equal(await floatingFlightNotice(), false, 'returning to results dismisses the flight confirmation');
  assert.equal(await text(selected + ' .card-selection-price strong'), '170 800 ₽');
  assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
  assert.match(await text(recap), /7 лет/);
@@ -39,6 +71,8 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
 
  await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
  await driver.click(edit);
+ assert.equal(await text('#destination-detail'), place);
+ assert.equal(await floatingFlightNotice(), false, 'editing search conditions has no previous flight confirmation');
  assert.equal(await text('#meal-label'), 'Всё включено');
  await driver.click('#search-form [data-action="guests"]');
  await driver.click('[data-action="child-age"][data-index="0"]');
@@ -52,9 +86,12 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  await driver.click('.search-submit');
  await driver.wait(card + ' [data-card-entry]');
  assert.equal(await driver.count(selected), 0, 'the tour for the previous party is no longer selected');
+ assert.equal(await floatingFlightNotice(), false, 'the new party search has no previous flight confirmation');
  const applied = await text(recap);
  assert.match(applied, /10 лет/);
  assert.doesNotMatch(applied, /7 лет/);
+ assert.equal(await text(route), place);
+ assert.equal(await driver.evaluate('new URL(location.href).searchParams.get(' + JSON.stringify(chooseHotel ? 'hotel' : 'resorts') + ')'), chooseHotel ? '900002' : 'Кемер');
  assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("ages")'), '10');
  assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
  assert.match(await text(card), /Всё включено/);
@@ -269,7 +306,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    if(width===1280){
     const familyFrames=[];
     await checkFamilyResultRecap({
-     go:url=>page.goto(url), click:selector=>page.locator(selector).click(),
+     go:url=>page.goto(url), click:selector=>page.locator(selector).click(), fill:(selector,value)=>page.locator(selector).fill(value),
      wait:selector=>page.locator(selector).waitFor(), text:selector=>page.locator(selector).innerText(),
      count:selector=>page.locator(selector).count(), evaluate:script=>page.evaluate(script)
     },origin+base+'visual-search/?scenario=journey',width,(_stage,label)=>frame(label,familyFrames));

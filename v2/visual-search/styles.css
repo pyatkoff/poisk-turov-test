@@ -2660,6 +2660,8 @@ details.application-review .chosen-trip{display:none}
 .compact-route-block {flex:1;min-width:0}
 .compact-route-block strong {display:block;color:var(--ink);font-size:1rem;line-height:1.4;overflow-wrap:anywhere}
 .compact-route-block>span {display:block;color:var(--muted);font-size:.875rem;line-height:1.4;margin-top:2px;overflow-wrap:anywhere}
+.applied-destination-name {display:inline-block;max-inline-size:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+#compact-details .applied-destination-name {max-inline-size:min(24ch,65%)}
 .compact-search .secondary {flex:none;width:auto;min-width:104px;min-height:44px;padding:8px 12px;font-size:.875rem;line-height:1.3;white-space:normal}
 .compact-search .secondary>span {display:inline;min-width:0;white-space:normal;overflow-wrap:normal}.compact-search .secondary>svg {display:none}
 .compact-search .selected-tour-shortcut {flex:none}

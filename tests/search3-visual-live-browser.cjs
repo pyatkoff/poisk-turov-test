@@ -31,12 +31,11 @@ const chooseTelephoneIfOffered=async page=>{
  }
 };
 const mobileCardPriceLayout=async(page,width,evidence)=>{
- if(width!==390){
-  const boxes=await page.locator('.hotel-card').first().evaluate(el=>({photo:el.querySelector('.hotel-image-wrap').getBoundingClientRect().width,thumbs:[...el.querySelectorAll('.card-thumb')].map(t=>t.getBoundingClientRect().width)}));
-  assert(boxes.thumbs.every(w=>w<=boxes.photo*.3),'a single desktop thumbnail remains a preview, not a second full-size photo at '+width);
-  return;
- }
- const card=page.locator('.hotel-card').first(),amount=card.locator('.starting-price strong'),original=await amount.textContent(),wasWide=await card.locator('.hotel-price').evaluate(el=>el.classList.contains('price-wide'));
+ const card=page.locator('.hotel-card').first();
+ assert(await card.locator('.hotel-image-button').isEnabled(),'the single hotel photo still opens the gallery at '+width);
+ assert.equal(await card.locator('.card-photo-arrow:visible,.photo-count:visible,.card-thumb:visible').count(),0,'one photo has no duplicate card controls at '+width);
+ if(width!==390)return;
+ const amount=card.locator('.starting-price strong'),original=await amount.textContent(),wasWide=await card.locator('.hotel-price').evaluate(el=>el.classList.contains('price-wide'));
  try{
   await amount.evaluate(el=>{el.textContent='1\u00a0035\u00a0282 ₽';});
   await card.locator('.hotel-price').evaluate(el=>el.classList.add('price-wide'));
@@ -53,7 +52,7 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
    assert(boxes.action.x>=boxes.panel.x&&boxes.action.right<=boxes.panel.right&&boxes.action.height>=48,'price action stays inside the card with a 48px target at '+mobileWidth);
    assert(boxes.photo.width>boxes.card.width*.9&&boxes.photo.height>=150,'hotel photo spans the mobile card at '+mobileWidth);
    assert(boxes.identity.y>=boxes.photo.bottom-1,'approved Site185 places the large photo before hotel identity at '+mobileWidth);
-   assert(boxes.arrows.every(b=>b.width>=44&&b.height>=44),'gallery arrows remain touch targets at '+mobileWidth);
+   assert.equal(boxes.arrows.length,0,'a one-photo card has no next or previous action at '+mobileWidth);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
    fs.writeFileSync(path.join(evidence,'card-price-'+mobileWidth+'.json'),JSON.stringify(boxes,null,2));
@@ -1366,8 +1365,15 @@ const remainingCalendarJourney=async(browser,origin,base,evidence)=>{
     await page.locator('#search-form [data-action="dates"]').click();let deadline;try{await Promise.race([reached,new Promise((_,reject)=>deadline=setTimeout(()=>reject(new Error('Controlled calendar read did not dispatch')),10000))]);}finally{clearTimeout(deadline);}
     await page.locator('[data-action="day-pick"][data-date="'+shift(1)+'"]').click();await page.locator('[data-action="day-pick"][data-date="'+shift(2)+'"]').click();
     assert.equal(await page.locator('.date-choice-tools').getAttribute('aria-busy'),'true');assert.equal(await page.locator('[data-action="apply-dates"]').isEnabled(),true);const pendingLabel=await page.locator('#date-selection-label').textContent();await page.screenshot({path:path.join(evidence,'calendar-read-pending-'+tag+'.png')});
-    release();await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);assert.match(await page.locator('.calendar-legend').textContent(),/Даты можно выбрать без цены/);assert.equal(await page.locator('#date-selection-label').textContent(),pendingLabel);await page.screenshot({path:path.join(evidence,'calendar-read-error-'+tag+'.png')});
-    await page.keyboard.press('Escape');await closed();calendarMode=null;const beforeRecovery=reads.length;
+    release();await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
+    assert.equal(await page.locator('.calendar-legend').innerText(),'Не все цены загрузились.');
+    assert.equal(await page.locator('.date-missing-price').innerText(),'— цена на эту дату пока неизвестна.');
+    assert.equal(await page.locator('#date-selection-price').innerText(),'Даты можно выбрать без цены.');
+    assert.equal(await page.locator('#date-selection-label').textContent(),pendingLabel);
+    const applyRange=page.locator('[data-action="apply-dates"]'),rangeText=(await applyRange.innerText()).replace(/^Применить /,'');
+    assert.equal(await applyRange.isEnabled(),true);await page.screenshot({path:path.join(evidence,'calendar-read-error-'+tag+'.png')});
+    await applyRange.click();await closed();assert.equal(await page.locator('#dates-label').innerText(),rangeText);
+    calendarMode=null;const beforeRecovery=reads.length;
     await page.locator('#search-form [data-action="dates"]').click();await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&document.querySelector('#date-calendar').textContent.includes('167,5'));assert(reads.length>beforeRecovery,'fresh reopen actually rereads failed calendar data');assert.equal(await page.locator('.calendar-legend').isVisible(),false);assert.match(await page.locator('#date-calendar [data-date="'+day+'"]').textContent(),/167,5/);assert.match(await page.locator('#date-calendar [data-date="'+shift(1)+'"]').textContent(),/—/);
     const scope=reads.at(-1);assert.equal(scope.priceFrom,150000);assert.equal(scope.priceTo,180000);await page.screenshot({path:path.join(evidence,'calendar-read-recovered-'+tag+'.png')});await page.keyboard.press('Escape');await closed();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'dates');readStates={pending:true,error_retains_draft:true,fresh_reopen_recovered:true,known:167500.5,unknown_is_dash:true,read_count:reads.length};
    }
@@ -2182,6 +2188,8 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
 
   const beforeGallery=transport.calls.length;
   await page.locator('.hotel-image-button[data-id="501"]').click();
+  await page.locator('#gallery-image').waitFor();
+  assert.equal(await page.locator('.gallery-arrow:visible,.gallery-thumbs:visible,[data-gallery-count]:visible').count(),0,'one enlarged photo has no navigation or duplicate thumbnail');
   const contrast=await page.locator('.gallery-dialog .modal-header').evaluate(header=>{
    const rgb=value=>(value.match(/[\d.]+/g)||[]).slice(0,3).map(Number);
    const luminance=color=>rgb(color).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
