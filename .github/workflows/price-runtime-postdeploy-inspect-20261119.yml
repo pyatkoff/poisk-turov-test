@@ -1,4 +1,4 @@
-name: PRICE read-only published observation and departure proof
+name: PRICE 1255 read-only published prices and timer
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cb0ad976058c77efd688cb5084d59b3dec44e1a3'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'fe5b1e46af557664c3c011e959597c35a2eacb90'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
