@@ -3097,7 +3097,7 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
   if(event?.submitter?.matches('.search-submit')&&$('#search-form').hidden)return false;
   return commitSearchDraft();
  },
- afterSubmit:started=>{if(started)requestAnimationFrame(()=>{updateCompactSearch();$('#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#results').focus({preventScroll:true});});}
+ afterSubmit:started=>{if(started)requestAnimationFrame(()=>{updateCompactSearch();$('#results').scrollIntoView({behavior:'instant',block:'start'});$('#results').focus({preventScroll:true});});}
 });
 function runSearch(options={}){return searchLifecycle.run(options);}
 searchLifecycle.bind();
