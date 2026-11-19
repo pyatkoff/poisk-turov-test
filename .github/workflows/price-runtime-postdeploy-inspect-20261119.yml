@@ -1,4 +1,4 @@
-name: PRICE verify the bound publisher before merging PR 1631
+name: PRICE apply approved existing large-channel posts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,20 +9,77 @@ permissions:
   pull-requests: read
   issues: read
 jobs:
-  inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == '79e962534d79e4810ba5cc94f877d76deea07b73' && github.run_attempt == 1
+  apply:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.before == '7cf3c535b4de476b9b0fdc087d33581c7fdff0fa' && github.run_attempt == 1
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 14
     steps:
-      - name: Check exact review source
+      - name: Check exact installed release tools
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 774d5bb4d30c4e14ae819e0fbe97c5ea336d600e
+          ref: 9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e
           persist-credentials: false
-      - name: Verify the predecessor on the normal read-only admission path
+      - name: Verify the original closed release
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          GITHUB_REPOSITORY=pyatkoff/max-search-bot node tools/release_priority.js --admit 1631 774d5bb4d30c4e14ae819e0fbe97c5ea336d600e c9b4d97a945f88e068b71a9af6c948013434e050 --publisher 6682640708 226193297 2026-11-19T19:06:46Z
+          node - <<'JS'
+          const assert=require('node:assert/strict');
+          const R=require('./tools/deployment_release');
+          (async()=>{
+            const api=R.makeReadApi(process.env.GH_TOKEN,globalThis.fetch);
+            const l=await R.readRecord(api);
+            const r=R.validateRelease(l.record).release;
+            assert.equal(r.repository_sha,'9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e');
+            assert.equal(r.application_sha,'9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e');
+            assert.equal(r.phase,'pending_terminal');
+            assert.equal(r.closure.binding.pr,1631);
+            assert.ok(Object.keys(r.closure.gates).length>=9);
+            const accepted=await R.resolveCurrent(api,{sha:'9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e'},l);
+            assert.equal(accepted.ready,true);
+            assert.equal(accepted.application_sha,'9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e');
+            assert.equal((await api('GET',R.API_ROOT+'/git/ref/heads/main')).object.sha,'9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e');
+            console.log('PRICE_RELEASE_VERIFIED='+JSON.stringify({sha:r.application_sha,gate_count:Object.keys(r.closure.gates).length,closer:r.closure.run_id}));
+          })().catch(error=>{console.error(error.message);process.exitCode=1});
+          JS
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Apply the single installed native PRICE pass
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'set -eu; cd /var/www/anytoour/data/www/app.anytoour.ru; test "$(git rev-parse HEAD)" = 9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e; test -z "$(git status --porcelain --untracked-files=no)"; /usr/bin/php tools/apply_promoted_hotel_prices.php --apply'
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
