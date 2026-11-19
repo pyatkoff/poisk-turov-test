@@ -173,27 +173,50 @@ tvg_ok($session['tourvisor_context']['params']['childs']===[0,0,8] && $session['
 $again=$run($searchRequest); tvg_ok($again===$started && count($calls)===1,'same search operation cached without second HTTP');
 $run($request('tv_status')); $run($request('tv_continue'));
 
-// An unreadable successful HTTP response must never become a cached status.
-$statusRequest=$request('tv_status');
+// Invalid success bodies must not become a cached status, continuation, or empty result.
 $wireTransport=static fn(string $path,array $query):array=>\AnyTour\TourvisorInteractiveClient::get($path,$query,'fixture-token');
-foreach (['<html>fixture-body</html>','"fixture-body"',''] as $body) {
-    $statusSession=$session; $statusDisk=[];
-    $statusSave=static function(array &$state)use(&$statusDisk):void{$statusDisk=$state;};
+$wireSave=static function(array &$state)use(&$wireDisk):void{$wireDisk=$state;};
+foreach ([
+    ['tv_status','search_status','<html>fixture-body</html>'],
+    ['tv_status','search_status','"fixture-body"'],
+    ['tv_status','search_status',''],
+    ['tv_status','search_status','[{"progress":100}]'],
+    ['tv_continue','search_continue','[]'],
+    ['tv_results','search_results','{}'],
+    ['tv_results','search_results','{"0":{"id":1006,"tours":[]}}'],
+] as [$action,$stage,$body]) {
+    $wireRequest=$request($action);
+    $wireSession=$session; $wireDisk=[];
     $GLOBALS['tv_wire']=['calls'=>0,'body'=>$body,'status'=>200,'seconds'=>0.125];
     try {
-        AnyTourTourvisorPreviewGateway::handle($statusRequest,$statusSession,$now,$wireTransport,$catalog,$statusSave,$clock);
-        throw new RuntimeException('invalid upstream body was accepted as a search status');
+        AnyTourTourvisorPreviewGateway::handle($wireRequest,$wireSession,$now,$wireTransport,$catalog,$wireSave,$clock);
+        throw new RuntimeException('invalid upstream body was accepted for '.$action);
     } catch (\AnyTour\TourvisorInteractiveFailure $e) {
         tvg_ok($e->httpStatus===502 && $e->response===['ok'=>false,'error'=>'tv_invalid_response',
-            'diagnostics'=>['provider'=>'tourvisor','stage'=>'search_status','category'=>'payload',
+            'diagnostics'=>['provider'=>'tourvisor','stage'=>$stage,'category'=>'payload',
                 'httpStatus'=>200,'curlErrno'=>0,'elapsedMs'=>125]],'safe invalid-payload failure preserves actual HTTP and timing');
     }
-    $slot=$statusDisk['tourvisor_requests'][$statusRequest['request_id']];
+    $slot=$wireDisk['tourvisor_requests'][$wireRequest['request_id']];
     tvg_ok($slot['state']==='unknown' && !array_key_exists('reply',$slot)
-        && $statusSession===$statusDisk,'invalid response never becomes an in-memory or durable READY reply');
-    tvg_denied(fn()=>AnyTourTourvisorPreviewGateway::handle($statusRequest,$statusSession,$now,$wireTransport,$catalog,$statusSave,$clock),
+        && $wireSession===$wireDisk,'invalid response never becomes an in-memory or durable READY reply');
+    tvg_denied(fn()=>AnyTourTourvisorPreviewGateway::handle($wireRequest,$wireSession,$now,$wireTransport,$catalog,$wireSave,$clock),
         'tv_operation_unknown');
     tvg_ok($GLOBALS['tv_wire']['calls']===1 && $GLOBALS['tv_wire']['closed'],'invalid response never triggers a second transport attempt');
+}
+
+// Genuine empty results and object replies with JSON whitespace keep their original meaning.
+foreach ([
+    ['tv_results'," \r\n\t[]",[]],
+    ['tv_status',"\n{\"progress\":0}",['progress'=>0]],
+    ['tv_continue',"\t{\"requestCount\":0}",['requestCount'=>0]],
+] as [$action,$body,$expected]) {
+    $wireRequest=$request($action); $wireSession=$session; $wireDisk=[];
+    $GLOBALS['tv_wire']=['calls'=>0,'body'=>$body,'status'=>200];
+    $reply=AnyTourTourvisorPreviewGateway::handle($wireRequest,$wireSession,$now,$wireTransport,$catalog,$wireSave,$clock);
+    tvg_ok($reply['data']===$expected && ($action!=='tv_results' || $reply['offers']===[]),'valid supplier reply preserved for '.$action);
+    tvg_ok($wireDisk['tourvisor_requests'][$wireRequest['request_id']]['state']==='ready'
+        && AnyTourTourvisorPreviewGateway::handle($wireRequest,$wireSession,$now,$wireTransport,$catalog,$wireSave,$clock)===$reply
+        && $GLOBALS['tv_wire']['calls']===1,'valid reply reused without another physical call for '.$action);
 }
 
 $resultsRequest=$request('tv_results');$results=$run($resultsRequest); $ref=$results['offers'][0]['offer_ref'];

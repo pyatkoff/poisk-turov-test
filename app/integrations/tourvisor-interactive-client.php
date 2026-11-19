@@ -115,8 +115,7 @@ final class TourvisorInteractiveClient
         ];
     }
 
-    /** Same fixed categories/numeric facts as root; no path, ID, token or supplier text. */
-    public static function failureDiagnostics(string $path, int $errno, int $status, float $seconds): array
+    private static function stage(string $path): string
     {
         $stage = 'other';
         if ($path === '/tours/search') $stage = 'search_start';
@@ -125,7 +124,13 @@ final class TourvisorInteractiveClient
         elseif (preg_match('~\A/tours/search/[1-9][0-9]*\z~D', $path)) $stage = 'search_results';
         elseif (preg_match('~\A/tours/[^/]+/flights\z~D', $path)) $stage = 'flights';
         elseif (preg_match('~\A/tours/[^/]+\z~D', $path)) $stage = 'tour';
-        $facts = ['provider'=>'tourvisor', 'stage'=>$stage,
+        return $stage;
+    }
+
+    /** Same fixed categories/numeric facts as root; no path, ID, token or supplier text. */
+    public static function failureDiagnostics(string $path, int $errno, int $status, float $seconds): array
+    {
+        $facts = ['provider'=>'tourvisor', 'stage'=>self::stage($path),
             'category'=>$errno !== 0 ? ($errno === 28 ? 'timeout' : 'transport') : 'http'];
         if ($status >= 0 && $status <= 599) $facts['httpStatus'] = $status;
         if ($errno >= 0 && $errno <= 999) $facts['curlErrno'] = $errno;
@@ -153,8 +158,15 @@ final class TourvisorInteractiveClient
             self::fail('Tourvisor request failed',($code >= 400 && $code < 600) ? $code : 502,
                 ['upstreamStatus'=>$code,'diagnostics'=>self::failureDiagnostics($path,$errno,$code,$seconds)]);
         }
-        $decoded = json_decode((string)$body,true);
-        if (!is_array($decoded)) {
+        $json = (string)$body;
+        $decoded = json_decode($json,true);
+        // Associative decoding conflates {} with [] and numeric-key objects with lists.
+        $root = match (self::stage($path)) {
+            'search_results' => '[',
+            'search_status', 'search_continue' => '{',
+            default => null,
+        };
+        if (!is_array($decoded) || ($root !== null && ($json[strspn($json," \t\r\n")] ?? '') !== $root)) {
             $diagnostics = self::failureDiagnostics($path,$errno,$code,$seconds);
             $diagnostics['category'] = 'payload';
             self::fail('tv_invalid_response',502,['diagnostics'=>$diagnostics]);
