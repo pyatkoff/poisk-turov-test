@@ -43,7 +43,12 @@ jobs:
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          ssh -i "$RUNNER_TEMP/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/known" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" "set -euo pipefail; test "\$(cd /var/www/anytoour/data/www/app.anytoour.ru && git rev-parse HEAD)" = e262bf139da2b78623e1be3a891630fd10924180; printf 'HOTEL_PRICE_TIMER_STATUS='; /usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status"
+          ssh -i "$RUNNER_TEMP/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/known" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          test "$(cd /var/www/anytoour/data/www/app.anytoour.ru && git rev-parse HEAD)" = e262bf139da2b78623e1be3a891630fd10924180
+          printf 'HOTEL_PRICE_TIMER_STATUS='
+          /usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status
+          REMOTE
       - name: Read all three public feeds with strict 36 hour proof
         run: |
           set -euo pipefail
