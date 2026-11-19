@@ -1,4 +1,4 @@
-name: PRICE 1348 read-only live timer check
+name: PRICE 1455 read-only live timer check
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '20c287f637a7e1a4a2bccfc9895fbacbe815fb43'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1c2fc8625c2353c5e4e1ee4b1398bc11ef7d0a15'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
