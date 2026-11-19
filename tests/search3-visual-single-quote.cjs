@@ -12,24 +12,43 @@ const prefix='/_preview/search3-anex-candidate/';
 const searchApi=prefix+'api-andromeda-search3-preview.php';
 const quoteApi=prefix+'api-andromeda-quote-preview.php';
 const ref='offer_'+'d'.repeat(64);
+const outbound='flight_'+'1'.repeat(32), alternative='flight_'+'3'.repeat(32), inbound='flight_'+'2'.repeat(32);
+const selectedPair={provider:'andromeda',outbound_ref:alternative,return_ref:inbound};
 const amount=119000, raised=125500, supplierDelay=180;
 const card='#hotel-'+profile.id+' h3 [data-action="hotel-details"]';
 const second='#modal-footer [data-action="refresh-hotel"]:not(:disabled)';
 
 function quoteFixture(transport,scenario) {
   const original=makeDelivery(transport,{offers:1,anexDelay:0,tvStatusDelay:0});
-  const quotes=[];
+  const quotes=[],confirmedPairs=[];
   transport.state.samoFlightChoice=scenario==='flights';
   transport.state.samoFailure=scenario==='unavailable'?'supplier_auth':null;
-  return {quotes, async reply(url,body,method,payload) {
+  return {quotes,confirmedPairs, async reply(url,body,method,payload) {
     if(url.pathname!==quoteApi)return original.reply(url,body,method,payload);
-    assert.equal(method,'POST');assert.equal(body.action,'quote');
+    assert.equal(method,'POST');
     assert.equal(body.offer_context.offer_ref,ref);
     assert.equal(body.listing_price_ref,'listing_'+'e'.repeat(64));
-    quotes.push({offerRef:body.offer_context.offer_ref,listingRef:body.listing_price_ref});
+    if(body.action==='quote_select_flights'){
+      assert.equal(scenario,'flights');assert.equal(quotes.length,1);assert.equal(confirmedPairs.length,0);
+      assert.deepEqual(body.flight_selection,selectedPair);
+      confirmedPairs.push(body.flight_selection);
+    }else{
+      assert.equal(body.action,'quote');assert.equal(quotes.length,0);
+      quotes.push({offerRef:body.offer_context.offer_ref,listingRef:body.listing_price_ref});
+    }
     await delay(supplierDelay);
     const dto=await transport.json(url.href,{body:payload});
     if(scenario==='equal')dto.data.final_price.amount=String(amount);
+    if(scenario==='flights'&&body.action==='quote'){
+      assert.equal(dto.data.state,'flight_selection_required');assert.equal(dto.data.final_price,null);
+      assert.deepEqual(dto.data.flights.map(f=>[f.direction,f.flight_ref]),[['0',outbound],['1',inbound]]);
+      // Two outbound choices require an explicit decision on both revisions.
+      dto.data.flights.splice(1,0,{...dto.data.flights[0],name:'TEST SAMO ALTERNATIVE OUT',flight_ref:alternative});
+    }else if(body.action==='quote_select_flights'){
+      assert.equal(dto.data.state,'quote_verified');assert.equal(dto.data.final_price_verified,true);
+      assert.deepEqual(dto.data.flights.map(f=>f.flight_ref),[alternative,inbound]);
+      dto.data.flights[0].name='TEST SAMO ALTERNATIVE OUT';
+    }
     return dto;
   }};
 }
@@ -54,7 +73,8 @@ function observeQuote(config) {
     const error=document.querySelector('#modal-body .error-text');
     let result=null;
     if(action&&!action.disabled&&price===config.final&&visible(action)&&visible(sum))result={kind:'verified',price,label:action.textContent.trim()};
-    else if(flights&&document.querySelector('[name="andromeda-outbound"]')&&document.querySelector('[name="andromeda-return"]'))result={kind:'flights'};
+    else if(flights&&!flights.disabled&&document.querySelectorAll('[name="andromeda-outbound"]:enabled').length===2&&
+      document.querySelectorAll('[name="andromeda-return"]:enabled').length===1)result={kind:'flights'};
     else if(error?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.')result={kind:'unavailable'};
     if(result&&previous?.kind===result.kind){
       state.result=previous;
@@ -102,7 +122,7 @@ async function check(driver,engine,root,html,output,scenario,shot,expectedClicks
     if(next==='repeat')await driver.click(second);
     const result=await until(driver,'window.__singleQuote.result',8000);
     assert.ok(result,'no result for '+scenario+' '+JSON.stringify(replay.blocked));
-    assert.equal(result.kind,scenario==='flights'||scenario==='unavailable'?scenario:'verified');
+    assert.equal(result.kind,scenario==='flights'||scenario==='unavailable'?scenario:'verified',scenario+' '+JSON.stringify({result,blocked:replay.blocked}));
     const measured=await driver.evaluate(`(() => {
       const state=window.__singleQuote;
       const resources=performance.getEntriesByType('resource').filter(r=>new URL(r.name).pathname===${JSON.stringify(quoteApi)});
@@ -112,6 +132,18 @@ async function check(driver,engine,root,html,output,scenario,shot,expectedClicks
     assert.ok(measured.clicks.every(x=>x.trusted));assert.equal(measured.quoteStarts.length,1);
     assert.ok(measured.quoteStarts[0]>=measured.clicks.at(-1).at-2);
     assert.deepEqual(replay.delivery.quotes,[{offerRef:ref,listingRef:'listing_'+'e'.repeat(64)}]);
+    assert.deepEqual(replay.delivery.confirmedPairs,[]);
+    if(scenario==='flights'){
+      const radio='[name="andromeda-outbound"][value="'+alternative+'"]';
+      assert.equal(await driver.evaluate('document.querySelector(\'[name="andromeda-outbound"]:checked\').value'),outbound);
+      await driver.click(radio);
+      assert.equal(await driver.evaluate('document.querySelector(\'[name="andromeda-outbound"]:checked\').value'),alternative);
+      assert.equal(await driver.evaluate('document.querySelector(\'[name="andromeda-return"]:checked\').value'),inbound);
+      assert.deepEqual(replay.delivery.confirmedPairs,[]);
+      await driver.click('[data-action="apply-andromeda-flights"]');
+      assert.ok(await until(driver,'document.querySelector(\'[data-action="andromeda-application-preview"]\') && Number(document.querySelector("#modal-footer .footer-total strong")?.textContent.replace(/\\D/g,""))==='+raised,8000),'flight confirmation '+JSON.stringify(replay.blocked));
+      assert.deepEqual(replay.delivery.confirmedPairs,[selectedPair]);assert.equal(replay.delivery.quotes.length,1);
+    }
     if(scenario==='changed'&&expectedClicks===1)assert.match(result.label,/Принять/);
     if(shot)await driver.screenshot(path.join(output,engine+'-quote.png'));
     assert.deepEqual(replay.blocked,[]);
@@ -119,7 +151,7 @@ async function check(driver,engine,root,html,output,scenario,shot,expectedClicks
     for(const file of ['visual-search/app.js','prototype-search/data.js','visual-search/hotel-details-v1.js']){
       scripts[file]=sha(fs.readFileSync(path.join(root,file)));assert.equal(replay.scripts[file],scripts[file]);
     }
-    return {scenario,key,scripts,...measured};
+    return {scenario,key,scripts,...measured,confirmedPairs:replay.delivery.confirmedPairs};
   } finally {await replay.close();}
 }
 
