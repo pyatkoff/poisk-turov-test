@@ -2030,7 +2030,14 @@ dialog.hotel-details-dialog:has(.hotel-section-nav [data-target="hotel-rooms-hea
 @media(max-width:760px){
  .flight-option-compact .flight-choice-row{grid-template-columns:18px minmax(0,1fr);gap:5px 9px}
  .flight-choice-row .flight-comparison{grid-column:2;grid-row:2;justify-content:flex-start}
- .flight-choice-row .flight-compact-routes{grid-column:1/-1;grid-row:3;margin-top:3px}
+ .flight-choice-row .flight-compact-routes{grid-column:1/-1;grid-row:3;margin-top:3px;row-gap:0}
+ /* Share rows for the date, time, airports and optional connection and carrier. */
+ .flight-choice-row .flight-compact-leg{grid-row:span 5;grid-template-rows:subgrid;row-gap:0}
+ .flight-choice-row .flight-compact-leg>*+*{margin-block-start:1px}
+ .flight-choice-row .flight-pair-carriers{margin-block-start:8px}
+}
+@media(max-width:480px){
+ .flight-choice-row .flight-route-stops{flex-basis:100%;margin-inline-start:0}
 }
 
 @media(max-width:760px){

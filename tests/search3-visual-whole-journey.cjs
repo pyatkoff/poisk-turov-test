@@ -3,6 +3,30 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+async function checkPhoneFlightOptions(evaluate) {
+ const rows = await evaluate(`(() => {
+  return [...document.querySelectorAll('.flight-option-compact')].slice(0, 3).map(option =>
+   [...option.querySelectorAll('.flight-choice-row .flight-compact-leg')].map(leg => {
+    const time = leg.querySelector('strong'), stops = leg.querySelector('.flight-route-stops');
+    const range = document.createRange();
+    range.selectNodeContents(time);
+    const ink = range.getBoundingClientRect(), box = leg.getBoundingClientRect();
+    return {text:time.textContent, top:ink.top, left:ink.left, right:ink.right,
+     fits:range.getClientRects().length === 1 && ink.width > 0 && ink.left >= box.left - 1 && ink.right <= box.right + 1,
+     stopsVisible:stops.getBoundingClientRect().height > 0 && stops.textContent.trim() !== ''};
+   })
+  );
+ })()`);
+ assert.equal(rows.length, 3);
+ for (const pair of rows) {
+  assert.equal(pair.length, 2);
+  assert.ok(pair.every(leg => leg.fits && leg.stopsVisible), 'times and stops remain readable: ' + JSON.stringify(pair));
+  const [outbound, inbound] = pair;
+  assert.ok(outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1,
+   'outbound and return times line up for comparison: ' + JSON.stringify(pair));
+ }
+}
+
 async function checkFamilyResultRecap(driver, url, width, capture) {
  const entry = new URL(url);
  entry.searchParams.set('adults', '2');
@@ -51,6 +75,7 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.equal(await text(flightHeading), 'Перелёт', 'the tour starts without a selected flight');
  await driver.click('[data-action="contact-flights"]');
  await driver.click('[name="flight-pair"][value="1"]');
+ if (width === 430) await checkPhoneFlightOptions(script => driver.evaluate(script));
  await driver.click('[data-action="apply-flight"]');
  await driver.wait('#prototype-lead-form');
  assert.equal(await text(flightHeading), 'Перелёт выбран', 'the flight section confirms the selected pair');
@@ -275,6 +300,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await sum(page.locator('#modal-footer .footer-total>strong')),'169 500 ₽');
    await page.locator('[data-action="contact-flights"]').click();
    await page.locator('[name="flight-pair"][value="1"]').check();
+   if(width===430)await checkPhoneFlightOptions(script=>page.evaluate(script));
    assert.match(await sum(page.locator('[data-flight-index="1"] .flight-comparison')),/1\s?300.*06:05.*20\s?кг/);
    assert.match(await sum(page.locator('#flight-price-change')),/1 300 ₽.*20 кг.*Шереметьево.*06:05/);
    await frame('Выбор перелёта');
