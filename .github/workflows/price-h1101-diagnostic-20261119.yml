@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cc48027445453a7c44a9902097ddeed2c815e994'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '937078ba761612827ee9ebf591cbad5eda623e16'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -63,9 +63,9 @@ jobs:
           global_path=private/'monitor-price-after-collection-v1.jsonl'; global_state=json.loads(global_path.read_text().strip().splitlines()[-1])
           assert global_state['pending']['phase']=='post_started' and global_state['pending']['tourvisor_hotel_id']==1101
           op='commercial-monitor-price-h1101-97ef202cdf0daa8d110778946b07b6bfcd4cd512af9159859cfcc8492f1e5a75'; assert global_state['pending']['operation']==op
-          child=private/op/'receipt.jsonl'; assert hashlib.sha256(child.read_bytes()).hexdigest()=='a79c12a758f80e7e42118181ad9585fda787f35d432aca25a333a244ebb421c9'
+          child=private/op/'receipt.jsonl'
           state=json.loads(child.read_text().strip().splitlines()[-1])
-          print('JOURNALS',json.dumps({'global_sha256':hashlib.sha256(global_path.read_bytes()).hexdigest(),'global_bytes':global_path.stat().st_size,'child_sha256':hashlib.sha256(child.read_bytes()).hexdigest(),'child_bytes':child.stat().st_size,'manifest_hash':state['manifest_hash'],'posts':list(state['posts'])},separators=(',',':')))
+          print('JOURNALS',json.dumps({'global_sha256':hashlib.sha256(global_path.read_bytes()).hexdigest(),'global_bytes':global_path.stat().st_size,'child_sha256':hashlib.sha256(child.read_bytes()).hexdigest(),'child_bytes':child.stat().st_size,'manifest_hash':state['manifest_hash'],'complete':state.get('complete'),'recovery':state.get('recovery'),'posts':{k:{'state':v.get('state'),'platform':v.get('plan',{}).get('platform'),'has_provider_response':'provider_response' in v,'button_result':v.get('button_result'),'has_receipt':'receipt' in v} for k,v in state['posts'].items()}},separators=(',',':')))
           hook=(native/'monitor-price-hook.php').read_bytes(); rows=json.loads(gzip.decompress(base64.b64decode(re.search(rb'const HOOK_ROSTER_GZIP_B64="([^"]+)"',hook)[1])))['rows']; row=next(r for r in rows if r['tourvisor_hotel_id']==1101)
           approved={}
           for platform in ('max','telegram'):
@@ -77,7 +77,7 @@ jobs:
           $b=json_decode(base64_decode((string)getenv('PRICE_BUNDLE'),true),true,256,JSON_THROW_ON_ERROR); $r=new ChannelPostRegistryService(ConversationDb::connection());
           foreach(['max','telegram'] as $platform){$proof=$b['approved'][$platform]['receipt']; $p=$r->publication((int)$proof['publication_id']); if(!$p)throw new Exception('publication_missing'); $plan=$platform==='max'?$b['max_plan']:null;
             $safe=['platform'=>$platform,'publication_id'=>$p['publication_id'],'version_id'=>$p['version_id'],'config_version'=>$p['channel']['config_version'],'message_id'=>$p['external_message_id'],'post_url'=>$p['snapshot']['post_url'],'state'=>$p['state'],'reason'=>$p['error_reason'],'attempt_count'=>$p['attempt_count'],'write_attempts'=>$p['write_attempts'],'claimed'=>!empty($p['claim_token']),'content_hash'=>ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),'text_sha256'=>hash('sha256',$p['snapshot']['text']),'photo_sha256'=>hash('sha256',json_encode($p['snapshot']['attachments'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),'price_record'=>$p['snapshot']['metadata']['monitor_price_record_id']??null,'observation_kind'=>$p['snapshot']['metadata']['observation_kind']??null,'exact_button'=>ChannelPostIncomingAdapter::containsOnlyButton($p['snapshot'],ChannelPostButtonTransport::buttonUrl($p),(string)$p['channel']['button_text'])]; if($plan)$safe['matches_intended_text']=$p['snapshot']['text']===$plan['text']; echo 'REGISTRY '.json_encode($safe,JSON_UNESCAPED_SLASHES)."\n";
-            if($platform==='max'){$identity=ChannelPostRuntime::identity('max'); $preview=(new ChannelPostReconciliationService(ConversationDb::connection()))->confirmReadFailure($identity,$p['channel_id'],$p['publication_id'],$p['version_id'],(int)$p['channel']['config_version'],ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),false); echo 'MAX_GET_ONLY_PREVIEW '.json_encode($preview,JSON_UNESCAPED_SLASHES)."\n";}
+            if($platform==='max'){$preview=$p['state']==='sent'?['ok'=>true,'state'=>'already_sent','provider_writes'=>0]:(new ChannelPostReconciliationService(ConversationDb::connection()))->confirmReadFailure(ChannelPostRuntime::identity('max'),$p['channel_id'],$p['publication_id'],$p['version_id'],(int)$p['channel']['config_version'],ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),false); echo 'MAX_GET_ONLY_PREVIEW '.json_encode($preview,JSON_UNESCAPED_SLASHES)."\n";}
           }
           ?>'''
           import os
