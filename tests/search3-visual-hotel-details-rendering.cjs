@@ -48,7 +48,31 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
    showModal:(type,title,kicker,body)=>{doc.querySelector('#modal-body').innerHTML=body;}
   };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);const mountedOffers=owner.openHotelDetails(1);if(checkInvocation){assert.equal(offerInventories,1,'opening reuses one synchronous offer inventory');assert.strictEqual(mountedOffers,offers,'opening exposes the exact mounted offer array for same-turn restoration');}owner.renderHotelRooms(1,meal,['Standard<&']);if(checkInvocation)assert.equal(offerInventories,2,'later render computes a fresh offer inventory');
   output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,...(requestPlaceholder?{text:doc.querySelector('#modal-body').textContent}:{}),footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});
-  if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}dom.window.close();
+  if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}
+  if(checkInvocation&&mode==='many'&&!long&&!meal){
+   const standard=offers[0];
+   const cards=doc.querySelector('.hotel-room-cards'),shared=cards.querySelector('.room-inventory-facts');
+   assert(shared,'matching conditions across room categories are shown once');
+   assert(shared.textContent.includes(standard.day)&&shared.textContent.includes(standard.operator));
+   for(const row of cards.querySelectorAll('.room-offer-choice'))assert(!row.textContent.includes(standard.day)&&!row.textContent.includes(standard.operator),'shared terms do not displace the meal and price');
+   const changed={...standard,key:'other-date',day:'2026-10-03',returnDay:'2026-10-10',meal:'BB',operator:'Other Operator',flight:'regular'};
+   offers=[standard,changed];
+   owner.renderHotelRooms(1);
+   const card=doc.querySelector('.hotel-room-card');
+   assert.equal(card.querySelector('h4').textContent,standard.room);
+   const rows=[...card.querySelectorAll('.room-offer-choice')];
+   assert.equal(rows.length,2,'same amount retains two distinct tariffs');
+   for(const [index,offer] of offers.entries()){
+    const row=rows[index],details=row.querySelector('[data-action="offer"]'),choose=row.querySelector('[data-action="select-hotel-offer"]');
+    assert.equal(details.dataset.key,offer.key);
+    assert.equal(details.querySelector('.room-offer-meal').textContent,offer.meal,'the tariff heading also opens its exact conditions');
+    assert.equal(choose.dataset.key,offer.key,'checking the price acts on the identified tariff in one step');
+    assert.equal(row.querySelector('.hotel-room-price>strong').textContent,offer.total+' ₽');
+    for(const value of [offer.day,offer.returnDay,offer.flight,offer.operator])assert(row.textContent.includes(value),'differing terms belong to their exact offer: '+value);
+   }
+   assert(!rows[0].textContent.includes(changed.operator)&&!rows[1].textContent.includes(standard.operator));
+  }
+  dom.window.close();
  }return output;
 }
 const compare=process.argv.indexOf('--compare');if(compare>=0)assert.deepEqual(records(source),records(fs.readFileSync(process.argv[compare+1],'utf8'),true),'actual before/after hotel HTML and room DOM equivalence');

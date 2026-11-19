@@ -111,8 +111,21 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await frame('Выдача с фильтром 4★');
    await card.getByRole('button',{name:/Номера и цены/}).click();
    const family=page.locator('.hotel-room-card[data-room="Семейный номер"]');
-   await family.scrollIntoViewIfNeeded();
+   const standard=page.locator('.hotel-room-card[data-room="Стандартный номер"] .room-offer-choice');
+   await standard.first().waitFor();
+   await page.locator('[data-target="hotel-rooms-heading"][aria-current="location"]').waitFor();
    await page.locator('#hotel-detail-offers').waitFor({state:'hidden'});
+   const offers=await standard.evaluateAll(rows=>rows.map(row=>{
+    const meal=row.querySelector('.room-offer-meal'),price=row.querySelector('.hotel-room-price > strong');
+    const range=document.createRange();range.selectNodeContents(meal);
+    const label=range.getBoundingClientRect(),amount=price.getBoundingClientRect();
+    const nav=document.querySelector('.hotel-section-nav').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect();
+    return {meal:meal.textContent.trim(),price:price.textContent.replace(/\s+/g,' ').trim(),
+     sameLine:label.top<amount.bottom&&amount.top<label.bottom,visible:amount.top>=nav.bottom-1&&amount.bottom<=body.bottom+1,
+     gap:amount.left-label.right};
+   }));
+   assert.deepEqual(offers.map(o=>[o.meal,o.price]),[['Завтраки','154 800 ₽'],['Всё включено','161 600 ₽']]);
+   assert.ok(offers.every(o=>o.sameLine&&o.visible&&o.gap>=0&&o.gap<=360),'both meals and exact prices can be compared on entry at '+width+'px: '+JSON.stringify(offers));
    await frame('Номера и питание');
    await family.locator('[data-action="select-hotel-offer"]').click();
    const form=page.locator('#prototype-lead-form');

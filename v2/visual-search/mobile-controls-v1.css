@@ -191,23 +191,7 @@
   }
 }
 
-/* Design packet 3: room choices and the selected package use the same hierarchy. */
-.room-offer-operator {
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px 12px;
-}
-
-.room-offer-operator .flight-tag {
-  font-size:.875rem;
-  line-height:1.5;
-}
-
-.room-offer-operator .operator-logo {
-  min-height:44px;
-}
-
+/* Room comparisons retain readable prices and comfortably sized controls. */
 .hotel-details-dialog .hotel-room-card h4,
 .hotel-details-dialog .room-overview-meals {
   overflow-wrap:anywhere;
@@ -257,36 +241,13 @@
     line-height:1.5;
   }
 
-  .hotel-details-dialog .room-offer-choice {gap:8px;padding:10px 12px}
-
-  .hotel-details-dialog .room-offer-conditions {
-    gap:4px;
-  }
-.hotel-details-dialog .room-choice-facts > div {
-    align-items:baseline;
-    gap:8px;
-  }
-
-
-  .hotel-details-dialog .room-choice-facts dd {
-    font-size:1rem;
-  }
-
-  .hotel-details-dialog .room-offer-choice .hotel-room-price {grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
-
-  .hotel-details-dialog .room-offer-choice .hotel-room-price > small {font-size:.875rem;grid-column:1/-1}
-
-  .hotel-details-dialog .room-offer-choice .hotel-room-price > strong {font-size:1.5rem;line-height:1.3;white-space:normal;overflow-wrap:anywhere}
-.hotel-details-dialog .room-offer-choice .hotel-room-price > button {
-    grid-column:2;
-    grid-row:2;
-    width:auto;
-    max-width:none;
-    min-height:48px;
-    margin:0;
-    padding:10px 14px;
-    font-size:1rem;
-  }
+  .room-choice-main {padding:10px 12px}
+  .room-shared-facts:not(.room-inventory-facts) {padding-inline:12px}
+  .room-offer-choice {grid-template-columns:minmax(0,1fr) minmax(0,.92fr);gap:3px 10px;padding:7px 12px 10px}
+  .room-offer-choice.selected {grid-template-columns:minmax(0,1fr)}
+  .hotel-room-price {grid-template-columns:minmax(0,1fr);justify-items:end;gap:2px;text-align:right}
+  .hotel-room-price>strong {display:flex;align-items:center;justify-content:flex-end;min-height:44px;max-width:100%;font-size:1.375rem}
+  .hotel-room-price>button[data-action="select-hotel-offer"] {grid-area:auto;min-height:44px;padding:8px 10px}
 
 
 

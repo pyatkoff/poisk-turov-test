@@ -50,11 +50,50 @@ function hotelAmenitiesHTML(h){
  for(const amenity of h.amenities||[]){if(!amenity.label)continue;const group=amenity.group||'Удобства';if(!groups.has(group))groups.set(group,new Set());groups.get(group).add(amenity.label);}
  return [...groups].map(([group,labels])=>hotelFactHTML(group,[...labels].join(' · '),labels.size>2?`<ul class="hotel-service-list">${[...labels].map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`:null)).join('');
 }
-function roomOfferChoiceHTML(o,{common={},ordinal=0}={}){
+function roomOfferChoiceHTML(o,{common={},sharedDemoNote=''}={}){
  const retained=o.raw===context.selectedOffer?.raw&&!context.selectedOffer?.pricePending&&!['anex','andromeda'].includes(context.selectedOffer?.provider)&&context.selectedOffer?.key===o.key&&sameSelectedTourConditions(o,context.selectedOffer)&&(context.selectedOffer.quoteListingTotal||context.selectedOffer.total)===o.total&&!context.selectedOffer.loading&&!context.selectedOffer.flightsLoading&&!context.selectedOffer.quoteError?context.selectedOffer:null;
  if(retained)o=retained;
  const selected=context.hotelOfferDraft?.hotelId===o.hotelId&&context.hotelOfferDraft?.key===o.key;
- return `<div class="room-offer-choice${selected?' selected':''}" data-offer-key="${esc(o.key)}" ${selected?'aria-current="true"':''}><div class="room-offer-conditions"><strong class="room-offer-meal">${common.meal?`Вариант ${ordinal}`:esc(displayMealLabel(o))}</strong><span class="room-choice-selected" ${selected?'':'hidden'}></span><dl class="room-choice-facts">${common.dates?'':`<div><dt>Даты</dt><dd><time datetime="${esc(o.day)}">${dateText(o.day)}</time> → <time datetime="${esc(o.returnDay)}">${dateText(o.returnDay)}</time> · ${nightsText(o.nights)}</dd></div>`}<div><dt>Перелёт</dt><dd>${esc(flightLabel(o)||'Уточняется при выборе')}</dd></div></dl>${common.operator?'':`<div class="room-offer-operator"><span>Туроператор</span>${operatorBadge(o.operator)}</div>`}<button class="text-button" data-action="offer" data-key="${esc(o.key)}">Подробности тура</button></div><div class="hotel-room-price" ${selected?'hidden':''}><small>Весь тур · ${guestsText(o)}</small><strong>${money(o.total)}</strong><button class="${selected?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${esc(o.key)}" aria-pressed="${selected}" aria-label="Выбрать: ${esc(o.room)}, ${esc(displayMealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}">${selected?'✓ Ваш выбранный тур':'Проверить цену'}</button><small class="room-offer-price-status">${esc(retained?selectedPriceStatus(o):cardPriceNote(o))}</small></div></div>`;
+ const meal=esc(displayMealLabel(o)),key=esc(o.key),price=money(o.total);
+ const description=`${esc(o.room)}, ${meal}, ${dateText(o.day)}, ${esc(o.operator)}, ${price}`;
+ const note=retained?selectedPriceStatus(o):cardPriceNote(o);
+ const facts=[
+  !common.dates&&`<div><dt>Даты</dt><dd>${roomOfferDates(o)}</dd></div>`,
+  !common.flight&&`<div><dt>Перелёт</dt><dd>${esc(flightLabel(o)||'Уточняется при выборе')}</dd></div>`,
+  !common.operator&&`<div class="room-offer-operator"><dt>Туроператор</dt><dd>${operatorBadge(o.operator)}</dd></div>`
+ ].filter(Boolean).join('');
+ return `<div class="room-offer-choice${selected?' selected':''}" data-offer-key="${key}" ${selected?'aria-current="true"':''}>
+  <div class="room-offer-conditions">
+   <button type="button" class="room-tariff-details text-button" data-action="offer" data-key="${key}" aria-label="Подробности тура: ${description}"><strong class="room-offer-meal">${meal}</strong><span aria-hidden="true">›</span></button>
+   <span class="room-choice-selected" ${selected?'':'hidden'}></span>${facts?`<dl class="room-choice-facts">${facts}</dl>`:''}
+  </div>
+  <div class="hotel-room-price" ${selected?'hidden':''}>
+   <strong>${price}</strong>${common.party?'':`<small class="room-offer-party">${esc(guestsText(o))}</small>`}
+   <button type="button" class="${selected?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${key}" aria-pressed="${selected}" aria-label="Выбрать: ${description}">${selected?'✓ Ваш выбранный тур':'Проверить цену'}</button>
+   ${note&&note!==sharedDemoNote?`<small class="room-offer-price-status">${esc(note)}</small>`:''}
+  </div></div>`;
+}
+function roomOfferDates(o){
+ return `<time datetime="${esc(o.day)}">${dateText(o.day)}</time> → <time datetime="${esc(o.returnDay)}">${dateText(o.returnDay)}</time> · ${nightsText(o.nights)}`;
+}
+function commonRoomTerms(rows){
+ if(rows.length<2)return {};
+ const first=rows[0];
+ return {
+  dates:rows.every(o=>o.day===first.day&&o.returnDay===first.returnDay&&o.nights===first.nights),
+  flight:rows.every(o=>o.flight===first.flight),
+  operator:rows.every(o=>o.operator===first.operator)
+ };
+}
+function roomSharedFacts(first,terms,inventoryTerms=null,demoNote=''){
+ if(!first)return '';
+ const facts=[
+  terms.dates&&!inventoryTerms?.dates&&roomOfferDates(first),
+  terms.flight&&!inventoryTerms?.flight&&esc(flightLabel(first)||'Перелёт уточняется'),
+  terms.operator&&!inventoryTerms?.operator&&operatorBadge(first.operator),
+  demoNote&&esc(demoNote)
+ ].filter(Boolean);
+ return facts.length?`<div class="room-shared-facts${inventoryTerms?'':' room-inventory-facts'}" aria-label="Общие условия вариантов">${facts.map(fact=>`<span>${fact}</span>`).join('')}</div>`:'';
 }
 function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;
@@ -73,13 +112,14 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  });
  $('#hotel-room-count').textContent=`Номера: ${rooms.length} · Туры: ${offers.length}`;
  const roomCards=$('.hotel-room-cards');roomCards.classList.toggle('single-direct-offer',offers.length===1);
- roomCards.innerHTML=rooms.map(({room,offers:rows})=>{
-  const first=rows[0],same=fields=>rows.length>1&&rows.every(row=>fields.every(field=>row[field]===first[field]));
-  const common={meal:same(['meal']),dates:same(['day','returnDay','nights']),operator:same(['operator'])};
-  const shared=[common.meal?esc(displayMealLabel(first)):'',common.dates?`${dateText(first.day)} → ${dateText(first.returnDay)} · ${nightsText(first.nights)}`:'',common.operator?operatorBadge(first.operator):''].filter(Boolean);
-  const sharedHTML=shared.length?`<div class="room-shared-facts" aria-label="Общие условия вариантов">${shared.map(fact=>`<span>${fact}</span>`).join('')}</div>`:'';
-  const choice=(o,i)=>roomOfferChoiceHTML(o,{common,ordinal:i+1});
-  const choices=sharedHTML+`<div class="room-offer-list">${rows.slice(0,2).map(choice).join('')}${rows.length>2?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(rows.length-2)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${rows.slice(2).map((o,i)=>choice(o,i+2)).join('')}</details>`:''}</div>`;
+ const inventoryTerms=commonRoomTerms(offers),searchParty=guestsText();
+ const sharedDemoNote=offers.length>1&&offers.every(o=>o.provider==='fixture')?cardPriceNote(offers[0]):'';
+ const inventoryFacts=roomSharedFacts(offers[0],inventoryTerms,null,sharedDemoNote);
+ roomCards.innerHTML=inventoryFacts+rooms.map(({room,offers:rows})=>{
+  const roomTerms=commonRoomTerms(rows);
+  const common={dates:inventoryTerms.dates||roomTerms.dates,flight:inventoryTerms.flight||roomTerms.flight,operator:inventoryTerms.operator||roomTerms.operator};
+  const choice=o=>roomOfferChoiceHTML(o,{common:{...common,party:guestsText(o)===searchParty},sharedDemoNote});
+  const choices=roomSharedFacts(rows[0],roomTerms,inventoryTerms)+`<div class="room-offer-list">${rows.slice(0,2).map(choice).join('')}${rows.length>2?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(rows.length-2)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${rows.slice(2).map(choice).join('')}</details>`:''}</div>`;
   const title=`<h4>${esc(roomLabel({room}))}</h4>`;
   if(rooms.length===1||rows.length===1)return `<article class="hotel-room-card" data-room="${esc(room)}"><header class="room-choice-main">${title}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
   const meals=[...new Set(rows.map(displayMealLabel))].map(esc).join(' · '),min=Math.min(...rows.map(o=>o.total));

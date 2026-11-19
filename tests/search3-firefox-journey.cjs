@@ -54,8 +54,12 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   await driver.wait(chooseRoom);
   assert.match(await text(family), /Всё включено/i);
   assert.equal(await text(family + ' .hotel-room-price > strong'), '169 500 ₽');
-  await align(family, 'start');
   await driver.wait('[data-target="hotel-rooms-heading"][aria-current="location"]');
+  const visibleRates = await driver.evaluate(`Array.from(document.querySelectorAll('.hotel-room-card[data-room="Стандартный номер"] .hotel-room-price > strong')).filter(price=>{
+    const box=price.getBoundingClientRect(),nav=document.querySelector('.hotel-section-nav').getBoundingClientRect(),body=document.querySelector('#modal-body').getBoundingClientRect();
+    return box.height>0 && box.top>=nav.bottom-1 && box.bottom<=body.bottom+1;
+  }).map(el=>el.textContent.replace(/\\s+/g,' ').trim())`);
+  assert.deepEqual(visibleRates, ['154 800 ₽', '161 600 ₽'], 'both standard room prices are visible as soon as the room comparison opens');
   assert.equal(await driver.evaluate('document.querySelector("#hotel-detail-offers").getClientRects().length'), 0);
   await frame('03-rooms');
 
