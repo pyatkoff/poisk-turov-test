@@ -474,14 +474,22 @@ function restoredDestinationChoice(value){
 function openDeparture(restore=null){
  departureChoice=data.catalog.departures.some(x=>data.text(x)===restore?.choice)?restore.choice:draft.origin;
  showModal('departure','Город вылета','',`<div class="destination-search"><label class="sr-only" for="departure-query">Город вылета</label>${icon('search')}<input class="input" id="departure-query" type="search" placeholder="Город вылета" autocomplete="off"><button class="icon-button destination-clear" data-action="clear-departure-query" aria-label="Очистить запрос города" hidden>${icon('x')}</button></div><div id="departure-results"></div>`);
- $('#modal').classList.add('departure-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="departure-summary"></strong><small>Остальные параметры сохранятся</small></div><button class="primary picker-apply" data-action="apply-departure"></button>';
+ $('#modal').classList.add('departure-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="departure-summary"></strong><small id="departure-choice-status"></small></div><button class="primary picker-apply" data-action="apply-departure">Выбрать город</button>';
  $('#departure-query').value=boundedHistoryText(restore?.query,'');renderDepartures();if(innerWidth>760)$('#departure-query').focus({preventScroll:true});
 }
+function departureOptions(){
+ const query=normalizeSearch($('#departure-query').value);
+ const cities=[...new Set(data.catalog.departures.map(data.text))].filter(city=>normalizeSearch(city).includes(query));
+ return {query,cities,choice:cities.includes(departureChoice)?departureChoice:null};
+}
 function renderDepartures(){
- const q=normalizeSearch($('#departure-query').value),cities=[...new Set(data.catalog.departures.map(data.text))],rows=names=>names.filter(city=>!q||normalizeSearch(city).includes(q)).map(city=>`<button type="button" class="destination-row" data-action="choose-departure" data-value="${esc(city)}" aria-pressed="${city===departureChoice}"><span>${esc(city)}</span><span class="choice-check ${city===departureChoice?'active':''}">${city===departureChoice?icon('check'):''}</span></button>`).join('');
- const first=rows([draft.origin]),rest=rows(cities.filter(city=>city!==draft.origin));
+ const {query,cities,choice}=departureOptions();
+ const rows=names=>names.map(city=>`<button type="button" class="destination-row" data-action="choose-departure" data-value="${esc(city)}" aria-pressed="${city===choice}"><span>${esc(city)}</span><span class="choice-check ${city===choice?'active':''}">${city===choice?icon('check'):''}</span></button>`).join('');
+ const first=rows(cities.filter(city=>city===draft.origin)),rest=rows(cities.filter(city=>city!==draft.origin));
  $('#departure-results').innerHTML=(first?`<section class="destination-section"><h3>Текущий город</h3>${first}</section>`:'')+(rest?`<section class="destination-section"><h3>Другие города</h3>${rest}</section>`:'')||'<div class="destination-empty" role="status"><h3>Нет совпадений</h3><p>Проверьте название или сократите запрос. Выбранный город сохранён.</p><button class="text-button" data-action="clear-departure-query">Очистить запрос</button></div>';
- $('#departure-summary').textContent=departureChoice;$('[data-action="apply-departure"]').textContent='Выбрать '+departureChoice;$('[data-action="apply-departure"]').disabled=!cities.includes(departureChoice);$('[data-action="clear-departure-query"]').hidden=!q;rememberUIRoute();
+ $('#departure-summary').textContent=departureChoice;
+ $('#departure-choice-status').textContent=departureChoice===draft.origin?'Сейчас в поиске':'Новый город вылета';
+ $('[data-action="apply-departure"]').disabled=!choice;$('[data-action="clear-departure-query"]').hidden=!query;rememberUIRoute();
 }
 
 document.addEventListener('input',event=>{if(event.target.id==='departure-query')renderDepartures();});
@@ -3033,7 +3041,7 @@ function handleSearchParameterAction(action,b,id){
  case 'departure':openDeparture();break;
  case 'choose-departure':departureChoice=b.dataset.value;renderDepartures();break;
  case 'clear-departure-query':$('#departure-query').value='';renderDepartures();break;
- case 'apply-departure':{const city=departureChoice;if(!data.catalog.departures.some(x=>data.text(x)===city))break;const saved=getStored('anytour.departures.v1',[]);saveStored('anytour.departures.v1',[city,...(Array.isArray(saved)?saved:[]).filter(x=>x!==city)].slice(0,3));closeModal();if(city!==draft.origin){$('#origin').value=city;$('#origin').dispatchEvent(new Event('change',{bubbles:true}));}break;}
+ case 'apply-departure':{if(modalType!=='departure')break;const {choice:city}=departureOptions();if(!city)break;const saved=getStored('anytour.departures.v1',[]);saveStored('anytour.departures.v1',[city,...(Array.isArray(saved)?saved:[]).filter(x=>x!==city)].slice(0,3));closeModal();if(city!==draft.origin){$('#origin').value=city;$('#origin').dispatchEvent(new Event('change',{bubbles:true}));}break;}
 
  case 'destination':openDestination();break;
  case 'retry-destination':lookupDestination();break;
