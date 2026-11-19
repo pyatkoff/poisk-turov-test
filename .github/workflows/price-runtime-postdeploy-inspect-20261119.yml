@@ -1,4 +1,4 @@
-name: PRICE 1305 independent public feeds and timer audit
+name: PRICE 1348 read-only live timer check
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '95c2580725ce583b6d29560123252530e07dee9b'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '20c287f637a7e1a4a2bccfc9895fbacbe815fb43'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -65,6 +65,10 @@ jobs:
             return h.hexdigest()
           pins={'hook':sha(native/'monitor-price-hook.php'),'cohort':sha(native/'published-hotels-monitor-v1.php'),'collector':sha(native/'top500-daily-collector-v1.php')}
           assert pins=={'hook':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','cohort':'3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c','collector':'940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'}
+          timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
+          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
+          print('PRICE_TIMER_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
+          raise SystemExit(0)
           # The immediately preceding read-only hook inspection ended before scanning with
           # hook_http_read_failed after reading the 1.18 GB journal. Continue the
           # independent XML/source/timer proof without repeating that expensive call.
