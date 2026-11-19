@@ -8,14 +8,14 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e68fe088764521c7ff6b605403ca7f2ebb7e4dd6'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e06140ff8643a8dfd1d465d72359a93e309bbbc9'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Verify the closed installed release
+      - name: Verify the closed installed release and before-write stop
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -23,6 +23,7 @@ jobs:
           test "$(gh api repos/pyatkoff/max-search-bot/git/ref/heads/main --jq .object.sha)" = "e262bf139da2b78623e1be3a891630fd10924180"
           test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44632489739 --jq '.status+":"+(.conclusion//"")')" = "completed:success"
           test "$(gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body)" = "PR1632: установлено, выпуск свободен"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636015413 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -62,9 +63,9 @@ jobs:
           assert installed=='e262bf139da2b78623e1be3a891630fd10924180','INSTALLED_SHA_CHANGED_STOP'
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
           active=[line for line in process.stdout.splitlines() if 'pgrep -af' not in line]
+          print('PRICE_ACTIVE_PROCESSES='+json.dumps(active,separators=(',',':')))
           assert not active,'PRICE_PROCESS_ACTIVE_STOP'
           tool=app/'tools'/'apply_promoted_hotel_prices.php'
-          assert tool.is_file()
           completed=subprocess.run(['php',str(tool),'--apply'],capture_output=True,text=True)
           print(completed.stdout,end=''); print(completed.stderr,end='')
           assert completed.returncode==0,'PROMOTED_HANDLER_FAILED'
@@ -90,17 +91,9 @@ jobs:
               new_results.append(dict(target,result=row['result'],public_verified=row.get('public_verified') is True))
           results=collections.Counter(row.get('result','missing') for row in rows)
           platforms=collections.Counter(row['platform'] for row in rows)
-          terminal={
-            'installed_sha':installed,
-            'feed_sha256':receipt.get('feed_sha256'),
-            'target_rows':len(targets),
-            'target_hotels':len({row['hotel_id'] for row in targets}),
-            'source_held':held,
-            'processed_rows':len(rows),
-            'results':dict(results),
-            'platforms':dict(platforms),
-            'new_targets':new_results,
-          }
+          terminal={'installed_sha':installed,'feed_sha256':receipt.get('feed_sha256'),'target_rows':len(targets),
+            'target_hotels':len({row['hotel_id'] for row in targets}),'source_held':held,'processed_rows':len(rows),
+            'results':dict(results),'platforms':dict(platforms),'new_targets':new_results}
           print('PROMOTED_PRICE_TERMINAL='+json.dumps(terminal,ensure_ascii=False,separators=(',',':')))
           bad=[row for row in rows if row.get('result') not in {'updated','already_current'} or row.get('public_verified') is not True]
           assert not bad,'PROMOTED_PUBLIC_VERIFICATION_INCOMPLETE'
