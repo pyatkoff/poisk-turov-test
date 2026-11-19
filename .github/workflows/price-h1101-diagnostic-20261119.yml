@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9c3f131e284914a7e70745f1f713f13462264746'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cc48027445453a7c44a9902097ddeed2c815e994'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -65,6 +65,7 @@ jobs:
           op='commercial-monitor-price-h1101-97ef202cdf0daa8d110778946b07b6bfcd4cd512af9159859cfcc8492f1e5a75'; assert global_state['pending']['operation']==op
           child=private/op/'receipt.jsonl'; assert hashlib.sha256(child.read_bytes()).hexdigest()=='a79c12a758f80e7e42118181ad9585fda787f35d432aca25a333a244ebb421c9'
           state=json.loads(child.read_text().strip().splitlines()[-1])
+          print('JOURNALS',json.dumps({'global_sha256':hashlib.sha256(global_path.read_bytes()).hexdigest(),'global_bytes':global_path.stat().st_size,'child_sha256':hashlib.sha256(child.read_bytes()).hexdigest(),'child_bytes':child.stat().st_size,'manifest_hash':state['manifest_hash'],'posts':list(state['posts'])},separators=(',',':')))
           hook=(native/'monitor-price-hook.php').read_bytes(); rows=json.loads(gzip.decompress(base64.b64decode(re.search(rb'const HOOK_ROSTER_GZIP_B64="([^"]+)"',hook)[1])))['rows']; row=next(r for r in rows if r['tourvisor_hotel_id']==1101)
           approved={}
           for platform in ('max','telegram'):
