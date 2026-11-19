@@ -389,7 +389,18 @@ jobs:
                 echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
               fi
               if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
-                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
+                hook_status=0
+                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || hook_status=\$?
+                if [ \"\$hook_status\" -ne 0 ]; then
+                  collector_status=\"\$hook_status\"
+                elif [ -f \"\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php\" ]; then
+                  promoted_status=0
+                  php \"\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php\" --apply || promoted_status=\$?
+                  if [ \"\$promoted_status\" -ne 0 ]; then
+                    echo \"PROMOTED_PRICE_DEFERRED status=\$promoted_status\"
+                    if [ \"\$collector_status\" -eq 0 ]; then collector_status=\"\$promoted_status\"; fi
+                  fi
+                fi
               fi
             fi
             rm -f \"\$collector_log\"
