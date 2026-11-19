@@ -1,4 +1,4 @@
-name: PRICE 1455 read-only live timer check
+name: PRICE 1457 public feed impact after partial collection
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1c2fc8625c2353c5e4e1ee4b1398bc11ef7d0a15'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '2c4a694708e3766540ec9f624eb0a4c457f1a6d9'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -68,7 +68,6 @@ jobs:
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_TIMER_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
-          raise SystemExit(0)
           # The immediately preceding read-only hook inspection ended before scanning with
           # hook_http_read_failed after reading the 1.18 GB journal. Continue the
           # independent XML/source/timer proof without repeating that expensive call.
