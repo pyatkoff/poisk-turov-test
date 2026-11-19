@@ -1,4 +1,4 @@
-name: PRICE 1907 inspect queue after 1845 server collection
+name: PRICE 1910 apply full queue after 1845 server collection
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '770da45a5ceb5d42631c9b296eed08923d19c980'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd04385d868e9f102958c40fb13e01ff2d59d9b91'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -113,12 +113,15 @@ jobs:
             except Exception: wchan[pid]=None
           print('PRICE_ACTIVE_PROCESS_DIAGNOSTIC='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'ps':ps.stdout.splitlines() if ps else [],'wchan':wchan},separators=(',',':')))
           print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':active_lines},separators=(',',':')))
-          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--inspect'],capture_output=True,text=True)
+          env=dict(__import__('os').environ)
+          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T15:45:02+00:00'
+          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='20261119154502'
+          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--nightly'],capture_output=True,text=True,env=env)
           print(p.stdout,end='')
           assert p.returncode==0
           result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
-          assert result['updated_pairs']==0 and result['site_writes']==0 and result['supplier_calls']==0
-          print('PRICE_QUEUE_AFTER_1845='+json.dumps(result,separators=(',',':')))
+          assert result['ok'] is True and result['updated_pairs']>=1 and result['site_writes']==0 and result['supplier_calls']==0
+          print('PRICE_WRITE_AFTER_1845='+json.dumps(result,separators=(',',':')))
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
