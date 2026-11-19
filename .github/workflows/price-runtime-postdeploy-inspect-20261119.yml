@@ -1,4 +1,4 @@
-name: PRICE 2113 verify main19 after 111 writes
+name: PRICE read 38 promoted post prices without writes
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0069a112b68d423b6828eff4369a6288f2ca11cb'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '17ffb315de170c3579618f7546c7dff5c1f86327'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -48,34 +48,70 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read back projected feed without writes
+      - name: Read publicly visible prices of 38 exact posts
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
-          import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
-          app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
-          canonical=(app/'feed'/'hotel-posts-telegram.xml').read_bytes()
-          projected=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/hotel-posts-telegram-main19.php'])
-          a={o.attrib['id']:o for o in ET.fromstring(canonical).findall('.//offer')}
-          b={o.attrib['id']:o for o in ET.fromstring(projected).findall('.//offer')}
-          ids=[174,12107,132,469,12111,70048,82606,1344,260,415,2493,3452,4181,37668,43676,64895,73974,74503,99713]
-          chosen={'tg_'+str(i) for i in ids}
-          assert len(a)==len(b)==1000 and a.keys()==b.keys()
-          changed=[]
-          for oid,oa in a.items():
-            ob=b[oid]; assert oa.attrib==ob.attrib
-            ca=[(x.tag,x.attrib,x.text or '') for x in oa]; cb=[(x.tag,x.attrib,x.text or '') for x in ob]; assert len(ca)==len(cb)
-            for av,bv in zip(ca,cb):
-              assert av[:2]==bv[:2]
-              if av[0]=='url' and oid in chosen:
-                assert bv[2]=='https://t.me/Any_tour_bot?startapp={yclid}_'+oid
-                changed.append(oid)
-              else: assert av[2]==bv[2]
-          assert len(changed)==19 and set(changed)==chosen
-          print('PRICE_MAIN19_AFTER_111='+json.dumps({'offers':len(b),'miniapp_urls':len(changed),'canonical_sha256':hashlib.sha256(canonical).hexdigest(),'projected_sha256':hashlib.sha256(projected).hexdigest()},separators=(',',':')))
+          TARGET_ROWS=[[174,"max","https://max.ru/anytour/AaHzN34rD6Q"],[174,"telegram","https://t.me/anytour/1792"],[12107,"max","https://max.ru/anytour/AZwjaZt4Kz8"],[12107,"telegram","https://t.me/anytour/809"],[132,"max","https://max.ru/anytour/AZ5qgiujRlo"],[132,"telegram","https://t.me/anytour/17"],[469,"max","https://max.ru/anytour/AZ6sX9HGLTk"],[469,"telegram","https://t.me/anytour/19"],[12111,"max","https://max.ru/anytour/AZ6wa60cTlw"],[12111,"telegram","https://t.me/anytour/23"],[70048,"max","https://max.ru/anytour/AZ61r6_QcAI"],[70048,"telegram","https://t.me/anytour/37"],[82606,"max","https://max.ru/anytour/AZ7KT8ynMm8"],[82606,"telegram","https://t.me/anytour/48"],[1344,"max","https://max.ru/anytour/AZ7PcvbibFA"],[1344,"telegram","https://t.me/anytour/82"],[260,"max","https://max.ru/anytour/AZ7UVbXteP8"],[260,"telegram","https://t.me/anytour/192"],[415,"max","https://max.ru/anytour/AaFUVxlGPTg"],[415,"telegram","https://t.me/anytour/1754"],[2493,"max","https://max.ru/anytour/AZ7Z4K9JJNQ"],[2493,"telegram","https://t.me/anytour/196"],[3452,"max","https://max.ru/anytour/AZ7pU2e2Znw"],[3452,"telegram","https://t.me/anytour/1148"],[4181,"max","https://max.ru/anytour/AZ8DSRZpHNw"],[4181,"telegram","https://t.me/anytour/204"],[37668,"max","https://max.ru/anytour/AZ8r4R9vT_Q"],[37668,"telegram","https://t.me/anytour/402"],[43676,"max","https://max.ru/anytour/AZ9k6MvNF94"],[43676,"telegram","https://t.me/anytour/414"],[64895,"max","https://max.ru/anytour/AZ-OUsaPJjg"],[64895,"telegram","https://t.me/anytour/993"],[73974,"max","https://max.ru/anytour/AZ-tLRx7Jzw"],[73974,"telegram","https://t.me/anytour/455"],[74503,"max","https://max.ru/anytour/AZ_MDV0gO_I"],[74503,"telegram","https://t.me/anytour/474"],[99713,"max","https://max.ru/anytour/AZ_RB3FVXFc"],[99713,"telegram","https://t.me/anytour/483"]]
+          from concurrent.futures import ThreadPoolExecutor
+          import json, re, subprocess, html
+          from html.parser import HTMLParser
+
+          class TelegramPost(HTMLParser):
+            def __init__(self, post):
+              super().__init__(convert_charrefs=True)
+              self.post=post
+              self.scope=0
+              self.capture=0
+              self.caption=[]
+              self.photo=0
+              self.button=0
+            def handle_starttag(self, tag, attrs):
+              a=dict(attrs); classes=a.get('class','').split()
+              if tag=='div':
+                if a.get('data-post')==self.post:
+                  self.scope=1
+                elif self.scope:
+                  self.scope+=1
+                if self.capture:
+                  self.capture+=1
+                elif self.scope and 'tgme_widget_message_text' in classes:
+                  self.capture=1
+              if self.scope and 'tgme_widget_message_photo_wrap' in classes: self.photo+=1
+              if self.scope and 'tgme_widget_message_inline_button' in classes: self.button+=1
+              if self.capture and tag=='br': self.caption.append('\n')
+            def handle_endtag(self, tag):
+              if tag=='div':
+                if self.scope: self.scope-=1
+                if self.capture: self.capture-=1
+            def handle_data(self, data):
+              if self.capture: self.caption.append(data)
+
+          def check(row):
+            hotel, platform, url=row
+            try:
+              embed=url+'?embed=1&mode=tme' if platform=='telegram' else url
+              raw=subprocess.check_output(['curl','-fsS','--max-time','16',embed],stderr=subprocess.DEVNULL).decode()
+              if platform=='telegram':
+                parsed=TelegramPost('anytour/'+url.rsplit('/',1)[1])
+                parsed.feed(raw)
+                caption=''.join(parsed.caption)
+                if not caption: return [hotel,platform,'unreadable']
+                photo=parsed.photo
+                button=parsed.button
+              else:
+                m=re.search(r'message:\{text:("(?:[^"\\]|\\.)*")',raw)
+                if not m: return [hotel,platform,'unreadable']
+                caption=json.loads(m[1]); photo=None; button=None
+              return [hotel,platform,'read',bool(re.search(r'\d[\d \u00a0\u202f]*\s*₽|Цена найдена мониторингом',caption)),len(caption.encode('utf-16-le'))//2,photo,button]
+            except (OSError,subprocess.SubprocessError,ValueError):
+              return [hotel,platform,'unreadable']
+          with ThreadPoolExecutor(max_workers=8) as pool:
+            results=list(pool.map(check, TARGET_ROWS))
+          print('PROMOTED_PUBLIC_PRICE_PREFLIGHT='+json.dumps(results,separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
