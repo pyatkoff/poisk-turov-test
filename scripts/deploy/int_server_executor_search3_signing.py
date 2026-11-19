@@ -10,9 +10,9 @@ import ast
 
 TV_INVALID_RESPONSE_MODE = 'install-tv-invalid-response'
 TV_INVALID_RESPONSE_OPERATION = 'int-anex-tv-invalid-response-install-20261119-v1'
-TV_INVALID_RESPONSE_SOURCE = '6b98b9f912ae1f8bd0649c47f5ae7800d14af4e3'
+TV_INVALID_RESPONSE_SOURCE = '3207266e17ed4e8244aaf28d05b962747fd4cd3c'
 TV_INVALID_RESPONSE_PATH = 'app/integrations/tourvisor-interactive-client.php'
-TV_INVALID_RESPONSE_SHA = 'b7e646ea7d9ae3eff70a9dbb7c0027327cecfddf4b07292a74145c49983fdc76'
+TV_INVALID_RESPONSE_SHA = '529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841'
 
 ANEX_QUOTE_RATE_LOCK_MODE = 'install-anex-quote-rate-lock'
 ANEX_QUOTE_RATE_LOCK_OPERATION = 'int-anex-quote-rate-lock-install-20261030-v1'

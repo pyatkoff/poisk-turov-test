@@ -1936,10 +1936,11 @@ class TVInvalidResponseAdmission(unittest.TestCase):
         cmd={'source_sha':signing.TV_INVALID_RESPONSE_SOURCE,'mode':signing.TV_INVALID_RESPONSE_MODE,
              'operation_id':signing.TV_INVALID_RESPONSE_OPERATION}
         body='/run-int-server-v1 '+' '.join(cmd.values())
-        self.assertEqual('6b98b9f912ae1f8bd0649c47f5ae7800d14af4e3',cmd['source_sha'])
+        self.assertEqual('3207266e17ed4e8244aaf28d05b962747fd4cd3c',cmd['source_sha'])
         self.assertEqual(cmd,core().parse_command(body))
         for rejected in (body+' extra',body.replace(cmd['source_sha'],'0'*40),
                          body.replace(cmd['source_sha'],'7844c90de7f2ad496df2df15bfbb861d7da42222'),
+                         body.replace(cmd['source_sha'],'6b98b9f912ae1f8bd0649c47f5ae7800d14af4e3'),
                          body.replace('20261119-v1','20261119-v2'),body.replace(cmd['mode'],cmd['mode']+'-alias')):
             with self.subTest(body=rejected),self.assertRaises(ValueError):
                 core().parse_command(rejected)
