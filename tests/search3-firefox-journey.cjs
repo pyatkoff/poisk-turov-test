@@ -89,6 +89,27 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     frames.push(file);
   }
 
+  async function checkDepartureFilter() {
+    const apply = '[data-action="apply-departure"]';
+    await driver.click('#departure-button');
+    await driver.fill('#departure-query', 'Мурманск');
+    await driver.wait('#departure-results .destination-empty');
+    assert.equal(await driver.count('[data-action="choose-departure"]'), 0);
+    assert.equal(await text('#departure-summary'), 'Москва');
+    assert.equal(await driver.value('#origin'), 'Москва');
+    await driver.wait(apply + ':disabled');
+    assert.equal(await text(apply), 'Выбрать город');
+    await documentGuard('departure-filter');
+    const file = 'departure-filter-430.png';
+    await driver.screenshot(path.join(evidence, file));
+    await driver.click('[aria-label="Очистить запрос города"]');
+    await driver.wait('[data-action="choose-departure"][data-value="Москва"][aria-pressed="true"]');
+    await driver.click(apply + ':enabled');
+    assert.equal(await driver.count('#modal[open]'), 0);
+    assert.equal(await driver.value('#origin'), 'Москва');
+    return file;
+  }
+
   async function checkVisibleMeal() {
     const meal = 'Всё включено';
     const choice = '[data-meal-choice][value="' + meal + '"]';
@@ -160,6 +181,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
 
   if (await driver.evaluate('location.href') !== url) await driver.go(url);
   await driver.wait('.search-submit:not(:disabled)');
+  const departureFilterFrame = await checkDepartureFilter();
   await documentGuard('initial');
   assert.equal(await driver.count('.hotel-card'), 0, 'Blank search initially');
   await driver.click(stars);
@@ -266,6 +288,6 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     await driver.screenshot(path.join(evidence, file));
     familyFrames.push({file, label});
   });
-  return {frames, familyFrames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  return {frames, familyFrames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, departureFilterFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };
