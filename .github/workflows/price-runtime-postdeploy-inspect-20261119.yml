@@ -1,4 +1,4 @@
-name: Inspect PRICE after Seagull return and Search3 deploy
+name: Final PRICE census after 33 verified pairs
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e9628a1e1e8634392dca97917cb23832136f34f0'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '328fd64a4ef7198d4562e1815f63cb05cc8918e7'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -57,7 +57,7 @@ jobs:
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
           import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
           root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
-          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert len(head)==40 and all(x in '0123456789abcdef' for x in head)
+          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='eb7ab9472e6b556812dc3d209a155d291c2077b6'
           def sha(p):
             h=hashlib.sha256()
             with p.open('rb') as f:
