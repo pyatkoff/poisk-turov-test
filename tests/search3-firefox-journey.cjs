@@ -266,7 +266,6 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     await driver.screenshot(path.join(evidence, file));
     familyFrames.push({file, label});
   });
-  const familyResultFrame = 'family-result-age-430.png';
-  return {frames, familyFrames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, familyResultFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
+  return {frames, familyFrames, similarRoomsFrame, returnedRoomFrame, selectedMealFrame, hotels: names, listing: 154800, room: 169500, flightSupplement: 1300,
     total: 170800, draftRestored: true, submitted: false};
 };

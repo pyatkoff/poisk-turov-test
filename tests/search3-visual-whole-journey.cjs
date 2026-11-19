@@ -131,7 +131,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    report.selection.contactSheet = filename;
    report.selection.familyContactSheet = familyFilename;
    report.selection.familyFrames = report.selection.familyFrames.map(({file,label}) => ({stage:path.parse(file).name, label}));
-   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame, report.selection.familyResultFrame]){
+   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame]){
     fs.copyFileSync(path.join(raw,file), path.join(retained,file));
    }
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
@@ -273,7 +273,6 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
      wait:selector=>page.locator(selector).waitFor(), text:selector=>page.locator(selector).innerText(),
      count:selector=>page.locator(selector).count(), evaluate:script=>page.evaluate(script)
     },origin+base+'visual-search/?scenario=journey',width,(_stage,label)=>frame(label,familyFrames));
-    await page.screenshot({path:path.join(evidence,'family-result-age-1280.png')});
     await saveJourney(context,familyFrames,width,evidence,{filename:'family-edit-journey-1280.webp'});
     assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    }

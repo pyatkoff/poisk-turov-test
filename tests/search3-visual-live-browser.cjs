@@ -713,7 +713,10 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  await page.locator('#quick-stars [data-action="any-stars"]').click();
  assert.equal(await page.locator('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#meal-label').textContent(),/Любое/);assert.match(await page.locator('#budget-label').textContent(),/Без ограничений/);
  await formValues('reset');
- if(width===390)fs.writeFileSync(path.join(evidence,'form-value-alignment.json'),JSON.stringify({states:formValueStates,engine:'Chromium',savedFictionalTransport:true,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+ if(width===390){
+  fs.writeFileSync(path.join(evidence,'form-value-alignment.json'),JSON.stringify({states:formValueStates,framesArchive:'form-values.tar.xz',engine:'Chromium',savedFictionalTransport:true,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+  require('./search3-visual-form-values-archive.cjs')(evidence,formValueStates);
+ }
  await page.locator('#search-return').click();
  assert.equal(await page.locator('#cards').innerHTML(),originalCards,'cancelled form keeps the complete saved results');assert.equal(page.url(),originalURL,'cancelled form preserves URL');
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'form filter edits never repeat supplier search');
