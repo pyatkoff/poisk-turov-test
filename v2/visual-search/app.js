@@ -2989,7 +2989,7 @@ function terminalizeSearchForVerification(reason='verification'){
 function stopSearch(){clearSearchTimers();terminalizeSearchForVerification('user');renderResults({keepFilters:true});}
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
- const opened=node.querySelector('details')?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
+ const details=node.querySelector('details'),opened=details?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
  const providerCounts=data.live?(r.currentInventory?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
  const sourceRows=[['tourvisor','Tourvisor'],['anex','ANEX'],['andromeda','SAMO']].flatMap(([key,name])=>{
   const source=r.sources?.[key],status=r.providers?.[key]||source?.status;if(!status||status==='skipped')return [];
@@ -3003,7 +3003,8 @@ function renderSearchStatus(items,total){
  more.innerHTML=more.hidden?'':`<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div><div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`;
  if(continueFocused)more.querySelector('[data-action="continue-search"]')?.focus({preventScroll:true});
  node.hidden=!state.hasSearched||r.phase==='complete'&&!noCurrent&&!providerPending&&!hasNotice;
- node.classList.toggle('search-status-compact',!r.pending&&!providerPending&&items.length>0&&!noCurrent);
+ const searching=r.pending||providerPending,progressive=searching&&items.length>0&&r.currentInventory===true&&!r.coverageGap&&!r.exactRefresh&&!partialError&&!unconfirmed;
+ node.classList.toggle('search-status-compact',progressive||!searching&&items.length>0&&!noCurrent);
  if(node.hidden)return;
  const failed=!items.length&&!r.pending&&!providerPending&&(r.phase==='error'||r.phase==='complete'&&providerFailure),fallback=r.databaseError&&items.length>0;
  node.dataset.state=failed||providerFailure?'error':hasNotice?'partial':'loading';
@@ -3012,11 +3013,17 @@ function renderSearchStatus(items,total){
  const available=items.length?'Уже найденные туры доступны для выбора.':'Отсутствие результатов пока не означает, что подходящих туров нет.';
  const message=r.coverageGap?r.message:failed?'Не удалось получить предложения. Даты, туристы и фильтры сохранены. '+(r.canContinue?(r.retryRead?'Можно проверить результат предыдущего запроса.':'Можно продолжить поиск.'):'Можно повторить поиск с теми же условиями.'):noCurrent?'Тот же тур — город вылета, отель, дата, ночи, состав туристов, номер, размещение, питание, туроператор и тип перелёта — пока не найден. Другие предложения ниже показаны только как альтернативы и не заменяют сохранённый выбор.':r.pending?(r.message?.startsWith('Получаем предложения · ')?'Предложения добавляются по мере получения.':r.message||'Предложения добавляются по мере получения.'):providerPending?'Часть источников ещё отвечает. Уже найденные туры доступны ниже.':fallback?(r.message||'База сейчас не отвечает. Ниже показаны сохранённые предложения; цену и наличие нужно проверить.'):retained?'Вы открыли условия тура. Найденные предложения и фильтры сохранены — можно продолжить выбор.':r.phase==='cancelled'?'Полученные предложения сохранены. Новый запрос начнётся только по нажатию «Повторить поиск».':partialError?'Часть предложений сейчас недоступна. '+available+(r.canContinue?' Можно продолжить поиск.':' Можно повторить поиск.'):partialDelivery?(r.canContinue?(r.retryRead?'Чтобы проверить результат предыдущего запроса, нажмите «Проверить результат». ':'Чтобы запросить ещё варианты, нажмите «Продолжить поиск». '):'Получена только часть предложений. ')+available:unconfirmed?'Не все источники подтвердили состояние результата. '+available:r.message||'Поиск можно повторить с выбранными условиями.';
  if(node.classList.contains('search-status-compact')){
-  node.innerHTML=`<details${opened?' open':''}><summary>${icon('info')}<strong>${esc(title)}</strong><span>Подробнее</span></summary><p>${esc(message)}</p>${delivery}<div class="search-status-actions">${continueAction||'<button class="text-button" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></details>`;
-  if(summaryFocused)node.querySelector('summary').focus({preventScroll:true});else if(['continue-search','retry-search','edit-search'].includes(focusedAction))node.querySelector(`[data-action="${focusedAction}"]`)?.focus({preventScroll:true});
+  const keepOpen=opened||!details&&!!focusedAction;
+  const action=progressive?'<button class="text-button" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="text-button" data-action="retry-search">Повторить поиск</button>';
+  node.innerHTML=`<details${keepOpen?' open':''}><summary>${icon('info')}<strong>${progressive?'Туры найдены, поиск продолжается':esc(title)}</strong><span>Подробнее</span></summary><p>${esc(message)}</p>${delivery}<div class="search-status-actions">${action}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></details>`;
+  if(summaryFocused)node.querySelector('summary').focus({preventScroll:true});
+  else if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction)){
+   const target=node.querySelector(`[data-action="${focusedAction}"]`)||(progressive?node.querySelector('[data-action="stop-search"]'):node.querySelector('summary'));target.focus({preventScroll:true});
+  }
   return;
  }
  node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>${delivery}<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
+ if(summaryFocused)node.querySelector('.search-status-actions button')?.focus({preventScroll:true});
  if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))(node.querySelector(`[data-action="${focusedAction}"]`)||(focusedAction==='continue-search'?node.querySelector('[data-action="stop-search"]'):null))?.focus({preventScroll:true});
  if(!items.length&&r.pending){
   const cards=$('#cards');
