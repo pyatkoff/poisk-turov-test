@@ -558,9 +558,9 @@
     return ids[0];
   }
   async function regions(country) {
-    const key=String(country);
+    const key=String(country),cache=catalog.regions;
     countryRow(key);
-    if(catalog.regions[key])return catalog.regions[key];
+    if(cache[key])return cache[key];
     if(regionRequests.has(key))return regionRequests.get(key);
     const request=destinationCatalog('regions',{countryId:key}).then(rows=>{
       const seen=new Set(),items=[],regionIds=new Set();
@@ -578,8 +578,8 @@
         }
       }
       for(const item of items)if(item.kind==='subregion'&&!regionIds.has(item.parentId))throw new Error('Не удалось проверить иерархию курортов.');
-      catalog.regions[key]=items;return items;
-    }).finally(()=>regionRequests.delete(key));
+      cache[key]=items;return items;
+    }).finally(()=>{if(regionRequests.get(key)===request)regionRequests.delete(key);});
     regionRequests.set(key,request);return request;
   }
   function destinationScope(s,filters) {
@@ -1542,32 +1542,58 @@
     if(failed.length===settled.length)throw failed[0].reason;
     return {...snapshot,partial:failed.length>0};
   }
-  async function init(origin='Москва') {
-    try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))catalog.departures=data.items;}catch{}
-    if(!catalog.departures.length)catalog.departures=await rt.api('departures',{departureCountryId:1});
-    if(!Array.isArray(catalog.departures)||!catalog.departures.length)throw new Error('Не удалось загрузить города вылета.');
-    try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
-    const readMealPlans=async provider=>{
+  async function loadDepartures() {
+    let rows=catalog.departures;
+    try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))rows=data.items;}catch{}
+    if(!Array.isArray(rows)||!rows.length)rows=await rt.api('departures',{departureCountryId:1});
+    if(!Array.isArray(rows)||!rows.length)throw new Error('Не удалось загрузить города вылета.');
+    catalog.departures=rows;
+  }
+  async function readMealPlans(provider) {
+    try{
       const response=await fetch(local+'data/search3-local-results-read-v1.php',{
         method:'POST',credentials:'same-origin',cache:'no-store',
         headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
         body:JSON.stringify({action:'meal_catalog',provider,scopeKey:'global'})
       });
       const payload=await response.json();
-      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data},provider))throw new Error('Invalid canonical meal catalogue');
-    };
-    providerMealPlans.delete('anex');
-    await Promise.all([
-      readMealPlans('tourvisor').catch(()=>{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}),
-      readMealPlans('anex').catch(()=>{providerMealPlans.delete('anex');})
-    ]);
+      if(response.ok&&payload?.ok===true&&payload.data)return {ok:true,...payload.data};
+    }catch{}
+    return null;
+  }
+  let catalogGeneration=0,catalogBootstrap=null;
+  function init(origin='Москва') {
+    if(!catalogBootstrap){
+      const departures=loadDepartures();
+      const plans=Promise.all([readMealPlans('tourvisor'),readMealPlans('anex')]);
+      const meals=departures.then(async()=>{
+        try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+        const [tourvisor,anex]=await plans;
+        if(!installMealPlans(tourvisor)){catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
+        if(!installMealPlans(anex,'anex'))providerMealPlans.delete('anex');
+      });
+      catalogBootstrap={departures,meals};
+    }
     return countries(origin);
   }
-  let catalogGeneration=0;
-  async function countries(origin) {
-    const run=++catalogGeneration,departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
+  async function countryOptions(origin,run,bootstrap) {
+    if(bootstrap)await bootstrap.departures;
+    if(run!==catalogGeneration)return null;
+    const departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
     const rows=await destinationCatalog('countries',{departureId:departure.id});
-    if(run!==catalogGeneration)return null;if(!rows.length)throw new Error('Для этого города список стран недоступен.');
+    return {rows,departure};
+  }
+  async function countries(origin) {
+    const run=++catalogGeneration,bootstrap=catalogBootstrap;
+    // A retry can reuse the global reads even if an earlier origin failed.
+    // Settle both before releasing the bootstrap or committing country state.
+    const [options,meals]=await Promise.allSettled([countryOptions(origin,run,bootstrap),bootstrap?.meals]);
+    if(run!==catalogGeneration)return null;
+    catalogBootstrap=null;
+    if(options.status==='rejected')throw options.reason;
+    if(meals.status==='rejected')throw meals.reason;
+    const {rows,departure}=options.value;
+    if(!rows.length)throw new Error('Для этого города список стран недоступен.');
     const seen=new Set(),items=[];
     for(const row of rows){
       const id=String(row?.id||''),name=text(row).trim();
@@ -1575,7 +1601,7 @@
       const native=tourvisorIds(row);if(native.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
       seen.add(id);items.push({id,name,russianName:name,tourvisorIds:native});
     }
-    catalog.countries=items;catalog.regions={};return {departures:catalog.departures,countries:items,origin:text(departure)};
+    catalog.countries=items;catalog.regions={};regionRequests.clear();return {departures:catalog.departures,countries:items,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
   async function lookupHotels(q,country,signal,onContent){

@@ -406,10 +406,11 @@ async function selectedHotelRestoration(){
  await context.restoreURLHotel();assert.deepEqual(calls,[[2002,'4']],'retry does not reread verified selections');
  assert.deepEqual(selected.hotelIds,[2001,2002],'partial failure never drops an exact selected ID');
  const rhs=app.match(/\$\('\.search-submit'\)\.disabled=([^;]+);\n renderCatalogError/)[1];
- const disabled=()=>vm.runInNewContext(rhs,{...context,place:selected,catalogReady:true,data:{preview:false}});
+ const disabled=(regionsMissing=false)=>vm.runInNewContext(rhs,{...context,place:selected,catalogReady:true,regionsMissing,data:{preview:false}});
  assert.equal(disabled(),true,'one unresolved selected hotel blocks broad or partial supplier search');
  context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);return {id,country,legacyIds:[String(id+5000)]};};
  await context.restoreURLHotel();assert.equal(disabled(),false,'successful explicit retry restores submit');
+ assert.equal(disabled(true),true,'an outstanding region identity still blocks submit');
  cache.clear();calls.length=0;let pending=gate();context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);await pending.promise;return {id,country,legacyIds:[String(id+5000)]};};
  const restoring=context.restoreURLHotel();await flush();const duplicated=context.restoreURLHotel();await duplicated;
  assert.equal(calls.length,2,'duplicate restoration shares the bounded in-progress work');

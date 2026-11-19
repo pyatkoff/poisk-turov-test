@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const {setTimeout: delay} = require('node:timers/promises');
+const {gzipSync} = require('node:zlib');
 const {chromium} = require('playwright');
 const {startFirefox} = require('./search3-firefox-driver.cjs');
 const {fixture} = require('./search3-visual-live-fixture.cjs');
@@ -168,6 +169,16 @@ async function measure(driver, engine, size, root, html, evidence) {
   return groups;
 }
 
+function emitFirstOpenFile(directory, name) {
+  const bytes = fs.readFileSync(path.join(directory, name));
+  const digest = sha(bytes), encoded = bytes.toString('base64');
+  const parts = Math.ceil(encoded.length / 3000);
+  for (let index = 0; index < parts; index++) {
+    console.log('SEARCH3_FIRST_OPEN_FRAME', name, digest, (index + 1) + '/' + parts,
+      encoded.slice(index * 3000, (index + 1) * 3000));
+  }
+}
+
 async function run() {
   const root=fs.realpathSync(process.argv[2]), evidence=path.resolve(process.argv[3]);
   fs.mkdirSync(evidence,{recursive:true});
@@ -193,7 +204,8 @@ async function run() {
     report.engines.firefox={version:firefox.capabilities.browserVersion,rdm,viewport:[430,932],
       groups:await measure(firefox,'firefox-rdm-430',[430,932],root,html,evidence)};
   } finally {await landing.close();await firefox.quit();}
-  fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify(report,null,2));
+  fs.writeFileSync(path.join(evidence,'result.json.gz'),gzipSync(JSON.stringify(report,null,2)));
+  for (const name of ['chromium-1280.png','firefox-rdm-430.png','result.json.gz']) emitFirstOpenFile(evidence,name);
   for (const [engine,run] of Object.entries(report.engines)) console.log('PASS first open',engine,
     run.groups.map(g=>({catalogDelayMs:g.catalogDelayMs,n:g.count,medianMs:g.medianMs,minMs:g.minMs,maxMs:g.maxMs})));
 }
