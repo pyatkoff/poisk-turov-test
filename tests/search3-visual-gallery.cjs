@@ -43,18 +43,43 @@ async function run(width,photoCount=24,progressive=false){
   if(progressive){
    const a=cardImage.getAttribute('src'),b='./assets/photo-2.jpg?gallery-corpus=1',c='./assets/photo-3.jpg?gallery-corpus=2';
    const conditions=()=>{const card=d.querySelector('.hotel-card').cloneNode(true);card.querySelector('.hotel-photos').remove();return card.outerHTML;},before=conditions();
+   cardImage.dispatchEvent(new w.Event('error'));assert.equal(trigger.disabled,false,'one failed photo remains available for enlargement and retry');
    trigger.click();const image=d.querySelector('#gallery-image'),stage=d.querySelector('.gallery-stage'),strip=d.querySelector('.gallery-thumbs');
    const q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
    const check=(src,index,count)=>{assert.equal(q('#gallery-image').getAttribute('src'),src);assert(q('#gallery-image').alt.startsWith(`Фото ${index+1} из ${count} `));assert.equal(q('[data-gallery-count]').textContent,`${index+1} / ${count}`);assert.equal(strip.children.length,count);assert.equal(strip.querySelectorAll('.active').length,1);assert.equal(strip.querySelector('.active img').getAttribute('src'),src);assert.equal(w.history.state[historyKey].index,index);};
-   click('[data-action="gallery-index"][data-value="1"]');updatePhotos(id,[a,b,c]);check(b,1,3);
+   const onlyPhoto=src=>{
+    const card=q('.hotel-card .hotel-photos');
+    assert.equal(card.querySelector('.hotel-image').getAttribute('src'),src);
+    assert.equal(card.querySelector('.hotel-image-button').disabled,false);
+    assert.equal(card.querySelector('.card-photo-arrow,.card-thumb'),null);
+    assert(card.querySelector('.photo-count').hidden&&card.querySelector('.card-thumbs').hidden);
+    assert.equal(image.getAttribute('src'),src);assert.match(image.alt,/^Фото отеля /);
+    assert(stage.querySelector('.gallery-arrow.prev').hidden&&stage.querySelector('.gallery-arrow.next').hidden);
+    assert(q('[data-gallery-count]').hidden&&strip.hidden);assert.equal(strip.childElementCount,0);
+   };
+   onlyPhoto(a);
+   const status=q('.gallery-state [role="status"]'),retry=q('[data-action="gallery-retry"]');
+   image.dispatchEvent(new w.Event('error'));assert.equal(retry.hidden,false);assert.doesNotMatch(status.textContent,/другое/);
+   retry.focus();retry.click();assert.equal(image.getAttribute('src'),a);assert.equal(stage.getAttribute('aria-busy'),'true');assert.equal(d.activeElement,q('#modal-title'));
+   const arrow=new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true});stage.dispatchEvent(arrow);
+   assert.equal(arrow.defaultPrevented,false,'a lone photo does not consume a navigation key');
+   image.dispatchEvent(new w.Event('error'));updatePhotos(id,[a,b]);
+   assert.match(status.textContent,/другое/,'more photos become available even while the current photo has failed');
+   assert.equal(q('[data-gallery-count]').hidden,false);assert.equal(strip.hidden,false);
+   assert.equal(stage.querySelector('.gallery-arrow.next').hidden,false);assert.equal(q('.hotel-card .card-thumb')!==null,true);
+   updatePhotos(id,[a]);onlyPhoto(a);assert.doesNotMatch(status.textContent,/другое/);
+   updatePhotos(id,[a,b]);click('[data-action="gallery-index"][data-value="1"]');updatePhotos(id,[a,b,c]);check(b,1,3);
    assert.equal(q('#gallery-image'),image);assert.equal(q('.gallery-stage'),stage);assert.equal(q('.gallery-thumbs'),strip,'progressive updates retain the existing gallery owners');
    click('[data-action="gallery-next"]');check(c,2,3);click('[data-action="gallery-prev"]');check(b,1,3);
    strip.children[1].focus();updatePhotos(id,[c,a,b]);check(b,2,3);assert.equal(d.activeElement,strip.children[2],'reordered selected thumbnail keeps its destination');
    click('[data-action="gallery-next"]');check(c,0,3,'the first click after reorder advances normally');
-   click('[data-action="gallery-index"][data-value="2"]');updatePhotos(id,[a]);check(a,0,1);
+   click('[data-action="gallery-index"][data-value="2"]');strip.children[2].focus();updatePhotos(id,[a]);onlyPhoto(a);
+   assert.equal(d.activeElement,q('#modal-title'),'a removed thumbnail returns focus to the open gallery');
    updatePhotos(id,[]);assert.match(q('#modal-body').textContent,/Фото пока недоступны/);assert.equal(q('.gallery-arrow'),null);assert.equal(q('.gallery-thumbs'),null);assert.equal(q('#modal').open,true,'empty photos keep a usable return path');
    updatePhotos(id,[b,c]);const restoredStrip=q('.gallery-thumbs');assert.equal(restoredStrip.children.length,2);assert.equal(q('#gallery-image').getAttribute('src'),b);click('[data-action="gallery-next"]');assert.equal(q('#gallery-image').getAttribute('src'),c);
-   await traverseHistory('back',false);assert.equal(q('#modal').open,false);await traverseHistory('forward',true);assert.equal(q('#modal').open,true);assert.equal(q('#gallery-image').getAttribute('src'),c,'Back/Forward restores the current valid photo');
+   await traverseHistory('back',false);assert.equal(q('#modal').open,false);
+   click('.hotel-card .card-photo-arrow.next');assert.equal(q('.hotel-card .hotel-image').getAttribute('src'),c,'the card can advance after a second photo arrives');
+   await traverseHistory('forward',true);assert.equal(q('#modal').open,true);assert.equal(q('#gallery-image').getAttribute('src'),c,'Back/Forward restores the current valid photo');
    assert.equal(conditions(),before,'photo enrichment preserves every offer/card condition');assert.equal(w.location.href,url);assert.deepEqual(errors,[]);assert.equal(reads.length,1);
    return{width,progressive_gallery:true,grow_reorder_shrink_empty_restore:true,first_next_after_update:true,stable_stage_image_strip:true,passive_back_forward:true,supplier_requests:0,lead_requests:0,browser_layout:false};
   }
@@ -84,5 +109,5 @@ async function run(width,photoCount=24,progressive=false){
   assert.equal(w.location.href,url);const unchangedCard=d.querySelector('.hotel-card').cloneNode(true);unchangedCard.querySelector('.current-card-selection')?.remove();assert.equal(unchangedCard.outerHTML,card,'viewing photos and passive chosen-tour strip keep every original offer/card condition');assert.deepEqual(errors,[]);assert(reads.every(p=>p.startsWith('/fixtures/')));return{width,photo_count:24,next_key_swipe_history:true,exact_retry:true,stable_dom_focus:true,passive_back_forward:true,stale_image_ignored:true,card_failed_photo_reachable:true,card_next_recovery:true,card_conditions_unchanged:true,tour_failed_photo_truthful:true,tour_recovery_exact:true,independent_tour_stale_photo_ignored:true,supplier_requests:0,lead_requests:0,browser_layout:false};
  }finally{dom.window.close();}
 }
-async function verify(){const rows=[];for(const width of [360,390,430,768,1280])rows.push(await run(width),await run(width,0));for(const width of [430,1280])rows.push(await run(width,2,true));const folder=path.resolve('visual-live-evidence/hotel-gallery');fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(path.join(folder,'source-receipt.json'),JSON.stringify(rows,null,2)+'\n');console.log('PASS source hotel-gallery',JSON.stringify(rows));}
+async function verify(){const rows=[];for(const width of [360,390,430,768,1280])rows.push(await run(width),await run(width,0));for(const width of [430,1280])rows.push(await run(width,1,true));const folder=path.resolve('visual-live-evidence/hotel-gallery');fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(path.join(folder,'source-receipt.json'),JSON.stringify(rows,null,2)+'\n');console.log('PASS source hotel-gallery',JSON.stringify(rows));}
 verify().catch(e=>{console.error(e);process.exitCode=1;});
