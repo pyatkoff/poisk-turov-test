@@ -2,6 +2,7 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
+const {tmpdir}=require('node:os');
 const {emitFirstOpenFile}=require('./search3-visual-first-open.cjs');
 const retainLosslessPngEvidence=require('../scripts/ci/search3_visual_evidence_retention.cjs');
 const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
@@ -1650,8 +1651,14 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    const pickerUnit=page.locator('#modal .calendar-units');
    assert.equal(await pickerUnit.innerText(),unit);
    assert.equal(await pickerUnit.evaluate(el=>el.clientWidth>0&&el.scrollWidth<=el.clientWidth+1),true);
-   await page.screenshot({path:path.join(evidence,`infant-calendar-${width}.png`)});
-   emitFirstOpenFile(evidence,`infant-calendar-${width}.png`,'SEARCH3_INFANT_FRAME');
+   const frameName=`infant-calendar-${width}.png`,frameDir=fs.mkdtempSync(path.join(tmpdir(),'search3-infant-'));
+   try {
+    await page.screenshot({path:path.join(frameDir,frameName)});
+    emitFirstOpenFile(frameDir,frameName,'SEARCH3_INFANT_FRAME');
+   } finally {
+    fs.rmSync(path.join(frameDir,frameName),{force:true});
+    fs.rmdirSync(frameDir);
+   }
    await page.locator('[data-action="close-modal"]').click();
    await page.locator('#hotel-501 [data-action="all-offers"]').click();
    const infantRow=page.locator('#all-offers-list .grouped-offer[data-offer-key^="anex%3A"]').first();
