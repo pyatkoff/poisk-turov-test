@@ -3,6 +3,65 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+async function checkFamilyResultRecap(driver, url, width, capture) {
+ const entry = new URL(url);
+ entry.searchParams.set('adults', '2');
+ entry.searchParams.set('ages', '7');
+ entry.searchParams.set('meals', 'Всё включено');
+ entry.searchParams.set('stars', '4');
+ const card = '#hotel-900002', selected = card + ' .current-card-selection';
+ const recap = width === 430 ? '#compact-details' : '#applied-search .applied-trip';
+ const edit = width === 430 ? '#compact-search .secondary[data-action="top"]' : '#applied-search [data-action="edit-search"]';
+ const total = '#modal-footer .footer-total > strong';
+ const text = async selector => (await driver.text(selector)).replace(/\s+/g, ' ').trim();
+
+ await driver.go(entry.href);
+ await driver.click('.search-submit:not(:disabled)');
+ await driver.wait(card + ' [data-card-entry]');
+ assert.match(await text(recap), /7 лет/);
+ assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
+ await driver.click(card + ' [data-card-entry]');
+ await driver.click('[data-room="Семейный номер"] [data-action="select-hotel-offer"]');
+ await driver.click('[data-action="contact-flights"]');
+ await driver.click('[name="flight-pair"][value="1"]');
+ await driver.click('[data-action="apply-flight"]');
+ await driver.wait('#prototype-lead-form');
+ assert.match(await text('.application-review-heading'), /7 лет/);
+ assert.equal(await text(total), '170 800 ₽');
+ await capture('family-contact', 'Заявка на тур · 7 лет');
+ await driver.click('[data-action="close-modal"]');
+ await driver.wait(selected);
+ assert.equal(await text(selected + ' .card-selection-price strong'), '170 800 ₽');
+ assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
+ assert.match(await text(recap), /7 лет/);
+ await driver.evaluate(`document.querySelector(${JSON.stringify(selected)}).scrollIntoView({block:"center", behavior:"instant"})`);
+ await capture('family-return', 'Выбранный тур в выдаче');
+
+ await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
+ await driver.click(edit);
+ assert.equal(await text('#meal-label'), 'Всё включено');
+ await driver.click('#search-form [data-action="guests"]');
+ await driver.click('[data-action="child-age"][data-index="0"]');
+ await driver.click('[data-action="age-pick"][data-value="10"]');
+ await driver.click('[data-action="apply-age"]');
+ await driver.click('[data-action="apply-guests"]');
+ assert.match(await text('#guests-detail'), /10 лет/);
+ assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("ages")'), '7');
+ await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
+ await capture('family-edit', 'Параметры поиска · 10 лет');
+ await driver.click('.search-submit');
+ await driver.wait(card + ' [data-card-entry]');
+ assert.equal(await driver.count(selected), 0, 'the tour for the previous party is no longer selected');
+ const applied = await text(recap);
+ assert.match(applied, /10 лет/);
+ assert.doesNotMatch(applied, /7 лет/);
+ assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("ages")'), '10');
+ assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
+ assert.match(await text(card), /Всё включено/);
+ await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
+ await capture('family-result-age', 'Новая выдача · 10 лет');
+}
+
 // Keep a visual record of one continuous session at each size. Small contact
 // sheets fit the existing acceptance archive without duplicating full frames.
 async function saveJourney(context, frames, width, evidence, options = {}) {
@@ -19,7 +78,8 @@ async function saveJourney(context, frames, width, evidence, options = {}) {
    }));
    const tileHeight = Math.round(tiles[0].img.height * tileWidth / tiles[0].img.width);
    const canvas = document.createElement('canvas');
-   canvas.width = 3 * tileWidth + 4 * pad;
+   const columns = Math.ceil(tiles.length / 2);
+   canvas.width = columns * tileWidth + (columns + 1) * pad;
    canvas.height = 2 * (tileHeight + heading) + 3 * pad;
    const ctx = canvas.getContext('2d');
    ctx.fillStyle = '#f3f6fa';
@@ -27,8 +87,8 @@ async function saveJourney(context, frames, width, evidence, options = {}) {
    ctx.font = 'bold 18px sans-serif';
    ctx.fillStyle = '#17263e';
    tiles.forEach(({img,label},index) => {
-    const x = pad + index % 3 * (tileWidth + pad);
-    const y = pad + Math.floor(index / 3) * (tileHeight + heading + pad);
+    const x = pad + index % columns * (tileWidth + pad);
+    const y = pad + Math.floor(index / columns) * (tileHeight + heading + pad);
     ctx.fillText(label,x,y + 22);
     ctx.drawImage(img,x,y + heading,tileWidth,tileHeight);
    });
@@ -58,12 +118,19 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
     label: labels[i], format: 'png', image: fs.readFileSync(path.join(raw, file)).toString('base64'),
    }));
    const filename = 'whole-search-firefox-430.webp';
+   const familyFilename = 'family-edit-journey-430.webp';
+   const familyFrames = report.selection.familyFrames.map(({file,label}) => ({
+    label, format:'png', image:fs.readFileSync(path.join(raw,file)).toString('base64'),
+   }));
    const context = await browser.newContext();
    try {
     await saveJourney(context, frames, 430, retained, {filename, tileWidth:430});
+    await saveJourney(context, familyFrames, 430, retained, {filename:familyFilename, tileWidth:430});
    } finally { await context.close(); }
    report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
    report.selection.contactSheet = filename;
+   report.selection.familyContactSheet = familyFilename;
+   report.selection.familyFrames = report.selection.familyFrames.map(({file,label}) => ({stage:path.parse(file).name, label}));
    for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame]){
     fs.copyFileSync(path.join(raw,file), path.join(retained,file));
    }
@@ -78,13 +145,13 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
   const page=await context.newPage();
   const failures=[],external=[],frames=[];
-  const frame=async label=>{
+  const frame=async (label,collection=frames)=>{
    await page.evaluate(()=>document.fonts.ready.then(()=>true));
    assert.equal(await page.evaluate(()=>{
     const modal=document.querySelector('dialog[open]');
     return document.documentElement.scrollWidth>innerWidth+1||Boolean(modal&&modal.scrollWidth>modal.clientWidth+1);
    }),false,label+' fits '+width+'px');
-   frames.push({label,image:(await page.screenshot({type:'jpeg',quality:80})).toString('base64')});
+   collection.push({label,image:(await page.screenshot({type:'jpeg',quality:80})).toString('base64')});
   };
   const sum=async locator=>(await locator.innerText()).replace(/\s+/g,' ').trim();
   page.on('pageerror',error=>failures.push(error.message));
@@ -199,7 +266,18 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    assert.equal(await sum(footer.locator('.footer-total>strong')),'170 800 ₽');
    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    await saveJourney(context,frames,width,evidence);
+   if(width===1280){
+    const familyFrames=[];
+    await checkFamilyResultRecap({
+     go:url=>page.goto(url), click:selector=>page.locator(selector).click(),
+     wait:selector=>page.locator(selector).waitFor(), text:selector=>page.locator(selector).innerText(),
+     count:selector=>page.locator(selector).count(), evaluate:script=>page.evaluate(script)
+    },origin+base+'visual-search/?scenario=journey',width,(_stage,label)=>frame(label,familyFrames));
+    await saveJourney(context,familyFrames,width,evidence,{filename:'family-edit-journey-1280.webp'});
+    assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
+   }
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');
   } finally { await context.close(); }
  }
 };
+module.exports.checkFamilyResultRecap = checkFamilyResultRecap;
