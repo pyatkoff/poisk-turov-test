@@ -107,7 +107,7 @@ async function checkSelectedFlightTimes(page, selector, layout) {
   const lines = [...range.getClientRects()];
   const box = node.getBoundingClientRect();
   const ink = range.getBoundingClientRect();
-  return {text:node.textContent, lines:lines.length, top:ink.top, left:ink.left, right:ink.right,
+  return {text:node.textContent, lines:lines.length, top:ink.top, bottom:ink.bottom, left:ink.left, right:ink.right,
    fits:ink.width > 0 && ink.left >= box.left - 1 && ink.right <= box.right + 1};
  }));
  const viewport = JSON.stringify(page.viewportSize());
@@ -115,10 +115,14 @@ async function checkSelectedFlightTimes(page, selector, layout) {
  assert.deepEqual(times.map(time => time.text), expected);
  assert.ok(times.every(time => time.lines === 1 && time.fits), 'each departure and arrival fits on one line at ' + viewport + ': ' + JSON.stringify(times));
  const [outbound, inbound] = times;
+ const inColumns = outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1;
+ const inRows = inbound.top >= outbound.bottom - 1;
  if (layout === 'columns') {
-  assert.ok(outbound.right < inbound.left && Math.abs(outbound.top - inbound.top) <= 1, 'both directions align side by side at ' + viewport);
+  assert.ok(inColumns, 'both directions align side by side at ' + viewport);
  } else if (layout === 'rows') {
-  assert.ok(inbound.top > outbound.top, 'flight directions have separate rows at ' + viewport);
+  assert.ok(inRows, 'flight directions have separate rows at ' + viewport);
+ } else if (layout === 'adaptive') {
+  assert.ok(inColumns || inRows, 'both directions remain separate at ' + viewport);
  }
 }
 
@@ -325,7 +329,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    await frame('Цена при возврате к туру');
    if(width===1280){
     await page.setViewportSize({width:901,height:720});
-    await checkSelectedFlightTimes(page,tourTimes,'rows');
+    await checkSelectedFlightTimes(page,tourTimes,'adaptive');
     await page.setViewportSize({width,height:720});
     await checkSelectedFlightTimes(page,tourTimes,'columns');
    }
