@@ -389,13 +389,15 @@ async function terminalQuoteRegressions(){
 async function pickerRetainedDraftRegressions(){
  const historyKey='anytour.prototype.v18.ui.v1',alias='контрольный псевдоним',pause=()=>new Promise(resolve=>setTimeout(resolve,30));
  const records={family:0,destination:0};
- async function create(width,{route=null,hotel=false}={}){
+ async function create(width,{route=null,hotel=false,params={},configure,waitReady=true}={}){
   const t=fixture(),errors=[],console=new VirtualConsole(),completed=[],started=[];
+  if(configure)configure(t);
   console.on('jsdomError',error=>errors.push(error.message));
   t.state.hotelCatalogue=hotelCatalogue();t.state.catalogueAliases={2004:[alias],2005:[alias]};
   t.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
-  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({scenario:'live',...trip,adults:3,ages:'0,12',...(hotel?{hotel:'2001'}:{})}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({scenario:'live',...trip,adults:3,ages:'0,12',...(hotel?{hotel:'2001'}:{}),...params}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
   const win=local.window,doc=win.document,get=s=>doc.querySelector(s),originalURL=win.location.href;
+  assert(get('.search-submit').disabled,'first paint cannot submit an unhydrated form');
   Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
   win.matchMedia=()=>({matches:width<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
   win.HTMLElement.prototype.scrollIntoView=function(){};win.HTMLElement.prototype.getClientRects=function(){return [{}];};win.scrollTo=()=>{};
@@ -422,12 +424,45 @@ async function pickerRetainedDraftRegressions(){
   const selected=()=>[...doc.querySelectorAll('#destination-selection [data-action="destination-remove"]')].map(node=>Number(node.dataset.id));
   const reads=()=>t.calls.filter(call=>call.url.endsWith('/data/hotel-search-v1.php')).length;
   const passive=()=>{assert.equal(win.location.href,originalURL,'draft/Back/reload must not mutate the applied search URL');assert.equal(t.calls.filter(call=>['search_start','search_continue','quote','quote_start','quote_calculate','quote_select_flights','search','tour','flights','expand','offer','additional_prices'].includes(call.action)||/api-(?:anex|andromeda)|lead|booking/.test(call.url)).length,0,'passive picker performs no supplier, price or lead operation');assert.deepEqual(errors,[],'actual app has no JSDOM errors');};
-  await until(()=>!get('.search-submit').disabled);
+  if(waitReady)await until(()=>!get('.search-submit').disabled);
   if(hotel)await until(()=>get('#destination-detail').textContent===t.state.hotelCatalogue.find(h=>h.id===2001).name);
   if(route){win.dispatchEvent(new win.Event('pageshow'));await until(()=>get('#modal').open);}
   const dispose=async()=>{await pause();passive();local.window.close();};
   return{t,win,doc,get,tap,input,ui,ids,selected,reads,started,completed,until,passive,dispose};
  }
+ const regionReads=t=>t.calls.filter(call=>call.action==='regions').length;
+ let releaseCountries,releaseRegions;
+ const whole=await create(1280,{route:{type:'destination'},waitReady:false,configure:t=>{
+  t.state.countryGates['1']=new Promise(resolve=>{releaseCountries=resolve;});t.state.regionsGate=new Promise(resolve=>{releaseRegions=resolve;});
+ }});
+ try{
+  assert.equal(regionReads(whole.t),0);assert(whole.get('.search-submit').disabled);
+  releaseCountries();await whole.until(()=>regionReads(whole.t)===1);
+  assert.match(whole.get('#modal-body').textContent,/Загружаем курорты/);assert(!whole.get('.search-submit').disabled);
+  whole.tap('[data-action="close-modal"]');await whole.until(()=>!whole.get('#modal').open&&!whole.ui());
+  const storageKey='anytour.prototype.v18.destinations.v1',recent={country:'4',resorts:['Белек'],hotelIds:[],hotelId:0};
+  whole.win.localStorage.setItem(storageKey,JSON.stringify([recent]));whole.passive();
+  const submit=whole.get('.search-submit');submit.click();submit.click();
+  await whole.until(()=>whole.t.calls.some(call=>call.action==='search_start'));releaseRegions();
+  await whole.until(()=>Array.isArray(whole.win.AnyTourPrototypeData.catalog.regions['4']));await pause();
+  const starts=whole.t.calls.filter(call=>call.action==='search_start');assert.equal(starts.length,1);assert.equal(starts[0].query.countryId,'4');assert.equal(starts[0].query['regionIds[]'],undefined);
+  assert.deepEqual(JSON.parse(whole.win.localStorage.getItem(storageKey))[1],recent,'submitting the country preserves unread resort history');
+ }finally{whole.win.close();}
+ let failRegions;
+ const scoped=await create(390,{params:{meals:'Всё включено',resorts:'Белек'},waitReady:false,configure:t=>{t.state.regionsGate=new Promise((resolve,reject)=>{failRegions=reject;});}});
+ try{
+  await scoped.until(()=>regionReads(scoped.t)===1);
+  assert.equal(scoped.get('#meal-label').textContent,'Всё включено');assert.equal(scoped.get('#destination-detail').textContent,'Белек');
+  assert(scoped.get('.search-submit').disabled);scoped.get('.search-submit').click();scoped.get('.search-submit').click();scoped.passive();
+  failRegions(Error('Fictional resort catalogue unavailable'));await scoped.until(()=>scoped.get('[data-action="retry-selected-resorts"]'));
+  assert(scoped.get('.search-submit').disabled);assert.equal(scoped.get('#destination-detail').textContent,'Белек');
+  scoped.t.state.regionsGate=null;scoped.tap('[data-action="retry-selected-resorts"]');await scoped.until(()=>!scoped.get('.search-submit').disabled);
+  assert.equal(regionReads(scoped.t),2);scoped.passive();
+  scoped.tap('.search-submit');await scoped.until(()=>scoped.t.calls.some(call=>call.action==='search_start'));
+  const starts=scoped.t.calls.filter(call=>call.action==='search_start');assert.equal(starts.length,1);
+  const request=starts[0].query;assert.equal(request['regionIds[]'],'21');assert.equal(request.meal,'7');assert.equal(request.countryId,'4');
+  await pause();
+ }finally{scoped.win.close();}
  const actionFocus=(c,action,index=null)=>{assert.equal(c.doc.activeElement.dataset.action,action,'retained usable action focus');if(index!==null)assert.equal(c.doc.activeElement.dataset.index,String(index),'focus retains the exact child index');assert(c.doc.activeElement.isConnected);assert(!c.doc.activeElement.matches(':disabled'));};
  const returnNested=(c,action)=>{if(action==='cancel')c.get('#modal').dispatchEvent(new c.win.Event('cancel',{cancelable:true}));else c.tap(action==='back'?'#modal-back':'[data-action="'+action+'"]');};
  for(const width of [390,1280]){
@@ -541,9 +576,13 @@ async function pickerRetainedDraftRegressions(){
  click('#search-form [data-action="meals"]');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
  click('#search-form [data-action="meals"]');assert.deepEqual([...d.querySelectorAll('[data-meal-choice]')].map(x=>x.value),['','Всё включено','Завтраки']);
  click('[data-meal-choice][value=""]');click('[data-action="apply-meals"]');await settle();
+ assert.equal(transport.calls.filter(c=>c.action==='regions').length,0,'the complete country form and meal picker need no resort dictionary');
+ let releaseFirstRegions;transport.state.regionsGate=new Promise(resolve=>{releaseFirstRegions=resolve;});
+ click('#search-form [data-action="destination"]');
+ await wait(()=>transport.calls.some(c=>c.action==='regions'));assert.match(q('#modal-body').textContent,/Загружаем курорты/);assert(!q('.search-submit').disabled);
+ transport.state.regionsGate=null;releaseFirstRegions();await wait(()=>Array.isArray(w.AnyTourPrototypeData.catalog.regions['4']));
  const regions=w.AnyTourPrototypeData.catalog.regions['4'];
  w.AnyTourPrototypeData.catalog.regions['4']=[...regions,{id:'121',kind:'subregion',parentId:'21',country:'4',name:'Кадрие',tourvisorIds:['121']}];
- click('#search-form [data-action="destination"]');
  q('#destination-query').value='Кадрие';q('#destination-query').dispatchEvent(new w.Event('input',{bubbles:true}));await wait(()=>q('[data-action="destination-resort"][data-value="Кадрие"]'));
  assert(q('[data-action="destination-resort"][data-value="Кадрие"]'),'saved LOCAL subresort is reachable through the unified direction search');click('[data-action="clear-destination-query"]');
  const hierarchyRows=[];

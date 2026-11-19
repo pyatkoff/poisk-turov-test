@@ -99,10 +99,13 @@ function unmappedAnexMealCatalogue(){
  return {source:'anytour-search-meal-v1',provider:'anex',scopeKey:'global',available:false,revision:hash('unmapped-anex-catalogue-fixture'),
   plans:definitions.map(([code,nameRu],index)=>({id:index+1,code,nameRu,nativeIds:[]}))};
 }
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,mealCatalogue,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,departures,destinations,mealCatalogue,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
+  if(departures&&target.pathname==='/data/departures-v1.php'){
+   return {ok:true,json:async()=>({ok:true,items:await departures()})};
+  }
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
    assert.ok(andromedaQuote,'unexpected Andromeda quote request');
    assert.equal(options.credentials,'same-origin');assert.equal(options.headers?.['X-Requested-With'],'AnyTourSearch3');
@@ -308,6 +311,77 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
+test('cold init overlaps independent catalogues and only the latest origin becomes ready',async()=>{
+ const cities=defer(),meals=defer(),plans=defer(),oldCountries=defer();
+ let cityReads=0;
+ const h=harness({
+  departures:()=>{cityReads++;return cities.promise;},
+  api:action=>{assert.equal(action,'meals');return meals.promise;},
+  mealCatalogue:async body=>{await plans.promise;return canonicalMealCatalogue(body.provider);},
+  destinations:(action,params)=>{assert.equal(action,'countries');if(params.departureId==='1')return oldCountries.promise;},
+ });
+ const first=h.data.init('Москва');
+ await flush();
+ assert.deepEqual(h.mealCatalogCalls.map(call=>call.body.provider),['tourvisor','anex']);
+ assert.equal(h.calls.length,0,'no upstream catalogue call while the departure is unknown');
+ assert.equal(h.destinationCalls.length,0);
+ cities.resolve([{id:1,name:'Москва'},{id:2,name:'Казань'}]);
+ await flush();
+ assert.deepEqual(h.calls.map(call=>call.action),['meals']);
+ assert.equal(h.destinationCalls[0].params.departureId,'1','country read starts with both kinds of meals still pending');
+ let ready=false;
+ const latest=h.data.init('Казань').then(catalog=>{ready=true;return catalog;});
+ meals.resolve([{id:7,name:'AI'}]);
+ await flush();
+ assert.deepEqual(h.destinationCalls.map(call=>call.params.departureId),['1','2']);
+ assert.equal(ready,false,'restored meal filters must wait for canonical provider identities');
+ plans.resolve();
+ assert.equal((await latest).origin,'Казань');
+ oldCountries.reject(Error('old origin failed'));
+ assert.equal(await first,null,'an obsolete country failure cannot replace the current origin or its status');
+ assert.equal(cityReads,1);
+ assert.deepEqual(h.calls.map(call=>call.action),['meals']);
+ assert.equal(h.mealCatalogCalls.length,2);
+ assert.equal(h.data.catalog.mealPlanAvailable,true);
+});
+test('departure failure spends no meal API call and late local reads cannot overwrite a retry',async()=>{
+ const stale=defer();
+ let retry=false;
+ const h=harness({
+  departures:()=>retry?[{id:1,name:'Москва'}]:[],
+  api:action=>{if(action==='departures')return [];if(action==='meals')return [{id:7,name:'AI'}];},
+  mealCatalogue:async body=>{if(!retry){await stale.promise;return null;}return canonicalMealCatalogue(body.provider);},
+ });
+ await assert.rejects(h.data.init(),/города вылета/);
+ assert.deepEqual(h.calls.map(call=>call.action),['departures']);
+ assert.equal(h.destinationCalls.length,0);
+ retry=true;
+ assert.equal((await h.data.init()).origin,'Москва');
+ stale.resolve();
+ await flush();
+ assert.equal(h.data.catalog.mealPlanAvailable,true);
+ assert.deepEqual(h.calls.map(call=>call.action),['departures','meals']);
+ assert.equal(h.destinationCalls.length,1);
+});
+test('late resorts from a previous country catalogue cannot replace a current in-flight read',async()=>{
+ const gates=[defer(),defer()];
+ let regionReads=0;
+ const h=harness({destinations:action=>{if(action==='regions')return gates[regionReads++].promise;}});
+ const previous=h.data.regions('4');
+ await h.data.countries('Москва');
+ const current=h.data.regions('4');
+ assert.equal(regionReads,2);
+ const resort=name=>[{id:21,kind:'region',parentId:4,name,tourvisorIds:['21']}];
+ gates[0].resolve(resort('Прежний'));
+ await previous;
+ assert.equal(h.data.catalog.regions['4'],undefined);
+ const same=h.data.regions('4');
+ assert.equal(regionReads,2,'the previous completion leaves the current deduplication entry intact');
+ gates[1].resolve(resort('Текущий'));
+ assert.equal((await current)[0].name,'Текущий');
+ assert.equal((await same)[0].name,'Текущий');
+ assert.equal(h.data.catalog.regions['4'][0].name,'Текущий');
+});
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
