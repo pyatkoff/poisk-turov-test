@@ -894,7 +894,7 @@ function cardHTML({hotel:h,offers,rating=ratingValue(h)}){
 
 function refreshOpenHotelRooms(){
  if(modalType!=='hotel-details')return;
- const body=$('#modal-body'),id=Number($('.hotel-section-nav')?.dataset.hotelId);if(!id)return;
+ const body=$('#modal-body'),nav=body.querySelector('.hotel-section-nav'),id=Number(nav?.dataset.hotelId);if(!id)return;
  const focused=document.activeElement,focus=focusReference(focused,body),scroll=body.scrollTop;
  const openRooms=[...body.querySelectorAll('.room-overview[open],article.hotel-room-card')].map(room=>room.dataset.room);
  const expandedMore=[...body.querySelectorAll('.hotel-room-more[open]')].map(more=>more.closest('[data-room]').dataset.room);
@@ -906,6 +906,11 @@ function refreshOpenHotelRooms(){
  if(summaryRoom!==null&&summaryRoom!==undefined){const room=[...body.querySelectorAll('.hotel-room-card[data-room]')].find(room=>room.dataset.room===summaryRoom);room?.querySelector(summaryMore?'.hotel-room-more>summary':':scope>summary')?.focus({preventScroll:true});}
  else if(focus&&document.activeElement!==focus.element)restoreFocus(focus,$('#hotel-room-count'),body);
  body.scrollTop=scroll;
+ // The queued section update can resize the scrollport by hiding or showing the footer.
+ // Finish the passive refresh before the next input, preserving deliberate entry into a room.
+ if(!hotelDetailsView?.roomEntryPending)queueMicrotask(()=>{
+  if(body.contains(nav)&&body.scrollTop!==scroll)body.scrollTop=scroll;
+ });
 }
 function syncHotelFlightSelection(row,listing,preserve=false){
  let preview=row.querySelector('.room-flight-preview');

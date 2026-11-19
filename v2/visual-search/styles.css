@@ -1947,7 +1947,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  .dates-dialog .calendar-month{scroll-margin-top:var(--calendar-context-height,120px)}
 }
 /* v145: understand the hotel before choosing a room. */
-.hotel-details-dialog #modal-body{padding-top:0}
+.hotel-details-dialog #modal-body{padding-top:0;overflow-anchor:none}
 .hotel-detail-identity{margin:0 0 20px;min-width:0}
 
 .hotel-detail-identity h3{font-size:1.125rem;line-height:1.4;letter-spacing:-.02em;overflow-wrap:anywhere}
