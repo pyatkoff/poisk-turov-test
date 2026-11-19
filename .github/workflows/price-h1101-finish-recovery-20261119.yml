@@ -1,0 +1,89 @@
+name: Finish verified h1101 PRICE recovery
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-h1101-finish-recovery-20261119.yml']
+permissions:
+  contents: read
+  issues: read
+  actions: read
+jobs:
+  finish:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ca8fb324d7e671f3c90fa1aaf99f2e01c339825d'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Verify PRICE admission and branch lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6994187631 | python3 -c "import sys,json,hashlib; b=json.load(sys.stdin)['body']; assert hashlib.sha256(b.encode()).hexdigest()=='27a30de414586bd83db0a7284993b38675edd64ef004bc913908f33fca6d9d3e'; assert 'ЯВНАЯ ПЕРЕДАЧА общего редактора PRICE' in b and 'CONTENT writers0' in b and 'W21 sender НЕ запускаем' in b"
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']; assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'; pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Execute first Telegram leg and finish original XML transaction
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
+          import pathlib,subprocess
+          root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'; source=(native/'monitor-price-hook.php').read_text(); stop=source.rfind('\n$inspect='); assert stop>0
+          prefix=source[:stop].replace('__DIR__',repr(str(native)))
+          body=r'''
+          function rr_need(bool $ok,string $why):void{if(!$ok)throw new RuntimeException($why);}
+          function rr_last($f,int $cap=67108864):array{$s=fstat($f);$size=(int)$s['size'];$take=min($size,1048576);while(true){rr_need(fseek($f,$size-$take,SEEK_SET)===0,'finish_global_seek_failed');$b=stream_get_contents($f,$take);$t=rtrim($b,"\n");$p=strrpos($t,"\n");if($p!==false){$line=substr($t,$p+1);break;}rr_need($take<$size&&$take<$cap,'finish_global_line_too_large');$take=min($size,$take+1048576);}return json_decode($line,true,256,JSON_THROW_ON_ERROR);}
+          function photoSignature(array $s):string{$m=$s['attachments']??[];rr_need(count($m)===1&&($m[0]['type']??'')==='image','finish_photo_changed');$id=(string)($m[0]['photo_id']??$m[0]['file_unique_id']??'');rr_need($id!=='','finish_photo_changed');return (string)$m[0]['provider'].':'.$id;}
+          function snapshotMatches(array $p,array $s,array $plan):bool{return ($s['text']??'')===$plan['text']&&photoSignature($s)===$plan['photo_signature']&&($s['post_url']??'')===$plan['post_url']&&ChannelPostIncomingAdapter::containsOnlyButton($s,ChannelPostButtonTransport::buttonUrl($p),'✈️ Узнать стоимость тура');}
+          function safeResult(array $p,array $plan):array{$x=['logical_id'=>$plan['logical_id'],'platform'=>$p['platform'],'channel_id'=>$p['channel_id'],'post_url'=>$plan['post_url'],'message_id'=>$plan['message_id'],'publication_id'=>(int)$p['publication_id'],'version_id'=>(int)$p['version_id'],'previous_version_id'=>$plan['old_version_id'],'button_url'=>ChannelPostButtonTransport::buttonUrl($p),'button_text'=>'✈️ Узнать стоимость тура','text_sha256'=>hash('sha256',$plan['text']),'photo_signature'=>$plan['photo_signature'],'source_key'=>$p['source_key'],'content_updated'=>true,'state'=>'sent','body_photo_button_verified'=>true,'existing_message_reused'=>true,'monitor_price'=>$plan['monitor_price'],'text'=>$plan['text']];return $x;}
+          function rr_same(array $a,array $b):void{foreach(['record_id','tourvisor_hotel_id','tour_id','price','currency','observed_at','price_basis','fuel_added_separately','full_package_price_verified','availability_verified'] as $k)rr_need(($a[$k]??null)===($b[$k]??null),'finish_source_record_changed');$x=$a['offer'];$y=$b['offer'];unset($x['ageSecondsAtExport'],$y['ageSecondsAtExport'],$x['expiresAt'],$y['expiresAt']);rr_need($x===$y,'finish_source_terms_changed');}
+          function rr_link(string $text,string $url):array{$c=preg_match_all('/^💰 (От (?:[0-9]{1,3}(?: [0-9]{3})*|[0-9]+)(?:,[0-9]{1,2})? ₽) за двоих$/mu',$text,$m,PREG_OFFSET_CAPTURE);rr_need($c===1,'finish_link_span_invalid');[$label,$at]=$m[1][0];$prefix=substr($text,0,$at);$u16=static fn(string $v):int=>preg_match_all('/./us',$v)+preg_match_all('/[\x{10000}-\x{10FFFF}]/u',$v);return ['url'=>$url,'label'=>$label,'offset'=>$u16($prefix),'length'=>$u16($label),'telegram_entities'=>[['type'=>'text_link','offset'=>$u16($prefix),'length'=>$u16($label),'url'=>$url]]];}
+          function rr_link_ok(array $message,string $text,array $link):bool{$e=$message['caption_entities']??null;if(($message['caption']??null)!==$text||!is_array($e))return false;$seen=0;foreach($e as $x)if(($x['type']??null)==='text_link'&&($x['offset']??null)===$link['offset']&&($x['length']??null)===$link['length']&&($x['url']??null)===$link['url'])$seen++;return $seen===1;}
+          function rr_tg(array $body):array{$c=curl_init('https://api.telegram.org/bot'.TELEGRAM_BOT_TOKEN.'/editMessageCaption');curl_setopt_array($c,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($body),CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45]);$raw=curl_exec($c);$http=(int)curl_getinfo($c,CURLINFO_HTTP_CODE);curl_close($c);$d=is_string($raw)?json_decode($raw,true):null;return ['http'=>$http,'data'=>is_array($d)?$d:[]];}
+          function rr_meta(array $m,array $price):array{unset($m['price_quote_response_sha256'],$m['price_checked_epoch_utc']);$m['monitor_price_record_id']=$price['record_id'];$m['monitor_price_basis']=$price['price_basis'];$m['monitor_price_observed_at_relative']=$price['observed_at'];return $m;}
+          $out=['ok'=>false,'operation'=>'finish-h1101-original-price','telegram_caption_edit_attempts'=>0,'telegram_button_write_attempts'=>0,'feed_finish_calls'=>0,'new_posts'=>0,'retry_authorized'=>false];$locks=[];$pdo=null;
+          try{
+              rr_need(getcwd()==='/var/www/anytoour/data/www/app.anytoour.ru','finish_workdir_changed');$installed=hook_runtime();rr_need($installed==='bd8e248f7138ea75cb9fda2dcf44beb631c633a5','finish_runtime_changed');$op='commercial-monitor-price-h1101-97ef202cdf0daa8d110778946b07b6bfcd4cd512af9159859cfcc8492f1e5a75';$base='/var/www/anytoour/data/channel-post-operations';$gp=$base.'/monitor-price-after-collection-v1.jsonl';$cp=$base.'/'.$op.'/receipt.jsonl';
+              foreach([[$gp,985619741,'b801a9520b8e8f65caff5b4faf90f35b09ad1169425f12a14d73a37ea0e8dc31'],[$cp,66809,'99a8d71d678f361de22aa102b88818323b4c63bb03bc8cfa087800323753d05d']] as [$path,$bytes,$sha]){$f=fopen($path,'r+b');rr_need(is_resource($f)&&flock($f,LOCK_EX|LOCK_NB),'finish_journal_busy');$locks[]=$f;$s=fstat($f);rr_need(is_array($s)&&$s['size']===$bytes&&hash_file('sha256',$path)===$sha,'finish_journal_changed');}
+              [$gl,$cl]=$locks;$global=rr_last($gl);$originalGlobal=$global;rewind($cl);$raw=stream_get_contents($cl);$state=monitor_hook_parse_journal($raw,$op);rr_need(($global['pending']['operation']??null)===$op&&($global['pending']['phase']??null)==='post_started'&&($state['complete']??false)===false&&count($state['posts'])===1&&($state['recovery']['stage']??null)==='max_confirmed','finish_state_changed');
+              ob_start();try{require '/var/www/anytoour/data/www/app.anytoour.ru/config.php';require_once '/var/www/anytoour/data/www/app.anytoour.ru/services/ChannelPostRuntime.php';require_once '/var/www/anytoour/data/www/app.anytoour.ru/services/ChannelPostEntryService.php';require_once '/var/www/anytoour/data/www/app.anytoour.ru/services/ChannelPostAdminService.php';}finally{ob_end_clean();}$pdo=ConversationDb::connection();$registry=new ChannelPostRegistryService($pdo);
+              $rows=json_decode(gzdecode(base64_decode(HOOK_ROSTER_GZIP_B64,true)),true,64,JSON_THROW_ON_ERROR)['rows'];$rows=array_values(array_filter($rows,static fn($r)=>($r['tourvisor_hotel_id']??0)===1101));rr_need(count($rows)===1,'finish_roster_changed');$row=$rows[0];$maxEntry=reset($state['posts']);$price=monitor_price_observation($state['monitor_snapshot'],1101,time(),false);rr_need(($price['record_id']??null)==='97ef202cdf0daa8d110778946b07b6bfcd4cd512af9159859cfcc8492f1e5a75','finish_original_price_changed');$fresh=hook_snapshots([$row],new DateTimeImmutable('today',new DateTimeZone('Europe/Moscow')))[1101];$freshPrice=monitor_price_observation($fresh,1101,time());rr_same($price,$freshPrice);
+              $proof=json_decode(hook_read($base.'/'.$row['original_publication_operation'].'/telegram-'.$row['logical_id'].'-approved.json',1048576),true,64,JSON_THROW_ON_ERROR)['receipt'];$tg=$registry->publication((int)$proof['publication_id']);rr_need(is_array($tg)&&$tg['publication_id']===743&&$tg['version_id']===8478&&$tg['state']==='sent'&&empty($tg['claim_token'])&&($tg['snapshot']['post_url']??null)===$row['posts']['telegram'],'finish_telegram_target_changed');$text=monitor_hook_draft($row['templates']['telegram'],$price);$plan=['platform'=>'telegram','key'=>$row['key'],'logical_id'=>$row['logical_id'],'message_id'=>$tg['external_message_id'],'publication_id'=>$tg['publication_id'],'old_version_id'=>$tg['version_id'],'token'=>$tg['start_payload'],'post_url'=>$tg['snapshot']['post_url'],'photo_signature'=>photoSignature($tg['snapshot']),'text'=>$text,'update_text'=>true,'monitor_price'=>$price];$link=rr_link($text,ChannelPostButtonTransport::buttonUrl($tg));
+              $cap=(new ChannelPostButtonTransport())->verifyChannel($tg['channel']);rr_need(($cap['state']??null)==='ready','finish_telegram_preflight_failed');$tkey='telegram:'.$row['key'];rr_need(!isset($state['posts'][$tkey]),'finish_telegram_intent_exists');$state['recovery']['stage']='telegram_edit_started';$state['recovery']['fresh_source_sha256']=hash('sha256',json_encode($fresh,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));$state['posts'][$tkey]=['state'=>'edit_started','plan'=>$plan,'edit_request_start_ms'=>(int)floor(microtime(true)*1000)];hook_append($cl,$state);$out['telegram_caption_edit_attempts']=1;
+              $body=['chat_id'=>$tg['channel_id'],'message_id'=>$plan['message_id'],'reply_markup'=>json_encode(['inline_keyboard'=>[[['text'=>'✈️ Узнать стоимость тура','url'=>ChannelPostButtonTransport::buttonUrl($tg)]]]],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),'caption'=>$text,'caption_entities'=>json_encode($link['telegram_entities'],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)];$response=rr_tg($body);$state['posts'][$tkey]['provider_response']=$response;$state['posts'][$tkey]['state']='provider_response_recorded';hook_append($cl,$state);rr_need($response['http']===200&&($response['data']['ok']??false)===true&&is_array($response['data']['result']??null),'finish_telegram_edit_unknown');$message=$response['data']['result'];rr_need((string)($message['chat']['id']??'')===$tg['channel_id']&&(string)($message['message_id']??'')===$plan['message_id']&&($message['chat']['username']??'')==='any_toour'&&rr_link_ok($message,$text,$link),'finish_telegram_response_changed');
+              $snap=ChannelPostIncomingAdapter::telegramSnapshot($message);rr_need(is_array($snap)&&snapshotMatches($tg,$snap,$plan),'finish_telegram_snapshot_changed');$snap['content_hash']=ChannelPostIncomingAdapter::contentFingerprint($snap,'',(string)$tg['channel']['bot_url']);$snap['metadata']=array_replace($tg['snapshot']['metadata']??[],$snap['metadata']??[]);$snap['metadata']['source_event_id']=$op.':telegram:'.$plan['message_id'];$snap['metadata']['observation_kind']='authorized_admin_content_edit';$snap['metadata']=rr_meta($snap['metadata'],$price);$registered=$registry->registerPublication('anytour','telegram','anyru_bot',$tg['channel_id'],$plan['message_id'],$snap);rr_need(is_array($registered)&&($registered['publication_id']??null)===743&&($registered['version_id']??0)>8478,'finish_telegram_registry_failed');$current=$registry->publication(743);if($current['state']==='pending')rr_need($registry->confirmObservedButton(743,$current['version_id'],['event_id'=>$op.':telegram-confirmed','verified'=>true,'reconciled'=>true,'content_preserved'=>true,'button_verified'=>true,'request_count'=>0,'write_attempts'=>0]),'finish_telegram_confirmation_failed');$final=$registry->publication(743);rr_need(is_array($final)&&$final['state']==='sent'&&snapshotMatches($final,$final['snapshot'],$plan),'finish_telegram_readback_failed');
+              $receipt=safeResult($final,$plan);$receipt['price_link_verified']=true;$receipt['price_link_url']=$link['url'];$state['posts'][$tkey]['state']='confirmed';$state['posts'][$tkey]['receipt']=$receipt;$state['recovery']['stage']='pair_confirmed';$state['complete']=true;hook_append($cl,$state);flock($cl,LOCK_UN);fclose($cl);array_pop($locks);$journal=hook_journal($op);rr_need(is_array($journal)&&($journal['complete']??false)===true&&count($journal['posts'])===2,'finish_pair_journal_failed');fseek($gl,0,SEEK_END);$out['feed_finish_calls']=1;$feed=hook_finish_feed($global,$gl,$installed,$out);rr_need($feed==='feed_completed'&&$global['pending']===null&&($global['completed'][1101]['operation']??null)===$op,'finish_feed_failed');$before=$originalGlobal;$after=$global;unset($before['pending'],$after['pending'],$before['completed'][1101],$after['completed'][1101]);rr_need($before===$after,'finish_unrelated_global_changed');$out['telegram']=['publication_id'=>743,'previous_version_id'=>8478,'version_id'=>$final['version_id'],'post_url'=>$final['snapshot']['post_url'],'provider_caption_writes'=>1,'provider_button_writes'=>0,'body_photo_button_verified'=>true];$out['feed']=$feed;$out['global_pending']=null;$out['completed_at']=gmdate('c');$out['ok']=true;
+          }catch(Throwable $e){$out['error']=$e->getMessage();$out['outcome']=($out['telegram_caption_edit_attempts']||$out['feed_finish_calls'])?'unknown_hold':'prewrite_refusal';}finally{if($pdo instanceof PDO&&$pdo->inTransaction())$pdo->rollBack();foreach(array_reverse($locks) as $f)if(is_resource($f)){flock($f,LOCK_UN);fclose($f);}}echo 'H1101_FINISH_RESULT='.json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";exit($out['ok']?0:2);
+          '''
+          p=subprocess.run(['php'],input=(prefix+body).encode(),cwd=app,capture_output=True,timeout=1800); print(p.stdout.decode(),end=''); print(p.stderr.decode(),end=''); raise SystemExit(p.returncode)
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
