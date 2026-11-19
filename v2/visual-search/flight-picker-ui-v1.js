@@ -32,7 +32,10 @@ function timeFilters() {
   }
 function render(o, selected, helpers) {
     const {esc, money, price, legHTML, fuelText} = helpers;
-    const tourPrice = [o.total, o.quoteListingTotal].map(Number).find(value => Number.isFinite(value) && value > 0) || 0;
+    const amount = helpers.amount || Number;
+    // Once a pair is applied, total includes that flight's price adjustment.
+    const initialTotal = o.flightChoiceId == null ? o.total : null;
+    const tourPrice = [o.tour?.price, o.quoteListingTotal, initialTotal].map(amount).find(value => Number.isFinite(value) && value > 0) || 0;
     const selectedVariant = selected == null ? null : o.variants?.[Number(selected)];
     const selectedTotal = selectedVariant ? price(o.tour, selectedVariant) : null;
     return `<details class="flight-filter-panel"><summary>Фильтры и сортировка <span data-flight-filter-count></span></summary><div class="flight-filter-panel-body"><div class="flight-search-row"><label><span class="sr-only">Найти авиакомпанию, рейс или аэропорт</span><input type="search" data-flight-query placeholder="Авиакомпания, рейс или аэропорт" autocomplete="off"></label></div><div class="flight-picker-tools"><div class="flight-quick-filters"><label><input type="checkbox" data-flight-filter="direct"> Без пересадок</label><label><input type="checkbox" data-flight-filter="baggage"> С багажом</label></div></div>${timeFilters()}<button type="button" class="primary flight-filter-apply" data-flight-show-results>Показать варианты</button></div></details><div class="flight-result-summary"><p class="flight-filter-state" aria-live="polite"></p><button type="button" class="text-button" data-flight-selected>К выбранному</button></div><fieldset class="flight-options flight-options-compact" data-tour-price="${esc(tourPrice)}"><legend class="sr-only">Пары рейсов туда и обратно. Цена всего тура за всех туристов.</legend>${o.variants.map((v, i) => {

@@ -124,6 +124,7 @@ function observe(source,s){
  ctx.offerRefinementLabel=call('offerRefinementLabel',(field,value)=>field+':'+value);
  for(const name of ['flightLabel','offerSearchContext','offerCountText','nightsText','operatorBadge','offerMetaNote','offerActionLabel','icon','mealLabel','offerRefinementRecovery'])ctx[name]=call(name,v=>name+':'+(v?.key??v?.operator??v?.meal??v??''));
  ctx.displayMealLabel=o=>Object.keys(o).length===1?o.meal||'Питание уточняется':ctx.mealLabel(o);ctx.roomLabel=o=>o.room||'Номер уточняется';
+ ctx.unknownInfantCharge=()=>false;
  ctx.sharedOfferNote=call('sharedOfferNote',()=>s.shared?'Общее примечание':'');
  ctx.byId=id=>node('#'+id);
  ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
@@ -472,7 +473,7 @@ function calendarDOM(code=source){
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
  const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,innerWidth:1280,
-  state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
+  state:{search:{from:'2026-10-01',to:'2026-10-21',ages:[]},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
   calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
   dateObj:day=>new Date(day+'T12:00:00Z'),rangeText:(from,to)=>from+' — '+to,loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
@@ -482,6 +483,18 @@ function calendarDOM(code=source){
  return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
   setPrice:(index,value)=>{prices[index]=value;},setPrices:value=>{prices=value.slice();},markup:()=>vm.runInContext('calendarStripHTML(resultCalendarModel())',ctx),
   close:()=>{observer.disconnect();dom.window.close();}};
+}
+{
+ const family=calendarDOM();
+ try{
+  family.setPrice(1,100000);
+  const units=family.ctx.document.querySelector('#calendar-units');
+  for(const [ages,expected] of [[[],'От, тыс. ₽ · весь тур'],[[1],'Минимальные цены, тыс. ₽'],[[7,0],'Минимальные цены, тыс. ₽'],[[2],'От, тыс. ₽ · весь тур']]){
+   family.ctx.state.search.ages=ages;family.render();
+   assert.equal(units.textContent,expected);
+   assert.equal(family.strip.querySelectorAll('.date-price.best').length,2,'both tied daily minima retain their amounts regardless of party');
+  }
+ }finally{family.close();}
 }
 const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].filter(node=>node.matches?.('.date-price')).length,0);
 {

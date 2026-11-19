@@ -1584,6 +1584,17 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'1'}));
    await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   await page.locator('#hotel-501 [data-action="all-offers"]').click();
+   const infantRow=page.locator('#all-offers-list .grouped-offer[data-offer-key^="anex%3A"]').first();
+   await infantRow.waitFor();
+   assert.doesNotMatch(await page.locator('.offer-list-context').innerText(),/Все цены за всех туристов/i);
+   assert.match(await infantRow.innerText(),/доплата за младенца уточняется/i);
+   const listedAmount=infantRow.locator('.offer-price strong');
+   assert.match(await listedAmount.getAttribute('aria-label'),/доплата за младенца уточняется/i);
+   assert.equal((await listedAmount.innerText()).replace(/\s/g,''),'121000₽');
+   await infantRow.scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(evidence,`infant-offer-prices-${width}.png`)});
+   await page.locator('[data-action="close-modal"]').click();
    await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
    const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]'),groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
    if(await groupRoom.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await groupRoom.locator(':scope>summary').click();
