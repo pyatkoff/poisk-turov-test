@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   recover:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4c35360cf1371083b64041ac0c77a1ad66e4118d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '28ef7f0af1ff3abf46e84a9294a90baa44aed35a'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,6 +22,26 @@ jobs:
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/branches/main --jq .commit.sha)" = "4c35360cf1371083b64041ac0c77a1ad66e4118d"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44612528423 --jq '.status+":"+(.conclusion//"")+":"+(.head_sha//"")')" = "completed:success:4c35360cf1371083b64041ac0c77a1ad66e4118d"
+      - name: Check out compatible existing publisher callback
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Validate and bundle compatible hook
+        run: |
+          set -euo pipefail
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-hook.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-driver-reliability.php
+          php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-link.php
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          hook_sha="$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)"
+          test "$hook_sha" != "416f6eba3ec547941ca489cce83f977e66c1540861e7d21a0cd2178ea3d4baf4"
+          echo "HOOK_SHA=$hook_sha" >> "$GITHUB_ENV"
+          echo "PRICE_COMPATIBLE_HOOK_SHA256=$hook_sha"
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -48,6 +68,14 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
+      - name: Install compatible callback atomically
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$RUNNER_TEMP/monitor-price-hook.php" "$DEPLOY_USER@$DEPLOY_HOST:~/www/anytoour.ru/data/monitor-price-hook.php.next"
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" "set -euo pipefail; test \"\$(cd ~/www/app.anytoour.ru && git rev-parse HEAD)\" = 9b1e17f94f39d8d2cc6260a9a6f45b1d1f38bb3e; php -l ~/www/anytoour.ru/data/monitor-price-hook.php.next >/dev/null; test \"\$(sha256sum ~/www/anytoour.ru/data/monitor-price-hook.php.next | cut -d' ' -f1)\" = '$HOOK_SHA'; mv ~/www/anytoour.ru/data/monitor-price-hook.php.next ~/www/anytoour.ru/data/monitor-price-hook.php; test \"\$(sha256sum ~/www/anytoour.ru/data/monitor-price-hook.php | cut -d' ' -f1)\" = '$HOOK_SHA'"
       - name: Apply recovered queue and verify public feeds
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
