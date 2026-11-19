@@ -55,10 +55,20 @@ function makeDelivery(transport, scenario) {
       }));
       const offers = response.data.hotels[0].tours;
       assert.equal(new Set(offers.map(o=>o.offer_ref)).size,scenario.offers);
+      call.firstGroup={offerRef:offers[0].offer_ref,searchRef:offers[0].search_ref,hotelId:response.data.hotels[0].local_id,generation:response.data.generation};
       call.offers = offers.length;
       call.minimum = Math.min(...offers.map(o=>Number(o.price.amount)));
       // Date-independent digest allows exact comparison across runner midnights.
       call.inventorySHA256 = sha(JSON.stringify(offers.map(o=>[o.offer_ref,o.room,o.price.amount,o.price.currency])));
+    }
+    if (anex && action==='expand') {
+      call.parent={offerRef:body.offer_ref,searchRef:body.search_ref,hotelId:body.local_hotel_id,generation:body.generation};
+      const expanded=response.data.hotels;
+      assert.equal(expanded.length,1);
+      assert.equal(expanded[0].tours.length,1);
+      const tour=expanded[0].tours[0];
+      assert.equal(tour.kind,'concrete');
+      call.concrete={key:encodeURIComponent('anex:'+tour.offer_ref),room:tour.room,amount:Number(tour.price.amount)};
     }
     call.sha256 = sha(JSON.stringify(response));
     call.completed = Date.now();
@@ -164,9 +174,36 @@ async function measure(driver, engine, size, root, html, evidence) {
         if (i===0 && scenario===scenarios[0]) await driver.screenshot(path.join(evidence,engine+'.png'));
         if (visible) assert.equal(visible.key,reachable.key,'the measured entry remained actionable');
         await driver.click(cardCTA+'[data-key="'+reachable.key+'"]');
-        const row='[data-offer-key="'+reachable.key+'"]';
-        const opened=await until(driver,'document.querySelector(\'.hotel-section-nav[data-hotel-id="'+profile.id+'"]\') && document.querySelector('+JSON.stringify(row)+')?.dataset.offerKey',8000);
-        assert.equal(opened,reachable.key,'the visible price opens the matching lodging offer');
+        // ANEX replaces its group minimum with the concrete tariff. Poll the
+        // finished room screen even if the intermediate group was never painted.
+        const group=reachable.provider==='anex';
+        const row=group?'#modal .hotel-room-card[data-room="ANEX CONCRETE"] .room-offer-choice':'#modal .room-offer-choice[data-offer-key="'+reachable.key+'"]';
+        const opened=await until(driver,`(()=>{
+          if(!document.querySelector('.hotel-section-nav[data-hotel-id="${profile.id}"]'))return null;
+          const row=document.querySelector(${JSON.stringify(row)});if(!row)return null;
+          return {key:row.dataset.offerKey,room:row.closest('.hotel-room-card').dataset.room,
+            amount:Number(row.querySelector('.hotel-room-price>strong').textContent.replace(/\\D/g,''))};
+        })()`,8000);
+        if (!opened) {
+          const screen = await driver.evaluate(`({
+            click:window.__firstTours.opened,
+            title:document.querySelector('#modal-title')?.textContent,
+            hotel:document.querySelector('.hotel-section-nav')?.dataset.hotelId,
+            offers:Array.from(document.querySelectorAll('#modal [data-offer-key]'), e => e.dataset.offerKey).slice(0,4)
+          })`);
+          assert.fail('missing final lodging offer: '+JSON.stringify({screen,scenario:scenario.name,expand:calls.filter(c=>c.action==='expand'),blocked:replay.blocked}));
+        }
+        const expansions=calls.filter(c=>c.action==='expand');
+        assert.equal(expansions.length,group?1:0);
+        if(group){
+          const parent=calls.find(c=>c.action==='search'&&c.firstGroup).firstGroup;
+          assert.equal(encodeURIComponent('anex:'+parent.offerRef),reachable.key);
+          assert.deepEqual(expansions[0].parent,parent,'expand targets the clicked group in the same hotel and search');
+          assert.deepEqual(opened,expansions[0].concrete,'terminal room, amount and tariff key match the expansion response');
+        }else{
+          assert.equal(opened.key,reachable.key,'the Tourvisor tariff keeps its offer key');
+          assert.equal(opened.amount,reachable.amount);
+        }
         const result=await driver.evaluate('window.__firstTours');
         assert.equal(result.trustedClick,true);assert.equal(await driver.evaluate('window.__firstOpen.trustedSubmit'),true);
         assert.deepEqual(result.opened,{key:reachable.key,trusted:true});
@@ -190,7 +227,7 @@ async function measure(driver, engine, size, root, html, evidence) {
           assert.equal(replay.scripts[key],scripts[key],'compiled bytes '+key);
         }
         assert.deepEqual(replay.blocked,[]);
-        samples.push({dom,identity:result.identity||null,visible,assisted:!visible,opened:result.opened,reachable,initialScrollY:result.initialScrollY,
+        samples.push({dom,identity:result.identity||null,visible,assisted:!visible,opened:result.opened,openedRoom:opened,reachable,initialScrollY:result.initialScrollY,
           trustedSearch:true,scripts,independentAtDOM,independentAtVisible:visible?(slowerDone===null || visible.ms<slowerDone):null,
           calls:calls.map(({started,completed,...request})=>({...request,startMs:elapsed(started),endMs:elapsed(completed)}))});
       } finally {await replay.close();}

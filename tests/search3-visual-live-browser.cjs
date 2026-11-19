@@ -2746,5 +2746,6 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   ]),rejected=completed.filter(result=>result.status==='rejected');
   if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
  }finally{await browser.close();server.close();if(!process.argv.includes('--messenger-only'))await retainLosslessPngEvidence(evidence);}
+ require('./search3-visual-form-values-archive.cjs').calendarBudget(evidence);
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
