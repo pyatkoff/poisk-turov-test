@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd15cce7143ee05241db12b866538a0679a96b177'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c56eaff876dc9d5c43ed1dade7d557d9be2a90f5'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -86,7 +86,7 @@ jobs:
               for name,sha in [('monitor-price-hook.php','605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'),('published-hotels-monitor-v1.php','3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c'),('top500-daily-collector-v1.php','940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='bd8e248f7138ea75cb9fda2dcf44beb631c633a5','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='8299a835d9b896c57dd4ffb9b34db75f613b3de0','runtime_changed')
           def feeds():
               info={}
               for key,size in [('telegram',1000),('max',1000),('all',2000)]:
