@@ -64,6 +64,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    } finally { await context.close(); }
    report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
    report.selection.contactSheet = filename;
+   fs.copyFileSync(path.join(raw, report.selection.similarRoomsFrame), path.join(retained, report.selection.similarRoomsFrame));
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
   } catch (error) {
    const last = path.join(raw,'last-state.png');
