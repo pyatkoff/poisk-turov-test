@@ -1,0 +1,77 @@
+name: Inspect PRICE after accepted production deploy
+on:
+  push:
+    branches: ['ops/price-hook-reviewed-pass-20261117']
+    paths: ['.github/workflows/price-runtime-postdeploy-inspect-20261119.yml']
+permissions:
+  contents: read
+  issues: read
+  actions: read
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c9588c4d8bc70bf4f38960ad46bb9ff45a846337'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Verify handoff and accepted deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44433211189 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:8299a835d9b896c57dd4ffb9b34db75f613b3de0"
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6994187631 --jq .body | grep -F 'ЯВНАЯ ПЕРЕДАЧА общего редактора PRICE'
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']; assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            f=line.split()
+            if len(f)<3 or f[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'; pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Inspect runtime, timer, pending state and public feeds
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
+          import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
+          root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
+          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); assert head=='8299a835d9b896c57dd4ffb9b34db75f613b3de0'
+          def sha(p):
+            h=hashlib.sha256()
+            with p.open('rb') as f:
+              for b in iter(lambda:f.read(1048576),b''): h.update(b)
+            return h.hexdigest()
+          pins={'hook':sha(native/'monitor-price-hook.php'),'cohort':sha(native/'published-hotels-monitor-v1.php'),'collector':sha(native/'top500-daily-collector-v1.php')}
+          assert pins=={'hook':'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','cohort':'3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c','collector':'940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'}
+          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--inspect'],capture_output=True,text=True); print(p.stdout,end=''); assert p.returncode==0
+          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT='))); assert result['ok'] and result['roster_pairs']==result['scanned_pairs']==1000 and result['updated_pairs']==0
+          feeds={}
+          for k,n in [('telegram',1000),('max',1000),('all',2000)]:
+            name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
+          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
