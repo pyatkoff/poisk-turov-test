@@ -1,29 +1,28 @@
-name: PRICE 1910 apply full queue after 1845 server collection
+name: PRICE 1930 verify main19 after FEED 1629
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
     paths: ['.github/workflows/price-runtime-postdeploy-inspect-20261119.yml']
 permissions:
   contents: read
-  issues: read
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd04385d868e9f102958c40fb13e01ff2d59d9b91'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e39bbb09a138dd4f06d261a1cba3d318c7f949ff'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
     steps:
-      - name: Verify handoff and accepted deploy
+      - name: Verify accepted releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44542421611 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:57e2aad5dd82e3a7b53c3ffb77e14d8f84f23e17"
-          gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 --jq .body | grep -F 'общий редактор возвращён PRICE'
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44563083153 --jq '.status+":"+(.conclusion//"")')" = "completed:success"
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44562396299 --jq '.status+":"+(.conclusion//"")+":"+.head_sha')" = "completed:success:3e63ed046a3cdd5ae0e12ca431ae0bce59beae7b"
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -38,7 +37,8 @@ jobs:
           ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
           python3 - <<'PY'
           import os,re,subprocess,base64,hashlib,pathlib
-          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']; assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
           scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
           for line in scan.stdout.splitlines():
             f=line.split()
@@ -46,9 +46,10 @@ jobs:
             try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
             except Exception: continue
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
-          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'; pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Inspect runtime, timer, pending state and public feeds
+      - name: Read back main19 without writes
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -56,207 +57,31 @@ jobs:
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
           import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
-          root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
-          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='57e2aad5dd82e3a7b53c3ffb77e14d8f84f23e17'
-          def sha(p):
-            h=hashlib.sha256()
-            with p.open('rb') as f:
-              for b in iter(lambda:f.read(1048576),b''): h.update(b)
-            return h.hexdigest()
-          pins={'hook':sha(native/'monitor-price-hook.php'),'cohort':sha(native/'published-hotels-monitor-v1.php'),'collector':sha(native/'top500-daily-collector-v1.php')}
-          assert pins['hook'] in {'605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4','416f6eba3ec547941ca489cce83f977e66c1540861e7d21a0cd2178ea3d4baf4'}
-          assert pins['cohort']=='3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c' and pins['collector']=='940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816'
-          redirects={174:('https://t.me/any_toour/67','https://t.me/anytour/1792'),12107:('https://t.me/any_toour/556','https://t.me/anytour/809'),132:('https://t.me/any_toour/78','https://t.me/anytour/17'),469:('https://t.me/any_toour/12','https://t.me/anytour/19'),12111:('https://t.me/any_toour/24','https://t.me/anytour/23'),70048:('https://t.me/any_toour/523','https://t.me/anytour/37'),82606:('https://t.me/any_toour/248','https://t.me/anytour/48'),1344:('https://t.me/any_toour/411','https://t.me/anytour/82'),260:('https://t.me/any_toour/118','https://t.me/anytour/192'),415:('https://t.me/any_toour/472','https://t.me/anytour/1754'),2493:('https://t.me/any_toour/661','https://t.me/anytour/196'),3452:('https://t.me/any_toour/220','https://t.me/anytour/1148'),4181:('https://t.me/any_toour/555','https://t.me/anytour/204'),37668:('https://t.me/any_toour/66','https://t.me/anytour/402'),43676:('https://t.me/any_toour/642','https://t.me/anytour/414'),64895:('https://t.me/any_toour/49','https://t.me/anytour/993'),73974:('https://t.me/any_toour/207','https://t.me/anytour/455'),74503:('https://t.me/any_toour/146','https://t.me/anytour/474'),99713:('https://t.me/any_toour/641','https://t.me/anytour/483')}
-          states={}
-          for name in ('telegram','all'):
-            path=app/'feed'/('hotel-posts-'+name+'.xml')
-            local=path.read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+path.name]); assert local==public
-            urls={o.attrib['id']:o.findtext('url') for o in ET.fromstring(local).findall('.//offer')}
-            oldn=newn=other=0
-            for h,(old_url,new_url) in redirects.items():
-              value=urls.get('tg_'+str(h))
-              if value==old_url: oldn+=1
-              elif value==new_url: newn+=1
-              else: other+=1
-            states[name]={'old':oldn,'new':newn,'other':other,'sha256':hashlib.sha256(local).hexdigest()}
-          stable_root=ET.fromstring((app/'feed'/'hotel-posts-telegram.xml').read_bytes())
-          special_bytes=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/hotel-posts-telegram-main19.php'])
-          special_root=ET.fromstring(special_bytes)
-          stable_offers={o.attrib['id']:o for o in stable_root.findall('.//offer')}
-          special_offers={o.attrib['id']:o for o in special_root.findall('.//offer')}
-          assert len(stable_offers)==len(special_offers)==1000 and stable_offers.keys()==special_offers.keys()
-          special_counts={'old':0,'new':0,'other':0}
-          for h,(old_url,new_url) in redirects.items():
-            value=special_offers['tg_'+str(h)].findtext('url')
-            special_counts['old' if value==old_url else 'new' if value==new_url else 'other']+=1
-          for offer_id,a in stable_offers.items():
-            b=special_offers[offer_id]
-            assert a.attrib==b.attrib
-            ach=[(x.tag,x.attrib,x.text or '') for x in a]
-            bch=[(x.tag,x.attrib,x.text or '') for x in b]
-            assert len(ach)==len(bch)
-            for av,bv in zip(ach,bch):
+          app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
+          canonical=(app/'feed'/'hotel-posts-telegram.xml').read_bytes()
+          projected=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/hotel-posts-telegram-main19.php'])
+          a={o.attrib['id']:o for o in ET.fromstring(canonical).findall('.//offer')}
+          b={o.attrib['id']:o for o in ET.fromstring(projected).findall('.//offer')}
+          ids=[174,12107,132,469,12111,70048,82606,1344,260,415,2493,3452,4181,37668,43676,64895,73974,74503,99713]
+          chosen={'tg_'+str(i) for i in ids}
+          assert len(a)==len(b)==1000 and a.keys()==b.keys()
+          changed=[]; mini=0
+          for oid,oa in a.items():
+            ob=b[oid]
+            assert oa.attrib==ob.attrib
+            ca=[(x.tag,x.attrib,x.text or '') for x in oa]
+            cb=[(x.tag,x.attrib,x.text or '') for x in ob]
+            assert len(ca)==len(cb)
+            for av,bv in zip(ca,cb):
               assert av[:2]==bv[:2]
-              if av[0]=='url' and offer_id in {'tg_'+str(h) for h in redirects}:
-                assert av[2]==redirects[int(offer_id[3:])][0] and bv[2]==redirects[int(offer_id[3:])][1]
+              if av[0]=='url' and oid in chosen:
+                expected='https://t.me/Any_tour_bot?startapp={yclid}_'+oid
+                assert bv[2]==expected
+                mini+=1; changed.append(oid)
               else:
                 assert av[2]==bv[2]
-          timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
-          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
-          active_lines=[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]
-          active_pids=[x.split(None,1)[0] for x in active_lines if x.split(None,1)[0].isdigit()]
-          ps=subprocess.run(['ps','-o','pid=,ppid=,stat=,etime=,lstart=,cmd=','-p',','.join(active_pids)],capture_output=True,text=True) if active_pids else None
-          wchan={}
-          for pid in active_pids:
-            p=pathlib.Path('/proc')/pid/'wchan'
-            try: wchan[pid]=p.read_text().strip()
-            except Exception: wchan[pid]=None
-          print('PRICE_ACTIVE_PROCESS_DIAGNOSTIC='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'ps':ps.stdout.splitlines() if ps else [],'wchan':wchan},separators=(',',':')))
-          print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':active_lines},separators=(',',':')))
-          env=dict(__import__('os').environ)
-          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T15:45:02+00:00'
-          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='20261119154502'
-          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--nightly'],capture_output=True,text=True,env=env)
-          print(p.stdout,end='')
-          assert p.returncode==0
-          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
-          assert result['ok'] is True and result['updated_pairs']>=1 and result['site_writes']==0 and result['supplier_calls']==0
-          print('PRICE_WRITE_AFTER_1845='+json.dumps(result,separators=(',',':')))
-          feeds={}
-          for k,n in [('telegram',1000),('max',1000),('all',2000)]:
-            name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
-          import re
-          from collections import Counter
-          from datetime import datetime, timedelta
-          from decimal import Decimal
-          from zoneinfo import ZoneInfo
-
-          moscow=ZoneInfo('Europe/Moscow')
-          now=datetime.now(moscow)
-          cutoff=now-timedelta(hours=36)
-          stamp_re=re.compile(r'^Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}) МСК\.',re.MULTILINE)
-          departure_re=re.compile(r'^✈️ Вылет из Москвы (\d{2}\.\d{2}\.\d{4}) ·',re.MULTILINE)
-          caption_price_re=re.compile(r'^💰 От ([\d \u00a0\u202f]+(?:,\d{1,2})?) ₽ за двоих\s*$',re.MULTILINE)
-
-          def unique_match(pattern, text):
-            matched=pattern.findall(text)
-            return matched[0] if len(matched)==1 else None
-
-          def decimal_amount(value):
-            if not value:
-              return None
-            value=re.sub(r'[\s\u00a0\u202f]','',value).replace(',','.')
-            if re.fullmatch(r'\d+(?:\.\d+)?',value):
-              amount=Decimal(value)
-              if amount>0:
-                return amount
-            return None
-
-          def read_offers(name):
-            rows={}
-            file=app/'feed'/('hotel-posts-'+name+'.xml')
-            data=file.read_bytes()
-            assert hashlib.sha256(data).hexdigest()==feeds[name],'feed_changed_after_public_readback'
-            for offer in ET.fromstring(data).findall('.//offer'):
-              match=re.fullmatch(r'(tg|max)_(\d+)',offer.attrib['id'])
-              assert match,'hotel_offer_identity_unrecognized'
-              key=(match[1],int(match[2]))
-              assert key not in rows,'duplicate_hotel_platform'
-              description=offer.findtext('description',default='')
-              amount=decimal_amount(offer.findtext('price'))
-              caption_amount=decimal_amount(unique_match(caption_price_re,description))
-              observed_text=unique_match(stamp_re,description)
-              departure_text=unique_match(departure_re,description)
-              try:
-                observed=datetime.strptime(observed_text,'%d.%m.%Y, %H:%M').replace(tzinfo=moscow) if observed_text else None
-              except ValueError:
-                observed=None
-              try:
-                departure=datetime.strptime(departure_text,'%d.%m.%Y').date() if departure_text else None
-              except ValueError:
-                departure=None
-              rows[key]=(amount,caption_amount,observed,departure,offer.findtext('currencyId'),offer.findtext('url'))
-            return rows
-
-          tg=read_offers('telegram')
-          mx=read_offers('max')
-          all_rows=read_offers('all')
-          assert not tg.keys()&mx.keys() and all_rows==tg|mx,'combined_feed_offer_mismatch'
-          hotel_ids={h for platform,h in tg if platform=='tg'}
-          assert len(hotel_ids)==1000 and set(mx)=={('max',h) for h in hotel_ids},'hotel_roster_mismatch'
-          eligible=set(result['eligible_ids'])
-          unchanged=set(result['unchanged_ids'])
-          assert eligible|unchanged<=hotel_ids,'price_receipt_roster_mismatch'
-          counts=Counter()
-          queued=Counter()
-          expired_ids=[]
-          for h in hotel_ids:
-            a=tg['tg',h][:5]
-            b=mx['max',h][:5]
-            has_price=[entry[0] is not None for entry in (a,b)]
-            if any(entry[3] is not None and entry[3]<now.date() for entry in (a,b)):
-              counts['past_departure_any_platform']+=1
-              expired_ids.append(h)
-            if not any(has_price):
-              status='no_amount'
-            elif not all(has_price) or a!=b:
-              status='platform_mismatch'
-            else:
-              amount,caption_amount,observed,departure,currency=a
-              if currency!='RUB' or caption_amount!=amount or observed is None or departure is None:
-                status='amount_without_matching_monitor_proof'
-              elif observed>now:
-                status='observation_in_future'
-              elif departure<now.date():
-                status='past_departure'
-              elif observed+timedelta(minutes=1)<=cutoff:
-                status='stale_observation'
-              elif observed<=cutoff:
-                status='freshness_cutoff_within_display_minute'
-              else:
-                status='fresh_published'
-            counts[status]+=1
-            if h in eligible:
-              queued[status]+=1
-          print('PUBLIC_XML_PRICE_FIELDS='+json.dumps({
-            'as_of_moscow':now.isoformat(),'cutoff_moscow':cutoff.isoformat(),
-            'unique_hotels':len(hotel_ids),'offers_per_feed':[len(tg),len(mx),len(all_rows)],
-            'classifications':dict(counts),'queued_by_public_status':dict(queued),
-            'past_departure_hotel_ids':sorted(expired_ids)},ensure_ascii=False,separators=(',',':')))
-          source_php=r'''<?php
-          declare(strict_types=1);
-          $root='/var/www/anytoour/data/www/anytoour.ru/data';
-          require_once $root.'/db-v1.php';
-          require_once $root.'/hotel-monitor-prices-v1.php';
-          require_once $root.'/top-hotels-v1.php';
-          require_once $root.'/top500-monthly-plan-v1.php';
-          require_once $root.'/published-hotels-monitor-v1.php';
-          $pdo=v2_data_db();
-          $registry=v2_top500_registry($pdo);
-          $priorityIds=v2_all_hotel_monitor_input_ids($registry);
-          $topOnly=array_values(array_diff(v2_priority_hotel_ids($registry),v2_collection_priority_hotel_ids()));
-          $csv=implode(',',array_map('intval',$priorityIds));
-          $hotelRows=$pdo->query("SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN ($csv) ORDER BY id")->fetchAll(PDO::FETCH_ASSOC)?:[];
-          $departureRows=$pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id")->fetchAll(PDO::FETCH_ASSOC)?:[];
-          $today=(string)$pdo->query('SELECT CURDATE()')->fetchColumn();
-          $plan=v2_top500_monthly_plan($topOnly,$hotelRows,$departureRows,$today,12,1,true);
-          $plan=v2_append_published_hotel_monthly_plan($plan,$hotelRows,$departureRows,$today,12,1,true);
-          $idsByDeparture=[];
-          foreach($plan['targets'] as $target)foreach($target['hotel_ids'] as $id)$idsByDeparture[(int)$target['departure_id']][(int)$id]=true;
-          $fresh=[];
-          foreach($idsByDeparture as $city=>$ids)foreach(array_chunk(array_keys($ids),100) as $chunk){
-            $where=v2_hmp_eligible_where(count($chunk));
-            $q=$pdo->prepare("SELECT DISTINCT o.hotel_id FROM tour_price_observations o WHERE $where");
-            $q->execute([...$chunk,$city,$plan['date_from'],$plan['date_to']]);
-            foreach($q->fetchAll(PDO::FETCH_COLUMN) as $id)$fresh[(int)$id]=true;
-          }
-          ksort($fresh,SORT_NUMERIC);
-          echo json_encode(['source_hotels'=>(int)$plan['source_hotel_count'],'searchable_hotels'=>(int)$plan['hotel_count'],'fresh_unique_hotels'=>count($fresh),'without_fresh_unique_hotels'=>(int)$plan['hotel_count']-count($fresh),'date_from'=>$plan['date_from'],'date_to'=>$plan['date_to']],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
-          ?>'''
-          source_run=subprocess.run(['php'],input=source_php,text=True,capture_output=True,check=True)
-          source=json.loads(source_run.stdout)
-          print('SOURCE_PRICE_CENSUS='+json.dumps(source,separators=(',',':')))
-          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'unchanged_pairs':result['unchanged_pairs'],'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'source':source,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
+          assert mini==19 and set(changed)==chosen
+          print('PRICE_MAIN19_POST1629='+json.dumps({'offers':len(b),'miniapp_urls':mini,'changed_ids':sorted(changed),'canonical_sha256':hashlib.sha256(canonical).hexdigest(),'projected_sha256':hashlib.sha256(projected).hexdigest()},separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
