@@ -127,7 +127,7 @@ async function measure(driver,engine,size,root,html,evidence) {
         if (!visible) await driver.evaluate('document.querySelector('+JSON.stringify(selector)+').closest("[data-room]").scrollIntoView({block:"center",behavior:"instant"})');
         const available=await until(driver,'window.__roomSnapshot()?.boxes.action.visible && window.__roomSnapshot()',2500);
         assert.ok(available,'actual tariff action unreachable '+JSON.stringify(dom));
-        await driver.evaluate('document.querySelector('+JSON.stringify(choose)+').focus({preventScroll:true})');
+        await driver.evaluate('(()=>{window.__roomFocusNode=document.querySelector('+JSON.stringify(choose)+');window.__roomFocusNode.focus({preventScroll:true});return true})()');
         const before=await driver.evaluate('window.__roomSnapshot()');
         assert.equal(before.focusKey,key);
         if (i===0 && delayMs) await driver.screenshot(path.join(evidence,engine+'.png'));
@@ -135,6 +135,7 @@ async function measure(driver,engine,size,root,html,evidence) {
         assert.ok(await until(driver,'document.querySelector("#modal-body")?.textContent.includes('+fresh+')',8000),'updated published LOCAL description');
         await driver.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))');
         const after=await driver.evaluate('window.__roomSnapshot()');
+        assert.equal(await driver.evaluate('window.__roomFocusNode===document.activeElement'),true,'the exact actionable DOM node survives LOCAL refresh');
         assert.equal(after?.focusKey,key,'profile refresh retains keyboard focus on the identical offer');
         assert.equal(after.key,key);assert.equal(after.boxes.action.visible,true);
         const topDelta=after.boxes.action.top-before.boxes.action.top;
@@ -171,7 +172,12 @@ async function run() {
   const {html,source,entrySHA256}=liveEntry(root);
   const report={source,entrySHA256,trip,hotel:profile.id,key,room:tour.roomType,amount:tour.price,
     method:'Normal compiled PHP and private TV search; one fresh no-store loopback origin per navigation. Warm LOCAL profile 1 completes before the native hotel card click. Only the explicit modal GET of profile 2 has the indicated delay. Readiness is the first of two stable paint frames where the matching room name, meal, RUB price and native verification control are all visible and hit-tested. Any explicit recovery scroll follows the measurement. No external supplier or lead traffic.',
-    engines:await measureEngines(root,html,(driver,engine,size)=>measure(driver,engine,size,root,html,evidence))};
+    engines:await measureEngines(root,html,async(driver,engine,size)=>{
+      const groups=await measure(driver,engine,size,root,html,evidence);
+      const readingPosition=await require('./search3-visual-reading-position.cjs').measureReadingPosition(driver,root,html);
+      console.log('SEARCH3_READING_POSITION',engine,JSON.stringify(readingPosition));
+      return groups;
+    })};
   fs.writeFileSync(path.join(evidence,'room-ready.json.gz'),gzipSync(JSON.stringify(report)));
   for (const file of ['chromium-1280.png','firefox-rdm-430.png','room-ready.json.gz']) emitFirstOpenFile(evidence,file,'SEARCH3_ROOM_READY_FRAME');
   for (const [engine,result] of Object.entries(report.engines)) console.log('PASS room ready',engine,
