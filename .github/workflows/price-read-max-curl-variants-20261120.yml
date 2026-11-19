@@ -1,0 +1,32 @@
+name: PRICE inspect MAX curl caption variants
+on:
+  push:
+    branches: ['ops/price-apply-promoted-1632-20261120-0214']
+    paths: ['.github/workflows/price-read-max-curl-variants-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compare exact curl public representation
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 'https://max.ru/anytour/AaCF4YtORgI' > "$RUNNER_TEMP/held352"
+          curl -fsS --max-time 30 'https://max.ru/anytour/AaDtMfpbMO0' > "$RUNNER_TEMP/held132016"
+          curl -fsS --max-time 30 'https://max.ru/anytour/AaCaxLjsVmU' > "$RUNNER_TEMP/control341"
+          python3 - <<'PY'
+          import pathlib,re,json,hashlib
+          root=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])
+          out=[]
+          for label,name in [('held_352','held352'),('held_132016','held132016'),('control_341','control341')]:
+            raw=(root/name).read_bytes(); text=raw.decode('utf-8','replace')
+            at=text.find('message:{')
+            snippet=text[at:at+420] if at>=0 else ''
+            out.append({'label':label,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+              'current_pattern':len(re.findall(r'message:\\{text:("(?:[^"\\\\]|\\\\.)*")',text)),
+              'message_at':at,'snippet':snippet})
+          print('MAX_CURL_VARIANTS='+json.dumps(out,ensure_ascii=False,separators=(',',':')))
+          PY
