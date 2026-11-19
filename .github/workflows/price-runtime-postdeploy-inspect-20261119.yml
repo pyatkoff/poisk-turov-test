@@ -1,4 +1,4 @@
-name: PRICE inspect candidate editor on the exact 38 promoted posts
+name: PRICE compare three exact MAX caption baselines
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '63abf51e5c83e15069b1adc7362b8de8ddbe33e0'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e479731f7aeb4ea45543251e59a80f18009b260a'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -48,7 +48,7 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read-only native editor acceptance from PR 1631
+      - name: Compare canonical and public MAX caption text
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -630,11 +630,21 @@ jobs:
           $pdo=ConversationDb::connection();
           $pdo->exec('SET SESSION TRANSACTION READ ONLY');
           $pdo->beginTransaction();
-          $editor=new PromotedHotelPriceWriter($pdo,new ChannelPostRegistryService($pdo),'/var/www/anytoour/data/channel-post-operations/promoted-hotel-price-revisions-v1');
-          $rows=$editor->run($plan['plans'],false);
+          $registry=new ChannelPostRegistryService($pdo);
+          $output=[];
+          foreach([12107=>3604,1344=>3610,3452=>3613] as $hotel=>$id){
+              $p=$registry->publication($id);
+              $resp=ChannelPostApiTransport::buttonRequest('max','GET','/messages/'.$p['external_message_id'],[],null);
+              $native=ChannelPostIncomingAdapter::maxSnapshot($resp['data']??[]);
+              $pub=PromotedHotelPriceWriter::publicBytes($p['snapshot']['post_url']);
+              preg_match('~message:\{text:("(?:[^"\\\\]|\\\\.)*")~',$pub,$m);
+              $s=json_decode($m[1]??'null',true);
+              $output[]=['hotel'=>$hotel,'http'=>$resp['http'],'registry'=>$p['snapshot']['text'],
+                'native'=>$native['text']??null,'public'=>$s,
+                'same_photo'=>($p['snapshot']['attachments'][0]['photo_id']??null)===($native['attachments'][0]['photo_id']??null)];
+          }
           $pdo->rollBack();
-          echo 'PROMOTED_CANDIDATE_READ_ONLY='.json_encode(['source_eligible'=>$plan['eligible_hotels'],'feed'=>$plan['feed_sha256'],'rows'=>$rows],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
-          
+          echo 'PROMOTED_MAX_CAPTION_DIFF='.json_encode($output,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),PHP_EOL;
           PY
       - name: Cleanup connection material
         if: always()
