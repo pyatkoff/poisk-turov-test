@@ -2400,6 +2400,14 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-review-card>.application-review{padding:0;margin:12px 0;border:0;border-radius:0;background:transparent}
 .application-review-card>.application-review .saved-stay-summary{margin-top:12px}
 .application-review-card .application-review-stay{color:var(--ink);font-weight:600}
+.application-dialog .application-cost{display:block;margin:12px 0;padding:10px 12px;background:#fff;border-color:var(--line);color:var(--ink)}
+.application-cost>strong{font-size:.875rem}
+.application-price-breakdown{display:grid;gap:4px;margin:6px 0 0;font-size:.8125rem;line-height:1.4}
+.application-price-breakdown>div{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px}
+.application-price-breakdown dt{color:var(--muted)}
+.application-price-breakdown dd{margin:0 0 0 auto;font-variant-numeric:tabular-nums}
+.application-price-breakdown [data-price-part="total"]{border-top:1px solid var(--line);padding-top:5px;margin-top:2px;font-weight:700}
+.application-price-breakdown [data-price-part="total"] dt{color:inherit}
 .application-change-actions{margin-top:12px}
 
 details.application-review .chosen-trip{display:none}
@@ -2648,7 +2656,8 @@ details.application-review .chosen-trip{display:none}
 .hotel-more .text-button svg {display:none}
 .hotel-more .card-all-offers {min-height:44px;padding:9px 14px;font-size:.875rem;line-height:1.4;background:#fff;border-color:#c3cef7;color:var(--brand)}
 .hotel-more .card-all-offers svg {width:16px;height:16px}
-.current-card-selection {grid-column:1/-1;grid-row:6;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px 20px;padding:16px 20px;border-top:1px solid #c3cef7;background:#f3f6ff;min-width:0}
+/* The saved tour occupies the row before the ordinary hotel card grid. */
+.current-card-selection {grid-column:1/-1;grid-row:span 1/1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) auto;align-items:center;gap:8px 18px;padding:16px 20px;border-bottom:1px solid #c3cef7;background:#f3f6ff;min-width:0}
 
 .card-selection-copy {min-width:0}
 
@@ -2656,17 +2665,23 @@ details.application-review .chosen-trip{display:none}
 
 .card-selection-copy>strong>svg {width:16px;height:16px;flex:none}
 
+.card-selection-hotel {color:var(--ink);overflow-wrap:anywhere}
+
 .card-selection-copy p {margin:3px 0 0;font-size:.875rem;line-height:1.5;overflow-wrap:anywhere}
 
-.card-selection-copy small,.card-selection-price>span,.card-selection-price>small {display:block;margin-top:3px;color:#566174;font-size:.8125rem;line-height:1.5;overflow-wrap:anywhere}
+.card-selection-price>span,.card-selection-price>small,.card-selection-trip {display:block;color:#566174;font-size:.8125rem;line-height:1.45;overflow-wrap:anywhere}
 
-.card-selection-copy>strong>small {margin:0;color:#566174;font-weight:500}
+.card-selection-filter-note {display:block;margin-top:4px;color:#79521d;font-size:.8125rem;font-weight:600;line-height:1.45}
+
+.card-selection-trip {grid-column:1/-1;border-top:1px solid #dce3f2;padding-top:7px}
+.card-selection-trip p {margin:0}
 
 .card-selection-price {min-width:0;max-width:220px}
 
-.card-selection-price>strong {display:block;font-size:1.25rem;line-height:1.4;white-space:nowrap;color:var(--ink)}
+.card-selection-price>strong {display:block;font-size:1.375rem;line-height:1.35;font-variant-numeric:tabular-nums;color:var(--ink);overflow-wrap:anywhere}
 
-.current-card-selection>.secondary {min-height:48px;white-space:normal;max-width:180px;line-height:1.4}
+.current-card-selection>.secondary {min-height:48px;white-space:normal;max-width:180px;line-height:1.4;color:#fff;background:var(--brand);border-color:var(--brand)}
+.current-card-selection>.secondary:hover {background:#2038aa;border-color:#2038aa}
 
 
 .compact-search {position:fixed;z-index:25;top:0;left:0;right:0;background:#fffffff8;backdrop-filter:blur(14px);border-bottom:1px solid var(--line);box-shadow:0 3px 15px #172a8608}
@@ -2702,7 +2717,8 @@ details.application-review .chosen-trip{display:none}
 }
 @media(max-width:760px) {
  .hotel-card {display:flex;flex-direction:column;border-radius:14px}
-.current-card-selection {order:6;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:14px 16px}
+.current-card-selection {order:-1;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;padding:14px 16px}
+.card-selection-copy {grid-column:1/-1}
 
 .card-selection-price {max-width:none}
 

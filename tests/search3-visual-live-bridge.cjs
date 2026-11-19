@@ -74,7 +74,7 @@ function modalViewportRegressions(){
 function approvedPriceOriginRegressions(){
  const app=source('visual-search/app.js'),a=app.indexOf('function quotePriceChangeHTML('),b=app.indexOf('function chosenStayHTML(',a);
  assert(a>0&&b>a);const code=app.slice(a,b),box=new JSDOM('',{runScripts:'outside-only'}),win=box.window;
- win.eval(`const data={amount:v=>typeof v==='number'&&Number.isFinite(v)&&v>0?v:null};const money=v=>String(v);const flightPairFor=o=>o.flightChoiceId===0?o.variants?.[0]:null;${code}\nwindow.priceOrigin=quotePriceChangeHTML;`);
+ win.eval(`const data={amount:v=>typeof v==='number'&&Number.isFinite(v)&&v>0?v:null};const money=v=>String(v);const flightPairFor=o=>o.flightChoiceId===0?o.variants?.[0]:null;${code}\nwindow.priceOrigin=quotePriceChangeHTML;window.applicationBreakdown=applicationPriceBreakdownHTML;window.estimateBreakdown=anexEstimateBreakdownHTML;`);
  const offer={quoteListingTotal:186400,tour:{price:195400},total:196700,flightChoiceId:0,variants:[{}]},render=(extra={},checked)=>checked===undefined?win.priceOrigin({...offer,...extra}):win.priceOrigin({...offer,...extra},false,checked);
  const both=render();for(const n of [186400,195400,196700])assert(both.includes(n));assert.match(both,/Цена с выбранным перелётом/);
  const offset=render({total:186400});assert(offset.includes('195400'),'cheap pair does not hide a genuine checked quote change');
@@ -92,6 +92,35 @@ function approvedPriceOriginRegressions(){
  assert.match(render({...noCheckedPrice,total:187700}),/Этот тур в поиске 186400 → с выбранной парой 187700/);
  assert.equal(render({loading:true}),'');assert.equal(render({quoteError:'unavailable'}),'');assert.equal(render({pricePending:true}),'');
  const provider=render({tour:{price:999999},total:106059,flightChoiceId:null,quoteListingTotal:95643},106059);assert(provider.includes('106059'));assert(provider.includes('95643'));assert.doesNotMatch(provider,/999999|выбранной парой/,'provider receipt is authoritative, not generic tour.price');
+ const composition=overrides=>{
+  const current={...offer,variants:[{price:offer.total}],...overrides};
+  win.document.body.innerHTML=win.applicationBreakdown(current);
+  return Object.fromEntries([...win.document.querySelectorAll('[data-price-part]')].map(row=>[row.dataset.pricePart,row.querySelector('dd').textContent]));
+ };
+ assert.deepEqual(composition({}),{tour:'186400',operator:'+9000',flight:'+1300',total:'196700'});
+ assert.deepEqual(composition({quoteListingTotal:169500,tour:{price:169500},total:170800,variants:[{price:170800,fuelCharge:2500}]}),
+  {tour:'169500',flight:'+1300',total:'170800'},'a reported fuel charge is not added to a selected pair total');
+ assert.deepEqual(composition({tour:{price:184400},total:186400,variants:[{price:186400}]}),
+  {tour:'186400',operator:'−2000',flight:'+2000',total:'186400'},'offsetting changes remain distinct');
+ assert.deepEqual(composition({total:185400,variants:[{price:185400}]}),
+  {tour:'186400',operator:'+9000',flight:'−10000',total:'185400'});
+ assert.equal(composition({total:195400,variants:[{price:195400}]}).flight,'Без доплаты');
+ assert.deepEqual(composition({flightChoiceId:null,total:195400}),{tour:'186400',operator:'+9000',total:'195400'});
+ for(const missing of [{tour:null},{quoteListingTotal:null},{variants:[{}]},{variants:[{price:150000}]},
+  {pricePending:true},{priceAcceptancePending:true},{loading:true},{quoteError:'unavailable'},{tour:{price:195400,currency:'USD'}}]){
+  assert.deepEqual(composition(missing),{},'unknown price components must not be inferred');
+ }
+ const estimate={provider:'anex',priceKind:'estimate',finalPriceVerified:false,offerRef:'offer',searchRef:'search',generation:2,localHotelId:4,adults:2,ages:[1],currency:'RUB',price:123000};
+ const rub=amount=>({currency:'RUB',amount:String(amount)});
+ const retained={type:'anex-additional',offer:{adults:2,ages:[1],raw:{offerRef:'offer',searchRef:'search',anexGeneration:2,anexLocalHotelId:4}},
+  result:{state:'additional_prices',arithmeticApplied:true,finalPriceVerified:false,searchPrice:rub(121000),partySurcharge:rub(2000),calculatedTotal:rub(123000)}};
+ assert.match(win.estimateBreakdown(estimate,retained),/Расчётная сумма/);
+ for(const mismatch of [{offerRef:'other'},{ages:[5]},{price:124000},{finalPriceVerified:true}]){
+  assert.equal(win.estimateBreakdown({...estimate,...mismatch},retained),'','another offer, party, price or final quote cannot borrow the estimate');
+ }
+ for(const missing of [{partySurcharge:null},{searchPrice:{amount:'121000',currency:'USD'}},{partySurcharge:rub(1000)},{arithmeticApplied:false}]){
+  assert.equal(win.estimateBreakdown(estimate,{...retained,result:{...retained.result,...missing}}),'','an incomplete breakdown is omitted');
+ }
  box.window.close();console.log('PASS approved191 price origins: quote/pair/both/offset/unknown/provider authority; actual source owner, no HTTP');
 }
 approvedPriceOriginRegressions();
