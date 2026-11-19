@@ -1,0 +1,42 @@
+name: PRICE inspect two MAX public caption variants
+on:
+  push:
+    branches: ['ops/price-apply-promoted-1632-20261120-0214']
+    paths: ['.github/workflows/price-read-max-caption-variants-20261120.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compare two held pages with one verified control
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,re,hashlib,json,html
+          urls=[
+            ('held_352','https://max.ru/anytour/AaCF4YtORgI'),
+            ('held_132016','https://max.ru/anytour/AaDtMfpbMO0'),
+            ('verified_341','https://max.ru/anytour/AaCaxLjsVmU'),
+          ]
+          out=[]
+          for label,url in urls:
+            request=urllib.request.Request(url,headers={'User-Agent':'PRICE-public-readback/1.0'})
+            with urllib.request.urlopen(request,timeout=30) as response:
+              raw=response.read(4_000_001)
+              status=response.status
+            text=raw.decode('utf-8','replace')
+            og=re.search(r'<meta[^>]+property=["\x27]og:description["\x27][^>]+content=["\x27]([^"\x27]*)',text,re.I)
+            tw=re.search(r'<meta[^>]+name=["\x27]twitter:description["\x27][^>]+content=["\x27]([^"\x27]*)',text,re.I)
+            out.append({
+              'label':label,'status':status,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+              'current_pattern':len(re.findall(r'message:\\{text:("(?:[^"\\\\]|\\\\.)*")',text)),
+              'message_objects':text.count('message:{'),'quoted_text_keys':text.count('"text":'),
+              'unquoted_text_keys':text.count('text:'),'og_description':html.unescape(og.group(1))[:240] if og else None,
+              'twitter_description':html.unescape(tw.group(1))[:240] if tw else None,
+              'not_found_markers':sum(text.lower().count(x) for x in ['not found','не найден','удален','удалён']),
+            })
+          print('MAX_PUBLIC_VARIANTS='+json.dumps(out,ensure_ascii=False,separators=(',',':')))
+          PY
