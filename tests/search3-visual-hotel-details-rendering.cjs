@@ -48,6 +48,23 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
    showModal:(type,title,kicker,body)=>{doc.querySelector('#modal-body').innerHTML=body;}
   };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);const mountedOffers=owner.openHotelDetails(1);if(checkInvocation){assert.equal(offerInventories,1,'opening reuses one synchronous offer inventory');assert.strictEqual(mountedOffers,offers,'opening exposes the exact mounted offer array for same-turn restoration');}owner.renderHotelRooms(1,meal,['Standard<&']);if(checkInvocation)assert.equal(offerInventories,2,'later render computes a fresh offer inventory');
   output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,...(requestPlaceholder?{text:doc.querySelector('#modal-body').textContent}:{}),footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});
+  if(checkInvocation&&mode==='many'&&long&&meal==='BB'){
+   const body=doc.querySelector('#modal-body'),rooms=body.querySelector('.hotel-room-section'),filter=rooms.querySelector('#hotel-room-meal'),choose=rooms.querySelector('[data-action="select-hotel-offer"]'),footer=doc.querySelector('#hotel-detail-offers');
+   filter.value='BB';choose.focus();const before=rooms.innerHTML,amount=doc.querySelector('#hotel-detail-min').textContent;
+   body.scrollTop=120;body.getBoundingClientRect=()=>({top:0,bottom:500});
+   rooms.getBoundingClientRect=()=>({top:(body.textContent.includes('Обновлённое описание')?300:210)-body.scrollTop,bottom:680});
+   const top=rooms.getBoundingClientRect().top;
+   h.photos=['new-photo.jpg'];h.raw.description='Обновлённое описание. '.repeat(35);owner.refreshHotelProfile(h,null);
+   assert.equal(body.querySelector('.hotel-photo-section img').getAttribute('src'),'new-photo.jpg');assert.match(body.textContent,/Обновлённое описание/);
+   assert.strictEqual(doc.activeElement,choose);assert.strictEqual(body.querySelector('.hotel-room-section'),rooms);assert.equal(rooms.innerHTML,before);assert.equal(filter.value,'BB');
+   assert.strictEqual(doc.querySelector('#hotel-detail-offers'),footer);assert.equal(doc.querySelector('#hotel-detail-min').textContent,amount);assert.equal(rooms.getBoundingClientRect().top,top,'profile growth keeps the focused tariff at the same viewport location');
+   const description=body.querySelector('.hotel-description');description.open=true;description.querySelector('summary').focus();
+   h.raw.description+='Дополнение';owner.refreshHotelProfile(h,null);const updated=body.querySelector('.hotel-description');
+   assert(updated.open);assert.strictEqual(doc.activeElement,updated.querySelector('summary'),'reading the description keeps its disclosure and focus');
+   owner.refreshHotelProfile(h,null);assert.strictEqual(body.querySelector('.hotel-description'),updated,'unchanged catalog projection preserves the profile DOM');
+   doc.activeElement.blur();body.scrollTop=0;body.querySelector('[data-target="hotel-rooms-heading"]').setAttribute('aria-current','location');
+   h.raw.description='Профиль после входа по названию';owner.refreshHotelProfile(h,null);assert.equal(body.scrollTop,0,'opening the hotel itself stays at the top as its profile arrives');
+  }
   if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}
   if(checkInvocation&&mode==='many'&&!long&&!meal){
    const standard=offers[0];

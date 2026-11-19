@@ -50,6 +50,50 @@ function hotelAmenitiesHTML(h){
  for(const amenity of h.amenities||[]){if(!amenity.label)continue;const group=amenity.group||'Удобства';if(!groups.has(group))groups.set(group,new Set());groups.get(group).add(amenity.label);}
  return [...groups].map(([group,labels])=>hotelFactHTML(group,[...labels].join(' · '),labels.size>2?`<ul class="hotel-service-list">${[...labels].map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`:null)).join('');
 }
+let mountedProfile='';
+function hotelProfileHTML(h){
+ const description=plainHotelText(h.raw?.description||h.note||''),amenities=[...new Set((h.amenities||[]).map(a=>a.label).filter(Boolean))];
+ const facts=hotelDetailFacts(h)+hotelAmenitiesHTML(h);
+ const visiblePhotos=h.photos.slice(0,3);
+ const photos=h.photos.length?`<section class="hotel-photo-section" aria-label="Фотографии"><h3 id="hotel-photos-heading" class="sr-only hotel-section-anchor" tabindex="-1">Фотографии отеля</h3><div class="hotel-detail-photos photo-count-${visiblePhotos.length}">${visiblePhotos.map((p,i)=>`<button data-action="hotel-gallery" data-id="${h.id}" data-value="${i}" aria-label="Открыть фото ${i+1} отеля ${esc(h.name)}"><img src="${esc(p)}" alt="Фото отеля" loading="lazy"></button>`).join('')}</div><button class="secondary hotel-all-photos" data-action="hotel-gallery" data-id="${h.id}" data-value="0">${icon('image')} Все фотографии · ${h.photos.length}</button></section>`:'<p class="tour-missing">Фотографии отеля пока не предоставлены.</p>';
+ const rating=ratingValue(h),hasOverview=Boolean(h.photos.length||description||amenities.length||facts);
+ const overview=hasOverview?`${photos}<div class="hotel-detail-heading"><h3 id="hotel-about-heading" class="hotel-section-anchor" tabindex="-1">Об отеле</h3>${ratingValue(h)!==null?`<span class="detail-rating">${ratingText(h)} / 5</span>`:''}</div>
+ ${amenities.length?`<ul class="hotel-key-facts">${amenities.slice(0,8).map(label=>`<li>${icon('check')}${esc(label)}</li>`).join('')}</ul>`:''}
+ ${hotelDescriptionHTML(description)||(!amenities.length&&!facts?'<p class="tour-missing">Подробное описание пока не предоставлено.</p>':'')}`:`<div class="hotel-data-note"><span>Фото и описание отеля пока не предоставлены. Ниже — доступные туры с исходными условиями.</span>${rating!==null?`<strong>Оценка гостей ${ratingText(h)} / 5</strong>`:''}</div>`;
+ const sections=[...(h.photos.length?[['hotel-photos-heading','Фото']]:[]),...(hasOverview?[['hotel-about-heading','Об отеле']]:[]),...(facts?[['hotel-services-heading','Услуги']]:[]),['hotel-rooms-heading','Номера и цены']];
+ return `
+ <nav class="hotel-section-nav" data-hotel-id="${h.id}" aria-label="Разделы отеля">${sections.map(([target,label])=>`<button type="button" data-action="hotel-section" data-target="${target}">${label}</button>`).join('')}</nav>
+ ${overview}
+ ${facts?`<section class="hotel-information-sections" aria-labelledby="hotel-services-heading"><h3 id="hotel-services-heading" class="detail-section-title hotel-section-anchor" tabindex="-1">Услуги и инфраструктура</h3>${facts}</section>`:''}`;
+}
+function refreshHotelProfile(h,entryScroll){
+ const markup=hotelProfileHTML(h);if(markup===mountedProfile)return;
+ const body=$('#modal-body'),rooms=body.querySelector('.hotel-room-section'),nav=body.querySelector('.hotel-section-nav');
+ if(!rooms||Number(nav?.dataset.hotelId)!==h.id)return;
+ const doc=body.ownerDocument,focused=doc.activeElement,inProfile=focused!==body&&body.contains(focused)&&!rooms.contains(focused);
+ const section=nav.querySelector('[aria-current="location"]')?.dataset.target,scroll=body.scrollTop,navScroll=nav.scrollLeft;
+ const roomRect=rooms.getBoundingClientRect(),viewport=body.getBoundingClientRect(),roomVisible=roomRect.top<viewport.bottom&&roomRect.bottom>viewport.top+nav.offsetHeight;
+ const keepRoom=roomVisible&&(rooms.contains(focused)||!inProfile&&(entryScroll===scroll||scroll>0&&section==='hotel-rooms-heading'));
+ const anchor=keepRoom?rooms:scroll>0&&section?doc.getElementById(section):null,top=anchor?.getBoundingClientRect().top;
+ const detailKey=d=>d.classList.contains('hotel-description')?'description':'fact:'+d.querySelector('.hotel-fact-label')?.textContent;
+ const controlKey=el=>el.id||el.dataset.target||el.querySelector('img')?.getAttribute('src')||el.dataset.action||(el.closest('details')?detailKey(el.closest('details')):'');
+ const focusedKey=inProfile?controlKey(focused):'';
+ const template=doc.createElement('template');template.innerHTML=markup;
+ const open=new Set([...body.querySelectorAll('.hotel-description[open],.hotel-fact-section[open]')].map(detailKey));
+ for(const details of template.content.querySelectorAll('details'))details.open=open.has(detailKey(details));
+ // Change only the profile above the rooms. A selected tariff, its controls and the footer stay mounted.
+ const range=doc.createRange();range.setStart(body,0);range.setEndBefore(rooms);range.deleteContents();range.insertNode(template.content);
+ mountedProfile=markup;
+ body.querySelector('.hotel-section-nav').scrollLeft=navScroll;
+ if(inProfile){
+  const target=[...body.querySelectorAll('button,summary,[tabindex]')].find(el=>!rooms.contains(el)&&controlKey(el)===focusedKey)||body.querySelector('.hotel-section-nav button');
+  target?.focus({preventScroll:true});
+ }
+ const nextAnchor=anchor===rooms?rooms:anchor?.id?doc.getElementById(anchor.id):null;
+ if(nextAnchor)body.scrollTop+=nextAnchor.getBoundingClientRect().top-top;
+ else if(body.scrollTop!==scroll)body.scrollTop=scroll;
+ syncHotelSectionNavigation();
+}
 function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceInfo=roomOfferPrice(o)}={}){
  const selected=context.hotelOfferDraft?.hotelId===o.hotelId&&context.hotelOfferDraft?.key===o.key;
  const meal=esc(displayMealLabel(o)),key=esc(o.key),price=priceInfo.pending?'Цена уточняется':money(priceInfo.total);
@@ -205,19 +249,9 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
 }
 function openHotelDetails(id){
  const h=hotels.find(h=>h.id===id);if(!h)return;
- const offers=hotelOffers(h),description=plainHotelText(h.raw?.description||h.note||''),amenities=[...new Set((h.amenities||[]).map(a=>a.label).filter(Boolean))],meals=[...new Set(offers.map(o=>o.meal))];
- const facts=hotelDetailFacts(h)+hotelAmenitiesHTML(h);
- const visiblePhotos=h.photos.slice(0,3);
- const photos=h.photos.length?`<section class="hotel-photo-section" aria-label="Фотографии"><h3 id="hotel-photos-heading" class="sr-only hotel-section-anchor" tabindex="-1">Фотографии отеля</h3><div class="hotel-detail-photos photo-count-${visiblePhotos.length}">${visiblePhotos.map((p,i)=>`<button data-action="hotel-gallery" data-id="${h.id}" data-value="${i}" aria-label="Открыть фото ${i+1} отеля ${esc(h.name)}"><img src="${esc(p)}" alt="Фото отеля" loading="lazy"></button>`).join('')}</div><button class="secondary hotel-all-photos" data-action="hotel-gallery" data-id="${h.id}" data-value="0">${icon('image')} Все фотографии · ${h.photos.length}</button></section>`:'<p class="tour-missing">Фотографии отеля пока не предоставлены.</p>';
- const rating=ratingValue(h),hasOverview=Boolean(h.photos.length||description||amenities.length||facts);
- const overview=hasOverview?`${photos}<div class="hotel-detail-heading"><h3 id="hotel-about-heading" class="hotel-section-anchor" tabindex="-1">Об отеле</h3>${ratingValue(h)!==null?`<span class="detail-rating">${ratingText(h)} / 5</span>`:''}</div>
- ${amenities.length?`<ul class="hotel-key-facts">${amenities.slice(0,8).map(label=>`<li>${icon('check')}${esc(label)}</li>`).join('')}</ul>`:''}
- ${hotelDescriptionHTML(description)||(!amenities.length&&!facts?'<p class="tour-missing">Подробное описание пока не предоставлено.</p>':'')}`:`<div class="hotel-data-note"><span>Фото и описание отеля пока не предоставлены. Ниже — доступные туры с исходными условиями.</span>${rating!==null?`<strong>Оценка гостей ${ratingText(h)} / 5</strong>`:''}</div>`;
- const sections=[...(h.photos.length?[['hotel-photos-heading','Фото']]:[]),...(hasOverview?[['hotel-about-heading','Об отеле']]:[]),...(facts?[['hotel-services-heading','Услуги']]:[]),['hotel-rooms-heading','Номера и цены']];
- $('#modal-body').innerHTML=`
- <nav class="hotel-section-nav" data-hotel-id="${h.id}" aria-label="Разделы отеля">${sections.map(([target,label])=>`<button type="button" data-action="hotel-section" data-target="${target}">${label}</button>`).join('')}</nav>
- ${overview}
- ${facts?`<section class="hotel-information-sections" aria-labelledby="hotel-services-heading"><h3 id="hotel-services-heading" class="detail-section-title hotel-section-anchor" tabindex="-1">Услуги и инфраструктура</h3>${facts}</section>`:''}
+ const offers=hotelOffers(h),meals=[...new Set(offers.map(o=>o.meal))];
+ mountedProfile=hotelProfileHTML(h);
+ $('#modal-body').innerHTML=`${mountedProfile}
  <section class="hotel-room-section" aria-labelledby="hotel-rooms-heading"><h3 id="hotel-rooms-heading" class="detail-section-title hotel-section-anchor" tabindex="-1">Номера и питание</h3><p class="hotel-room-context">${departureScopeText()} · ${durationText()} · ${guestsText()}</p>
  ${meals.length>1&&offers.length>2?`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"><option value="">Любое питание</option>${meals.map(meal=>`<option value="${esc(meal)}">${esc(displayMealLabel({meal}))}</option>`).join('')}</select></label>`:''}
  <p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p><div class="hotel-room-cards"></div></section>`;
@@ -226,7 +260,7 @@ function openHotelDetails(id){
  renderHotelRooms(id,'',null,offers);
  return offers;
 }
-return {openHotelDetails,renderHotelRooms,syncRoomPriceComparison};
+return {openHotelDetails,refreshHotelProfile,renderHotelRooms,syncRoomPriceComparison};
 }
 window.AnyTourHotelDetails=Object.freeze({create});
 })();

@@ -15,6 +15,17 @@ function fixture(){
  const owner={create:()=>({openHotelDetails:id=>{const offers=ctx.hotelOffers();renders.push(['mount',id]);ready=true;return offers;},renderHotelRooms:(id,meal,restoredRooms,initialOffers)=>{if(!initialOffers)ctx.hotelOffers();roomInputs.push(initialOffers);renders.push(['rooms',id,meal,restoredRooms]);}})};
  return {ctx,scripts,timers,renders,roomInputs,load,modal,body,more,offerRows,owner,remembers:()=>remembers,inventories:()=>offerInventories};
 }
+function profileFixture(warm=true){
+ const f=fixture(),pending=[],profiles=[],renders=[],groups=[],create=f.owner.create;
+ f.ctx.window.V2_CONFIG={localTvCatalogEnabled:true};f.ctx.state={search:{country:'4'}};
+ f.ctx.hotels.forEach(h=>{h.raw={id:h.id};h.offers=f.offerRows;});
+ f.ctx.data={refreshHotelContent:ids=>new Promise((resolve,reject)=>pending.push({ids,resolve,reject})),
+  hotelPresentation:raw=>({id:raw.id,name:'Updated '+raw.id,offers:[]})};
+ f.ctx.renderResults=()=>renders.push('cards');f.ctx.refreshLiveHotel=id=>groups.push(id);
+ f.owner.create=()=>({...create(),refreshHotelProfile:(h,scroll)=>profiles.push([h.id,h.name,scroll])});
+ if(warm)f.ctx.window.AnyTourHotelDetails=f.owner;
+ return {...f,pending,profiles,cards:renders,groups};
+}
 (async()=>{
  const f=fixture();assert.equal(f.scripts.length,0);f.ctx.openHotelDetails(1);f.ctx.openHotelDetails(2);assert.equal(f.scripts.length,1);assert.match(f.load.innerHTML,/role="status"/);assert.equal(f.scripts[0].src,'./hotel-details-v1.js?v=exact');
  f.ctx.window.AnyTourHotelDetails=f.owner;f.scripts[0].onload();await flush();assert.deepEqual(f.renders,[['mount',2]],'newest hotel only');assert(f.scripts[0].removed);assert.equal(f.timers.size,0);
@@ -23,6 +34,26 @@ function fixture(){
  for(const failure of ['network','timeout','missing-owner']){const g=fixture();g.ctx.openHotelDetails(1);if(failure==='network')g.scripts[0].onerror();else if(failure==='timeout')[...g.timers.values()][0]();else g.scripts[0].onload();await flush();assert.match(g.load.innerHTML,/role="alert"/);assert.match(g.load.innerHTML,/retry-hotel-details/);assert.equal(g.timers.size,0);g.ctx.renderHotelDetails();assert.equal(g.scripts.length,2);g.ctx.window.AnyTourHotelDetails=g.owner;g.scripts[1].onload();await flush();assert.deepEqual(g.renders,[['mount',1]]);}
  const h=fixture();h.ctx.openHotelDetails(1,{meal:'BB',rooms:['Standard'],more:['Standard'],scroll:713});h.ctx.renderHotelRooms(1,'BB');assert.equal(h.renders.length,0,'room refresh waits for mounted DOM');h.ctx.window.AnyTourHotelDetails=h.owner;h.scripts[0].onload();await flush();assert.deepEqual(h.renders,[['mount',1],['rooms',1,'BB',['Standard']]]);assert.equal(h.inventories(),1,'history restore hands one exact owner inventory to validation and room rendering');assert.strictEqual(h.roomInputs[0],h.offerRows,'history room restoration receives the exact mounted offer array');assert.equal(h.more.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1);
  const c=fixture();c.ctx.openHotelDetails(1);c.modal.open=false;const pending=c.load.innerHTML;c.scripts[0].onerror();await flush();assert.equal(c.load.innerHTML,pending);
+ for(const warm of [false,true]){
+  const f=profileFixture(warm);f.offerRows[0]={key:'selected-group',meal:'BB',provider:'anex',raw:{anexKind:'group_minimum'}};
+  f.ctx.openHotelDetails(1,{entryOfferKey:'selected-group',meal:'BB',scroll:123});
+  if(!warm){f.ctx.window.AnyTourHotelDetails=f.owner;f.scripts[0].onload();await flush();}
+  assert.deepEqual(f.renders,[['mount',1],['rooms',1,'BB',null]],'exact rooms are available with the profile held');assert.deepEqual(f.groups,[1]);
+  const selection=f.ctx.selectedOffer,draft=f.ctx.hotelOfferDraft;f.pending[0].resolve(true);await flush();
+  assert.deepEqual(f.profiles,[[1,'Updated 1',123]]);assert.deepEqual(f.cards,['cards']);assert.strictEqual(f.ctx.hotels[0].offers,f.offerRows);
+  assert.strictEqual(f.ctx.selectedOffer,selection);assert.strictEqual(f.ctx.hotelOfferDraft,draft);assert.deepEqual(f.groups,[1],'late profile must never re-enter group expansion');
+  assert.equal(f.renders.length,2,'late presentation does not remount the hotel or rooms');
+ }
+ const early=profileFixture(false);early.ctx.openHotelDetails(1);early.pending[0].resolve(true);await flush();assert.equal(early.ctx.hotels[0].name,'Updated 1');assert.deepEqual(early.profiles,[]);
+ early.ctx.window.AnyTourHotelDetails=early.owner;early.scripts[0].onload();await flush();assert.deepEqual(early.renders,[['mount',1]],'content already available is used on the first mount');
+ for(const end of ['reject','missing','close','replace']){
+  const f=profileFixture();f.ctx.openHotelDetails(1);
+  if(end==='close')f.modal.open=false;
+  if(end==='replace')f.ctx.openHotelDetails(2);
+  if(end==='reject')f.pending[0].reject(Error('LOCAL unavailable'));else f.pending[0].resolve(end!=='missing');
+  await flush();assert.deepEqual(f.profiles,[]);assert.deepEqual(f.cards,[]);assert.strictEqual(f.ctx.hotels[0].offers,f.offerRows);assert.equal(f.load.innerHTML,'old','optional profile does not replace the room module with its error');
+  if(end==='replace'){f.pending[1].resolve(true);await flush();assert.deepEqual(f.profiles,[[2,'Updated 2',null]]);}
+ }
  assert(app.includes("case 'retry-hotel-details':if(modalType==='hotel-details')renderHotelDetails();"));
  console.log('PASS cold hotel-details: initial0/shared/warm/newest/close/replace/failure/retry; history inventories 3→1; room refresh guards');
 })().catch(e=>{console.error(e);process.exitCode=1;});

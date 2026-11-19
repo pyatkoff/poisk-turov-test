@@ -81,7 +81,9 @@ async function measureReadingPosition(driver,root,html) {
     assert.equal(after.ids[3],'2003');
     assert.ok(before.key && after.key===before.key && before.amount===122000 && after.amount===before.amount);
     assert.deepEqual(replay.blocked,[]);
-    return {before,after,deltaPx:after.top-before.top};
+    const deltaPx=after.top-before.top;
+    assert.ok(Math.abs(deltaPx)<=8,'late results moved the reading card by '+deltaPx+'px');
+    return {before,after,deltaPx};
   } finally {replay.delivery.release();await replay.close();}
 }
 
