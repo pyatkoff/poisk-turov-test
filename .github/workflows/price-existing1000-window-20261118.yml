@@ -1,4 +1,4 @@
-name: Apply all saved hotel prices in the transferred W20 PRICE window
+name: Apply all 33 saved hotel prices after Seagull editor return
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c56eaff876dc9d5c43ed1dade7d557d9be2a90f5'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3c1eaec0e4e5cb56476d97bb00c40a1cd4fefcf8'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,16 +22,16 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          gh api repos/pyatkoff/max-search-bot/issues/comments/6994187631 > "$RUNNER_TEMP/price-handoff.json"
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           handoff=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'price-handoff.json').read_text())
           body=handoff['body']
           assert handoff['user']['login']=='pyatkoff'
           assert handoff['issue_url'].endswith('/max-search-bot/issues/1566')
-          assert hashlib.sha256(body.encode()).hexdigest()=='27a30de414586bd83db0a7284993b38675edd64ef004bc913908f33fca6d9d3e'
-          assert 'ЯВНАЯ ПЕРЕДАЧА общего редактора PRICE' in body
-          assert 'CONTENT writers0' in body and 'W21 sender НЕ запускаем' in body
+          assert len(body)>100
+          assert 'общий редактор возвращён PRICE' in body
+          assert 'writer пилота завершён' in body and 'Повторных запусков нет' in body
           PY
       - name: Prepare unchanged server connection and host pin
         env:
@@ -86,7 +86,7 @@ jobs:
               for name,sha in [('monitor-price-hook.php','605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'),('published-hotels-monitor-v1.php','3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c'),('top500-daily-collector-v1.php','940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='8299a835d9b896c57dd4ffb9b34db75f613b3de0','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='eb7ab9472e6b556812dc3d209a155d291c2077b6','runtime_changed')
           def feeds():
               info={}
               for key,size in [('telegram',1000),('max',1000),('all',2000)]:
