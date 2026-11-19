@@ -383,8 +383,8 @@ console.log('PASS explicit mobile recovery: real retained filter owner/action sy
 {
  const c=environment('<div id="drawer-context"></div><div id="drawer-selected"></div><div id="drawer-recovery"></div><div id="filter-preview-count"></div><input id="hotel-query" value="Azure"><input id="min-price"><input id="max-price" value="185000"><input id="price-range" type="range" max="200000"><button id="apply-filters"></button>');
  const model={filters:{q:'Azure',min:0,max:185000,meals:['Всё включено']}};
- Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),filterDraft:model,state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},countryNames:{4:'Турция'},countMatchingHotels:m=>m.filters.max>=186400?1:0,filterChipData:()=>[{key:'price',value:'',label:'До 185 000 ₽'}],syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2A+[0,8]',recoverySuggestions:()=>[{key:'budget',title:'Бюджет до 187 000 ₽',description:'Остальные условия сохранятся',count:1,model:{...model,filters:{...model.filters,max:187000}}}],responseFor:()=>({phase:'complete'}),readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),showFilterBudgetValidity:()=>{},searchEditSession:null,filterBudgetEdit:null,editingFilterModel:()=>c.filterDraft,budgetScale:()=>200000,budgetLabel:f=>'До '+f.max,searchKey:()=> 'scope',syncFilterSections:()=>{},rememberUIRoute:()=>{},structuredClone});
- context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryHTML','searchDeliveryIncomplete','updateDrawerPreview','editFilterBudget','syncBudgetControls','handleResultFilterChange','handleResultFilterAction']),c);
+ Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),filterDraft:model,state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},countryNames:{4:'Турция'},countMatchingHotels:m=>m.filters.max>=186400?1:0,filterChipData:()=>[{key:'price',value:'',label:'До 185 000 ₽'}],syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2A+[0,8]',recoverySuggestions:()=>[{key:'budget',title:'Бюджет до 187 000 ₽',count:1,model:{...model,filters:{...model.filters,max:187000}}}],responseFor:()=>({phase:'complete'}),readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),showFilterBudgetValidity:()=>{},searchEditSession:null,filterBudgetEdit:null,editingFilterModel:()=>c.filterDraft,budgetScale:()=>200000,budgetLabel:f=>'До '+f.max,searchKey:()=> 'scope',syncFilterSections:()=>{},rememberUIRoute:()=>{},structuredClone});
+ context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryIntro','recoveryHTML','searchDeliveryIncomplete','updateDrawerPreview','editFilterBudget','syncBudgetControls','handleResultFilterChange','handleResultFilterAction']),c);
  c.updateDrawerPreview();const recovery=c.$('[data-action="recover-filters"]'),chip=c.$('[data-action="remove-draft-filter"]');
  c.filterEdited=()=>c.updateDrawerPreview();
  c.$('#max-price').addEventListener('change',()=>c.handleResultFilterChange(c.$('#max-price')));
@@ -404,14 +404,14 @@ console.log('PASS explicit mobile recovery: real retained filter owner/action sy
 {
  const c=environment('<div id="filter-preview-count"></div><div id="drawer-context"></div><div id="drawer-selected"></div><div id="drawer-recovery"></div><button id="apply-filters"></button><input id="min-price"><input id="max-price">'),model={filters:{hotelId:0,hotelIds:[4234,684],meals:['Всё включено']},selectedDate:null};
  let response={phase:'complete',pending:false,providers:{tourvisor:'error',anex:'error'},sources:{tourvisor:{status:'error'},anex:{status:'error'}}},recoveryCalls=0;
- Object.assign(c,{state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},data:{preview:false},filterDraft:model,searchEditSession:null,emptySuggestions:[],drawerSuggestions:[],generatedRootBindings:new WeakMap(),countryNames:{4:'Турция'},responseFor:()=>response,appliedFilterModel:()=>model,filterChipData:()=>[],countMatchingHotels:()=>0,syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых',recoverySuggestions:()=>{recoveryCalls++;return [];},recoveryHTML:()=>'<div class="recovery-options"></div>',emptyCalendarContext:()=>'<strong>Сохранённая цена 93 562 ₽</strong>',readBudgetFields:()=>({min:0,max:null}),showFilterBudgetValidity:()=>{}});
+ Object.assign(c,{state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},data:{preview:false},filterDraft:model,searchEditSession:null,emptySuggestions:[],drawerSuggestions:[],generatedRootBindings:new WeakMap(),countryNames:{4:'Турция'},responseFor:()=>response,appliedFilterModel:()=>model,filterChipData:()=>[],countMatchingHotels:()=>0,syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых',recoverySuggestions:()=>{recoveryCalls++;return [];},emptyCalendarContext:()=>'<strong>Сохранённая цена 93 562 ₽</strong>',readBudgetFields:()=>({min:0,max:null}),showFilterBudgetValidity:()=>{}});
  c.MutationObserver=c.dom.window.MutationObserver;
- context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','searchDeliveryIncomplete','emptyResultsHTML','updateDrawerPreview']),c);
+ context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryIntro','recoveryHTML','searchDeliveryIncomplete','emptyResultsHTML','updateDrawerPreview']),c);
  for(const providers of [{tourvisor:'error',anex:'error'},{tourvisor:'complete',anex:'error'},{tourvisor:'complete',anex:'partial'},{tourvisor:'complete',anex:'unknown'}]){
   response={phase:'complete',pending:false,providers,sources:{}};
   const html=c.emptyResultsHTML();assert.doesNotMatch(html,/Попробуйте другие даты|Выбрать другие даты|Подходящих предложений пока нет|93 562/,'incomplete delivery never claims unavailable tours or advertises date recovery/calendar prices');
   assert.match(html,/Отсутствие результатов пока не означает/);assert.match(html,/Даты, туристы и фильтры сохранены/);
-  c.updateDrawerPreview();assert.doesNotMatch(c.$('#filter-preview-count').textContent,/туров нет/);assert.doesNotMatch(c.$('#drawer-recovery').textContent,/Можно изменить одно из условий/);assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
+  c.updateDrawerPreview();assert.doesNotMatch(c.$('#filter-preview-count').textContent,/туров нет/);assert.equal(c.$('#drawer-recovery .recovery-choice'),null);assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
  }
  assert.equal(recoveryCalls,0,'failed/partial/unknown source data cannot justify changing correct conditions');
  response={phase:'complete',pending:false,providers:{tourvisor:'error',anex:'error'},sources:{},canContinue:true,retryRead:true};
@@ -419,6 +419,40 @@ console.log('PASS explicit mobile recovery: real retained filter owner/action sy
  response={phase:'complete',pending:false,providers:{tourvisor:'complete',anex:'complete'},sources:{}};
  assert.match(c.emptyResultsHTML(),/Подходящих предложений пока нет/,'confirmed successful empty retains the existing date/filter recovery');
  c.updateDrawerPreview();assert.match(c.$('#filter-preview-count').textContent,/туров нет/);
+ assert.equal(c.$('#drawer-recovery').children.length,0,'no recovery leaves no empty wrapper or prompt');
  console.log('PASS failed-source zero results: criteria retained, no false availability/calendar/date recovery; successful empty preserved');
+
+ // Compare the choices a visitor sees on the results page and in the filter drawer.
+ c.structuredClone=structuredClone;
+ c.defaultFilters=()=>({max:null,meals:[],operators:[]});
+ c.rangeText=()=>'1–7 октября';
+ vm.runInContext(functions(appSource,['recoverySuggestions']),c);
+ const recoveryViews=()=>{
+  const results=c.document.createElement('section');
+  results.innerHTML=c.emptyResultsHTML();
+  c.updateDrawerPreview();
+  return [results,c.$('#drawer-recovery')];
+ };
+ const sharedHint='Измените одно условие. Остальные сохранятся.';
+ model.filters={max:null,meals:['Всё включено'],operators:['Демо-оператор']};
+ c.countMatchingHotelGroups=models=>models.map(m=>m.filters.meals.length?2:4);
+ for(const view of recoveryViews()){
+  assert.equal(view.textContent.split(sharedHint).length-1,1,'one shared hint for the ordinary alternatives');
+  const choices=[...view.querySelectorAll('.recovery-choice')];
+  assert.deepEqual(choices.map(button=>button.querySelector('strong').textContent),['Любое питание','Любой туроператор']);
+  assert.deepEqual(choices.map(button=>button.querySelector('.recovery-count').firstChild.textContent.trim()),[c.hotelCountText(4),c.hotelCountText(2)]);
+  assert.equal(view.querySelector('.recovery-choice small'),null);
+ }
+ const assertSpecialChoice=(view,key,description)=>{
+  assert.equal(view.querySelectorAll('.recovery-choice').length,1);
+  assert.equal(view.querySelector('[data-recovery-key="'+key+'"] small').textContent,description);
+  assert.equal(view.textContent.includes(sharedHint),false);
+ };
+ c.countMatchingHotelGroups=models=>models.map(m=>!m.filters.meals.length&&!m.filters.operators.length?4:0);
+ for(const view of recoveryViews())assertSpecialChoice(view,'reset','Город, страна, диапазон дат и туристы сохранятся');
+ model.filters=c.defaultFilters();
+ model.selectedDate='2026-10-02';
+ for(const view of recoveryViews())assertSpecialChoice(view,'date','В пределах выбранного диапазона вылета');
+ console.log('PASS recovery copy: shared hint, hotel counts and distinct date/reset consequences in results and drawer');
  c.dom.window.close();
 }
