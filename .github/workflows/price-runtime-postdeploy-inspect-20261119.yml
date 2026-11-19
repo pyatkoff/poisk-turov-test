@@ -1,4 +1,4 @@
-name: Final read-only PRICE census after completed window
+name: Inspect PRICE after Seagull return and Search3 deploy
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '69903604abab3a9d223a2c795e361f035bc551ab'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '97fe6c6d7841edd0b7e5b7337f781f4e343a3280'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,8 +22,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44433211189 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:8299a835d9b896c57dd4ffb9b34db75f613b3de0"
-          gh api repos/pyatkoff/max-search-bot/issues/comments/6994187631 --jq .body | grep -F 'ЯВНАЯ ПЕРЕДАЧА общего редактора PRICE'
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44444909931 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:59c327778adfe381e3677877c65958eeac117400"
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 --jq .body | grep -F 'общий редактор возвращён PRICE'
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -57,7 +57,7 @@ jobs:
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
           import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
           root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
-          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); assert head=='8299a835d9b896c57dd4ffb9b34db75f613b3de0'
+          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); assert head=='378c413f419591e074996d0fde8f0774345b1ce4'
           def sha(p):
             h=hashlib.sha256()
             with p.open('rb') as f:
