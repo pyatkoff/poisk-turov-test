@@ -154,6 +154,11 @@ final class TourvisorInteractiveClient
                 ['upstreamStatus'=>$code,'diagnostics'=>self::failureDiagnostics($path,$errno,$code,$seconds)]);
         }
         $decoded = json_decode((string)$body,true);
-        return is_array($decoded) ? $decoded : ['raw'=>self::text((string)$body,1000)];
+        if (!is_array($decoded)) {
+            $diagnostics = self::failureDiagnostics($path,$errno,$code,$seconds);
+            $diagnostics['category'] = 'payload';
+            self::fail('tv_invalid_response',502,['diagnostics'=>$diagnostics]);
+        }
+        return $decoded;
     }
 }

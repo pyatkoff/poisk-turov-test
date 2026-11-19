@@ -172,6 +172,30 @@ $searchRequest=$request('tv_search',['params'=>$params]); $started=$run($searchR
 tvg_ok($session['tourvisor_context']['params']['childs']===[0,0,8] && $session['tourvisor_context_generation']===1,'server owns generation and exact ordered party');
 $again=$run($searchRequest); tvg_ok($again===$started && count($calls)===1,'same search operation cached without second HTTP');
 $run($request('tv_status')); $run($request('tv_continue'));
+
+// An unreadable successful HTTP response must never become a cached status.
+$statusRequest=$request('tv_status');
+$wireTransport=static fn(string $path,array $query):array=>\AnyTour\TourvisorInteractiveClient::get($path,$query,'fixture-token');
+foreach (['<html>fixture-body</html>','"fixture-body"',''] as $body) {
+    $statusSession=$session; $statusDisk=[];
+    $statusSave=static function(array &$state)use(&$statusDisk):void{$statusDisk=$state;};
+    $GLOBALS['tv_wire']=['calls'=>0,'body'=>$body,'status'=>200,'seconds'=>0.125];
+    try {
+        AnyTourTourvisorPreviewGateway::handle($statusRequest,$statusSession,$now,$wireTransport,$catalog,$statusSave,$clock);
+        throw new RuntimeException('invalid upstream body was accepted as a search status');
+    } catch (\AnyTour\TourvisorInteractiveFailure $e) {
+        tvg_ok($e->httpStatus===502 && $e->response===['ok'=>false,'error'=>'tv_invalid_response',
+            'diagnostics'=>['provider'=>'tourvisor','stage'=>'search_status','category'=>'payload',
+                'httpStatus'=>200,'curlErrno'=>0,'elapsedMs'=>125]],'safe invalid-payload failure preserves actual HTTP and timing');
+    }
+    $slot=$statusDisk['tourvisor_requests'][$statusRequest['request_id']];
+    tvg_ok($slot['state']==='unknown' && !array_key_exists('reply',$slot)
+        && $statusSession===$statusDisk,'invalid response never becomes an in-memory or durable READY reply');
+    tvg_denied(fn()=>AnyTourTourvisorPreviewGateway::handle($statusRequest,$statusSession,$now,$wireTransport,$catalog,$statusSave,$clock),
+        'tv_operation_unknown');
+    tvg_ok($GLOBALS['tv_wire']['calls']===1 && $GLOBALS['tv_wire']['closed'],'invalid response never triggers a second transport attempt');
+}
+
 $resultsRequest=$request('tv_results');$results=$run($resultsRequest); $ref=$results['offers'][0]['offer_ref'];
 $resultsSession=$session;
 tvg_ok($run($resultsRequest)===$results,'results replay retains its own context deadline without a checked tour');
