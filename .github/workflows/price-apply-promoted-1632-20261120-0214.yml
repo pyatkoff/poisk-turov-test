@@ -8,12 +8,12 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e06140ff8643a8dfd1d465d72359a93e309bbbc9'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'da166269ca9887806c62c3fdfea182571c59db6d'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 58
     steps:
       - name: Verify the closed installed release and before-write stop
         env:
@@ -24,6 +24,13 @@ jobs:
           test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44632489739 --jq '.status+":"+(.conclusion//"")')" = "completed:success"
           test "$(gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body)" = "PR1632: установлено, выпуск свободен"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636015413 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44636407156 --jq '.status+":"+(.conclusion//"")')" = "completed:failure"
+          gh run view 44636015413 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/prewrite1.log"
+          gh run view 44636407156 --repo pyatkoff/poisk-turov-test --log > "$RUNNER_TEMP/prewrite2.log"
+          for proof in "$RUNNER_TEMP/prewrite1.log" "$RUNNER_TEMP/prewrite2.log"; do
+            grep -Fq 'AssertionError: PRICE_PROCESS_ACTIVE_STOP' "$proof"
+            ! grep -Fq 'PROMOTED_HOTEL_PRICE_RESULT=' "$proof"
+          done
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -61,10 +68,21 @@ jobs:
           app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
           installed=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD'],text=True).strip()
           assert installed=='e262bf139da2b78623e1be3a891630fd10924180','INSTALLED_SHA_CHANGED_STOP'
-          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
-          active=[line for line in process.stdout.splitlines() if 'pgrep -af' not in line]
-          print('PRICE_ACTIVE_PROCESSES='+json.dumps(active,separators=(',',':')))
-          assert not active,'PRICE_PROCESS_ACTIVE_STOP'
+          import time
+          deadline=time.monotonic()+3000
+          while True:
+            process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
+            active=[line for line in process.stdout.splitlines() if 'pgrep -af' not in line]
+            print('PRICE_ACTIVE_PROCESSES='+json.dumps(active,separators=(',',':')),flush=True)
+            if not active:
+              time.sleep(5)
+              again=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
+              active=[line for line in again.stdout.splitlines() if 'pgrep -af' not in line]
+              if not active: break
+            assert time.monotonic()<deadline,'PRICE_OPERATION_STILL_ACTIVE_STOP'
+            time.sleep(30)
+            current=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD'],text=True).strip()
+            assert current==installed,'INSTALLED_SHA_CHANGED_STOP'
           tool=app/'tools'/'apply_promoted_hotel_prices.php'
           completed=subprocess.run(['php',str(tool),'--apply'],capture_output=True,text=True)
           print(completed.stdout,end=''); print(completed.stderr,end='')
