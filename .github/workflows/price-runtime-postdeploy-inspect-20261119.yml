@@ -1,4 +1,4 @@
-name: PRICE reconcile read-only the 12 held Telegram originals
+name: PRICE verify live buttons for 19 promoted Telegram posts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '261502165c06bfc132e93c39cec52548e868fd17'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '276879bcd0f45e7a6c2d1e830fb420b6363160bc'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -48,7 +48,7 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read original Telegram write receipts by publication
+      - name: Compare live Telegram buttons to the exact registry rows
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -70,25 +70,40 @@ jobs:
           $output=[];
           $pdo->exec('SET SESSION TRANSACTION READ ONLY');
           $pdo->beginTransaction();
-          $q=$pdo->prepare("SELECT id FROM post_publications WHERE post_channel_id=6 AND external_message_id=?");
+          $q=$pdo->prepare('SELECT id FROM post_publications WHERE post_channel_id=6 AND external_message_id=?');
           foreach($rows as [$hotel,$platform,$url]) {
-              if($platform!=='telegram'||!in_array($hotel,[12107,132,469,70048,1344,260,2493,3452,4181,43676,73974,99713],true))continue;
+              if($platform!=='telegram')continue;
               $mid=basename($url);$q->execute([$mid]);$id=(int)$q->fetchColumn();$q->closeCursor();
               $p=$registry->publication($id);
-              if(!$p||$p['channel_id']!=='-1001845835645'||$p['snapshot']['post_url']!==$url){$output[]=['hotel'=>$hotel,'state'=>'identity_unverifiable'];continue;}
-              $snapshot=$p['snapshot'];$meta=$snapshot['metadata']??[];$receipt=$p['receipt']??[];
-              $button=ChannelPostButtonTransport::buttonUrl($p);
-              $safeReads=[];
-              foreach((array)($receipt['http_results']??[]) as $entry)$safeReads[]=array_intersect_key($entry,array_flip(['operation','http','transport_error']));
-              $output[]=['hotel'=>$hotel,'url'=>$url,'publication'=>$id,'version'=>$p['version_id'],
-                  'state'=>$p['state'],'reason'=>$p['error_reason'],'writes'=>$p['write_attempts'],
-                  'requests'=>$receipt['request_count']??null,'reason_trace'=>$safeReads,
-                  'has_claim'=>$p['claim_token']!==null||$p['claimed_at']!==null,
-                  'event'=>$meta['source_event_id']??null,
-                  'expected_button_seen'=>ChannelPostIncomingAdapter::containsOnlyButton($snapshot,$button,(string)$p['channel']['button_text'])];
+              if(!$p||$p['snapshot']['post_url']!==$url){$output[]=[$hotel,$mid,'registry_mismatch'];continue;}
+              $html='';
+              $ch=curl_init('https://t.me/s/anytour/'.$mid);
+              curl_setopt_array($ch,[CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+                 CURLOPT_TIMEOUT=>8,CURLOPT_RETURNTRANSFER=>false,CURLOPT_WRITEFUNCTION=>static function($ch,string $v)use(&$html){
+                    if(strlen($html)+strlen($v)>4000000)return 0;$html.=$v;return strlen($v);
+                 }]);
+              $ok=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+              if(!$ok||$status!==200){$output[]=[$hotel,$mid,'public_read_unavailable',$status];continue;}
+              $d=new DOMDocument();
+              if(!@$d->loadHTML('<?xml encoding="UTF-8">'.$html,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING)){
+                  $output[]=[$hotel,$mid,'public_html_unavailable'];continue;}
+              $x=new DOMXPath($d);$n=$x->query('//*[@data-post="anytour/'.$mid.'"]');
+              if($n->length!==1){$output[]=[$hotel,$mid,'target_not_in_history',$n->length];continue;}
+              $root=$n->item(0);
+              $observed=$x->query('.//a[contains(concat(" ",normalize-space(@class)," ")," tgme_widget_message_inline_button ")]',$root);
+              $details=[];
+              foreach($observed as $item)$details[]=[
+                  'url_matches'=>hash_equals(ChannelPostButtonTransport::buttonUrl($p),$item->getAttribute('href')),
+                  'label_matches'=>trim($item->textContent)===$p['channel']['button_text'],
+              ];
+              $captions=$x->query('.//*[contains(concat(" ",normalize-space(@class)," ")," tgme_widget_message_text ")]',$root);
+              $caption='';
+              if($captions->length===1)foreach($captions->item(0)->childNodes as $node)$caption.=$d->saveHTML($node);
+              $caption=html_entity_decode(strip_tags(preg_replace('~<br\s*/?>~i',"\n",$caption)),ENT_QUOTES|ENT_HTML5,'UTF-8');
+              $output[]=[$hotel,$mid,$p['state'],$details,$caption===$p['snapshot']['text']];
           }
           $pdo->rollBack();
-          echo 'PROMOTED_TG_ORIGINAL_OPS='.json_encode($output,JSON_THROW_ON_ERROR),PHP_EOL;
+          echo 'PROMOTED_TG_PUBLIC_BUTTONS='.json_encode($output,JSON_THROW_ON_ERROR),PHP_EOL;
           PY
       - name: Cleanup connection material
         if: always()
