@@ -269,6 +269,24 @@ const cancel=()=>click('#search-return');
  w.innerWidth=1280;edit();input('#max-price','abc');click('.search-submit');assert(!q('#search-form').hidden);assert.equal(w.location.search,appliedURL);assert.equal(d.activeElement,q('#max-price'));
  input('#max-price','100000');assert.equal(w.location.search,appliedURL);cancel();await settle();assert.equal(w.location.search,appliedURL);
  input('#max-price','180000');assert.equal(new URLSearchParams(w.location.search).get('max'),'180000');
+ // A budget opened from the search form can show matching loaded offers directly.
+ edit();click('#quick-meal');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
+ click('#quick-budget');input('#budget-min','1000');input('#budget-max','2000');
+ const matchingBreakfast=snapshotHotels.filter(h=>h.stars===5).flatMap(h=>h.offers).filter(o=>o.meal==='Завтраки'&&o.total>=1000);
+ assert(matchingBreakfast.length>0);
+ const nearest=Math.min(...matchingBreakfast.map(o=>o.total)),ceiling=Math.ceil(nearest),recovery=q('#budget-recovery');
+ assert(!recovery.hidden);assert.equal(recovery.dataset.value,String(ceiling),'suggest the first actual matching budget');
+ assert.match(recovery.textContent,/Показать отели/);
+ recovery.click();await settle();
+ const recoveredURL=new URLSearchParams(w.location.search);
+ assert(q('#search-form').hidden&&!q('#modal').open,'one click opens the loaded results');
+ assert.equal(recoveredURL.get('min'),'1000');assert.equal(recoveredURL.get('max'),String(ceiling));
+ assert.equal(recoveredURL.get('stars'),'5');assert.equal(recoveredURL.get('meals'),'Завтраки');
+ assert(d.querySelectorAll('.hotel-card').length>0,'the suggested budget produces a hotel');
+ // A larger budget cannot remedy an impossible non-price condition.
+ input('#hotel-query','Несуществующий отель для теста');edit();click('#quick-budget');input('#budget-max','2000');
+ assert(q('#budget-recovery').hidden);click('[data-action="close-modal"]');cancel();await settle();
+ console.log('PASS budget recovery: one click, matching five-star breakfast hotel at '+nearest+' ₽, unrelated filters preserved and impossible hotel receives no suggestion');
  await settle();assert.deepEqual(errors,[]);assert.deepEqual(requests,['./fixtures/live-search-2026-09-23.json']);
  console.log('PASS v139: reversible stars/budget/full filters, frozen prior results/URL, 48-card pagination, position, commit/repeat, desktop immediate filters, no supplier calls');dom.window.close();
 })().catch(error=>{console.error(error);dom.window.close();process.exitCode=1});

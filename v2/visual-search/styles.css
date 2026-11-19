@@ -1769,7 +1769,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 .form-picker .guest-age-choice .chevron{position:absolute;right:14px;top:24px}
 .form-picker .guest-age-row>.icon-button{align-self:center;margin-right:6px;background:transparent}
 .form-picker .picker-subtitle{font-size:14px;margin:22px 0 8px}
-.form-picker .budget-feedback{display:none}
+.form-picker .budget-feedback:has(#budget-recovery[hidden]){display:none}
 .form-picker.budget-dialog .form-row{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;margin:28px 0}
 .form-picker.budget-dialog .form-row label{display:grid;gap:8px}
 .form-picker.budget-dialog .input{min-height:60px;padding:14px;font-size:18px;background:white}

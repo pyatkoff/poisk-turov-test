@@ -2,6 +2,8 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
+const {tmpdir}=require('node:os');
+const {emitFirstOpenFile}=require('./search3-visual-first-open.cjs');
 const retainLosslessPngEvidence=require('../scripts/ci/search3_visual_evidence_retention.cjs');
 const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
 // Telephone journeys retain their supplier-only request ledger. The dedicated
@@ -1641,6 +1643,23 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'1'}));
    await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   const disclosure=page.locator('.result-calendar-disclosure');
+   if(await disclosure.isVisible()&&await disclosure.getAttribute('aria-expanded')==='false')await disclosure.click();
+   const unit=await page.locator('#calendar-units').innerText();
+   assert.match(unit,/доплата за младенца уточняется/i);
+   await page.locator('#price-calendar [data-action="calendar"]').click();
+   const pickerUnit=page.locator('#modal .calendar-units');
+   assert.equal(await pickerUnit.innerText(),unit);
+   assert.equal(await pickerUnit.evaluate(el=>el.clientWidth>0&&el.scrollWidth<=el.clientWidth+1),true);
+   const frameName=`infant-calendar-${width}.png`,frameDir=fs.mkdtempSync(path.join(tmpdir(),'search3-infant-'));
+   try {
+    await page.screenshot({path:path.join(frameDir,frameName)});
+    emitFirstOpenFile(frameDir,frameName,'SEARCH3_INFANT_FRAME');
+   } finally {
+    fs.rmSync(path.join(frameDir,frameName),{force:true});
+    fs.rmdirSync(frameDir);
+   }
+   await page.locator('[data-action="close-modal"]').click();
    await page.locator('#hotel-501 [data-action="all-offers"]').click();
    const infantRow=page.locator('#all-offers-list .grouped-offer[data-offer-key^="anex%3A"]').first();
    await infantRow.waitFor();
@@ -1650,6 +1669,12 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    assert.match(await listedAmount.getAttribute('aria-label'),/доплата за младенца уточняется/i);
    assert.equal((await listedAmount.innerText()).replace(/\s/g,''),'121000₽');
    if(width===430)await infantRow.screenshot({path:path.join(evidence,'infant-offer-price-430.jpg'),quality:74});
+   await infantRow.locator('[data-action="offer"]').click();
+   const listingFooter=page.locator('#modal-footer .footer-total');
+   assert.match(await listingFooter.innerText(),/Цена из поиска/);
+   assert.match(await listingFooter.innerText(),/Доплата за младенца уточняется/i);
+   assert.doesNotMatch(await listingFooter.innerText(),/за всех/i);
+   assert.equal((await listingFooter.locator('#detail-total').innerText()).replace(/\D/g,''),'121000');
    await page.locator('[data-action="close-modal"]').click();
    await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
    const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]'),groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
@@ -1677,6 +1702,7 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    await page.locator('[name="anex-package-choice"]').nth(1).check();const choice=await page.locator('[name="anex-package-choice"]:checked').getAttribute('value');
    await page.locator('[data-action="anex-package-calculate"]').click();await page.locator('[data-action="anex-application-preview"]').waitFor();
    assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/157594/);assert.match(await page.locator('#modal-body').textContent(),/Цена изменилась после проверки/);
+   assert.match(await page.locator('#modal-footer').innerText(),/За всех туристов/);
    assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 2 OUT/);
    assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,choice);
    await page.locator('[data-action="anex-application-preview"]').click();await chooseTelephoneIfOffered(page);await page.locator('#prototype-lead-form').waitFor();
@@ -2720,5 +2746,6 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   ]),rejected=completed.filter(result=>result.status==='rejected');
   if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
  }finally{await browser.close();server.close();if(!process.argv.includes('--messenger-only'))await retainLosslessPngEvidence(evidence);}
+ require('./search3-visual-form-values-archive.cjs').calendarBudget(evidence);
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});

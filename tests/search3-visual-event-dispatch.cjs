@@ -193,10 +193,15 @@ const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='79c27bc86f9ac4d7d0a11d40648922a68e5f76192268f3a80cbca6d1489035ec';
+// The inactive budget recovery button is inert outside its budget dialog.
+const BASELINE='b258cb0b417012c1bdf16932db1a6a7a0ccb46c21f33bc8c76bd681abe021874';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
 const result=name=>actual.find(r=>r.name===name).result;
+assert.deepEqual(result('click:budget-adjust-max').trace,[['queueMicrotask']]);
+const pickedBudget=characterize(source,{type:'click',action:'budget-adjust-max',dataset:{value:'2000'},setup:c=>{c.modalType='budget';c.searchEditSession={};}});
+assert.deepEqual(pickedBudget.trace,[['queueMicrotask'],['collapseSearch'],['applyQuickFilters']],'the budget suggestion opens filtered results without sending a search');
+assert.equal(pickedBudget.state.filters.max,2000);assert.deepEqual(pickedBudget.state.filters.meals,['AI']);
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
 assert.equal(result('trigger replaced before microtask').triggerAfterDrain,'other');
