@@ -34,6 +34,8 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   await driver.click(stars);
   await driver.wait(stars + '[aria-pressed="true"]');
   assert.equal(await driver.count('#cards:empty'), 1);
+  assert.ok(await driver.evaluate('document.querySelector("body > .footer").getBoundingClientRect().bottom >= innerHeight - 1'),
+    'the short search form fills the mobile viewport through its footer');
   await frame('01-search');
 
   await driver.click('.search-submit');

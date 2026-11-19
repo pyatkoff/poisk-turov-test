@@ -2784,6 +2784,8 @@ details.application-review .chosen-trip{display:none}
  .compact-route-block>span {font-size:.8125rem;line-height:1.4}
  .compact-search .secondary {width:min-content;min-width:98px;padding:3px 8px;line-height:1.25;font-size:.875rem}
  body:not(.mobile-results) .footer {padding:18px 0 max(18px,env(safe-area-inset-bottom))}
+ body.results-pristine-active {display:flex;flex-direction:column;min-height:100svh}
+ body.results-pristine-active>main {flex:1 0 auto}
 body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:none;transform:translateY(100%)}
 
 }
