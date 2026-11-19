@@ -1,4 +1,4 @@
-name: PRICE 1558 read-only ads19 release and timer proof
+name: PRICE 1654 read-only installed hook and public freshness proof
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '108161d81685bf914e66ae3bf962510636355add'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '61ae376386a24d9d30da1c3e4b00cdf42a1af8cc'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44495405380 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:fe623086b716b3077e4ec0d4551095fc63db37e3"
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44535278294 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:2e7c8db9d64fea552a813b07279e55c32e9e69da"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 --jq .body | grep -F 'общий редактор возвращён PRICE'
       - name: Prepare pinned server connection
         env:
@@ -57,7 +57,7 @@ jobs:
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
           import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
           root=pathlib.Path('/var/www/anytoour/data'); app=root/'www/app.anytoour.ru'; native=root/'www/anytoour.ru/data'
-          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='fe623086b716b3077e4ec0d4551095fc63db37e3'
+          head=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip(); print('SERVER_HEAD='+head); assert head=='2e7c8db9d64fea552a813b07279e55c32e9e69da'
           def sha(p):
             h=hashlib.sha256()
             with p.open('rb') as f:
@@ -82,17 +82,7 @@ jobs:
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
-          raise SystemExit(0)
-          timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
-          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
-          print('PRICE_TIMER_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
-          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--inspect'],capture_output=True,text=True)
-          print(p.stdout,end='')
-          assert p.returncode==0
-          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
-          assert result['updated_pairs']==0 and result['site_writes']==0 and result['supplier_calls']==0
-          print('PRICE_QUEUE_RETRY='+json.dumps(result,separators=(',',':')))
-          raise SystemExit(0)
+          result={'eligible_ids':[],'unchanged_ids':[],'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'deferred_counts':{},'pending':None}
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
