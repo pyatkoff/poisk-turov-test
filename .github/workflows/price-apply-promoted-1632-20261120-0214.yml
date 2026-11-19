@@ -1,0 +1,110 @@
+name: PRICE apply installed promoted archive targets 1632
+on:
+  push:
+    branches: ['ops/price-apply-promoted-1632-20261120-0214']
+    paths: ['.github/workflows/price-apply-promoted-1632-20261120-0214.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  apply:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e68fe088764521c7ff6b605403ca7f2ebb7e4dd6'
+    concurrency:
+      group: anytour-scheduled-tour-collector
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify the closed installed release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/pyatkoff/max-search-bot/git/ref/heads/main --jq .object.sha)" = "e262bf139da2b78623e1be3a891630fd10924180"
+          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44632489739 --jq '.status+":"+(.conclusion//"")')" = "completed:success"
+          test "$(gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body)" = "PR1632: установлено, выпуск свободен"
+      - name: Prepare pinned server connection
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
+          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
+          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
+          python3 - <<'PY'
+          import os,re,subprocess,base64,hashlib,pathlib
+          host=os.environ['DEPLOY_HOST']; user=os.environ['DEPLOY_USER']
+          assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
+          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35); matches=[]
+          for line in scan.stdout.splitlines():
+            fields=line.split()
+            if len(fields)<3 or fields[0].startswith('#'): continue
+            try: fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(fields[2])).digest()).decode().rstrip('=')
+            except Exception: continue
+            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0': matches.append(line)
+          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
+          pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          PY
+      - name: Apply one installed PRICE pass and require public verification
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
+          import pathlib,subprocess,json,collections
+          app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
+          installed=subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD'],text=True).strip()
+          assert installed=='e262bf139da2b78623e1be3a891630fd10924180','INSTALLED_SHA_CHANGED_STOP'
+          process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|monitor-price-hook.php|apply_promoted_hotel_prices.php'],capture_output=True,text=True)
+          active=[line for line in process.stdout.splitlines() if 'pgrep -af' not in line]
+          assert not active,'PRICE_PROCESS_ACTIVE_STOP'
+          tool=app/'tools'/'apply_promoted_hotel_prices.php'
+          assert tool.is_file()
+          completed=subprocess.run(['php',str(tool),'--apply'],capture_output=True,text=True)
+          print(completed.stdout,end=''); print(completed.stderr,end='')
+          assert completed.returncode==0,'PROMOTED_HANDLER_FAILED'
+          receipt=json.loads(next(line.split('=',1)[1] for line in completed.stdout.splitlines() if line.startswith('PROMOTED_HOTEL_PRICE_RESULT=')))
+          rows=receipt.get('rows'); held=receipt.get('source_held')
+          assert receipt.get('mode')=='--apply' and isinstance(rows,list) and isinstance(held,list)
+          targets=json.loads((app/'config'/'promoted_hotel_price_targets.json').read_text())
+          assert len(targets)==58 and len({row['publication_id'] for row in targets})==58
+          new_publications={3659,3660,3673,3661,3662,3663,3676,3664,3683,3665,3677,3666,3678,3667,3668,3679,3669,3670,3681,3671}
+          new_targets=[row for row in targets if row['publication_id'] in new_publications]
+          assert len(new_targets)==20
+          held_hotels={row['hotel_id'] for row in held}
+          indexed={(row['publication'],row['platform']):row for row in rows}
+          new_results=[]
+          for target in new_targets:
+            key=(target['publication_id'],target['platform'])
+            if target['hotel_id'] in held_hotels:
+              assert key not in indexed
+              new_results.append(dict(target,result='source_held',public_verified=False))
+            else:
+              row=indexed[key]
+              assert row['hotel']==target['hotel_id'] and row['url']==target['url']
+              new_results.append(dict(target,result=row['result'],public_verified=row.get('public_verified') is True))
+          results=collections.Counter(row.get('result','missing') for row in rows)
+          platforms=collections.Counter(row['platform'] for row in rows)
+          terminal={
+            'installed_sha':installed,
+            'feed_sha256':receipt.get('feed_sha256'),
+            'target_rows':len(targets),
+            'target_hotels':len({row['hotel_id'] for row in targets}),
+            'source_held':held,
+            'processed_rows':len(rows),
+            'results':dict(results),
+            'platforms':dict(platforms),
+            'new_targets':new_results,
+          }
+          print('PROMOTED_PRICE_TERMINAL='+json.dumps(terminal,ensure_ascii=False,separators=(',',':')))
+          bad=[row for row in rows if row.get('result') not in {'updated','already_current'} or row.get('public_verified') is not True]
+          assert not bad,'PROMOTED_PUBLIC_VERIFICATION_INCOMPLETE'
+          PY
+      - name: Cleanup connection material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
