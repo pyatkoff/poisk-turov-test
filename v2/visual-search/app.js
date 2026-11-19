@@ -1121,9 +1121,11 @@ function renderHotelDetails(){
  const view=hotelDetailsView,request=++hotelDetailsRequest;
  const localRefresh=window.V2_CONFIG?.localTvCatalogEnabled===true&&typeof data.refreshHotelContent==='function';
  const current=()=>hotelDetailsView===view&&request===hotelDetailsRequest&&modalType==='hotel-details'&&$('#modal').open;
+ let mountedOwner=null,entryScroll=null;
  const render=()=>{
   if(!current()||!hotels.some(h=>h.id===view.id))return;
-  const initialOffers=hotelDetailsOwner().openHotelDetails(view.id);
+  mountedOwner=hotelDetailsOwner();
+  const initialOffers=mountedOwner.openHotelDetails(view.id);
   const restored=view.restored;view.restored=null;
   if(restored){renderHotelRooms(view.id,initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'',Array.isArray(restored.rooms)?restored.rooms:null,initialOffers);
    for(const room of $$('.hotel-room-card[data-room]'))if(Array.isArray(restored.more)&&restored.more.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
@@ -1140,6 +1142,7 @@ function renderHotelDetails(){
    }
    view.roomEntryPending=group;
    positionHotelRooms(row);
+   if(localRefresh)entryScroll=$('#modal-body')?.scrollTop??null;
    if(group){
     hotelOfferDraft={hotelId:view.id,key:entry.key};selectedOffer={...entry};view.checkKey=entry.key;
     refreshLiveHotel(view.id);
@@ -1147,17 +1150,22 @@ function renderHotelDetails(){
   }
  };
  const refreshContent=async()=>{
-  if(!localRefresh)return;
-  const changed=await data.refreshHotelContent([view.id]);
-  if(changed&&current()){
-   // Reproject only presentation. Offer objects, quote receipts and IDs stay intact.
-   const target=hotels.find(h=>h.id===view.id),source=target&&data.hotelPresentation?data.hotelPresentation(target.raw,state.search):null;
-   if(target&&source){const offers=target.offers;Object.assign(target,source);target.offers=offers;renderResults({keepFilters:true,keepCalendar:true});}
-  }
+  let target,source;
+  try{
+   if(!await data.refreshHotelContent([view.id])||!current())return;
+   target=hotels.find(h=>h.id===view.id);source=target&&data.hotelPresentation?.(target.raw,state.search);
+  }catch{return;}
+  if(!source||source.id!==view.id)return;
+  const offers=target.offers;Object.assign(target,source);target.offers=offers;
+  mountedOwner?.refreshHotelProfile(target,entryScroll);
+  renderResults({keepFilters:true,keepCalendar:true});
  };
- if(window.AnyTourHotelDetails?.create&&!localRefresh){render();return;}
- $('#hotel-details-load').innerHTML='<p role="status">Загружаем подробности отеля…</p>';
- Promise.all([loadHotelDetails(),refreshContent()]).then(render).catch(()=>{if(current())$('#hotel-details-load').innerHTML='<div role="alert"><p>Не удалось загрузить подробности отеля.</p><button class="secondary" data-action="retry-hotel-details">Попробовать ещё раз</button></div>';});
+ if(window.AnyTourHotelDetails?.create)render();
+ else{
+  $('#hotel-details-load').innerHTML='<p role="status">Загружаем подробности отеля…</p>';
+  loadHotelDetails().then(render,()=>{if(current())$('#hotel-details-load').innerHTML='<div role="alert"><p>Не удалось загрузить подробности отеля.</p><button class="secondary" data-action="retry-hotel-details">Попробовать ещё раз</button></div>';});
+ }
+ if(localRefresh)refreshContent();
 }
 
 function positionHotelRooms(row=null){
