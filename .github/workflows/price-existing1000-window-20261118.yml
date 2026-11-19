@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1587a1a286ecfed933e05919fc41ae9ba09319ee'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7f3a81d87ae2d02ba285e013a2b4d9650b9c815f'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
