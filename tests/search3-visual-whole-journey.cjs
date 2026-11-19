@@ -232,6 +232,10 @@ async function saveJourney(context, frames, width, evidence, options = {}) {
 module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  if (process.platform === 'linux') {
   const root = process.env.SEARCH3_VISUAL_ASSET_ROOT || path.resolve(__dirname, '../v2');
+  require('node:child_process').execFileSync('xvfb-run', [
+   '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
+   path.join(__dirname, 'search3-visual-first-open.cjs'), root, path.resolve('visual-live-evidence/first-open'),
+  ], {stdio:'inherit', timeout:180000});
   const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'search3-rdm-'));
   const raw = path.join(temp, 'firefox-rdm');
   const retained = path.join(evidence, 'firefox-rdm');
