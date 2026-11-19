@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '97fe6c6d7841edd0b7e5b7337f781f4e343a3280'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'a6f0f75c563b9abd6978d33297749af69b034e26'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44444909931 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:59c327778adfe381e3677877c65958eeac117400"
+          test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44444909931 --jq '.status+":"+.conclusion+":"+.head_sha')" = "completed:success:59c327778adfe381e3677877c65958eeac117400"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 --jq .body | grep -F 'общий редактор возвращён PRICE'
       - name: Prepare pinned server connection
         env:
