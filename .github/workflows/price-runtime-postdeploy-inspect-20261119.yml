@@ -1,4 +1,4 @@
-name: PRICE 1757 apply full queue after 1715 timer collection
+name: PRICE 1849 read-only post-write timer and feeds
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '40405df805669e4b94de8075933d786baea95745'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3fee6bf926f0eb7fced95110935cc9b618f03e42'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -104,15 +104,7 @@ jobs:
           timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
           process=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
           print('PRICE_ADS19_LIVE='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'pins':pins,'feed_states':states,'separate_telegram_feed':{'offers':len(special_offers),'redirects':special_counts,'sha256':hashlib.sha256(special_bytes).hexdigest()},'timer':timer,'processes':[x for x in process.stdout.splitlines() if 'pgrep -af' not in x]},separators=(',',':')))
-          env=dict(__import__('os').environ)
-          env['ANYTOUR_MONITOR_COLLECTION_STARTED_AT']='2026-11-19T14:15:00+00:00'
-          env['ANYTOUR_MONITOR_COLLECTOR_RUN_ID']='20261119141500'
-          p=subprocess.run(['php',str(native/'monitor-price-hook.php'),'--nightly'],capture_output=True,text=True,env=env)
-          print(p.stdout,end='')
-          assert p.returncode==0
-          result=json.loads(next(x.split('=',1)[1] for x in p.stdout.splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')))
-          assert result['ok'] is True and result['updated_pairs']>=1 and result['site_writes']==0 and result['supplier_calls']==0
-          print('PRICE_WRITE_AFTER_TIMER='+json.dumps(result,separators=(',',':')))
+          result={'eligible_ids':[],'unchanged_ids':[],'unchanged_pairs':0,'eligible_pairs':0,'held_pairs':0,'deferred_counts':{},'pending':None}
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
