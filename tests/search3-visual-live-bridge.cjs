@@ -508,7 +508,7 @@ async function pickerRetainedDraftRegressions(){
  q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
  click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
- click('#search-options-toggle');
+ assert.equal(q('#search-options-toggle').getAttribute('aria-expanded'),'false');
  click('#search-form [data-action="meals"]');click('[data-meal-choice][value="Завтраки"]');click('[data-action="apply-meals"]');await settle();
  click('#search-form [data-action="meals"]');assert.deepEqual([...d.querySelectorAll('[data-meal-choice]')].map(x=>x.value),['','Всё включено','Завтраки']);
  click('[data-meal-choice][value=""]');click('[data-action="apply-meals"]');await settle();
@@ -627,6 +627,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('[data-meal-choice][value="Всё включено"]').checked,'browser Forward restores the un-applied meal choice');
  assert.equal(q('#modal-body').scrollTop,73,'browser Forward restores the meal picker position');
  click('[data-action="close-modal"]');await settle();await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
+ click('#search-options-toggle');
  click('#search-form [data-action="budget"]');q('#budget-min').value='111 000';q('#budget-min').dispatchEvent(new w.Event('input',{bubbles:true}));q('#budget-max').value='222 000';q('#budget-max').dispatchEvent(new w.Event('input',{bubbles:true}));
  w.history.back();await settle();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes the budget picker without applying its draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);

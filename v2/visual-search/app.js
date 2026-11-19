@@ -326,7 +326,7 @@ function updateSearchUI(){
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
  const budget=budgetText();
  $('#budget-label').textContent=budget;
- $('#search-options-value').textContent=[meals,state.filters.min>0||state.filters.max!==null?budget:''].filter(Boolean).join(' · ');
+ $('#search-options-value').textContent=state.filters.min>0||state.filters.max!==null?budget:'';
  $('.search-submit').disabled=!catalogReady||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  renderCatalogError();
 }

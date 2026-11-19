@@ -64,7 +64,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    } finally { await context.close(); }
    report.selection.frames = report.selection.frames.map((file, i) => ({stage:path.parse(file).name, label:labels[i]}));
    report.selection.contactSheet = filename;
-   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame]){
+   for(const file of [report.selection.similarRoomsFrame, report.selection.returnedRoomFrame, report.selection.selectedMealFrame]){
     fs.copyFileSync(path.join(raw,file), path.join(retained,file));
    }
    fs.writeFileSync(path.join(retained,'result.json'), JSON.stringify(report,null,2));
