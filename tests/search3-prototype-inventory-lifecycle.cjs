@@ -198,6 +198,66 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+for(const provider of ['anex','andromeda']){
+ const source=provider==='anex'?directAnex:directAndromeda;
+ const ref=id=>(provider==='anex'?'anex_online:':'offer_')+id.toString(16).padStart(64,'0');
+ const ids=Array.from({length:20},(_,index)=>index+1);
+ function page(body,offerIds){
+  const value=source(body);
+  value.data.hotels=offerIds.map((id,index)=>source(body,{offerRef:ref(id),localId:101+index}).data.hotels[0]);
+  return value;
+ }
+ function setup(reply,digest){
+  const route=provider==='anex'?'anex':'native';
+  const h=harness({[route]:async(body,signal,calls)=>({response:{ok:true,json:async()=>reply(body,calls.length)}}),
+   browserCrypto:{getRandomValues:values=>crypto.webcrypto.getRandomValues(values),subtle:{digest}}});
+  return {h,requests:provider==='anex'?h.anexCalls:h.nativeCalls};
+ }
+ test(provider+' admits a bounded set of concurrent digests across hotels and preserves source order',async()=>{
+  const gates=[];
+  const {h,requests}=setup(body=>page(body,ids),async(algorithm,bytes)=>{
+   const gate=defer();gates.push(gate);await gate.promise;return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();
+  assert.equal(gates.length,16);assert.equal(h.latest().length,0);
+  gates.slice().reverse().forEach(gate=>gate.resolve());
+  await waitFor(()=>gates.length===ids.length,'remaining digests must run after the first batch');
+  assert.equal(h.latest().length,0,'an incomplete page cannot publish offers');
+  gates.slice(16).reverse().forEach(gate=>gate.resolve());
+  await waitFor(()=>h.latest().length===ids.length,'the first valid provider page must publish without a TV poll');
+  const offers=h.latest().flatMap(hotel=>hotel.offers);
+  assert.deepEqual(Array.from(offers,offer=>offer.raw.offerRef),ids.map(ref));
+  assert.deepEqual(Array.from(offers,offer=>offer.raw.offerIdentityDigest),ids.map(id=>hash(ref(id))));
+  assert.equal(requests.length,1);assert.equal(h.calls.filter(call=>call.action==='search_status').length,0);
+ });
+ for(const fault of ['duplicate','bad currency','missing offer','digest failure'])test(provider+' rejects the entire page on a late '+fault,async()=>{
+  const {h,requests}=setup(body=>{
+   const value=page(body,fault==='duplicate'?[...ids.slice(0,-1),ids[0]]:ids);
+   if(fault==='bad currency')value.data.hotels.at(-1).tours[0].price.currency='USD';
+   if(fault==='missing offer')delete value.data.hotels.at(-1).tours[0];
+   return value;
+  },async(algorithm,bytes)=>{
+   if(fault==='digest failure'&&Buffer.from(bytes).toString()===ref(ids.at(-1)))throw Error('digest unavailable');
+   return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider===provider&&e.status==='error'),'page validation must fail');
+  assert(!h.events.some(e=>e.type==='results'&&e.hotels.length));assert.equal(requests.length,1);
+ });
+ for(const count of [7,20])test(provider+' discards an obsolete '+count+'-offer page during digest verification',async()=>{
+  const hold=defer(),started=[];
+  const {h,requests}=setup((body,call)=>page(body,call===1?ids.slice(0,count):[99]),async(algorithm,bytes)=>{
+   const id=Buffer.from(bytes).toString();started.push(id);if(id!==ref(99))await hold.promise;
+   return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();assert.equal(started.length,Math.min(count,16));
+  await h.start();await waitFor(()=>h.latest().some(hotel=>hotel.offers.some(offer=>offer.raw.offerRef===ref(99))),'new page must publish independently');
+  const settled=h.events.length;hold.resolve();await flush();
+  assert.deepEqual(started,[...ids.slice(0,Math.min(count,16)),99].map(ref));
+  assert.equal(h.events.length,settled,'obsolete verification must not touch the new inventory');
+  assert.deepEqual(Array.from(h.latest().flatMap(hotel=>hotel.offers),offer=>offer.raw.offerRef),[ref(99)]);
+  assert.equal(requests.length,2);
+ });
+}
 test('independent pages do not restart the same ANEX search identity at an identical clock',async()=>{
  // One shared-session fixture models the accepted integer/window contract, not
  // PHP execution. Distinct entropy makes the old page-local counter fail reliably.

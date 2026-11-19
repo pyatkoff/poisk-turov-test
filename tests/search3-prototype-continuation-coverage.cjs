@@ -9,7 +9,7 @@ const path=require('node:path');
 function readCanonicalFunctions(){
  const file=path.join(__dirname,'../v2/prototype-search/data.js');
  const text=fs.readFileSync(file,'utf8');
- const start=text.indexOf('  function andromedaBranch(');
+ const start=text.indexOf('  async function prepareDirectPage(');
  const end=text.indexOf('  async function settleInitialSources(',start);
  assert(start>=0&&end>start,'canonical Andromeda coverage and initial flow must be present');
  return text.slice(start,end);

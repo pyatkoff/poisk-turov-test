@@ -903,26 +903,24 @@
     if(page===1?!!previous:(!previous||previous.pagesRead!==page-1||previous.searchRef!==data.search_ref
       ||previous.continuation?.next_page!==page||previous.requestedPage!==page||!continuation
       ||data.page!==page||data.pages_read!==1||data.first_page_only!==false||run.anexWindowsTotal!==total))throw new Error('Invalid ANEX page sequence');
-    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
+    const seenHotels=new Set(),seenOffers=new Set();let receivedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
         ||hotel.catalog?.source!=='tourvisor'||Number(hotel.catalog?.hotel_id)!==hotel.local_id
         ||!Array.isArray(hotel.tours)||hotel.tours.length<1||hotel.tours.length>300)throw new Error('Invalid ANEX hotel');
       seenHotels.add(hotel.local_id);receivedOffers+=hotel.tours.length;
-      for(const tour of hotel.tours){
-        if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
-        const normalized=await directAnexOffer(hotel,tour,run,p,seenOffers);
-        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
-      }
     }
     if(receivedOffers>300)throw new Error('Invalid ANEX result size');
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>{
+      if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
+      return directAnexOffer(hotel,tour,run,p,seenOffers);
+    }):[];
+    if(!current(run))return null;
     // Existing first-page cap is retained; each explicit page has the same cap.
     const priorOffers=[...windows.values()].reduce((sum,window)=>sum+window.receivedOffers,0);
     const initialOffers=[...windows.values()].reduce((sum,window)=>sum+(window.initialReceivedOffers??window.receivedOffers),0);
     if((page===1&&initialOffers+receivedOffers>1200)||priorOffers+receivedOffers>1200*12
       ||(previous?.receivedOffers||0)+receivedOffers>300*12)throw new Error('Invalid ANEX result size');
-    // No asynchronous digest from an old generation may mutate the current union.
-    if(!current(run))return null;
     windows.set(index,{prepared:previous?[...previous.prepared,...prepared]:prepared,
       hotelIds:[...new Set([...(previous?.hotelIds||[]),...seenHotels])],
       receivedOffers:(previous?.receivedOffers||0)+receivedOffers,mappedOffers:(previous?.mappedOffers||0)+receivedOffers,
@@ -1065,6 +1063,31 @@
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
     return normalized;
   }
+  async function prepareDirectPage(run,hotels,normalize){
+    const prepared=[],pending=[];
+    // Stay within the validated page. Source order also determines duplicate
+    // checks and publication order, regardless of when individual digests finish.
+    async function prepareOffer(hotel,tour){
+      const item=await normalize(hotel,tour);
+      return item&&{legacyHotelId:hotel.local_id,tour:item};
+    }
+    async function finishBatch(){
+      for(const entry of await Promise.all(pending))if(entry)prepared.push(entry);
+      pending.length=0;
+    }
+    if(!current(run))return null;
+    for(const hotel of hotels){
+      for(const tour of hotel.tours){
+        pending.push(prepareOffer(hotel,tour));
+        if(pending.length===16){
+          await finishBatch();
+          if(!current(run))return null;
+        }
+      }
+    }
+    if(pending.length)await finishBatch();
+    return prepared;
+  }
   function andromedaBranch(run,index,total,p){
     if(!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total)throw new Error('Invalid Andromeda destination branch');
     const branches=run.andromedaBranches||(run.andromedaBranches=new Map());
@@ -1119,17 +1142,15 @@
       if(pages.size||branch.searchRef&&branch.searchRef!==data.search_ref)throw new Error('Invalid Andromeda page sequence');
       branch.searchRef=data.search_ref;
     }else if(branch.searchRef!==data.search_ref||pages.has(data.page)||!pages.has(data.page-1))throw new Error('Invalid Andromeda page sequence');
-    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let projectedOffers=0;
+    const seenHotels=new Set(),seenOffers=new Set();let projectedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||hotel.mapping_status!=='resolved'||seenHotels.has(hotel.local_id)
         ||!Array.isArray(hotel.tours)||hotel.tours.length<1)throw new Error('Invalid Andromeda hotel');
       seenHotels.add(hotel.local_id);projectedOffers+=hotel.tours.length;
       if(projectedOffers>15000)throw new Error('Invalid Andromeda result size');
-      for(const tour of hotel.tours){
-        const normalized=await directAndromedaOffer(hotel,tour,run,p,seenOffers,data);
-        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
-      }
     }
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>directAndromedaOffer(hotel,tour,run,p,seenOffers,data)):[];
+    if(!current(run))return null;
     const branches=run.andromedaBranches;
     const accumulated=[...branches.values()].reduce((sum,item)=>sum+[...item.pages.values()].reduce((inner,page)=>inner+page.projectedOffers,0),0);
     if(accumulated+projectedOffers>15000)throw new Error('Invalid Andromeda result size');
