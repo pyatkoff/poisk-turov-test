@@ -1,4 +1,4 @@
-name: PRICE 1930 verify main19 after FEED 1629
+name: PRICE 1951 inspect 1945 server timer read-only
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -8,21 +8,20 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e39bbb09a138dd4f06d261a1cba3d318c7f949ff'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '8c245e95e7306353073136bc5511a37adb3eb63c'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Verify accepted releases
+      - name: Verify terminal PRICE receipt
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           test "$(gh api repos/pyatkoff/poisk-turov-test/actions/runs/44563083153 --jq '.status+":"+(.conclusion//"")')" = "completed:success"
-          test "$(gh api repos/pyatkoff/max-search-bot/actions/runs/44562396299 --jq '.status+":"+(.conclusion//"")+":"+.head_sha')" = "completed:success:3e63ed046a3cdd5ae0e12ca431ae0bce59beae7b"
       - name: Prepare pinned server connection
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -49,39 +48,29 @@ jobs:
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP'
           pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read back main19 without writes
+      - name: Read timer and active process without writes
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" python3 <<'PY'
-          import pathlib,subprocess,hashlib,json,xml.etree.ElementTree as ET
+          import pathlib,subprocess,hashlib,json
+          native=pathlib.Path('/var/www/anytoour/data/www/anytoour.ru/data')
           app=pathlib.Path('/var/www/anytoour/data/www/app.anytoour.ru')
-          canonical=(app/'feed'/'hotel-posts-telegram.xml').read_bytes()
-          projected=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/hotel-posts-telegram-main19.php'])
-          a={o.attrib['id']:o for o in ET.fromstring(canonical).findall('.//offer')}
-          b={o.attrib['id']:o for o in ET.fromstring(projected).findall('.//offer')}
-          ids=[174,12107,132,469,12111,70048,82606,1344,260,415,2493,3452,4181,37668,43676,64895,73974,74503,99713]
-          chosen={'tg_'+str(i) for i in ids}
-          assert len(a)==len(b)==1000 and a.keys()==b.keys()
-          changed=[]; mini=0
-          for oid,oa in a.items():
-            ob=b[oid]
-            assert oa.attrib==ob.attrib
-            ca=[(x.tag,x.attrib,x.text or '') for x in oa]
-            cb=[(x.tag,x.attrib,x.text or '') for x in ob]
-            assert len(ca)==len(cb)
-            for av,bv in zip(ca,cb):
-              assert av[:2]==bv[:2]
-              if av[0]=='url' and oid in chosen:
-                expected='https://t.me/Any_tour_bot?startapp={yclid}_'+oid
-                assert bv[2]==expected
-                mini+=1; changed.append(oid)
-              else:
-                assert av[2]==bv[2]
-          assert mini==19 and set(changed)==chosen
-          print('PRICE_MAIN19_POST1629='+json.dumps({'offers':len(b),'miniapp_urls':mini,'changed_ids':sorted(changed),'canonical_sha256':hashlib.sha256(canonical).hexdigest(),'projected_sha256':hashlib.sha256(projected).hexdigest()},separators=(',',':')))
+          timer=json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))
+          p=subprocess.run(['pgrep','-af','top500-daily-collector-v1.php|hotel-price-timer-v1.php'],capture_output=True,text=True)
+          lines=[x for x in p.stdout.splitlines() if 'pgrep -af' not in x]
+          pids=[x.split(None,1)[0] for x in lines if x.split(None,1)[0].isdigit()]
+          ps=subprocess.run(['ps','-o','pid=,ppid=,stat=,etime=,lstart=,cmd=','-p',','.join(pids)],capture_output=True,text=True) if pids else None
+          feeds={}
+          for n in ('telegram','max','all'):
+            path=app/'feed'/('hotel-posts-'+n+'.xml')
+            data=path.read_bytes()
+            public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+path.name])
+            assert data==public
+            feeds[n]={'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)}
+          print('PRICE_1945_TIMER_READ='+json.dumps({'as_of_utc':subprocess.check_output(['date','-u','+%Y-%m-%dT%H:%M:%SZ']).decode().strip(),'timer':timer,'processes':lines,'ps':ps.stdout.splitlines() if ps else [],'feeds':feeds},separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
