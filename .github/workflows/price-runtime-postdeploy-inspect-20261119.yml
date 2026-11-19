@@ -1,4 +1,4 @@
-name: Final PRICE census after 33 verified pairs
+name: Reconcile scheduled PRICE 20-pair write
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '328fd64a4ef7198d4562e1815f63cb05cc8918e7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'cf22d788a6b8a874482bab151f43374db921ab3c'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -70,7 +70,7 @@ jobs:
           feeds={}
           for k,n in [('telegram',1000),('max',1000),('all',2000)]:
             name='hotel-posts-'+k+'.xml'; data=(app/'feed'/name).read_bytes(); public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name]); assert data==public; rows=ET.fromstring(data).findall('.//offer'); assert len(rows)==len({o.attrib['id'] for o in rows})==n; feeds[k]=sha(app/'feed'/name)
-          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
+          print('POSTDEPLOY_PRICE_INSPECT='+json.dumps({'head':head,'pins':pins,'unchanged_pairs':result['unchanged_pairs'],'eligible_pairs':result['eligible_pairs'],'held_pairs':result['held_pairs'],'deferred_counts':result.get('deferred_counts'),'journal_pending':result.get('pending'),'feeds':feeds,'timer':json.loads(subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']))},separators=(',',':')))
           PY
       - name: Cleanup connection material
         if: always()
