@@ -100,12 +100,17 @@ async function openReplay(root, html, catalogDelayMs) {
         return respond(200, 'application/json', JSON.stringify(data));
       }
       assert.ok(clicked, 'unexpected request before search: ' + url.pathname);
+      if (url.pathname === '/_preview/search3-anex-candidate/api-anex-search3-preview.php') {
+        if (req.method === 'GET' && url.searchParams.get('action') === 'tv_token') {
+          return respond(200, 'application/json', JSON.stringify({ok:true,provider:'tourvisor',csrf:'a'.repeat(64)}));
+        }
+        if (req.method === 'POST' && body.action === 'tv_search') requests.push(body.params);
+      }
       if (url.pathname.endsWith('/data/search3-local-results-read-v1.php') && body.params) {
-        requests.push(body.params);
         return respond(200, 'application/json', JSON.stringify(await transport.json(url.href, {body:payload})));
       }
-      // The first LOCAL search read proves the click reached the real data adapter.
-      // All other search transports terminate on this loopback server.
+      // Capture the real adapter's tour search parameters; the request terminates
+      // here, before any supplier service or external handoff.
       return respond(503, 'application/json', '{"ok":false,"error":"offline_replay"}');
     } catch (error) {
       blocked.push(String(error.message));
@@ -143,7 +148,7 @@ async function measure(driver, engine, size, root, html, evidence) {
         replay.allowClick();
         await driver.click('.search-submit');
         for (let n=0;!replay.requests.length && n<100;n++) await delay(40);
-        assert.ok(replay.requests.length, 'native click did not produce a LOCAL search');
+        assert.equal(replay.requests.length, 1, 'native click must dispatch one tour search to loopback');
         const p = replay.requests[0];
         assert.deepEqual([String(p.departureId),String(p.countryId),p.dateFrom,p.dateTo,
           p.nightsFrom,p.nightsTo,p.adults,p.childs], ['1','4',expected.from,expected.to,7,7,2,[]]);
