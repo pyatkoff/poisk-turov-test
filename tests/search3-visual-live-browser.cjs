@@ -1592,8 +1592,7 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
    const listedAmount=infantRow.locator('.offer-price strong');
    assert.match(await listedAmount.getAttribute('aria-label'),/доплата за младенца уточняется/i);
    assert.equal((await listedAmount.innerText()).replace(/\s/g,''),'121000₽');
-   await infantRow.scrollIntoViewIfNeeded();
-   await page.screenshot({path:path.join(evidence,`infant-offer-prices-${width}.png`)});
+   if(width===430)await infantRow.screenshot({path:path.join(evidence,'infant-offer-price-430.jpg'),quality:74});
    await page.locator('[data-action="close-modal"]').click();
    await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
    const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]'),groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
