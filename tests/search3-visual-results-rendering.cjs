@@ -360,7 +360,7 @@ function cardRatingOwner(code){
  vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  ctx.offerCountText=n=>n+' тура';
- return {work,render,card:row=>ctx.cardHTML(row)};
+ return {work,render,card:row=>ctx.cardHTML(row),setFilters:f=>{state.filters=f;}};
 }
 const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
 for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(currentCard.render(value),previousCard.render(value),'card rating markup '+String(value));
@@ -389,6 +389,23 @@ assert(source.includes('markup:cardHTML(item)'),'result rendering passes the com
 assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers,rating=null}){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
 console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
+
+{
+ const owner=cardRatingOwner(source),hotel={id:42,name:'Hotel',resort:'Кемер',country:'4',stars:4,photos:[],
+  amenities:[{key:'3:11',label:'Детский клуб',filterable:true},{key:'1:22',label:'Пляж <&',filterable:true},
+   {key:'local-service:9',label:'Услуга из описания',filterable:false}],family:true,beach:90};
+ const offer={key:'verified-listing',total:120000,nights:7};
+ hotel.offers=[offer];
+ const render=filters=>{owner.setFilters(filters);return JSDOM.fragment(owner.card({hotel,offers:[offer]}));};
+ const reasons=doc=>[...doc.querySelectorAll('.hotel-match-line li')].map(e=>e.textContent);
+ const both=render({amenities:['3:11','1:22','local-service:9'],family:true,beach:true});
+ assert.deepEqual(reasons(both),['Детский клуб','Пляж <&','90 м до пляжа']);
+ assert.equal(both.querySelector('.hotel-match-facts').nextElementSibling.className.trim(),'hotel-price');
+ assert.deepEqual(reasons(render({amenities:['1:22']})),['Пляж <&']);
+ hotel.beach=null;
+ assert.deepEqual(reasons(render({amenities:['3:99'],beach:true,spa:true})),[]);
+ assert.equal(render({meals:['Завтраки'],stars:[4]}).querySelector('.hotel-facts').textContent,'Пляж рядом');
+}
 
 // Site224 card entry: presentation must retain the representative exact key and
 // the separate list owner, without advertising alternatives after local filtering.
