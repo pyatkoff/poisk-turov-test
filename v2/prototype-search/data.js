@@ -911,10 +911,10 @@
       seenHotels.add(hotel.local_id);receivedOffers+=hotel.tours.length;
     }
     if(receivedOffers>300)throw new Error('Invalid ANEX result size');
-    const prepared=await prepareDirectPage(run,data.hotels,(hotel,tour)=>{
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>{
       if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
       return directAnexOffer(hotel,tour,run,p,seenOffers);
-    });
+    }):[];
     if(!current(run))return null;
     // Existing first-page cap is retained; each explicit page has the same cap.
     const priorOffers=[...windows.values()].reduce((sum,window)=>sum+window.receivedOffers,0);
@@ -1149,7 +1149,7 @@
       seenHotels.add(hotel.local_id);projectedOffers+=hotel.tours.length;
       if(projectedOffers>15000)throw new Error('Invalid Andromeda result size');
     }
-    const prepared=await prepareDirectPage(run,data.hotels,(hotel,tour)=>directAndromedaOffer(hotel,tour,run,p,seenOffers,data));
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>directAndromedaOffer(hotel,tour,run,p,seenOffers,data)):[];
     if(!current(run))return null;
     const branches=run.andromedaBranches;
     const accumulated=[...branches.values()].reduce((sum,item)=>sum+[...item.pages.values()].reduce((inner,page)=>inner+page.projectedOffers,0),0);
