@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '196569d6fd53e7f4dc2443ffcc665905cc12ba30'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3137b02bd2785592901cade393f2d8facf5bf5e0'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -73,13 +73,15 @@ jobs:
           bundle={'operation':op,'state':state,'row':row,'approved':approved,'max_plan':max_entry['plan']}; encoded=base64.b64encode(json.dumps(bundle,separators=(',',':')).encode()).decode()
           php=r'''<?php
           $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root); ob_start(); require $root.'/config.php'; require_once $root.'/services/ChannelPostRuntime.php'; require_once $root.'/services/ChannelPostEntryService.php'; require_once $root.'/services/ChannelPostReconciliationService.php'; ob_end_clean();
-          $b=json_decode(base64_decode($argv[1],true),true,256,JSON_THROW_ON_ERROR); $r=new ChannelPostRegistryService(ConversationDb::connection());
+          $b=json_decode(base64_decode((string)getenv('PRICE_BUNDLE'),true),true,256,JSON_THROW_ON_ERROR); $r=new ChannelPostRegistryService(ConversationDb::connection());
           foreach(['max','telegram'] as $platform){$proof=$b['approved'][$platform]['receipt']; $p=$r->publication((int)$proof['publication_id']); if(!$p)throw new Exception('publication_missing'); $plan=$platform==='max'?$b['max_plan']:null;
             $safe=['platform'=>$platform,'publication_id'=>$p['publication_id'],'version_id'=>$p['version_id'],'config_version'=>$p['channel']['config_version'],'message_id'=>$p['external_message_id'],'post_url'=>$p['snapshot']['post_url'],'state'=>$p['state'],'reason'=>$p['error_reason'],'attempt_count'=>$p['attempt_count'],'write_attempts'=>$p['write_attempts'],'claimed'=>!empty($p['claim_token']),'content_hash'=>ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),'text_sha256'=>hash('sha256',$p['snapshot']['text']),'photo_sha256'=>hash('sha256',json_encode($p['snapshot']['attachments'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),'price_record'=>$p['snapshot']['metadata']['monitor_price_record_id']??null,'observation_kind'=>$p['snapshot']['metadata']['observation_kind']??null,'exact_button'=>ChannelPostIncomingAdapter::containsOnlyButton($p['snapshot'],ChannelPostButtonTransport::buttonUrl($p),(string)$p['channel']['button_text'])]; if($plan)$safe['matches_intended_text']=$p['snapshot']['text']===$plan['text']; echo 'REGISTRY '.json_encode($safe,JSON_UNESCAPED_SLASHES)."\n";
             if($platform==='max'){$identity=ChannelPostRuntime::identity('max'); $preview=(new ChannelPostReconciliationService(ConversationDb::connection()))->confirmReadFailure($identity,$p['channel_id'],$p['publication_id'],$p['version_id'],(int)$p['channel']['config_version'],ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']),false); echo 'MAX_GET_ONLY_PREVIEW '.json_encode($preview,JSON_UNESCAPED_SLASHES)."\n";}
           }
           ?>'''
-          proc=subprocess.run(['php','-',encoded],input=php.encode(),capture_output=True); print(proc.stdout.decode(),end=''); print(proc.stderr.decode(),end=''); assert proc.returncode==0
+          import os
+          env=dict(os.environ); env['PRICE_BUNDLE']=encoded
+          proc=subprocess.run(['php'],input=php.encode(),capture_output=True,env=env); print(proc.stdout.decode(),end=''); print(proc.stderr.decode(),end=''); assert proc.returncode==0
           def get(url): return subprocess.check_output(['curl','-fsS','--max-time','45',url])
           source_url='https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'+urllib.parse.urlencode([('tourvisorHotelIds[0]','1101'),('departureId','1'),('dateFrom','2026-11-19'),('dateTo','2027-10-31')])
           source=json.loads(get(source_url)); item=source['items'][0]
