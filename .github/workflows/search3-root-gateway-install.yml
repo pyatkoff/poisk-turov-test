@@ -23,7 +23,7 @@ jobs:
       github.event_name == 'issue_comment' && github.event.action == 'created' &&
       github.event.issue.number == 4709 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == format('/inspect-search3-production-readiness {0} readiness-20261120-v1', github.sha)
+      github.event.comment.body == format('/inspect-search3-production-readiness {0} readiness-public-int-20261120-v2', github.sha)
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     permissions: {contents: read, issues: read, checks: read, actions: read}
@@ -36,9 +36,6 @@ jobs:
           PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
           PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
           PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
-          LEGACY_HOST: '${{ secrets.DEPLOY_HOST }}'
-          LEGACY_USER: '${{ secrets.DEPLOY_USER }}'
-          LEGACY_KEY: '${{ secrets.DEPLOY_SSH_KEY }}'
         run: python3 scripts/deploy/search3_root_gateway_inspect.py production-readiness
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
