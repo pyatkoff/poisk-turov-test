@@ -208,7 +208,7 @@ jobs:
           source = pathlib.Path("visual-live-evidence")
           target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "visual-acceptance-parts"
           limit = 24 * 1024 * 1024
-          parts = [[] for _ in range(4)]
+          parts = [[] for _ in range(5)]
           sizes = [0] * len(parts)
           if target.exists():
               raise SystemExit("Acceptance parts output already exists")
@@ -226,7 +226,7 @@ jobs:
           for entry in sorted(entries, key=lambda row: (-row["bytes"], row["path"])):
               part = min(range(len(parts)), key=lambda index: sizes[index])
               if sizes[part] + entry["bytes"] > limit:
-                  raise SystemExit("Complete acceptance evidence exceeds four bounded parts")
+                  raise SystemExit("Complete acceptance evidence exceeds five bounded parts")
               entry["part"] = f"{part + 1:02d}"
               parts[part].append(entry)
               sizes[part] += entry["bytes"]
@@ -301,6 +301,15 @@ jobs:
         with:
           name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-04
           path: ${{ runner.temp }}/visual-acceptance-parts/part-04/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Retain visual bridge acceptance part 05
+        if: ${{ always() && steps.acceptance-parts.outputs.part05 == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-05
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-05/
           compression-level: 0
           include-hidden-files: true
           if-no-files-found: error

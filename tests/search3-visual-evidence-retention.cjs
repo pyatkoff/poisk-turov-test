@@ -3,6 +3,7 @@
 // No browser, supplier, runtime or lead request is made by this regression.
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),vm=require('node:vm');
 const zlib=require('node:zlib'),{createHash}=require('node:crypto');
+const {spawnSync}=require('node:child_process');
 const retain=require('../scripts/ci/search3_visual_evidence_retention.cjs');
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'search3-evidence-'));
 const sha=value=>createHash('sha256').update(value).digest('hex');
@@ -30,6 +31,63 @@ function injectedEncoder(encode){
  const file=path.join(__dirname,'../scripts/ci/search3_visual_evidence_retention.cjs'),module={exports:{}};
  vm.runInNewContext(fs.readFileSync(file,'utf8'),{module,Buffer,console,require:name=>name==='node:zlib'?{...zlib,deflate:encode,deflateSync:()=>{throw Error('Synchronous encoding bypassed the bounded worker pair');}}:require(name)},{filename:file});
  return module.exports;
+}
+function verifyBoundedPackaging(){
+ const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/search3-visual-migration.yml'),'utf8');
+ const start=workflow.indexOf('      - name: Package complete visual acceptance in bounded parts\n');
+ const uploads=workflow.indexOf('      - name: Retain visual bridge acceptance part 01\n',start);
+ assert(start>=0&&uploads>start,'the existing packaging owner precedes its uploads');
+ const block=workflow.slice(start,uploads),python=block.match(/          python3 - <<'PY'\n([\s\S]*?)          PY\n/);
+ assert(python,'exercise the actual workflow packer');
+ const code=python[1].replace(/^          /gm,'');
+ assert(code.includes('limit = 24 * 1024 * 1024'),'each evidence part retains its 24 MiB cap');
+ assert(code.includes('parts = [[] for _ in range(5)]'),'only five bounded parts are available');
+ assert(code.includes('sizes[index] + overhead >= 31 * 1024 * 1024'),'transfer headroom remains enforced');
+ const uploadBlock=workflow.slice(uploads,workflow.indexOf('  visual-migration:\n',uploads));
+ const carriers=[...uploadBlock.matchAll(/      - name: Retain visual bridge acceptance part (\d{2})\n([\s\S]*?)(?=      - name:|$)/g)];
+ assert.deepEqual(carriers.map(row=>row[1]),['01','02','03','04','05']);
+ for(const [,id,body]of carriers)for(const required of [
+  `steps.acceptance-parts.outputs.part${id} == 'true'`,
+  'uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
+  `name: search3-visual-live-acceptance-\${{ github.event.pull_request.head.sha }}-part-${id}`,
+  `path: \${{ runner.temp }}/visual-acceptance-parts/part-${id}/`,
+  'compression-level: 0','include-hidden-files: true','if-no-files-found: error'
+ ])assert(body.includes(required),'complete bounded upload '+id+': '+required);
+ const directory=folder('bounded-parts'),source=path.join(directory,'visual-live-evidence'),names=[];
+ fs.mkdirSync(path.join(source,'public-review'),{recursive:true});
+ const write=(name,bytes)=>{fs.writeFileSync(path.join(source,name),bytes);names.push(name);};
+ // Opaque files supply >96 MiB; valid PNG and JSON fixtures must also survive.
+ for(let i=0;i<5;i++)write('payload-'+i+'.bin',Buffer.alloc(20*1024*1024,i+1));
+ write('public-review/frame.png',screenshot().bytes);write('public-review/receipt.json',Buffer.from('{"review":true}\n'));write('receipt.json',Buffer.from('{"complete":true}\n'));
+ const expected=new Map(names.map(name=>{const bytes=fs.readFileSync(path.join(source,name));return [name,{bytes:bytes.length,sha256:sha(bytes)}];}));
+ function run(name){
+  const runner=path.join(directory,name);fs.mkdirSync(runner);
+  const result=spawnSync('python3',['-c',code],{cwd:directory,encoding:'utf8',timeout:30000,maxBuffer:1024*1024,
+   env:{...process.env,RUNNER_TEMP:runner,GITHUB_OUTPUT:path.join(runner,'outputs'),ACCEPTANCE_SOURCE_SHA:'a'.repeat(40),GITHUB_RUN_ID:'123',GITHUB_RUN_ATTEMPT:'1'}});
+  return {runner,result,target:path.join(runner,'visual-acceptance-parts')};
+ }
+ const accepted=run('fits-five');assert.equal(accepted.result.status,0,accepted.result.stderr);
+ const indexBytes=fs.readFileSync(path.join(accepted.target,'part-01/acceptance-index.json')),index=JSON.parse(indexBytes);
+ assert.equal(index.file_count,expected.size);assert(index.total_bytes>4*24*1024*1024);assert.equal(index.parts.length,5);
+ assert.equal(index.source_sha,'a'.repeat(40));assert.equal(index.run_id,'123');assert.equal(index.run_attempt,'1');
+ assert.deepEqual(index.files.map(row=>row.path).sort(),[...expected.keys()].sort());
+ assert.equal(new Set(index.files.map(row=>row.path)).size,expected.size);
+ for(const part of index.parts){
+  assert(part.bytes<=24*1024*1024);assert(fs.readFileSync(path.join(accepted.target,'part-'+part.id+'/acceptance-index.json')).equals(indexBytes));
+  assert.equal(part.file_count,index.files.filter(row=>row.part===part.id).length);
+ }
+ for(const row of index.files){
+  assert.deepEqual({bytes:row.bytes,sha256:row.sha256},expected.get(row.path));
+  const original=fs.readFileSync(path.join(source,row.path)),retained=fs.readFileSync(path.join(accepted.target,'part-'+row.part+'/evidence',row.path));
+  assert.equal(sha(original),expected.get(row.path).sha256);assert(retained.equals(original),'exact evidence bytes: '+row.path);
+ }
+ assert.deepEqual(fs.readFileSync(path.join(accepted.runner,'outputs'),'utf8').trim().split('\n'),['01','02','03','04','05'].map(id=>'part'+id+'=true'));
+ write('payload-5.bin',Buffer.alloc(20*1024*1024,6));
+ const overflow=run('six-parts');assert.notEqual(overflow.result.status,0);assert.match(overflow.result.stderr,/Complete acceptance evidence exceeds five bounded parts/);assert(!fs.existsSync(overflow.target));assert(!fs.existsSync(path.join(overflow.runner,'outputs')));
+ for(let i=0;i<6;i++)fs.unlinkSync(path.join(source,'payload-'+i+'.bin'));
+ const oversized=path.join(source,'oversized.bin'),fd=fs.openSync(oversized,'w');fs.ftruncateSync(fd,24*1024*1024+1);fs.closeSync(fd);
+ const overLimit=run('oversized-file');assert.notEqual(overLimit.result.status,0);assert.match(overLimit.result.stderr,/Complete acceptance evidence exceeds five bounded parts/);assert(!fs.existsSync(overLimit.target));assert(!fs.existsSync(path.join(overLimit.runner,'outputs')));
+ console.log('PASS five-part evidence carrier: >96 MiB, all paths/digests/bytes and indexes retained; 24 MiB cap and overflow refusal; upload 01–05');
 }
 (async()=>{
  try{
@@ -71,6 +129,7 @@ function injectedEncoder(encode){
   const {parse}=require('../scripts/build/search3-js/node_modules/acorn'),ast=parse(fs.readFileSync(path.join(__dirname,'search3-visual-live-browser.cjs'),'utf8'),{ecmaVersion:'latest'}),calls=[];
   function walk(node,parent){if(!node||typeof node!=='object')return;if(node.type==='CallExpression'&&node.callee.type==='Identifier'&&node.callee.name==='retainLosslessPngEvidence')calls.push({node,parent});for(const value of Object.values(node))if(Array.isArray(value)){for(const child of value)walk(child,node);}else if(value&&typeof value==='object')walk(value,node);}
   walk(ast,null);assert.equal(calls.length,1);assert.equal(calls[0].parent.type,'AwaitExpression','asynchronous archive completion is part of the browser gate');
+  verifyBoundedPackaging();
   console.log('PASS lossless evidence retention: filtered pixels/chunks/CRC/digests/JSON; root+messenger bytes; corruption and bounded asynchronous failure propagation');
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});
