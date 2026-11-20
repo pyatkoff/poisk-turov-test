@@ -14,7 +14,9 @@ $nativeRegistry=AnyTourAnexSearchMappingRegistry::fromRows([]);
 $nativeOld=array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($nativeRegistry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117())));
 check123(array_intersect($nativeOld,$ids)===[],'new123_already_in_native_input');
 $old=array_values(array_unique(array_merge(v2_collection_priority_hotel_ids($registry),v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117())));
-$all=v2_all_hotel_monitor_input_ids($registry);check123(array_slice($all,0,count($old))===$old,'old_input_prefix');check123($all===array_values(array_unique(array_merge($old,$ids))),'exact_union');
+$feed55Ids=v2_published_expansion55_monitor_ids_20261121();
+check123(count($feed55Ids)===55 && hash('sha256',implode(',',$feed55Ids))==='aa7bd86b8f24287033e557afcdf1167e27199e6ebfa5ff61ad4b3993885eff1c','production_feed55_exact_ids');
+$all=v2_all_hotel_monitor_input_ids($registry);check123(array_slice($all,0,count($old))===$old,'old_input_prefix');check123($all===array_values(array_unique(array_merge($old,$ids,$feed55Ids))),'exact_union');
 $base=[['id'=>200001,'country_id'=>4,'country_name'=>'Fixture','is_active'=>1]];
 $rows=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>$countries[$id],'country_name'=>'Fixture','is_active'=>1],$ids);
 $departures=array_map(static fn(int $id):array=>['departure_id'=>1,'country_id'=>$id,'is_active'=>1],array_values(array_unique(array_merge([4],array_values($countries)))));
@@ -37,7 +39,7 @@ $oldPlan=v2_append_published_hotel_monthly_plan($before,array_merge($base,$oldRo
 $combined=v2_append_published_hotel_monthly_plan($before,array_merge($base,$oldRows,$allRows),$departures,'2026-11-18',12,1,true);
 check123(array_slice($combined['targets'],0,count($oldPlan['targets']))===$oldPlan['targets'],'all_prior_native_targets_changed');
 // Synthetic ANEX identity fixture can overlap numerically; union must deduplicate, never infer a native binding.
-check123(count($all)===count(array_unique(array_merge($old,$ids))),'input_union_duplicates');
+check123(count($all)===count(array_unique(array_merge($old,$ids,$feed55Ids))),'input_union_duplicates');
 $inactive=$allRows;$inactive[0]['is_active']=0;
 $held=v2_append_published_hotel_monthly_plan($before,array_merge($base,$inactive),$departures,'2026-11-18',12,1,true);
 check123($held['published_hotels']['cohorts'][$cohort]['searchable']===122,'inactive_admitted');
@@ -51,7 +53,30 @@ $resume=v2_top500_monthly_queue($combined['targets'],[$attempt],$now,24,$priorit
 check123($resume['targets'][0]['resume_search_id']===123456&&$resume['targets'][0]['resume_attempt_id']===900,'new123_displaced_retained_search');
 foreach($resume['targets'] as $t)if(array_intersect($t['hotel_ids'],$ids)!==[])check123($t['_published']===true,'published_priority_missing');
 $caller=file_get_contents(__DIR__.'/../v2/data/top500-daily-collector-v1.php');
-check123(str_contains($caller,'array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118())'),'actual_caller_missing123');
+$collectorPriorityBlock = 'v2_sites_hotel_monitor_ids_20261111(),
+        v2_published_expansion20_monitor_ids_20261116(),
+        v2_published_expansion32_monitor_ids_20261116(),
+        v2_published_expansion217_monitor_ids_20261117(),
+        v2_published_expansion123_monitor_ids_20261118(),
+        v2_published_expansion55_monitor_ids_20261121(),';
+check123(str_contains($caller,$collectorPriorityBlock) && str_contains($caller,'$freshHours,$publishedPriorityIds);'),'published_priority_caller');
 check123(substr_count($wf,"- 'tests/published-expansion123-monitor-smoke.php'")===2&&str_contains($wf,'php tests/published-expansion123-monitor-smoke.php'),'ci_missing123');
 check123(str_contains($wf,'            v2/data/published-hotels-monitor-v1.php '.chr(92).chr(10))&&str_contains($wf,'            v2/data/top500-daily-collector-v1.php '.chr(92).chr(10)),'runtime_delivery_missing123');
-echo "PUBLISHED_EXPANSION123_OK checks=$checks123 exact123 old_prefix_preserved supplier_calls=0 writes=0\n";
+$feed55Rows=array_map(static fn(int $id):array=>['id'=>$id,'country_id'=>4,'country_name'=>'Fixture new55','is_active'=>1],$feed55Ids);
+$feed55Cohort='published_expansion55_20261121';
+$nativeInputs=v2_all_hotel_monitor_input_ids($nativeRegistry);
+check123(array_slice($nativeInputs,-55)===$feed55Ids,'FEED55 appended after the native list');
+$feed55Plan=v2_append_published_hotel_monthly_plan($before,array_merge($base,$oldRows,$allRows,$feed55Rows),$departures,'2026-11-18',12,1,true);
+check123($feed55Plan['published_hotels']['cohorts'][$feed55Cohort]['searchable']===55,'FEED55 all searchable with valid routes');
+check123(array_slice($feed55Plan['targets'],0,count($combined['targets']))===$combined['targets'],'FEED55 preserves previous target keys');
+$feed55Queue=v2_top500_monthly_queue($feed55Plan['targets'],[$attempt],$now,24,array_merge($priority,$feed55Ids));
+check123($feed55Queue['targets'][0]['resume_search_id']===123456,'FEED55 preserves retained search priority');
+$feed55Covered=[];
+foreach($feed55Queue['targets'] as $target){
+    $members=array_intersect($target['hotel_ids'],$feed55Ids);
+    if($members===[])continue;
+    check123($target['_published']===true && count($target['hotel_ids'])<=30,'FEED55 uses published priority and batch cap');
+    $feed55Covered=array_merge($feed55Covered,$members);
+}
+check123(array_diff($feed55Ids,$feed55Covered)===[],'FEED55 all covered by queue');
+echo "PUBLISHED_EXPANSION123_OK checks=$checks123 exact123 exact55 old_prefix_preserved supplier_calls=0 writes=0\n";
