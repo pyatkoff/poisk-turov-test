@@ -24,6 +24,7 @@ CONTROL = 'a' * 40
 RELEASE = 'b' * 40
 IDENTITY = {'control_source_sha': CONTROL, 'run_id': '123456', 'command_comment_id': 9001}
 ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '234567', 'command_comment_id': 9002}
+NEXT_ENTRY = '_preview/search3-next-candidate/visual-search/index.php'
 
 
 def event():
@@ -76,7 +77,7 @@ def preflight_comments():
 def preflight_fixture(change=None, extra=False):
     observed = {path: {'state': 'absent'} for path in m.ADDITIONS}
     observed[m.ENTRY] = dict(m.ENTRY_BEFORE)
-    for path, digest in m.INSTALL_PROTECTED.items():
+    for path, digest in m.PREFLIGHT_ACCEPTED_PROTECTED.items():
         if path != m.PRIVATE_CONFIG:
             observed[path] = {'state': 'present', 'sha256': digest, 'mode': '0644',
                               'size': m.INSTALL_REVIEWED.get(path, {}).get('size', 100)}
@@ -101,6 +102,16 @@ def preflight_fixture(change=None, extra=False):
 
 
 class Admission(unittest.TestCase):
+    def test_current_approved_public_packet_is_distinct_from_next_and_old_source(self):
+        self.assertEqual((m.SOURCE_PR, m.SOURCE, m.TREE, m.RELEASE), (
+            5125, '1a22691517b53e23ea2fa98d02f857b11a118392',
+            'bcfb06414164bf3cad454055fb3acdd2b6454dd1', '71fd65ae80e2b8c4b00b80f3bafe36dfa9bb2426'))
+        self.assertEqual((m.BUILD_RUN, m.ARTIFACT, m.ARTIFACT_NAME), (
+            44813818406, 14667623451, 'search3-public-live-1a22691517b53e23ea2fa98d02f857b11a118392'))
+        self.assertEqual(m.ARTIFACT_SHA, '9cec7ecb27f1582ad181ab1dd3785d2ee1566aef94d3a62e0c212d0f7c166697')
+        self.assertEqual(m.MANIFEST_SHA, 'c89415a6bfeb6dd49be42d1dfc911310330c69cda2dd56737e524a2b1859d390')
+        self.assertEqual(m.BUILD_MAIN, 'c5513aaee18af701f1253678e79f41e5725b71a2')
+
     def test_owner_main_workflow_attempt_and_exact_command(self):
         self.assertEqual(m.event_identity(event(), environment()), IDENTITY)
         for key, value in [('GITHUB_REPOSITORY','evil/repo'),('GITHUB_REF','refs/heads/feature'),('GITHUB_WORKFLOW_REF','other'),
@@ -302,7 +313,11 @@ class PreflightEvidence(unittest.TestCase):
             inspection, _ = m.package(raw, True); installation, _ = m.package(raw)
         self.assertEqual(len(m.PROTECTED), 49)
         self.assertEqual(set(m.PROTECTED), set(m.INSTALL_PROTECTED))
-        self.assertEqual({p for p in m.PROTECTED if m.PROTECTED[p] != m.INSTALL_PROTECTED[p]}, set(m.INSTALL_REVIEWED))
+        self.assertEqual(set(m.INSTALL_REVIEWED), {
+            'data/db-v1.php', '_preview/search3-local-candidate/data/anytour-canonical-catalog-v1.php',
+            '_preview/search3-local-candidate/data/hotel-details-v1.php'})
+        self.assertEqual({p for p in m.PROTECTED if m.PROTECTED[p] != m.PREFLIGHT_ACCEPTED_PROTECTED[p]}, set(m.INSTALL_REVIEWED))
+        self.assertEqual({p for p in m.PREFLIGHT_ACCEPTED_PROTECTED if m.PREFLIGHT_ACCEPTED_PROTECTED[p] != m.INSTALL_PROTECTED[p]}, {NEXT_ENTRY})
         self.assertEqual(inspection['protected'], m.PROTECTED); self.assertEqual(installation['protected'], m.INSTALL_PROTECTED)
         self.assertNotIn('opaque_presence', inspection)
         self.assertEqual(installation['opaque_presence'], {'config.php': True, 'site_conf.php': False})
@@ -311,8 +326,37 @@ class PreflightEvidence(unittest.TestCase):
                          '06e737f7b00bfe17c1f9410c19f880d65b0bfad3345f0d79e62727282601041a')
         self.assertEqual(m.PROTECTED['_preview/search3-local-candidate/data/hotel-details-v1.php'],
                          '137bbf53ef87fab50505ecd41a075cb5f571193480da7f0e3face51190c0f77f')
-        self.assertFalse(set(m.INSTALL_REVIEWED) & set(installation['expected']))
+        self.assertEqual(len(m.ADDITIONS), 41)
+        self.assertEqual(set(installation['expected']), set(m.ADDITIONS) | {m.ENTRY})
+        self.assertFalse(set(m.INSTALL_PROTECTED) & set(installation['expected']))
+        self.assertFalse(any(path.startswith(('data/', '_preview/')) for path in installation['expected']))
         self.verify()
+
+    def test_accepted_next_update_does_not_relabel_consumed_preflight(self):
+        legacy = '159060195fa7a41e6a95f5e8e0fb302f04c6c94c9e49b5c1845eee9210626454'
+        current = 'bfda6c091544c13d157537879adaa7037e3bff3dface2fb5b3a77067808da339'
+        self.assertEqual(m.CURRENT_NEXT_REVIEWED, {NEXT_ENTRY: {
+            'source_sha': '1a22691517b53e23ea2fa98d02f857b11a118392',
+            'release_sha': '71fd65ae80e2b8c4b00b80f3bafe36dfa9bb2426',
+            'run_id': 44830908434, 'artifact_id': 14675809225,
+            'artifact_sha256': '7d3012a431231236e26beec267abca82b5bd714b9d142c050da2e87f8c1e3cde',
+            'receipt_sha256': 'c1fe72833d1bc81cbfc6530a322947a1c20c4eaa607136c141016b65e7ea7065',
+            'sha256': current, 'size': 860}})
+        self.assertEqual(m.PROTECTED[NEXT_ENTRY], legacy)
+        self.assertEqual(m.PREFLIGHT_ACCEPTED_PROTECTED[NEXT_ENTRY], legacy)
+        self.assertEqual(self.policy['protected'][NEXT_ENTRY], current)
+        policy = copy.deepcopy(self.policy)
+        self.verify()
+        self.assertEqual(self.policy, policy, 'consumed evidence cannot replace current dependency expectations')
+        for digest in (current, '0' * 64):
+            with self.subTest(digest=digest), self.assertRaisesRegex(RuntimeError, 'preflight_observed'):
+                self.verify(lambda v: v['remote']['observed'][NEXT_ENTRY].update(sha256=digest))
+        with self.assertRaisesRegex(RuntimeError, 'preflight_deviations'):
+            self.verify(lambda v: v['remote']['mismatches'].append({'path': NEXT_ENTRY, 'reason': 'dependency_drift'}))
+        for digest in (legacy, '0' * 64):
+            self.policy['protected'] = {**policy['protected'], NEXT_ENTRY: digest}
+            with self.subTest(policy_digest=digest), self.assertRaisesRegex(RuntimeError, 'preflight_policy'):
+                self.verify()
 
     def test_archive_and_json_tampering_are_rejected(self):
         raw, digest = preflight_fixture()
@@ -326,6 +370,10 @@ class PreflightEvidence(unittest.TestCase):
     def test_historical_identity_is_preserved_across_candidate_changes(self):
         self.assertEqual(m.PREFLIGHT_SOURCE, 'f4d14cb7a66be040798693e9a47a2d023c48de7e')
         self.assertEqual(m.PREFLIGHT_MANIFEST_SHA, '3ef8fadb6db83cff9709fdc06d0dcaf41673456c92b1e77f40cdc8444ae8da5f')
+        self.assertEqual((m.PREFLIGHT_RUN, m.PREFLIGHT_CONTROL, m.PREFLIGHT_COMMAND, m.PREFLIGHT_RECEIPT_COMMENT), (
+            44790620377, '927d3f213eadad98dcf4771c0c21612af7bfd0ed', 7047112039, 7047276834))
+        self.assertEqual(m.PREFLIGHT_RESULT_SHA, 'dafc322bd6c6a0c8922eccfa4f45694cefdec190ee24a454c30e7fd2afaa298b')
+        self.assertEqual(m.PREFLIGHT_ARTIFACT_SHA, 'a1edf23fd86e24bea82dc2d97de89e47b3fb6d75f469d374683b6c205dd21cf1')
         next_source, next_manifest = 'e' * 40, 'd' * 64
         original_policy = copy.deepcopy(self.policy)
         self.policy |= {'source': next_source, 'manifest': next_manifest}
@@ -559,7 +607,7 @@ class Transaction(unittest.TestCase):
         self.assertNotIn('written_files',value);self.restored()
 
     def test_reviewed_dependencies_are_rechecked_before_any_reservation(self):
-        for path in m.INSTALL_REVIEWED:
+        for path in (*m.INSTALL_REVIEWED, *m.CURRENT_NEXT_REVIEWED):
             target = self.root/path; original = target.read_bytes(); target.write_bytes(b'changed after inspection')
             value = self.execute()
             self.assertEqual(value['reason'], 'dependency_drift'); self.assertEqual(value['written_files'], [])
