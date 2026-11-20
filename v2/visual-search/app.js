@@ -172,10 +172,13 @@ function cancelPicker(){if(['child-age','destination-replace'].includes(modalTyp
 function updateURL(){
  if(searchEditSession||!urlStateHydrated)return;
  const p=new URLSearchParams(),f=state.filters,current=new URLSearchParams(location.search);
+ // Before the first search, keep the confirmed family through reloads without
+ // changing the applied search identity or treating an open guest picker as saved.
+ const search=state.hasSearched?state.search:{...state.search,adults:draft.adults,ages:draft.ages};
  // The canonical lead payload reads these existing attribution fields from the current URL.
  for(const key of ['yclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(current.has(key))p.set(key,current.get(key));
  p.set('scenario',data.scenario);
- for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);
+ for(const [k,v] of Object.entries(search))p.set(k,Array.isArray(v)?v.join(','):v);
  if(state.selectedDate)p.set('date',state.selectedDate);
  if(state.hasSearched)p.set('searched','1');
  if(state.onlyFavorites)p.set('favorites','1');
@@ -3344,7 +3347,7 @@ function handleSearchParameterAction(action,b,id){
  case 'children-minus':guestDraft.ages.pop();renderGuests();break;
  case 'children-plus':if(guestDraft.ages.length<3)guestDraft.ages.push(null);renderGuests();break;
  case 'remove-child':{const index=Number(b.dataset.index);if(!Number.isInteger(index)||index<0||index>=guestDraft.ages.length)break;guestDraft.ages.splice(index,1);renderGuests();const target=$('[data-action="child-age"][data-index="'+Math.min(index,guestDraft.ages.length-1)+'"]')||$('[data-action="children-plus"]');target.focus();break;}
- case 'apply-guests':if(guestDraft.ages.some(a=>a===null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;urlPartyIssues=[];closeModal();updateSearchUI();break;
+ case 'apply-guests':if(guestDraft.ages.some(a=>a===null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;urlPartyIssues=[];closeModal();updateSearchUI();if(!state.hasSearched)updateURL();break;
 
  case 'night-pick':{const n=+b.dataset.value;if(nightsDraft.phase===1&&Math.abs(n-nightsDraft.min)>10){nightsDraft.error=`Слишком широкий диапазон. Выберите вторую границу от ${Math.max(1,nightsDraft.min-10)} до ${Math.min(28,nightsDraft.min+10)} ночей.`;renderNightSelection();break;}nightsDraft.error='';if(nightsDraft.phase===0){nightsDraft.min=n;nightsDraft.max=n;nightsDraft.phase=1}else{nightsDraft.max=Math.max(nightsDraft.min,n);nightsDraft.min=Math.min(nightsDraft.min,n);nightsDraft.phase=0}renderNightSelection();break}
  case 'night-preset':nightsDraft={min:+b.dataset.value,max:+b.dataset.value,phase:0};renderNightSelection();break;
