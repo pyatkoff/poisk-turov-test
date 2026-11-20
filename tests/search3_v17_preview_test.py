@@ -80,6 +80,27 @@ def fixture(root):
     (c/'payload.sha256').write_text('original fixture')
 
 
+def public_bridge_fixture(root):
+    # Route-bearing fragments from the public bridge in the checked stock build.
+    prefix = '/_preview/search3-site-candidate'
+    files = {
+        'visual-search/public-entry-v1.php':
+            "<?php $reviewRoutes=['" + prefix + "/poisk-turov/','" + prefix
+            + "/poisk-turov/index.php']; $prefix='" + prefix + "'; http_response_code(403);\n",
+        'visual-search/entry-v1.php':
+            "<?php if (!in_array($prefix, ['', '" + prefix
+            + "'], true)) throw new RuntimeException('Public Search3 route/profile mismatch.');\n",
+        'visual-search/public-config-v1.js':
+            "const routes=[['/poisk-turov/','/visual-search/'],['" + prefix
+            + "/poisk-turov/','" + prefix + "/visual-search/']];const api='/api-v2.php';\n",
+    }
+    for name, body in files.items():
+        dest = root / 'payload' / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(body)
+    return files
+
+
 class Contracts(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.root=Path(self.tmp.name)
@@ -245,6 +266,44 @@ class Contracts(unittest.TestCase):
         q2,a2=pub.derive(self.source,self.root/'again',request(),'d'*64)
         self.assertEqual(q2,self.q); self.assertEqual(a2,self.archive)
         self.assertEqual(remote.verify(self.root/'derived',self.q),after)
+        self.assertEqual(json.loads((self.root/'derived/control/manifest.json').read_bytes())
+                         ['derived_from']['transform'], 'next-route-v1')
+
+    def test_public_bridge_derivation_changes_only_four_route_owners(self):
+        bridge = public_bridge_fixture(self.source)
+        before = remote.inventory(self.source / 'payload')
+        output = self.root / 'public-derived'
+        q, archive = pub.derive(self.source, output, request(), 'd'*64, original_files=before)
+        after = remote.verify(output, q)
+        self.assertEqual(set(after), set(before))
+        self.assertEqual({name for name in before if before[name] != after[name]},
+                         {'site-path-v1.php', *bridge})
+        self.assertEqual(remote.inventory(self.source / 'payload'), before)
+        for name, original in bridge.items():
+            self.assertEqual((output / 'payload' / name).read_text(),
+                             original.replace('/_preview/search3-site-candidate',
+                                              '/_preview/search3-next-candidate'))
+        self.assertEqual(json.loads((output / 'control/manifest.json').read_bytes())
+                         ['derived_from']['transform'], 'next-route-v2')
+        q2, archive2 = pub.derive(self.source, self.root / 'public-again', request(), 'd'*64)
+        self.assertEqual((q2, archive2), (q, archive))
+
+    def test_public_bridge_requires_all_three_owners_and_exact_route_counts(self):
+        bridge = public_bridge_fixture(self.source)
+        for index, name in enumerate(bridge):
+            for fault in ('missing', 'extra-route'):
+                original = self.root / ('public-source-' + str(index) + fault)
+                shutil.copytree(self.source, original)
+                asset = original / 'payload' / name
+                if fault == 'missing':
+                    asset.unlink()
+                    reason = 'partial_next_public_bridge'
+                else:
+                    asset.write_text(asset.read_text() + pub.OLD_ROUTE)
+                    reason = 'next_public_route_source_drift'
+                with self.subTest(asset=name, fault=fault), self.assertRaisesRegex(ValueError, reason):
+                    pub.derive(original, self.root / ('public-output-' + str(index) + fault),
+                               request(), 'd'*64)
 
     def test_unknown_transform_fails(self):
         (self.source/'payload/site-path-v1.php').write_text('<?php // different source')
@@ -253,8 +312,11 @@ class Contracts(unittest.TestCase):
 
     def test_hidden_old_route_fails(self):
         (self.source/'payload/extra.js').write_text(pub.OLD_ROUTE)
-        with self.assertRaisesRegex(ValueError,'residual_old_preview_route'):
-            pub.derive(self.source,self.root/'bad',request(),'d'*64)
+        for with_bridge in (False, True):
+            if with_bridge:
+                public_bridge_fixture(self.source)
+            with self.subTest(public_bridge=with_bridge), self.assertRaisesRegex(ValueError,'residual_old_preview_route'):
+                pub.derive(self.source,self.root/('bad-' + str(with_bridge)),request(),'d'*64)
 
     def test_derived_copy_must_match_the_original_verified_inventory(self):
         verified = remote.inventory(self.source / 'payload')

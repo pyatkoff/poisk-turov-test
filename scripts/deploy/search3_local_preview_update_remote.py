@@ -14,6 +14,7 @@ NAME='search3-local-candidate'
 TARGET='local'
 NAMESPACE='search3-local'
 TRANSFORM='local-route-v1'
+NEXT_PUBLIC_BRIDGE_FILES=frozenset(('visual-search/public-entry-v1.php','visual-search/entry-v1.php','visual-search/public-config-v1.js'))
 REQUIRED=('index.php','search-page-v2.php','poisk-turov/index.php','assets.php','api-v2.php','lead-adapter-v2.php','lead-bridge-v1.php','lead-receiver-v1.php','lead-price-v1.php','lead-idempotency-v1.php','analytics-config.php','bundle-manifest-v1.php','config.php')
 OPTIONAL=('robots.txt','sitemap.xml','.htaccess','seo-config.php','seo-launch-slice-v1.php','_preview/search3-anex-candidate/api-andromeda-search3-preview.php','_preview/search3-anex-candidate/app/integrations/andromeda-selected-offer.php')
 INVARIANTS={'production_lead_delivery':False,'preview_metrika_counter':0,'production_document_root_bootstrap':False,'external_consultant_widget':False,'production_metrika_changes':False,'production_api_path':'/api-v2.php','preview_lead_path':ROUTE+'preview-lead-disabled.php'}
@@ -29,6 +30,11 @@ def select_target(target='local'):
 
 def need(v,r):
     if not v: raise ValueError(r)
+def route_transform(files):
+    if TARGET!='next': return TRANSFORM
+    present=NEXT_PUBLIC_BRIDGE_FILES.intersection(files)
+    need(not present or present==NEXT_PUBLIC_BRIDGE_FILES,'partial_next_public_bridge')
+    return 'next-route-v2' if present else TRANSFORM
 def digest(b): return hashlib.sha256(b).hexdigest()
 def json_bytes(v): return (json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
 def inventory(root):
@@ -62,7 +68,7 @@ def validate(q):
 def verify(root,q):
     validate(q); mb=(root/'control/manifest.json').read_bytes(); cb=(root/'control/payload.sha256').read_bytes(); need(digest(mb)==q['manifest_sha256'] and digest(cb)==q['payload_sha256'],'control_hash'); m=json.loads(mb)
     need(m.get('schema_version')==1 and m.get('target')==NAMESPACE+'-preview' and m.get('route')==ROUTE and m.get('source_sha')==q['source_sha'] and m.get('source_tree_sha')==q['source_tree'],'manifest_identity'); need(m.get('invariants')==INVARIANTS,'manifest_invariants')
-    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':TRANSFORM},'derivation_identity')
+    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':route_transform(f['path'] for f in m['files'])},'derivation_identity')
     expected={}
     for f in m['files']:
         name=str(safe_name(f['path'])); need(name not in expected and re.fullmatch('[0-9a-f]{64}',f['sha256']),'duplicate_or_bad_hash'); need((root/'payload'/name).stat().st_size==f['size'],'file_size'); expected[name]=f['sha256']

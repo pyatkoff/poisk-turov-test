@@ -1,11 +1,13 @@
 """Fixed next-preview update and cross-target isolation; no network or server access."""
-import copy, os, re, tempfile, unittest
+import copy, json, os, re, shutil, tempfile, unittest
 from pathlib import Path
 import search3_local_preview_update_test as local_tests
 from search3_local_preview_update_test import request, PREVIOUS
 import search3_local_preview_update as pub
 import search3_local_preview_update_remote as remote
 import search3_v17_preview as target
+import search3_v17_preview_remote as create_remote
+from search3_v17_preview_test import public_bridge_fixture
 
 
 class NextUpdateContracts(local_tests.UpdateContracts):
@@ -129,6 +131,51 @@ class NextUpdateContracts(local_tests.UpdateContracts):
             remote.verify(local_root,{**self.q,'preview_target':'next',
                 'manifest_sha256':remote.digest((local_root/'control/manifest.json').read_bytes()),
                 'payload_sha256':remote.digest((local_root/'control/payload.sha256').read_bytes())})
+
+    def test_public_bridge_update_retains_published_predecessor(self):
+        public_bridge_fixture(self.source)
+        output = self.root / 'public-next-derived'
+        self.q, self.archive = target.derive(self.source, output,
+            {**request(), 'preview_target':'next'}, 'd'*64)
+        self.assertEqual(remote.verify(output, self.q), create_remote.verify(output, self.q))
+        q = self.staged()
+        self.assertEqual(self.site.activate_update(q)['status'], 'activated')
+        result = self.site.finish_update(q)
+        self.assertEqual(result['status'], 'published')
+        self.assertTrue(result['rollback_retained'])
+        self.assertEqual((self.site.receipt(q) / 'previous-payload/old.txt').read_text(),
+                         'published predecessor')
+        self.assertEqual(self.site.protected(), q['before']['protected'])
+
+    def test_both_next_verifiers_bind_transform_to_complete_bridge(self):
+        public_bridge_fixture(self.source)
+        public = self.root / 'public-next-derived'
+        public_q, _ = target.derive(self.source, public,
+            {**request(), 'preview_target':'next'}, 'd'*64)
+        cases = ((self.root / 'next-derived', self.q, 'next-route-v2', None, 'derivation_identity'),
+                 (public, public_q, 'next-route-v1', None, 'derivation_identity'),
+                 (public, public_q, 'next-route-v2', 'visual-search/entry-v1.php', 'partial_next_public_bridge'))
+        for index, (original, q, transform, missing, reason) in enumerate(cases):
+            edited = self.root / ('edited-transform-' + str(index))
+            shutil.copytree(original, edited)
+            if missing:
+                (edited / 'payload' / missing).unlink()
+            files = remote.inventory(edited / 'payload')
+            manifest = json.loads((edited / 'control/manifest.json').read_bytes())
+            manifest['derived_from']['transform'] = transform
+            manifest['files'] = [{'path': name, 'sha256': digest,
+                                 'size': (edited / 'payload' / name).stat().st_size}
+                                for name, digest in files.items()]
+            manifest['file_count'] = len(files)
+            mb = remote.json_bytes(manifest)
+            cb = ''.join(f'{files[name]}  ./{name}\n' for name in sorted(files)).encode()
+            (edited / 'control/manifest.json').write_bytes(mb)
+            (edited / 'control/payload.sha256').write_bytes(cb)
+            bound = {**q, 'manifest_sha256': remote.digest(mb), 'payload_sha256': remote.digest(cb),
+                     'file_count': len(files)}
+            for verifier in (remote.verify, create_remote.verify):
+                with self.subTest(case=index, verifier=verifier.__module__), self.assertRaisesRegex(ValueError, reason):
+                    verifier(edited, bound)
 
     def test_unknown_target_denied(self):
         for value in ('production','../local',None):

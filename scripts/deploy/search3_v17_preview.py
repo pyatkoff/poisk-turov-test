@@ -1,8 +1,8 @@
 """Two-phase, trusted-main provisioning of a fixed Search3 preview.
 
 First derive/retain the checked artifact without SSH secrets. The publisher then
-rechecks provenance and exact derived bytes before any server write. Only the
-route-discovery literal changes; the supplier APIs and existing preview stay put.
+rechecks provenance and exact derived bytes before any server write. Only bounded
+route-discovery and public-review literals change; supplier APIs stay put.
 """
 from __future__ import annotations
 import copy
@@ -19,7 +19,7 @@ import subprocess
 import sys
 import tarfile
 import zipfile
-from search3_v17_preview_remote import EARLY_INTENT_PINS, INVARIANTS, Preview, ROUTE, digest, inventory, json_bytes, need, verify
+from search3_v17_preview_remote import EARLY_INTENT_PINS, INVARIANTS, NEXT_PUBLIC_ROUTE_COUNTS, Preview, ROUTE, digest, inventory, json_bytes, need, route_transform, verify
 
 PREFIX = '/create-search3-next-preview '
 EARLY_INTENT_PREFIX = '/create-search3-early-intent-preview '
@@ -75,15 +75,26 @@ def derive(source, output, request, zip_digest, preview=Preview.NEXT, *, origina
     need(before.count(old) == 1, 'route_source_drift')
     p.write_text(before.replace(old, new))
     previous = inventory(source_payload) if original_files is None else original_files
-    files = inventory(output / 'payload', forbidden_bytes=OLD_ROUTE.rstrip('/').encode())
     removed = {n for n in previous if preview is Preview.EARLY_INTENT and n.startswith('visual-search/')}
+    transform = route_transform(previous.keys() - removed, preview)
+    changed = {'site-path-v1.php'}
+    if transform == 'next-route-v2':
+        old_prefix = OLD_ROUTE.rstrip('/').encode()
+        new_prefix = preview.route.rstrip('/').encode()
+        for name, occurrences in NEXT_PUBLIC_ROUTE_COUNTS.items():
+            p = output / 'payload' / name
+            before = p.read_bytes()
+            need(before.count(old_prefix) == occurrences, 'next_public_route_source_drift:' + name)
+            p.write_bytes(before.replace(old_prefix, new_prefix))
+        changed.update(NEXT_PUBLIC_ROUTE_COUNTS)
+    files = inventory(output / 'payload', forbidden_bytes=OLD_ROUTE.rstrip('/').encode())
     need(previous.keys() - removed == files.keys()
-         and {n for n in files if files[n] != previous[n]} == {'site-path-v1.php'}, 'unexpected_payload_delta')
+         and {n for n in files if files[n] != previous[n]} == changed, 'unexpected_payload_delta')
     m = json.loads((source / 'control/manifest.json').read_bytes())
     invariants = {**INVARIANTS, 'preview_lead_path': preview.route + 'preview-lead-disabled.php'}
     m.update(target=preview.stem + '-preview', route=preview.route, invariants=invariants,
         derived_from={'artifact_id': request['artifact_id'], 'build_run': request['build_run'],
-                      'ZIP_sha256': zip_digest, 'transform': preview.value + '-route-v1'})
+                      'ZIP_sha256': zip_digest, 'transform': transform})
     m['files'] = [{'path': n, 'sha256': h, 'size': (output / 'payload' / n).stat().st_size} for n, h in files.items()]
     m['file_count'] = len(files)
     manifest = json_bytes(m)
@@ -160,7 +171,9 @@ def prepare():
     retained = work / 'retained'; retained.mkdir()
     (retained / 'next-preview.tar.gz').write_bytes(archive)
     (retained / 'request.json').write_bytes(json_bytes(ready))
-    print(json.dumps({'status': 'prepared_not_published', 'route': preview.route, 'archive_sha256': ready['archive_sha256'], 'changed_payload_files': ['site-path-v1.php']}))
+    derived_files = inventory(work / 'derived/payload')
+    changed = sorted(n for n in derived_files if derived_files[n] != original_files[n])
+    print(json.dumps({'status': 'prepared_not_published', 'route': preview.route, 'archive_sha256': ready['archive_sha256'], 'changed_payload_files': changed}))
 
 
 def live_checks(files, preview=Preview.NEXT):

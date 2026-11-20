@@ -36,6 +36,11 @@ class Preview(Enum):
 
 ROUTE = Preview.NEXT.route
 NAME = Preview.NEXT.name_on_site
+NEXT_PUBLIC_ROUTE_COUNTS = {
+    'visual-search/public-entry-v1.php': 3,
+    'visual-search/entry-v1.php': 1,
+    'visual-search/public-config-v1.js': 2,
+}
 EARLY_INTENT_PINS = {
     'source_sha': '041b339df4fcddbea8d015919a9de5a0bf3039aa',
     'source_tree': 'bb0aa2dd9b107361c3bd89b5adae1353b17f25ce',
@@ -59,6 +64,15 @@ INVARIANTS = {'production_lead_delivery': False, 'preview_metrika_counter': 0,
 def need(value, reason):
     if not value:
         raise ValueError(reason)
+
+
+def route_transform(files, preview=Preview.NEXT):
+    if preview is not Preview.NEXT:
+        return preview.value + '-route-v1'
+    required = set(NEXT_PUBLIC_ROUTE_COUNTS)
+    present = required.intersection(files)
+    need(not present or present == required, 'partial_next_public_bridge')
+    return 'next-route-v2' if present else 'next-route-v1'
 
 
 def digest(data):
@@ -138,7 +152,8 @@ def verify(root, q, preview=Preview.NEXT):
     need(m.get('invariants') == {**INVARIANTS, 'preview_lead_path': preview.route + 'preview-lead-disabled.php'},
          'manifest_invariants')
     need(m.get('derived_from') == {'artifact_id': q['artifact_id'], 'build_run': q['build_run'],
-                                 'ZIP_sha256': q['source_ZIP_sha256'], 'transform': preview.value + '-route-v1'}, 'derivation_identity')
+                                 'ZIP_sha256': q['source_ZIP_sha256'],
+                                 'transform': route_transform((f['path'] for f in m['files']), preview)}, 'derivation_identity')
     expected = {}
     for f in m['files']:
         name = str(safe_name(f['path']))
