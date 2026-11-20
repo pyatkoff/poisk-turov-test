@@ -237,6 +237,7 @@ async function startFirefox() {
     }
     return {
       capabilities, go: url => command('POST', '/url', {url}),
+      reload:()=>command('POST','/refresh',{}),
       evaluate, enableResponsiveMode, wait, click, fill, quit,
       text: async selector => command('GET', await elementPath(selector) + '/text'),
       value: async selector => command('GET', await elementPath(selector) + '/property/value'),

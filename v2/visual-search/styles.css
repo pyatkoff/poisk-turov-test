@@ -1678,6 +1678,8 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  body.form-visible .header nav{display:flex;align-self:center;gap:0}
  body.form-visible .header .nav-current{display:block;font-size:12px;font-weight:400;color:#6a7583}
  body.form-visible .nav-current:after,body.form-visible .private-badge,body.form-visible .mobile-bottom,body.form-visible .results-section{display:none}
+ body.form-visible .results-pristine:has(#active-filters.has-amenity-labels){display:block;padding-block:0 12px}
+ body.form-visible .results-pristine:has(#active-filters.has-amenity-labels) #cards{display:none}
  body.form-visible .search-section{padding:8px 16px 24px}
  body.form-visible .search-section>.wrap{padding:0;background:transparent;box-shadow:none;border:0;border-radius:0}
  body.form-visible .intro{margin:0 0 11px}
@@ -2637,6 +2639,7 @@ details.application-review .chosen-trip{display:none}
 .hotel-popularity-badge {display:inline-block;order:-1;align-self:flex-start;margin-bottom:5px;font-size:.8125rem;line-height:1.4;color:var(--brand);background:#eef2ff;border-radius:5px;padding:3px 6px}
 .hotel-facts {grid-column:2;grid-row:2;min-width:0;margin:0;padding:0 20px 12px;font-size:.875rem;line-height:1.5}
 .hotel-facts:empty {display:none}
+.results-pristine #active-filters.has-amenity-labels {display:flex}
 .hotel-match-line {display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:6px 10px;border-radius:8px;background:#eef2ff;color:#263654}
 .hotel-match-line>strong {font-size:.8125rem;color:#2340ae}
 .hotel-match-line ul {display:flex;flex-wrap:wrap;gap:0 8px;min-width:0;margin:0;padding:0;list-style:none}

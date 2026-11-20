@@ -57,6 +57,7 @@ const childAgesLabel = (ages,lowercase=false)=>`${lowercase?'возраст':'В
 const countryNames={};
 const mealNames={};
 const amenityNames=new Map();
+let linkedAmenityLabels=new Map();
 const countriesTo={};
 const operators=[];
 const data=window.AnyTourPrototypeData;
@@ -149,6 +150,7 @@ function restoreURL(tripOnly=false){
  state.filters.meals=[...new Set((p.get('meals')||'').split('|').filter(Boolean).map(data.meal).filter(Boolean))];
  for(const k of ['resorts','operators'])state.filters[k]=[...new Set((p.get(k)||'').split('|').filter(Boolean))];
  state.filters.amenities=[...new Set((p.get('amenities')||'').split('|').filter(x=>/^(1|2|3|5|8):[1-9]\d*$/.test(x)))];
+ linkedAmenityLabels=restoreAmenityLabels(p.get('amenityLabels'),state.filters.amenities);
  state.filters.flight=[...new Set((p.get('flight')||'').split('|').filter(value=>['charter','regular'].includes(value)))];
  state.filters.q=p.get('q')||'';
  for(const key of ['rating','beach','family','spa'])state.filters[key]=p.get(key)==='1';
@@ -166,7 +168,27 @@ const partyLabel=s=>s.ages.length?`${s.adults} взр. · ${s.ages.length} ре�
 const appliedPartyLabel=s=>s.ages.length?`${partyLabel(s)} (${childAgesText(s.ages)})`:partyLabel(s);
 function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
-function updateURL(){if(searchEditSession||!urlStateHydrated)return;const p=new URLSearchParams();p.set('scenario',data.scenario);for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(destinationIds(f).length>1)p.set('hotels',destinationIds(f).join('|'));if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
+function updateURL(){
+ if(searchEditSession||!urlStateHydrated)return;
+ const p=new URLSearchParams(),f=state.filters;
+ p.set('scenario',data.scenario);
+ for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);
+ if(state.selectedDate)p.set('date',state.selectedDate);
+ if(state.hasSearched)p.set('searched','1');
+ if(state.onlyFavorites)p.set('favorites','1');
+ for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));
+ const labels=f.amenities.map(key=>[key,amenityLabel(key)]).filter(([,label])=>label);
+ if(labels.length)p.set('amenityLabels',JSON.stringify(Object.fromEntries(labels)));
+ for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');
+ if(f.hotelId)p.set('hotel',f.hotelId);
+ if(destinationIds(f).length>1)p.set('hotels',destinationIds(f).join('|'));
+ if(f.q)p.set('q',f.q);
+ if(f.min)p.set('min',f.min);
+ if(f.max!==null)p.set('max',f.max);
+ if(state.sort!=='recommended')p.set('sort',state.sort);
+ const query='?'+p.toString();
+ if(location.search!==query||location.hash)history.replaceState(history.state,'',query);
+}
 const generatedRootBindings=new WeakMap();
 // Bind exact, freshly generated markup to each live root. One observer per
 // container invalidates only roots edited outside this painter.
@@ -677,9 +699,20 @@ function countFacetOptionGroups(model,groups,selectedInventory=null,discover=nul
  return counts;
 }
 const hotelCountText=n=>`${n} ${n%10===1&&n%100!==11?'отель':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'отеля':'отелей'}`;
+function restoreAmenityLabels(value,keys){
+ if(!value)return new Map();
+ let labels;
+ try{labels=JSON.parse(value);}catch{return new Map();}
+ return new Map(keys.flatMap(key=>{
+  const label=typeof labels?.[key]==='string'?labels[key].trim():'';
+  return label&&label.length<=160?[[key,label]]:[];
+ }));
+}
+function amenityLabel(key){return amenityNames.get(key)?.label||linkedAmenityLabels.get(key)||'';}
 function filterChipData(model=appliedFilterModel()){
  const f=model.filters,chips=[];
- for(const key of f.amenities||[])chips.push({key:'amenities',value:key,label:amenityNames.get(key)?.label||'Удобство отеля'});
+ if(f.amenities?.length)rememberMissingAmenityNames(f.amenities);
+ for(const key of f.amenities||[])chips.push({key:'amenities',value:key,label:amenityLabel(key)||'Удобство отеля'});
  if(model.selectedDate)chips.push({key:'date',value:'',label:`Вылет ${dateText(model.selectedDate)}`});
  if(model.onlyFavorites)chips.push({key:'favorites',value:'',label:'Только избранное'});
  for(const id of destinationIds(f))chips.push({key:'hotelIds',value:id,label:destinationHotel(id)?.name||'Выбранный отель'});
@@ -688,6 +721,18 @@ function filterChipData(model=appliedFilterModel()){
  for(const [key,label] of [['beach','Первая линия'],['rating','Рейтинг 4,5+'],['family','Детский клуб'],['spa','Спа-центр']])if(f[key])chips.push({key,value:'',label});
  if(f.min>0||f.max!==null)chips.push({key:'price',value:'',label:budgetLabel(f)});
  return chips;
+}
+function rememberMissingAmenityNames(keys){
+ const missing=new Set(keys.filter(key=>!amenityNames.get(key)?.label));
+ if(!missing.size)return;
+ // Shared links restore the keys before the filter panel has inventoried the hotels.
+ for(const hotel of hotels){
+  if(hotel.country!==state.search.country)continue;
+  for(const fact of hotel.amenities||[]){
+   if(fact?.filterable===true&&fact.label&&missing.delete(fact.key))amenityNames.set(fact.key,fact);
+  }
+  if(!missing.size)return;
+ }
 }
 function removeModelFilter(model,key,value){const f=model.filters;if(key==='hotelId'||key==='hotelIds')setDestinationIds(f,destinationIds(f).filter(id=>String(id)!==String(value)));else if(key==='date')model.selectedDate=null;else if(key==='favorites')model.onlyFavorites=false;else if(key==='price'){f.min=0;f.max=null}else if(Array.isArray(f[key]))f[key]=f[key].filter(x=>String(x)!==String(value));else f[key]=key==='q'?'':key==='hotelId'?0:false;}
 function minimumHotelOfferTotal(model){
@@ -911,6 +956,7 @@ function renderCalendarStrip(){
 }
 const mobileDetailFilterKeys=new Set(['amenities','favorites','hotelId','hotelIds','q','resorts','operators','flight','spa']);
 function renderActive(ratingCounts){const f=state.filters,chips=filterChipData(),activeFilters=$('#active-filters');
+ activeFilters.classList.toggle('has-amenity-labels', (f.amenities||[]).some(key=>amenityLabel(key)));
  $('#sort').value=state.sort;$('#mobile-sort').value=state.sort;
  const sortLabel=state.sort==='price'?'Дешевле':state.sort==='rating'?'Рейтинг':'Сортировка';
  $('#mobile-sort-label').textContent=sortLabel;$('.mobile-sort').classList.toggle('active',state.sort!=='recommended');
