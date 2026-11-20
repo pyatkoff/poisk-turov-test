@@ -26,6 +26,12 @@ on:
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
       - '.github/workflows/deploy-anytoour.yml'
+      - '.github/workflows/search3-root-gateway-install.yml'
+      - 'scripts/deploy/search3_public_install.py'
+      - 'tests/search3_public_install_test.py'
+      - 'tests/anytoour_production_deploy_guard_test.py'
+      - 'scripts/deploy/search3_root_gateway_install.py'
+      - 'scripts/deploy/search3_root_gateway_inspect.py'
       - '.github/workflows/validate-v2-core.yml'
   workflow_dispatch:
 
