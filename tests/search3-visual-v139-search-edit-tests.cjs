@@ -45,7 +45,10 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  context.dateText||=(day=>String(day));
  context.validIds=ids=>[...new Set(ids.filter(id=>Number.isSafeInteger(id)&&id>0))].slice(0,20);context.destinationIds=f=>context.validIds(f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[]);context.setDestinationIds=(f,ids)=>{f.hotelIds=context.validIds(ids);f.hotelId=f.hotelIds.length===1?f.hotelIds[0]:0;};
  vm.createContext(context);
- vm.runInContext(extract('parseURLParty')+'\n'+extract('urlPartyReviewText')+'\n'+extract('restoreURL')+'\n'+source.match(/function updateURL\([^]*?\n/)[0],context);
+ context.amenityNames=new Map();
+ context.linkedAmenityLabels=new Map();
+ vm.runInContext(['parseURLParty','urlPartyReviewText','restoreURL','restoreAmenityLabels','updateURL'].map(extract).join('\n')+
+  '\n'+source.match(/^function amenityLabel[^\n]+/m)[0],context);
  state.filters={...defaults(),flight:['charter'],beach:true,family:true,spa:true,rating:true};
  vm.runInContext('updateURL()',context);const shared=context.location.search;
  state.filters=defaults();vm.runInContext('restoreURL()',context);
@@ -72,6 +75,16 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  assert.match(vm.runInContext('urlPartyReviewText(urlPartyIssues)',context),/от 1 до 6 взрослых и до 3 детей/);assert.match(vm.runInContext('urlPartyReviewText(urlPartyIssues,true)',context),/больше 3 детей/);
  context.location.search='?adults=1&ages=';state.search.adults=2;state.search.ages=[12];context.urlPartyIssues=['invalid-child-age'];vm.runInContext('restoreURL()',context);
  assert.equal(state.search.adults,1);assert.deepEqual(Array.from(state.search.ages),[],'an explicit empty age list remains the valid no-children party');assert.deepEqual(Array.from(context.urlPartyIssues),[]);
+ context.location.search='?'+new URLSearchParams({amenities:'3:71|1:81',amenityLabels:JSON.stringify({'3:71':'Детский клуб','1:81':'Песчаный пляж','5:99':'Другой фильтр'})});
+ vm.runInContext('restoreURL()',context);
+ assert.equal(vm.runInContext("amenityLabel('3:71')",context),'Детский клуб');
+ assert.equal(vm.runInContext("amenityLabel('5:99')",context),'','labels for unselected keys are ignored');
+ context.amenityNames.set('3:71',{label:'Детский мини-клуб'});
+ vm.runInContext('updateURL()',context);
+ assert.deepEqual(JSON.parse(new URLSearchParams(context.location.search).get('amenityLabels')),{'3:71':'Детский мини-клуб','1:81':'Песчаный пляж'});
+ context.location.search='?'+new URLSearchParams({amenities:'1:81',amenityLabels:'broken'});
+ vm.runInContext('restoreURL()',context);
+ assert.equal(vm.runInContext("amenityLabel('1:81')",context),'','a malformed label cannot break the saved filters');
  console.log('PASS shared search URL: flight and hotel restrictions round-trip, unknown values rejected');
 }
 

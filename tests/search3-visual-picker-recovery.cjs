@@ -89,7 +89,7 @@ async function main() {
     return {...pickers, hotelMatches};
   });
   fs.writeFileSync(path.join(output, 'pickers.json'), JSON.stringify({source, engines}, null, 2));
-  for (const name of ['pickers.json', 'chromium-1280-meal.png', 'chromium-1280-budget.png', 'chromium-1280-infant.png', 'firefox-rdm-430-meal.png', 'firefox-rdm-430-budget.png', 'firefox-rdm-430-infant.png', 'chromium-1280-hotel-matches.png', 'firefox-rdm-430-hotel-matches.png']) {
+  for (const name of ['pickers.json', 'chromium-1280-meal.png', 'chromium-1280-budget.png', 'chromium-1280-infant.png', 'firefox-rdm-430-meal.png', 'firefox-rdm-430-budget.png', 'firefox-rdm-430-infant.png', 'chromium-1280-hotel-matches.png', 'firefox-rdm-430-hotel-matches.png', 'chromium-1280-saved-filters.png', 'firefox-rdm-430-saved-filters.png']) {
     emitFirstOpenFile(output, name, 'SEARCH3_PICKERS_FRAME');
   }
 }

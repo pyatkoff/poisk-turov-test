@@ -196,7 +196,7 @@ async function measureEngines(root, html, collect) {
   try {
     const page=await browser.newPage({viewport:{width:1280,height:800}});
     engines.chromium={version:browser.version(),viewport:[1280,800],groups:await collect({
-      go:url=>page.goto(url),evaluate:expr=>page.evaluate(expr),click:selector=>page.locator(selector).click(),
+      go:url=>page.goto(url),reload:()=>page.reload(),evaluate:expr=>page.evaluate(expr),click:selector=>page.locator(selector).click(),
       screenshot:file=>page.screenshot({path:file})},'chromium-1280',[1280,800])};
   } finally {await browser.close();}
   const firefox=await startFirefox(), landing=await openReplay(root,html,0);
