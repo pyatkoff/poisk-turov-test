@@ -1,5 +1,8 @@
 'use strict';
 (() => {
+const roomLayouts=new Map();
+const bedroomForms={one:'спальня',few:'спальни',many:'спален',other:'спальни'};
+const bedroomCountRules=new Intl.PluralRules('ru');
 function create(context){
 const {$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel=mealLabel,roomLabel=o=>o.room||'Номер уточняется',dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText}=context;
 function hotelTextExcerpt(text,limit){
@@ -94,7 +97,74 @@ function refreshHotelProfile(h,entryScroll){
  else if(body.scrollTop!==scroll)body.scrollTop=scroll;
  syncHotelSectionNavigation();
 }
-function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceInfo=roomOfferPrice(o)}={}){
+function roomLayoutId(offer){
+ if(typeof data?.readRoomLayouts!=='function'||offer?.provider!=='tourvisor')return null;
+ const rawId=offer.raw?.roomId;
+ const id=typeof rawId==='string'&&/^[1-9]\d*$/.test(rawId)?Number(rawId):rawId;
+ return Number.isSafeInteger(id)&&id>0?id:null;
+}
+function roomLayoutNote(id){
+ return id?'<span class="room-layout-note" data-room-layout-id="'+id+'" tabindex="-1" hidden></span>':'';
+}
+function roomLayoutTargets(section){
+ return [...section.querySelectorAll('[data-room-layout-id]')];
+}
+function paintRoomLayouts(section){
+ const control=section?.querySelector('.room-layout-controls');
+ if(!control)return;
+ const button=control.querySelector('button'),status=control.querySelector('[role="status"]');
+ const targets=roomLayoutTargets(section);
+ let hasFact=false,hasUnloaded=false;
+ for(const target of targets){
+  const id=Number(target.dataset.roomLayoutId),layout=roomLayouts.get(id)||'';
+  if(target.textContent!==layout)target.textContent=layout;
+  target.hidden=!layout;
+  hasFact||=Boolean(layout);
+  hasUnloaded||=!roomLayouts.has(id);
+ }
+ if(!button.disabled){
+  button.hidden=!hasUnloaded;
+  if(!hasUnloaded||!status.dataset.failed){
+   delete status.dataset.failed;
+   status.textContent=targets.length&&!hasUnloaded&&!hasFact?'Планировка этих номеров не указана.':'';
+  }
+ }
+ if(!targets.length)status.textContent='';
+ status.hidden=!status.textContent;
+ control.hidden=button.hidden&&status.hidden;
+}
+async function loadRoomLayouts(section,button){
+ if(button.disabled)return;
+ const ids=[...new Set(roomLayoutTargets(section).map(node=>Number(node.dataset.roomLayoutId)))].filter(id=>!roomLayouts.has(id)).slice(0,30);
+ if(!ids.length)return;
+ const status=button.parentElement.querySelector('[role="status"]');
+ delete status.dataset.failed;
+ button.disabled=true;
+ status.textContent='Загружаем планировки…';
+ status.hidden=false;
+ try{
+  const layouts=await data.readRoomLayouts(ids);
+  const labels=new Map(layouts.map(({id,bedroomCount,sleepingPlaces})=>{
+   const bedrooms=bedroomCount?bedroomCount+' '+bedroomForms[bedroomCountRules.select(bedroomCount)]:'';
+   return [id,[bedrooms,plainHotelText(sleepingPlaces)].filter(Boolean).join(' · ')];
+  }));
+  ids.forEach(id=>roomLayouts.set(id,labels.get(id)||''));
+ }catch{
+  status.dataset.failed='true';
+  status.textContent='Планировки временно недоступны. Попробуйте ещё раз.';
+ }finally{
+  button.disabled=false;
+  if(section.isConnected){
+   const restoreFocus=button===section.ownerDocument.activeElement;
+   paintRoomLayouts(section);
+   if(restoreFocus&&button.hidden){
+    const shown=roomLayoutTargets(section).find(node=>!node.hidden&&node.getClientRects().length);
+    (shown||status).focus({preventScroll:true});
+   }
+  }
+ }
+}
+function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceInfo=roomOfferPrice(o),layoutId=null}={}){
  const selected=context.hotelOfferDraft?.hotelId===o.hotelId&&context.hotelOfferDraft?.key===o.key;
  const meal=esc(displayMealLabel(o)),key=esc(o.key),price=priceInfo.pending?'Цена уточняется':money(priceInfo.total);
  const description=esc(roomOfferDescription(o,price));
@@ -107,7 +177,7 @@ function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceIn
  return `<div class="room-offer-choice${selected?' selected':''}" data-offer-key="${key}" ${selected?'aria-current="true"':''}>
   <div class="room-offer-conditions">
    <button type="button" class="room-tariff-details text-button" data-action="offer" data-key="${key}" aria-label="Подробности тура: ${description}"><strong class="room-offer-meal">${meal}</strong><span aria-hidden="true">›</span></button>
-   <span class="room-choice-selected" ${selected?'':'hidden'}></span>${facts?`<dl class="room-choice-facts">${facts}</dl>`:''}
+   ${layoutId?roomLayoutNote(layoutId):''}<span class="room-choice-selected" ${selected?'':'hidden'}></span>${facts?`<dl class="room-choice-facts">${facts}</dl>`:''}
   </div>
   <div class="hotel-room-price" ${selected?'hidden':''}>
    <strong>${price}</strong>${common.party?'':`<small class="room-offer-party">${esc(guestsText(o))}</small>`}
@@ -235,14 +305,18 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  roomCards.innerHTML=inventoryFacts+rooms.map(({room,offers:rows})=>{
   const roomTerms=commonRoomTerms(rows);
   const common={dates:inventoryTerms.dates||roomTerms.dates,flight:inventoryTerms.flight||roomTerms.flight,operator:inventoryTerms.operator||roomTerms.operator};
-  const choice=o=>roomOfferChoiceHTML(o,{common:{...common,party:guestsText(o)===searchParty},sharedDemoNote,minimum,priceInfo:prices.get(o.key)});
+  const firstLayoutId=roomLayoutId(rows[0]);
+  const sharedLayoutId=firstLayoutId&&rows.every(o=>roomLayoutId(o)===firstLayoutId)?firstLayoutId:null;
+  const choice=o=>roomOfferChoiceHTML(o,{common:{...common,party:guestsText(o)===searchParty},sharedDemoNote,minimum,priceInfo:prices.get(o.key),layoutId:sharedLayoutId?null:roomLayoutId(o)});
   const choices=roomSharedFacts(rows[0],roomTerms,inventoryTerms)+`<div class="room-offer-list">${rows.slice(0,2).map(choice).join('')}${rows.length>2?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(rows.length-2)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${rows.slice(2).map(choice).join('')}</details>`:''}</div>`;
   const title=`<h4>${esc(roomLabel({room}))}</h4>`;
-  if(rooms.length===1||rows.length===1)return `<article class="hotel-room-card" data-room="${esc(room)}"><header class="room-choice-main">${title}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
+  const layoutNote=roomLayoutNote(sharedLayoutId),header=layoutNote?'<div>'+title+layoutNote+'</div>':title;
+  if(rooms.length===1||rows.length===1)return `<article class="hotel-room-card" data-room="${esc(room)}"><header class="room-choice-main">${header}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
   const meals=[...new Set(rows.map(displayMealLabel))].map(esc).join(' · '),min=Math.min(...rows.map(o=>{const p=prices.get(o.key);return p.pending?NaN:p.total;}));
-  return `<details class="hotel-room-card room-overview" data-room="${esc(room)}" ${restoredRooms?.includes(room)?'open':''}><summary class="room-overview-toggle"><span class="room-overview-name">${title}<span class="room-overview-meals">${meals}</span></span><span class="room-overview-bottom"><strong class="room-overview-price">${Number.isFinite(min)?'от '+money(min):'Цена уточняется'}</strong>${roomPriceDifferenceHTML(min,minimum)}<span class="room-overview-action"><span class="room-overview-closed">${offerCountText(rows.length)}</span><span class="room-overview-open">Свернуть</span><span class="rotate-arrow" aria-hidden="true">⌄</span></span></span></summary>${choices}</details>`;
+  return `<details class="hotel-room-card room-overview" data-room="${esc(room)}" ${restoredRooms?.includes(room)?'open':''}><summary class="room-overview-toggle"><span class="room-overview-name">${title}${layoutNote}<span class="room-overview-meals">${meals}</span></span><span class="room-overview-bottom"><strong class="room-overview-price">${Number.isFinite(min)?'от '+money(min):'Цена уточняется'}</strong>${roomPriceDifferenceHTML(min,minimum)}<span class="room-overview-action"><span class="room-overview-closed">${offerCountText(rows.length)}</span><span class="room-overview-open">Свернуть</span><span class="rotate-arrow" aria-hidden="true">⌄</span></span></span></summary>${choices}</details>`;
  }).join('')||(meal&&allOffers.length?'<p class="tour-missing">С выбранным питанием сейчас нет подходящих вариантов в этом отеле.</p>':'<p class="tour-missing">По текущим условиям предложений нет. Измените даты или фильтры поиска.</p>');
  const control=$('#hotel-room-meal');if(control){control.value=meal;[...control.options].forEach(option=>option.defaultSelected=option.value===meal);}
+ if(typeof data?.readRoomLayouts==='function')paintRoomLayouts(roomCards.closest('.hotel-room-section'));
  syncHotelOfferSelection(id,allOffers,{meal,comparison});
  queueMicrotask(()=>{observeHotelRoomChoices();syncHotelSectionNavigation();});
  rememberUIRoute();
@@ -254,7 +328,9 @@ function openHotelDetails(id){
  $('#modal-body').innerHTML=`${mountedProfile}
  <section class="hotel-room-section" aria-labelledby="hotel-rooms-heading"><h3 id="hotel-rooms-heading" class="detail-section-title hotel-section-anchor" tabindex="-1">Номера и питание</h3><p class="hotel-room-context">${departureScopeText()} · ${durationText()} · ${guestsText()}</p>
  ${meals.length>1&&offers.length>2?`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"><option value="">Любое питание</option>${meals.map(meal=>`<option value="${esc(meal)}">${esc(displayMealLabel({meal}))}</option>`).join('')}</select></label>`:''}
- <p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p><div class="hotel-room-cards"></div></section>`;
+ <p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p>${typeof data?.readRoomLayouts==='function'?'<div class="room-layout-controls" hidden><button class="secondary" type="button">Показать планировки</button><span role="status" tabindex="-1" hidden></span></div>':''}<div class="hotel-room-cards"></div></section>`;
+ const layoutControl=$('.room-layout-controls button');
+ if(layoutControl)layoutControl.addEventListener('click',()=>loadRoomLayouts(layoutControl.closest('.hotel-room-section'),layoutControl));
  $('#modal').classList.add('hotel-details-dialog');
  if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>Весь тур · ${guestsText()}</span><strong id="hotel-detail-min"></strong><small id="hotel-detail-price-status"></small></div><button id="hotel-detail-offers" class="primary" data-action="hotel-detail-offers" data-id="${id}"></button>`;}
  renderHotelRooms(id,'',null,offers);

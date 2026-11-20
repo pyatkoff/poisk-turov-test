@@ -2003,6 +2003,69 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
  fs.writeFileSync(path.join(evidence,'tv-card-rooms-receipt.json'),JSON.stringify({compiled:true,physical:false,records},null,2)+'\n');
 };
 
+async function roomLayoutsJourney(browser,origin,base,evidence){
+ for(const [width,height] of [[430,932],[1280,800]]){
+  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();
+  const transport=fixture(),calls=[],errors=[],failed=[];
+  transport.state.failAnex=true;
+  const fixtures=[{id:9001,bedroomCount:1,sleepingPlaces:'1 двуспальная кровать'},
+   {id:9002,bedroomCount:2,sleepingPlaces:'1 двуспальная кровать и 2 односпальные кровати'}];
+  page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url()),action=url.searchParams.get('action');
+    if(url.pathname==='/test-photo.svg'){
+     await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect width="700" height="500" fill="#dae2f3"/></svg>'});return;
+    }
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     const roomRead=url.pathname==='/api-v2.php'&&action==='rooms';
+     let value=roomRead?fixtures:await transport.json(request.url(),{body:request.postData()});
+     if(roomRead)calls.push(url.searchParams.getAll('ids[]').map(Number));
+     if(url.pathname==='/api-v2.php'&&action==='search_results')value=value.map(h=>{
+      const first={...h.tours[0],roomId:9001};
+      return {...h,tours:[first,{...first,id:'visual-tv-family',roomId:9002,roomType:'FAMILY SUITE',price:151000,meal:{id:3,name:'BB'}}]};
+     });
+     await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){failed.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+   await page.locator('.search-submit:not(:disabled)').click();
+   await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   await page.locator('.hotel-card [data-action="hotel-details"]').first().click();
+   const standard=page.locator('[data-room="STANDARD SEA VIEW"]'),family=page.locator('[data-room="FAMILY SUITE"]');
+   await family.waitFor();
+   assert.deepEqual(calls,[],'layout loading does not delay rooms and prices');
+   const amount=room=>room.locator('.hotel-room-price>strong').innerText();
+   const amounts=await Promise.all([amount(standard),amount(family)]);
+   assert.match(amounts[0],/120\s*000/);assert.match(amounts[1],/151\s*000/);
+   const layout=page.getByRole('button',{name:'Показать планировки',exact:true});
+   await layout.click();
+   await family.locator('.room-layout-note').waitFor();
+   assert.deepEqual(calls,[[9001,9002]]);
+   assert.equal(await standard.locator('.room-layout-note').innerText(),'1 спальня · 1 двуспальная кровать');
+   assert.equal(await family.locator('.room-layout-note').innerText(),'2 спальни · 1 двуспальная кровать и 2 односпальные кровати');
+   assert.deepEqual(await Promise.all([amount(standard),amount(family)]),amounts);
+   await page.locator('#hotel-rooms-heading').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
+   assert(await page.locator('#modal-body').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+   await page.screenshot({path:path.join(evidence,'room-layouts-'+width+'x'+height+'.png')});
+   const key='tourvisor%3Avisual-tv-101',choice=standard.locator('[data-action="select-hotel-offer"][data-key="'+key+'"]');
+   const meal=await standard.locator('.room-offer-meal').textContent();
+   await choice.click();
+   await page.locator('#modal[open] #prototype-lead-form').waitFor();
+   assert.match(await page.locator('#modal-footer .footer-total>strong').textContent(),/120\s*000/);
+   await page.locator('#modal-back').click();
+   await standard.locator('.room-layout-note').waitFor();
+   assert.equal(await choice.getAttribute('aria-pressed'),'true');
+   assert.equal(await standard.locator('.room-offer-meal').textContent(),meal);
+   assert.match(await page.locator('#hotel-detail-min').textContent(),/120\s*000/);
+   assert.deepEqual(calls,[[9001,9002]],'return reuses the existing room layouts');
+   assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);
+  }finally{await context.close();}
+ }
+ console.log('PASS compiled exact Tourvisor room layouts 430/1280: two descriptions, optional batch, exact price/meal/selection retained on Back; supplier HTTP0');
+}
+
 const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
  const records=[];
  for(const [width,height] of [[430,900],[1280,900],[1280,720]]){
@@ -2055,6 +2118,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
     await require('./search3-visual-messenger-browser.cjs')({browser,origin,base,evidence});return;
    }
    await require('./search3-visual-hotel-journey.cjs')();
+   await roomLayoutsJourney(browser,origin,base,evidence);
    await tvCardRoomsJourney(browser,origin,base,evidence);
    await terminalHotelRecovery(browser,origin,base,evidence);
    await inlineContactFlightReturn(browser,origin,base,evidence);
