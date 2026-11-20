@@ -17,6 +17,23 @@
   const localContents=new Map(),localContentReads=new Map(),localContentAttempted=new Set();
   const localContentQueue=[];let localContentWorkers=0;
   const contentFields=['name','country','region','subRegion','category','rating','description','primaryImage','images','photoDetails','hotelInformation','descriptionSections','coordinates','address','place','build','repair','square'];
+  async function readRoomLayouts(ids){
+    const requested=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,30);
+    if(!requested.length)return [];
+    const payload=await rt.api('rooms',{ids:requested},{timeout:8000});
+    const rooms=Array.isArray(payload)?payload:payload?.rooms;
+    if(!Array.isArray(rooms))throw new Error('Invalid room descriptions');
+    const seen=new Set();
+    return rooms.flatMap(room=>{
+      const value=room?.id;
+      const id=typeof value==='string'&&/^[1-9]\d*$/.test(value)?Number(value):value;
+      if(!requested.includes(id))return [];
+      if(seen.has(id))throw new Error('Conflicting room descriptions');
+      seen.add(id);
+      return [{id,bedroomCount:Number.isSafeInteger(room.bedroomCount)&&room.bedroomCount>0?room.bedroomCount:null,
+        sleepingPlaces:typeof room.sleepingPlaces==='string'?room.sleepingPlaces:''}];
+    });
+  }
   function localContentEndpoint(){
     if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
     const path=String(root.location?.pathname||'');
@@ -2498,5 +2515,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,stayLabel,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,stayLabel,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,readRoomLayouts,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

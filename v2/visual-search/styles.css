@@ -1302,6 +1302,11 @@ dialog.hotel-details-dialog #modal-footer{display:grid;grid-template-columns:min
 /* Rooms share one comparison grid for meal, exact tour price and selection. */
 .hotel-room-card{display:block;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#fff}
 .room-choice-main{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px 16px;background:#f5f7fa}
+.room-choice-main>div{min-width:0}
+.room-layout-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:0 0 14px}
+.room-layout-controls button{min-height:44px}
+.room-layout-controls [role="status"],.room-layout-note{font-size:13px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+.room-layout-note{display:block}
 .hotel-room-card h4{min-width:0;margin:0;font-size:17px;line-height:1.35;letter-spacing:-.02em;overflow-wrap:anywhere}
 .room-choice-label{flex-shrink:0;font-size:13px;line-height:1.5;color:var(--muted)}
 .single-direct-offer .room-choice-label{display:none}
