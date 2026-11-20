@@ -13,7 +13,7 @@ $historical=v2_collection_priority_hotel_ids($registry);
 $oldInput=array_values(array_unique(array_merge($historical,v2_sites_hotel_monitor_ids_20261111())));
 $input=v2_all_hotel_monitor_input_ids($registry);
 expansion_check(array_slice($input,0,count($oldInput))===$oldInput&&array_diff($ids,$input)===[],'old_input_order_or_new_ids_lost');
-expansion_check(count($input)===count(array_unique($input))&&count($input)===count(array_unique(array_merge($oldInput,$ids,v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118()))),'duplicate_input_ids');
+expansion_check(count($input)===count(array_unique($input))&&count($input)===count(array_unique(array_merge($oldInput,$ids,v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118(),v2_published_expansion55_monitor_ids_20261121()))),'duplicate_input_ids');
 // One base target and four actual country groups; all catalogue rows here are fixtures.
 $countries=[88169=>2,547=>2,15774=>9,12125=>8,57335=>8,2480=>8,2417=>8,2418=>8,2468=>8,12127=>8,27481=>9,23289=>9,50262=>8,72939=>8,2489=>8,85417=>8,2466=>8,2460=>8,99713=>9,43676=>12];
 $baseRows=[['id'=>200001,'country_id'=>4,'country_name'=>'Fixture base','is_active'=>1]];
@@ -60,5 +60,6 @@ expansion_check($publishedTargets>0,'published_priority_fixture_empty');
 $ordinary=v2_top500_monthly_queue($full['targets'],[],$now,24,$publishedIds);
 expansion_check(array_intersect($ordinary['targets'][0]['hotel_ids'],$ids)!==[],'unpublished_stock_before_new_publications');
 $caller=file_get_contents(__DIR__.'/../v2/data/top500-daily-collector-v1.php');
-expansion_check(str_contains($caller,'array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118())'),'canonical_caller_priority_missing');
+$compactCollector=preg_replace('/\s+/','',$caller);
+expansion_check(str_contains($compactCollector,'array_merge(v2_sites_hotel_monitor_ids_20261111(),v2_published_expansion20_monitor_ids_20261116(),v2_published_expansion32_monitor_ids_20261116(),v2_published_expansion217_monitor_ids_20261117(),v2_published_expansion123_monitor_ids_20261118(),v2_published_expansion55_monitor_ids_20261121(),)') && str_contains($compactCollector,'$freshHours,$publishedPriorityIds);'),'canonical_caller_priority_missing');
 echo 'PUBLISHED_EXPANSION20_OK checks='.$checks.' exact_native_ids=20 old_targets=preserved searches=resumed supplier_calls=0 writes=0',PHP_EOL;
