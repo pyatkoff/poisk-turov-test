@@ -227,12 +227,13 @@ def preflight():
 
 
 # This separate read-only operation does not repin or reopen any older operation.
+# readiness-20261120-v1 / run 44759079166 is consumed; only the new public/INT read is admitted.
 READINESS_ISSUE = 4709
 READINESS_PREFIX = '/inspect-search3-production-readiness'
-READINESS_OPERATION = 'readiness-20261120-v1'
+READINESS_OPERATION = 'readiness-public-int-20261120-v2'
 READINESS_RELEASE = '63844d4093e82dbe2810294514fe2a881df981ed'
-READINESS_SOURCE = 'dd216ed705bc79cb2eb8c17968fb114cd5ca4cd7'
-READINESS_TREE = 'd910750caccbc9dfb259d543aeb66ed0690bdaa9'
+READINESS_SOURCE = '8d5fc37fdc7baca67f0a26444a4548f8c7ded38c'
+READINESS_TREE = 'aa1c25651321433c6f711fdb8f81dc438fb84444'
 READINESS_FILE_BYTES = 2 * 1024 * 1024
 READINESS_EVIDENCE_BYTES = 64 * 1024
 READINESS_INT_BASE = '_preview/search3-anex-candidate/'
@@ -263,11 +264,6 @@ READINESS_TARGETS = {
             READINESS_NEXT_BASE + 'visual-search/index.php',
             READINESS_NEXT_BASE + 'prototype-search/config.js',
         ) + tuple(READINESS_INT_BASE + path for path in READINESS_INT_FILES),
-    },
-    'legacy': {
-        'root': ('www', 'anytour.online', 'poisk-turov-test', 'v2'), 'env': 'LEGACY',
-        'files': ('lead-receiver-v1.php', 'lead-adapter-v2.php',
-                  'lead-price-v1.php', 'lead-idempotency-v1.php'),
     },
 }
 READINESS_OPTIONAL = {('public', 'poisk-turov-old/index.php')}
@@ -316,23 +312,6 @@ READINESS_REFERENCES = {
             'c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1',
             '9dafb88cab92e19376e120c80dd5dfecc975730cca7e7039edc419bf1ffa57f3',
         ))),
-    },
-    'legacy_main_source': {
-        'source': 'e68fe088764521c7ff6b605403ca7f2ebb7e4dd6',
-        'kind': 'source_mapping', 'target': 'legacy',
-        'hashes': {
-            'lead-receiver-v1.php': '67f4402cbf482a3274bb56a82e94217e3789b8907e27dafb30bde9e14d229575',
-            'lead-adapter-v2.php': '8eb0c75a5ccad219190fddc31f9d254545f9c7566e459f169231481cebe4e069',
-            'lead-price-v1.php': 'e723470a45f910ebfd93bd04debeb1c13bbf87f897e5c63a4735d606034d09ff',
-            'lead-idempotency-v1.php': '076d74f05d3c32f67828c992c73c3ea09d8676af58fc1769e521ac6df819f238',
-        },
-    },
-    'legacy_release_source': {
-        'source': READINESS_RELEASE, 'kind': 'source_mapping', 'target': 'legacy',
-        'hashes': {
-            'lead-adapter-v2.php': '3160b72685f0a7e430528f62aa3b114ffaec567e9942d969beddcb47f5cbdbeb',
-            'lead-idempotency-v1.php': '60f571695d135a827160d9f095a23f11a0e6c61d12dfd7b36ab4dd1f33b27793',
-        },
     },
 }
 
@@ -411,26 +390,33 @@ def parts(value):
  require(bool(result) and all(p and p not in ('.','..') and '\x00' not in p for p in result),'invalid_fixed_inventory')
  return result
 def snapshot(relative):
+ global read_stage
+ read_stage='validation'
  home=os.environ.get('HOME','')
  require(home.startswith('/') and home!='/' and os.path.normpath(home)==home,'unsafe_home')
  ancestors=parts(home[1:])+list(ROOT_PARTS)
  components=ancestors+parts(relative)
  links=[]; fd=None; row=None; absent=False; leaf_stamp=None
  try:
-  fd=os.open('/',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+  # A fixed-path walk needs search permission, not permission to list directories.
+  read_stage='ancestor_open'
+  fd=os.open('/',os.O_PATH|os.O_DIRECTORY|os.O_NOFOLLOW)
   initial=os.fstat(fd);require(stat.S_ISDIR(initial.st_mode),'unsafe_parent')
   links.append((None,None,fd,directory_stamp(initial)))
   for index,component in enumerate(components[:-1]):
+   read_stage='ancestor_stat'
    try: before=os.stat(component,dir_fd=fd,follow_symlinks=False)
    except FileNotFoundError:
     if index<len(ancestors): raise
     absent=True;break
    require(stat.S_ISDIR(before.st_mode),'unsafe_parent')
-   child=os.open(component,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
+   read_stage='ancestor_open'
+   child=os.open(component,os.O_PATH|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
    opened=os.fstat(child)
    if directory_stamp(before)!=directory_stamp(opened): os.close(child);raise RuntimeError('file_changed')
    links.append((fd,component,child,directory_stamp(before)));fd=child
   if not absent:
+   read_stage='file_stat'
    try: before=os.stat(components[-1],dir_fd=fd,follow_symlinks=False)
    except FileNotFoundError: absent=True
   if absent:
@@ -438,20 +424,24 @@ def snapshot(relative):
   else:
    require(stat.S_ISREG(before.st_mode) and before.st_nlink==1,'unsafe_file')
    require(0<=before.st_size<=MAX_BYTES,'file_too_large')
+   read_stage='file_open'
    leaf=os.open(components[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
    try:
     opened=os.fstat(leaf)
     require(stamp(opened)==stamp(before) and stat.S_ISREG(opened.st_mode) and opened.st_nlink==1,'file_changed')
     value=hashlib.sha256();total=0
+    read_stage='file_read'
     while True:
      chunk=os.read(leaf,min(65536,MAX_BYTES-total+1))
      if not chunk: break
      total+=len(chunk);require(total<=MAX_BYTES,'file_too_large');value.update(chunk)
     require(stamp(before)==stamp(os.fstat(leaf)) and total==before.st_size,'file_changed')
    finally: os.close(leaf)
+   read_stage='verify'
    require(stamp(before)==stamp(os.stat(components[-1],dir_fd=fd,follow_symlinks=False)),'file_changed')
    leaf_stamp=stamp(before)
    row={'path':relative,'state':'present','sha256':value.hexdigest(),'size':total,'mode':format(stat.S_IMODE(before.st_mode),'04o')}
+  read_stage='verify'
   for parent,name,handle,original in links:
    require(directory_stamp(os.fstat(handle))==original,'file_changed')
    if parent is not None: require(directory_stamp(os.stat(name,dir_fd=parent,follow_symlinks=False))==original,'file_changed')
@@ -459,20 +449,23 @@ def snapshot(relative):
  finally:
   for parent,name,handle,original in reversed(links): os.close(handle)
 result={'schema_version':1,'status':'read_error','before':[],'after':[]}
+read_stage='validation'
 try:
- require(hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY'),'unsupported_platform')
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY'),'unsupported_platform')
  require(len(FILES)==len(set(FILES)) and all(isinstance(p,str) for p in FILES),'invalid_fixed_inventory')
  before_stamps=[];after_stamps=[]
  for relative in FILES:
   row,identity=snapshot(relative);result['before'].append(row);before_stamps.append(identity)
  for relative in FILES:
   row,identity=snapshot(relative);result['after'].append(row);after_stamps.append(identity)
+ read_stage='verify'
  require(result['before']==result['after'] and before_stamps==after_stamps,'file_changed')
  result['status']='inventory_observed'
 except Exception as error:
  allowed=('unsafe_home','unsafe_parent','unsafe_file','file_too_large','file_changed','invalid_fixed_inventory','unsupported_platform')
  result['reason']=str(error) if type(error) is RuntimeError and str(error) in allowed else 'read_failed'
  result['error_type']=type(error).__name__ if type(error) in (RuntimeError,FileNotFoundError,PermissionError,OSError,ValueError) else 'ReadError'
+ result['read_stage']=read_stage
 print(json.dumps(result,sort_keys=True,separators=(',',':')))
 '''
 
@@ -488,7 +481,7 @@ def validate_readiness_result(result, target):
     need(target in READINESS_TARGETS and isinstance(result, dict), 'readiness_result_shape')
     fields = {'schema_version', 'status', 'before', 'after'}
     failed = result.get('status') == 'read_error'
-    need(set(result) == fields | ({'error_type', 'reason'} if failed else set()), 'readiness_result_fields')
+    need(set(result) == fields | ({'error_type', 'reason', 'read_stage'} if failed else set()), 'readiness_result_fields')
     need(type(result.get('schema_version')) is int and result['schema_version'] == 1, 'readiness_result_schema')
     need(result.get('status') in ('inventory_observed', 'read_error'), 'readiness_result_status')
     if failed:
@@ -497,6 +490,8 @@ def validate_readiness_result(result, target):
         need(result['reason'] in ('unsafe_home', 'unsafe_parent', 'unsafe_file', 'file_too_large',
                                  'file_changed', 'invalid_fixed_inventory', 'unsupported_platform',
                                  'read_failed'), 'readiness_result_reason')
+        need(result['read_stage'] in ('validation', 'ancestor_stat', 'ancestor_open', 'file_stat',
+                                     'file_open', 'file_read', 'verify'), 'readiness_result_stage')
     paths = READINESS_TARGETS[target]['files']
     for phase in ('before', 'after'):
         values = result.get(phase)
