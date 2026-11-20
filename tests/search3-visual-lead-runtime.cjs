@@ -4,7 +4,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {owners,target,generate,verify,project,parse,references}=require('../scripts/build/search3-js/lead-runtime.cjs');
 const root=path.resolve(__dirname,'../v2'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
-const code=verify(root),php=read('visual-search/index.php'),html=read('visual-search/index.html');
+const code=verify(root),php=read('visual-search/entry-v1.php'),html=read('visual-search/index.html');
 const live=[...php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize(path.posix.join('visual-search',m[1])));
 assert(live.includes(target));owners.forEach(o=>assert(!live.includes(o.file),'legacy UI is not loaded by NEXT'));
 assert.equal(live.filter(f=>f===target).length,1);

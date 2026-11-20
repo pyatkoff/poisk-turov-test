@@ -52,7 +52,7 @@ if(process.argv.includes('--ordinary-regular-vm')){ordinaryRegularRoutingVM().ca
 const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
-const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
+const scripts=[...source('visual-search/entry-v1.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 function loadFixtureScripts(w){

@@ -1974,7 +1974,8 @@ test('accepted LOCAL stay labels survive actual tour selection without changing 
  const visual=fs.readFileSync(path.join(rootDir,'v2/visual-search/app.js'),'utf8');
  const block=(start,end)=>{const a=visual.indexOf(start),b=visual.indexOf(end,a);assert(a>=0&&b>a);return visual.slice(a,b);};
  let contact=null,rendered=0;
- const ctx=vm.createContext({data:h.data,selectedOffer:initial,
+ // This extracted preview owner runs in a browser window without public analytics.
+ const ctx=vm.createContext({window:{},data:h.data,selectedOffer:initial,
   terminalOfferQuote:()=>false,isCurrentOfferRequest:()=>true,renderOfferProgress:()=>rendered++,openLeadPreview:o=>contact=o,
   esc:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
   rangeText:(a,b)=>a+' → '+b,nightsText:n=>n+' ночей',guestsText:()=> '2 взрослых',icon:()=>'',

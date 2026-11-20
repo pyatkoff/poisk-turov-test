@@ -33,10 +33,27 @@ class IsolationTest(unittest.TestCase):
             for name in ("index.php", "home-entry-v1.php", "site-page-shell-v1.php"):
                 self.assertNotIn("$siteConf", (payload / name).read_text())
             legacy = (payload / "poisk-turov-old/index.php").read_text()
-            self.assertIn("'/search-page-v2.php'", legacy)
+            self.assertIn("require dirname(__DIR__) . '/search-page-v2.php';", legacy)
+            self.assertNotIn("'/index.php'", legacy)
             self.assertIn("preview-lead-disabled.php", legacy)
             self.assertIn("V2_SEARCH3_PRESENTATION', false", legacy)
             with self.assertRaises(ValueError):
+                module.isolate(payload)
+
+    def test_changed_legacy_fallback_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = Path(tmp)
+            for name in ("index.php", "home-entry-v1.php", "site-page-shell-v1.php", "poisk-turov-old/index.php"):
+                target = payload / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / "v2" / name, target)
+            shutil.copyfile(payload / "index.php", payload / "search-page-v2.php")
+            shutil.copyfile(payload / "home-entry-v1.php", payload / "index.php")
+            legacy = payload / "poisk-turov-old/index.php"
+            original = legacy.read_text()
+            self.assertEqual(original.count("$root . '/index.php'"), 1)
+            legacy.write_text(original.replace("$root . '/index.php'", "$root . '/unexpected.php'"))
+            with self.assertRaisesRegex(ValueError, "Preview isolation source drift: index.php"):
                 module.isolate(payload)
 
     def test_provider_identity_bridge_is_packaged_but_not_public_php(self):

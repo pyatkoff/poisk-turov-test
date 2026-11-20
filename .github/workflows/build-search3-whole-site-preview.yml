@@ -7,6 +7,10 @@ on:
       - 'src/search3/**'
       - 'scripts/build/search3_assets.py'
       - 'scripts/build/search3-js/**'
+      - 'scripts/build/search3_production_inventory.py'
+      - 'scripts/build/search3_public_candidate.py'
+      - 'scripts/deploy/search3_production_snapshot.py'
+      - 'tests/search3_public_candidate_test.py'
       - 'tests/search3-js-compaction.cjs'
       - 'tests/search3-visual-asset-size.cjs'
       - 'tests/search3-visual-live-browser.cjs'
@@ -119,6 +123,7 @@ jobs:
           node tests/search3-prototype-provider-config-v1.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
+          python3 -B tests/search3_public_candidate_test.py
           python3 -B tests/search3_site_preview_isolation_test.py
           echo SEARCH3_SITE_SOURCE_CONTRACTS_OK
 

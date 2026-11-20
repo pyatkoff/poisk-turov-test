@@ -1,4 +1,6 @@
 'use strict';
+require('./search3-visual-url-attribution.cjs');
+require('./search3-public-url.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
@@ -36,7 +38,7 @@ async function fuelMonitoringObservationRegressions(){
   assert.strictEqual(win.V2Runtime,runtime,'same transport owner retained');
   assert.equal(JSON.stringify(body),'{"ok":true,"data":{"total":212106,"currency":"RUB"}}');
  }
- const scripts=source('visual-search/index.php'),runtimeIndex=scripts.indexOf("'../runtime-v3.js'"),bridgeIndex=scripts.indexOf("'./live-bridge.js'");assert(runtimeIndex>=0&&bridgeIndex>=0&&runtimeIndex<bridgeIndex,'the live consumer loads its existing runtime first');
+ const scripts=source('visual-search/entry-v1.php'),runtimeIndex=scripts.indexOf("'../runtime-v3.js'"),bridgeIndex=scripts.indexOf("'./live-bridge.js'");assert(runtimeIndex>=0&&bridgeIndex>=0&&runtimeIndex<bridgeIndex,'the live consumer loads its existing runtime first');
  console.log('PASS fuel monitoring observation: 10 actual-runtime response cases, bounded optional header only, one original request/body unchanged, no live HTTP');
 }
 function modalViewportRegressions(){
@@ -168,7 +170,7 @@ function searchDeliveryPresentationRegressions(){
  local.window.close();console.log('PASS search delivery presentation: qualified errors, healthy bounded page, existing counts, missing/zero, pending/unknown/cancelled, DB and exact-offer guards, opened details/action focus; supplier HTTP0');
 }
 searchDeliveryPresentationRegressions();
-const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
+const scripts=[...source('visual-search/entry-v1.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
