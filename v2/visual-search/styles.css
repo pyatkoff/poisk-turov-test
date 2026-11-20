@@ -2637,6 +2637,11 @@ details.application-review .chosen-trip{display:none}
 .hotel-popularity-badge {display:inline-block;order:-1;align-self:flex-start;margin-bottom:5px;font-size:.8125rem;line-height:1.4;color:var(--brand);background:#eef2ff;border-radius:5px;padding:3px 6px}
 .hotel-facts {grid-column:2;grid-row:2;min-width:0;margin:0;padding:0 20px 12px;font-size:.875rem;line-height:1.5}
 .hotel-facts:empty {display:none}
+.hotel-match-line {display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:6px 10px;border-radius:8px;background:#eef2ff;color:#263654}
+.hotel-match-line>strong {font-size:.8125rem;color:#2340ae}
+.hotel-match-line ul {display:flex;flex-wrap:wrap;gap:0 8px;min-width:0;margin:0;padding:0;list-style:none}
+.hotel-match-line li {min-width:0;overflow-wrap:anywhere}
+.hotel-match-line li+li::before {content:'· ';color:#566174}
 .hotel-highlight-list {display:flex;flex-wrap:wrap;gap:3px 0;list-style:none;padding:0;margin:0;min-width:0}
 .hotel-highlight-list li {font-size:inherit;line-height:inherit;overflow-wrap:anywhere}
 .hotel-highlight-list li+li:before {content:' · ';white-space:pre;color:var(--muted)}
@@ -2719,6 +2724,8 @@ details.application-review .chosen-trip{display:none}
 .hotel-price>.fuel-note{order:2;flex-basis:100%}
 
 .hotel-facts{grid-row:3}
+html:not(.quality-text-200) .hotel-facts.hotel-match-facts{grid-row:2}
+html:not(.quality-text-200) .hotel-card:has(.hotel-match-facts) .hotel-price{grid-row:3}
 
 .card-minimum-offer{grid-row:4}
 
@@ -2757,6 +2764,7 @@ details.application-review .chosen-trip{display:none}
  .hotel-card .card-thumbs {display:none}
  .hotel-photos.photo-unavailable .hotel-image-wrap {min-height:64px;justify-content:flex-start;padding:10px 16px}
  .hotel-facts {order:5;padding:4px 16px 0}
+ .hotel-facts.hotel-match-facts {order:1;padding:4px 16px 6px}
  .card-minimum-offer {order:4;align-self:stretch;margin:4px 16px 0;gap:4px;padding:6px 0}
 .card-minimum-offer>strong,.card-minimum-offer>.card-meal-line {display:none}
 

@@ -7,6 +7,7 @@ const {entry, openReplay, liveEntry, measureEngines, emitFirstOpenFile} = requir
 const {until} = require('./search3-visual-first-tours.cjs');
 const {trip, profile} = require('./search3-visual-live-fixture.cjs');
 const {familyTransport, offers} = require('./search3-visual-family-250.cjs');
+const checkHotelMatches = require('./search3-visual-hotel-match.cjs');
 
 async function checkPickers(driver, engine, size, root, html, output) {
   const replay = await openReplay(root, html, 0, familyTransport);
@@ -82,9 +83,13 @@ async function main() {
   const root = fs.realpathSync(process.argv[2]), output = path.resolve(process.argv[3]);
   fs.mkdirSync(output, {recursive:true});
   const {source, html} = liveEntry(root);
-  const engines = await measureEngines(root, html, (driver, engine, size) => checkPickers(driver, engine, size, root, html, output));
+  const engines = await measureEngines(root, html, async (driver, engine, size) => {
+    const pickers = await checkPickers(driver, engine, size, root, html, output);
+    const hotelMatches = await checkHotelMatches(driver, engine, size, root, html, output);
+    return {...pickers, hotelMatches};
+  });
   fs.writeFileSync(path.join(output, 'pickers.json'), JSON.stringify({source, engines}, null, 2));
-  for (const name of ['pickers.json', 'chromium-1280-meal.png', 'chromium-1280-budget.png', 'chromium-1280-infant.png', 'firefox-rdm-430-meal.png', 'firefox-rdm-430-budget.png', 'firefox-rdm-430-infant.png']) {
+  for (const name of ['pickers.json', 'chromium-1280-meal.png', 'chromium-1280-budget.png', 'chromium-1280-infant.png', 'firefox-rdm-430-meal.png', 'firefox-rdm-430-budget.png', 'firefox-rdm-430-infant.png', 'chromium-1280-hotel-matches.png', 'firefox-rdm-430-hotel-matches.png']) {
     emitFirstOpenFile(output, name, 'SEARCH3_PICKERS_FRAME');
   }
 }
