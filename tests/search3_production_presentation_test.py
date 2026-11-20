@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -576,6 +577,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         for name in MANIFEST['assets']:
             self.assertFalse('search3-footer-' in (ROOT / 'v2' / name).read_text(), name)
 
+
+
+class Search3MigrationPreparationTest(unittest.TestCase):
+    def test_exact_production_inventory_is_offline_and_fail_closed(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'tests/search3_production_inventory_test.py')],
+            capture_output=True, text=True, timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_legacy_route_uses_published_search_entry(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'tests/search3_production_legacy_route_test.py')],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == '__main__':

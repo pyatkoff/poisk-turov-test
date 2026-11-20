@@ -170,7 +170,9 @@ function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
 function updateURL(){
  if(searchEditSession||!urlStateHydrated)return;
- const p=new URLSearchParams(),f=state.filters;
+ const p=new URLSearchParams(),f=state.filters,current=new URLSearchParams(location.search);
+ // The canonical lead payload reads these existing attribution fields from the current URL.
+ for(const key of ['yclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(current.has(key))p.set(key,current.get(key));
  p.set('scenario',data.scenario);
  for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);
  if(state.selectedDate)p.set('date',state.selectedDate);

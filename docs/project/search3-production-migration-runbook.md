@@ -1,10 +1,175 @@
 # Search3 production migration and rollback runbook
 
-Status: **rollback tooling fixture-tested; current visual-search transfer is NOT ready for activation. No live backup captured and no production switch authorized.**
+Status: **production preparation in progress; current visual-search transfer is NOT ready for activation. No live backup captured and no production switch authorized.**
 
 This runbook applies to the eventual whole-site Search3 migration. It does not widen the nine-file search-only deploy allowlist and it does not authorize the existing production workflow. Owner approval of the exact preview version is still required.
 
-## Current transfer review — 2026-09-28 UTC
+## Current preparation — 2026-11-20
+
+Pavel authorized preparing the concrete migration package after reviewing the installed
+ORIGINAL NEXT. The working interface must still be shown and approved before the
+production switch. This preparation makes no supplier requests, sends no applications,
+does not change secrets or protected contracts, and does not authorize a server run.
+
+### Exact starting points
+
+- Accepted NEXT source `d6e0563d598b32d59d6219e68eed97340f2e68a1`, release
+  `63844d4093e82dbe2810294514fe2a881df981ed` / PR5117;
+  [installation receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7031874040).
+- Current Git `main` at preparation: `e68fe088764521c7ff6b605403ca7f2ebb7e4dd6`.
+  This is a source reference, **not a verified installed production revision**.
+- [Preparation claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7039340881),
+  branch `work/search3-production-prep-20261120`. Final candidate and tree identities
+  must come from the final reviewed commit and the generated inventory, not this base pin.
+- Draft PR1334 is divergent and not mergeable. Its September description and the old
+  eight-asset production-import manifest do not describe the current visual-search UI.
+  Do not merge all release history or copy the whole release `v2/` over current main.
+
+Prepare the eventual integration on a fresh main branch using only the reviewed
+runtime inventory. Preserve unrelated main files, especially the current price
+monitoring, data observers, homepage, site shell and SEO owners. The preparation
+patch itself targets the release branch for review and CI; it does not activate
+either `/poisk-turov/` or the NEXT publisher.
+
+### Concrete corrections in this preparation
+
+1. `visual-search/app.js` retains the six existing `yclid`/`utm_*` fields when the
+   search owner rewrites its URL. The unchanged canonical lead reader obtains these
+   fields from `location.search`; previously they were erased by the first rewrite.
+   No new attribution field, counter, goal or transport is introduced. The regression
+   uses actual source owners and intercepted DOM collaborators, not a live supplier.
+2. `/poisk-turov-old/` resolves the maintained `search-page-v2.php` before falling
+   back to the source `index.php`. The standalone publisher puts the homepage at
+   `index.php`; directly including it would therefore lose the fallback search.
+   Existing noindex, canonical path, legacy flags and request parameters are retained.
+3. `visual-search/public-url-v1.js` provides an explicit, pure translator for the
+   supported legacy form/country links. It uses the existing native-to-canonical
+   country crosswalk and preserves dates, nights, adults, child ages and attribution.
+   Unknown nonempty conditions, unresolved filters and mixed NEXT/legacy links return
+   an error with no partial query. The file is deliberately not in the current entry
+   graph: a future public bootstrap must explicitly select the legacy namespace and
+   supply the correct departure catalog. A country-only query cannot identify its
+   own namespace. This component alone does not complete public link migration.
+
+### Exact offline runtime inventory
+
+`scripts/build/search3_production_inventory.py` reads two immutable, already available
+Git revisions without checkout changes, network access or server access. For example,
+after the preparation commit is reviewed:
+
+```sh
+python3 scripts/build/search3_production_inventory.py \
+  --repo . \
+  --candidate-sha <40-character-reviewed-commit> \
+  --main-sha <40-character-current-main-commit> \
+  --output <new-directory-outside-any-checkout>
+```
+
+The output records source Git objects, paths and SHA256 values, the live/on-demand
+script and stylesheet graph, static assets and the direct optional PHP dependency.
+At the starting revisions above it contains **38 source files: 36 additions,
+2 byte-identical existing files and no replacements**. This count describes the
+current NEXT graph; it does not include a future public entry, the dormant URL
+translator, private server dependencies or compiled publisher output.
+
+The manifest always says `deployable: false`. Its separate source-level snapshot
+candidate list is neither a deploy allowlist nor a live-server inventory. Unresolved
+server/transitive PHP dependencies, current production hashes, the public entry,
+analytics and rollback admission must be resolved before selecting an install set.
+The tool rejects changed graph grammar and unsafe output paths rather than inventing
+an incomplete graph. Pairwise source differences are not labelled merge conflicts.
+
+### Required production bindings
+
+The exact client action groups and their current guards are recorded in
+[`search3-production-endpoints.json`](search3-production-endpoints.json).
+That file is a source inventory, not executable configuration or an installation receipt.
+
+| Boundary | Current fact | Required result before activation |
+| --- | --- | --- |
+| Public entry | `/poisk-turov/` still selects the older search; NEXT rejects paths outside its preview | Reviewed entry for this visual-search graph, correct absolute asset base, and compatibility with existing site links |
+| Private TV, direct ANEX, messenger | Same preview INT URL, distinct action/session/identity guards; retained installed pin map is available, fresh server state and public-page admission are not established | Verify current installed dependencies and explicitly review reuse of the existing URL or a separate mapping, preserving its session and identity admission; no root fallback or guessed API paths |
+| LOCAL catalog/calendar/content | Current client bindings use preview paths and the endpoints have filesystem admission | Reviewed reuse or mapping with the existing read-only and identity rules; a new URL is not assumed |
+| Lead transport | Existing `/lead-adapter-v2.php` is the public HMAC bridge to the legacy receiver | Preserve this transport and approved field mapping; do not direct browsers to the receiver or add a second Bitrix bootstrap |
+| Analytics and inbound links | NEXT is isolated from production analytics and uses a different search URL schema | Reuse existing counter/goals and explicitly translate supported old links without guessing country/hotel identity |
+| Production predecessor | No fresh installed revision or private live snapshot was read | Read the actual predecessor and use the existing snapshot/restore tooling immediately before the approved switch |
+
+Missing bindings are not satisfied by removing `nativeEndpoint`, path or filesystem
+guards. SAMO/Andromeda remains paused. The historical supplier attempts and September
+acceptance list below are provenance, not instructions to restart paid checks.
+
+The existing absolute INT URL is a possible explicit binding for the public page on
+the same origin. Source `3207266e17ed4e8244aaf28d05b962747fd4cd3c` checks
+host/origin/session/CSRF and action identity, not the referring page's route. Its
+session cookie path applies to the requested API URL. Moving that API is therefore
+not an established prerequisite. This is source analysis, not proof that this INT
+revision is installed or that public use has been admitted; the public frontend
+configuration and actual installed dependencies still require verification.
+
+The latest retained INT installation is
+[PR4960/CONTROL4961](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6528951578),
+source `6dcfb5053793caba4f353facfa7a899a30df2d17`,
+[run41097499149](https://github.com/pyatkoff/poisk-turov-test/actions/runs/41097499149),
+artifact `12996328865`. The 19 November
+[coordination entry](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6995931455)
+still uses that installed pin map. This was maintenance with 12 selected / 14 pinned
+files and one changed private quote client, not a whole-runtime reinstall from one
+commit. The API, messenger authorization and TV gateway source hashes inspected for
+the URL/session analysis match this retained installed map; the newer private TV
+client changes in `3207266...` are not installed. No fresh server readback was made
+on 20 November. The public `anex-preview-manifest.json` is not updated by this
+maintenance executor and cannot replace its private installation receipt.
+
+### Existing production installer: access failure and safe recovery
+
+[Run44286139929](https://github.com/pyatkoff/poisk-turov-test/actions/runs/44286139929/job/134739185043)
+stopped at the first SCP in `Prepare authenticated legacy lead receiver` with
+`Permission denied (publickey,password)` / exit255. Both private keys parsed
+successfully first. Remote PHP/chmod/secret preparation and the subsequent site copy
+were skipped. This establishes failure of the legacy host/account/key combination;
+it does not establish failure of already installed customer lead delivery.
+
+The affected existing secret names are `DEPLOY_HOST`, `DEPLOY_USER` and
+`DEPLOY_SSH_KEY`, targeting `~/www/anytour.online/poisk-turov-test/v2`.
+`ANYTOOUR_DEPLOY_*` is a different tuple; successful NEXT publication cannot verify it.
+This failure blocks the existing broad installer and any required receiver update.
+It does not by itself prove that a separately reviewed, additive public-site install
+needs legacy-host access. Such an install must preserve the actual installed lead
+chain and prove that its selected phone/provider flows work with that predecessor.
+In particular, release `lead-adapter-v2.php` and `lead-idempotency-v1.php` differ from
+main; copying them is a receiver change, not preservation of the old contract.
+
+If the chosen install requires that host, the repository/legacy-host access custodian
+must confirm the intended account and matching authorized public key, then correct
+only the proven stale element. Never copy private key values into an issue, artifact,
+log or this document.
+
+After access is repaired, perform one separately admitted read-only preflight using
+that same tuple and the existing trust policy: batch authentication succeeds and the
+fixed receiver directory, PHP interpreter and existing receiver dependencies are
+accessible. It must not copy files, change modes/secrets, POST to the receiver or
+invoke a supplier. No legacy-only executable server probe is introduced by this PR.
+
+Do not run `Deploy anytoour.ru` merely to test a key: after authentication it writes
+the receiver and site, verifies the bridge and starts a real supplier smoke search.
+The current user request forbids paid queries and applications. A production
+procedure compatible with that request still requires its own review and approval;
+existing gates are not silently skipped or relabelled as passed.
+
+### Validation boundary
+
+The preparation uses intercepted source-owner/DOM contracts, local Git fixtures and
+the publisher's alias-copy layout. The attribution regression fails on the original
+URL owner and passes with the correction; the public-link test distinguishes its
+pinned main form contract from the current NEXT restore owner. These are offline
+compatibility checks, not supplier latency, live lead delivery or a new mobile UX
+score. PHP route execution requires a real PHP CLI; missing PHP exits77 and fails the
+containing CI gate. Both new Python checks are called by the existing production
+presentation test, and the JavaScript checks by the existing live-bridge suite.
+Main's CI differs from release's CI; the eventual main integration must explicitly
+retain these gates instead of assuming that the release workflow exists there.
+
+## Historical transfer review — 2026-09-28 UTC
 
 The only accepted UI target is `https://anytoour.ru/_preview/search3-next-candidate/visual-search/`.
 The old prototype and the old whole-site search are not substitutes for that UI.

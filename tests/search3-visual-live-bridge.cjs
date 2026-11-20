@@ -1,4 +1,6 @@
 'use strict';
+require('./search3-visual-url-attribution.cjs');
+require('./search3-public-url.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');

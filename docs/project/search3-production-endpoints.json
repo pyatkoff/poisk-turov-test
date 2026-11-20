@@ -1,0 +1,181 @@
+{
+  "kind": "read-only migration boundary inventory; not executable configuration",
+  "sourceRelease": "63844d4093e82dbe2810294514fe2a881df981ed",
+  "sourceHead": "d6e0563d598b32d59d6219e68eed97340f2e68a1",
+  "productionEntry": "/poisk-turov/",
+  "activationReady": false,
+  "groups": [
+    {
+      "group": "privateTV",
+      "currentClientConfig": "V2_CONFIG.anexApi + search3TVSessionEnabled",
+      "currentEndpoint": "/_preview/search3-anex-candidate/api-anex-search3-preview.php",
+      "knownProductionEndpoint": null,
+      "methods": {
+        "GET": [
+          "tv_token"
+        ],
+        "POST": [
+          "tv_search",
+          "tv_continue",
+          "tv_status",
+          "tv_results",
+          "tv_tour",
+          "tv_flights",
+          "tv_select"
+        ]
+      },
+      "anchors": [
+        "v2/prototype-search/config.js:3",
+        "v2/prototype-search/data.js:95-102",
+        "v2/prototype-search/data.js:181-240",
+        "v2/prototype-search/data.js:277-329"
+      ],
+      "preserve": [
+        "same origin, exact pathname, no query/hash in endpoint",
+        "same-origin credentials/mode; redirect:error; referrerPolicy:no-referrer; no-store",
+        "CSRF64hex, random request_id, generation/search_ref, returned offer membership and exact pair/manager-deferred selector",
+        "retained operation identity on failed or uncertain calls; no fallback to root while privateTV is enabled",
+        "server-side owner/session/quota/no-replay admission"
+      ],
+      "serverDependency": "Separate INT deployment, absent from release63844d4 and maine68fe088. Retained installation pin map is recorded below; current server state and public-page admission are not freshly verified."
+    },
+    {
+      "group": "ANEX",
+      "currentClientConfig": "V2_CONFIG.anexApi",
+      "currentEndpoint": "/_preview/search3-anex-candidate/api-anex-search3-preview.php",
+      "knownProductionEndpoint": null,
+      "methods": {
+        "POST": [
+          "search",
+          "continue",
+          "expand",
+          "offer",
+          "flights",
+          "additional_prices",
+          "quote_start",
+          "quote_calculate"
+        ]
+      },
+      "anchors": [
+        "v2/prototype-search/config.js:3",
+        "v2/prototype-search/data.js:954-1015",
+        "v2/prototype-search/data.js:1699-1720",
+        "v2/prototype-search/data.js:1882-1920",
+        "v2/prototype-search/data.js:2033-2078"
+      ],
+      "preserve": [
+        "same origin and exact nativeEndpoint pathname",
+        "POST JSON; X-Requested-With:AnyTourSearch3; same-origin credentials; no-store",
+        "generation/search_ref/offer_ref/local_hotel_id/choice_ref identity and typed party",
+        "retained attempts/receipts and bounded existing pair budgets; no automatic replay of unknown mutation",
+        "verified RUB final amount and expiry remain supplier/server facts; no amount/fuel/FX changes"
+      ],
+      "serverDependency": "Same separate INT endpoint, absent from this release/main tree. No guessed production API path."
+    },
+    {
+      "group": "messenger",
+      "currentClientConfig": "V2_CONFIG.anexApi + search3MessengerEnabled",
+      "currentEndpoint": "/_preview/search3-anex-candidate/api-anex-search3-preview.php",
+      "knownProductionEndpoint": null,
+      "methods": {
+        "GET": [
+          "handoff_token"
+        ],
+        "POST": [
+          "handoff_freeze",
+          "handoff_create",
+          "handoff_status",
+          "handoff_revoke"
+        ]
+      },
+      "anchors": [
+        "v2/prototype-search/config.js:3",
+        "v2/prototype-search/data.js:1814-1880",
+        "v2/prototype-search/messenger-flow-v1.js:30-99",
+        "v2/visual-search/app.js:2593-2656"
+      ],
+      "preserve": [
+        "exact payload key sets, CSRF, provider/generation/search/offer/hotel/choice binding",
+        "privateTV tv_select must complete before TV freeze",
+        "same origin exact endpoint, credentials/mode same-origin, redirect:error, no-referrer, response limit32768",
+        "retained operation IDs, unknown/revoke states, expiry and no replay after rebind",
+        "links accepted only from server with HTTPS t.me/max.ru validation; browser does not send bot messages"
+      ],
+      "serverDependency": "Freeze/create/status/revoke producer and signer remain the separate INT deployment. Public route/admission not confirmed."
+    },
+    {
+      "group": "lead",
+      "currentPreviewEndpoint": "../preview-lead-disabled.php",
+      "existingProductionEndpoint": "/lead-adapter-v2.php",
+      "newEndpointNeeded": false,
+      "methods": {
+        "POST": [
+          "unchanged canonical lead payload"
+        ]
+      },
+      "anchors": [
+        "v2/prototype-search/config.js:3",
+        "v2/prototype-search/lead.js:4-40",
+        "v2/prototype-search/lead.js:98-139",
+        "v2/visual-search/lead-runtime-v1.js:13-19",
+        "v2/lead-bridge-v1.php:12-85",
+        "v2/lead-receiver-v1.php:30-77",
+        ".github/workflows/deploy-anytoour.yml"
+      ],
+      "preserve": [
+        "preview remains validation-only and sends no lead",
+        "production uses existing HMAC bridge, fixed legacy receiver, existing private secret and downstream adapter",
+        "provider namespace/opaque refs, exact selected terms, final RUB/expiry/both flights, consent/phone validation, dedup and receipt",
+        "unchanged attribution keys yclid/yaclient/utm_source/utm_medium/utm_campaign/utm_content/utm_term",
+        "receiver creates Bitrix session and replaces sessid after HMAC; NEXT does not need another Bitrix bootstrap",
+        "generated lead-runtime remains canonical and byte-identical in attribution patch"
+      ],
+      "receiver": "https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php",
+      "deploymentStatus": "Existing runtime identity/legacy deploy credentials are separate from public site credentials; this analysis does not prove live delivery."
+    }
+  ],
+  "otherRequiredBoundaries": [
+    {
+      "name": "local catalog and local search reads",
+      "currentPaths": [
+        "/_preview/search3-local-candidate/data/search3-destination-read-v1.php",
+        "/_preview/search3-local-candidate/data/search3-local-results-read-v1.php",
+        "/_preview/search3-local-candidate/data/hotel-details-read-v1.php",
+        "/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php"
+      ],
+      "constraint": "Current client paths use preview endpoints with PHP filesystem guards. Review explicit reuse or alternate mapping while preserving the existing read-only and identity admission; no new URL is assumed."
+    },
+    {
+      "name": "existing public catalog/room API",
+      "currentPaths": [
+        "/api-v2.php",
+        "/data/departures-v1.php",
+        "/data/hotel-search-v1.php"
+      ],
+      "constraint": "Retain existing public endpoint contracts; privateTV migration is not permission to bypass private ownership with root search."
+    },
+    {
+      "name": "analytics",
+      "constraint": "Current NEXT graph has no production analytics-v4.js/metrikaCounter integration. Reuse existing counter/goals/events semantics in reviewed public entry. Attribution preservation patch does not activate analytics."
+    },
+    {
+      "name": "incoming link semantics",
+      "constraint": "Old public from/country/date_from/count_people/child_age[] inputs differ from NEXT origin/country/from/to/adults/ages. Explicit compatibility mapping required; do not equate native/canonical country or hotel IDs."
+    }
+  ],
+  "bindingReview": {
+    "existingEndpointReuse": "An explicitly reviewed public frontend may reuse the existing same-origin INT endpoint; moving the API is not an established prerequisite.",
+    "sourceInspected": "3207266e17ed4e8244aaf28d05b962747fd4cd3c",
+    "scope": "Source origin/session/CSRF checks and cookie path, not installed INT identity or production admission.",
+    "installedServerVerified": false
+  },
+  "retainedInstalledINT": {
+    "source": "6dcfb5053793caba4f353facfa7a899a30df2d17",
+    "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6528951578",
+    "run": 41097499149,
+    "artifact": 12996328865,
+    "scope": "12 selected / 14 pinned / one private quote client changed; not a whole-runtime reinstall",
+    "apiSHA256": "0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4",
+    "freshServerReadback": false
+  }
+}
