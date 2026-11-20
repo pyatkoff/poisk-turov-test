@@ -162,13 +162,46 @@ const server=http.createServer((req,res)=>{
       await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
      }catch(error){forbidden.push(error.message);await route.abort();}
     });
-    await page.goto(origin+'/poisk-turov/?'+new URLSearchParams({...trip,adults:3,ages:'12,0',scenario:'family',yclid:'offline-public-live'}));
+    await page.goto(origin+'/poisk-turov/?'+new URLSearchParams({...trip,scenario:'family',yclid:'offline-public-live'}));
     await page.locator('.search-submit:not(:disabled)').waitFor();
     const config=await page.evaluate(()=>({profile:V2_CONFIG.search3PublicEntry,contact:V2_CONFIG.search3ContactMode,
      privateTV:V2_CONFIG.search3TVSessionEnabled,messenger:V2_CONFIG.search3MessengerEnabled,counter:V2_CONFIG.metrikaCounter,
      live:AnyTourPrototypeData.live,scenario:AnyTourPrototypeData.scenario,analytics:V2Analytics.version}));
     assert.deepEqual(config,{profile:'live',contact:'messenger-only',privateTV:true,messenger:true,counter:0,live:true,scenario:'live',analytics:4});
     assert.equal(await page.locator('.prototype-tools,.private-badge').count(),0);
+    // Confirm the family in the actual initial form, then reload before Find.
+    // Every transport remains the explicitly fictional interceptor above.
+    await page.locator('#search-form [data-action="guests"]').click();
+    await page.locator('[data-action="adults-plus"]').click();
+    await page.locator('[data-action="children-plus"]').click();await page.locator('[data-action="children-plus"]').click();
+    assert(await page.locator('[data-action="apply-guests"]').isDisabled(),'both child ages are required before confirming the family');
+    for(const [index,age] of [0,12].entries()){
+     await page.locator('[data-action="child-age"][data-index="'+index+'"]').click();
+     await page.locator('[data-action="age-pick"][data-value="'+age+'"]').click();await page.locator('[data-action="apply-age"]').click();
+    }
+    await page.locator('[data-action="apply-guests"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+    await page.locator('#quick-stars [data-value="5"]').click();
+    await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value="Всё включено"]').check();await page.locator('[data-action="apply-meals"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+    const confirmedFamilyURL=page.url(),confirmedFamily=new URL(confirmedFamilyURL).searchParams;
+    assert.equal(confirmedFamily.get('adults'),'3');assert.equal(confirmedFamily.get('ages'),'0,12');
+    assert.equal(confirmedFamily.get('stars'),'5');assert.equal(confirmedFamily.get('meals'),'Всё включено');
+    assert.equal(confirmedFamily.has('searched'),false);
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="adults-plus"]').click();await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+    assert.equal(page.url(),confirmedFamilyURL,'Cancel cannot save the unconfirmed fourth adult');
+    await page.reload();await page.locator('.search-submit:not(:disabled)').waitFor();
+    assert.equal(page.url(),confirmedFamilyURL,'the compiled LIVE page retains the exact family and sibling filters after reload');
+    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);
+    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
+    assert.equal(await page.locator('.hotel-card').count(),0,'restoring the initial form does not display a submitted search');
+    assert.deepEqual(tv.calls,[],'initial family Apply, Cancel and reload never start private TV operations');
+    assert.deepEqual(handoffs,[],'initial family persistence never prepares a messenger handoff');
+    const initialOperations=transport.calls.filter(call=>/^(search(?:_.*)?|continue|tour|flights|quote(?:_.*)?|offer|lead(?:_.*)?)$/.test(call.action)||/api-anex-|api-andromeda-|quote|lead/.test(call.url));
+    assert.deepEqual(initialOperations,[],'no supplier search, quote, offer or lead precedes the explicit Find action');
+    receipt.initialParty={adults:3,childAges:[0,12],reloadPreserved:true,cancelPreserved:true,searchSubmits:0};
+    await page.locator('#search').scrollIntoViewIfNeeded();await capture('initial-family-restored');
     await page.locator('.search-submit').click();await page.locator('.hotel-card').first().waitFor();
     await page.waitForFunction(()=>{const node=document.querySelector('#search-status');return node.hidden||node.classList.contains('search-status-compact');});
     assert.equal(new URL(page.url()).searchParams.get('yclid'),'offline-public-live');
