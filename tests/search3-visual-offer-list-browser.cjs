@@ -271,7 +271,7 @@ const server=http.createServer((req,res)=>{
     assert.equal((await card.locator('.starting-price strong').innerText()).replace(/\D/g,''),'161600');
     assert.equal(new URL(page.url()).searchParams.get('meals'),'Всё включено');
     await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
-    if(width===430)assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    if(width===430)assert(await budget.isVisible(),'secondary budget remains directly available after reopening the search');
     assert.equal(await meal.locator('strong').innerText(),'Всё включено');
     await meal.click();
     assert(await page.locator('[data-meal-choice][value="Всё включено"]').isChecked());
