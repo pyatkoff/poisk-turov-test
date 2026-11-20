@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline actual-controller admission and native filesystem transaction tests."""
 import base64
+import contextlib
 import copy
 import io
 import json
@@ -22,6 +23,7 @@ import search3_public_install as m
 CONTROL = 'a' * 40
 RELEASE = 'b' * 40
 IDENTITY = {'control_source_sha': CONTROL, 'run_id': '123456', 'command_comment_id': 9001}
+ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '234567', 'command_comment_id': 9002}
 
 
 def event():
@@ -33,6 +35,20 @@ def environment():
     return {'GITHUB_REPOSITORY': m.REPO, 'GITHUB_REF': 'refs/heads/main', 'GITHUB_WORKFLOW_REF': f'{m.REPO}/{m.WORKFLOW}@refs/heads/main',
             'GITHUB_ACTOR': 'pyatkoff', 'GITHUB_TRIGGERING_ACTOR': 'pyatkoff', 'GITHUB_EVENT_NAME': 'issue_comment',
             'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_RUN_ID': IDENTITY['run_id'], 'GITHUB_SHA': CONTROL}
+
+
+def rollback_event():
+    value = event(); value['comment']['id'] = ROLLBACK_IDENTITY['command_comment_id']
+    value['comment']['body'] = f'{m.ROLLBACK_PREFIX} {ROLLBACK_IDENTITY["control_source_sha"]} {IDENTITY["run_id"]} {m.ROLLBACK_OPERATION}'
+    return value
+
+
+def installed_result():
+    return {'schema_version': 1, 'operation_id': m.OPERATION, 'source_sha': m.SOURCE, 'manifest_sha256': m.MANIFEST_SHA,
+            **IDENTITY, 'status': 'installed_verified', 'phase': 'complete', 'supplier_calls': 0, 'database_reads': 0,
+            'database_writes': 0, 'lead_calls': 0, 'booking_calls': 0, 'application_calls': 0,
+            'written_files': [*m.ADDITIONS, m.ENTRY], 'rollback_files': [], 'snapshot_verified': True,
+            'restore_drill_verified': True, 'protected_unchanged': True, 'snapshot_manifest_sha256': '7'*64}
 
 
 def archive_fixture(change=None):
@@ -48,6 +64,40 @@ def archive_fixture(change=None):
         archive.writestr('manifest.json', raw)
         for path, data in files.items(): archive.writestr('overlay/' + path, data)
     return stream.getvalue(), m.sha(raw)
+
+
+def preflight_comments():
+    owner = {'user': {'id': 226193297}, 'author_association': 'OWNER'}
+    return [owner | {'id': m.PREFLIGHT_COMMAND, 'body': f'{m.INSPECT_PREFIX} {m.PREFLIGHT_CONTROL} {m.INSPECT_OPERATION}'},
+            owner | {'id': m.PREFLIGHT_RECEIPT_COMMENT,
+                     'body': f'{m.PREFLIGHT_RUN} {m.PREFLIGHT_RESULT_SHA} preflight_mismatch CONSUMED_NO_REPLAY'}]
+
+
+def preflight_fixture(change=None, extra=False):
+    observed = {path: {'state': 'absent'} for path in m.ADDITIONS}
+    observed[m.ENTRY] = dict(m.ENTRY_BEFORE)
+    for path, digest in m.INSTALL_PROTECTED.items():
+        if path != m.PRIVATE_CONFIG:
+            observed[path] = {'state': 'present', 'sha256': digest, 'mode': '0644',
+                              'size': m.INSTALL_REVIEWED.get(path, {}).get('size', 100)}
+    observed['data/hotel-popularity-v1.php'] = {'state': 'absent'}
+    identity = {'control_source_sha': m.PREFLIGHT_CONTROL, 'run_id': str(m.PREFLIGHT_RUN), 'command_comment_id': m.PREFLIGHT_COMMAND}
+    remote = {'schema_version': 1, 'operation_id': m.INSPECT_OPERATION, 'source_sha': m.SOURCE,
+              'manifest_sha256': m.MANIFEST_SHA, **identity, 'read_only': True, 'server_writes': 0,
+              'supplier_calls': 0, 'database_reads': 0, 'database_writes': 0, 'lead_calls': 0, 'booking_calls': 0, 'application_calls': 0,
+              'status': 'preflight_mismatch', 'observed': observed,
+              'private_checks': {label: {'presence_known': True, 'present': present, 'matches_expected': True, 'unchanged': True}
+                                 for label, present in {'anex_private_config': True, 'public_config': True, 'site_config': False,
+                                                        'local_config': False, 'next_config': False}.items()},
+              'mismatches': [{'path': path, 'reason': 'dependency_drift'} for path in m.INSTALL_REVIEWED]}
+    value = {**identity, 'operation_id': m.INSPECT_OPERATION, 'phase': 'complete', 'read_only': True,
+             'server_writes': 0, 'ssh_started': True, 'status': 'preflight_mismatch', 'remote': remote}
+    if change: change(value)
+    data = json.dumps(value, sort_keys=True).encode(); stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as archive:
+        archive.writestr('evidence.json', data)
+        if extra: archive.writestr('unreviewed.json', b'{}')
+    return stream.getvalue(), m.sha(data)
 
 
 class Admission(unittest.TestCase):
@@ -95,7 +145,7 @@ class Admission(unittest.TestCase):
         if path == '/actions/artifacts/'+str(m.ARTIFACT):
             return {'id':m.ARTIFACT,'name':m.ARTIFACT_NAME,'expired':False,'digest':'sha256:'+m.ARTIFACT_SHA,'workflow_run':{'id':m.BUILD_RUN}}
         if path.startswith('/issues/4709/comments?'):
-            return [event()['comment'],{'id':m.SIGNING_RECEIPT_COMMENT,'user':{'id':226193297},'author_association':'OWNER','body':str(m.SIGNING_RUN)+' '+m.SIGNING_RESULT_SHA}]
+            return [event()['comment'],{'id':m.SIGNING_RECEIPT_COMMENT,'user':{'id':226193297},'author_association':'OWNER','body':str(m.SIGNING_RUN)+' '+m.SIGNING_RESULT_SHA}, *preflight_comments()]
         raise AssertionError(path)
 
     def call_admission(self, mutate=None):
@@ -127,6 +177,21 @@ class Admission(unittest.TestCase):
             if path == '/pulls/5118': value['merged']=False
             return value
         with self.assertRaisesRegex(RuntimeError,'candidate_moved'): self.call_admission(unmerged)
+
+    def test_install_requires_original_consumed_inspection_and_owner_receipt(self):
+        for field, value in [('body', 'unaccepted'), ('user', {'id': 2}), ('author_association', 'MEMBER')]:
+            def changed(path, rows):
+                if '/comments?' in path:
+                    next(row for row in rows if row['id'] == m.PREFLIGHT_RECEIPT_COMMENT)[field] = value
+                return rows
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'preflight_acceptance'):
+                self.call_admission(changed)
+        for alter in [lambda rows: rows.append(preflight_comments()[0] | {'id': 99}),
+                      lambda rows: next(row for row in rows if row['id'] == m.PREFLIGHT_COMMAND).update(body='different command')]:
+            def changed(path, rows):
+                if '/comments?' in path: alter(rows)
+                return rows
+            with self.assertRaisesRegex(RuntimeError, 'preflight_command'): self.call_admission(changed)
 
     def test_complete_pagination_not_only_first_hundred(self):
         first=[{'id':i+1} for i in range(100)]
@@ -181,6 +246,217 @@ class Admission(unittest.TestCase):
         stream=io.BytesIO()
         with zipfile.ZipFile(stream,'w') as archive: archive.writestr('../escape',b'x')
         with self.assertRaisesRegex(RuntimeError,'archive_entry'): m.zip_files(stream.getvalue())
+
+
+class PreflightEvidence(unittest.TestCase):
+    def setUp(self):
+        raw, digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', digest): self.policy, _ = m.package(raw)
+
+    def metadata(self, path):
+        if path == '/actions/runs/' + str(m.PREFLIGHT_RUN):
+            return {'id': m.PREFLIGHT_RUN, 'head_sha': m.PREFLIGHT_CONTROL, 'head_branch': 'main', 'event': 'issue_comment',
+                    'path': m.WORKFLOW, 'run_attempt': 1, 'status': 'completed', 'conclusion': 'success',
+                    'actor': {'login': 'pyatkoff'}, 'triggering_actor': {'login': 'pyatkoff'}}
+        if path == '/actions/artifacts/' + str(m.PREFLIGHT_ARTIFACT):
+            return {'id': m.PREFLIGHT_ARTIFACT, 'name': m.PREFLIGHT_ARTIFACT_NAME, 'expired': False,
+                    'workflow_run': {'id': m.PREFLIGHT_RUN}, 'digest': 'sha256:' + m.PREFLIGHT_ARTIFACT_SHA}
+        raise AssertionError(path)
+
+    def verify(self, change=None, metadata=None, extra=False):
+        raw, digest = preflight_fixture(change, extra)
+        def api(path):
+            value = self.metadata(path)
+            return metadata(path, value) if metadata else value
+        with patch.object(m, 'PREFLIGHT_ARTIFACT_SHA', m.sha(raw)), patch.object(m, 'PREFLIGHT_RESULT_SHA', digest), \
+             patch.object(m, 'api', side_effect=api):
+            m.preflight_evidence(raw, self.policy)
+
+    def test_exact_reviewed_install_map_preserves_historical_inspection(self):
+        raw, digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', digest):
+            inspection, _ = m.package(raw, True); installation, _ = m.package(raw)
+        self.assertEqual(len(m.PROTECTED), 49)
+        self.assertEqual(set(m.PROTECTED), set(m.INSTALL_PROTECTED))
+        self.assertEqual({p for p in m.PROTECTED if m.PROTECTED[p] != m.INSTALL_PROTECTED[p]}, set(m.INSTALL_REVIEWED))
+        self.assertEqual(inspection['protected'], m.PROTECTED); self.assertEqual(installation['protected'], m.INSTALL_PROTECTED)
+        self.assertNotIn('opaque_presence', inspection)
+        self.assertEqual(installation['opaque_presence'], {'config.php': True, 'site_conf.php': False})
+        self.assertEqual(m.PROTECTED['data/db-v1.php'], 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13')
+        self.assertEqual(m.PROTECTED['_preview/search3-local-candidate/data/anytour-canonical-catalog-v1.php'],
+                         '06e737f7b00bfe17c1f9410c19f880d65b0bfad3345f0d79e62727282601041a')
+        self.assertEqual(m.PROTECTED['_preview/search3-local-candidate/data/hotel-details-v1.php'],
+                         '137bbf53ef87fab50505ecd41a075cb5f571193480da7f0e3face51190c0f77f')
+        self.assertFalse(set(m.INSTALL_REVIEWED) & set(installation['expected']))
+        self.verify()
+
+    def test_archive_and_json_tampering_are_rejected(self):
+        raw, digest = preflight_fixture()
+        with patch.object(m, 'api') as api:
+            with self.assertRaisesRegex(RuntimeError, 'preflight_artifact_digest'): m.preflight_evidence(raw, self.policy)
+            with patch.object(m, 'PREFLIGHT_ARTIFACT_SHA', m.sha(raw)), self.assertRaisesRegex(RuntimeError, 'preflight_digest'):
+                m.preflight_evidence(raw, self.policy)
+            api.assert_not_called()
+        with self.assertRaisesRegex(RuntimeError, 'preflight_artifact'): self.verify(extra=True)
+
+    def test_foreign_incomplete_or_mutating_receipts_are_rejected(self):
+        for change in [lambda v: v.update(control_source_sha='f'*40), lambda v: v.update(run_id='2'),
+                       lambda v: v.update(command_comment_id=2), lambda v: v.update(status='preflight_match'),
+                       lambda v: v.update(phase='remote'), lambda v: v.update(read_only=False), lambda v: v.update(server_writes=1),
+                       lambda v: v.update(extra=True), lambda v: v['remote'].update(source_sha='f'*40),
+                       lambda v: v['remote'].update(supplier_calls=1), lambda v: v['remote'].update(database_reads=1),
+                       lambda v: v['remote']['observed'].pop(m.ENTRY),
+                       lambda v: v['remote']['observed'].update({'unknown.php': {'state': 'absent'}}),
+                       lambda v: v['remote']['private_checks']['site_config'].update(present=True),
+                       lambda v: v['remote']['private_checks']['public_config'].update(matches_expected=False),
+                       lambda v: v['remote']['private_checks']['anex_private_config'].update(unchanged=False),
+                       lambda v: v['remote']['mismatches'].pop(),
+                       lambda v: v['remote']['mismatches'][0].update(reason='predecessor_drift')]:
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.verify(change)
+
+    def test_only_reviewed_bytes_modes_and_absences_are_accepted(self):
+        for path in m.INSTALL_REVIEWED:
+            for field, value in [('sha256', m.PROTECTED[path]), ('size', 0), ('mode', '0600')]:
+                with self.subTest(path=path, field=field), self.assertRaisesRegex(RuntimeError, 'preflight_observed'):
+                    self.verify(lambda v: v['remote']['observed'][path].update({field: value}))
+        for path in (m.ENTRY, 'data/departures-v1.php'):
+            with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, 'preflight_observed'):
+                self.verify(lambda v: v['remote']['observed'][path].update(sha256='0'*64))
+        with self.assertRaisesRegex(RuntimeError, 'preflight_observed'):
+            self.verify(lambda v: v['remote']['observed'].update({m.ADDITIONS[0]: dict(m.ENTRY_BEFORE)}))
+
+    def test_original_run_and_artifact_metadata_are_required(self):
+        for kind, field, value in [('runs', 'id', 2), ('runs', 'head_sha', 'f'*40), ('runs', 'head_branch', 'other'),
+                                   ('runs', 'event', 'workflow_dispatch'), ('runs', 'run_attempt', 2), ('runs', 'path', 'other'),
+                                   ('runs', 'status', 'in_progress'), ('runs', 'conclusion', 'failure'),
+                                   ('runs', 'triggering_actor', {'login': 'other'}), ('artifacts', 'id', 2),
+                                   ('artifacts', 'name', 'other'), ('artifacts', 'expired', True),
+                                   ('artifacts', 'workflow_run', {'id': 2}), ('artifacts', 'digest', 'sha256:'+'0'*64)]:
+            def changed(path, row):
+                if '/' + kind + '/' in path: row[field] = value
+                return row
+            with self.subTest(kind=kind, field=field), self.assertRaises(RuntimeError): self.verify(metadata=changed)
+
+    def test_rejected_preflight_never_reaches_ssh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            event_path = Path(directory) / 'event.json'; event_path.write_text(json.dumps(event()))
+            env = environment() | {'RUNNER_TEMP': directory, 'GITHUB_EVENT_PATH': str(event_path)}
+            with patch.dict(os.environ, env), patch.object(m, 'admission'), patch.object(m, 'download', return_value=b'x'), \
+                 patch.object(m, 'signing_evidence'), patch.object(m, 'package', return_value=(self.policy, {})), \
+                 patch.object(m, 'carrier') as carrier, self.assertRaisesRegex(RuntimeError, 'public_install_not_verified'):
+                m.install()
+            carrier.run.assert_not_called()
+            evidence = json.loads((Path(directory) / 'search3-public-install/evidence.json').read_text())
+            self.assertEqual(evidence['phase'], 'artifact'); self.assertIs(evidence['ssh_started'], False)
+
+
+class RollbackAdmission(unittest.TestCase):
+    def metadata(self, path):
+        if path == '/git/ref/heads/main': return {'object': {'sha': ROLLBACK_IDENTITY['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'): return [event()['comment'], rollback_event()['comment']]
+        if path == '/actions/runs/' + IDENTITY['run_id']:
+            return {'id': int(IDENTITY['run_id']), 'head_sha': CONTROL, 'head_branch': 'main', 'event': 'issue_comment',
+                    'path': m.WORKFLOW, 'run_attempt': 1, 'status': 'completed', 'conclusion': 'success',
+                    'actor': {'login': 'pyatkoff'}, 'triggering_actor': {'login': 'pyatkoff'}}
+        if '/attempts/1/jobs?' in path:
+            return {'total_count': 1, 'jobs': [{'id': 222, 'run_id': int(IDENTITY['run_id']), 'name': 'public-install',
+                    'status': 'completed', 'conclusion': 'success', 'steps': [
+                        {'name': 'Run python3 scripts/deploy/search3_public_install.py ', 'status': 'completed', 'conclusion': 'success'}]}]}
+        if '/artifacts?' in path:
+            return {'total_count': 1, 'artifacts': [{'id': 333, 'name': 'search3-public-install-'+IDENTITY['run_id']+'-1',
+                    'expired': False, 'workflow_run': {'id': int(IDENTITY['run_id'])}, 'digest': 'sha256:'+'5'*64}]}
+        raise AssertionError('Unexpected dependency: '+path)
+
+    def admission(self, change=None):
+        def api(path):
+            value = self.metadata(path)
+            return change(path, value) if change else value
+        with patch.object(m, 'api', side_effect=api), patch.object(m, 'reviewed_control') as control, \
+             patch.object(m, 'RELEASE', None), patch.object(m, 'final_heads', side_effect=AssertionError('release gate')), \
+             patch.object(m, 'signing_evidence', side_effect=AssertionError('signer gate')):
+            original, artifact = m.rollback_admission(ROLLBACK_IDENTITY, IDENTITY['run_id'])
+            control.assert_called_once_with(ROLLBACK_IDENTITY['control_source_sha'])
+            self.assertEqual(original, IDENTITY); self.assertEqual(artifact['id'], 333)
+
+    def test_fixed_rollback_command_and_same_owner_boundary(self):
+        env = environment() | {'GITHUB_SHA': ROLLBACK_IDENTITY['control_source_sha'], 'GITHUB_RUN_ID': ROLLBACK_IDENTITY['run_id']}
+        self.assertEqual(m.rollback_event_identity(rollback_event(), env), (ROLLBACK_IDENTITY, IDENTITY['run_id']))
+        self.assertEqual(m.command_mode(['rollback']), 'rollback')
+        with self.assertRaisesRegex(RuntimeError, 'command'): m.event_identity(rollback_event(), env)
+        with self.assertRaisesRegex(RuntimeError, 'command'): m.rollback_event_identity(event(), environment())
+        for field, value in [('GITHUB_ACTOR', 'other'), ('GITHUB_TRIGGERING_ACTOR', 'other'), ('GITHUB_RUN_ATTEMPT', '2'),
+                             ('GITHUB_REF', 'refs/heads/feature'), ('GITHUB_WORKFLOW_REF', 'other')]:
+            with self.subTest(field=field), self.assertRaises(RuntimeError): m.rollback_event_identity(rollback_event(), env | {field: value})
+        for change in [lambda e: e['comment'].update(body=e['comment']['body']+' extra'),
+                       lambda e: e['comment'].update(body=e['comment']['body'].replace(IDENTITY['run_id'], '../target')),
+                       lambda e: e['comment'].update(body=e['comment']['body'].replace(IDENTITY['run_id'], '0')),
+                       lambda e: e['comment']['user'].update(id=True), lambda e: e['comment'].update(author_association='MEMBER'),
+                       lambda e: e['issue'].update(pull_request={}), lambda e: e.update(action='edited')]:
+            value = rollback_event(); change(value)
+            with self.assertRaises(RuntimeError): m.rollback_event_identity(value, env)
+        for arguments in (['rollback','123456'], ['rollback','/tmp/root'], ['--rollback']):
+            with self.assertRaisesRegex(RuntimeError, 'usage'): m.command_mode(arguments)
+
+    def test_recovery_uses_original_success_without_signer_or_release(self):
+        self.admission()
+
+    def test_run_job_artifact_and_unique_commands_cannot_be_substituted(self):
+        for part, change in [('/comments?', lambda v: v.append(rollback_event()['comment'] | {'id': 9003})),
+                             ('/comments?', lambda v: v.append(event()['comment'] | {'id': 9003})),
+                             ('/comments?', lambda v: v[0].update(author_association='MEMBER')),
+                             ('/comments?', lambda v: v[1].update(body=v[1]['body']+' extra')),
+                             ('/actions/runs/123456', lambda v: v.update(head_sha='f'*40)),
+                             ('/actions/runs/123456', lambda v: v.update(run_attempt=2)),
+                             ('/actions/runs/123456', lambda v: v.update(conclusion='failure')),
+                             ('/actions/runs/123456', lambda v: v.update(triggering_actor={'login':'other'})),
+                             ('/jobs?', lambda v: v['jobs'][0].update(conclusion='skipped')),
+                             ('/jobs?', lambda v: v['jobs'][0]['steps'][0].update(conclusion='skipped')),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(expired=True)),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(digest='sha256:invalid')),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(workflow_run={'id':1})),
+                             ('/artifacts?', lambda v: (v.update(total_count=2),v['artifacts'].append(v['artifacts'][0] | {'id':334})))]:
+            def mutate(path, value):
+                if (path == part if part == '/actions/runs/123456' else part in path): change(value)
+                return value
+            with self.subTest(part=part, change=change), self.assertRaises(RuntimeError): self.admission(mutate)
+
+    def test_original_install_artifact_requires_complete_verified_receipt(self):
+        raw, digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', digest): policy, _ = m.package(raw)
+        def fixture(change=None):
+            value = {**IDENTITY, 'operation_id': m.OPERATION, 'read_only': False, 'phase': 'complete',
+                     'ssh_started': True, 'status': 'installed_verified', 'remote': installed_result()}
+            if change: change(value)
+            stream = io.BytesIO()
+            with zipfile.ZipFile(stream, 'w') as archive: archive.writestr('evidence.json', json.dumps(value))
+            return stream.getvalue()
+        self.assertEqual(m.rollback_source_evidence(fixture(), IDENTITY, policy), installed_result())
+        for change in [lambda v: v.update(status='unknown_no_replay'), lambda v: v.update(read_only=True),
+                       lambda v: v.update(run_id='2'), lambda v: v.update(command_comment_id=2),
+                       lambda v: v['remote'].update(status='rolled_back_no_replay'),
+                       lambda v: v['remote'].update(supplier_calls=1), lambda v: v['remote']['written_files'].pop(),
+                       lambda v: v['remote'].update(restore_drill_verified=False)]:
+            with self.assertRaises(RuntimeError): m.rollback_source_evidence(fixture(change), IDENTITY, policy)
+
+    def test_changed_or_duplicate_command_is_checked_again_before_ssh(self):
+        for mutate in [lambda rows: rows[1].update(body=rows[1]['body']+' edited'),
+                       lambda rows: rows.append(rollback_event()['comment'] | {'id': 9003}),
+                       lambda rows: rows[0].update(body=rows[0]['body'].replace(CONTROL, 'f'*40))]:
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as directory:
+                event_path = Path(directory)/'event.json'; event_path.write_text(json.dumps(rollback_event()))
+                env = environment() | {'GITHUB_SHA': ROLLBACK_IDENTITY['control_source_sha'], 'GITHUB_RUN_ID': ROLLBACK_IDENTITY['run_id'],
+                    'RUNNER_TEMP': directory, 'GITHUB_EVENT_PATH': str(event_path), 'PREVIEW_HOST': 'example.invalid',
+                    'PREVIEW_USER': 'fixture', 'PREVIEW_KEY': 'PRIVATE KEY fixture'}
+                rows = self.metadata('/issues/4709/comments?per_page=100&page=1'); mutate(rows)
+                with patch.dict(os.environ, env), patch.object(m, 'rollback_admission', return_value=(IDENTITY, {'id':333,'digest':'sha256:'+'5'*64})), \
+                     patch.object(m, 'download', return_value=b'x'), patch.object(m, 'package', return_value=({},{})), \
+                     patch.object(m, 'rollback_source_evidence', return_value=installed_result()), patch.object(m, 'api', return_value=rows), \
+                     patch.object(m, 'rollback_main'), patch.object(m.carrier, 'run', return_value=b'fixture known host') as run, \
+                     patch('builtins.print'), self.assertRaisesRegex(RuntimeError, 'public_rollback_not_verified'):
+                    m.rollback()
+                self.assertEqual([call.args[0][0] for call in run.call_args_list], ['ssh-keyscan'])
+                evidence = json.loads((Path(directory)/'search3-public-install/evidence.json').read_text())
+                self.assertIs(evidence['ssh_started'], False)
 
 
 class Transaction(unittest.TestCase):
@@ -242,6 +518,32 @@ class Transaction(unittest.TestCase):
         self.assertEqual(value['status'],'preflight_match');self.assertIs(value['read_only'],True);self.assertEqual(value['server_writes'],0)
         self.assertEqual(value['mismatches'],[]);self.assertEqual(self.filesystem_snapshot(),before);self.assertFalse(self.private.parent.exists())
         self.assertNotIn('written_files',value);self.restored()
+
+    def test_reviewed_dependencies_are_rechecked_before_any_reservation(self):
+        for path in m.INSTALL_REVIEWED:
+            target = self.root/path; original = target.read_bytes(); target.write_bytes(b'changed after inspection')
+            value = self.execute()
+            self.assertEqual(value['reason'], 'dependency_drift'); self.assertEqual(value['written_files'], [])
+            self.assertFalse(self.private.exists()); self.assertEqual(target.read_bytes(), b'changed after inspection')
+            target.write_bytes(original)
+
+    def test_observed_private_presence_is_rechecked_before_any_reservation(self):
+        self.policy['opaque_presence'] = m.INSTALL_OPAQUE_PRESENCE
+        original = (self.root/'config.php').read_bytes()
+        (self.root/'site_conf.php').unlink()
+        for path, present in [('config.php', False), ('site_conf.php', True)]:
+            with self.subTest(path=path):
+                if present: self.put(path, b'new private setting owner')
+                else: (self.root/path).unlink()
+                before = self.filesystem_snapshot()
+                value = self.execute()
+                self.assertEqual(value['reason'], 'dependency_drift')
+                self.assertEqual(value['written_files'], [])
+                self.assertFalse(self.private.exists())
+                self.assertEqual(self.filesystem_snapshot(), before)
+                if present: (self.root/path).unlink()
+                else:
+                    self.put(path, original); (self.root/path).chmod(0o600)
 
     def test_inspect_mismatch_is_diagnosable_and_still_read_only(self):
         self.put('data/db-v1.php',b'installed differing public helper');before=self.filesystem_snapshot()
@@ -426,12 +728,110 @@ class Transaction(unittest.TestCase):
         self.assertEqual(self.execute()['reason'],'unsafe_parent');self.assertFalse(list(other.iterdir()));self.assertFalse(self.private.exists())
 
 
+class RollbackTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def installed(self):
+        fixture = Transaction(); fixture.setUp()
+        try:
+            fixture.accepted = fixture.execute()
+            self.assertEqual(fixture.accepted['status'], 'installed_verified')
+            yield fixture
+        finally: fixture.tearDown()
+
+    def original_records(self, fixture):
+        return {str(p.relative_to(fixture.private)): (p.read_bytes(), p.stat().st_mode, p.stat().st_ino, p.stat().st_mtime_ns)
+                for p in fixture.private.rglob('*') if p.is_file()}
+
+    def execute(self, fixture, change=None):
+        program = m.rollback_remote_program(fixture.policy, ROLLBACK_IDENTITY, IDENTITY, fixture.accepted)
+        program = program.replace("home=os.environ.get('HOME','');root=home+'/www/anytoour.ru'",
+                                  "home=os.environ['SEARCH3_FIXTURE_HOME'];root=home+'/www/anytoour.ru'", 1)
+        if change: program = change(program)
+        run = subprocess.run([sys.executable, '-I', '-S', '-B', '-'], input=program.encode(), capture_output=True,
+                             cwd=fixture.home, env=os.environ | {'SEARCH3_FIXTURE_HOME': str(fixture.home)}, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr.decode())
+        self.assertNotIn(fixture.secret, run.stdout); self.assertNotIn(str(fixture.home).encode(), run.stdout)
+        value = json.loads(run.stdout); m.valid_rollback_result(ROLLBACK_IDENTITY, IDENTITY, fixture.accepted, value)
+        return value
+
+    def test_success_then_replay_preserves_original_records_and_directories(self):
+        with self.installed() as f:
+            before = self.original_records(f); foreign = f.root/'visual-search/assets/foreign.txt'; foreign.write_bytes(b'keep')
+            value = self.execute(f)
+            self.assertEqual(value['status'], 'rolled_back_verified'); self.assertEqual(len(value['rollback_files']), 42)
+            f.restored(); self.assertEqual(foreign.read_bytes(), b'keep')
+            self.assertTrue((f.root/'poisk-turov-old').is_dir()); self.assertTrue((f.root/'visual-search/assets').is_dir())
+            self.assertEqual(self.original_records(f), before)
+            receipt = f.private.parent/m.ROLLBACK_OPERATION/'result.json'; saved = receipt.read_bytes()
+            self.assertEqual(self.execute(f)['status'], 'blocked_no_replay')
+            self.assertEqual(receipt.read_bytes(), saved); self.assertEqual(self.original_records(f), before)
+
+    def test_changed_candidate_or_private_proof_blocks_before_reservation(self):
+        for kind in ('inode', 'mode', 'mtime', 'hardlink', 'intent', 'snapshot', 'private_result', 'protected', 'reserved'):
+            with self.subTest(kind=kind), self.installed() as f:
+                target = f.root/m.ADDITIONS[-1]
+                if kind == 'inode':
+                    previous = target.stat(); foreign = target.with_name(target.name+'.foreign')
+                    foreign.write_bytes(target.read_bytes()); foreign.chmod(0o644)
+                    os.utime(foreign, ns=(previous.st_atime_ns, previous.st_mtime_ns)); os.replace(foreign, target)
+                    self.assertNotEqual(target.stat().st_ino, previous.st_ino)
+                elif kind == 'mode': target.chmod(0o600)
+                elif kind == 'mtime':
+                    previous = target.stat(); os.utime(target, ns=(previous.st_atime_ns, previous.st_mtime_ns+1000000))
+                elif kind == 'hardlink': os.link(target, f.home/'foreign-link')
+                elif kind == 'intent': (f.private/'intent-0.json').write_text('{}')
+                elif kind == 'snapshot': (f.private/'snapshot/entry').write_bytes(b'wrong backup')
+                elif kind == 'private_result': (f.private/'result.json').write_text('{}')
+                elif kind == 'protected': (f.root/'config.php').write_bytes(b'changed settings')
+                elif kind == 'reserved':
+                    reserved = f.private.parent/m.ROLLBACK_OPERATION; reserved.mkdir(mode=0o700)
+                    (reserved/'reservation.json').write_bytes(b'unknown prior attempt')
+                before = self.original_records(f); current = target.read_bytes(); value = self.execute(f)
+                self.assertEqual(value['status'], 'blocked_no_replay'); self.assertEqual(value['rollback_files'], [])
+                self.assertEqual(target.read_bytes(), current); self.assertEqual(self.original_records(f), before)
+                if kind == 'reserved': self.assertEqual((reserved/'reservation.json').read_bytes(), b'unknown prior attempt')
+                else: self.assertFalse((f.private.parent/m.ROLLBACK_OPERATION).exists())
+
+    def test_foreign_entry_or_addition_at_capture_gap_is_preserved_unknown(self):
+        for entry in (True, False):
+            with self.subTest(entry=entry), self.installed() as f:
+                before = self.original_records(f); path = m.ENTRY if entry else m.ADDITIONS[-1]
+                def race(program):
+                    if entry:
+                        line = " capture_owned(public,private,entry,'quarantine/entry',POLICY['expected'][entry],candidate[entry][1])"
+                        injection = " foreign=root+'/'+entry+'.foreign'\n with open(foreign,'wb') as stream: stream.write(b'FOREIGN')\n os.chmod(foreign,0o644);os.replace(foreign,root+'/'+entry)\n"
+                    else:
+                        line = "  capture_owned(public,private,path,'quarantine/'+str(POLICY['additions'].index(path)),POLICY['expected'][path],candidate[path][1])"
+                        injection = "  if path==POLICY['additions'][-1]:\n   foreign=root+'/'+path+'.foreign'\n   with open(foreign,'wb') as stream: stream.write(b'FOREIGN')\n   os.chmod(foreign,0o644);os.replace(foreign,root+'/'+path)\n"
+                    self.assertIn(line, program); return program.replace(line, injection+line, 1)
+                value = self.execute(f, race)
+                self.assertEqual(value['status'], 'unknown_no_replay'); self.assertEqual((f.root/path).read_bytes(), b'FOREIGN')
+                self.assertEqual(value['rollback_files'], [] if entry else [m.ENTRY])
+                if not entry: self.assertEqual((f.root/m.ENTRY).read_bytes(), f.old)
+                self.assertEqual(self.original_records(f), before)
+
+    def test_newer_entry_between_capture_and_restore_is_never_overwritten(self):
+        with self.installed() as f:
+            before = self.original_records(f)
+            def race(program):
+                line = " restore_capture(public,private,entry,'stage/entry')"
+                self.assertIn(line, program)
+                return program.replace(line, " public.create(entry,b'NEWER FOREIGN ENTRY',0o644)\n"+line, 1)
+            value = self.execute(f, race)
+            self.assertEqual(value['status'], 'unknown_no_replay'); self.assertEqual(value['rollback_files'], [])
+            self.assertEqual((f.root/m.ENTRY).read_bytes(), b'NEWER FOREIGN ENTRY')
+            self.assertTrue(all((f.root/p).is_file() for p in m.ADDITIONS)); self.assertEqual(self.original_records(f), before)
+
+
 class Receipt(unittest.TestCase):
     def test_workflow_stays_existing_locked_carrier(self):
         value=(ROOT/m.WORKFLOW).read_text()
         self.assertIn("format('/install-search3-public {0} public-search3-20261120-v1', github.sha)",value)
         block=value.split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
         for text in ['deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1',"github.event.issue.number == 4709",'ANYTOOUR_DEPLOY_SSH_KEY','tests/anytoour_production_deploy_guard_test.py']: self.assertIn(text,block)
+        self.assertIn("format('/rollback-search3-public {0} ', github.sha)", block)
+        self.assertIn("&& 'rollback' ||", block)
+        self.assertNotIn('${{ github.event.comment.body }}', block)
         self.assertNotIn('workflow_dispatch:',value)
 
 
