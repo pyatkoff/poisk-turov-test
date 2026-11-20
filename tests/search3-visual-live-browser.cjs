@@ -2005,9 +2005,10 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
 
 async function roomLayoutsJourney(browser,origin,base,evidence){
  for(const [width,height] of [[430,932],[1280,800]]){
-  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();
+  const context=await browser.newContext({viewport:{width,height},isMobile:width===430,hasTouch:width===430}),page=await context.newPage();
   const transport=fixture(),calls=[],errors=[],failed=[];
   transport.state.failAnex=true;
+  page.setDefaultTimeout(10000);
   const fixtures=[{id:9001,bedroomCount:1,sleepingPlaces:'1 двуспальная кровать'},
    {id:9002,bedroomCount:2,sleepingPlaces:'1 двуспальная кровать и 2 односпальные кровати'}];
   page.on('pageerror',error=>errors.push(error.message));
@@ -2031,9 +2032,8 @@ async function roomLayoutsJourney(browser,origin,base,evidence){
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
    await page.locator('.search-submit:not(:disabled)').click();
-   await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
-   await page.locator('.hotel-card [data-action="hotel-details"]').first().click();
-   const standard=page.locator('[data-room="STANDARD SEA VIEW"]'),family=page.locator('[data-room="FAMILY SUITE"]');
+   await page.locator('.hotel-card [data-action="hotel-details"][data-id="501"]').click();
+   const standard=page.locator('.hotel-room-card[data-room="STANDARD SEA VIEW"]'),family=page.locator('.hotel-room-card[data-room="FAMILY SUITE"]');
    await family.waitFor();
    assert.deepEqual(calls,[],'layout loading does not delay rooms and prices');
    const amount=room=>room.locator('.hotel-room-price>strong').innerText();
