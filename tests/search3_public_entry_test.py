@@ -127,7 +127,9 @@ class PublicEntryTest(unittest.TestCase):
         html, status = self.render()
         self.assertEqual(status, {"status": 200, "site_config_loaded": True, "counter_loaded": True})
         page = Page(html); cfg = page.configs[0]
-        self.assertEqual((cfg["profile"], cfg["leadApi"], cfg["metrikaCounter"]), ("live", "/lead-adapter-v2.php", 12345))
+        self.assertEqual((cfg["profile"], cfg["leadApi"], cfg["metrikaCounter"]),
+                         ("live", "/_preview/search3-next-candidate/preview-lead-disabled.php", 12345))
+        self.assertEqual(cfg["anexApi"], "/_preview/search3-anex-candidate/api-anex-search3-preview.php")
         self.assertEqual(len(page.scripts), 22)
         self.assertEqual(sum(src.startswith("/analytics-v4.js?") for src in page.scripts), 1)
         self.assertFalse(any("fixture-data" in src or "preview-lead.js" in src or "bundle-v1" in src for src in page.scripts))

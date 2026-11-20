@@ -144,6 +144,11 @@
   }
   window.AnyTourPrototypeData = Object.freeze({
     preview: true, catalog, text, amount, meal, date: value => String(value || ''),
+    // Presentation-only review states. They are not handoff facts or a transport.
+    messengerContactPreview: reviewScenario ? Object.freeze({
+      ready: 'Демонстрация: выбранный тур готов к показу перехода. Заявки не отправляются.',
+      unavailable: 'Демонстрация: переход в Telegram и MAX сейчас недоступен. Заявка не отправлялась. Вернитесь к выбранному туру.'
+    }) : null,
     get initialSearch() {return scenarioSearch();}, get clockStart() {return scenario === 'journey' ? today : '2026-09-24';}, describe, get scenario() {return scenario;},
     async init() {await ready; return {origin: 'Москва', ...catalog};},
     async countries() {await ready; return {origin: 'Москва', ...catalog};},

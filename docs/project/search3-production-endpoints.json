@@ -101,10 +101,11 @@
         "retained operation IDs, unknown/revoke states, expiry and no replay after rebind",
         "links accepted only from server with HTTPS t.me/max.ru validation; browser does not send bot messages"
       ],
-      "serverDependency": "Freeze/create/status/revoke producer and signer remain the separate INT deployment. Public route/admission not confirmed."
+      "serverDependency": "Freeze/create/status/revoke producer and signer remain the separate INT deployment. Fixed bot receiver is https://app.anytoour.ru/search3/tour-handoff.php; no legacy phone/Bitrix receiver dependency. Public route/admission not confirmed."
     },
     {
       "group": "lead",
+      "role": "Separate existing phone branch; not a prerequisite of Telegram/MAX contact",
       "currentPreviewEndpoint": "../preview-lead-disabled.php",
       "existingProductionEndpoint": "/lead-adapter-v2.php",
       "newEndpointNeeded": false,
@@ -131,7 +132,7 @@
         "generated lead-runtime remains canonical and byte-identical in attribution patch"
       ],
       "receiver": "https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php",
-      "deploymentStatus": "Existing runtime identity/legacy deploy credentials are separate from public site credentials; this analysis does not prove live delivery."
+      "deploymentStatus": "The proposed public messenger-only contact leaves this sender disabled. Existing NEXT phone-preview behavior and other site owners remain unchanged. Legacy runtime identity/access is required only for separately activated phone delivery."
     }
   ],
   "otherRequiredBoundaries": [
@@ -195,8 +196,17 @@
     "liveBuilderAvailable": false,
     "liveSourceBindings": {
       "api": "/api-v2.php",
-      "lead": "/lead-adapter-v2.php",
+      "lead": "/_preview/search3-next-candidate/preview-lead-disabled.php",
       "privateTVANEXMessenger": "/_preview/search3-anex-candidate/api-anex-search3-preview.php"
+    },
+    "contactMode": "messenger-only",
+    "contactReview": {
+      "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7043406640",
+      "referenceSource": "dd216ed705bc79cb2eb8c17968fb114cd5ca4cd7",
+      "scope": "Public contact/unavailable/return on retained fictional family or snapshot data; no handoff or phone calls",
+      "reviewCanEnableLive": false,
+      "nextPreviewBehaviorChanged": false,
+      "liveInterfaceApproval": false
     },
     "reviewAnalyticsLoaded": false,
     "externalContractChanged": false,

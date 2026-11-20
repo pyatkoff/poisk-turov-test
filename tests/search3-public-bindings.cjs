@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'../v2'),read=file=>fs.readFileSync(path.join(
 const app=read('visual-search/app.js'),plain=value=>JSON.parse(JSON.stringify(value));
 const nativeApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php',disabledLead='/_preview/search3-next-candidate/preview-lead-disabled.php';
 function config(profile='live',bounded=false){const prefix=bounded?'/_preview/search3-site-candidate':'';return {schemaVersion:1,profile,scenario:'family',
- publicBase:prefix+'/poisk-turov/',resourceBase:prefix+'/visual-search/',api:'/api-v2.php',leadApi:profile==='live'?'/lead-adapter-v2.php':disabledLead,
+ publicBase:prefix+'/poisk-turov/',resourceBase:prefix+'/visual-search/',api:'/api-v2.php',leadApi:disabledLead,
  anexApi:profile==='live'?nativeApi:null,metrikaCounter:0};}
 function box(settings=config(),pathname=settings.publicBase,query=''){
  const calls=[],events=[],listeners=new Map(),location=new URL('https://public-binding.invalid'+pathname+(query?'?'+query:''));
@@ -53,9 +53,12 @@ async function publicURLRegressions(){
  for(const [settings,pathname,expected] of [
   [config(),'/poisk-turov/',true],[config(),'/poisk-turov/index.php',true],[config(),'/poisk-turov/other',false],
   [config(),'/_preview/search3-next-candidate/visual-search/',false],[config('review',true),'/_preview/search3-site-candidate/poisk-turov/',true],
-  [config('live',true),'/_preview/search3-site-candidate/poisk-turov/',false],[{...config(),leadApi:'https://external.invalid/lead'},'/poisk-turov/',false]
+  [config('live',true),'/_preview/search3-site-candidate/poisk-turov/',false],[{...config(),leadApi:'https://external.invalid/lead'},'/poisk-turov/',false],
+  [{...config(),leadApi:'/lead-adapter-v2.php'},'/poisk-turov/',false]
  ]){const h=box(settings,pathname);assert.equal(h.context.AnyTourPublicConfigV1.valid,expected);h.load('search3-canonical-profiles-v1.js');
   assert.equal(!!h.context.Search3CanonicalProfilesV1.create(()=>{}),expected&&settings.profile==='live'||pathname.startsWith('/_preview/search3-next-candidate/visual-search/'));
+  assert.equal(h.context.V2_CONFIG.search3ContactMode,expected?'messenger-only':null);
+  assert.equal(h.context.V2_CONFIG.leadApi,disabledLead,'public entry never enables the legacy phone receiver');
   assert.equal(h.calls.length,0,'config/admission never fetch');
  }
  const query='from=33&country=1&dateFrom=2026-12-20&dateTo=2026-12-24&daysFrom=9&daysTill=11&count_people=3&child_count=2&child_age%5B%5D=0&child_age%5B%5D=8&yclid=a%26b&utm_campaign=%D1%81%D0%B5%D0%BC%D1%8C%D1%8F';
@@ -87,6 +90,7 @@ async function reviewApp(query,bounded=false){
  const w=dom.window;w.document.querySelector('.prototype-tools')?.remove();w.document.querySelector('.private-badge')?.remove();
  const script=w.document.createElement('script');script.dataset.search3PublicConfig=JSON.stringify(settings);Object.defineProperty(w.document,'currentScript',{configurable:true,get:()=>script});
  w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ w.CSS={escape:value=>String(value).replace(/[^a-zA-Z0-9_-]/g,char=>'\\'+char)};
  w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};w.ResizeObserver=class{observe(){}disconnect(){}};
  w.HTMLElement.prototype.scrollIntoView=function(){};w.HTMLElement.prototype.scrollTo=function(){};w.scrollTo=()=>{};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
@@ -98,7 +102,7 @@ async function reviewApp(query,bounded=false){
  w.eval(app.replace(marker,'window.__publicAudit={get state(){return state;},get ready(){return catalogReady;},get hydrated(){return urlStateHydrated;},get failure(){return publicUrlFailure;}};\n'+marker));
  for(let i=0;i<100&&!w.__publicAudit?.ready&&!w.__publicAudit?.failure;i++)await new Promise(resolve=>setTimeout(resolve,10));
  await new Promise(resolve=>setTimeout(resolve,20));assert.deepEqual(errors,[],'actual app tolerates removed lab controls');
- return {dom,w,calls,settings};
+ return {dom,w,calls,settings,errors};
 }
 async function reviewRegressions(){
  for(const bounded of [false,true]){
@@ -106,6 +110,11 @@ async function reviewRegressions(){
   assert(w.__publicAudit.ready);assert(w.__publicAudit.hydrated);assert.equal(w.AnyTourPrototypeData.scenario,'family');
   assert.deepEqual(plain(w.__publicAudit.state.search.ages),[0,8]);assert.equal(new URLSearchParams(w.location.search).get('yclid'),'keep');
   assert.equal(new URLSearchParams(w.location.search).get('scenario'),'family');assert.equal(h.calls.length,1);assert.equal(w.V2_CONFIG.leadApi,disabledLead);
+  assert.equal(w.V2_CONFIG.search3ContactMode,'messenger-only');assert.equal(w.V2_CONFIG.search3MessengerEnabled,false);
+  assert.notEqual(w.AnyTourPrototypeData.live,true);assert.equal(w.AnyTourPrototypeData.messengerHandoff,undefined);
+  assert(Object.isFrozen(w.AnyTourPrototypeData.messengerContactPreview));
+  assert.match(w.AnyTourPrototypeData.messengerContactPreview.ready,/^Демонстрация:.*Заявки не отправляются/);
+  assert.match(w.AnyTourPrototypeData.messengerContactPreview.unavailable,/^Демонстрация:.*недоступен/);
   await w.AnyTourPrototypeData.setScenario('journey');assert.equal(w.AnyTourPrototypeData.scenario,'family','query and lab actions cannot select live/another review scenario');
   const photos=[...w.document.querySelectorAll('.hotel-image')].map(img=>img.getAttribute('src'));assert(photos.length);assert(photos.every(url=>url.startsWith(h.settings.resourceBase+'assets/')));
   assert.equal(w.V2Analytics,undefined,'production analytics absent from review graph');w.close();
@@ -115,6 +124,37 @@ async function reviewRegressions(){
  assert.equal(w.location.search,query);assert.equal(w.__publicAudit.state.search.adults,2,'no partial party restore');assert.equal(w.document.querySelector('[data-action="retry-catalog"]'),null,'unsupported URL is not an automatic retry');
  const link=w.document.querySelector('#catalog-error a');assert(link);assert.equal(new URL(link.href).pathname,'/poisk-turov-old/');assert.equal(new URL(link.href).searchParams.get('new_filter'),'<script>');assert.equal(w.document.querySelector('#catalog-error script'),null);w.close();
  console.log('PASS public REVIEW actual app: root and bounded paths, fixed family despite scenario=live, absolute assets, removed lab controls, unchanged/recoverable rejected URL; one local fixture read and zero supplier/lead calls');
+}
+async function contactReviewRegressions(){
+ const h=await reviewApp('?scenario=live'),w=h.w,d=w.document;
+ const wait=async check=>{for(let i=0;i<100;i++){assert.deepEqual(h.errors,[]);if(check())return;await new Promise(resolve=>setTimeout(resolve,10));}assert.fail('Public contact fixture did not settle');};
+ const click=selector=>{const target=d.querySelector(selector);assert(target,'actual action exists: '+selector);target.dispatchEvent(new w.MouseEvent('click',{bubbles:true}));};
+ // The ordinary on-demand owner is executed locally, with no loader/network fallback.
+ w.eval(read('visual-search/hotel-details-v1.js'));
+ click('#hotel-900001 h3 [data-action="hotel-details"]');
+ await wait(()=>d.querySelector('[data-action="select-hotel-offer"][data-key="demo-flight-24"]'));
+ click('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');
+ await wait(()=>d.querySelector('#messenger-entry[data-search3-review-messenger="true"] [data-platform="telegram"]')?.disabled===false);
+ const total=()=>d.querySelector('#modal-footer .footer-total>strong').textContent,recap=()=>d.querySelector('.application-recap').textContent;
+ const expected={total:total(),recap:recap()};assert.match(expected.total,/186[\s\u00a0\u202f]*400/);
+ const assertContact=()=>{
+  assert.equal(d.querySelectorAll('#prototype-lead-form,[data-action="messenger-phone"],[data-messenger-phone-submit]').length,0);
+  assert.equal(d.querySelectorAll('#messenger-entry [data-action="messenger-open"]').length,2);
+  assert.equal(total(),expected.total);assert.equal(recap(),expected.recap);
+  assert.equal(w.V2_CONFIG.search3MessengerEnabled,false);assert.notEqual(w.AnyTourPrototypeData.live,true);
+  assert.equal(h.calls.length,1,'only the existing saved JSON fixture has been read');
+ };
+ assertContact();click('#messenger-entry [data-platform="telegram"]');
+ assert.match(d.querySelector('#messenger-status').textContent,/^Демонстрация:.*недоступен.*не отправлялась/);
+ assert([...d.querySelectorAll('#messenger-entry [data-action="messenger-open"]')].every(button=>button.disabled));assertContact();
+ click('#messenger-entry [data-action="modal-back"]');await wait(()=>d.querySelector('#hotel-room-count'));
+ assert.equal(d.querySelector('[data-action="select-hotel-offer"][data-key="demo-flight-24"]').getAttribute('aria-pressed'),'true');
+ click('#modal .modal-header [data-action="close-modal"]');await wait(()=>d.querySelector('#hotel-900001 .current-card-selection [data-action="offer"]'));
+ click('#hotel-900001 .current-card-selection [data-action="offer"]');await wait(()=>d.querySelector('[data-action="confirm-tour"]'));
+ click('[data-action="confirm-tour"]');await wait(()=>d.querySelector('#messenger-entry [data-platform="max"]')?.disabled===false);
+ assertContact();assert.match(d.querySelector('#messenger-status').textContent,/^Демонстрация:.*готов/);
+ click('#messenger-entry [data-platform="max"]');assert.match(d.querySelector('#messenger-status').textContent,/^Демонстрация:.*недоступен/);assertContact();
+ w.close();console.log('PASS public REVIEW contact: actual shared app + fixed fixture, Telegram/MAX demo errors, Back/selected card/reopen retain exact recap and total; phone/POST/handoff/navigation 0');
 }
 async function analyticsRegressions(){
  const h=box(),w=h.context;h.load('search3-canonical-profiles-v1.js');const owner=w.Search3CanonicalProfilesV1.create(()=>{});
@@ -137,4 +177,4 @@ async function analyticsRegressions(){
  const review=box(config('review'));review.load('analytics-v4.js');review.load('visual-search/public-analytics-v1.js');review.context.AnyTourPublicAnalyticsV1.hotel({legacyIds:[777]});assert.equal(review.context.dataLayer.length,0);
  console.log('PASS public analytics: actual lifecycle + unchanged analytics owner, original/namespaced identities, receipt price unchanged, no canonical reset/duplicate run/false lead conversion; zero transport');
 }
-(async()=>{await publicURLRegressions();await reviewRegressions();await analyticsRegressions();})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{await publicURLRegressions();await reviewRegressions();await contactReviewRegressions();await analyticsRegressions();})().catch(error=>{console.error(error);process.exitCode=1;});

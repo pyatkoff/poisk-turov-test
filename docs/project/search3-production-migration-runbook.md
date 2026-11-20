@@ -11,6 +11,14 @@ ORIGINAL NEXT. The working interface must still be shown and approved before the
 production switch. This preparation makes no supplier requests, sends no applications,
 does not change secrets or protected contracts, and does not authorize a server run.
 
+Pavel clarified the primary contact path on the same day: **selected tour →
+Telegram/MAX → the existing manager conversation**. The legacy phone/Bitrix
+receiver is not a dependency of this messenger path. Its SSH failure must not
+be treated as a prerequisite for continuing Search3. See the
+[scope correction](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7043236583)
+and [public contact review claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7043406640).
+The phone transport and its historical acceptance below remain separate.
+
 ### Exact starting points
 
 - Accepted NEXT source `d6e0563d598b32d59d6219e68eed97340f2e68a1`, release
@@ -60,7 +68,10 @@ either `/poisk-turov/` or the NEXT publisher.
    route; the source `v2/poisk-turov/index.php` is not switched by this PR.
    Public HTML uses absolute resource URLs, hides laboratory controls, and retains
    the existing form/card/room/price owners and layout.
-5. The public LIVE configuration explicitly selects the existing API/lead paths.
+5. The public LIVE configuration explicitly selects the existing API paths and
+   messenger contact mode. Both public profiles keep the phone lead endpoint
+   disabled. The actual messenger transport remains the existing INT producer
+   and its fixed bot receiver; no replacement delivery mechanism is introduced.
    Narrow public-page admission is added to the canonical profile and LOCAL content
    clients. Existing endpoint, session, identity, price and lead contracts remain
    unchanged. This source capability is neither backend admission nor installation.
@@ -68,6 +79,33 @@ either `/poisk-turov/` or the NEXT publisher.
    from actual transitions. It does not dispatch legacy search events that would
    reset the canonical catalog, guess native hotel IDs, or count a messenger handoff
    as delivered lead. The review graph does not load analytics at all.
+
+### Public messenger contact proposal
+
+The existing contact component now has a public-only presentation mode. Its tour
+recap, room, meal, family, flights and whole-party amount keep their existing
+owners. Telegram/MAX availability determines whether the handoff can proceed;
+it does not switch the public visitor into the legacy phone form. An unavailable
+transition keeps the selected tour and offers the existing return action. An
+uncertain CREATE keeps the original operation and explicit status check; it never
+asserts non-delivery or creates a replacement operation.
+
+The public REVIEW fixture shows the same component with a conspicuous demonstration
+label. Its buttons only show a local example of an unavailable transition. They
+do not enable the LIVE flag, change `data.live`, create provider receipts or call
+token/freeze/create/status, a bot, a supplier, or the phone sender. The existing
+family/snapshot profile remains fixed by the build. The candidate is for visual
+and interaction approval; it is not evidence of manager delivery.
+
+Reference: the PR5118 `dd216ed705bc79cb2eb8c17968fb114cd5ca4cd7` review artifact and
+the retained PR5117 NEXT source above. Candidate identity is the final commit/tree
+in the generated manifest. The affected review covers contact, unavailable state
+and return at 430/1280, including the retained 3-adult, children aged 0/12,
+Standard/AI, 186400-RUB fictional example. This is a scope description, not a
+completed-test or 9.5/10 claim. Exact-source CI receipts and inspected frames must
+be attached to the current claim before asking for a live interface change.
+The NEXT-only profile keeps its existing phone option and behavior until a
+separately reviewed change is approved.
 
 ### Review artifact and local rollback rehearsal
 
@@ -151,7 +189,8 @@ That file is a source inventory, not executable configuration or an installation
 | Public entry | Installed route is unchanged; separate public wrapper and absolute asset binding are prepared and exercised in the review artifact | Review the exact artifact, confirm actual site configuration and approve the selected installation |
 | Private TV, direct ANEX, messenger | Same preview INT URL, distinct action/session/identity guards; retained installed pin map is available, fresh server state and public-page admission are not established | Verify current installed dependencies and explicitly review reuse of the existing URL or a separate mapping, preserving its session and identity admission; no root fallback or guessed API paths |
 | LOCAL catalog/calendar/content | Prepared public clients explicitly reuse existing preview endpoints; their filesystem admission and DTO checks are unchanged | Verify actual installed dependencies with the existing read-only and identity rules |
-| Lead transport | Existing `/lead-adapter-v2.php` is the public HMAC bridge to the legacy receiver | Preserve this transport and approved field mapping; do not direct browsers to the receiver or add a second Bitrix bootstrap |
+| Messenger delivery | Existing INT producer uses `https://app.anytoour.ru/search3/tour-handoff.php` and returns Telegram/MAX links | Preserve the saved exact tour, signing/session admission and existing bot consumer; distinguish ready/opened links from arrival in the manager conversation |
+| Separate phone transport | Existing `/lead-adapter-v2.php` is the public HMAC bridge to the legacy receiver; the proposed public messenger contact does not invoke it | Preserve existing site owners. Its access and field mapping are prerequisites only if phone delivery is separately activated, not for Telegram/MAX |
 | Analytics and inbound links | Source public integration preserves existing goals and resolves supported old links before hydration; review sends no analytics | Verify the installed public counter/configuration and exact public flow before activation |
 | Production predecessor | No fresh installed revision or private live snapshot was read | Read the actual predecessor and use the existing snapshot/restore tooling immediately before the approved switch |
 
@@ -178,11 +217,18 @@ still uses that installed pin map. This was maintenance with 12 selected / 14 pi
 files and one changed private quote client, not a whole-runtime reinstall from one
 commit. The API, messenger authorization and TV gateway source hashes inspected for
 the URL/session analysis match this retained installed map; the newer private TV
-client changes in `3207266...` are not installed. No fresh server readback was made
-on 20 November. The public `anex-preview-manifest.json` is not updated by this
+client changes in `3207266...` are not installed. No successful fresh installed-file
+inventory was obtained on 20 November. The single readiness attempt
+[44759079166](https://github.com/pyatkoff/poisk-turov-test/actions/runs/44759079166)
+stopped before file hashes and remains consumed/no-replay. It does not establish
+an installed-file mismatch. The public `anex-preview-manifest.json` is not updated by this
 maintenance executor and cannot replace its private installation receipt.
 
-### Existing production installer: access failure and safe recovery
+### Historical phone installer: access failure and separate recovery
+
+This installer includes legacy phone preparation. Its failure does not establish
+a dependency of the primary messenger path and is not a reason to run it for
+this contact review. No existing production workflow is authorized here.
 
 [Run44286139929](https://github.com/pyatkoff/poisk-turov-test/actions/runs/44286139929/job/134739185043)
 stopped at the first SCP in `Prepare authenticated legacy lead receiver` with
@@ -238,13 +284,14 @@ contact form. This is browser emulation, not physical iPhone acceptance.
 
 Before activation, separately close all three owner priorities:
 
-1. Confirm the actual installed main/INT/receiver predecessors and the reviewed public
-   configuration. For provider phone leads, verify the receiver has the approved
-   provider-aware adapter and idempotency mapping; source main is not proof of that.
-2. With separately admitted supplier/lead operations, compare a real selected room,
-   meal, flight and total for **all** travellers, then confirm the same application
-   reaches the manager on desktop and a physical iPhone. Current no-paid-search and
-   no-application instructions remain in force; local fixtures do not close this gate.
+1. Confirm the actual installed main/INT and messenger-consumer predecessors and
+   reviewed public configuration. The separate phone receiver is not a dependency
+   of this Telegram/MAX path; source main is not proof of any installed revision.
+2. Compare retained evidence for a real selected room, meal, flight and total for
+   **all** travellers with the same tour in Telegram/MAX and the manager dialogue.
+   Keep the exact historical source/party/price limits and physical-device scope.
+   A fresh connected case needs its own permitted conditions; current no-paid-search
+   and no-application instructions remain in force. Local fixtures do not close it.
 3. Capture and verify the live rollback snapshot and obtain approval for the exact
    source/artifact/version before changing the running interface.
 
@@ -276,7 +323,12 @@ Reconcile newer source heads and actual installs separately before using this re
 All cited attempts are terminal/no-replay. Historical empty APD and code1108 do
 not describe these new outcomes. None of these checks sent a real application.
 
-### Proven entry and lead ownership
+### Separate phone-form ownership and historical mapping
+
+The following form/Bitrix chain describes the optional historical phone branch.
+It is not the messenger chain and is not a launch prerequisite for the public
+messenger-only proposal. The prepared public configuration leaves phone delivery
+disabled; the existing NEXT profile remains unchanged.
 
 | Current owner | Actual behavior | Transfer work still required |
 | --- | --- | --- |
@@ -290,7 +342,7 @@ not describe these new outcomes. None of these checks sent a real application.
 `v2/visual-search/preview-lead.js` is used for offline scenarios; it is not the
 live target form owner. The source graph above is selected by `index.php`.
 
-### Approved provider handoff — implemented in source, delivery not activated
+### Historical approved provider phone handoff
 
 Owner approved this mapping explicitly on 2026-09-28 at 23:13 UTC (coordination
 #3419, comment5880427102). The implementation keeps the same HMAC/receiver/Bitrix
@@ -314,7 +366,21 @@ the actual pure receiver mapping and dedup without bootstrapping Bitrix. The
 existing lead-source workflow runs both. Backend deployment and real delivery
 acceptance are still separate gates, not implied by passing fixtures.
 
-### Release gates and rollout order
+### Current messenger release gates
+
+1. Review the exact public entry, contact/fallback behavior and artifact on the
+   agreed mobile/desktop widths. Preserve hotel category/stars, budget placement,
+   selected conditions, price qualification and whole-party amount.
+2. Confirm the actual existing INT/session/signer and bot consumer dependencies.
+   Reuse retained delivery receipts only within their exact source and scenario;
+   a fixture or ready link does not prove a new Telegram/MAX manager delivery.
+   The current prohibition on paid supplier requests and real applications remains.
+3. Obtain approval of the concrete interface and exact release, capture and verify
+   the current predecessor/rollback through the existing permitted procedure,
+   then use only the separately approved publisher. No live switch is authorized
+   by this source or review artifact.
+
+### Historical provider-phone rollout order — not the current messenger gate
 
 1. Close fresh SAMO manual alternative-flight acceptance and ANEX regular final
    calculation; record exact installed versions and terminal results. A successful

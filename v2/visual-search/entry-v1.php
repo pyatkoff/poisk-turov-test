@@ -89,7 +89,7 @@ function v2_visual_search_public_config(array $build, string $prefix): array
         'schemaVersion' => 1, 'profile' => $build['profile'], 'scenario' => $build['scenario'],
         'publicBase' => $prefix . '/poisk-turov/', 'resourceBase' => $prefix . '/visual-search/',
         'api' => '/api-v2.php',
-        'leadApi' => $live ? '/lead-adapter-v2.php' : '/_preview/search3-next-candidate/preview-lead-disabled.php',
+        'leadApi' => '/_preview/search3-next-candidate/preview-lead-disabled.php',
         'anexApi' => $live ? '/_preview/search3-anex-candidate/api-anex-search3-preview.php' : null,
         'metrikaCounter' => $counter,
     ];

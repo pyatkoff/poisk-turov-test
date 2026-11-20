@@ -11,12 +11,12 @@
  const valid=!!pair&&value.schemaVersion===1&&['review','live'].includes(profile)
   &&[pair[0],pair[0]+'index.php'].includes(path)&&(profile!=='live'||pair===pairs[0])
   &&['family','snapshot'].includes(value.scenario)&&Number.isSafeInteger(value.metrikaCounter)&&value.metrikaCounter>=0
-  &&value.api==='/api-v2.php'&&value.leadApi===(profile==='live'?'/lead-adapter-v2.php':disabledLead)
+  &&value.api==='/api-v2.php'&&value.leadApi===disabledLead
   &&value.anexApi===(profile==='live'?nativeApi:null)&&(profile!=='review'||value.metrikaCounter===0);
- const config=Object.freeze({api:valid&&profile==='live'?value.api:null,leadApi:valid&&profile==='live'?value.leadApi:disabledLead,
+ const config=Object.freeze({api:valid&&profile==='live'?value.api:null,leadApi:disabledLead,
   andromedaApi:null,andromedaQuoteApi:null,anexApi:valid&&profile==='live'?nativeApi:null,
   search3TVSessionEnabled:valid&&profile==='live',search3MessengerEnabled:valid&&profile==='live',localTvCatalogEnabled:valid&&profile==='live',
-  metrikaCounter:valid&&profile==='live'?value.metrikaCounter:0,search3PublicEntry:valid?profile:'blocked',
+  metrikaCounter:valid&&profile==='live'?value.metrikaCounter:0,search3PublicEntry:valid?profile:'blocked',search3ContactMode:valid?'messenger-only':null,
   search3PublicBase:valid?pair[0]:null,search3PublicResourceBase:valid?pair[1]:null,search3ReviewScenario:valid&&profile==='review'?value.scenario:null});
  const asset=name=>{
   if(!valid||typeof name!=='string'||!name||name.startsWith('/')||name.split('/').some(part=>!part||part==='.'||part==='..')||!/^[A-Za-z0-9._/-]+$/.test(name))throw new Error('Public resource path is unavailable.');
