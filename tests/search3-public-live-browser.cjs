@@ -200,7 +200,7 @@ const server=http.createServer((req,res)=>{
      live:AnyTourPrototypeData.live,scenario:AnyTourPrototypeData.scenario,analytics:V2Analytics.version}));
     assert.deepEqual(config,{profile:'live',contact:'messenger-only',privateTV:true,messenger:true,counter:0,live:true,scenario:'live',analytics:4});
     assert.equal(await page.locator('.prototype-tools,.private-badge').count(),0);
-    assert.equal(await page.locator('#guests-label').textContent(),'2 взр.');
+    assert.equal(await page.locator('#guests-label').textContent(),'2 взрослых');
     assert.equal(await page.locator('#guests-detail').isVisible(),false);
     await compactForm('initial-default',false);
     const defaultURL=page.url(),defaultBudget=await page.locator('#budget-label').textContent();
