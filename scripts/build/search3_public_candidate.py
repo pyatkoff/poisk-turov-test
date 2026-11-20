@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build a local, non-deployable Search3 public REVIEW artifact from Git blobs.
+"""Build a local, non-deployable Search3 public candidate from Git blobs.
 
 The existing visual compiler runs in a disposable full-source stage. Only its
-review closure is added to a separately staged main site. The public route is
+selected REVIEW or explicit LIVE closure is added to a staged main site. The public route is
 replaced; the known old-route predecessor may receive its page-alias correction.
-This is not an installer, a server snapshot, or a live-mode builder. No network,
+This is not an installer, a server snapshot, or production admission. No network,
 PHP server, supplier request, or lead request is started.
 """
 from __future__ import annotations
@@ -41,7 +41,9 @@ OLD_ROUTE_PREDECESSOR_BLOB = "f32aaf03833be6123da10d93b3136098709ce19f"
 OLD_ROUTE_CORRECTION_BLOB = "e15a18cf3330ae0799c27c2a7c7c638163a62f6a"
 # These shared runtime contracts are deliberately served from main, even when
 # the separately compiled candidate has a shorter representation of the same JS.
-RETAIN_MAIN = {"runtime-v3.js", "lead-search-context.js"}
+RETAIN_MAIN = {"runtime-v3.js", "lead-search-context.js", "analytics-v4.js"}
+LIVE_MAIN_DEPENDENCIES = (*sorted(RETAIN_MAIN), "analytics-config.php", "seo-config.php")
+OPTIONAL_POPULARITY = "data/hotel-popularity-v1.php"
 CANONICAL_INPUTS = ("v2/tour-controller-v4.js", "v2/lead-form-guard-v1.js")
 ALIASES = (("search-page-v2.php", "index.php"), ("index.php", "home-entry-v1.php"))
 
@@ -98,29 +100,41 @@ def stage_main(git: Git, tree: dict, site: Path) -> dict[str, str]:
     return owners
 
 
-def review_paths(graph: dict, roles: dict, source_tree: dict, resolver, scenario: str) -> list[str]:
-    initial = graph.get("public_review")
-    need(isinstance(initial, list) and initial, "pinned source has no public review graph")
+def candidate_paths(graph: dict, roles: dict, source_tree: dict, resolver,
+                    profile: str, scenario: str) -> list[str]:
+    initial = graph.get("public_" + profile)
+    need(isinstance(initial, list) and initial, "pinned source has no selected public graph")
     need(initial[0] == "./public-config-v1.js" and initial[-1] == "./app.js",
-         "review configuration must precede the existing offline graph and app")
+         "public configuration must precede the selected graph and app")
     need("./public-url-v1.js" in initial and "./public-bootstrap-v1.js" in initial,
          "public URL/bootstrap owners are missing")
-    need("./public-analytics-v1.js" not in initial, "review must not load public analytics")
-    need(len(initial) == len(set(initial)), "duplicate public review script")
+    if profile == "review":
+        need("./public-analytics-v1.js" not in initial, "review must not load public analytics")
+    else:
+        need(initial[1:3] == ["../runtime-v3.js", "../analytics-v4.js"]
+             and "./public-analytics-v1.js" in initial
+             and "./live-bridge.js" in initial
+             and "../prototype-search/messenger-flow-v1.js" in initial,
+             "public LIVE runtime/analytics/messenger graph is incomplete")
+        need(not set(initial) & set(graph["excluded_offline_scripts"]),
+             "public LIVE graph includes an offline owner")
+    need(len(initial) == len(set(initial)), "duplicate public script")
     paths = {resolver("v2/visual-search/index.html", src)
              for src in initial + list(graph["on_demand"].values()) + graph["styles"]}
     paths.update(path for path, labels in roles.items()
                  if set(labels) & {"static_asset", "font_license"})
     paths.update({"v2/visual-search/index.php", "v2/visual-search/entry-v1.php",
-                  "v2/visual-search/index.html", OLD_ROUTE, SAVED_FIXTURE})
+                  "v2/visual-search/index.html", OLD_ROUTE})
     # These are the local demo photos returned by the fixed family adapter.
     # Snapshot hotels use the captured HTTPS URLs; journey-only photos are not
     # part of either allowed build profile. The test executes the served adapter.
-    if scenario == "family":
-        paths.update(FAMILY_PHOTOS)
+    if profile == "review":
+        paths.add(SAVED_FIXTURE)
+        if scenario == "family":
+            paths.update(FAMILY_PHOTOS)
     need(PUBLIC_WRAPPER in source_tree, "public wrapper is missing")
     for path in paths:
-        need(path in source_tree, f"missing review dependency: {path}")
+        need(path in source_tree, f"missing public dependency: {path}")
     need(PUBLIC_WRAPPER not in paths, "public wrapper must only replace the public route")
     return sorted(paths)
 
@@ -230,7 +244,9 @@ def build(args) -> dict:
     try:
         destination = output_path(args.output, args.repo, git.metadata_dirs)
         candidate, main = git.commit(args.candidate_sha), git.commit(args.main_sha)
+        need(args.profile in ("review", "live"), "only explicit review/live profiles are supported")
         need(args.scenario in ("family", "snapshot"), "only fixed family/snapshot review scenarios are supported")
+        need(args.profile != "live" or args.scenario == "family", "scenario selection applies only to review")
         source_tree, main_tree = git.tree(candidate["sha"]), git.tree(main["sha"])
         helpers = {}
         for prefix in (COMPILER_DIR + "/", INVENTORY, SNAPSHOT):
@@ -251,9 +267,14 @@ def build(args) -> dict:
             inventory = load_module(source / INVENTORY, "search3_pinned_inventory")
             snapshot_helper = load_module(source / SNAPSHOT, "search3_pinned_snapshot")
             graph, roles = inventory.client_graph(git, source_tree)
-            paths = review_paths(graph, roles, source_tree, inventory.resolve_ref, args.scenario)
+            graph_key = "public_" + args.profile
+            paths = candidate_paths(graph, roles, source_tree, inventory.resolve_ref,
+                                    args.profile, args.scenario)
             owners = stage_main(git, main_tree, site)
             baseline = files_metadata(site)
+            if args.profile == "live":
+                for path in LIVE_MAIN_DEPENDENCIES:
+                    need(path in baseline, f"public LIVE requires an existing main dependency: {path}")
             replacements = check_collisions(git, source_tree, main_tree, owners, paths)
 
             # Keep rollback material outside the served root. It contains only
@@ -263,8 +284,8 @@ def build(args) -> dict:
             snapshot_dir = snapshot_helper.snapshot(site, package / "rollback", inventory_file,
                                                      "main-routes", main["sha"])
             compiled, versions = compile_source(source, args.node, args.node_modules)
-            need(compiled["graphs"].get("public_review") == graph["public_review"],
-                 "compiler and strict inventory disagree about the public review graph")
+            need(compiled["graphs"].get(graph_key) == graph[graph_key],
+                 "compiler and strict inventory disagree about the selected public graph")
             groups = {"added": [], "replaced": [], "protected": []}
             retained_compiled = [{"path": row["target"],
                                   "compiled_candidate": file_metadata(source / "v2" / row["target"]),
@@ -273,7 +294,7 @@ def build(args) -> dict:
             for path in paths:
                 relative = path.removeprefix("v2/")
                 compiled_path = source / path
-                need(compiled_path.is_file(), f"compiled review dependency missing: {path}")
+                need(compiled_path.is_file(), f"compiled public dependency missing: {path}")
                 if relative in baseline and relative not in replacements:
                     continue
                 target = site / relative
@@ -289,11 +310,11 @@ def build(args) -> dict:
                                        "source": git.metadata(source_tree[PUBLIC_WRAPPER]),
                                        "before": baseline[PUBLIC_ROUTE],
                                        "served": file_metadata(site / PUBLIC_ROUTE)})
-            profile = {"schemaVersion": 1, "profile": "review", "scenario": args.scenario}
+            profile = {"schemaVersion": 1, "profile": args.profile, "scenario": args.scenario}
             (site / BUILD_PROFILE).write_text(json.dumps(profile, separators=(",", ":")) + "\n")
             os.chmod(site / BUILD_PROFILE, 0o644)
             groups["added"].append({"path": BUILD_PROFILE, "source_path": None,
-                                    "source": "fixed builder review profile",
+                                    "source": "explicit builder profile; never query-selected",
                                     "served": file_metadata(site / BUILD_PROFILE)})
             for path in sorted(baseline):
                 if path in replacements:
@@ -314,16 +335,18 @@ def build(args) -> dict:
                  "overlay contains a missing or protected main file")
             rollback = rehearse(snapshot_helper, snapshot_dir, site, baseline, groups, work)
             manifest = {
-                "schema_version": 1, "purpose": "local_public_review_candidate",
+                "schema_version": 1,
+                "purpose": "local_public_review_candidate" if args.profile == "review" else "local_public_live_install_candidate",
                 "deployable": False, "profile": profile,
                 "network_used": False, "checkout_changed": False, "published": False,
                 "candidate": candidate, "main": main,
                 "source_scope": "immutable Git source; main is not the installed predecessor",
                 "served_root": "site", "overlay_root": "overlay",
-                "overlay_scope": "bounded route replacements and listed additions only; not an installation package",
+                "overlay_scope": "bounded route replacements and listed additions only; not authorized for installation",
                 "resource_base": "/visual-search/", "public_path": "/poisk-turov/",
                 "aliases": [{"target": target, "source": source} for target, source in ALIASES],
-                "review_graph": graph["public_review"],
+                args.profile + "_graph": graph[graph_key],
+                "graph": {"initial": graph[graph_key], "on_demand": graph["on_demand"], "styles": graph["styles"]},
                 "compilation": {"versions": versions,
                                 "inputs": {p: git.metadata(helpers[p]) for p in sorted(helpers)},
                                 "canonical_inputs": {p: git.metadata(source_tree[p]) for p in CANONICAL_INPUTS},
@@ -331,12 +354,23 @@ def build(args) -> dict:
                                 "manifest_scope": "separate source compilation, not final served hashes",
                                 "retained_main_instead_of_compiled": retained_compiled},
                 "files": groups, "rollback": rollback,
-                "boundaries": ["review only; query cannot select live profile",
+                "boundaries": ["profile is selected at build time; query cannot change it",
                                "no PHP execution, browser/server check, supplier measurement or lead delivery is claimed",
                                "main homepage, SEO, price, data and lead owners are retained; installed configuration is not copied",
                                "only the two page aliases are staged; installed standalone bridge/receiver configuration is not inferred",
-                               "source live capability and production installation require separate review"],
+                               "LIVE payload completeness does not verify installed INT/LOCAL/signer/bot dependencies or authorize a production switch"],
             }
+            if args.profile == "live":
+                manifest["server_dependencies"] = {
+                    "status": "unverified; no server or configuration was read",
+                    "retained_main": {path: baseline[path] for path in LIVE_MAIN_DEPENDENCIES},
+                    "optional_popularity": {"path": OPTIONAL_POPULARITY,
+                                            "present_in_main": OPTIONAL_POPULARITY in baseline,
+                                            "candidate_copied": False,
+                                            "transitive_dependencies_verified": False},
+                    "endpoint_admission": "existing INT/LOCAL paths, session, signer and bot consumer require installed verification",
+                    "rollback_admission": "a fresh server-local predecessor snapshot and restore drill are still required",
+                }
             for name, value in (("manifest.json", manifest), ("compiler-output.json", compiled),
                                 ("rollback-rehearsal.json", rollback)):
                 (package / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
@@ -357,14 +391,17 @@ def main() -> int:
     parser.add_argument("--candidate-sha", required=True)
     parser.add_argument("--main-sha", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--scenario", choices=("family", "snapshot"), default="family")
+    parser.add_argument("--profile", choices=("review", "live"), default="review",
+                        help="offline artifact profile; live does not authorize or perform installation")
+    parser.add_argument("--scenario", choices=("family", "snapshot"), default="family",
+                        help="REVIEW fixture selection; LIVE does not include fixture data")
     parser.add_argument("--node", default="node")
     parser.add_argument("--node-modules", type=Path,
                         default=Path(__file__).resolve().parent / "search3-js/node_modules")
     args = parser.parse_args()
     try:
         result = build(args)
-        print(json.dumps({"status": "local_public_review_written", "deployable": False,
+        print(json.dumps({"status": "local_public_" + args.profile + "_written", "deployable": False,
                           "candidate_sha": result["candidate"]["sha"], "main_sha": result["main"]["sha"],
                           "profile": result["profile"],
                           "files": {key: len(rows) for key, rows in result["files"].items()},

@@ -48,6 +48,7 @@ class PublicCandidateTest(unittest.TestCase):
             "home-entry-v1.php": b"<?php /* MAIN_HOMEPAGE */\n",
             PUBLIC_ROUTE: b"<?php /* MAIN_PUBLIC_ROUTE */\n",
             "config.php": b"<?php /* MAIN_VERSIONED_CONFIG_FIXTURE */\n",
+            "analytics-config.php": b"<?php /* MAIN_ANALYTICS_CONFIG_OWNER */\n",
             "seo-config.php": b"<?php /* MAIN_SEO_OWNER */\n",
             "lead-price-v1.php": b"<?php /* MAIN_PRICE_OWNER */\n",
             "lead-adapter-v2.php": b"<?php /* MAIN_ADAPTER_SOURCE_NOT_INSTALLED_BRIDGE */\n",
@@ -79,6 +80,11 @@ class PublicCandidateTest(unittest.TestCase):
         if result.returncode:
             raise RuntimeError(result.stderr)
         cls.manifest = json.loads((cls.review / "manifest.json").read_text())
+        cls.live = cls.base / "live-candidate"
+        result = cls.run_tool(output=cls.live, extra=("--profile", "live"))
+        if result.returncode:
+            raise RuntimeError(result.stderr)
+        cls.live_manifest = json.loads((cls.live / "manifest.json").read_text())
         sys.path.insert(0, str(SCRIPT.parent))
         spec = importlib.util.spec_from_file_location("search3_candidate_under_test", SCRIPT)
         cls.tool = importlib.util.module_from_spec(spec)
@@ -184,6 +190,72 @@ class PublicCandidateTest(unittest.TestCase):
         self.assertTrue(proof["all_main_bytes_and_modes_restored"])
         self.assertEqual(proof["restored"][PUBLIC_ROUTE]["mode"], "0755")
         self.assertEqual(proof["removed_additions"], len(self.manifest["files"]["added"]))
+
+    def test_explicit_live_closure_retains_main_and_has_no_offline_or_php_expansion(self) -> None:
+        manifest, site = self.live_manifest, self.live / "site"
+        self.assertEqual(manifest["purpose"], "local_public_live_install_candidate")
+        self.assertEqual(manifest["profile"], {"schemaVersion": 1, "profile": "live", "scenario": "family"})
+        self.assertFalse(manifest["deployable"])
+        self.assertFalse(manifest["network_used"])
+        self.assertFalse(manifest["published"])
+        self.assertEqual(len(manifest["live_graph"]), 22)
+        self.assertEqual(manifest["graph"]["initial"], manifest["live_graph"])
+        self.assertEqual(manifest["live_graph"][:3],
+                         ["./public-config-v1.js", "../runtime-v3.js", "../analytics-v4.js"])
+        self.assertIn("./public-analytics-v1.js", manifest["live_graph"])
+        self.assertIn("./live-bridge.js", manifest["live_graph"])
+        self.assertIn("../prototype-search/messenger-flow-v1.js", manifest["live_graph"])
+        for ref in [*manifest["live_graph"], *manifest["graph"]["on_demand"].values(), *manifest["graph"]["styles"]]:
+            self.assertTrue((site / "visual-search" / ref).is_file(), ref)
+        for absent in ("fixture-data.js", "recorded-data.js", "preview-lead.js", "local-db-parser.js",
+                       "fixtures/live-search-2026-09-23.json", "assets/photo-1.jpg", "assets/photo-2.jpg"):
+            self.assertFalse((site / "visual-search" / absent).exists(), absent)
+        self.assertFalse((site / "prototype-search/config.js").exists(), "only the public config selects LIVE")
+        overlay = self.live / "overlay"
+        self.assertFalse((overlay / "data").exists(), "LIVE must not add PHP/DB dependencies")
+        self.assertFalse((overlay / "app").exists(), "LIVE must not copy a supplier or MATCH implementation")
+        self.assertFalse((overlay / "api-v2.php").exists())
+        self.assertEqual([row["path"] for row in manifest["files"]["replaced"]], [PUBLIC_ROUTE])
+        for relative, expected in self.main_files.items():
+            if relative not in (PUBLIC_ROUTE, "index.php"):
+                self.assertEqual((site / relative).read_bytes(), expected, relative)
+        for name in ("runtime-v3.js", "lead-search-context.js", "analytics-v4.js"):
+            self.assertFalse((overlay / name).exists(), name)
+            self.assertEqual(manifest["server_dependencies"]["retained_main"][name],
+                             self.tool.file_metadata(site / name))
+        popularity = manifest["server_dependencies"]["optional_popularity"]
+        self.assertFalse(popularity["present_in_main"])
+        self.assertFalse(popularity["candidate_copied"])
+        self.assertFalse(popularity["transitive_dependencies_verified"])
+        for rows in manifest["files"].values():
+            for row in rows:
+                self.assertEqual(self.tool.file_metadata(site / row["path"]), row["served"])
+        self.assertEqual(self.tool.files_metadata(overlay),
+                         {row["path"]: row["served"]
+                          for row in manifest["files"]["added"] + manifest["files"]["replaced"]})
+        compiled = json.loads((self.live / "compiler-output.json").read_text())
+        additions = {row["path"] for row in manifest["files"]["added"]}
+        for row in compiled["files"]:
+            if row["target"] in additions:
+                self.assertEqual(self.tool.file_metadata(site / row["target"])["sha256"], row["sha256"])
+        proof = manifest["rollback"]
+        self.assertTrue(proof["all_main_bytes_and_modes_restored"])
+        self.assertEqual(proof["restored"][PUBLIC_ROUTE]["mode"], "0755")
+        self.assertEqual(proof["removed_additions"], len(manifest["files"]["added"]))
+
+    def test_live_refuses_missing_retained_main_dependencies_and_new_owner_collisions(self) -> None:
+        for name in self.tool.LIVE_MAIN_DEPENDENCIES:
+            with self.subTest(dependency=name):
+                self.git("reset", "--hard", self.main_sha)
+                (self.repo / "v2" / name).unlink()
+                output = self.base / ("missing-live-" + name)
+                result = self.run_tool(main=self.commit(), output=output, extra=("--profile", "live"))
+                self.assert_refused(result, output, "requires an existing main dependency: " + name)
+        self.git("reset", "--hard", self.main_sha)
+        self.write("v2/prototype-search/data.js", b"DIFFERENT_MAIN_DATA_OWNER\n")
+        output = self.base / "live-owner-collision"
+        self.assert_refused(self.run_tool(main=self.commit(), output=output, extra=("--profile", "live")),
+                            output, "overwrite a protected main file: prototype-search/data.js")
 
     def test_actual_served_family_adapter_local_photos_are_in_payload(self) -> None:
         # The previous live-only asset closure omitted the demo photos even
@@ -319,12 +391,15 @@ require dirname(__DIR__) . '/index.php';
         self.assertIn("symlink", result.stderr)
         self.assertFalse((marker / "review").exists())
 
-    def test_no_live_profile_or_dependency_install_fallback(self) -> None:
-        output = self.base / "live-review"
-        result = self.run_tool(output=output, extra=("--profile", "live"))
+    def test_no_implicit_profile_or_dependency_install_fallback(self) -> None:
+        output = self.base / "invalid-profile"
+        result = self.run_tool(output=output, extra=("--profile", "automatic"))
         self.assertEqual(result.returncode, 2)
-        self.assertIn("unrecognized arguments", result.stderr)
+        self.assertIn("invalid choice", result.stderr)
         self.assertFalse(output.exists())
+        output = self.base / "live-snapshot"
+        result = self.run_tool(output=output, extra=("--profile", "live", "--scenario", "snapshot"))
+        self.assert_refused(result, output, "scenario selection applies only to review")
         output = self.base / "missing-deps-review"
         result = self.run_tool(output=output, extra=("--node-modules", str(self.base / "absent-dependencies")))
         self.assert_refused(result, output, "no install is performed")

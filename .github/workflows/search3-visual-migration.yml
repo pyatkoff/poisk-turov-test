@@ -167,6 +167,28 @@ jobs:
           name: search3-public-review-${{ github.event.pull_request.head.sha }}
           path: ${{ runner.temp }}/search3-public-review/
           if-no-files-found: error
+      - name: Build the offline public LIVE candidate against inspected main
+        id: public-live-build
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -B scripts/build/search3_public_candidate.py \
+            --repo . --candidate-sha "$SOURCE_SHA" \
+            --main-sha c5513aaee18af701f1253678e79f41e5725b71a2 \
+            --profile live --output "$RUNNER_TEMP/search3-public-live" \
+            --node-modules "$PWD/scripts/build/search3-js/node_modules"
+      - name: Verify the mixed-main compiled public LIVE graph with fictional transports
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_PUBLIC_LIVE_ROOT: ${{ runner.temp }}/search3-public-live
+        run: node tests/search3-public-live-browser.cjs
+      - name: Retain exact offline LIVE candidate and rollback evidence
+        if: ${{ always() && steps.public-live-build.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-public-live-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/search3-public-live/
+          if-no-files-found: error
       - name: Affected messenger flow on the exact compiled graph
         env:
           NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules

@@ -124,7 +124,7 @@ class PublicEntryTest(unittest.TestCase):
 
     def test_live_capability_is_explicit_and_reuses_existing_helpers(self):
         self.profile("live")
-        html, status = self.render()
+        html, status = self.render(query="profile=review&scenario=family&leadApi=/lead-adapter-v2.php")
         self.assertEqual(status, {"status": 200, "site_config_loaded": True, "counter_loaded": True})
         page = Page(html); cfg = page.configs[0]
         self.assertEqual((cfg["profile"], cfg["leadApi"], cfg["metrikaCounter"]),

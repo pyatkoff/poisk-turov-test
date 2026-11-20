@@ -2,14 +2,16 @@
 
 Status: **production preparation in progress; current visual-search transfer is NOT ready for activation. No live backup captured and no production switch authorized.**
 
-This runbook applies to the eventual whole-site Search3 migration. It does not widen the nine-file search-only deploy allowlist and it does not authorize the existing production workflow. Owner approval of the exact preview version is still required.
+This runbook applies to the eventual whole-site Search3 migration. It does not widen the nine-file search-only deploy allowlist and it does not authorize the existing production workflow. The shown public contact interface is approved; the installation still needs the concrete route, configuration, installed predecessor and rollback evidence described below.
 
 ## Current preparation — 2026-11-20
 
 Pavel authorized preparing the concrete migration package after reviewing the installed
-ORIGINAL NEXT. The working interface must still be shown and approved before the
-production switch. This preparation makes no supplier requests, sends no applications,
-does not change secrets or protected contracts, and does not authorize a server run.
+ORIGINAL NEXT. He subsequently approved the shown public contact interface from
+`8d5fc37fdc7baca67f0a26444a4548f8c7ded38c` with «дальше». The following package work
+keeps those runtime and UI owners unchanged. This preparation makes no supplier
+requests, sends no applications, does not change secrets or protected contracts,
+and does not authorize a server run.
 
 Pavel clarified the primary contact path on the same day: **selected tour →
 Telegram/MAX → the existing manager conversation**. The legacy phone/Bitrix
@@ -24,8 +26,10 @@ The phone transport and its historical acceptance below remain separate.
 - Accepted NEXT source `d6e0563d598b32d59d6219e68eed97340f2e68a1`, release
   `63844d4093e82dbe2810294514fe2a881df981ed` / PR5117;
   [installation receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7031874040).
-- Current Git `main` at preparation: `e68fe088764521c7ff6b605403ca7f2ebb7e4dd6`.
-  This is a source reference, **not a verified installed production revision**.
+- Initial REVIEW Git `main` input: `e68fe088764521c7ff6b605403ca7f2ebb7e4dd6`.
+  The explicit LIVE package uses inspected `c5513aaee18af701f1253678e79f41e5725b71a2`;
+  both have the same `v2` tree, `3e3d9bc8315daa13f5e052ddbd5678597999a49b`.
+  These are source references, **not verified installed production revisions**.
 - [Public integration preparation claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7040614703),
   continuing [PR5118](https://github.com/pyatkoff/poisk-turov-test/pull/5118) on
   `work/search3-production-prep-20261120`. Its first source preparation was
@@ -80,7 +84,7 @@ either `/poisk-turov/` or the NEXT publisher.
    reset the canonical catalog, guess native hotel IDs, or count a messenger handoff
    as delivered lead. The review graph does not load analytics at all.
 
-### Public messenger contact proposal
+### Approved public messenger contact
 
 The existing contact component now has a public-only presentation mode. Its tour
 recap, room, meal, family, flights and whole-party amount keep their existing
@@ -102,16 +106,18 @@ the retained PR5117 NEXT source above. Candidate identity is the final commit/tr
 in the generated manifest. The affected review covers contact, unavailable state
 and return at 430/1280, including the retained 3-adult, children aged 0/12,
 Standard/AI, 186400-RUB fictional example. This is a scope description, not a
-completed-test or 9.5/10 claim. Exact-source CI receipts and inspected frames must
-be attached to the current claim before asking for a live interface change.
+completed-test or 9.5/10 claim. The later shown `8d5fc37...` interface is approved;
+its [exact-source receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7044198437)
+does not prove that the new mixed-main LIVE artifact has passed CI or is installed.
 The NEXT-only profile keeps its existing phone option and behavior until a
 separately reviewed change is approved.
 
 ### Review artifact and local rollback rehearsal
 
-`scripts/build/search3_public_candidate.py` builds only an isolated **review**
-artifact. There is no live-profile CLI option or server executor. Its inputs are
-immutable Git objects and already installed, version-checked compiler dependencies:
+`scripts/build/search3_public_candidate.py` defaults to an isolated **review**
+artifact. Its explicit offline LIVE profile is described below; neither profile
+has a server executor. Inputs are immutable Git objects and already installed,
+version-checked compiler dependencies:
 
 ```sh
 python3 scripts/build/search3_public_candidate.py \
@@ -149,6 +155,80 @@ restore**, not a backup or rollback test of the running site. The artifact alway
 `deployable: false`; current installed hashes and a live rollback snapshot are still
 required before an approved installation.
 
+### Explicit offline LIVE installation candidate
+
+The [bounded packaging claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7045452012)
+continues PR5118. It adds a build-time choice without changing the approved UI,
+transport, API, session, signing, lead or analytics owners:
+
+```sh
+python3 scripts/build/search3_public_candidate.py \
+  --repo . \
+  --candidate-sha <40-character-reviewed-commit> \
+  --main-sha c5513aaee18af701f1253678e79f41e5725b71a2 \
+  --profile live \
+  --output <new-directory-outside-any-checkout> \
+  --node-modules <existing-pinned-compiler-node_modules>
+```
+
+The manifest purpose is `local_public_live_install_candidate`; `deployable`,
+`published` and `network_used` remain false. The exact graph contains 22 initial
+scripts, three existing on-demand modules and two stylesheets. `site/` contains
+the mixed candidate/main runtime; `overlay/` contains only the bounded route
+replacements and additions. Every final file has its served hash, size and mode.
+Compiler output is recorded separately. The existing source-based rollback
+rehearsal removes only matching additions and restores every main byte and mode.
+
+LIVE requires existing main `runtime-v3.js`, `analytics-v4.js`,
+`lead-search-context.js`, `analytics-config.php` and `seo-config.php`. It retains
+them exactly. It does not expand PHP, DB, MATCH or supplier code from the candidate.
+Optional `data/hotel-popularity-v1.php` stays absent when absent from main; if
+present, it stays main-owned and its transitive dependencies remain explicitly
+unverified. Existing installed configuration and backend admission cannot be
+inferred from these source files.
+
+The LIVE closure excludes family/snapshot adapters, saved offer JSON and demo
+photos. The build-profile schema retains its existing `scenario: family` field,
+which is only a REVIEW selector; LIVE initializes the existing live bridge and
+reports `AnyTourPrototypeData.scenario === 'live'`. `--profile live --scenario
+snapshot` is refused. URL parameters cannot select a different profile or activate
+the phone sender, and the isolated whole-site review prefix rejects LIVE.
+
+The existing `search3-visual-migration.yml` job builds and retains the exact LIVE
+artifact, then runs `tests/search3-public-live-browser.cjs`. That bounded check
+renders the actual PHP entry and serves only inventoried compiled assets. At
+430/1280 it exercises the initial graph and all three on-demand modules, the
+fictional 3-adult/children 0/12 selection, a concrete flight pair, messenger-only
+contact, unknown CREATE, explicit status on the same operation, unavailable state
+and return to the same tour. All data and handoff responses are intercepted;
+unlisted routes, supplier/bot requests and phone submissions fail the check.
+Unexpected executable local configuration or optional DB bootstrap also fails
+closed. Screenshots and receipts join the existing visual evidence artifact.
+Read the actual final-source CI result before claiming this compiled check passed.
+
+This package is inspectable installation input, not a production installer. It
+does not provide fresh installed INT/LOCAL/configuration hashes, a server-local
+predecessor snapshot, a production rollback drill or a write procedure. Those
+remaining dependencies must be resolved for the exact installation; the local
+source restore cannot stand in for them.
+
+### Source integration and publication boundaries
+
+Merging the accepted source into the inspected `release` revision is source
+integration only. For the PR5118 path set inspected at `8d5fc37...`, the only
+matching release-push workflow performs the temporary-files rollback fixture
+drill. It does not publish NEXT, write a server or contact a provider. Recheck this
+conclusion if the workflow/path set changes. The existing NEXT publisher still
+requires its explicit command and targets only `/_preview/search3-next-candidate/`;
+the whole-site preview publisher is a separate fixed-prefix review operation.
+
+The historical broad `deploy-anytoour.yml` runs on matching pushes to `main`
+(`v2/**` or its own workflow path). It copies the whole site, prepares the legacy
+receiver and contains lead/provider smoke requests. It is not an admitted path for
+this bounded public package. A source merge must not silently trigger that path
+or be described as an installation. No paid provider request, application, booking
+or bot message is authorized by this package work.
+
 ### Exact offline runtime inventory
 
 `scripts/build/search3_production_inventory.py` reads two immutable, already available
@@ -166,7 +246,7 @@ python3 scripts/build/search3_production_inventory.py \
 The output records source Git objects, paths and SHA256 values for the retained NEXT
 live/on-demand script and stylesheet closure, static assets and its direct optional
 PHP dependency. It also exposes the derived public LIVE and REVIEW declarations for
-the separate review builder; these declarations are not a complete public installation
+the separate public builder; these source declarations alone are not a complete public installation
 inventory. The initial preparation
 at `189d1eac` counted 38 source files; that historical count must not be reused for
 the expanded public entry. Use the manifest generated from the reviewed head.
@@ -186,13 +266,13 @@ That file is a source inventory, not executable configuration or an installation
 
 | Boundary | Current fact | Required result before activation |
 | --- | --- | --- |
-| Public entry | Installed route is unchanged; separate public wrapper and absolute asset binding are prepared and exercised in the review artifact | Review the exact artifact, confirm actual site configuration and approve the selected installation |
-| Private TV, direct ANEX, messenger | Same preview INT URL, distinct action/session/identity guards; retained installed pin map is available, fresh server state and public-page admission are not established | Verify current installed dependencies and explicitly review reuse of the existing URL or a separate mapping, preserving its session and identity admission; no root fallback or guessed API paths |
+| Public entry | Shown messenger-only interface approved; fresh read-only inventory confirms the existing public route still matches its main predecessor | Verify the exact mixed-main LIVE artifact, actual site configuration and the concrete installation/rollback procedure |
+| Private TV, direct ANEX, messenger | Same preview INT URL, distinct action/session/identity guards; fresh read-only inventory matches all 14 retained INT code pins | Verify private enable flags, configuration, signer/bot dependencies and public-page admission; preserve the existing session and identity rules, with no root fallback or guessed API paths |
 | LOCAL catalog/calendar/content | Prepared public clients explicitly reuse existing preview endpoints; their filesystem admission and DTO checks are unchanged | Verify actual installed dependencies with the existing read-only and identity rules |
 | Messenger delivery | Existing INT producer uses `https://app.anytoour.ru/search3/tour-handoff.php` and returns Telegram/MAX links | Preserve the saved exact tour, signing/session admission and existing bot consumer; distinguish ready/opened links from arrival in the manager conversation |
 | Separate phone transport | Existing `/lead-adapter-v2.php` is the public HMAC bridge to the legacy receiver; the proposed public messenger contact does not invoke it | Preserve existing site owners. Its access and field mapping are prerequisites only if phone delivery is separately activated, not for Telegram/MAX |
 | Analytics and inbound links | Source public integration preserves existing goals and resolves supported old links before hydration; review sends no analytics | Verify the installed public counter/configuration and exact public flow before activation |
-| Production predecessor | No fresh installed revision or private live snapshot was read | Read the actual predecessor and use the existing snapshot/restore tooling immediately before the approved switch |
+| Production predecessor | Two identical read-only inventories record the existing public route and known root owners; no private live snapshot exists | Bind the final install delta to current predecessor hashes and use the existing snapshot/restore tooling immediately before the approved switch |
 
 Missing bindings are not satisfied by removing `nativeEndpoint`, path or filesystem
 guards. SAMO/Andromeda remains paused. The historical supplier attempts and September
@@ -217,12 +297,39 @@ still uses that installed pin map. This was maintenance with 12 selected / 14 pi
 files and one changed private quote client, not a whole-runtime reinstall from one
 commit. The API, messenger authorization and TV gateway source hashes inspected for
 the URL/session analysis match this retained installed map; the newer private TV
-client changes in `3207266...` are not installed. No successful fresh installed-file
-inventory was obtained on 20 November. The single readiness attempt
+client changes in `3207266...` are not installed. The earlier readiness attempt
 [44759079166](https://github.com/pyatkoff/poisk-turov-test/actions/runs/44759079166)
 stopped before file hashes and remains consumed/no-replay. It does not establish
-an installed-file mismatch. The public `anex-preview-manifest.json` is not updated by this
-maintenance executor and cannot replace its private installation receipt.
+an installed-file mismatch. After the separately reviewed read-only control fix,
+[command 7045609219](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7045609219)
+ran once in [44779751229](https://github.com/pyatkoff/poisk-turov-test/actions/runs/44779751229),
+job `136438969050`, attempt 1, and succeeded. The control source is PR5120
+`b88ce8e58b41cbd2f3977e07bae71c461fea2167`, merged at main
+`f58b6bb2a2873b4386321fab2a678d3113aa44c3` with the same `v2` tree used above.
+Artifact `14651686519` has ZIP SHA256
+`1ec03d04cfff7e65cdf186d49c3b58cf2fe3e43dd78ce4c759352f4bd0dcfb5f`.
+The [verified receipt and packaging scope amendment](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7045700047)
+records evidence JSON SHA256
+`3484f7597d68321365084115752dcbc0dba651888b8fb0164cc5f288cd4d78fb`.
+That readiness command is terminal/consumed; the package does not authorize replay.
+
+Both passes returned the same 23 rows: 22 present files and the absent old-search
+route. All 14 INT pins match the retained `6dcfb505...` installation map; both NEXT
+pins match PR5117; the public search route matches its expected main predecessor.
+This is fresh **installed code identity** evidence. It does not read private flags,
+prove LOCAL/configuration/signer readiness, exercise PHP or API calls, create a
+session or capture a rollback snapshot. `installation_ready` remains false.
+The public `anex-preview-manifest.json` is not updated by the maintenance executor
+and cannot replace these private installation/readback receipts.
+
+The actual root `index.php` hash is
+`80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f`, matching
+the source main search page, not the builder's staged homepage alias. Root
+`api-v2.php` is `90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2`,
+the known `CONTEXT_ROOT_HASH` of the existing root gateway installation control.
+These are known installed owners, not an inferred drift defect. Both remain
+outside the public overlay. Full root/admin routing acceptance is still unknown;
+the staged source aliases must not be used to replace either installed owner.
 
 ### Historical phone installer: access failure and separate recovery
 

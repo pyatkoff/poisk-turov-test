@@ -43,7 +43,7 @@ function job(workflow,name){
 // The pre-split workflow had 46 Node test invocations and 37 distinct commands.
 // Keep every distinct argv once; --browser and --messenger-only are separate cases.
 const requiredCommands=[
- 'search3-public-entry.cjs','search3-public-bindings.cjs','search3-public-review-browser.cjs',
+ 'search3-public-entry.cjs','search3-public-bindings.cjs','search3-public-review-browser.cjs','search3-public-live-browser.cjs',
  'local-tv-catalog-browser.cjs','local-tv-catalog-browser.cjs --browser',
  'search3-messenger-context.cjs','search3-messenger-flow.cjs','search3-prototype-messenger-handoff.cjs',
  'search3-visual-anex-flight-continuation.cjs','search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"',
