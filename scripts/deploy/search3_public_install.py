@@ -32,26 +32,30 @@ INSPECT_PREFIX = '/inspect-search3-public-install'
 INSPECT_OPERATION = 'public-search3-readiness-20261120-v1'
 ROLLBACK_PREFIX = '/rollback-search3-public'
 ROLLBACK_OPERATION = 'public-search3-rollback-20261120-v1'
-SOURCE = 'f4d14cb7a66be040798693e9a47a2d023c48de7e'
-TREE = '80b89f7e605594288f72e9cab885a6c60cc19a71'
-RELEASE = '9040bb83011a18ec5f001c57f92218e53f0b255c'  # Reviewed PR5118 release merge; SOURCE tree is identical.
+SOURCE_PR = 5123
+SOURCE = '78fea1dfc2e40ccb8eeddbe1265cdda66ad0f8b4'
+TREE = 'aa5049aff4409631beb954f6af9ea1f46c783664'
+RELEASE = 'f371951e1484757a0d68b230f95df57e989dccdf'  # Reviewed PR5123 release merge; SOURCE tree is identical.
 BUILD_MAIN = 'c5513aaee18af701f1253678e79f41e5725b71a2'
 # Exact LIVE build proof; admission separately requires every final source check
 # and the normal release merge before any server connection.
-BUILD_RUN = 44785537969
-ARTIFACT = 14653981913
-ARTIFACT_SHA = '37e7c65f1c9f8c2b88df76c8b42191a6695ba8c8ac44a63a5ac4681b60f3bc7f'
-MANIFEST_SHA = '3ef8fadb6db83cff9709fdc06d0dcaf41673456c92b1e77f40cdc8444ae8da5f'
+BUILD_RUN = 44802677428
+ARTIFACT = 14662415242
+ARTIFACT_SHA = '0be1d080feaa901610d7ff04f4130dd3008fc6836f1dbd5e515012ac3d48d5f7'
+MANIFEST_SHA = '6ddd380ff7d72098431e7b9e57061a5a34c73babc7736cfdd053af2b7db3c6f4'
 # Filled only from the final accepted original metadata, never from caller input.
-ARTIFACT_NAME = 'search3-public-live-f4d14cb7a66be040798693e9a47a2d023c48de7e'
-SOURCE_CHECK_NAMES = ('visual-migration','focused-presentation','integration-contracts','browser-matrix','lead-source','focused',
-                      'destination-identities','contract','build-preview-artifact','guard','source-receipt','fixture-drill',
-                      'canonical-cards','canonical-meal-client','renderer-date-display')
+ARTIFACT_NAME = 'search3-public-live-78fea1dfc2e40ccb8eeddbe1265cdda66ad0f8b4'
+SOURCE_CHECK_NAMES = ('visual-migration','focused-presentation','integration-contracts','browser-matrix','lead-source',
+                      'build-preview-artifact','guard')
 SIGNING_ARTIFACT = 14651207961
 SIGNING_ARTIFACT_SHA = 'd9f756a73a6e6513b5f858426936b510f400eb9ad9a41678aa4f3ef7a553dab9'
 SIGNING_RESULT_SHA = '26a2a0c9fffe620746d2c2b9d73b695ec92a3bd5f36b7d551b3ce321855d049d'
 SIGNING_RUN = 44781856520
 SIGNING_RECEIPT_COMMENT = 7046090497
+# This consumed inspection records its original candidate identity. A later
+# reviewed candidate with the same predecessor/dependency scope cannot relabel it.
+PREFLIGHT_SOURCE = 'f4d14cb7a66be040798693e9a47a2d023c48de7e'
+PREFLIGHT_MANIFEST_SHA = '3ef8fadb6db83cff9709fdc06d0dcaf41673456c92b1e77f40cdc8444ae8da5f'
 PREFLIGHT_RUN = 44790620377
 PREFLIGHT_CONTROL = '927d3f213eadad98dcf4771c0c21612af7bfd0ed'
 PREFLIGHT_COMMAND = 7047112039
@@ -277,7 +281,7 @@ def reviewed_control(control):
 def final_heads(identity):
     need(api('/git/ref/heads/main')['object']['sha'] == identity['control_source_sha'], 'main_moved')
     need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha'] == RELEASE, 'release_moved')
-    pr = api('/pulls/5118')
+    pr = api('/pulls/' + str(SOURCE_PR))
     need(pr.get('state') == 'closed' and pr.get('merged') is True and pr.get('merge_commit_sha') == RELEASE and pr.get('head', {}).get('sha') == SOURCE
          and pr.get('head', {}).get('repo', {}).get('full_name') == REPO
          and pr.get('base', {}).get('ref') == 'release/search3-production-ready-v1'
@@ -978,8 +982,8 @@ def valid_result(identity, policy, result):
 
 
 def valid_inspection_result(identity, policy, result):
-    fixed = {'schema_version': 1, 'operation_id': INSPECT_OPERATION, 'source_sha': SOURCE,
-             'manifest_sha256': MANIFEST_SHA, **identity, 'read_only': True, 'server_writes': 0,
+    fixed = {'schema_version': 1, 'operation_id': INSPECT_OPERATION, 'source_sha': policy['source'],
+             'manifest_sha256': policy['manifest'], **identity, 'read_only': True, 'server_writes': 0,
              'supplier_calls': 0, 'database_reads': 0, 'database_writes': 0, 'lead_calls': 0, 'booking_calls': 0, 'application_calls': 0}
     need(all(type(result.get(k)) is type(v) and result[k] == v for k, v in fixed.items()), 'inspection_identity')
     need(set(result) == set(fixed) | {'status', 'observed', 'private_checks', 'mismatches'} | ({'reason'} if 'reason' in result else set()), 'inspection_fields')
@@ -1026,7 +1030,8 @@ def preflight_evidence(raw, policy):
              'server_writes': 0, 'ssh_started': True, 'status': 'preflight_mismatch'}
     need(isinstance(value, dict) and set(value) == set(outer) | {'remote'}
          and all(type(value.get(k)) is type(v) and value[k] == v for k, v in outer.items()), 'preflight_identity')
-    original_policy = policy | {'read_only': True, 'operation': INSPECT_OPERATION, 'protected': PROTECTED}
+    original_policy = policy | {'read_only': True, 'operation': INSPECT_OPERATION, 'protected': PROTECTED,
+                               'source': PREFLIGHT_SOURCE, 'manifest': PREFLIGHT_MANIFEST_SHA}
     result = value['remote']; need(isinstance(result, dict), 'preflight_result')
     valid_inspection_result(identity, original_policy, result)
     need(result['status'] == 'preflight_mismatch'

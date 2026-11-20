@@ -82,8 +82,8 @@ def preflight_fixture(change=None, extra=False):
                               'size': m.INSTALL_REVIEWED.get(path, {}).get('size', 100)}
     observed['data/hotel-popularity-v1.php'] = {'state': 'absent'}
     identity = {'control_source_sha': m.PREFLIGHT_CONTROL, 'run_id': str(m.PREFLIGHT_RUN), 'command_comment_id': m.PREFLIGHT_COMMAND}
-    remote = {'schema_version': 1, 'operation_id': m.INSPECT_OPERATION, 'source_sha': m.SOURCE,
-              'manifest_sha256': m.MANIFEST_SHA, **identity, 'read_only': True, 'server_writes': 0,
+    remote = {'schema_version': 1, 'operation_id': m.INSPECT_OPERATION, 'source_sha': m.PREFLIGHT_SOURCE,
+              'manifest_sha256': m.PREFLIGHT_MANIFEST_SHA, **identity, 'read_only': True, 'server_writes': 0,
               'supplier_calls': 0, 'database_reads': 0, 'database_writes': 0, 'lead_calls': 0, 'booking_calls': 0, 'application_calls': 0,
               'status': 'preflight_mismatch', 'observed': observed,
               'private_checks': {label: {'presence_known': True, 'present': present, 'matches_expected': True, 'unchanged': True}
@@ -133,7 +133,7 @@ class Admission(unittest.TestCase):
     def fake_api(self, path):
         if path == '/git/ref/heads/main': return {'object': {'sha': CONTROL}}
         if path == '/git/ref/heads/release/search3-production-ready-v1': return {'object': {'sha': RELEASE}}
-        if path == '/pulls/5118':
+        if path == '/pulls/' + str(m.SOURCE_PR):
             return {'state':'closed','merged':True,'merge_commit_sha':RELEASE,'head':{'sha':m.SOURCE,'repo':{'full_name':m.REPO}},'base':{'ref':'release/search3-production-ready-v1','repo':{'full_name':m.REPO}}}
         if path.startswith('/git/commits/'): return {'tree':{'sha':m.TREE}}
         if path.startswith('/contents/.github/workflows/deploy-anytoour.yml'):
@@ -174,9 +174,33 @@ class Admission(unittest.TestCase):
             return value
         with self.assertRaisesRegex(RuntimeError,'build_run'): self.call_admission(running)
         def unmerged(path,value):
-            if path == '/pulls/5118': value['merged']=False
+            if path == '/pulls/' + str(m.SOURCE_PR): value['merged']=False
             return value
         with self.assertRaisesRegex(RuntimeError,'candidate_moved'): self.call_admission(unmerged)
+
+    def test_source_ci_requires_exact_checks_for_the_current_candidate(self):
+        for name in m.SOURCE_CHECK_NAMES:
+            for field, value in [('head_sha', '0' * 40), ('status', 'in_progress'),
+                                 ('conclusion', 'skipped'), ('app', {'slug': 'untrusted'})]:
+                def changed(path, response):
+                    if '/check-runs?' in path:
+                        next(row for row in response['check_runs'] if row['name'] == name)[field] = value
+                    return response
+                with self.subTest(check=name, field=field), self.assertRaisesRegex(RuntimeError, 'source_ci'):
+                    self.call_admission(changed)
+        for label, alter in [
+            ('missing', lambda rows: rows.pop()),
+            ('extra', lambda rows: rows.append(rows[0] | {'id': 999, 'name': 'unreviewed'})),
+            ('substitute', lambda rows: rows[-1].update(name='unreviewed')),
+            ('duplicate', lambda rows: rows[-1].update(name=rows[0]['name'])),
+        ]:
+            def changed(path, response):
+                if '/check-runs?' in path:
+                    alter(response['check_runs'])
+                    response['total_count'] = len(response['check_runs'])
+                return response
+            with self.subTest(check_set=label), self.assertRaisesRegex(RuntimeError, 'source_ci'):
+                self.call_admission(changed)
 
     def test_install_requires_original_consumed_inspection_and_owner_receipt(self):
         for field, value in [('body', 'unaccepted'), ('user', {'id': 2}), ('author_association', 'MEMBER')]:
@@ -299,11 +323,26 @@ class PreflightEvidence(unittest.TestCase):
             api.assert_not_called()
         with self.assertRaisesRegex(RuntimeError, 'preflight_artifact'): self.verify(extra=True)
 
+    def test_historical_identity_is_preserved_across_candidate_changes(self):
+        self.assertEqual(m.PREFLIGHT_SOURCE, 'f4d14cb7a66be040798693e9a47a2d023c48de7e')
+        self.assertEqual(m.PREFLIGHT_MANIFEST_SHA, '3ef8fadb6db83cff9709fdc06d0dcaf41673456c92b1e77f40cdc8444ae8da5f')
+        next_source, next_manifest = 'e' * 40, 'd' * 64
+        original_policy = copy.deepcopy(self.policy)
+        self.policy |= {'source': next_source, 'manifest': next_manifest}
+        with patch.object(m, 'SOURCE', next_source), patch.object(m, 'MANIFEST_SHA', next_manifest):
+            self.verify()
+            for field, value in [('source_sha', next_source), ('manifest_sha256', next_manifest)]:
+                with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'inspection_identity'):
+                    self.verify(lambda result: result['remote'].update({field: value}))
+        self.assertEqual(self.policy, original_policy | {'source': next_source, 'manifest': next_manifest},
+                         'historical validation cannot mutate the current install policy')
+
     def test_foreign_incomplete_or_mutating_receipts_are_rejected(self):
         for change in [lambda v: v.update(control_source_sha='f'*40), lambda v: v.update(run_id='2'),
                        lambda v: v.update(command_comment_id=2), lambda v: v.update(status='preflight_match'),
                        lambda v: v.update(phase='remote'), lambda v: v.update(read_only=False), lambda v: v.update(server_writes=1),
                        lambda v: v.update(extra=True), lambda v: v['remote'].update(source_sha='f'*40),
+                       lambda v: v['remote'].update(manifest_sha256='f'*64),
                        lambda v: v['remote'].update(supplier_calls=1), lambda v: v['remote'].update(database_reads=1),
                        lambda v: v['remote']['observed'].pop(m.ENTRY),
                        lambda v: v['remote']['observed'].update({'unknown.php': {'state': 'absent'}}),
