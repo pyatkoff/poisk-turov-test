@@ -158,7 +158,7 @@ CONTROL_PATHS = (
     '.github/workflows/deploy-anytoour.yml', 'tests/anytoour_production_deploy_guard_test.py',
     'scripts/deploy/search3_root_gateway_install.py', 'scripts/deploy/search3_root_gateway_inspect.py',
 )
-CONTROL_CHECKS = ('guard', 'public-install-contracts', 'production-readiness-contracts', 'contracts',
+CONTROL_CHECKS = ('guard', 'core', 'public-install-contracts', 'production-readiness-contracts', 'contracts',
                   'live-check-contracts', 'tv-diagnostic-contracts', 'context-sender-contracts')
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ZIP = 16 * 1024 * 1024
