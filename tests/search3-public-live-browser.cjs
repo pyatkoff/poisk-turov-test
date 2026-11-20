@@ -117,6 +117,37 @@ const server=http.createServer((req,res)=>{
     }
     const file=name+'-'+width+'.png';stages.push({name,file,...state});save();await page.screenshot({path:path.join(output,file)});
    };
+   const compactForm=async(label,children)=>{
+    await page.evaluate(()=>document.fonts.ready);
+    const geometry=await page.evaluate(()=>{
+     const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+     const form=document.querySelector('#search-form'),guests=form.querySelector('[data-action="guests"]'),budget=form.querySelector('#quick-budget'),detail=form.querySelector('#guests-detail');
+     const textFits=(el,parent)=>{const bounds=parent.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);const rows=[...range.getClientRects()];return rows.length>0&&rows.every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1&&r.y>=bounds.y-1&&r.bottom<=bounds.bottom+1);};
+     return{form:rect(form),primary:rect(form.querySelector('.search-primary')),guests:rect(guests),guestLabel:rect(guests.querySelector('.field-label')),guestValue:rect(guests.querySelector('.field-control')),
+      budget:rect(budget),budgetLabel:rect(budget.querySelector('span:not(.chevron)')),budgetValue:rect(budget.querySelector('strong')),budgetArrow:rect(budget.querySelector('.chevron')),
+      meal:rect(form.querySelector('#quick-meal')),submit:rect(form.querySelector('.search-submit')),budgetInPrimary:!!budget.closest('.search-primary'),
+      agesVisible:detail.getClientRects().length>0,texts:[guests.querySelector('.field-label'),guests.querySelector('#guests-label'),...(!detail.hidden?[detail]:[])].map(el=>({id:el.id||'guests-heading',fits:textFits(el,guests)})),
+      budgetTextFits:[...budget.querySelectorAll('span:not(.chevron),strong')].every(el=>textFits(el,budget)),pageWidth:document.documentElement.scrollWidth};
+    });
+    assert(geometry.pageWidth<=width+1,label+' form fits the viewport');
+    assert.equal(geometry.agesVisible,children,label+' shows ages only when children are selected');
+    assert(geometry.texts.every(row=>row.fits)&&geometry.budgetTextFits,label+' retains the complete party, ages and budget text');
+    assert.equal(geometry.budgetInPrimary,false,'budget stays outside the primary trip controls');
+    if(width===430){
+     assert(geometry.guests.height>=48&&geometry.guests.height<=(children?68:56),label+' tourists remain a compact full-width action');
+     assert(Math.abs(geometry.guests.x-geometry.primary.x)<=1&&Math.abs(geometry.guests.width-geometry.primary.width)<=1,'tourists retain a full-width touch area');
+     assert(geometry.guestValue.x>=geometry.guestLabel.right-1,'tourist label and selected composition share a horizontal row');
+     assert(geometry.budget.height>=44&&geometry.budget.height<=56,'default budget is a compact secondary action');
+     assert(Math.abs(geometry.budgetLabel.y-geometry.budgetValue.y)<=1&&geometry.budgetValue.x>=geometry.budgetLabel.right-1&&geometry.budgetArrow.x>=geometry.budgetValue.right-1,'default budget label, value and arrow occupy one separate horizontal row');
+     assert(geometry.budget.y>=geometry.meal.bottom-1&&geometry.submit.y>=geometry.budget.bottom-1,'secondary budget stays after meal and before Find');
+    }
+    for(const selector of ['#search-form [data-action="guests"]','#quick-budget']){
+     const control=page.locator(selector);await control.scrollIntoViewIfNeeded();
+     const target=await control.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{width:r.width,height:r.height,reachable:hit===el||el.contains(hit)};});
+     assert(target.width>=44&&target.height>=44&&target.reachable,label+' '+selector+' has an unobstructed touch target');
+    }
+    (receipt.formGeometry??=[]).push({label,...geometry});
+   };
    const noPhone=async()=>assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [type="submit"],#modal [data-action="messenger-phone"],#modal [data-messenger-phone-submit]').count(),0,'public contact has no phone fallback');
    const ready=()=>page.waitForFunction(()=>{const b=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];return b.length===2&&b.every(el=>!el.disabled);});
    const total=async()=>Number((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/[^0-9,.-]/g,'').replace(',','.'));
@@ -169,6 +200,16 @@ const server=http.createServer((req,res)=>{
      live:AnyTourPrototypeData.live,scenario:AnyTourPrototypeData.scenario,analytics:V2Analytics.version}));
     assert.deepEqual(config,{profile:'live',contact:'messenger-only',privateTV:true,messenger:true,counter:0,live:true,scenario:'live',analytics:4});
     assert.equal(await page.locator('.prototype-tools,.private-badge').count(),0);
+    assert.equal(await page.locator('#guests-label').textContent(),'2 взр.');
+    assert.equal(await page.locator('#guests-detail').isVisible(),false);
+    await compactForm('initial-default',false);
+    const defaultURL=page.url(),defaultBudget=await page.locator('#budget-label').textContent();
+    await page.locator('#quick-budget').click();await page.locator('#budget-max').fill('200000');
+    await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+    assert.equal(page.url(),defaultURL,'direct budget Cancel preserves the initial URL');
+    assert.equal(await page.locator('#budget-label').textContent(),defaultBudget,'direct budget Cancel preserves the initial limit');
+    await page.locator('#search').scrollIntoViewIfNeeded();await capture('initial-default');
     // Confirm the family in the actual initial form, then reload before Find.
     // Every transport remains the explicitly fictional interceptor above.
     await page.locator('#search-form [data-action="guests"]').click();
@@ -201,6 +242,7 @@ const server=http.createServer((req,res)=>{
     const initialOperations=transport.calls.filter(call=>/^(search(?:_.*)?|continue|tour|flights|quote(?:_.*)?|offer|lead(?:_.*)?)$/.test(call.action)||/api-anex-|api-andromeda-|quote|lead/.test(call.url));
     assert.deepEqual(initialOperations,[],'no supplier search, quote, offer or lead precedes the explicit Find action');
     receipt.initialParty={adults:3,childAges:[0,12],reloadPreserved:true,cancelPreserved:true,searchSubmits:0};
+    await compactForm('initial-family-restored',true);
     await page.locator('#search').scrollIntoViewIfNeeded();await capture('initial-family-restored');
     await page.locator('.search-submit').click();await page.locator('.hotel-card').first().waitFor();
     await page.waitForFunction(()=>{const node=document.querySelector('#search-status');return node.hidden||node.classList.contains('search-status-compact');});

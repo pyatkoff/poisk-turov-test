@@ -263,7 +263,7 @@ const cancel=()=>click('#search-return');
  assert.equal(cardsHTML(),original,'opening the editor retains the result inventory');
  assert.equal(w.location.search,originalURL,'opening the editor keeps applied URL conditions');
  assert.equal(d.activeElement,q('#departure-button'),'existing editor focus is preserved');
- click('#search-options-toggle');
+ assert.equal(q('#quick-budget').disabled,false,'budget is directly available in the search editor');
  click('#quick-stars [data-value="5"]');
  click('#quick-budget');input('#budget-max','200 000');click('[data-action="apply-budget"]');await settle();
  assert.equal(cardsHTML(),original,'Edits must not repaint results or reset pagination');
