@@ -1641,7 +1641,6 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 #search-form .field-value small{font-size:12px;line-height:1.4;color:var(--muted);font-weight:400}
 #search-form .chevron{margin-left:auto;flex:none;color:var(--muted);font-size:24px;line-height:1}
 #search-form .search-secondary{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:10px;padding:12px 0 0;margin:0}
-#search-options-toggle{display:none}
 #search-form .quick-category{min-width:0;margin:0;padding:0;border:0;grid-column:auto;grid-row:auto}
 #search-form .quick-category legend{font-size:.875rem;color:var(--muted);line-height:1.4;margin-bottom:6px}
 #search-form .quick-stars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
@@ -1692,26 +1691,28 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  #search-form.search-box{padding:0;background:transparent;box-shadow:none;border-radius:0}
  #search-form .search-primary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
  #search-form .search-field,#search-form .search-field:nth-child(-n+5){display:grid;grid-template-columns:minmax(0,1fr);grid-column:span 1;gap:0;padding:0;min-height:66px;border:0;background:transparent}
- #search-form .search-field:nth-child(5){grid-column:1/-1}
+ #search-form .search-field:nth-child(5){grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;min-height:48px;padding:9px 13px;border:1px solid #dde3e9;border-radius:12px;background:#fff}
  #search-form .field-label{font-size:14px;line-height:20px;padding-left:2px;color:var(--text)}
  #search-form .field-control{display:flex;align-items:center;min-height:48px;padding:10px 13px;gap:8px;background:#fff;border:1px solid #dde3e9;border-radius:12px;color:#182431;font-size:16px;line-height:21px;font-weight:400}
  #search-form .destination-field .field-control{min-height:62px}
  #search-form .field-control>svg{display:none}
  #search-form .field-value small{font-size:13px;line-height:18px;color:var(--text)}
- #search-form .field-value:has(#guests-detail:not([hidden])){min-height:34px}
+ #search-form .search-field:nth-child(5) .field-label{align-self:start;padding:0;line-height:21px}
+ #search-form .search-field:nth-child(5) .field-control{justify-content:flex-end;min-height:0;padding:0;border:0;border-radius:0;background:transparent}
+ #search-form .search-field:nth-child(5) .field-value{text-align:right}
+ #search-form .search-field:nth-child(5) .chevron{margin-left:0}
  #search-form .chevron{font-size:22px}
  #search-form .search-secondary{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:12px}
  #search-form .quick-category,#search-form #quick-meal,#search-form #quick-budget{grid-column:1/-1}
- #search-options-toggle{display:grid;grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 8px;min-height:44px;padding:8px 4px;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--brand);font:inherit;font-size:.875rem;font-weight:650}
- #search-options-toggle::after{content:"";grid-column:2;grid-row:1/span 2;width:8px;height:8px;margin:0 6px 4px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg)}
- #search-options-toggle[aria-expanded=true]::after{transform:rotate(225deg);margin-bottom:0}
- #search-options-value{font-weight:400;color:var(--muted);overflow-wrap:anywhere}
- #search-options-value:empty,#search-options-toggle[aria-expanded=true] #search-options-value,#search-options-toggle[aria-expanded=false]~#quick-budget{display:none}
  #search-form .quick-category legend{font-size:14px;line-height:20px;margin-bottom:0;padding-left:2px;color:var(--text)}
- #search-form .quick-field{position:relative;display:grid;align-self:stretch;align-content:stretch;grid-template-columns:minmax(0,1fr);grid-template-rows:20px minmax(52px,1fr);gap:0;padding:0;min-height:70px;border:0;border-radius:0;background:transparent;text-align:left}
- #search-form .quick-field>span:first-child{font-size:14px;line-height:20px;color:var(--text);padding:0 0 0 2px;grid-column:1;grid-row:1}
- #search-form .quick-field strong{display:flex;align-items:center;min-height:52px;grid-column:1;grid-row:2;padding:9px 32px 9px 13px;background:#fff;border:1px solid #dde3e9;border-radius:12px;font-size:15px;line-height:21px;font-weight:400}
- #search-form .quick-field .chevron{position:absolute;right:13px;bottom:17px}
+ #search-form #quick-meal{position:relative;display:grid;align-self:stretch;align-content:stretch;grid-template-columns:minmax(0,1fr);grid-template-rows:20px minmax(52px,1fr);gap:0;padding:0;min-height:70px;border:0;border-radius:0;background:transparent;text-align:left}
+ #search-form #quick-meal>span:first-child{font-size:14px;line-height:20px;color:var(--text);padding:0 0 0 2px;grid-column:1;grid-row:1}
+ #search-form #quick-meal strong{display:flex;align-items:center;min-height:52px;grid-column:1;grid-row:2;padding:9px 32px 9px 13px;background:#fff;border:1px solid #dde3e9;border-radius:12px;font-size:15px;line-height:21px;font-weight:400}
+ #search-form #quick-meal .chevron{position:absolute;right:13px;bottom:17px}
+ #search-form #quick-budget{display:grid;grid-template-columns:auto minmax(0,1fr) 16px;align-items:center;align-content:center;gap:8px;min-height:44px;padding:4px 2px;border:0;border-radius:0;background:transparent;text-align:left}
+ #search-form #quick-budget>span:first-child{grid-column:1;grid-row:1;padding:0;font-size:13px;line-height:20px;color:var(--muted);white-space:nowrap}
+ #search-form #quick-budget strong{grid-column:2;grid-row:1;font-size:14px;line-height:20px;font-weight:500;color:var(--brand);text-align:right}
+ #search-form #quick-budget .chevron{grid-column:3;grid-row:1;align-self:center;margin:0;font-size:18px;text-align:right}
  #search-form .search-actions{position:static;display:grid;gap:4px;margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none;grid-template-columns:minmax(0,1fr)}
  #search-form .search-submit{width:100%;min-width:0;min-height:48px;font-size:15px;box-shadow:none;border-radius:12px;order:1}
  #search-form #search-return{order:2}

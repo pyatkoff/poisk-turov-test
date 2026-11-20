@@ -117,7 +117,7 @@ async function run(width,monthRange=null){
  action('apply-guests');await pause();assert.equal($('#guests-label').textContent,'2 взр. · 2 реб.');assert.match($('#guests-detail').textContent,/До 1 года и 8 лет/);
  action('nights','#search-form');click('[data-action="night-preset"][data-value="7"]');action('apply-nights');await pause();assert.equal($('#form-ages-recheck').hidden,false);assert.match($('#guests-detail').textContent,/До 1 года и 8 лет/);action('guests','#search-form');assert.match($('#guest-age-help').textContent,/на возвращение/);action('apply-guests');await pause();assert.equal($('#form-ages-recheck').hidden,true);
  // Budget validates integers and order, keeps zero, and cancels in isolation.
- if(width<=760)click('#search-options-toggle');
+ assert.equal($('#quick-budget').disabled,false,'budget opens directly without an intermediate disclosure');
  action('budget','#search-form');
  assert.equal($('#budget-min').labels[0].textContent.trim(),'От, ₽');
  assert.equal($('#budget-max').labels[0].textContent.trim(),'До, ₽');

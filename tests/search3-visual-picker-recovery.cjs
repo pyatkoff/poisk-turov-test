@@ -45,9 +45,7 @@ async function checkPickers(driver, engine, size, root, html, output) {
     await wait(visible(hotel));
     await wait('!' + query('.search-submit') + '.disabled');
     await click(size[0] === 430 ? '#compact-search .secondary[data-action="top"]' : '#applied-search [data-action="edit-search"]');
-    if (!await driver.evaluate(visible('#quick-budget'))) {
-      await click('#search-options-toggle[aria-expanded="false"]');
-    }
+    assert.ok(await driver.evaluate(visible('#quick-budget')), 'budget is directly visible after opening the search editor');
     await click('#quick-budget');
     await input('#budget-max', '2000');
     await wait(visible('#budget-recovery:not([hidden])'));

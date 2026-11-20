@@ -85,10 +85,6 @@ const server=http.createServer((req,res)=>{
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
    for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
-    if(name==='budget'){
-     const more=page.locator('#search-options-toggle');
-     if(await more.isVisible()&&await more.getAttribute('aria-expanded')==='false')await more.click();
-    }
     await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
     if(name==='dates'){
      const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});
@@ -263,9 +259,9 @@ const server=http.createServer((req,res)=>{
    await familyJourney(900);if(width===1280)await familyJourney(720);await page.setViewportSize({width,height:900});
    if(width===430||width===1280){
     await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=journey`);
-    const meal=page.locator('#quick-meal'),toggle=page.locator('#search-options-toggle');
+    const meal=page.locator('#quick-meal'),budget=page.locator('#quick-budget');
     await page.locator('.search-submit:not(:disabled)').waitFor();
-    if(width===430)assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    if(width===430){assert(await budget.isVisible(),'budget is directly available as a secondary action');await reachable(budget,'secondary budget');}
     await meal.click();
     await page.locator('[data-meal-choice][value="Всё включено"]').check();
     await page.locator('[data-action="apply-meals"]').click();
@@ -275,7 +271,7 @@ const server=http.createServer((req,res)=>{
     assert.equal((await card.locator('.starting-price strong').innerText()).replace(/\D/g,''),'161600');
     assert.equal(new URL(page.url()).searchParams.get('meals'),'Всё включено');
     await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
-    if(width===430)assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+    if(width===430)assert(await budget.isVisible(),'secondary budget remains directly available after reopening the search');
     assert.equal(await meal.locator('strong').innerText(),'Всё включено');
     await meal.click();
     assert(await page.locator('[data-meal-choice][value="Всё включено"]').isChecked());

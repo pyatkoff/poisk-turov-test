@@ -76,10 +76,6 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
-const openFormOptions=async page=>{
- const toggle=page.locator('#search-options-toggle');
- if(await toggle.isVisible()&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
-};
 const localCivilDateJourney=async(browser,origin,base,evidence)=>{
  const records=[],instant=Date.parse('2026-10-18T22:30:00Z');
  for(const width of [390,1280]){
@@ -92,10 +88,10 @@ const localCivilDateJourney=async(browser,origin,base,evidence)=>{
    const label=await page.locator('#dates-label').textContent(),url=page.url();assert.match(label,/2–8 ноября/);
    assert.equal(await page.locator('#results.results-pristine .results-heading').isVisible(),false,'one initial instruction remains instead of repeating the search prompt');
    if(width===390){
-    assert.equal(await page.locator('#search-options-toggle').getAttribute('aria-expanded'),'false');
     assert(await page.locator('#quick-stars [data-value="4"]').isVisible());
     assert(await page.locator('#quick-meal').isVisible());
-    assert.equal(await page.locator('#quick-budget').isVisible(),false);
+    assert(await page.locator('#quick-budget').isVisible(),'secondary budget is directly available');
+    assert.equal(await page.locator('.search-primary #quick-budget').count(),0,'budget stays outside the primary trip controls');
     const originBox=await page.locator('#departure-button').boundingBox(),destinationBox=await page.locator('#country').boundingBox();
     assert(Math.abs(originBox.y-destinationBox.y)<=1&&destinationBox.x>=originBox.x+originBox.width,'mobile route shares one row');
    }
@@ -653,7 +649,6 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
  await editResultSearch(page,width);
- await openFormOptions(page);
  const formValueStates=[];
  const formValues=async label=>{
   if(width!==390)return;
@@ -668,9 +663,10 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
    if(viewportWidth<=760){
     const [meal,budget]=boxes.fields;
     const stars=await page.locator('#quick-stars').boundingBox();
-    const more=await page.locator('#search-options-toggle').boundingBox();
-    assert(meal.button.y>=stars.y+stars.height-1&&more.y>=meal.button.bottom-1&&budget.button.y>=more.y+more.height-1,'mobile order is stars, meal, more options, then budget');
-    for(const field of [meal,budget])assert(Math.abs(field.button.x-more.x)<=1&&Math.abs(field.button.width-more.width)<=1,'meal and budget each use a full mobile row at '+viewportWidth);
+    const submit=await page.locator('#search-form .search-submit').boundingBox();
+    assert(meal.button.y>=stars.y+stars.height-1&&budget.button.y>=meal.button.bottom-1&&submit.y>=budget.button.bottom-1,'mobile order is stars, meal, secondary budget, then Find');
+    assert(Math.abs(meal.button.x-budget.button.x)<=1&&Math.abs(meal.button.width-budget.button.width)<=1,'secondary budget stays within the form width at '+viewportWidth);
+    assert.equal(await page.locator('.search-primary #quick-budget').count(),0,'budget does not join the primary trip controls');
    }
    formValueStates.push({label,width:viewportWidth,...boxes});await page.screenshot({path:path.join(evidence,`form-values-${label}-${viewportWidth}.png`)});
   }
@@ -686,13 +682,11 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('200000');await page.locator('[data-action="apply-budget"]').click();
  assert.match(await page.locator('#budget-label').textContent(),/200\s*000/,'approved form displays the total budget');
  if(width<=760){
-  const toggle=page.locator('#search-options-toggle');
-  await toggle.click();
-  assert.equal(await page.locator('#quick-budget').isVisible(),false);
+  const budget=page.locator('#quick-budget');
+  assert(await budget.isVisible(),'the applied budget remains directly available');
   assert((await page.locator('#quick-meal').innerText()).includes(mealValue),'the chosen meal remains visible in its own control');
-  assert(!(await toggle.innerText()).includes(mealValue),'the disclosure summary contains only secondary settings');
-  assert.match(await toggle.innerText(),/200\s*000/,'the closed disclosure retains the party budget');
-  await openFormOptions(page);
+  assert(!(await budget.innerText()).includes(mealValue),'the secondary budget action describes only the budget');
+  assert.match(await budget.innerText(),/200\s*000/,'the compact action retains the applied whole-party budget');
  }
  await formValues('applied');
  if(width===390){
@@ -757,8 +751,8 @@ const mobileQuickFieldLayout=async(page,width)=>{
    const range=document.createRange();range.selectNodeContents(value);const textBox=range.getBoundingClientRect();
    return{field:rect(field),value:rect(value),label:rect(label),arrow:rect(arrow),textRight:textBox.right,text:value.textContent};
   });
-  assert(boxes.field.x>=0&&boxes.field.right<=360&&boxes.field.height>=48,'approved budget control fits the mobile viewport and retains its touch target');
-  assert(boxes.value.y>=boxes.label.bottom-1,'budget value is below its label');
+  assert(boxes.field.x>=0&&boxes.field.right<=360&&boxes.field.height>=44&&boxes.field.height<=56,'secondary budget is a compact, tappable mobile row');
+  assert(boxes.value.x>=boxes.label.right-1,'the budget label and value share a horizontal row');
   assert(boxes.arrow.x>=boxes.textRight-1,'chevron stays beside the approved value text without overlap');
   assert(boxes.value.x>=boxes.field.x&&boxes.value.right<=boxes.field.right&&boxes.value.bottom<=boxes.field.bottom,'whole budget value stays inside its field');
  }finally{await page.setViewportSize({width,height:900});}
@@ -2194,14 +2188,9 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   const hydrationControls=page.locator('#search-form .search-primary button:visible,#quick-stars button:visible,#quick-meal:visible,#quick-budget:visible,#search-form .search-submit:visible');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   if(width<=760){
-   const toggle=page.locator('#search-options-toggle');
-   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
    assert(await page.locator('#quick-meal').isVisible());
-   assert.equal(await page.locator('#quick-budget').isVisible(),false);
-   await toggle.press('Enter');
-   assert.equal(await toggle.getAttribute('aria-expanded'),'true');
-   assert.equal(await page.locator('#quick-meal').isVisible(),true);
-   assert.equal(await page.locator('#quick-budget').isVisible(),true);
+   assert(await page.locator('#quick-budget').isVisible(),'secondary budget remains visible during hydration');
+   assert(await page.locator('#quick-budget').isDisabled(),'direct budget access cannot bypass initial hydration');
   }
   assert(await hydrationControls.count()>0);
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
@@ -2214,7 +2203,6 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
-  await openFormOptions(page);
   await mobileQuickFieldLayout(page,width);
   assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
   assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','a locked pre-hydration control cannot replace URL state');
@@ -2256,7 +2244,6 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   assert.equal(reloadedBudgetRequest.priceFrom,150000);assert.equal(reloadedBudgetRequest.priceTo,180000);
   assert.doesNotMatch(await page.locator('#date-calendar').textContent(),/97,5/,'reload cannot reopen an unbounded calendar');
   await page.locator('[data-action="close-modal"]').click();
-  await openFormOptions(page);
   await page.locator('#quick-budget').click();
   await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');
   await page.locator('[data-action="apply-budget"]').click();

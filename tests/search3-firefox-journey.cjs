@@ -113,20 +113,22 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
   async function checkVisibleMeal() {
     const meal = 'Всё включено';
     const choice = '[data-meal-choice][value="' + meal + '"]';
-    const closedOptions = '#search-options-toggle[aria-expanded="false"]';
+    const directBudget = '#quick-budget:not(:disabled)';
     await driver.go(url);
     await driver.wait('.search-submit:not(:disabled)');
-    await driver.wait(closedOptions);
+    await driver.wait(directBudget);
     assert.equal(await text('#meal-label'), 'Любое');
     assert.ok(await driver.evaluate(`(() => {
-      const rect = document.querySelector('#quick-meal').getBoundingClientRect();
-      return rect.width > 0 && rect.height >= 44 && rect.top >= 0 && rect.bottom <= innerHeight;
-    })()`), 'meal is directly visible on the first mobile screen');
+      return ['#quick-meal', '#quick-budget'].every(selector => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return rect.width > 0 && rect.height >= 44 && rect.top >= 0 && rect.bottom <= innerHeight;
+      });
+    })()`), 'meal and the direct budget action are visible on the first mobile screen');
     await driver.click('#quick-meal');
     await driver.click(choice);
     await driver.wait(choice + ':checked');
     await driver.click('[data-action="apply-meals"]');
-    await driver.wait(closedOptions);
+    await driver.wait(directBudget);
     assert.equal(await text('#meal-label'), meal);
     await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
     await documentGuard('selected-meal');
@@ -138,7 +140,7 @@ module.exports = async function firefoxJourney({driver, origin, base, evidence, 
     assert.equal(await text(card + ' .starting-price strong'), '161 600 ₽');
     assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("meals")'), meal);
     await driver.click('#compact-search .secondary[data-action="top"]');
-    await driver.wait(closedOptions);
+    await driver.wait(directBudget);
     assert.equal(await text('#meal-label'), meal);
     await driver.click('#quick-meal');
     await driver.wait(choice + ':checked');

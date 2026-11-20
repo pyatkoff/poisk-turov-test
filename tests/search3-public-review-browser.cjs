@@ -103,7 +103,17 @@ const server=http.createServer((req,res)=>{
     assert(await page.locator('#quick-stars').isVisible(),'hotel category remains visible in the form');
     assert.match(await page.locator('.quick-category legend').textContent(),/Категория отеля/);
     for(const stars of [3,4,5])assert(await page.locator('#quick-stars [data-value="'+stars+'"]').isVisible());
-    if(width===430){assert.equal(await page.locator('#quick-budget').isVisible(),false,'budget starts outside primary mobile parameters');await page.locator('#search-options-toggle').click();assert(await page.locator('#quick-budget').isVisible());await page.locator('#search-options-toggle').click();}
+    if(width===430){
+     const budget=page.locator('#quick-budget');assert(await budget.isVisible(),'budget is directly available in the secondary row');
+     assert.equal(await page.locator('.search-primary #quick-budget').count(),0,'budget stays outside primary mobile parameters');
+     const budgetTraffic=()=>network.filter(row=>row.method!=='GET'||/api|\/data\//.test(row.path)).length;
+     const beforeBudget=page.url(),value=await page.locator('#budget-label').textContent(),networkBefore=budgetTraffic();
+     await budget.click();await page.locator('#budget-min').waitFor();await page.locator('#budget-max').fill('200000');
+     await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+     await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+     assert.equal(await page.locator('#budget-label').textContent(),value,'direct budget Cancel retains the applied value');
+     assert.equal(page.url(),beforeBudget);assert.equal(budgetTraffic(),networkBefore,'direct budget editing starts no data or mutation request');
+    }
     await page.locator('#quick-stars [data-value="5"]').click();
     await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="adults-plus"]').click();
     await page.locator('[data-action="child-age"][data-index="1"]').click();await page.locator('[data-action="age-pick"][data-value="12"]').click();await page.locator('[data-action="apply-age"]').click();await page.locator('[data-action="apply-guests"]').click();
