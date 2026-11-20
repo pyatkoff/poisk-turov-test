@@ -26,7 +26,9 @@ jobs:
       github.event.issue.number == 4709 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
       (github.event.comment.body == format('/install-search3-public {0} public-search3-20261120-v1', github.sha) ||
-       github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha))
+       github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) ||
+       (startsWith(github.event.comment.body, format('/rollback-search3-public {0} ', github.sha)) &&
+        endsWith(github.event.comment.body, ' public-search3-rollback-20261120-v1')))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {contents: read, issues: read, checks: read, actions: read}
@@ -41,7 +43,7 @@ jobs:
           PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
           PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
           PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
-        run: python3 scripts/deploy/search3_public_install.py ${{ github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) && 'inspect' || '' }}
+        run: python3 scripts/deploy/search3_public_install.py ${{ startsWith(github.event.comment.body, '/rollback-search3-public ') && 'rollback' || github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) && 'inspect' || '' }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

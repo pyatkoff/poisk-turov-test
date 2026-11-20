@@ -30,6 +30,8 @@ PREFIX = '/install-search3-public'
 OPERATION = 'public-search3-20261120-v1'
 INSPECT_PREFIX = '/inspect-search3-public-install'
 INSPECT_OPERATION = 'public-search3-readiness-20261120-v1'
+ROLLBACK_PREFIX = '/rollback-search3-public'
+ROLLBACK_OPERATION = 'public-search3-rollback-20261120-v1'
 SOURCE = 'f4d14cb7a66be040798693e9a47a2d023c48de7e'
 TREE = '80b89f7e605594288f72e9cab885a6c60cc19a71'
 RELEASE = '9040bb83011a18ec5f001c57f92218e53f0b255c'  # Reviewed PR5118 release merge; SOURCE tree is identical.
@@ -50,6 +52,14 @@ SIGNING_ARTIFACT_SHA = 'd9f756a73a6e6513b5f858426936b510f400eb9ad9a41678aa4f3ef7
 SIGNING_RESULT_SHA = '26a2a0c9fffe620746d2c2b9d73b695ec92a3bd5f36b7d551b3ce321855d049d'
 SIGNING_RUN = 44781856520
 SIGNING_RECEIPT_COMMENT = 7046090497
+PREFLIGHT_RUN = 44790620377
+PREFLIGHT_CONTROL = '927d3f213eadad98dcf4771c0c21612af7bfd0ed'
+PREFLIGHT_COMMAND = 7047112039
+PREFLIGHT_RECEIPT_COMMENT = 7047276834
+PREFLIGHT_ARTIFACT = 14656147196
+PREFLIGHT_ARTIFACT_NAME = 'search3-public-install-44790620377-1'
+PREFLIGHT_ARTIFACT_SHA = 'a1edf23fd86e24bea82dc2d97de89e47b3fb6d75f469d374683b6c205dd21cf1'
+PREFLIGHT_RESULT_SHA = 'dafc322bd6c6a0c8922eccfa4f45694cefdec190ee24a454c30e7fd2afaa298b'
 PUBLISHER_GUARD_SHA = '9b81eac1a94263fcfb9f49948495c45d143ffbb1bcd91d96921ee3257423da40'
 ENTRY = 'poisk-turov/index.php'
 ENTRY_BEFORE = {'state': 'present', 'sha256': '9d00c5f952e0c94cbe850e9fd5c95aa9b4e2cf8bd1ff7732faa3f1e10c1a1438', 'size': 862, 'mode': '0644'}
@@ -143,10 +153,29 @@ PROTECTED = {
     # Accepted TV enable6392874420, retained6528951578. Hash only; never copied.
     '_preview/search3-anex-candidate/.anex-private.php': 'faea72b846d201013a6426485996c0a2c022148ec897ae3092015c0946fb3d27',
 }
+# Historical inspection expectations above remain immutable. Claim7047321410
+# reviewed these exact installed bytes against known sources; they are retained,
+# never copied by this operation. This is not an observed-value wildcard or a
+# retry of the completed preflight_mismatch inspection7047276834.
+INSTALL_REVIEWED = {
+    'data/db-v1.php': {
+        'source_sha': '4907a2ed8bab30085c91d755e9b4e587ca7624ef',
+        'sha256': 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4', 'size': 3861},
+    '_preview/search3-local-candidate/data/anytour-canonical-catalog-v1.php': {
+        'source_sha': '5e275c1bc0e91247ea2968bb9ce78b569889060b',
+        'sha256': '9a346940e84fa1eac3e20e9cee024dc4741448c9c2453421dc04bc38946c5129', 'size': 20648},
+    '_preview/search3-local-candidate/data/hotel-details-v1.php': {
+        'source_sha': 'e1285138be62a5881043dab842c15d6fa89ae3a4',
+        'sha256': '401990a74e46d3294e6370f5da6ce134200f9a69f9287f15383074b782c62411', 'size': 6295},
+}
+INSTALL_PROTECTED = {**PROTECTED, **{path: row['sha256'] for path, row in INSTALL_REVIEWED.items()}}
 PRIVATE_CONFIG = '_preview/search3-anex-candidate/.anex-private.php'
 # Existing public PHP bridges may read these installed settings. Keep opaque
 # hash/mode/presence snapshots locally; never copy, execute or export their bytes.
 OPAQUE_SETTINGS = ('config.php', 'site_conf.php')
+# The accepted readback observed these presences. Keep the compatibility
+# prerequisite fresh without exporting or pinning private configuration bytes.
+INSTALL_OPAQUE_PRESENCE = {'config.php': True, 'site_conf.php': False}
 # The baseline has no optional popularity include; an unreviewed installed include
 # must stop this operation before writes rather than start its transitive DB code.
 # Existing LOCAL/NEXT publishers exclude config.php; require that absence so their
@@ -185,6 +214,21 @@ def event_identity(event, env, inspect=False):
     need(re.fullmatch('[a-f0-9]{40}', control) and re.fullmatch('[1-9][0-9]{0,19}', run), 'identity')
     need(type(comment.get('id')) is int and comment['id'] > 0 and comment.get('body') == f'{prefix} {control} {operation}', 'command')
     return {'control_source_sha': control, 'run_id': run, 'command_comment_id': comment['id']}
+
+
+def rollback_event_identity(event, env):
+    need(env.get('GITHUB_REPOSITORY') == event.get('repository', {}).get('full_name') == REPO, 'repository')
+    need(env.get('GITHUB_REF') == 'refs/heads/main' and env.get('GITHUB_WORKFLOW_REF') == f'{REPO}/{WORKFLOW}@refs/heads/main', 'trusted_workflow')
+    need(env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff', 'actor')
+    need(env.get('GITHUB_EVENT_NAME') == 'issue_comment' and event.get('action') == 'created' and env.get('GITHUB_RUN_ATTEMPT') == '1', 'event_attempt')
+    issue, comment = event.get('issue', {}), event.get('comment', {})
+    need(issue.get('number') == 4709 and 'pull_request' not in issue, 'issue')
+    need(type(comment.get('user', {}).get('id')) is int and comment['user']['id'] == 226193297 and comment.get('author_association') == 'OWNER', 'owner')
+    control, run = env.get('GITHUB_SHA', ''), env.get('GITHUB_RUN_ID', '')
+    need(re.fullmatch('[a-f0-9]{40}', control) and re.fullmatch('[1-9][0-9]{0,19}', run), 'identity')
+    match = re.fullmatch(re.escape(f'{ROLLBACK_PREFIX} {control} ') + r'([1-9][0-9]{0,19}) ' + re.escape(ROLLBACK_OPERATION), comment.get('body', ''))
+    need(type(comment.get('id')) is int and comment['id'] > 0 and match is not None and match[1] != run, 'command')
+    return {'control_source_sha': control, 'run_id': run, 'command_comment_id': comment['id']}, match[1]
 
 
 def pages(path, key=None):
@@ -270,7 +314,77 @@ def admission(identity, inspect=False):
     accepted = next((c for c in comments if c['id'] == SIGNING_RECEIPT_COMMENT), {})
     need(accepted.get('user', {}).get('id') == 226193297 and accepted.get('author_association') == 'OWNER'
          and str(SIGNING_RUN) in accepted.get('body', '') and SIGNING_RESULT_SHA in accepted.get('body', ''), 'signing_acceptance')
+    if not inspect:
+        inspected = [c for c in comments if c.get('body', '').strip().split()[:1] == [INSPECT_PREFIX]
+                     and INSPECT_OPERATION in c.get('body', '').split()[1:]]
+        need(len(inspected) == 1 and inspected[0]['id'] == PREFLIGHT_COMMAND
+             and inspected[0].get('body') == f'{INSPECT_PREFIX} {PREFLIGHT_CONTROL} {INSPECT_OPERATION}'
+             and inspected[0].get('user', {}).get('id') == 226193297
+             and inspected[0].get('author_association') == 'OWNER', 'preflight_command')
+        accepted = next((c for c in comments if c['id'] == PREFLIGHT_RECEIPT_COMMENT), {})
+        need(accepted.get('user', {}).get('id') == 226193297 and accepted.get('author_association') == 'OWNER'
+             and all(token in accepted.get('body', '') for token in
+                     (str(PREFLIGHT_RUN), PREFLIGHT_RESULT_SHA, 'preflight_mismatch', 'CONSUMED_NO_REPLAY')), 'preflight_acceptance')
     final_heads(identity)
+
+
+def rollback_main(identity):
+    need(api('/git/ref/heads/main')['object']['sha'] == identity['control_source_sha'], 'main_moved')
+
+
+def rollback_commands(identity, original_run, expected_original=None):
+    need(isinstance(original_run, str) and re.fullmatch('[1-9][0-9]{0,19}', original_run)
+         and original_run != identity['run_id'], 'rollback_install_run')
+    comments = pages('/issues/4709/comments')
+    matches = [c for c in comments if c.get('body', '').strip().split()[:1] == [ROLLBACK_PREFIX]
+               and ROLLBACK_OPERATION in c.get('body', '').split()[1:]]
+    need(len(matches) == 1 and matches[0]['id'] == identity['command_comment_id']
+         and matches[0].get('body') == f'{ROLLBACK_PREFIX} {identity["control_source_sha"]} {original_run} {ROLLBACK_OPERATION}'
+         and matches[0].get('user', {}).get('id') == 226193297 and matches[0].get('author_association') == 'OWNER', 'operation_already_reserved')
+    installed = [c for c in comments if c.get('body', '').strip().split()[:1] == [PREFIX]
+                 and OPERATION in c.get('body', '').split()[1:]]
+    need(len(installed) == 1 and installed[0].get('user', {}).get('id') == 226193297
+         and installed[0].get('author_association') == 'OWNER', 'rollback_install_command')
+    match = re.fullmatch(re.escape(PREFIX) + r' ([a-f0-9]{40}) ' + re.escape(OPERATION), installed[0].get('body', ''))
+    need(match is not None, 'rollback_install_command')
+    original = {'control_source_sha': match[1], 'run_id': original_run, 'command_comment_id': installed[0]['id']}
+    need(expected_original is None or original == expected_original, 'rollback_install_command')
+    return original
+
+
+def rollback_admission(identity, original_run):
+    # Recovery must not depend on signer validity, a newer release or source CI.
+    rollback_main(identity); reviewed_control(identity['control_source_sha'])
+    original = rollback_commands(identity, original_run)
+    run = api('/actions/runs/' + original_run)
+    need(run.get('id') == int(original_run) and run.get('head_sha') == original['control_source_sha'] and run.get('head_branch') == 'main'
+         and run.get('path') == WORKFLOW and run.get('event') == 'issue_comment' and run.get('run_attempt') == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'success'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'rollback_install_run')
+    jobs = [j for j in pages('/actions/runs/' + original_run + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0].get('run_id') == int(original_run) and jobs[0].get('status') == 'completed'
+         and jobs[0].get('conclusion') == 'success', 'rollback_install_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'success', 'rollback_install_step')
+    name = 'search3-public-install-' + original_run + '-1'
+    artifacts = [a for a in pages('/actions/runs/' + original_run + '/artifacts', 'artifacts') if a.get('name') == name]
+    need(len(artifacts) == 1 and artifacts[0].get('expired') is False
+         and artifacts[0].get('workflow_run', {}).get('id') == int(original_run)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}', artifacts[0].get('digest', '')), 'rollback_install_artifact')
+    rollback_main(identity)
+    return original, artifacts[0]
+
+
+def rollback_source_evidence(raw, original, policy):
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'rollback_install_artifact')
+        value = json.loads(archive.read('evidence.json'))
+    expected = {**original, 'operation_id': OPERATION, 'read_only': False, 'phase': 'complete',
+                'ssh_started': True, 'status': 'installed_verified'}
+    need(isinstance(value, dict) and set(value) == set(expected) | {'remote'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k, v in expected.items()), 'rollback_install_evidence')
+    need(valid_result(original, policy, value['remote']), 'rollback_install_evidence')
+    return value['remote']
 
 
 def download(artifact, expected):
@@ -345,9 +459,11 @@ def package(raw, inspect=False):
             need(record == {'size': len(data), 'mode': '0644', 'sha256': sha(data)} and 0 < len(data) <= MAX_BYTES, 'overlay_bytes')
             files[path] = base64.b64encode(data).decode(); expected[path] = {'state': 'present', **record}
     policy = {'operation': operation, 'read_only': inspect, 'source': SOURCE, 'tree': TREE, 'release': RELEASE, 'manifest': MANIFEST_SHA,
-              'additions': ADDITIONS, 'entry': ENTRY, 'before': ENTRY_BEFORE, 'expected': expected, 'protected': PROTECTED,
+              'additions': ADDITIONS, 'entry': ENTRY, 'before': ENTRY_BEFORE, 'expected': expected,
+              'protected': PROTECTED if inspect else INSTALL_PROTECTED,
               'private_config': PRIVATE_CONFIG, 'opaque_settings': OPAQUE_SETTINGS, 'absent_dependencies': ABSENT_DEPENDENCIES,
-              'signing_result': SIGNING_RESULT_SHA}
+              'signing_result': SIGNING_RESULT_SHA,
+              **({} if inspect else {'opaque_presence': INSTALL_OPAQUE_PRESENCE})}
     return policy, files
 
 
@@ -490,7 +606,10 @@ def dependency_matches(path,row):
  private_modes=('0400','0440','0444','0600','0640','0644')
  if path in POLICY['protected']:
   return row.get('state')=='present' and row.get('sha256')==POLICY['protected'][path] and row.get('mode') in (private_modes if path==POLICY['private_config'] else ('0644',))
- if path in POLICY['opaque_settings']: return row=={'state':'absent'} or row.get('mode') in private_modes
+ if path in POLICY['opaque_settings']:
+  presence=POLICY.get('opaque_presence',{})
+  if path in presence and (row.get('state')=='present') is not presence[path]: return False
+  return row=={'state':'absent'} or row.get('mode') in private_modes
  return path in POLICY['absent_dependencies'] and row=={'state':'absent'}
 def inspect_only():
  result={'schema_version':1,'operation_id':POLICY['operation'],'source_sha':POLICY['source'],'manifest_sha256':POLICY['manifest'],**IDENTITY,
@@ -674,6 +793,115 @@ print(json.dumps(result,sort_keys=True))
 '''
 
 
+ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':ROLLBACK_OPERATION,'source_sha':POLICY['source'],
+        'manifest_sha256':POLICY['manifest'],**IDENTITY,'original_install':ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,
+        'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
+        'rollback_files':[],'snapshot_verified':False,'protected_unchanged':False,
+        'original_records_unchanged':False,'snapshot_manifest_sha256':ACCEPTED['snapshot_manifest_sha256']}
+public=original=base=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ require(POLICY['operation']=='public-search3-20261120-v1' and POLICY['read_only'] is False
+         and len(POLICY['additions'])==41 and len(POLICY['expected'])==42
+         and set(POLICY['expected'])==set(POLICY['additions'])|{POLICY['entry']},'payload_scope')
+ home=os.environ.get('HOME','');root=home+'/www/anytoour.ru'
+ public=Files(root);base=Files(home+'/.anytoour-search3-root-gateway')
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation'])
+ for fd in (base.fd,original.fd):
+  s=os.fstat(fd);require(stat.S_IMODE(s.st_mode)==0o700 and s.st_uid==os.getuid(),'private_root')
+ s=os.stat('snapshot',dir_fd=original.fd,follow_symlinks=False)
+ require(stat.S_ISDIR(s.st_mode) and stat.S_IMODE(s.st_mode)==0o700 and s.st_uid==os.getuid(),'private_root')
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ record_paths=('reservation.json','result.json','snapshot/manifest.json','snapshot/entry','entry-intent.json')+tuple('intent-'+str(i)+'.json' for i in range(41))
+ def records():
+  rows={}
+  for path in record_paths:
+   row,identity,raw=original.read(path,True)
+   require(row.get('state')=='present' and row.get('mode')==('0644' if path=='snapshot/entry' else '0600')
+           and identity[6]==os.getuid(),'rollback_private_record')
+   rows[path]=(row,identity,raw)
+  return rows
+ retained=records()
+ def record(path): return json.loads(retained[path][2])
+ require(record('reservation.json')=={'operation':POLICY['operation'],**ORIGINAL,'manifest':POLICY['manifest']},'rollback_original_identity')
+ require(record('result.json')==ACCEPTED,'rollback_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ expected_before={p:POLICY['before'] if p==POLICY['entry'] else {'state':'absent'} for p in POLICY['expected']}
+ protected_paths=checked_protected_paths()
+ require(isinstance(snapshot,dict) and set(snapshot)=={'before','protected','source','manifest'}
+         and snapshot['source']==POLICY['source'] and snapshot['manifest']==POLICY['manifest']
+         and snapshot['before']==expected_before and set(snapshot['protected'])==set(protected_paths)
+         and digest(retained['snapshot/manifest.json'][2])==ACCEPTED['snapshot_manifest_sha256']
+         and retained['snapshot/entry'][0]==POLICY['before'],'rollback_snapshot_conflict')
+ candidate=public.inventory(POLICY['expected']);protected=public.inventory(protected_paths)
+ require({p:r[0] for p,r in protected.items()}==snapshot['protected']
+         and all(dependency_matches(p,r[0]) for p,r in protected.items()),'protected_changed')
+ def checked_stamp(value,row,owned=True):
+  require(isinstance(value,list) and len(value)==9 and all(type(v) is int for v in value)
+          and value[0]>=0 and value[1]>0 and value[2]==(stat.S_IFREG|int(row['mode'],8))
+          and value[3]==1 and value[4]==row['size'] and (not owned or value[6]==os.getuid()),'rollback_private_record')
+  return tuple(value)
+ for index,path in enumerate(POLICY['additions']):
+  intent=record('intent-'+str(index)+'.json')
+  require(isinstance(intent,dict) and set(intent)=={'path','identity','sha256'}
+          and intent['path']==path and intent['sha256']==POLICY['expected'][path]['sha256'],'rollback_private_record')
+  identity=checked_stamp(intent['identity'],POLICY['expected'][path])
+  require(candidate[path][0]==POLICY['expected'][path] and candidate[path][1][:-1]==identity[:-1],'rollback_candidate_changed')
+ intent=record('entry-intent.json');entry=POLICY['entry']
+ require(isinstance(intent,dict) and set(intent)=={'before','new_identity'} and isinstance(intent['before'],list)
+         and len(intent['before'])==2 and intent['before'][0]==POLICY['before'],'rollback_private_record')
+ checked_stamp(intent['before'][1],POLICY['before'],False)
+ identity=checked_stamp(intent['new_identity'],POLICY['expected'][entry])
+ require(candidate[entry][0]==POLICY['expected'][entry] and candidate[entry][1][:-1]==identity[:-1],'rollback_candidate_changed')
+ require(records()==retained and public.inventory(POLICY['expected'])==candidate
+         and public.inventory(protected_paths)==protected,'rollback_preflight_race')
+ result['snapshot_verified']=True
+ # This separate reservation is never reused. The original successful operation
+ # and every original private record stay read-only, including its snapshot.
+ try: os.mkdir(ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+ROLLBACK_OPERATION,('stage','quarantine'),0o700)
+ private.create('reservation.json',canonical({'operation':ROLLBACK_OPERATION,**IDENTITY,'original_install':ORIGINAL,
+                                            'manifest':POLICY['manifest'],'snapshot_manifest_sha256':ACCEPTED['snapshot_manifest_sha256']}))
+ private.create('stage/entry',retained['snapshot/entry'][2],0o644)
+ require(private.read('stage/entry')[0]==POLICY['before'],'rollback_snapshot_conflict')
+ require(records()==retained and public.inventory(POLICY['expected'])==candidate
+         and public.inventory(protected_paths)==protected,'rollback_preflight_race')
+ result['phase']='entry'
+ capture_owned(public,private,entry,'quarantine/entry',POLICY['expected'][entry],candidate[entry][1])
+ restore_capture(public,private,entry,'stage/entry')
+ restored_entry=public.read(entry)[:2]
+ require(restored_entry[0]==POLICY['before'],'rollback_entry_readback')
+ result['rollback_files'].append(entry);result['phase']='additions'
+ for path in reversed(POLICY['additions']):
+  require(public.read(entry)[:2]==restored_entry and public.inventory(protected_paths)==protected,'protected_changed')
+  require(public.read(path)[:2]==candidate[path],'rollback_addition_conflict')
+  capture_owned(public,private,path,'quarantine/'+str(POLICY['additions'].index(path)),POLICY['expected'][path],candidate[path][1])
+  require(public.read(path)[0]=={'state':'absent'},'rollback_addition_conflict')
+  result['rollback_files'].append(path)
+ # Directory ownership was not persisted by the original installer. Leave every
+ # directory and unrelated object in place; never enumerate or remove them.
+ require(public.read(entry)[:2]==restored_entry
+         and all(public.read(p)[0]=={'state':'absent'} for p in POLICY['additions'])
+         and public.inventory(protected_paths)==protected and records()==retained,'rollback_incomplete')
+ result.update(status='rolled_back_verified',phase='complete',protected_unchanged=True,original_records_unchanged=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try: private.create('result.json',canonical(result))
+  except Exception: result.update(status='unknown_no_replay',reason='receipt_failed')
+ for files in (private,original,base,public):
+  if files is not None: files.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
 def remote_program(policy, files, identity):
     # Safe bounded reason codes only, no exception text/private paths in the result.
     need(type(policy.get('read_only')) is bool and policy.get('operation') == fixed_command(policy['read_only'])[1], 'mode')
@@ -689,6 +917,45 @@ REASONS = ('fixed_path','fixed_root','unsafe_parent','parent_changed','directory
            'different_filesystem','operation_exists_no_replay','snapshot_invalid','restore_drill_failed','prewrite_race','addition_conflict',
            'addition_readback','entry_prewrite_race','addition_race','entry_readback','entry_exchange_conflict','installed_race','protected_changed',
            'operation_failed','receipt_failed','rollback_entry_conflict')
+ROLLBACK_REASONS = REASONS + ('rollback_private_record','rollback_original_identity','rollback_snapshot_conflict',
+                             'rollback_candidate_changed','rollback_preflight_race','rollback_entry_readback',
+                             'rollback_addition_conflict','rollback_incomplete')
+
+
+def rollback_remote_program(policy, identity, original, accepted):
+    need(policy.get('operation') == OPERATION and policy.get('read_only') is False, 'mode')
+    need(valid_result(original, policy, accepted), 'rollback_install_evidence')
+    prefix = ('MAX_BYTES=' + repr(MAX_BYTES) + '\nPOLICY=' + repr(policy) + '\nIDENTITY=' + repr(identity)
+              + '\nORIGINAL=' + repr(original) + '\nACCEPTED=' + repr(accepted)
+              + '\nROLLBACK_OPERATION=' + repr(ROLLBACK_OPERATION) + '\n')
+    prefix += 'def re_safe(value): return value in ' + repr(ROLLBACK_REASONS) + '\n'
+    # Share only the stable filesystem definitions, never the inspect/install
+    # execution branches. Historical REMOTE bytes remain unchanged.
+    program = prefix + REMOTE.split('\ndef inspect_only():', 1)[0] + ROLLBACK_REMOTE
+    ast.parse(program)
+    return program
+
+
+def valid_rollback_result(identity, original, accepted, result):
+    fixed = {'schema_version': 1, 'operation_id': ROLLBACK_OPERATION, 'source_sha': SOURCE,
+             'manifest_sha256': MANIFEST_SHA, **identity, 'original_install': original,
+             'snapshot_manifest_sha256': accepted['snapshot_manifest_sha256']}
+    counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    required = set(fixed) | set(counters) | {'status','phase','rollback_files','snapshot_verified','protected_unchanged','original_records_unchanged'}
+    need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'rollback_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k] == v for k, v in fixed.items()), 'rollback_receipt_identity')
+    need(all(type(result.get(k)) is int and result[k] == 0 for k in counters), 'rollback_receipt_counters')
+    need(result['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_verified')
+         and result['phase'] in ('preflight','entry','additions','complete')
+         and ('reason' not in result or result['reason'] in ROLLBACK_REASONS), 'rollback_receipt_status')
+    need(isinstance(result['rollback_files'], list) and len(result['rollback_files']) == len(set(result['rollback_files']))
+         and set(result['rollback_files']) <= set(ADDITIONS) | {ENTRY}, 'rollback_receipt_paths')
+    need(all(type(result[k]) is bool for k in ('snapshot_verified','protected_unchanged','original_records_unchanged')), 'rollback_receipt_flags')
+    if result['status'] == 'rolled_back_verified':
+        need(result['phase'] == 'complete' and result['rollback_files'] == [ENTRY, *reversed(ADDITIONS)]
+             and all(result[k] for k in ('snapshot_verified','protected_unchanged','original_records_unchanged')) and 'reason' not in result,
+             'rollback_receipt_incomplete')
+    return result['status'] == 'rolled_back_verified'
 
 
 def valid_result(identity, policy, result):
@@ -745,6 +1012,49 @@ def valid_inspection_result(identity, policy, result):
     return result['status'] in ('preflight_match', 'preflight_mismatch')
 
 
+def preflight_evidence(raw, policy):
+    """Admit only the reviewed historical mismatch; the server rechecks freshness."""
+    need(policy['read_only'] is False and policy['operation'] == OPERATION
+         and policy['protected'] == INSTALL_PROTECTED, 'preflight_policy')
+    need(sha(raw) == PREFLIGHT_ARTIFACT_SHA, 'preflight_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'preflight_artifact')
+        data = archive.read('evidence.json'); need(sha(data) == PREFLIGHT_RESULT_SHA, 'preflight_digest')
+    value = json.loads(data)
+    identity = {'control_source_sha': PREFLIGHT_CONTROL, 'run_id': str(PREFLIGHT_RUN), 'command_comment_id': PREFLIGHT_COMMAND}
+    outer = {**identity, 'operation_id': INSPECT_OPERATION, 'phase': 'complete', 'read_only': True,
+             'server_writes': 0, 'ssh_started': True, 'status': 'preflight_mismatch'}
+    need(isinstance(value, dict) and set(value) == set(outer) | {'remote'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k, v in outer.items()), 'preflight_identity')
+    original_policy = policy | {'read_only': True, 'operation': INSPECT_OPERATION, 'protected': PROTECTED}
+    result = value['remote']; need(isinstance(result, dict), 'preflight_result')
+    valid_inspection_result(identity, original_policy, result)
+    need(result['status'] == 'preflight_mismatch'
+         and result['mismatches'] == [{'path': path, 'reason': 'dependency_drift'} for path in INSTALL_REVIEWED], 'preflight_deviations')
+    for path, row in result['observed'].items():
+        if path == ENTRY:
+            match = row == ENTRY_BEFORE
+        elif path in ADDITIONS or path in ABSENT_DEPENDENCIES:
+            match = row == {'state': 'absent'}
+        else:
+            match = (row.get('state') == 'present' and row.get('sha256') == INSTALL_PROTECTED.get(path)
+                     and row.get('mode') == '0644')
+            if path in INSTALL_REVIEWED: match = match and row.get('size') == INSTALL_REVIEWED[path]['size']
+        need(match, 'preflight_observed')
+    presence = {'anex_private_config': True, 'public_config': True, 'site_config': False, 'local_config': False, 'next_config': False}
+    need(result['private_checks'] == {label: {'presence_known': True, 'present': present, 'matches_expected': True, 'unchanged': True}
+                                      for label, present in presence.items()}, 'preflight_private')
+    run = api('/actions/runs/' + str(PREFLIGHT_RUN))
+    need(run.get('id') == PREFLIGHT_RUN and run.get('head_sha') == PREFLIGHT_CONTROL and run.get('head_branch') == 'main'
+         and run.get('event') == 'issue_comment' and run.get('path') == WORKFLOW and run.get('run_attempt') == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'success'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'preflight_run')
+    meta = api('/actions/artifacts/' + str(PREFLIGHT_ARTIFACT))
+    need(meta.get('id') == PREFLIGHT_ARTIFACT and meta.get('name') == PREFLIGHT_ARTIFACT_NAME and meta.get('expired') is False
+         and meta.get('workflow_run', {}).get('id') == PREFLIGHT_RUN
+         and meta.get('digest') == 'sha256:' + PREFLIGHT_ARTIFACT_SHA, 'preflight_artifact')
+
+
 def install(inspect=False):
     _, operation = fixed_command(inspect)
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-public-install'; work.mkdir(mode=0o700)
@@ -759,6 +1069,7 @@ def install(inspect=False):
         evidence['phase'] = 'artifact'
         signing_evidence(download(SIGNING_ARTIFACT, SIGNING_ARTIFACT_SHA))
         policy, files = package(download(ARTIFACT, ARTIFACT_SHA), inspect)
+        if not inspect: preflight_evidence(download(PREFLIGHT_ARTIFACT, PREFLIGHT_ARTIFACT_SHA), policy)
         host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
         need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
         raw = os.environ['PREVIEW_KEY'].replace('\r', '')
@@ -786,10 +1097,53 @@ def install(inspect=False):
 
 
 def command_mode(arguments):
+    if arguments == ['rollback']: return 'rollback'
     need(arguments in ([], ['inspect']), 'usage')
     return arguments == ['inspect']
 
 
+def rollback():
+    work = Path(os.environ['RUNNER_TEMP']) / 'search3-public-install'; work.mkdir(mode=0o700)
+    key, known = work / 'key', work / 'known'
+    evidence = {'status': 'blocked_no_replay', 'operation_id': ROLLBACK_OPERATION,
+                'read_only': False, 'phase': 'identity', 'ssh_started': False}
+    complete = False
+    try:
+        identity, original_run = rollback_event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()), os.environ)
+        evidence.update(identity); evidence['original_install_run_id'] = original_run; evidence['phase'] = 'admission'
+        original, artifact = rollback_admission(identity, original_run)
+        evidence['phase'] = 'artifact'
+        policy, _ = package(download(ARTIFACT, ARTIFACT_SHA))
+        accepted = rollback_source_evidence(download(artifact['id'], artifact['digest'].removeprefix('sha256:')), original, policy)
+        host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
+        raw = os.environ['PREVIEW_KEY'].replace('\r', '')
+        need(0 < len(raw) <= 32768, 'ssh_key')
+        if 'PRIVATE KEY' not in raw: raw = base64.b64decode(raw, validate=True).decode()
+        with key.open('x') as stream: stream.write(raw.rstrip() + '\n')
+        key.chmod(0o600)
+        scan = carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]); need(0 < len(scan) <= 8192, 'host_key')
+        known.write_bytes(scan); known.chmod(0o600)
+        options = ['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        rollback_commands(identity, original_run, original)
+        rollback_main(identity)
+        evidence.update(status='unknown_no_replay', phase='remote', ssh_started=True)
+        response = carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],
+                               input=rollback_remote_program(policy,identity,original,accepted).encode(), timeout=180)
+        need(len(response) <= 32768, 'receipt_limit'); result = json.loads(response)
+        complete = valid_rollback_result(identity,original,accepted,result); evidence['remote'] = result
+        rollback_main(identity)
+        evidence.update(status=result['status'], phase='complete')
+    except Exception as error:
+        complete = False
+        evidence['error_type'] = type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'RollbackError'
+    finally:
+        key.unlink(missing_ok=True); known.unlink(missing_ok=True)
+        (work / 'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True)); need(complete,'public_rollback_not_verified')
+
+
 if __name__ == '__main__':
     import sys
-    install(command_mode(sys.argv[1:]))
+    mode = command_mode(sys.argv[1:])
+    rollback() if mode == 'rollback' else install(mode)
