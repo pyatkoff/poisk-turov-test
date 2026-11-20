@@ -103,11 +103,18 @@ const server=http.createServer((req,res)=>{
      const box=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height};};
      return {pageWidth:document.documentElement.scrollWidth,width:innerWidth,modalOpen:modal.open,modalWidth:modal.clientWidth,modalContent:modal.scrollWidth,
       bodyWidth:body.clientWidth,bodyContent:body.scrollWidth,body:box(body),footer:box(footer),
+      recoveryActions:[...document.querySelectorAll('#messenger-entry #messenger-check:not([hidden]),#messenger-entry [data-action="modal-back"]')].map(box),
       status:document.querySelector('#messenger-status')?.textContent||null,amount:footer.querySelector('.footer-total>strong')?.textContent||null};});
     assert(state.pageWidth<=width+1,name+' fits the page');
     if(state.modalOpen){assert(state.modalContent<=state.modalWidth+1);assert(state.bodyContent<=state.bodyWidth+1);
      assert(state.body.bottom<=height+1,name+' body fits the viewport');
      if(state.footer.height>0)assert(state.footer.bottom<=height+1&&state.body.bottom<=state.footer.y+1,name+' footer does not cover the body');}
+    if(name==='unknown'){
+     assert.equal(state.recoveryActions.length,2,'unknown keeps status and return actions');
+     const [check,back]=state.recoveryActions;
+     assert(back.x-check.right>=12||back.y-check.bottom>=7,'status and return remain visibly separate, including when wrapped');
+     for(const action of state.recoveryActions)assert(action.height>=44&&action.x>=state.body.x&&action.right<=state.body.right,'recovery action fits its own touch area');
+    }
     const file=name+'-'+width+'.png';stages.push({name,file,...state});save();await page.screenshot({path:path.join(output,file)});
    };
    const noPhone=async()=>assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [type="submit"],#modal [data-action="messenger-phone"],#modal [data-messenger-phone-submit]').count(),0,'public contact has no phone fallback');
@@ -181,6 +188,7 @@ const server=http.createServer((req,res)=>{
     assert.equal(await total(),133500.5);assert.deepEqual(frozen.observation.trip.childAges,[0,12]);
     assert.equal(frozen.observation.trip.adults,3);assert.equal(frozen.observation.price.amount,'133500.5');
     assert.equal(frozen.observation.flights.state,'selected');assert.equal(frozen.observation.flights.outward.length,1);assert.equal(frozen.observation.flights.inward.length,1);
+    assert.equal(await page.locator('#messenger-check').isVisible(),false,'ready contact keeps the status check hidden');
     await capture('contact');
     await page.locator('#messenger-entry [data-platform="telegram"]').click();await page.locator('#messenger-check').waitFor({state:'visible'});
     await noPhone();assert.match(await page.locator('#messenger-status').textContent(),/Не удалось подтвердить переход/);
