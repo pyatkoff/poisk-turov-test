@@ -81,6 +81,9 @@ const server=http.createServer((req,res)=>{
   for(const width of [430,1280]){
    served.clear();
    const height=width===430?932:900,transport=fixture(),tv=privateTVFixture(transport,origin),handoffs=[],network=[],errors=[],forbidden=[],stages=[];
+   // The family fixture withholds the mismatched ANEX row. Existing fictional
+   // TV variants make the list entry available while retaining visual-tv-101.
+   transport.state.wideFacets=true;
    const context=await browser.newContext({viewport:{width,height},serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(10000);
    await context.addInitScript(()=>{window.dataLayer=[];});
    const csrf='a'.repeat(64),intPath='/_preview/search3-anex-candidate/api-anex-search3-preview.php';
