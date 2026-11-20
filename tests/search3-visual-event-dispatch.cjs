@@ -187,6 +187,16 @@ function records(source){return scenarios.map(s=>{const result=characterize(sour
   assert.deepEqual(result.dom[queryIndex],['#hotel-query',{value:result.filterDraft.filters.q,checked:false,hidden:false,textContent:'',scrollTop:37}],'explicit recovery writes the chosen query');
   result.trace.splice(1,1);result.checkpoints.splice(0,1);result.dom.splice(queryIndex,1);
  }
+ // Confirming the initial family now persists its URL after the existing UI
+ // update. Assert only that added boundary and identical state before removing
+ // it from the historical 153-case digest; every other call remains observable.
+ if(s.name==='valid guest apply'&&result.trace.some(call=>call[0]==='updateURL')){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI'],['updateURL']],'initial family persistence follows the existing close/UI order');
+  assert.equal(result.state.hasSearched,false,'only the initial family scenario is projected');
+  assert.deepEqual(result.checkpoints.map(checkpoint=>checkpoint.name),['closeModal','updateSearchUI','updateURL'],'exactly one initial URL boundary is added');
+  assert.deepEqual({...result.checkpoints[2],name:'updateSearchUI'},result.checkpoints[1],'initial URL persistence leaves the exact confirmed draft and applied state unchanged');
+  result.trace.splice(3,1);result.checkpoints.splice(2,1);
+ }
  delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');
 assert(source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;"),'explicit recovery synchronizes retained controls before Apply');
@@ -198,6 +208,16 @@ if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[
 const BASELINE='b258cb0b417012c1bdf16932db1a6a7a0ccb46c21f33bc8c76bd681abe021874';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
+const initialGuestApply=characterize(source,scenarios.find(s=>s.name==='valid guest apply'));
+assert.deepEqual(initialGuestApply.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI'],['updateURL']],'current initial family Apply must persist its URL without a search or transport call');
+let retainedGuestSearch;
+const appliedGuestApply=characterize(source,{type:'click',action:'apply-guests',setup:c=>{
+ c.state.hasSearched=true;c.state.search.adults=2;c.state.search.ages=[5];retainedGuestSearch=structuredClone(c.state.search);
+ c.guestDraft={adults:3,ages:[0,12]};
+}});
+assert.deepEqual(appliedGuestApply.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI']],'guest Apply for existing results cannot write the URL or start a search/transport');
+assert.deepEqual(appliedGuestApply.state.search,retainedGuestSearch,'existing results retain their exact applied search identity');
+assert.equal(appliedGuestApply.state.hasSearched,true);assert.equal(appliedGuestApply.draft.adults,3);assert.deepEqual(appliedGuestApply.draft.ages,[0,12],'the changed family remains only in the form draft');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('click:budget-adjust-max').trace,[['queueMicrotask']]);
 const pickedBudget=characterize(source,{type:'click',action:'budget-adjust-max',dataset:{value:'2000'},setup:c=>{c.modalType='budget';c.searchEditSession={};}});

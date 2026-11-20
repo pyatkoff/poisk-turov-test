@@ -399,6 +399,7 @@ async function pickerRetainedDraftRegressions(){
   t.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
   const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({scenario:'live',...trip,adults:3,ages:'0,12',...(hotel?{hotel:'2001'}:{}),...params}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
   const win=local.window,doc=win.document,get=s=>doc.querySelector(s),originalURL=win.location.href;
+  let expectedURL=originalURL;
   assert(get('.search-submit').disabled,'first paint cannot submit an unhydrated form');
   Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
   win.matchMedia=()=>({matches:width<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
@@ -425,12 +426,18 @@ async function pickerRetainedDraftRegressions(){
   const ui=()=>JSON.parse(JSON.stringify(win.history.state?.[historyKey]||null)),ids=()=>[...doc.querySelectorAll('.destination-hotel')].map(node=>Number(node.dataset.id));
   const selected=()=>[...doc.querySelectorAll('#destination-selection [data-action="destination-remove"]')].map(node=>Number(node.dataset.id));
   const reads=()=>t.calls.filter(call=>call.url.endsWith('/data/hotel-search-v1.php')).length;
-  const passive=()=>{assert.equal(win.location.href,originalURL,'draft/Back/reload must not mutate the applied search URL');assert.equal(t.calls.filter(call=>['search_start','search_continue','quote','quote_start','quote_calculate','quote_select_flights','search','tour','flights','expand','offer','additional_prices'].includes(call.action)||/api-(?:anex|andromeda)|lead|booking/.test(call.url)).length,0,'passive picker performs no supplier, price or lead operation');assert.deepEqual(errors,[],'actual app has no JSDOM errors');};
+  const expectConfirmedInitialParty=(adults,ages)=>{
+   const confirmed=new URL(originalURL);assert.equal(confirmed.searchParams.has('searched'),false,'this expectation is only for an initial unsearched form');
+   confirmed.searchParams.set('adults',String(adults));confirmed.searchParams.set('ages',ages.join(','));
+   assert.equal(win.location.href,confirmed.href,'successful whole-party Apply changes only the confirmed initial family in the URL');
+   assert.equal(new URL(win.location.href).searchParams.has('searched'),false,'confirming initial tourists cannot request an automatic search');expectedURL=confirmed.href;
+  };
+  const passive=()=>{assert.equal(win.location.href,expectedURL,'draft/Back/reload must preserve the exact URL of the last confirmed initial family');assert.equal(t.calls.filter(call=>['search_start','search_continue','quote','quote_start','quote_calculate','quote_select_flights','search','tour','flights','expand','offer','additional_prices'].includes(call.action)||/api-(?:anex|andromeda)|lead|booking/.test(call.url)).length,0,'passive picker performs no supplier, price or lead operation');assert.deepEqual(errors,[],'actual app has no JSDOM errors');};
   if(waitReady)await until(()=>!get('.search-submit').disabled);
   if(hotel)await until(()=>get('#destination-detail').textContent===t.state.hotelCatalogue.find(h=>h.id===2001).name);
   if(route){win.dispatchEvent(new win.Event('pageshow'));await until(()=>get('#modal').open);}
   const dispose=async()=>{await pause();passive();local.window.close();};
-  return{t,win,doc,get,tap,input,ui,ids,selected,reads,started,completed,until,passive,dispose};
+  return{t,win,doc,get,tap,input,ui,ids,selected,reads,started,completed,until,expectConfirmedInitialParty,passive,dispose};
  }
  const regionReads=t=>t.calls.filter(call=>call.action==='regions').length;
  let releaseCountries,releaseRegions;
@@ -490,6 +497,7 @@ async function pickerRetainedDraftRegressions(){
     assert.match(restored.get('[data-action="child-age"][data-index="0"]').textContent,/До 1 года/);assert.match(restored.get('[data-action="child-age"][data-index="1"]').textContent,action==='apply-age'?/13 лет/:/12 лет/);
     assert.equal(restored.get('#guests-detail').textContent,'До 1 года и 12 лет','nested age confirmation only changes the parent draft');
     restored.tap(action==='apply-age'?'[data-action="apply-guests"]':'[data-action="close-modal"]');await restored.until(()=>!restored.get('#modal').open&&!restored.ui());
+    if(action==='apply-age')restored.expectConfirmedInitialParty(3,[0,13]);
     assert.equal(restored.get('#guests-detail').textContent,action==='apply-age'?'До 1 года и 13 лет':'До 1 года и 12 лет');restored.passive();records.family++;
    }finally{await restored.dispose();}
   }
