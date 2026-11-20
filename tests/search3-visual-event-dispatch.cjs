@@ -50,7 +50,8 @@ function characterize(source, scenario) {
   const state = {filters:filters(),sort:'recommended',onlyFavorites:false,selectedDate:'2026-10-15',openHotel:7,hasSearched:false,search:{country:'Turkey',from:'2026-10-14',to:'2026-10-20'}};
   const model = {filters:filters(),onlyFavorites:false,selectedDate:null};
   const choice = {model:{filters:filters(),onlyFavorites:true,selectedDate:'2026-10-18'}};
-  const ctx = {console, Math, Number, String, Array, Set, Map, JSON, Date, structuredClone,
+  // Public analytics is optional in the preview, but the browser window always exists.
+  const ctx = {window:{}, console, Math, Number, String, Array, Set, Map, JSON, Date, structuredClone,
     Event:class Event {constructor(type,options){this.type=type;this.options=options;}},
     $:node, $$:s=>[node(s+'[0]'),node(s+'[1]')],
     document:{addEventListener:(type,fn)=>{assert(!listeners[type],'one registration per type');listeners[type]=fn;}},
@@ -225,5 +226,10 @@ for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEq
 // Prove these observations reject two plausible extraction regressions.
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
-assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
+// Keep the optional analytics observation intact while reversing the actual state/render order.
+const sortStep=source.match(/state\.sort=t\.value;(?:window\.AnyTourPublicAnalyticsV1\?\.sort\(t\.value\);)?renderResults\(\{keepFilters:true\}\)/)?.[0];
+assert(sortStep,'actual sort state/render mutation boundary');
+const sortMutation=source.replace(sortStep,sortStep.replace('state.sort=t.value;','')+';state.sort=t.value');
+assert.notEqual(sortMutation,source,'sort ordering mutation is applied');
+assert.notDeepEqual(records(sortMutation),actual,'state-before-render mutation detected');
 console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, approved presentation digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);

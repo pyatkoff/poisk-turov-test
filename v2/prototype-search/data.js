@@ -37,6 +37,7 @@
   function localContentEndpoint(){
     if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
     const path=String(root.location?.pathname||'');
+    if(root.V2_CONFIG?.search3PublicEntry==='live'&&['/poisk-turov/','/poisk-turov/index.php'].includes(path))return '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php';
     return path.startsWith('/_preview/search3-next-candidate/')? '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php'
       :path.startsWith(local)?local+'data/local-tv-catalog-read-v1.php':null;
   }
@@ -1600,7 +1601,7 @@
     return null;
   }
   let catalogGeneration=0,catalogBootstrap=null;
-  function init(origin='Москва') {
+  function init(origin='Москва',options={}) {
     if(!catalogBootstrap){
       const departures=loadDepartures();
       const plans=Promise.all([readMealPlans('tourvisor'),readMealPlans('anex')]);
@@ -1612,25 +1613,30 @@
       });
       catalogBootstrap={departures,meals};
     }
-    return countries(origin);
+    return countries(origin,options);
   }
-  async function countryOptions(origin,run,bootstrap) {
+  async function countryOptions(origin,run,bootstrap,options) {
     if(bootstrap)await bootstrap.departures;
     if(run!==catalogGeneration)return null;
-    const departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
+    let departure;
+    if(options&&Object.hasOwn(options,'departureId')){
+      const id=String(options.departureId),matches=/^[1-9]\d*$/.test(id)?catalog.departures.filter(row=>String(row.id)===id):[];
+      if(matches.length!==1||!text(matches[0])){const error=new Error('Город вылета из ссылки недоступен.');error.code='PUBLIC_DEPARTURE_UNMAPPED';throw error;}
+      departure=matches[0];
+    }else departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
     const rows=await destinationCatalog('countries',{departureId:departure.id});
     return {rows,departure};
   }
-  async function countries(origin) {
+  async function countries(origin,options={}) {
     const run=++catalogGeneration,bootstrap=catalogBootstrap;
     // A retry can reuse the global reads even if an earlier origin failed.
     // Settle both before releasing the bootstrap or committing country state.
-    const [options,meals]=await Promise.allSettled([countryOptions(origin,run,bootstrap),bootstrap?.meals]);
+    const [result,meals]=await Promise.allSettled([countryOptions(origin,run,bootstrap,options),bootstrap?.meals]);
     if(run!==catalogGeneration)return null;
     catalogBootstrap=null;
-    if(options.status==='rejected')throw options.reason;
+    if(result.status==='rejected')throw result.reason;
     if(meals.status==='rejected')throw meals.reason;
-    const {rows,departure}=options.value;
+    const {rows,departure}=result.value;
     if(!rows.length)throw new Error('Для этого города список стран недоступен.');
     const seen=new Set(),items=[];
     for(const row of rows){

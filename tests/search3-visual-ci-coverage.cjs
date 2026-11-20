@@ -3,7 +3,7 @@
 // it does not execute PHP, start a search or contact a provider.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
-const bootstrap=fs.readFileSync(path.join(root,'v2/visual-search/index.php'),'utf8');
+const bootstrap=fs.readFileSync(path.join(root,'v2/visual-search/entry-v1.php'),'utf8');
 const html=fs.readFileSync(path.join(root,'v2/visual-search/index.html'),'utf8');
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/search3-visual-migration.yml'),'utf8');
 const buildWorkflow=fs.readFileSync(path.join(root,'.github/workflows/build-search3-whole-site-preview.yml'),'utf8');
@@ -24,9 +24,16 @@ function matches(pattern,file){
 function dependencies(bootstrap,html){
  const array=bootstrap.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);assert(array,'explicit LIVE graph');
  const live=[...array[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
+ const beforeApp=bootstrap.match(/\$publicBeforeApp\s*=\s*\[([\s\S]*?)\];/);assert(beforeApp,'explicit public companions');
+ const publicOwners=[...beforeApp[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
+ for(const name of ['publicConfigScript','publicAnalyticsScript']){
+  const declaration=bootstrap.match(new RegExp('\\$'+name+"\\s*=\\s*'([^']+\\.js)';"));assert(declaration,'explicit '+name);publicOwners.push(declaration[1]);
+ }
  const offline=[...html.matchAll(/(?:src|href)="(\.\/?[^"?]+\.(?:js|css))(?:\?[^" ]*)?"/g)].map(m=>m[1]);
+ const ondemand=[...html.matchAll(/data-(?:offer-list|hotel-details|flight-picker)-src="([^"?]+\.js)"/g)].map(m=>m[1]);assert.equal(ondemand.length,3,'three cold owners');
  const optional=[...bootstrap.matchAll(/dirname\(__DIR__\)\s*\.\s*'\/([^']+\.php)'/g)].map(m=>'../'+m[1]);
- return [...new Set([...live,...offline,...optional].map(src=>path.posix.normalize(path.posix.join('v2/visual-search',src))).concat(leadSources))];
+ return [...new Set([...live,...offline,...ondemand,...publicOwners,...optional].map(src=>path.posix.normalize(path.posix.join('v2/visual-search',src)))
+  .concat(leadSources,['v2/visual-search/index.php','v2/visual-search/entry-v1.php','v2/visual-search/public-entry-v1.php']))];
 }
 function job(workflow,name){
  const start=workflow.indexOf('  '+name+':\n');assert(start>=0,'required job '+name);
@@ -36,6 +43,7 @@ function job(workflow,name){
 // The pre-split workflow had 46 Node test invocations and 37 distinct commands.
 // Keep every distinct argv once; --browser and --messenger-only are separate cases.
 const requiredCommands=[
+ 'search3-public-entry.cjs','search3-public-bindings.cjs','search3-public-review-browser.cjs',
  'local-tv-catalog-browser.cjs','local-tv-catalog-browser.cjs --browser',
  'search3-messenger-context.cjs','search3-messenger-flow.cjs','search3-prototype-messenger-handoff.cjs',
  'search3-visual-anex-flight-continuation.cjs','search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"',
@@ -106,6 +114,8 @@ const deps=verify(workflow,bootstrap,html);
 assert.throws(()=>verify(workflow.replace("      - 'v2/prototype-search/data.js'\n",''),bootstrap,html),/every entry dependency/,'missing data owner detected');
 assert.throws(()=>verify(workflow.replace("      - 'v2/prototype-search/source-receipt-v1.js'\n",''),bootstrap,html),/every entry dependency/,'missing receipt owner detected');
 assert.throws(()=>verify(workflow,bootstrap.replace("'../prototype-search/data.js'","'../prototype-search/future-owner.js'"),html),/every entry dependency/,'future unregistered owner detected');
+for(const file of ['analytics-v4.js','analytics-config.php','seo-config.php'])assert.throws(()=>verify(workflow.replace("      - 'v2/"+file+"'\n",''),bootstrap,html),/every entry dependency/,'public helper remains in CI coverage: '+file);
+assert.throws(()=>verify(workflow,bootstrap.replace("'./public-bootstrap-v1.js'","'../future-public-owner.js'"),html),/every entry dependency/,'future public owner cannot escape CI coverage');
 assert.throws(()=>verify(workflow.replace("      - 'tests/search3-prototype-*.cjs'\n",''),bootstrap,html),/characterization trigger/,'test-only change detected');
 assert.throws(()=>verify(workflow.replace('ready_for_review, ',''),bootstrap,html),/restores/,'missing ready restoration detected');
 assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !github.event.pull_request.draft }}\n    # Drafts retain'),bootstrap,html),/every draft/,'disabled draft check detected');

@@ -19,6 +19,7 @@ import sys
 
 
 ENTRY = "v2/visual-search/index.php"
+RENDERER = "v2/visual-search/entry-v1.php"
 HTML = "v2/visual-search/index.html"
 COMPILER = "scripts/build/search3-js/visual-entry.cjs"
 STYLE_REFS = ["./styles.css", "./mobile-controls-v1.css"]
@@ -171,7 +172,9 @@ class Page(HTMLParser):
 
 
 def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
-    php, html = git.content(tree, ENTRY), git.content(tree, HTML)
+    wrapper, php, html = git.content(tree, ENTRY), git.content(tree, RENDERER), git.content(tree, HTML)
+    wrapper_requires = re.findall(r"\b(?:require|include)(?:_once)?\s+([^;]+);", wrapper)
+    need(wrapper_requires == ["__DIR__ . '/entry-v1.php'"], "unknown preview wrapper dependency")
     arrays = re.findall(r"\$scripts\s*=\s*\[([\s\S]*?)\];", php)
     need(len(arrays) == 1, "expected exactly one explicit LIVE script array")
     live = re.findall(r"'([^']+\.js)'", arrays[0])
@@ -187,7 +190,7 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
     for ref in live + page.scripts + list(page.lazy.values()) + page.styles:
         need(bool(ASSET_REF.fullmatch(ref)), f"unbounded script/style reference: {ref}")
     need(len(set(page.lazy.values())) == 3, "three distinct on-demand owners required")
-    roles: dict[str, set[str]] = {ENTRY: {"entry"}, HTML: {"html_shell"}}
+    roles: dict[str, set[str]] = {ENTRY: {"entry"}, RENDERER: {"shared_entry_renderer"}, HTML: {"html_shell"}}
 
     def add(path: str, role: str) -> None:
         need(path in tree, f"missing declared dependency: {path}")
@@ -239,6 +242,20 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
             residue = re.sub(r"'[^']+'\s*:\s*'[^']+'", "", table[1])
             need(pairs and not re.sub(r"[\s,]", "", residue), "dynamic operator asset map")
             logo_refs = ["./assets/operators/" + filename for filename in pairs]
+        # The public entry uses the same local assets under an absolute resource
+        # base. Accept only literals and the existing finite operator table;
+        # every other helper argument needs an explicit inventory review.
+        for call in re.finditer(r"\bvisualResource\s*\(", code):
+            tail = code[call.end():]
+            literal = re.match(r"\s*(['\"])(assets/[A-Za-z0-9_./-]+)\1\s*\)", tail)
+            if literal:
+                asset = "./" + literal.group(2)
+                need(bool(STATIC_REF.fullmatch(asset)), f"unsupported visualResource asset: {asset}")
+                add(resolve_ref(path, asset), "static_asset")
+                continue
+            operator = re.match(r"\s*(['\"])assets/operators/\1\s*\+\s*file\s*\)", tail)
+            need(bool(operator) and bool(logo_refs),
+                 f"dynamic/unknown visualResource asset: {path}")
         for asset in re.findall(r"\./assets/[^\s\"'`<>]*", code):
             if asset == "./assets/operators/${file}":
                 need(bool(logo_refs), "operator image template has no explicit file map")
@@ -257,9 +274,27 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
     need(expected in php, "direct PHP dependency declaration changed; review it explicitly")
     need("if (is_file($popularitySource))" in php, "optional PHP dependency guard changed")
     requires = re.findall(r"\b(?:require|include)(?:_once)?\s+([^;]+);", php)
-    need(requires == ["$popularitySource"], "unknown PHP include dependency in entry")
+    need(requires == ["$analytics", "$popularitySource", "dirname(__DIR__) . '/seo-config.php'"],
+         "unknown PHP include dependency in entry")
     add(PHP_DIRECT, "optional_direct_php_dependency")
+    public_arrays = re.findall(r"\$publicBeforeApp\s*=\s*\[([\s\S]*?)\];", php)
+    need(len(public_arrays) == 1, "expected one public companion declaration")
+    public_before_app = re.findall(r"'([^']+\.js)'", public_arrays[0])
+    need(public_before_app == ['./public-url-v1.js', './public-bootstrap-v1.js', './public-analytics-v1.js']
+         and not re.sub(r"[\s,]", "", re.sub(r"'[^']+\.js'", "", public_arrays[0])),
+         "public companion declaration changed")
+    need(php.count("$publicConfigScript = './public-config-v1.js';") == 1
+         and php.count("$publicAnalyticsScript = '../analytics-v4.js';") == 1,
+         "public config/analytics owner declaration changed")
+    need(live[0:2] == ['../prototype-search/config.js', '../runtime-v3.js'] and live[-1] == './app.js',
+         "public graph derivation requires existing config/runtime/app order")
+    public_live = ['./public-config-v1.js', live[1], '../analytics-v4.js', *live[2:-1], *public_before_app, './app.js']
+    public_review = ['./public-config-v1.js', *page.scripts[:-1], *public_before_app[:2], './app.js']
+    need(page.scripts[0] == './fixture-data.js' and page.scripts[-1] == './app.js', "incomplete offline owner span")
+    need(all(len(g) == len(set(g)) for g in [public_live, public_review]), "duplicate public graph owner")
     graph = {"live": live, "on_demand": page.lazy, "styles": page.styles,
+             "public_live": public_live, "public_review": public_review,
+             "public_graph_scope": "Derived declarations only; public entry/config/server dependencies are not admitted by this NEXT inventory.",
              "excluded_offline_scripts": [x for x in page.scripts if x not in live],
              "declared_direct_php_dependencies": [{"path": PHP_DIRECT, "optional_at_runtime": True,
                  "transitive_graph_complete": False}]}

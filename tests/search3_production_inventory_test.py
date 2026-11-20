@@ -15,13 +15,19 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/build/search3_production_inventory.py"
 ENTRY = "v2/visual-search/index.php"
+RENDERER = "v2/visual-search/entry-v1.php"
 HTML = "v2/visual-search/index.html"
 APP = "v2/visual-search/app.js"
 PHP = """<?php
 $html = file_get_contents(__DIR__ . '/index.html');
-$scripts = ['../runtime-v3.js', './app.js'];
+$scripts = ['../prototype-search/config.js', '../runtime-v3.js', './app.js'];
+$publicConfigScript = './public-config-v1.js';
+$publicAnalyticsScript = '../analytics-v4.js';
+$publicBeforeApp = ['./public-url-v1.js', './public-bootstrap-v1.js', './public-analytics-v1.js'];
+require_once $analytics;
 $popularitySource = dirname(__DIR__) . '/data/hotel-popularity-v1.php';
 if (is_file($popularitySource)) { require_once $popularitySource; }
+require_once dirname(__DIR__) . '/seo-config.php';
 """
 PAGE = """<!doctype html><html>
 <head data-offer-list-src="./offer-list-v1.js" data-hotel-details-src="./hotel-details-v1.js" data-flight-picker-src="./flight-picker-ui-v1.js">
@@ -31,8 +37,8 @@ PAGE = """<!doctype html><html>
 </body></html>
 """
 APP_CODE = """const operatorAssets={'ANEX':'anex.svg','Coral Travel':'coral.png'};
-const logo = `./assets/operators/${file}`;
-const fallback = './assets/photo-unavailable.svg';
+const logo = visualResource('assets/operators/'+file);
+const fallback = visualResource('assets/photo-unavailable.svg');
 const hotelDetailsAsset=document.head.dataset.hotelDetailsSrc;
 { const script=document.createElement('script');script.src=hotelDetailsAsset; }
 { const script=document.createElement('script');script.src=document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js'; }
@@ -58,7 +64,8 @@ class ProductionInventoryTest(unittest.TestCase):
         self.write("v2/mode-only.js", "same bytes\n")
         self.main_sha = self.commit()
         self.files = {
-            ENTRY: PHP, HTML: PAGE, APP: APP_CODE,
+            ENTRY: "<?php require __DIR__ . '/entry-v1.php';\n", RENDERER: PHP, HTML: PAGE, APP: APP_CODE,
+            "v2/prototype-search/config.js": "const config = 'preview';\n",
             "scripts/build/search3-js/visual-entry.cjs": "// fixture declaration owner\n",
             "v2/runtime-v3.js": "const runtime = 'candidate';\n",
             "v2/visual-search/styles.css": "@font-face{src:url('./assets/inter-latin.woff2')}\n",
@@ -144,6 +151,11 @@ class ProductionInventoryTest(unittest.TestCase):
         self.assertIn("not merge conflicts", manifest["comparison_scope"])
         self.assertEqual(len(manifest["unmapped_server_boundaries"]), 6)
         self.assertTrue(manifest["client_graph"]["declared_direct_php_dependencies"][0]["optional_at_runtime"])
+        self.assertIn(RENDERER, added)
+        self.assertEqual(manifest["client_graph"]["public_review"], [
+            './public-config-v1.js', './fixture-data.js', './public-url-v1.js', './public-bootstrap-v1.js', './app.js'])
+        self.assertNotIn('../analytics-v4.js', manifest["client_graph"]["public_review"])
+        self.assertIn('../analytics-v4.js', manifest["client_graph"]["public_live"])
         snapshot = (output / "snapshot-candidate-paths.txt").read_text().splitlines()
         self.assertEqual([p for p in snapshot if not p.startswith("#")], ["runtime-v3.js"])
         self.assertEqual({p.name for p in output.iterdir()}, {"manifest.json", "snapshot-candidate-paths.txt"})
@@ -166,7 +178,8 @@ class ProductionInventoryTest(unittest.TestCase):
         self.assertIn("symlink or non-regular", result.stderr)
 
     def test_rejects_missing_runtime_static_license_and_direct_php(self) -> None:
-        paths = ["v2/visual-search/hotel-details-v1.js", "v2/visual-search/assets/operators/anex.svg",
+        paths = [RENDERER, "v2/visual-search/hotel-details-v1.js", "v2/visual-search/assets/operators/anex.svg",
+                 "v2/visual-search/assets/photo-unavailable.svg",
                  "v2/visual-search/assets/inter-latin.woff2", "v2/visual-search/assets/inter-LICENSE.txt",
                  "v2/data/hotel-popularity-v1.php"]
         for path in paths:
@@ -179,14 +192,20 @@ class ProductionInventoryTest(unittest.TestCase):
 
     def test_rejects_dynamic_or_incomplete_graph_and_unknown_loaders(self) -> None:
         cases = [
-            (ENTRY, PHP.replace("'./app.js'", "$dynamic"), "LIVE script declaration"),
+            (RENDERER, PHP.replace("'./app.js'", "$dynamic"), "LIVE script declaration"),
             (HTML, PAGE.replace(' data-hotel-details-src="./hotel-details-v1.js"', ""), "incomplete on-demand"),
             (APP, APP_CODE + "import('./extra.js');", "undeclared script loader"),
             (APP, APP_CODE + "const extra=document.createElement('script');extra.src='./extra.js';", "unknown dynamic script owner"),
             (APP, APP_CODE.replace("script.src=hotelDetailsAsset;", "script.src='./extra.js';"), "on-demand script assignments changed"),
             (APP, APP_CODE.replace("'anex.svg'", "computeLogo()"), "dynamic operator asset map"),
+            (APP, APP_CODE.replace("'assets/photo-unavailable.svg'", "chooseAsset()"), "dynamic/unknown visualResource"),
+            (APP, APP_CODE.replace("'assets/photo-unavailable.svg'", "'assets/' + filename"), "dynamic/unknown visualResource"),
+            (APP, APP_CODE.replace("'assets/operators/'+file", "'assets/operators/'+other"), "dynamic/unknown visualResource"),
+            (APP, APP_CODE.replace("assets/photo-unavailable.svg", "assets/../photo-unavailable.svg"), "nested traversal"),
             ("v2/visual-search/styles.css", "@import './extra.css';", "CSS imports"),
-            (ENTRY, PHP + "require_once $unknown;", "unknown PHP include"),
+            (RENDERER, PHP + "require_once $unknown;", "unknown PHP include"),
+            (ENTRY, "<?php require __DIR__ . '/another.php';", "unknown preview wrapper dependency"),
+            (RENDERER, PHP.replace("'./public-bootstrap-v1.js'", "'./unknown.js'"), "public companion declaration changed"),
             (HTML, PAGE.replace("</body>", '<video src="./assets/movie.mp4"></video></body>'), "unknown embedded resource"),
         ]
         for path, content, message in cases:
@@ -197,10 +216,22 @@ class ProductionInventoryTest(unittest.TestCase):
                 self.assertFalse((self.base / "review").exists())
                 self.write(path, self.files[path])
 
+    def test_legacy_relative_static_assets_remain_supported(self) -> None:
+        self.write(APP, APP_CODE.replace("visualResource('assets/operators/'+file)",
+                                        "`./assets/operators/${file}`")
+                   .replace("visualResource('assets/photo-unavailable.svg')",
+                            "'./assets/photo-unavailable.svg'"))
+        self.run_tool(candidate=self.commit())
+        manifest = json.loads((self.base / "review/manifest.json").read_text())
+        added = {row["path"] for row in manifest["runtime_comparison"]["added"]}
+        self.assertTrue({"v2/visual-search/assets/photo-unavailable.svg",
+                         "v2/visual-search/assets/operators/anex.svg",
+                         "v2/visual-search/assets/operators/coral.png"} <= added)
+
     def test_rejects_unsafe_asset_paths(self) -> None:
         for value in ("../../outside.js", "./sub/../app.js", "/absolute.js", "https://example.invalid/app.js"):
             with self.subTest(reference=value):
-                self.write(ENTRY, PHP.replace("'./app.js'", repr(value)))
+                self.write(RENDERER, PHP.replace("'./app.js'", repr(value)))
                 self.run_tool(candidate=self.commit(), ok=False)
                 self.assertFalse((self.base / "review").exists())
 

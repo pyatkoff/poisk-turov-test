@@ -9,9 +9,23 @@
  // from/country are shared; legacy hotel/stars/rating remain explicit unresolved filters above.
  const nextKeys=['origin','scenario','to','minNights','maxNights','adults','ages','date','searched','favorites','hotels','resorts','meals','operators','flight','amenities','amenityLabels','beach','family','spa','q','min','max','sort'];
  const known=new Set(['from','country','child_count','child_age[]','child_age',...Object.values(aliases).flat(),...unsupported,...attribution]);
+ const shared=new Set(['from','country','hotel','stars','rating']);
+ const modern=new Set([...nextKeys,...shared,...attribution]);
  const value=(p,keys)=>{for(const key of keys){const v=p.get(key);if(v!==null&&v!=='')return v;}return '';};
  const positive=v=>/^[1-9]\d*$/.test(v)&&Number.isSafeInteger(Number(v));
  const fail=(code,fields)=>Object.freeze({ok:false,code,fields:Object.freeze(fields)});
+ function inspect(query){
+  const input=new URLSearchParams(query),keys=[...new Set([...input.keys()])];
+  const next=nextKeys.filter(key=>input.has(key));
+  const legacy=keys.filter(key=>known.has(key)&&!shared.has(key)&&!attribution.includes(key));
+  const nativeDeparture=input.has('from')&&/^[1-9]\d*$/.test(input.get('from')||'');
+  if(next.length&&(legacy.length||nativeDeparture))return fail('mixed_namespace',[...legacy,...(nativeDeparture?['from']:[])]);
+  const namespace=next.length?'next':keys.some(key=>!attribution.includes(key)&&input.getAll(key).some(v=>v!==''))?'legacy':'empty';
+  const allowed=namespace==='next'?modern:known;
+  const unknown=keys.filter(key=>!allowed.has(key)&&input.getAll(key).some(v=>v!==''));
+  if(unknown.length)return fail('unknown_parameters',unknown);
+  return Object.freeze({ok:true,namespace});
+ }
  function fromLegacy(query,catalog){
   const input=new URLSearchParams(query),output=new URLSearchParams();
   const modern=nextKeys.filter(key=>input.has(key));if(modern.length)return fail('next_namespace',modern);
@@ -54,5 +68,5 @@
   const autoSearch=input.has('from')&&input.has('country')&&explicit.some(key=>input.has(key));
   return Object.freeze({ok:true,query:output.toString(),autoSearch});
  }
- root.AnyTourPublicSearchURLV1=Object.freeze({fromLegacy});
+ root.AnyTourPublicSearchURLV1=Object.freeze({fromLegacy,inspect});
 })(typeof window==='undefined'?globalThis:window);

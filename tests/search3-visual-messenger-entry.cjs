@@ -32,7 +32,7 @@ function setup(route,{tv=false,manager=false}={}){
 const tests=[];const test=(name,fn)=>tests.push({name,fn});
 test('Actual config enables only the explicitly marked original NEXT live entry',async()=>{
   const config=fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/config.js'),'utf8');
-  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/index.php'),'utf8');
+  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/entry-v1.php'),'utf8');
   const attrs=index.match(/data-local-tv-catalog="enabled"[^']*/)?.[0]||'';
   assert.match(attrs,/data-search3-messenger="enabled"/,'the real config script owns the NEXT opt-in');
   assert.match(attrs,/data-search3-tv-session="enabled"/);
@@ -93,7 +93,7 @@ test('Pending, sealed and foreign retained views do not make a dispatcher reques
   }
 });
 test('The real graph and existing action dispatcher connect the reviewed owners without changing lead code',async()=>{
-  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/index.php'),'utf8');for(const name of ['messenger-context-v1.js','messenger-flow-v1.js'])assert.ok(index.includes(name));
+  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/entry-v1.php'),'utf8');for(const name of ['messenger-context-v1.js','messenger-flow-v1.js'])assert.ok(index.includes(name));
   for(const action of ['messenger-open','messenger-phone','messenger-other','messenger-check'])assert.ok(app.includes("case '"+action+"':"));
   const footer=app.slice(app.indexOf('function providerApplicationFooterHTML('),app.indexOf('\nfunction renderRealOffer'));
   assert.match(footer,/data-messenger-phone-submit hidden/);assert.match(footer,/window\.AnyTourPrototypeLead\.action\(\)/);

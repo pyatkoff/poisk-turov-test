@@ -161,7 +161,8 @@ function observe(source,s){
   ctx.renderResults({keepFilters:!!s.keepFilters});
   if(s.progressive){
    Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery')});
-   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure:')+'})',ctx);
+   // Both retained arrow and current method syntax share this named owner boundary.
+   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure')+'})',ctx);
    const event=type=>handlers.afterEvent({type},ctx.searchResponse);
    const count=name=>trace.filter(entry=>entry[0]===name).length;
    ctx.searchResponse={key:'current',pending:true};trace.length=0;

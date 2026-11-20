@@ -55,8 +55,8 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "a059ee5e79bd0643d0591fdb7a2ad7afec1e4e05d665baa73049f8cc68760b07",
-    "fixture-data.js": "73b61edb3b3dddd7ca10c71ced5be40ef5c5680b8281ca96ee753e68d549a499",
+    "app.js": "98e380144cb7160e87a2c8c3fbbdd1c8352bb70e5f6b37f4b2c6d9dc1ba569ea",
+    "fixture-data.js": "2a30caa3a46c1e76adb5de6177aa35ddd862098a614cbe6fa79b2d7486f50cb6",
     "index.html": "49e52b6c7ae3ab6158c82ea356f6b09418cb3cc9cfde02baab3636959fdd02fd",
     "styles.css": "5fb3d456ff674e7d16e8c5c6f0c2bbdd0e1c563d5b1ad776e3a66d981fa47a83",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
@@ -66,10 +66,17 @@
     "mobile-controls-v1.css": "d0cb9b5fe69ca46cf4ff75acfa8c0912f99fa012e46698af1163da04886a2a14",
     "hotel-details-v1.js": "37a81f88cfad261559bf3df2ac4479003775880e7003d582d9e9356dd74edddc",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
-    "index.php": "159060195fa7a41e6a95f5e8e0fb302f04c6c94c9e49b5c1845eee9210626454",
+    "index.php": "bfda6c091544c13d157537879adaa7037e3bff3dface2fb5b3a77067808da339",
     "flight-picker-ui-v1.js": "03e90fe433c2df837e3f62d8761694a9e1fbb369845cac998f7ef6aa18a6227d",
     "lead-runtime-v1.js": "9e0e9e4393b0b019c51616acb4aff20231c911cf7f0426b49a1e9b8624bfc065",
-    "search-lifecycle-v1.js": "8fb5d00d59eab7fc320ba1c8a7272b191e08b3b2fe9e08f48f6987be095161f9"
+    "search-lifecycle-v1.js": "8fb5d00d59eab7fc320ba1c8a7272b191e08b3b2fe9e08f48f6987be095161f9",
+    "recorded-data.js": "ffdcfb03e3cb977d2a3c14656101b01b80765dee85a571b789ab4b88a142cd02",
+    "entry-v1.php": "b1fbdcaababf2e411d909a276e24e512b4334b4a9f0a63195607fa34aa67482c",
+    "public-entry-v1.php": "4df2762bffe464b2e28a4a577f11089c4958e750d6eb63224a18909ed6552616",
+    "public-url-v1.js": "9f25085a14e1e766051313001d3a05a8d3fdf347e15b19ed219496445a877572",
+    "public-config-v1.js": "e26c1a2d93073ead5487cd349410ebc26c55fbe7dbbd713d5b204422c43558e8",
+    "public-bootstrap-v1.js": "716b1132b92995434268cecb810bf4fa99cddf41664e7c36fe96494b103466ea",
+    "public-analytics-v1.js": "3d562cce2ca033c5d62243bf0559f6a7c6c43d54fe38e68f84fd26997d47c8bd"
   },
   "quoteRecovery": {
     "date": "2026-09-26",
@@ -352,7 +359,7 @@
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
       "../prototype-search/messenger-flow-v1.js": "18d52f878669185b41d335938755b684c5d470e48fe4ce8a71faefa33298e687",
-      "../prototype-search/data.js": "e0a1f6a5b94d11f5a44a85264192fcca02b595a7b201af67ddc6dae67734aee2",
+      "../prototype-search/data.js": "16bb911aa318e583ae6f8130fd8439c40350796500cb0bbf7320633a2a40d45c",
       "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",

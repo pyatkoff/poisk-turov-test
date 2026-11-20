@@ -177,5 +177,31 @@
     "scope": "12 selected / 14 pinned / one private quote client changed; not a whole-runtime reinstall",
     "apiSHA256": "0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4",
     "freshServerReadback": false
+  },
+  "preparedPublicEntry": {
+    "status": "source and isolated review artifact only; not installed",
+    "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7040614703",
+    "publicWrapper": "v2/visual-search/public-entry-v1.php",
+    "configuration": "v2/visual-search/public-config-v1.js",
+    "bootstrap": "v2/visual-search/public-bootstrap-v1.js",
+    "analytics": "v2/visual-search/public-analytics-v1.js",
+    "reviewBuilder": "scripts/build/search3_public_candidate.py",
+    "defaultProfile": "review",
+    "reviewScenarios": [
+      "family",
+      "snapshot"
+    ],
+    "queryCanActivateLive": false,
+    "liveBuilderAvailable": false,
+    "liveSourceBindings": {
+      "api": "/api-v2.php",
+      "lead": "/lead-adapter-v2.php",
+      "privateTVANEXMessenger": "/_preview/search3-anex-candidate/api-anex-search3-preview.php"
+    },
+    "reviewAnalyticsLoaded": false,
+    "externalContractChanged": false,
+    "installedAdmissionVerified": false,
+    "physicalIPhoneAcceptance": false,
+    "managerDeliveryVerified": false
   }
 }

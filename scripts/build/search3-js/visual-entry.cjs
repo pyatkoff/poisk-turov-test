@@ -68,14 +68,28 @@ async function compile(code,{privateFunctions=false,preserveFunctions=[]}={}){
  const output=result.code+'\n';return Buffer.byteLength(output)<Buffer.byteLength(code)?output:code;
 }
 function inventory(root){
- const php=fs.readFileSync(path.join(root,'visual-search/index.php'),'utf8');
+ const php=fs.readFileSync(path.join(root,'visual-search/entry-v1.php'),'utf8');
  const html=fs.readFileSync(path.join(root,'visual-search/index.html'),'utf8');
- const array=php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);assert(array,'explicit LIVE script graph');
- const live=[...array[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
+ function declaredArray(name){
+  const matches=[...php.matchAll(new RegExp('\\$'+name+'\\s*=\\s*\\[([\\s\\S]*?)\\];','g'))];assert.equal(matches.length,1,'one explicit '+name+' declaration');
+  const body=matches[0][1],values=[...body.matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
+  assert(values.length&&!body.replace(/'[^']+\.js'/g,'').replace(/[\s,]/g,''),'static '+name+' declaration');return values;
+ }
+ const live=declaredArray('scripts'),publicBeforeApp=declaredArray('publicBeforeApp');
+ assert.deepEqual(publicBeforeApp,['./public-url-v1.js','./public-bootstrap-v1.js','./public-analytics-v1.js'],'bounded public graph companions');
+ assert.equal((php.match(/\$publicConfigScript = '\.\/public-config-v1\.js';/g)||[]).length,1,'public config owner');
+ assert.equal((php.match(/\$publicAnalyticsScript = '\.\.\/analytics-v4\.js';/g)||[]).length,1,'existing analytics owner');
  const offline=[...html.matchAll(/<script src="([^"?]+\.js)"/g)].map(m=>m[1]);
  const ondemand=[...html.matchAll(/data-(?:offer-list|hotel-details|flight-picker)-src="([^"?]+\.js)"/g)].map(m=>m[1]);assert.equal(ondemand.length,3,'three explicit cold presentation owners');
- const graphs={live,offline,ondemand};
- for(const src of [...live,...offline,...ondemand])assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
+ assert.equal(live[0],'../prototype-search/config.js');assert.equal(live[1],'../runtime-v3.js');assert.equal(live.at(-1),'./app.js');
+ assert.equal(offline[0],'./fixture-data.js');assert.equal(offline.at(-1),'./app.js');
+ const public_live=['./public-config-v1.js',live[1],'../analytics-v4.js',...live.slice(2,-1),...publicBeforeApp,'./app.js'];
+ const public_review=['./public-config-v1.js',...offline.slice(0,-1),...publicBeforeApp.slice(0,2),'./app.js'];
+ const graphs={live,offline,ondemand,public_live,public_review};
+ for(const graph of Object.values(graphs)){
+  assert.equal(new Set(graph).size,graph.length,'one script owner per graph');
+  for(const src of graph)assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
+ }
  return graphs;
 }
 // Keep visual CSS separate from the existing JS graph/size contract. Only these
@@ -97,14 +111,15 @@ const privateBindingAssets=new Set(['visual-search/app.js','tour-controller-v4.j
 const observedBindings={'prototype-search/data.js':['andromedaPoint','normalizeAndromedaQuote']};
 async function build(root){
  root=path.resolve(root);verifyLeadRuntime(root);const graphs=inventory(root),files=[];
- for(const src of new Set([...graphs.live,...graphs.offline,...graphs.ondemand])){
+ for(const src of new Set(Object.values(graphs).flat())){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
   const source=fs.readFileSync(input,'utf8'),privateFunctions=privateBindingAssets.has(relative),preserveFunctions=observedBindings[relative]||[],code=await compile(source,{privateFunctions,preserveFunctions}),target=relative;
   const output=path.join(root,target);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,code);
   files.push({src,source:relative,target,private_function_bindings:privateFunctions?privateFunctionBindings(parsed(source).tree,{preserveFunctions}):[],source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
  }
- const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand]};
+ const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand],
+  complete_public_live:[...graphs.public_live,...graphs.ondemand],complete_public_review:[...graphs.public_review,...graphs.ondemand]};
  const totals={};for(const[name,graph]of Object.entries(completeGraphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});
  const cssGraphs=stylesheetInventory(root),cssFiles=[];
  for(const src of cssGraphs.initial){

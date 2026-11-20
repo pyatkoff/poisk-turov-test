@@ -6,8 +6,14 @@ on:
     paths:
       - 'v2/visual-search/**'
       - 'scripts/build/search3-js/**'
+      - 'scripts/build/search3_production_inventory.py'
+      - 'scripts/build/search3_public_candidate.py'
+      - 'scripts/deploy/search3_production_snapshot.py'
       - 'v2/prototype-search/config.js'
       - 'v2/runtime-v3.js'
+      - 'v2/analytics-v4.js'
+      - 'v2/analytics-config.php'
+      - 'v2/seo-config.php'
       - 'v2/lead-search-context.js'
       - 'v2/tour-controller-v4.js'
       - 'v2/lead-form-guard-v1.js'
@@ -25,6 +31,9 @@ on:
       - 'v2/prototype-search/hotel-popularity-v1.js'
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
+      - 'tests/search3-public-*.cjs'
+      - 'tests/search3_public_entry_test.py'
+      - 'tests/fixtures/search3-preview-entry-before-public.php'
       - 'scripts/ci/search3_visual_browser_dependencies.cjs'
       - 'scripts/ci/search3_visual_evidence_retention.cjs'
       - 'tests/search3-prototype-*.cjs'
@@ -63,6 +72,8 @@ jobs:
           node tests/search3-visual-messenger-entry.cjs
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-public-entry.cjs
+          node tests/search3-public-bindings.cjs
           node tests/search3-visual-browser-dependencies.cjs
           node tests/search3-visual-evidence-retention.cjs
           node tests/search3-visual-formatting.cjs
@@ -99,6 +110,7 @@ jobs:
           node tests/search3-visual-anex-flight-continuation.cjs
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
+          python3 -B tests/search3_public_entry_test.py
   browser-matrix:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
@@ -109,6 +121,8 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # The review artifact compares this head with one exact retained main commit.
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -131,6 +145,28 @@ jobs:
           cp -a v2 "$RUNNER_TEMP/visual-compiled"
           node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
           node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Build the isolated public review against exact main
+        id: public-review-build
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -B scripts/build/search3_public_candidate.py \
+            --repo . --candidate-sha "$SOURCE_SHA" \
+            --main-sha e68fe088764521c7ff6b605403ca7f2ebb7e4dd6 \
+            --output "$RUNNER_TEMP/search3-public-review" \
+            --node-modules "$PWD/scripts/build/search3-js/node_modules"
+      - name: Verify public review mobile and desktop journey
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_PUBLIC_REVIEW_ROOT: ${{ runner.temp }}/search3-public-review
+        run: node tests/search3-public-review-browser.cjs
+      - name: Retain exact public review and local rollback evidence
+        if: ${{ always() && steps.public-review-build.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-public-review-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/search3-public-review/
+          if-no-files-found: error
       - name: Affected messenger flow on the exact compiled graph
         env:
           NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules

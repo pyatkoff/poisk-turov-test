@@ -18,8 +18,11 @@ does not change secrets or protected contracts, and does not authorize a server 
   [installation receipt](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7031874040).
 - Current Git `main` at preparation: `e68fe088764521c7ff6b605403ca7f2ebb7e4dd6`.
   This is a source reference, **not a verified installed production revision**.
-- [Preparation claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7039340881),
-  branch `work/search3-production-prep-20261120`. Final candidate and tree identities
+- [Public integration preparation claim](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7040614703),
+  continuing [PR5118](https://github.com/pyatkoff/poisk-turov-test/pull/5118) on
+  `work/search3-production-prep-20261120`. Its first source preparation was
+  `189d1eac8a83842d7eaf6a6acb648cf26a773c8b`; this is not the final integration head.
+  Final candidate and tree identities
   must come from the final reviewed commit and the generated inventory, not this base pin.
 - Draft PR1334 is divergent and not mergeable. Its September description and the old
   eight-asset production-import manifest do not describe the current visual-search UI.
@@ -46,10 +49,67 @@ either `/poisk-turov/` or the NEXT publisher.
    supported legacy form/country links. It uses the existing native-to-canonical
    country crosswalk and preserves dates, nights, adults, child ages and attribution.
    Unknown nonempty conditions, unresolved filters and mixed NEXT/legacy links return
-   an error with no partial query. The file is deliberately not in the current entry
-   graph: a future public bootstrap must explicitly select the legacy namespace and
-   supply the correct departure catalog. A country-only query cannot identify its
-   own namespace. This component alone does not complete public link migration.
+   an error with no partial query. The new public bootstrap selects the namespace
+   before applying any conditions, resolves the native departure before loading its
+   country catalog, and preserves the original query/hash in an explicit old-search
+   fallback when migration is unsupported. Converted country-only links are stamped
+   with the canonical origin/scenario so reload cannot reinterpret their country ID.
+4. `visual-search/entry-v1.php` owns the single ordered LIVE graph and the renderer.
+   The existing preview wrapper retains its original guard and offline semantics.
+   A separate `public-entry-v1.php` is a source capability for the exact public
+   route; the source `v2/poisk-turov/index.php` is not switched by this PR.
+   Public HTML uses absolute resource URLs, hides laboratory controls, and retains
+   the existing form/card/room/price owners and layout.
+5. The public LIVE configuration explicitly selects the existing API/lead paths.
+   Narrow public-page admission is added to the canonical profile and LOCAL content
+   clients. Existing endpoint, session, identity, price and lead contracts remain
+   unchanged. This source capability is neither backend admission nor installation.
+6. Public analytics calls the existing analytics owner with its existing goal names
+   from actual transitions. It does not dispatch legacy search events that would
+   reset the canonical catalog, guess native hotel IDs, or count a messenger handoff
+   as delivered lead. The review graph does not load analytics at all.
+
+### Review artifact and local rollback rehearsal
+
+`scripts/build/search3_public_candidate.py` builds only an isolated **review**
+artifact. There is no live-profile CLI option or server executor. Its inputs are
+immutable Git objects and already installed, version-checked compiler dependencies:
+
+```sh
+python3 scripts/build/search3_public_candidate.py \
+  --repo . \
+  --candidate-sha <40-character-reviewed-commit> \
+  --main-sha e68fe088764521c7ff6b605403ca7f2ebb7e4dd6 \
+  --output <new-directory-outside-any-checkout> \
+  --node-modules <existing-pinned-compiler-node_modules>
+```
+
+The default scenario is the explicitly labelled fictional family example. The only
+alternative is `--scenario snapshot`, using the existing saved offer data. A URL
+such as `?scenario=live` cannot change the server-selected profile or scenario.
+The public wrapper rejects a missing/invalid local build profile. The existing
+`/_preview/search3-site-candidate/poisk-turov/` prefix accepts review only.
+
+The artifact contains `site/` for local review, `overlay/` for inspecting the bounded
+file delta, and `manifest.json` with the **final served bytes and modes**. The compiler
+runs against candidate inputs in a disposable stage; shared main files remain the
+main originals, including runtime, analytics, SEO, homepage, price/data and lead
+owners. `compiler-output.json` is separate and must not be mistaken for served hashes.
+Only the established homepage/search-page aliases are staged; the installed public
+lead bridge is not inferred from main source or replaced by a source adapter.
+
+At the pinned main revision, the public search entry is the sole replaced route and
+the corrected old-search route is an addition. A known older old-search wrapper may
+be corrected only if its exact predecessor blob matches; any other collision fails
+the build. No whole-release overwrite is permitted.
+
+The existing snapshot/restore helper captures the replaced versioned route(s) outside
+the served root. A disposable rehearsal removes only hash-matching listed additions,
+restores those routes, and compares every main file's bytes and mode to the baseline.
+`rollback-rehearsal.json` records that result. This is an actual **local source-based
+restore**, not a backup or rollback test of the running site. The artifact always has
+`deployable: false`; current installed hashes and a live rollback snapshot are still
+required before an approved installation.
 
 ### Exact offline runtime inventory
 
@@ -65,17 +125,18 @@ python3 scripts/build/search3_production_inventory.py \
   --output <new-directory-outside-any-checkout>
 ```
 
-The output records source Git objects, paths and SHA256 values, the live/on-demand
-script and stylesheet graph, static assets and the direct optional PHP dependency.
-At the starting revisions above it contains **38 source files: 36 additions,
-2 byte-identical existing files and no replacements**. This count describes the
-current NEXT graph; it does not include a future public entry, the dormant URL
-translator, private server dependencies or compiled publisher output.
+The output records source Git objects, paths and SHA256 values for the retained NEXT
+live/on-demand script and stylesheet closure, static assets and its direct optional
+PHP dependency. It also exposes the derived public LIVE and REVIEW declarations for
+the separate review builder; these declarations are not a complete public installation
+inventory. The initial preparation
+at `189d1eac` counted 38 source files; that historical count must not be reused for
+the expanded public entry. Use the manifest generated from the reviewed head.
 
 The manifest always says `deployable: false`. Its separate source-level snapshot
 candidate list is neither a deploy allowlist nor a live-server inventory. Unresolved
-server/transitive PHP dependencies, current production hashes, the public entry,
-analytics and rollback admission must be resolved before selecting an install set.
+server/transitive PHP dependencies, current production hashes and production/rollback
+admission must be resolved before selecting an install set.
 The tool rejects changed graph grammar and unsafe output paths rather than inventing
 an incomplete graph. Pairwise source differences are not labelled merge conflicts.
 
@@ -87,11 +148,11 @@ That file is a source inventory, not executable configuration or an installation
 
 | Boundary | Current fact | Required result before activation |
 | --- | --- | --- |
-| Public entry | `/poisk-turov/` still selects the older search; NEXT rejects paths outside its preview | Reviewed entry for this visual-search graph, correct absolute asset base, and compatibility with existing site links |
+| Public entry | Installed route is unchanged; separate public wrapper and absolute asset binding are prepared and exercised in the review artifact | Review the exact artifact, confirm actual site configuration and approve the selected installation |
 | Private TV, direct ANEX, messenger | Same preview INT URL, distinct action/session/identity guards; retained installed pin map is available, fresh server state and public-page admission are not established | Verify current installed dependencies and explicitly review reuse of the existing URL or a separate mapping, preserving its session and identity admission; no root fallback or guessed API paths |
-| LOCAL catalog/calendar/content | Current client bindings use preview paths and the endpoints have filesystem admission | Reviewed reuse or mapping with the existing read-only and identity rules; a new URL is not assumed |
+| LOCAL catalog/calendar/content | Prepared public clients explicitly reuse existing preview endpoints; their filesystem admission and DTO checks are unchanged | Verify actual installed dependencies with the existing read-only and identity rules |
 | Lead transport | Existing `/lead-adapter-v2.php` is the public HMAC bridge to the legacy receiver | Preserve this transport and approved field mapping; do not direct browsers to the receiver or add a second Bitrix bootstrap |
-| Analytics and inbound links | NEXT is isolated from production analytics and uses a different search URL schema | Reuse existing counter/goals and explicitly translate supported old links without guessing country/hotel identity |
+| Analytics and inbound links | Source public integration preserves existing goals and resolves supported old links before hydration; review sends no analytics | Verify the installed public counter/configuration and exact public flow before activation |
 | Production predecessor | No fresh installed revision or private live snapshot was read | Read the actual predecessor and use the existing snapshot/restore tooling immediately before the approved switch |
 
 Missing bindings are not satisfied by removing `nativeEndpoint`, path or filesystem
@@ -103,8 +164,9 @@ the same origin. Source `3207266e17ed4e8244aaf28d05b962747fd4cd3c` checks
 host/origin/session/CSRF and action identity, not the referring page's route. Its
 session cookie path applies to the requested API URL. Moving that API is therefore
 not an established prerequisite. This is source analysis, not proof that this INT
-revision is installed or that public use has been admitted; the public frontend
-configuration and actual installed dependencies still require verification.
+revision is installed or that public use has been admitted. The prepared public
+frontend selects that existing path; actual installed dependencies still require
+verification.
 
 The latest retained INT installation is
 [PR4960/CONTROL4961](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6528951578),
@@ -156,16 +218,39 @@ The current user request forbids paid queries and applications. A production
 procedure compatible with that request still requires its own review and approval;
 existing gates are not silently skipped or relabelled as passed.
 
-### Validation boundary
+### Validation and remaining acceptance boundary
 
 The preparation uses intercepted source-owner/DOM contracts, local Git fixtures and
 the publisher's alias-copy layout. The attribution regression fails on the original
 URL owner and passes with the correction; the public-link test distinguishes its
 pinned main form contract from the current NEXT restore owner. These are offline
 compatibility checks, not supplier latency, live lead delivery or a new mobile UX
-score. PHP route execution requires a real PHP CLI; missing PHP exits77 and fails the
-containing CI gate. Both new Python checks are called by the existing production
-presentation test, and the JavaScript checks by the existing live-bridge suite.
+score. The public-entry test executes real PHP, including byte-for-byte comparison
+with the retained preview entry, invalid profile/path cases and traps proving review
+does not read production configuration. Missing PHP exits77 and fails the CI gate.
+The public bindings test exercises actual catalog/bootstrap/app/analytics owners with
+intercepted transports. The builder tests compile real sources and rehearse restoration.
+The compiled public browser check uses the exact mixed-main review artifact at
+430×932 and 1280×900: form category/stars, additional mobile budget, whole-party
+fixture total, room/contact/return, reload, unsupported-link fallback and both
+permitted review paths. It records screenshots and network evidence and submits no
+contact form. This is browser emulation, not physical iPhone acceptance.
+
+Before activation, separately close all three owner priorities:
+
+1. Confirm the actual installed main/INT/receiver predecessors and the reviewed public
+   configuration. For provider phone leads, verify the receiver has the approved
+   provider-aware adapter and idempotency mapping; source main is not proof of that.
+2. With separately admitted supplier/lead operations, compare a real selected room,
+   meal, flight and total for **all** travellers, then confirm the same application
+   reaches the manager on desktop and a physical iPhone. Current no-paid-search and
+   no-application instructions remain in force; local fixtures do not close this gate.
+3. Capture and verify the live rollback snapshot and obtain approval for the exact
+   source/artifact/version before changing the running interface.
+
+The existing attribution/legacy-route checks remain in their earlier source gates;
+public preparation checks are added to the existing visual/build lanes. All previous
+required visual commands remain present.
 Main's CI differs from release's CI; the eventual main integration must explicitly
 retain these gates instead of assuming that the release workflow exists there.
 
