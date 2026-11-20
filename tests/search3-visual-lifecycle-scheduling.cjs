@@ -77,7 +77,7 @@ check('ANEX expanded selection survives an obsolete search result', require('./s
 check('LIVE and labelled demo load one canonical lifecycle owner', () => {
   const root = path.resolve(__dirname, '../v2/visual-search');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const php = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
+  const php = fs.readFileSync(path.join(root, 'entry-v1.php'), 'utf8');
   const liveArray = php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);
   assert.ok(liveArray, 'explicit live graph');
   const live = [...liveArray[1].matchAll(/'([^']+\.js)'/g)].map(match => match[1]);
