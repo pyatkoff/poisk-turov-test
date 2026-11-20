@@ -2007,7 +2007,6 @@ async function roomLayoutsJourney(browser,origin,base,evidence){
  for(const [width,height] of [[430,932],[1280,800]]){
   const context=await browser.newContext({viewport:{width,height},isMobile:width===430,hasTouch:width===430}),page=await context.newPage();
   const transport=fixture(),calls=[],errors=[],failed=[];
-  transport.state.failAnex=true;
   page.setDefaultTimeout(10000);
   const fixtures=[{id:9001,bedroomCount:1,sleepingPlaces:'1 двуспальная кровать'},
    {id:9002,bedroomCount:2,sleepingPlaces:'1 двуспальная кровать и 2 односпальные кровати'}];
