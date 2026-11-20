@@ -32,19 +32,19 @@ INSPECT_PREFIX = '/inspect-search3-public-install'
 INSPECT_OPERATION = 'public-search3-readiness-20261120-v1'
 ROLLBACK_PREFIX = '/rollback-search3-public'
 ROLLBACK_OPERATION = 'public-search3-rollback-20261120-v1'
-SOURCE_PR = 5123
-SOURCE = '78fea1dfc2e40ccb8eeddbe1265cdda66ad0f8b4'
-TREE = 'aa5049aff4409631beb954f6af9ea1f46c783664'
-RELEASE = 'f371951e1484757a0d68b230f95df57e989dccdf'  # Reviewed PR5123 release merge; SOURCE tree is identical.
+SOURCE_PR = 5125
+SOURCE = '1a22691517b53e23ea2fa98d02f857b11a118392'
+TREE = 'bcfb06414164bf3cad454055fb3acdd2b6454dd1'
+RELEASE = '71fd65ae80e2b8c4b00b80f3bafe36dfa9bb2426'  # Reviewed PR5125 release merge; SOURCE tree is identical.
 BUILD_MAIN = 'c5513aaee18af701f1253678e79f41e5725b71a2'
 # Exact LIVE build proof; admission separately requires every final source check
 # and the normal release merge before any server connection.
-BUILD_RUN = 44802677428
-ARTIFACT = 14662415242
-ARTIFACT_SHA = '0be1d080feaa901610d7ff04f4130dd3008fc6836f1dbd5e515012ac3d48d5f7'
-MANIFEST_SHA = '6ddd380ff7d72098431e7b9e57061a5a34c73babc7736cfdd053af2b7db3c6f4'
+BUILD_RUN = 44813818406
+ARTIFACT = 14667623451
+ARTIFACT_SHA = '9cec7ecb27f1582ad181ab1dd3785d2ee1566aef94d3a62e0c212d0f7c166697'
+MANIFEST_SHA = 'c89415a6bfeb6dd49be42d1dfc911310330c69cda2dd56737e524a2b1859d390'
 # Filled only from the final accepted original metadata, never from caller input.
-ARTIFACT_NAME = 'search3-public-live-78fea1dfc2e40ccb8eeddbe1265cdda66ad0f8b4'
+ARTIFACT_NAME = 'search3-public-live-1a22691517b53e23ea2fa98d02f857b11a118392'
 SOURCE_CHECK_NAMES = ('visual-migration','focused-presentation','integration-contracts','browser-matrix','lead-source',
                       'build-preview-artifact','guard')
 SIGNING_ARTIFACT = 14651207961
@@ -172,7 +172,21 @@ INSTALL_REVIEWED = {
         'source_sha': 'e1285138be62a5881043dab842c15d6fa89ae3a4',
         'sha256': '401990a74e46d3294e6370f5da6ce134200f9a69f9287f15383074b782c62411', 'size': 6295},
 }
-INSTALL_PROTECTED = {**PROTECTED, **{path: row['sha256'] for path, row in INSTALL_REVIEWED.items()}}
+PREFLIGHT_ACCEPTED_PROTECTED = {**PROTECTED, **{path: row['sha256'] for path, row in INSTALL_REVIEWED.items()}}
+# Accepted NEXT update44830908434 changed this dependency after the consumed
+# inspection. Keep its reviewed provenance separate; never relabel the old
+# observed rows. Install and rollback still require the exact current bytes.
+CURRENT_NEXT_REVIEWED = {
+    '_preview/search3-next-candidate/visual-search/index.php': {
+        'source_sha': '1a22691517b53e23ea2fa98d02f857b11a118392',
+        'release_sha': '71fd65ae80e2b8c4b00b80f3bafe36dfa9bb2426',
+        'run_id': 44830908434, 'artifact_id': 14675809225,
+        'artifact_sha256': '7d3012a431231236e26beec267abca82b5bd714b9d142c050da2e87f8c1e3cde',
+        'receipt_sha256': 'c1fe72833d1bc81cbfc6530a322947a1c20c4eaa607136c141016b65e7ea7065',
+        'sha256': 'bfda6c091544c13d157537879adaa7037e3bff3dface2fb5b3a77067808da339', 'size': 860},
+}
+INSTALL_PROTECTED = {**PREFLIGHT_ACCEPTED_PROTECTED,
+                     **{path: row['sha256'] for path, row in CURRENT_NEXT_REVIEWED.items()}}
 PRIVATE_CONFIG = '_preview/search3-anex-candidate/.anex-private.php'
 # Existing public PHP bridges may read these installed settings. Keep opaque
 # hash/mode/presence snapshots locally; never copy, execute or export their bytes.
@@ -1042,7 +1056,7 @@ def preflight_evidence(raw, policy):
         elif path in ADDITIONS or path in ABSENT_DEPENDENCIES:
             match = row == {'state': 'absent'}
         else:
-            match = (row.get('state') == 'present' and row.get('sha256') == INSTALL_PROTECTED.get(path)
+            match = (row.get('state') == 'present' and row.get('sha256') == PREFLIGHT_ACCEPTED_PROTECTED.get(path)
                      and row.get('mode') == '0644')
             if path in INSTALL_REVIEWED: match = match and row.get('size') == INSTALL_REVIEWED[path]['size']
         need(match, 'preflight_observed')
