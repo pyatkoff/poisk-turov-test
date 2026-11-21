@@ -4529,8 +4529,9 @@ class RefactorAdmission(unittest.TestCase):
     def metadata(self,path):
         owner={'user':{'id':226193297},'author_association':'OWNER'}
         repo={'full_name':m.REPO}
+        successor=m.REFACTOR_RELEASE_SUCCESSOR
         if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
-        if path=='/git/ref/heads/release/search3-production-ready-v1':return {'object':{'sha':m.REFACTOR_RELEASE}}
+        if path=='/git/ref/heads/release/search3-production-ready-v1':return {'object':{'sha':successor['merge_sha']}}
         if path=='/pulls/'+str(m.REFACTOR_SOURCE_PR):
             return {'state':'closed','merged':True,'merge_commit_sha':m.REFACTOR_SOURCE_MERGE,
                 'head':{'sha':m.REFACTOR_SOURCE,'repo':repo},'base':{'ref':'release/search3-production-ready-v1','repo':repo}}
@@ -4540,6 +4541,17 @@ class RefactorAdmission(unittest.TestCase):
                 'base':{'sha':m.REFACTOR_SOURCE_MERGE,'ref':'release/search3-production-ready-v1','repo':repo}}
         for commit,tree in ((m.REFACTOR_SOURCE,m.REFACTOR_TREE),(m.REFACTOR_SOURCE_MERGE,m.REFACTOR_TREE),(m.REFACTOR_RELEASE,m.REFACTOR_RELEASE_TREE)):
             if path=='/git/commits/'+commit:return {'tree':{'sha':tree},'parents':[{'sha':m.REFACTOR_SOURCE_MERGE},{'sha':m.REFACTOR_COMPILER_HEAD}]}
+        if path=='/pulls/'+str(successor['pr']):
+            return {'state':'closed','merged':True,'merge_commit_sha':successor['merge_sha'],
+                'head':{'sha':successor['head_sha'],'ref':successor['head_ref'],'repo':repo},
+                'base':{'sha':m.REFACTOR_RELEASE,'ref':'release/search3-production-ready-v1','repo':repo}}
+        for commit,parents in ((successor['head_sha'],[m.REFACTOR_RELEASE]),
+                               (successor['merge_sha'],[m.REFACTOR_RELEASE,successor['head_sha']])):
+            if path=='/git/commits/'+commit:return {'tree':{'sha':successor['tree_sha']},'parents':[{'sha':p} for p in parents]}
+        if path=='/compare/'+m.REFACTOR_RELEASE+'...'+successor['merge_sha']:
+            return {'status':'ahead','ahead_by':2,'behind_by':0,'total_commits':2,
+                'base_commit':{'sha':m.REFACTOR_RELEASE},'merge_base_commit':{'sha':m.REFACTOR_RELEASE},
+                'files':[{'filename':p,'status':s} for p,s in successor['files'].items()]}
         if path.startswith('/contents/.github/workflows/deploy-anytoour.yml?'):
             return {'type':'file','encoding':'base64','content':base64.b64encode(b'guarded manual publisher').decode()}
         if path.startswith('/commits/'+m.REFACTOR_SOURCE+'/check-runs?'):
@@ -4596,13 +4608,35 @@ class RefactorAdmission(unittest.TestCase):
 
     def test_fixed_source_release_artifact_parent_and_unique_command_are_required(self):
         self.admit()
+        successor=m.REFACTOR_RELEASE_SUCCESSOR
+        compare='/compare/'+m.REFACTOR_RELEASE+'...'+successor['merge_sha']
         mutations=[
             ('/git/ref/heads/main',lambda v:v['object'].update(sha='f'*40)),
             ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha=m.REFACTOR_SOURCE_MERGE)),
+            ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha=m.REFACTOR_RELEASE)),
+            ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha='e'*40)),
             ('/pulls/'+str(m.REFACTOR_SOURCE_PR),lambda v:v.update(merge_commit_sha=m.REFACTOR_RELEASE)),
             ('/pulls/5140',lambda v:v['base'].update(sha='f'*40)),
             ('/git/commits/'+m.REFACTOR_RELEASE,lambda v:v.update(tree={'sha':m.REFACTOR_TREE})),
             ('/git/commits/'+m.REFACTOR_RELEASE,lambda v:v.update(parents=[{'sha':m.REFACTOR_SOURCE_MERGE}])),
+            ('/pulls/'+str(successor['pr']),lambda v:v.update(merged=False)),
+            ('/pulls/'+str(successor['pr']),lambda v:v.update(merge_commit_sha=m.REFACTOR_RELEASE)),
+            ('/pulls/'+str(successor['pr']),lambda v:v['head'].update(sha='f'*40)),
+            ('/pulls/'+str(successor['pr']),lambda v:v['head']['repo'].update(full_name='foreign/repository')),
+            ('/pulls/'+str(successor['pr']),lambda v:v['base'].update(sha=m.REFACTOR_SOURCE_MERGE)),
+            ('/pulls/'+str(successor['pr']),lambda v:v['base'].update(ref='main')),
+            ('/git/commits/'+successor['head_sha'],lambda v:v.update(tree={'sha':m.REFACTOR_RELEASE_TREE})),
+            ('/git/commits/'+successor['head_sha'],lambda v:v.update(parents=[{'sha':m.REFACTOR_SOURCE_MERGE}])),
+            ('/git/commits/'+successor['merge_sha'],lambda v:v.update(tree={'sha':m.REFACTOR_RELEASE_TREE})),
+            ('/git/commits/'+successor['merge_sha'],lambda v:v['parents'].reverse()),
+            (compare,lambda v:v.update(ahead_by=3)),
+            (compare,lambda v:v.update(behind_by=1)),
+            (compare,lambda v:v.update(total_commits=3)),
+            (compare,lambda v:v.update(merge_base_commit={'sha':m.REFACTOR_SOURCE_MERGE})),
+            (compare,lambda v:v['files'].append({'filename':'v2/visual-search/app.js','status':'modified'})),
+            (compare,lambda v:v['files'].pop()),
+            (compare,lambda v:v['files'][0].update(filename='v2/data/db-v1.php')),
+            (compare,lambda v:v['files'][0].update(status='renamed',previous_filename='v2/visual-search/app.js')),
             ('/check-runs?',lambda v:v['check_runs'][0].update(conclusion='failure')),
             ('/check-runs?',lambda v:v['check_runs'].append(copy.deepcopy(v['check_runs'][0]))),
             ('/actions/runs/'+str(m.REFACTOR_BUILD_RUN),lambda v:v.update(run_attempt=2)),

@@ -3835,6 +3835,18 @@ REFACTOR_SOURCE_MERGE = '73268818dd13c162f543ec3318b890548184edb9'
 REFACTOR_RELEASE = 'aa4258b0fce33da56452e8dbfffd27273e67ba73'
 REFACTOR_RELEASE_TREE = 'f48d000820f424dac523bda7920cf0aebd75f743'
 REFACTOR_COMPILER_HEAD = 'bf586771b563fd42dcce524f0ca46217a17ba4f9'
+# One reviewed later release; the immutable compiler basis and refactor policy
+# above remain fixed. These four LOCAL source paths are outside the LIVE payload.
+REFACTOR_RELEASE_SUCCESSOR = {
+    'pr':5144,'head_sha':'de82f20ec26435add5f627567a035ee96ad18811',
+    'head_ref':'local/official11-source-20261121',
+    'merge_sha':'8b804957501d5b4715bd6f400fb794f02792d3de',
+    'tree_sha':'a6352ca4d34f6a2dd4fe07b9eba5391bd017cc18',
+    'files':{'.github/workflows/search3-anytour-profile-enrichment-v1.yml':'modified',
+             'tests/anytour-profile-official-review-v1-test.php':'added',
+             'v2/data/anytour-profile-enrichment-v1.php':'modified',
+             'v2/data/anytour-profile-official-review-v1.php':'added'},
+}
 REFACTOR_BUILD_RUN = 44906779297
 REFACTOR_ARTIFACT = 14708066643
 REFACTOR_ARTIFACT_SHA = 'ea7a0213646150537cf05f0a13f9f6b5b1d2c804552133d131e81f6345f64c8d'
@@ -3895,7 +3907,8 @@ def refactor_event_identity(event, env, rollback=False):
 
 def refactor_final_heads(identity):
     rollback_main(identity)
-    need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==REFACTOR_RELEASE,'release_moved')
+    successor=REFACTOR_RELEASE_SUCCESSOR
+    need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==successor['merge_sha'],'release_moved')
     pr=api('/pulls/'+str(REFACTOR_SOURCE_PR))
     need(pr.get('state')=='closed' and pr.get('merged') is True and pr.get('merge_commit_sha')==REFACTOR_SOURCE_MERGE
          and pr.get('head',{}).get('sha')==REFACTOR_SOURCE and pr.get('head',{}).get('repo',{}).get('full_name')==REPO
@@ -3913,6 +3926,27 @@ def refactor_final_heads(identity):
          and compiler.get('base',{}).get('sha')==REFACTOR_SOURCE_MERGE
          and compiler.get('base',{}).get('ref')=='release/search3-production-ready-v1'
          and compiler.get('base',{}).get('repo',{}).get('full_name')==REPO,'refactor_release_relation')
+    local=api('/pulls/'+str(successor['pr']))
+    need(local.get('state')=='closed' and local.get('merged') is True
+         and local.get('merge_commit_sha')==successor['merge_sha']
+         and local.get('head',{}).get('sha')==successor['head_sha']
+         and local.get('head',{}).get('ref')==successor['head_ref']
+         and local.get('head',{}).get('repo',{}).get('full_name')==REPO
+         and local.get('base',{}).get('sha')==REFACTOR_RELEASE
+         and local.get('base',{}).get('ref')=='release/search3-production-ready-v1'
+         and local.get('base',{}).get('repo',{}).get('full_name')==REPO,'refactor_release_successor')
+    for commit,parents in ((successor['head_sha'],[REFACTOR_RELEASE]),
+                           (successor['merge_sha'],[REFACTOR_RELEASE,successor['head_sha']])):
+        value=api('/git/commits/'+commit)
+        need(value.get('tree',{}).get('sha')==successor['tree_sha']
+             and [p.get('sha') for p in value.get('parents',[])]==parents,'refactor_release_successor')
+    delta=api('/compare/'+REFACTOR_RELEASE+'...'+successor['merge_sha']);files=delta.get('files',[])
+    need(delta.get('status')=='ahead' and delta.get('ahead_by')==2 and delta.get('behind_by')==0
+         and delta.get('total_commits')==2 and delta.get('base_commit',{}).get('sha')==REFACTOR_RELEASE
+         and delta.get('merge_base_commit',{}).get('sha')==REFACTOR_RELEASE
+         and isinstance(files,list) and len(files)==len(successor['files'])
+         and {row.get('filename'):row.get('status') for row in files}==successor['files']
+         and all(row.get('previous_filename') is None for row in files),'refactor_release_scope')
 
 
 def refactor_parent_admission():
