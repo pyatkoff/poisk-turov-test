@@ -23,7 +23,10 @@ for(const [file,metadata] of files){
 const resourcePath=ref=>new URL(ref,'http://artifact.invalid/visual-search/index.html').pathname;
 const initial=manifest.graph.initial.map(resourcePath),lazy=Object.values(manifest.graph.on_demand).map(resourcePath);
 const staticPaths=new Set([...initial,...lazy,...manifest.graph.styles.map(resourcePath),
- ...[...files.keys()].filter(file=>file.startsWith('/visual-search/assets/'))]);
+ ...[...files.keys()].filter(file=>file.startsWith('/visual-search/assets/')),
+ ...(manifest.shared_ui?.enabled?['/images/logo.svg']:[])]);
+if(manifest.shared_ui?.enabled)assert.equal(files.get('/images/logo.svg')?.sha256,
+ '3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049','verified immutable canonical logo');
 assert.equal(initial.length,22);assert.equal(lazy.length,3);
 for(const file of staticPaths){
  const metadata=files.get(file);assert(metadata,'resource must be inventoried: '+file);

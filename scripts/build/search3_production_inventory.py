@@ -23,6 +23,16 @@ RENDERER = "v2/visual-search/entry-v1.php"
 HTML = "v2/visual-search/index.html"
 COMPILER = "scripts/build/search3-js/visual-entry.cjs"
 STYLE_REFS = ["./styles.css", "./mobile-controls-v1.css"]
+SHARED_HEADER_STYLE = "../site-header-v2.css"
+SHARED_HEADER_PHP = "v2/site-header-v2.php"
+# These pure helpers are the closed transitive dependency set of the canonical
+# header. New includes or changed helper bytes require an explicit review;
+# header reuse never grants a general PHP/installed-configuration copy rule.
+SHARED_HEADER_HELPERS = {
+    "v2/phone-value.php": "38fcc500d6c6ec7c288d423e0ae01493739beee5",
+    "v2/asset-version-v1.php": "21a16f54650fef84c1897380f335c2f9d9b6faa7",
+    "v2/site-path-v1.php": "f472f245da352a0c69749869c55809f903432e9b",
+}
 ON_DEMAND = ("data-offer-list-src", "data-hotel-details-src", "data-flight-picker-src")
 PHP_DIRECT = "v2/data/hotel-popularity-v1.php"
 FONT_LICENSE = "v2/visual-search/assets/inter-LICENSE.txt"
@@ -244,7 +254,9 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
     page = Page()
     page.feed(html)
     page.close()
-    need(page.styles == STYLE_REFS, "expected the two existing stylesheet owners in order")
+    shared_header = page.styles == [*STYLE_REFS, SHARED_HEADER_STYLE]
+    need(page.styles == STYLE_REFS or shared_header,
+         "expected the visual stylesheet owners and optional canonical shared header in order")
     need(set(page.lazy) == set(ON_DEMAND), "incomplete on-demand graph")
     need(page.scripts and len(page.scripts) == len(set(page.scripts)), "incomplete/duplicate offline graph")
     for ref in live + page.scripts + list(page.lazy.values()) + page.styles:
@@ -345,7 +357,20 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
     need(expected in php, "direct PHP dependency declaration changed; review it explicitly")
     need("if (is_file($popularitySource))" in php, "optional PHP dependency guard changed")
     requires = re.findall(r"\b(?:require|include)(?:_once)?\s+([^;]+);", php)
-    need(requires == ["$analytics", "$popularitySource", "dirname(__DIR__) . '/seo-config.php'"],
+    expected_requires = ["$analytics", "$popularitySource", "dirname(__DIR__) . '/seo-config.php'"]
+    if shared_header:
+        expected_requires.insert(1, "dirname(__DIR__) . '/site-header-v2.php'")
+        header = git.content(tree, SHARED_HEADER_PHP)
+        header_requires = re.findall(r"\b(?:require|include)(?:_once)?\s+([^;]+);", header)
+        need(header_requires == ["__DIR__ . '/" + path.removeprefix("v2/") + "'"
+                                 for path in SHARED_HEADER_HELPERS],
+             "canonical shared header PHP dependencies changed")
+        add(SHARED_HEADER_PHP, "shared_header_php_dependency")
+        for path, blob in SHARED_HEADER_HELPERS.items():
+            add(path, "shared_header_php_dependency")
+            need(tree[path]["blob_sha"] == blob and tree[path]["mode"] == "100644",
+                 f"canonical shared header helper changed: {path}")
+    need(requires == expected_requires,
          "unknown PHP include dependency in entry")
     add(PHP_DIRECT, "optional_direct_php_dependency")
     public_arrays = re.findall(r"\$publicBeforeApp\s*=\s*\[([\s\S]*?)\];", php)
@@ -369,6 +394,12 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
              "excluded_offline_scripts": [x for x in page.scripts if x not in live],
              "declared_direct_php_dependencies": [{"path": PHP_DIRECT, "optional_at_runtime": True,
                  "transitive_graph_complete": False}]}
+    if shared_header:
+        graph["shared_header"] = {
+            "stylesheet": SHARED_HEADER_STYLE,
+            "php_dependencies": [SHARED_HEADER_PHP, *SHARED_HEADER_HELPERS],
+            "installed_static_dependencies": ["/images/logo.svg"],
+        }
     return graph, roles
 
 

@@ -3346,7 +3346,7 @@ function handleSearchParameterAction(action,b,id){
   finishFilterPicker();break;
  }
  case 'nights':openNights();break;case 'guests':openGuests();break;case 'calendar':openCalendar();break;
- case 'top':case 'edit-search':editSearch();break;
+ case 'top':case 'edit-search':b.closest('.at-global-header__mobile')?.removeAttribute('open');editSearch();break;
  case 'cancel-search-edit':cancelSearchEdit();break;
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();revealCalendarMonth();loadCalendarPrices();rememberUIRoute();break}
  case 'day-pick':{const day=b.dataset.date;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1}else{const range={from:day<dateDraft.from?day:dateDraft.from,to:day<dateDraft.from?dateDraft.from:day};if(dateRangeError(range)){$('#date-error').textContent='Период может включать не больше 22 дат. Осталась выбрана первая дата.';break;}dateDraft.from=range.from;dateDraft.to=range.to;dateDraft.phase=0}updateDateSelection();rememberUIRoute();break}

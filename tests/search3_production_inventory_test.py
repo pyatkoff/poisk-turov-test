@@ -283,6 +283,62 @@ class ProductionInventoryTest(unittest.TestCase):
                                 "v2/visual-search/offer-list-v1.js",
                                 "v2/visual-search/flight-picker-ui-v1.js"})
 
+    def shared_header_fixture(self) -> tuple[str, str]:
+        php = PHP.replace("require_once $analytics;",
+                          "require_once $analytics;\nrequire_once dirname(__DIR__) . '/site-header-v2.php';")
+        page = PAGE.replace('</head>', '<link rel="stylesheet" href="../site-header-v2.css"></head>')
+        self.write(RENDERER, php)
+        self.write(HTML, page)
+        self.write("v2/site-header-v2.css", ".at-global-header{display:block}\n")
+        self.write("v2/site-header-v2.php", "<?php\n" + "\n".join(
+            "require_once __DIR__ . '/" + name + "';"
+            for name in ("phone-value.php", "asset-version-v1.php", "site-path-v1.php")))
+        for name in ("phone-value.php", "asset-version-v1.php", "site-path-v1.php"):
+            self.write("v2/" + name, (ROOT / "v2" / name).read_bytes())
+        return php, page
+
+    def test_canonical_header_has_one_stylesheet_and_closed_pure_php_dependencies(self) -> None:
+        self.shared_header_fixture()
+        self.run_tool(candidate=self.commit())
+        manifest = json.loads((self.base / "review/manifest.json").read_text())
+        graph = manifest["client_graph"]
+        self.assertEqual(graph["styles"], ["./styles.css", "./mobile-controls-v1.css", "../site-header-v2.css"])
+        self.assertEqual(graph["shared_header"]["php_dependencies"], [
+            "v2/site-header-v2.php", "v2/phone-value.php", "v2/asset-version-v1.php", "v2/site-path-v1.php"])
+        self.assertEqual(graph["shared_header"]["installed_static_dependencies"], ["/images/logo.svg"])
+        added = {row["path"]: row["roles"] for row in manifest["runtime_comparison"]["added"]}
+        self.assertEqual(added["v2/site-header-v2.css"], ["stylesheet"])
+        for path in graph["shared_header"]["php_dependencies"]:
+            self.assertEqual(added[path], ["shared_header_php_dependency"])
+
+    def test_shared_header_does_not_admit_unknown_css_php_or_changed_helpers(self) -> None:
+        php, page = self.shared_header_fixture()
+        accepted = self.commit()
+        header = (self.repo / "v2/site-header-v2.php").read_text()
+        helper = (self.repo / "v2/site-path-v1.php").read_text()
+        cases = [
+            (HTML, page.replace('</head>', '<link rel="stylesheet" href="../other.css"></head>'), "stylesheet owners"),
+            (HTML, page.replace('../site-header-v2.css', '../other.css'), "stylesheet owners"),
+            (HTML, page.replace('./styles.css', '../site-header-v2.css', 1), "stylesheet owners"),
+            (HTML, PAGE, "unknown PHP include"),
+            (RENDERER, php + "require_once $unknown;", "unknown PHP include"),
+            ("v2/site-header-v2.php", header + "\nrequire_once $unknown;", "header PHP dependencies"),
+            ("v2/site-header-v2.php", header.replace("'/phone-value.php'", "$phone"), "header PHP dependencies"),
+            ("v2/site-path-v1.php", helper + "\n// changed helper\n", "header helper changed"),
+            ("v2/site-header-v2.css", "@import './extra.css';", "CSS imports"),
+        ]
+        for path, content, message in cases:
+            with self.subTest(path=path, refusal=message):
+                self.git("reset", "--hard", accepted)
+                self.write(path, content)
+                result = self.run_tool(candidate=self.commit(), ok=False)
+                self.assertIn(message, result.stderr)
+                self.assertFalse((self.base / "review").exists())
+        self.git("reset", "--hard", accepted)
+        (self.repo / "v2/phone-value.php").unlink()
+        result = self.run_tool(candidate=self.commit(), ok=False)
+        self.assertIn("missing declared dependency", result.stderr)
+
     def test_shared_loader_rejects_unknown_sources_callers_aliases_and_mutations(self) -> None:
         cases = [
             ("unknown asset", SHARED_APP_CODE.replace("()=>hotelDetailsAsset,", "()=>'./extra.js',")),

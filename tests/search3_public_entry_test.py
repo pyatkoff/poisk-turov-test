@@ -36,11 +36,12 @@ require $argv[1];
 class Page(HTMLParser):
     def __init__(self, html: str):
         super().__init__(convert_charrefs=True)
-        self.scripts, self.resources, self.configs = [], [], []
+        self.scripts, self.resources, self.configs, self.nodes = [], [], [], []
         self.feed(html)
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
+        self.nodes.append((tag, values))
         if tag == "script":
             self.scripts.append(values.get("src"))
         for key in ("src", "href", "data-offer-list-src", "data-hotel-details-src", "data-flight-picker-src"):
@@ -74,6 +75,8 @@ class PublicEntryTest(unittest.TestCase):
             if not target.exists():
                 target.write_text("fixture resource: " + ref)
         # These are test-only dependencies, never the developer's private configuration.
+        for name in ("site-header-v2.php", "phone-value.php", "asset-version-v1.php", "site-path-v1.php"):
+            shutil.copyfile(ROOT / "v2" / name, self.root / name)
         (self.root / "analytics-config.php").write_text("<?php function v2_metrika_counter_id(){ $GLOBALS['TEST_COUNTER_LOADED']=true; return 12345; }")
         shutil.copyfile(ROOT / "v2/seo-config.php", self.root / "seo-config.php")
         (self.docroot / "site_conf.php").write_text("<?php $GLOBALS['TEST_SITE_CONFIG_LOADED']=true; $params=['SEO_INDEXABLE'=>true,'SEO_INDEXABLE_PATHS'=>['/poisk-turov/']];")
@@ -119,8 +122,55 @@ class PublicEntryTest(unittest.TestCase):
                 self.assertNotIn('class="private-badge"', html)
                 self.assertNotIn("<base", html.lower())
                 self.assertFalse(any(ref.startswith(("./", "../")) for ref in page.resources))
-                self.assertIn('href="#search"', html)
+                self.assertEqual(html.count('type="button" data-action="top" aria-current="page"'), 2)
                 self.assertEqual(len(page.scripts), len(set(page.scripts)))
+
+    def test_canonical_header_navigation_and_search_controls(self):
+        for profile, prefix in (("live", ""), ("review", "/_preview/search3-site-candidate")):
+            with self.subTest(profile=profile):
+                self.profile(profile)
+                html, status = self.render(route=prefix + "/poisk-turov/")
+                self.assertEqual(status["status"], 200)
+                page = Page(html)
+                headers = [attrs for tag, attrs in page.nodes if tag == "header"]
+                self.assertEqual([attrs.get("class") for attrs in headers], ["at-global-header header"])
+                self.assertNotIn("data-site-header-slot", html)
+                self.assertNotIn("data-anytour-favicon-bootstrap", html)
+                self.assertNotIn('class="at-global-header__cta"', html, "Search3 must not repeat Find above its form")
+                for href in ("/country/", "/hot/", "/rb/", "/how-to-buy/", "/contacts/"):
+                    self.assertEqual(html.count('href="' + prefix + href + '"'), 2)
+                current = [attrs for tag, attrs in page.nodes if tag == "button" and attrs.get("aria-current") == "page"]
+                self.assertEqual(len(current), 2)
+                self.assertTrue(all(attrs.get("data-action") == "top" and attrs.get("type") == "button" for attrs in current))
+                self.assertEqual(html.count('href="tel:88001006150"'), 2)
+                self.assertEqual(html.count('href="' + prefix + '/" aria-label="AnyTour —'), 2, "header and footer logos go home")
+                self.assertNotIn('class="compact-brand"', html)
+                for hook in ("compact-route", "compact-details", "favorites-nav", "selected-tour-nav"):
+                    self.assertEqual(html.count('id="' + hook + '"'), 1)
+                styles = [attrs["href"] for tag, attrs in page.nodes if tag == "link" and attrs.get("rel") == "stylesheet"]
+                self.assertEqual(len(styles), 3)
+                self.assertTrue(styles[-1].startswith(prefix + "/site-header-v2.css?v="))
+
+    def test_ordinary_header_retains_routes_phone_cta_and_preview_prefix(self):
+        source = """
+$_SERVER['SCRIPT_NAME']=$argv[2];
+require $argv[1];
+v2_render_site_header('8 (800) 100-61-50', '+78001006150', $argv[3]);
+"""
+        for prefix in ("", "/_preview/search3-site-candidate"):
+            result = subprocess.run([PHP, "-d", "allow_url_fopen=0", "-d", "allow_url_include=0", "-r", source,
+                                     str(self.root / "site-header-v2.php"), prefix + "/country/turkey/", "/country/turkey/"],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            html = result.stdout
+            for href in ("/country/", "/hot/", "/rb/", "/how-to-buy/", "/contacts/"):
+                self.assertEqual(html.count('href="' + prefix + href + '"'), 2)
+            self.assertEqual(html.count('href="' + prefix + '/poisk-turov/"'), 3, "two menu routes and the quick CTA")
+            self.assertEqual(html.count('href="' + prefix + '/country/" aria-current="page"'), 2)
+            self.assertEqual(html.count('class="at-global-header__cta"'), 1)
+            self.assertEqual(html.count('href="tel:+78001006150"'), 2)
+            self.assertNotIn('data-action="top"', html)
+            self.assertIn('data-anytour-favicon-bootstrap', html)
 
     def test_live_capability_is_explicit_and_reuses_existing_helpers(self):
         self.profile("live")
@@ -166,7 +216,7 @@ class PublicEntryTest(unittest.TestCase):
         self.assertEqual(status["status"], 503)
         self.assertNotIn("<script", html)
 
-    def test_preview_output_matches_retained_pre_refactor_php(self):
+    def test_preview_body_and_graph_match_retained_php_outside_shared_header(self):
         self.assertEqual(hashlib.sha256(BASELINE.read_bytes()).hexdigest(), "159060195fa7a41e6a95f5e8e0fb302f04c6c94c9e49b5c1845eee9210626454",
                          "retained entry fixture is exact 189d1eac source, not a reimplementation")
         baseline = Path(self.tmp.name) / "baseline"
@@ -176,7 +226,10 @@ class PublicEntryTest(unittest.TestCase):
             before, old_status = self.render(baseline / "visual-search/index.php", "/_preview/search3-next-candidate/visual-search/index.php", query)
             after, new_status = self.render(self.visual / "index.php", "/_preview/search3-next-candidate/visual-search/index.php", query)
             self.assertEqual(new_status, old_status)
-            self.assertEqual(after, before, "preview output changed for " + query)
+            normalized, count = re.subn(r'<header class="at-global-header header">.*?</header>',
+                                        '<header class="header" data-site-header-slot></header>', after, count=1, flags=re.S)
+            self.assertEqual(count, 1)
+            self.assertEqual(normalized, before, "preview changed outside its approved shared header for " + query)
 
 
 if __name__ == "__main__":

@@ -10,10 +10,15 @@ assert.equal(manifest.deployable,false);assert.equal(manifest.profile.profile,'r
 const evidence=path.resolve('visual-live-evidence/public-review');fs.mkdirSync(evidence,{recursive:true});
 const prefixes=['','/_preview/search3-site-candidate'],serverFailures=[];
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const sharedHeader=manifest.shared_ui?.enabled===true;
+if(sharedHeader)assert.equal(sha(fs.readFileSync(path.join(site,'images/logo.svg'))),
+ '3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049','verified immutable canonical logo');
 let rootEntrySaved=false;
 const server=http.createServer((req,res)=>{
  try{
-  const url=new URL(req.url,'http://review'),prefix=prefixes.find(value=>['/poisk-turov/','/visual-search/','/prototype-search/'].some(route=>url.pathname.startsWith(value+route)));
+  const url=new URL(req.url,'http://review'),prefix=prefixes.find(value=>
+   ['/poisk-turov/','/visual-search/','/prototype-search/'].some(route=>url.pathname.startsWith(value+route))||
+   sharedHeader&&(url.pathname===value+'/site-header-v2.css'||value===''&&url.pathname==='/images/logo.svg'));
   if(prefix===undefined||req.method!=='GET'){serverFailures.push(req.method+' '+url.pathname);res.writeHead(403).end();return;}
   const localPath=url.pathname.slice(prefix.length),file=path.resolve(site,'.'+localPath+(localPath.endsWith('/')?'index.php':''));
   if(!file.startsWith(site+'/')||!fs.existsSync(file)||!fs.statSync(file).isFile()){serverFailures.push('missing '+localPath);res.writeHead(404).end();return;}

@@ -19,7 +19,7 @@ for(const name of ['live','offline'])for(const key of ['raw','served','gzip_befo
 assert.equal(manifest.css.schema,1);
 assert.match(manifest.css.policy,/exact-AST printing only/);
 assert.deepEqual(manifest.css.graphs,stylesheetInventory(root));
-assert.deepEqual(manifest.css.files.map(file=>file.src),['./styles.css','./mobile-controls-v1.css']);
+assert.deepEqual(manifest.css.files.map(file=>file.src),['./styles.css','./mobile-controls-v1.css','../site-header-v2.css']);
 for(const file of manifest.css.files){
  const readable=fs.readFileSync(path.resolve(__dirname,'../v2',file.source)),served=fs.readFileSync(path.join(root,file.target));
  assert.equal(hash(readable),file.source_sha256,file.source+' exact readable owner');
@@ -33,7 +33,7 @@ for(const file of manifest.css.files){
  assert.equal(served.toString(),expected,file.target+' uses only the exact-AST printer');
  assert.equal(printCSS(readable.toString()),expected,'stylesheet printing deterministic');
 }
-for(const key of ['raw','served','gzip_before','gzip_after'])assert.equal(manifest.css.totals.initial[key],manifest.css.files.reduce((sum,file)=>sum+file[key],0),'initial CSS totals reflect the two separate transfers');
+for(const key of ['raw','served','gzip_before','gzip_after'])assert.equal(manifest.css.totals.initial[key],manifest.css.files.reduce((sum,file)=>sum+file[key],0),'initial CSS totals include the canonical shared header transfer');
 assert(manifest.css.totals.initial.served<manifest.css.totals.initial.raw,'actual initial stylesheet bytes reduced');
 assert(manifest.css.totals.initial.gzip_after<manifest.css.totals.initial.gzip_before,'actual stylesheet local gzip reduced');
 // Escaped selectors, media conditions, calc/custom-property token spacing and

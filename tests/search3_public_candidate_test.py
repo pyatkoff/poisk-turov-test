@@ -166,7 +166,8 @@ class PublicCandidateTest(unittest.TestCase):
                 self.assertEqual(self.tool.file_metadata(site / row["path"]), row["served"])
         self.assertEqual(self.tool.files_metadata(overlay),
                          {row["path"]: row["served"]
-                          for row in manifest["files"]["added"] + manifest["files"]["replaced"]})
+                          for row in manifest["files"]["added"] + manifest["files"]["replaced"]
+                          if not row.get("candidate_only")})
         compiled = json.loads((self.review / "compiler-output.json").read_text())
         app = next(row for row in compiled["files"] if row["target"] == "visual-search/app.js")
         self.assertLess(app["served"], app["raw"])
@@ -232,7 +233,8 @@ class PublicCandidateTest(unittest.TestCase):
                 self.assertEqual(self.tool.file_metadata(site / row["path"]), row["served"])
         self.assertEqual(self.tool.files_metadata(overlay),
                          {row["path"]: row["served"]
-                          for row in manifest["files"]["added"] + manifest["files"]["replaced"]})
+                          for row in manifest["files"]["added"] + manifest["files"]["replaced"]
+                          if not row.get("candidate_only")})
         compiled = json.loads((self.live / "compiler-output.json").read_text())
         additions = {row["path"] for row in manifest["files"]["added"]}
         for row in compiled["files"]:
@@ -287,6 +289,72 @@ vm.runInNewContext(fs.readFileSync(path.join(root,'visual-search/fixture-data.js
         checked = json.loads(result.stdout)
         self.assertEqual(len(checked["photos"]), 2)
         self.assertEqual(checked["reads"], ["/visual-search/fixtures/live-search-2026-09-23.json"])
+
+    def test_shared_home_header_closure_and_local_only_canonical_logo(self) -> None:
+        for artifact, manifest in ((self.review, self.manifest), (self.live, self.live_manifest)):
+            with self.subTest(profile=manifest["profile"]["profile"]):
+                self.assertTrue(manifest["shared_ui"]["enabled"])
+                self.assertEqual(manifest["graph"]["styles"],
+                                 ["./styles.css", "./mobile-controls-v1.css", "../site-header-v2.css"])
+                site, overlay = artifact / "site", artifact / "overlay"
+                for name in ("home-v1.php", "home-v1.css", "home-hero-v1.jpg", "site-header-v2.php",
+                             "phone-value.php", "asset-version-v1.php", "site-path-v1.php"):
+                    expected = subprocess.check_output([
+                        "git", "-C", str(self.repo), "show", self.candidate_sha + ":v2/" + name])
+                    self.assertEqual((site / name).read_bytes(), expected, name)
+                compiled = json.loads((artifact / "compiler-output.json").read_text())
+                header_css = next(row for row in compiled["css"]["files"] if row["target"] == "site-header-v2.css")
+                self.assertEqual(self.tool.file_metadata(site / "site-header-v2.css")["sha256"], header_css["sha256"])
+                alias = manifest["candidate_only_aliases"]
+                self.assertEqual(len(alias), 1)
+                self.assertEqual(alias[0]["path"], "images/logo.svg")
+                self.assertTrue(alias[0]["candidate_only"])
+                self.assertEqual(alias[0]["served"]["sha256"], self.tool.LOCAL_LOGO_SHA256)
+                self.assertEqual((site / "images/logo.svg").read_bytes(),
+                                 (site / "visual-search/assets/anytour-logo.svg").read_bytes())
+                self.assertFalse((overlay / "images/logo.svg").exists(), "review alias cannot overwrite installed artwork")
+                for protected in ("seo-config.php", "analytics-config.php", "lead-price-v1.php", "data/db-v1.php"):
+                    self.assertEqual((site / protected).read_bytes(), self.main_files[protected])
+                    self.assertFalse((overlay / protected).exists())
+
+    def test_shared_ui_overwrite_admits_only_four_inspected_preimages_and_modes(self) -> None:
+        # Exercise the collision boundary directly without manufacturing bytes
+        # for the known Git blob identities. The full exact-MAIN candidate build
+        # separately verifies these identities against real immutable blobs.
+        class MetadataOnlyGit:
+            @staticmethod
+            def metadata(entry):
+                return entry
+        git = MetadataOnlyGit()
+        for target, blob in self.tool.SHARED_UI_PREDECESSORS.items():
+            with self.subTest(target=target):
+                source = "v2/" + target
+                candidate = {source: {"blob_sha": "a" * 40, "mode": "100644", "size": 1}}
+                main = {source: {"blob_sha": blob, "mode": "100644", "size": 2}}
+                owners = {target: source}
+                self.assertEqual(self.tool.check_collisions(git, candidate, main, owners, [source], True),
+                                 {PUBLIC_ROUTE, target})
+                with self.assertRaisesRegex(RuntimeError, "protected main file"):
+                    self.tool.check_collisions(git, candidate, main, owners, [source])
+                for changed in ({"blob_sha": "b" * 40}, {"mode": "100755"}):
+                    bad = {source: {**main[source], **changed}}
+                    with self.assertRaisesRegex(RuntimeError, "unknown shared UI owner"):
+                        self.tool.check_collisions(git, candidate, bad, owners, [source], True)
+
+    def test_shared_ui_unknown_predecessors_and_canonical_logo_drift_are_refused(self) -> None:
+        for target in (*self.tool.SHARED_UI_PREDECESSORS, "home-hero-v1.jpg", "site-path-v1.php"):
+            with self.subTest(unknown_owner=target):
+                self.git("reset", "--hard", self.main_sha)
+                self.write("v2/" + target, b"UNREVIEWED_MAIN_OWNER\n")
+                output = self.base / ("unknown-shared-" + target)
+                result = self.run_tool(main=self.commit(), output=output)
+                expected = "unknown shared UI owner" if target in self.tool.SHARED_UI_PREDECESSORS else "protected main file"
+                self.assert_refused(result, output, expected)
+        self.git("reset", "--hard", self.candidate_sha)
+        self.write(self.tool.LOCAL_LOGO_SOURCE, b"<svg>changed artwork</svg>\n")
+        output = self.base / "changed-logo"
+        self.assert_refused(self.run_tool(candidate=self.commit(), output=output), output,
+                            "canonical local logo source changed")
 
     def test_dirty_checkout_is_ignored_and_snapshot_is_fixed_build_profile(self) -> None:
         self.write("v2/visual-search/app.js", b"THIS_DIRTY_CHECKOUT_MUST_NOT_COMPILE\n")
