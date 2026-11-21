@@ -187,4 +187,55 @@ test('Public REVIEW uses local display states without live flag, handoff owner, 
   assert.equal(x.data.live,false);assert.equal(x.window.V2_CONFIG.search3MessengerEnabled,false);
  }
 });
+// Use the existing TV fixture and actual contact/loading owners. The deferred
+// provider reply is local; no supplier, messenger or phone transport is called.
+function contactFlightSetup(){
+ const x=setup(undefined,{tv:true,manager:true,publicMode:true}),gate=defer(),opened=[],painted=[],overview={outerHTML:''};
+ const offer=x.input.offer,search={origin:'Москва',country:'2',from:offer.day,to:offer.day,minNights:7,maxNights:7,adults:2,ages:[0,8]};
+ Object.assign(offer,{ages:[0,8],placement:'2AD+2CH',search,quoteListingTotal:offer.total});offer.tour.price=offer.total;x.input.requestParty.childAges=[0,8];
+ const listing={...offer},select=x.ctx.$;let overviewPresent=true,flightCalls=0;
+ x.ctx.$=key=>key==='.application-flight-overview'?overviewPresent?overview:null:select(key);
+ x.ctx.state={search};x.ctx.hotelDetailsView=null;x.ctx.hotelOfferDraft=null;x.ctx.offerFromKey=key=>key===offer.key?listing:null;
+ x.ctx.needsRefresh=()=>false;x.ctx.esc=String;x.ctx.renderRealOffer=()=>painted.push(x.ctx.modalType);
+ x.ctx.openFlightPicker=()=>{opened.push(x.ctx.selectedOffer);x.ctx.modalType='flights';};
+ x.window.AnyTourPrototypeLead.canApply=value=>!!value?.tour;
+ x.data.amount=value=>Number(value?.value??value)||null;
+ x.data.flights=async tour=>{assert.strictEqual(tour,offer.tour);flightCalls++;return gate.promise;};
+ const part=(from,to)=>{const a=app.indexOf(from),b=app.indexOf(to,a);assert(a>=0&&b>a);return app.slice(a,b);};
+ vm.runInContext(app.split('\n').filter(line=>line.startsWith('const searchKey=')||line.startsWith('function sameSelectedTourConditions(')).join('\n')+'\n'+
+  part('function hotelOfferCheckActive(', 'async function quoteSelectedOffer(')+
+  part('async function loadRealFlights(', 'async function openLeadWithQuote(')+
+  part('function contactFlightSummaryHTML(', 'function openLeadPreview('),x.ctx);
+ return {...x,gate,opened,painted,overview,listing,flightCalls:()=>flightCalls,removeOverview:()=>overviewPresent=false};
+}
+test('Public messenger-only contact opens the first asynchronously loaded flight choices without a phone form',async()=>{
+ const x=contactFlightSetup(),before=plain(x.input.offer),variants=old.owner.tourvisorFixture(false).offer.variants;
+ assert.equal(x.ctx.$('#prototype-lead-form'),null);assert.doesNotMatch(x.test.markup(x.input.offer),/prototype-lead-form|messenger-phone/);
+ const task=x.ctx.openContactFlights(x.input.offer.key);assert.equal(x.flightCalls(),1);assert.equal(x.opened.length,0);
+ assert.equal(x.ctx.selectedOffer.flightsLoading,true);const loadingMarkup=x.overview.outerHTML;
+ x.gate.resolve(variants);await task;
+ assert.equal(x.opened.length,1,'the first flight response opens the picker in messenger-only contact');assert.equal(x.ctx.modalType,'flights');
+ assert.match(loadingMarkup,/Загружаем варианты рейсов/);
+ assert.equal(x.ctx.selectedOffer.flightsLoading,false);assert.equal(x.ctx.selectedOffer.contactFlightEditing,false);assert.strictEqual(x.ctx.selectedOffer.variants,variants);
+ assert.equal(x.ctx.selectedOffer.flightChoiceId,null,'loading choices does not select pair zero');assert.equal(x.ctx.selectedOffer.total,before.total);
+ assert.deepEqual(plain(x.ctx.selectedOffer.ages),[0,8]);assert.equal(x.ctx.selectedOffer.room,before.room);assert.equal(x.ctx.selectedOffer.meal,before.meal);assert.strictEqual(x.ctx.selectedOffer.raw,x.input.offer.raw);
+ assert.deepEqual(x.painted,[],'loading keeps the contact view until the picker opens');assert.deepEqual(x.calls,[]);assert.deepEqual(x.navigation,[]);assert.equal(x.phoneInput.focuses,0);
+});
+test('A late first-flight response cannot reopen a cancelled or different contact intent',async()=>{
+ for(const [name,invalidate] of [
+  ['Back',x=>{x.ctx.cancelHotelOfferCheck();x.ctx.modalType='offer';}],
+  ['closed',x=>{x.modal.open=false;}],
+  ['new request',x=>{x.ctx.selectionGeneration++;}],
+  ['other offer',x=>{x.ctx.selectedOffer={...x.ctx.selectedOffer,key:'another-offer'};}],
+  ['other dialog',x=>{x.ctx.modalType='dates';}],
+  ['editing cancelled',x=>{x.ctx.selectedOffer={...x.ctx.selectedOffer,contactFlightEditing:false};}],
+  ['contact removed',x=>{x.removeOverview();}]
+ ]){
+  const x=contactFlightSetup(),task=x.ctx.openContactFlights(x.input.offer.key);assert.equal(x.flightCalls(),1,name);
+  invalidate(x);const current=x.ctx.selectedOffer,before=plain(current);
+  x.gate.resolve(old.owner.tourvisorFixture(false).offer.variants);await task;
+  assert.equal(x.opened.length,0,name+' cannot open a picker');assert.strictEqual(x.ctx.selectedOffer,current,name+' cannot replace another selection');assert.deepEqual(plain(current),before,name+' cannot consume stale variants or price');
+  assert.deepEqual(x.calls,[]);assert.deepEqual(x.navigation,[]);assert.equal(x.phoneInput.focuses,0);
+ }
+});
 (async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});
