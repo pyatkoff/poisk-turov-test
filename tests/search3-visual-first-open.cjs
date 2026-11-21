@@ -10,7 +10,7 @@ const {setTimeout: delay} = require('node:timers/promises');
 const {gzipSync} = require('node:zlib');
 const {chromium} = require('playwright');
 const {startFirefox} = require('./search3-firefox-driver.cjs');
-const {fixture} = require('./search3-visual-live-fixture.cjs');
+const {fixture, canonicalLogoFixture} = require('./search3-visual-live-fixture.cjs');
 
 const base = '/_preview/search3-next-candidate/';
 const entry = base + 'visual-search/';
@@ -76,6 +76,11 @@ async function openReplay(root, html, catalogDelayMs, searchFixture) {
       res.end(body);
     };
     try {
+      const logoOrigin = 'http://127.0.0.1:' + server.address().port;
+      const logo = req.url === '/images/logo.svg' && req.headers.host === new URL(logoOrigin).host
+        && canonicalLogoFixture({url:()=>logoOrigin + req.url,method:()=>req.method,
+          resourceType:()=>req.headers['sec-fetch-dest']}, logoOrigin);
+      if (logo) return respond(logo.status, logo.contentType, logo.body);
       if (req.method === 'GET' && url.pathname === entry) {
         navigation = performance.now();
         return respond(200, 'text/html; charset=utf-8', html);
