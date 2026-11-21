@@ -2112,6 +2112,555 @@ class UpdateTransaction(unittest.TestCase):
             self.assertFalse((evidence_path.parent/'key').exists()); self.assertFalse((evidence_path.parent/'known').exists())
 
 
+SITE_IDENTITY = {'control_source_sha': CONTROL, 'run_id': '678901', 'command_comment_id': 9006}
+SITE_ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '789012', 'command_comment_id': 9007}
+
+
+def site_event(rollback=False):
+    value=event(); identity=SITE_ROLLBACK_IDENTITY if rollback else SITE_IDENTITY
+    value['comment']['id']=identity['command_comment_id']
+    value['comment']['body']=(f'{m.SITE_ROLLBACK_PREFIX} {identity["control_source_sha"]} {SITE_IDENTITY["run_id"]} {m.SITE_ROLLBACK_OPERATION}'
+                              if rollback else f'{m.SITE_PREFIX} {identity["control_source_sha"]} {m.SITE_OPERATION}')
+    return value
+
+
+class SiteAdmission(unittest.TestCase):
+    def metadata(self,path):
+        if path=='/git/ref/heads/main': return {'object':{'sha':CONTROL}}
+        if path=='/pulls/'+str(m.SITE_SOURCE_PR):
+            return {'state':'closed','merged':True,'merge_commit_sha':CONTROL,
+                    'head':{'sha':m.SITE_SOURCE,'repo':{'full_name':m.REPO}},'base':{'ref':'main','sha':'c'*40,'repo':{'full_name':m.REPO}}}
+        if path=='/git/commits/'+m.SITE_SOURCE: return {'tree':{'sha':m.SITE_TREE}}
+        if path.startswith('/contents/v2/'):
+            relative=path.split('/contents/v2/',1)[1].split('?')[0]
+            return {'type':'file','sha':m.SITE_TARGETS[relative]['blob']}
+        if path.startswith('/contents/.github/workflows/deploy-anytoour.yml'):
+            return {'type':'file','encoding':'base64','content':base64.b64encode(b'manual-only guarded publisher').decode()}
+        if '/check-runs?' in path:
+            checks=[{'id':i+1,'name':name,'head_sha':m.SITE_SOURCE,'status':'completed',
+                     'conclusion':'skipped' if name=='production-evidence' else 'success','app':{'slug':'github-actions'}}
+                    for i,name in enumerate((*m.SITE_CHECKS,'production-evidence'))]
+            return {'total_count':len(checks),'check_runs':checks}
+        if path=='/actions/runs/'+m.SITE_PARENT['run_id']:
+            return {'id':int(m.SITE_PARENT['run_id']),'head_sha':m.SITE_PARENT['control_source_sha'],'head_branch':'main',
+                    'path':m.WORKFLOW,'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+m.SITE_PARENT['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':m.SITE_PARENT['job_id'],'run_id':int(m.SITE_PARENT['run_id']),
+                    'name':'public-install','status':'completed','conclusion':'success','steps':[
+                        {'name':'Run python3 scripts/deploy/search3_public_install.py update','status':'completed','conclusion':'success'}]}]}
+        if path=='/actions/artifacts/'+str(m.SITE_PARENT['artifact_id']):
+            return {'id':m.SITE_PARENT['artifact_id'],'name':'search3-public-install-'+m.SITE_PARENT['run_id']+'-1',
+                    'expired':False,'workflow_run':{'id':int(m.SITE_PARENT['run_id'])},'digest':'sha256:'+m.SITE_PARENT['artifact_sha256']}
+        if path.startswith('/issues/4709/comments?'):
+            parent=update_event()['comment'];parent.update(id=m.SITE_PARENT['command_comment_id'],
+                    body=f'{m.UPDATE_PREFIX} {m.SITE_PARENT["control_source_sha"]} {m.UPDATE_OPERATION}')
+            return [parent,site_event()['comment']]
+        raise AssertionError('Unexpected SITE dependency: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path)
+            return change(path,value) if change else value
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'manual-only guarded publisher')):
+            m.site_admission(SITE_IDENTITY);reviewed.assert_called_once_with(CONTROL)
+
+    def test_fixed_source_targets_and_untouched_historical_pins(self):
+        self.assertEqual(m.SITE_ORDER,('bundle-manifest-v1.php','assets.php','bundle-v1.php','site-page-shell-v1.php'))
+        self.assertEqual((m.SITE_SOURCE_PR,m.SITE_SOURCE,m.SITE_TREE),(5133,'53c523c3664d2e9e893942d0eb63b2637e1df978','ef15774d5209de96d589104486f6cd957b1ef0aa'))
+        self.assertEqual(m.SITE_PARENT['run_id'],'44887902112')
+        self.assertEqual(m.SITE_PARENT['receipt_sha256'],'ab52afbbb2031c75dea9873cc9fe4004356474fdb10273ff1ef2e993d5cc8274')
+        self.assertEqual(m.PUBLISHER_GUARD_SHA,'9b81eac1a94263fcfb9f49948495c45d143ffbb1bcd91d96921ee3257423da40')
+        self.assertEqual(m.SITE_PUBLISHER_GUARD_SHA,m.sha((ROOT/'.github/workflows/deploy-anytoour.yml').read_bytes()))
+        self.assertEqual(set(m.SITE_TARGETS),set(m.SITE_ORDER))
+        self.assertEqual((len(m.SITE_DEPENDENCIES),len(m.SITE_OPTIONAL_DEPENDENCIES)),(154,62))
+        for path,row in m.SITE_TARGETS.items():
+            self.assertIn(m.sha((ROOT/'v2'/path).read_bytes()),(row['before']['sha256'],row['after']['sha256']))
+            self.assertEqual(row['before']['mode'],'0644')
+        # Every default native bundle input and each standalone stylesheet is
+        # independently pinned, including the retained root/native route alias.
+        import re
+        manifest=(ROOT/'v2/bundle-manifest-v1.php').read_text().split('function v2_bundle_files(',1)[0]
+        native=re.findall(r"'([^']+\.(?:css|js))'",manifest)
+        self.assertEqual(len(native),82)
+        self.assertTrue(set(native)<=set(m.SITE_DEPENDENCIES))
+        for path in ('site-page-v1.css','site-coherence-v1.css','shared-content-primitives-v1.css','asset-version-v1.php',
+                     'contacts/index.php','country-page-v1.php','site-header-v2.php','site-footer-v1.php','search-page-v2.php'):
+            self.assertIn(path,m.SITE_DEPENDENCIES)
+        for path in set(m.SITE_DEPENDENCIES)&set(m.CONTINUATION_PROTECTED):
+            self.assertEqual(m.SITE_DEPENDENCIES[path],m.CONTINUATION_PROTECTED[path])
+        self.assertFalse(set(m.SITE_ORDER)&(set(m.ADDITIONS)|set(m.CONTINUATION_PROTECTED)|set(m.SITE_DEPENDENCIES)))
+        UpdateAdmission().test_successor_source_does_not_repin_the_consumed_install()
+
+    def test_fixed_site_commands_share_strict_owner_main_attempt_boundary(self):
+        for rollback,identity in ((False,SITE_IDENTITY),(True,SITE_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            expected=(identity,SITE_IDENTITY['run_id']) if rollback else identity
+            self.assertEqual(m.site_event_identity(site_event(rollback),env,rollback),expected)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_TRIGGERING_ACTOR','other'),('GITHUB_REF','refs/heads/branch'),
+                              ('GITHUB_WORKFLOW_REF','other'),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch')):
+                with self.subTest(rollback=rollback,key=key),self.assertRaises(RuntimeError):
+                    m.site_event_identity(site_event(rollback),env|{key:value},rollback)
+            for mutate in (lambda e:e.update(action='edited'),lambda e:e['issue'].update(number=4217),
+                           lambda e:e['issue'].update(pull_request={}),lambda e:e['comment']['user'].update(id=True),
+                           lambda e:e['comment'].update(author_association='MEMBER'),
+                           lambda e:e['comment'].update(body=e['comment']['body']+' edited')):
+                value=site_event(rollback);mutate(value)
+                with self.subTest(rollback=rollback,mutate=mutate),self.assertRaises(RuntimeError):m.site_event_identity(value,env,rollback)
+        for mode in ('site-update','site-rollback'):self.assertEqual(m.command_mode([mode]),mode)
+        for args in (['site-update','/tmp'],['site-rollback','123'],['--site-update']):
+            with self.assertRaises(RuntimeError):m.command_mode(args)
+        for old in (event(),update_event(),continuation_event(),rollback_event()):
+            with self.assertRaises(RuntimeError):m.site_event_identity(old,environment())
+
+    def test_source_is_merged_with_exact_four_blobs_and_latest_reviewed_checks(self):
+        self.admit()
+        for name in (*m.SITE_CHECKS,'production-evidence'):
+            for change in ('pending','wronghead','untrusted','latest-failed'):
+                def mutate(path,value):
+                    if '/check-runs?' in path:
+                        row=next(c for c in value['check_runs'] if c['name']==name)
+                        if change=='pending':row.update(status='in_progress')
+                        elif change=='wronghead':row.update(head_sha=m.UPDATE_SOURCE)
+                        elif change=='untrusted':row.update(app={'slug':'untrusted'})
+                        else:value['check_runs'].append(row|{'id':1000,'conclusion':'failure'});value['total_count']+=1
+                    return value
+                with self.subTest(name=name,change=change),self.assertRaises(RuntimeError):self.admit(mutate)
+        def additional(path,value):
+            if '/check-runs?' in path:
+                value['check_runs'].append({'id':1000,'name':'unrelated','head_sha':m.SITE_SOURCE,'status':'queued'});value['total_count']+=1
+            return value
+        self.admit(additional)
+        for endpoint,mutate in (('/pulls/5133',lambda v:v.update(merged=False)),('/pulls/5133',lambda v:v.update(merge_commit_sha='f'*40)),
+                                 ('/pulls/5133',lambda v:v['head'].update(sha=m.UPDATE_SOURCE)),('/pulls/5133',lambda v:v['base'].update(ref='release/other')),
+                                 ('/git/commits/'+m.SITE_SOURCE,lambda v:v['tree'].update(sha=m.UPDATE_TREE)),
+                                 ('/contents/.github/workflows/deploy-anytoour.yml?ref='+CONTROL,lambda v:v.update(content=base64.b64encode(b'broad automatic writer').decode()))):
+            def mutation(path,value):
+                if path==endpoint:mutate(value)
+                return value
+            with self.subTest(endpoint=endpoint),self.assertRaises(RuntimeError):self.admit(mutation)
+        for target in m.SITE_ORDER:
+            for ref in (CONTROL,m.SITE_SOURCE):
+                def mutation(path,value):
+                    if path=='/contents/v2/'+target+'?ref='+ref:value['sha']='0'*40
+                    return value
+                with self.subTest(target=target,ref=ref),self.assertRaises(RuntimeError):self.admit(mutation)
+
+    def test_parent_success_and_unique_commands_are_required(self):
+        for fragment,mutate in (('/actions/runs/'+m.SITE_PARENT['run_id'],lambda v:v.update(run_attempt=2)),
+                                ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(id=1)),
+                                ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(conclusion='failure')),
+                                ('/actions/artifacts/',lambda v:v.update(expired=True)),
+                                ('/comments?',lambda v:v.append(v[-1]|{'id':10000})),
+                                ('/comments?',lambda v:v[0].update(author_association='MEMBER'))):
+            def mutation(path,value):
+                if path==fragment or (fragment.endswith('?') or fragment=='/actions/artifacts/') and fragment in path:mutate(value)
+                return value
+            with self.subTest(fragment=fragment),self.assertRaises(RuntimeError):self.admit(mutation)
+
+    def test_old_public_rollback_stays_independent_of_new_publisher_and_source(self):
+        with patch.object(m,'SITE_SOURCE',None),patch.object(m,'SITE_PUBLISHER_GUARD_SHA',None), \
+             patch.object(m,'site_admission',side_effect=AssertionError('SITE gate must not affect public recovery')):
+            UpdateRollbackAdmission().admission()
+
+
+class SiteRollbackAdmission(unittest.TestCase):
+    def metadata(self,path):
+        if path=='/git/ref/heads/main':return {'object':{'sha':SITE_ROLLBACK_IDENTITY['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):return [site_event()['comment'],site_event(True)['comment']]
+        if path=='/actions/runs/'+SITE_IDENTITY['run_id']:
+            return {'id':int(SITE_IDENTITY['run_id']),'head_sha':CONTROL,'head_branch':'main','event':'issue_comment',
+                    'path':m.WORKFLOW,'run_attempt':1,'status':'completed','conclusion':'success',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+SITE_IDENTITY['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':222,'run_id':int(SITE_IDENTITY['run_id']),'name':'public-install',
+                    'status':'completed','conclusion':'success','steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py site-update',
+                                                                       'status':'completed','conclusion':'success'}]}]}
+        if path.startswith('/actions/runs/'+SITE_IDENTITY['run_id']+'/artifacts?'):
+            return {'total_count':1,'artifacts':[{'id':444,'name':'search3-public-install-'+SITE_IDENTITY['run_id']+'-1',
+                    'expired':False,'workflow_run':{'id':int(SITE_IDENTITY['run_id'])},'digest':'sha256:'+'5'*64}]}
+        raise AssertionError('SITE rollback fetched unrelated source proof: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'site_admission',side_effect=AssertionError('source gate during recovery')), \
+             patch.object(m,'site_parent_admission',side_effect=AssertionError('old parent fetch during recovery')), \
+             patch.object(m,'SITE_PUBLISHER_GUARD_SHA',None),patch.object(m,'UPDATE_RELEASE',None),patch.object(m,'RELEASE',None):
+            original,artifact=m.site_rollback_admission(SITE_ROLLBACK_IDENTITY,SITE_IDENTITY['run_id'])
+            self.assertEqual(original,SITE_IDENTITY);self.assertEqual(artifact['id'],444)
+            reviewed.assert_called_once_with(SITE_ROLLBACK_IDENTITY['control_source_sha'])
+
+    def test_owned_success_receipt_is_independent_of_source_and_old_publish_guard(self):
+        self.admit()
+        for original in (SITE_ROLLBACK_IDENTITY['run_id'],m.SITE_PARENT['run_id'],m.UPDATE_PARENT['run_id'],m.CONTINUATION_PARENT['run_id']):
+            with patch.object(m,'api') as api,self.assertRaises(RuntimeError):m.site_rollback_commands(SITE_ROLLBACK_IDENTITY,original)
+            api.assert_not_called()
+
+    def test_duplicate_command_wrong_owner_failed_attempt_or_foreign_artifact_is_rejected(self):
+        for part,mutate in (('/comments?',lambda v:v.append(v[0]|{'id':9008})),('/comments?',lambda v:v.append(v[1]|{'id':9008})),
+                            ('/comments?',lambda v:v[0].update(author_association='MEMBER')),('/comments?',lambda v:v[1].update(body=v[1]['body']+' edited')),
+                            ('/actions/runs/678901',lambda v:v.update(run_attempt=2)),('/actions/runs/678901',lambda v:v.update(conclusion='failure')),
+                            ('/actions/runs/678901',lambda v:v.update(head_sha='f'*40)),('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(conclusion='failure')),
+                            ('/artifacts?',lambda v:v['artifacts'][0].update(expired=True)),('/artifacts?',lambda v:v['artifacts'][0].update(workflow_run={'id':1})),
+                            ('/artifacts?',lambda v:v['artifacts'][0].update(digest='untrusted'))):
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class SiteTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def installed(self):
+        helper=UpdateTransaction()
+        with helper.installed() as f:
+            f.update_accepted=helper.execute(f);self.assertEqual(f.update_accepted['status'],'updated_verified')
+            parent_value={**UPDATE_IDENTITY,'operation_id':m.UPDATE_OPERATION,'source_sha':m.UPDATE_SOURCE,
+                          'manifest_sha256':m.UPDATE_MANIFEST_SHA,'read_only':False,'phase':'complete','ssh_started':True,
+                          'status':'updated_verified','parent_install':f.parent_identity,'parent_result':f.accepted,
+                          'previous_public':f.policy['expected'],'release_sha':RELEASE,'remote':f.update_accepted}
+            parent_data=(json.dumps(parent_value,sort_keys=True)+'\n').encode();packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',parent_data)
+            f.site_parent_raw=packet.getvalue()
+            parent=m.SITE_PARENT|UPDATE_IDENTITY|{'receipt_sha256':m.sha(parent_data),'artifact_sha256':m.sha(f.site_parent_raw),
+                                                 'snapshot_manifest_sha256':f.update_accepted['snapshot_manifest_sha256']}
+            targets={};files={}
+            for path in m.SITE_ORDER:
+                old=('<?php /* before '+path+' */\n').encode();new=('<?php /* approved '+path+' */\n').encode();f.put(path,old)
+                row=lambda raw:{'state':'present','sha256':m.sha(raw),'size':len(raw),'mode':'0644'}
+                targets[path]={'before':row(old),'after':row(new),'blob':m.hashlib.sha1(b'blob '+str(len(new)).encode()+b'\0'+new).hexdigest()}
+                files[path]=base64.b64encode(new).decode()
+            dependencies={};optional={}
+            for path in m.SITE_DEPENDENCIES:
+                if path not in f.policy['protected']:f.put(path,('site protected '+path).encode())
+                dependencies[path]=m.sha((f.root/path).read_bytes())
+            for index,path in enumerate(m.SITE_OPTIONAL_DEPENDENCIES):
+                raw=('fixed optional '+path).encode();optional[path]=m.sha(raw)
+                if index%2==0:f.put(path,raw)
+            f.site_files=files;f.site_parent_value=parent_value;f.site_private=f.private.parent/m.SITE_OPERATION
+            with patch.object(m,'SITE_PARENT',parent),patch.object(m,'SITE_TARGETS',targets), \
+                 patch.object(m,'SITE_DEPENDENCIES',dependencies),patch.object(m,'SITE_OPTIONAL_DEPENDENCIES',optional), \
+                 patch.object(m,'CONTINUATION_PROTECTED',f.policy['protected']),patch.object(m,'ENTRY_BEFORE',f.policy['before']):
+                f.site_policy=m.site_policy();yield f
+
+    def execute(self,f,change=None):
+        program=m.site_remote_program(f.site_policy,f.site_files,SITE_IDENTITY,f.site_parent_value)
+        value=UpdateTransaction().run_program(f,program,change);m.valid_site_result(SITE_IDENTITY,value)
+        return value
+
+    def rollback(self,f,change=None):
+        program=m.site_rollback_remote_program(f.site_policy,SITE_ROLLBACK_IDENTITY,SITE_IDENTITY,f.site_accepted,f.site_parent_value)
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_site_result(SITE_ROLLBACK_IDENTITY,value,SITE_IDENTITY,f.site_accepted)
+        return value
+
+    def public_files(self,f):
+        paths=set(f.policy['expected'])|set(f.policy['protected'])|set(m.SITE_ORDER)|set(m.SITE_DEPENDENCIES)|set(m.SITE_OPTIONAL_DEPENDENCIES)|{'config.php'}
+        return {p:(UpdateTransaction().stamp(f.root/p),(f.root/p).read_bytes()) if (f.root/p).exists() else None for p in paths}
+
+    def parent_records(self,f):
+        return {str(p.relative_to(f.private.parent)):(UpdateTransaction().stamp(p),p.read_bytes())
+                for root in (f.private,f.update_private) for p in root.rglob('*') if p.is_file()}
+
+    def fail_after_exchange(self,index):
+        def change(program):
+            line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+            self.assertIn(line,program)
+            return program.replace(line,line+f"\n   if index=={index}: raise RuntimeError('operation_failed')",1)
+        return change
+
+    def test_four_ordered_owners_roundtrip_restores_inodes_and_parent_public_rollback(self):
+        with self.installed() as f:
+            before=self.public_files(f);parent=self.parent_records(f)
+            f.site_accepted=self.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            self.assertEqual(f.site_accepted['written_files'],list(m.SITE_ORDER))
+            after=self.public_files(f);self.assertEqual({p for p in before if before[p]!=after[p]},set(m.SITE_ORDER))
+            self.assertEqual(self.parent_records(f),parent)
+            for index,path in enumerate(m.SITE_ORDER):
+                saved=f.site_private/'stage'/str(index)
+                self.assertEqual((UpdateTransaction().stamp(saved),saved.read_bytes()),before[path])
+            records={str(p.relative_to(f.site_private)):p.read_bytes() for p in f.site_private.rglob('*') if p.is_file() and 'stage' not in p.parts}
+            result=self.rollback(f);self.assertEqual(result['status'],'site_rolled_back_verified')
+            self.assertEqual(result['rollback_files'],list(reversed(m.SITE_ORDER)))
+            self.assertEqual(self.public_files(f),before);self.assertEqual(self.parent_records(f),parent)
+            self.assertEqual({str(p.relative_to(f.site_private)):p.read_bytes() for p in f.site_private.rglob('*') if p.is_file() and 'stage' not in p.parts},records)
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+
+    def test_active_site_does_not_break_existing_public_update_recovery(self):
+        with self.installed() as f:
+            f.site_accepted=self.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            targets={p:(f.root/p).read_bytes() for p in m.SITE_ORDER}
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+            self.assertEqual({p:(f.root/p).read_bytes() for p in m.SITE_ORDER},targets)
+
+    def test_failure_after_each_exchange_restores_exact_original_inodes(self):
+        for index in range(4):
+            with self.subTest(index=index),self.installed() as f:
+                before=self.public_files(f);parent=self.parent_records(f)
+                result=self.execute(f,self.fail_after_exchange(index))
+                self.assertEqual(result['status'],'rolled_back_no_replay')
+                self.assertEqual(result['written_files'],list(m.SITE_ORDER[:index+1]))
+                self.assertEqual(result['rollback_files'],list(reversed(m.SITE_ORDER[:index+1])))
+                self.assertEqual(self.public_files(f),before);self.assertEqual(self.parent_records(f),parent)
+                consumed=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),consumed)
+
+    def test_target_preimages_links_and_modes_fail_before_any_reservation(self):
+        for path in m.SITE_ORDER:
+            for kind in ('bytes','mode','symlink','hardlink'):
+                with self.subTest(path=path,kind=kind),self.installed() as f:
+                    target=f.root/path
+                    if kind=='bytes':target.write_bytes(b'foreign PHP')
+                    elif kind=='mode':target.chmod(0o600)
+                    elif kind=='symlink':target.unlink();target.symlink_to(f.root/'config.php')
+                    else:os.link(target,f.home/'foreign-link')
+                    before=f.filesystem_snapshot();result=self.execute(f)
+                    self.assertEqual(result['status'],'blocked_no_replay');self.assertEqual(result['written_files'],[])
+                    self.assertFalse(f.site_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_every_guard_category_and_both_private_parent_lineages_are_checked(self):
+        cases=('app','fallback','next','native','css','route','private','original-result','update-result','update-intent','retained-app','optional')
+        for kind in cases:
+            with self.subTest(kind=kind),self.installed() as f:
+                paths={'app':f.root/m.UPDATE_PATH,'fallback':f.root/'poisk-turov-old/index.php',
+                       'next':f.root/'_preview/search3-next-candidate/visual-search/index.php','native':f.root/'accessibility.js',
+                       'css':f.root/'site-page-v1.css','route':f.root/'contacts/index.php','private':f.root/'config.php',
+                       'original-result':f.private/'result.json','update-result':f.update_private/'result.json',
+                       'update-intent':f.update_private/'intent.json','retained-app':f.update_private/'stage/app',
+                       'optional':f.root/next(iter(m.SITE_OPTIONAL_DEPENDENCIES))}
+                paths[kind].write_bytes(b'foreign');before=f.filesystem_snapshot();result=self.execute(f)
+                self.assertEqual(result['status'],'blocked_no_replay');self.assertFalse(f.site_private.exists())
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_snapshot_and_drill_are_proven_before_first_exchange(self):
+        for kind in ('snapshot','drill'):
+            for index in range(4):
+                with self.subTest(kind=kind,index=index),self.installed() as f:
+                    before=self.public_files(f);parent=self.parent_records(f)
+                    def change(program):
+                        line=f"  require(private.read('{kind}/'+str(index))[0]==targets[path]['before']"
+                        injection=(f"  if index=={index}:\n   with private.parent('{kind}/'+str(index)) as (fd,name):\n"
+                                   "    leaf=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(leaf,b'corrupt');os.close(leaf)\n")
+                        self.assertIn(line,program);return program.replace(line,injection+line,1)
+                    value=self.execute(f,change)
+                    self.assertEqual(value['status'],'rolled_back_no_replay');self.assertEqual(value['written_files'],[])
+                    self.assertEqual(value['reason'],'snapshot_invalid' if kind=='snapshot' else 'restore_drill_failed')
+                    self.assertEqual(self.public_files(f),before);self.assertEqual(self.parent_records(f),parent)
+
+    def test_foreign_target_at_each_exchange_is_returned_without_overwrite(self):
+        for selected in range(4):
+            for kind in ('file','same-bytes','symlink','hardlink'):
+                with self.subTest(selected=selected,kind=kind),self.installed() as f:
+                    before=self.public_files(f);parent=self.parent_records(f)
+                    def change(program):
+                        line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                        injection=f"   if index=={selected}:\n"
+                        if kind=='symlink':injection+="    os.symlink('foreign-owner',target+'.race',dir_fd=dst)\n"
+                        else:
+                            raw="public.read(path,True)[2]" if kind=='same-bytes' else "b'FOREIGN OWNER'"
+                            injection+=f"    raw={raw};leaf=os.open(target+'.race',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644,dir_fd=dst);os.write(leaf,raw);os.close(leaf)\n"
+                            if kind=='hardlink':injection+="    os.link(target+'.race',target+'.foreign-link',src_dir_fd=dst,dst_dir_fd=dst)\n"
+                        injection+="    os.rename(target+'.race',target,src_dir_fd=dst,dst_dir_fd=dst)\n"
+                        return program.replace(line,injection+line,1)
+                    value=self.execute(f,change);self.assertEqual(value['status'],'unknown_no_replay')
+                    path=m.SITE_ORDER[selected];target=f.root/path
+                    if kind=='symlink':self.assertTrue(target.is_symlink());self.assertEqual(os.readlink(target),'foreign-owner')
+                    else:
+                        self.assertEqual(target.read_bytes(),before[path][1] if kind=='same-bytes' else b'FOREIGN OWNER')
+                        self.assertNotEqual(target.stat().st_ino,before[path][0][1])
+                        if kind=='hardlink':self.assertEqual(target.stat().st_nlink,2)
+                    for other,row in before.items():
+                        if other!=path and row is not None:self.assertEqual((UpdateTransaction().stamp(f.root/other),(f.root/other).read_bytes()),row)
+                    self.assertEqual(self.parent_records(f),parent)
+
+    def test_parent_directory_race_fails_closed_before_public_write(self):
+        with self.installed() as f:
+            before=self.public_files(f);parent=self.parent_records(f)
+            def change(program):
+                line=" current=dict(before);result['phase']='assets'"
+                injection=" os.rename(home+'/www/anytoour.ru',home+'/www/retained-root');os.mkdir(home+'/www/anytoour.ru');open(home+'/www/anytoour.ru/foreign','wb').write(b'NEW OWNER')\n"
+                self.assertIn(line,program);return program.replace(line,injection+line,1)
+            result=self.execute(f,change)
+            self.assertEqual(result['status'],'unknown_no_replay');self.assertEqual(result['written_files'],[])
+            self.assertEqual((f.root/'foreign').read_bytes(),b'NEW OWNER')
+            old=f.root;f.root=f.home/'www/retained-root'
+            self.assertEqual(self.public_files(f),before);f.root=old;self.assertEqual(self.parent_records(f),parent)
+
+    def test_unknown_and_successful_site_operations_never_replay(self):
+        for unknown in (True,False):
+            with self.subTest(unknown=unknown),self.installed() as f:
+                if unknown:
+                    f.site_private.mkdir(mode=0o700);(f.site_private/'reservation.json').write_bytes(b'unknown consumed operation')
+                else:
+                    f.site_accepted=self.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+                if not unknown:
+                    self.assertEqual(self.rollback(f)['status'],'site_rolled_back_verified');before=f.filesystem_snapshot()
+                    self.assertEqual(self.rollback(f)['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_rollback_rejects_changed_targets_and_retained_proof(self):
+        for kind in ('bytes','inode','symlink','hardlink','snapshot','intent','result','retained','parent','protected'):
+            with self.subTest(kind=kind),self.installed() as f:
+                f.site_accepted=self.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+                target=f.root/m.SITE_ORDER[-1]
+                if kind=='bytes':target.write_bytes(b'newer site owner')
+                elif kind=='inode':raw=target.read_bytes();target.unlink();f.put(m.SITE_ORDER[-1],raw)
+                elif kind=='symlink':target.unlink();target.symlink_to('foreign-site-owner')
+                elif kind=='hardlink':os.link(target,f.home/'new-owner-link')
+                elif kind=='snapshot':(f.site_private/'snapshot/manifest.json').write_bytes(b'{}')
+                elif kind=='intent':(f.site_private/'intent-3').write_bytes(b'{}')
+                elif kind=='result':(f.site_private/'result.json').write_bytes(b'{}')
+                elif kind=='retained':(f.site_private/'stage/3').write_bytes(b'corrupt predecessor')
+                elif kind=='parent':(f.update_private/'result.json').write_bytes(b'{}')
+                else:(f.root/'site-page-v1.css').write_bytes(b'new stylesheet')
+                before=f.filesystem_snapshot();value=self.rollback(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['rollback_files'],[])
+                self.assertFalse((f.private.parent/m.SITE_ROLLBACK_OPERATION).exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_rollback_fault_after_each_restoration_is_sealed_and_never_overclaims(self):
+        for selected in reversed(range(4)):
+            with self.subTest(selected=selected),self.installed() as f:
+                before=self.public_files(f);f.site_accepted=self.execute(f)
+                def change(program):
+                    line="  result['rollback_files'].append(path)"
+                    self.assertIn(line,program);return program.replace(line,line+f"\n  if index=={selected}: raise RuntimeError('operation_failed')",1)
+                value=self.rollback(f,change);self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.SITE_ORDER[selected:])))
+                for path in m.SITE_ORDER[selected:]:self.assertEqual((UpdateTransaction().stamp(f.root/path),(f.root/path).read_bytes()),before[path])
+                consumed=f.filesystem_snapshot();self.assertEqual(self.rollback(f)['status'],'blocked_no_replay')
+                self.assertEqual(f.filesystem_snapshot(),consumed)
+
+    def test_foreign_writer_during_requested_restore_survives(self):
+        for stage in ('capture','restore'):
+            with self.subTest(stage=stage),self.installed() as f:
+                f.site_accepted=self.execute(f);parent=self.parent_records(f)
+                def change(program):
+                    if stage=='capture':
+                        line='\n   move_noreplace(src,name,dst,target);moved=True;sync(src);sync(dst)'
+                        inject="\n   leaf=os.open(name+'.race',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644,dir_fd=src);os.write(leaf,b'FOREIGN OWNER');os.close(leaf)\n   os.rename(name+'.race',name,src_dir_fd=src,dst_dir_fd=src)"
+                    else:
+                        line=" restore_capture(public,store,path,'stage/'+str(index))"
+                        inject=" public.create(path,b'FOREIGN OWNER',0o644)\n"
+                    self.assertIn(line,program);return program.replace(line,inject+line,1)
+                value=self.rollback(f,change);self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual((f.root/m.SITE_ORDER[-1]).read_bytes(),b'FOREIGN OWNER')
+                self.assertEqual(self.parent_records(f),parent)
+                self.assertEqual((f.site_private/'stage/3').read_bytes(),b'<?php /* before site-page-shell-v1.php */\n')
+
+    def test_protected_or_parent_change_during_activation_unwinds_only_owned_targets(self):
+        for target in ('site-page-v1.css','visual-search/app.js','original-result','updated-result'):
+            with self.subTest(target=target),self.installed() as f:
+                before={p:(UpdateTransaction().stamp(f.root/p),(f.root/p).read_bytes()) for p in m.SITE_ORDER}
+                def change(program):
+                    line='  site_check_targets(current);site_check_parents()'
+                    store="original" if target=='original-result' else "updated" if target=='updated-result' else "public"
+                    path='result.json' if target.endswith('-result') else target
+                    inject=("  if index==1:\n"+f"   with {store}.parent({path!r}) as (fd,name):\n"
+                            "    leaf=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(leaf,b'FOREIGN OWNER');os.close(leaf)\n")
+                    self.assertIn(line,program);return program.replace(line,inject+line,1)
+                value=self.execute(f,change);self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.SITE_ORDER[:2])))
+                for p,row in before.items():self.assertEqual((UpdateTransaction().stamp(f.root/p),(f.root/p).read_bytes()),row)
+                changed=f.private/'result.json' if target=='original-result' else f.update_private/'result.json' if target=='updated-result' else f.root/target
+                self.assertEqual(changed.read_bytes(),b'FOREIGN OWNER')
+
+    def test_payload_and_parent_receipt_are_exact_and_no_new_path_can_be_injected(self):
+        with self.installed() as f:
+            self.assertEqual(m.site_parent_evidence(f.site_parent_raw),f.site_parent_value)
+            with self.assertRaises(RuntimeError):m.site_parent_evidence(f.site_parent_raw+b'changed')
+            def blob(path):
+                name=next(p for p in m.SITE_ORDER if path=='/git/blobs/'+m.SITE_TARGETS[p]['blob'])
+                raw=base64.b64decode(f.site_files[name]);return {'sha':m.SITE_TARGETS[name]['blob'],'size':len(raw),
+                                                              'encoding':'base64','content':f.site_files[name]}
+            with patch.object(m,'api',side_effect=blob):self.assertEqual(m.site_package(),f.site_files)
+            for kind in ('bytes','blob','size'):
+                def forged(path):
+                    value=blob(path)
+                    if kind=='bytes':value['content']=base64.b64encode(b'<?php unreviewed').decode()
+                    elif kind=='blob':value['sha']='0'*40
+                    else:value['size']+=1
+                    return value
+                with self.subTest(kind=kind),patch.object(m,'api',side_effect=forged),self.assertRaises(RuntimeError):m.site_package()
+            for changed in (f.site_policy|{'operation':m.UPDATE_OPERATION},f.site_policy|{'source':m.UPDATE_SOURCE},
+                            f.site_policy|{'order':m.SITE_ORDER+(m.ENTRY,)},f.site_policy|{'dependencies':{}}):
+                with self.assertRaises(RuntimeError):m.site_remote_program(changed,f.site_files,SITE_IDENTITY,f.site_parent_value)
+            for files in ({},f.site_files|{m.ENTRY:base64.b64encode(b'<?php bad').decode()},
+                          f.site_files|{m.SITE_ORDER[0]:base64.b64encode(b'<?php bad').decode()}):
+                with self.assertRaises(RuntimeError):m.site_remote_program(f.site_policy,files,SITE_IDENTITY,f.site_parent_value)
+
+    def test_client_receipt_is_self_contained_for_recovery_after_control_change(self):
+        with self.installed() as f:
+            f.site_accepted=self.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            runner=f.base/'site-runner';runner.mkdir();event_path=runner/'event.json';event_path.write_text(json.dumps(site_event()))
+            env=environment()|{'GITHUB_RUN_ID':SITE_IDENTITY['run_id'],'RUNNER_TEMP':str(runner),'GITHUB_EVENT_PATH':str(event_path),
+                               'PREVIEW_HOST':'example.invalid','PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+            with patch.dict(os.environ,env),patch.object(m,'site_admission') as admission,patch.object(m,'site_final_heads'), \
+                 patch.object(m,'download',return_value=f.site_parent_raw) as download,patch.object(m,'site_package',return_value=f.site_files), \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.site_accepted).encode()]),patch('builtins.print'):
+                m.site_update()
+            self.assertEqual(admission.call_count,2);download.assert_called_once_with(m.SITE_PARENT['artifact_id'],m.SITE_PARENT['artifact_sha256'])
+            evidence_path=runner/'search3-public-install/evidence.json';good=json.loads(evidence_path.read_text())
+            self.assertEqual(good['status'],'site_updated_verified');self.assertEqual(good['parent_evidence'],f.site_parent_value)
+            self.assertFalse((evidence_path.parent/'key').exists());self.assertFalse((evidence_path.parent/'known').exists())
+            def archive(value,extra=False):
+                packet=io.BytesIO()
+                with zipfile.ZipFile(packet,'w') as zipped:
+                    zipped.writestr('evidence.json',json.dumps(value,sort_keys=True)+'\n')
+                    if extra:zipped.writestr('other.json','{}')
+                return packet.getvalue()
+            raw=archive(good)
+            with patch.object(m,'UPDATE_RELEASE',None),patch.object(m,'RELEASE',None),patch.object(m,'SITE_PUBLISHER_GUARD_SHA',None), \
+                 patch.object(m,'api',side_effect=AssertionError('unrelated API dependency')):
+                policy,accepted,parent=m.site_source_evidence(raw,SITE_IDENTITY)
+                self.assertEqual(policy,f.site_policy);self.assertEqual(accepted,f.site_accepted);self.assertEqual(parent,f.site_parent_value)
+                for change in (lambda v:v.update(status='unknown_no_replay'),lambda v:v.update(source_sha=m.UPDATE_SOURCE),
+                               lambda v:v.update(unreviewed=True),lambda v:v['parent_evidence'].update(run_id='1'),
+                               lambda v:v['remote'].update(status='unknown_no_replay'),lambda v:v['remote'].update(written_files=[m.ENTRY])):
+                    invalid=copy.deepcopy(good);change(invalid)
+                    with self.subTest(change=change),self.assertRaises(RuntimeError):m.site_source_evidence(archive(invalid),SITE_IDENTITY)
+                with self.assertRaises(RuntimeError):m.site_source_evidence(archive(good,True),SITE_IDENTITY)
+            restored=self.rollback(f);self.assertEqual(restored['status'],'site_rolled_back_verified')
+            recovery=f.base/'site-recovery';recovery.mkdir();event_path=recovery/'event.json';event_path.write_text(json.dumps(site_event(True)))
+            env.update(GITHUB_SHA=SITE_ROLLBACK_IDENTITY['control_source_sha'],GITHUB_RUN_ID=SITE_ROLLBACK_IDENTITY['run_id'],
+                       RUNNER_TEMP=str(recovery),GITHUB_EVENT_PATH=str(event_path))
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ,env))
+                stack.enter_context(patch.object(m,'UPDATE_RELEASE',None));stack.enter_context(patch.object(m,'RELEASE',None))
+                stack.enter_context(patch.object(m,'SITE_PUBLISHER_GUARD_SHA',None))
+                stack.enter_context(patch.object(m,'site_rollback_admission',return_value=(SITE_IDENTITY,{'id':444,'digest':'sha256:'+m.sha(raw)})))
+                stack.enter_context(patch.object(m,'site_rollback_commands',return_value=SITE_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
+                download=stack.enter_context(patch.object(m,'download',return_value=raw))
+                for name in ('api','site_admission','site_final_heads','site_package','site_parent_admission','site_parent_evidence','signing_evidence'):
+                    stack.enter_context(patch.object(m,name,side_effect=AssertionError('unnecessary recovery dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
+                stack.enter_context(patch('builtins.print'));m.site_update(rollback=True)
+                download.assert_called_once_with(444,m.sha(raw))
+            result=json.loads((recovery/'search3-public-install/evidence.json').read_text())
+            self.assertEqual(result['status'],'site_rolled_back_verified')
+
+    def test_success_receipt_requires_all_proofs_and_exact_ordered_scope(self):
+        with self.installed() as f:
+            f.site_accepted=self.execute(f);restored=self.rollback(f)
+            for rollback,good in ((False,f.site_accepted),(True,restored)):
+                verify=(lambda v:m.valid_site_result(SITE_ROLLBACK_IDENTITY,v,SITE_IDENTITY,f.site_accepted)) if rollback else (lambda v:m.valid_site_result(SITE_IDENTITY,v))
+                self.assertTrue(verify(good))
+                changes=[('operation_id',m.UPDATE_OPERATION),('source_sha',m.UPDATE_SOURCE),('manifest_sha256','0'*64),
+                         ('parent_update',UPDATE_IDENTITY|{'run_id':'1'}),('parent_receipt_sha256','0'*64),('command_comment_id',True),
+                         ('phase','preflight'),('snapshot_manifest_sha256',None),('unreviewed',True),('rollback_files',[m.ENTRY])]
+                changes += [(key,False) for key,value in good.items() if type(value) is bool]
+                changes += [(key,value) for key in ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls') for value in (1,False)]
+                changes += [('rollback_files',list(m.SITE_ORDER))] if rollback else [('written_files',list(reversed(m.SITE_ORDER)))]
+                for key,value in changes:
+                    invalid=copy.deepcopy(good);invalid[key]=value
+                    with self.subTest(rollback=rollback,key=key),self.assertRaises(RuntimeError):verify(invalid)
+
+
 class Receipt(unittest.TestCase):
     def test_workflow_stays_existing_locked_carrier(self):
         value=(ROOT/m.WORKFLOW).read_text()
@@ -2125,6 +2674,11 @@ class Receipt(unittest.TestCase):
         self.assertIn("' public-search3-flight-return-rollback-20261121-v1'", block)
         self.assertIn("&& 'update-rollback' ||", block)
         self.assertIn("&& 'update' ||", block)
+        self.assertIn("format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha)",block)
+        self.assertIn("format('/rollback-site-shared-assets {0} ', github.sha)",block)
+        self.assertIn("' site-shared-assets-rollback-20261121-v1'",block)
+        self.assertIn("&& 'site-update' ||",block)
+        self.assertIn("&& 'site-rollback' ||",block)
         self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)

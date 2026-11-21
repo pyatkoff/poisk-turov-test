@@ -95,18 +95,18 @@ def fingerprints(site: Path) -> dict:
 
 
 class ProductionPublisherGuard(unittest.TestCase):
-    def test_control_only_change_cannot_start_publisher_or_its_followers(self):
+    def test_legacy_publisher_is_manual_only_without_source_push_followers(self):
         events = WORKFLOW.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(WORKFLOW.splitlines()[0], "name: Deploy anytoour.ru")
-        self.assertIn("  push:\n    branches: [main]\n", events)
-        self.assertEqual(re.findall(r"(?m)^      - '([^']+)'$", events), ["v2/**"])
+        self.assertEqual(re.findall(r"(?m)^  ([a-z_]+):", events), ["workflow_dispatch"])
+        self.assertNotIn("  push:", events)
         self.assertIn("  workflow_dispatch:\n", events)
         # This workflow name has post-deploy workflow_run followers. PR tests
         # belong to the existing root-gateway contract carrier, never this name.
         self.assertNotIn("pull_request", events)
         self.assertNotIn("workflow_run", events)
         self.assertEqual(re.findall(r"(?m)^    if: (.+)$", job("deploy")), [
-            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'"])
+            "github.event_name == 'workflow_dispatch'"])
 
     def test_contracts_are_required_and_only_deploy_owns_the_shared_lock(self):
         self.assertIn("\n  contents: read\n", WORKFLOW.split("\njobs:\n", 1)[0])
