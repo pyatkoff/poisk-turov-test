@@ -2891,6 +2891,400 @@ class SiteInspectionTransaction(unittest.TestCase):
             self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
 
 
+SITE_CONTINUATION_IDENTITY={'control_source_sha':CONTROL,'run_id':'901234','command_comment_id':9009}
+SITE_CONTINUATION_ROLLBACK_IDENTITY={'control_source_sha':'d'*40,'run_id':'912345','command_comment_id':9010}
+
+
+def site_continuation_event(rollback=False):
+    value=event();identity=SITE_CONTINUATION_ROLLBACK_IDENTITY if rollback else SITE_CONTINUATION_IDENTITY
+    body=(f'{m.SITE_CONTINUATION_ROLLBACK_PREFIX} {identity["control_source_sha"]} {SITE_CONTINUATION_IDENTITY["run_id"]} {m.SITE_CONTINUATION_ROLLBACK_OPERATION}'
+          if rollback else f'{m.SITE_CONTINUATION_PREFIX} {identity["control_source_sha"]} {m.SITE_CONTINUATION_OPERATION}')
+    value['comment'].update(id=identity['command_comment_id'],body=body)
+    return value
+
+
+def site_continuation_output():
+    pin=m.SITE_CONTINUATION_COLLECTOR
+    return ('2026-11-21T13:10:20.1234567Z ANYTOUR_LOCAL_PRICE_READBACK_OK db='+pin['db_sha256']+' observer='+pin['observer_sha256']+'\n').encode()
+
+
+class SiteContinuationAdmission(unittest.TestCase):
+    def metadata(self,path):
+        if path=='/pulls/'+str(m.SITE_SOURCE_PR):
+            value=SiteAdmission().metadata(path);value['merge_commit_sha']=m.SITE_INSPECT_FAILED['control_source_sha'];return value
+        for pin,outcome,mode in ((m.SITE_INSPECT_FAILED,'failure','site-update'),(m.SITE_CONTINUATION_INSPECTION,'success','site-inspect')):
+            if path=='/actions/runs/'+pin['run_id']:
+                return {'id':int(pin['run_id']),'head_sha':pin['control_source_sha'],'head_branch':'main','path':m.WORKFLOW,
+                        'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':outcome,
+                        'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+            if path.startswith('/actions/runs/'+pin['run_id']+'/attempts/1/jobs?'):
+                return {'total_count':1,'jobs':[{'id':pin['job_id'],'run_id':int(pin['run_id']),'name':'public-install',
+                    'status':'completed','conclusion':outcome,'steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py '+mode,
+                                                                     'status':'completed','conclusion':outcome}]}]}
+            if path=='/actions/artifacts/'+str(pin['artifact_id']):
+                return {'id':pin['artifact_id'],'name':'search3-public-install-'+pin['run_id']+'-1','expired':False,
+                        'workflow_run':{'id':int(pin['run_id'])},'digest':'sha256:'+pin['artifact_sha256']}
+        pin=m.SITE_CONTINUATION_COLLECTOR
+        if path=='/actions/runs/'+pin['run_id']:
+            return {'id':int(pin['run_id']),'head_sha':pin['source_sha'],'head_branch':'main','path':pin['workflow'],
+                    'event':'workflow_dispatch','run_attempt':1,'status':'completed','conclusion':'success',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+pin['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':pin['job_id'],'run_id':int(pin['run_id']),'name':'collect-production',
+                'status':'completed','conclusion':'success','steps':[{'name':'Collect due TOP500 months and refresh production aggregates',
+                                                                   'status':'completed','conclusion':'success'}]}]}
+        if path.startswith('/issues/4709/comments?'):
+            rows=SiteAdmission().metadata(path)[:1];owner={'user':{'id':226193297},'author_association':'OWNER'}
+            for pin,prefix,operation,tokens in (
+                (m.SITE_INSPECT_FAILED,m.SITE_PREFIX,m.SITE_OPERATION,'blocked_no_replay dependency_drift NO_REPLAY'),
+                (m.SITE_CONTINUATION_INSPECTION,m.SITE_INSPECT_PREFIX,m.SITE_INSPECT_OPERATION,'inspection_mismatch data/db-v1.php')):
+                rows.extend([owner|{'id':pin['command_comment_id'],'body':f'{prefix} {pin["control_source_sha"]} {operation}'},
+                    owner|{'id':pin['terminal_comment_id'],'body':' '.join(str(pin[k]) for k in
+                        ('run_id','control_source_sha','command_comment_id','job_id','artifact_id','artifact_sha256','receipt_sha256'))+' '+tokens}])
+            return rows+[site_continuation_event()['comment']]
+        return SiteAdmission().metadata(path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        pin=m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':m.sha(site_continuation_output())}
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'SITE_CONTINUATION_COLLECTOR',pin),patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'manual-only guarded publisher')):
+            m.site_admission(SITE_CONTINUATION_IDENTITY,continuation=True)
+            reviewed.assert_called_once_with(CONTROL)
+
+    def test_fixed_child_commands_keep_original_owner_event_and_attempt_gate(self):
+        for rollback,identity in ((False,SITE_CONTINUATION_IDENTITY),(True,SITE_CONTINUATION_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            expected=(identity,SITE_CONTINUATION_IDENTITY['run_id']) if rollback else identity
+            self.assertEqual(m.site_event_identity(site_continuation_event(rollback),env,rollback,True),expected)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch')):
+                with self.subTest(rollback=rollback,key=key),self.assertRaises(RuntimeError):
+                    m.site_event_identity(site_continuation_event(rollback),env|{key:value},rollback,True)
+            for old in (site_event(),site_event(True),site_inspection_event(),update_event(),continuation_event()):
+                with self.assertRaises(RuntimeError):m.site_event_identity(old,env,rollback,True)
+            for mutate in (lambda e:e.update(action='edited'),lambda e:e['comment'].update(body=e['comment']['body']+' extra'),
+                           lambda e:e['comment'].update(author_association='MEMBER'),lambda e:e['issue'].update(pull_request={})):
+                value=site_continuation_event(rollback);mutate(value)
+                with self.assertRaises(RuntimeError):m.site_event_identity(value,env,rollback,True)
+        for mode in ('site-continue','site-continue-rollback'):
+            self.assertEqual(m.command_mode([mode]),mode)
+            with self.assertRaises(RuntimeError):m.command_mode([mode,'arbitrary'])
+
+    def test_exact_failed_inspection_collector_and_unique_command_required(self):
+        self.admit()
+        pins=(m.SITE_INSPECT_FAILED,m.SITE_CONTINUATION_INSPECTION,m.SITE_CONTINUATION_COLLECTOR)
+        for pin in pins:
+            endpoint='/actions/runs/'+pin['run_id']
+            for mutation in (lambda v:v.update(status='in_progress'),lambda v:v.update(run_attempt=2),
+                             lambda v:v.update(head_sha='f'*40),lambda v:v['triggering_actor'].update(login='other')):
+                def change(path,value):
+                    if path==endpoint:mutation(value)
+                    return value
+                with self.subTest(run=pin['run_id'],mutation=mutation),self.assertRaises(RuntimeError):self.admit(change)
+            for mutation in (lambda v:v['jobs'][0].update(id=1),lambda v:v['jobs'][0]['steps'][0].update(status='in_progress')):
+                def change(path,value):
+                    if path.startswith(endpoint+'/attempts/1/jobs?'):mutation(value)
+                    return value
+                with self.subTest(run=pin['run_id'],jobmutation=mutation),self.assertRaises(RuntimeError):self.admit(change)
+        for index in (1,3,5):
+            def duplicate(path,value):
+                if path.startswith('/issues/4709/comments?'):value.append(value[index]|{'id':99999})
+                return value
+            with self.subTest(index=index),self.assertRaises(RuntimeError):self.admit(duplicate)
+        def missing_terminal(path,value):
+            if path.startswith('/issues/4709/comments?'):value[4]['body']='another inspection'
+            return value
+        with self.assertRaises(RuntimeError):self.admit(missing_terminal)
+        for endpoint,mutation in (('/pulls/5133',lambda v:v.update(merge_commit_sha=CONTROL)),
+            ('/actions/runs/'+m.SITE_CONTINUATION_COLLECTOR['run_id'],lambda v:v.update(conclusion='failure')),
+            ('/actions/artifacts/'+str(m.SITE_CONTINUATION_INSPECTION['artifact_id']),lambda v:v.update(digest='sha256:'+'0'*64))):
+            def change(path,value):
+                if path==endpoint:mutation(value)
+                return value
+            with self.subTest(endpoint=endpoint),self.assertRaises(RuntimeError):self.admit(change)
+
+    def test_unaccepted_collector_never_opens_admission(self):
+        with patch.object(m,'SITE_CONTINUATION_COLLECTOR',m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':None}), \
+             patch.object(m,'api') as api,self.assertRaisesRegex(RuntimeError,'site_collector_unaccepted'):
+            m.site_continuation_collector_admission()
+        api.assert_not_called()
+
+    def test_archived_output_rejects_echoes_duplicates_drift_and_wrong_digest(self):
+        good=site_continuation_output()
+        raw=b'\xef\xbb\xbf2026-11-21T13:00:00Z starting\n'+good+b'2026-11-21T13:11:00Z finished\n'
+        with patch.object(m,'SITE_CONTINUATION_COLLECTOR',m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':m.sha(raw)}):
+            self.assertTrue(m.site_continuation_collector_evidence(raw)['installed_output_verified'])
+            with self.assertRaises(RuntimeError):m.site_continuation_collector_evidence(raw+b'changed')
+        echoed=good.replace(b'Z ANYTOUR_',b'Z printf "%s\\n" "ANYTOUR_')
+        for bad in (echoed,good+good,good+good.replace(b' db=',b' db=bad'),good.replace(b'READBACK_OK',b'READBACK_FAILED'),
+                    good.replace(b'Z ANYTOUR_',b'Z prefix ANYTOUR_'),good.replace(m.SITE_CONTINUATION_COLLECTOR['db_sha256'].encode(),b'0'*64)):
+            with self.subTest(bad=bad[:90]),patch.object(m,'SITE_CONTINUATION_COLLECTOR',m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':m.sha(bad)}),self.assertRaises(RuntimeError):
+                m.site_continuation_collector_evidence(bad)
+
+    def test_fixed_log_download_keeps_authorization_on_github_only(self):
+        raw=site_continuation_output();pin=m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':m.sha(raw)}
+        endpoint=f'https://api.github.com/repos/{m.REPO}/actions/jobs/{pin["job_id"]}/logs'
+        for location,allowed in (
+            ('https://logs.blob.core.windows.net/signed-log?fixture=1',True),
+            ('https://logs.actions.githubusercontent.com/signed-log',True),
+            ('https://evil.invalid/log',False),('http://logs.blob.core.windows.net/log',False),
+            ('https://logs.blob.core.windows.net.evil.invalid/log',False),
+            ('https://fixture@logs.blob.core.windows.net/log',False),
+            ('https://logs.blob.core.windows.net:444/log',False),
+            ('https://logs.blob.core.windows.net/log#fragment',False)):
+            requests=[]
+            class Opener:
+                def open(self,request,timeout):
+                    requests.append(request)
+                    if len(requests)==1:raise m.urllib.error.HTTPError(endpoint,302,'redirect',{'Location':location},None)
+                    return io.BytesIO(raw)
+            with self.subTest(location=location),patch.dict(os.environ,{'GH_TOKEN':'fixture-token'}), \
+                 patch.object(m,'SITE_CONTINUATION_COLLECTOR',pin),patch.object(m.urllib.request,'build_opener',return_value=Opener()) as build:
+                if allowed:self.assertEqual(m.site_continuation_collector_log(),m.site_continuation_collector_value())
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'site_collector_redirect'):m.site_continuation_collector_log()
+                self.assertEqual(requests[0].full_url,endpoint)
+                self.assertEqual(requests[0].get_header('Authorization'),'Bearer fixture-token')
+                self.assertIsNone(build.call_args.args[0].redirect_request(None,None,None,None,None,None))
+                self.assertEqual(len(requests),2 if allowed else 1)
+                if allowed:self.assertEqual(requests[1].headers,{})
+
+
+class SiteContinuationRollbackAdmission(unittest.TestCase):
+    def metadata(self,path):
+        if path=='/git/ref/heads/main':return {'object':{'sha':SITE_CONTINUATION_ROLLBACK_IDENTITY['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):
+            return [site_continuation_event()['comment'],site_continuation_event(True)['comment']]
+        original=SITE_CONTINUATION_IDENTITY['run_id'];historical=SITE_IDENTITY['run_id']
+        value=SiteRollbackAdmission().metadata(path.replace(original,historical))
+        if path=='/actions/runs/'+original:
+            value.update(id=int(original),head_sha=SITE_CONTINUATION_IDENTITY['control_source_sha'])
+        elif '/attempts/1/jobs?' in path:
+            value['jobs'][0].update(run_id=int(original))
+            value['jobs'][0]['steps'][0]['name']='Run python3 scripts/deploy/search3_public_install.py site-continue'
+        elif '/artifacts?' in path:
+            value['artifacts'][0].update(name='search3-public-install-'+original+'-1',workflow_run={'id':int(original)})
+        return value
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(m,'api',side_effect=api));stack.enter_context(patch.object(m,'reviewed_control'))
+            for name in ('site_admission','site_parent_admission','site_continuation_admission','site_continuation_collector_admission','site_continuation_collector_log'):
+                stack.enter_context(patch.object(m,name,side_effect=AssertionError('unrelated recovery proof: '+name)))
+            original,artifact=m.site_rollback_admission(SITE_CONTINUATION_ROLLBACK_IDENTITY,SITE_CONTINUATION_IDENTITY['run_id'],True)
+            self.assertEqual(original,SITE_CONTINUATION_IDENTITY);self.assertEqual(artifact['id'],444)
+
+    def test_child_recovery_uses_only_its_successful_command_and_receipt(self):
+        self.admit()
+        for pin in (m.SITE_INSPECT_FAILED,m.SITE_CONTINUATION_INSPECTION,m.SITE_CONTINUATION_COLLECTOR):
+            with patch.object(m,'api') as api,self.assertRaises(RuntimeError):
+                m.site_rollback_commands(SITE_CONTINUATION_ROLLBACK_IDENTITY,pin['run_id'],continuation=True)
+            api.assert_not_called()
+
+    def test_old_mode_duplicate_unknown_and_foreign_child_proofs_fail(self):
+        for part,mutate in (('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+            ('/comments?',lambda v:v[0].update(body=site_event()['comment']['body'])),
+            ('/comments?',lambda v:v[1].update(body=site_event(True)['comment']['body'])),
+            ('/actions/runs/'+SITE_CONTINUATION_IDENTITY['run_id'],lambda v:v.update(conclusion='failure')),
+            ('/actions/runs/'+SITE_CONTINUATION_IDENTITY['run_id'],lambda v:v.update(run_attempt=2)),
+            ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py site-update')),
+            ('/artifacts?',lambda v:v['artifacts'][0].update(workflow_run={'id':int(m.SITE_INSPECT_FAILED['run_id'])}))):
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class SiteContinuationTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def inspected(self):
+        helper=SiteInspectionTransaction()
+        with helper.failed_attempt() as f:
+            path=f.root/'data/db-v1.php';expected=path.read_bytes();observed=b'previous collector root helper';path.write_bytes(observed)
+            result=helper.execute(f);path.write_bytes(expected)
+            value={**SITE_INSPECTION_IDENTITY,'operation_id':m.SITE_INSPECT_OPERATION,'source_sha':m.SITE_SOURCE,
+                'manifest_sha256':m.site_policy()['manifest'],'read_only':True,'phase':'complete','ssh_started':True,
+                'status':'inspection_mismatch','failed_attempt':m.SITE_INSPECT_FAILED,'remote':result,'failed_evidence':f.inspection_failed}
+            data=(json.dumps(value,sort_keys=True)+'\n').encode();packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',data)
+            f.continuation_evidence=value;f.continuation_raw=packet.getvalue()
+            pin=m.SITE_CONTINUATION_INSPECTION|SITE_INSPECTION_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(f.continuation_raw)}
+            db={'state':'present','mode':'0644','size':len(observed),'sha256':m.sha(observed)}
+            collector=m.SITE_CONTINUATION_COLLECTOR|{'log_sha256':m.sha(site_continuation_output())}
+            with patch.object(m,'SITE_CONTINUATION_INSPECTION',pin),patch.object(m,'SITE_CONTINUATION_DB_OBSERVED',db), \
+                 patch.object(m,'SITE_CONTINUATION_COLLECTOR',collector):
+                f.continuation_policy=m.site_policy(True);f.continuation_private=f.private.parent/m.SITE_CONTINUATION_OPERATION
+                yield f
+
+    def execute(self,f,change=None):
+        parent=m.site_continuation_inspection_value(f.continuation_evidence)
+        program=m.site_remote_program(f.continuation_policy,f.site_files,SITE_CONTINUATION_IDENTITY,parent,True)
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_site_result(SITE_CONTINUATION_IDENTITY,value,continuation=True)
+        return value
+
+    def rollback(self,f,change=None):
+        program=m.site_rollback_remote_program(f.continuation_policy,SITE_CONTINUATION_ROLLBACK_IDENTITY,SITE_CONTINUATION_IDENTITY,
+                                              f.continuation_accepted,f.site_parent_value,True)
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_site_result(SITE_CONTINUATION_ROLLBACK_IDENTITY,value,SITE_CONTINUATION_IDENTITY,f.continuation_accepted,True)
+        return value
+
+    def test_successful_child_and_rollback_preserve_failed_namespace_and_parent_history(self):
+        helper=SiteTransaction()
+        with self.inspected() as f:
+            before=helper.public_files(f);parents=helper.parent_records(f)
+            f.continuation_accepted=self.execute(f)
+            self.assertEqual(f.continuation_accepted['status'],'site_updated_verified')
+            self.assertEqual(f.continuation_accepted['written_files'],list(m.SITE_ORDER))
+            self.assertTrue(f.continuation_accepted['failed_namespace_absent'])
+            self.assertFalse(f.site_private.exists());self.assertEqual(helper.parent_records(f),parents)
+            self.assertEqual({p for p,v in before.items() if helper.public_files(f)[p]!=v},set(m.SITE_ORDER))
+            self.assertEqual(self.rollback(f)['status'],'site_rolled_back_verified')
+            self.assertEqual(helper.public_files(f),before);self.assertEqual(helper.parent_records(f),parents)
+            self.assertFalse(f.site_private.exists())
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+
+    def test_old_namespace_wrong_db_provider_or_target_blocks_before_child_reservation(self):
+        for kind in ('namespace','namespace-link','db-old','db-third','provider-third','target','parent'):
+            with self.subTest(kind=kind),self.inspected() as f:
+                if kind=='namespace':f.site_private.mkdir(mode=0o700)
+                elif kind=='namespace-link':f.site_private.symlink_to(f.home)
+                elif kind=='db-old':(f.root/'data/db-v1.php').write_bytes(b'previous collector root helper')
+                elif kind=='db-third':(f.root/'data/db-v1.php').write_bytes(b'unreviewed third helper')
+                elif kind=='provider-third':
+                    path=next(p for p in m.CONTINUATION_PROTECTED if p.endswith('/tourvisor-interactive-client.php'))
+                    (f.root/path).write_bytes(b'future provider version not admitted')
+                elif kind=='target':(f.root/m.SITE_ORDER[0]).write_bytes(b'foreign target')
+                else:(f.private/'result.json').write_bytes(b'{}')
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertFalse(f.continuation_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_failed_namespace_race_is_checked_before_reservation(self):
+        with self.inspected() as f:
+            def change(program):
+                line=' before=public.inventory(order)';self.assertIn(line,program)
+                return program.replace(line," os.mkdir(SITE_POLICY['continuation']['failed']['operation_id'],0o700,dir_fd=base.fd)\n"+line,1)
+            value=self.execute(f,change)
+            self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['reason'],'site_failed_operation_exists')
+            self.assertTrue(f.site_private.exists());self.assertFalse(f.continuation_private.exists())
+
+    def test_failed_namespace_race_stops_later_writes_and_automatic_restore(self):
+        with self.inspected() as f:
+            before=SiteTransaction().public_files(f);parents=SiteTransaction().parent_records(f)
+            def change(program):
+                line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                self.assertIn(line,program)
+                return program.replace(line,line+"\n   if index==0: os.mkdir(SITE_POLICY['continuation']['failed']['operation_id'],0o700,dir_fd=base.fd)",1)
+            value=self.execute(f,change)
+            self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['failed_namespace_absent'])
+            self.assertEqual(value['written_files'],[m.SITE_ORDER[0]]);self.assertEqual(value['rollback_files'],[])
+            self.assertEqual({p for p,v in before.items() if SiteTransaction().public_files(f)[p]!=v},{m.SITE_ORDER[0]})
+            self.assertEqual(SiteTransaction().parent_records(f),parents)
+            snapshot=f.filesystem_snapshot();again=self.execute(f)
+            self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),snapshot)
+
+    def test_each_failed_exchange_restores_own_files_and_child_cannot_repeat(self):
+        helper=SiteTransaction()
+        for index in range(4):
+            with self.subTest(index=index),self.inspected() as f:
+                before=helper.public_files(f);parents=helper.parent_records(f)
+                value=self.execute(f,helper.fail_after_exchange(index))
+                self.assertEqual(value['status'],'rolled_back_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.SITE_ORDER[:index+1])))
+                self.assertEqual(helper.public_files(f),before);self.assertEqual(helper.parent_records(f),parents)
+                snapshot=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),snapshot)
+
+    def test_inspection_and_failed_proof_tampering_cannot_admit_child(self):
+        with self.inspected() as f:
+            self.assertEqual(m.site_continuation_inspection_evidence(f.continuation_raw),f.continuation_evidence)
+            with self.assertRaises(RuntimeError):m.site_continuation_inspection_evidence(f.continuation_raw+b'changed')
+            changes=(lambda v:v.update(read_only=False),lambda v:v['remote'].update(server_writes=1),
+                lambda v:v['remote'].update(inventory_stable=False),lambda v:v['remote'].update(failed_namespace_absent=False),
+                lambda v:v['failed_evidence'].update(status='unknown_no_replay'),
+                lambda v:v['failed_evidence']['remote'].update(reservation_created=True),
+                lambda v:v['remote']['private_checks']['public_config'].update(matches_parent_snapshot=False),
+                lambda v:v['remote']['target_comparisons'][m.SITE_ORDER[0]].update(matches_predecessor=False))
+            for change in changes:
+                value=copy.deepcopy(f.continuation_evidence);change(value)
+                pin=m.SITE_CONTINUATION_INSPECTION|{'receipt_sha256':m.sha((json.dumps(value,sort_keys=True)+'\n').encode())}
+                with self.subTest(change=change),patch.object(m,'SITE_CONTINUATION_INSPECTION',pin),self.assertRaises(RuntimeError):
+                    m.site_continuation_inspection_value(value)
+
+    def test_saved_child_receipt_alone_supports_recovery_and_rejects_original_alias(self):
+        with self.inspected() as f:
+            f.continuation_accepted=self.execute(f)
+            value={**SITE_CONTINUATION_IDENTITY,'operation_id':m.SITE_CONTINUATION_OPERATION,'source_sha':m.SITE_SOURCE,
+                'manifest_sha256':f.continuation_policy['manifest'],'read_only':False,'phase':'complete','ssh_started':True,
+                'status':'site_updated_verified','parent_update':m.site_parent_identity(),'parent_evidence':f.site_parent_value,
+                'continuation_evidence':f.continuation_evidence,'collector_evidence':m.site_continuation_collector_value(),'remote':f.continuation_accepted}
+            def archive(v):
+                stream=io.BytesIO()
+                with zipfile.ZipFile(stream,'w') as z:z.writestr('evidence.json',(json.dumps(v,sort_keys=True)+'\n').encode())
+                return stream.getvalue()
+            with patch.object(m,'api',side_effect=AssertionError('network during saved recovery')):
+                policy,accepted,parent=m.site_source_evidence(archive(value),SITE_CONTINUATION_IDENTITY,True)
+            self.assertEqual(policy,f.continuation_policy);self.assertEqual(accepted,f.continuation_accepted);self.assertEqual(parent,f.site_parent_value)
+            for mutate in (lambda v:v.update(operation_id=m.SITE_OPERATION),lambda v:v.update(status='unknown_no_replay'),
+                           lambda v:v['remote'].update(operation_id=m.SITE_OPERATION),lambda v:v['collector_evidence'].update(log_sha256='0'*64)):
+                bad=copy.deepcopy(value);mutate(bad)
+                with self.assertRaises(RuntimeError):m.site_source_evidence(archive(bad),SITE_CONTINUATION_IDENTITY,True)
+            with self.assertRaises(RuntimeError):m.site_source_evidence(archive(value),SITE_CONTINUATION_IDENTITY)
+
+    def test_client_preserves_child_proofs_and_rolls_back_without_refetching_ancestors(self):
+        with self.inspected() as f:
+            f.continuation_accepted=self.execute(f)
+            def runner_env(name,rollback=False):
+                runner=f.base/name;runner.mkdir();event_path=runner/'event.json';event_path.write_text(json.dumps(site_continuation_event(rollback)))
+                identity=SITE_CONTINUATION_ROLLBACK_IDENTITY if rollback else SITE_CONTINUATION_IDENTITY
+                return runner,environment()|{'GITHUB_RUN_ID':identity['run_id'],'GITHUB_SHA':identity['control_source_sha'],
+                    'RUNNER_TEMP':str(runner),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+                    'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+            runner,env=runner_env('child-runner')
+            with patch.dict(os.environ,env),patch.object(m,'site_admission') as admission,patch.object(m,'site_inspect_heads'), \
+                 patch.object(m,'download',return_value=f.continuation_raw) as download,patch.object(m,'site_package',return_value=f.site_files), \
+                 patch.object(m,'site_continuation_collector_log',return_value=m.site_continuation_collector_value()) as collector, \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.continuation_accepted).encode()]),patch('builtins.print'):
+                m.site_update(continuation=True)
+            self.assertEqual(admission.call_count,2);collector.assert_called_once_with()
+            download.assert_called_once_with(m.SITE_CONTINUATION_INSPECTION['artifact_id'],m.SITE_CONTINUATION_INSPECTION['artifact_sha256'])
+            evidence=runner/'search3-public-install/evidence.json';value=json.loads(evidence.read_text())
+            self.assertEqual(value['status'],'site_updated_verified');self.assertEqual(value['operation_id'],m.SITE_CONTINUATION_OPERATION)
+            self.assertEqual(value['continuation_evidence'],f.continuation_evidence)
+            self.assertEqual(value['collector_evidence'],m.site_continuation_collector_value())
+            self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
+            packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',evidence.read_bytes())
+            raw=packet.getvalue();restored=self.rollback(f);recovery,env=runner_env('child-recovery',True)
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ,env))
+                stack.enter_context(patch.object(m,'site_rollback_admission',return_value=(SITE_CONTINUATION_IDENTITY,{'id':444,'digest':'sha256:'+m.sha(raw)})))
+                stack.enter_context(patch.object(m,'site_rollback_commands',return_value=SITE_CONTINUATION_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
+                download=stack.enter_context(patch.object(m,'download',return_value=raw))
+                for name in ('api','site_admission','site_inspect_heads','site_package','site_parent_admission','site_continuation_collector_log','site_continuation_collector_admission'):
+                    stack.enter_context(patch.object(m,name,side_effect=AssertionError('unnecessary recovery dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
+                stack.enter_context(patch('builtins.print'));m.site_update(rollback=True,continuation=True)
+                download.assert_called_once_with(444,m.sha(raw))
+            value=json.loads((recovery/'search3-public-install/evidence.json').read_text())
+            self.assertEqual(value['status'],'site_rolled_back_verified');self.assertEqual(value['operation_id'],m.SITE_CONTINUATION_ROLLBACK_OPERATION)
+            for name,bad_archive in (('bad-inspection',True),('bad-collector',False)):
+                runner,env=runner_env(name)
+                with patch.dict(os.environ,env),patch.object(m,'site_admission'), \
+                     patch.object(m,'download',return_value=b'invalid' if bad_archive else f.continuation_raw), \
+                     patch.object(m,'site_continuation_collector_log',side_effect=RuntimeError('site_collector_log_digest')), \
+                     patch.object(m.carrier,'run') as remote,patch('builtins.print'),self.assertRaises(RuntimeError):
+                    m.site_update(continuation=True)
+                remote.assert_not_called();value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+
 class Receipt(unittest.TestCase):
     def test_workflow_stays_existing_locked_carrier(self):
         value=(ROOT/m.WORKFLOW).read_text()
@@ -2911,6 +3305,11 @@ class Receipt(unittest.TestCase):
         self.assertIn("&& 'site-rollback' ||",block)
         self.assertIn("format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha)",block)
         self.assertIn("&& 'site-inspect' ||",block)
+        self.assertIn("format('/continue-site-shared-assets {0} site-shared-assets-after-44897684408-20261121-v1', github.sha)",block)
+        self.assertIn("format('/rollback-site-shared-assets-continuation {0} ', github.sha)",block)
+        self.assertIn("' site-shared-assets-after-44897684408-rollback-20261121-v1'",block)
+        self.assertIn("&& 'site-continue' ||",block)
+        self.assertIn("&& 'site-continue-rollback' ||",block)
         self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)
