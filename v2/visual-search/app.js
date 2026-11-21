@@ -1002,21 +1002,25 @@ function hotelMatchFactsHTML(h,f){
  if(!facts.size)return '';
  return `<div class="hotel-facts hotel-match-facts"><div class="hotel-match-line"><strong>По вашим условиям</strong><ul aria-label="Совпадения с фильтрами">${[...facts].slice(0,3).map(fact=>`<li>${esc(fact)}</li>`).join('')}</ul></div></div>`;
 }
-function cardHTML({hotel:h,offers,rating=ratingValue(h)}){
- const cardEntryLabel=cardOpensRooms(offers[0])?'Номера и цены':'Смотреть тур';
- const o=offers[0],ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);
- const matchFacts=hotelMatchFactsHTML(h,state.filters);
- const unconfirmedInfant=unknownInfantCharge(o)&&!o.cached;
+function currentCardSelectionHTML(h,offers){
+ const listing=h.offers.find(row=>row.key===selectedOffer?.key);
  const current=listing&&listing.raw===selectedOffer?.raw&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||listing.total)===listing.total?selectedOffer:null;
  const currentVisible=current&&offers.some(row=>row.key===current.key),currentNeedsCheck=current&&(['anex','andromeda'].includes(current.provider)||current.loading||current.flightsLoading||current.pricePending||current.quoteError||needsRefresh(current));
  const currentLegs=current?savedFlightLegs(current):[],currentFlight=currentLegs.length?currentLegs.map((leg,i)=>(i?'Обратно':'Туда')+' '+flightDateText(leg.departureDate)+' '+leg.times).join(' · '):current?savedFlightTextPlain(current):'';
- const currentHTML=current?`<section class="current-card-selection" aria-label="Ваш выбранный тур" data-selected-key="${esc(current.key)}">
+ return current?`<section class="current-card-selection" aria-label="Ваш выбранный тур" data-selected-key="${esc(current.key)}">
   <div class="card-selection-copy"><strong>${icon('check')} Ваш выбор <span class="card-selection-hotel">· ${esc(h.name)}</span></strong>
    <p>${esc(roomLabel(current))} · ${esc(displayMealLabel(current))}</p>${currentVisible?'':'<small class="card-selection-filter-note">Не входит в текущие фильтры</small>'}</div>
   <div class="card-selection-price"><span>${currentNeedsCheck?'Цена и условия требуют проверки':'За всех туристов'}</span><strong>${current.loading||current.pricePending?'Уточняется':money(current.total)}</strong><small>${esc(selectedPriceStatus(current))}</small></div>
   <button class="secondary" data-action="offer" data-card-selection="true" data-key="${esc(current.key)}" aria-label="Продолжить выбранный тур: ${esc(h.name)}, ${esc(roomLabel(current))}, ${esc(displayMealLabel(current))}, ${dateText(current.day)}">Продолжить выбор ${icon('arrow')}</button>
   <div class="card-selection-trip"><p>${dateText(current.day)} → ${dateText(current.returnDay)} · ${nightsText(current.nights)} · ${esc(guestsText(current))}${current.operator?' · '+esc(current.operator):''}</p><p>${esc(currentFlight)}</p></div>
  </section>`:'';
+}
+function cardHTML({hotel:h,offers,rating=ratingValue(h)}){
+ const cardEntryLabel=cardOpensRooms(offers[0])?'Номера и цены':'Смотреть тур';
+ const o=offers[0],ratingLabel=rating===null?'—':ratingFormatter.format(rating);
+ const matchFacts=hotelMatchFactsHTML(h,state.filters);
+ const unconfirmedInfant=unknownInfantCharge(o)&&!o.cached;
+ const currentHTML=currentCardSelectionHTML(h,offers);
  const multiplePhotos=h.photos.length>1,previewPhotos=multiplePhotos?h.photos.slice(0,h.photos.length>4?3:4):[];
  const photoIndex=Math.min(state.photoIndexes[h.id]||0,Math.max(0,h.photos.length-1)),popularityBadge=popularity?.badge(h)||'',shortlistActions=optionalShortlistEnabled?`<button class="favorite-button ${state.favorites.includes(h.id)?'active':''}" data-action="favorite" data-id="${h.id}" aria-pressed="${state.favorites.includes(h.id)}" aria-label="${state.favorites.includes(h.id)?'Убрать из избранного':'В избранное'}: ${esc(h.name)}">${icon('heart')}</button>`:'';return `<article class="hotel-card${h.photos.length?'':' no-hotel-photo'}" id="hotel-${h.id}" data-hotel-id="${h.id}">${currentHTML}
  <div class="hotel-photos ${h.photos.length?'':'photo-unavailable'}"><div class="hotel-image-wrap"><span class="photo-missing-label" role="status">${icon('image')}${h.photos.length?'Фото не загрузилось':'Нет фотографий'}</span><button class="hotel-image-button" data-action="gallery" data-id="${h.id}" ${h.photos.length?'':'disabled'} aria-label="${multiplePhotos?'Открыть фотографии':h.photos.length?'Увеличить фото':'Фото пока недоступны:'} ${esc(h.name)}"><img class="hotel-image" src="${esc(photoUrl(h,photoIndex))}" alt="Фото отеля ${esc(h.name)}" loading="lazy" width="700" height="500"><span class="photo-count"${multiplePhotos?'':' hidden'}>${icon('image')} <span class="photo-index">${h.photos.length?photoIndex+1:0}</span> / ${h.photos.length}</span></button>${shortlistActions}${multiplePhotos?`<button class="card-photo-arrow prev" data-action="card-photo" data-id="${h.id}" data-dir="-1" aria-label="Предыдущее фото ${esc(h.name)}">${icon('back')}</button><button class="card-photo-arrow next" data-action="card-photo" data-id="${h.id}" data-dir="1" aria-label="Следующее фото ${esc(h.name)}">${icon('arrow')}</button>`:''}</div><div class="card-thumbs"${multiplePhotos?'':' hidden'}>${previewPhotos.map((p,i)=>`<button class="card-thumb ${photoIndex===i?'active':''}" data-action="card-photo-index" data-id="${h.id}" data-value="${i}" aria-label="Показать фото ${i+1} отеля ${esc(h.name)}" aria-pressed="${photoIndex===i}">${icon('image')}<img src="${esc(p)}" alt="" loading="lazy" width="150" height="100"></button>`).join('')}${h.photos.length>4?`<button class="card-more-photos" data-action="gallery" data-id="${h.id}" aria-label="Все ${h.photos.length} фотографий отеля ${esc(h.name)}">${icon('image')}<span>Все ${h.photos.length}</span></button>`:''}</div></div>
@@ -1293,13 +1297,14 @@ function renderResultHeadings(items,total,pristine){
 }
 function paintResultCards(cards,entries,sameScope){paintGeneratedRoots(cards,entries,sameScope);}
 function renderResultCards(items,{selectionOnly=false}={}){
- // Use the same card renderer, retaining the existing card, controls and focus.
+ // Share selection markup with the full card renderer, retaining cards, controls and focus.
  // Closing a tour is a passive presentation update, never a new search.
  if(selectionOnly){
   for(const card of $$('#cards .hotel-card')){
    const item=items.find(row=>row.hotel.id===Number(card.dataset.hotelId));if(!item)continue;
-   const template=document.createElement('template');template.innerHTML=cardHTML(item);
-   const next=template.content.querySelector('.current-card-selection'),previous=card.querySelector('.current-card-selection');
+   const markup=currentCardSelectionHTML(item.hotel,item.offers);let next=null;
+   if(markup){const template=document.createElement('template');template.innerHTML=markup;next=template.content.querySelector('.current-card-selection');}
+   const previous=card.querySelector('.current-card-selection');
    if(next){if(previous)previous.replaceWith(next);else card.prepend(next);}else previous?.remove();
   }
   return;

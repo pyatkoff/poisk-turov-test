@@ -361,7 +361,7 @@ function cardRatingOwner(code){
  vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  ctx.offerCountText=n=>n+' тура';
- return {work,render,card:row=>ctx.cardHTML(row),setFilters:f=>{state.filters=f;}};
+ return {work,render,card:row=>ctx.cardHTML(row),context:ctx,setFilters:f=>{state.filters=f;}};
 }
 const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
 for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(currentCard.render(value),previousCard.render(value),'card rating markup '+String(value));
@@ -390,6 +390,74 @@ assert(source.includes('markup:cardHTML(item)'),'result rendering passes the com
 assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers,rating=null}){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
 console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
+
+// Restore the exact 22ce523 full-card owner before using its old passive-return
+// path as the reference. The fixed pin prevents a changed helper from silently
+// changing both sides of this comparison.
+{
+ const helper=section(source,'function currentCardSelectionHTML(','function cardHTML('),card=section(source,'function cardHTML(','function refreshOpenHotelRooms(');
+ const selectedBody=helper.slice(helper.indexOf(' const current='),helper.lastIndexOf('\n}')).replace(' return current?',' const currentHTML=current?');
+ const previousCard=card.replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating);",",ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);").replace(' const currentHTML=currentCardSelectionHTML(h,offers);',selectedBody);
+ assert.equal(crypto.createHash('sha256').update(previousCard).digest('hex'),'af3569cc4e438663810f0dc8804b8b8ebb25c710960d343d34d73ea2b881d0dc','exact predecessor full-card bytes, including selection predicates and markup');
+ const previousSelection=` if(selectionOnly){
+  for(const card of $$('#cards .hotel-card')){
+   const item=items.find(row=>row.hotel.id===Number(card.dataset.hotelId));if(!item)continue;
+   const template=document.createElement('template');template.innerHTML=cardHTML(item);
+   const next=template.content.querySelector('.current-card-selection'),previous=card.querySelector('.current-card-selection');
+   if(next){if(previous)previous.replaceWith(next);else card.prepend(next);}else previous?.remove();
+  }
+  return;
+ }`;
+ const previous=source.replace(helper,'').replace(card,()=>previousCard).replace(section(source,' if(selectionOnly){','\n\n const cards='),()=>previousSelection);
+ assert.equal(crypto.createHash('sha256').update(section(previous,' if(selectionOnly){','\n\n const cards=')).digest('hex'),'4efc8480921922e47444a49b6a7ce14f5d87eec1e9a392f691a10071e28365de','exact predecessor passive-return branch');
+ const search={origin:'Москва',country:'4',from:'2026-11-10',to:'2026-11-12',minNights:7,maxNights:7,adults:2,ages:[0,8]};
+ const items=Array.from({length:24},(_,i)=>{
+  const hotel={id:i+1,name:'Отель <& "'+i,resort:'Кемер',country:'4',stars:5,rating:4.5,photos:['/one.jpg','/two.jpg','/three.jpg','/four.jpg','/five.jpg']};
+  hotel.offers=[0,1].map(j=>({key:'tour-'+i+'-'+j,hotelId:hotel.id,total:160000+i*1000+j*27000,day:'2026-11-10',returnDay:'2026-11-17',nights:7,adults:2,ages:[0,8],room:'Номер <& '+j,placement:'2+2',meal:'Всё включено',operator:'Туроператор',flight:'regular',provider:'tourvisor',raw:{fixture:i*2+j},search}));
+  return {hotel,offers:hotel.offers,rating:4.5};
+ });
+ function selectionDOM(code){
+  const {context:ctx}=cardRatingOwner(code),dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards'),work={cards:0,templates:0};
+  Object.assign(ctx,{document,$:s=>document.querySelector(s),$$:s=>[...document.querySelectorAll(s)],data:{scenario:'fixture'},roomLabel:requestLabels.roomLabel,displayMealLabel:requestLabels.displayMealLabel,flightDateText:String,savedFlightLegs:o=>o.fixtureLegs||[],savedFlightTextPlain:()=> 'Рейс через менеджера',selectedPriceStatus:()=> 'Проверенные условия',needsRefresh:o=>!!o.stale});
+  Object.assign(ctx.state,{search,filters:{},selectedDate:null,sort:'price',onlyFavorites:false});
+  vm.runInContext(code.match(/^const searchKey=[^\n]+/m)[0]+'\n'+code.match(/^function sameSelectedTourConditions[^\n]+/m)[0]+'\n'+owner(code,'results'),ctx);
+  const renderCard=ctx.cardHTML;ctx.cardHTML=row=>{work.cards++;return renderCard(row);};
+  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(tag==='template')work.templates++;return createElement(tag);};
+  cards.innerHTML=items.map(ctx.cardHTML).join('');
+  const articles=[...cards.children],photos=[...cards.querySelectorAll('img')],buttons=[...cards.querySelectorAll('button')],focused=buttons[5];focused.focus();
+  const withoutSelection=()=>{const copy=cards.cloneNode(true);copy.querySelectorAll('.current-card-selection').forEach(node=>node.remove());return copy.innerHTML;},original=withoutSelection();
+  return {cards,update:(selected,rows=items)=>{
+   ctx.selectedOffer=selected;const fullMarkup=rows.map(ctx.cardHTML).join('');work.cards=work.templates=0;
+   ctx.renderResultCards(rows,{selectionOnly:true});
+   articles.forEach((node,i)=>assert.strictEqual(cards.children[i],node,'passive return retains each live article'));
+   photos.forEach((node,i)=>assert.strictEqual(cards.querySelectorAll('img')[i],node,'passive return retains each live photo'));
+   buttons.forEach(node=>assert(cards.contains(node),'passive return retains existing controls'));
+   assert.strictEqual(document.activeElement,focused,'focus outside the selected strip remains on the same control');assert.equal(withoutSelection(),original,'all other card markup stays unchanged');
+   return {html:cards.innerHTML,fullMarkup,work:{...work}};
+  },close:()=>dom.window.close()};
+ }
+ const selected={...items[0].offers[1],total:187700,quoteListingTotal:items[0].offers[1].total},filtered=items.map(item=>({...item,offers:[item.offers[0]]}));
+ const cases=[['none',null,0],['selected',selected,1],['repeat',selected,1],['flight legs',{...selected,fixtureLegs:[{departureDate:'2026-11-10',times:'10:00–14:00'},{departureDate:'2026-11-17',times:'15:00–19:00'}]},1],
+  ...['loading','flightsLoading','pricePending','quoteError','stale'].map(flag=>[flag,{...selected,[flag]:true},1]),
+  ...['anex','andromeda'].map(provider=>[provider,{...selected,provider},1]),
+  ['zero listing fallback',{...selected,quoteListingTotal:0},1],['missing listing fallback',{...selected,quoteListingTotal:undefined},1],
+  ['raw identity mismatch',{...selected,raw:{...selected.raw}},0],['conditions mismatch',{...selected,room:'Другой номер'},0],['search mismatch',{...selected,search:{...search,country:'9'}},0],['listing total drift',{...selected,quoteListingTotal:selected.quoteListingTotal+1},0],
+  ['outside filtered offers',selected,1,filtered],['restore selected',selected,1],['missing inventory row',{...selected,total:190000},0,items.slice(1)],['move selection',{...items[1].offers[1]},1],['clear selection',null,0]];
+ const current=selectionDOM(source),reference=selectionDOM(previous),initial=JSON.stringify(items);
+ try{
+  for(const [name,choice,templates,rows=items] of cases){
+   const before=JSON.stringify(choice),actual=current.update(choice,rows),expected=reference.update(choice,rows);
+   assert.equal(actual.fullMarkup,expected.fullMarkup,name+' full-card markup matches pinned predecessor');assert.equal(actual.html,expected.html,name+' passive-return DOM matches old full-card extraction');
+   assert.deepEqual(expected.work,{cards:rows.length,templates:rows.length},name+' old path rebuilds and parses every matching card');assert.deepEqual(actual.work,{cards:0,templates},name+' new path builds only nonempty selected strips');
+   assert.equal(JSON.stringify(choice),before,name+' selected offer untouched');assert.equal(JSON.stringify(items),initial,name+' raw hotels and offers untouched');
+   const strip=current.cards.querySelector('.current-card-selection');
+   if(name==='selected'){assert.equal(strip.dataset.selectedKey,selected.key);assert.equal(strip.parentElement.firstElementChild,strip);assert.equal(strip.querySelector('.card-selection-price strong').textContent,'187700 ₽');assert.equal(current.cards.querySelector('.starting-price strong').textContent,'160000 ₽');}
+   if(name==='outside filtered offers')assert.match(strip.textContent,/Не входит в текущие фильтры/);
+   if(name==='missing inventory row')assert.equal(strip.querySelector('.card-selection-price strong').textContent,'187700 ₽','missing item preserves the prior strip through the existing continue guard');
+  }
+ }finally{current.close();reference.close();}
+ console.log(`PASS passive selected-card return: ${cases.length} exact predecessor/full-card/DOM states; 24 full card renders→0, templates24→1 selected / 0 empty; original articles/photos/controls/focus and raw inputs retained; supplier/lead HTTP 0`);
+}
 
 {
  const owner=cardRatingOwner(source),hotel={id:42,name:'Hotel',resort:'Кемер',country:'4',stars:4,photos:[],
