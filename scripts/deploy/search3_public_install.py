@@ -272,7 +272,7 @@ need = carrier.need
 sha = carrier.sha
 
 # A current dependency transition, not a replacement of any accepted policy or
-# snapshot. Only the original, still unexecuted INT5090 maintenance can supply
+# snapshot. Only the original INT5090 maintenance can supply
 # the successor. The original protected hashes and their policy digest stay fixed.
 TV_SUCCESSOR = {
     'path': '_preview/search3-anex-candidate/app/integrations/tourvisor-interactive-client.php',
@@ -338,6 +338,25 @@ TV_SUCCESSOR = {
         'tests/int_server_executor_test.py': '19f14d8ca182e5891e737172ea1e118e1d378dbb',
     },
 }
+# Accepted original INT attempt 44911949356. Its reviewed canonical receipt
+# survives the source artifact's 30-day retention; metadata and private records
+# are still checked on every use. These are observed facts, never a template.
+TV_SUCCESSOR_RETAINED = {'proof': {'artifact_id': 14710576060,
+           'artifact_sha256': '3e6a106c3f8529422a68e01cab27baca8b9037936a769301119a92a0f5fd3dd0',
+           'command_comment_id': 7063787927,
+           'completed_at': 1795269966,
+           'control_source_sha': '79ae813b41c933542dbb05577bd12ebcdfe3bc2b',
+           'created_at': 1795269811,
+           'job_id': 136869432183,
+           'run_id': 44911949356,
+           'started_at': 1795269954,
+           'status': 'installed'},
+ 'run_attempt': 1,
+ 'run_created_at': '2026-11-21T14:03:34Z',
+ 'run_started_at': '2026-11-21T14:03:34Z',
+ 'result_canonical_json': '{"booking_calls":0,"database_writes":0,"diagnostic_basis_after":{"configuration_mode":420,"configuration_sha256":"faea72b846d201013a6426485996c0a2c022148ec897ae3092015c0946fb3d27","parent_canonical_sha256":"16049bccb2a9908c54dd25c998ddc2c6c0b6f0edecb07e55bca88faeb1c62d03","parent_operation":"int-anex-tv-session-gateway-recovery-20261025-v1","receipt_and_configuration_unchanged":true},"diagnostic_basis_before":{"configuration_mode":420,"configuration_sha256":"faea72b846d201013a6426485996c0a2c022148ec897ae3092015c0946fb3d27","parent_canonical_sha256":"16049bccb2a9908c54dd25c998ddc2c6c0b6f0edecb07e55bca88faeb1c62d03","parent_operation":"int-anex-tv-session-gateway-recovery-20261025-v1","receipt_and_configuration_unchanged":true},"install":{"changed_files":1,"created_files":0,"dependency":{"changed":false,"sha256":"145eff807355b50bcd381c6b3d732eb5c8ac4350f2945fb77304c9fd50673ce6","source":"app/integrations/anex-initial-week-gate.php","target":"app/integrations/anex-initial-week-gate.php"},"endpoint":{"changed":false,"sha256":"0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4","source":"v2/api-anex-search3-preview.php","target":"api-anex-search3-preview.php"},"files":12,"manifest_sha256":"c591ec8340d231221c20199e02fda954a51f8dcf25c2b3b9ebdb48942709e766","source_sha":"3207266e17ed4e8244aaf28d05b962747fd4cd3c","status":"installed","tv_client":{"changed":true,"sha256":"529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841","source":"app/integrations/tourvisor-interactive-client.php","target":"app/integrations/tourvisor-interactive-client.php"}},"lead_calls":0,"mode":"install-tv-invalid-response","operation_id":"int-anex-tv-invalid-response-install-20261119-v1","production_after":{"index.php":"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f","v2/api-v2.php":null,"v2/index.php":null,"v2/lead-adapter-v2.php":null},"production_before":{"index.php":"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f","v2/api-v2.php":null,"v2/index.php":null,"v2/lead-adapter-v2.php":null},"public_ui_entrypoints_unchanged":true,"runtime_changed":true,"schema_version":1,"source_sha":"3207266e17ed4e8244aaf28d05b962747fd4cd3c","status":"installed","supplier_calls":0,"tv_gateway":{"activation_performed":false,"configuration_changed":false,"files":{"app/integrations/anex-additional-prices-client.php":"e905ce4f12a920201b1b2faeff78623a26023dd8ad79e0c3d6378d1dc75478f7","app/integrations/anex-package-quote-client.php":"010900cb382af985c0da097a440fc49dc6d85e311ea380d4c1a93e0df656ce0a","app/integrations/operator-fuel-rule-evidence.php":"5205c275da1f71aa756aab6852664902a8ea0453a4a457673f0896737f11a6a4","app/integrations/operator-fuel-rule-store.php":"a84468efc7953f50ee6fc25aaa77a40b97bd527ad9fbbe923d547dbe9db60fb9","app/integrations/search3-messenger-handoff.php":"5e0fe33e6adf3ce30451b9ffe1742cc77f791114e241fb41d92236c1d70ea85c","app/integrations/tourvisor-interactive-client.php":"529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841","app/integrations/tourvisor-operator-fuel-passive-intake.php":"09a40aa5c6c4b6d98d378e353707412a4a3b83631452585a3fff27c6392d7008","app/integrations/tourvisor-operator-fuel-retained-intake.php":"6c233c9fc0fe64c1647941ccb22756e1cad4c17b9692998dbd1eb6b7eb04a3d0","app/integrations/tourvisor-preview-gateway.php":"c3008d765b9279c7be347e9fa92861053b5dc661d7ea2dbf65450e83f488d8d1","app/integrations/tourvisor-selected-tour-handoff.php":"9dafb88cab92e19376e120c80dd5dfecc975730cca7e7039edc419bf1ffa57f3","v2/api-anex-search3-preview.php":"0beda5c137c3153ec7c80da382f63ca3f989634130c508af69f6c6f0ce2162f4"},"signing_custody_changed":false,"source_sha":"3207266e17ed4e8244aaf28d05b962747fd4cd3c"},"tv_gateway_public_after":{"api-v2.php":{"sha256":"90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2","state":"regular"},"index.php":{"sha256":"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f","state":"regular"},"v2/api-v2.php":{"state":"absent"},"v2/index.php":{"state":"absent"},"v2/lead-adapter-v2.php":{"state":"absent"}},"tv_gateway_public_before":{"api-v2.php":{"sha256":"90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2","state":"regular"},"index.php":{"sha256":"80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f","state":"regular"},"v2/api-v2.php":{"state":"absent"},"v2/index.php":{"state":"absent"},"v2/lead-adapter-v2.php":{"state":"absent"}}}',
+ 'result_canonical_sha256': '4bbfd3c2aad2d534c043c0efcbedb349c2374331c0be78d783d546d897a759d2'}
+
 TV_SUCCESSOR_REASONS = ('tv_successor_identity', 'tv_successor_namespace', 'tv_successor_record',
                         'tv_successor_plan', 'tv_successor_backup', 'tv_successor_state',
                         'tv_successor_time', 'tv_successor_target', 'tv_successor_snapshot',
@@ -436,8 +455,81 @@ def _tv_commands():
     return rows
 
 
+def _tv_original_proof(command, run, value, artifact_id, artifact_sha256):
+    """The same original command/control/job checks for live or retained bytes."""
+    created = _tv_time(command['created_at'])
+    restored = tv_successor_rollback_valid(value)
+    need(tv_successor_result_valid(value) or restored, 'tv_successor_result')
+    conclusion = 'failure' if restored else 'success'
+    need(run.get('path') == '.github/workflows/int-server-executor.yml'
+         and run.get('head_branch') == 'main' and run.get('event') == 'issue_comment'
+         and created <= _tv_time(run.get('created_at')) <= created + 300
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == conclusion
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'tv_successor_run')
+    control = run.get('head_sha', '')
+    need(isinstance(control, str) and re.fullmatch('[a-f0-9]{40}', control), 'tv_successor_control')
+    entries = api('/contents/scripts/deploy?ref=' + control)
+    need(isinstance(entries, list), 'tv_successor_control')
+    selected = {row.get('path'): row for row in entries}
+    need(len(selected) == len(entries), 'tv_successor_control')
+    for path, expected in TV_SUCCESSOR['control_blobs'].items():
+        # The tests directory can exceed GitHub Contents' 1000-entry listing
+        # limit. Read each other fixed path explicitly.
+        blob = selected.get(path, {}) if path.startswith('scripts/deploy/') else api('/contents/' + path + '?ref=' + control)
+        need(blob.get('type') == 'file' and blob.get('sha') == expected, 'tv_successor_control')
+    jobs = [job for job in pages('/actions/runs/' + str(run['id']) + '/attempts/1/jobs', 'jobs')
+            if job.get('name') == 'execute']
+    need(len(jobs) == 1 and jobs[0].get('run_id') == run['id']
+         and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == conclusion, 'tv_successor_job')
+    steps = [step for step in jobs[0].get('steps', [])
+             if step.get('name') == 'Execute bounded private INT operation, install, or DB/LOCAL readback']
+    need(len(steps) == 1 and steps[0].get('status') == 'completed'
+         and steps[0].get('conclusion') == conclusion, 'tv_successor_step')
+    started, completed = _tv_time(steps[0].get('started_at')), _tv_time(steps[0].get('completed_at'))
+    need(created <= _tv_time(run.get('created_at')) <= _tv_time(run.get('run_started_at'))
+         <= started <= completed <= _tv_time(run.get('updated_at')), 'tv_successor_time')
+    return {'status': 'rolled_back' if restored else 'installed', 'result': value, 'run_id': run['id'],
+            'command_comment_id': command['id'], 'control_source_sha': control,
+            'job_id': jobs[0]['id'], 'artifact_id': artifact_id, 'artifact_sha256': artifact_sha256,
+            'created_at': created, 'started_at': started, 'completed_at': completed}
+
+
+def _tv_retained_proof(commands):
+    retained = TV_SUCCESSOR_RETAINED
+    need(isinstance(retained, dict) and set(retained) == {'proof', 'run_attempt', 'run_created_at', 'run_started_at',
+         'result_canonical_json', 'result_canonical_sha256'}, 'tv_successor_retained')
+    expected = retained['proof']
+    keys = {'status', 'run_id', 'command_comment_id', 'control_source_sha', 'job_id', 'artifact_id',
+            'artifact_sha256', 'created_at', 'started_at', 'completed_at'}
+    need(isinstance(expected, dict) and set(expected) == keys and expected['status'] in ('installed', 'rolled_back')
+         and all(type(expected[k]) is int and expected[k] > 0 for k in
+                 ('run_id', 'command_comment_id', 'job_id', 'artifact_id', 'created_at', 'started_at', 'completed_at'))
+         and isinstance(expected['control_source_sha'], str) and re.fullmatch('[a-f0-9]{40}', expected['control_source_sha'])
+         and isinstance(expected['artifact_sha256'], str) and re.fullmatch('[a-f0-9]{64}', expected['artifact_sha256'])
+         and type(retained['run_attempt']) is int and retained['run_attempt'] == 1, 'tv_successor_retained')
+    need(len(commands) == 1 and commands[0]['id'] == expected['command_comment_id']
+         and _tv_time(commands[0]['created_at']) == expected['created_at'], 'tv_successor_command')
+    text = retained['result_canonical_json']
+    need(isinstance(text, str) and text.isascii() and 0 < len(text) <= 65536
+         and isinstance(retained['result_canonical_sha256'], str)
+         and re.fullmatch('[a-f0-9]{64}', retained['result_canonical_sha256']), 'tv_successor_retained')
+    raw = text.encode('ascii')
+    need(sha(raw) == retained['result_canonical_sha256'], 'tv_successor_retained')
+    value = _tv_json(raw)
+    need(raw == json.dumps(value, sort_keys=True, separators=(',', ':')).encode(), 'tv_successor_retained')
+    run = api('/actions/runs/' + str(expected['run_id']))
+    need(run.get('id') == expected['run_id'] and run.get('head_sha') == expected['control_source_sha']
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == retained['run_attempt']
+         and run.get('created_at') == retained['run_created_at']
+         and run.get('run_started_at') == retained['run_started_at'], 'tv_successor_run')
+    proof = _tv_original_proof(commands[0], run, value, expected['artifact_id'], expected['artifact_sha256'])
+    need(proof == dict(expected, result=value) and _tv_commands() == commands, 'tv_successor_retained')
+    return proof
+
+
 def tv_successor_evidence():
-    """Resolve the one original INT result through its existing GitHub artifact.
+    """Resolve the accepted original INT result and recheck its live provenance.
 
     INT's local receipt has no command/run IDs. Association is established here
     by the unique exact owner command, original trusted-control attempt, exact
@@ -446,6 +538,10 @@ def tv_successor_evidence():
     """
     _tv_signer_source()
     commands = _tv_commands()
+    if TV_SUCCESSOR_RETAINED is not None:
+        # The production pin consumes the original transition. A missing or
+        # altered proof never falls back to absent or to another candidate run.
+        return _tv_retained_proof(commands)
     if not commands:
         return {'status': 'absent'}
     command = commands[0]; created = _tv_time(command['created_at'])
@@ -481,40 +577,8 @@ def tv_successor_evidence():
                 continue
             if not isinstance(value, dict) or value.get('operation_id') != TV_SUCCESSOR['operation_id']:
                 continue
-            restored = tv_successor_rollback_valid(value)
-            need(tv_successor_result_valid(value) or restored, 'tv_successor_result')
-            conclusion = 'failure' if restored else 'success'
-            need(type(run.get('run_attempt')) is int and run['run_attempt'] == 1
-                 and run.get('status') == 'completed' and run.get('conclusion') == conclusion
-                 and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff'
-                 and item.get('name') == 'int-server-executor-' + str(run['id']) + '-1', 'tv_successor_run')
-            control = run.get('head_sha', '')
-            need(re.fullmatch('[a-f0-9]{40}', control), 'tv_successor_control')
-            entries = api('/contents/scripts/deploy?ref=' + control)
-            need(isinstance(entries, list), 'tv_successor_control')
-            selected = {row.get('path'): row for row in entries}
-            need(len(selected) == len(entries), 'tv_successor_control')
-            for path, expected in TV_SUCCESSOR['control_blobs'].items():
-                # The tests directory can exceed GitHub Contents' 1000-entry
-                # listing limit. Read each other fixed path explicitly.
-                blob = selected.get(path, {}) if path.startswith('scripts/deploy/') else api('/contents/' + path + '?ref=' + control)
-                need(blob.get('type') == 'file' and blob.get('sha') == expected, 'tv_successor_control')
-            jobs = [job for job in pages('/actions/runs/' + str(run['id']) + '/attempts/1/jobs', 'jobs')
-                    if job.get('name') == 'execute']
-            need(len(jobs) == 1 and jobs[0].get('run_id') == run['id']
-                 and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == conclusion, 'tv_successor_job')
-            steps = [step for step in jobs[0].get('steps', [])
-                     if step.get('name') == 'Execute bounded private INT operation, install, or DB/LOCAL readback']
-            need(len(steps) == 1 and steps[0].get('status') == 'completed'
-                 and steps[0].get('conclusion') == conclusion, 'tv_successor_step')
-            started, completed = _tv_time(steps[0].get('started_at')), _tv_time(steps[0].get('completed_at'))
-            need(created <= _tv_time(run.get('created_at')) <= _tv_time(run.get('run_started_at'))
-                 <= started <= completed <= _tv_time(run.get('updated_at')), 'tv_successor_time')
-            matches.append({'status': 'rolled_back' if restored else 'installed', 'result': value, 'run_id': run['id'],
-                            'command_comment_id': command['id'], 'control_source_sha': control,
-                            'job_id': jobs[0]['id'], 'artifact_id': item['id'],
-                            'artifact_sha256': digest.removeprefix('sha256:'),
-                            'created_at': created, 'started_at': started, 'completed_at': completed})
+            need(item.get('name') == 'int-server-executor-' + str(run['id']) + '-1', 'tv_successor_run')
+            matches.append(_tv_original_proof(command, run, value, item['id'], digest.removeprefix('sha256:')))
     need(len(matches) == 1 and _tv_commands() == commands, 'tv_successor_original_missing')
     return matches[0]
 
