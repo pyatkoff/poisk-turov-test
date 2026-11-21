@@ -2,8 +2,10 @@
 /**
  * LOCAL-owned first-party hotel profile enrichment.
  *
- * Reads only already-saved/sanitized local hotel presentation and demand evidence.
- * It may fill missing canonical hotel-presentation fields, but never overwrites an
+ * The original mode reads already-saved/sanitized local presentation and demand.
+ * The explicit official11 mode admits an immutable, owner-approved official-source
+ * manifest for eleven own IDs and three presentation fields. Neither mode fetches
+ * suppliers or official websites. Missing-only modes never overwrite an
  * existing non-empty AnyTour value. Room/meal concepts and traits are intentionally
  * outside this contract: those are hotel-scoped product dictionaries handled by a
  * separate reviewed layer. The explicit syncImported mode instead synchronizes
@@ -13,10 +15,12 @@
 declare(strict_types=1);
 require_once __DIR__ . '/hotel-presentation-read-v1.php';
 require_once __DIR__ . '/anytour-profile-content-sync-v1.php';
+require_once __DIR__ . '/anytour-profile-official-review-v1.php';
 
 final class AnyTourProfileEnrichmentV1
 {
     use AnyTourProfileContentSyncV1;
+    use AnyTourProfileOfficialReviewV1;
     public const MAX_BATCH = 250;
     public const LOCAL_ALIAS_NAMESPACE = 'anytour_local_id';
     public const LOCAL_ALIAS_ACQUIRED_VIA = 'canonical_local_alias_v1';
@@ -443,6 +447,108 @@ final class AnyTourProfileEnrichmentV1
             throw $error;
         }
         return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0] + $snapshot;
+    }
+
+    public function planOfficial11(array $approved): array
+    {
+        $approval = self::officialApproved($approved);
+        $this->officialSchema();
+        if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_CALLER_TRANSACTION');
+        $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        $this->pdo->exec('SET TRANSACTION READ ONLY');
+        $this->pdo->beginTransaction();
+        try {
+            $snapshot = $this->officialSnapshot($approval, false);
+            $this->pdo->commit();
+        } catch (Throwable $error) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
+        return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0] + $snapshot;
+    }
+
+    /** Existing canonical owner, one transaction; only the three approved missing fields. */
+    public function applyOfficial11(string $operation, array $approved, string $expectedPlanSha): array
+    {
+        $operation = self::operation($operation);
+        $approval = self::officialApproved($approved);
+        if (!self::officialSha($expectedPlanSha)) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_PLAN_SHA');
+        $this->officialSchema();
+        if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_CALLER_TRANSACTION');
+        $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+        $this->pdo->exec('SET TRANSACTION READ WRITE');
+        $this->pdo->beginTransaction();
+        $expected = []; $commitAttempted = false; $commitError = null;
+        $profilesUpdated = 0; $fieldsFilled = 0;
+        $fieldCounts = array_fill_keys(self::OFFICIAL_FIELDS, 0);
+        try {
+            // All eleven profiles and their source rows are locked, in own-ID order, before the first write.
+            $snapshot = $this->officialSnapshot($approval, true);
+            if (!hash_equals($expectedPlanSha, $snapshot['planSha256'])) throw new DomainException('ANYTOUR_PROFILE_OFFICIAL_PLAN_DRIFT');
+            $update = $this->pdo->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=?,revision=?,updated_at=UTC_TIMESTAMP()
+                WHERE id=? AND profile_sha256=? AND revision=? AND is_active=1');
+            $insertProvenance = $this->pdo->prepare('INSERT INTO anytour_hotel_sources
+                (namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
+                VALUES (?,?,?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
+            foreach ($snapshot['selected'] as $item) {
+                $id = $item['anytourHotelId'];
+                $fields = array_keys($item['patch']);
+                $want = [
+                    'profileJson'=>$item['beforeProfileJson'],'profileSha256'=>$item['expectedProfileSha256'],
+                    'revision'=>$item['expectedRevision'],'fields'=>$fields,'externalKey'=>null,'provenanceSha256'=>null,
+                ];
+                if ($fields !== []) {
+                    $profile = json_decode($item['beforeProfileJson'], true, 512, JSON_THROW_ON_ERROR);
+                    $want['profileJson'] = self::json(self::applyPatch($profile, $item['patch']));
+                    $want['profileSha256'] = hash('sha256', $want['profileJson']);
+                    $want['revision']++;
+                    $update->execute([$want['profileJson'],$want['profileSha256'],$want['revision'],$id,$item['expectedProfileSha256'],$item['expectedRevision']]);
+                    if ($update->rowCount() !== 1) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_UPDATE');
+                    $target = $approval['targets'][$id];
+                    $provenance = [
+                        'schema_version'=>1,'operation'=>$operation,'canonical_hotel_id'=>$id,'work_id'=>$target['workId'],
+                        'content_policy'=>self::OFFICIAL_POLICY,'source_kind'=>'owner_reviewed_official_web',
+                        'approval_ref'=>$approval['approvalRef'],'manifest_sha256'=>$approval['manifestSha256'],
+                        'proposed_actions_sha256'=>$approval['actionsSha256'],'original_package_sha256'=>$approval['originalPackageSha256'],
+                        'previous_profile_sha256'=>$item['expectedProfileSha256'],'result_profile_sha256'=>$want['profileSha256'],
+                        'result_revision'=>$want['revision'],'source_fingerprint'=>$item['sourceFingerprint'],
+                        'previous_source_state_sha256'=>$item['sourceStateSha256'],'identity_before'=>$target['expectedIdentity'],
+                        'official_sources'=>$target['sources'],'verified_photos'=>$target['photos'],
+                        'fields_filled'=>$fields,'preserved_fields'=>$item['preservedFields'],
+                        'room_meal_fields_excluded'=>true,'traits_excluded'=>true,
+                    ];
+                    $provenanceJson = self::json($provenance);
+                    $want['provenanceSha256'] = hash('sha256', $provenanceJson);
+                    $want['externalKey'] = $approval['actionsSha256'] . ':' . $id;
+                    $insertProvenance->execute([self::OFFICIAL_NAMESPACE,$want['externalKey'],$id,self::OFFICIAL_ACQUIRED_VIA,$provenanceJson,$want['provenanceSha256']]);
+                    if ($insertProvenance->rowCount() !== 1) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_PROVENANCE');
+                    ++$profilesUpdated;
+                    foreach ($fields as $field) { ++$fieldCounts[$field]; ++$fieldsFilled; }
+                }
+                $expected[$id] = $want;
+            }
+            $commitAttempted = true;
+            if (!$this->pdo->commit()) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_COMMIT');
+        } catch (Throwable $error) {
+            if (!$commitAttempted) {
+                if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+                throw $error;
+            }
+            // A lost COMMIT acknowledgement is never permission to replay. Try actual readback.
+            $commitError = $error;
+            try { if ($this->pdo->inTransaction()) $this->pdo->rollBack(); } catch (Throwable) {}
+        }
+        try { $readback = $this->officialReadback($snapshot, $expected); }
+        catch (Throwable $error) {
+            throw new RuntimeException($commitError === null ? 'ANYTOUR_PROFILE_OFFICIAL_POSTCOMMIT_READBACK' : 'ANYTOUR_PROFILE_OFFICIAL_COMMIT_UNKNOWN', 0, $error);
+        }
+        return [
+            'status'=>'committed_verified','operation'=>$operation,'planSha256'=>$expectedPlanSha,
+            'manifestSha256'=>$approval['manifestSha256'],'actionsSha256'=>$approval['actionsSha256'],
+            'originalPackageSha256'=>$approval['originalPackageSha256'],'profilesSelected'=>self::OFFICIAL_BATCH,
+            'profilesUpdated'=>$profilesUpdated,'fieldsFilled'=>$fieldsFilled,'fieldCounts'=>$fieldCounts,
+            'profileWrites'=>$profilesUpdated,'provenanceWrites'=>$profilesUpdated,'legacyWrites'=>0,'mappingWrites'=>0,'supplierCalls'=>0,
+        ] + $readback;
     }
 
     public function apply(string $operation, mixed $requestedLimit, mixed $demandThrough, string $expectedPlanSha256, ?array $contentScope = null, bool $syncImported = false): array
