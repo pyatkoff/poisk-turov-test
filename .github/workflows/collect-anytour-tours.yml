@@ -297,6 +297,8 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
+          expected_db_sha=$(sha256sum v2/data/db-v1.php | cut -d' ' -f1)
+          expected_observer_sha=$(sha256sum local-tv-source/v2/data/price-observer-v1.php | cut -d' ' -f1)
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
           scp "${opts[@]}" \
@@ -333,6 +335,8 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
+            printf '%s  %s\n' '$expected_db_sha' \"\$root/db-v1.php\" '$expected_observer_sha' \"\$root/price-observer-v1.php\" | sha256sum --check --strict -
+            printf 'ANYTOUR_LOCAL_PRICE_READBACK_OK db=%s observer=%s\n' '$expected_db_sha' '$expected_observer_sha'
             php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null

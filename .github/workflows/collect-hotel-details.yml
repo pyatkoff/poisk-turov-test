@@ -164,6 +164,7 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
+          expected_db_sha=$(sha256sum v2/data/db-v1.php | cut -d' ' -f1)
           scp "${opts[@]}" \
             v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
@@ -176,6 +177,8 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
+            printf '%s  %s\n' '$expected_db_sha' \"\$root/db-v1.php\" | sha256sum --check --strict -
+            printf 'ANYTOUR_LOCAL_DB_READBACK_OK db=%s\n' '$expected_db_sha'
             php -l \"\$root/collect-hotel-details-v1.php\" >/dev/null
             effective_scope='$SCOPE_VALUE'
             if test '$EVENT_VALUE' = schedule; then

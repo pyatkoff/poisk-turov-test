@@ -34,7 +34,7 @@ def collector_shell() -> str:
 
 
 class LocalWorkflowIsolation(unittest.TestCase):
-    def run_scope(self, scope="demand", event="workflow_dispatch", flag="demand", probe_failure=False):
+    def run_scope(self, scope="demand", event="workflow_dispatch", flag="demand", probe_failure=False, tamper_db=False):
         with tempfile.TemporaryDirectory(prefix="local-workflow-") as directory:
             task_root = Path(directory)
             binaries = task_root / "bin"
@@ -45,6 +45,8 @@ class LocalWorkflowIsolation(unittest.TestCase):
             # Match the actual flattened root installation: MAIN owns config
             # resolution, while the pinned LOCAL source owns its catalogue.
             shutil.copyfile(ROOT / "v2/data/db-v1.php", fixture_data / "db-v1.php")
+            if tamper_db:
+                (fixture_data / "db-v1.php").write_text("synthetic corrupted copy")
             for name in ("local-tv-catalog-v1.php", "hotel-details-v1.php"):
                 shutil.copyfile(SOURCE / "v2/data" / name, fixture_data / name)
             # Only this synthetic private config is loaded by the real PHP flag probe.
@@ -55,7 +57,7 @@ class LocalWorkflowIsolation(unittest.TestCase):
                 raise RuntimeError("PHP is required for the actual config/feature-flag probe")
             scripts = {
                 "scp": "#!/usr/bin/env python3\nimport json, os, sys\nfrom pathlib import Path\nPath(os.environ['LOCAL_WORKFLOW_COPY_LOG']).write_text(json.dumps(sys.argv[1:]))\n",
-                "ssh": "#!/usr/bin/env python3\nimport subprocess, sys\nraise SystemExit(subprocess.run(['bash', '-c', sys.argv[-1]]).returncode)\n",
+                "ssh": "#!/usr/bin/env python3\nimport os, subprocess, sys\ncommand=sys.argv[-1].replace('$HOME/www/anytoour.ru/data',os.environ['LOCAL_WORKFLOW_FIXTURE_DATA'])\nraise SystemExit(subprocess.run(['bash', '-c', command]).returncode)\n",
                 "php": """#!/usr/bin/env python3
 import json, os, subprocess, sys
 from pathlib import Path
@@ -96,6 +98,7 @@ if args and args[0] == '-r':
 
     def assert_local_only(self, result, calls):
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ANYTOUR_LOCAL_DB_READBACK_OK db=", result.stdout)
         self.assertEqual([name for name, _ in self.writers(calls)], ["collect-hotel-details-v1.php"])
         self.assertIn("--candidate-scope=local", self.writers(calls)[0][1])
         self.assertIn("--http-budget=0", self.writers(calls)[0][1])
@@ -139,6 +142,13 @@ if args and args[0] == '-r':
         result, calls = self.run_scope(event="schedule", flag="unexpected")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.writers(calls), [])
+
+    def test_mismatched_db_readback_stops_before_any_php(self):
+        result, calls = self.run_scope(event="schedule", flag="local", tamper_db=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("FAILED", result.stdout)
+        self.assertNotIn("ANYTOUR_LOCAL_DB_READBACK_OK", result.stdout)
+        self.assertEqual(calls, [])
 
 
 class CopyOwnerPins(unittest.TestCase):
