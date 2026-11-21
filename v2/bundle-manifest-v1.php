@@ -11,3 +11,28 @@ function v2_bundle_manifest(): array
         ],
     ];
 }
+
+/** The standalone shell shares the same versioning, cache and bundle endpoint. */
+function v2_bundle_files(string $type, string $scope = 'full'): array
+{
+    $manifest = v2_bundle_manifest();
+    if ($scope === 'full' && isset($manifest[$type])) return $manifest[$type];
+    if ($scope !== 'site' || $type !== 'css') {
+        throw new InvalidArgumentException('Invalid V2 bundle scope or type');
+    }
+    // Preserve the standalone shell's original cascade order and source bytes.
+    return [
+        'design-system-v2.css',
+        'site-header-v2.css',
+        'site-page-v1.css',
+        'seo-editorial-reference-v1.css',
+        'seo-price-promo-v1.css',
+        'seo-price-calendar-v1.css',
+        'site-shell-alignment-v1.css',
+        'editorial-rhythm-v1.css',
+        'shared-content-primitives-v1.css',
+        'editorial-ds2-convergence-v1.css',
+        'site-coherence-v1.css',
+        'site-footer-v1.css',
+    ];
+}

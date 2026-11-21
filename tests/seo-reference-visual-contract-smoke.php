@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../v2/bundle-manifest-v1.php';
 $css = file_get_contents(__DIR__ . '/../v2/seo-editorial-reference-v1.css');
 $promoCss = file_get_contents(__DIR__ . '/../v2/seo-price-promo-v1.css');
 $editorialCss = file_get_contents(__DIR__ . '/../v2/editorial-ds2-convergence-v1.css');
@@ -66,7 +67,7 @@ foreach ($editorialTokens as $token) {
         exit(4);
     }
 }
-if (strpos($shell, "string \$actionHref='',string \$actionLabel='',string \$modifier=''") === false || strpos($shell, "sp-hero--'.preg_replace") === false || strpos($shell, 'sp-hero-actions') === false || strpos($shell, "sp_inline_css('seo-price-promo-v1.css')") === false) {
+if (strpos($shell, "string \$actionHref='',string \$actionLabel='',string \$modifier=''") === false || strpos($shell, "sp-hero--'.preg_replace") === false || strpos($shell, 'sp-hero-actions') === false || strpos($shell, "v2_bundle_asset('css', 'site')") === false || !in_array('seo-price-promo-v1.css', v2_bundle_files('css', 'site'), true)) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hero_or_promo_css\n");
     exit(5);
 }
