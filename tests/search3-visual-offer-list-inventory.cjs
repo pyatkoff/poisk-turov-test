@@ -176,9 +176,16 @@ assert.equal(firstRenderValueReads,12000);assert.equal(repeatedRenderValueReads,
 assert(source.includes('<select id="offer-departure"><option value="">Все даты</option></select>'),'mount defers refinement enumeration to the render owner');
 // Render both actual owner variants against the same deterministic DOM boundary.
 // The reference restores the old repeated note, heading and refinement inventory work.
+// Keep the retired predicate explicitly: the predecessor must not borrow new counts.
+const referenceRefinementPredicate="function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}\n";
+const recoveryCount="currentRefinementInventory.get(field).counts.get('')";
+assert(source.includes(recoveryCount),'recovery reads the same-render refinement inventory');
+const legacyRecoveryRenderer=source
+ .replace('function offerRefinementRecovery(all){',referenceRefinementPredicate+'function offerRefinementRecovery(all){')
+ .replace(recoveryCount,"all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:''})).length");
 const hoisted=" const commonNote=reuseRows?currentCommonNote:groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
-const legacyNotes=source.replace(hoisted," const commonNote=reuseRows?currentCommonNote:'';\n")
+const legacyNotes=legacyRecoveryRenderer.replace(hoisted," const commonNote=reuseRows?currentCommonNote:'';\n")
  .replace('entry=offerRowEntry(o,commonNote);','entry=offerRowEntry(o,currentCommonNote=sharedOfferNote(all));');
 const legacyCounts=legacyNotes
  .replace('  const counts=currentRefinementInventory.get(field).counts;\n','')
@@ -230,6 +237,28 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
   assert.deepEqual([after.noteCalls,after.noteVisits,after.keyCalls],[previous.noteCalls,previous.noteVisits,previous.keyCalls],'retained same-render list work');
  }
 }
+// Near matches differ in exactly one selected field: recovery must keep their
+// independent counts/order, including missing choices, sparse and inherited rows.
+const recoveryView={...baseView(),departure:'2026-10-10',flight:'regular',room:'wanted',meal:'AI'};
+const recoveryRows=refinementFields.flatMap((field,i)=>Array.from({length:i+1},(_,j)=>({...offer(30000+i*10+j),day:recoveryView.departure,flight:recoveryView.flight,room:recoveryView.room,meal:recoveryView.meal,[field==='departure'?'day':field]:'other-'+field})));
+const recoverySparse=[];recoverySparse.length=15;recoverySparse[2]=recoveryRows[0];recoverySparse[7]=recoveryRows[3];
+const recoveryProto=Object.create(Array.prototype);recoveryProto[4]=recoveryRows[1];Object.setPrototypeOf(recoverySparse,recoveryProto);
+const recoveryHTML=snapshot=>snapshot.dom.find(([selector])=>selector==='#all-offers-list')[1].html;
+let recoveryCases=0;
+for(const all of [recoveryRows,recoverySparse,[]])for(const view of [baseView(),recoveryView,{...recoveryView,room:'missing'},{...recoveryView,room:'missing',meal:'missing'},{...baseView(),room:'missing'}])for(const reset of [false,true]){
+ const previous=render(legacyRecoveryRenderer,all,view,false,reset),current=render(source,all,view,false,reset);
+ assert.deepEqual(current.snapshot,previous.snapshot,'recovery keeps exact markup, counts, order and view state');recoveryCases++;
+}
+const recoveryInitial=render(source,recoveryRows,recoveryView),previousRecovery=render(legacyRecoveryRenderer,recoveryRows,recoveryView);
+assert.deepEqual([...recoveryHTML(recoveryInitial.snapshot).matchAll(/data-field="([^"]+)"[^>]*>[^<]* · (\d+)<\/button>/g)].map(match=>[match[1],Number(match[2])]),refinementFields.map((field,i)=>[field,i+1]));
+for(const [all,changes] of [[recoveryRows.slice(1),{}],[recoveryRows,{room:'missing',meal:'missing'}],[[],{}],[recoveryRows,{...baseView(),departure:recoveryView.departure}],[recoveryRows,recoveryView]]){
+ assert.deepEqual(recoveryInitial.rerender(all,changes).snapshot,previousRecovery.rerender(all,changes).snapshot,'later rows and refinements recalculate recovery from this invocation');recoveryCases++;
+}
+const recoveryWorkRows=Array.from({length:1000},(_,i)=>({...recoveryRows[i%recoveryRows.length],key:'recovery-'+i}));
+const recoveryReads={before:0,after:0},trackRecovery=side=>new Proxy(recoveryWorkRows,{get(target,property,receiver){if(typeof property==='string'&&/^(0|[1-9]\d*)$/.test(property))recoveryReads[side]++;return Reflect.get(target,property,receiver);}});
+assert.deepEqual(render(source,trackRecovery('after'),recoveryView).snapshot,render(legacyRecoveryRenderer,trackRecovery('before'),recoveryView).snapshot);
+assert.equal(recoveryReads.before-recoveryReads.after,4000,'four selected fields no longer rescan 1000 rows for recovery');
+console.log(`PASS offer recovery: ${recoveryCases} exact render/current-input states; 1000-row full render array reads ${recoveryReads.before}→${recoveryReads.after}, repeated recovery visits 4000→0`);
 {
  const listing={...offer(0),key:'anex-family',provider:'anex',room:'ANEX room',total:107581,note:'Цена из поиска · доплата за младенца уточняется',raw:{infantCharge:{status:'unknown'}}};
  const other={...listing,key:'other-family',provider:'tourvisor',room:'Other room',note:'Рейсы и багаж — при выборе',raw:{}};
