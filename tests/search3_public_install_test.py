@@ -25,6 +25,8 @@ RELEASE = 'b' * 40
 IDENTITY = {'control_source_sha': CONTROL, 'run_id': '123456', 'command_comment_id': 9001}
 ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '234567', 'command_comment_id': 9002}
 CONTINUATION_IDENTITY = {'control_source_sha': CONTROL, 'run_id': '345678', 'command_comment_id': 9003}
+UPDATE_IDENTITY = {'control_source_sha': CONTROL, 'run_id': '456789', 'command_comment_id': 9004}
+UPDATE_ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '567890', 'command_comment_id': 9005}
 PARENT_IDENTITY = {'control_source_sha': '251585b63dab95988d9f635a2b1f1da6d61a4650',
                    'run_id': '44840666320', 'command_comment_id': 7053664048}
 NEXT_ENTRY = '_preview/search3-next-candidate/visual-search/index.php'
@@ -51,6 +53,44 @@ def continuation_event():
     value = event(); value['comment']['id'] = CONTINUATION_IDENTITY['command_comment_id']
     value['comment']['body'] = f'{m.CONTINUATION_PREFIX} {CONTROL} {m.CONTINUATION_OPERATION}'
     return value
+
+
+def update_event():
+    value = event(); value['comment']['id'] = UPDATE_IDENTITY['command_comment_id']
+    value['comment']['body'] = f'{m.UPDATE_PREFIX} {CONTROL} {m.UPDATE_OPERATION}'
+    return value
+
+
+def update_rollback_event():
+    value = event(); value['comment']['id'] = UPDATE_ROLLBACK_IDENTITY['command_comment_id']
+    value['comment']['body'] = (f'{m.UPDATE_ROLLBACK_PREFIX} {UPDATE_ROLLBACK_IDENTITY["control_source_sha"]} '
+                              f'{UPDATE_IDENTITY["run_id"]} {m.UPDATE_ROLLBACK_OPERATION}')
+    return value
+
+
+def update_parent_identity():
+    return {key: m.UPDATE_PARENT[key] for key in ('control_source_sha', 'run_id', 'command_comment_id', 'operation_id')}
+
+
+def update_parent_result():
+    return installed_result() | update_parent_identity() | {
+        'snapshot_manifest_sha256': m.UPDATE_PARENT['snapshot_manifest_sha256'],
+        'parent_failure': copy.deepcopy(m.CONTINUATION_PARENT),
+        'dependency_policy_sha256': m.CONTINUATION_POLICY_SHA,
+        'parent_namespace_absent': True, 'public_mismatches': [],
+        'private_checks': {label: True for label in ('anex_private_config', 'public_config', 'site_config', 'local_config', 'next_config')}}
+
+
+def update_parent_archive(change=None, extra=False):
+    value = {**update_parent_identity(), 'read_only': False, 'phase': 'complete', 'ssh_started': True,
+             'status': 'installed_verified', 'parent_failure': copy.deepcopy(m.CONTINUATION_PARENT),
+             'dependency_policy_sha256': m.CONTINUATION_POLICY_SHA, 'remote': update_parent_result()}
+    if change: change(value)
+    data = (json.dumps(value, sort_keys=True) + '\n').encode(); stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as archive:
+        archive.writestr('evidence.json', data)
+        if extra: archive.writestr('unreviewed.json', b'{}')
+    return stream.getvalue(), m.sha(data)
 
 
 def continuation_comments_fixture():
@@ -105,6 +145,28 @@ def archive_fixture(change=None):
         archive.writestr('manifest.json', raw)
         for path, data in files.items(): archive.writestr('overlay/' + path, data)
     return stream.getvalue(), m.sha(raw)
+
+
+def update_archive_fixture(change=None):
+    predecessor, predecessor_digest = archive_fixture()
+    with patch.object(m, 'MANIFEST_SHA', predecessor_digest):
+        policy, encoded = m.package(predecessor, continuation=True)
+    with zipfile.ZipFile(io.BytesIO(predecessor)) as archive:
+        manifest = json.loads(archive.read('manifest.json'))
+        files = {name.removeprefix('overlay/'): archive.read(name)
+                 for name in archive.namelist() if name.startswith('overlay/')}
+    manifest['candidate'] = {'sha': m.UPDATE_SOURCE, 'tree_sha': m.UPDATE_TREE}
+    files[m.UPDATE_PATH] = b'compiled: applied contact flight and family price retained'
+    after = {'state': 'present', 'sha256': m.sha(files[m.UPDATE_PATH]),
+             'size': len(files[m.UPDATE_PATH]), 'mode': '0644'}
+    row = next(row for row in manifest['files']['added'] if row['path'] == m.UPDATE_PATH)
+    row['served'] = {key: value for key, value in after.items() if key != 'state'}
+    if change: change(manifest, files)
+    manifest_raw = json.dumps(manifest).encode(); stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as archive:
+        archive.writestr('manifest.json', manifest_raw)
+        for path, data in files.items(): archive.writestr('overlay/'+path, data)
+    return stream.getvalue(), m.sha(manifest_raw), policy, encoded, after
 
 
 def preflight_comments():
@@ -402,6 +464,341 @@ class Admission(unittest.TestCase):
         stream=io.BytesIO()
         with zipfile.ZipFile(stream,'w') as archive: archive.writestr('../escape',b'x')
         with self.assertRaisesRegex(RuntimeError,'archive_entry'): m.zip_files(stream.getvalue())
+
+
+class UpdateAdmission(unittest.TestCase):
+    def metadata(self, path):
+        if path == '/git/ref/heads/main': return {'object': {'sha': CONTROL}}
+        if path == '/git/ref/heads/release/search3-production-ready-v1': return {'object': {'sha': RELEASE}}
+        if path == '/pulls/' + str(m.UPDATE_SOURCE_PR):
+            return {'state': 'closed', 'merged': True, 'merge_commit_sha': RELEASE,
+                    'head': {'sha': m.UPDATE_SOURCE, 'repo': {'full_name': m.REPO}},
+                    'base': {'ref': 'release/search3-production-ready-v1', 'repo': {'full_name': m.REPO}}}
+        if path.startswith('/git/commits/'): return {'tree': {'sha': m.UPDATE_TREE}}
+        if path.startswith('/contents/.github/workflows/deploy-anytoour.yml'):
+            return {'type': 'file', 'encoding': 'base64', 'content': base64.b64encode(b'guarded publisher').decode()}
+        if '/check-runs?' in path:
+            return {'total_count': len(m.SOURCE_CHECK_NAMES), 'check_runs': [
+                {'id': index+1, 'name': name, 'head_sha': m.UPDATE_SOURCE, 'status': 'completed',
+                 'conclusion': 'success', 'app': {'slug': 'github-actions'}}
+                for index, name in enumerate(m.SOURCE_CHECK_NAMES)]}
+        if path == '/actions/runs/' + str(m.UPDATE_BUILD_RUN):
+            return {'id': m.UPDATE_BUILD_RUN, 'head_sha': m.UPDATE_SOURCE, 'path': '.github/workflows/search3-visual-migration.yml',
+                    'event': 'pull_request', 'run_attempt': 1, 'status': 'completed', 'conclusion': 'success'}
+        if path == '/actions/artifacts/' + str(m.UPDATE_ARTIFACT):
+            return {'id': m.UPDATE_ARTIFACT, 'name': m.UPDATE_ARTIFACT_NAME, 'expired': False,
+                    'digest': 'sha256:' + m.UPDATE_ARTIFACT_SHA, 'workflow_run': {'id': m.UPDATE_BUILD_RUN}}
+        if path.startswith('/issues/4709/comments?'): return [update_event()['comment']]
+        raise AssertionError('Unexpected update dependency: '+path)
+
+    def admission(self, mutation=None):
+        def api(path):
+            value = self.metadata(path)
+            return mutation(path, value) if mutation else value
+        with patch.object(m, 'UPDATE_RELEASE', RELEASE), patch.object(m, 'PUBLISHER_GUARD_SHA', m.sha(b'guarded publisher')), \
+             patch.object(m, 'reviewed_control') as review, patch.object(m, 'api', side_effect=api):
+            m.update_admission(UPDATE_IDENTITY)
+            review.assert_called_once_with(CONTROL)
+
+    def test_successor_source_does_not_repin_the_consumed_install(self):
+        self.assertEqual((m.SOURCE_PR, m.SOURCE, m.RELEASE), (
+            5125, '1a22691517b53e23ea2fa98d02f857b11a118392',
+            '71fd65ae80e2b8c4b00b80f3bafe36dfa9bb2426'))
+        self.assertEqual((m.UPDATE_SOURCE_PR, m.UPDATE_SOURCE, m.UPDATE_TREE), (
+            5130, 'f10e51a49ea9d4b3e4b6356f98d6d898484d9fc6',
+            '7251ab6712a437ef46a590a3f2b8fb8bd1037b82'))
+        self.assertEqual(m.UPDATE_RELEASE, '67c9e34876a1b52e1e7ed919c5b70a2f28a7220b')
+        self.assertEqual((m.UPDATE_BUILD_RUN, m.UPDATE_ARTIFACT), (44847945914, 14684470494))
+        self.assertEqual(m.UPDATE_ARTIFACT_SHA, '4bced061fe5ffc224c196fa400c65ee726d775df4fe4830c9f4b03a19b926a3a')
+        self.assertEqual(m.UPDATE_MANIFEST_SHA, '19a2ecc6db293d4994c70c9203d52e24cc577d9bfa57f90273820c01e955121c')
+        self.assertEqual(m.UPDATE_PATH, 'visual-search/app.js')
+        self.assertEqual(update_parent_identity(), {
+            'operation_id': m.CONTINUATION_OPERATION,
+            'control_source_sha': '6335775a2f3f4b628dbc405b5d4edd7a9c43b6ec',
+            'run_id': '44843395448', 'command_comment_id': 7054034774})
+        self.assertEqual(m.UPDATE_PARENT['artifact_id'], 14680714567)
+        self.assertEqual(m.UPDATE_PARENT['receipt_sha256'], 'bcf70929bc32228d6a2e7676af9addde80dfda1b9675413866eef31c9caca3bf')
+
+    def test_fixed_update_command_preserves_owner_main_and_original_attempt(self):
+        env = environment() | {'GITHUB_RUN_ID': UPDATE_IDENTITY['run_id']}
+        self.assertEqual(m.update_event_identity(update_event(), env), UPDATE_IDENTITY)
+        self.assertEqual(m.command_mode(['update']), 'update')
+        self.assertEqual(m.command_mode(['update-rollback']), 'update-rollback')
+        for field, value in [('GITHUB_REPOSITORY', 'other/project'), ('GITHUB_REF', 'refs/heads/feature'),
+                             ('GITHUB_WORKFLOW_REF', 'other'), ('GITHUB_ACTOR', 'other'),
+                             ('GITHUB_TRIGGERING_ACTOR', 'other'), ('GITHUB_EVENT_NAME', 'workflow_dispatch'),
+                             ('GITHUB_RUN_ATTEMPT', '2'), ('GITHUB_RUN_ID', '0')]:
+            with self.subTest(field=field), self.assertRaises(RuntimeError):
+                m.update_event_identity(update_event(), env | {field: value})
+        for mutate in [lambda e: e.update(action='edited'), lambda e: e['issue'].update(number=4217),
+                       lambda e: e['issue'].update(pull_request={}),
+                       lambda e: e['comment']['user'].update(id=True),
+                       lambda e: e['comment'].update(author_association='MEMBER'),
+                       lambda e: e['comment'].update(body=e['comment']['body']+' extra'),
+                       lambda e: e['comment'].update(body=e['comment']['body'].replace(m.UPDATE_OPERATION, m.CONTINUATION_OPERATION))]:
+            value = update_event(); mutate(value)
+            with self.subTest(mutate=mutate), self.assertRaises(RuntimeError): m.update_event_identity(value, env)
+        for value in (event(), continuation_event(), rollback_event()):
+            with self.assertRaises(RuntimeError): m.update_event_identity(value, env)
+        with self.assertRaises(RuntimeError): m.event_identity(update_event(), env)
+        for args in (['update', '/tmp/root'], ['update-rollback', '123456'], ['--update']):
+            with self.assertRaises(RuntimeError): m.command_mode(args)
+
+    def test_fixed_update_rollback_cannot_target_the_initial_install(self):
+        env = environment() | {'GITHUB_RUN_ID': UPDATE_ROLLBACK_IDENTITY['run_id'],
+                               'GITHUB_SHA': UPDATE_ROLLBACK_IDENTITY['control_source_sha']}
+        self.assertEqual(m.update_rollback_event_identity(update_rollback_event(), env),
+                         (UPDATE_ROLLBACK_IDENTITY, UPDATE_IDENTITY['run_id']))
+        for run in (m.UPDATE_PARENT['run_id'], m.CONTINUATION_PARENT['run_id'],
+                    UPDATE_ROLLBACK_IDENTITY['run_id'], '0', '/tmp'):
+            value = update_rollback_event()
+            value['comment']['body'] = value['comment']['body'].replace(UPDATE_IDENTITY['run_id'], run)
+            with self.subTest(run=run), self.assertRaises(RuntimeError): m.update_rollback_event_identity(value, env)
+        with self.assertRaises(RuntimeError): m.update_rollback_event_identity(update_event(), env)
+        with self.assertRaises(RuntimeError): m.update_event_identity(update_rollback_event(), env)
+
+    def test_unresolved_successor_release_fails_before_any_api_or_ssh(self):
+        with patch.object(m, 'UPDATE_RELEASE', None), patch.object(m, 'api') as api, \
+             patch.object(m.carrier, 'run') as run, self.assertRaises(RuntimeError):
+            m.update_admission(UPDATE_IDENTITY)
+        api.assert_not_called(); run.assert_not_called()
+
+    def test_update_requires_the_final_source_checks_and_artifact(self):
+        self.admission()
+        for name in m.SOURCE_CHECK_NAMES:
+            for field, value in [('head_sha', m.SOURCE), ('status', 'in_progress'),
+                                 ('conclusion', 'skipped'), ('app', {'slug': 'untrusted'})]:
+                def mutation(path, response):
+                    if '/check-runs?' in path:
+                        next(row for row in response['check_runs'] if row['name'] == name)[field] = value
+                    return response
+                with self.subTest(check=name, field=field), self.assertRaises(RuntimeError): self.admission(mutation)
+        for endpoint, change in [('/git/ref/heads/release/search3-production-ready-v1', lambda v: v['object'].update(sha=m.RELEASE)),
+                                 ('/pulls/'+str(m.UPDATE_SOURCE_PR), lambda v: v.update(merged=False)),
+                                 ('/git/commits/'+m.UPDATE_SOURCE, lambda v: v['tree'].update(sha=m.TREE)),
+                                 ('/actions/runs/'+str(m.UPDATE_BUILD_RUN), lambda v: v.update(id=m.BUILD_RUN)),
+                                 ('/actions/runs/'+str(m.UPDATE_BUILD_RUN), lambda v: v.update(head_sha=m.SOURCE)),
+                                 ('/actions/runs/'+str(m.UPDATE_BUILD_RUN), lambda v: v.update(run_attempt=True)),
+                                 ('/actions/runs/'+str(m.UPDATE_BUILD_RUN), lambda v: v.update(conclusion='failure')),
+                                 ('/actions/artifacts/'+str(m.UPDATE_ARTIFACT), lambda v: v.update(expired=True)),
+                                 ('/actions/artifacts/'+str(m.UPDATE_ARTIFACT), lambda v: v.update(digest='sha256:'+m.ARTIFACT_SHA)),
+                                 ('/actions/artifacts/'+str(m.UPDATE_ARTIFACT), lambda v: v['workflow_run'].update(id=m.BUILD_RUN))]:
+            def mutation(path, response):
+                if path == endpoint: change(response)
+                return response
+            with self.subTest(endpoint=endpoint, change=change), self.assertRaises(RuntimeError): self.admission(mutation)
+
+    def test_update_command_cannot_be_edited_or_reserved_twice(self):
+        for change in [lambda rows: rows.append(copy.deepcopy(rows[0]) | {'id': 9999}),
+                       lambda rows: rows[0].update(body=rows[0]['body']+' edited'),
+                       lambda rows: rows[0]['user'].update(id=2),
+                       lambda rows: rows[0].update(author_association='MEMBER')]:
+            def mutation(path, response):
+                if '/comments?' in path: change(response)
+                return response
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.admission(mutation)
+
+
+class UpdateRollbackAdmission(unittest.TestCase):
+    def metadata(self, path):
+        if path == '/git/ref/heads/main': return {'object': {'sha': UPDATE_ROLLBACK_IDENTITY['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'): return [update_event()['comment'], update_rollback_event()['comment']]
+        if path == '/actions/runs/' + UPDATE_IDENTITY['run_id']:
+            return {'id': int(UPDATE_IDENTITY['run_id']), 'head_sha': CONTROL, 'head_branch': 'main',
+                    'event': 'issue_comment', 'path': m.WORKFLOW, 'run_attempt': 1,
+                    'status': 'completed', 'conclusion': 'success', 'actor': {'login': 'pyatkoff'},
+                    'triggering_actor': {'login': 'pyatkoff'}}
+        if path.startswith('/actions/runs/' + UPDATE_IDENTITY['run_id'] + '/attempts/1/jobs?'):
+            return {'total_count': 1, 'jobs': [{'id': 222, 'run_id': int(UPDATE_IDENTITY['run_id']),
+                    'name': 'public-install', 'status': 'completed', 'conclusion': 'success', 'steps': [
+                        {'name': 'Run python3 scripts/deploy/search3_public_install.py update',
+                         'status': 'completed', 'conclusion': 'success'}]}]}
+        if path.startswith('/actions/runs/' + UPDATE_IDENTITY['run_id'] + '/artifacts?'):
+            return {'total_count': 1, 'artifacts': [{'id': 333, 'name': 'search3-public-install-'+UPDATE_IDENTITY['run_id']+'-1',
+                    'expired': False, 'workflow_run': {'id': int(UPDATE_IDENTITY['run_id'])}, 'digest': 'sha256:'+'5'*64}]}
+        raise AssertionError('Recovery fetched an unrelated or historic dependency: '+path)
+
+    def admission(self, change=None):
+        def api(path):
+            value = self.metadata(path)
+            return change(path, value) if change else value
+        with patch.object(m, 'api', side_effect=api), patch.object(m, 'reviewed_control') as control, \
+             patch.object(m, 'UPDATE_RELEASE', None), patch.object(m, 'RELEASE', None), \
+             patch.object(m, 'update_final_heads', side_effect=AssertionError('source release gate')), \
+             patch.object(m, 'signing_evidence', side_effect=AssertionError('historic signer gate')):
+            original, artifact = m.update_rollback_admission(UPDATE_ROLLBACK_IDENTITY, UPDATE_IDENTITY['run_id'])
+            control.assert_called_once_with(UPDATE_ROLLBACK_IDENTITY['control_source_sha'])
+            self.assertEqual(original, UPDATE_IDENTITY); self.assertEqual(artifact['id'], 333)
+
+    def test_successful_update_recovery_is_independent_of_source_and_historic_artifacts(self):
+        self.admission()
+        for run in (m.UPDATE_PARENT['run_id'], m.CONTINUATION_PARENT['run_id'], UPDATE_ROLLBACK_IDENTITY['run_id']):
+            with patch.object(m, 'api') as api, self.assertRaises(RuntimeError):
+                m.update_rollback_commands(UPDATE_ROLLBACK_IDENTITY, run)
+            api.assert_not_called()
+
+    def test_only_the_unique_owned_successful_update_attempt_authorizes_rollback(self):
+        for part, mutate in [('/comments?', lambda v: v.append(update_event()['comment'] | {'id': 9006})),
+                             ('/comments?', lambda v: v.append(update_rollback_event()['comment'] | {'id': 9006})),
+                             ('/comments?', lambda v: v[0].update(author_association='MEMBER')),
+                             ('/comments?', lambda v: v[1].update(body=v[1]['body']+' edited')),
+                             ('/actions/runs/456789', lambda v: v.update(head_sha='f'*40)),
+                             ('/actions/runs/456789', lambda v: v.update(run_attempt=2)),
+                             ('/actions/runs/456789', lambda v: v.update(conclusion='failure')),
+                             ('/actions/runs/456789', lambda v: v.update(status='in_progress')),
+                             ('/attempts/1/jobs?', lambda v: v['jobs'][0].update(conclusion='failure')),
+                             ('/attempts/1/jobs?', lambda v: v['jobs'][0]['steps'][0].update(conclusion='failure')),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(expired=True)),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(workflow_run={'id': 1})),
+                             ('/artifacts?', lambda v: v['artifacts'][0].update(digest='unreviewed')),
+                             ('/artifacts?', lambda v: (v['artifacts'].append(v['artifacts'][0] | {'id': 334}), v.update(total_count=2)))]:
+            def change(path, value):
+                if part == path or '?' in part and part in path: mutate(value)
+                return value
+            with self.subTest(part=part, mutate=mutate), self.assertRaises(RuntimeError): self.admission(change)
+
+
+class UpdatePayload(unittest.TestCase):
+    def package(self, change=None, previous_change=None):
+        raw, digest, previous, files, after = update_archive_fixture(change)
+        before = copy.deepcopy(previous['expected'][m.UPDATE_PATH])
+        if previous_change: previous_change(previous, files)
+        with patch.object(m, 'MANIFEST_SHA', previous['manifest']), patch.object(m, 'UPDATE_MANIFEST_SHA', digest), patch.object(m, 'UPDATE_BEFORE', before), \
+             patch.object(m, 'UPDATE_AFTER', after), patch.object(m, 'UPDATE_RELEASE', RELEASE):
+            result, output = m.update_package(raw, previous, files)
+        return result, output, previous, after
+
+    def test_exact_successor_packet_yields_only_the_reviewed_app(self):
+        policy, files, previous, after = self.package()
+        self.assertEqual(list(files), [m.UPDATE_PATH])
+        self.assertEqual(policy['previous'], previous)
+        self.assertEqual(policy['path'], 'visual-search/app.js')
+        self.assertEqual(policy['before'], previous['expected'][m.UPDATE_PATH])
+        self.assertEqual(policy['after'], after)
+        self.assertEqual((policy['source'], policy['tree'], policy['release']),
+                         (m.UPDATE_SOURCE, m.UPDATE_TREE, RELEASE))
+        self.assertEqual(policy['operation'], m.UPDATE_OPERATION)
+        self.assertEqual(m.sha(base64.b64decode(files[m.UPDATE_PATH])), after['sha256'])
+        self.assertEqual(set(previous['expected']), set(m.ADDITIONS) | {m.ENTRY})
+        self.assertNotIn(m.ENTRY, files)
+        self.assertNotIn('poisk-turov-old/index.php', files)
+
+    def test_another_served_change_missing_path_or_wrong_graph_is_rejected(self):
+        def foreign_asset(manifest, files):
+            path = 'poisk-turov-old/index.php'; files[path] = b'unreviewed fallback rewrite'
+            row = next(row for row in manifest['files']['added'] if row['path'] == path)
+            row['served'] = {'size': len(files[path]), 'mode': '0644', 'sha256': m.sha(files[path])}
+        def missing_asset(manifest, files):
+            row = manifest['files']['added'].pop(0); del files[row['path']]
+        def changed_entry(manifest, files):
+            files[m.ENTRY] = b'unreviewed active entry rewrite'
+            manifest['files']['replaced'][0]['served'] = {
+                'size': len(files[m.ENTRY]), 'mode': '0644', 'sha256': m.sha(files[m.ENTRY])}
+        for change in [foreign_asset, missing_asset, changed_entry,
+                       lambda value, files: value['candidate'].update(sha=m.SOURCE),
+                       lambda value, files: value['candidate'].update(tree_sha='0'*40),
+                       lambda value, files: value['profile'].update(profile='review'),
+                       lambda value, files: files.update({'api-v2.php': b'not authorized'})]:
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.package(change)
+
+    def test_unreviewed_app_bytes_mode_or_predecessor_are_rejected(self):
+        def changed_app(manifest, files):
+            files[m.UPDATE_PATH] = b'other compiled app'
+            row = next(row for row in manifest['files']['added'] if row['path'] == m.UPDATE_PATH)
+            row['served'] = {'size': len(files[m.UPDATE_PATH]), 'mode': '0644', 'sha256': m.sha(files[m.UPDATE_PATH])}
+        def wrong_mode(manifest, files):
+            next(row for row in manifest['files']['added'] if row['path'] == m.UPDATE_PATH)['served']['mode'] = '0666'
+        for change in (changed_app, wrong_mode):
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.package(change)
+        for change in [lambda policy, files: policy.update(source='0'*40),
+                       lambda policy, files: policy.update(operation=m.OPERATION),
+                       lambda policy, files: policy['expected'][m.UPDATE_PATH].update(sha256='0'*64)]:
+            with self.subTest(previous_change=change), self.assertRaises(RuntimeError): self.package(previous_change=change)
+
+
+class UpdateParentEvidence(unittest.TestCase):
+    def metadata(self, path):
+        parent = m.UPDATE_PARENT
+        if path == '/actions/runs/'+parent['run_id']:
+            return {'id': int(parent['run_id']), 'head_sha': parent['control_source_sha'], 'head_branch': 'main',
+                    'path': m.WORKFLOW, 'event': 'issue_comment', 'run_attempt': 1, 'status': 'completed',
+                    'conclusion': 'success', 'actor': {'login': 'pyatkoff'}, 'triggering_actor': {'login': 'pyatkoff'}}
+        if '/attempts/1/jobs?' in path:
+            return {'total_count': 1, 'jobs': [{'id': parent['job_id'], 'run_id': int(parent['run_id']),
+                    'name': 'public-install', 'status': 'completed', 'conclusion': 'success', 'steps': [
+                        {'name': 'Run python3 scripts/deploy/search3_public_install.py continue',
+                         'status': 'completed', 'conclusion': 'success'}]}]}
+        if path == '/actions/artifacts/'+str(parent['artifact_id']):
+            return {'id': parent['artifact_id'], 'name': 'search3-public-install-'+parent['run_id']+'-1',
+                    'expired': False, 'workflow_run': {'id': int(parent['run_id'])}, 'digest': 'sha256:'+parent['artifact_sha256']}
+        if '/issues/4709/comments?' in path:
+            owner = {'user': {'id': 226193297}, 'author_association': 'OWNER'}
+            tokens = [str(parent[key]) for key in ('run_id', 'control_source_sha', 'command_comment_id', 'job_id',
+                      'artifact_id', 'artifact_sha256', 'receipt_sha256', 'snapshot_manifest_sha256')]
+            return [owner | {'id': parent['command_comment_id'],
+                             'body': f'{m.CONTINUATION_PREFIX} {parent["control_source_sha"]} {m.CONTINUATION_OPERATION}'},
+                    owner | {'id': parent['terminal_comment_id'], 'body': ' '.join(tokens+['installed_verified', 'NO_REPLAY'])}]
+        raise AssertionError('Unexpected predecessor dependency: '+path)
+
+    def verify(self, change=None, metadata=None, extra=False):
+        raw, digest = update_parent_archive(change, extra)
+        parent = m.UPDATE_PARENT | {'artifact_sha256': m.sha(raw), 'receipt_sha256': digest}
+        old_raw, old_digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', old_digest): previous, _ = m.package(old_raw, continuation=True)
+        def api(path):
+            value = self.metadata(path)
+            return metadata(path, value) if metadata else value
+        with patch.object(m, 'UPDATE_PARENT', parent), patch.object(m, 'api', side_effect=api):
+            return m.update_parent_evidence(raw, previous)
+
+    def test_known_successful_predecessor_receipt_is_accepted(self):
+        self.assertEqual(self.verify(), update_parent_result())
+
+    def test_failed_unknown_or_mutated_predecessor_never_authorizes_update(self):
+        for change in [lambda v: v.update(status='unknown_no_replay'), lambda v: v.update(phase='remote'),
+                       lambda v: v.update(ssh_started=False), lambda v: v.update(read_only=True),
+                       lambda v: v.update(run_id=m.CONTINUATION_PARENT['run_id']),
+                       lambda v: v.update(extra='unreviewed'),
+                       lambda v: v['remote'].update(status='blocked_no_replay'),
+                       lambda v: v['remote'].update(phase='entry'),
+                       lambda v: v['remote'].update(source_sha=m.UPDATE_SOURCE),
+                       lambda v: v['remote'].update(manifest_sha256=m.UPDATE_MANIFEST_SHA),
+                       lambda v: v['remote'].update(written_files=[m.ENTRY]),
+                       lambda v: v['remote'].update(rollback_files=[m.ENTRY]),
+                       lambda v: v['remote'].update(snapshot_verified=False),
+                       lambda v: v['remote'].update(restore_drill_verified=False),
+                       lambda v: v['remote'].update(snapshot_manifest_sha256='0'*64),
+                       lambda v: v['remote'].update(parent_namespace_absent=False),
+                       lambda v: v['remote']['private_checks'].update(public_config=False),
+                       lambda v: v['remote'].update(supplier_calls=1),
+                       lambda v: v['remote'].update(database_writes='unknown'),
+                       lambda v: v['remote'].update(lead_calls=False)]:
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.verify(change)
+        with self.assertRaises(RuntimeError): self.verify(extra=True)
+        with patch.object(m, 'api') as api, self.assertRaises(RuntimeError): m.update_parent_evidence(b'wrong ZIP', {})
+        api.assert_not_called()
+
+    def test_parent_run_job_artifact_and_owner_acceptance_are_indivisible(self):
+        run = '/actions/runs/'+m.UPDATE_PARENT['run_id']
+        for part, change in [(run, lambda v: v.update(head_sha='f'*40)),
+                             (run, lambda v: v.update(run_attempt=2)),
+                             (run, lambda v: v.update(run_attempt=True)),
+                             (run, lambda v: v.update(conclusion='failure')),
+                             (run, lambda v: v.update(status='in_progress')),
+                             (run, lambda v: v.update(triggering_actor={'login': 'other'})),
+                             ('/jobs?', lambda v: v['jobs'][0].update(id=2)),
+                             ('/jobs?', lambda v: v['jobs'][0].update(run_id=2)),
+                             ('/jobs?', lambda v: v['jobs'][0]['steps'][0].update(conclusion='skipped')),
+                             ('/actions/artifacts/', lambda v: v.update(expired=True)),
+                             ('/actions/artifacts/', lambda v: v.update(digest='sha256:'+'0'*64)),
+                             ('/actions/artifacts/', lambda v: v['workflow_run'].update(id=2)),
+                             ('/comments?', lambda v: v[-1].update(author_association='MEMBER')),
+                             ('/comments?', lambda v: v[-1].update(body='unaccepted')),
+                             ('/comments?', lambda v: v.append(copy.deepcopy(v[0]) | {'id': 999}))]:
+            def mutation(path, value):
+                if path == part if part == run else part in path: change(value)
+                return value
+            with self.subTest(part=part, change=change), self.assertRaises(RuntimeError): self.verify(metadata=mutation)
 
 
 class PreflightEvidence(unittest.TestCase):
@@ -1312,6 +1709,409 @@ class RollbackTransaction(unittest.TestCase):
             self.assertTrue(all((f.root/p).is_file() for p in m.ADDITIONS)); self.assertEqual(self.original_records(f), before)
 
 
+class UpdateTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def installed(self):
+        fixture = Transaction(); fixture.setUp(); fixture.use_continuation()
+        fixture.parent_identity = update_parent_identity()
+        fixture.identity = {key: value for key, value in fixture.parent_identity.items() if key != 'operation_id'}
+        try:
+            fixture.accepted = fixture.execute()
+            self.assertEqual(fixture.accepted['status'], 'installed_verified')
+            before = copy.deepcopy(fixture.policy['expected'][m.UPDATE_PATH])
+            data = b'compiled: contact Apply Back resume keeps the selected flight'
+            after = {'state': 'present', 'sha256': m.sha(data), 'size': len(data), 'mode': '0644'}
+            _, parent_digest = update_parent_archive(lambda value: value.update(remote=fixture.accepted))
+            parent = m.UPDATE_PARENT | {'snapshot_manifest_sha256': fixture.accepted['snapshot_manifest_sha256'],
+                                        'receipt_sha256': parent_digest}
+            fixture.update_policy = {
+                'operation': m.UPDATE_OPERATION, 'source': m.UPDATE_SOURCE, 'tree': m.UPDATE_TREE,
+                'release': RELEASE, 'manifest': m.UPDATE_MANIFEST_SHA, 'path': m.UPDATE_PATH,
+                'before': before, 'after': after, 'parent': parent, 'previous': fixture.policy}
+            fixture.update_files = {m.UPDATE_PATH: base64.b64encode(data).decode()}
+            fixture.update_private = fixture.private.parent/m.UPDATE_OPERATION
+            with patch.object(m, 'UPDATE_PARENT', parent), patch.object(m, 'UPDATE_BEFORE', before), \
+                 patch.object(m, 'UPDATE_AFTER', after), patch.object(m, 'UPDATE_RELEASE', RELEASE):
+                yield fixture
+        finally: fixture.tearDown()
+
+    def stamp(self, path):
+        value = path.stat()
+        return (value.st_dev, value.st_ino, value.st_mode, value.st_nlink, value.st_size,
+                value.st_mtime_ns, value.st_uid, value.st_gid)
+
+    def public_files(self, fixture):
+        paths = set(fixture.policy['expected']) | set(fixture.policy['protected']) | {'config.php'}
+        return {path: (self.stamp(fixture.root/path), (fixture.root/path).read_bytes()) for path in paths}
+
+    def run_program(self, fixture, program, change=None):
+        self.assertIn("home=os.environ.get('HOME','')", program)
+        program = program.replace("home=os.environ.get('HOME','')", "home=os.environ['SEARCH3_FIXTURE_HOME']")
+        program = program.replace("os.environ.get('HOME','')+'/www/anytoour.ru'",
+                                  "os.environ['SEARCH3_FIXTURE_HOME']+'/www/anytoour.ru'", 1)
+        if change: program = change(program)
+        run = subprocess.run([sys.executable, '-I', '-S', '-B', '-'], input=program.encode(), capture_output=True,
+                             cwd=fixture.home, env=os.environ | {'SEARCH3_FIXTURE_HOME': str(fixture.home)}, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr.decode())
+        self.assertNotIn(fixture.secret, run.stdout); self.assertNotIn(str(fixture.home).encode(), run.stdout)
+        return json.loads(run.stdout)
+
+    def execute(self, fixture, change=None):
+        program = m.update_remote_program(fixture.update_policy, fixture.update_files, UPDATE_IDENTITY,
+                                          fixture.parent_identity, fixture.accepted)
+        value = self.run_program(fixture, program, change)
+        m.valid_update_result(UPDATE_IDENTITY, fixture.update_policy, value)
+        return value
+
+    def rollback(self, fixture, change=None):
+        original = UPDATE_IDENTITY
+        program = m.update_rollback_remote_program(fixture.update_policy, UPDATE_ROLLBACK_IDENTITY,
+            original, fixture.update_accepted, fixture.parent_identity, fixture.accepted)
+        value = self.run_program(fixture, program, change)
+        m.valid_update_rollback_result(UPDATE_ROLLBACK_IDENTITY, original, fixture.update_accepted,
+                                       fixture.update_policy, value)
+        return value
+
+    def test_one_asset_roundtrip_preserves_original_inode_and_full_legacy_rollback(self):
+        with self.installed() as f:
+            original_files = self.public_files(f)
+            parent_records = RollbackTransaction().original_records(f)
+            f.update_accepted = self.execute(f)
+            self.assertEqual(f.update_accepted['status'], 'updated_verified')
+            self.assertEqual(f.update_accepted['written_files'], [m.UPDATE_PATH])
+            self.assertEqual(f.update_accepted['rollback_files'], [])
+            self.assertTrue(f.update_accepted['snapshot_verified'])
+            self.assertTrue(f.update_accepted['restore_drill_verified'])
+            current = self.public_files(f)
+            self.assertEqual({key for key in current if current[key] != original_files[key]}, {m.UPDATE_PATH})
+            self.assertEqual(self.stamp(f.update_private/'stage/app'), original_files[m.UPDATE_PATH][0])
+            self.assertEqual((f.update_private/'stage/app').read_bytes(), original_files[m.UPDATE_PATH][1])
+            self.assertEqual(RollbackTransaction().original_records(f), parent_records)
+            for key in ('supplier_calls', 'database_reads', 'database_writes', 'lead_calls', 'booking_calls', 'application_calls'):
+                self.assertIs(type(f.update_accepted[key]), int); self.assertEqual(f.update_accepted[key], 0)
+            update_records = {str(p.relative_to(f.update_private)): p.read_bytes()
+                              for p in f.update_private.rglob('*.json')}
+            restored = self.rollback(f)
+            self.assertEqual(restored['status'], 'update_rolled_back_verified')
+            self.assertEqual(restored['rollback_files'], [m.UPDATE_PATH])
+            self.assertEqual(self.public_files(f), original_files)
+            self.assertEqual(RollbackTransaction().original_records(f), parent_records)
+            self.assertEqual({str(p.relative_to(f.update_private)): p.read_bytes()
+                              for p in f.update_private.rglob('*.json')}, update_records)
+            # Equal copied bytes are insufficient: the unchanged old installer
+            # must accept its original inode/mode/links/mtime/owner intent again.
+            self.assertEqual(RollbackTransaction().execute(f)['status'], 'rolled_back_verified')
+            f.restored()
+            self.assertEqual(RollbackTransaction().original_records(f), parent_records)
+
+    def test_update_replay_and_unknown_reservation_preserve_all_existing_records(self):
+        for unknown in (False, True):
+            with self.subTest(unknown=unknown), self.installed() as f:
+                if unknown:
+                    f.update_private.mkdir(mode=0o700)
+                    (f.update_private/'reservation.json').write_bytes(b'unknown prior update; do not reuse')
+                else:
+                    self.assertEqual(self.execute(f)['status'], 'updated_verified')
+                before = f.filesystem_snapshot()
+                value = self.execute(f)
+                self.assertEqual(value['status'], 'blocked_no_replay')
+                self.assertEqual(value['written_files'], [])
+                self.assertEqual(f.filesystem_snapshot(), before)
+
+    def test_public_private_and_parent_record_drift_blocks_before_update_reservation(self):
+        for kind in ('bytes', 'inode', 'mode', 'mtime', 'hardlink', 'fallback', 'entry', 'dependency', 'private', 'parent_intent', 'parent_result'):
+            with self.subTest(kind=kind), self.installed() as f:
+                target = f.root/m.UPDATE_PATH
+                if kind == 'bytes': target.write_bytes(b'foreign app')
+                elif kind == 'inode':
+                    previous = target.stat(); foreign = target.with_name(target.name+'.foreign')
+                    foreign.write_bytes(target.read_bytes()); foreign.chmod(0o644)
+                    os.utime(foreign, ns=(previous.st_atime_ns, previous.st_mtime_ns)); os.replace(foreign, target)
+                    self.assertNotEqual(target.stat().st_ino, previous.st_ino)
+                elif kind == 'mode': target.chmod(0o600)
+                elif kind == 'mtime':
+                    previous = target.stat(); os.utime(target, ns=(previous.st_atime_ns, previous.st_mtime_ns+1000000))
+                elif kind == 'hardlink': os.link(target, f.home/'foreign-app-link')
+                elif kind == 'fallback': (f.root/'poisk-turov-old/index.php').write_bytes(b'foreign old search')
+                elif kind == 'entry': (f.root/m.ENTRY).write_bytes(b'foreign public entry')
+                elif kind == 'dependency': (f.root/'data/db-v1.php').write_bytes(b'foreign dependency')
+                elif kind == 'private': (f.root/'config.php').write_bytes(b'foreign private settings')
+                elif kind == 'parent_intent': (f.private/f'intent-{m.ADDITIONS.index(m.UPDATE_PATH)}.json').write_bytes(b'{}')
+                elif kind == 'parent_result': (f.private/'result.json').write_bytes(b'{}')
+                before = f.filesystem_snapshot(); value = self.execute(f)
+                self.assertEqual(value['status'], 'blocked_no_replay')
+                self.assertEqual(value['written_files'], [])
+                self.assertFalse(f.update_private.exists())
+                self.assertEqual(f.filesystem_snapshot(), before)
+
+    def test_update_rollback_replay_is_not_a_second_restoration(self):
+        with self.installed() as f:
+            f.update_accepted = self.execute(f)
+            self.assertEqual(self.rollback(f)['status'], 'update_rolled_back_verified')
+            before = f.filesystem_snapshot()
+            repeated = self.rollback(f)
+            self.assertEqual(repeated['status'], 'blocked_no_replay')
+            self.assertEqual(repeated['rollback_files'], [])
+            self.assertEqual(f.filesystem_snapshot(), before)
+
+    def test_changed_updated_asset_or_private_proof_blocks_rollback_before_reservation(self):
+        for kind in ('bytes', 'inode', 'mtime', 'private_result', 'original_app', 'dependency', 'reserved'):
+            with self.subTest(kind=kind), self.installed() as f:
+                f.update_accepted = self.execute(f)
+                self.assertEqual(f.update_accepted['status'], 'updated_verified')
+                target = f.root/m.UPDATE_PATH
+                if kind == 'bytes': target.write_bytes(b'newer foreign application')
+                elif kind == 'inode':
+                    previous = target.stat(); foreign = target.with_name(target.name+'.foreign')
+                    foreign.write_bytes(target.read_bytes()); foreign.chmod(0o644)
+                    os.utime(foreign, ns=(previous.st_atime_ns, previous.st_mtime_ns)); os.replace(foreign, target)
+                elif kind == 'mtime':
+                    previous = target.stat(); os.utime(target, ns=(previous.st_atime_ns, previous.st_mtime_ns+1000000))
+                elif kind == 'private_result': (f.update_private/'result.json').write_bytes(b'{}')
+                elif kind == 'original_app': (f.update_private/'stage/app').write_bytes(b'wrong predecessor app')
+                elif kind == 'dependency': (f.root/'config.php').write_bytes(b'new private settings')
+                elif kind == 'reserved':
+                    reserved = f.private.parent/m.UPDATE_ROLLBACK_OPERATION; reserved.mkdir(mode=0o700)
+                    (reserved/'reservation.json').write_bytes(b'unknown rollback attempt')
+                before = f.filesystem_snapshot(); value = self.rollback(f)
+                self.assertEqual(value['status'], 'blocked_no_replay')
+                self.assertEqual(value['rollback_files'], [])
+                self.assertEqual(f.filesystem_snapshot(), before)
+                if kind != 'reserved': self.assertFalse((f.private.parent/m.UPDATE_ROLLBACK_OPERATION).exists())
+
+    def test_snapshot_and_restore_drill_fail_before_any_public_write(self):
+        for path, reason in (('snapshot/app', 'snapshot_invalid'), ('drill/app', 'restore_drill_failed')):
+            with self.subTest(path=path), self.installed() as f:
+                before = self.public_files(f); records = RollbackTransaction().original_records(f)
+                def corrupt(program):
+                    line = f" require(private.read('{path}')[0]==UPDATE_POLICY['before']"
+                    self.assertIn(line, program)
+                    injection = f" with private.parent('{path}') as (fd,name):\n  f=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(f,b'corrupt');os.close(f)\n"
+                    return program.replace(line, injection+line, 1)
+                value = self.execute(f, corrupt)
+                self.assertEqual(value['status'], 'rolled_back_no_replay')
+                self.assertEqual(value['reason'], reason)
+                self.assertEqual(value['written_files'], []); self.assertEqual(value['rollback_files'], [])
+                self.assertFalse(value['restore_drill_verified'])
+                self.assertEqual(self.public_files(f), before)
+                self.assertEqual(RollbackTransaction().original_records(f), records)
+                consumed = f.filesystem_snapshot()
+                self.assertEqual(self.execute(f)['status'], 'blocked_no_replay')
+                self.assertEqual(f.filesystem_snapshot(), consumed)
+
+    def fail_after_exchange(self, program):
+        line = ' candidate=parent_candidate(retained,True)'
+        self.assertIn(line, program)
+        return program.replace(line, " raise RuntimeError('injected_after_exchange')\n"+line, 1)
+
+    def test_failure_after_activation_returns_the_original_inode_and_legacy_rollback(self):
+        with self.installed() as f:
+            before = self.public_files(f); records = RollbackTransaction().original_records(f)
+            value = self.execute(f, self.fail_after_exchange)
+            self.assertEqual(value['status'], 'rolled_back_no_replay')
+            self.assertEqual(value['written_files'], [m.UPDATE_PATH])
+            self.assertEqual(value['rollback_files'], [m.UPDATE_PATH])
+            self.assertEqual(self.public_files(f), before)
+            self.assertEqual(RollbackTransaction().original_records(f), records)
+            self.assertEqual(RollbackTransaction().execute(f)['status'], 'rolled_back_verified')
+            f.restored()
+
+    def test_foreign_app_at_exchange_is_preserved_and_never_reported_as_verified(self):
+        for kind in ('file', 'same_bytes_inode', 'symlink'):
+            with self.subTest(kind=kind), self.installed() as f:
+                before = self.public_files(f); records = RollbackTransaction().original_records(f)
+                def race(program):
+                    line = "  exchange(src,name,dst,target);switched=True;result['written_files']=[path];sync(src);sync(dst)"
+                    self.assertIn(line, program)
+                    if kind == 'symlink':
+                        injection = "  os.symlink('foreign-app',target+'.race',dir_fd=dst)\n"
+                    else:
+                        raw = "public.read(path,True)[2]" if kind == 'same_bytes_inode' else "b'FOREIGN APP'"
+                        injection = "  race_stat=os.stat(target,dir_fd=dst,follow_symlinks=False)\n  race_bytes="+raw+"\n  fd=os.open(target+'.race',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644,dir_fd=dst);os.write(fd,race_bytes);os.close(fd)\n  os.utime(target+'.race',ns=(race_stat.st_atime_ns,race_stat.st_mtime_ns),dir_fd=dst,follow_symlinks=False)\n"
+                    injection += "  os.rename(target+'.race',target,src_dir_fd=dst,dst_dir_fd=dst)\n"
+                    return program.replace(line, injection+line, 1)
+                value = self.execute(f, race)
+                self.assertEqual(value['status'], 'unknown_no_replay')
+                self.assertEqual(value['rollback_files'], [])
+                target = f.root/m.UPDATE_PATH
+                if kind == 'symlink':
+                    self.assertTrue(target.is_symlink()); self.assertEqual(os.readlink(target), 'foreign-app')
+                else:
+                    self.assertEqual(target.read_bytes(), before[m.UPDATE_PATH][1] if kind == 'same_bytes_inode' else b'FOREIGN APP')
+                    if kind == 'same_bytes_inode': self.assertNotEqual(target.stat().st_ino, before[m.UPDATE_PATH][0][1])
+                for path, original in before.items():
+                    if path != m.UPDATE_PATH: self.assertEqual((self.stamp(f.root/path), (f.root/path).read_bytes()), original)
+                self.assertEqual(RollbackTransaction().original_records(f), records)
+
+    def test_foreign_app_during_automatic_or_requested_capture_survives(self):
+        for automatic in (True, False):
+            for kind in ('file', 'symlink'):
+                with self.subTest(automatic=automatic, kind=kind), self.installed() as f:
+                    records = RollbackTransaction().original_records(f)
+                    original_app = (self.stamp(f.root/m.UPDATE_PATH), (f.root/m.UPDATE_PATH).read_bytes())
+                    if not automatic:
+                        f.update_accepted = self.execute(f)
+                        self.assertEqual(f.update_accepted['status'], 'updated_verified')
+                    def race(program):
+                        if automatic: program = self.fail_after_exchange(program)
+                        line = '\n   move_noreplace(src,name,dst,target);moved=True;sync(src);sync(dst)'
+                        self.assertIn(line, program)
+                        if kind == 'symlink':
+                            injection = "   os.symlink('foreign-app',name+'.race',dir_fd=src)\n"
+                        else:
+                            injection = "   fd=os.open(name+'.race',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644,dir_fd=src);os.write(fd,b'FOREIGN APP');os.close(fd)\n"
+                        injection += "   os.rename(name+'.race',name,src_dir_fd=src,dst_dir_fd=src)\n"
+                        return program.replace(line, '\n'+injection+line[1:], 1)
+                    value = self.execute(f, race) if automatic else self.rollback(f, race)
+                    self.assertEqual(value['status'], 'unknown_no_replay')
+                    self.assertEqual(value['rollback_files'], [])
+                    target = f.root/m.UPDATE_PATH
+                    if kind == 'symlink':
+                        self.assertTrue(target.is_symlink()); self.assertEqual(os.readlink(target), 'foreign-app')
+                    else: self.assertEqual(target.read_bytes(), b'FOREIGN APP')
+                    self.assertEqual(RollbackTransaction().original_records(f), records)
+                    self.assertEqual((self.stamp(f.update_private/'stage/app'), (f.update_private/'stage/app').read_bytes()), original_app)
+
+    def test_newer_app_between_capture_and_restore_is_not_overwritten(self):
+        with self.installed() as f:
+            original = (self.stamp(f.root/m.UPDATE_PATH), (f.root/m.UPDATE_PATH).read_bytes())
+            records = RollbackTransaction().original_records(f)
+            f.update_accepted = self.execute(f)
+            def race(program):
+                line = " restore_capture(public,updated,path,'stage/app');result['rollback_files']=[path]"
+                self.assertIn(line, program)
+                return program.replace(line, " public.create(path,b'NEWER FOREIGN APP',0o644)\n"+line, 1)
+            value = self.rollback(f, race)
+            self.assertEqual(value['status'], 'unknown_no_replay'); self.assertEqual(value['rollback_files'], [])
+            self.assertEqual((f.root/m.UPDATE_PATH).read_bytes(), b'NEWER FOREIGN APP')
+            self.assertEqual((self.stamp(f.update_private/'stage/app'), (f.update_private/'stage/app').read_bytes()), original)
+            self.assertEqual(RollbackTransaction().original_records(f), records)
+
+    def test_unreviewed_generator_inputs_are_rejected_before_remote_execution(self):
+        with self.installed() as f:
+            before = f.filesystem_snapshot()
+            for key, value in (('operation', m.CONTINUATION_OPERATION), ('source', m.SOURCE),
+                               ('tree', '0'*40), ('release', None), ('manifest', '0'*64),
+                               ('path', m.ENTRY), ('parent', m.UPDATE_PARENT | {'run_id': '1'})):
+                policy = copy.deepcopy(f.update_policy); policy[key] = value
+                with self.subTest(key=key), self.assertRaises(RuntimeError):
+                    m.update_remote_program(policy, f.update_files, UPDATE_IDENTITY, f.parent_identity, f.accepted)
+            for files in ({}, f.update_files | {m.ENTRY: base64.b64encode(b'changed').decode()},
+                          {m.UPDATE_PATH: base64.b64encode(b'unreviewed app').decode()}):
+                with self.subTest(files=tuple(files)), self.assertRaises(RuntimeError):
+                    m.update_remote_program(f.update_policy, files, UPDATE_IDENTITY, f.parent_identity, f.accepted)
+            for original, accepted in (
+                (f.parent_identity | {'run_id': m.CONTINUATION_PARENT['run_id']}, f.accepted),
+                (f.parent_identity, f.accepted | {'status': 'unknown_no_replay'}),
+                (f.parent_identity, f.accepted | {'snapshot_manifest_sha256': '0'*64})):
+                with self.assertRaises(RuntimeError):
+                    m.update_remote_program(f.update_policy, f.update_files, UPDATE_IDENTITY, original, accepted)
+            self.assertEqual(f.filesystem_snapshot(), before)
+            self.assertFalse(f.update_private.exists())
+
+    def test_success_receipts_require_exact_identity_proofs_and_single_asset_scope(self):
+        with self.installed() as f:
+            f.update_accepted = self.execute(f)
+            restored = self.rollback(f)
+            for rollback, good in ((False, f.update_accepted), (True, restored)):
+                verify = (lambda value: m.valid_update_rollback_result(UPDATE_ROLLBACK_IDENTITY, UPDATE_IDENTITY,
+                          f.update_accepted, f.update_policy, value)) if rollback else \
+                         (lambda value: m.valid_update_result(UPDATE_IDENTITY, f.update_policy, value))
+                self.assertTrue(verify(good))
+                changes = [('operation_id', m.CONTINUATION_OPERATION), ('source_sha', m.SOURCE),
+                           ('manifest_sha256', '0'*64), ('control_source_sha', '0'*40),
+                           ('command_comment_id', True), ('phase', 'preflight'), ('snapshot_manifest_sha256', None),
+                           ('parent_install', f.parent_identity | {'run_id': '1'}),
+                           ('rollback_files', [m.ENTRY]), ('unreviewed_field', 'not an allowed diagnostic')]
+                changes += [(key, value) for key in ('supplier_calls', 'database_reads', 'database_writes',
+                              'lead_calls', 'booking_calls', 'application_calls') for value in (1, False)]
+                changes += [(key, False) for key, value in good.items() if type(value) is bool]
+                changes += [('original_update', UPDATE_IDENTITY | {'run_id': '1'})] if rollback else [
+                    ('written_files', [m.UPDATE_PATH, m.ENTRY]), ('parent_receipt_sha256', '0'*64)]
+                for key, value in changes:
+                    invalid = copy.deepcopy(good); invalid[key] = value
+                    with self.subTest(rollback=rollback, key=key, value=value), self.assertRaises(RuntimeError): verify(invalid)
+                invalid = copy.deepcopy(good); del invalid['snapshot_verified']
+                with self.assertRaises(RuntimeError): verify(invalid)
+
+    def test_client_receipt_restores_without_current_source_gates_or_parent_downloads(self):
+        with self.installed() as f:
+            f.update_accepted = self.execute(f)
+            runner = f.base/'forward-runner'; runner.mkdir(); event_path = runner/'event.json'
+            event_path.write_text(json.dumps(update_event()))
+            env = environment() | {'GITHUB_RUN_ID': UPDATE_IDENTITY['run_id'], 'RUNNER_TEMP': str(runner),
+                'GITHUB_EVENT_PATH': str(event_path), 'PREVIEW_HOST': 'example.invalid',
+                'PREVIEW_USER': 'fixture', 'PREVIEW_KEY': 'PRIVATE KEY fixture'}
+            with patch.dict(os.environ, env), patch.object(m, 'update_admission') as admission, \
+                 patch.object(m, 'update_final_heads'), patch.object(m, 'download', side_effect=[b'prior', b'parent', b'new']) as download, \
+                 patch.object(m, 'package', return_value=(f.policy, f.files)), \
+                 patch.object(m, 'update_parent_evidence', return_value=f.accepted), \
+                 patch.object(m, 'update_package', return_value=(f.update_policy, f.update_files)), \
+                 patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(f.update_accepted).encode()]), \
+                 patch('builtins.print'):
+                m.update()
+            self.assertEqual(admission.call_count, 2)
+            self.assertEqual([call.args[0] for call in download.call_args_list],
+                             [m.ARTIFACT, m.UPDATE_PARENT['artifact_id'], m.UPDATE_ARTIFACT])
+            evidence_path = runner/'search3-public-install/evidence.json'
+            good = json.loads(evidence_path.read_text())
+            self.assertEqual(good['status'], 'updated_verified')
+            self.assertEqual(good['previous_public'], f.policy['expected'])
+            self.assertEqual(good['parent_result'], f.accepted)
+            self.assertFalse((evidence_path.parent/'key').exists()); self.assertFalse((evidence_path.parent/'known').exists())
+            def archive(value, extra=False):
+                stream = io.BytesIO()
+                with zipfile.ZipFile(stream, 'w') as packet:
+                    packet.writestr('evidence.json', json.dumps(value, sort_keys=True)+'\n')
+                    if extra: packet.writestr('unreviewed.json', '{}')
+                return stream.getvalue()
+            raw = archive(good)
+            # Recovery retains the actual installed parent proof and all public
+            # rows; no earlier artifact, source check, signer, or release is used.
+            with patch.object(m, 'UPDATE_RELEASE', None), patch.object(m, 'RELEASE', None), \
+                 patch.object(m, 'api', side_effect=AssertionError('unrelated API dependency')):
+                policy, accepted, parent = m.update_source_evidence(raw, UPDATE_IDENTITY)
+                self.assertEqual(policy['release'], RELEASE)
+                self.assertEqual(policy['previous']['expected'], f.policy['expected'])
+                self.assertEqual(accepted, f.update_accepted); self.assertEqual(parent, f.accepted)
+                for change in [lambda v: v.update(status='unknown_no_replay'),
+                               lambda v: v.update(run_id=m.UPDATE_PARENT['run_id']),
+                               lambda v: v.update(release_sha=None),
+                               lambda v: v.update(unreviewed_field=True),
+                               lambda v: v['parent_result'].update(snapshot_manifest_sha256='0'*64),
+                               lambda v: v['parent_result'].update(private_checks={}),
+                               lambda v: v['previous_public'].pop(m.ENTRY),
+                               lambda v: v['previous_public'][m.UPDATE_PATH].update(sha256='0'*64),
+                               lambda v: v['remote'].update(status='unknown_no_replay'),
+                               lambda v: v['remote'].update(parent_receipt_sha256='0'*64)]:
+                    invalid = copy.deepcopy(good); change(invalid)
+                    with self.subTest(change=change), self.assertRaises(RuntimeError):
+                        m.update_source_evidence(archive(invalid), UPDATE_IDENTITY)
+                with self.assertRaises(RuntimeError): m.update_source_evidence(archive(good, extra=True), UPDATE_IDENTITY)
+            restored = self.rollback(f)
+            recovery = f.base/'rollback-runner'; recovery.mkdir(); event_path = recovery/'event.json'
+            event_path.write_text(json.dumps(update_rollback_event()))
+            env.update(GITHUB_SHA=UPDATE_ROLLBACK_IDENTITY['control_source_sha'],
+                       GITHUB_RUN_ID=UPDATE_ROLLBACK_IDENTITY['run_id'], RUNNER_TEMP=str(recovery), GITHUB_EVENT_PATH=str(event_path))
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ, env))
+                stack.enter_context(patch.object(m, 'UPDATE_RELEASE', None))
+                stack.enter_context(patch.object(m, 'RELEASE', None))
+                stack.enter_context(patch.object(m, 'update_rollback_admission', return_value=(UPDATE_IDENTITY, {'id': 333, 'digest': 'sha256:'+m.sha(raw)})))
+                download = stack.enter_context(patch.object(m, 'download', return_value=raw))
+                stack.enter_context(patch.object(m, 'update_rollback_commands', return_value=UPDATE_IDENTITY))
+                stack.enter_context(patch.object(m, 'rollback_main'))
+                for name in ('api', 'package', 'signing_evidence', 'update_parent_evidence', 'update_admission', 'update_final_heads'):
+                    stack.enter_context(patch.object(m, name, side_effect=AssertionError('unnecessary recovery dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(restored).encode()]))
+                stack.enter_context(patch('builtins.print'))
+                m.update(rollback=True)
+                download.assert_called_once_with(333, m.sha(raw))
+            evidence_path = recovery/'search3-public-install/evidence.json'
+            self.assertEqual(json.loads(evidence_path.read_text())['status'], 'update_rolled_back_verified')
+            self.assertFalse((evidence_path.parent/'key').exists()); self.assertFalse((evidence_path.parent/'known').exists())
+
+
 class Receipt(unittest.TestCase):
     def test_workflow_stays_existing_locked_carrier(self):
         value=(ROOT/m.WORKFLOW).read_text()
@@ -1320,6 +2120,11 @@ class Receipt(unittest.TestCase):
         for text in ['deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1',"github.event.issue.number == 4709",'ANYTOOUR_DEPLOY_SSH_KEY','tests/anytoour_production_deploy_guard_test.py']: self.assertIn(text,block)
         self.assertIn("format('/rollback-search3-public {0} ', github.sha)", block)
         self.assertIn("format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha)", block)
+        self.assertIn("format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha)", block)
+        self.assertIn("format('/rollback-search3-public-update {0} ', github.sha)", block)
+        self.assertIn("' public-search3-flight-return-rollback-20261121-v1'", block)
+        self.assertIn("&& 'update-rollback' ||", block)
+        self.assertIn("&& 'update' ||", block)
         self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)
