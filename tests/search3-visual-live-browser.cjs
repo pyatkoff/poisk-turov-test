@@ -1527,6 +1527,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   const t=fixture(),faults=[],unexpected=[],starts=[],anexStarts=[],ctx=await browser.newContext({viewport:{width,height:width===1280?720:932}}),p=await ctx.newPage();t.state.hotelCatalogue=hotelCatalogue();p.setDefaultTimeout(10000);p.on('pageerror',e=>faults.push(e.message));
   try{
    await p.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),u=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
     try{

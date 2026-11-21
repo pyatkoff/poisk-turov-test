@@ -162,10 +162,21 @@ add('star removed in drawer',{type:'click',action:'star',panel:true,filterDraft:
 add('recovery missing choice',{type:'click',action:'recover-filters',dataset:{value:'99'}});
 add('no draft filter',{type:'click',action:'remove-draft-filter'});
 add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setup:(c,t)=>t.closest=()=>null});
+const headerMenuClose="b.closest('.at-global-header__mobile')?.removeAttribute('open');";
+function projectHeaderMenuClose(result,name){
+ assert.deepEqual(result.trace,[['queueMicrotask'],['removeAttribute','.at-global-header__mobile','open'],['editSearch']],name+' closes its own menu before the existing search edit');
+ assert.equal(result.dom.length,2,name+' adds only the canonical menu node');
+ assert.deepEqual(result.dom[1],['.at-global-header__mobile',{value:'query',checked:false,hidden:false,textContent:'',scrollTop:37}],name+' leaves every other menu property unchanged');
+ result.trace.splice(1,1);result.dom.splice(1,1);
+}
 // openHotel belonged to the retired inline result expansion. It never changed
 // connected markup. Project only that discarded field from each state snapshot;
 // all 153 retained actions, collaborator calls, DOM and ordering still compare.
 function records(source){return scenarios.map(s=>{const result=characterize(source,s);
+ // The canonical header adds exactly one native menu close to these two actions.
+ // Assert its target/order before projecting only that call and mock DOM node;
+ // the historical digest still covers every prior state, callback and control.
+ if(['click:top','click:edit-search'].includes(s.name)&&source.includes(headerMenuClose))projectHeaderMenuClose(result,s.name);
  // Explicit month navigation now resets its new month independently of focus.
  // Assert the exact added call and unchanged state, then project only that call
  // to retain the historical observations for every other dispatcher boundary.
@@ -208,6 +219,26 @@ if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[
 const BASELINE='b258cb0b417012c1bdf16932db1a6a7a0ccb46c21f33bc8c76bd681abe021874';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
+function verifyHeaderSearchActions(candidate){
+ for(const action of ['top','edit-search']){
+  const scenario=scenarios.find(s=>s.name==='click:'+action),inside=characterize(candidate,scenario);
+  projectHeaderMenuClose(inside,scenario.name);
+  const outside=characterize(candidate,{...scenario,setup:(c,t)=>{t.closest=selector=>selector==='[data-action]'?t:null;}});
+  assert.deepEqual(outside,inside,action+' outside the menu retains the complete original search-edit observation');
+  const disabled=characterize(candidate,{...scenario,disabled:true});
+  assert.deepEqual(disabled.trace,[],action+' disabled control cannot close the menu or edit the search');
+ }
+}
+verifyHeaderSearchActions(source);
+for(const [name,mutation] of [
+ ['removed close',source.replace(headerMenuClose,'')],
+ ['wrong ancestor',source.replace(headerMenuClose,headerMenuClose.replace('.at-global-header__mobile','details'))],
+ ['close after editing',source.replace(headerMenuClose+'editSearch();','editSearch();'+headerMenuClose)],
+ ['unguarded missing menu',source.replace(headerMenuClose,headerMenuClose.replace('?.removeAttribute','.removeAttribute'))]
+]){
+ assert.notEqual(mutation,source,'header mutation is applied: '+name);
+ assert.throws(()=>verifyHeaderSearchActions(mutation),undefined,'header regression rejected: '+name);
+}
 const initialGuestApply=characterize(source,scenarios.find(s=>s.name==='valid guest apply'));
 assert.deepEqual(initialGuestApply.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI'],['updateURL']],'current initial family Apply must persist its URL without a search or transport call');
 let retainedGuestSearch;
