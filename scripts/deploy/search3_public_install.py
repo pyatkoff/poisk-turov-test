@@ -28,6 +28,19 @@ REPO = 'pyatkoff/poisk-turov-test'
 WORKFLOW = '.github/workflows/search3-root-gateway-install.yml'
 PREFIX = '/install-search3-public'
 OPERATION = 'public-search3-20261120-v1'
+CONTINUATION_PREFIX = '/continue-search3-public'
+CONTINUATION_OPERATION = 'public-search3-20261121-after-44840666320-v1'
+# This one child can only continue the exact terminal pre-write failure below.
+# The consumed install/inspection commands and their private namespaces stay closed.
+CONTINUATION_PARENT = {
+    'operation_id': OPERATION,
+    'control_source_sha': '251585b63dab95988d9f635a2b1f1da6d61a4650',
+    'run_id': '44840666320', 'command_comment_id': 7053664048, 'job_id': 136647935738,
+    'artifact_id': 14680527168,
+    'artifact_sha256': '476cbe8ee8fd566b6abe35cd7d2697700f8888955022749a66e7bb2dd690b358',
+    'receipt_sha256': '99ea76313a2c18f50bf449f6f4396f9368f17ffe6245d334123df0b1e2687866',
+    'terminal_comment_id': 7053751668,
+}
 INSPECT_PREFIX = '/inspect-search3-public-install'
 INSPECT_OPERATION = 'public-search3-readiness-20261120-v1'
 ROLLBACK_PREFIX = '/rollback-search3-public'
@@ -187,6 +200,16 @@ CURRENT_NEXT_REVIEWED = {
 }
 INSTALL_PROTECTED = {**PREFLIGHT_ACCEPTED_PROTECTED,
                      **{path: row['sha256'] for path, row in CURRENT_NEXT_REVIEWED.items()}}
+# Bootstrap44836099209 copied this exact main source to root data/. Its DB helper
+# uses the same required root config; NEXT/LOCAL retain their separate fallback
+# helpers. Do not relabel the historical inspection or the failed install policy.
+CURRENT_ROOT_DB_REVIEWED = {
+    'data/db-v1.php': {
+        'source_sha': 'f7d1be4d9eb5a1dfa1f3286c130973535e085363', 'run_id': 44836099209,
+        'sha256': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'size': 3282},
+}
+CONTINUATION_PROTECTED = {**INSTALL_PROTECTED,
+                          **{path: row['sha256'] for path, row in CURRENT_ROOT_DB_REVIEWED.items()}}
 PRIVATE_CONFIG = '_preview/search3-anex-candidate/.anex-private.php'
 # Existing public PHP bridges may read these installed settings. Keep opaque
 # hash/mode/presence snapshots locally; never copy, execute or export their bytes.
@@ -200,6 +223,10 @@ INSTALL_OPAQUE_PRESENCE = {'config.php': True, 'site_conf.php': False}
 # reviewed DB helpers cannot acquire an unreviewed sibling configuration shadow.
 ABSENT_DEPENDENCIES = ('data/hotel-popularity-v1.php',
                        '_preview/search3-local-candidate/config.php', '_preview/search3-next-candidate/config.php')
+CONTINUATION_POLICY_SHA = hashlib.sha256(json.dumps({
+    'protected': CONTINUATION_PROTECTED, 'opaque_presence': INSTALL_OPAQUE_PRESENCE,
+    'absent_dependencies': ABSENT_DEPENDENCIES,
+}, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 CONTROL_PATHS = (
     WORKFLOW, 'scripts/deploy/search3_public_install.py', 'tests/search3_public_install_test.py',
     '.github/workflows/deploy-anytoour.yml', 'tests/anytoour_production_deploy_guard_test.py',
@@ -214,13 +241,14 @@ need = carrier.need
 sha = carrier.sha
 
 
-def fixed_command(inspect=False):
-    need(type(inspect) is bool, 'mode')
+def fixed_command(inspect=False, continuation=False):
+    need(type(inspect) is bool and type(continuation) is bool and not (inspect and continuation), 'mode')
+    if continuation: return CONTINUATION_PREFIX, CONTINUATION_OPERATION
     return (INSPECT_PREFIX, INSPECT_OPERATION) if inspect else (PREFIX, OPERATION)
 
 
-def event_identity(event, env, inspect=False):
-    prefix, operation = fixed_command(inspect)
+def event_identity(event, env, inspect=False, continuation=False):
+    prefix, operation = fixed_command(inspect, continuation)
     need(env.get('GITHUB_REPOSITORY') == event.get('repository', {}).get('full_name') == REPO, 'repository')
     need(env.get('GITHUB_REF') == 'refs/heads/main' and env.get('GITHUB_WORKFLOW_REF') == f'{REPO}/{WORKFLOW}@refs/heads/main', 'trusted_workflow')
     need(env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff', 'actor')
@@ -302,8 +330,24 @@ def final_heads(identity):
          and pr.get('base', {}).get('repo', {}).get('full_name') == REPO, 'candidate_moved')
 
 
-def admission(identity, inspect=False):
-    prefix, operation = fixed_command(inspect)
+def continuation_comments(comments):
+    parent = CONTINUATION_PARENT
+    commands = [c for c in comments if c.get('body', '').strip().split()[:1] == [PREFIX]
+                and OPERATION in c.get('body', '').split()[1:]]
+    need(len(commands) == 1 and commands[0]['id'] == parent['command_comment_id']
+         and commands[0].get('body') == f'{PREFIX} {parent["control_source_sha"]} {OPERATION}'
+         and commands[0].get('user', {}).get('id') == 226193297
+         and commands[0].get('author_association') == 'OWNER', 'continuation_parent_command')
+    terminal = next((c for c in comments if c['id'] == parent['terminal_comment_id']), {})
+    tokens = [str(parent[k]) for k in ('run_id', 'control_source_sha', 'command_comment_id', 'job_id',
+                                      'artifact_id', 'artifact_sha256', 'receipt_sha256')]
+    need(terminal.get('user', {}).get('id') == 226193297 and terminal.get('author_association') == 'OWNER'
+         and all(t in terminal.get('body', '') for t in tokens + ['blocked_no_replay', 'dependency_drift', 'NO_REPLAY']),
+         'continuation_parent_terminal')
+
+
+def admission(identity, inspect=False, continuation=False):
+    prefix, operation = fixed_command(inspect, continuation)
     need(isinstance(RELEASE, str) and re.fullmatch('[a-f0-9]{40}', RELEASE)
          and isinstance(ARTIFACT_NAME, str) and ARTIFACT_NAME and type(SIGNING_RECEIPT_COMMENT) is int, 'pending_final_evidence')
     final_heads(identity)
@@ -329,6 +373,10 @@ def admission(identity, inspect=False):
     matches = [c for c in comments if c.get('body', '').strip().split()[:1] == [prefix] and operation in c.get('body', '').split()[1:]]
     need(len(matches) == 1 and matches[0]['id'] == identity['command_comment_id'] and matches[0].get('body') == command
          and matches[0].get('user', {}).get('id') == 226193297 and matches[0].get('author_association') == 'OWNER', 'operation_already_reserved')
+    if continuation:
+        need(identity['run_id'] != CONTINUATION_PARENT['run_id']
+             and identity['control_source_sha'] != CONTINUATION_PARENT['control_source_sha'], 'continuation_identity')
+        continuation_comments(comments)
     accepted = next((c for c in comments if c['id'] == SIGNING_RECEIPT_COMMENT), {})
     need(accepted.get('user', {}).get('id') == 226193297 and accepted.get('author_association') == 'OWNER'
          and str(SIGNING_RUN) in accepted.get('body', '') and SIGNING_RESULT_SHA in accepted.get('body', ''), 'signing_acceptance')
@@ -352,20 +400,26 @@ def rollback_main(identity):
 
 def rollback_commands(identity, original_run, expected_original=None):
     need(isinstance(original_run, str) and re.fullmatch('[1-9][0-9]{0,19}', original_run)
-         and original_run != identity['run_id'], 'rollback_install_run')
+         and original_run not in (identity['run_id'], CONTINUATION_PARENT['run_id']), 'rollback_install_run')
     comments = pages('/issues/4709/comments')
     matches = [c for c in comments if c.get('body', '').strip().split()[:1] == [ROLLBACK_PREFIX]
                and ROLLBACK_OPERATION in c.get('body', '').split()[1:]]
     need(len(matches) == 1 and matches[0]['id'] == identity['command_comment_id']
          and matches[0].get('body') == f'{ROLLBACK_PREFIX} {identity["control_source_sha"]} {original_run} {ROLLBACK_OPERATION}'
          and matches[0].get('user', {}).get('id') == 226193297 and matches[0].get('author_association') == 'OWNER', 'operation_already_reserved')
-    installed = [c for c in comments if c.get('body', '').strip().split()[:1] == [PREFIX]
-                 and OPERATION in c.get('body', '').split()[1:]]
+    continued = [c for c in comments if c.get('body', '').strip().split()[:1] == [CONTINUATION_PREFIX]
+                 and CONTINUATION_OPERATION in c.get('body', '').split()[1:]]
+    prefix, operation = (CONTINUATION_PREFIX, CONTINUATION_OPERATION) if continued else (PREFIX, OPERATION)
+    installed = continued or [c for c in comments if c.get('body', '').strip().split()[:1] == [PREFIX]
+                              and OPERATION in c.get('body', '').split()[1:]]
     need(len(installed) == 1 and installed[0].get('user', {}).get('id') == 226193297
          and installed[0].get('author_association') == 'OWNER', 'rollback_install_command')
-    match = re.fullmatch(re.escape(PREFIX) + r' ([a-f0-9]{40}) ' + re.escape(OPERATION), installed[0].get('body', ''))
+    match = re.fullmatch(re.escape(prefix) + r' ([a-f0-9]{40}) ' + re.escape(operation), installed[0].get('body', ''))
     need(match is not None, 'rollback_install_command')
     original = {'control_source_sha': match[1], 'run_id': original_run, 'command_comment_id': installed[0]['id']}
+    if continued:
+        need(match[1] != CONTINUATION_PARENT['control_source_sha'], 'rollback_install_command')
+        original['operation_id'] = CONTINUATION_OPERATION
     need(expected_original is None or original == expected_original, 'rollback_install_command')
     return original
 
@@ -394,11 +448,15 @@ def rollback_admission(identity, original_run):
 
 
 def rollback_source_evidence(raw, original, policy):
+    need(original['run_id'] != CONTINUATION_PARENT['run_id']
+         and (original.get('operation_id') == CONTINUATION_OPERATION) == (policy['operation'] == CONTINUATION_OPERATION), 'rollback_install_identity')
     with zip_files(raw) as archive:
         need(archive.namelist() == ['evidence.json'], 'rollback_install_artifact')
         value = json.loads(archive.read('evidence.json'))
-    expected = {**original, 'operation_id': OPERATION, 'read_only': False, 'phase': 'complete',
+    expected = {**original, 'operation_id': policy['operation'], 'read_only': False, 'phase': 'complete',
                 'ssh_started': True, 'status': 'installed_verified'}
+    if policy['operation'] == CONTINUATION_OPERATION:
+        expected.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
     need(isinstance(value, dict) and set(value) == set(expected) | {'remote'}
          and all(type(value.get(k)) is type(v) and value[k] == v for k, v in expected.items()), 'rollback_install_evidence')
     need(valid_result(original, policy, value['remote']), 'rollback_install_evidence')
@@ -459,8 +517,49 @@ def signing_evidence(raw):
     need(meta.get('workflow_run', {}).get('id') == SIGNING_RUN and meta.get('digest') == 'sha256:' + SIGNING_ARTIFACT_SHA and meta.get('expired') is False, 'signing_artifact')
 
 
-def package(raw, inspect=False):
-    _, operation = fixed_command(inspect)
+def continuation_parent_evidence(raw):
+    """Only this immutable, complete pre-reservation failure admits the child."""
+    parent = CONTINUATION_PARENT
+    need(sha(raw) == parent['artifact_sha256'], 'continuation_parent_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'continuation_parent_artifact')
+        data = archive.read('evidence.json')
+        need(sha(data) == parent['receipt_sha256'], 'continuation_parent_digest')
+    value = json.loads(data)
+    identity = {k: parent[k] for k in ('control_source_sha', 'run_id', 'command_comment_id')}
+    outer = {**identity, 'operation_id': OPERATION, 'phase': 'complete', 'read_only': False,
+             'ssh_started': True, 'status': 'blocked_no_replay'}
+    remote = {'schema_version': 1, **identity, 'operation_id': OPERATION, 'source_sha': SOURCE,
+              'manifest_sha256': MANIFEST_SHA, 'status': 'blocked_no_replay', 'phase': 'preflight',
+              'reason': 'dependency_drift', 'supplier_calls': 0, 'database_reads': 0, 'database_writes': 0,
+              'lead_calls': 0, 'booking_calls': 0, 'application_calls': 0, 'written_files': [], 'rollback_files': [],
+              'snapshot_verified': False, 'restore_drill_verified': False, 'protected_unchanged': False,
+              'snapshot_manifest_sha256': None}
+    need(isinstance(value, dict) and set(value) == set(outer) | {'remote'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k, v in outer.items()), 'continuation_parent_identity')
+    observed = value['remote']
+    need(isinstance(observed, dict) and set(observed) == set(remote)
+         and all(type(observed.get(k)) is type(v) and observed[k] == v for k, v in remote.items()), 'continuation_parent_result')
+    run = api('/actions/runs/' + parent['run_id'])
+    need(run.get('id') == int(parent['run_id']) and run.get('head_sha') == parent['control_source_sha']
+         and run.get('head_branch') == 'main' and run.get('event') == 'issue_comment' and run.get('path') == WORKFLOW
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'failure'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'continuation_parent_run')
+    jobs = [j for j in pages('/actions/runs/' + parent['run_id'] + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0]['id'] == parent['job_id'] and jobs[0].get('run_id') == int(parent['run_id'])
+         and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == 'failure', 'continuation_parent_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'failure', 'continuation_parent_step')
+    meta = api('/actions/artifacts/' + str(parent['artifact_id']))
+    need(meta.get('id') == parent['artifact_id'] and meta.get('name') == 'search3-public-install-' + parent['run_id'] + '-1'
+         and meta.get('expired') is False and meta.get('workflow_run', {}).get('id') == int(parent['run_id'])
+         and meta.get('digest') == 'sha256:' + parent['artifact_sha256'], 'continuation_parent_artifact')
+    return value
+
+
+def package(raw, inspect=False, continuation=False):
+    _, operation = fixed_command(inspect, continuation)
     with zip_files(raw) as archive:
         manifest_raw = archive.read('manifest.json'); need(sha(manifest_raw) == MANIFEST_SHA, 'manifest_digest')
         manifest = json.loads(manifest_raw)
@@ -478,10 +577,12 @@ def package(raw, inspect=False):
             files[path] = base64.b64encode(data).decode(); expected[path] = {'state': 'present', **record}
     policy = {'operation': operation, 'read_only': inspect, 'source': SOURCE, 'tree': TREE, 'release': RELEASE, 'manifest': MANIFEST_SHA,
               'additions': ADDITIONS, 'entry': ENTRY, 'before': ENTRY_BEFORE, 'expected': expected,
-              'protected': PROTECTED if inspect else INSTALL_PROTECTED,
+              'protected': PROTECTED if inspect else CONTINUATION_PROTECTED if continuation else INSTALL_PROTECTED,
               'private_config': PRIVATE_CONFIG, 'opaque_settings': OPAQUE_SETTINGS, 'absent_dependencies': ABSENT_DEPENDENCIES,
               'signing_result': SIGNING_RESULT_SHA,
               **({} if inspect else {'opaque_presence': INSTALL_OPAQUE_PRESENCE})}
+    if continuation:
+        policy.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
     return policy, files
 
 
@@ -629,6 +730,38 @@ def dependency_matches(path,row):
   if path in presence and (row.get('state')=='present') is not presence[path]: return False
   return row=={'state':'absent'} or row.get('mode') in private_modes
  return path in POLICY['absent_dependencies'] and row=={'state':'absent'}
+def private_labels():
+ return {POLICY['private_config']:'anex_private_config','config.php':'public_config','site_conf.php':'site_config',
+         '_preview/search3-local-candidate/config.php':'local_config','_preview/search3-next-candidate/config.php':'next_config'}
+def continuation_inventory(public,paths):
+ # The same bounded preflight reads, with public-only diagnostics on failure.
+ rows={}
+ for path in paths:
+  try: rows[path]=public.read(path)[:2]
+  except Exception as error:
+   reason=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+   rows[path]=({'state':'unreadable','reason':reason},None)
+ return rows
+def continuation_mismatches(before,protected):
+ labels=private_labels()
+ for path,(row,_) in {**before,**protected}.items():
+  match=(row==POLICY['before'] if path==POLICY['entry'] else row=={'state':'absent'}) if path in before else dependency_matches(path,row)
+  if path in labels: result['private_checks'][labels[path]]=match
+  elif not match:
+   result['public_mismatches'].append({'path':path,'reason':row.get('reason','predecessor_drift' if path in before else 'dependency_drift'),'observed':row})
+def require_parent_namespace_absent(home):
+ # Never open/create a record inside the consumed parent's namespace. An existing
+ # object of any kind, symlink, inaccessible parent, or racing parent fails closed.
+ result['parent_namespace_absent']=False
+ home_files=Files(home)
+ try:
+  with home_files.parent('.anytoour-search3-root-gateway/'+POLICY['parent_failure']['operation_id']) as (fd,name):
+   if fd is not None:
+    try: os.stat(name,dir_fd=fd,follow_symlinks=False)
+    except FileNotFoundError: pass
+    else: raise RuntimeError('parent_operation_exists')
+ finally: home_files.close()
+ result['parent_namespace_absent']=True
 def inspect_only():
  result={'schema_version':1,'operation_id':POLICY['operation'],'source_sha':POLICY['source'],'manifest_sha256':POLICY['manifest'],**IDENTITY,
          'status':'preflight_blocked','read_only':True,'server_writes':0,'supplier_calls':0,'database_reads':0,'database_writes':0,
@@ -638,8 +771,7 @@ def inspect_only():
   require(POLICY['operation']=='public-search3-readiness-20261120-v1' and len(POLICY['expected'])==42 and len(POLICY['additions'])==41
           and set(PAYLOAD)==set(POLICY['expected'])==set(POLICY['additions'])|{POLICY['entry']},'payload_scope')
   protected_paths=checked_protected_paths();paths=tuple(POLICY['expected'])+protected_paths
-  private_labels={POLICY['private_config']:'anex_private_config','config.php':'public_config','site_conf.php':'site_config',
-                  '_preview/search3-local-candidate/config.php':'local_config','_preview/search3-next-candidate/config.php':'next_config'}
+  labels=private_labels()
   require(tuple(POLICY['opaque_settings'])==('config.php','site_conf.php'),'payload_scope')
   public=Files(os.environ.get('HOME','')+'/www/anytoour.ru')
   def inventory():
@@ -654,13 +786,13 @@ def inspect_only():
   require(first==second,'preflight_race')
   for path,(row,_) in first.items():
    match=(row==POLICY['before'] if path==POLICY['entry'] else row=={'state':'absent'}) if path in POLICY['expected'] else dependency_matches(path,row)
-   if path in private_labels:
-    result['private_checks'][private_labels[path]]={'presence_known':row.get('state') in ('present','absent'),
+   if path in labels:
+    result['private_checks'][labels[path]]={'presence_known':row.get('state') in ('present','absent'),
         'present':row.get('state')=='present','matches_expected':match,'unchanged':True}
    else: result['observed'][path]=row
    if not match:
     reason=row.get('reason','predecessor_drift' if path in POLICY['expected'] else 'dependency_drift')
-    result['mismatches'].append({'path':private_labels.get(path,path),'reason':reason})
+    result['mismatches'].append({'path':labels.get(path,path),'reason':reason})
   result['status']='preflight_mismatch' if result['mismatches'] else 'preflight_match'
  except Exception as error:
   result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
@@ -679,6 +811,10 @@ result={'schema_version':1,'operation_id':POLICY['operation'],'source_sha':POLIC
         'supplier_calls':0,'database_reads':0,'database_writes':0,'lead_calls':0,'booking_calls':0,
         'application_calls':0,'written_files':[],'rollback_files':[],'snapshot_verified':False,
         'restore_drill_verified':False,'protected_unchanged':False,'snapshot_manifest_sha256':None}
+continuation=POLICY['operation']=='public-search3-20261121-after-44840666320-v1'
+if continuation:
+ result.update(parent_failure=POLICY['parent_failure'],dependency_policy_sha256=POLICY['dependency_policy_sha256'],
+               parent_namespace_absent=False,public_mismatches=[],private_checks={})
 public=private=None;owned={};staged_ids={};written=[];switched=False;reserved=False;entry_conflict=False;exchanged_old=None
 try:
  require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY'),'unsupported_platform')
@@ -692,7 +828,12 @@ try:
  allowed=sorted({'/'.join(components(p)[:i]) for p in POLICY['expected'] for i in range(1,len(components(p)))})
  public=Files(root,allowed)
  protected_paths=checked_protected_paths()
- before=public.inventory(POLICY['expected']);protected=public.inventory(protected_paths)
+ if continuation:
+  require_parent_namespace_absent(home)
+  before=continuation_inventory(public,POLICY['expected']);protected=continuation_inventory(public,protected_paths)
+  continuation_mismatches(before,protected)
+ else:
+  before=public.inventory(POLICY['expected']);protected=public.inventory(protected_paths)
  require(before[POLICY['entry']][0]==POLICY['before']
          and all(before[p][0]=={'state':'absent'} for p in POLICY['additions']),'predecessor_drift')
  require(all(dependency_matches(p,row[0]) for p,row in protected.items()),'dependency_drift')
@@ -709,6 +850,10 @@ try:
  base=Files(home+'/.anytoour-search3-root-gateway')
  try:
   require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+  if continuation:
+   require(public.inventory(POLICY['expected'])==before and public.inventory(protected_paths)==protected,'preflight_race')
+   require_parent_namespace_absent(home)
+   base.verify(base.links)
   try: os.mkdir(POLICY['operation'],0o700,dir_fd=base.fd)
   except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
   reserved=True;sync(base.fd)
@@ -818,11 +963,13 @@ result={'schema_version':1,'operation_id':ROLLBACK_OPERATION,'source_sha':POLICY
         'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
         'rollback_files':[],'snapshot_verified':False,'protected_unchanged':False,
         'original_records_unchanged':False,'snapshot_manifest_sha256':ACCEPTED['snapshot_manifest_sha256']}
+if POLICY['operation']=='public-search3-20261121-after-44840666320-v1':
+ result.update(parent_failure=POLICY['parent_failure'],dependency_policy_sha256=POLICY['dependency_policy_sha256'])
 public=original=base=private=None;reserved=False
 try:
  require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
          and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
- require(POLICY['operation']=='public-search3-20261120-v1' and POLICY['read_only'] is False
+ require(POLICY['operation'] in ('public-search3-20261120-v1','public-search3-20261121-after-44840666320-v1') and POLICY['read_only'] is False
          and len(POLICY['additions'])==41 and len(POLICY['expected'])==42
          and set(POLICY['expected'])==set(POLICY['additions'])|{POLICY['entry']},'payload_scope')
  home=os.environ.get('HOME','');root=home+'/www/anytoour.ru'
@@ -844,7 +991,7 @@ try:
   return rows
  retained=records()
  def record(path): return json.loads(retained[path][2])
- require(record('reservation.json')=={'operation':POLICY['operation'],**ORIGINAL,'manifest':POLICY['manifest']},'rollback_original_identity')
+ require(record('reservation.json')=={'operation':POLICY['operation'],**{k:v for k,v in ORIGINAL.items() if k!='operation_id'},'manifest':POLICY['manifest']},'rollback_original_identity')
  require(record('result.json')==ACCEPTED,'rollback_original_identity')
  snapshot=record('snapshot/manifest.json')
  expected_before={p:POLICY['before'] if p==POLICY['entry'] else {'state':'absent'} for p in POLICY['expected']}
@@ -922,7 +1069,11 @@ print(json.dumps(result,sort_keys=True))
 
 def remote_program(policy, files, identity):
     # Safe bounded reason codes only, no exception text/private paths in the result.
-    need(type(policy.get('read_only')) is bool and policy.get('operation') == fixed_command(policy['read_only'])[1], 'mode')
+    continuation = policy.get('operation') == CONTINUATION_OPERATION
+    need(type(policy.get('read_only')) is bool and policy.get('operation') == fixed_command(policy['read_only'], continuation)[1], 'mode')
+    if continuation:
+        need(policy.get('parent_failure') == CONTINUATION_PARENT
+             and policy.get('dependency_policy_sha256') == CONTINUATION_POLICY_SHA, 'continuation_policy')
     prefix = 'MAX_BYTES=' + repr(MAX_BYTES) + '\nPOLICY=' + repr(policy) + '\nPAYLOAD=' + repr(files) + '\nIDENTITY=' + repr(identity) + '\n'
     prefix += 'def re_safe(value): return value in ' + repr(REASONS) + '\n'
     program = prefix + REMOTE
@@ -934,21 +1085,22 @@ REASONS = ('fixed_path','fixed_root','unsafe_parent','parent_changed','directory
            'unsupported_platform','payload_scope','payload_bytes','predecessor_drift','dependency_drift','preflight_race','private_root',
            'different_filesystem','operation_exists_no_replay','snapshot_invalid','restore_drill_failed','prewrite_race','addition_conflict',
            'addition_readback','entry_prewrite_race','addition_race','entry_readback','entry_exchange_conflict','installed_race','protected_changed',
-           'operation_failed','receipt_failed','rollback_entry_conflict')
+           'operation_failed','receipt_failed','rollback_entry_conflict','parent_operation_exists')
 ROLLBACK_REASONS = REASONS + ('rollback_private_record','rollback_original_identity','rollback_snapshot_conflict',
                              'rollback_candidate_changed','rollback_preflight_race','rollback_entry_readback',
                              'rollback_addition_conflict','rollback_incomplete')
 
 
 def rollback_remote_program(policy, identity, original, accepted):
-    need(policy.get('operation') == OPERATION and policy.get('read_only') is False, 'mode')
+    need(policy.get('operation') in (OPERATION, CONTINUATION_OPERATION) and policy.get('read_only') is False, 'mode')
+    need(original['run_id'] != CONTINUATION_PARENT['run_id']
+         and (original.get('operation_id') == CONTINUATION_OPERATION) == (policy['operation'] == CONTINUATION_OPERATION), 'rollback_install_identity')
     need(valid_result(original, policy, accepted), 'rollback_install_evidence')
     prefix = ('MAX_BYTES=' + repr(MAX_BYTES) + '\nPOLICY=' + repr(policy) + '\nIDENTITY=' + repr(identity)
               + '\nORIGINAL=' + repr(original) + '\nACCEPTED=' + repr(accepted)
               + '\nROLLBACK_OPERATION=' + repr(ROLLBACK_OPERATION) + '\n')
     prefix += 'def re_safe(value): return value in ' + repr(ROLLBACK_REASONS) + '\n'
-    # Share only the stable filesystem definitions, never the inspect/install
-    # execution branches. Historical REMOTE bytes remain unchanged.
+    # Share only filesystem definitions, never the inspect/install branches.
     program = prefix + REMOTE.split('\ndef inspect_only():', 1)[0] + ROLLBACK_REMOTE
     ast.parse(program)
     return program
@@ -958,6 +1110,8 @@ def valid_rollback_result(identity, original, accepted, result):
     fixed = {'schema_version': 1, 'operation_id': ROLLBACK_OPERATION, 'source_sha': SOURCE,
              'manifest_sha256': MANIFEST_SHA, **identity, 'original_install': original,
              'snapshot_manifest_sha256': accepted['snapshot_manifest_sha256']}
+    if accepted['operation_id'] == CONTINUATION_OPERATION:
+        fixed.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
     counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
     required = set(fixed) | set(counters) | {'status','phase','rollback_files','snapshot_verified','protected_unchanged','original_records_unchanged'}
     need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'rollback_receipt_shape')
@@ -977,9 +1131,16 @@ def valid_rollback_result(identity, original, accepted, result):
 
 
 def valid_result(identity, policy, result):
-    fixed = {'schema_version': 1, 'operation_id': OPERATION, 'source_sha': SOURCE, 'manifest_sha256': MANIFEST_SHA, **identity}
+    need(policy['operation'] in (OPERATION, CONTINUATION_OPERATION) and policy['read_only'] is False, 'mode')
+    continuation = policy['operation'] == CONTINUATION_OPERATION
+    fixed = {'schema_version': 1, 'operation_id': policy['operation'], 'source_sha': SOURCE, 'manifest_sha256': MANIFEST_SHA, **identity}
+    if continuation:
+        need(policy.get('parent_failure') == CONTINUATION_PARENT
+             and policy.get('dependency_policy_sha256') == CONTINUATION_POLICY_SHA, 'continuation_policy')
+        fixed.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
     counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
     required = set(fixed) | set(counters) | {'status','phase','written_files','rollback_files','snapshot_verified','restore_drill_verified','protected_unchanged','snapshot_manifest_sha256'}
+    if continuation: required |= {'parent_namespace_absent', 'public_mismatches', 'private_checks'}
     need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'receipt_shape')
     need(all(type(result.get(k)) is type(v) and result[k] == v for k, v in fixed.items()), 'receipt_identity')
     need(all(type(result.get(k)) is int and result[k] == 0 for k in counters), 'receipt_counters')
@@ -989,6 +1150,31 @@ def valid_result(identity, policy, result):
         need(isinstance(result[key], list) and len(result[key]) == len(set(result[key])) and set(result[key]) <= set(policy['expected']), 'receipt_paths')
     need(all(type(result[k]) is bool for k in ('snapshot_verified','restore_drill_verified','protected_unchanged')), 'receipt_flags')
     need(result['snapshot_manifest_sha256'] is None or re.fullmatch('[a-f0-9]{64}', result['snapshot_manifest_sha256']), 'receipt_snapshot')
+    if continuation:
+        need(type(result['parent_namespace_absent']) is bool, 'receipt_parent_namespace')
+        labels = {'anex_private_config', 'public_config', 'site_config', 'local_config', 'next_config'}
+        private_paths = {PRIVATE_CONFIG, *OPAQUE_SETTINGS, '_preview/search3-local-candidate/config.php', '_preview/search3-next-candidate/config.php'}
+        public_paths = (set(ADDITIONS) | {ENTRY} | set(CONTINUATION_PROTECTED) | set(ABSENT_DEPENDENCIES)) - private_paths
+        mismatches, checks = result['public_mismatches'], result['private_checks']
+        need(isinstance(checks, dict) and set(checks) <= labels and all(type(v) is bool for v in checks.values()), 'receipt_private_checks')
+        need(isinstance(mismatches, list) and len(mismatches) <= len(public_paths), 'receipt_mismatches')
+        seen = set()
+        for mismatch in mismatches:
+            need(isinstance(mismatch, dict) and set(mismatch) == {'path', 'reason', 'observed'}
+                 and mismatch['path'] in public_paths and mismatch['path'] not in seen
+                 and mismatch['reason'] in REASONS, 'receipt_mismatches')
+            seen.add(mismatch['path']); row = mismatch['observed']
+            need(isinstance(row, dict), 'receipt_mismatch_record')
+            if row.get('state') == 'present':
+                need(set(row) == {'state', 'sha256', 'size', 'mode'} and re.fullmatch('[a-f0-9]{64}', row.get('sha256', ''))
+                     and type(row.get('size')) is int and 0 <= row['size'] <= MAX_BYTES
+                     and re.fullmatch('[0-7]{4}', row.get('mode', '')), 'receipt_mismatch_record')
+            else:
+                need(row == {'state': 'absent'} or set(row) == {'state', 'reason'}
+                     and row.get('state') == 'unreadable' and row.get('reason') in REASONS, 'receipt_mismatch_record')
+        if result['status'] == 'installed_verified':
+            need(result['parent_namespace_absent'] is True and not mismatches
+                 and set(checks) == labels and all(checks.values()), 'receipt_incomplete')
     if result['status'] == 'installed_verified':
         need(result['phase'] == 'complete' and result['written_files'] == list(ADDITIONS) + [ENTRY] and not result['rollback_files']
              and all(result[k] for k in ('snapshot_verified','restore_drill_verified','protected_unchanged')) and result['snapshot_manifest_sha256'] is not None and 'reason' not in result, 'receipt_incomplete')
@@ -1032,8 +1218,12 @@ def valid_inspection_result(identity, policy, result):
 
 def preflight_evidence(raw, policy):
     """Admit only the reviewed historical mismatch; the server rechecks freshness."""
-    need(policy['read_only'] is False and policy['operation'] == OPERATION
-         and policy['protected'] == INSTALL_PROTECTED, 'preflight_policy')
+    continuation = policy['operation'] == CONTINUATION_OPERATION
+    need(policy['read_only'] is False and policy['operation'] in (OPERATION, CONTINUATION_OPERATION)
+         and policy['protected'] == (CONTINUATION_PROTECTED if continuation else INSTALL_PROTECTED), 'preflight_policy')
+    if continuation:
+        need(policy.get('parent_failure') == CONTINUATION_PARENT
+             and policy.get('dependency_policy_sha256') == CONTINUATION_POLICY_SHA, 'continuation_policy')
     need(sha(raw) == PREFLIGHT_ARTIFACT_SHA, 'preflight_artifact_digest')
     with zip_files(raw) as archive:
         need(archive.namelist() == ['evidence.json'], 'preflight_artifact')
@@ -1074,21 +1264,25 @@ def preflight_evidence(raw, policy):
          and meta.get('digest') == 'sha256:' + PREFLIGHT_ARTIFACT_SHA, 'preflight_artifact')
 
 
-def install(inspect=False):
-    _, operation = fixed_command(inspect)
+def install(inspect=False, continuation=False):
+    _, operation = fixed_command(inspect, continuation)
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-public-install'; work.mkdir(mode=0o700)
     key, known = work / 'key', work / 'known'
     evidence = {'status': 'preflight_blocked' if inspect else 'blocked_no_replay', 'operation_id': operation,
                 'read_only': inspect, 'phase': 'identity', 'ssh_started': False}
     if inspect: evidence['server_writes'] = 0
+    if continuation:
+        evidence.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
     complete = False
     try:
-        identity = event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()), os.environ, inspect)
-        evidence.update(identity); evidence['phase'] = 'admission'; admission(identity, inspect)
+        identity = event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()), os.environ, inspect, continuation)
+        evidence.update(identity); evidence['phase'] = 'admission'; admission(identity, inspect, continuation)
         evidence['phase'] = 'artifact'
         signing_evidence(download(SIGNING_ARTIFACT, SIGNING_ARTIFACT_SHA))
-        policy, files = package(download(ARTIFACT, ARTIFACT_SHA), inspect)
+        policy, files = package(download(ARTIFACT, ARTIFACT_SHA), inspect, continuation)
         if not inspect: preflight_evidence(download(PREFLIGHT_ARTIFACT, PREFLIGHT_ARTIFACT_SHA), policy)
+        if continuation:
+            continuation_parent_evidence(download(CONTINUATION_PARENT['artifact_id'], CONTINUATION_PARENT['artifact_sha256']))
         host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
         need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
         raw = os.environ['PREVIEW_KEY'].replace('\r', '')
@@ -1099,7 +1293,8 @@ def install(inspect=False):
         scan = carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]); need(0 < len(scan) <= 8192, 'host_key')
         known.write_bytes(scan); known.chmod(0o600)
         options = ['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
-        final_heads(identity)
+        if continuation: admission(identity, continuation=True)
+        else: final_heads(identity)
         evidence.update(status='preflight_unknown' if inspect else 'unknown_no_replay', phase='remote', ssh_started=True)
         response = carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'], input=remote_program(policy,files,identity).encode(), timeout=180)
         need(len(response) <= 32768, 'receipt_limit'); result = json.loads(response)
@@ -1117,6 +1312,7 @@ def install(inspect=False):
 
 def command_mode(arguments):
     if arguments == ['rollback']: return 'rollback'
+    if arguments == ['continue']: return 'continue'
     need(arguments in ([], ['inspect']), 'usage')
     return arguments == ['inspect']
 
@@ -1132,7 +1328,12 @@ def rollback():
         evidence.update(identity); evidence['original_install_run_id'] = original_run; evidence['phase'] = 'admission'
         original, artifact = rollback_admission(identity, original_run)
         evidence['phase'] = 'artifact'
-        policy, _ = package(download(ARTIFACT, ARTIFACT_SHA))
+        continuation = original.get('operation_id') == CONTINUATION_OPERATION
+        policy, _ = package(download(ARTIFACT, ARTIFACT_SHA), continuation=continuation)
+        if continuation:
+            # The successful child's exact artifact/private result retain this
+            # proof. Recovery does not depend on the failed parent's availability.
+            evidence.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
         accepted = rollback_source_evidence(download(artifact['id'], artifact['digest'].removeprefix('sha256:')), original, policy)
         host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
         need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
@@ -1165,4 +1366,6 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    rollback() if mode == 'rollback' else install(mode)
+    if mode == 'rollback': rollback()
+    elif mode == 'continue': install(continuation=True)
+    else: install(mode)

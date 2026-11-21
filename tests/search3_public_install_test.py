@@ -24,6 +24,9 @@ CONTROL = 'a' * 40
 RELEASE = 'b' * 40
 IDENTITY = {'control_source_sha': CONTROL, 'run_id': '123456', 'command_comment_id': 9001}
 ROLLBACK_IDENTITY = {'control_source_sha': 'd'*40, 'run_id': '234567', 'command_comment_id': 9002}
+CONTINUATION_IDENTITY = {'control_source_sha': CONTROL, 'run_id': '345678', 'command_comment_id': 9003}
+PARENT_IDENTITY = {'control_source_sha': '251585b63dab95988d9f635a2b1f1da6d61a4650',
+                   'run_id': '44840666320', 'command_comment_id': 7053664048}
 NEXT_ENTRY = '_preview/search3-next-candidate/visual-search/index.php'
 
 
@@ -42,6 +45,43 @@ def rollback_event():
     value = event(); value['comment']['id'] = ROLLBACK_IDENTITY['command_comment_id']
     value['comment']['body'] = f'{m.ROLLBACK_PREFIX} {ROLLBACK_IDENTITY["control_source_sha"]} {IDENTITY["run_id"]} {m.ROLLBACK_OPERATION}'
     return value
+
+
+def continuation_event():
+    value = event(); value['comment']['id'] = CONTINUATION_IDENTITY['command_comment_id']
+    value['comment']['body'] = f'{m.CONTINUATION_PREFIX} {CONTROL} {m.CONTINUATION_OPERATION}'
+    return value
+
+
+def continuation_comments_fixture():
+    parent = m.CONTINUATION_PARENT
+    owner = {'user': {'id': 226193297}, 'author_association': 'OWNER'}
+    return [owner | {'id': 7053664048,
+                     'body': f'{m.PREFIX} {PARENT_IDENTITY["control_source_sha"]} public-search3-20261120-v1'},
+            owner | {'id': 7053751668, 'body': ' '.join(str(value) for value in (
+                parent['run_id'], parent['control_source_sha'], parent['command_comment_id'], parent['job_id'],
+                parent['artifact_id'], parent['artifact_sha256'], parent['receipt_sha256'],
+                'blocked_no_replay', 'dependency_drift', 'NO_REPLAY'))}, continuation_event()['comment']]
+
+
+def parent_failure_fixture(change=None, extra=False):
+    # The retained zero-write failure is historical, independent of current policy.
+    remote = {'schema_version': 1, 'operation_id': 'public-search3-20261120-v1',
+              'source_sha': '1a22691517b53e23ea2fa98d02f857b11a118392',
+              'manifest_sha256': 'c89415a6bfeb6dd49be42d1dfc911310330c69cda2dd56737e524a2b1859d390',
+              **PARENT_IDENTITY, 'status': 'blocked_no_replay', 'phase': 'preflight',
+              'supplier_calls': 0, 'database_reads': 0, 'database_writes': 0, 'lead_calls': 0,
+              'booking_calls': 0, 'application_calls': 0, 'written_files': [], 'rollback_files': [],
+              'snapshot_verified': False, 'restore_drill_verified': False, 'protected_unchanged': False,
+              'snapshot_manifest_sha256': None, 'reason': 'dependency_drift'}
+    value = {**PARENT_IDENTITY, 'operation_id': 'public-search3-20261120-v1', 'phase': 'complete',
+             'read_only': False, 'ssh_started': True, 'status': 'blocked_no_replay', 'remote': remote}
+    if change: change(value)
+    data = (json.dumps(value, sort_keys=True) + '\n').encode(); stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as archive:
+        archive.writestr('evidence.json', data)
+        if extra: archive.writestr('unreviewed.json', b'{}')
+    return stream.getvalue(), m.sha(data)
 
 
 def installed_result():
@@ -112,6 +152,63 @@ class Admission(unittest.TestCase):
         self.assertEqual(m.MANIFEST_SHA, 'c89415a6bfeb6dd49be42d1dfc911310330c69cda2dd56737e524a2b1859d390')
         self.assertEqual(m.BUILD_MAIN, 'c5513aaee18af701f1253678e79f41e5725b71a2')
 
+    def test_continuation_pins_one_parent_and_changes_only_current_root_db(self):
+        self.assertEqual(m.CONTINUATION_PREFIX, '/continue-search3-public')
+        self.assertEqual(m.CONTINUATION_OPERATION, 'public-search3-20261121-after-44840666320-v1')
+        self.assertNotEqual(m.CONTINUATION_OPERATION, m.OPERATION)
+        self.assertEqual(m.CONTINUATION_PARENT, {
+            'operation_id': 'public-search3-20261120-v1', **PARENT_IDENTITY,
+            'job_id': 136647935738, 'artifact_id': 14680527168,
+            'artifact_sha256': '476cbe8ee8fd566b6abe35cd7d2697700f8888955022749a66e7bb2dd690b358',
+            'receipt_sha256': '99ea76313a2c18f50bf449f6f4396f9368f17ffe6245d334123df0b1e2687866',
+            'terminal_comment_id': 7053751668})
+        _, digest = parent_failure_fixture()
+        self.assertEqual(digest, m.CONTINUATION_PARENT['receipt_sha256'])
+        old_db = 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4'
+        current_db = 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'
+        self.assertEqual(m.PREFLIGHT_ACCEPTED_PROTECTED['data/db-v1.php'], old_db)
+        self.assertEqual(m.INSTALL_PROTECTED['data/db-v1.php'], old_db)
+        self.assertEqual(m.CONTINUATION_PROTECTED,
+                         m.INSTALL_PROTECTED | {'data/db-v1.php': current_db})
+        self.assertEqual(m.CONTINUATION_PROTECTED[NEXT_ENTRY],
+                         'bfda6c091544c13d157537879adaa7037e3bff3dface2fb5b3a77067808da339')
+        raw, digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', digest):
+            original, files = m.package(raw)
+            continued, child_files = m.package(raw, continuation=True)
+        self.assertEqual(files, child_files)
+        self.assertEqual(continued['protected'], m.CONTINUATION_PROTECTED)
+        self.assertEqual(original['protected'], m.INSTALL_PROTECTED)
+        self.assertEqual(set(files), set(m.ADDITIONS) | {m.ENTRY})
+        self.assertEqual(len(files), 42)
+        self.assertFalse(any(path.startswith(('data/', '_preview/')) for path in files))
+        for key in ('expected', 'before', 'opaque_settings', 'opaque_presence', 'absent_dependencies'):
+            self.assertEqual(continued[key], original[key])
+        self.assertEqual(continued['parent_failure'], m.CONTINUATION_PARENT)
+
+    def test_continuation_event_does_not_reopen_install_or_inspect(self):
+        env = environment() | {'GITHUB_RUN_ID': CONTINUATION_IDENTITY['run_id']}
+        self.assertEqual(m.event_identity(continuation_event(), env, continuation=True), CONTINUATION_IDENTITY)
+        self.assertEqual(m.command_mode(['continue']), 'continue')
+        for args in (['continue', PARENT_IDENTITY['run_id']], ['continue', '/tmp/target'], ['--continue']):
+            with self.assertRaisesRegex(RuntimeError, 'usage'): m.command_mode(args)
+        with self.assertRaises(RuntimeError): m.event_identity(continuation_event(), env)
+        with self.assertRaises(RuntimeError): m.event_identity(continuation_event(), env, inspect=True)
+        with self.assertRaises(RuntimeError): m.event_identity(event(), environment(), continuation=True)
+        with self.assertRaises(RuntimeError): m.event_identity(continuation_event(), env, inspect=True, continuation=True)
+        for field, value in [('GITHUB_RUN_ATTEMPT', '2'), ('GITHUB_ACTOR', 'other'),
+                             ('GITHUB_TRIGGERING_ACTOR', 'other'), ('GITHUB_REF', 'refs/heads/feature'),
+                             ('GITHUB_WORKFLOW_REF', 'other')]:
+            with self.subTest(field=field), self.assertRaises(RuntimeError):
+                m.event_identity(continuation_event(), env | {field: value}, continuation=True)
+        for change in [lambda e: e['comment'].update(body=e['comment']['body']+' extra'),
+                       lambda e: e['comment'].update(body=e['comment']['body'].replace('44840666320', '44840666321')),
+                       lambda e: e['comment'].update(author_association='MEMBER'),
+                       lambda e: e['comment']['user'].update(id=True),
+                       lambda e: e['issue'].update(pull_request={}), lambda e: e.update(action='edited')]:
+            value = continuation_event(); change(value)
+            with self.assertRaises(RuntimeError): m.event_identity(value, env, continuation=True)
+
     def test_owner_main_workflow_attempt_and_exact_command(self):
         self.assertEqual(m.event_identity(event(), environment()), IDENTITY)
         for key, value in [('GITHUB_REPOSITORY','evil/repo'),('GITHUB_REF','refs/heads/feature'),('GITHUB_WORKFLOW_REF','other'),
@@ -159,12 +256,36 @@ class Admission(unittest.TestCase):
             return [event()['comment'],{'id':m.SIGNING_RECEIPT_COMMENT,'user':{'id':226193297},'author_association':'OWNER','body':str(m.SIGNING_RUN)+' '+m.SIGNING_RESULT_SHA}, *preflight_comments()]
         raise AssertionError(path)
 
-    def call_admission(self, mutate=None):
+    def call_admission(self, mutate=None, continuation=False):
         def api(path):
             value=self.fake_api(path)
+            if continuation and '/comments?' in path:
+                value = value[1:] + continuation_comments_fixture()
             return mutate(path,value) if mutate else value
         with patch.object(m,'RELEASE',RELEASE),patch.object(m,'PUBLISHER_GUARD_SHA',m.sha(b'guarded publisher')),patch.object(m,'reviewed_control'),patch.object(m,'api',side_effect=api):
-            m.admission(IDENTITY)
+            m.admission(CONTINUATION_IDENTITY if continuation else IDENTITY, continuation=continuation)
+
+    def test_continuation_requires_unique_child_parent_and_owner_terminal(self):
+        self.call_admission(continuation=True)
+        for target, change in [(9003, lambda row: row.update(body=row['body']+' edited')),
+                               (9003, lambda row: row.update(author_association='MEMBER')),
+                               (7053664048, lambda row: row.update(body=row['body'].replace(PARENT_IDENTITY['control_source_sha'], CONTROL))),
+                               (7053664048, lambda row: row['user'].update(id=2)),
+                               (7053751668, lambda row: row.update(body=row['body'].replace('NO_REPLAY', 'unaccepted'))),
+                               (7053751668, lambda row: row.update(author_association='MEMBER')),
+                               (7053751668, lambda row: row.update(body=row['body'].replace('44840666320', '44840666321')))]:
+            def mutate(path, rows):
+                if '/comments?' in path: change(next(row for row in rows if row['id'] == target))
+                return rows
+            with self.subTest(target=target, change=change), self.assertRaises(RuntimeError):
+                self.call_admission(mutate, continuation=True)
+        for target in (9003, 7053664048):
+            def duplicate(path, rows):
+                if '/comments?' in path:
+                    rows.append(copy.deepcopy(next(row for row in rows if row['id'] == target)) | {'id':9004})
+                return rows
+            with self.subTest(duplicate=target), self.assertRaises(RuntimeError):
+                self.call_admission(duplicate, continuation=True)
 
     def test_full_ci_and_guarded_main_and_unique_comment(self):
         self.call_admission()
@@ -437,6 +558,122 @@ class PreflightEvidence(unittest.TestCase):
             self.assertEqual(evidence['phase'], 'artifact'); self.assertIs(evidence['ssh_started'], False)
 
 
+class ContinuationEvidence(unittest.TestCase):
+    def metadata(self, path):
+        parent = m.CONTINUATION_PARENT
+        if path == '/actions/runs/' + PARENT_IDENTITY['run_id']:
+            return {'id': 44840666320, 'head_sha': PARENT_IDENTITY['control_source_sha'], 'head_branch': 'main',
+                    'event': 'issue_comment', 'path': m.WORKFLOW, 'run_attempt': 1,
+                    'status': 'completed', 'conclusion': 'failure',
+                    'actor': {'login': 'pyatkoff'}, 'triggering_actor': {'login': 'pyatkoff'}}
+        if '/attempts/1/jobs?' in path:
+            return {'total_count': 1, 'jobs': [{'id': 136647935738, 'run_id': 44840666320, 'name': 'public-install',
+                    'status': 'completed', 'conclusion': 'failure', 'steps': [
+                        {'name': 'Run python3 scripts/deploy/search3_public_install.py ',
+                         'status': 'completed', 'conclusion': 'failure'}]}]}
+        if path == '/actions/artifacts/14680527168':
+            return {'id': 14680527168, 'name': 'search3-public-install-44840666320-1', 'expired': False,
+                    'workflow_run': {'id': 44840666320}, 'digest': 'sha256:' + parent['artifact_sha256']}
+        raise AssertionError('Unexpected dependency: ' + path)
+
+    def verify(self, change=None, metadata=None, extra=False):
+        raw, digest = parent_failure_fixture(change, extra)
+        parent = m.CONTINUATION_PARENT | {'artifact_sha256': m.sha(raw), 'receipt_sha256': digest}
+        def api(path):
+            value = self.metadata(path)
+            return metadata(path, value) if metadata else value
+        with patch.object(m, 'CONTINUATION_PARENT', parent), patch.object(m, 'api', side_effect=api):
+            return m.continuation_parent_evidence(raw)
+
+    def test_exact_terminal_parent_failure_is_admitted(self):
+        self.verify()
+
+    def test_unknown_mutating_or_other_parent_receipt_is_never_continued(self):
+        changes = [lambda v: v.update(status='unknown_no_replay'), lambda v: v.update(phase='remote'),
+                   lambda v: v.update(run_id='44840666321'), lambda v: v.update(command_comment_id=2),
+                   lambda v: v.update(control_source_sha='f'*40), lambda v: v.update(read_only=True),
+                   lambda v: v.update(ssh_started=False), lambda v: v.update(extra='unreviewed'),
+                   lambda v: v['remote'].update(status='unknown_no_replay'),
+                   lambda v: v['remote'].update(status='rolled_back_no_replay'),
+                   lambda v: v['remote'].update(status='installed_verified'),
+                   lambda v: v['remote'].update(phase='additions'),
+                   lambda v: v['remote'].update(reason='predecessor_drift'),
+                   lambda v: v['remote'].update(source_sha='f'*40),
+                   lambda v: v['remote'].update(manifest_sha256='0'*64),
+                   lambda v: v['remote'].update(operation_id=m.CONTINUATION_OPERATION),
+                   lambda v: v['remote'].update(run_id='44840666321'),
+                   lambda v: v['remote'].update(written_files=[m.ENTRY]),
+                   lambda v: v['remote'].update(rollback_files=[m.ENTRY]),
+                   lambda v: v['remote'].update(snapshot_verified=True),
+                   lambda v: v['remote'].update(restore_drill_verified=True),
+                   lambda v: v['remote'].update(snapshot_manifest_sha256='7'*64),
+                   lambda v: v['remote'].update(reserved=True),
+                   lambda v: v['remote'].update(supplier_calls=1),
+                   lambda v: v['remote'].update(database_writes='unknown'),
+                   lambda v: v['remote'].update(lead_calls=False)]
+        for change in changes:
+            with self.subTest(change=change), self.assertRaises(RuntimeError): self.verify(change)
+        with self.assertRaises(RuntimeError): self.verify(extra=True)
+        with patch.object(m, 'api') as api, self.assertRaises(RuntimeError):
+            m.continuation_parent_evidence(b'not the retained artifact')
+        api.assert_not_called()
+
+    def test_parent_run_job_and_artifact_metadata_cannot_be_substituted(self):
+        for part, change in [('/actions/runs/44840666320', lambda v: v.update(head_sha='f'*40)),
+                             ('/actions/runs/44840666320', lambda v: v.update(id=2)),
+                             ('/actions/runs/44840666320', lambda v: v.update(path='other.yml')),
+                             ('/actions/runs/44840666320', lambda v: v.update(event='workflow_dispatch')),
+                             ('/actions/runs/44840666320', lambda v: v.update(head_branch='other')),
+                             ('/actions/runs/44840666320', lambda v: v.update(run_attempt=2)),
+                             ('/actions/runs/44840666320', lambda v: v.update(status='in_progress')),
+                             ('/actions/runs/44840666320', lambda v: v.update(conclusion='success')),
+                             ('/actions/runs/44840666320', lambda v: v.update(triggering_actor={'login':'other'})),
+                             ('/jobs?', lambda v: v['jobs'][0].update(id=2)),
+                             ('/jobs?', lambda v: v['jobs'][0].update(run_id=2)),
+                             ('/jobs?', lambda v: v['jobs'][0].update(conclusion='success')),
+                             ('/jobs?', lambda v: v['jobs'][0]['steps'][0].update(conclusion='skipped')),
+                             ('/jobs?', lambda v: (v.update(total_count=2), v['jobs'].append(copy.deepcopy(v['jobs'][0])))),
+                             ('/actions/artifacts/', lambda v: v.update(id=2)),
+                             ('/actions/artifacts/', lambda v: v.update(expired=True)),
+                             ('/actions/artifacts/', lambda v: v.update(workflow_run={'id':2})),
+                             ('/actions/artifacts/', lambda v: v.update(digest='sha256:'+'0'*64))]:
+            def mutate(path, value):
+                if (path == part if part == '/actions/runs/44840666320' else part in path): change(value)
+                return value
+            with self.subTest(part=part, change=change), self.assertRaises(RuntimeError): self.verify(metadata=mutate)
+
+    def test_rejected_parent_never_reaches_ssh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'event.json'; path.write_text(json.dumps(continuation_event()))
+            env = environment() | {'RUNNER_TEMP':directory, 'GITHUB_EVENT_PATH':str(path),
+                                    'GITHUB_RUN_ID':CONTINUATION_IDENTITY['run_id']}
+            with patch.dict(os.environ, env), patch.object(m, 'admission'), patch.object(m, 'download', return_value=b'x'), \
+                 patch.object(m, 'package', return_value=({}, {})), patch.object(m, 'signing_evidence'), \
+                 patch.object(m, 'preflight_evidence'), patch.object(m, 'continuation_parent_evidence', wraps=m.continuation_parent_evidence) as parent, \
+                 patch.object(m, 'carrier') as carrier, patch('builtins.print'), self.assertRaisesRegex(RuntimeError, 'public_install_not_verified'):
+                m.install(continuation=True)
+            parent.assert_called_once_with(b'x'); carrier.run.assert_not_called()
+            evidence = json.loads((Path(directory)/'search3-public-install/evidence.json').read_text())
+            self.assertEqual(evidence['phase'], 'artifact'); self.assertIs(evidence['ssh_started'], False)
+
+    def test_continuation_admission_is_rechecked_before_ssh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'event.json'; path.write_text(json.dumps(continuation_event()))
+            env = environment() | {'RUNNER_TEMP':directory, 'GITHUB_EVENT_PATH':str(path),
+                'GITHUB_RUN_ID':CONTINUATION_IDENTITY['run_id'], 'PREVIEW_HOST':'example.invalid',
+                'PREVIEW_USER':'fixture', 'PREVIEW_KEY':'PRIVATE KEY fixture'}
+            with patch.dict(os.environ, env), patch.object(m, 'admission', side_effect=[None, RuntimeError('operation_already_reserved')]) as admission, \
+                 patch.object(m, 'download', return_value=b'x'), patch.object(m, 'package', return_value=({}, {})), \
+                 patch.object(m, 'signing_evidence'), patch.object(m, 'preflight_evidence'), patch.object(m, 'continuation_parent_evidence'), \
+                 patch.object(m.carrier, 'run', return_value=b'fixture known host') as run, patch('builtins.print'), \
+                 self.assertRaisesRegex(RuntimeError, 'public_install_not_verified'):
+                m.install(continuation=True)
+            self.assertEqual(admission.call_count, 2)
+            self.assertEqual([call.args[0][0] for call in run.call_args_list], ['ssh-keyscan'])
+            evidence = json.loads((Path(directory)/'search3-public-install/evidence.json').read_text())
+            self.assertIs(evidence['ssh_started'], False)
+
+
 class RollbackAdmission(unittest.TestCase):
     def metadata(self, path):
         if path == '/git/ref/heads/main': return {'object': {'sha': ROLLBACK_IDENTITY['control_source_sha']}}
@@ -486,6 +723,34 @@ class RollbackAdmission(unittest.TestCase):
 
     def test_recovery_uses_original_success_without_signer_or_release(self):
         self.admission()
+
+    def test_continuation_rollback_selects_actual_successful_child_not_failed_parent(self):
+        rollback = rollback_event()['comment']
+        rollback['body'] = rollback['body'].replace(IDENTITY['run_id'], CONTINUATION_IDENTITY['run_id'])
+        def api(path):
+            # Successful child recovery does not depend on mutable parent comments.
+            if '/comments?' in path: return [continuation_event()['comment'], rollback]
+            value = self.metadata(path.replace(CONTINUATION_IDENTITY['run_id'], IDENTITY['run_id']))
+            if path == '/actions/runs/' + CONTINUATION_IDENTITY['run_id']: value['id'] = int(CONTINUATION_IDENTITY['run_id'])
+            if '/jobs?' in path: value['jobs'][0]['run_id'] = int(CONTINUATION_IDENTITY['run_id'])
+            if '/artifacts?' in path:
+                value['artifacts'][0].update(name='search3-public-install-'+CONTINUATION_IDENTITY['run_id']+'-1',
+                                             workflow_run={'id':int(CONTINUATION_IDENTITY['run_id'])})
+            return value
+        with patch.object(m, 'api', side_effect=api), patch.object(m, 'reviewed_control'), \
+             patch.object(m, 'final_heads', side_effect=AssertionError('release gate')):
+            original, _ = m.rollback_admission(ROLLBACK_IDENTITY, CONTINUATION_IDENTITY['run_id'])
+        self.assertEqual(original, CONTINUATION_IDENTITY | {'operation_id':m.CONTINUATION_OPERATION})
+        with patch.object(m, 'api') as calls, self.assertRaises(RuntimeError):
+            m.rollback_commands(ROLLBACK_IDENTITY, PARENT_IDENTITY['run_id'])
+        calls.assert_not_called()
+        def stale_parent_head(path):
+            value = api(path)
+            if path == '/actions/runs/' + CONTINUATION_IDENTITY['run_id']:
+                value['head_sha'] = PARENT_IDENTITY['control_source_sha']
+            return value
+        with patch.object(m, 'api', side_effect=stale_parent_head), patch.object(m, 'reviewed_control'), self.assertRaises(RuntimeError):
+            m.rollback_admission(ROLLBACK_IDENTITY, CONTINUATION_IDENTITY['run_id'])
 
     def test_run_job_artifact_and_unique_commands_cannot_be_substituted(self):
         for part, change in [('/comments?', lambda v: v.append(rollback_event()['comment'] | {'id': 9003})),
@@ -565,6 +830,15 @@ class Transaction(unittest.TestCase):
                      'expected':expected,'protected':hashes,'private_config':m.PRIVATE_CONFIG,
                      'opaque_settings':m.OPAQUE_SETTINGS,'absent_dependencies':m.ABSENT_DEPENDENCIES,'signing_result':m.SIGNING_RESULT_SHA}
         self.private=self.home/'.anytoour-search3-root-gateway'/m.OPERATION
+        self.identity = IDENTITY
+
+    def use_continuation(self):
+        self.policy.update(operation=m.CONTINUATION_OPERATION, parent_failure=dict(m.CONTINUATION_PARENT),
+                           dependency_policy_sha256=m.CONTINUATION_POLICY_SHA,
+                           opaque_presence=dict(m.INSTALL_OPAQUE_PRESENCE))
+        (self.root/'site_conf.php').unlink()
+        self.private = self.home/'.anytoour-search3-root-gateway'/m.CONTINUATION_OPERATION
+        self.identity = CONTINUATION_IDENTITY
 
     def tearDown(self):
         self.base.chmod(0o700);self.home.chmod(0o700);self.temp.cleanup()
@@ -574,7 +848,7 @@ class Transaction(unittest.TestCase):
 
     def execute(self, change=None, demote=False, inspect=False):
         policy=self.policy|{'operation':m.INSPECT_OPERATION,'read_only':True} if inspect else self.policy
-        program=m.remote_program(policy,self.files,IDENTITY)
+        program=m.remote_program(policy,self.files,self.identity)
         # Only the inert native fixture selects a temporary root. Leave the
         # process HOME unchanged; production reads its existing HOME normally.
         program=program.replace("home=os.environ.get('HOME','');root=home+'/www/anytoour.ru'",
@@ -589,7 +863,7 @@ class Transaction(unittest.TestCase):
         run=subprocess.run([sys.executable,'-I','-S','-B','-'],input=program.encode(),capture_output=True,env=os.environ|{'SEARCH3_FIXTURE_HOME':str(self.home)},cwd=self.home,preexec_fn=preexec,timeout=30)
         self.assertEqual(run.returncode,0,run.stderr.decode())
         self.assertNotIn(self.secret,run.stdout);self.assertNotIn(str(self.home).encode(),run.stdout)
-        value=json.loads(run.stdout);(m.valid_inspection_result if inspect else m.valid_result)(IDENTITY,policy,value)
+        value=json.loads(run.stdout);(m.valid_inspection_result if inspect else m.valid_result)(self.identity,policy,value)
         return value
 
     def filesystem_snapshot(self):
@@ -683,6 +957,84 @@ class Transaction(unittest.TestCase):
         (self.private/'reservation.json').write_text('unknown operation; do not overwrite')
         value=self.execute();self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['reason'],'operation_exists_no_replay')
         self.assertEqual((self.private/'reservation.json').read_text(),'unknown operation; do not overwrite');self.restored()
+
+    def test_continuation_preserves_any_existing_parent_namespace(self):
+        self.use_continuation(); parent = self.private.parent/m.OPERATION
+        parent.parent.mkdir(mode=0o700)
+        for kind in ('directory', 'file', 'symlink'):
+            with self.subTest(kind=kind):
+                if kind == 'directory': parent.mkdir(mode=0o700)
+                elif kind == 'file': parent.write_bytes(b'original reservation sentinel')
+                else: parent.symlink_to(self.root, target_is_directory=True)
+                before = self.filesystem_snapshot(); value = self.execute()
+                self.assertEqual(value['status'], 'blocked_no_replay')
+                self.assertEqual(value['written_files'], []); self.assertFalse(self.private.exists())
+                self.assertFalse(value['parent_namespace_absent'])
+                self.assertEqual(self.filesystem_snapshot(), before)
+                parent.rmdir() if kind == 'directory' else parent.unlink()
+
+    def test_continuation_dependency_drift_is_granular_and_redacted_before_write(self):
+        self.use_continuation()
+        self.put('data/db-v1.php', b'unreviewed root db')
+        self.put(m.PRIVATE_CONFIG, b'PRIVATE_CONFIG_SENTINEL changed private bytes')
+        (self.root/m.PRIVATE_CONFIG).chmod(0o600)
+        self.put('_preview/search3-next-candidate/config.php', b'unreviewed private override')
+        before = self.filesystem_snapshot(); value = self.execute()
+        self.assertEqual(value['reason'], 'dependency_drift'); self.assertEqual(value['written_files'], [])
+        self.assertFalse(self.private.exists()); self.assertEqual(self.filesystem_snapshot(), before)
+        self.assertEqual({row['path'] for row in value['public_mismatches']}, {'data/db-v1.php'})
+        row = value['public_mismatches'][0]
+        self.assertEqual(row['observed'], {'state':'present', 'sha256':m.sha(b'unreviewed root db'),
+                                         'size':len(b'unreviewed root db'), 'mode':'0644'})
+        self.assertFalse(value['private_checks']['anex_private_config'])
+        self.assertFalse(value['private_checks']['next_config'])
+        self.assertTrue(all(type(flag) is bool for flag in value['private_checks'].values()))
+        encoded = json.dumps(value)
+        for forbidden in (m.PRIVATE_CONFIG, 'PRIVATE_CONFIG_SENTINEL', m.sha(b'PRIVATE_CONFIG_SENTINEL changed private bytes'),
+                          m.sha(b'unreviewed private override'), '_preview/search3-next-candidate/config.php'):
+            self.assertNotIn(forbidden, encoded)
+        for mutate in [lambda v: v['public_mismatches'][0].update(path='../unreviewed'),
+                       lambda v: v['public_mismatches'][0].update(path=m.PRIVATE_CONFIG),
+                       lambda v: v['public_mismatches'][0]['observed'].update(content='never export file bodies'),
+                       lambda v: v['private_checks'].update(anex_private_config={'sha256':'0'*64})]:
+            invalid = copy.deepcopy(value); mutate(invalid)
+            with self.assertRaises(RuntimeError): m.valid_result(self.identity, self.policy, invalid)
+
+    def test_continuation_rechecks_predecessor_additions_and_other_dependencies(self):
+        self.use_continuation()
+        for path in (m.ENTRY, m.ADDITIONS[-1], NEXT_ENTRY):
+            with self.subTest(path=path):
+                target = self.root/path; prior = target.read_bytes() if target.exists() else None
+                self.put(path, b'concurrent unreviewed update'); before = self.filesystem_snapshot()
+                value = self.execute()
+                self.assertEqual(value['status'], 'blocked_no_replay'); self.assertEqual(value['written_files'], [])
+                self.assertFalse(self.private.exists()); self.assertEqual(self.filesystem_snapshot(), before)
+                self.put(path, prior) if prior is not None else target.unlink()
+
+    def test_continuation_unreadable_parent_namespace_fails_before_reservation(self):
+        self.use_continuation(); self.private.parent.mkdir(mode=0o700); self.private.parent.chmod(0)
+        try: value = self.execute(demote=True)
+        finally: self.private.parent.chmod(0o700)
+        self.assertEqual(value['status'], 'blocked_no_replay'); self.assertEqual(value['written_files'], [])
+        self.assertFalse(value['parent_namespace_absent']); self.assertFalse(self.private.exists()); self.restored()
+
+    def test_continuation_parent_race_is_rechecked_immediately_before_reservation(self):
+        self.use_continuation(); self.private.parent.mkdir(mode=0o700)
+        marker = "  before=continuation_inventory(public,POLICY['expected']);protected=continuation_inventory(public,protected_paths)"
+        def race(program):
+            self.assertEqual(program.count(marker), 1)
+            return program.replace(marker, "  os.mkdir(home+'/.anytoour-search3-root-gateway/'+POLICY['parent_failure']['operation_id'],0o700)\n"+marker, 1)
+        value = self.execute(change=race)
+        self.assertEqual(value['reason'], 'parent_operation_exists'); self.assertEqual(value['written_files'], [])
+        self.assertFalse(value['parent_namespace_absent']); self.assertFalse(self.private.exists())
+        self.assertTrue((self.private.parent/m.OPERATION).is_dir()); self.restored()
+
+    def test_continuation_existing_child_reservation_is_never_reused(self):
+        self.use_continuation(); self.private.mkdir(parents=True, mode=0o700); self.private.parent.chmod(0o700)
+        (self.private/'reservation.json').write_bytes(b'unknown child; no replay')
+        before = self.filesystem_snapshot(); value = self.execute()
+        self.assertEqual(value['status'], 'blocked_no_replay'); self.assertEqual(value['written_files'], [])
+        self.assertEqual(self.filesystem_snapshot(), before)
 
     def test_missing_local_or_private_drift_is_before_any_write(self):
         for key in ['_preview/search3-local-candidate/data/search3-local-results-read-v1.php',m.PRIVATE_CONFIG,'analytics-config.php','seo-config.php']:
@@ -817,9 +1169,10 @@ class Transaction(unittest.TestCase):
 
 class RollbackTransaction(unittest.TestCase):
     @contextlib.contextmanager
-    def installed(self):
+    def installed(self, continuation=False):
         fixture = Transaction(); fixture.setUp()
         try:
+            if continuation: fixture.use_continuation()
             fixture.accepted = fixture.execute()
             self.assertEqual(fixture.accepted['status'], 'installed_verified')
             yield fixture
@@ -830,7 +1183,9 @@ class RollbackTransaction(unittest.TestCase):
                 for p in fixture.private.rglob('*') if p.is_file()}
 
     def execute(self, fixture, change=None):
-        program = m.rollback_remote_program(fixture.policy, ROLLBACK_IDENTITY, IDENTITY, fixture.accepted)
+        original = fixture.identity | ({'operation_id': m.CONTINUATION_OPERATION}
+                                       if fixture.policy['operation'] == m.CONTINUATION_OPERATION else {})
+        program = m.rollback_remote_program(fixture.policy, ROLLBACK_IDENTITY, original, fixture.accepted)
         program = program.replace("home=os.environ.get('HOME','');root=home+'/www/anytoour.ru'",
                                   "home=os.environ['SEARCH3_FIXTURE_HOME'];root=home+'/www/anytoour.ru'", 1)
         if change: program = change(program)
@@ -838,8 +1193,55 @@ class RollbackTransaction(unittest.TestCase):
                              cwd=fixture.home, env=os.environ | {'SEARCH3_FIXTURE_HOME': str(fixture.home)}, timeout=30)
         self.assertEqual(run.returncode, 0, run.stderr.decode())
         self.assertNotIn(fixture.secret, run.stdout); self.assertNotIn(str(fixture.home).encode(), run.stdout)
-        value = json.loads(run.stdout); m.valid_rollback_result(ROLLBACK_IDENTITY, IDENTITY, fixture.accepted, value)
+        value = json.loads(run.stdout); m.valid_rollback_result(ROLLBACK_IDENTITY, original, fixture.accepted, value)
         return value
+
+    def test_continuation_success_rolls_back_its_actual_identity_and_namespace(self):
+        with self.installed(continuation=True) as f:
+            self.assertTrue(f.accepted['parent_namespace_absent'])
+            self.assertEqual(f.accepted['parent_failure'], m.CONTINUATION_PARENT)
+            self.assertEqual(f.accepted['run_id'], CONTINUATION_IDENTITY['run_id'])
+            self.assertEqual(f.accepted['written_files'], [*m.ADDITIONS, m.ENTRY])
+            for mutate in [lambda v: v['parent_failure'].update(run_id='44840666321'),
+                           lambda v: v['parent_failure'].update(receipt_sha256='0'*64),
+                           lambda v: v.update(dependency_policy_sha256='0'*64),
+                           lambda v: v.update(parent_namespace_absent=False)]:
+                invalid = copy.deepcopy(f.accepted); mutate(invalid)
+                with self.assertRaises(RuntimeError): m.valid_result(f.identity, f.policy, invalid)
+            original = CONTINUATION_IDENTITY | {'operation_id':m.CONTINUATION_OPERATION}
+            outer = {**original, 'read_only':False, 'phase':'complete', 'ssh_started':True, 'status':'installed_verified',
+                     'parent_failure':m.CONTINUATION_PARENT, 'dependency_policy_sha256':m.CONTINUATION_POLICY_SHA, 'remote':f.accepted}
+            stream = io.BytesIO()
+            with zipfile.ZipFile(stream, 'w') as archive: archive.writestr('evidence.json', json.dumps(outer))
+            self.assertEqual(m.rollback_source_evidence(stream.getvalue(), original, f.policy), f.accepted)
+            with self.assertRaises(RuntimeError): m.rollback_source_evidence(parent_failure_fixture()[0], PARENT_IDENTITY, f.policy)
+            parent = f.private.parent/m.OPERATION; self.assertFalse(parent.exists())
+            records = self.original_records(f); root_db = (f.root/'data/db-v1.php').read_bytes()
+            value = self.execute(f)
+            self.assertEqual(value['status'], 'rolled_back_verified'); self.assertEqual(len(value['rollback_files']), 42)
+            self.assertEqual(value['original_install'], CONTINUATION_IDENTITY | {'operation_id':m.CONTINUATION_OPERATION})
+            # Recovery consumes the successful child's proof, even if the parent's
+            # historic artifact or signer can no longer be fetched.
+            runner = f.base/'runner'; runner.mkdir(); event_path = runner/'event.json'
+            event_value = rollback_event()
+            event_value['comment']['body'] = event_value['comment']['body'].replace(IDENTITY['run_id'], CONTINUATION_IDENTITY['run_id'])
+            event_path.write_text(json.dumps(event_value))
+            env = environment() | {'GITHUB_SHA':ROLLBACK_IDENTITY['control_source_sha'], 'GITHUB_RUN_ID':ROLLBACK_IDENTITY['run_id'],
+                'RUNNER_TEMP':str(runner), 'GITHUB_EVENT_PATH':str(event_path), 'PREVIEW_HOST':'example.invalid',
+                'PREVIEW_USER':'fixture', 'PREVIEW_KEY':'PRIVATE KEY fixture'}
+            with patch.dict(os.environ, env), patch.object(m, 'rollback_admission', return_value=(original, {'id':333,'digest':'sha256:'+'5'*64})), \
+                 patch.object(m, 'download', side_effect=[b'compiled payload', stream.getvalue()]) as download, \
+                 patch.object(m, 'package', return_value=(f.policy, {})), patch.object(m, 'rollback_commands', return_value=original), \
+                 patch.object(m, 'rollback_main'), patch.object(m, 'continuation_parent_evidence', side_effect=AssertionError('expired parent fetch')) as parent_proof, \
+                 patch.object(m, 'signing_evidence', side_effect=AssertionError('signer gate')) as signer, \
+                 patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(value).encode()]), patch('builtins.print'):
+                m.rollback()
+            self.assertEqual([call.args[0] for call in download.call_args_list], [m.ARTIFACT, 333])
+            parent_proof.assert_not_called(); signer.assert_not_called()
+            f.restored(); self.assertFalse(parent.exists()); self.assertEqual(self.original_records(f), records)
+            self.assertEqual((f.root/'data/db-v1.php').read_bytes(), root_db)
+            self.assertEqual(self.execute(f)['status'], 'blocked_no_replay')
+            self.assertEqual(self.original_records(f), records)
 
     def test_success_then_replay_preserves_original_records_and_directories(self):
         with self.installed() as f:
@@ -917,6 +1319,8 @@ class Receipt(unittest.TestCase):
         block=value.split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
         for text in ['deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1',"github.event.issue.number == 4709",'ANYTOOUR_DEPLOY_SSH_KEY','tests/anytoour_production_deploy_guard_test.py']: self.assertIn(text,block)
         self.assertIn("format('/rollback-search3-public {0} ', github.sha)", block)
+        self.assertIn("format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha)", block)
+        self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)
         self.assertNotIn('workflow_dispatch:',value)
