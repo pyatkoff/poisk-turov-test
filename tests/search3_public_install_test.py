@@ -4225,11 +4225,520 @@ class Receipt(unittest.TestCase):
         self.assertIn("format('/rollback-site-shared-assets-continuation {0} ', github.sha)",block)
         self.assertIn("' site-shared-assets-after-44897684408-rollback-20261121-v1'",block)
         self.assertIn("&& 'site-continue' ||",block)
+        for mode in ('refactor','refactor-rollback'):
+            self.assertEqual(m.command_mode([mode]),mode)
+            with self.assertRaises(RuntimeError):m.command_mode([mode,'arbitrary'])
+        self.assertIn("format('/update-search3-refactor {0} public-search3-refactor-20261121-v1', github.sha)",block)
+        self.assertIn("format('/rollback-search3-refactor {0} ', github.sha)",block)
+        self.assertIn("' public-search3-refactor-rollback-20261121-v1'",block)
+        self.assertIn("&& 'refactor' ||",block)
+        self.assertIn("&& 'refactor-rollback' ||",block)
         self.assertIn("&& 'site-continue-rollback' ||",block)
         self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)
         self.assertNotIn('workflow_dispatch:',value)
+
+
+"""Append these new tests to the existing publisher tests after owned integration.
+
+The separate local harness supplies immutable existing fixtures and draft paths;
+the production test proposal uses the existing unittest and native filesystem
+fixtures. It never downloads code, contacts production, or changes shared files.
+"""
+
+REFACTOR_IDENTITY={'control_source_sha':CONTROL,'run_id':'923456','command_comment_id':9011}
+REFACTOR_ROLLBACK_IDENTITY={'control_source_sha':'d'*40,'run_id':'934567','command_comment_id':9012}
+
+
+def refactor_test_event(rollback=False):
+    value=event();identity=REFACTOR_ROLLBACK_IDENTITY if rollback else REFACTOR_IDENTITY
+    body=(f'{m.REFACTOR_ROLLBACK_PREFIX} {identity["control_source_sha"]} {REFACTOR_IDENTITY["run_id"]} {m.REFACTOR_ROLLBACK_OPERATION}'
+          if rollback else f'{m.REFACTOR_PREFIX} {identity["control_source_sha"]} {m.REFACTOR_OPERATION}')
+    value['comment'].update(id=identity['command_comment_id'],body=body)
+    return value
+
+
+class RefactorTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def installed(self,tv=False):
+        site=SiteContinuationTransaction()
+        with site.inspected() as f:
+            f.continuation_accepted=site.execute(f)
+            self.assertEqual(f.continuation_accepted['status'],'site_updated_verified')
+            value={**SITE_CONTINUATION_IDENTITY,'operation_id':m.SITE_CONTINUATION_OPERATION,'source_sha':m.SITE_SOURCE,
+                'manifest_sha256':f.continuation_policy['manifest'],'read_only':False,'phase':'complete','ssh_started':True,
+                'status':'site_updated_verified','parent_update':m.site_parent_identity(),'parent_evidence':f.site_parent_value,
+                'continuation_evidence':f.continuation_evidence,'collector_evidence':m.site_continuation_collector_value(),
+                'remote':f.continuation_accepted}
+            data=(json.dumps(value,sort_keys=True)+'\n').encode();stream=io.BytesIO()
+            with zipfile.ZipFile(stream,'w') as z:z.writestr('evidence.json',data)
+            f.refactor_parent=value;f.refactor_parent_raw=stream.getvalue()
+            pin=m.REFACTOR_PARENT|SITE_CONTINUATION_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(f.refactor_parent_raw),
+                'snapshot_manifest_sha256':f.continuation_accepted['snapshot_manifest_sha256'],'policy_sha256':f.continuation_policy['manifest']}
+            targets={};files={}
+            for path in m.REFACTOR_ORDER:
+                before=(f.root/path).read_bytes();after=('// reviewed refactor '+path+'\n').encode()
+                row=lambda raw:{'state':'present','mode':'0644','size':len(raw),'sha256':m.sha(raw)}
+                targets[path]={'before':row(before),'after':row(after)};files[path]=base64.b64encode(after).decode()
+            with patch.object(m,'REFACTOR_PARENT',pin),patch.object(m,'REFACTOR_TARGETS',targets):
+                f.refactor_policy=m.refactor_policy();f.refactor_files=files
+                f.refactor_private=f.private.parent/m.REFACTOR_OPERATION
+                f.refactor_rollback_private=f.private.parent/m.REFACTOR_ROLLBACK_OPERATION
+                if tv:
+                    with TvSuccessorTransaction().successor(f):yield f
+                else:yield f
+
+    def execute(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.refactor_remote_program(f.refactor_policy,f.refactor_files,REFACTOR_IDENTITY,f.refactor_parent,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change);m.valid_refactor_result(REFACTOR_IDENTITY,result)
+        return result
+
+    def rollback(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.refactor_rollback_remote_program(f.refactor_policy,REFACTOR_ROLLBACK_IDENTITY,REFACTOR_IDENTITY,
+                    f.refactor_accepted,f.refactor_parent,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change)
+        m.valid_refactor_result(REFACTOR_ROLLBACK_IDENTITY,result,REFACTOR_IDENTITY,f.refactor_accepted)
+        return result
+
+    def public(self,f):return {p:UpdateTransaction().stamp(f.root/p) for p in (*f.policy['expected'],*m.SITE_ORDER)}
+
+    def test_exact_two_file_roundtrip_preserves_all_original_inodes_and_full_recovery_chain(self):
+        for tv in (False,True):
+            with self.subTest(tv=tv),self.installed(tv) as f:
+                before=self.public(f);parents=SiteTransaction().parent_records(f)
+                site_proof={str(p.relative_to(f.continuation_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                            for p in f.continuation_private.rglob('*') if p.is_file()}
+                tv_proof=TvSuccessorTransaction().proof_records(f) if tv else None
+                f.refactor_accepted=self.execute(f)
+                self.assertEqual(f.refactor_accepted['status'],'refactor_updated_verified')
+                self.assertEqual(f.refactor_accepted['written_files'],list(m.REFACTOR_ORDER))
+                self.assertEqual({p for p in before if self.public(f)[p]!=before[p]},set(m.REFACTOR_ORDER))
+                restored=self.rollback(f);self.assertEqual(restored['status'],'refactor_rolled_back_verified')
+                self.assertEqual(restored['rollback_files'],list(reversed(m.REFACTOR_ORDER)))
+                self.assertEqual(self.public(f),before);self.assertEqual(SiteTransaction().parent_records(f),parents)
+                self.assertEqual({str(p.relative_to(f.continuation_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                                  for p in f.continuation_private.rglob('*') if p.is_file()},site_proof)
+                self.assertEqual(SiteContinuationTransaction().rollback(f)['status'],'site_rolled_back_verified')
+                self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+                self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+                if tv:
+                    self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                    self.assertEqual(TvSuccessorTransaction().proof_records(f),tv_proof)
+
+
+    def test_preflight_drift_and_existing_namespace_are_zero_write(self):
+        for kind in ('target-bytes','target-inode','site-inode','site-stage-inode','parent','protected','failed-namespace','own-namespace'):
+            with self.subTest(kind=kind),self.installed() as f:
+                if kind=='target-bytes':(f.root/m.REFACTOR_ORDER[0]).write_bytes(b'foreign target')
+                elif kind in ('target-inode','site-inode','site-stage-inode'):
+                    path=(f.root/m.REFACTOR_ORDER[0] if kind=='target-inode' else
+                          f.root/m.SITE_ORDER[0] if kind=='site-inode' else f.continuation_private/'stage/0')
+                    previous=path.stat();tmp=path.with_name(path.name+'.foreign');tmp.write_bytes(path.read_bytes());tmp.chmod(stat.S_IMODE(previous.st_mode))
+                    os.utime(tmp,ns=(previous.st_atime_ns,previous.st_mtime_ns));tmp.replace(path)
+                elif kind=='parent':(f.continuation_private/'result.json').write_text('{}')
+                elif kind=='protected':(f.root/'data/db-v1.php').write_bytes(b'not the corrected DB helper')
+                elif kind=='failed-namespace':f.site_private.mkdir(mode=0o700)
+                else:f.refactor_private.mkdir(mode=0o700)
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['written_files'],[])
+                self.assertFalse(value['reservation_created']);self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_each_failed_exchange_unwinds_only_own_two_files_and_cannot_repeat(self):
+        for index in range(2):
+            with self.subTest(index=index),self.installed(True) as f:
+                before=self.public(f);parents=SiteTransaction().parent_records(f)
+                def fail(program):
+                    line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                    self.assertIn(line,program)
+                    return program.replace(line,line+f"\n   if index=={index}: raise RuntimeError('operation_failed')",1)
+                value=self.execute(f,fail)
+                self.assertEqual(value['status'],'rolled_back_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.REFACTOR_ORDER[:index+1])))
+                self.assertEqual(self.public(f),before);self.assertEqual(SiteTransaction().parent_records(f),parents)
+                snapshot=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),snapshot)
+
+    def test_after_parent_validation_never_adopts_foreign_target_inodes_as_preimages(self):
+        for tv in (False,True):
+            for target in m.REFACTOR_ORDER:
+                with self.subTest(tv=tv,target=target),self.installed(tv) as f:
+                    path=f.root/target;before=self.public(f);parents=SiteTransaction().parent_records(f)
+                    def race(program):
+                        self.assertIn('def refactor_site_parent():',program)
+                        program=program.replace('def refactor_site_parent():','def fixture_checked_refactor_site_parent():',1)
+                        wrapper=('fixture_parent_checked=False\ndef refactor_site_parent():\n'
+                            ' global fixture_parent_checked\n value=fixture_checked_refactor_site_parent()\n'
+                            ' if not fixture_parent_checked:\n  fixture_parent_checked=True\n'
+                            +TvSuccessorTransaction().replace_same_bytes(path,indent='  ')+' return value\n')
+                        return program.replace('def refactor_check_ancestors():',wrapper+'def refactor_check_ancestors():',1)
+                    value=self.execute(f,race)
+                    self.assertEqual(value['status'],'blocked_no_replay')
+                    self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+                    self.assertFalse(value['reservation_created']);self.assertFalse(f.refactor_private.exists())
+                    self.assertEqual(m.sha(path.read_bytes()),m.REFACTOR_TARGETS[target]['before']['sha256'])
+                    self.assertNotEqual(self.public(f)[target],before[target])
+                    self.assertEqual({p:v for p,v in self.public(f).items() if p!=target},{p:v for p,v in before.items() if p!=target})
+                    self.assertEqual(SiteTransaction().parent_records(f),parents)
+
+    def test_foreign_same_bytes_inode_before_or_after_exchange_is_preserved(self):
+        for timing in ('before','after'):
+            with self.subTest(timing=timing),self.installed() as f:
+                path=f.root/m.REFACTOR_ORDER[1];before=self.public(f)
+                def race(program):
+                    if timing=='before':
+                        line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                        injection="   if index==1:\n"+TvSuccessorTransaction().replace_same_bytes(path,indent='    ')
+                        return program.replace(line,injection+line,1)
+                    line='  observed=public.read(path)[:2]'
+                    injection="  if index==1:\n"+TvSuccessorTransaction().replace_same_bytes(path,indent='   ')
+                    return program.replace(line,injection+line,1)
+                value=self.execute(f,race)
+                self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertNotEqual(UpdateTransaction().stamp(path),before[m.REFACTOR_ORDER[1]])
+                desired=m.REFACTOR_TARGETS[m.REFACTOR_ORDER[1]]['before' if timing=='before' else 'after']['sha256']
+                self.assertEqual(m.sha(path.read_bytes()),desired)
+                self.assertEqual(self.public(f)[m.REFACTOR_ORDER[0]],before[m.REFACTOR_ORDER[0]])
+
+    def test_ancestor_protected_and_int_same_bytes_races_stop_all_further_writes(self):
+        for kind in ('site-record','protected','int-record','failed-namespace'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                def race(program):
+                    line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                    if kind=='failed-namespace':
+                        injection="   if index==0: os.mkdir(SITE_POLICY['continuation']['failed']['operation_id'],0o700,dir_fd=base.fd)\n"
+                    else:
+                        path=(f.continuation_private/'result.json' if kind=='site-record' else
+                              f.root/'data/db-v1.php' if kind=='protected' else f.tv_namespace/'result.json')
+                        injection="   if index==0:\n"+TvSuccessorTransaction().replace_same_bytes(path,indent='    ')
+                    return program.replace(line,line+'\n'+injection.rstrip('\n'),1)
+                value=self.execute(f,race)
+                self.assertEqual(value['status'],'unknown_no_replay');self.assertEqual(value['written_files'],[m.REFACTOR_ORDER[0]])
+                self.assertEqual(value['rollback_files'],[])
+                before=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_own_rollback_rejects_target_or_retained_proof_replacement_without_reservation(self):
+        for kind in ('target-inode','stage-inode','site-record-inode','own-result','ancestor-record'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                f.refactor_accepted=self.execute(f);self.assertEqual(f.refactor_accepted['status'],'refactor_updated_verified')
+                if kind=='own-result':(f.refactor_private/'result.json').write_text('{}')
+                elif kind=='ancestor-record':(f.update_private/'intent.json').write_text('{}')
+                else:
+                    path=(f.root/m.REFACTOR_ORDER[0] if kind=='target-inode' else
+                          f.refactor_private/'stage/0' if kind=='stage-inode' else f.continuation_private/'result.json')
+                    old=path.stat();tmp=path.with_name(path.name+'.foreign');tmp.write_bytes(path.read_bytes());tmp.chmod(stat.S_IMODE(old.st_mode))
+                    os.utime(tmp,ns=(old.st_atime_ns,old.st_mtime_ns));tmp.replace(path)
+                before=f.filesystem_snapshot();result=self.rollback(f)
+                self.assertEqual(result['status'],'blocked_no_replay');self.assertFalse(f.refactor_rollback_private.exists())
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_rollback_each_interruption_is_sealed_unknown_and_cannot_repeat(self):
+        for index in (1,0):
+            with self.subTest(index=index),self.installed(True) as f:
+                f.refactor_accepted=self.execute(f)
+                def fail(program):
+                    line="  result['rollback_files'].append(path)"
+                    self.assertIn(line,program)
+                    return program.replace(line,line+f"\n  if index=={index}: raise RuntimeError('operation_failed')",1)
+                value=self.rollback(f,fail)
+                self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.REFACTOR_ORDER[index:])))
+                before=f.filesystem_snapshot();again=self.rollback(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_successful_own_artifact_supports_recovery_without_historical_network_and_rejects_aliases(self):
+        with self.installed(True) as f:
+            f.refactor_accepted=self.execute(f)
+            value={**REFACTOR_IDENTITY,'operation_id':m.REFACTOR_OPERATION,'source_sha':m.REFACTOR_SOURCE,
+                'manifest_sha256':m.REFACTOR_MANIFEST_SHA,'read_only':False,'phase':'complete','ssh_started':True,
+                'status':'refactor_updated_verified','parent_site':m.refactor_parent_identity(),
+                'parent_evidence':f.refactor_parent,'remote':f.refactor_accepted}
+            def archive(v):
+                stream=io.BytesIO()
+                with zipfile.ZipFile(stream,'w') as z:z.writestr('evidence.json',(json.dumps(v,sort_keys=True)+'\n').encode())
+                return stream.getvalue()
+            with patch.object(m,'api',side_effect=AssertionError('historical network during recovery')):
+                policy,accepted,parent=m.refactor_source_evidence(archive(value),REFACTOR_IDENTITY)
+            self.assertEqual((policy,accepted,parent),(f.refactor_policy,f.refactor_accepted,f.refactor_parent))
+            for mutate in (lambda v:v.update(operation_id=m.SITE_CONTINUATION_OPERATION),
+                lambda v:v.update(status='unknown_no_replay'),lambda v:v['remote'].update(operation_id=m.UPDATE_OPERATION),
+                lambda v:v['remote'].update(written_files=[m.REFACTOR_ORDER[1]]),
+                lambda v:v['remote'].update(parent_receipt_sha256='0'*64),
+                lambda v:v['remote'].update(protected_unchanged=False),lambda v:v['parent_evidence'].update(run_id=m.SITE_INSPECT_FAILED['run_id'])):
+                bad=copy.deepcopy(value);mutate(bad)
+                with self.subTest(mutate=mutate),self.assertRaises(RuntimeError):m.refactor_source_evidence(archive(bad),REFACTOR_IDENTITY)
+            for mutate in (lambda v:v.update(lead_calls=1),lambda v:v.update(database_reads=True),
+                lambda v:v.update(failed_namespace_absent=False),lambda v:v.update(rollback_files=list(m.REFACTOR_ORDER)),
+                lambda v:v.update(snapshot_manifest_sha256=None),lambda v:v.update(unreviewed=True)):
+                bad=copy.deepcopy(f.refactor_accepted);mutate(bad)
+                with self.subTest(mutate=mutate),self.assertRaises(RuntimeError):m.valid_refactor_result(REFACTOR_IDENTITY,bad)
+
+
+class RefactorPayload(unittest.TestCase):
+    def archive(self,f,change=None):
+        files={p:(f.root/p).read_bytes() for p in (*m.ADDITIONS,m.ENTRY)}
+        files.update({p:base64.b64decode(v) for p,v in f.refactor_files.items()})
+        rows=[{'path':p,'served':{'size':len(v),'mode':'0644','sha256':m.sha(v)}} for p,v in files.items()]
+        rows[-1]['before']={k:v for k,v in m.ENTRY_BEFORE.items() if k!='state'}
+        manifest={k:None for k in m.REFACTOR_CONTRACT_KEYS}
+        manifest.update(schema_version=1,purpose='local_public_live_install_candidate',deployable=False,
+            profile={'schemaVersion':1,'profile':'live','scenario':'family'},main={'sha':m.BUILD_MAIN},
+            candidate={'sha':m.REFACTOR_SOURCE,'tree_sha':m.REFACTOR_TREE},
+            files={'added':rows[:-1],'replaced':rows[-1:],'protected':[{'path':'fixed/'+str(i),'sha256':'a'*64} for i in range(733)]})
+        contract={k:manifest[k] for k in m.REFACTOR_CONTRACT_KEYS};contract['protected']=manifest['files']['protected']
+        contract_sha=m.sha(json.dumps(contract,sort_keys=True,separators=(',',':')).encode())
+        if change:change(manifest,files)
+        manifest_raw=json.dumps(manifest,sort_keys=True).encode();stream=io.BytesIO()
+        with zipfile.ZipFile(stream,'w') as archive:
+            archive.writestr('manifest.json',manifest_raw)
+            for path,data in files.items():archive.writestr('overlay/'+path,data)
+        return stream.getvalue(),m.sha(manifest_raw),contract_sha
+
+    def test_full_fixed_overlay_yields_exactly_two_payloads_and_rejects_scope_or_contract_drift(self):
+        with RefactorTransaction().installed() as f:
+            raw,digest,contract=self.archive(f)
+            with patch.object(m,'REFACTOR_ARTIFACT_SHA',m.sha(raw)),patch.object(m,'REFACTOR_MANIFEST_SHA',digest),patch.object(m,'REFACTOR_CONTRACT_SHA',contract):
+                policy,files=m.refactor_package(raw,f.refactor_parent)
+                self.assertEqual(set(files),set(m.REFACTOR_ORDER));self.assertEqual(files,f.refactor_files)
+                with self.assertRaises(RuntimeError):m.refactor_package(raw+b'tamper',f.refactor_parent)
+            def changed_unaffected(manifest,files):
+                path=next(p for p in m.ADDITIONS if p not in m.REFACTOR_ORDER);files[path]=b'foreign unaffected file'
+                row=next(v for v in manifest['files']['added'] if v['path']==path)
+                row['served']={'size':len(files[path]),'mode':'0644','sha256':m.sha(files[path])}
+            changes=(lambda v,b:v.update(candidate={'sha':m.UPDATE_SOURCE,'tree_sha':m.UPDATE_TREE}),
+                lambda v,b:v.update(graph={'unreviewed':'entry'}),lambda v,b:v['files']['protected'].pop(),
+                lambda v,b:v['files']['protected'][0].update(sha256='0'*64),changed_unaffected,
+                lambda v,b:b.pop(m.REFACTOR_ORDER[0]),lambda v,b:b.update({'foreign.js':b'extra'}),
+                lambda v,b:b.update({m.REFACTOR_ORDER[1]:b'wrong candidate bytes'}),
+                lambda v,b:v['files']['added'][0]['served'].update(mode='0755'))
+            for change in changes:
+                raw,digest,contract=self.archive(f,change)
+                with self.subTest(change=change),patch.object(m,'REFACTOR_ARTIFACT_SHA',m.sha(raw)), \
+                     patch.object(m,'REFACTOR_MANIFEST_SHA',digest),patch.object(m,'REFACTOR_CONTRACT_SHA',contract),self.assertRaises((RuntimeError,KeyError)):
+                    m.refactor_package(raw,f.refactor_parent)
+            for files in ({},f.refactor_files|{m.ENTRY:base64.b64encode(b'foreign entry').decode()}):
+                with self.assertRaises(RuntimeError):m.refactor_remote_program(f.refactor_policy,files,REFACTOR_IDENTITY,f.refactor_parent)
+            for changed in (f.refactor_policy|{'order':m.SITE_ORDER},f.refactor_policy|{'operation':m.SITE_CONTINUATION_OPERATION}):
+                with self.assertRaises(RuntimeError):m.refactor_remote_program(changed,f.refactor_files,REFACTOR_IDENTITY,f.refactor_parent)
+
+
+class RefactorAdmission(unittest.TestCase):
+    def metadata(self,path):
+        owner={'user':{'id':226193297},'author_association':'OWNER'}
+        repo={'full_name':m.REPO}
+        if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
+        if path=='/git/ref/heads/release/search3-production-ready-v1':return {'object':{'sha':m.REFACTOR_RELEASE}}
+        if path=='/pulls/'+str(m.REFACTOR_SOURCE_PR):
+            return {'state':'closed','merged':True,'merge_commit_sha':m.REFACTOR_SOURCE_MERGE,
+                'head':{'sha':m.REFACTOR_SOURCE,'repo':repo},'base':{'ref':'release/search3-production-ready-v1','repo':repo}}
+        if path=='/pulls/5140':
+            return {'state':'closed','merged':True,'merge_commit_sha':m.REFACTOR_RELEASE,
+                'head':{'sha':m.REFACTOR_COMPILER_HEAD,'repo':repo},
+                'base':{'sha':m.REFACTOR_SOURCE_MERGE,'ref':'release/search3-production-ready-v1','repo':repo}}
+        for commit,tree in ((m.REFACTOR_SOURCE,m.REFACTOR_TREE),(m.REFACTOR_SOURCE_MERGE,m.REFACTOR_TREE),(m.REFACTOR_RELEASE,m.REFACTOR_RELEASE_TREE)):
+            if path=='/git/commits/'+commit:return {'tree':{'sha':tree},'parents':[{'sha':m.REFACTOR_SOURCE_MERGE},{'sha':m.REFACTOR_COMPILER_HEAD}]}
+        if path.startswith('/contents/.github/workflows/deploy-anytoour.yml?'):
+            return {'type':'file','encoding':'base64','content':base64.b64encode(b'guarded manual publisher').decode()}
+        if path.startswith('/commits/'+m.REFACTOR_SOURCE+'/check-runs?'):
+            return {'total_count':len(m.SOURCE_CHECK_NAMES),'check_runs':[{'id':i+1,'name':n,'head_sha':m.REFACTOR_SOURCE,
+                    'status':'completed','conclusion':'success','app':{'slug':'github-actions'},'check_suite':{'id':i}}
+                    for i,n in enumerate(m.SOURCE_CHECK_NAMES)]}
+        parent=m.REFACTOR_PARENT
+        if path in ('/actions/runs/'+str(m.REFACTOR_BUILD_RUN),'/actions/runs/'+parent['run_id']):
+            build=path.endswith(str(m.REFACTOR_BUILD_RUN))
+            return {'id':m.REFACTOR_BUILD_RUN if build else int(parent['run_id']),
+                'head_sha':m.REFACTOR_SOURCE if build else parent['control_source_sha'],
+                'head_branch':'refactor/search3-passive-card-selection-20261121' if build else 'main',
+                'path':'.github/workflows/search3-visual-migration.yml' if build else m.WORKFLOW,
+                'event':'pull_request' if build else 'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},'repository':repo,'head_repository':repo,'pull_requests':[]}
+        if path.startswith('/actions/runs/'+parent['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':parent['job_id'],'run_id':int(parent['run_id']),'name':'public-install',
+                'status':'completed','conclusion':'success','steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py site-continue',
+                'status':'completed','conclusion':'success'}]}]}
+        if path in ('/actions/artifacts/'+str(m.REFACTOR_ARTIFACT),'/actions/artifacts/'+str(parent['artifact_id'])):
+            build=path.endswith(str(m.REFACTOR_ARTIFACT))
+            return {'id':m.REFACTOR_ARTIFACT if build else parent['artifact_id'],
+                'name':'search3-public-live-'+m.REFACTOR_SOURCE if build else 'search3-public-install-'+parent['run_id']+'-1',
+                'expired':False,'digest':'sha256:'+(m.REFACTOR_ARTIFACT_SHA if build else parent['artifact_sha256']),
+                'workflow_run':{'id':m.REFACTOR_BUILD_RUN if build else int(parent['run_id']),'head_sha':m.REFACTOR_SOURCE if build else parent['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):
+            return [refactor_test_event()['comment'],
+                owner|{'id':parent['command_comment_id'],'body':f'{m.SITE_CONTINUATION_PREFIX} {parent["control_source_sha"]} {m.SITE_CONTINUATION_OPERATION}'},
+                owner|{'id':parent['terminal_comment_id'],'body':'site_updated_verified '+' '.join(str(parent[k]) for k in
+                    ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256'))}]
+        raise AssertionError('unexpected refactor source request: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'guarded manual publisher')), \
+             patch.object(m.carrier,'run',side_effect=AssertionError('server during admission')):
+            m.refactor_admission(REFACTOR_IDENTITY)
+            reviewed.assert_called_once_with(CONTROL)
+
+    def test_fixed_owner_created_event_current_main_and_original_attempt_only(self):
+        for rollback,identity in ((False,REFACTOR_IDENTITY),(True,REFACTOR_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            self.assertEqual(m.refactor_event_identity(refactor_test_event(rollback),env,rollback),
+                             (identity,REFACTOR_IDENTITY['run_id']) if rollback else identity)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch')):
+                with self.subTest(key=key),self.assertRaises(RuntimeError):m.refactor_event_identity(refactor_test_event(rollback),env|{key:value},rollback)
+            for change in (lambda e:e.update(action='edited'),lambda e:e['comment'].update(author_association='MEMBER'),
+                lambda e:e['comment'].update(body=e['comment']['body']+' arbitrary.js hash'),lambda e:e['issue'].update(pull_request={}),
+                lambda e:e['comment'].update(body=site_continuation_event(rollback)['comment']['body'])):
+                value=refactor_test_event(rollback);change(value)
+                with self.assertRaises(RuntimeError):m.refactor_event_identity(value,env,rollback)
+
+    def test_fixed_source_release_artifact_parent_and_unique_command_are_required(self):
+        self.admit()
+        mutations=[
+            ('/git/ref/heads/main',lambda v:v['object'].update(sha='f'*40)),
+            ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha=m.REFACTOR_SOURCE_MERGE)),
+            ('/pulls/'+str(m.REFACTOR_SOURCE_PR),lambda v:v.update(merge_commit_sha=m.REFACTOR_RELEASE)),
+            ('/pulls/5140',lambda v:v['base'].update(sha='f'*40)),
+            ('/git/commits/'+m.REFACTOR_RELEASE,lambda v:v.update(tree={'sha':m.REFACTOR_TREE})),
+            ('/git/commits/'+m.REFACTOR_RELEASE,lambda v:v.update(parents=[{'sha':m.REFACTOR_SOURCE_MERGE}])),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(conclusion='failure')),
+            ('/check-runs?',lambda v:v['check_runs'].append(copy.deepcopy(v['check_runs'][0]))),
+            ('/actions/runs/'+str(m.REFACTOR_BUILD_RUN),lambda v:v.update(run_attempt=2)),
+            ('/actions/runs/'+str(m.REFACTOR_BUILD_RUN),lambda v:v.update(head_sha=m.UPDATE_SOURCE)),
+            ('/actions/runs/'+str(m.REFACTOR_BUILD_RUN),lambda v:v.update(path='.github/workflows/build-preview.yml')),
+            ('/actions/runs/'+m.REFACTOR_PARENT['run_id'],lambda v:v.update(status='in_progress')),
+            ('/actions/runs/'+m.REFACTOR_PARENT['run_id'],lambda v:v.update(conclusion='failure')),
+            ('/actions/runs/'+m.REFACTOR_PARENT['run_id'],lambda v:v.update(run_attempt=True)),
+            ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py site-update')),
+            ('/actions/artifacts/'+str(m.REFACTOR_ARTIFACT),lambda v:v.update(digest='sha256:'+'0'*64)),
+            ('/actions/artifacts/'+str(m.REFACTOR_PARENT['artifact_id']),lambda v:v.update(expired=True)),
+            ('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+            ('/comments?',lambda v:v.append(v[1]|{'id':99999})),
+            ('/comments?',lambda v:v[2].update(body='unrelated terminal'))]
+        for part,mutate in mutations:
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part,mutate=mutate),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class RefactorRollbackAdmission(unittest.TestCase):
+    def metadata(self,path):
+        if path=='/git/ref/heads/main':return {'object':{'sha':REFACTOR_ROLLBACK_IDENTITY['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):return [refactor_test_event()['comment'],refactor_test_event(True)['comment']]
+        run=REFACTOR_IDENTITY['run_id']
+        if path=='/actions/runs/'+run:
+            return {'id':int(run),'head_sha':CONTROL,'head_branch':'main','path':m.WORKFLOW,'event':'issue_comment',
+                'run_attempt':1,'status':'completed','conclusion':'success','actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+run+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':556,'run_id':int(run),'name':'public-install','status':'completed','conclusion':'success',
+                'steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py refactor','status':'completed','conclusion':'success'}]}]}
+        if path.startswith('/actions/runs/'+run+'/artifacts?'):
+            return {'total_count':1,'artifacts':[{'id':555,'name':'search3-public-install-'+run+'-1','expired':False,
+                'workflow_run':{'id':int(run)},'digest':'sha256:'+'5'*64}]}
+        raise AssertionError('historical source dependency during refactor recovery: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'refactor_admission',side_effect=AssertionError('source during recovery')), \
+             patch.object(m,'refactor_parent_admission',side_effect=AssertionError('parent API during recovery')):
+            original,artifact=m.refactor_rollback_admission(REFACTOR_ROLLBACK_IDENTITY,REFACTOR_IDENTITY['run_id'])
+            self.assertEqual(original,REFACTOR_IDENTITY);self.assertEqual(artifact['id'],555)
+            reviewed.assert_called_once_with(REFACTOR_ROLLBACK_IDENTITY['control_source_sha'])
+
+    def test_only_successful_own_refactor_can_recover_independently_of_release_and_old_artifacts(self):
+        self.admit()
+        for run in (m.REFACTOR_PARENT['run_id'],m.SITE_INSPECT_FAILED['run_id'],m.SITE_PARENT['run_id'],REFACTOR_ROLLBACK_IDENTITY['run_id']):
+            with patch.object(m,'api') as api,self.assertRaises(RuntimeError):m.refactor_rollback_commands(REFACTOR_ROLLBACK_IDENTITY,run)
+            api.assert_not_called()
+        for part,mutate in (('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+            ('/comments?',lambda v:v[0].update(body=site_continuation_event()['comment']['body'])),
+            ('/actions/runs/'+REFACTOR_IDENTITY['run_id'],lambda v:v.update(conclusion='failure')),
+            ('/actions/runs/'+REFACTOR_IDENTITY['run_id'],lambda v:v.update(status='in_progress')),
+            ('/actions/runs/'+REFACTOR_IDENTITY['run_id'],lambda v:v.update(run_attempt=2)),
+            ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py update')),
+            ('/artifacts?',lambda v:v['artifacts'][0].update(workflow_run={'id':int(m.REFACTOR_PARENT['run_id'])}))):
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class RefactorClient(unittest.TestCase):
+    def env(self,f,name,rollback=False):
+        directory=f.base/name;directory.mkdir();event_path=directory/'event.json';event_path.write_text(json.dumps(refactor_test_event(rollback)))
+        identity=REFACTOR_ROLLBACK_IDENTITY if rollback else REFACTOR_IDENTITY
+        return directory,environment()|{'GITHUB_RUN_ID':identity['run_id'],'GITHUB_SHA':identity['control_source_sha'],
+            'RUNNER_TEMP':str(directory),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+            'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+
+    def test_live_client_saves_complete_parent_and_own_recovery_avoids_historical_downloads(self):
+        helper=RefactorTransaction()
+        with helper.installed(True) as f:
+            f.refactor_accepted=helper.execute(f);runner,env=self.env(f,'refactor-client')
+            with patch.dict(os.environ,env),patch.object(m,'refactor_admission') as admission,patch.object(m,'refactor_final_heads'), \
+                 patch.object(m,'download',side_effect=[f.refactor_parent_raw,b'package covered separately']) as download, \
+                 patch.object(m,'refactor_package',return_value=(f.refactor_policy,f.refactor_files)), \
+                 patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)) as dependency, \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.refactor_accepted).encode()]),patch('builtins.print'):
+                m.refactor()
+            self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+            self.assertEqual([c.args for c in download.call_args_list],[(m.REFACTOR_PARENT['artifact_id'],m.REFACTOR_PARENT['artifact_sha256']),
+                (m.REFACTOR_ARTIFACT,m.REFACTOR_ARTIFACT_SHA)])
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value['status'],'refactor_updated_verified');self.assertEqual(value['parent_evidence'],f.refactor_parent)
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+            packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',path.read_bytes())
+            raw=packet.getvalue();restored=helper.rollback(f);runner,env=self.env(f,'refactor-client-recovery',True)
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                stack.enter_context(patch.object(m,'refactor_rollback_admission',return_value=(REFACTOR_IDENTITY,{'id':555,'digest':'sha256:'+m.sha(raw)})))
+                stack.enter_context(patch.object(m,'refactor_rollback_commands',return_value=REFACTOR_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
+                dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                download=stack.enter_context(patch.object(m,'download',return_value=raw))
+                for name in ('api','refactor_admission','refactor_final_heads','refactor_parent_admission','refactor_parent_evidence',
+                             'refactor_package','site_continuation_collector_log','signing_evidence'):
+                    stack.enter_context(patch.object(m,name,side_effect=AssertionError('historical recovery dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
+                m.refactor(rollback=True)
+                self.assertEqual(dependency.call_count,2);download.assert_called_once_with(555,m.sha(raw))
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value['status'],'refactor_rolled_back_verified')
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+
+    def test_unresolved_or_changed_int_proof_never_starts_ssh_in_either_mode(self):
+        helper=RefactorTransaction()
+        with helper.installed(True) as f:
+            for rollback in (False,True):
+                for stage in ('initial','recheck'):
+                    with self.subTest(rollback=rollback,stage=stage),contextlib.ExitStack() as stack:
+                        runner,env=self.env(f,'proof-'+str(rollback)+'-'+stage,rollback)
+                        stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                        for name in ('refactor_admission','refactor_rollback_commands','rollback_main'):
+                            stack.enter_context(patch.object(m,name))
+                        stack.enter_context(patch.object(m,'refactor_rollback_admission',return_value=(REFACTOR_IDENTITY,{'id':555,'digest':'sha256:'+'5'*64})))
+                        stack.enter_context(patch.object(m,'download',return_value=f.refactor_parent_raw))
+                        stack.enter_context(patch.object(m,'refactor_source_evidence',return_value=(f.refactor_policy,{},f.refactor_parent)))
+                        stack.enter_context(patch.object(m,'refactor_package',return_value=(f.refactor_policy,f.refactor_files)))
+                        builder=stack.enter_context(patch.object(m,'refactor_rollback_remote_program' if rollback else 'refactor_remote_program',
+                                                                return_value='# inert native program'))
+                        sequence=([copy.deepcopy(f.tv_evidence)] if stage=='recheck' else [])+[RuntimeError('tv_successor_original_missing')]
+                        resolver=stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=sequence))
+                        remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                        with self.assertRaises(RuntimeError):m.refactor(rollback)
+                        self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                        self.assertEqual([c.args[0][0] for c in remote.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                        if stage=='initial':builder.assert_not_called()
+                        else:self.assertEqual(builder.call_args.kwargs['tv_successor'],f.tv_evidence)
+                        value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                        self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)

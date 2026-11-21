@@ -3817,7 +3817,673 @@ def site_continuation_collector_log():
     return site_continuation_collector_evidence(raw)
 
 
+"""Unpublished fixed Search3 two-file successor fragment.
+
+Insert before command_mode in the reviewed publisher only after the INT owner
+releases its source claim. This file has no CLI or runnable default.
+Live integration requires the already reviewed tv_successor helpers from PR5142.
+"""
+
+REFACTOR_PREFIX = '/update-search3-refactor'
+REFACTOR_OPERATION = 'public-search3-refactor-20261121-v1'
+REFACTOR_ROLLBACK_PREFIX = '/rollback-search3-refactor'
+REFACTOR_ROLLBACK_OPERATION = 'public-search3-refactor-rollback-20261121-v1'
+REFACTOR_SOURCE_PR = 5139
+REFACTOR_SOURCE = 'cb1a11dffa9b63a0811d0339483a22fcbbcd5a91'
+REFACTOR_TREE = 'dc9623b7d4bb69e3d168b6ebe144f2ceb2292883'
+REFACTOR_SOURCE_MERGE = '73268818dd13c162f543ec3318b890548184edb9'
+REFACTOR_RELEASE = 'aa4258b0fce33da56452e8dbfffd27273e67ba73'
+REFACTOR_RELEASE_TREE = 'f48d000820f424dac523bda7920cf0aebd75f743'
+REFACTOR_COMPILER_HEAD = 'bf586771b563fd42dcce524f0ca46217a17ba4f9'
+REFACTOR_BUILD_RUN = 44906779297
+REFACTOR_ARTIFACT = 14708066643
+REFACTOR_ARTIFACT_SHA = 'ea7a0213646150537cf05f0a13f9f6b5b1d2c804552133d131e81f6345f64c8d'
+REFACTOR_MANIFEST_SHA = '0d65a8cb7c119a97b2fda3bc3bafb8f5075d55c48c5a83812bab5e702126f751'
+REFACTOR_CONTRACT_KEYS = ('schema_version','purpose','deployable','profile','network_used','checkout_changed',
+    'published','main','source_scope','served_root','overlay_root','overlay_scope','resource_base','public_path',
+    'aliases','live_graph','graph','rollback','boundaries','server_dependencies')
+REFACTOR_CONTRACT_SHA = '0c8619ef530967c27ab5c3f7d17d0e02971dcecb2d666d740e27503aec7a0ddc'  # Unchanged graph, dependencies, and all 733 protected manifest rows.
+REFACTOR_PARENT = {
+    'operation_id':'site-shared-assets-after-44897684408-20261121-v1',
+    'control_source_sha':'ac061f7afa94004d0077ea59ed733875b5ae22f9',
+    'run_id':'44910720726','command_comment_id':7063600308,'job_id':136865752676,
+    'artifact_id':14708929961,
+    'artifact_sha256':'1ffb6381ce3d819771abc04d4304224e219eb6476f2ee57cc415078492b9cfb3',
+    'receipt_sha256':'59744d56f8c46e008b24150ad6919e892276305a13bc2c5b15d1fbaaf1418ca8',
+    'policy_sha256':'fb855bd2c9818148f22505b85020dcc8aaa887ea25426bd89f79c928af2bfe30',
+    'snapshot_manifest_sha256':'3206cac517fca84dbba3bc6877521f21452c9457e75ff7392c2a7dd45a906044',
+    'terminal_comment_id':7063678029,
+}
+REFACTOR_ORDER = ('visual-search/offer-list-v1.js','visual-search/app.js')
+REFACTOR_TARGETS = {
+    'visual-search/offer-list-v1.js':{
+        'before':{'state':'present','mode':'0644','size':10662,'sha256':'c721c5ff832219f1e0ee64b738f263bc0fc6f94f3b506020782a46f4ccccbfe8'},
+        'after':{'state':'present','mode':'0644','size':10523,'sha256':'d2fda746f777a43826db7c5ccec1015439b04f63279ef3a738f509cf155091e4'}},
+    'visual-search/app.js':{
+        'before':{'state':'present','mode':'0644','size':311547,'sha256':'c8d6922231350409490e833e429792d1d5a974e02b499e740264d148324d196f'},
+        'after':{'state':'present','mode':'0644','size':310844,'sha256':'efb3870d23c3e0d3c3fbb53fff4967a6ee3d901bebdf5502b7d78c6e2d2bbe92'}},
+}
+
+
+def refactor_parent_identity():
+    return {key:REFACTOR_PARENT[key] for key in ('control_source_sha','run_id','command_comment_id')}
+
+
+def refactor_policy():
+    return {'operation':REFACTOR_OPERATION,'source':REFACTOR_SOURCE,'tree':REFACTOR_TREE,
+            'release':REFACTOR_RELEASE,'manifest':REFACTOR_MANIFEST_SHA,
+            'order':REFACTOR_ORDER,'targets':REFACTOR_TARGETS,'parent':REFACTOR_PARENT}
+
+
+def refactor_event_identity(event, env, rollback=False):
+    need(type(rollback) is bool,'mode')
+    prefix,operation=(REFACTOR_ROLLBACK_PREFIX,REFACTOR_ROLLBACK_OPERATION) if rollback else (REFACTOR_PREFIX,REFACTOR_OPERATION)
+    control=env.get('GITHUB_SHA','');body=event.get('comment',{}).get('body','')
+    original_run=None
+    if rollback:
+        match=re.fullmatch(re.escape(prefix+' '+control+' ')+r'([1-9][0-9]{0,19}) '+re.escape(operation),body)
+        need(match is not None,'command');original_run=match[1]
+    else:need(body==f'{prefix} {control} {operation}','command')
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity=update_event_identity(synthetic,env)
+    excluded=(REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],CONTINUATION_PARENT['run_id'],
+              SITE_INSPECT_FAILED['run_id'],SITE_CONTINUATION_INSPECTION['run_id'],SITE_CONTINUATION_COLLECTOR['run_id'])
+    need(identity['run_id'] not in excluded and original_run not in excluded,'refactor_runtime_identity')
+    if rollback:need(original_run!=identity['run_id'],'command')
+    return (identity,original_run) if rollback else identity
+
+
+def refactor_final_heads(identity):
+    rollback_main(identity)
+    need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==REFACTOR_RELEASE,'release_moved')
+    pr=api('/pulls/'+str(REFACTOR_SOURCE_PR))
+    need(pr.get('state')=='closed' and pr.get('merged') is True and pr.get('merge_commit_sha')==REFACTOR_SOURCE_MERGE
+         and pr.get('head',{}).get('sha')==REFACTOR_SOURCE and pr.get('head',{}).get('repo',{}).get('full_name')==REPO
+         and pr.get('base',{}).get('ref')=='release/search3-production-ready-v1'
+         and pr.get('base',{}).get('repo',{}).get('full_name')==REPO,'candidate_moved')
+    for commit,tree in ((REFACTOR_SOURCE,REFACTOR_TREE),(REFACTOR_SOURCE_MERGE,REFACTOR_TREE),(REFACTOR_RELEASE,REFACTOR_RELEASE_TREE)):
+        value=api('/git/commits/'+commit)
+        need(value.get('tree',{}).get('sha')==tree,'refactor_source_tree')
+        if commit==REFACTOR_RELEASE:
+            need([p.get('sha') for p in value.get('parents',[])]==[REFACTOR_SOURCE_MERGE,REFACTOR_COMPILER_HEAD],'refactor_release_relation')
+    compiler=api('/pulls/5140')
+    need(compiler.get('state')=='closed' and compiler.get('merged') is True
+         and compiler.get('merge_commit_sha')==REFACTOR_RELEASE and compiler.get('head',{}).get('sha')==REFACTOR_COMPILER_HEAD
+         and compiler.get('head',{}).get('repo',{}).get('full_name')==REPO
+         and compiler.get('base',{}).get('sha')==REFACTOR_SOURCE_MERGE
+         and compiler.get('base',{}).get('ref')=='release/search3-production-ready-v1'
+         and compiler.get('base',{}).get('repo',{}).get('full_name')==REPO,'refactor_release_relation')
+
+
+def refactor_parent_admission():
+    pin=REFACTOR_PARENT;run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','refactor_parent_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')=='success','refactor_parent_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py site-continue'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','refactor_parent_step')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'],'refactor_parent_artifact')
+    comments=pages('/issues/4709/comments')
+    _unique_update_command(comments,SITE_CONTINUATION_PREFIX,SITE_CONTINUATION_OPERATION,refactor_parent_identity())
+    terminal=next((c for c in comments if c.get('id')==pin['terminal_comment_id']),{})
+    tokens=[str(pin[k]) for k in ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256')]
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and all(t in terminal.get('body','') for t in tokens+['site_updated_verified']),'refactor_parent_terminal')
+
+
+def refactor_admission(identity):
+    refactor_final_heads(identity);reviewed_control(identity['control_source_sha'])
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+REFACTOR_SOURCE+'/check-runs','check_runs')
+    need(len(checks)==len(SOURCE_CHECK_NAMES) and {c.get('name') for c in checks}==set(SOURCE_CHECK_NAMES)
+         and all(c.get('head_sha')==REFACTOR_SOURCE and green(c) for c in checks),'source_ci')
+    run=api('/actions/runs/'+str(REFACTOR_BUILD_RUN))
+    need(run.get('id')==REFACTOR_BUILD_RUN and run.get('head_sha')==REFACTOR_SOURCE
+         and run.get('head_branch')=='refactor/search3-passive-card-selection-20261121'
+         and run.get('path')=='.github/workflows/search3-visual-migration.yml'
+         and run.get('event')=='pull_request' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,'refactor_build')
+    artifact=api('/actions/artifacts/'+str(REFACTOR_ARTIFACT))
+    need(artifact.get('id')==REFACTOR_ARTIFACT and artifact.get('name')=='search3-public-live-'+REFACTOR_SOURCE
+         and artifact.get('expired') is False and artifact.get('digest')=='sha256:'+REFACTOR_ARTIFACT_SHA
+         and artifact.get('workflow_run',{}).get('id')==REFACTOR_BUILD_RUN
+         and artifact.get('workflow_run',{}).get('head_sha')==REFACTOR_SOURCE,'refactor_artifact')
+    refactor_parent_admission()
+    _unique_update_command(pages('/issues/4709/comments'),REFACTOR_PREFIX,REFACTOR_OPERATION,identity)
+    refactor_final_heads(identity)
+
+
+def refactor_parent_value(value):
+    # The fixed digest preserves the actual parent identity and complete nested
+    # proof. Reuse the existing pure successful-child validator without network.
+    raw=(json.dumps(value,sort_keys=True)+'\n').encode()
+    need(sha(raw)==REFACTOR_PARENT['receipt_sha256'],'refactor_parent_digest')
+    packet=io.BytesIO()
+    with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',raw)
+    policy,accepted,previous=site_source_evidence(packet.getvalue(),refactor_parent_identity(),True)
+    need(policy['manifest']==REFACTOR_PARENT['policy_sha256']
+         and accepted['snapshot_manifest_sha256']==REFACTOR_PARENT['snapshot_manifest_sha256'],'refactor_parent_receipt')
+    return policy,accepted,previous
+
+
+def refactor_parent_evidence(raw):
+    need(sha(raw)==REFACTOR_PARENT['artifact_sha256'],'refactor_parent_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'refactor_parent_artifact')
+        data=archive.read('evidence.json');need(sha(data)==REFACTOR_PARENT['receipt_sha256'],'refactor_parent_digest')
+    value=json.loads(data);refactor_parent_value(value)
+    return value
+
+
+def refactor_package(raw, parent_value):
+    need(sha(raw)==REFACTOR_ARTIFACT_SHA,'refactor_artifact')
+    _,_,update_value=refactor_parent_value(parent_value)
+    previous,_,_=site_parent_value(update_value)
+    expected=dict(previous['previous']['expected'],**{UPDATE_PATH:UPDATE_AFTER})
+    need(set(REFACTOR_ORDER)<=set(expected) and len(expected)==42
+         and all(expected[p]==REFACTOR_TARGETS[p]['before'] for p in REFACTOR_ORDER),'refactor_predecessor')
+    with zip_files(raw) as archive:
+        manifest_raw=archive.read('manifest.json');need(sha(manifest_raw)==REFACTOR_MANIFEST_SHA,'manifest_digest')
+        manifest=json.loads(manifest_raw)
+        contract={k:manifest[k] for k in REFACTOR_CONTRACT_KEYS};contract['protected']=manifest['files']['protected']
+        need(sha(json.dumps(contract,sort_keys=True,separators=(',',':')).encode())==REFACTOR_CONTRACT_SHA
+             and len(manifest['files']['protected'])==733,'refactor_manifest_contract')
+        need(manifest.get('candidate')=={'sha':REFACTOR_SOURCE,'tree_sha':REFACTOR_TREE},'manifest_identity')
+        added,replaced=manifest['files']['added'],manifest['files']['replaced']
+        need(tuple(x['path'] for x in added)==ADDITIONS and len(replaced)==1 and replaced[0]['path']==ENTRY
+             and replaced[0]['before']=={k:v for k,v in ENTRY_BEFORE.items() if k!='state'},'manifest_scope')
+        rows=added+replaced
+        need({x for x in archive.namelist() if x.startswith('overlay/') and not x.endswith('/')}
+             =={'overlay/'+p for p in expected},'overlay_scope')
+        files={}
+        for item in rows:
+            path=item['path'];data=archive.read('overlay/'+path);record={'state':'present',**item['served']}
+            need(item['served']=={'size':len(data),'mode':'0644','sha256':sha(data)} and 0<len(data)<=MAX_BYTES,'overlay_bytes')
+            if path in REFACTOR_ORDER:
+                need(record==REFACTOR_TARGETS[path]['after'],'refactor_payload_bytes');files[path]=base64.b64encode(data).decode()
+            else:need(record==expected[path],'refactor_unexpected_delta')
+    need(set(files)==set(REFACTOR_ORDER),'refactor_payload')
+    return refactor_policy(),files
+
+
+REFACTOR_COMMON_REMOTE = r'''
+REFACTOR_PREPARED_PATHS=('reservation.json','snapshot/manifest.json')+tuple(p+str(i) for i in range(2) for p in ('snapshot/','drill/','intent-'))
+def refactor_stamp_rows(rows):
+ return {p:[row,list(identity) if identity is not None else None] for p,(row,identity,*_) in rows.items()}
+def refactor_ancestor_inventory():
+ return {'public':refactor_stamp_rows(parent_records()),
+         'update':refactor_stamp_rows(read_records(updated,UPDATE_RECORD_PATHS)),
+         'update_stage':refactor_stamp_rows({'app':updated.read('stage/app')[:2]}),
+         'site':refactor_stamp_rows(site_read_records(published,SITE_PREPARED_PATHS+('result.json',))),
+         'site_stage':refactor_stamp_rows({p:published.read('stage/'+str(i))[:2] for i,p in enumerate(SITE_POLICY['order'])})}
+def refactor_site_parent():
+ retained,updates,update_prior,previous=site_parent_records()
+ rows=site_read_records(published,SITE_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(rows[p][2])
+ require(record('reservation.json')=={'operation':SITE_POLICY['operation'],**SITE_ORIGINAL,
+         'source':SITE_POLICY['source'],'manifest':SITE_POLICY['manifest'],'parent_update':UPDATE_ORIGINAL}
+         and record('result.json')==SITE_ACCEPTED,'refactor_site_parent')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_update','before','guarded','parent_records','update_records'}
+         and snapshot['source']==SITE_POLICY['source'] and snapshot['manifest']==SITE_POLICY['manifest']
+         and snapshot['parent_update']==UPDATE_ORIGINAL and set(snapshot['before'])==set(SITE_POLICY['order'])
+         and refactor_expected(snapshot['guarded'])=={p:r[0] for p,r in previous.items()}
+         and snapshot['parent_records']==parent_hashes(retained) and snapshot['update_records']==parent_hashes(updates)
+         and digest(rows['snapshot/manifest.json'][2])==SITE_ACCEPTED['snapshot_manifest_sha256'],'refactor_site_snapshot')
+ current=public.inventory(SITE_POLICY['order']);site_prior={}
+ for index,path in enumerate(SITE_POLICY['order']):
+  target=SITE_POLICY['targets'][path];before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==target['before'],'refactor_site_snapshot')
+  old=checked_stamp(before[1],target['before']);intent=record('intent-'+str(index))
+  require(intent=={'path':path,'before':target['before'],'after':target['after'],
+          'previous_identity':before[1],'new_identity':intent.get('new_identity')},'refactor_site_parent')
+  new=checked_stamp(intent['new_identity'],target['after']);prior=published.read('stage/'+str(index))[:2]
+  require(rows['snapshot/'+str(index)][0]==rows['drill/'+str(index)][0]==target['before']
+          and prior[0]==target['before'] and prior[1][:-1]==old[:-1]
+          and current[path][0]==target['after'] and current[path][1][:-1]==new[:-1],'refactor_site_snapshot')
+  site_prior[path]=prior
+ ancestors={'public':refactor_stamp_rows(retained),'update':refactor_stamp_rows(updates),
+            'update_stage':refactor_stamp_rows({'app':update_prior}),'site':refactor_stamp_rows(rows),
+            'site_stage':refactor_stamp_rows(site_prior)}
+ # Carry the exact validated preimages and ancestor records into the transaction.
+ # A later read may only confirm this view, never replace its inode authority.
+ return ({p:r for p,r in previous.items() if p not in REFACTOR_POLICY['order']}|current,
+         {p:previous[p] for p in REFACTOR_POLICY['order']},ancestors)
+def refactor_check_ancestors():
+ site_continuation_namespace_absent()
+ require(refactor_ancestor_inventory()==ancestors,'refactor_parent_changed')
+ require(public.inventory(guarded)==guarded,'protected_changed')
+def refactor_check_targets(expected):
+ require(public.inventory(REFACTOR_POLICY['order'])==expected,'refactor_target_changed')
+def refactor_guard_from_snapshot(saved):
+ expected=refactor_expected({p:row[0] for p,row in saved.items()});observed=public.inventory(saved)
+ for path,current in observed.items():
+  require(current[0]==expected[path],'protected_changed')
+  if globals().get('TV_SUCCESSOR_PROOF') is not None and path==TV_SUCCESSOR['path']:
+   require(current==_tv_successor_bound['target'],'protected_changed')
+  else:
+   require(current==(saved[path][0],tuple(saved[path][1]) if saved[path][1] is not None else None),'protected_changed')
+ return observed
+def refactor_restore_one(store,path,index,current,prior,capture):
+ refactor_check_ancestors()
+ require(public.read(path)[:2]==current and store.read('stage/'+str(index))[:2]==prior,'rollback_preflight_race')
+ capture_owned(public,private,path,capture,current[0],current[1])
+ restore_capture(public,store,path,'stage/'+str(index))
+ restored=public.read(path)[:2]
+ require(restored[0]==prior[0] and restored[1][:-1]==prior[1][:-1],'rollback_incomplete')
+ return restored
+'''
+
+REFACTOR_REMOTE = r'''
+result={'schema_version':1,'operation_id':REFACTOR_POLICY['operation'],'source_sha':REFACTOR_POLICY['source'],
+        'manifest_sha256':REFACTOR_POLICY['manifest'],**IDENTITY,'parent_site':SITE_ORIGINAL,
+        'parent_receipt_sha256':REFACTOR_POLICY['parent']['receipt_sha256'],
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,'snapshot_manifest_sha256':None}
+public=base=original=updated=published=private=None;reserved=False;switched=[];owned={};prior={};prepared=None
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=REFACTOR_POLICY['order'];targets=REFACTOR_POLICY['targets'];home=os.environ.get('HOME','')
+ require(len(order)==2 and set(PAYLOAD)==set(targets)==set(order)
+         and set(order)<=set(POLICY['expected']) and not set(order)&set(SITE_POLICY['order']),'refactor_scope')
+ payload={p:base64.b64decode(PAYLOAD[p],validate=True) for p in order}
+ require(all(targets[p]['after']=={'state':'present','sha256':digest(raw),'size':len(raw),'mode':'0644'}
+             and 0<len(raw)<=MAX_BYTES for p,raw in payload.items()),'payload_bytes')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ guarded,before,ancestors=refactor_site_parent()
+ require(all(row[0]==targets[p]['before'] and row[1][6]==os.getuid() for p,row in before.items()),'predecessor_drift')
+ refactor_check_ancestors();refactor_check_targets(before)
+ try:os.mkdir(REFACTOR_POLICY['operation'],0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)
+ reservation={'operation':REFACTOR_POLICY['operation'],**IDENTITY,'source':REFACTOR_POLICY['source'],
+              'manifest':REFACTOR_POLICY['manifest'],'parent_site':SITE_ORIGINAL}
+ private.create('reservation.json',canonical(reservation));result['phase']='snapshot'
+ snapshot={'source':REFACTOR_POLICY['source'],'manifest':REFACTOR_POLICY['manifest'],'parent_site':SITE_ORIGINAL,
+           'before':refactor_stamp_rows(before),'guarded':refactor_stamp_rows(guarded),'ancestors':ancestors}
+ for index,path in enumerate(order):
+  row,identity,raw=public.read(path,True);require((row,identity)==before[path],'predecessor_drift')
+  private.create('snapshot/'+str(index),raw,0o644)
+  require(private.read('snapshot/'+str(index))[0]==targets[path]['before'],'snapshot_invalid')
+ private.create('snapshot/manifest.json',canonical(snapshot))
+ require(private.read('snapshot/manifest.json',True)[2]==canonical(snapshot),'snapshot_invalid')
+ result['snapshot_manifest_sha256']=digest(canonical(snapshot));result['snapshot_verified']=True
+ for index,path in enumerate(order):
+  private.create('drill/'+str(index),private.read('snapshot/'+str(index),True)[2],0o644)
+  require(private.read('drill/'+str(index))[0]==targets[path]['before'],'restore_drill_failed')
+ result['restore_drill_verified']=True
+ for index,path in enumerate(order):
+  private.create('stage/'+str(index),payload[path],0o644);owned[path]=private.read('stage/'+str(index))[:2]
+  require(owned[path][0]==targets[path]['after'],'payload_bytes')
+  private.create('intent-'+str(index),canonical({'path':path,'before':targets[path]['before'],'after':targets[path]['after'],
+                 'previous_identity':list(before[path][1]),'new_identity':list(owned[path][1])}))
+ prepared=site_read_records(private,REFACTOR_PREPARED_PATHS)
+ require(prepared['reservation.json'][2]==canonical(reservation) and prepared['snapshot/manifest.json'][2]==canonical(snapshot)
+         and all(prepared['snapshot/'+str(i)][0]==prepared['drill/'+str(i)][0]==targets[p]['before']
+                 and json.loads(prepared['intent-'+str(i)][2])=={'path':p,'before':targets[p]['before'],'after':targets[p]['after'],
+                      'previous_identity':list(before[p][1]),'new_identity':list(owned[p][1])} for i,p in enumerate(order)),'snapshot_invalid')
+ current=dict(before);result['phase']='assets'
+ for index,path in enumerate(order):
+  refactor_check_ancestors();refactor_check_targets(current)
+  require(site_read_records(private,REFACTOR_PREPARED_PATHS)==prepared
+          and private.read('stage/'+str(index))[:2]==owned[path],'prewrite_race')
+  with private.parent('stage/'+str(index)) as (src,name),public.parent(path) as (dst,target):
+   require(public.read(path)[:2]==before[path],'entry_prewrite_race')
+   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)
+  observed=public.read(path)[:2]
+  require(observed[0]==targets[path]['after'] and observed[1][:-1]==owned[path][1][:-1],'refactor_readback')
+  owned[path]=observed;current[path]=observed
+  try:
+   prior[path]=private.read('stage/'+str(index))[:2]
+   require(prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==before[path][1][:-1],'refactor_exchange_conflict')
+  except Exception:
+   refactor_check_ancestors()
+   capture_owned(public,private,path,'rollback/conflict-'+str(index),observed[0],observed[1])
+   restore_capture(public,private,path,'stage/'+str(index));switched.remove(path)
+   raise RuntimeError('refactor_exchange_conflict')
+  refactor_check_targets(current);refactor_check_ancestors()
+ require(site_read_records(private,REFACTOR_PREPARED_PATHS)==prepared
+         and all(private.read('stage/'+str(i))[:2]==prior[p] for i,p in enumerate(order)),'refactor_snapshot_conflict')
+ result.update(status='refactor_updated_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+ if reserved:
+  result['status']='unknown_no_replay';recovery_ok=True
+  for path in reversed(switched):
+   try:
+    index=order.index(path);current_row=public.read(path)[:2];saved=private.read('stage/'+str(index))[:2]
+    require(current_row[0]==targets[path]['after'] and current_row[1][:-1]==owned[path][1][:-1]
+            and saved[0]==targets[path]['before'] and saved[1][:-1]==before[path][1][:-1],'rollback_entry_conflict')
+    refactor_restore_one(private,path,index,current_row,saved,'rollback/'+str(index));result['rollback_files'].append(path)
+   except Exception:recovery_ok=False
+  try:
+   require(recovery_ok,'rollback_incomplete');refactor_check_ancestors()
+   restored=public.inventory(order)
+   require(all(row[0]==before[p][0] and row[1][:-1]==before[p][1][:-1] for p,row in restored.items())
+           and result['rollback_files']==list(reversed(result['written_files'])),'rollback_incomplete')
+   # Restored JS once again satisfies the unchanged historical full checker.
+   refactor_site_parent()
+   result.update(status='rolled_back_no_replay',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+                 parent_records_unchanged=True,original_inodes_verified=True)
+  except Exception:result['status']='unknown_no_replay'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+REFACTOR_ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':REFACTOR_ROLLBACK_OPERATION,'source_sha':REFACTOR_POLICY['source'],
+        'manifest_sha256':REFACTOR_POLICY['manifest'],**IDENTITY,'parent_site':SITE_ORIGINAL,
+        'parent_receipt_sha256':REFACTOR_POLICY['parent']['receipt_sha256'],'original_refactor':REFACTOR_ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,
+        'snapshot_manifest_sha256':REFACTOR_ACCEPTED['snapshot_manifest_sha256']}
+public=base=original=updated=published=refactored=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=REFACTOR_POLICY['order'];targets=REFACTOR_POLICY['targets'];home=os.environ.get('HOME','')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ site_continuation_namespace_absent()
+ paths=REFACTOR_PREPARED_PATHS+('result.json',);records=site_read_records(refactored,paths)
+ record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':REFACTOR_POLICY['operation'],**REFACTOR_ORIGINAL,
+         'source':REFACTOR_POLICY['source'],'manifest':REFACTOR_POLICY['manifest'],'parent_site':SITE_ORIGINAL}
+         and record('result.json')==REFACTOR_ACCEPTED,'refactor_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_site','before','guarded','ancestors'}
+         and snapshot['source']==REFACTOR_POLICY['source'] and snapshot['manifest']==REFACTOR_POLICY['manifest']
+         and snapshot['parent_site']==SITE_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==(set(POLICY['expected'])-set(order))|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order'])
+         and digest(records['snapshot/manifest.json'][2])==REFACTOR_ACCEPTED['snapshot_manifest_sha256'],'refactor_snapshot_conflict')
+ ancestors=snapshot['ancestors'];guarded=refactor_guard_from_snapshot(snapshot['guarded'])
+ require(refactor_ancestor_inventory()==ancestors,'refactor_parent_changed')
+ current=public.inventory(order);prior={};old_identities={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'refactor_snapshot_conflict')
+  old_identities[path]=checked_stamp(before[1],targets[path]['before'])
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==targets[path]['before'],'refactor_snapshot_conflict')
+  intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'refactor_original_identity')
+  new=checked_stamp(intent['new_identity'],targets[path]['after']);prior[path]=refactored.read('stage/'+str(index))[:2]
+  require(current[path][0]==targets[path]['after'] and current[path][1][:-1]==new[:-1]
+          and prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==old_identities[path][:-1],'refactor_snapshot_conflict')
+ refactor_check_ancestors();refactor_check_targets(current)
+ require(site_read_records(refactored,paths)==records,'rollback_preflight_race')
+ result.update(snapshot_verified=True,restore_drill_verified=True)
+ try:os.mkdir(REFACTOR_ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_ROLLBACK_OPERATION,('quarantine',),0o700);private_root(private)
+ private.create('reservation.json',canonical({'operation':REFACTOR_ROLLBACK_OPERATION,**IDENTITY,'original_refactor':REFACTOR_ORIGINAL,
+                'source':REFACTOR_POLICY['source'],'manifest':REFACTOR_POLICY['manifest'],'parent_site':SITE_ORIGINAL}))
+ result['phase']='assets'
+ for index in reversed(range(2)):
+  path=order[index];refactor_check_ancestors();refactor_check_targets(current)
+  require(site_read_records(refactored,paths)==records,'refactor_snapshot_conflict')
+  current[path]=refactor_restore_one(refactored,path,index,current[path],prior[path],'quarantine/'+str(index))
+  result['rollback_files'].append(path)
+  refactor_check_targets(current);refactor_check_ancestors()
+ require(all(current[p][0]==targets[p]['before'] and current[p][1][:-1]==old_identities[p][:-1] for p in order)
+         and site_read_records(refactored,paths)==records,'rollback_incomplete')
+ refactor_site_parent()
+ result.update(status='refactor_rolled_back_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+REFACTOR_REASONS = SITE_REASONS + ('site_failed_operation_exists','refactor_scope','refactor_site_parent',
+    'refactor_site_snapshot','refactor_parent_changed','refactor_target_changed','refactor_readback',
+    'refactor_exchange_conflict','refactor_snapshot_conflict','refactor_original_identity')
+
+
+def _refactor_program_prefix(policy, identity, parent_value, tv_successor=None):
+    need(policy==refactor_policy(),'refactor_policy');update_runtime_identity(identity)
+    need(identity['run_id']!=REFACTOR_PARENT['run_id'],'refactor_runtime_identity')
+    site_policy_value,accepted,previous=refactor_parent_value(parent_value)
+    # None remains a pure old-state fixture only. Every live entry resolves and
+    # supplies explicit current INT evidence, as the approved publisher does.
+    prefix=(_site_program_prefix(site_policy_value,identity,previous,True) if tv_successor is None else
+            _site_program_prefix(site_policy_value,identity,previous,True,tv_successor=tv_successor))
+    expected='snapshot' if tv_successor is None else 'tv_successor_expected(snapshot)'
+    return (prefix+'\nREFACTOR_POLICY='+repr(policy)+'\nSITE_ORIGINAL='+repr(refactor_parent_identity())
+            +'\nSITE_ACCEPTED='+repr(accepted)+'\ndef refactor_expected(snapshot): return '+expected+'\n'
+            +'\ndef re_safe(value): return value in '+repr(REFACTOR_REASONS)+'\n'+REFACTOR_COMMON_REMOTE)
+
+
+def refactor_remote_program(policy, files, identity, parent_value, *, tv_successor=None):
+    prefix=_refactor_program_prefix(policy,identity,parent_value,tv_successor)
+    need(isinstance(files,dict) and set(files)==set(REFACTOR_ORDER),'refactor_payload')
+    for path in REFACTOR_ORDER:
+        raw=base64.b64decode(files[path],validate=True)
+        need(0<len(raw)<=MAX_BYTES and REFACTOR_TARGETS[path]['after']==
+             {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'refactor_payload_bytes')
+    program=prefix+'\nPAYLOAD='+repr(files)+'\n'+REFACTOR_REMOTE;ast.parse(program)
+    return program
+
+
+def refactor_rollback_remote_program(policy, identity, original, accepted, parent_value, *, tv_successor=None):
+    prefix=_refactor_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
+    need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+         and valid_refactor_result(original,accepted),'refactor_rollback_evidence')
+    program=(prefix+'\nREFACTOR_ORIGINAL='+repr(original)+'\nREFACTOR_ACCEPTED='+repr(accepted)
+             +'\nREFACTOR_ROLLBACK_OPERATION='+repr(REFACTOR_ROLLBACK_OPERATION)+'\n'+REFACTOR_ROLLBACK_REMOTE)
+    ast.parse(program);return program
+
+
+def valid_refactor_result(identity, result, original=None, accepted=None):
+    rollback=original is not None
+    fixed={'schema_version':1,'operation_id':REFACTOR_ROLLBACK_OPERATION if rollback else REFACTOR_OPERATION,
+           'source_sha':REFACTOR_SOURCE,'manifest_sha256':REFACTOR_MANIFEST_SHA,**identity,
+           'parent_site':refactor_parent_identity(),'parent_receipt_sha256':REFACTOR_PARENT['receipt_sha256']}
+    if rollback:fixed.update(original_refactor=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
+    counters=('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+           'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')
+    required=set(fixed)|set(counters)|set(flags)|{'status','phase','written_files','rollback_files','snapshot_manifest_sha256'}
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'refactor_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()),'refactor_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters)
+         and all(type(result[k]) is bool for k in flags),'refactor_receipt_counters')
+    success='refactor_rolled_back_verified' if rollback else 'refactor_updated_verified'
+    states=('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
+    need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in result or result['reason'] in REFACTOR_REASONS),'refactor_receipt_status')
+    written,restored=result['written_files'],result['rollback_files']
+    need(isinstance(written,list) and written in [list(REFACTOR_ORDER[:i]) for i in range(3)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored) and len(set(restored))==len(restored),'refactor_receipt_paths')
+    order=list(reversed(REFACTOR_ORDER if rollback else written))
+    need(all(p in order for p in restored) and restored==[p for p in order if p in restored]
+         and (not rollback or not written),'refactor_receipt_paths')
+    snapshot=result['snapshot_manifest_sha256']
+    need(snapshot is None or isinstance(snapshot,str) and re.fullmatch('[a-f0-9]{64}',snapshot),'refactor_receipt_snapshot')
+    if result['status']=='blocked_no_replay':
+        need(not result['reservation_created'] and result['phase']=='preflight' and not written and not restored,'refactor_receipt_incomplete')
+    if result['status'] in (success,'rolled_back_no_replay'):
+        need(result['phase']=='complete' and all(result[k] for k in ('reservation_created','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')),'refactor_receipt_incomplete')
+    if result['status']=='rolled_back_no_replay':need(restored==list(reversed(written)),'refactor_receipt_incomplete')
+    if result['status']==success:
+        need(all(result[k] for k in flags) and snapshot is not None and 'reason' not in result
+             and (restored==list(reversed(REFACTOR_ORDER)) if rollback else written==list(REFACTOR_ORDER) and not restored),'refactor_receipt_incomplete')
+    return result['status']==success
+
+
+def refactor_rollback_commands(identity, original_run, expected_original=None):
+    excluded=(identity['run_id'],REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],
+              CONTINUATION_PARENT['run_id'],SITE_INSPECT_FAILED['run_id'],
+              SITE_CONTINUATION_INSPECTION['run_id'],SITE_CONTINUATION_COLLECTOR['run_id'])
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
+         and original_run not in excluded,'refactor_rollback_run')
+    comments=pages('/issues/4709/comments')
+    _unique_update_command(comments,REFACTOR_ROLLBACK_PREFIX,REFACTOR_ROLLBACK_OPERATION,identity,original_run)
+    installed=[c for c in comments if c.get('body','').strip().split()[:1]==[REFACTOR_PREFIX]
+               and REFACTOR_OPERATION in c.get('body','').split()[1:]]
+    need(len(installed)==1 and installed[0].get('user',{}).get('id')==226193297
+         and installed[0].get('author_association')=='OWNER','refactor_rollback_command')
+    match=re.fullmatch(re.escape(REFACTOR_PREFIX)+r' ([a-f0-9]{40}) '+re.escape(REFACTOR_OPERATION),installed[0].get('body',''))
+    need(match is not None,'refactor_rollback_command')
+    original={'control_source_sha':match[1],'run_id':original_run,'command_comment_id':installed[0]['id']}
+    update_runtime_identity(original)
+    need(expected_original is None or original==expected_original,'refactor_rollback_command')
+    return original
+
+
+def refactor_rollback_admission(identity, original_run):
+    rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    original=refactor_rollback_commands(identity,original_run);run=api('/actions/runs/'+original_run)
+    need(run.get('id')==int(original_run) and run.get('head_sha')==original['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','refactor_rollback_run')
+    jobs=[j for j in pages('/actions/runs/'+original_run+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('run_id')==int(original_run) and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')=='success','refactor_rollback_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py refactor'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','refactor_rollback_step')
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts')
+               if a.get('name')=='search3-public-install-'+original_run+'-1']
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and artifacts[0].get('workflow_run',{}).get('id')==int(original_run)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'refactor_rollback_artifact')
+    rollback_main(identity);return original,artifacts[0]
+
+
+def refactor_source_evidence(raw, original):
+    update_runtime_identity(original)
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'refactor_rollback_artifact')
+        value=json.loads(archive.read('evidence.json'))
+    fixed={**original,'operation_id':REFACTOR_OPERATION,'source_sha':REFACTOR_SOURCE,'manifest_sha256':REFACTOR_MANIFEST_SHA,
+           'read_only':False,'phase':'complete','ssh_started':True,'status':'refactor_updated_verified',
+           'parent_site':refactor_parent_identity()}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'refactor_rollback_evidence')
+    refactor_parent_value(value['parent_evidence'])
+    need(valid_refactor_result(original,value['remote']),'refactor_rollback_evidence')
+    return refactor_policy(),value['remote'],value['parent_evidence']
+
+
+def refactor(rollback=False):
+    need(type(rollback) is bool,'mode')
+    operation=REFACTOR_ROLLBACK_OPERATION if rollback else REFACTOR_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':REFACTOR_SOURCE,
+              'manifest_sha256':REFACTOR_MANIFEST_SHA,'read_only':False,'phase':'identity','ssh_started':False}
+    complete=False
+    try:
+        event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity,original_run=refactor_event_identity(event,os.environ,True)
+            evidence.update(identity,original_refactor_run_id=original_run,phase='admission')
+            original,artifact=refactor_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            policy,accepted,parent_value=refactor_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
+            dependency=tv_successor_evidence()
+            program=refactor_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency)
+            evidence.update(parent_site=refactor_parent_identity(),original_refactor=original)
+        else:
+            identity=refactor_event_identity(event,os.environ);evidence.update(identity,phase='admission');refactor_admission(identity)
+            evidence['phase']='artifact'
+            parent_value=refactor_parent_evidence(download(REFACTOR_PARENT['artifact_id'],REFACTOR_PARENT['artifact_sha256']))
+            policy,files=refactor_package(download(REFACTOR_ARTIFACT,REFACTOR_ARTIFACT_SHA),parent_value)
+            dependency=tv_successor_evidence()
+            program=refactor_remote_program(policy,files,identity,parent_value,tv_successor=dependency)
+            evidence.update(parent_site=refactor_parent_identity(),parent_evidence=parent_value)
+        # Exact existing carrier, key handling, options, output bound and timeout.
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:refactor_rollback_commands(identity,original_run,original);rollback_main(identity)
+        else:refactor_admission(identity)
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=32768,'receipt_limit');result=json.loads(response)
+        complete=valid_refactor_result(identity,result,original,accepted) if rollback else valid_refactor_result(identity,result)
+        evidence['remote']=result
+        if rollback:rollback_main(identity)
+        else:refactor_final_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'RefactorError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'refactor_rollback_not_verified' if rollback else 'refactor_not_verified')
+
+
+# Integration only, after source ownership is released:
+# command_mode(['refactor']) -> 'refactor'
+# command_mode(['refactor-rollback']) -> 'refactor-rollback'
+# dispatcher: refactor() / refactor(rollback=True)
+# Existing workflow exact-command job filter and mode expression gain these two
+# fixed commands. No new job, lock, permissions, triggers, secrets, or transport.
+
+
+
+
 def command_mode(arguments):
+    if arguments == ['refactor']: return 'refactor'
+    if arguments == ['refactor-rollback']: return 'refactor-rollback'
     if arguments == ['site-continue']: return 'site-continue'
     if arguments == ['site-continue-rollback']: return 'site-continue-rollback'
     if arguments == ['site-inspect']: return 'site-inspect'
@@ -3883,7 +4549,9 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'site-continue': site_update(continuation=True)
+    if mode == 'refactor': refactor()
+    elif mode == 'refactor-rollback': refactor(rollback=True)
+    elif mode == 'site-continue': site_update(continuation=True)
     elif mode == 'site-continue-rollback': site_update(rollback=True,continuation=True)
     elif mode == 'site-inspect': site_inspect()
     elif mode == 'site-update': site_update()
