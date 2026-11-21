@@ -8,6 +8,12 @@ from __future__ import annotations
 import ast
 
 
+TV_INVALID_RESPONSE_MODE = 'install-tv-invalid-response'
+TV_INVALID_RESPONSE_OPERATION = 'int-anex-tv-invalid-response-install-20261119-v1'
+TV_INVALID_RESPONSE_SOURCE = '3207266e17ed4e8244aaf28d05b962747fd4cd3c'
+TV_INVALID_RESPONSE_PATH = 'app/integrations/tourvisor-interactive-client.php'
+TV_INVALID_RESPONSE_SHA = '529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841'
+
 ANEX_QUOTE_RATE_LOCK_MODE = 'install-anex-quote-rate-lock'
 ANEX_QUOTE_RATE_LOCK_OPERATION = 'int-anex-quote-rate-lock-install-20261030-v1'
 ANEX_QUOTE_RATE_LOCK_SOURCE = '6dcfb5053793caba4f353facfa7a899a30df2d17'
@@ -195,6 +201,10 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if len(parts) >= 2 and parts[1] == TV_INVALID_RESPONSE_MODE:
+            need(parts == [TV_INVALID_RESPONSE_SOURCE, TV_INVALID_RESPONSE_MODE,
+                           TV_INVALID_RESPONSE_OPERATION], 'tv_invalid_response_fixed_case')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
         if len(parts) >= 2 and parts[1] == ANEX_QUOTE_RATE_LOCK_MODE:
             need(parts == [ANEX_QUOTE_RATE_LOCK_SOURCE, ANEX_QUOTE_RATE_LOCK_MODE,
                            ANEX_QUOTE_RATE_LOCK_OPERATION], 'anex_quote_rate_lock_fixed_case')
@@ -460,6 +470,8 @@ DISPATCH = r'''
 
 
 def activate(core, command):
+    if command.get('mode') == TV_INVALID_RESPONSE_MODE:
+        return activate_tv_invalid_response(core, command)
     if command.get('mode') == ANEX_QUOTE_RATE_LOCK_MODE:
         return activate_anex_quote_rate_lock(core, command)
     if command.get('mode') == ANEX_APD_READ_FACTS_MODE:
@@ -1619,5 +1631,55 @@ def activate_anex_quote_rate_lock(core, command):
     need(core.REMOTE.count(anchor)==1,'anex_quote_rate_lock_receipt_drift')
     client=ANEX_QUOTE_RATE_LOCK_PATH
     proof="    complete['quote_client']={'source':"+repr(client)+",'target':"+repr(client)+",'sha256':install_expected["+repr(client)+"],'changed':"+repr(client)+" in changed}\n"
+    core.REMOTE=core.REMOTE.replace(anchor,proof+anchor,1)
+    ast.parse(core.REMOTE)
+
+
+def tv_invalid_response_previous():
+    return anex_quote_rate_lock_previous() | {ANEX_QUOTE_RATE_LOCK_PATH: ANEX_QUOTE_RATE_LOCK_SHA}
+
+
+def completed_tv_invalid_response(command, result):
+    source=TV_INVALID_RESPONSE_SOURCE
+    path=TV_INVALID_RESPONSE_PATH
+    pins=tv_invalid_response_previous() | {path:TV_INVALID_RESPONSE_SHA}
+    proof={'source_sha':source,'files':pins,'activation_performed':False,
+           'configuration_changed':False,'signing_custody_changed':False}
+    basis={'parent_operation':TV_RECOVERY_OPERATION,'parent_canonical_sha256':TV_ENABLED_CANONICAL,
+           'configuration_sha256':TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+           'receipt_and_configuration_unchanged':True}
+    install=result.get('install'); manifest=install.get('manifest_sha256') if isinstance(install,dict) else None
+    public={p:v.get('sha256') for p,v in TV_PUBLIC.items() if p!='api-v2.php'}
+    dep='app/integrations/anex-initial-week-gate.php'
+    return (command=={'source_sha':source,'mode':TV_INVALID_RESPONSE_MODE,'operation_id':TV_INVALID_RESPONSE_OPERATION}
+        and all(result.get(k)==v for k,v in command.items())
+        and type(result.get('schema_version')) is int and result['schema_version']==1 and result.get('status')=='installed'
+        and isinstance(install,dict) and install.get('status')=='installed' and install.get('source_sha')==source
+        and isinstance(manifest,str) and len(manifest)==64 and all(c in '0123456789abcdef' for c in manifest)
+        and all(type(install.get(k)) is int and install[k]==v for k,v in {'files':12,'changed_files':1,'created_files':0}.items())
+        and install.get('endpoint')=={'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+            'sha256':pins['v2/api-anex-search3-preview.php'],'changed':False}
+        and install.get('dependency')=={'source':dep,'target':dep,'sha256':TV_DEPENDENCIES[dep],'changed':False}
+        and install.get('tv_client')=={'source':path,'target':path,'sha256':TV_INVALID_RESPONSE_SHA,'changed':True}
+        and install['tv_client']['changed'] is True
+        and install['endpoint']['changed'] is False and install['dependency']['changed'] is False
+        and result.get('tv_gateway')==proof and result.get('diagnostic_basis_before')==basis==result.get('diagnostic_basis_after')
+        and all(result['tv_gateway'][k] is False for k in ('activation_performed','configuration_changed','signing_custody_changed'))
+        and all(result[k]['receipt_and_configuration_unchanged'] is True for k in ('diagnostic_basis_before','diagnostic_basis_after'))
+        and result.get('tv_gateway_public_before')==TV_PUBLIC==result.get('tv_gateway_public_after')
+        and result.get('production_before')==public==result.get('production_after')
+        and all(type(result.get(k)) is int and result[k]==0 for k in ('supplier_calls','database_writes','booking_calls','lead_calls'))
+        and result.get('public_ui_entrypoints_unchanged') is True and result.get('runtime_changed') is True)
+
+
+def activate_tv_invalid_response(core, command):
+    need(command=={'source_sha':TV_INVALID_RESPONSE_SOURCE,'mode':TV_INVALID_RESPONSE_MODE,
+                  'operation_id':TV_INVALID_RESPONSE_OPERATION}, 'tv_invalid_response_fixed_case')
+    _activate_tv_maintenance(core,command,TV_INVALID_RESPONSE_MODE,TV_INVALID_RESPONSE_SOURCE,
+        TV_INVALID_RESPONSE_PATH,TV_INVALID_RESPONSE_SHA,tv_invalid_response_previous(),completed_tv_invalid_response)
+    anchor="    write_private_json(op/'install-state.json',complete)\n    return complete\n\ndef install_andromeda_preview"
+    need(core.REMOTE.count(anchor)==1,'tv_invalid_response_receipt_drift')
+    path=repr(TV_INVALID_RESPONSE_PATH)
+    proof="    complete['tv_client']={'source':"+path+",'target':"+path+",'sha256':install_expected["+path+"],'changed':"+path+" in changed}\n"
     core.REMOTE=core.REMOTE.replace(anchor,proof+anchor,1)
     ast.parse(core.REMOTE)

@@ -1931,6 +1931,70 @@ class NativeQuoteRateLockInstall(NativeOwnSessionAPDInstall):
         self.assertEqual(before,client.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
 
 
+class TVInvalidResponseAdmission(unittest.TestCase):
+    def test_exact_case_and_frozen_predecessor(self):
+        cmd={'source_sha':signing.TV_INVALID_RESPONSE_SOURCE,'mode':signing.TV_INVALID_RESPONSE_MODE,
+             'operation_id':signing.TV_INVALID_RESPONSE_OPERATION}
+        body='/run-int-server-v1 '+' '.join(cmd.values())
+        self.assertEqual('3207266e17ed4e8244aaf28d05b962747fd4cd3c',cmd['source_sha'])
+        self.assertEqual(cmd,core().parse_command(body))
+        for rejected in (body+' extra',body.replace(cmd['source_sha'],'0'*40),
+                         body.replace(cmd['source_sha'],'7844c90de7f2ad496df2df15bfbb861d7da42222'),
+                         body.replace(cmd['source_sha'],'6b98b9f912ae1f8bd0649c47f5ae7800d14af4e3'),
+                         body.replace('20261119-v1','20261119-v2'),body.replace(cmd['mode'],cmd['mode']+'-alias')):
+            with self.subTest(body=rejected),self.assertRaises(ValueError):
+                core().parse_command(rejected)
+        with self.assertRaises(ValueError):
+            signing.activate(core(),cmd|{'path':'v2/api-anex-search3-preview.php'})
+        self.assertEqual(11,len(signing.tv_invalid_response_previous()))
+        self.assertEqual(signing.TV_NUMERIC_SHA,signing.tv_invalid_response_previous()[signing.TV_INVALID_RESPONSE_PATH])
+        self.assertEqual(signing.ANEX_QUOTE_RATE_LOCK_SHA,signing.tv_invalid_response_previous()[signing.ANEX_QUOTE_RATE_LOCK_PATH])
+        c=core();signing.activate(c,cmd)
+        self.assertLess(len(base64.b64encode(__import__('zlib').compress(c.REMOTE.encode(),9))),64000)
+        c=core();signing.activate(c,QuoteRateLockAdmission().command())
+        self.assertEqual('e6037c5ff24fa7d50a181687def22efdebdb460175368f94b0c70bd4e52ea279',
+                         hashlib.sha256(c.REMOTE.encode()).hexdigest())
+
+
+class NativeTVInvalidResponseInstall(NativeQuoteRateLockInstall):
+    mode=signing.TV_INVALID_RESPONSE_MODE
+    operation_attr='TV_INVALID_RESPONSE_OPERATION'
+    source=signing.TV_INVALID_RESPONSE_SOURCE
+    path=signing.TV_INVALID_RESPONSE_PATH
+    sha_attr='TV_INVALID_RESPONSE_SHA'
+    fixture_env='TV_INVALID_RESPONSE_SOURCE_ROOT'
+
+    def expected_previous(self):return signing.tv_invalid_response_previous()
+
+    def install_maintenance(self,operation=None):
+        operation=operation or f'int-anex-tv-invalid-response-install-native-{self.counter+1}-v1'
+        with mock.patch.object(signing,self.operation_attr,operation):
+            return self.execute(self.mode,operation,self.source)[0]
+
+    def test_single_client_strict_receipt_and_no_replay(self):
+        r=self.install_maintenance();self.assertEqual('installed',r['status'])
+        self.assertEqual((12,1,0),(r['install']['files'],r['install']['changed_files'],r['install']['created_files']))
+        plan=json.loads(next(self.home.rglob('anex-preview-install-plan.json')).read_bytes())
+        self.assertEqual([self.path],plan['changed_files'])
+        self.assertIs(r['install']['endpoint']['changed'],False)
+        self.assertIs(r['install']['tv_client']['changed'],True)
+        self.assertEqual(self.parent_raw,self.parent.read_bytes());self.assertEqual(self.config_raw,self.config.read_bytes())
+        for p in self.newpins:
+            target=p if p.startswith('app/') else 'api-anex-search3-preview.php'
+            self.assertEqual(self.inventory[p],(self.runtime/target).read_bytes())
+        cmd={k:r[k] for k in ('source_sha','mode','operation_id')}
+        with mock.patch.object(signing,'tv_invalid_response_previous',return_value=self.pins),mock.patch.multiple(signing,
+            TV_INVALID_RESPONSE_OPERATION=r['operation_id'],TV_INVALID_RESPONSE_SHA=self.newpins[self.path],
+            TV_PUBLIC=self.public,TV_DEPENDENCIES=self.deps,TV_ENABLED_CANONICAL=self.parent_hash,TV_ENABLED_CONFIG_SHA=self.config_hash):
+            self.assertTrue(signing.completed_tv_invalid_response(cmd,r))
+            for k,v in [('supplier_calls',True),('tv_gateway_public_after',{}),('diagnostic_basis_after',{})]:
+                self.assertFalse(signing.completed_tv_invalid_response(cmd,r|{k:v}))
+            for k,v in [('target','api-anex-search3-preview.php'),('changed',1),('sha256','0'*64)]:
+                altered=r['install']|{'tv_client':r['install']['tv_client']|{k:v}}
+                self.assertFalse(signing.completed_tv_invalid_response(cmd,r|{'install':altered}))
+        self.assertEqual('operation_exists_no_replay',self.install_maintenance(r['operation_id'])['reason'])
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     for case in (Admission, NativeStockCustody): suite.addTests(loader.loadTestsFromTestCase(case))
@@ -1989,6 +2053,8 @@ def load_tests(loader, tests, pattern):
     for name in ('test_single_client_strict_receipt_and_no_replay',
                  'test_predecessor_dependency_and_source_drift_hold','test_prewrite_race_and_postwrite_rollback'):
         suite.addTest(NativeQuoteRateLockInstall(name))
+        suite.addTest(NativeTVInvalidResponseInstall(name))
+    suite.addTests(loader.loadTestsFromTestCase(TVInvalidResponseAdmission))
     suite.addTests(loader.loadTestsFromTestCase(APDReadFactsAdmission))
     for name in ('test_pair_install_strict_receipt_and_no_replay',
                  'test_any_predecessor_dependency_or_source_drift_holds',
