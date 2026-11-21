@@ -13,7 +13,8 @@ permissions:
 
 jobs:
   tablet-selected-tour:
-    runs-on: ubuntu-latest
+    # Keep the pinned Playwright 1.55 browser on its supported Ubuntu image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
