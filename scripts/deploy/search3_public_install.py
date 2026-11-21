@@ -236,6 +236,35 @@ CONTROL_CHECKS = ('guard', 'core', 'public-install-contracts', 'production-readi
                   'live-check-contracts', 'tv-diagnostic-contracts', 'context-sender-contracts')
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ZIP = 16 * 1024 * 1024
+
+# Separate successor-source update. None of the consumed installation pins,
+# records or rollback policies above are repurposed by this operation.
+UPDATE_PREFIX = '/update-search3-public'
+UPDATE_OPERATION = 'public-search3-flight-return-20261121-v1'
+UPDATE_ROLLBACK_PREFIX = '/rollback-search3-public-update'
+UPDATE_ROLLBACK_OPERATION = 'public-search3-flight-return-rollback-20261121-v1'
+UPDATE_SOURCE_PR = 5130
+UPDATE_SOURCE = 'f10e51a49ea9d4b3e4b6356f98d6d898484d9fc6'
+UPDATE_TREE = '7251ab6712a437ef46a590a3f2b8fb8bd1037b82'
+UPDATE_RELEASE = '67c9e34876a1b52e1e7ed919c5b70a2f28a7220b'  # Reviewed PR5130 merge; exact source tree.
+UPDATE_BUILD_RUN = 44847945914
+UPDATE_ARTIFACT = 14684470494
+UPDATE_ARTIFACT_SHA = '4bced061fe5ffc224c196fa400c65ee726d775df4fe4830c9f4b03a19b926a3a'
+UPDATE_MANIFEST_SHA = '19a2ecc6db293d4994c70c9203d52e24cc577d9bfa57f90273820c01e955121c'
+UPDATE_ARTIFACT_NAME = 'search3-public-live-' + UPDATE_SOURCE
+UPDATE_PATH = 'visual-search/app.js'
+UPDATE_BEFORE = {'state': 'present', 'sha256': '7a61242a0028cf51f6058efce33c4d3308158cda4e8c81e530a7be71618ddfc9', 'size': 311206, 'mode': '0644'}
+UPDATE_AFTER = {'state': 'present', 'sha256': 'c8d6922231350409490e833e429792d1d5a974e02b499e740264d148324d196f', 'size': 311547, 'mode': '0644'}
+UPDATE_PARENT = {
+    'operation_id': CONTINUATION_OPERATION,
+    'control_source_sha': '6335775a2f3f4b628dbc405b5d4edd7a9c43b6ec',
+    'run_id': '44843395448', 'command_comment_id': 7054034774,
+    'job_id': 136657106645, 'artifact_id': 14680714567,
+    'artifact_sha256': 'c9b1c0e962c05d8765de66c96ee655dd3c107c08d5f964e34fc87a722f2024f1',
+    'receipt_sha256': 'bcf70929bc32228d6a2e7676af9addde80dfda1b9675413866eef31c9caca3bf',
+    'terminal_comment_id': 7054093708,
+    'snapshot_manifest_sha256': 'd1f9fa654cc5a67d7e9d632838606c1343701a70810b3c46254be3054d496592',
+}
 api = carrier.checked_api
 need = carrier.need
 sha = carrier.sha
@@ -1310,7 +1339,657 @@ def install(inspect=False, continuation=False):
     print(json.dumps(evidence,sort_keys=True)); need(complete,'public_inspection_not_verified' if inspect else 'public_install_not_verified')
 
 
+def update_parent_identity():
+    return {k: UPDATE_PARENT[k] for k in ('control_source_sha', 'run_id', 'command_comment_id', 'operation_id')}
+
+
+def _update_identity(event, env, rollback=False):
+    need(env.get('GITHUB_REPOSITORY') == event.get('repository', {}).get('full_name') == REPO, 'repository')
+    need(env.get('GITHUB_REF') == 'refs/heads/main' and env.get('GITHUB_WORKFLOW_REF') == f'{REPO}/{WORKFLOW}@refs/heads/main', 'trusted_workflow')
+    need(env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff', 'actor')
+    need(env.get('GITHUB_EVENT_NAME') == 'issue_comment' and event.get('action') == 'created' and env.get('GITHUB_RUN_ATTEMPT') == '1', 'event_attempt')
+    issue, comment = event.get('issue', {}), event.get('comment', {})
+    need(issue.get('number') == 4709 and 'pull_request' not in issue, 'issue')
+    need(type(comment.get('user', {}).get('id')) is int and comment['user']['id'] == 226193297 and comment.get('author_association') == 'OWNER', 'owner')
+    control, run = env.get('GITHUB_SHA', ''), env.get('GITHUB_RUN_ID', '')
+    need(re.fullmatch('[a-f0-9]{40}', control) and re.fullmatch('[1-9][0-9]{0,19}', run), 'identity')
+    identity = {'control_source_sha': control, 'run_id': run, 'command_comment_id': comment.get('id')}
+    need(type(identity['command_comment_id']) is int and identity['command_comment_id'] > 0, 'command')
+    if rollback:
+        match = re.fullmatch(re.escape(f'{UPDATE_ROLLBACK_PREFIX} {control} ') + r'([1-9][0-9]{0,19}) ' + re.escape(UPDATE_ROLLBACK_OPERATION), comment.get('body', ''))
+        need(match is not None and match[1] not in (run, UPDATE_PARENT['run_id'], CONTINUATION_PARENT['run_id']), 'command')
+        return identity, match[1]
+    need(comment.get('body') == f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}', 'command')
+    return identity
+
+
+def update_event_identity(event, env):
+    return _update_identity(event, env)
+
+
+def update_rollback_event_identity(event, env):
+    return _update_identity(event, env, True)
+
+
+def update_final_heads(identity):
+    need(isinstance(UPDATE_RELEASE, str) and re.fullmatch('[a-f0-9]{40}', UPDATE_RELEASE), 'pending_final_evidence')
+    need(api('/git/ref/heads/main')['object']['sha'] == identity['control_source_sha'], 'main_moved')
+    need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha'] == UPDATE_RELEASE, 'release_moved')
+    pr = api('/pulls/' + str(UPDATE_SOURCE_PR))
+    need(pr.get('state') == 'closed' and pr.get('merged') is True and pr.get('merge_commit_sha') == UPDATE_RELEASE
+         and pr.get('head', {}).get('sha') == UPDATE_SOURCE and pr.get('head', {}).get('repo', {}).get('full_name') == REPO
+         and pr.get('base', {}).get('ref') == 'release/search3-production-ready-v1'
+         and pr.get('base', {}).get('repo', {}).get('full_name') == REPO, 'candidate_moved')
+
+
+def _unique_update_command(comments, prefix, operation, identity, original_run=None):
+    matches = [c for c in comments if c.get('body', '').strip().split()[:1] == [prefix] and operation in c.get('body', '').split()[1:]]
+    suffix = (str(original_run) + ' ') if original_run is not None else ''
+    need(len(matches) == 1 and matches[0]['id'] == identity['command_comment_id']
+         and matches[0].get('body') == f'{prefix} {identity["control_source_sha"]} {suffix}{operation}'
+         and matches[0].get('user', {}).get('id') == 226193297 and matches[0].get('author_association') == 'OWNER', 'operation_already_reserved')
+
+
+def update_admission(identity):
+    update_final_heads(identity); reviewed_control(identity['control_source_sha'])
+    need(api('/git/commits/' + UPDATE_SOURCE).get('tree', {}).get('sha') == UPDATE_TREE
+         and api('/git/commits/' + UPDATE_RELEASE).get('tree', {}).get('sha') == UPDATE_TREE, 'source_tree')
+    gate = api('/contents/.github/workflows/deploy-anytoour.yml?ref=' + identity['control_source_sha'])
+    need(gate.get('type') == 'file' and gate.get('encoding') == 'base64'
+         and sha(base64.b64decode(gate['content'])) == PUBLISHER_GUARD_SHA, 'publisher_guard')
+    checks = pages('/commits/' + UPDATE_SOURCE + '/check-runs', 'check_runs')
+    need(len(checks) == len(SOURCE_CHECK_NAMES) and {c.get('name') for c in checks} == set(SOURCE_CHECK_NAMES)
+         and all(c.get('head_sha') == UPDATE_SOURCE and green(c) for c in checks), 'source_ci')
+    run = api('/actions/runs/' + str(UPDATE_BUILD_RUN))
+    need(run.get('id') == UPDATE_BUILD_RUN and run.get('head_sha') == UPDATE_SOURCE
+         and run.get('path') == '.github/workflows/search3-visual-migration.yml'
+         and run.get('event') == 'pull_request' and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'success', 'build_run')
+    artifact = api('/actions/artifacts/' + str(UPDATE_ARTIFACT))
+    need(artifact.get('id') == UPDATE_ARTIFACT and artifact.get('name') == UPDATE_ARTIFACT_NAME and artifact.get('expired') is False
+         and artifact.get('digest') == 'sha256:' + UPDATE_ARTIFACT_SHA
+         and artifact.get('workflow_run', {}).get('id') == UPDATE_BUILD_RUN, 'artifact_identity')
+    _unique_update_command(pages('/issues/4709/comments'), UPDATE_PREFIX, UPDATE_OPERATION, identity)
+    update_final_heads(identity)
+
+
+def update_parent_evidence(raw, predecessor_policy):
+    parent = UPDATE_PARENT
+    need(sha(raw) == parent['artifact_sha256'], 'update_parent_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'update_parent_artifact')
+        data = archive.read('evidence.json'); need(sha(data) == parent['receipt_sha256'], 'update_parent_digest')
+    value = json.loads(data); original = update_parent_identity()
+    expected = {**original, 'read_only': False, 'phase': 'complete', 'ssh_started': True, 'status': 'installed_verified',
+                'parent_failure': CONTINUATION_PARENT, 'dependency_policy_sha256': CONTINUATION_POLICY_SHA}
+    need(isinstance(value, dict) and set(value) == set(expected) | {'remote'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k, v in expected.items()), 'update_parent_identity')
+    need(predecessor_policy['operation'] == CONTINUATION_OPERATION and valid_result(original, predecessor_policy, value['remote'])
+         and value['remote']['snapshot_manifest_sha256'] == parent['snapshot_manifest_sha256'], 'update_parent_result')
+    run = api('/actions/runs/' + parent['run_id'])
+    need(run.get('id') == int(parent['run_id']) and run.get('head_sha') == parent['control_source_sha']
+         and run.get('head_branch') == 'main' and run.get('path') == WORKFLOW and run.get('event') == 'issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1 and run.get('status') == 'completed'
+         and run.get('conclusion') == 'success' and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'update_parent_run')
+    jobs = [j for j in pages('/actions/runs/' + parent['run_id'] + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0]['id'] == parent['job_id'] and jobs[0].get('run_id') == int(parent['run_id'])
+         and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == 'success', 'update_parent_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'success', 'update_parent_step')
+    artifact = api('/actions/artifacts/' + str(parent['artifact_id']))
+    need(artifact.get('id') == parent['artifact_id'] and artifact.get('name') == 'search3-public-install-' + parent['run_id'] + '-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run', {}).get('id') == int(parent['run_id'])
+         and artifact.get('digest') == 'sha256:' + parent['artifact_sha256'], 'update_parent_artifact')
+    comments = pages('/issues/4709/comments')
+    _unique_update_command(comments, CONTINUATION_PREFIX, CONTINUATION_OPERATION, original)
+    terminal = next((c for c in comments if c['id'] == parent['terminal_comment_id']), {})
+    tokens = [str(parent[k]) for k in ('run_id', 'control_source_sha', 'command_comment_id', 'job_id', 'artifact_id', 'artifact_sha256', 'receipt_sha256', 'snapshot_manifest_sha256')]
+    need(terminal.get('user', {}).get('id') == 226193297 and terminal.get('author_association') == 'OWNER'
+         and all(t in terminal.get('body', '') for t in tokens + ['installed_verified', 'NO_REPLAY']), 'update_parent_terminal')
+    return value['remote']
+
+
+def update_package(raw, predecessor_policy, predecessor_files):
+    need(predecessor_policy['operation'] == CONTINUATION_OPERATION and predecessor_policy['source'] == SOURCE
+         and predecessor_policy['manifest'] == MANIFEST_SHA and predecessor_policy['expected'][UPDATE_PATH] == UPDATE_BEFORE, 'update_predecessor_policy')
+    with zip_files(raw) as archive:
+        manifest_raw = archive.read('manifest.json'); need(sha(manifest_raw) == UPDATE_MANIFEST_SHA, 'manifest_digest')
+        manifest = json.loads(manifest_raw)
+        need(manifest.get('schema_version') == 1 and manifest.get('purpose') == 'local_public_live_install_candidate'
+             and manifest.get('deployable') is False and manifest.get('profile') == {'schemaVersion': 1, 'profile': 'live', 'scenario': 'family'}
+             and manifest.get('candidate') == {'sha': UPDATE_SOURCE, 'tree_sha': UPDATE_TREE}
+             and manifest.get('main', {}).get('sha') == BUILD_MAIN, 'manifest_identity')
+        added, replaced = manifest['files']['added'], manifest['files']['replaced']
+        need(tuple(x['path'] for x in added) == ADDITIONS and len(replaced) == 1 and replaced[0]['path'] == ENTRY
+             and replaced[0]['before'] == {k: v for k, v in ENTRY_BEFORE.items() if k != 'state'}, 'manifest_scope')
+        rows = added + replaced
+        need({x for x in archive.namelist() if x.startswith('overlay/') and not x.endswith('/')} == {'overlay/' + x['path'] for x in rows}, 'overlay_scope')
+        files = {}
+        for item in rows:
+            path, record = item['path'], item['served']; data = archive.read('overlay/' + path)
+            need(record == {'size': len(data), 'mode': '0644', 'sha256': sha(data)} and 0 < len(data) <= MAX_BYTES, 'overlay_bytes')
+            encoded = base64.b64encode(data).decode()
+            if path == UPDATE_PATH:
+                need({'state': 'present', **record} == UPDATE_AFTER, 'update_asset_bytes'); files[path] = encoded
+            else:
+                need(encoded == predecessor_files[path] and {'state': 'present', **record} == predecessor_policy['expected'][path], 'update_unexpected_delta')
+    policy = {'operation': UPDATE_OPERATION, 'source': UPDATE_SOURCE, 'tree': UPDATE_TREE, 'release': UPDATE_RELEASE,
+              'manifest': UPDATE_MANIFEST_SHA, 'path': UPDATE_PATH, 'before': UPDATE_BEFORE, 'after': UPDATE_AFTER,
+              'parent': UPDATE_PARENT, 'previous': predecessor_policy}
+    return policy, files
+
+
+# Reuse the installer's descriptor-relative, no-symlink, nlink==1 helpers.
+# The previous inode is retained by EXCHANGE, never by a hardlink or a copy.
+UPDATE_COMMON_REMOTE = r'''
+def checked_stamp(value,row):
+ require(isinstance(value,list) and len(value)==9 and all(type(v) is int for v in value)
+         and value[0]>=0 and value[1]>0 and value[2]==(stat.S_IFREG|int(row['mode'],8))
+         and value[3]==1 and value[4]==row['size'] and value[6]==os.getuid(),'update_private_record')
+ return tuple(value)
+def read_records(store,paths):
+ rows={}
+ for path in paths:
+  row,identity,raw=store.read(path,True)
+  require(row.get('state')=='present' and row.get('mode')==('0644' if path in ('snapshot/entry','snapshot/app') else '0600')
+          and identity[6]==os.getuid(),'update_private_record')
+  rows[path]=(row,identity,raw)
+ return rows
+PARENT_RECORD_PATHS=('reservation.json','result.json','snapshot/manifest.json','snapshot/entry','entry-intent.json')+tuple('intent-'+str(i)+'.json' for i in range(41))
+def parent_records():
+ rows=read_records(original,PARENT_RECORD_PATHS)
+ record=lambda p:json.loads(rows[p][2])
+ require(record('reservation.json')=={'operation':POLICY['operation'],**{k:v for k,v in ORIGINAL.items() if k!='operation_id'},'manifest':POLICY['manifest']}
+         and record('result.json')==PARENT_ACCEPTED,'update_parent_records')
+ snapshot=record('snapshot/manifest.json')
+ expected_before={p:POLICY['before'] if p==POLICY['entry'] else {'state':'absent'} for p in POLICY['expected']}
+ require(isinstance(snapshot,dict) and set(snapshot)=={'before','protected','source','manifest'}
+         and snapshot['source']==POLICY['source'] and snapshot['manifest']==POLICY['manifest']
+         and snapshot['before']==expected_before and set(snapshot['protected'])==set(checked_protected_paths())
+         and digest(rows['snapshot/manifest.json'][2])==PARENT_ACCEPTED['snapshot_manifest_sha256']
+         and rows['snapshot/entry'][0]==POLICY['before'],'update_parent_snapshot')
+ return rows
+def parent_intent(path,rows):
+ if path==POLICY['entry']:
+  intent=json.loads(rows['entry-intent.json'][2])
+  require(isinstance(intent,dict) and set(intent)=={'before','new_identity'}
+          and isinstance(intent['before'],list) and len(intent['before'])==2
+          and intent['before'][0]==POLICY['before'],'update_parent_intent')
+  return checked_stamp(intent['new_identity'],POLICY['expected'][path])
+ index=POLICY['additions'].index(path);intent=json.loads(rows['intent-'+str(index)+'.json'][2])
+ require(isinstance(intent,dict) and set(intent)=={'path','identity','sha256'} and intent['path']==path
+         and intent['sha256']==POLICY['expected'][path]['sha256'],'update_parent_intent')
+ return checked_stamp(intent['identity'],POLICY['expected'][path])
+def parent_candidate(rows,updated=False):
+ candidate=public.inventory(POLICY['expected'])
+ for path,(row,identity) in candidate.items():
+  desired=UPDATE_POLICY['after'] if updated and path==UPDATE_POLICY['path'] else POLICY['expected'][path]
+  require(row==desired,'predecessor_drift')
+  if not(updated and path==UPDATE_POLICY['path']):
+   require(identity[:-1]==parent_intent(path,rows)[:-1],'update_parent_inode')
+ return candidate
+def parent_protected(rows):
+ protected=public.inventory(checked_protected_paths())
+ snapshot=json.loads(rows['snapshot/manifest.json'][2])
+ require({p:r[0] for p,r in protected.items()}==snapshot['protected']
+         and all(dependency_matches(p,r[0]) for p,r in protected.items()),'dependency_drift')
+ return protected
+def parent_hashes(rows): return {p:row[0]['sha256'] for p,row in rows.items()}
+def private_root(store):
+ s=os.fstat(store.fd)
+ require(stat.S_IMODE(s.st_mode)==0o700 and s.st_uid==os.getuid(),'private_root')
+def unchanged(candidate,before):
+ return all(candidate[p]==before[p] for p in before if p!=UPDATE_POLICY['path'])
+'''
+
+
+UPDATE_REMOTE = r'''
+result={'schema_version':1,'operation_id':UPDATE_POLICY['operation'],'source_sha':UPDATE_POLICY['source'],
+        'manifest_sha256':UPDATE_POLICY['manifest'],**IDENTITY,'parent_install':ORIGINAL,
+        'parent_receipt_sha256':UPDATE_POLICY['parent']['receipt_sha256'],'status':'blocked_no_replay','phase':'preflight',
+        'supplier_calls':0,'database_reads':0,'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
+        'written_files':[],'rollback_files':[],'reservation_created':False,'snapshot_verified':False,
+        'restore_drill_verified':False,'protected_unchanged':False,'unchanged_files_verified':False,
+        'parent_records_unchanged':False,'original_inode_retained':False,'snapshot_manifest_sha256':None}
+public=base=original=private=None;reserved=False;switched=False;conflict=False;owned=None;new_identity=None
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ path=UPDATE_POLICY['path']
+ require(set(PAYLOAD)=={path} and path in POLICY['additions'] and len(POLICY['expected'])==42
+         and POLICY['expected'][path]==UPDATE_POLICY['before'],'payload_scope')
+ data=base64.b64decode(PAYLOAD[path],validate=True)
+ require(UPDATE_POLICY['after']=={'state':'present','sha256':digest(data),'size':len(data),'mode':'0644'}
+         and 0<len(data)<=MAX_BYTES,'payload_bytes')
+ home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ retained=parent_records();before=parent_candidate(retained);protected=parent_protected(retained)
+ require(parent_records()==retained and public.inventory(POLICY['expected'])==before
+         and public.inventory(checked_protected_paths())==protected,'preflight_race')
+ try: os.mkdir(UPDATE_POLICY['operation'],0o700,dir_fd=base.fd)
+ except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)
+ reservation={'operation':UPDATE_POLICY['operation'],**IDENTITY,
+              'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL}
+ private.create('reservation.json',canonical(reservation))
+ result['phase']='snapshot'
+ old_row,old_identity,old=public.read(path,True)
+ require((old_row,old_identity)==before[path],'predecessor_drift')
+ private.create('snapshot/app',old,0o644)
+ snapshot={'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL,
+           'path':path,'before':{p:r[0] for p,r in before.items()},'protected':{p:r[0] for p,r in protected.items()},
+           'previous_identity':list(old_identity),'parent_records':parent_hashes(retained)}
+ private.create('snapshot/manifest.json',canonical(snapshot))
+ require(private.read('snapshot/app')[0]==UPDATE_POLICY['before']
+         and private.read('snapshot/manifest.json',True)[2]==canonical(snapshot),'snapshot_invalid')
+ result['snapshot_manifest_sha256']=digest(canonical(snapshot));result['snapshot_verified']=True
+ private.create('drill/app',private.read('snapshot/app',True)[2],0o644)
+ require(private.read('drill/app')[0]==UPDATE_POLICY['before'],'restore_drill_failed')
+ result['restore_drill_verified']=True
+ private.create('stage/app',data,0o644);new_identity=private.read('stage/app')[1]
+ intent={'path':path,'before':UPDATE_POLICY['before'],'after':UPDATE_POLICY['after'],
+         'previous_identity':list(old_identity),'new_identity':list(new_identity)}
+ private.create('intent.json',canonical(intent))
+ prepared_paths=('reservation.json','snapshot/manifest.json','snapshot/app','intent.json')
+ prepared=read_records(private,prepared_paths)
+ require(private.read('stage/app')[:2]==(UPDATE_POLICY['after'],new_identity),'payload_bytes')
+ require(prepared['reservation.json'][2]==canonical(reservation) and prepared['intent.json'][2]==canonical(intent)
+         and prepared['snapshot/manifest.json'][2]==canonical(snapshot)
+         and prepared['snapshot/app'][0]==UPDATE_POLICY['before'],'snapshot_invalid')
+ require(parent_records()==retained and public.inventory(POLICY['expected'])==before
+         and public.inventory(checked_protected_paths())==protected
+         and read_records(private,prepared_paths)==prepared,'prewrite_race')
+ result['phase']='asset'
+ with private.parent('stage/app') as (src,name),public.parent(path) as (dst,target):
+  require(public.read(path)[:2]==before[path],'entry_prewrite_race')
+  exchange(src,name,dst,target);switched=True;result['written_files']=[path];sync(src);sync(dst)
+ row,owned,_=public.read(path)
+ require(row==UPDATE_POLICY['after'] and owned[:-1]==new_identity[:-1],'update_readback')
+ try:
+  prior=private.read('stage/app')
+  require(prior[0]==UPDATE_POLICY['before'] and prior[1][:-1]==old_identity[:-1],'update_exchange_conflict')
+ except Exception:
+  conflict=True
+  capture_owned(public,private,path,'rollback/conflicted-app',row,owned)
+  restore_capture(public,private,path,'stage/app');switched=False
+  raise RuntimeError('update_exchange_conflict')
+ candidate=parent_candidate(retained,True)
+ require(candidate[path]==(UPDATE_POLICY['after'],owned) and unchanged(candidate,before),'installed_race')
+ require(public.inventory(checked_protected_paths())==protected and parent_records()==retained,'protected_changed')
+ require(private.read('stage/app')[:2]==prior[:2] and read_records(private,prepared_paths)==prepared,'update_snapshot_conflict')
+ result.update(status='updated_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inode_retained=True)
+except Exception as error:
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+ if reserved:
+  result['status']='unknown_no_replay'
+  try:
+   require(not conflict,'update_exchange_conflict')
+   if switched:
+    current=public.read(path)
+    require(current[0]==UPDATE_POLICY['after'] and current[1][:-1]==new_identity[:-1],'rollback_entry_conflict')
+    prior=private.read('stage/app')
+    require(prior[0]==UPDATE_POLICY['before'] and prior[1][:-1]==before[path][1][:-1],'rollback_snapshot_conflict')
+    capture_owned(public,private,path,'rollback/app',UPDATE_POLICY['after'],current[1])
+    restore_capture(public,private,path,'stage/app');switched=False;result['rollback_files']=[path]
+   restored=parent_candidate(retained)
+   require(unchanged(restored,before) and public.inventory(checked_protected_paths())==protected
+           and parent_records()==retained,'rollback_incomplete')
+   result.update(status='rolled_back_no_replay',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+                 parent_records_unchanged=True,original_inode_retained=True)
+  except Exception: result['status']='unknown_no_replay'
+finally:
+ if reserved and private is not None:
+  try: private.create('result.json',canonical(result))
+  except Exception: result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,original,base,public):
+  if store is not None: store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+UPDATE_ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':UPDATE_ROLLBACK_OPERATION,'source_sha':UPDATE_POLICY['source'],
+        'manifest_sha256':UPDATE_POLICY['manifest'],**IDENTITY,'original_update':UPDATE_ORIGINAL,'parent_install':ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'rollback_files':[],'reservation_created':False,
+        'snapshot_verified':False,'protected_unchanged':False,'unchanged_files_verified':False,
+        'parent_records_unchanged':False,'update_records_unchanged':False,'original_inode_restored':False,
+        'snapshot_manifest_sha256':UPDATE_ACCEPTED['snapshot_manifest_sha256']}
+public=base=original=updated=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ path=UPDATE_POLICY['path'];home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ retained=parent_records();candidate=parent_candidate(retained,True);protected=parent_protected(retained)
+ update_paths=('reservation.json','result.json','snapshot/manifest.json','snapshot/app','intent.json')
+ update_records=read_records(updated,update_paths);record=lambda p:json.loads(update_records[p][2])
+ require(record('reservation.json')=={'operation':UPDATE_POLICY['operation'],**UPDATE_ORIGINAL,
+         'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL}
+         and record('result.json')==UPDATE_ACCEPTED,'update_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_install','path','before','protected','previous_identity','parent_records'}
+         and snapshot['source']==UPDATE_POLICY['source'] and snapshot['manifest']==UPDATE_POLICY['manifest']
+         and snapshot['parent_install']==ORIGINAL and snapshot['path']==path and snapshot['before']==POLICY['expected']
+         and snapshot['protected']=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
+         and digest(update_records['snapshot/manifest.json'][2])==UPDATE_ACCEPTED['snapshot_manifest_sha256']
+         and update_records['snapshot/app'][0]==UPDATE_POLICY['before'],'update_snapshot_conflict')
+ old_identity=checked_stamp(snapshot['previous_identity'],UPDATE_POLICY['before'])
+ require(old_identity[:-1]==parent_intent(path,retained)[:-1],'update_parent_inode')
+ prior=updated.read('stage/app')
+ require(prior[0]==UPDATE_POLICY['before'] and prior[1][:-1]==old_identity[:-1],'update_snapshot_conflict')
+ intent=record('intent.json')
+ require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+         and intent['path']==path and intent['before']==UPDATE_POLICY['before'] and intent['after']==UPDATE_POLICY['after']
+         and intent['previous_identity']==snapshot['previous_identity'],'update_private_record')
+ new_identity=checked_stamp(intent['new_identity'],UPDATE_POLICY['after'])
+ require(candidate[path][1][:-1]==new_identity[:-1],'rollback_candidate_changed')
+ require(parent_records()==retained and read_records(updated,update_paths)==update_records
+         and public.inventory(POLICY['expected'])==candidate and public.inventory(checked_protected_paths())==protected,'rollback_preflight_race')
+ result['snapshot_verified']=True
+ try: os.mkdir(UPDATE_ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_ROLLBACK_OPERATION,('quarantine',),0o700);private_root(private)
+ private.create('reservation.json',canonical({'operation':UPDATE_ROLLBACK_OPERATION,**IDENTITY,'original_update':UPDATE_ORIGINAL,
+                'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL}))
+ require(parent_records()==retained and read_records(updated,update_paths)==update_records
+         and public.inventory(POLICY['expected'])==candidate and updated.read('stage/app')[:2]==prior[:2]
+         and public.inventory(checked_protected_paths())==protected,'rollback_preflight_race')
+ result['phase']='asset'
+ capture_owned(public,private,path,'quarantine/app',UPDATE_POLICY['after'],candidate[path][1])
+ restore_capture(public,updated,path,'stage/app');result['rollback_files']=[path]
+ restored=parent_candidate(retained)
+ require(unchanged(restored,candidate) and restored[path][1][:-1]==old_identity[:-1]
+         and public.inventory(checked_protected_paths())==protected and parent_records()==retained
+         and read_records(updated,update_paths)==update_records,'rollback_incomplete')
+ result.update(status='update_rolled_back_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,update_records_unchanged=True,original_inode_restored=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try: private.create('result.json',canonical(result))
+  except Exception: result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,updated,original,base,public):
+  if store is not None: store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+UPDATE_REASONS = ROLLBACK_REASONS + ('update_private_record','update_parent_records','update_parent_snapshot',
+    'update_parent_intent','update_parent_inode','update_readback','update_exchange_conflict',
+    'update_original_identity','update_snapshot_conflict')
+
+
+def update_policy_shape(policy):
+    fixed = {'operation': UPDATE_OPERATION, 'source': UPDATE_SOURCE, 'tree': UPDATE_TREE,
+             'manifest': UPDATE_MANIFEST_SHA, 'path': UPDATE_PATH, 'before': UPDATE_BEFORE,
+             'after': UPDATE_AFTER, 'parent': UPDATE_PARENT}
+    need(isinstance(policy, dict) and set(policy) == set(fixed) | {'release', 'previous'}
+         and all(type(policy.get(k)) is type(v) and policy[k] == v for k, v in fixed.items())
+         and isinstance(policy['release'], str) and re.fullmatch('[a-f0-9]{40}', policy['release']), 'update_policy')
+    previous = policy['previous']
+    need(isinstance(previous, dict) and previous.get('operation') == CONTINUATION_OPERATION
+         and previous.get('read_only') is False and previous.get('source') == SOURCE and previous.get('tree') == TREE
+         and previous.get('manifest') == MANIFEST_SHA and tuple(previous.get('additions', ())) == ADDITIONS
+         and previous.get('entry') == ENTRY and isinstance(previous.get('expected'), dict)
+         and set(previous['expected']) == set(ADDITIONS) | {ENTRY}
+         and previous['expected'][UPDATE_PATH] == UPDATE_BEFORE
+         and previous.get('parent_failure') == CONTINUATION_PARENT
+         and previous.get('dependency_policy_sha256') == CONTINUATION_POLICY_SHA, 'update_predecessor_policy')
+    for row in previous['expected'].values():
+        need(isinstance(row, dict) and set(row) == {'state', 'sha256', 'size', 'mode'}
+             and row.get('state') == 'present' and isinstance(row.get('sha256'), str)
+             and re.fullmatch('[a-f0-9]{64}', row['sha256']) and type(row.get('size')) is int
+             and 0 < row['size'] <= MAX_BYTES and row.get('mode') == '0644', 'update_predecessor_policy')
+
+
+def update_runtime_identity(identity):
+    need(isinstance(identity, dict) and set(identity) == {'control_source_sha', 'run_id', 'command_comment_id'}
+         and isinstance(identity.get('control_source_sha'), str) and re.fullmatch('[a-f0-9]{40}', identity['control_source_sha'])
+         and isinstance(identity.get('run_id'), str) and re.fullmatch('[1-9][0-9]{0,19}', identity['run_id'])
+         and type(identity.get('command_comment_id')) is int and identity['command_comment_id'] > 0
+         and identity['run_id'] not in (UPDATE_PARENT['run_id'], CONTINUATION_PARENT['run_id']), 'update_runtime_identity')
+
+
+def update_parent_result(policy, original, accepted):
+    need(original == update_parent_identity() and valid_result(original, policy['previous'], accepted)
+         and accepted['snapshot_manifest_sha256'] == UPDATE_PARENT['snapshot_manifest_sha256'], 'update_parent_result')
+
+
+def _update_program_prefix(policy, identity, original, accepted):
+    return ('MAX_BYTES=' + repr(MAX_BYTES) + '\nPOLICY=' + repr(policy['previous'])
+            + '\nUPDATE_POLICY=' + repr(policy) + '\nIDENTITY=' + repr(identity)
+            + '\nORIGINAL=' + repr(original) + '\nPARENT_ACCEPTED=' + repr(accepted)
+            + '\ndef re_safe(value): return value in ' + repr(UPDATE_REASONS) + '\n'
+            + REMOTE.split('\ndef inspect_only():', 1)[0] + UPDATE_COMMON_REMOTE)
+
+
+def update_remote_program(policy, files, identity, original, accepted):
+    update_policy_shape(policy); update_runtime_identity(identity); update_parent_result(policy, original, accepted)
+    need(policy['release'] == UPDATE_RELEASE and isinstance(files, dict) and set(files) == {UPDATE_PATH}, 'update_payload')
+    raw = base64.b64decode(files[UPDATE_PATH], validate=True)
+    need(UPDATE_AFTER == {'state': 'present', 'sha256': sha(raw), 'size': len(raw), 'mode': '0644'}, 'update_asset_bytes')
+    program = _update_program_prefix(policy, identity, original, accepted) + '\nPAYLOAD=' + repr(files) + '\n' + UPDATE_REMOTE
+    ast.parse(program)
+    return program
+
+
+def update_rollback_remote_program(policy, identity, original, accepted, parent, parent_accepted):
+    update_policy_shape(policy); update_runtime_identity(identity); update_runtime_identity(original)
+    need(identity['run_id'] != original['run_id'] and identity['command_comment_id'] != original['command_comment_id'], 'update_rollback_identity')
+    update_parent_result(policy, parent, parent_accepted)
+    need(valid_update_result(original, policy, accepted), 'update_rollback_evidence')
+    program = (_update_program_prefix(policy, identity, parent, parent_accepted)
+               + '\nUPDATE_ORIGINAL=' + repr(original) + '\nUPDATE_ACCEPTED=' + repr(accepted)
+               + '\nUPDATE_ROLLBACK_OPERATION=' + repr(UPDATE_ROLLBACK_OPERATION) + '\n' + UPDATE_ROLLBACK_REMOTE)
+    ast.parse(program)
+    return program
+
+
+def valid_update_result(identity, policy, result):
+    fixed = {'schema_version': 1, 'operation_id': UPDATE_OPERATION, 'source_sha': UPDATE_SOURCE,
+             'manifest_sha256': UPDATE_MANIFEST_SHA, **identity, 'parent_install': update_parent_identity(),
+             'parent_receipt_sha256': UPDATE_PARENT['receipt_sha256']}
+    counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags = ('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inode_retained')
+    required = set(fixed) | set(counters) | set(flags) | {'status','phase','written_files','rollback_files','snapshot_manifest_sha256'}
+    need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'update_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k] == v for k, v in fixed.items()), 'update_receipt_identity')
+    need(all(type(result.get(k)) is int and result[k] == 0 for k in counters), 'update_receipt_counters')
+    need(all(type(result[k]) is bool for k in flags), 'update_receipt_flags')
+    need(result['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','updated_verified')
+         and result['phase'] in ('preflight','snapshot','asset','complete')
+         and ('reason' not in result or result['reason'] in UPDATE_REASONS), 'update_receipt_status')
+    need(all(result[k] in ([], [UPDATE_PATH]) for k in ('written_files','rollback_files')), 'update_receipt_paths')
+    snapshot = result['snapshot_manifest_sha256']
+    need(snapshot is None or isinstance(snapshot, str) and re.fullmatch('[a-f0-9]{64}', snapshot), 'update_receipt_snapshot')
+    if result['status'] == 'blocked_no_replay':
+        need(not result['reservation_created'] and result['phase'] == 'preflight'
+             and not result['written_files'] and not result['rollback_files'], 'update_receipt_incomplete')
+    if result['status'] in ('rolled_back_no_replay', 'updated_verified'):
+        need(result['phase'] == 'complete' and result['reservation_created'] and result['protected_unchanged']
+             and result['unchanged_files_verified'] and result['parent_records_unchanged']
+             and result['original_inode_retained'], 'update_receipt_incomplete')
+    if result['status'] == 'updated_verified':
+        need(all(result[k] for k in flags) and result['written_files'] == [UPDATE_PATH] and not result['rollback_files']
+             and snapshot is not None and 'reason' not in result, 'update_receipt_incomplete')
+    return result['status'] == 'updated_verified'
+
+
+def valid_update_rollback_result(identity, original, accepted, policy, result):
+    fixed = {'schema_version': 1, 'operation_id': UPDATE_ROLLBACK_OPERATION, 'source_sha': UPDATE_SOURCE,
+             'manifest_sha256': UPDATE_MANIFEST_SHA, **identity, 'original_update': original,
+             'parent_install': update_parent_identity(), 'snapshot_manifest_sha256': accepted['snapshot_manifest_sha256']}
+    counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags = ('reservation_created','snapshot_verified','protected_unchanged','unchanged_files_verified',
+             'parent_records_unchanged','update_records_unchanged','original_inode_restored')
+    required = set(fixed) | set(counters) | set(flags) | {'status','phase','rollback_files'}
+    need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'update_rollback_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k] == v for k, v in fixed.items()), 'update_rollback_receipt_identity')
+    need(all(type(result.get(k)) is int and result[k] == 0 for k in counters), 'update_rollback_receipt_counters')
+    need(all(type(result[k]) is bool for k in flags), 'update_rollback_receipt_flags')
+    need(result['status'] in ('blocked_no_replay','unknown_no_replay','update_rolled_back_verified')
+         and result['phase'] in ('preflight','asset','complete')
+         and ('reason' not in result or result['reason'] in UPDATE_REASONS), 'update_rollback_receipt_status')
+    need(result['rollback_files'] in ([], [UPDATE_PATH]), 'update_rollback_receipt_paths')
+    if result['status'] == 'blocked_no_replay':
+        need(not result['reservation_created'] and result['phase'] == 'preflight' and not result['rollback_files'], 'update_rollback_receipt_incomplete')
+    if result['status'] == 'update_rolled_back_verified':
+        need(result['phase'] == 'complete' and all(result[k] for k in flags)
+             and result['rollback_files'] == [UPDATE_PATH] and 'reason' not in result, 'update_rollback_receipt_incomplete')
+    return result['status'] == 'update_rolled_back_verified'
+
+
+def update_rollback_commands(identity, original_run, expected_original=None):
+    need(isinstance(original_run, str) and re.fullmatch('[1-9][0-9]{0,19}', original_run)
+         and original_run not in (identity['run_id'], UPDATE_PARENT['run_id'], CONTINUATION_PARENT['run_id']), 'update_rollback_run')
+    comments = pages('/issues/4709/comments')
+    _unique_update_command(comments, UPDATE_ROLLBACK_PREFIX, UPDATE_ROLLBACK_OPERATION, identity, original_run)
+    installed = [c for c in comments if c.get('body', '').strip().split()[:1] == [UPDATE_PREFIX]
+                 and UPDATE_OPERATION in c.get('body', '').split()[1:]]
+    need(len(installed) == 1 and installed[0].get('user', {}).get('id') == 226193297
+         and installed[0].get('author_association') == 'OWNER', 'update_rollback_command')
+    match = re.fullmatch(re.escape(UPDATE_PREFIX) + r' ([a-f0-9]{40}) ' + re.escape(UPDATE_OPERATION), installed[0].get('body', ''))
+    need(match is not None, 'update_rollback_command')
+    original = {'control_source_sha': match[1], 'run_id': original_run, 'command_comment_id': installed[0]['id']}
+    update_runtime_identity(original)
+    need(expected_original is None or original == expected_original, 'update_rollback_command')
+    return original
+
+
+def update_rollback_admission(identity, original_run):
+    # A proven successful update is self-contained recovery evidence. No source
+    # release, source CI, signer, or initial installation artifact is fetched.
+    rollback_main(identity); reviewed_control(identity['control_source_sha'])
+    original = update_rollback_commands(identity, original_run)
+    run = api('/actions/runs/' + original_run)
+    need(run.get('id') == int(original_run) and run.get('head_sha') == original['control_source_sha']
+         and run.get('head_branch') == 'main' and run.get('path') == WORKFLOW and run.get('event') == 'issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'success'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'update_rollback_run')
+    jobs = [j for j in pages('/actions/runs/' + original_run + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0].get('run_id') == int(original_run) and jobs[0].get('status') == 'completed'
+         and jobs[0].get('conclusion') == 'success', 'update_rollback_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'success', 'update_rollback_step')
+    name = 'search3-public-install-' + original_run + '-1'
+    artifacts = [a for a in pages('/actions/runs/' + original_run + '/artifacts', 'artifacts') if a.get('name') == name]
+    need(len(artifacts) == 1 and artifacts[0].get('expired') is False
+         and artifacts[0].get('workflow_run', {}).get('id') == int(original_run)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}', artifacts[0].get('digest', '')), 'update_rollback_artifact')
+    rollback_main(identity)
+    return original, artifacts[0]
+
+
+def update_previous_policy(expected):
+    # These are the original install's public hashes, retained by the successful
+    # update receipt. All private/dependency expectations remain compiled here.
+    return {'operation': CONTINUATION_OPERATION, 'read_only': False, 'source': SOURCE, 'tree': TREE,
+            'release': RELEASE, 'manifest': MANIFEST_SHA, 'additions': ADDITIONS, 'entry': ENTRY,
+            'before': ENTRY_BEFORE, 'expected': expected, 'protected': CONTINUATION_PROTECTED,
+            'private_config': PRIVATE_CONFIG, 'opaque_settings': OPAQUE_SETTINGS, 'absent_dependencies': ABSENT_DEPENDENCIES,
+            'signing_result': SIGNING_RESULT_SHA, 'opaque_presence': INSTALL_OPAQUE_PRESENCE,
+            'parent_failure': CONTINUATION_PARENT, 'dependency_policy_sha256': CONTINUATION_POLICY_SHA}
+
+
+def update_source_evidence(raw, original):
+    update_runtime_identity(original)
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'update_rollback_artifact')
+        value = json.loads(archive.read('evidence.json'))
+    fixed = {**original, 'operation_id': UPDATE_OPERATION, 'source_sha': UPDATE_SOURCE,
+             'manifest_sha256': UPDATE_MANIFEST_SHA, 'read_only': False, 'phase': 'complete',
+             'ssh_started': True, 'status': 'updated_verified', 'parent_install': update_parent_identity()}
+    need(isinstance(value, dict) and set(value) == set(fixed) | {'remote','parent_result','previous_public','release_sha'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k, v in fixed.items()), 'update_rollback_evidence')
+    policy = {'operation': UPDATE_OPERATION, 'source': UPDATE_SOURCE, 'tree': UPDATE_TREE,
+              'release': value['release_sha'], 'manifest': UPDATE_MANIFEST_SHA, 'path': UPDATE_PATH,
+              'before': UPDATE_BEFORE, 'after': UPDATE_AFTER, 'parent': UPDATE_PARENT,
+              'previous': update_previous_policy(value['previous_public'])}
+    update_policy_shape(policy)
+    parent = value['parent_result']; update_parent_result(policy, update_parent_identity(), parent)
+    parent_outer = {**update_parent_identity(), 'read_only': False, 'phase': 'complete', 'ssh_started': True,
+                    'status': 'installed_verified', 'parent_failure': CONTINUATION_PARENT,
+                    'dependency_policy_sha256': CONTINUATION_POLICY_SHA, 'remote': parent}
+    need(sha((json.dumps(parent_outer, sort_keys=True) + '\n').encode()) == UPDATE_PARENT['receipt_sha256'], 'update_parent_digest')
+    need(valid_update_result(original, policy, value['remote']), 'update_rollback_evidence')
+    return policy, value['remote'], parent
+
+
+def update(rollback=False):
+    need(type(rollback) is bool, 'mode')
+    operation = UPDATE_ROLLBACK_OPERATION if rollback else UPDATE_OPERATION
+    work = Path(os.environ['RUNNER_TEMP']) / 'search3-public-install'; work.mkdir(mode=0o700)
+    key, known = work / 'key', work / 'known'
+    evidence = {'status': 'blocked_no_replay', 'operation_id': operation, 'source_sha': UPDATE_SOURCE,
+                'manifest_sha256': UPDATE_MANIFEST_SHA, 'read_only': False, 'phase': 'identity', 'ssh_started': False}
+    complete = False
+    try:
+        event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity, original_run = update_rollback_event_identity(event, os.environ)
+            evidence.update(identity, original_update_run_id=original_run, phase='admission')
+            original, artifact = update_rollback_admission(identity, original_run)
+            evidence['phase'] = 'artifact'
+            policy, accepted, parent_accepted = update_source_evidence(download(artifact['id'], artifact['digest'].removeprefix('sha256:')), original)
+            program = update_rollback_remote_program(policy, identity, original, accepted, update_parent_identity(), parent_accepted)
+            evidence.update(parent_install=update_parent_identity(), original_update=original)
+        else:
+            identity = update_event_identity(event, os.environ)
+            evidence.update(identity, phase='admission'); update_admission(identity)
+            evidence['phase'] = 'artifact'
+            previous, previous_files = package(download(ARTIFACT, ARTIFACT_SHA), continuation=True)
+            parent_accepted = update_parent_evidence(download(UPDATE_PARENT['artifact_id'], UPDATE_PARENT['artifact_sha256']), previous)
+            policy, files = update_package(download(UPDATE_ARTIFACT, UPDATE_ARTIFACT_SHA), previous, previous_files)
+            program = update_remote_program(policy, files, identity, update_parent_identity(), parent_accepted)
+            evidence.update(parent_install=update_parent_identity(), parent_result=parent_accepted,
+                            previous_public=previous['expected'], release_sha=policy['release'])
+        # The same fixed carrier, secrets and bounded SSH invocation as install.
+        host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
+        raw = os.environ['PREVIEW_KEY'].replace('\r', '')
+        need(0 < len(raw) <= 32768, 'ssh_key')
+        if 'PRIVATE KEY' not in raw: raw = base64.b64decode(raw, validate=True).decode()
+        with key.open('x') as stream: stream.write(raw.rstrip() + '\n')
+        key.chmod(0o600)
+        scan = carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]); need(0 < len(scan) <= 8192, 'host_key')
+        known.write_bytes(scan); known.chmod(0o600)
+        options = ['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:
+            update_rollback_commands(identity, original_run, original); rollback_main(identity)
+        else: update_admission(identity)
+        evidence.update(status='unknown_no_replay', phase='remote', ssh_started=True)
+        response = carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'], input=program.encode(), timeout=180)
+        need(len(response) <= 32768, 'receipt_limit'); result = json.loads(response)
+        complete = valid_update_rollback_result(identity, original, accepted, policy, result) if rollback else valid_update_result(identity, policy, result)
+        evidence['remote'] = result
+        if rollback: rollback_main(identity)
+        else: update_final_heads(identity)
+        evidence.update(status=result['status'], phase='complete')
+    except Exception as error:
+        complete = False
+        evidence['error_type'] = type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'PublicUpdateError'
+    finally:
+        key.unlink(missing_ok=True); known.unlink(missing_ok=True)
+        (work / 'evidence.json').write_text(json.dumps(evidence, sort_keys=True) + '\n')
+    print(json.dumps(evidence, sort_keys=True)); need(complete, 'public_update_rollback_not_verified' if rollback else 'public_update_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['update']: return 'update'
+    if arguments == ['update-rollback']: return 'update-rollback'
     if arguments == ['rollback']: return 'rollback'
     if arguments == ['continue']: return 'continue'
     need(arguments in ([], ['inspect']), 'usage')
@@ -1366,6 +2045,8 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'rollback': rollback()
+    if mode == 'update': update()
+    elif mode == 'update-rollback': update(rollback=True)
+    elif mode == 'rollback': rollback()
     elif mode == 'continue': install(continuation=True)
     else: install(mode)
