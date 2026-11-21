@@ -1,0 +1,904 @@
+{
+  "schema_version": 1,
+  "source_policy": "official_review_missing_only_v1",
+  "original_package_sha256": "01090549e278cbd739efa4936472c256724f6c555bd0d44864d6d21d2ce15123",
+  "approval_ref": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208",
+  "proposed_actions": [
+    {
+      "anytourHotelId": 5371,
+      "workId": "EXP002",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Anantara Kihavah Maldives Villas расположен на острове Кихава Хуравали в атолле Баа, на территории биосферного резервата ЮНЕСКО. Курорт предлагает 80 пляжных и надводных вилл и резиденций с бассейнами. На острове есть домашний риф, дайвинг-центр и центр водных видов спорта. Среди ресторанов — подводный SEA; в SKY оборудована надводная обсерватория. Полёт на гидросамолёте из Мале занимает около 35 минут и выполняется в светлое время суток. Для позднего прибытия отель описывает маршрут через внутренний аэропорт Дхаравандху и последующий 30-минутный путь на катере. Детский клуб Thiththi Boli рассчитан на детей 4–12 лет. В ресторанах предусмотрены детские блюда; услуги няни доступны по запросу, в том числе для малышей от трёх месяцев.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg",
+            "https://assets.anantara.com/image/upload/q_auto,f_auto/media/minor/anantara/images/anantara-kihavah-maldives-villas/accommodation/details-page/beach-pool-villa/new_july_2025/beach_pool_villa_exterior_984x532.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 6014,
+      "workId": "EXP032",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Kudadoo Maldives Private Island находится в атолле Лавияни. На острове 15 надводных резиденций с отдельными террасами и бассейнами. Для резиденций с одной спальней указана общая площадь 310 м², с двумя спальнями — 390 м²; площадь частного бассейна составляет 44 м². Гостям предоставляется круглосуточная помощь персонального батлера. Основной маршрут из Мале — гидросамолёт, около 40 минут в пути. Питание организовано в ресторане Keyolhu в комплексе The Retreat, в резиденции или в выбранном месте на острове. В The Retreat также есть бар; диетические предпочтения учитываются по запросу. Курорт предлагает формат fully-inclusive, но отдельно указывает доплату за посещение подводного ресторана 5.8 на соседнем Hurawalhi. На Kudadoo имеются сырная комната и винный погреб.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 6202,
+      "workId": "EXP058",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "The Ritz-Carlton Maldives, Fari Islands расположен на островах Фари в атолле Северный Мале. Пляжные и надводные виллы оснащены частными панорамными бассейнами и террасами; гостям помогает персональный батлер Aris Meeha. Семь ресторанов и баров распределены между Culinary Island, пляжем Grand Sunset Beach и Fari Marina Village. Среди них — итальянская La Locanda, кантонский Summer Pavilion и Beach Shack со средиземноморской кухней. Трансфер из международного аэропорта Велана выполняется скоростным катером; отель заявляет круглосуточную работу этой услуги по предварительному заказу. Клуб Ritz Kids предназначен для детей 4–12 лет: предусмотрены игровые пространства и бассейн с горками. Услуги няни предоставляются за дополнительную плату по запросу. На курорте также доступны теннис, каякинг, снорклинг и надводный спа.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336",
+            "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-20763:Classic-Hor?fit=constrain&wid=1300"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 5160,
+      "workId": "EXP069",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Waldorf Astoria Maldives Ithaafushi расположен на острове Итаафуши в атолле Южный Мале. Отель описывает размещение на трёх островах и 117 вилл трёх типов: пляжные, рифовые и надводные. У каждой виллы есть собственный бассейн и вид на океан. Из международного аэропорта Велана организован трансфер на яхте, занимающий около 40 минут; ожидание отправления учитывается отдельно. На курорте заявлены десять ресторанов, баров и лаунжей. Среди них — Terra со столами в бамбуковых конструкциях среди деревьев, китайский Li Long и Tasting Table с международной кухней. Детский Stars Club рассчитан на возраст 4–11 лет; малыши младше четырёх могут приходить с сопровождающим. Для семей предусмотрены игровые зоны, водные горки и splash pad. Некоторые детские занятия оплачиваются отдельно.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg",
+            "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_crop,w_2344,h_2999,q_80,f_auto,x_1772/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/MLEONWA_F_B_Terra_Aeraial.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 5794,
+      "workId": "EXP072",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Soneva Jani находится в лагуне Медхуфару, в атолле Ноону. Курорт предлагает пляжные виллы среди растительности и надводные виллы с выходом к воде; в отдельных категориях надводных вилл предусмотрены раздвижные крыши и горки. Маршрут из Мале предусматривает гидросамолёт либо перелёт в Маафару с последующим коротким трансфером на катере. В официальном описании указаны около 40 минут для прямого перелёта гидросамолётом и около 10 минут на катере из Маафару. В ресторане SAJI представлена индонезийская кухня, в Primitive — мальдивские блюда и приготовление на открытом огне; есть питание на вилле. Сырная и шоколадная комнаты работают круглосуточно. Детское пространство The Den и его программа рассчитаны на детей и подростков 4–17 лет; для младших доступна индивидуальная няня.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg",
+            "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2026/11/06142119/Soneva-Jani-Crabshack-Dining-Table-1-1600x900.webp",
+            "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2023/08/30172435/Soneva-Jani-The-Den-Architecture-3-Large-1-scaled.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 4516,
+      "workId": "EXP091",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Jumeirah Burj Al Arab находится на искусственном острове у побережья Дубая, примерно в 280 метрах от берега. С материком остров соединяет отдельная дорога. Здание высотой 321 метр спроектировано в форме паруса арабского доу. По состоянию на 21 ноября 2026 года Jumeirah сообщает об обновлении интерьеров и деталей здания под руководством архитектора Тристана Ауэра с сохранением архитектурного облика. Действующий набор услуг и условия проживания для выбранных дат следует уточнять у отеля.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://cdn.jumeirah.com/api/public/content/da94785295924158aa33fa7ee094fd7a?v=199688b8",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://cdn.jumeirah.com/api/public/content/da94785295924158aa33fa7ee094fd7a?v=199688b8",
+            "https://cdn.jumeirah.com/api/public/content/90cecfbf283b41d7b18fdf11a2e41540?v=07bf3fd5"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 7218,
+      "workId": "EXP092",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Jumeirah Marsa Al Arab находится на побережье Дубая, в районе Умм-Сукейм 3, между Jumeirah Beach Hotel и Burj Al Arab. В комплексе представлены номера, люксы и резиденции с террасами и видами на море, марину или город. Например, Ocean Deluxe Room имеет площадь 67 м², включая террасу 11 м², и ванную комнату с ванной и тропическим душем. У курорта есть частный пляж, несколько бассейнов и прогулочная зона марины с кафе и ресторанами. Комплекс Talise занимает три этажа: здесь размещены процедурные кабинеты, отдельный женский этаж, крытый бассейн длиной 20 метров и фитнес-центр. Для детей предусмотрен Family Club Jumeirah Circle. Доступ к отдельному бассейновому клубу на официальном сайте выделен как преимущество гостей люксов; его не следует распространять на все категории размещения.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f",
+            "https://cdn.jumeirah.com/api/public/content/aa77f30362434186b198f935279eda5b?v=fd58c0bc"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 12008,
+      "workId": "EXP095",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Jumeirah Al Naseem входит в комплекс Madinat Jumeirah на побережье Дубая, в районе Умм-Сукейм. В отеле представлены номера, клубные категории, люксы и пентхаусы; из разных вариантов размещения открываются виды на сады, море или Burj Al Arab. Для семей предусмотрена категория Two Bedroom Family Room, объединяющая два сообщающихся номера и располагающая балконом с видом на море. Инфраструктура включает частный пляж и пять бассейнов, в том числе отдельный бассейн для взрослых. На официальном сайте также указаны спа Talise, фитнес-центр, рестораны и детский клуб Jumeirah Circle. На территории находится лагуна проекта реабилитации морских черепах: здесь наблюдают за восстановлением спасённых животных перед возвращением в море. У разных бассейнов действуют собственные возрастные правила, поэтому доступ для детей следует уточнять для конкретной зоны.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7",
+            "https://cdn.jumeirah.com/api/public/content/6465470bcba84a5aa36cf3bdbcb08b15?v=f826904b"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 5598,
+      "workId": "EXP083",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Four Seasons Resort Dubai at Jumeirah Beach расположен в Дубае, в районе Jumeirah 2, непосредственно у Персидского залива. У курорта есть частный пляж протяжённостью 270 метров. Для размещения предлагаются номера и люксы; категории Deluxe Partial Sea-View, Deluxe City-View и Deluxe Resort-View имеют площадь 70 м². На территории работают отдельные открытые бассейны для взрослых и семей, а также крытый бассейн для плавания. В The Pearl Spa and Wellness Jumeirah предусмотрены десять процедурных кабинетов; фитнес-центр открыт круглосуточно. Детский центр Kids For All Seasons принимает детей от 4 до 12 лет, также есть водная игровая площадка. У пляжа расположен ресторан Sea Fu. Вид и оснащение номера зависят от выбранной категории.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg",
+            "https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_2104_original.jpg",
+            "https://www.fourseasons.com/alt/img-opt/~70.1530/publish/content/dam/fourseasons/images/web/DJB/DJB_270_aspect16x9.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 10771,
+      "workId": "EXP015",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Anantara Layan Phuket Resort находится у пляжа Лаян на Пхукете. Курорт предлагает номера и люксы на склоне, а также виллы с собственными бассейнами. В категории Premier Room площадь составляет 56 м², в Deluxe Layan Suite — 79 м²; площади вилл различаются по категории. На территории есть общий бассейн, фитнес-центр, теннисный корт и зона активного отдыха Layan Active Zone. Детский Chang Club рассчитан на возраст от 4 до 12 лет; детям младше четырёх необходимо сопровождение родителя или няни. Гости могут заниматься муай-тай, каякингом и сапбордингом, посещать занятия тайской кулинарии. Работают Anantara Spa и центр Layan Life by Anantara. Доступность занятий и условия трансфера уточняются при бронировании.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png",
+            "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/gallery/alay_deluxe-layan-suite-984x532.jpg",
+            "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/accommodation/room-type/pool-villas/alay_accommodation_poolvilla_984x532.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    },
+    {
+      "anytourHotelId": 8689,
+      "workId": "EXP081",
+      "observedRevision": 1,
+      "mutation": "fill_only_if_stored_field_still_missing",
+      "fields": [
+        {
+          "field": "description",
+          "before_public_projection": null,
+          "proposed_value": "Four Seasons Resort The Nam Hai расположен на пляже Ха-Май в районе Хойана, на центральном побережье Вьетнама. Размещение организовано в виллах с видом на море или сад. Для односпальных и семейных вилл указаны террасы и душ под открытым небом; собственные бассейны предусмотрены в категориях Pool Villas. На территории работают три общих бассейна, включая семейный и зоны для взрослых. Для активного отдыха доступны фитнес-центр, теннис, падел и пиклбол. В Heart of the Earth Spa находятся восемь процедурных павильонов над водой. Детский клуб Chuon Chuon принимает детей от 4 до 12 лет и проводит занятия под присмотром. На курорте есть три ресторана, два бара и кулинарная академия. Трансфер из аэропорта Дананга организуется по запросу.",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "primaryImage",
+          "before_public_projection": null,
+          "proposed_value": "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-340%2C4605-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/NMH/NMH_1297_original.jpg",
+          "decision": "proposed_not_applied"
+        },
+        {
+          "field": "images",
+          "before_public_projection": [],
+          "proposed_value": [
+            "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-340%2C4605-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/NMH/NMH_1297_original.jpg",
+            "https://www.fourseasons.com/alt/img-opt/~75.701.75%2C0000-198%2C4375-2850%2C0000-1603%2C1250/publish/content/dam/fourseasons/images/web/NMH/NMH_1523_original.jpg",
+            "https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/NMH/NMH_611_original.jpg"
+          ],
+          "decision": "proposed_not_applied"
+        }
+      ],
+      "guards_required_before_apply": [
+        "owner approval of this concrete content",
+        "admitted official research source policy in existing canonical writer",
+        "fresh stored profile SHA/revision and source/manual guards",
+        "preserve every nonempty stored field",
+        "one atomic transaction with provenance",
+        "independent canonical readback"
+      ],
+      "runtime_admission": null
+    }
+  ],
+  "proposed_actions_sha256": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4",
+  "targets": [
+    {
+      "anytourHotelId": 5371,
+      "expectedIdentity": {
+        "name": "ANANTARA KIHAVAH VILLAS",
+        "country": "Мальдивы",
+        "region": "Мальдивы"
+      },
+      "sources": [
+        {
+          "url": "https://www.anantara.com/en/kihavah-maldives",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/kihavah-maldives/contact",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/kihavah-maldives/family",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/kihavah-maldives/gallery",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg",
+          "source_page_url": "https://www.anantara.com/en/kihavah-maldives",
+          "sha256": "138b11b99356fe59d62b66f12973e7b68ca0d2af29840e538f461387b0a2bd58"
+        },
+        {
+          "url": "https://assets.anantara.com/image/upload/q_auto,f_auto/media/minor/anantara/images/anantara-kihavah-maldives-villas/accommodation/details-page/beach-pool-villa/new_july_2025/beach_pool_villa_exterior_984x532.jpg",
+          "source_page_url": "https://www.anantara.com/en/kihavah-maldives",
+          "sha256": "e505e06ad48a2c40a6dd3cca53f2a694ec7ddf0a06448f9c9c8f076b33d16617"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 6014,
+      "expectedIdentity": {
+        "name": "KUDADOO MALDIVES PRIVATE ISLAND",
+        "country": "Мальдивы",
+        "region": "Мальдивы"
+      },
+      "sources": [
+        {
+          "url": "https://www.kudadoo.com/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.kudadoo.com/residences/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.kudadoo.com/journey/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.kudadoo.com/dining/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.crownandchamparesorts.com/our-resorts/kudadoo.html",
+          "checked_at_utc": "2026-11-21T13:48:36.761327+00:00",
+          "content_sha256": null
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg",
+          "source_page_url": "https://www.crownandchamparesorts.com/our-resorts/kudadoo.html",
+          "sha256": "0b14688759e14be61ea13f0036a1fc787ab46ee92ab4d85d5df6edcb73f01d16"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 6202,
+      "expectedIdentity": {
+        "name": "THE RITZ CARLTON MALDIVES FARI ISLANDS",
+        "country": "Мальдивы",
+        "region": "Мальдивы"
+      },
+      "sources": [
+        {
+          "url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/overview/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "989f81c89cef64eae4c8c822aeaefb87d89e7f914d5f1655e8836e8541e5adc4"
+        },
+        {
+          "url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/rooms/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "7799d39c54e8b7c7a3b6f7143c3f68cf676cc2f593cd6f8fbf570ac0285cdbdf"
+        },
+        {
+          "url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/experiences/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "21992f312dbfd4948c61785ddb946a90f58bf9465be83328cd1f559c37f303c8"
+        },
+        {
+          "url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/photos/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "5b0a61525453902a66e516b38aca6b05327a8d4b379352ef05a5497b4ed58d25"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336",
+          "source_page_url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/photos/",
+          "sha256": "6ddc983a5db91412996aa770a5142ca53ad5b9c8a9cfb69d62317fe14587d9fc"
+        },
+        {
+          "url": "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-20763:Classic-Hor?fit=constrain&wid=1300",
+          "source_page_url": "https://www.ritzcarlton.com/en/hotels/mlera-the-ritz-carlton-maldives-fari-islands/rooms/",
+          "sha256": "3555cd8264416cb7f83dc2d72f7d56a02eb32b1a6fdace8962de96afd60433b3"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 5160,
+      "expectedIdentity": {
+        "name": "WALDORF ASTORIA MALDIVES ITHAAFUSHI",
+        "country": "Мальдивы",
+        "region": "Мальдивы"
+      },
+      "sources": [
+        {
+          "url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "e9ae7c46164dc5deb721f4dda4bda5cf033675f4a239e12f7661b53142395c99"
+        },
+        {
+          "url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/rooms/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "6780d4f88c1de153fc6040e5508b743091b46968a2bcc186e10bff760035796d"
+        },
+        {
+          "url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/hotel-location/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "99678a1733893269d9d0ee054c42438572c3d38539e32efb5c52a1ffca150abd"
+        },
+        {
+          "url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/things-to-do/kids-family/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": "bd70756e583b613c31752261df473b027bcc6bd958db94ed6bcef7ea8253785b"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg",
+          "source_page_url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/",
+          "sha256": "129b9fafb610bdc8f6ad4a9b91c4a3bebdd3b2544416c0ae3e43708a4529546f"
+        },
+        {
+          "url": "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_crop,w_2344,h_2999,q_80,f_auto,x_1772/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/MLEONWA_F_B_Terra_Aeraial.jpg",
+          "source_page_url": "https://www.hilton.com/en/hotels/mleonwa-waldorf-astoria-maldives-ithaafushi/",
+          "sha256": "3c7a8a57509fd20edc554714e4a3995383d9adb5f38a3d3d3696dcd8a6e72d8f"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 5794,
+      "expectedIdentity": {
+        "name": "SONEVA JANI RESORT",
+        "country": "Мальдивы",
+        "region": "Мальдивы"
+      },
+      "sources": [
+        {
+          "url": "https://soneva.com/resorts/soneva-jani/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://soneva.com/resorts/soneva-jani/your-journey-soneva-jani/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://soneva.com/resorts/soneva-jani/dining/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://soneva.com/experience/the-den-soneva-jani/",
+          "checked_at_utc": "2026-11-21T13:42:32Z",
+          "content_sha256": null
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg",
+          "source_page_url": "https://soneva.com/resorts/soneva-jani/",
+          "sha256": "082d6dfd5db62eea1535c7a3002f5035cc5aa425a5fdfdf3ad4e037e93a4a06f"
+        },
+        {
+          "url": "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2026/11/06142119/Soneva-Jani-Crabshack-Dining-Table-1-1600x900.webp",
+          "source_page_url": "https://soneva.com/resorts/soneva-jani/dining/",
+          "sha256": "5c3ce37997513582f53b5566b1d5e643cbfcaca7a5fec6d2fa8ad3de62d19e39"
+        },
+        {
+          "url": "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2023/08/30172435/Soneva-Jani-The-Den-Architecture-3-Large-1-scaled.jpg",
+          "source_page_url": "https://soneva.com/experience/the-den-soneva-jani/",
+          "sha256": "26a8937adacef4fbabdf8dde1d4d30082e74f7902638bb9cf012179e6c7f5b35"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 4516,
+      "expectedIdentity": {
+        "name": "BURJ AL ARAB",
+        "country": "ОАЭ",
+        "region": "Дубай"
+      },
+      "sources": [
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-burj-al-arab-a-jumeirah-icon",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "4143dcf1cd1e55f0b30963c905f3c6e494ba5ecaa8ed1d8c696457dba874a208"
+        },
+        {
+          "url": "https://www.jumeirah.com/en/article/stories/dubai/the-story-of-an-icon",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "6003208e35c77435632c6b5eeb5e89f796f866c44031a668781f5ee63cf6fa7e"
+        },
+        {
+          "url": "https://mediahub.jumeirah.com/wp-content/uploads/2025/08/72d363d2b4b9f34c3f0da5e6e46cbe06.pdf",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": null
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/da94785295924158aa33fa7ee094fd7a?v=199688b8",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-burj-al-arab-a-jumeirah-icon",
+          "sha256": "7c21681bc8affc3763eec1f38c19e8530efb31c338e6fa77c45e2f973198a96f"
+        },
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/90cecfbf283b41d7b18fdf11a2e41540?v=07bf3fd5",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-burj-al-arab-a-jumeirah-icon",
+          "sha256": "53bd313f9933e559b314bb9032cfb9beb5b58f946bd418d2c017a13e9dcb0e99"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 7218,
+      "expectedIdentity": {
+        "name": "JUMEIRAH MARSA AL ARAB",
+        "country": "ОАЭ",
+        "region": "Дубай"
+      },
+      "sources": [
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-marsa-al-arab",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "64d511c6f898f49055aa7f463c49464ab40c2effc1b0d96257b2c2d1e2b31187"
+        },
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-marsa-al-arab/accommodation/ocean-deluxe-room",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "6e4ac97d132fdc4ee0522f0beae4548ce2687672c8e4cb8d3103e0959373ae33"
+        },
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-marsa-al-arab/wellbeing",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "297e0f727053572a256c2dd641f4b559e9d6e9e0b5fdee73ae860b32df0454ef"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-marsa-al-arab",
+          "sha256": "5a4e8628817d4cca93b66eefac6425db2598ecea92e90070288ad71ca8f2474d"
+        },
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/aa77f30362434186b198f935279eda5b?v=fd58c0bc",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-marsa-al-arab/accommodation/ocean-deluxe-room",
+          "sha256": "98b90ad56abee43b354748d039af84cdd5bc14c533c14e2e01b895c843ab7259"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 12008,
+      "expectedIdentity": {
+        "name": "JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)",
+        "country": "ОАЭ",
+        "region": "Дубай"
+      },
+      "sources": [
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-al-naseem",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "641199aeeeff1baaccfcec3c66834c100915ac350a42cde96e1a76152d2e4a2b"
+        },
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-al-naseem/accommodation/two-bedroom-family-room",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "47648f2ef7e5a2bcfffd3394a21064821e767c62b4882128e6cd0401d84483f5"
+        },
+        {
+          "url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-al-naseem/experiences/turtle-rehabilitation-at-jumeirah",
+          "checked_at_utc": "2026-11-21T13:38:57Z",
+          "content_sha256": "3f1bb0f9fb5b2686eb4133cd174992aa75207417a3861299b77ced22b18f48d0"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-al-naseem",
+          "sha256": "51e5b43d3f344e84e066390136ce295320acef68ace6269861efca57fbe605be"
+        },
+        {
+          "url": "https://cdn.jumeirah.com/api/public/content/6465470bcba84a5aa36cf3bdbcb08b15?v=f826904b",
+          "source_page_url": "https://www.jumeirah.com/en/stay/dubai/jumeirah-al-naseem",
+          "sha256": "dd5c4365badbd2df6ea33c3332ec323b629cf2b876d6eb465b31502191af040d"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 5598,
+      "expectedIdentity": {
+        "name": "FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH",
+        "country": "ОАЭ",
+        "region": "Дубай"
+      },
+      "sources": [
+        {
+          "url": "https://www.fourseasons.com/dubaijb/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.fourseasons.com/dubaijb/services-and-amenities/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.fourseasons.com/dubaijb/accommodations/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "f8fed9254a15d49eeeb773ac5bc2ea32bfd52d83b921f97e7a20b3e7681c42cd"
+        },
+        {
+          "url": "https://www.fourseasons.com/dubaijb/services-and-amenities/pools-and-beach/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "ccef69628dfd53507e71a98556e039b3991c1e3ebbd831d31fc994edbcc418cd"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg",
+          "source_page_url": "https://www.fourseasons.com/dubaijb/services-and-amenities/",
+          "sha256": "33868bb2b137f6111ee3194a36cc4cde3a8624eafd8186df38be8797d437f3c4"
+        },
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_2104_original.jpg",
+          "source_page_url": "https://www.fourseasons.com/dubaijb/",
+          "sha256": "f33407bf95125f38e3b2e82643cd2bc91dba556ad1f5f4bb0ced764a592a7ab7"
+        },
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~70.1530/publish/content/dam/fourseasons/images/web/DJB/DJB_270_aspect16x9.jpg",
+          "source_page_url": "https://www.fourseasons.com/dubaijb/services-and-amenities/",
+          "sha256": "deb9b0e34a8829c8ec9bd24b8cbcf215c6e3e0e0e921ddca6aa9ae0f22a6365c"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 10771,
+      "expectedIdentity": {
+        "name": "ANANTARA PHUKET LAYAN RESORT & SPA",
+        "country": "Таиланд",
+        "region": "Пхукет"
+      },
+      "sources": [
+        {
+          "url": "https://www.anantara.com/en/layan-phuket",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/layan-phuket/rooms",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/layan-phuket/leisure",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/layan-phuket/contact",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        },
+        {
+          "url": "https://www.anantara.com/en/layan-phuket/gallery",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": null
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png",
+          "source_page_url": "https://www.anantara.com/en/layan-phuket",
+          "sha256": "9aa5ce28ccdde055b48be91c1d46de3d9c485754b0574199cbaf89c6cd42d01a"
+        },
+        {
+          "url": "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/gallery/alay_deluxe-layan-suite-984x532.jpg",
+          "source_page_url": "https://www.anantara.com/en/layan-phuket",
+          "sha256": "6aec57c59ccaaa93754c0df50cf3b7d0b58b5ceb62bef5d68ceacb5546853bd7"
+        },
+        {
+          "url": "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/accommodation/room-type/pool-villas/alay_accommodation_poolvilla_984x532.jpg",
+          "source_page_url": "https://www.anantara.com/en/layan-phuket",
+          "sha256": "e2d356aacdb240a405306e4b69f841636cae812ca2e24f0e31f31c46ea241540"
+        }
+      ]
+    },
+    {
+      "anytourHotelId": 8689,
+      "expectedIdentity": {
+        "name": "FOUR SEASONS THE NAM HAI",
+        "country": "Вьетнам",
+        "region": "Хой Ан"
+      },
+      "sources": [
+        {
+          "url": "https://www.fourseasons.com/hoian/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "55a5e7b4badde1567e110127a92e5831fe6b571e1ec5f462818e242c8cd4e620"
+        },
+        {
+          "url": "https://www.fourseasons.com/hoian/services-and-amenities/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "b65c48b6008a7bfdead836903099d42efcff603575a7ab0a705a278e2981e281"
+        },
+        {
+          "url": "https://www.fourseasons.com/hoian/accommodations/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "0ae46677e80513b5fef3aa1de50ed20e2e45a772760fb285bf99e0778e3b8231"
+        },
+        {
+          "url": "https://www.fourseasons.com/hoian/getting-here/",
+          "checked_at_utc": "2026-11-21T13:39:20Z",
+          "content_sha256": "6a62e15d40bfdca5ba880d7f030bee074efc060824d0f33641dc0259a37347f3"
+        }
+      ],
+      "photos": [
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-340%2C4605-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/NMH/NMH_1297_original.jpg",
+          "source_page_url": "https://www.fourseasons.com/hoian/services-and-amenities/",
+          "sha256": "38fab6e6265e3630c618af497066f4a6d113c8fb0a9bcdecf87809538b6c096f"
+        },
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~75.701.75%2C0000-198%2C4375-2850%2C0000-1603%2C1250/publish/content/dam/fourseasons/images/web/NMH/NMH_1523_original.jpg",
+          "source_page_url": "https://www.fourseasons.com/hoian/",
+          "sha256": "187b2dfdf30ca4637dd9457ed9d179d3b0eccd9dc14f1765a82de15412af32a6"
+        },
+        {
+          "url": "https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/NMH/NMH_611_original.jpg",
+          "source_page_url": "https://www.fourseasons.com/hoian/",
+          "sha256": "dfccc9d9808d4ccc27b05eb957f7bc13b707bfe85f62ef7de8054dcb93dd17ae"
+        }
+      ]
+    }
+  ]
+}
