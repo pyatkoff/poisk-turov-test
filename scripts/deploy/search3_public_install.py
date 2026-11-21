@@ -2268,17 +2268,24 @@ def site_parent_identity():
     return {k: SITE_PARENT[k] for k in ('control_source_sha','run_id','command_comment_id')}
 
 
-def site_policy():
-    policy = {'operation': SITE_OPERATION, 'source': SITE_SOURCE, 'tree': SITE_TREE,
+def site_policy(continuation=False):
+    need(type(continuation) is bool, 'mode')
+    policy = {'operation': SITE_CONTINUATION_OPERATION if continuation else SITE_OPERATION, 'source': SITE_SOURCE, 'tree': SITE_TREE,
               'order': SITE_ORDER, 'targets': SITE_TARGETS, 'dependencies': SITE_DEPENDENCIES,
               'optional_dependencies': SITE_OPTIONAL_DEPENDENCIES, 'parent': SITE_PARENT}
+    if continuation: policy['continuation'] = site_continuation_provenance()
     return policy | {'manifest': sha(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode())}
 
 
-def site_event_identity(event, env, rollback=False):
+def site_event_identity(event, env, rollback=False, continuation=False):
     # Apply exactly the existing carrier's owner/event/attempt gate, then parse
     # only these two fixed commands. The event body is never passed to a shell.
-    prefix, operation = (SITE_ROLLBACK_PREFIX, SITE_ROLLBACK_OPERATION) if rollback else (SITE_PREFIX, SITE_OPERATION)
+    need(type(rollback) is type(continuation) is bool, 'mode')
+    if continuation:
+        prefix, operation = ((SITE_CONTINUATION_ROLLBACK_PREFIX, SITE_CONTINUATION_ROLLBACK_OPERATION) if rollback
+                             else (SITE_CONTINUATION_PREFIX, SITE_CONTINUATION_OPERATION))
+    else:
+        prefix, operation = (SITE_ROLLBACK_PREFIX, SITE_ROLLBACK_OPERATION) if rollback else (SITE_PREFIX, SITE_OPERATION)
     control = env.get('GITHUB_SHA', '')
     body = event.get('comment', {}).get('body', '')
     original_run = None
@@ -2290,6 +2297,9 @@ def site_event_identity(event, env, rollback=False):
     synthetic['comment']['body'] = f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
     identity = update_event_identity(synthetic, env)
     need(identity['run_id'] != SITE_PARENT['run_id'], 'site_runtime_identity')
+    if continuation:
+        excluded = (SITE_INSPECT_FAILED['run_id'], SITE_CONTINUATION_INSPECTION['run_id'], SITE_CONTINUATION_COLLECTOR['run_id'])
+        need(identity['run_id'] not in excluded and original_run not in excluded, 'site_runtime_identity')
     if rollback:
         need(original_run not in (identity['run_id'], SITE_PARENT['run_id'], UPDATE_PARENT['run_id'], CONTINUATION_PARENT['run_id']), 'command')
         return identity, original_run
@@ -2328,8 +2338,10 @@ def site_parent_admission():
     _unique_update_command(pages('/issues/4709/comments'), UPDATE_PREFIX, UPDATE_OPERATION, site_parent_identity())
 
 
-def site_admission(identity):
-    site_final_heads(identity); reviewed_control(identity['control_source_sha'])
+def site_admission(identity, continuation=False):
+    need(type(continuation) is bool, 'mode')
+    heads = site_inspect_heads if continuation else site_final_heads
+    heads(identity); reviewed_control(identity['control_source_sha'])
     need(api('/git/commits/' + SITE_SOURCE).get('tree', {}).get('sha') == SITE_TREE, 'site_source_tree')
     gate = api('/contents/.github/workflows/deploy-anytoour.yml?ref=' + identity['control_source_sha'])
     need(gate.get('type') == 'file' and gate.get('encoding') == 'base64'
@@ -2343,8 +2355,9 @@ def site_admission(identity):
         row = api('/contents/v2/' + path + '?ref=' + SITE_SOURCE)
         need(row.get('type') == 'file' and row.get('sha') == SITE_TARGETS[path]['blob'], 'site_source_blob')
     site_parent_admission()
-    _unique_update_command(pages('/issues/4709/comments'), SITE_PREFIX, SITE_OPERATION, identity)
-    site_final_heads(identity)
+    if continuation: site_continuation_admission(identity)
+    else: _unique_update_command(pages('/issues/4709/comments'), SITE_PREFIX, SITE_OPERATION, identity)
+    heads(identity)
 
 
 def site_parent_value(value):
@@ -2394,6 +2407,7 @@ def site_read_records(store,paths):
   rows[path]=(row,identity,raw)
  return rows
 def site_parent_records():
+ site_continuation_namespace_absent()
  retained=parent_records();candidate=parent_candidate(retained,True);protected=parent_protected(retained)
  rows=read_records(updated,UPDATE_RECORD_PATHS);record=lambda p:json.loads(rows[p][2]);path=UPDATE_POLICY['path']
  require(record('reservation.json')=={'operation':UPDATE_POLICY['operation'],**UPDATE_ORIGINAL,
@@ -2423,12 +2437,23 @@ def site_parent_records():
           or row.get('state')=='present' and row.get('sha256')==expected and row.get('mode')=='0644','site_dependency_drift')
  return retained,rows,prior,{**candidate,**protected,**dependencies}
 def site_check_parents():
+ site_continuation_namespace_absent()
  require(parent_records()==retained and read_records(updated,UPDATE_RECORD_PATHS)==update_records
          and updated.read('stage/app')[:2]==update_prior,'site_parent_changed')
  require(public.inventory(guarded)==guarded,'protected_changed')
 def site_check_targets(expected):
  require(public.inventory(SITE_POLICY['order'])==expected,'site_target_changed')
+def site_continuation_namespace_absent():
+ if 'continuation' not in SITE_POLICY: return
+ with base.parent(SITE_POLICY['continuation']['failed']['operation_id']) as (fd,name):
+  try: os.stat(name,dir_fd=fd,follow_symlinks=False)
+  except FileNotFoundError:
+   result['failed_namespace_absent']=True
+   return
+  result['failed_namespace_absent']=False
+  raise RuntimeError('site_failed_operation_exists')
 def site_restore_one(store,path,index,current,prior,capture):
+ site_continuation_namespace_absent()
  require(public.read(path)[:2]==current and store.read('stage/'+str(index))[:2]==prior,'rollback_preflight_race')
  capture_owned(public,private,path,capture,current[0],current[1])
  restore_capture(public,store,path,'stage/'+str(index))
@@ -2446,6 +2471,7 @@ result={'schema_version':1,'operation_id':SITE_POLICY['operation'],'source_sha':
         'written_files':[],'rollback_files':[],'reservation_created':False,'snapshot_verified':False,
         'restore_drill_verified':False,'protected_unchanged':False,'unchanged_files_verified':False,
         'parent_records_unchanged':False,'original_inodes_verified':False,'snapshot_manifest_sha256':None}
+if 'continuation' in SITE_POLICY: result.update(continuation=SITE_POLICY['continuation'],failed_namespace_absent=False)
 public=base=original=updated=private=None;reserved=False;switched=[];owned={};prior={};prepared=None
 try:
  require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
@@ -2514,6 +2540,7 @@ try:
   except Exception:
    # An unexpected object raced the exchange. Return that exact captured object
    # without overwriting a newer public writer, then unwind earlier own writes.
+   site_continuation_namespace_absent()
    capture_owned(public,private,path,'rollback/conflict-'+str(index),observed[0],observed[1])
    restore_capture(public,private,path,'stage/'+str(index));switched.remove(path)
    raise RuntimeError('site_exchange_conflict')
@@ -2560,6 +2587,7 @@ result={'schema_version':1,'operation_id':SITE_ROLLBACK_OPERATION,'source_sha':S
         'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
         'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
         'original_inodes_verified':False,'snapshot_manifest_sha256':SITE_ACCEPTED['snapshot_manifest_sha256']}
+if 'continuation' in SITE_POLICY: result.update(continuation=SITE_POLICY['continuation'],failed_namespace_absent=False)
 public=base=original=updated=published=private=None;reserved=False
 try:
  require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
@@ -2634,8 +2662,8 @@ SITE_REASONS = UPDATE_REASONS + ('site_private_record','site_parent_changed','si
     'site_dependency_drift','site_readback','site_exchange_conflict','site_snapshot_conflict','site_original_identity')
 
 
-def _site_program_prefix(policy, identity, parent_value):
-    need(policy == site_policy(), 'site_policy')
+def _site_program_prefix(policy, identity, parent_value, continuation=False):
+    need(policy == site_policy(continuation), 'site_policy')
     update_runtime_identity(identity); need(identity['run_id'] != SITE_PARENT['run_id'], 'site_runtime_identity')
     previous, accepted, original = site_parent_value(parent_value)
     need(not set(SITE_ORDER) & (set(previous['previous']['expected']) | set(previous['previous']['protected'])
@@ -2644,11 +2672,11 @@ def _site_program_prefix(policy, identity, parent_value):
     return (_update_program_prefix(previous, identity, update_parent_identity(), original)
             + '\nSITE_POLICY=' + repr(policy) + '\nUPDATE_ORIGINAL=' + repr(site_parent_identity())
             + '\nUPDATE_ACCEPTED=' + repr(accepted)
-            + '\ndef re_safe(value): return value in ' + repr(SITE_REASONS) + '\n' + SITE_COMMON_REMOTE)
+            + '\ndef re_safe(value): return value in ' + repr(SITE_REASONS + ('site_failed_operation_exists',) if continuation else SITE_REASONS) + '\n' + SITE_COMMON_REMOTE)
 
 
-def site_remote_program(policy, files, identity, parent_value):
-    prefix = _site_program_prefix(policy, identity, parent_value)
+def site_remote_program(policy, files, identity, parent_value, continuation=False):
+    prefix = _site_program_prefix(policy, identity, parent_value, continuation)
     need(isinstance(files, dict) and set(files) == set(SITE_ORDER), 'site_payload')
     for path in SITE_ORDER:
         raw = base64.b64decode(files[path], validate=True)
@@ -2659,26 +2687,30 @@ def site_remote_program(policy, files, identity, parent_value):
     return program
 
 
-def site_rollback_remote_program(policy, identity, original, accepted, parent_value):
-    prefix = _site_program_prefix(policy, identity, parent_value)
+def site_rollback_remote_program(policy, identity, original, accepted, parent_value, continuation=False):
+    prefix = _site_program_prefix(policy, identity, parent_value, continuation)
     update_runtime_identity(original)
     need(identity['run_id'] != original['run_id'] and identity['command_comment_id'] != original['command_comment_id']
-         and valid_site_result(original, accepted), 'site_rollback_evidence')
+         and valid_site_result(original, accepted, continuation=continuation), 'site_rollback_evidence')
     program = (prefix + '\nSITE_ORIGINAL=' + repr(original) + '\nSITE_ACCEPTED=' + repr(accepted)
-               + '\nSITE_ROLLBACK_OPERATION=' + repr(SITE_ROLLBACK_OPERATION) + '\n' + SITE_ROLLBACK_REMOTE)
+               + '\nSITE_ROLLBACK_OPERATION=' + repr(SITE_CONTINUATION_ROLLBACK_OPERATION if continuation else SITE_ROLLBACK_OPERATION) + '\n' + SITE_ROLLBACK_REMOTE)
     ast.parse(program)
     return program
 
 
-def valid_site_result(identity, result, original=None, accepted=None):
+def valid_site_result(identity, result, original=None, accepted=None, continuation=False):
     rollback = original is not None
-    fixed = {'schema_version':1,'operation_id':SITE_ROLLBACK_OPERATION if rollback else SITE_OPERATION,
-             'source_sha':SITE_SOURCE,'manifest_sha256':site_policy()['manifest'],**identity,
+    policy = site_policy(continuation)
+    rollback_operation = SITE_CONTINUATION_ROLLBACK_OPERATION if continuation else SITE_ROLLBACK_OPERATION
+    fixed = {'schema_version':1,'operation_id':rollback_operation if rollback else policy['operation'],
+             'source_sha':SITE_SOURCE,'manifest_sha256':policy['manifest'],**identity,
              'parent_update':site_parent_identity(),'parent_receipt_sha256':SITE_PARENT['receipt_sha256']}
+    if continuation: fixed['continuation'] = policy['continuation']
     if rollback: fixed.update(original_site=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
     counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
     flags = ('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
              'unchanged_files_verified','parent_records_unchanged','original_inodes_verified')
+    if continuation: flags += ('failed_namespace_absent',)
     required = set(fixed) | set(counters) | set(flags) | {'status','phase','written_files','rollback_files','snapshot_manifest_sha256'}
     need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'site_receipt_shape')
     need(all(type(result.get(k)) is type(v) and result[k] == v for k,v in fixed.items()), 'site_receipt_identity')
@@ -2687,7 +2719,7 @@ def valid_site_result(identity, result, original=None, accepted=None):
     success = 'site_rolled_back_verified' if rollback else 'site_updated_verified'
     states = ('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
     need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
-         and ('reason' not in result or result['reason'] in SITE_REASONS), 'site_receipt_status')
+         and ('reason' not in result or result['reason'] in SITE_REASONS + (('site_failed_operation_exists',) if continuation else ())), 'site_receipt_status')
     written, restored = result['written_files'], result['rollback_files']
     need(isinstance(written,list) and written in [list(SITE_ORDER[:i]) for i in range(5)]
          and isinstance(restored,list) and all(isinstance(p,str) for p in restored)
@@ -2711,16 +2743,22 @@ def valid_site_result(identity, result, original=None, accepted=None):
     return result['status']==success
 
 
-def site_rollback_commands(identity, original_run, expected_original=None):
+def site_rollback_commands(identity, original_run, expected_original=None, continuation=False):
+    need(type(continuation) is bool, 'mode')
+    prefix, operation = (SITE_CONTINUATION_PREFIX, SITE_CONTINUATION_OPERATION) if continuation else (SITE_PREFIX, SITE_OPERATION)
+    rollback_prefix, rollback_operation = ((SITE_CONTINUATION_ROLLBACK_PREFIX, SITE_CONTINUATION_ROLLBACK_OPERATION) if continuation
+                                           else (SITE_ROLLBACK_PREFIX, SITE_ROLLBACK_OPERATION))
     need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
          and original_run not in (identity['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],CONTINUATION_PARENT['run_id']), 'site_rollback_run')
+    if continuation:
+        need(original_run not in (SITE_INSPECT_FAILED['run_id'],SITE_CONTINUATION_INSPECTION['run_id'],SITE_CONTINUATION_COLLECTOR['run_id']), 'site_rollback_run')
     comments = pages('/issues/4709/comments')
-    _unique_update_command(comments,SITE_ROLLBACK_PREFIX,SITE_ROLLBACK_OPERATION,identity,original_run)
-    installed = [c for c in comments if c.get('body','').strip().split()[:1]==[SITE_PREFIX]
-                 and SITE_OPERATION in c.get('body','').split()[1:]]
+    _unique_update_command(comments,rollback_prefix,rollback_operation,identity,original_run)
+    installed = [c for c in comments if c.get('body','').strip().split()[:1]==[prefix]
+                 and operation in c.get('body','').split()[1:]]
     need(len(installed)==1 and installed[0].get('user',{}).get('id')==226193297
          and installed[0].get('author_association')=='OWNER', 'site_rollback_command')
-    match = re.fullmatch(re.escape(SITE_PREFIX)+r' ([a-f0-9]{40}) '+re.escape(SITE_OPERATION),installed[0].get('body',''))
+    match = re.fullmatch(re.escape(prefix)+r' ([a-f0-9]{40}) '+re.escape(operation),installed[0].get('body',''))
     need(match is not None, 'site_rollback_command')
     original = {'control_source_sha':match[1],'run_id':original_run,'command_comment_id':installed[0]['id']}
     update_runtime_identity(original)
@@ -2728,9 +2766,9 @@ def site_rollback_commands(identity, original_run, expected_original=None):
     return original
 
 
-def site_rollback_admission(identity, original_run):
+def site_rollback_admission(identity, original_run, continuation=False):
     rollback_main(identity);reviewed_control(identity['control_source_sha'])
-    original=site_rollback_commands(identity,original_run)
+    original=site_rollback_commands(identity,original_run,continuation=continuation)
     run=api('/actions/runs/'+original_run)
     need(run.get('id')==int(original_run) and run.get('head_sha')==original['control_source_sha']
          and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
@@ -2742,6 +2780,7 @@ def site_rollback_admission(identity, original_run):
          and jobs[0].get('conclusion')=='success','site_rollback_job')
     steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
     need(len(steps)==1 and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','site_rollback_step')
+    if continuation: need(steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py site-continue','site_rollback_step')
     name='search3-public-install-'+original_run+'-1'
     artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts') if a.get('name')==name]
     need(len(artifacts)==1 and artifacts[0].get('expired') is False
@@ -2751,24 +2790,31 @@ def site_rollback_admission(identity, original_run):
     return original,artifacts[0]
 
 
-def site_source_evidence(raw, original):
+def site_source_evidence(raw, original, continuation=False):
     update_runtime_identity(original)
     with zip_files(raw) as archive:
         need(archive.namelist()==['evidence.json'],'site_rollback_artifact')
         value=json.loads(archive.read('evidence.json'))
-    fixed={**original,'operation_id':SITE_OPERATION,'source_sha':SITE_SOURCE,'manifest_sha256':site_policy()['manifest'],
+    policy=site_policy(continuation)
+    fixed={**original,'operation_id':policy['operation'],'source_sha':SITE_SOURCE,'manifest_sha256':policy['manifest'],
            'read_only':False,'phase':'complete','ssh_started':True,'status':'site_updated_verified',
            'parent_update':site_parent_identity()}
-    need(isinstance(value,dict) and set(value)==set(fixed)|{'remote','parent_evidence'}
+    extra={'continuation_evidence','collector_evidence'} if continuation else set()
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'remote','parent_evidence'}|extra
          and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'site_rollback_evidence')
     site_parent_value(value['parent_evidence'])
-    need(valid_site_result(original,value['remote']),'site_rollback_evidence')
-    return site_policy(),value['remote'],value['parent_evidence']
+    if continuation:
+        parent=site_continuation_inspection_value(value['continuation_evidence'])
+        need(parent==value['parent_evidence'],'site_continuation_parent')
+        need(value['collector_evidence']==site_continuation_collector_value(),'site_collector_evidence')
+    need(valid_site_result(original,value['remote'],continuation=continuation),'site_rollback_evidence')
+    return policy,value['remote'],value['parent_evidence']
 
 
-def site_update(rollback=False):
-    need(type(rollback) is bool,'mode')
-    policy=site_policy();operation=SITE_ROLLBACK_OPERATION if rollback else SITE_OPERATION
+def site_update(rollback=False, continuation=False):
+    need(type(rollback) is type(continuation) is bool,'mode')
+    policy=site_policy(continuation)
+    operation=(SITE_CONTINUATION_ROLLBACK_OPERATION if continuation else SITE_ROLLBACK_OPERATION) if rollback else policy['operation']
     work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
     key,known=work/'key',work/'known'
     evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':SITE_SOURCE,
@@ -2777,17 +2823,21 @@ def site_update(rollback=False):
     try:
         event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
         if rollback:
-            identity,original_run=site_event_identity(event,os.environ,True)
+            identity,original_run=site_event_identity(event,os.environ,True,continuation)
             evidence.update(identity,original_site_run_id=original_run,phase='admission')
-            original,artifact=site_rollback_admission(identity,original_run);evidence['phase']='artifact'
-            policy,accepted,parent_value=site_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
-            program=site_rollback_remote_program(policy,identity,original,accepted,parent_value)
+            original,artifact=site_rollback_admission(identity,original_run,continuation);evidence['phase']='artifact'
+            policy,accepted,parent_value=site_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original,continuation)
+            program=site_rollback_remote_program(policy,identity,original,accepted,parent_value,continuation)
             evidence.update(parent_update=site_parent_identity(),original_site=original)
         else:
-            identity=site_event_identity(event,os.environ);evidence.update(identity,phase='admission');site_admission(identity)
+            identity=site_event_identity(event,os.environ,continuation=continuation);evidence.update(identity,phase='admission');site_admission(identity,continuation)
             evidence['phase']='artifact'
-            parent_value=site_parent_evidence(download(SITE_PARENT['artifact_id'],SITE_PARENT['artifact_sha256']))
-            program=site_remote_program(policy,site_package(),identity,parent_value)
+            if continuation:
+                inspection=site_continuation_inspection_evidence(download(SITE_CONTINUATION_INSPECTION['artifact_id'],SITE_CONTINUATION_INSPECTION['artifact_sha256']))
+                parent_value=site_continuation_inspection_value(inspection)
+                evidence.update(continuation_evidence=inspection,collector_evidence=site_continuation_collector_log())
+            else: parent_value=site_parent_evidence(download(SITE_PARENT['artifact_id'],SITE_PARENT['artifact_sha256']))
+            program=site_remote_program(policy,site_package(),identity,parent_value,continuation)
             evidence.update(parent_update=site_parent_identity(),parent_evidence=parent_value)
         # Same fixed carrier, credentials and bounded invocation as the original
         # public updater. No endpoint/application execution is added here.
@@ -2800,15 +2850,15 @@ def site_update(rollback=False):
         scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
         known.write_bytes(scan);known.chmod(0o600)
         options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
-        if rollback: site_rollback_commands(identity,original_run,original);rollback_main(identity)
-        else: site_admission(identity)
+        if rollback: site_rollback_commands(identity,original_run,original,continuation);rollback_main(identity)
+        else: site_admission(identity,continuation)
         evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
         response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
         need(len(response)<=32768,'receipt_limit');result=json.loads(response)
-        complete=valid_site_result(identity,result,original,accepted) if rollback else valid_site_result(identity,result)
+        complete=valid_site_result(identity,result,original,accepted,continuation) if rollback else valid_site_result(identity,result,continuation=continuation)
         evidence['remote']=result
         if rollback: rollback_main(identity)
-        else: site_final_heads(identity)
+        else: (site_inspect_heads if continuation else site_final_heads)(identity)
         evidence.update(status=result['status'],phase='complete')
     except Exception as error:
         complete=False
@@ -3129,7 +3179,163 @@ def site_inspect():
     print(json.dumps(evidence,sort_keys=True));need(complete,'site_inspection_not_verified')
 
 
+# One child of the exact inspected, zero-write SITE refusal. Historical SITE
+# commands, policies and private records above stay immutable and consumed.
+SITE_CONTINUATION_PREFIX = '/continue-site-shared-assets'
+SITE_CONTINUATION_OPERATION = 'site-shared-assets-after-44897684408-20261121-v1'
+SITE_CONTINUATION_ROLLBACK_PREFIX = '/rollback-site-shared-assets-continuation'
+SITE_CONTINUATION_ROLLBACK_OPERATION = 'site-shared-assets-after-44897684408-rollback-20261121-v1'
+SITE_CONTINUATION_INSPECTION = {
+    'operation_id': SITE_INSPECT_OPERATION, 'control_source_sha': '0116055dce2c01eb4fe8ec00589f71ce910f6382',
+    'run_id': '44899600338', 'command_comment_id': 7061962251, 'job_id': 136832515983,
+    'artifact_id': 14705151965,
+    'artifact_sha256': '6b95b95821147023c95feaad01287b732c339bc9f69d9587b22a1d0eed3cd32e',
+    'receipt_sha256': '9aa06a15a61eab4f5e6f0f5fe33154b105d899563c2193d886dfcf7d2e3f30a9',
+    'terminal_comment_id': 7062069463,
+}
+SITE_CONTINUATION_DB_OBSERVED = {'state':'present', 'mode':'0644', 'size':3861,
+    'sha256':'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4'}
+SITE_CONTINUATION_COLLECTOR = {
+    'run_id':'44907231885', 'job_id':136855488291,
+    'source_sha':'e3b452094949a0941f014c8cdf27b7c044a8ae84',
+    'workflow':'.github/workflows/collect-anytour-tours.yml',
+    'db_sha256':'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13',
+    'observer_sha256':'7112b84b7de1ddc901663f48bacc120c6f870b41ea7b39ba2b472e94a8564ae5',
+    # Exact archived bytes, including GitHub's UTF-8 BOM; original attempt1
+    # completed successfully. A checkpoint or echoed shell text is not it.
+    'log_sha256':'5025e500f92893a9b5e76cba8e305af97a946ba84c91f0c65f4d695766c9fd6b',
+}
+
+
+def site_continuation_provenance():
+    return {'failed':dict(SITE_INSPECT_FAILED), 'inspection':dict(SITE_CONTINUATION_INSPECTION),
+            'collector':dict(SITE_CONTINUATION_COLLECTOR)}
+
+
+def site_continuation_fixed_run(pin, conclusion, mode):
+    # Internal callers pass only the two literal historical proofs above.
+    need(pin in (SITE_INSPECT_FAILED, SITE_CONTINUATION_INSPECTION), 'site_continuation_pin')
+    run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')==conclusion
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff', 'site_continuation_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')==conclusion, 'site_continuation_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py '+mode
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')==conclusion, 'site_continuation_step')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'], 'site_continuation_artifact')
+
+
+def site_continuation_collector_admission():
+    pin=SITE_CONTINUATION_COLLECTOR
+    need(isinstance(pin['log_sha256'],str) and re.fullmatch('[a-f0-9]{64}',pin['log_sha256']), 'site_collector_unaccepted')
+    run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==pin['workflow'] and run.get('event')=='workflow_dispatch'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff', 'site_collector_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='collect-production']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')=='success', 'site_collector_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name')=='Collect due TOP500 months and refresh production aggregates']
+    need(len(steps)==1 and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success', 'site_collector_step')
+
+
+def site_continuation_admission(identity):
+    site_continuation_fixed_run(SITE_INSPECT_FAILED,'failure','site-update')
+    site_continuation_fixed_run(SITE_CONTINUATION_INSPECTION,'success','site-inspect')
+    comments=pages('/issues/4709/comments')
+    for pin,prefix,operation,tokens in (
+        (SITE_INSPECT_FAILED,SITE_PREFIX,SITE_OPERATION,['blocked_no_replay','dependency_drift','NO_REPLAY']),
+        (SITE_CONTINUATION_INSPECTION,SITE_INSPECT_PREFIX,SITE_INSPECT_OPERATION,['inspection_mismatch','data/db-v1.php'])):
+        original={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+        _unique_update_command(comments,prefix,operation,original)
+        terminal=next((c for c in comments if c['id']==pin['terminal_comment_id']),{})
+        required=[str(pin[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id','artifact_id','artifact_sha256','receipt_sha256')]
+        need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+             and all(token in terminal.get('body','') for token in required+tokens), 'site_continuation_terminal')
+    _unique_update_command(comments,SITE_CONTINUATION_PREFIX,SITE_CONTINUATION_OPERATION,identity)
+    site_continuation_collector_admission()
+
+
+def site_continuation_inspection_value(value):
+    pin=SITE_CONTINUATION_INSPECTION
+    need(isinstance(value,dict) and sha((json.dumps(value,sort_keys=True)+'\n').encode())==pin['receipt_sha256'], 'site_continuation_inspection_digest')
+    identity={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    fixed={**identity,'operation_id':SITE_INSPECT_OPERATION,'source_sha':SITE_SOURCE,'manifest_sha256':site_policy()['manifest'],
+           'read_only':True,'phase':'complete','ssh_started':True,'status':'inspection_mismatch','failed_attempt':SITE_INSPECT_FAILED}
+    need(set(value)==set(fixed)|{'remote','failed_evidence'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()), 'site_continuation_inspection')
+    parent=site_inspect_failed_value(value['failed_evidence'])
+    result=value['remote'];need(valid_site_inspection_result(identity,result),'site_continuation_inspection')
+    mismatches=[p for p,row in result['protected_comparisons'].items() if not(row['matches_parent_snapshot'] and row['matches_compiled_policy'])]
+    row=result['protected_comparisons'].get('data/db-v1.php',{})
+    need(mismatches==['data/db-v1.php'] and row=={'matches_parent_snapshot':False,'matches_compiled_policy':False,'observed':SITE_CONTINUATION_DB_OBSERVED}
+         and result['site_mismatches']==[{'path':'data/db-v1.php','optional':False,'observed':SITE_CONTINUATION_DB_OBSERVED}]
+         and not result['overlay_mismatches'] and all(r['matches_predecessor'] and not r['matches_source'] for r in result['target_comparisons'].values())
+         and all(r['readable'] and r['matches_parent_snapshot'] and r['matches_compiled_policy'] for r in result['private_checks'].values()), 'site_continuation_inspection_scope')
+    return parent
+
+
+def site_continuation_inspection_evidence(raw):
+    pin=SITE_CONTINUATION_INSPECTION
+    need(sha(raw)==pin['artifact_sha256'],'site_continuation_inspection_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'site_continuation_inspection_artifact')
+        data=archive.read('evidence.json');need(sha(data)==pin['receipt_sha256'],'site_continuation_inspection_digest')
+    value=json.loads(data);site_continuation_inspection_value(value)
+    return value
+
+
+def site_continuation_collector_value():
+    pin=SITE_CONTINUATION_COLLECTOR
+    need(isinstance(pin['log_sha256'],str) and re.fullmatch('[a-f0-9]{64}',pin['log_sha256']), 'site_collector_unaccepted')
+    return {**pin,'status':'completed','conclusion':'success','run_attempt':1,'installed_output_verified':True}
+
+
+def site_continuation_collector_evidence(raw):
+    pin=SITE_CONTINUATION_COLLECTOR
+    need(isinstance(raw,bytes) and 0<len(raw)<=MAX_ZIP and sha(raw)==pin['log_sha256'],'site_collector_log_digest')
+    # GitHub's timestamped output is distinct from its echoed run-script lines.
+    # Duplicate or contradictory native markers are not an accepted correction.
+    pattern=r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z (ANYTOUR_LOCAL_PRICE_READBACK_[A-Z_]+(?: .*)?)'
+    observed=[match.group(1) for line in raw.decode('utf-8').splitlines() if (match:=re.fullmatch(pattern,line))]
+    expected='ANYTOUR_LOCAL_PRICE_READBACK_OK db='+pin['db_sha256']+' observer='+pin['observer_sha256']
+    need(observed==[expected], 'site_collector_installed_output')
+    return site_continuation_collector_value()
+
+
+def site_continuation_collector_log():
+    # Same authenticated GitHub / unauthenticated allowlisted HTTPS redirect
+    # boundary as download(); the one fixed job is never supplied by a caller.
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs): return None
+    pin=SITE_CONTINUATION_COLLECTOR;site_continuation_collector_value()
+    opener=urllib.request.build_opener(NoRedirect())
+    request=urllib.request.Request(f'https://api.github.com/repos/{REPO}/actions/jobs/{pin["job_id"]}/logs',
+        headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+    try: response=opener.open(request,timeout=30)
+    except urllib.error.HTTPError as error:
+        need(error.code==302,'site_collector_redirect')
+        location=error.headers.get('Location','');url=urllib.parse.urlsplit(location)
+        need(url.scheme=='https' and url.hostname and url.port in (None,443) and not url.username and not url.password and not url.fragment
+             and (url.hostname.endswith('.blob.core.windows.net') or url.hostname.endswith('.actions.githubusercontent.com')),'site_collector_redirect')
+        response=opener.open(urllib.request.Request(location),timeout=30)
+    with response: raw=response.read(MAX_ZIP+1)
+    return site_continuation_collector_evidence(raw)
+
+
 def command_mode(arguments):
+    if arguments == ['site-continue']: return 'site-continue'
+    if arguments == ['site-continue-rollback']: return 'site-continue-rollback'
     if arguments == ['site-inspect']: return 'site-inspect'
     if arguments == ['site-update']: return 'site-update'
     if arguments == ['site-rollback']: return 'site-rollback'
@@ -3190,7 +3396,9 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'site-inspect': site_inspect()
+    if mode == 'site-continue': site_update(continuation=True)
+    elif mode == 'site-continue-rollback': site_update(rollback=True,continuation=True)
+    elif mode == 'site-inspect': site_inspect()
     elif mode == 'site-update': site_update()
     elif mode == 'site-rollback': site_update(rollback=True)
     elif mode == 'update': update()

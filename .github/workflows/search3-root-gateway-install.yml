@@ -31,6 +31,9 @@ jobs:
        github.event.comment.body == format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha) ||
        github.event.comment.body == format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha) ||
        github.event.comment.body == format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha) ||
+       github.event.comment.body == format('/continue-site-shared-assets {0} site-shared-assets-after-44897684408-20261121-v1', github.sha) ||
+       (startsWith(github.event.comment.body, format('/rollback-site-shared-assets-continuation {0} ', github.sha)) &&
+        endsWith(github.event.comment.body, ' site-shared-assets-after-44897684408-rollback-20261121-v1')) ||
        (startsWith(github.event.comment.body, format('/rollback-site-shared-assets {0} ', github.sha)) &&
         endsWith(github.event.comment.body, ' site-shared-assets-rollback-20261121-v1')) ||
        (startsWith(github.event.comment.body, format('/rollback-search3-public-update {0} ', github.sha)) &&
@@ -51,7 +54,7 @@ jobs:
           PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
           PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
           PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
-        run: python3 scripts/deploy/search3_public_install.py ${{ github.event.comment.body == format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha) && 'site-inspect' || startsWith(github.event.comment.body, '/rollback-site-shared-assets ') && 'site-rollback' || github.event.comment.body == format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha) && 'site-update' || startsWith(github.event.comment.body, '/rollback-search3-public-update ') && 'update-rollback' || github.event.comment.body == format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha) && 'update' || startsWith(github.event.comment.body, '/rollback-search3-public ') && 'rollback' || github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) && 'inspect' || github.event.comment.body == format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha) && 'continue' || '' }}
+        run: python3 scripts/deploy/search3_public_install.py ${{ github.event.comment.body == format('/continue-site-shared-assets {0} site-shared-assets-after-44897684408-20261121-v1', github.sha) && 'site-continue' || startsWith(github.event.comment.body, '/rollback-site-shared-assets-continuation ') && 'site-continue-rollback' || github.event.comment.body == format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha) && 'site-inspect' || startsWith(github.event.comment.body, '/rollback-site-shared-assets ') && 'site-rollback' || github.event.comment.body == format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha) && 'site-update' || startsWith(github.event.comment.body, '/rollback-search3-public-update ') && 'update-rollback' || github.event.comment.body == format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha) && 'update' || startsWith(github.event.comment.body, '/rollback-search3-public ') && 'rollback' || github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) && 'inspect' || github.event.comment.body == format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha) && 'continue' || '' }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
