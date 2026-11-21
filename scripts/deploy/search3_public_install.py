@@ -2819,7 +2819,318 @@ def site_update(rollback=False):
     print(json.dumps(evidence,sort_keys=True));need(complete,'site_rollback_not_verified' if rollback else 'site_update_not_verified')
 
 
+SITE_INSPECT_PREFIX = '/inspect-site-shared-assets'
+SITE_INSPECT_OPERATION = 'site-shared-assets-drift-44897684408-v1'
+SITE_INSPECT_RECEIPT_LIMIT = 131072  # Fixed diagnostic scope; mutating receipts remain capped at 32768.
+SITE_INSPECT_FAILED = {
+    'operation_id': SITE_OPERATION, 'control_source_sha': '40f279501c3594925a815219d5bd0905c238c492',
+    'run_id': '44897684408', 'command_comment_id': 7061696501, 'job_id': 136826736802,
+    'artifact_id': 14704249355,
+    'artifact_sha256': '26e40baa43c70bca5fdce3112c7b3b0c6aa06093c51849f14cd8f855fb906fab',
+    'receipt_sha256': 'e800d005b4ff0c8687060cc14d07804bb086b2970c8caed6c283cc87e622498b',
+    'terminal_comment_id': 7061760440,
+}
+
+
+def site_inspect_event_identity(event, env):
+    control = env.get('GITHUB_SHA', '')
+    need(event.get('comment', {}).get('body') == f'{SITE_INSPECT_PREFIX} {control} {SITE_INSPECT_OPERATION}', 'command')
+    synthetic = dict(event); synthetic['comment'] = dict(event.get('comment', {}))
+    synthetic['comment']['body'] = f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity = update_event_identity(synthetic, env)
+    need(identity['run_id'] not in (SITE_INSPECT_FAILED['run_id'], SITE_PARENT['run_id']), 'site_inspection_identity')
+    return identity
+
+
+def site_inspect_heads(identity):
+    rollback_main(identity)
+    pr = api('/pulls/' + str(SITE_SOURCE_PR))
+    need(pr.get('state') == 'closed' and pr.get('merged') is True
+         and pr.get('merge_commit_sha') == SITE_INSPECT_FAILED['control_source_sha']
+         and pr.get('head', {}).get('sha') == SITE_SOURCE and pr.get('head', {}).get('repo', {}).get('full_name') == REPO
+         and pr.get('base', {}).get('ref') == 'main' and pr.get('base', {}).get('repo', {}).get('full_name') == REPO, 'site_candidate_moved')
+    for path in SITE_ORDER:
+        row = api('/contents/v2/' + path + '?ref=' + identity['control_source_sha'])
+        need(row.get('type') == 'file' and row.get('sha') == SITE_TARGETS[path]['blob'], 'site_merged_blob')
+
+
+def site_inspect_admission(identity):
+    site_inspect_heads(identity); reviewed_control(identity['control_source_sha'])
+    failed = SITE_INSPECT_FAILED
+    run = api('/actions/runs/' + failed['run_id'])
+    need(run.get('id') == int(failed['run_id']) and run.get('head_sha') == failed['control_source_sha']
+         and run.get('head_branch') == 'main' and run.get('path') == WORKFLOW and run.get('event') == 'issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'failure'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'site_inspection_failed_run')
+    jobs = [j for j in pages('/actions/runs/' + failed['run_id'] + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0].get('id') == failed['job_id'] and jobs[0].get('run_id') == int(failed['run_id'])
+         and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == 'failure', 'site_inspection_failed_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'failure', 'site_inspection_failed_step')
+    artifact = api('/actions/artifacts/' + str(failed['artifact_id']))
+    need(artifact.get('id') == failed['artifact_id'] and artifact.get('name') == 'search3-public-install-'+failed['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run', {}).get('id') == int(failed['run_id'])
+         and artifact.get('digest') == 'sha256:' + failed['artifact_sha256'], 'site_inspection_failed_artifact')
+    comments = pages('/issues/4709/comments')
+    original = {k: failed[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    _unique_update_command(comments, SITE_PREFIX, SITE_OPERATION, original)
+    _unique_update_command(comments, SITE_INSPECT_PREFIX, SITE_INSPECT_OPERATION, identity)
+    terminal = next((c for c in comments if c['id'] == failed['terminal_comment_id']), {})
+    tokens = [str(failed[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id','artifact_id','artifact_sha256','receipt_sha256')]
+    need(terminal.get('user', {}).get('id') == 226193297 and terminal.get('author_association') == 'OWNER'
+         and all(t in terminal.get('body', '') for t in tokens + ['blocked_no_replay','dependency_drift','NO_REPLAY']), 'site_inspection_failed_terminal')
+    site_inspect_heads(identity)
+
+
+def site_inspect_failed_value(value):
+    failed = SITE_INSPECT_FAILED
+    need(sha((json.dumps(value, sort_keys=True)+'\n').encode()) == failed['receipt_sha256'], 'site_inspection_failed_digest')
+    original = {k: failed[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    fixed = {**original, 'operation_id':SITE_OPERATION, 'source_sha':SITE_SOURCE, 'manifest_sha256':site_policy()['manifest'],
+             'read_only':False, 'phase':'complete', 'ssh_started':True, 'status':'blocked_no_replay', 'parent_update':site_parent_identity()}
+    need(isinstance(value, dict) and set(value) == set(fixed) | {'remote','parent_evidence'}
+         and all(type(value.get(k)) is type(v) and value[k] == v for k,v in fixed.items()), 'site_inspection_failed_evidence')
+    remote = value['remote']; valid_site_result(original, remote)
+    flags = ('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inodes_verified')
+    need(remote['status'] == 'blocked_no_replay' and remote['phase'] == 'preflight' and remote.get('reason') == 'dependency_drift'
+         and remote['snapshot_manifest_sha256'] is None and not remote['written_files'] and not remote['rollback_files']
+         and all(remote[k] is False for k in flags), 'site_inspection_failed_evidence')
+    site_parent_value(value['parent_evidence'])
+    return value['parent_evidence']
+
+
+def site_inspect_failed_evidence(raw):
+    need(sha(raw) == SITE_INSPECT_FAILED['artifact_sha256'], 'site_inspection_failed_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'site_inspection_failed_artifact')
+        data = archive.read('evidence.json')
+        need(sha(data) == SITE_INSPECT_FAILED['receipt_sha256'], 'site_inspection_failed_digest')
+    value = json.loads(data); site_inspect_failed_value(value)
+    return value
+
+
+SITE_INSPECT_REMOTE = r'''
+def inspection_namespace_absent():
+ with base.parent(SITE_POLICY['operation']) as (fd,name):
+  try: os.stat(name,dir_fd=fd,follow_symlinks=False)
+  except FileNotFoundError: return True
+  return False
+def inspection_parent_proof():
+ # Validate retained proofs independently of the current protected state. The
+ # latter is what this diagnostic measures, never an admission to change it.
+ retained=parent_records();original_snapshot=json.loads(retained['snapshot/manifest.json'][2])
+ rows=read_records(updated,UPDATE_RECORD_PATHS);record=lambda p:json.loads(rows[p][2]);path=UPDATE_POLICY['path']
+ require(record('reservation.json')=={'operation':UPDATE_POLICY['operation'],**UPDATE_ORIGINAL,
+         'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL}
+         and record('result.json')==UPDATE_ACCEPTED,'update_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_install','path','before','protected','previous_identity','parent_records'}
+         and snapshot['source']==UPDATE_POLICY['source'] and snapshot['manifest']==UPDATE_POLICY['manifest']
+         and snapshot['parent_install']==ORIGINAL and snapshot['path']==path and snapshot['before']==POLICY['expected']
+         and snapshot['protected']==original_snapshot['protected'] and snapshot['parent_records']==parent_hashes(retained)
+         and digest(rows['snapshot/manifest.json'][2])==UPDATE_ACCEPTED['snapshot_manifest_sha256']
+         and rows['snapshot/app'][0]==UPDATE_POLICY['before'],'update_snapshot_conflict')
+ identities={p:parent_intent(p,retained) for p in POLICY['expected']}
+ old=checked_stamp(snapshot['previous_identity'],UPDATE_POLICY['before'])
+ require(old[:-1]==identities[path][:-1],'update_parent_inode')
+ prior=updated.read('stage/app')[:2]
+ require(prior[0]==UPDATE_POLICY['before'] and prior[1][:-1]==old[:-1],'update_snapshot_conflict')
+ intent=record('intent.json')
+ require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+         and intent['path']==path and intent['before']==UPDATE_POLICY['before'] and intent['after']==UPDATE_POLICY['after']
+         and intent['previous_identity']==snapshot['previous_identity'],'update_private_record')
+ identities[path]=checked_stamp(intent['new_identity'],UPDATE_POLICY['after'])
+ return retained,rows,prior,original_snapshot['protected'],identities
+result={'schema_version':1,'operation_id':INSPECTION_OPERATION,'source_sha':SITE_POLICY['source'],
+        'manifest_sha256':SITE_POLICY['manifest'],**IDENTITY,'failed_attempt':FAILED,'parent_update':UPDATE_ORIGINAL,
+        'read_only':True,'server_writes':0,'supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'status':'inspection_blocked','phase':'preflight',
+        'parent_records_verified':False,'parent_records_stable':False,'inventory_stable':False,
+        'failed_namespace_absent':False,'scope_matches':False,
+        'checked_paths':{'overlay':[],'site_required':[],'site_optional':[]},
+        'protected_comparisons':{},'private_checks':{},'target_comparisons':{},'overlay_mismatches':[],'site_mismatches':[]}
+public=base=original=updated=None
+try:
+ home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ result['failed_namespace_absent']=inspection_namespace_absent()
+ require(result['failed_namespace_absent'],'site_failed_operation_exists')
+ retained,update_records,update_prior,snapshot,identities=inspection_parent_proof()
+ result['parent_records_verified']=True
+ protected=checked_protected_paths();overlay=sorted(POLICY['expected'])
+ required=sorted(SITE_POLICY['dependencies']);optional=sorted(SITE_POLICY['optional_dependencies'])
+ scope=tuple(dict.fromkeys((*protected,*overlay,*SITE_POLICY['order'],*required,*optional)))
+ rows=continuation_inventory(public,scope);labels=private_labels()
+ for path in protected:
+  row=rows[path][0]
+  matches={'matches_parent_snapshot':row==snapshot[path],'matches_compiled_policy':dependency_matches(path,row)}
+  if path in labels:
+   result['private_checks'][labels[path]]={**matches,'readable':row.get('state')!='unreadable','present':row.get('state')=='present'}
+  else: result['protected_comparisons'][path]={**matches,'observed':row}
+ for path in SITE_POLICY['order']:
+  row=rows[path][0];target=SITE_POLICY['targets'][path]
+  result['target_comparisons'][path]={'matches_predecessor':row==target['before'],'matches_source':row==target['after'],'observed':row}
+ for path in overlay:
+  row,identity=rows[path];expected=UPDATE_POLICY['after'] if path==UPDATE_POLICY['path'] else POLICY['expected'][path]
+  matches_bytes=row==expected;matches_inode=identity is not None and identity[:-1]==identities[path][:-1]
+  if not(matches_bytes and matches_inode):
+   result['overlay_mismatches'].append({'path':path,'matches_bytes':matches_bytes,'matches_inode':matches_inode,'observed':row})
+ for path in (*required,*optional):
+  row=rows[path][0];expected=SITE_POLICY['dependencies'].get(path,SITE_POLICY['optional_dependencies'].get(path))
+  match=(path in optional and row=={'state':'absent'}) or row.get('state')=='present' and row.get('sha256')==expected and row.get('mode')=='0644'
+  if not match: result['site_mismatches'].append({'path':path,'optional':path in optional,'observed':row})
+ result['checked_paths']={'overlay':overlay,'site_required':required,'site_optional':optional}
+ result['inventory_stable']=continuation_inventory(public,scope)==rows
+ result['parent_records_stable']=(parent_records()==retained and read_records(updated,UPDATE_RECORD_PATHS)==update_records
+                                 and updated.read('stage/app')[:2]==update_prior)
+ result['failed_namespace_absent']=inspection_namespace_absent()
+ require(result['inventory_stable'] and result['parent_records_stable'] and result['failed_namespace_absent'],'site_inspection_race')
+ result['scope_matches']=(all(r['matches_parent_snapshot'] and r['matches_compiled_policy'] for r in result['protected_comparisons'].values())
+                          and all(r['readable'] and r['matches_parent_snapshot'] and r['matches_compiled_policy'] for r in result['private_checks'].values())
+                          and all(r['matches_predecessor'] for r in result['target_comparisons'].values())
+                          and not result['overlay_mismatches'] and not result['site_mismatches'])
+ result.update(status='inspection_match' if result['scope_matches'] else 'inspection_mismatch',phase='complete')
+except Exception as error:
+ result['status']='inspection_unknown' if result['parent_records_verified'] else 'inspection_blocked'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ for store in (updated,original,base,public):
+  if store is not None: store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+SITE_INSPECT_REASONS = SITE_REASONS + ('site_failed_operation_exists','site_inspection_race')
+
+
+def site_inspect_remote_program(identity, failed_value):
+    parent = site_inspect_failed_value(failed_value)
+    program = (_site_program_prefix(site_policy(), identity, parent) + '\nFAILED=' + repr(SITE_INSPECT_FAILED)
+               + '\nINSPECTION_OPERATION=' + repr(SITE_INSPECT_OPERATION)
+               + '\ndef re_safe(value): return value in ' + repr(SITE_INSPECT_REASONS) + '\n' + SITE_INSPECT_REMOTE)
+    ast.parse(program)
+    return program
+
+
+def valid_site_inspection_result(identity, result):
+    fixed = {'schema_version':1,'operation_id':SITE_INSPECT_OPERATION,'source_sha':SITE_SOURCE,
+             'manifest_sha256':site_policy()['manifest'],**identity,'failed_attempt':SITE_INSPECT_FAILED,
+             'parent_update':site_parent_identity(),'read_only':True}
+    counters = ('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags = ('parent_records_verified','parent_records_stable','inventory_stable','failed_namespace_absent','scope_matches')
+    required = set(fixed) | set(counters) | set(flags) | {'status','phase','checked_paths','protected_comparisons',
+                                                       'private_checks','target_comparisons','overlay_mismatches','site_mismatches'}
+    need(isinstance(result,dict) and required <= set(result) <= required | {'reason'}, 'site_inspection_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()), 'site_inspection_receipt_identity')
+    need(all(type(result.get(k)) is int and result[k]==0 for k in counters), 'site_inspection_receipt_counters')
+    need(all(type(result[k]) is bool for k in flags), 'site_inspection_receipt_flags')
+    need(result['status'] in ('inspection_match','inspection_mismatch','inspection_blocked','inspection_unknown')
+         and result['phase'] in ('preflight','complete')
+         and ('reason' not in result or result['reason'] in SITE_INSPECT_REASONS), 'site_inspection_receipt_status')
+    private = {PRIVATE_CONFIG:'anex_private_config','config.php':'public_config','site_conf.php':'site_config',
+               '_preview/search3-local-candidate/config.php':'local_config','_preview/search3-next-candidate/config.php':'next_config'}
+    protected = (set(CONTINUATION_PROTECTED) | set(OPAQUE_SETTINGS) | set(ABSENT_DEPENDENCIES)) - set(private)
+    expected_checked = {'overlay':sorted((*ADDITIONS,ENTRY)), 'site_required':sorted(SITE_DEPENDENCIES),
+                        'site_optional':sorted(SITE_OPTIONAL_DEPENDENCIES)}
+    need(result['checked_paths'] in (expected_checked,{k:[] for k in expected_checked}), 'site_inspection_checked_scope')
+    def observed(row):
+        need(isinstance(row,dict),'site_inspection_observed')
+        if row.get('state')=='present':
+            need(set(row)=={'state','sha256','size','mode'} and isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256'])
+                 and type(row['size']) is int and 0 <= row['size'] <= MAX_BYTES
+                 and isinstance(row['mode'],str) and re.fullmatch('[0-7]{4}',row['mode']), 'site_inspection_observed')
+        else:
+            need(row=={'state':'absent'} or set(row)=={'state','reason'} and row['state']=='unreadable'
+                 and row['reason'] in SITE_INSPECT_REASONS, 'site_inspection_observed')
+    def booleans(row, keys):
+        need(isinstance(row,dict) and set(row)==set(keys) and all(type(row[k]) is bool for k in keys), 'site_inspection_private_fields')
+    comparisons = result['protected_comparisons']; private_checks = result['private_checks']; targets = result['target_comparisons']
+    need(isinstance(comparisons,dict) and set(comparisons) <= protected
+         and isinstance(private_checks,dict) and set(private_checks) <= set(private.values())
+         and isinstance(targets,dict) and set(targets) <= set(SITE_ORDER), 'site_inspection_observed_scope')
+    for path,row in comparisons.items():
+        need(isinstance(row,dict) and set(row)=={'observed','matches_parent_snapshot','matches_compiled_policy'}, 'site_inspection_comparison')
+        observed(row['observed']); booleans({k:v for k,v in row.items() if k!='observed'}, ('matches_parent_snapshot','matches_compiled_policy'))
+        current=row['observed']
+        match=(current.get('state')=='present' and current.get('sha256')==CONTINUATION_PROTECTED[path] and current.get('mode')=='0644') if path in CONTINUATION_PROTECTED else current=={'state':'absent'}
+        need(row['matches_compiled_policy']==match, 'site_inspection_comparison')
+    for row in private_checks.values():booleans(row,('readable','present','matches_parent_snapshot','matches_compiled_policy'))
+    for path,row in targets.items():
+        need(isinstance(row,dict) and set(row)=={'observed','matches_predecessor','matches_source'}, 'site_inspection_comparison')
+        observed(row['observed']);booleans({k:v for k,v in row.items() if k!='observed'},('matches_predecessor','matches_source'))
+        need(row['matches_predecessor']==(row['observed']==SITE_TARGETS[path]['before'])
+             and row['matches_source']==(row['observed']==SITE_TARGETS[path]['after']), 'site_inspection_comparison')
+    for kind,allowed in (('overlay_mismatches',set(expected_checked['overlay'])),('site_mismatches',set(SITE_DEPENDENCIES)|set(SITE_OPTIONAL_DEPENDENCIES))):
+        rows=result[kind];need(isinstance(rows,list) and len(rows)<=len(allowed),'site_inspection_mismatch_scope');seen=set()
+        for row in rows:
+            keys={'path','observed','matches_bytes','matches_inode'} if kind=='overlay_mismatches' else {'path','observed','optional'}
+            need(isinstance(row,dict) and set(row)==keys and isinstance(row['path'],str)
+                 and row['path'] in allowed and row['path'] not in seen,'site_inspection_mismatch_scope')
+            seen.add(row['path']);observed(row['observed'])
+            if kind=='overlay_mismatches':
+                booleans({k:row[k] for k in ('matches_bytes','matches_inode')},('matches_bytes','matches_inode'))
+                need(not(row['matches_bytes'] and row['matches_inode']),'site_inspection_comparison')
+            else:
+                path=row['path'];current=row['observed'];optional=path in SITE_OPTIONAL_DEPENDENCIES
+                expected=SITE_DEPENDENCIES.get(path,SITE_OPTIONAL_DEPENDENCIES.get(path))
+                match=(optional and current=={'state':'absent'}) or current.get('state')=='present' and current.get('sha256')==expected and current.get('mode')=='0644'
+                need(type(row['optional']) is bool and row['optional']==optional and not match,'site_inspection_comparison')
+    complete=result['status'] in ('inspection_match','inspection_mismatch')
+    if complete:
+        need(result['phase']=='complete' and 'reason' not in result and result['checked_paths']==expected_checked
+             and set(comparisons)==protected and set(private_checks)==set(private.values()) and set(targets)==set(SITE_ORDER)
+             and all(result[k] for k in flags if k!='scope_matches'), 'site_inspection_receipt_incomplete')
+        match=(all(r['matches_parent_snapshot'] and r['matches_compiled_policy'] for r in comparisons.values())
+               and all(r['readable'] and r['matches_parent_snapshot'] and r['matches_compiled_policy'] for r in private_checks.values())
+               and all(r['matches_predecessor'] for r in targets.values())
+               and not result['overlay_mismatches'] and not result['site_mismatches'])
+        need(result['scope_matches']==match and (result['status']=='inspection_match')==match, 'site_inspection_receipt_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode()) <= SITE_INSPECT_RECEIPT_LIMIT,'site_inspection_receipt_limit')
+    return complete
+
+
+def site_inspect():
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'inspection_blocked','operation_id':SITE_INSPECT_OPERATION,'source_sha':SITE_SOURCE,
+              'manifest_sha256':site_policy()['manifest'],'read_only':True,'phase':'identity','ssh_started':False,
+              'failed_attempt':SITE_INSPECT_FAILED}
+    complete=False
+    try:
+        identity=site_inspect_event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+        evidence.update(identity,phase='admission');site_inspect_admission(identity);evidence['phase']='artifact'
+        failed=site_inspect_failed_evidence(download(SITE_INSPECT_FAILED['artifact_id'],SITE_INSPECT_FAILED['artifact_sha256']))
+        program=site_inspect_remote_program(identity,failed);evidence['failed_evidence']=failed
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        site_inspect_admission(identity)
+        evidence.update(status='inspection_unknown',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=SITE_INSPECT_RECEIPT_LIMIT,'site_inspection_receipt_limit');result=json.loads(response)
+        complete=valid_site_inspection_result(identity,result);evidence['remote']=result
+        site_inspect_heads(identity);evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'SiteInspectionError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'site_inspection_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['site-inspect']: return 'site-inspect'
     if arguments == ['site-update']: return 'site-update'
     if arguments == ['site-rollback']: return 'site-rollback'
     if arguments == ['update']: return 'update'
@@ -2879,7 +3190,8 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'site-update': site_update()
+    if mode == 'site-inspect': site_inspect()
+    elif mode == 'site-update': site_update()
     elif mode == 'site-rollback': site_update(rollback=True)
     elif mode == 'update': update()
     elif mode == 'update-rollback': update(rollback=True)
