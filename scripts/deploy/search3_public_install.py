@@ -4345,12 +4345,15 @@ def refactor_remote_program(policy, files, identity, parent_value, *, tv_success
     return program
 
 
-def refactor_rollback_remote_program(policy, identity, original, accepted, parent_value, *, tv_successor=None):
+def refactor_rollback_remote_program(policy, identity, original, accepted, parent_value, *, tv_successor=None, handoff_restoration=None):
     prefix=_refactor_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
     need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
          and valid_refactor_result(original,accepted),'refactor_rollback_evidence')
+    if handoff_restoration is not None and handoff_restoration.get('status')=='restored':
+        need(original==handoff_parent_identity(),'handoff_restoration_parent')
     program=(prefix+'\nREFACTOR_ORIGINAL='+repr(original)+'\nREFACTOR_ACCEPTED='+repr(accepted)
-             +'\nREFACTOR_ROLLBACK_OPERATION='+repr(REFACTOR_ROLLBACK_OPERATION)+'\n'+REFACTOR_ROLLBACK_REMOTE)
+             +'\nREFACTOR_ROLLBACK_OPERATION='+repr(REFACTOR_ROLLBACK_OPERATION)+'\n'
+             +handoff_restoration_prefix(handoff_restoration)+REFACTOR_ROLLBACK_REMOTE)
     ast.parse(program);return program
 
 
@@ -4465,8 +4468,10 @@ def refactor(rollback=False):
             original,artifact=refactor_rollback_admission(identity,original_run);evidence['phase']='artifact'
             policy,accepted,parent_value=refactor_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
             dependency=tv_successor_evidence()
-            program=refactor_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency)
-            evidence.update(parent_site=refactor_parent_identity(),original_refactor=original)
+            restoration=handoff_restoration_evidence()
+            program=refactor_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency,
+                                                    handoff_restoration=restoration)
+            evidence.update(parent_site=refactor_parent_identity(),original_refactor=original,handoff_restoration_evidence=restoration)
         else:
             identity=refactor_event_identity(event,os.environ);evidence.update(identity,phase='admission');refactor_admission(identity)
             evidence['phase']='artifact'
@@ -4488,6 +4493,7 @@ def refactor(rollback=False):
         if rollback:refactor_rollback_commands(identity,original_run,original);rollback_main(identity)
         else:refactor_admission(identity)
         need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        if rollback:need(handoff_restoration_evidence()==restoration,'handoff_restoration_changed')
         evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
         response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
         need(len(response)<=32768,'receipt_limit');result=json.loads(response)
@@ -4515,7 +4521,900 @@ def refactor(rollback=False):
 
 
 
+HANDOFF_PREFIX = '/update-site-country-handoff'
+HANDOFF_OPERATION = 'site-country-offer-handoff-20261121-v1'
+HANDOFF_ROLLBACK_PREFIX = '/rollback-site-country-handoff'
+HANDOFF_ROLLBACK_OPERATION = 'site-country-offer-handoff-rollback-20261121-v1'
+HANDOFF_SOURCE_PR = 5146
+HANDOFF_SOURCE = '1ebbd422f2d82f5e64e92d6f7584d46ebb14eff2'
+HANDOFF_TREE = 'f50a49a52ccc648f53b11c768c216e494d281a9a'
+# The reviewed source head predates SEARCH/LOCAL integration; its merge tree is
+# pinned separately and must preserve the exact two accepted PHP blobs.
+HANDOFF_SOURCE_MERGE = '2ac85c2ed4cdfba2c6c30029a8e9d6439d04aa93'
+HANDOFF_SOURCE_MERGE_TREE = '6876a477ec5d6e58c07aff87fc165af6b90d513f'
+HANDOFF_SOURCE_BASE = '458602aa945afec1c3d4a20434bae1945e2a6844'
+HANDOFF_CHECKS = ('seo-core','predeploy-contract','seo-structure','contract','content-ux','guard',
+                  'publishability','country-handoff','bundles','content-live','seo-primitives')
+HANDOFF_PARENT = {
+    'control_source_sha':'1e6a8ae4ec059d27c82e6d005425bb4abbfe82a1',
+    'run_id':'44915366099','command_comment_id':7064306296,'job_id':136879707131,
+    'artifact_id':14711761796,
+    'artifact_sha256':'efbe359d0f93579947ba7768116015f31f27df58c479dbf89eaf0aa2b3da2a8d',
+    'receipt_sha256':'975580c0bedae4c6df7b0a70052ddcf0fd54150461691a9394aeebdf62f7171a',
+    'policy_sha256':'0d65a8cb7c119a97b2fda3bc3bafb8f5075d55c48c5a83812bab5e702126f751',
+    'snapshot_manifest_sha256':'73dab12ea0f14fad99a2315314c647739f4f7912b4bac84fe11e0700b9e18d90',
+    'terminal_comment_id':7064432337,
+}
+HANDOFF_ORDER = ('seo-page-primitives-v1.php','country-page-v1.php')
+HANDOFF_TARGETS = {
+    'seo-page-primitives-v1.php':{
+        'blob':'7e43600b8fde14f351d18cfa18a35043d5c3ef13',
+        'before':{'state':'present','mode':'0644','size':4086,'sha256':'91fd195d006c6579922280d37496e4d9ae523d962936cea088b02a7875574e0a'},
+        'after':{'state':'present','mode':'0644','size':4820,'sha256':'731c706582990fd541b2bec6f15b641835fe6aeeebefcdc6ee3758dba5077da6'}},
+    'country-page-v1.php':{
+        'blob':'2e0cfbea9e3b71ac09ece9669f24ec730116378b',
+        'before':{'state':'present','mode':'0644','size':12151,'sha256':'7a1c91a899a3bac1daa285a07ad6b586604fb08008063b6263a91e6abd51017b'},
+        'after':{'state':'present','mode':'0644','size':12185,'sha256':'96e3897da97defd11186df1e751f8d167a08d2bd9b7825dfc93471daf888de6c'}},
+}
+
+
+def handoff_parent_identity():
+    return {k:HANDOFF_PARENT[k] for k in ('control_source_sha','run_id','command_comment_id')}
+
+
+def handoff_policy():
+    policy={'operation':HANDOFF_OPERATION,'source':HANDOFF_SOURCE,'tree':HANDOFF_TREE,
+            'order':HANDOFF_ORDER,'targets':HANDOFF_TARGETS,'parent':HANDOFF_PARENT}
+    return policy|{'manifest':sha(json.dumps(policy,sort_keys=True,separators=(',',':')).encode())}
+
+
+def handoff_parent_value(value):
+    raw=(json.dumps(value,sort_keys=True)+'\n').encode()
+    need(sha(raw)==HANDOFF_PARENT['receipt_sha256'],'handoff_parent_digest')
+    packet=io.BytesIO()
+    with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',raw)
+    policy,accepted,previous=refactor_source_evidence(packet.getvalue(),handoff_parent_identity())
+    need(policy['manifest']==HANDOFF_PARENT['policy_sha256']
+         and accepted['snapshot_manifest_sha256']==HANDOFF_PARENT['snapshot_manifest_sha256'],'handoff_parent_receipt')
+    return policy,accepted,previous
+
+
+def handoff_parent_evidence(raw):
+    need(sha(raw)==HANDOFF_PARENT['artifact_sha256'],'handoff_parent_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'handoff_parent_artifact')
+        data=archive.read('evidence.json');need(sha(data)==HANDOFF_PARENT['receipt_sha256'],'handoff_parent_digest')
+    value=json.loads(data);handoff_parent_value(value)
+    return value
+
+
+def handoff_package():
+    files={}
+    for path in HANDOFF_ORDER:
+        target=HANDOFF_TARGETS[path];blob=api('/git/blobs/'+target['blob'])
+        need(blob.get('sha')==target['blob'] and blob.get('encoding')=='base64'
+             and blob.get('size')==target['after']['size'],'handoff_payload_blob')
+        raw=base64.b64decode(blob['content'].replace('\n',''),validate=True)
+        need(0<len(raw)<=MAX_BYTES and raw.startswith(b'<?php')
+             and target['after']=={'state':'present','sha256':sha(raw),'size':len(raw),'mode':'0644'}
+             and hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()==target['blob'],'handoff_payload_bytes')
+        files[path]=base64.b64encode(raw).decode()
+    return files
+
+
+HANDOFF_COMMON_REMOTE = r'''
+HANDOFF_PREPARED_PATHS=('reservation.json','snapshot/manifest.json')+tuple(p+str(i) for i in range(2) for p in ('snapshot/','drill/','intent-'))
+_handoff_local_restored=None
+_handoff_local_before=None
+def handoff_stamp_rows(rows):return refactor_stamp_rows(rows)
+def handoff_absent(operation):
+ with base.parent(operation) as (fd,name):
+  try:os.stat(name,dir_fd=fd,follow_symlinks=False)
+  except FileNotFoundError:return
+  raise RuntimeError('handoff_namespace')
+def handoff_projection(saved,before,restored):
+ require(isinstance(before,dict) and isinstance(restored,dict)
+         and set(before)==set(restored)==set(HANDOFF_POLICY['order']),'handoff_restoration_scope')
+ projected=dict(saved)
+ for path in HANDOFF_POLICY['order']:
+  require(saved.get(path)==before[path] and before[path][0]==HANDOFF_POLICY['targets'][path]['before'],
+          'handoff_restoration_before')
+  old=checked_stamp(before[path][1],before[path][0]);row=restored[path]
+  require(isinstance(row,list) and len(row)==2 and row[0]==before[path][0],'handoff_restoration_target')
+  current=checked_stamp(row[1],row[0])
+  require(current[:-1]==old[:-1],'handoff_restoration_target')
+  projected[path]=row
+ return projected
+def handoff_ancestor_inventory():
+ value=refactor_ancestor_inventory()
+ value['refactor']=refactor_stamp_rows(site_read_records(refactored,REFACTOR_PREPARED_PATHS+('result.json',)))
+ value['refactor_stage']=refactor_stamp_rows({p:refactored.read('stage/'+str(i))[:2] for i,p in enumerate(REFACTOR_POLICY['order'])})
+ return value
+def handoff_refactor_parent():
+ site_continuation_namespace_absent();handoff_absent(REFACTOR_ROLLBACK_OPERATION)
+ records=site_read_records(refactored,REFACTOR_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':REFACTOR_POLICY['operation'],**REFACTOR_ORIGINAL,
+         'source':REFACTOR_POLICY['source'],'manifest':REFACTOR_POLICY['manifest'],'parent_site':SITE_ORIGINAL}
+         and record('result.json')==REFACTOR_ACCEPTED,'handoff_parent_identity')
+ snapshot=record('snapshot/manifest.json');order=REFACTOR_POLICY['order'];targets=REFACTOR_POLICY['targets']
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_site','before','guarded','ancestors'}
+         and snapshot['source']==REFACTOR_POLICY['source'] and snapshot['manifest']==REFACTOR_POLICY['manifest']
+         and snapshot['parent_site']==SITE_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==(set(POLICY['expected'])-set(order))|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order'])
+         and digest(records['snapshot/manifest.json'][2])==REFACTOR_ACCEPTED['snapshot_manifest_sha256'],
+         'handoff_parent_snapshot')
+ saved=snapshot['guarded']
+ if _handoff_local_restored is not None:saved=handoff_projection(saved,_handoff_local_before,_handoff_local_restored)
+ previous=refactor_guard_from_snapshot(saved)
+ require(refactor_ancestor_inventory()==snapshot['ancestors'],'handoff_parent_changed')
+ current=public.inventory(order);stages={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'handoff_parent_snapshot')
+  old=checked_stamp(before[1],targets[path]['before']);intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'handoff_parent_identity')
+  new=checked_stamp(intent['new_identity'],targets[path]['after']);prior=refactored.read('stage/'+str(index))[:2];stages[path]=prior
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==targets[path]['before']
+          and current[path][0]==targets[path]['after'] and current[path][1][:-1]==new[:-1]
+          and prior[0]==targets[path]['before'] and prior[1][:-1]==old[:-1],'handoff_parent_snapshot')
+ ancestors={**snapshot['ancestors'],'refactor':refactor_stamp_rows(records),'refactor_stage':refactor_stamp_rows(stages)}
+ # The caller carries these validated preimages into the transaction. No later
+ # inventory may replace their authority before reservation or exchange.
+ return ({p:r for p,r in previous.items() if p not in HANDOFF_POLICY['order']}|current,
+         {p:previous[p] for p in HANDOFF_POLICY['order']},ancestors)
+def handoff_check_ancestors():
+ site_continuation_namespace_absent();handoff_absent(REFACTOR_ROLLBACK_OPERATION)
+ require(handoff_ancestor_inventory()==ancestors,'handoff_parent_changed')
+ require(public.inventory(guarded)==guarded,'protected_changed')
+def handoff_check_targets(expected):
+ require(public.inventory(HANDOFF_POLICY['order'])==expected,'handoff_target_changed')
+def handoff_restore_one(store,path,index,current,prior,capture):
+ handoff_check_ancestors()
+ require(public.read(path)[:2]==current and store.read('stage/'+str(index))[:2]==prior,'rollback_preflight_race')
+ capture_owned(public,private,path,capture,current[0],current[1]);restore_capture(public,store,path,'stage/'+str(index))
+ restored=public.read(path)[:2]
+ require(restored[0]==prior[0] and restored[1][:-1]==prior[1][:-1],'rollback_incomplete')
+ return restored
+def handoff_bind_restoration(before):
+ global _handoff_local_before,_handoff_local_restored
+ handoff_check_ancestors();restored=public.inventory(HANDOFF_POLICY['order'])
+ _handoff_local_before=refactor_stamp_rows(before);_handoff_local_restored=refactor_stamp_rows(restored)
+ # This local projection is justified by the validated before/stage inodes.
+ # A later historical rollback requires the published native terminal proof.
+ handoff_refactor_parent();handoff_check_targets(restored);handoff_check_ancestors()
+ return _handoff_local_restored
+'''
+
+
+HANDOFF_REMOTE = r'''
+result={'schema_version':1,'operation_id':HANDOFF_POLICY['operation'],'source_sha':HANDOFF_POLICY['source'],
+        'manifest_sha256':HANDOFF_POLICY['manifest'],**IDENTITY,'parent_refactor':REFACTOR_ORIGINAL,
+        'parent_receipt_sha256':HANDOFF_POLICY['parent']['receipt_sha256'],
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,'snapshot_manifest_sha256':None,'restored_guard':None}
+public=base=original=updated=published=refactored=private=None;reserved=False;switched=[];owned={};prior={};prepared=None
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=HANDOFF_POLICY['order'];targets=HANDOFF_POLICY['targets'];home=os.environ.get('HOME','')
+ require(len(order)==2 and set(PAYLOAD)==set(targets)==set(order)
+         and set(order)<=set(SITE_POLICY['dependencies']) and not set(order)&set(SITE_POLICY['order']),'handoff_scope')
+ payload={p:base64.b64decode(PAYLOAD[p],validate=True) for p in order}
+ require(all(targets[p]['after']=={'state':'present','sha256':digest(raw),'size':len(raw),'mode':'0644'}
+             and 0<len(raw)<=MAX_BYTES for p,raw in payload.items()),'payload_bytes')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ guarded,before,ancestors=handoff_refactor_parent()
+ require(all(row[0]==targets[p]['before'] and row[1][6]==os.getuid() for p,row in before.items()),'predecessor_drift')
+ handoff_check_ancestors();handoff_check_targets(before)
+ try:os.mkdir(HANDOFF_POLICY['operation'],0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)
+ reservation={'operation':HANDOFF_POLICY['operation'],**IDENTITY,'source':HANDOFF_POLICY['source'],
+              'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}
+ private.create('reservation.json',canonical(reservation));result['phase']='snapshot'
+ snapshot={'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL,
+           'before':handoff_stamp_rows(before),'guarded':handoff_stamp_rows(guarded),'ancestors':ancestors}
+ for index,path in enumerate(order):
+  row,identity,raw=public.read(path,True);require((row,identity)==before[path],'predecessor_drift')
+  private.create('snapshot/'+str(index),raw,0o644)
+  require(private.read('snapshot/'+str(index))[0]==targets[path]['before'],'snapshot_invalid')
+ private.create('snapshot/manifest.json',canonical(snapshot))
+ require(private.read('snapshot/manifest.json',True)[2]==canonical(snapshot),'snapshot_invalid')
+ result['snapshot_manifest_sha256']=digest(canonical(snapshot));result['snapshot_verified']=True
+ for index,path in enumerate(order):
+  private.create('drill/'+str(index),private.read('snapshot/'+str(index),True)[2],0o644)
+  require(private.read('drill/'+str(index))[0]==targets[path]['before'],'restore_drill_failed')
+ result['restore_drill_verified']=True
+ for index,path in enumerate(order):
+  private.create('stage/'+str(index),payload[path],0o644);owned[path]=private.read('stage/'+str(index))[:2]
+  require(owned[path][0]==targets[path]['after'],'payload_bytes')
+  private.create('intent-'+str(index),canonical({'path':path,'before':targets[path]['before'],'after':targets[path]['after'],
+                 'previous_identity':list(before[path][1]),'new_identity':list(owned[path][1])}))
+ prepared=site_read_records(private,HANDOFF_PREPARED_PATHS)
+ require(prepared['reservation.json'][2]==canonical(reservation) and prepared['snapshot/manifest.json'][2]==canonical(snapshot)
+         and all(prepared['snapshot/'+str(i)][0]==prepared['drill/'+str(i)][0]==targets[p]['before']
+                 and json.loads(prepared['intent-'+str(i)][2])=={'path':p,'before':targets[p]['before'],'after':targets[p]['after'],
+                      'previous_identity':list(before[p][1]),'new_identity':list(owned[p][1])} for i,p in enumerate(order)),'snapshot_invalid')
+ current=dict(before);result['phase']='assets'
+ for index,path in enumerate(order):
+  handoff_check_ancestors();handoff_check_targets(current)
+  require(site_read_records(private,HANDOFF_PREPARED_PATHS)==prepared
+          and private.read('stage/'+str(index))[:2]==owned[path],'prewrite_race')
+  with private.parent('stage/'+str(index)) as (src,name),public.parent(path) as (dst,target):
+   require(public.read(path)[:2]==before[path],'entry_prewrite_race')
+   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)
+  observed=public.read(path)[:2]
+  require(observed[0]==targets[path]['after'] and observed[1][:-1]==owned[path][1][:-1],'handoff_readback')
+  owned[path]=observed;current[path]=observed
+  try:
+   prior[path]=private.read('stage/'+str(index))[:2]
+   require(prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==before[path][1][:-1],'handoff_exchange_conflict')
+  except Exception:
+   handoff_check_ancestors()
+   capture_owned(public,private,path,'rollback/conflict-'+str(index),observed[0],observed[1])
+   restore_capture(public,private,path,'stage/'+str(index));switched.remove(path)
+   raise RuntimeError('handoff_exchange_conflict')
+  handoff_check_targets(current);handoff_check_ancestors()
+ require(site_read_records(private,HANDOFF_PREPARED_PATHS)==prepared
+         and all(private.read('stage/'+str(i))[:2]==prior[p] for i,p in enumerate(order)),'handoff_snapshot_conflict')
+ result.update(status='country_handoff_updated_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+ if reserved:
+  result['status']='unknown_no_replay';recovery_ok=True
+  for path in reversed(switched):
+   try:
+    index=order.index(path);current_row=public.read(path)[:2];saved=private.read('stage/'+str(index))[:2]
+    require(current_row[0]==targets[path]['after'] and current_row[1][:-1]==owned[path][1][:-1]
+            and saved[0]==targets[path]['before'] and saved[1][:-1]==before[path][1][:-1],'rollback_entry_conflict')
+    handoff_restore_one(private,path,index,current_row,saved,'rollback/'+str(index));result['rollback_files'].append(path)
+   except Exception:recovery_ok=False
+  try:
+   require(recovery_ok,'rollback_incomplete');handoff_check_ancestors()
+   restored=public.inventory(order)
+   require(all(row[0]==before[p][0] and row[1][:-1]==before[p][1][:-1] for p,row in restored.items())
+           and result['rollback_files']==list(reversed(result['written_files'])),'rollback_incomplete')
+   result['restored_guard']=handoff_bind_restoration(before)
+   result.update(status='rolled_back_no_replay',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+                 parent_records_unchanged=True,original_inodes_verified=True)
+  except Exception:result['status']='unknown_no_replay'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+HANDOFF_ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':HANDOFF_ROLLBACK_OPERATION,'source_sha':HANDOFF_POLICY['source'],
+        'manifest_sha256':HANDOFF_POLICY['manifest'],**IDENTITY,'parent_refactor':REFACTOR_ORIGINAL,
+        'parent_receipt_sha256':HANDOFF_POLICY['parent']['receipt_sha256'],'original_handoff':HANDOFF_ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,
+        'snapshot_manifest_sha256':HANDOFF_ACCEPTED['snapshot_manifest_sha256'],'restored_guard':None}
+public=base=original=updated=published=refactored=handed=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=HANDOFF_POLICY['order'];targets=HANDOFF_POLICY['targets'];home=os.environ.get('HOME','')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handed=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);private_root(handed)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ site_continuation_namespace_absent()
+ paths=HANDOFF_PREPARED_PATHS+('result.json',);records=site_read_records(handed,paths)
+ record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':HANDOFF_POLICY['operation'],**HANDOFF_ORIGINAL,
+         'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}
+         and record('result.json')==HANDOFF_ACCEPTED,'handoff_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+         and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+         and snapshot['parent_refactor']==REFACTOR_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==((set(POLICY['expected'])|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order']))-set(order))
+         and digest(records['snapshot/manifest.json'][2])==HANDOFF_ACCEPTED['snapshot_manifest_sha256'],'handoff_snapshot_conflict')
+ ancestors=snapshot['ancestors'];guarded=refactor_guard_from_snapshot(snapshot['guarded'])
+ require(handoff_ancestor_inventory()==ancestors,'handoff_parent_changed')
+ current=public.inventory(order);prior={};old_identities={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'handoff_snapshot_conflict')
+  old_identities[path]=checked_stamp(before[1],targets[path]['before'])
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==targets[path]['before'],'handoff_snapshot_conflict')
+  intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'handoff_original_identity')
+  new=checked_stamp(intent['new_identity'],targets[path]['after']);prior[path]=handed.read('stage/'+str(index))[:2]
+  require(current[path][0]==targets[path]['after'] and current[path][1][:-1]==new[:-1]
+          and prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==old_identities[path][:-1],'handoff_snapshot_conflict')
+ handoff_check_ancestors();handoff_check_targets(current)
+ require(site_read_records(handed,paths)==records,'rollback_preflight_race')
+ result.update(snapshot_verified=True,restore_drill_verified=True)
+ try:os.mkdir(HANDOFF_ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_ROLLBACK_OPERATION,('quarantine',),0o700);private_root(private)
+ private.create('reservation.json',canonical({'operation':HANDOFF_ROLLBACK_OPERATION,**IDENTITY,'original_handoff':HANDOFF_ORIGINAL,
+                'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}))
+ result['phase']='assets'
+ for index in reversed(range(2)):
+  path=order[index];handoff_check_ancestors();handoff_check_targets(current)
+  require(site_read_records(handed,paths)==records,'handoff_snapshot_conflict')
+  current[path]=handoff_restore_one(handed,path,index,current[path],prior[path],'quarantine/'+str(index))
+  result['rollback_files'].append(path)
+  handoff_check_targets(current);handoff_check_ancestors()
+ require(all(current[p][0]==targets[p]['before'] and current[p][1][:-1]==old_identities[p][:-1] for p in order)
+         and site_read_records(handed,paths)==records,'rollback_incomplete')
+ result['restored_guard']=handoff_bind_restoration({p:(snapshot['before'][p][0],tuple(snapshot['before'][p][1])) for p in order})
+ result.update(status='country_handoff_rolled_back_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+HANDOFF_REASONS = REFACTOR_REASONS + ('handoff_namespace','handoff_restoration_scope','handoff_restoration_before',
+    'handoff_restoration_target','handoff_restoration_record','handoff_restoration_changed','handoff_parent_identity',
+    'handoff_parent_snapshot','handoff_parent_changed','handoff_target_changed','handoff_scope','handoff_readback',
+    'handoff_exchange_conflict','handoff_snapshot_conflict','handoff_original_identity')
+
+
+def _handoff_program_prefix(policy,identity,parent_value,tv_successor=None):
+    need(policy==handoff_policy(),'handoff_policy');update_runtime_identity(identity)
+    need(identity['run_id']!=HANDOFF_PARENT['run_id'],'handoff_runtime_identity')
+    parent,accepted,previous=handoff_parent_value(parent_value)
+    return (_refactor_program_prefix(parent,identity,previous,tv_successor)
+            +'\nHANDOFF_POLICY='+repr(policy)+'\nREFACTOR_ORIGINAL='+repr(handoff_parent_identity())
+            +'\nREFACTOR_ACCEPTED='+repr(accepted)+'\nREFACTOR_ROLLBACK_OPERATION='+repr(REFACTOR_ROLLBACK_OPERATION)
+            +'\nHANDOFF_ROLLBACK_OPERATION='+repr(HANDOFF_ROLLBACK_OPERATION)
+            +'\ndef re_safe(value): return value in '+repr(HANDOFF_REASONS)+'\n'+HANDOFF_COMMON_REMOTE)
+
+
+def handoff_remote_program(policy,files,identity,parent_value,*,tv_successor=None):
+    prefix=_handoff_program_prefix(policy,identity,parent_value,tv_successor)
+    need(isinstance(files,dict) and set(files)==set(HANDOFF_ORDER),'handoff_payload')
+    for path in HANDOFF_ORDER:
+        raw=base64.b64decode(files[path],validate=True)
+        need(0<len(raw)<=MAX_BYTES and raw.startswith(b'<?php') and HANDOFF_TARGETS[path]['after']==
+             {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'handoff_payload_bytes')
+    program=prefix+'\nPAYLOAD='+repr(files)+'\n'+HANDOFF_REMOTE;ast.parse(program)
+    return program
+
+
+def handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,*,tv_successor=None):
+    prefix=_handoff_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
+    need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+         and valid_handoff_result(original,accepted),'handoff_rollback_evidence')
+    program=(prefix+'\nHANDOFF_ORIGINAL='+repr(original)+'\nHANDOFF_ACCEPTED='+repr(accepted)+'\n'+HANDOFF_ROLLBACK_REMOTE)
+    ast.parse(program);return program
+
+
+def _handoff_restored_guard(value):
+    need(isinstance(value,dict) and set(value)==set(HANDOFF_ORDER),'handoff_restoration_scope')
+    for path,row in value.items():
+        need(isinstance(row,list) and len(row)==2 and row[0]==HANDOFF_TARGETS[path]['before'],'handoff_restoration_target')
+        ident=row[1]
+        need(isinstance(ident,list) and len(ident)==9 and all(type(v) is int for v in ident)
+             and ident[0]>=0 and ident[1]>0 and ident[2]==(stat.S_IFREG|0o644) and ident[3]==1
+             and ident[4]==row[0]['size'] and all(ident[i]>=0 for i in (5,6,7,8)),'handoff_restoration_target')
+
+
+def valid_handoff_result(identity,result,original=None,accepted=None):
+    rollback=original is not None;policy=handoff_policy()
+    fixed={'schema_version':1,'operation_id':HANDOFF_ROLLBACK_OPERATION if rollback else HANDOFF_OPERATION,
+           'source_sha':HANDOFF_SOURCE,'manifest_sha256':policy['manifest'],**identity,
+           'parent_refactor':handoff_parent_identity(),'parent_receipt_sha256':HANDOFF_PARENT['receipt_sha256']}
+    if rollback:fixed.update(original_handoff=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
+    counters=('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+           'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')
+    required=set(fixed)|set(counters)|set(flags)|{'status','phase','written_files','rollback_files','snapshot_manifest_sha256','restored_guard'}
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'handoff_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()),'handoff_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters)
+         and all(type(result[k]) is bool for k in flags),'handoff_receipt_counters')
+    success='country_handoff_rolled_back_verified' if rollback else 'country_handoff_updated_verified'
+    states=('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
+    need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in result or result['reason'] in HANDOFF_REASONS),'handoff_receipt_status')
+    written,restored=result['written_files'],result['rollback_files']
+    need(isinstance(written,list) and written in [list(HANDOFF_ORDER[:i]) for i in range(3)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored) and len(set(restored))==len(restored),'handoff_receipt_paths')
+    order=list(reversed(HANDOFF_ORDER if rollback else written))
+    need(all(p in order for p in restored) and restored==[p for p in order if p in restored]
+         and (not rollback or not written),'handoff_receipt_paths')
+    snapshot=result['snapshot_manifest_sha256']
+    need(snapshot is None or isinstance(snapshot,str) and re.fullmatch('[a-f0-9]{64}',snapshot),'handoff_receipt_snapshot')
+    if result['status']=='blocked_no_replay':
+        need(not result['reservation_created'] and result['phase']=='preflight' and not written and not restored,'handoff_receipt_incomplete')
+    if result['status'] in (success,'rolled_back_no_replay'):
+        need(result['phase']=='complete' and all(result[k] for k in ('reservation_created','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')),'handoff_receipt_incomplete')
+    if result['status']=='rolled_back_no_replay':need(restored==list(reversed(written)),'handoff_receipt_incomplete')
+    if result['status']==success:
+        need(all(result[k] for k in flags) and snapshot is not None and 'reason' not in result
+             and (restored==list(reversed(HANDOFF_ORDER)) if rollback else written==list(HANDOFF_ORDER) and not restored),'handoff_receipt_incomplete')
+    if result['status'] in ('rolled_back_no_replay','country_handoff_rolled_back_verified'):_handoff_restored_guard(result['restored_guard'])
+    elif result['status']!='unknown_no_replay':need(result['restored_guard'] is None,'handoff_receipt_incomplete')
+    return result['status']==success
+
+
+def _handoff_source_value(value,original,*,recovery=False,rollback_original=None,accepted=None):
+    update_runtime_identity(original)
+    rollback=rollback_original is not None
+    status='country_handoff_rolled_back_verified' if rollback else 'rolled_back_no_replay' if recovery else 'country_handoff_updated_verified'
+    fixed={**original,'operation_id':HANDOFF_ROLLBACK_OPERATION if rollback else HANDOFF_OPERATION,
+           'source_sha':HANDOFF_SOURCE,'manifest_sha256':handoff_policy()['manifest'],'read_only':False,
+           'phase':'complete','ssh_started':True,'status':status,'parent_refactor':handoff_parent_identity()}
+    if rollback:fixed.update(original_handoff=rollback_original,original_handoff_run_id=rollback_original['run_id'])
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'handoff_rollback_evidence')
+    handoff_parent_value(value['parent_evidence'])
+    success=valid_handoff_result(original,value['remote'],rollback_original,accepted)
+    need(success or recovery and value['remote']['status']=='rolled_back_no_replay','handoff_rollback_evidence')
+    return handoff_policy(),value['remote'],value['parent_evidence']
+
+
+def handoff_source_evidence(raw,original):
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'handoff_rollback_artifact')
+        value=json.loads(archive.read('evidence.json'))
+    return _handoff_source_value(value,original)
+
+
+def handoff_restoration_value(value):
+    need(isinstance(value,dict),'handoff_restoration_proof')
+    if value=={'status':'absent'}:return value
+    if value.get('status')=='zero_write':
+        need(set(value)=={'status','original','install_evidence'},'handoff_restoration_proof')
+        _handoff_zero_write_value(value['install_evidence'],value['original'])
+        return value
+    need(set(value)=={'status','original','install_evidence','restoration_evidence'} and value['status']=='restored',
+         'handoff_restoration_proof')
+    original=value['original'];installed=value['install_evidence'];restored=value['restoration_evidence']
+    need(isinstance(installed,dict) and isinstance(restored,dict),'handoff_restoration_proof')
+    recovery=installed.get('status')=='rolled_back_no_replay'
+    _,accepted,_=_handoff_source_value(installed,original,recovery=recovery)
+    if recovery:need(restored==installed,'handoff_restoration_proof')
+    else:
+        identity={k:restored.get(k) for k in ('control_source_sha','run_id','command_comment_id')}
+        need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id'],
+             'handoff_restoration_proof')
+        _handoff_source_value(restored,identity,rollback_original=original,accepted=accepted)
+    return value
+
+
+def _handoff_zero_write_value(value,identity):
+    update_runtime_identity(identity)
+    fixed={**identity,'operation_id':HANDOFF_OPERATION,'source_sha':HANDOFF_SOURCE,
+           'manifest_sha256':handoff_policy()['manifest'],'read_only':False,'status':'blocked_no_replay'}
+    need(isinstance(value,dict) and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),
+         'handoff_zero_write')
+    allowed=set(fixed)|{'phase','ssh_started','parent_refactor','parent_evidence','remote','error_type'}
+    need(set(value)<=allowed and type(value.get('ssh_started')) is bool,'handoff_zero_write')
+    if value['ssh_started']:
+        need(value.get('phase')=='complete' and 'remote' in value and 'error_type' not in value,'handoff_zero_write')
+        valid_handoff_result(identity,value['remote'])
+        need(value['remote']['status']=='blocked_no_replay','handoff_zero_write')
+        handoff_parent_value(value.get('parent_evidence'))
+    else:
+        need(value.get('phase') in ('admission','artifact') and 'remote' not in value
+             and value.get('error_type') in ('RuntimeError','ValueError','KeyError','OSError','CalledProcessError'),
+             'handoff_zero_write')
+        if 'parent_evidence' in value:handoff_parent_value(value['parent_evidence'])
+    if 'parent_refactor' in value:need(value['parent_refactor']==handoff_parent_identity(),'handoff_zero_write')
+
+
+HANDOFF_RESTORATION_REMOTE = r'''
+_handoff_restoration_bound=None
+_handoff_restoration_saved=None
+_handoff_original_guard=refactor_guard_from_snapshot
+_handoff_original_check=refactor_check_ancestors
+def handoff_restoration_read(saved):
+ proof=HANDOFF_RESTORATION_PROOF
+ if proof['status'] in ('absent','zero_write'):
+  handoff_absent(HANDOFF_POLICY['operation']);handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+  return {'status':proof['status']}
+ install=proof['install_evidence']['remote'];terminal=proof['restoration_evidence']['remote'];identity=proof['original']
+ recovery=install['status']=='rolled_back_no_replay';written=install['written_files'];stores=[]
+ try:
+  child=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);stores.append(child);private_root(child)
+  rows={}
+  for path in HANDOFF_PREPARED_PATHS+('result.json',):
+   row,ident,raw=child.read(path,True)
+   if row=={'state':'absent'}:
+    require(recovery and not written and path not in ('reservation.json','result.json'),'handoff_restoration_record')
+   else:
+    mode='0644' if path.startswith(('snapshot/','drill/')) and path!='snapshot/manifest.json' else '0600'
+    require(row.get('mode')==mode and ident[6]==os.getuid(),'handoff_restoration_record')
+   rows[path]=(row,ident,raw)
+  require(rows['reservation.json'][2]==canonical({'operation':HANDOFF_POLICY['operation'],**identity,
+          'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL})
+          and rows['result.json'][2]==canonical(install),'handoff_restoration_record')
+  before={p:saved[p] for p in HANDOFF_POLICY['order']}
+  if recovery and not written:
+   # Preparation can fail between creating a stage and writing its intent.
+   # No public exchange is admitted here: both complete stamps must still be
+   # exactly the historical originals, and every observed private row is bound.
+   handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+   require(not terminal['rollback_files'] and terminal['restored_guard']==before,'handoff_restoration_target')
+   for index,path in enumerate(HANDOFF_POLICY['order']):
+    stage=child.read('stage/'+str(index))[:2];capture=child.read('rollback/'+str(index))[:2]
+    require(capture==({'state':'absent'},None),'handoff_restoration_record')
+    if stage[0]!={'state':'absent'}:
+     require(stage[0].get('mode')=='0644' and stage[1][6]==os.getuid(),'handoff_restoration_record')
+    rows['stage/'+str(index)]=stage;rows['rollback/'+str(index)]=capture
+   require(public.inventory(HANDOFF_POLICY['order'])=={p:(r[0],tuple(r[1])) for p,r in before.items()},
+           'handoff_restoration_target')
+   return {'status':'restored','before':before,'restored':before,'records':rows,'restore_records':{},
+           'directories':[[name,expected] for _,name,_,expected in child.links]}
+  if rows['snapshot/manifest.json'][0]!={'state':'absent'}:
+   raw=rows['snapshot/manifest.json'][2];snapshot=json.loads(raw)
+   require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+           and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+           and snapshot['parent_refactor']==REFACTOR_ORIGINAL and snapshot['before']==before
+           and raw==canonical(snapshot) and digest(raw)==install['snapshot_manifest_sha256'],'handoff_restoration_record')
+  else:require(recovery and not written and install['snapshot_manifest_sha256'] is None,'handoff_restoration_record')
+  if recovery:
+   handoff_absent(HANDOFF_ROLLBACK_OPERATION);restore=child;restore_rows={};capture_prefix='rollback/'
+  else:
+   restore=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_ROLLBACK_OPERATION);stores.append(restore);private_root(restore)
+   restore_rows=site_read_records(restore,('reservation.json','result.json'));capture_prefix='quarantine/'
+   restore_identity={k:terminal[k] for k in ('control_source_sha','run_id','command_comment_id')}
+   require(restore_rows['reservation.json'][2]==canonical({'operation':HANDOFF_ROLLBACK_OPERATION,**restore_identity,
+           'original_handoff':identity,'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],
+           'parent_refactor':REFACTOR_ORIGINAL}) and restore_rows['result.json'][2]==canonical(terminal),
+           'handoff_restoration_record')
+  for index,path in enumerate(HANDOFF_POLICY['order']):
+   target=HANDOFF_POLICY['targets'][path];intent_row=rows['intent-'+str(index)]
+   intent=None
+   if intent_row[0]!={'state':'absent'}:
+    intent=json.loads(intent_row[2])
+    require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+            and intent['path']==path and intent['before']==target['before'] and intent['after']==target['after']
+            and intent['previous_identity']==before[path][1] and intent_row[2]==canonical(intent),'handoff_restoration_record')
+    new=checked_stamp(intent['new_identity'],target['after'])
+   for prefix in ('snapshot/','drill/'):
+    if rows[prefix+str(index)][0]!={'state':'absent'}:
+     require(rows[prefix+str(index)][0]==target['before'],'handoff_restoration_record')
+   stage=child.read('stage/'+str(index))[:2];capture=restore.read(capture_prefix+str(index))[:2]
+   rows['stage/'+str(index)]=stage;restore_rows[capture_prefix+str(index)]=capture
+   if path in written:
+    require(intent is not None and stage==({'state':'absent'},None) and capture[0]==target['after']
+            and capture[1][:-1]==new[:-1],'handoff_restoration_record')
+   else:
+    require(recovery and capture==({'state':'absent'},None),'handoff_restoration_record')
+    if stage[0]!={'state':'absent'}:
+     require(intent is not None and stage[0]==target['after'] and stage[1][:-1]==new[:-1],'handoff_restoration_record')
+    require(terminal['restored_guard'][path]==before[path],'handoff_restoration_target')
+  projected=handoff_projection(saved,before,terminal['restored_guard'])
+  require(public.inventory(HANDOFF_POLICY['order'])=={p:(projected[p][0],tuple(projected[p][1])) for p in HANDOFF_POLICY['order']},
+          'handoff_restoration_target')
+  return {'status':'restored','before':before,'restored':terminal['restored_guard'],'records':rows,'restore_records':restore_rows,
+          'directories':[[name,expected] for store in stores for _,name,_,expected in store.links]}
+ finally:
+  for store in reversed(stores):store.close()
+def handoff_restoration_stable():
+ if _handoff_restoration_bound is not None:
+  require(handoff_restoration_read(_handoff_restoration_saved)==_handoff_restoration_bound,'handoff_restoration_changed')
+def refactor_guard_from_snapshot(saved):
+ global _handoff_restoration_bound,_handoff_restoration_saved
+ observed=handoff_restoration_read(saved)
+ if _handoff_restoration_bound is None:
+  _handoff_restoration_bound=observed;_handoff_restoration_saved=saved
+ else:require(observed==_handoff_restoration_bound,'handoff_restoration_changed')
+ projected=handoff_projection(saved,observed['before'],observed['restored']) if observed['status']=='restored' else saved
+ result=_handoff_original_guard(projected);handoff_restoration_stable();return result
+def refactor_check_ancestors():
+ handoff_restoration_stable();_handoff_original_check();handoff_restoration_stable()
+'''
+
+
+def handoff_restoration_prefix(value):
+    if value is None:return ''
+    handoff_restoration_value(value)
+    return ('\nHANDOFF_POLICY='+repr(handoff_policy())+'\nHANDOFF_ROLLBACK_OPERATION='+repr(HANDOFF_ROLLBACK_OPERATION)
+            +'\nHANDOFF_RESTORATION_PROOF='+repr(value)+'\n'
+            +HANDOFF_COMMON_REMOTE+HANDOFF_RESTORATION_REMOTE)
+
+
+def handoff_event_identity(event,env,rollback=False):
+    need(type(rollback) is bool,'mode')
+    prefix,operation=(HANDOFF_ROLLBACK_PREFIX,HANDOFF_ROLLBACK_OPERATION) if rollback else (HANDOFF_PREFIX,HANDOFF_OPERATION)
+    control=env.get('GITHUB_SHA','');body=event.get('comment',{}).get('body','');original_run=None
+    if rollback:
+        match=re.fullmatch(re.escape(prefix+' '+control+' ')+r'([1-9][0-9]{0,19}) '+re.escape(operation),body)
+        need(match is not None,'command');original_run=match[1]
+    else:need(body==f'{prefix} {control} {operation}','command')
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity=update_event_identity(synthetic,env)
+    excluded=(HANDOFF_PARENT['run_id'],REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],
+              CONTINUATION_PARENT['run_id'],SITE_INSPECT_FAILED['run_id'],SITE_CONTINUATION_INSPECTION['run_id'],
+              SITE_CONTINUATION_COLLECTOR['run_id'])
+    need(identity['run_id'] not in excluded and original_run not in excluded,'handoff_runtime_identity')
+    if rollback:need(original_run!=identity['run_id'],'command')
+    return (identity,original_run) if rollback else identity
+
+
+def handoff_final_heads(identity):
+    rollback_main(identity)
+    need(all(isinstance(v,str) and re.fullmatch('[a-f0-9]{40}',v) for v in
+             (HANDOFF_SOURCE_MERGE,HANDOFF_SOURCE_MERGE_TREE,HANDOFF_SOURCE_BASE)),'handoff_source_merge')
+    pr=api('/pulls/'+str(HANDOFF_SOURCE_PR))
+    need(pr.get('state')=='closed' and pr.get('merged') is True and pr.get('merge_commit_sha')==HANDOFF_SOURCE_MERGE
+         and pr.get('head',{}).get('sha')==HANDOFF_SOURCE and pr.get('head',{}).get('repo',{}).get('full_name')==REPO
+         and pr.get('base',{}).get('ref')=='main' and pr.get('base',{}).get('repo',{}).get('full_name')==REPO,
+         'handoff_candidate_moved')
+    need(api('/git/commits/'+HANDOFF_SOURCE).get('tree',{}).get('sha')==HANDOFF_TREE,'handoff_source_tree')
+    merged=api('/git/commits/'+HANDOFF_SOURCE_MERGE)
+    need(merged.get('tree',{}).get('sha')==HANDOFF_SOURCE_MERGE_TREE
+         and [p.get('sha') for p in merged.get('parents',[])]==[HANDOFF_SOURCE_BASE,HANDOFF_SOURCE],
+         'handoff_source_merge')
+    relation=api('/compare/'+HANDOFF_SOURCE_MERGE+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==HANDOFF_SOURCE_MERGE,'handoff_source_ancestry')
+    for commit in (HANDOFF_SOURCE,HANDOFF_SOURCE_MERGE,identity['control_source_sha']):
+        for path in HANDOFF_ORDER:
+            row=api('/contents/v2/'+path+'?ref='+commit)
+            need(row.get('type')=='file' and row.get('sha')==HANDOFF_TARGETS[path]['blob'],'handoff_source_blob')
+
+
+def handoff_parent_admission():
+    pin=HANDOFF_PARENT;run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','handoff_parent_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')=='success','handoff_parent_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py refactor'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','handoff_parent_step')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'],'handoff_parent_artifact')
+    comments=pages('/issues/4709/comments');_unique_update_command(comments,REFACTOR_PREFIX,REFACTOR_OPERATION,handoff_parent_identity())
+    terminal=next((c for c in comments if c.get('id')==pin['terminal_comment_id']),{})
+    tokens=[str(pin[k]) for k in ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256')]
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and all(t in terminal.get('body','') for t in tokens+['refactor_updated_verified']),'handoff_parent_terminal')
+
+
+def handoff_admission(identity):
+    handoff_final_heads(identity);reviewed_control(identity['control_source_sha'])
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+HANDOFF_SOURCE+'/check-runs','check_runs')
+    for name in (*HANDOFF_CHECKS,'production-evidence'):
+        latest=max((c for c in checks if c.get('name')==name and c.get('head_sha')==HANDOFF_SOURCE),key=lambda c:c['id'],default={})
+        need(latest.get('status')=='completed' and latest.get('app',{}).get('slug')=='github-actions'
+             and latest.get('conclusion')==('skipped' if name=='production-evidence' else 'success'),'handoff_source_ci')
+    handoff_parent_admission()
+    _unique_update_command(pages('/issues/4709/comments'),HANDOFF_PREFIX,HANDOFF_OPERATION,identity)
+    handoff_final_heads(identity)
+
+
+def _handoff_commands():
+    comments=pages('/issues/4709/comments');selected={}
+    for prefix,operation in ((HANDOFF_PREFIX,HANDOFF_OPERATION),(HANDOFF_ROLLBACK_PREFIX,HANDOFF_ROLLBACK_OPERATION)):
+        rows=[c for c in comments if c.get('body','').strip().split()[:1]==[prefix]
+              and operation in c.get('body','').split()[1:]]
+        need(len(rows)<=1,'handoff_commands')
+        if not rows:continue
+        row=rows[0];rollback=prefix==HANDOFF_ROLLBACK_PREFIX
+        pattern=re.escape(prefix)+r' ([a-f0-9]{40}) '+(r'([1-9][0-9]{0,19}) ' if rollback else '')+re.escape(operation)
+        match=re.fullmatch(pattern,row.get('body',''))
+        need(match is not None and row.get('user',{}).get('id')==226193297 and row.get('author_association')=='OWNER'
+             and row.get('created_at')==row.get('updated_at'),'handoff_command')
+        _tv_time(row.get('created_at'));selected['rollback' if rollback else 'install']=row
+    need('rollback' not in selected or 'install' in selected,'handoff_commands')
+    return selected
+
+
+def handoff_rollback_commands(identity,original_run,expected_original=None):
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
+         and original_run not in (identity['run_id'],HANDOFF_PARENT['run_id'],REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],
+                                  UPDATE_PARENT['run_id'],CONTINUATION_PARENT['run_id']),'handoff_rollback_run')
+    comments=pages('/issues/4709/comments')
+    _unique_update_command(comments,HANDOFF_ROLLBACK_PREFIX,HANDOFF_ROLLBACK_OPERATION,identity,original_run)
+    commands=_handoff_commands();need('install' in commands,'handoff_rollback_command')
+    installed=commands['install'];control=installed['body'].split()[1]
+    original={'control_source_sha':control,'run_id':original_run,'command_comment_id':installed['id']}
+    update_runtime_identity(original)
+    need(expected_original is None or original==expected_original,'handoff_rollback_command')
+    return original
+
+
+def _handoff_native_proof(command,run,value,artifact,*,rollback=False,original=None,accepted=None):
+    created=_tv_time(command['created_at']);tokens=command['body'].split();control=tokens[1]
+    identity={'control_source_sha':control,'run_id':str(run.get('id')),'command_comment_id':command['id']}
+    update_runtime_identity(identity)
+    if rollback:
+        need(tokens[2]==original['run_id'],'handoff_native_command')
+        _handoff_source_value(value,identity,rollback_original=original,accepted=accepted);conclusion='success'
+    elif value.get('status')=='blocked_no_replay':
+        _handoff_zero_write_value(value,identity);conclusion='failure'
+    else:
+        recovery=value.get('status')=='rolled_back_no_replay'
+        _handoff_source_value(value,identity,recovery=recovery);conclusion='failure' if recovery else 'success'
+    need(run.get('head_sha')==control and run.get('head_branch')=='main' and run.get('path')==WORKFLOW
+         and run.get('event')=='issue_comment' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')==conclusion
+         and created<=_tv_time(run.get('created_at'))<=created+300
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','handoff_native_run')
+    # Restoration introduces a new full-stamp authority. Bind the controller
+    # actually executed by this historical run to its reviewed tree and CI;
+    # a later controller revision is neither a substitute nor a blocker.
+    reviewed_control(control)
+    jobs=[j for j in pages('/actions/runs/'+identity['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('run_id')==run['id'] and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')==conclusion,'handoff_native_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    mode='handoff-rollback' if rollback else 'handoff'
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py '+mode
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')==conclusion,'handoff_native_step')
+    need(created<=_tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))<=_tv_time(run.get('updated_at')),
+         'handoff_native_time')
+    need(artifact.get('name')=='search3-public-install-'+identity['run_id']+'-1' and artifact.get('expired') is False
+         and artifact.get('workflow_run',{}).get('id')==run['id']
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifact.get('digest','')),'handoff_native_artifact')
+    return identity,value
+
+
+def _handoff_command_evidence(command,*,rollback=False,original=None,accepted=None):
+    created=_tv_time(command['created_at'])
+    end=datetime.datetime.fromtimestamp(created+300,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    query=urllib.parse.quote(command['created_at']+'..'+end,safe='')
+    runs=pages('/actions/workflows/search3-root-gateway-install.yml/runs?event=issue_comment&branch=main&created='+query,'workflow_runs')
+    need(len(runs)<=100,'handoff_native_run_limit');matches=[]
+    for run in runs:
+        if run.get('head_sha')!=command['body'].split()[1]:continue
+        for artifact in pages('/actions/runs/'+str(run['id'])+'/artifacts','artifacts'):
+            if artifact.get('name')!='search3-public-install-'+str(run['id'])+'-1':continue
+            digest=artifact.get('digest','')
+            if artifact.get('expired') is not False or not re.fullmatch(r'sha256:[a-f0-9]{64}',digest):continue
+            with zip_files(download(artifact['id'],digest.removeprefix('sha256:'))) as archive:
+                need(archive.namelist()==['evidence.json'],'handoff_native_artifact')
+                raw=archive.read('evidence.json');need(len(raw)<=262144,'handoff_native_artifact')
+                value=_tv_json(raw)
+            if not isinstance(value,dict) or value.get('command_comment_id')!=command['id']:continue
+            matches.append(_handoff_native_proof(command,run,value,artifact,rollback=rollback,original=original,accepted=accepted))
+    need(len(matches)==1,'handoff_original_missing')
+    return matches[0]
+
+
+def handoff_restoration_evidence():
+    commands=_handoff_commands()
+    if not commands:return {'status':'absent'}
+    original,installed=_handoff_command_evidence(commands['install'])
+    if installed['status']=='blocked_no_replay':
+        need('rollback' not in commands,'handoff_restoration_pending')
+        value={'status':'zero_write','original':original,'install_evidence':installed}
+    elif installed['status']=='rolled_back_no_replay':
+        need('rollback' not in commands,'handoff_restoration_pending')
+        value={'status':'restored','original':original,'install_evidence':installed,'restoration_evidence':installed}
+    else:
+        need('rollback' in commands,'handoff_restoration_pending')
+        _,restored=_handoff_command_evidence(commands['rollback'],rollback=True,original=original,accepted=installed['remote'])
+        value={'status':'restored','original':original,'install_evidence':installed,'restoration_evidence':restored}
+    handoff_restoration_value(value);need(_handoff_commands()==commands,'handoff_commands_changed')
+    return value
+
+
+def handoff_rollback_admission(identity,original_run):
+    rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    original=handoff_rollback_commands(identity,original_run);run=api('/actions/runs/'+original_run)
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts')
+               if a.get('name')=='search3-public-install-'+original_run+'-1']
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'handoff_rollback_artifact')
+    artifact=artifacts[0]
+    with zip_files(download(artifact['id'],artifact['digest'].removeprefix('sha256:'))) as archive:
+        need(archive.namelist()==['evidence.json'],'handoff_rollback_artifact');value=_tv_json(archive.read('evidence.json'))
+    command=_handoff_commands()['install'];checked,_=_handoff_native_proof(command,run,value,artifact)
+    need(checked==original and value['status']=='country_handoff_updated_verified','handoff_rollback_evidence')
+    rollback_main(identity);return original,artifact
+
+
+def handoff(rollback=False):
+    need(type(rollback) is bool,'mode')
+    operation=HANDOFF_ROLLBACK_OPERATION if rollback else HANDOFF_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':HANDOFF_SOURCE,
+              'manifest_sha256':handoff_policy()['manifest'],'read_only':False,'phase':'identity','ssh_started':False}
+    complete=False
+    try:
+        event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity,original_run=handoff_event_identity(event,os.environ,True)
+            evidence.update(identity,original_handoff_run_id=original_run,phase='admission')
+            original,artifact=handoff_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            policy,accepted,parent_value=handoff_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
+            dependency=tv_successor_evidence()
+            program=handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency)
+            evidence.update(parent_refactor=handoff_parent_identity(),parent_evidence=parent_value,original_handoff=original)
+        else:
+            identity=handoff_event_identity(event,os.environ);evidence.update(identity,phase='admission');handoff_admission(identity)
+            evidence['phase']='artifact'
+            parent_value=handoff_parent_evidence(download(HANDOFF_PARENT['artifact_id'],HANDOFF_PARENT['artifact_sha256']))
+            policy=handoff_policy();files=handoff_package()
+            dependency=tv_successor_evidence()
+            program=handoff_remote_program(policy,files,identity,parent_value,tv_successor=dependency)
+            evidence.update(parent_refactor=handoff_parent_identity(),parent_evidence=parent_value)
+        # Exact existing carrier, key handling, options, output bound and timeout.
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:
+            checked,latest_artifact=handoff_rollback_admission(identity,original_run)
+            need(checked==original and latest_artifact==artifact,'handoff_rollback_changed')
+        else:handoff_admission(identity)
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=32768,'receipt_limit');result=json.loads(response)
+        complete=valid_handoff_result(identity,result,original,accepted) if rollback else valid_handoff_result(identity,result)
+        evidence['remote']=result
+        if rollback:rollback_main(identity)
+        else:handoff_final_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HandoffError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'handoff_rollback_not_verified' if rollback else 'handoff_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['handoff']: return 'handoff'
+    if arguments == ['handoff-rollback']: return 'handoff-rollback'
     if arguments == ['refactor']: return 'refactor'
     if arguments == ['refactor-rollback']: return 'refactor-rollback'
     if arguments == ['site-continue']: return 'site-continue'
@@ -4583,7 +5482,9 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'refactor': refactor()
+    if mode == 'handoff': handoff()
+    elif mode == 'handoff-rollback': handoff(rollback=True)
+    elif mode == 'refactor': refactor()
     elif mode == 'refactor-rollback': refactor(rollback=True)
     elif mode == 'site-continue': site_update(continuation=True)
     elif mode == 'site-continue-rollback': site_update(rollback=True,continuation=True)
