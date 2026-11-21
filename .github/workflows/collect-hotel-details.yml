@@ -76,7 +76,7 @@ jobs:
       - name: Exact reviewed permanent LOCAL source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
           path: local-tv-source
           persist-credentials: false
       - name: Validate MAIN daily capture wiring
@@ -119,7 +119,7 @@ jobs:
       - name: Exact reviewed permanent LOCAL source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
           path: local-tv-source
           persist-credentials: false
       - name: Prepare SSH key
@@ -165,7 +165,7 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
           scp "${opts[@]}" \
-            local-tv-source/v2/data/db-v1.php \
+            v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
             local-tv-source/v2/data/hotel-details-v1.php \
             v2/data/migrate-hotel-details-v1.php \
