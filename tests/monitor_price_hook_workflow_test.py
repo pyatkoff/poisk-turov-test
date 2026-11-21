@@ -12,6 +12,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 REAL_PHP = shutil.which('php')
+LOCAL_SOURCE = Path(os.environ.get('LOCAL_TV_CAPTURE_SOURCE_ROOT', str(ROOT / 'local-tv-source')))
 # Original stdout from run 43642921435, job 132594373152, 2026-11-14 21:42:20 UTC.
 ACTUAL_PARTIAL_RECEIPT = (
     'TOP500_MONTHLY_DONE {"processed":64,"logical_processed":76,"page_gap_processed":0,'
@@ -89,9 +90,12 @@ class ExistingCollectorHook(unittest.TestCase):
     def test_observer_deploy_uses_single_reviewed_source(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
         production = source.split('  collect-production:', 1)[1]
-        self.assertIn('            v2/data/price-observer-v1.php \\\n', production)
-        self.assertNotIn('local-tv-source/v2/data/price-observer-v1.php', production)
-        self.assertEqual(production.count('            v2/data/price-observer-v1.php \\\n'), 1)
+        self.assertIn('ref: 4473719a21b10633fcdc506fb007ad3496282f4b', production)
+        self.assertIn('            local-tv-source/v2/data/price-observer-v1.php \\\n', production)
+        self.assertNotIn('            v2/data/price-observer-v1.php \\\n', production)
+        self.assertEqual(production.count('            local-tv-source/v2/data/price-observer-v1.php \\\n'), 1)
+        self.assertIn('            local-tv-source/v2/data/local-tv-catalog-v1.php \\\n', production)
+        self.assertIn('            v2/data/db-v1.php \\\n', production)
         self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", production)
 
     def test_production_keeps_its_event_and_successful_validation_gate(self):
@@ -104,22 +108,35 @@ class ExistingCollectorHook(unittest.TestCase):
 
     def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0,
                  collector_stdout='', collector_stderr='', tee=0, scp=0, scp_fail_at=1,
-                 promoted_installed=False, promoted_status=0):
+                 promoted_installed=False, promoted_status=0, tamper=''):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
+            installed = root / 'installed'; (installed / 'data').mkdir(parents=True)
+            for path, origin in [('v2/data/db-v1.php', ROOT),
+                                 ('local-tv-source/v2/data/price-observer-v1.php', LOCAL_SOURCE)]:
+                destination = root / path; destination.parent.mkdir(parents=True, exist_ok=True)
+                source = origin / path.removeprefix('local-tv-source/')
+                shutil.copyfile(source, destination)
             promoted = root / 'apply_promoted_hotel_prices.php'
             if promoted_installed:
                 promoted.touch()
             scripts = {
                 'scp': '''#!/usr/bin/env python3
-import json,os,sys
+import json,os,shutil,sys
 from pathlib import Path
 log=Path(os.environ['SCP_TEST_LOG'])
 call_number=len(log.read_text().splitlines())+1 if log.exists() else 1
 with log.open('a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')
-raise SystemExit(int(os.environ['SCP_STATUS']) if call_number==int(os.environ['SCP_FAIL_AT']) else 0)
+status=int(os.environ['SCP_STATUS']) if call_number==int(os.environ['SCP_FAIL_AT']) else 0
+if status==0:
+    for arg in sys.argv[1:]:
+        if arg in ('v2/data/db-v1.php','local-tv-source/v2/data/price-observer-v1.php'):
+            target=Path(os.environ['COLLECTOR_FIXTURE_ROOT'])/'data'/Path(arg).name
+            shutil.copyfile(arg,target)
+            if target.name==os.environ['COPY_TAMPER']:target.write_text('synthetic corrupted copy')
+raise SystemExit(status)
 ''',
-                'ssh': "#!/usr/bin/env python3\nimport subprocess,sys\nraise SystemExit(subprocess.run(['bash','-c',sys.argv[-1]]).returncode)\n",
+                'ssh': "#!/usr/bin/env python3\nimport os,subprocess,sys\ncommand=sys.argv[-1].replace('$HOME/www/anytoour.ru',os.environ['COLLECTOR_FIXTURE_ROOT'])\nraise SystemExit(subprocess.run(['bash','-c',command]).returncode)\n",
                 'tee': '''#!/usr/bin/env python3
 import os,sys
 from pathlib import Path
@@ -158,10 +175,10 @@ if name=='monitor-price-hook.php':
                      COLLECTOR_STDOUT=collector_stdout, COLLECTOR_STDERR=collector_stderr,
                      TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '',
                      SCP_TEST_LOG=str(root/'scp-calls.jsonl'), SCP_STATUS=str(scp), SCP_FAIL_AT=str(scp_fail_at),
-                     PROMOTED_STATUS=str(promoted_status))
+                     PROMOTED_STATUS=str(promoted_status), COLLECTOR_FIXTURE_ROOT=str(installed), COPY_TAMPER=tamper)
             script = actual_shell(event,attempt).replace(
                 r'\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php', str(promoted))
-            result=subprocess.run(['bash','-c',script],env=env,cwd=ROOT,capture_output=True,text=True,timeout=10)
+            result=subprocess.run(['bash','-c',script],env=env,cwd=root,capture_output=True,text=True,timeout=10)
             calls=[json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
             scp_log=root/'scp-calls.jsonl'
             self.scp_calls=[json.loads(line) for line in scp_log.read_text().splitlines()] if scp_log.exists() else []
@@ -196,9 +213,20 @@ if name=='monitor-price-hook.php':
                 self.assertEqual(names,[], 'failed copy must not reach collection, callback or aggregates')
                 self.assertIsNone(self.hook_context)
 
+    def test_mismatched_installed_file_stops_before_any_production_php(self):
+        for filename in ('db-v1.php', 'price-observer-v1.php'):
+            with self.subTest(filename=filename):
+                result, names, _ = self.run_pass(tamper=filename)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('FAILED', result.stdout)
+                self.assertNotIn('ANYTOUR_LOCAL_PRICE_READBACK_OK', result.stdout)
+                self.assertEqual(names, [])
+                self.assertIsNone(self.hook_context)
+
     def test_success_runs_once_after_collection_before_aggregates(self):
         result,names,calls=self.run_pass()
         self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('ANYTOUR_LOCAL_PRICE_READBACK_OK db=', result.stdout)
         self.assertEqual(names.count('monitor-price-hook.php'),1)
         hook_call=next(a for a in calls if Path(a[0]).name=='monitor-price-hook.php')
         self.assertEqual(hook_call[1:],['--nightly'])

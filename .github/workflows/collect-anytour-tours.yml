@@ -139,6 +139,18 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - name: Exact reviewed LOCAL observation hook
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
+          path: local-tv-source
+          persist-credentials: false
+      - name: Validate the installed LOCAL and PRICE observation contract
+        env:
+          LOCAL_TV_CAPTURE_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
+        run: |
+          python3 tests/local_tv_capture_workflow_test.py -v
+          php local-tv-source/tests/local-tv-price-observer-test.php
       - name: Exact existing post and feed publisher callback
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -227,7 +239,7 @@ jobs:
       - name: Exact reviewed LOCAL observation hook
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
           path: local-tv-source
           persist-credentials: false
       - name: Exact existing post and feed publisher callback
@@ -285,17 +297,19 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
+          expected_db_sha=$(sha256sum v2/data/db-v1.php | cut -d' ' -f1)
+          expected_observer_sha=$(sha256sum local-tv-source/v2/data/price-observer-v1.php | cut -d' ' -f1)
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
           scp "${opts[@]}" \
-            local-tv-source/v2/data/db-v1.php \
+            v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
             local-tv-source/v2/data/hotel-details-v1.php \
             local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/price-segment-v1.php \
             v2/data/hotel-monitor-prices-v1.php \
             v2/data/hotel-monitor-prices-read-v1.php \
-            v2/data/price-observer-v1.php \
+            local-tv-source/v2/data/price-observer-v1.php \
             "$RUNNER_TEMP/monitor-price-hook.php" \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
@@ -321,6 +335,8 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
+            printf '%s  %s\n' '$expected_db_sha' \"\$root/db-v1.php\" '$expected_observer_sha' \"\$root/price-observer-v1.php\" | sha256sum --check --strict -
+            printf 'ANYTOUR_LOCAL_PRICE_READBACK_OK db=%s observer=%s\n' '$expected_db_sha' '$expected_observer_sha'
             php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null

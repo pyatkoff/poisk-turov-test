@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path(os.environ.get("LOCAL_TV_CAPTURE_SOURCE_ROOT", str(ROOT / "local-tv-capture-source")))
+DAILY_SOURCE_SHA = "4473719a21b10633fcdc506fb007ad3496282f4b"
 
 
 def collector_shell() -> str:
@@ -32,7 +34,7 @@ def collector_shell() -> str:
 
 
 class LocalWorkflowIsolation(unittest.TestCase):
-    def run_scope(self, scope="demand", event="workflow_dispatch", flag="demand", probe_failure=False):
+    def run_scope(self, scope="demand", event="workflow_dispatch", flag="demand", probe_failure=False, tamper_db=False):
         with tempfile.TemporaryDirectory(prefix="local-workflow-") as directory:
             task_root = Path(directory)
             binaries = task_root / "bin"
@@ -40,7 +42,12 @@ class LocalWorkflowIsolation(unittest.TestCase):
             log = task_root / "php.jsonl"
             fixture_data = task_root / "data"
             fixture_data.mkdir()
-            for name in ("db-v1.php", "local-tv-catalog-v1.php", "hotel-details-v1.php"):
+            # Match the actual flattened root installation: MAIN owns config
+            # resolution, while the pinned LOCAL source owns its catalogue.
+            shutil.copyfile(ROOT / "v2/data/db-v1.php", fixture_data / "db-v1.php")
+            if tamper_db:
+                (fixture_data / "db-v1.php").write_text("synthetic corrupted copy")
+            for name in ("local-tv-catalog-v1.php", "hotel-details-v1.php"):
                 shutil.copyfile(SOURCE / "v2/data" / name, fixture_data / name)
             # Only this synthetic private config is loaded by the real PHP flag probe.
             (task_root / "config.php").write_text(
@@ -50,7 +57,7 @@ class LocalWorkflowIsolation(unittest.TestCase):
                 raise RuntimeError("PHP is required for the actual config/feature-flag probe")
             scripts = {
                 "scp": "#!/usr/bin/env python3\nimport json, os, sys\nfrom pathlib import Path\nPath(os.environ['LOCAL_WORKFLOW_COPY_LOG']).write_text(json.dumps(sys.argv[1:]))\n",
-                "ssh": "#!/usr/bin/env python3\nimport subprocess, sys\nraise SystemExit(subprocess.run(['bash', '-c', sys.argv[-1]]).returncode)\n",
+                "ssh": "#!/usr/bin/env python3\nimport os, subprocess, sys\ncommand=sys.argv[-1].replace('$HOME/www/anytoour.ru/data',os.environ['LOCAL_WORKFLOW_FIXTURE_DATA'])\nraise SystemExit(subprocess.run(['bash', '-c', command]).returncode)\n",
                 "php": """#!/usr/bin/env python3
 import json, os, subprocess, sys
 from pathlib import Path
@@ -91,10 +98,13 @@ if args and args[0] == '-r':
 
     def assert_local_only(self, result, calls):
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ANYTOUR_LOCAL_DB_READBACK_OK db=", result.stdout)
         self.assertEqual([name for name, _ in self.writers(calls)], ["collect-hotel-details-v1.php"])
         self.assertIn("--candidate-scope=local", self.writers(calls)[0][1])
         self.assertIn("--http-budget=0", self.writers(calls)[0][1])
-        for name in ("db-v1.php", "hotel-details-v1.php", "local-tv-catalog-v1.php", "tourvisor-client-v1.php", "collect-hotel-details-v1.php"):
+        self.assertIn("v2/data/db-v1.php", self.copies)
+        self.assertNotIn("local-tv-source/v2/data/db-v1.php", self.copies)
+        for name in ("hotel-details-v1.php", "local-tv-catalog-v1.php", "tourvisor-client-v1.php", "collect-hotel-details-v1.php"):
             self.assertIn("local-tv-source/v2/data/"+name, self.copies)
             self.assertNotIn("v2/data/"+name, self.copies)
 
@@ -133,20 +143,34 @@ if args and args[0] == '-r':
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.writers(calls), [])
 
+    def test_mismatched_db_readback_stops_before_any_php(self):
+        result, calls = self.run_scope(event="schedule", flag="local", tamper_db=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("FAILED", result.stdout)
+        self.assertNotIn("ANYTOUR_LOCAL_DB_READBACK_OK", result.stdout)
+        self.assertEqual(calls, [])
+
 
 class CopyOwnerPins(unittest.TestCase):
     def test_both_daily_copy_owners_pin_one_exact_reviewed_source_and_never_run_on_push(self):
         for name in ("collect-hotel-details.yml", "collect-anytour-tours.yml"):
             text=(ROOT / ".github/workflows" / name).read_text()
-            self.assertIn("ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6", text)
+            pinned_sources = re.findall(r"ref: ([0-9a-f]{40})\s+path: local-tv-source\s", text)
+            self.assertEqual(pinned_sources, [DAILY_SOURCE_SHA, DAILY_SOURCE_SHA],
+                             name + ": validation and production must use the same reviewed LOCAL source")
             live=text.split("  collect-production:\n",1)[1]
             self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", live)
             self.assertNotIn("if: github.event_name != 'pull_request'", live)
-            for dependency in ("db-v1.php", "hotel-details-v1.php", "local-tv-catalog-v1.php"):
+            self.assertIn("            v2/data/db-v1.php", live)
+            self.assertNotIn("local-tv-source/v2/data/db-v1.php", live)
+            for dependency in ("hotel-details-v1.php", "local-tv-catalog-v1.php"):
                 self.assertIn("local-tv-source/v2/data/"+dependency, live)
         tour=(ROOT / ".github/workflows/collect-anytour-tours.yml").read_text()
         self.assertIn("local-tv-source/v2/data/price-observer-v1.php",tour)
         self.assertNotIn("            v2/data/price-observer-v1.php",tour)
+        validation=tour.split("  validate:\n",1)[1].split("  collect-production:\n",1)[0]
+        self.assertIn("path: local-tv-source",validation)
+        self.assertIn("php local-tv-source/tests/local-tv-price-observer-test.php",validation)
         self.assertIn("cron: '12 * * * *'",tour)
         self.assertIn("cron: '35 3 * * *'",(ROOT / ".github/workflows/collect-hotel-details.yml").read_text())
 
