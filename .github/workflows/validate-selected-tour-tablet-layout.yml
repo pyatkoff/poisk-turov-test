@@ -128,10 +128,24 @@ jobs:
                 if(state.overflow)throw new Error(width+': horizontal overflow');
                 await page.locator('#selectedTour .back-results').click({timeout:10000});
                 await page.waitForSelector('.hotel-card',{state:'visible',timeout:10000});
+                const returnState=()=>page.evaluate(()=>{
+                  const selected=document.getElementById('selectedTour'),focus=document.activeElement;
+                  return {hidden:selected?.hidden,aria:selected?.getAttribute('aria-hidden'),focusId:focus?.id,focusTourId:focus?.dataset.tid,focusVisible:!!focus&&focus.getClientRects().length>0,sourceTourId:window.V2SelectedTourReturnV1.sourceTourId,bodyClass:document.body.className};
+                });
+                // The native return owner focuses #results when the source is hidden.
+                // DS2 hides the results layout until its MutationObserver clears the
+                // selected body class, after the owner's synchronous source lookup.
                 await page.waitForFunction(id=>{
-                  const selected=document.getElementById('selectedTour'),source=document.activeElement;
-                  return selected?.hidden&&selected.getAttribute('aria-hidden')==='true'&&source?.matches('.direct-tour')&&source.dataset.tid===id;
-                },tour.id,{timeout:10000});
+                  const selected=document.getElementById('selectedTour'),focus=document.activeElement,owner=window.V2SelectedTourReturnV1;
+                  const sourceFocus=focus===owner.sourceButton&&focus?.matches('.direct-tour')&&focus.dataset.tid===id;
+                  const nativeFocus=focus===document.getElementById('results')||sourceFocus;
+                  const visible=!!focus&&!focus.hidden&&focus.getClientRects().length>0&&getComputedStyle(focus).visibility!=='hidden';
+                  return selected?.hidden&&selected.getAttribute('aria-hidden')==='true'&&owner.sourceTourId===id&&nativeFocus&&visible;
+                },tour.id,{timeout:10000}).catch(async error=>{
+                  console.error('SELECTED_TABLET_RETURN_FAILURE_'+width,JSON.stringify(await returnState()));
+                  throw error;
+                });
+                console.log('SELECTED_TABLET_RETURN_STATE_'+width,JSON.stringify(await returnState()));
               }
               if(apiCalls.tour!==2||apiCalls.flights!==2)throw new Error('native selection API calls: '+JSON.stringify(apiCalls));
               if(unexpected.length)throw new Error('unexpected requests blocked: '+unexpected.join(' | '));
