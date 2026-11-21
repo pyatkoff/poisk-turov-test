@@ -7,7 +7,6 @@ const offerRefinementLabels={departure:'Дата',flight:'Перелёт',room:'
 const offerRefinementAny={departure:'Любая дата',flight:'Любой перелёт',room:'Любой номер',meal:'Любое питание'};
 let currentRefinementInventory;
 let currentInventory,currentCommonNote='',currentRowEntries=new Map();
-function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}
 function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?displayMealLabel({meal:value}):field==='room'?roomLabel({room:value}):value;}
 function renderOfferRefinements(all){
  const host=$('#offer-local-selected');
@@ -30,7 +29,7 @@ function renderOfferRefinements(all){
  if(!offerRefinementFields.some(field=>offerView[field]))$('#offer-filter-summary').textContent=visibleFields.map(field=>offerRefinementLabels[field]).join(' · ');
 }
 function offerRefinementRecovery(all){
- const choices=offerRefinementFields.filter(field=>offerView[field]).map(field=>({field,count:all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:''})).length})).filter(choice=>choice.count);
+ const choices=offerRefinementFields.filter(field=>offerView[field]).map(field=>({field,count:currentRefinementInventory.get(field).counts.get('')})).filter(choice=>choice.count);
  return choices.length?`<p>Можно убрать одно условие, сохранив остальные:</p><div class="offer-recovery-actions">${choices.map(({field,count})=>`<button type="button" class="secondary" data-action="remove-offer-filter" data-field="${field}">${offerRefinementAny[field]} · ${offerCountText(count)}</button>`).join('')}</div>`:'<p>Измените условия выбора тура. Даты поездки и туристы в основном поиске сохранятся.</p>';
 }
 function offerListInventory(precomputed){
