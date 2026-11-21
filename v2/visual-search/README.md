@@ -1,5 +1,21 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Shared lazy presentation loader — 21 November 2026
+
+`app.js` owns one cold-script lifecycle for the existing hotel-details, offer-list
+and flight-picker modules. Each adapter retains its exact asset reference,
+availability check, failure messages and 15-second timeout. Concurrent opens share
+one request; a failed request allows retry and a successful request stays cached.
+Settling removes the script and detaches both callbacks. A callback retained from
+a timed-out request cannot settle or clear a newer retry.
+
+The feature owners keep their synchronous warm rendering, current-view guards,
+history restoration and selection authority. The entry graph, visual composition,
+supplier, price, lead and analytics contracts are unchanged. The three existing
+lazy-owner suites cover the shared lifecycle through their actual host adapters;
+their prior journey assertions remain in place. This source refactor is not a new
+publication or supplier/physical-device acceptance.
+
 ## Contact failure recovery — 26 October 2026
 
 While contact preparation is pending, Back/reopen makes a fresh UI capture but

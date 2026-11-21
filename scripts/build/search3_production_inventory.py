@@ -29,6 +29,10 @@ FONT_LICENSE = "v2/visual-search/assets/inter-LICENSE.txt"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 ASSET_REF = re.compile(r"\.\.?/[\w./-]+\.(?:js|css)\Z", re.ASCII)
 STATIC_REF = re.compile(r"\./assets/[A-Za-z0-9_./-]+\.(?:svg|png|jpe?g|webp|gif|ico|woff2?|ttf)\Z")
+# Safety specification for the accepted app.js factory, not a second runtime
+# implementation. Its exact body and all three adapters must be reviewed together
+# before another callback/source policy can enter the finite on-demand graph.
+SHARED_LOADER_SHA256 = "e46c83aa0c91fc2cea9d5f08bc857e719f4a8a964e8ccd10cc3cb53181a632c3"
 
 
 class InventoryError(RuntimeError):
@@ -171,6 +175,62 @@ class Page(HTMLParser):
                 self.lazy[key] = a[key]
 
 
+def shared_presentation_loaders(code: str) -> None:
+    """Admit only the sealed factory and its three known source adapters."""
+    factory = re.search(
+        r"^function createPresentationLoader\(owner,source,errors,async=false\)\{\n.*?^\}\n",
+        code, re.MULTILINE | re.DOTALL)
+    need(factory is not None, "shared presentation loader definition changed")
+    need(hashlib.sha256(factory[0].encode()).hexdigest() == SHARED_LOADER_SHA256,
+         "shared presentation loader body changed; review inventory contract")
+    need(re.findall(r"\bscript\.src\s*=\s*([^;]+);", code) == ["source()"],
+         "shared on-demand script assignments changed; review inventory contract")
+    remainder = code[:factory.start()] + code[factory.end():]
+    adapters = (
+        """const loadHotelDetails=createPresentationLoader(
+ ()=>window.AnyTourHotelDetails?.create?window.AnyTourHotelDetails:null,
+ ()=>hotelDetailsAsset,
+ {timeout:'Hotel details load timed out',missing:'Hotel details owner missing',failed:'Hotel details load failed'}
+);""",
+        """const loadFlightPicker=createPresentationLoader(
+ ()=>window.AnyTourFlightPickerUIV1,
+ ()=>document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js',
+ {timeout:'Не удалось загрузить варианты перелёта.',missing:'Варианты перелёта недоступны.',failed:'Не удалось загрузить варианты перелёта.'},true
+);""",
+        """const loadOfferList=createPresentationLoader(
+ ()=>window.AnyTourOfferList?.create?window.AnyTourOfferList:null,
+ ()=>offerListAsset,
+ {timeout:'Offer list load timed out',missing:'Offer list owner missing',failed:'Offer list load failed'}
+);""",
+    )
+    # These are the only factory calls: hotel/offer capture their entry-provided
+    # sources, while flight retains its current-dataset read and fixed fallback.
+    for adapter in adapters:
+        need(remainder.count(adapter) == 1, "shared presentation loader adapter changed or duplicated")
+        remainder = remainder.replace(adapter, "", 1)
+    for variable, key in (("hotelDetailsAsset", "hotelDetailsSrc"), ("offerListAsset", "offerListSrc")):
+        declaration = f"const {variable}=document.head.dataset.{key};"
+        need(remainder.count(declaration) == 1, "on-demand alias declaration changed")
+        remainder = remainder.replace(declaration, "", 1)
+
+    # Reject aliased/reassigned factories and source references as well as new
+    # factory callers. Decode ASCII identifier escapes only for this rejection:
+    # spelling the same private identifier with \u escapes must not hide an alias.
+    def ascii_identifier(match: re.Match) -> str:
+        value = int(match[1] or match[2], 16)
+        return chr(value) if value < 128 else match[0]
+
+    remainder = re.sub(r"\\u(?:([0-9A-Fa-f]{4})|\{([0-9A-Fa-f]{1,6})\})",
+                       ascii_identifier, remainder)
+    need(not re.search(r"\b(?:createPresentationLoader|hotelDetailsAsset|offerListAsset|"
+                       r"hotelDetailsSrc|offerListSrc|flightPickerSrc)\b", remainder),
+         "unrecognized shared presentation loader caller or source reference")
+    for loader in ("loadHotelDetails", "loadFlightPicker", "loadOfferList"):
+        direct_calls = re.sub(rf"(?<![\w$.]){loader}\s*\(\s*\)", "", remainder)
+        need(not re.search(rf"\b{loader}\b", direct_calls),
+             "shared presentation loader must remain a direct argument-free call")
+
+
 def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
     wrapper, php, html = git.content(tree, ENTRY), git.content(tree, RENDERER), git.content(tree, HTML)
     wrapper_requires = re.findall(r"\b(?:require|include)(?:_once)?\s+([^;]+);", wrapper)
@@ -224,15 +284,26 @@ def client_graph(git: Git, tree: dict) -> tuple[dict, dict[str, set[str]]]:
         need(not re.search(r"\bimport\s*(?:\(|[\w{*])|\bimportScripts\s*\(|\bnew\s+(?:Shared)?Worker\s*\(", code),
              f"undeclared script loader: {path}")
         loaders = re.findall(r"\bcreateElement\s*\(\s*(['\"])script\1\s*\)", code)
-        if loaders:
-            need(path == "v2/visual-search/app.js" and len(loaders) == 3,
+        if loaders or re.search(r"\bcreatePresentationLoader\b", code):
+            need(path == "v2/visual-search/app.js" and len(loaders) in (1, 3),
                  f"unknown dynamic script owner: {path}")
-            expected_sources = ["hotelDetailsAsset", "document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js'", "offerListAsset"]
-            sources = re.findall(r"\bscript\.src\s*=\s*([^;]+);", code)
-            need(sources == expected_sources, "on-demand script assignments changed; review inventory contract")
-            for variable, key in (("hotelDetailsAsset", "hotelDetailsSrc"), ("offerListAsset", "offerListSrc")):
-                need(f"const {variable}=document.head.dataset.{key};" in code,
-                     "on-demand alias declaration changed")
+            if len(loaders) == 1:
+                shared_presentation_loaders(code)
+                need(page.lazy == {"data-offer-list-src": "./offer-list-v1.js",
+                                   "data-hotel-details-src": "./hotel-details-v1.js",
+                                   "data-flight-picker-src": "./flight-picker-ui-v1.js"},
+                     "shared presentation loader asset bindings changed")
+            else:
+                # Historical three-loader artifacts retain their original strict
+                # contract; they cannot mix in a shared or aliased fourth owner.
+                need(not re.search(r"\bcreatePresentationLoader\b", code),
+                     "mixed legacy/shared presentation loader contract")
+                expected_sources = ["hotelDetailsAsset", "document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js'", "offerListAsset"]
+                sources = re.findall(r"\bscript\.src\s*=\s*([^;]+);", code)
+                need(sources == expected_sources, "on-demand script assignments changed; review inventory contract")
+                for variable, key in (("hotelDetailsAsset", "hotelDetailsSrc"), ("offerListAsset", "offerListSrc")):
+                    need(f"const {variable}=document.head.dataset.{key};" in code,
+                         "on-demand alias declaration changed")
             need(page.lazy["data-flight-picker-src"] == "./flight-picker-ui-v1.js",
                  "flight picker fallback differs from declared owner")
         table = re.search(r"\bconst operatorAssets=\{([^{}]*)\};", code)

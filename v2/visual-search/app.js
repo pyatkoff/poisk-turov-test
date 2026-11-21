@@ -1159,22 +1159,33 @@ $('#modal-body').addEventListener('scroll',scheduleHotelNavigation,{passive:true
 $('#modal-body').addEventListener('toggle',scheduleHotelNavigation,true);
 addEventListener('resize',scheduleHotelNavigation);
 
-// The hotel shell enters history immediately; its presentation loads on demand.
-let hotelDetailsLoad=null,hotelDetailsRequest=0,hotelDetailsView=null;
-const hotelDetailsAsset=document.head.dataset.hotelDetailsSrc;
-function loadHotelDetails(){
- if(window.AnyTourHotelDetails?.create)return Promise.resolve(window.AnyTourHotelDetails);
- if(hotelDetailsLoad)return hotelDetailsLoad;
- hotelDetailsLoad=new Promise((resolve,reject)=>{
-  const script=document.createElement('script');let finished=false;
-  const finish=error=>{if(finished)return;finished=true;clearTimeout(timer);script.onload=script.onerror=null;script.remove();if(error){hotelDetailsLoad=null;reject(error);}else resolve(window.AnyTourHotelDetails);};
-  const timer=setTimeout(()=>finish(new Error('Hotel details load timed out')),15000);
-  script.onload=()=>finish(window.AnyTourHotelDetails?.create?null:new Error('Hotel details owner missing'));
-  script.onerror=()=>finish(new Error('Hotel details load failed'));
-  script.src=hotelDetailsAsset;document.head.append(script);
- });
- return hotelDetailsLoad;
+// Share only the cold script lifecycle; each view keeps its own currentness,
+// synchronous warm render, asset identity and failure messages.
+function createPresentationLoader(owner,source,errors,async=false){
+ let load=null;
+ return ()=>{
+  const available=owner();if(available)return Promise.resolve(available);
+  if(load)return load;
+  load=new Promise((resolve,reject)=>{
+   const script=document.createElement('script');let finished=false;
+   const finish=error=>{if(finished)return;finished=true;clearTimeout(timer);script.onload=script.onerror=null;script.remove();if(error){load=null;reject(error);}else resolve(owner());};
+   const timer=setTimeout(()=>finish(new Error(errors.timeout)),15000);
+   script.onload=()=>finish(owner()?null:new Error(errors.missing));
+   script.onerror=()=>finish(new Error(errors.failed));
+   script.src=source();if(async)script.async=true;document.head.append(script);
+  });
+  return load;
+ };
 }
+
+// The hotel shell enters history immediately; its presentation loads on demand.
+let hotelDetailsRequest=0,hotelDetailsView=null;
+const hotelDetailsAsset=document.head.dataset.hotelDetailsSrc;
+const loadHotelDetails=createPresentationLoader(
+ ()=>window.AnyTourHotelDetails?.create?window.AnyTourHotelDetails:null,
+ ()=>hotelDetailsAsset,
+ {timeout:'Hotel details load timed out',missing:'Hotel details owner missing',failed:'Hotel details load failed'}
+);
 function hotelDetailsOwner(){return window.AnyTourHotelDetails.create({get hotelOfferDraft(){return hotelOfferDraft;},set hotelOfferDraft(value){hotelOfferDraft=value;},get selectedOffer(){return selectedOffer&&searchKey(selectedOffer.search||{})===searchKey(state.search)?selectedOffer:null;},sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel,roomLabel,dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText});}
 function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  if(!window.AnyTourHotelDetails?.create||modalType!=='hotel-details'||!$('#hotel-room-count')||Number($('.hotel-section-nav')?.dataset.hotelId)!==id)return;
@@ -2338,18 +2349,12 @@ function openFlightPicker(restore=null){
  $('#modal-title').tabIndex=-1;$('#modal-title').focus({preventScroll:true});$('#modal-body').scrollTop=0;
  renderFlightPicker();
 }
-let flightPickerLoad=null,flightPickerRequest=0;
-function loadFlightPicker(){
- if(window.AnyTourFlightPickerUIV1)return Promise.resolve(window.AnyTourFlightPickerUIV1);
- if(flightPickerLoad)return flightPickerLoad;
- const script=document.createElement('script');script.src=document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js';script.async=true;
- flightPickerLoad=new Promise((resolve,reject)=>{
-  let done=false;const finish=error=>{if(done)return;done=true;clearTimeout(timer);script.remove();if(error){flightPickerLoad=null;reject(error);}else resolve(window.AnyTourFlightPickerUIV1);};
-  const timer=setTimeout(()=>finish(new Error('Не удалось загрузить варианты перелёта.')),15000);
-  script.onload=()=>finish(window.AnyTourFlightPickerUIV1?null:new Error('Варианты перелёта недоступны.'));
-  script.onerror=()=>finish(new Error('Не удалось загрузить варианты перелёта.'));document.head.append(script);
- });return flightPickerLoad;
-}
+let flightPickerRequest=0;
+const loadFlightPicker=createPresentationLoader(
+ ()=>window.AnyTourFlightPickerUIV1,
+ ()=>document.head.dataset.flightPickerSrc||'./flight-picker-ui-v1.js',
+ {timeout:'Не удалось загрузить варианты перелёта.',missing:'Варианты перелёта недоступны.',failed:'Не удалось загрузить варианты перелёта.'},true
+);
 function renderFlightPicker(){
  const view=flightDraft,request=++flightPickerRequest;if(!view)return;
  const current=()=>request===flightPickerRequest&&flightDraft===view&&selectedOffer===view.base&&modalType==='flights'&&$('#modal').open;
@@ -3066,23 +3071,15 @@ function refreshOpenOfferList(){
 
 
 // Keep the modal shell/history synchronous; fetch only its cold list renderer.
-let offerListLoad=null,offerListRequest=0,offerListPage=null;
+let offerListRequest=0,offerListPage=null;
 const offerListRestores=new WeakMap();
 const offerListAsset=document.head.dataset.offerListSrc;
 const byId=id=>document.getElementById(id);
-function loadOfferList(){
- if(window.AnyTourOfferList?.create)return Promise.resolve(window.AnyTourOfferList);
- if(offerListLoad)return offerListLoad;
- offerListLoad=new Promise((resolve,reject)=>{
-  const script=document.createElement('script');let finished=false;
-  const finish=error=>{if(finished)return;finished=true;clearTimeout(timer);script.onload=script.onerror=null;script.remove();if(error){offerListLoad=null;reject(error);}else resolve(window.AnyTourOfferList);};
-  const timer=setTimeout(()=>finish(new Error('Offer list load timed out')),15000);
-  script.onload=()=>finish(window.AnyTourOfferList?.create?null:new Error('Offer list owner missing'));
-  script.onerror=()=>finish(new Error('Offer list load failed'));
-  script.src=offerListAsset;document.head.append(script);
- });
- return offerListLoad;
-}
+const loadOfferList=createPresentationLoader(
+ ()=>window.AnyTourOfferList?.create?window.AnyTourOfferList:null,
+ ()=>offerListAsset,
+ {timeout:'Offer list load timed out',missing:'Offer list owner missing',failed:'Offer list load failed'}
+);
 function renderOfferList(reset=false,initialAll=null){
  offerListPage=null;
  const view=offerView,request=++offerListRequest;

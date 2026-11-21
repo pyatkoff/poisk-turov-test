@@ -8,7 +8,8 @@ const stayStart=app.indexOf('function chosenStayHTML('),stayEnd=app.indexOf('\nf
 assert(app.slice(stayEnd+1).startsWith('function offerSelectionHint('),'chosen-stay extraction ends at the next actual owner');
 const staySource=app.slice(stayStart,stayEnd);
 const terminalStart=app.indexOf('function terminalOfferQuote('),terminalEnd=app.indexOf('function offerQuoteFailure(',terminalStart);assert(terminalStart>=0&&terminalEnd>terminalStart,'actual terminal-quote guard extraction');
-const source=app.slice(terminalStart,terminalEnd)+app.slice(start,end),flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
+const loaderStart=app.indexOf('function createPresentationLoader('),loaderEnd=app.indexOf('// The hotel shell enters history immediately;',loaderStart);assert(loaderStart>=0&&loaderEnd>loaderStart,'actual shared presentation loader');
+const source=app.slice(loaderStart,loaderEnd)+app.slice(terminalStart,terminalEnd)+app.slice(start,end),flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 async function actualSession(){
  const root=__dirname+'/../v2/visual-search',errors=[],reads=[],console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(fs.readFileSync(root+'/index.html','utf8'),{url:'https://fixture.test/?scenario=flights&searched=1',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console}),w=dom.window,d=w.document;
@@ -64,7 +65,7 @@ function fixture(){
  const dom=new JSDOM('<head data-flight-picker-src="./flight-picker-ui-v1.js?v=exact"></head><dialog id="modal" open><h2 id="modal-title"></h2><div id="modal-body"></div><footer id="modal-footer"></footer></dialog>'),document=dom.window.document;
  const scripts=[],timers=new Map(),renders=[],binds=[];let nextTimer=0,history=0,previews=0;
  const ctx={window:{},Promise,Error,document,$:s=>document.querySelector(s),modalType:'offer',flightDraft:null,selectedOffer:{key:'fixture-exact-tv-501',hotelId:501,flightChoiceId:'0',variants:[{}],provider:'fixture',room:'Fictional STANDARD SEA VIEW',meal:'AI · fictional meal',operator:'Fictional TV operator',tour:{id:'fixture-exact-tv-501',placement:'DBL exact quote fixture'}},hotels:[{id:501,name:'Вымышленный отель'}],esc:String,money:String,data:{text:String,variantPrice:()=>{throw Error('loader cannot calculate a price')}},legHTML:()=>'',fuelText:()=>{throw Error('loader cannot read fuel')},mealLabel:o=>o.meal,displayMealLabel:o=>o.meal,roomLabel:o=>o.room,selectionStepsHTML:()=>'<steps>',rangeText:()=> 'Даты',nightsText:()=> '7 ночей',guestsText:()=> '2 взрослых',
-  setTimeout:fn=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
+  setTimeout:(fn,delay)=>{assert.equal(delay,15000,'flight module keeps its bounded load timeout');const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   showModal:(type,title,kicker,body)=>{ctx.modalType=type;ctx.$('#modal').open=true;ctx.$('#modal-body').innerHTML=body;ctx.$('#modal-footer').hidden=true;},
   retainedProviderView:()=>null,selectedTourHotel:()=>ctx.hotels[0],offerDetailBodyHTML:(o,h,a,b,c,editing)=>'<section class="flight-picker-context">'+ctx.chosenStayHTML(o)+'</section><div id="tour-flight-options">'+ctx.window.AnyTourFlightPickerUIV1.render(o,ctx.flightDraft.id)+'</div>',offerDetailFooterHTML:(o,actions)=>'<div class="footer-total"><strong>Current total</strong><span class="footer-price-status"></span></div>'+actions,syncDestinationViewport:()=>{},updateFlightPreview:()=>previews++,rememberUIRoute:()=>history++};
  document.head.append=script=>scripts.push(script);
@@ -89,8 +90,16 @@ function fixture(){
   const before=g.ctx.$('#modal-body').innerHTML;g.ctx.window.AnyTourFlightPickerUIV1=g.owner;g.scripts[0].onload();await flush();assert.equal(g.renders.length,0,cancel+' rejects stale completion');assert.equal(g.ctx.$('#modal-body').innerHTML,before);g.close();
  }
  for(const failure of ['network','timeout','missing-owner']){
-  const g=fixture();g.ctx.openFlightPicker();if(failure==='network')g.scripts[0].onerror();else if(failure==='timeout')[...g.timers.values()][0]();else g.scripts[0].onload();await flush();assert.match(g.ctx.$('#modal-body').innerHTML,/role="alert"/);assert.match(g.ctx.$('#modal-body').innerHTML,/retry-flight-picker/);assert.equal(g.timers.size,0);assert(g.ctx.$('#modal-footer').hidden);
-  g.ctx.renderFlightPicker();assert.equal(g.scripts.length,2,failure+' permits another request');g.ctx.window.AnyTourFlightPickerUIV1=g.owner;g.scripts[1].onload();await flush();assert.equal(g.renders.length,1);g.close();
+  const g=fixture();g.ctx.openFlightPicker();const outcome=vm.runInContext('loadFlightPicker()',g.ctx).catch(error=>error.message);if(failure==='network')g.scripts[0].onerror();else if(failure==='timeout')[...g.timers.values()][0]();else g.scripts[0].onload();await flush();assert.equal(await outcome,failure==='missing-owner'?'Варианты перелёта недоступны.':'Не удалось загрузить варианты перелёта.');assert.equal(g.scripts[0].onload,null);assert.equal(g.scripts[0].onerror,null);assert.match(g.ctx.$('#modal-body').innerHTML,/role="alert"/);assert.match(g.ctx.$('#modal-body').innerHTML,/retry-flight-picker/);assert.equal(g.timers.size,0);assert(g.ctx.$('#modal-footer').hidden);
+  if(failure==='timeout')delete g.ctx.document.head.dataset.flightPickerSrc;else g.ctx.document.head.dataset.flightPickerSrc='./flight-picker-ui-v1.js?v=retry';g.ctx.renderFlightPicker();assert.equal(g.scripts.length,2,failure+' permits another request');assert.equal(g.scripts[1].src,failure==='timeout'?'./flight-picker-ui-v1.js':'./flight-picker-ui-v1.js?v=retry','flight retry reads the current source with its original fallback');assert.equal(g.scripts[1].async,true);g.ctx.window.AnyTourFlightPickerUIV1=g.owner;g.scripts[1].onload();await flush();assert.equal(g.renders.length,1);g.close();
+ }
+ {
+  const g=fixture();g.ctx.openFlightPicker();const expired=g.scripts[0],lateLoad=expired.onload,lateError=expired.onerror;
+  [...g.timers.values()][0]();await flush();g.ctx.renderFlightPicker();const retry=vm.runInContext('loadFlightPicker()',g.ctx);let settled=false;retry.then(()=>settled=true);
+  lateLoad();lateError();await flush();assert.strictEqual(vm.runInContext('loadFlightPicker()',g.ctx),retry,'expired callbacks cannot clear the shared retry');assert.equal(g.scripts.length,2);assert.equal(g.timers.size,1);
+  g.ctx.window.AnyTourFlightPickerUIV1=g.owner;lateLoad();await flush();assert.equal(settled,false,'expired load cannot resolve a newer request');assert.equal(g.renders.length,0);
+  g.scripts[1].onload();assert.strictEqual(await retry,g.owner);await flush();assert.equal(g.renders.length,1);assert.equal(g.timers.size,0);assert.equal(g.scripts[1].onload,null);assert.equal(g.scripts[1].onerror,null);
+  delete g.ctx.window.AnyTourFlightPickerUIV1;assert.strictEqual(vm.runInContext('loadFlightPicker()',g.ctx),retry,'successful load remains cached');assert.equal(g.scripts.length,2);g.close();
  }
  const g=fixture();g.ctx.openFlightPicker();g.ctx.$('#modal').open=false;const before=g.ctx.$('#modal-body').innerHTML;g.scripts[0].onerror();await flush();assert.equal(g.ctx.$('#modal-body').innerHTML,before,'late failure cannot overwrite a closed picker');g.close();
  assert(app.includes("case 'retry-flight-picker':if(modalType==='flights')renderFlightPicker();"),'real event dispatcher provides retry');

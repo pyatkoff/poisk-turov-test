@@ -203,7 +203,7 @@ function contactPairHistory(exercise){
    contactPart('function rememberProviderView(', 'function anexAdditionalUnconfirmed(')+
    contactPart('function restoreProviderView(', 'const flightPairFor=')+
    contactPart('function withFlightPair(', 'function legHTML(')+
-   contactPart('function openFlightPicker(', 'let flightPickerLoad=')+
+   contactPart('function openFlightPicker(', 'let flightPickerRequest=')+
    contactPart('function applyFlightPair(', 'function flightConnectionText('),ctx);
   ctx.rememberProviderView(offer,'tourvisor-selection');ctx.openLeadPreview(offer);ctx.openFlightPicker();ctx.flightDraft.id='1';
   assert.deepEqual(ctx.modalHistory.map(step=>step.type),['offer','selected-tour']);
