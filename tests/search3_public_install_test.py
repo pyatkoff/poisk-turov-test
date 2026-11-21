@@ -4703,6 +4703,10 @@ class RefactorRollbackAdmission(unittest.TestCase):
 
 
 class RefactorClient(unittest.TestCase):
+    def setUp(self):
+        resolver=patch.object(m,'home_restoration_evidence',return_value={'status':'absent'})
+        self.home_restoration=resolver.start();self.addCleanup(resolver.stop)
+
     def env(self,f,name,rollback=False):
         directory=f.base/name;directory.mkdir();event_path=directory/'event.json';event_path.write_text(json.dumps(refactor_test_event(rollback)))
         identity=REFACTOR_ROLLBACK_IDENTITY if rollback else REFACTOR_IDENTITY
@@ -4743,6 +4747,7 @@ class RefactorClient(unittest.TestCase):
                 m.refactor(rollback=True)
                 self.assertEqual(dependency.call_count,2);download.assert_called_once_with(555,m.sha(raw))
                 self.assertEqual(restoration.call_count,2)
+                self.assertEqual(self.home_restoration.call_count,2)
             path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
             self.assertEqual(value['status'],'refactor_rolled_back_verified')
             self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
@@ -5431,6 +5436,10 @@ class HandoffPayloadEvidence(unittest.TestCase):
 
 
 class HandoffClient(unittest.TestCase):
+    def setUp(self):
+        resolver=patch.object(m,'home_restoration_evidence',return_value={'status':'absent'})
+        self.home_restoration=resolver.start();self.addCleanup(resolver.stop)
+
     def env(self,f,name,rollback=False):
         directory=f.base/name;directory.mkdir();event_path=directory/'event.json';event_path.write_text(json.dumps(handoff_test_event(rollback)))
         identity=HANDOFF_ROLLBACK_IDENTITY if rollback else HANDOFF_IDENTITY
@@ -5469,7 +5478,8 @@ class HandoffClient(unittest.TestCase):
                 self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
                 download.assert_called_once_with(artifact['id'],m.sha(raw))
             path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
-            self.assertEqual(value,helper.evidence(f,restored,True))
+            self.assertEqual(value,helper.evidence(f,restored,True)|{'home_restoration_evidence':{'status':'absent'}})
+            self.assertEqual(self.home_restoration.call_count,2)
             self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
 
     def test_unresolved_int_proof_never_starts_ssh_in_either_live_handoff_mode(self):
@@ -5519,6 +5529,702 @@ class HandoffClient(unittest.TestCase):
                     else:self.assertEqual(builder.call_args.kwargs['handoff_restoration'],{'status':'absent'})
                     value=json.loads((runner/'search3-public-install/evidence.json').read_text())
                     self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+
+HOME_IDENTITY={'control_source_sha':CONTROL,'run_id':'967890','command_comment_id':9015}
+HOME_ROLLBACK_IDENTITY={'control_source_sha':'d'*40,'run_id':'978901','command_comment_id':9016}
+
+
+class HomeTransaction(unittest.TestCase):
+    archive=staticmethod(HandoffTransaction.archive)
+
+    @contextlib.contextmanager
+    def installed(self,tv=False):
+        helper=HandoffTransaction()
+        with helper.installed(tv) as f:
+            f.handoff_accepted=helper.execute(f)
+            self.assertEqual(f.handoff_accepted['status'],'country_handoff_updated_verified')
+            parent=helper.evidence(f,f.handoff_accepted);data,raw=helper.archive(parent)
+            pin=m.HOME_PARENT|HANDOFF_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(raw),
+                'policy_sha256':f.handoff_policy['manifest'],
+                'snapshot_manifest_sha256':f.handoff_accepted['snapshot_manifest_sha256']}
+            targets={};files={};row=lambda data:{'state':'present','mode':'0644','size':len(data),'sha256':m.sha(data)}
+            for path in m.HOME_ORDER:
+                if path not in ('site-path-v1.php','home-hero-v1.jpg') and not (f.root/path).exists():
+                    f.put(path,('original home dependency '+path).encode())
+                before=row((f.root/path).read_bytes()) if (f.root/path).exists() else {'state':'absent'}
+                after=('approved home navigation '+path).encode()
+                targets[path]=m.HOME_TARGETS[path]|{'before':before,'after':row(after)}
+                files[path]=base64.b64encode(after).decode()
+            f.put('images/logo.svg',b'installed original logo')
+            dependencies={'images/logo.svg':row(b'installed original logo')}
+            with patch.object(m,'HOME_SOURCE','e'*40),patch.object(m,'HOME_TREE','f'*40), \
+                 patch.object(m,'HOME_PARENT',pin),patch.object(m,'HOME_TARGETS',targets), \
+                 patch.object(m,'HOME_DEPENDENCIES',dependencies):
+                f.home_parent=parent;f.home_parent_raw=raw;f.home_files=files;f.home_policy=m.home_policy()
+                f.home_private=f.private.parent/m.HOME_OPERATION
+                f.home_rollback_private=f.private.parent/m.HOME_ROLLBACK_OPERATION
+                yield f
+
+    def execute(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.home_remote_program(f.home_policy,f.home_files,HOME_IDENTITY,f.home_parent,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change);m.valid_home_result(HOME_IDENTITY,result)
+        return result
+
+    def rollback(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.home_rollback_remote_program(f.home_policy,HOME_ROLLBACK_IDENTITY,HOME_IDENTITY,
+            f.home_accepted,f.home_parent,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change)
+        m.valid_home_result(HOME_ROLLBACK_IDENTITY,result,HOME_IDENTITY,f.home_accepted);return result
+
+    def evidence(self,f,result,rollback=False):
+        identity=HOME_ROLLBACK_IDENTITY if rollback else HOME_IDENTITY
+        value={**identity,'operation_id':m.HOME_ROLLBACK_OPERATION if rollback else m.HOME_OPERATION,
+            'source_sha':m.HOME_SOURCE,'manifest_sha256':f.home_policy['manifest'],'read_only':False,
+            'phase':'complete','ssh_started':True,'status':result['status'],'parent_handoff':m.home_parent_identity(),
+            'parent_evidence':f.home_parent,'remote':result}
+        if rollback:value.update(original_home=HOME_IDENTITY,original_home_run_id=HOME_IDENTITY['run_id'])
+        return value
+
+    def restoration(self,f,result,automatic=False):
+        installed=self.evidence(f,f.home_accepted)
+        return {'status':'restored','original':HOME_IDENTITY,'install_evidence':installed,
+                'restoration_evidence':installed if automatic else self.evidence(f,result,True)}
+
+    def rollback_handoff(self,f,proof,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.handoff_rollback_remote_program(f.handoff_policy,HANDOFF_ROLLBACK_IDENTITY,HANDOFF_IDENTITY,
+            f.handoff_accepted,f.handoff_parent,home_restoration=proof,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change)
+        m.valid_handoff_result(HANDOFF_ROLLBACK_IDENTITY,result,HANDOFF_IDENTITY,f.handoff_accepted);return result
+
+    def rollback_refactor(self,f,country,proof,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.refactor_rollback_remote_program(f.refactor_policy,REFACTOR_ROLLBACK_IDENTITY,REFACTOR_IDENTITY,
+            f.refactor_accepted,f.refactor_parent,handoff_restoration=country,home_restoration=proof,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change)
+        m.valid_refactor_result(REFACTOR_ROLLBACK_IDENTITY,result,REFACTOR_IDENTITY,f.refactor_accepted);return result
+
+    def public_files(self,f):
+        paths=set(SiteTransaction().public_files(f))|set(m.HOME_ORDER)|set(m.HOME_DEPENDENCIES)
+        return {p:(UpdateTransaction().stamp(f.root/p),(f.root/p).read_bytes()) if (f.root/p).exists() else None for p in paths}
+
+    def ancestor_records(self,f):
+        rows=HandoffTransaction().ancestor_records(f)
+        rows.update({str(p.relative_to(f.private.parent)):(UpdateTransaction().stamp(p),p.stat().st_ctime_ns,p.read_bytes())
+                     for p in f.handoff_private.rglob('*') if p.is_file()})
+        return rows
+
+    def test_home_root_and_navigation_roundtrip_preserves_full_parent_chain(self):
+        self.assertEqual(m.HOME_ORDER[-1],'index.php');self.assertEqual(len(m.HOME_ORDER),12)
+        self.assertEqual(set(m.HOME_ORDER)&set(m.REFACTOR_ORDER),{m.UPDATE_PATH})
+        for tv in (False,True):
+            with self.subTest(tv=tv),self.installed(tv) as f:
+                before=self.public_files(f);ancestors=self.ancestor_records(f)
+                f.home_accepted=self.execute(f)
+                self.assertEqual(f.home_accepted['status'],'home_navigation_updated_verified',f.home_accepted)
+                self.assertEqual(f.home_accepted['written_files'],list(m.HOME_ORDER))
+                self.assertEqual(self.ancestor_records(f),ancestors)
+                restored=self.rollback(f)
+                self.assertEqual(restored['status'],'home_navigation_rolled_back_verified',restored)
+                self.assertEqual(restored['rollback_files'],list(reversed(m.HOME_ORDER)))
+                self.assertEqual(self.public_files(f),before);self.assertEqual(self.ancestor_records(f),ancestors)
+                proof=self.restoration(f,restored);m.home_restoration_value(proof)
+                country_result=self.rollback_handoff(f,proof)
+                self.assertEqual(country_result['status'],'country_handoff_rolled_back_verified',country_result)
+                country=HandoffTransaction().restoration(f,country_result)
+                self.assertEqual(self.rollback_refactor(f,country,proof)['status'],'refactor_rolled_back_verified')
+                self.assertEqual(SiteContinuationTransaction().rollback(f)['status'],'site_rolled_back_verified')
+                self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+                self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+
+    def test_home_preimages_and_parent_records_are_carried_without_rebinding(self):
+        for target in ('index.php','home-v1.php','visual-search/app.js','images/logo.svg','parent-record'):
+            with self.subTest(target=target),self.installed(True) as f:
+                path=f.handoff_private/'result.json' if target=='parent-record' else f.root/target
+                def race(program):
+                    program=program.replace('def home_handoff_parent():','def fixture_home_parent():',1)
+                    wrapper=('fixture_home_checked=False\ndef home_handoff_parent():\n global fixture_home_checked\n'
+                        ' value=fixture_home_parent()\n if not fixture_home_checked:\n  fixture_home_checked=True\n'
+                        +TvSuccessorTransaction().replace_same_bytes(path,indent='  ')+' return value\n')
+                    return program.replace('def home_check_ancestors():',wrapper+'def home_check_ancestors():',1)
+                value=self.execute(f,race)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertEqual(value['written_files'],[]);self.assertFalse(f.home_private.exists())
+
+    def test_each_home_write_recovers_owned_present_and_absent_targets_without_replay(self):
+        for index in range(len(m.HOME_ORDER)):
+            with self.subTest(index=index),self.installed(True) as f:
+                before=self.public_files(f);ancestors=self.ancestor_records(f)
+                def fail(program):
+                    line="   switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                    self.assertIn(line,program)
+                    return program.replace(line,line+"\n   if index=="+str(index)+":raise RuntimeError('operation_failed')",1)
+                f.home_accepted=self.execute(f,fail)
+                self.assertEqual(f.home_accepted['status'],'rolled_back_no_replay',f.home_accepted)
+                self.assertEqual(f.home_accepted['written_files'],list(m.HOME_ORDER[:index+1]))
+                self.assertEqual(f.home_accepted['rollback_files'],list(reversed(m.HOME_ORDER[:index+1])))
+                self.assertEqual(self.public_files(f),before);self.assertEqual(self.ancestor_records(f),ancestors)
+                proof=self.restoration(f,f.home_accepted,True);m.home_restoration_value(proof)
+                if index in (0,len(m.HOME_ORDER)-1):
+                    country_result=self.rollback_handoff(f,proof)
+                    self.assertEqual(country_result['status'],'country_handoff_rolled_back_verified',country_result)
+                    country=HandoffTransaction().restoration(f,country_result)
+                    self.assertEqual(self.rollback_refactor(f,country,proof)['status'],'refactor_rolled_back_verified')
+                else:
+                    prior=f.filesystem_snapshot();again=self.execute(f)
+                    self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),prior)
+
+    def test_home_reserved_stage_without_intent_attests_zero_exchanges(self):
+        with self.installed(True) as f:
+            before=self.public_files(f)
+            def fail(program):
+                line="  private.create('intent-'+str(index),canonical("
+                return program.replace(line,"  if index==0:raise RuntimeError('operation_failed')\n"+line,1)
+            f.home_accepted=self.execute(f,fail)
+            self.assertEqual(f.home_accepted['status'],'rolled_back_no_replay',f.home_accepted)
+            self.assertEqual(f.home_accepted['written_files'],[]);self.assertEqual(self.public_files(f),before)
+            self.assertTrue((f.home_private/'stage/0').exists());self.assertFalse((f.home_private/'intent-0').exists())
+            proof=self.restoration(f,f.home_accepted,True)
+            country_result=self.rollback_handoff(f,proof)
+            self.assertEqual(country_result['status'],'country_handoff_rolled_back_verified',country_result)
+            country=HandoffTransaction().restoration(f,country_result)
+            self.assertEqual(self.rollback_refactor(f,country,proof)['status'],'refactor_rolled_back_verified')
+
+    def test_home_cannot_claim_verified_recovery_without_authentic_own_reservation(self):
+        for kind in ('constructor','missing-reservation','partial-reservation'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                before=self.public_files(f);ancestors=self.ancestor_records(f)
+                def fail(program):
+                    if kind=='constructor':
+                        line=" private=Files(home+'/.anytoour-search3-root-gateway/'+HOME_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)"
+                        insertion=" raise RuntimeError('operation_failed')\n"
+                    else:
+                        line=" private.create('reservation.json',canonical(reservation));result['phase']='snapshot'"
+                        insertion=(" private.create('reservation.json',b'{}')\n" if kind=='partial-reservation' else '')
+                        insertion+=" raise RuntimeError('operation_failed')\n"
+                    self.assertIn(line,program);return program.replace(line,insertion+line,1)
+                f.home_accepted=self.execute(f,fail)
+                self.assertEqual(f.home_accepted['status'],'unknown_no_replay',f.home_accepted)
+                self.assertTrue(f.home_accepted['reservation_created']);self.assertIsNone(f.home_accepted['restored_guard'])
+                self.assertEqual(f.home_accepted['written_files'],[]);self.assertEqual(f.home_accepted['rollback_files'],[])
+                self.assertEqual(self.public_files(f),before);self.assertEqual(self.ancestor_records(f),ancestors)
+                self.assertTrue(f.home_private.exists())
+                with self.assertRaises(RuntimeError):m.home_restoration_value(self.restoration(f,f.home_accepted,True))
+                self.assertEqual(self.rollback_handoff(f,{'status':'absent'})['status'],'blocked_no_replay')
+
+    def test_home_active_or_foreign_namespace_never_looks_absent_to_parent(self):
+        for installed in (False,True):
+            with self.subTest(installed=installed),self.installed(True) as f:
+                if installed:f.home_accepted=self.execute(f)
+                else:f.home_rollback_private.mkdir(mode=0o700)
+                before=f.filesystem_snapshot()
+                result=self.rollback_handoff(f,{'status':'absent'})
+                self.assertEqual(result['status'],'blocked_no_replay');self.assertFalse(result['reservation_created'])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_home_own_rollback_rejects_target_stage_or_parent_record_substitution(self):
+        for kind in ('target','stage','country-record','private-result','unchanged-search'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                f.home_accepted=self.execute(f)
+                path=(f.root/'index.php' if kind=='target' else f.home_private/'stage/11' if kind=='stage'
+                      else f.handoff_private/'result.json' if kind=='country-record'
+                      else f.home_private/'result.json' if kind=='private-result' else f.root/m.REFACTOR_ORDER[0])
+                if kind in ('private-result','country-record'):path.write_text('{}')
+                else:
+                    prior=path.stat();other=path.with_name(path.name+'.foreign');other.write_bytes(path.read_bytes())
+                    other.chmod(stat.S_IMODE(prior.st_mode));os.utime(other,ns=(prior.st_atime_ns,prior.st_mtime_ns));other.replace(path)
+                before=f.filesystem_snapshot();result=self.rollback(f)
+                self.assertEqual(result['status'],'blocked_no_replay');self.assertFalse(result['reservation_created'])
+                self.assertFalse(f.home_rollback_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_home_restored_stamps_refuse_later_ctime_changes_and_new_absent_path(self):
+        for target in ('index.php','site-header-v2.css','visual-search/app.js','home-v1.php','home-hero-v1.jpg'):
+            with self.subTest(target=target),self.installed(True) as f:
+                f.home_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+                path=f.root/target
+                if path.exists():
+                    prior=path.stat();raw=path.read_bytes();path.write_bytes(raw)
+                    os.utime(path,ns=(prior.st_atime_ns,prior.st_mtime_ns));self.assertEqual(path.stat().st_ino,prior.st_ino)
+                else:path.write_bytes(b'foreign hero')
+                before=f.filesystem_snapshot();result=self.rollback_handoff(f,proof)
+                self.assertEqual(result['status'],'blocked_no_replay');self.assertFalse(result['reservation_created'])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_home_restoration_rejects_forged_scope_and_changed_private_proof(self):
+        with self.installed(True) as f:
+            f.home_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+            for change in (lambda p:p['restoration_evidence']['remote']['restored_guard'].pop('index.php'),
+                           lambda p:p['restoration_evidence']['remote']['restored_guard'].update({'data/db-v1.php':[{},[]]}),
+                           lambda p:p['restoration_evidence']['remote'].update(status='unknown_no_replay'),
+                           lambda p:p['install_evidence'].update(source_sha='0'*40),
+                           lambda p:p['install_evidence'].update(parent_handoff=HOME_IDENTITY)):
+                bad=copy.deepcopy(proof);change(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.home_restoration_value(bad)
+            target=f.home_rollback_private/'result.json'
+            def race(program):
+                marker='def handoff_check_ancestors():'
+                program=program.replace(marker,'def fixture_handoff_check():',1)
+                wrapper=('fixture_home_checks=0\ndef handoff_check_ancestors():\n global fixture_home_checks\n'
+                    ' fixture_handoff_check()\n fixture_home_checks+=1\n if fixture_home_checks==1:\n'
+                    +TvSuccessorTransaction().replace_same_bytes(target,indent='  '))
+                return program.replace('def handoff_check_targets(expected):',wrapper+'def handoff_check_targets(expected):',1)
+            before=self.public_files(f);result=self.rollback_handoff(f,proof,race)
+            self.assertEqual(result['status'],'blocked_no_replay');self.assertEqual(result['rollback_files'],[])
+            self.assertEqual(self.public_files(f),before)
+
+    def test_home_app_full_stamp_is_held_until_refactor_binds_its_original_current(self):
+        with self.installed(True) as f:
+            f.home_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+            country_result=self.rollback_handoff(f,proof)
+            self.assertEqual(country_result['status'],'country_handoff_rolled_back_verified')
+            country=HandoffTransaction().restoration(f,country_result);target=f.root/m.UPDATE_PATH
+            before=self.public_files(f);original=target.stat()
+            def race(program):
+                line=" ancestors=snapshot['ancestors'];guarded=refactor_guard_from_snapshot(snapshot['guarded'])"
+                self.assertEqual(program.count(line),1)
+                rewrite=("\n fixture_app="+repr(str(target))+"\n fixture_before=os.stat(fixture_app)\n"
+                    " with open(fixture_app,'rb') as fixture_stream:fixture_bytes=fixture_stream.read()\n"
+                    " with open(fixture_app,'r+b') as fixture_stream:fixture_stream.write(fixture_bytes)\n"
+                    " os.utime(fixture_app,ns=(fixture_before.st_atime_ns,fixture_before.st_mtime_ns))\n"
+                    " require(os.stat(fixture_app).st_ctime_ns!=fixture_before.st_ctime_ns,'fixture_ctime_unchanged')\n")
+                return program.replace(line,line+rewrite,1)
+            result=self.rollback_refactor(f,country,proof,race)
+            self.assertEqual(result['status'],'blocked_no_replay',result)
+            self.assertFalse(result['reservation_created']);self.assertEqual(result['rollback_files'],[])
+            self.assertEqual(self.public_files(f),before);self.assertEqual(target.stat().st_ino,original.st_ino)
+            self.assertNotEqual(target.stat().st_ctime_ns,original.st_ctime_ns)
+            self.assertFalse((f.private.parent/m.REFACTOR_ROLLBACK_OPERATION).exists())
+
+
+def home_test_event(rollback=False):
+    value=event();identity=HOME_ROLLBACK_IDENTITY if rollback else HOME_IDENTITY
+    body=(f'{m.HOME_ROLLBACK_PREFIX} {identity["control_source_sha"]} {HOME_IDENTITY["run_id"]} {m.HOME_ROLLBACK_OPERATION}'
+          if rollback else f'{m.HOME_PREFIX} {identity["control_source_sha"]} {m.HOME_OPERATION}')
+    stamp='2026-11-21T15:10:00Z' if rollback else '2026-11-21T15:00:00Z'
+    value['comment'].update(id=identity['command_comment_id'],body=body,created_at=stamp,updated_at=stamp)
+    return value
+
+
+class HomeRestorationAdmission(unittest.TestCase):
+    def zero_before_ssh(self,f):
+        return {**HOME_IDENTITY,'operation_id':m.HOME_OPERATION,'source_sha':m.HOME_SOURCE,
+            'manifest_sha256':f.home_policy['manifest'],'read_only':False,'status':'blocked_no_replay',
+            'phase':'admission','ssh_started':False,'error_type':'RuntimeError'}
+
+    def resolve(self,f,value,change=None,rollback_admission=False,control_review=None):
+        _,raw=HomeTransaction().archive(value);command=home_test_event()['comment']
+        conclusion='success' if value['status']=='home_navigation_updated_verified' else 'failure'
+        artifact={'id':987001,'name':'search3-public-install-'+HOME_IDENTITY['run_id']+'-1','expired':False,
+            'workflow_run':{'id':int(HOME_IDENTITY['run_id'])},'digest':'sha256:'+m.sha(raw)}
+        run={'id':int(HOME_IDENTITY['run_id']),'head_sha':CONTROL,'head_branch':'main','path':m.WORKFLOW,
+            'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':conclusion,
+            'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+            'created_at':'2026-11-21T15:00:01Z','run_started_at':'2026-11-21T15:00:02Z','updated_at':'2026-11-21T15:00:05Z'}
+        job={'id':987002,'run_id':run['id'],'name':'public-install','status':'completed','conclusion':conclusion,
+            'steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py home','status':'completed',
+                'conclusion':conclusion,'started_at':'2026-11-21T15:00:03Z','completed_at':'2026-11-21T15:00:04Z'}]}
+        def api(path):
+            if path.startswith('/issues/4709/comments?'):
+                result=[copy.deepcopy(command)]+([home_test_event(True)['comment']] if rollback_admission else [])
+            elif path=='/git/ref/heads/main':result={'object':{'sha':HOME_ROLLBACK_IDENTITY['control_source_sha']}}
+            elif path=='/actions/runs/'+HOME_IDENTITY['run_id']:result=copy.deepcopy(run)
+            elif path.startswith('/actions/workflows/search3-root-gateway-install.yml/runs?'):
+                result={'total_count':1,'workflow_runs':[copy.deepcopy(run)]}
+            elif path.startswith('/actions/runs/'+HOME_IDENTITY['run_id']+'/artifacts?'):
+                result={'total_count':1,'artifacts':[copy.deepcopy(artifact)]}
+            elif path.startswith('/actions/runs/'+HOME_IDENTITY['run_id']+'/attempts/1/jobs?'):
+                result={'total_count':1,'jobs':[copy.deepcopy(job)]}
+            else:raise AssertionError('unexpected home proof lookup: '+path)
+            return change(path,result) if change else result
+        with patch.object(m,'api',side_effect=api),patch.object(m,'download',return_value=raw) as download, \
+             patch.object(m,'reviewed_control',side_effect=control_review) as reviewed, \
+             patch.object(m.carrier,'run',side_effect=AssertionError('server during proof resolution')):
+            result=(m.home_rollback_admission(HOME_ROLLBACK_IDENTITY,HOME_IDENTITY['run_id']) if rollback_admission
+                    else m.home_restoration_evidence())
+            self.assertEqual([call.args[0] for call in reviewed.call_args_list],
+                ([HOME_ROLLBACK_IDENTITY['control_source_sha']] if rollback_admission else [])+[CONTROL])
+            download.assert_called_once_with(artifact['id'],m.sha(raw))
+            return result
+
+    def test_native_receipt_requires_review_of_original_executed_control(self):
+        helper=HomeTransaction()
+        with helper.installed(True) as f:
+            for rollback_admission in (False,True):
+                if rollback_admission:
+                    f.home_accepted=helper.execute(f);value=helper.evidence(f,f.home_accepted)
+                else:value=self.zero_before_ssh(f)
+                reviewed=[]
+                def refuse_original(control):
+                    reviewed.append(control)
+                    if control==CONTROL:raise RuntimeError('reviewed_control_missing')
+                with self.subTest(rollback_admission=rollback_admission),self.assertRaisesRegex(RuntimeError,'reviewed_control_missing'):
+                    self.resolve(f,value,rollback_admission=rollback_admission,control_review=refuse_original)
+                self.assertEqual(reviewed,
+                    ([HOME_ROLLBACK_IDENTITY['control_source_sha']] if rollback_admission else [])+[CONTROL])
+
+    def test_actual_zero_write_command_is_distinct_from_absence_and_keeps_parent_guards(self):
+        for started in (False,True):
+            with self.subTest(ssh_started=started),HomeTransaction().installed(True) as f:
+                helper=HomeTransaction()
+                if started:
+                    def refuse(program):
+                        line=' guarded,before,ancestors=home_handoff_parent()'
+                        self.assertIn(line,program)
+                        return program.replace(line," raise RuntimeError('operation_failed')\n"+line,1)
+                    remote=helper.execute(f,refuse)
+                    self.assertEqual(remote['status'],'blocked_no_replay');self.assertFalse(remote['reservation_created'])
+                    value=helper.evidence(f,remote)
+                else:value=self.zero_before_ssh(f)
+                proof=self.resolve(f,value)
+                self.assertEqual(proof,{'status':'zero_write','original':HOME_IDENTITY,'install_evidence':value})
+                self.assertFalse(f.home_private.exists());self.assertFalse(f.home_rollback_private.exists())
+                self.assertEqual(helper.rollback_handoff(f,proof)['status'],'country_handoff_rolled_back_verified')
+
+    def test_only_no_child_commands_is_absent_and_native_unknown_is_not_absence(self):
+        with patch.object(m,'api',return_value=[]),patch.object(m,'download') as download:
+            self.assertEqual(m.home_restoration_evidence(),{'status':'absent'});download.assert_not_called()
+        with HomeTransaction().installed(True) as f:
+            value=self.zero_before_ssh(f)
+            mutations=(
+                ('/comments?',lambda v:v[0].update(updated_at='2026-11-21T15:01:00Z')),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(status='in_progress',conclusion=None)),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(conclusion='cancelled')),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(conclusion='timed_out')),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(run_attempt=True)),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(head_sha='f'*40)),
+                ('/artifacts?',lambda v:v.update(artifacts=[])),
+                ('/artifacts?',lambda v:v['artifacts'][0].update(expired=True)),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(conclusion='cancelled')),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py handoff')))
+            for part,mutate in mutations:
+                def change(path,result):
+                    if part in path:mutate(result)
+                    return result
+                with self.subTest(part=part,mutate=mutate),self.assertRaises(RuntimeError):self.resolve(f,value,change)
+            for change in (lambda v:v.update(status='unknown_no_replay'),
+                lambda v:v.update(error_type='TimeoutExpired'),lambda v:v.update(ssh_started=True),
+                lambda v:v.update(remote={}),lambda v:v.update(parent_handoff=SITE_CONTINUATION_IDENTITY)):
+                bad=copy.deepcopy(value);change(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):self.resolve(f,bad)
+
+    def test_zero_write_proof_cannot_hide_child_namespace_or_relax_original_php_stamp(self):
+        for kind in ('install-namespace','rollback-namespace','php-ctime'):
+            with self.subTest(kind=kind),HomeTransaction().installed(True) as f:
+                helper=HomeTransaction();proof=self.resolve(f,self.zero_before_ssh(f))
+                if kind=='php-ctime':
+                    path=f.root/'index.php';prior=path.stat();path.write_bytes(path.read_bytes())
+                    os.utime(path,ns=(prior.st_atime_ns,prior.st_mtime_ns))
+                else:(f.home_private if kind=='install-namespace' else f.home_rollback_private).mkdir(mode=0o700)
+                before=f.filesystem_snapshot();value=helper.rollback_handoff(f,proof)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_successful_active_child_is_pending_and_never_absence(self):
+        helper=HomeTransaction()
+        with helper.installed(True) as f:
+            f.home_accepted=helper.execute(f)
+            with self.assertRaisesRegex(RuntimeError,'home_restoration_pending'):
+                self.resolve(f,helper.evidence(f,f.home_accepted))
+
+    def test_own_rollback_admission_requires_exact_successful_native_child(self):
+        helper=HomeTransaction()
+        with helper.installed(True) as f:
+            f.home_accepted=helper.execute(f);value=helper.evidence(f,f.home_accepted)
+            original,artifact=self.resolve(f,value,rollback_admission=True)
+            self.assertEqual(original,HOME_IDENTITY);self.assertEqual(artifact['id'],987001)
+            mutations=(
+                ('/git/ref/heads/main',lambda v:v['object'].update(sha=CONTROL)),
+                ('/actions/runs/'+HOME_IDENTITY['run_id'],lambda v:v.update(run_attempt=2)),
+                ('/actions/runs/'+HOME_IDENTITY['run_id'],lambda v:v.update(conclusion='failure')),
+                ('/artifacts?',lambda v:v['artifacts'][0].update(workflow_run={'id':int(m.HOME_PARENT['run_id'])})),
+                ('/comments?',lambda v:v[0].update(body=refactor_test_event()['comment']['body'])),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99999})))
+            for part,mutate in mutations:
+                def change(path,result):
+                    if path==part or part.endswith('?') and part in path:mutate(result)
+                    return result
+                with self.subTest(part=part),self.assertRaises(RuntimeError):self.resolve(f,value,change,True)
+            for run in (m.HOME_PARENT['run_id'],m.REFACTOR_PARENT['run_id'],HOME_ROLLBACK_IDENTITY['run_id']):
+                with patch.object(m,'api') as api,self.assertRaises(RuntimeError):m.home_rollback_commands(HOME_ROLLBACK_IDENTITY,run)
+                api.assert_not_called()
+
+
+class HomePackage(unittest.TestCase):
+    def packet(self,f,change=None):
+        old=m.home_overlay_predecessor(f.home_parent);rows={};data={};shared=set(m.HOME_SHARED_ORDER)
+        for path in sorted(set(old)|shared):
+            raw=base64.b64decode(f.home_files[path]) if path in f.home_files else (f.root/path).read_bytes()
+            data['overlay/'+path]=raw
+            row={'path':path,'source_path':m.HOME_TARGETS[path]['source_path'] if path in shared|set(m.HOME_SEARCH_ORDER) else 'v2/'+path,
+                 'source':copy.deepcopy(m.HOME_TARGETS[path]['source']) if path in shared|set(m.HOME_SEARCH_ORDER) else {},
+                 'served':{'size':len(raw),'mode':'0644','sha256':m.sha(raw)}}
+            if path in shared and m.HOME_TARGETS[path]['before']!={'state':'absent'}:
+                row['before']={k:v for k,v in m.HOME_TARGETS[path]['before'].items() if k!='state'}
+            rows[path]=row
+        replaced={m.ENTRY,'home-v1.php','home-v1.css','site-header-v2.php','site-header-v2.css'}
+        logo={'path':'images/logo.svg','source_path':'v2/visual-search/assets/anytour-logo.svg','source':{},
+              'served':{k:v for k,v in m.HOME_DEPENDENCIES['images/logo.svg'].items() if k!='state'},'candidate_only':True}
+        manifest={'candidate':{'sha':m.HOME_SOURCE,'tree_sha':m.HOME_TREE},
+            'main':{'sha':m.HOME_MAIN_BASE,'tree_sha':'39d167395c96680250e4bee5ba8c599f236ea5c8'},
+            'profile':{'schemaVersion':1,'profile':'live','scenario':'family'},'shared_ui':{'enabled':True},
+            'candidate_only_aliases':[logo],'files':{'added':[r for p,r in rows.items() if p not in replaced]+[logo],
+            'replaced':[r for p,r in rows.items() if p in replaced]}}
+        if change:change(manifest,data)
+        raw=json.dumps(manifest,sort_keys=True).encode();data['manifest.json']=raw;packet=io.BytesIO()
+        with zipfile.ZipFile(packet,'w') as archive:
+            for path,value in data.items():archive.writestr(path,value)
+        return packet.getvalue(),m.sha(raw)
+
+    def call(self,f,change=None):
+        raw,manifest_sha=self.packet(f,change);entry=base64.b64decode(f.home_files['index.php'])
+        entry_pin=m.HOME_ENTRY|{'blob':m.hashlib.sha1(b'blob '+str(len(entry)).encode()+b'\0'+entry).hexdigest(),
+                              'after':m.HOME_TARGETS['index.php']['after']}
+        def api(path):
+            self.assertEqual(path,'/git/blobs/'+entry_pin['blob'])
+            return {'sha':entry_pin['blob'],'encoding':'base64','size':len(entry),'content':base64.b64encode(entry).decode()}
+        with patch.object(m,'HOME_ARTIFACT_SHA',m.sha(raw)),patch.object(m,'HOME_MANIFEST_SHA',manifest_sha), \
+             patch.object(m,'HOME_ENTRY',entry_pin),patch.object(m,'api',side_effect=api):
+            return m.home_package(raw,f.home_parent)
+
+    def test_home_package_uses_exact_twelve_payloads_and_separate_main_root_entry(self):
+        with HomeTransaction().installed() as f:
+            policy,files=self.call(f)
+            self.assertEqual(files,f.home_files);self.assertEqual(set(policy['targets']),set(m.HOME_ORDER))
+            self.assertNotIn('images/logo.svg',files);self.assertNotIn('home-entry-v1.php',files)
+            self.assertNotIn(m.ENTRY,files);self.assertNotIn(m.REFACTOR_ORDER[0],files)
+
+    def test_home_package_refuses_hidden_overlay_changes_and_unlisted_source_rows(self):
+        with HomeTransaction().installed() as f:
+            mutations=(lambda v,d:d.update({'overlay/images/logo.svg':b'foreign logo'}),
+                lambda v,d:d.update({'overlay/country-page-v1.php':b'foreign country'}),
+                lambda v,d:d.update({'overlay/'+m.REFACTOR_ORDER[0]:b'old refactor reverted'}),
+                lambda v,d:v['candidate'].update(sha='0'*40),
+                lambda v,d:v['main'].update(sha=CONTROL),
+                lambda v,d:v['profile'].update(profile='review'),
+                lambda v,d:v['shared_ui'].update(enabled=False),
+                lambda v,d:v['files']['added'].append(copy.deepcopy(v['files']['added'][0])),
+                lambda v,d:v['candidate_only_aliases'][0].update(path='images/replacement.svg'),
+                lambda v,d:next(r for r in v['files']['replaced'] if r['path']=='home-v1.php')['source'].update(blob_sha='f'*40))
+            for change in mutations:
+                with self.subTest(change=change),self.assertRaises(RuntimeError):self.call(f,change)
+
+
+class HomeAdmission(unittest.TestCase):
+    def metadata(self,path):
+        parent=m.HOME_PARENT;owner={'user':{'id':226193297},'author_association':'OWNER'}
+        if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
+        if path=='/git/ref/heads/release/search3-production-ready-v1':return {'object':{'sha':m.HOME_SOURCE_MERGE}}
+        if path=='/pulls/'+str(m.HOME_SOURCE_PR):
+            return {'state':'closed','merged':True,'merge_commit_sha':m.HOME_SOURCE_MERGE,
+                'head':{'sha':m.HOME_SOURCE,'repo':{'full_name':m.REPO}},
+                'base':{'ref':'release/search3-production-ready-v1','repo':{'full_name':m.REPO}}}
+        if path=='/git/commits/'+m.HOME_SOURCE:return {'tree':{'sha':m.HOME_TREE}}
+        if path=='/git/commits/'+m.HOME_SOURCE_MERGE:
+            return {'tree':{'sha':m.HOME_SOURCE_MERGE_TREE},'parents':[{'sha':m.HOME_RELEASE_BASE},{'sha':m.HOME_SOURCE}]}
+        if path=='/compare/'+m.HOME_MAIN_BASE+'...'+CONTROL:
+            return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':m.HOME_MAIN_BASE}}
+        if path.startswith('/contents/'+m.HOME_ENTRY['source_path']+'?ref='):
+            return {'type':'file','sha':m.HOME_ENTRY['blob']}
+        if path.startswith('/contents/v2/'):
+            source=path.removeprefix('/contents/').split('?ref=')[0]
+            target=next(r for p,r in m.HOME_TARGETS.items() if p!='index.php' and r['source_path']==source)
+            return {'type':'file','sha':target['source']['blob_sha']}
+        if path.startswith('/contents/.github/workflows/deploy-anytoour.yml?ref='):
+            return {'type':'file','encoding':'base64','content':base64.b64encode(b'guarded publisher').decode()}
+        if path.startswith('/commits/'+m.HOME_SOURCE+'/check-runs?'):
+            return {'total_count':len(m.HOME_CHECKS),'check_runs':[{'id':i+1,'name':name,'head_sha':m.HOME_SOURCE,
+                'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i,name in enumerate(m.HOME_CHECKS)]}
+        if path=='/actions/runs/'+str(m.HOME_BUILD_RUN):
+            return {'id':m.HOME_BUILD_RUN,'head_sha':m.HOME_SOURCE,'head_branch':m.HOME_SOURCE_BRANCH,
+                'path':'.github/workflows/search3-visual-migration.yml','event':'pull_request','run_attempt':1,
+                'status':'completed','conclusion':'success','actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                'repository':{'full_name':m.REPO},'head_repository':{'full_name':m.REPO}}
+        if path=='/actions/artifacts/'+str(m.HOME_ARTIFACT):
+            return {'id':m.HOME_ARTIFACT,'name':'search3-public-live-'+m.HOME_SOURCE,'expired':False,
+                'digest':'sha256:'+m.HOME_ARTIFACT_SHA,'workflow_run':{'id':m.HOME_BUILD_RUN,'head_sha':m.HOME_SOURCE}}
+        if path=='/actions/runs/'+parent['run_id']:
+            return {'id':int(parent['run_id']),'head_sha':parent['control_source_sha'],'head_branch':'main','path':m.WORKFLOW,
+                'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+parent['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':parent['job_id'],'run_id':int(parent['run_id']),'name':'public-install',
+                'status':'completed','conclusion':'success','steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py handoff',
+                'status':'completed','conclusion':'success'}]}]}
+        if path=='/actions/artifacts/'+str(parent['artifact_id']):
+            return {'id':parent['artifact_id'],'name':'search3-public-install-'+parent['run_id']+'-1','expired':False,
+                'digest':'sha256:'+parent['artifact_sha256'],'workflow_run':{'id':int(parent['run_id'])}}
+        if path.startswith('/issues/4709/comments?'):
+            return [home_test_event()['comment'],owner|{'id':parent['command_comment_id'],
+                'body':f'{m.HANDOFF_PREFIX} {parent["control_source_sha"]} {m.HANDOFF_OPERATION}'},
+                owner|{'id':parent['terminal_comment_id'],'body':'country_handoff_updated_verified '+' '.join(str(parent[k]) for k in
+                    ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256'))}]
+        raise AssertionError('unexpected HOME request: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        values={'HOME_SOURCE_MERGE':'1'*40,'HOME_SOURCE_MERGE_TREE':'2'*40,'HOME_ARTIFACT':987200,
+                'HOME_ARTIFACT_SHA':'3'*64,'HOME_BUILD_RUN':987201,'HOME_SOURCE_BRANCH':'fixture/home-source',
+                'HOME_CHECKS':('visual-migration','home-navigation'),'SITE_PUBLISHER_GUARD_SHA':m.sha(b'guarded publisher')}
+        with contextlib.ExitStack() as stack:
+            for name,value in values.items():stack.enter_context(patch.object(m,name,value))
+            stack.enter_context(patch.object(m,'api',side_effect=api))
+            reviewed=stack.enter_context(patch.object(m,'reviewed_control'))
+            stack.enter_context(patch.object(m.carrier,'run',side_effect=AssertionError('server during HOME admission')))
+            m.home_admission(HOME_IDENTITY);reviewed.assert_called_once_with(CONTROL)
+
+    def test_home_commands_are_fixed_owner_created_attempt_one_and_same_carrier(self):
+        for rollback,identity in ((False,HOME_IDENTITY),(True,HOME_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            self.assertEqual(m.home_event_identity(home_test_event(rollback),env,rollback),
+                (identity,HOME_IDENTITY['run_id']) if rollback else identity)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),('GITHUB_RUN_ATTEMPT','2')):
+                with self.subTest(key=key),self.assertRaises(RuntimeError):m.home_event_identity(home_test_event(rollback),env|{key:value},rollback)
+            for change in (lambda e:e.update(action='edited'),lambda e:e['comment'].update(author_association='MEMBER'),
+                lambda e:e['comment'].update(body=e['comment']['body']+' arbitrary.php hash'),lambda e:e['issue'].update(pull_request={}),
+                lambda e:e['comment'].update(body=handoff_test_event(rollback)['comment']['body'])):
+                value=home_test_event(rollback);change(value)
+                with self.assertRaises(RuntimeError):m.home_event_identity(value,env,rollback)
+        for mode in ('home','home-rollback'):
+            self.assertEqual(m.command_mode([mode]),mode)
+            with self.assertRaises(RuntimeError):m.command_mode([mode,'arbitrary'])
+        workflow=(ROOT/m.WORKFLOW).read_text()
+        section=workflow.split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
+        for token in (m.HOME_PREFIX,m.HOME_OPERATION,m.HOME_ROLLBACK_PREFIX,m.HOME_ROLLBACK_OPERATION,"&& 'home'", "&& 'home-rollback'",
+                      'group: deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1',
+                      'github.event.issue.number == 4709','permissions: {contents: read, issues: read, checks: read, actions: read}'):
+            self.assertIn(token,section)
+        with patch.object(m,'HOME_ARTIFACT',None),patch.object(m,'api') as api,self.assertRaisesRegex(RuntimeError,'home_pending_final_evidence'):
+            m.home_admission(HOME_IDENTITY)
+        api.assert_not_called()
+
+    def test_home_source_live_artifact_parent_and_latest_ci_cannot_drift(self):
+        self.admit()
+        mutations=(('/git/ref/heads/main',lambda v:v['object'].update(sha='f'*40)),
+            ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha=m.HOME_RELEASE_BASE)),
+            ('/pulls/'+str(m.HOME_SOURCE_PR),lambda v:v['base'].update(ref='main')),
+            ('/pulls/'+str(m.HOME_SOURCE_PR),lambda v:v['head'].update(sha='f'*40)),
+            ('/git/commits/'+m.HOME_SOURCE,lambda v:v['tree'].update(sha='f'*40)),
+            ('/git/commits/'+'1'*40,lambda v:v['parents'].reverse()),
+            ('/compare/'+m.HOME_MAIN_BASE+'...'+CONTROL,lambda v:v.update(behind_by=1)),
+            ('/contents/v2/home-v1.php?ref='+CONTROL,lambda v:v.update(sha='f'*40)),
+            ('/contents/'+m.HOME_ENTRY['source_path']+'?ref='+CONTROL,lambda v:v.update(sha='f'*40)),
+            ('/check-runs?',lambda v:v['check_runs'].append(v['check_runs'][0]|{'id':999,'conclusion':'failure'})),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(app={'slug':'untrusted'})),
+            ('/actions/runs/987201',lambda v:v.update(run_attempt=2)),
+            ('/actions/artifacts/987200',lambda v:v.update(digest='sha256:'+'f'*64)),
+            ('/actions/artifacts/987200',lambda v:v.update(workflow_run={'id':987201,'head_sha':'f'*40})),
+            ('/actions/runs/'+m.HOME_PARENT['run_id'],lambda v:v.update(status='in_progress')),
+            ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py refactor')),
+            ('/actions/artifacts/'+str(m.HOME_PARENT['artifact_id']),lambda v:v.update(expired=True)),
+            ('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+            ('/comments?',lambda v:v[2].update(body='unrelated terminal')))
+        for part,mutate in mutations:
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class HomeClient(unittest.TestCase):
+    def env(self,f,name,rollback=False):
+        directory=f.base/name;directory.mkdir();event_path=directory/'event.json';event_path.write_text(json.dumps(home_test_event(rollback)))
+        identity=HOME_ROLLBACK_IDENTITY if rollback else HOME_IDENTITY
+        return directory,environment()|{'GITHUB_RUN_ID':identity['run_id'],'GITHUB_SHA':identity['control_source_sha'],
+            'RUNNER_TEMP':str(directory),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+            'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+
+    def test_home_client_retains_parent_and_rollback_uses_only_own_artifact(self):
+        helper=HomeTransaction()
+        with helper.installed(True) as f:
+            f.home_accepted=helper.execute(f);runner,env=self.env(f,'home-client')
+            with patch.dict(os.environ,env),patch.object(m,'home_admission') as admission,patch.object(m,'home_final_heads'), \
+                 patch.object(m,'download',side_effect=[f.home_parent_raw,b'package covered separately']) as download, \
+                 patch.object(m,'home_package',return_value=(f.home_policy,f.home_files)), \
+                 patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)) as dependency, \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.home_accepted).encode()]),patch('builtins.print'):
+                m.home()
+            self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+            self.assertEqual([c.args for c in download.call_args_list],[(m.HOME_PARENT['artifact_id'],m.HOME_PARENT['artifact_sha256']),
+                (m.HOME_ARTIFACT,m.HOME_ARTIFACT_SHA)])
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value,helper.evidence(f,f.home_accepted))
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+            _,raw=helper.archive(value);restored=helper.rollback(f);runner,env=self.env(f,'home-recovery-client',True)
+            artifact={'id':987303,'digest':'sha256:'+m.sha(raw)}
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                admission=stack.enter_context(patch.object(m,'home_rollback_admission',return_value=(HOME_IDENTITY,artifact)))
+                stack.enter_context(patch.object(m,'rollback_main'))
+                dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                download=stack.enter_context(patch.object(m,'download',return_value=raw))
+                for name in ('api','home_admission','home_final_heads','home_parent_admission','home_parent_evidence','home_package',
+                             'handoff_parent_admission','refactor_parent_admission','site_continuation_collector_log','signing_evidence'):
+                    stack.enter_context(patch.object(m,name,side_effect=AssertionError('historical HOME dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
+                m.home(rollback=True)
+                self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+                download.assert_called_once_with(artifact['id'],m.sha(raw))
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value,helper.evidence(f,restored,True))
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+
+    def test_home_unresolved_int_proof_never_starts_ssh_in_either_mode(self):
+        with HomeTransaction().installed(True) as f:
+            for rollback in (False,True):
+                for stage in ('initial','recheck'):
+                    with self.subTest(rollback=rollback,stage=stage),contextlib.ExitStack() as stack:
+                        runner,env=self.env(f,'home-proof-'+str(rollback)+'-'+stage,rollback)
+                        stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                        stack.enter_context(patch.object(m,'home_admission'));stack.enter_context(patch.object(m,'rollback_main'))
+                        stack.enter_context(patch.object(m,'home_rollback_admission',return_value=(HOME_IDENTITY,{'id':987304,'digest':'sha256:'+'5'*64})))
+                        stack.enter_context(patch.object(m,'download',return_value=f.home_parent_raw))
+                        stack.enter_context(patch.object(m,'home_source_evidence',return_value=(f.home_policy,{},f.home_parent)))
+                        stack.enter_context(patch.object(m,'home_package',return_value=(f.home_policy,f.home_files)))
+                        builder=stack.enter_context(patch.object(m,'home_rollback_remote_program' if rollback else 'home_remote_program',
+                            return_value='# inert native program'))
+                        sequence=([copy.deepcopy(f.tv_evidence)] if stage=='recheck' else [])+[RuntimeError('tv_successor_original_missing')]
+                        resolver=stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=sequence))
+                        remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                        with self.assertRaises(RuntimeError):m.home(rollback)
+                        self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                        self.assertEqual([c.args[0][0] for c in remote.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                        if stage=='initial':builder.assert_not_called()
+                        else:self.assertEqual(builder.call_args.kwargs['tv_successor'],f.tv_evidence)
+                        value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                        self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+    def test_both_historical_parent_clients_require_stable_home_proof_before_ssh(self):
+        with HomeTransaction().installed(True) as f:
+            for family in ('handoff','refactor'):
+                for stage in ('initial','recheck'):
+                    with self.subTest(family=family,stage=stage),contextlib.ExitStack() as stack:
+                        helper=HandoffClient() if family=='handoff' else RefactorClient()
+                        runner,env=helper.env(f,'home-parent-'+family+'-'+stage,True)
+                        original=HANDOFF_IDENTITY if family=='handoff' else REFACTOR_IDENTITY
+                        parent=getattr(f,family+'_parent');policy=getattr(f,family+'_policy')
+                        stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                        stack.enter_context(patch.object(m,family+'_rollback_admission',return_value=(original,{'id':987305,'digest':'sha256:'+'5'*64})))
+                        if family=='refactor':stack.enter_context(patch.object(m,'refactor_rollback_commands',return_value=original))
+                        stack.enter_context(patch.object(m,'rollback_main'));stack.enter_context(patch.object(m,'download',return_value=b'own fixture'))
+                        stack.enter_context(patch.object(m,family+'_source_evidence',return_value=(policy,{},parent)))
+                        stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                        stack.enter_context(patch.object(m,'handoff_restoration_evidence',return_value={'status':'absent'}))
+                        sequence=([{'status':'absent'}] if stage=='recheck' else [])+[RuntimeError('home_restoration_pending')]
+                        resolver=stack.enter_context(patch.object(m,'home_restoration_evidence',side_effect=sequence))
+                        builder=stack.enter_context(patch.object(m,family+'_rollback_remote_program',return_value='# inert native program'))
+                        remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                        with self.assertRaises(RuntimeError):getattr(m,family)(rollback=True)
+                        self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                        self.assertEqual([call.args[0][0] for call in remote.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                        if stage=='initial':builder.assert_not_called()
+                        else:self.assertEqual(builder.call_args.kwargs['home_restoration'],{'status':'absent'})
+                        value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                        self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)

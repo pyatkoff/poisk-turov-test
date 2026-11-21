@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/phone-value.php';
 require_once __DIR__ . '/asset-version-v1.php';
+require_once __DIR__ . '/site-path-v1.php';
 
 /** Emit the unchanged owner artwork before the browser parses the page body. */
 function v2_render_site_favicon(): void {
@@ -17,7 +18,7 @@ function v2_header_path_is_active(string $activePath, string $href): bool {
     return $activePath === $href || ($href !== '/' && str_starts_with($activePath, $href));
 }
 
-function v2_render_site_header(string $phone, string $phoneHref, string $activePath = ''): void {
+function v2_render_site_header(string $phone, string $phoneHref, string $activePath = '', bool $search3 = false): void {
     $phone = trim($phone);
     if ($phone === '' || $phone === 'Array') $phone = '8 (800) 100-61-50';
     $phoneHref = trim($phoneHref);
@@ -46,25 +47,33 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
 })();
 </script>
 <?php endif; ?>
-<header class="at-global-header">
+<header class="at-global-header<?=$search3?' header':''?>">
   <div class="at-global-header__inner">
-    <a class="at-global-header__logo" href="/" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour"></a>
+    <a class="at-global-header__logo" href="<?=v2_header_e(v2_site_href('/'))?>" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour" width="224" height="61"></a>
     <nav class="at-global-header__nav" aria-label="Основное меню">
       <?php foreach ($nav as [$href, $label]): $isActive = v2_header_path_is_active($activePath, $href); ?>
-        <a href="<?=v2_header_e($href)?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+        <?php if ($search3 && $href === '/poisk-turov/'): ?>
+          <button type="button" data-action="top" aria-current="page"><?=v2_header_e($label)?></button>
+        <?php else: ?>
+          <a href="<?=v2_header_e(v2_site_href($href))?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+        <?php endif; ?>
       <?php endforeach; ?>
     </nav>
     <div class="at-global-header__actions">
       <a class="at-global-header__phone" href="tel:<?=v2_header_e($phoneHref)?>"><?=v2_header_e($phone)?></a>
-      <a class="at-global-header__cta" href="/poisk-turov/">Найти тур</a>
+      <?php if (!$search3): ?><a class="at-global-header__cta" href="<?=v2_header_e(v2_site_href('/poisk-turov/'))?>">Найти тур</a><?php endif; ?>
     </div>
     <details class="at-global-header__mobile">
-      <summary aria-label="Открыть меню"><span></span><span></span><span></span></summary>
+      <summary aria-label="Открыть меню"><span>Меню</span><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></summary>
       <div class="at-global-header__mobile-panel">
-        <a class="at-global-header__mobile-phone" href="tel:<?=v2_header_e($phoneHref)?>"><?=v2_header_e($phone)?></a>
         <?php foreach ($nav as [$href, $label]): $isActive = v2_header_path_is_active($activePath, $href); ?>
-          <a href="<?=v2_header_e($href)?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+          <?php if ($search3 && $href === '/poisk-turov/'): ?>
+            <button type="button" data-action="top" aria-current="page"><?=v2_header_e($label)?></button>
+          <?php else: ?>
+            <a href="<?=v2_header_e(v2_site_href($href))?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+          <?php endif; ?>
         <?php endforeach; ?>
+        <a class="at-global-header__mobile-phone" href="tel:<?=v2_header_e($phoneHref)?>"><?=v2_header_e($phone)?></a>
       </div>
     </details>
   </div>

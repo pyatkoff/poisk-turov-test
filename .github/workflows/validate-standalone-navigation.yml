@@ -8,10 +8,12 @@ on:
       - 'v2/home-entry-v1.php'
       - 'v2/site-header-v2.php'
       - 'v2/site-header-v2.css'
+      - 'v2/site-path-v1.php'
       - 'v2/site-page-shell-v1.php'
       - 'v2/form-defaults.php'
       - 'v2/poisk-turov/**'
       - 'v2/header-current-site.js'
+      - 'tests/home-search-loading-handoff.cjs'
       - '.github/workflows/validate-standalone-navigation.yml'
 
 jobs:
@@ -39,7 +41,9 @@ jobs:
           grep -Fq "['/country/', 'Страны']" v2/site-header-v2.php
           grep -Fq '@media(max-width:1024px)' v2/site-header-v2.css
           grep -Fq '.at-global-header__mobile{display:block' v2/site-header-v2.css
-          grep -Fq '.at-global-header__nav,.at-global-header__cta{display:none}' v2/site-header-v2.css
+          grep -Fq '.at-global-header__nav{display:none}' v2/site-header-v2.css
+          grep -Fq '.at-global-header.header .at-global-header__actions{display:none}' v2/site-header-v2.css
+          grep -Fq 'max-height:calc(100dvh - 84px);overflow-y:auto' v2/site-header-v2.css
           php <<'PHP'
           <?php
           require 'v2/site-header-v2.php';
@@ -69,6 +73,19 @@ jobs:
               fwrite(STDERR, "purchase guide must mark itself current in desktop and mobile navigation\n");
               exit(5);
           }
+          if (substr_count($purchaseHtml, 'class="at-global-header__cta"') !== 1) {
+              fwrite(STDERR, "ordinary pages retain one quick search CTA\n");
+              exit(6);
+          }
+          ob_start();
+          v2_render_site_header('8 (800) 100-61-50', '+78001006150', '/poisk-turov/', true);
+          $searchHtml = ob_get_clean();
+          if (substr_count($searchHtml, '<button type="button" data-action="top" aria-current="page">Поиск туров</button>') !== 2
+              || str_contains($searchHtml, 'at-global-header__cta')
+              || str_contains($searchHtml, 'data-anytour-favicon-bootstrap')) {
+              fwrite(STDERR, "Search3 navigation must edit retained state, omit the duplicate CTA and preserve its favicon\n");
+              exit(7);
+          }
           echo "NESTED_NAVIGATION_STATE_OK\n";
           PHP
           echo 'STANDALONE_NAVIGATION_OK'
@@ -89,15 +106,15 @@ jobs:
             $_SERVER["HTTP_HOST"]="anytoour.ru";
             $_GET=[];
             ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
-            if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
-            if (strpos($html, "name=\"daysFrom\"") === false || strpos($html, "name=\"daysTill\"") === false) exit(11);
-            if (strpos($html, "data-home-nights") === false || strpos($html, "data-home-nights-till") === false) exit(12);
+            if (strpos($html, "class=\"primary home-search-link\" href=\"/poisk-turov/\"") === false) exit(10);
+            if (strpos($html, "data-home-search") !== false || strpos($html, "<form") !== false) exit(11);
+            if (strpos($html, "href=\"/poisk-turov/?country=4\"") === false) exit(12);
             foreach (["/country/","/hot/","/contacts/","/how-to-buy/","/rb/"] as $path) {
               if (strpos($html, "href=\"".$path."\"") === false) exit(13);
             }
             if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
           '
-          grep -Fq "nightsTill.value=nights.value" v2/home-v1.php
+          node tests/home-search-loading-handoff.cjs
           grep -Fq "'/country/'" v2/header-current-site.js
           grep -Fq "'/hot/'" v2/header-current-site.js
           grep -Fq "'/contacts/'" v2/header-current-site.js
