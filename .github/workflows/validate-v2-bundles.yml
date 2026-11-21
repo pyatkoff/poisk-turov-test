@@ -77,6 +77,35 @@ jobs:
           foreach (['results-depth-v1.js','results-local-filters-v1.js','ds2-results-filters.js','search-redesign-v2.js'] as $search2) {
               if (!in_array($search2,$manifest['js'],true)) {fwrite(STDERR,"Search 2.0 runtime missing: $search2\n"); exit(31);}
           }
+          $siteCss=[
+              'design-system-v2.css','site-header-v2.css','site-page-v1.css',
+              'seo-editorial-reference-v1.css','seo-price-promo-v1.css','seo-price-calendar-v1.css',
+              'site-shell-alignment-v1.css','editorial-rhythm-v1.css','shared-content-primitives-v1.css',
+              'editorial-ds2-convergence-v1.css','site-coherence-v1.css','site-footer-v1.css',
+          ];
+          if (v2_bundle_files('css','site')!==$siteCss) {fwrite(STDERR,"standalone CSS cascade changed\n"); exit(32);}
+          foreach ($siteCss as $file) {
+              if (!is_file('v2/'.$file) || filesize('v2/'.$file)<1) {fwrite(STDERR,"missing standalone $file\n"); exit(33);}
+          }
+          if (v2_bundle_files('css')!==$manifest['css'] || v2_bundle_files('js')!==$manifest['js']) exit(34);
+          $siteVersion=v2_bundle_content_version('css','site');
+          if ($siteVersion==='0' || strlen($siteVersion)!==16 || $siteVersion!==v2_bundle_content_version('css','site')) exit(35);
+          foreach (['/index.php','/contacts/index.php','/country/turkey/index.php'] as $script) {
+              $_SERVER['SCRIPT_NAME']=$script;
+              $cssUrl=v2_bundle_asset('css','site');
+              if (parse_url($cssUrl,PHP_URL_PATH)!=='/bundle-v1.php' || !str_contains($cssUrl,'&scope=site')) exit(36);
+              if (parse_url(v2_asset('analytics-v4.js',siteRoot:true),PHP_URL_PATH)!=='/analytics-v4.js') exit(37);
+          }
+          // The explicit opt-in must not change legacy entry-relative callers.
+          if (parse_url(v2_asset('analytics-v4.js'),PHP_URL_PATH)!=='/country/turkey/analytics-v4.js') exit(38);
+          foreach ([['js','site'],['css','unknown'],['css','../site']] as [$type,$scope]) {
+              try { v2_bundle_files($type,$scope); exit(39); } catch (InvalidArgumentException $expected) {}
+          }
+          // A preview chooses its asset base explicitly; content paths never override it.
+          define('V2_PUBLIC_BASE_PATH','/_preview/search3-site-candidate');
+          foreach ([v2_bundle_asset('css','site'),v2_bundle_asset('css'),v2_asset('analytics-v4.js',siteRoot:true)] as $url) {
+              if (!str_starts_with($url,'/_preview/search3-site-candidate/')) exit(40);
+          }
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
       - name: Validate bundled JavaScript syntax
@@ -140,6 +169,31 @@ jobs:
           grep -Fq 'AnyTour Design System 2.0 selected-tour convergence' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'approved Search 2.0 results layer' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Final selected-tour responsive layout guard' "$RUNNER_TEMP/bundle.css"
+          site_version=$(php -r 'require "v2/assets.php"; echo v2_bundle_content_version("css","site");')
+          site_url="http://127.0.0.1:$port/bundle-v1.php?type=css&scope=site&v=$site_version"
+          curl -fsS -D "$RUNNER_TEMP/site-headers" "$site_url" -o "$RUNNER_TEMP/site-bundle.css"
+          grep -iq '^Content-Type: text/css' "$RUNNER_TEMP/site-headers"
+          grep -iq '^Cache-Control: public, max-age=31536000, immutable' "$RUNNER_TEMP/site-headers"
+          grep -Fqi "ETag: \"$site_version\"" "$RUNNER_TEMP/site-headers"
+          php <<'PHP' > "$RUNNER_TEMP/site-expected.css"
+          <?php
+          require 'v2/bundle-manifest-v1.php';
+          foreach (v2_bundle_files('css','site') as $file) {
+              echo "\n/* --- " . $file . " --- */\n";
+              readfile('v2/'.$file);
+              echo "\n";
+          }
+          PHP
+          cmp "$RUNNER_TEMP/site-expected.css" "$RUNNER_TEMP/site-bundle.css"
+          status=$(curl -sS -H "If-None-Match: \"$site_version\"" "$site_url" -o "$RUNNER_TEMP/site-not-modified.css" -w '%{http_code}')
+          test "$status" = 304
+          test ! -s "$RUNNER_TEMP/site-not-modified.css"
+          curl -fsSI "http://127.0.0.1:$port/bundle-v1.php?type=css&scope=site&v=stale" > "$RUNNER_TEMP/site-stale-headers"
+          grep -iq '^Cache-Control: no-cache' "$RUNNER_TEMP/site-stale-headers"
+          for query in 'type=js&scope=site' 'type=css&scope=unknown' 'type=css&scope=../site'; do
+            status=$(curl -sS "http://127.0.0.1:$port/bundle-v1.php?$query" -o /dev/null -w '%{http_code}')
+            test "$status" = 404
+          done
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
