@@ -31,7 +31,8 @@ on:
 jobs:
   content-live:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    # Keep the pinned Playwright 1.55 browser on its supported Ubuntu image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

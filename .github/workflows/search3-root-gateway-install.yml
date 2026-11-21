@@ -2,11 +2,100 @@ name: Install checked Search3 root gateway
 on:
   pull_request:
     branches: [main]
-    paths: ['.github/workflows/search3-root-gateway-install.yml','scripts/deploy/search3_root_gateway_install.py','scripts/deploy/search3_root_gateway_inspect.py','scripts/deploy/search3_root_gateway_incident.py','tests/search3_root_gateway_install_test.py','scripts/deploy/search3_root_gateway_live_check.py','tests/search3_root_gateway_live_check_test.py']
+    paths: ['.github/workflows/search3-root-gateway-install.yml','scripts/deploy/search3_root_gateway_install.py','scripts/deploy/search3_root_gateway_inspect.py','scripts/deploy/search3_root_gateway_incident.py','tests/search3_root_gateway_install_test.py','scripts/deploy/search3_root_gateway_live_check.py','tests/search3_root_gateway_live_check_test.py','tests/search3_production_readiness_inspect_test.py','scripts/deploy/search3_public_install.py','tests/search3_public_install_test.py','.github/workflows/deploy-anytoour.yml','tests/anytoour_production_deploy_guard_test.py']
   issue_comment:
     types: [created]
 permissions: {contents: read}
 jobs:
+  public-install-contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: |
+          python3 tests/search3_public_install_test.py
+          python3 tests/anytoour_production_deploy_guard_test.py
+  public-install:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'pyatkoff/poisk-turov-test/.github/workflows/search3-root-gateway-install.yml@refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4709 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      (github.event.comment.body == format('/install-search3-public {0} public-search3-20261120-v1', github.sha) ||
+       github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) ||
+       github.event.comment.body == format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha) ||
+       github.event.comment.body == format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha) ||
+       github.event.comment.body == format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha) ||
+       github.event.comment.body == format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha) ||
+       (startsWith(github.event.comment.body, format('/rollback-site-shared-assets {0} ', github.sha)) &&
+        endsWith(github.event.comment.body, ' site-shared-assets-rollback-20261121-v1')) ||
+       (startsWith(github.event.comment.body, format('/rollback-search3-public-update {0} ', github.sha)) &&
+        endsWith(github.event.comment.body, ' public-search3-flight-return-rollback-20261121-v1')) ||
+       (startsWith(github.event.comment.body, format('/rollback-search3-public {0} ', github.sha)) &&
+        endsWith(github.event.comment.body, ' public-search3-rollback-20261120-v1')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {contents: read, issues: read, checks: read, actions: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - run: |
+          python3 tests/search3_public_install_test.py
+          python3 tests/anytoour_production_deploy_guard_test.py
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_public_install.py ${{ github.event.comment.body == format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha) && 'site-inspect' || startsWith(github.event.comment.body, '/rollback-site-shared-assets ') && 'site-rollback' || github.event.comment.body == format('/update-site-shared-assets {0} site-shared-assets-20261121-v1', github.sha) && 'site-update' || startsWith(github.event.comment.body, '/rollback-search3-public-update ') && 'update-rollback' || github.event.comment.body == format('/update-search3-public {0} public-search3-flight-return-20261121-v1', github.sha) && 'update' || startsWith(github.event.comment.body, '/rollback-search3-public ') && 'rollback' || github.event.comment.body == format('/inspect-search3-public-install {0} public-search3-readiness-20261120-v1', github.sha) && 'inspect' || github.event.comment.body == format('/continue-search3-public {0} public-search3-20261121-after-44840666320-v1', github.sha) && 'continue' || '' }}
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-public-install-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: '${{ runner.temp }}/search3-public-install/evidence.json'
+          if-no-files-found: warn
+          retention-days: 30
+  production-readiness-contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - run: python3 tests/search3_production_readiness_inspect_test.py
+  readiness-inspect:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'pyatkoff/poisk-turov-test/.github/workflows/search3-root-gateway-install.yml@refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4709 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == format('/inspect-search3-production-readiness {0} readiness-public-int-20261120-v2', github.sha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions: {contents: read, issues: read, checks: read, actions: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - run: python3 tests/search3_production_readiness_inspect_test.py
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_root_gateway_inspect.py production-readiness
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-production-readiness-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: '${{ runner.temp }}/search3-production-readiness/evidence.json'
+          if-no-files-found: warn
+          retention-days: 30
   contracts:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04

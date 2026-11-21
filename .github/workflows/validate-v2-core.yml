@@ -26,6 +26,12 @@ on:
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
       - '.github/workflows/deploy-anytoour.yml'
+      - '.github/workflows/search3-root-gateway-install.yml'
+      - 'scripts/deploy/search3_public_install.py'
+      - 'tests/search3_public_install_test.py'
+      - 'tests/anytoour_production_deploy_guard_test.py'
+      - 'scripts/deploy/search3_root_gateway_install.py'
+      - 'scripts/deploy/search3_root_gateway_inspect.py'
       - '.github/workflows/validate-v2-core.yml'
   workflow_dispatch:
 
@@ -279,7 +285,7 @@ jobs:
           canonical=.github/workflows/deploy-anytoour.yml
           legacy=.github/workflows/deploy.yml
           grep -Fq -- 'name: Deploy anytoour.ru' "$canonical"
-          grep -Fq -- "- 'v2/**'" "$canonical"
+          python3 -B tests/anytoour_production_deploy_guard_test.py
           grep -Fq -- 'tar -C v2 -czf "$archive" .' "$canonical"
           grep -Fq -- "root='~/www/anytoour.ru'" "$canonical"
           test ! -e "$legacy"

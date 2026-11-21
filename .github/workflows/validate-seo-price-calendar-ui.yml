@@ -8,6 +8,7 @@ on:
       - 'v2/seo-price-calendar-v1.php'
       - 'v2/seo-price-calendar-v1.css'
       - 'v2/site-page-shell-v1.php'
+      - 'v2/bundle-manifest-v1.php'
       - 'v2/country-page-v1.php'
       - 'v2/seo-resort-page-v1.php'
       - 'v2/seo-seasonal-page-v1.php'
@@ -20,6 +21,7 @@ on:
       - 'v2/seo-price-calendar-v1.php'
       - 'v2/seo-price-calendar-v1.css'
       - 'v2/site-page-shell-v1.php'
+      - 'v2/bundle-manifest-v1.php'
       - 'v2/country-page-v1.php'
       - 'v2/seo-resort-page-v1.php'
       - 'v2/seo-seasonal-page-v1.php'
@@ -50,5 +52,5 @@ jobs:
           grep -Fq 'INTERVAL 72 HOUR' v2/seo-price-calendar-v1.php
           grep -Fq "'missing_semantics' => 'unknown_not_zero'" v2/data/price-calendar-core-v1.php
           grep -Fq 'data-seo-price-calendar' v2/seo-price-calendar-v1.php
-          grep -Fq "sp_inline_css('seo-price-calendar-v1.css')" v2/site-page-shell-v1.php
+          grep -Fq "v2_bundle_asset('css', 'site')" v2/site-page-shell-v1.php
           echo SEO_PRICE_CALENDAR_UI_CONTRACT_OK

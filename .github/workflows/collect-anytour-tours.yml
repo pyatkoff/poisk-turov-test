@@ -139,11 +139,23 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - name: Exact reviewed LOCAL observation hook
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
+          path: local-tv-source
+          persist-credentials: false
+      - name: Validate the installed LOCAL and PRICE observation contract
+        env:
+          LOCAL_TV_CAPTURE_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
+        run: |
+          python3 tests/local_tv_capture_workflow_test.py -v
+          php local-tv-source/tests/local-tv-price-observer-test.php
       - name: Exact existing post and feed publisher callback
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: e8089224d98ec07bb4908a76125a909cca1506c4
+          ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -209,7 +221,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 7245b007e8b7fe2d0c3e0fe7b60a9cdff108d0d8d7a6a7b9ef74d69d191baf3e
           python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
@@ -227,14 +239,14 @@ jobs:
       - name: Exact reviewed LOCAL observation hook
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
+          ref: 4473719a21b10633fcdc506fb007ad3496282f4b
           path: local-tv-source
           persist-credentials: false
       - name: Exact existing post and feed publisher callback
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: e8089224d98ec07bb4908a76125a909cca1506c4
+          ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -243,7 +255,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 7245b007e8b7fe2d0c3e0fe7b60a9cdff108d0d8d7a6a7b9ef74d69d191baf3e
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -285,17 +297,19 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
+          expected_db_sha=$(sha256sum v2/data/db-v1.php | cut -d' ' -f1)
+          expected_observer_sha=$(sha256sum local-tv-source/v2/data/price-observer-v1.php | cut -d' ' -f1)
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/app/integrations"'
           scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:~/www/anytoour.ru/app/integrations/"
           scp "${opts[@]}" \
-            local-tv-source/v2/data/db-v1.php \
+            v2/data/db-v1.php \
             local-tv-source/v2/data/tourvisor-client-v1.php \
             local-tv-source/v2/data/hotel-details-v1.php \
             local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/price-segment-v1.php \
             v2/data/hotel-monitor-prices-v1.php \
             v2/data/hotel-monitor-prices-read-v1.php \
-            v2/data/price-observer-v1.php \
+            local-tv-source/v2/data/price-observer-v1.php \
             "$RUNNER_TEMP/monitor-price-hook.php" \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
@@ -321,6 +335,8 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
+            printf '%s  %s\n' '$expected_db_sha' \"\$root/db-v1.php\" '$expected_observer_sha' \"\$root/price-observer-v1.php\" | sha256sum --check --strict -
+            printf 'ANYTOUR_LOCAL_PRICE_READBACK_OK db=%s observer=%s\n' '$expected_db_sha' '$expected_observer_sha'
             php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null
@@ -389,7 +405,18 @@ jobs:
                 echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
               fi
               if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
-                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || collector_status=\$?
+                hook_status=0
+                ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || hook_status=\$?
+                if [ \"\$hook_status\" -ne 0 ]; then
+                  collector_status=\"\$hook_status\"
+                elif [ -f \"\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php\" ]; then
+                  promoted_status=0
+                  php \"\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php\" --apply || promoted_status=\$?
+                  if [ \"\$promoted_status\" -ne 0 ]; then
+                    echo \"PROMOTED_PRICE_DEFERRED status=\$promoted_status\"
+                    if [ \"\$collector_status\" -eq 0 ]; then collector_status=\"\$promoted_status\"; fi
+                  fi
+                fi
               fi
             fi
             rm -f \"\$collector_log\"

@@ -4,6 +4,7 @@ declare(strict_types=1);
 function sp_e($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
 require_once __DIR__ . '/../v2/seo-price-calendar-v1.php';
+require_once __DIR__ . '/../v2/bundle-manifest-v1.php';
 
 function cal_fail(string $message): never
 {
@@ -89,7 +90,8 @@ foreach (['css'=>$css,'shell'=>$shell,'country'=>$country,'resort'=>$resort,'sea
 cal_assert(str_contains($css, '.sp-price-calendar__grid'), 'css_grid');
 cal_assert(str_contains($css, '.sp-price-day--best'), 'css_best');
 cal_assert(str_contains($css, '.sp-price-day--unknown'), 'css_unknown');
-cal_assert(str_contains($shell, "sp_inline_css('seo-price-calendar-v1.css')"), 'shell_css');
+cal_assert(str_contains($shell, "v2_bundle_asset('css', 'site')")
+    && in_array('seo-price-calendar-v1.css', v2_bundle_files('css', 'site'), true), 'shell_css');
 cal_assert(str_contains($country, "v2_seo_country_snapshot_offers(\$countryId, 12)"), 'country_candidates');
 cal_assert(str_contains($country, "array_slice(\$offerCandidates, 0, 6)"), 'country_visible_six');
 cal_assert(str_contains($country, 'v2_seo_render_price_calendar'), 'country_calendar');

@@ -6,6 +6,13 @@ on:
     paths:
       - 'v2/selected-tour-layout-guard-v1.css'
       - 'v2/bundle-manifest-v1.php'
+      - 'v2/bundle-v1.php'
+      - 'v2/assets.php'
+      - 'v2/index.php'
+      - 'v2/results-renderer-v5.js'
+      - 'v2/tour-controller-v4.js'
+      - 'v2/checkout-experience-v1.js'
+      - 'v2/selected-tour-return-v1.js'
       - '.github/workflows/validate-selected-tour-tablet-layout.yml'
 
 permissions:
@@ -13,7 +20,8 @@ permissions:
 
 jobs:
   tablet-selected-tour:
-    runs-on: ubuntu-latest
+    # Keep the pinned Playwright 1.55 browser on its supported Ubuntu image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -24,23 +32,74 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify selected-tour stack against production
+      - name: Verify native selected-tour stack with local API fixtures
         shell: bash
         run: |
           set -euo pipefail
+          php -S 127.0.0.1:8099 -t v2 >"$RUNNER_TEMP/selected-tablet-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..30}; do
+            if curl -fsS http://127.0.0.1:8099/index.php >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then break; fi
+            sleep .2
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/selected-tablet-php.log" >&2; exit 1; fi
           cat > check-selected-tablet.cjs <<'JS'
           const { chromium } = require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
-              const page=await browser.newPage({viewport:{width:820,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
-              const iso=days=>new Date(Date.now()+days*86400000).toISOString().slice(0,10);
-              const u=new URL('https://anytoour.ru/poisk-turov/');
-              Object.entries({from:'1',country:'4',dateFrom:iso(2),dateTo:iso(22),daysFrom:'7',daysTill:'7',count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
-              const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
+              const base='http://127.0.0.1:8099';
+              const context=await browser.newContext({viewport:{width:820,height:1000},serviceWorkers:'block',extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+              const page=await context.newPage();
+              // Data-only fixtures use the native tour/flights contract already exercised
+              // by validate-flight-autoload-race.yml. All markup and styles come from V2.
+              const tour={id:'tablet-fixture-tour',price:187700,hotel:{id:'tablet-fixture-hotel',name:'Учебный отель для проверки выбранного тура',country:{id:4,name:'Турция'},region:{id:19,name:'Аланья'},category:5},departure:{id:1,name:'Москва'},date:'10.09.2030',nights:7,adults:2,childs:0,meal:{name:'AI',russianName:'Всё включено'},roomType:'STANDARD',placement:'DBL',operator:{name:'TEST'}};
+              const hotel={...tour.hotel,price:tour.price,tours:[tour]};
+              const flights=[{isDefault:true,price:{value:tour.price},fuelCharge:{value:0},forward:[],backward:[]}];
+              const apiCalls={tour:0,flights:0},unexpected=[],pageErrors=[],bundles=new Set();
+              page.on('pageerror',error=>pageErrors.push(String(error)));
+              page.on('response',response=>{
+                const url=new URL(response.url());
+                if(url.origin===base&&url.pathname==='/bundle-v1.php'){
+                  if(response.status()!==200)pageErrors.push('bundle HTTP '+response.status());
+                  else bundles.add(url.searchParams.get('type'));
+                }
+              });
+              await context.route('**/*',async route=>{
+                const request=route.request(),url=new URL(request.url());
+                const onlyParams=(...names)=>[...url.searchParams.keys()].sort().join(',')===names.sort().join(',');
+                const json=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
+                // These peripheral resources are intentionally offline; no production
+                // request, lead, search or passive observer may leave this fixture.
+                if(['https://app.anytoour.ru/web-consultant/widget.js','https://mc.yandex.ru/metrika/tag.js'].includes(url.href))return route.abort('blockedbyclient');
+                if(url.origin===base&&['/images/logo.svg','/favicon.ico','/favicon.png'].includes(url.pathname))return route.abort('blockedbyclient');
+                if(url.origin===base&&request.method()==='GET'){
+                  if(url.pathname==='/index.php'&&!url.search&&request.isNavigationRequest())return route.continue();
+                  if(url.pathname==='/bundle-v1.php'&&onlyParams('type','v')&&['css','js'].includes(url.searchParams.get('type'))&&/^[a-f0-9]{16}$/.test(url.searchParams.get('v')||''))return route.continue();
+                  if(url.pathname==='/data/departures-v1.php'&&!url.search)return json({ok:true,items:[{id:1,name:'Москва'}]});
+                  if(url.pathname==='/data/destinations-v1.php'&&onlyParams('action','departureId')&&url.searchParams.get('action')==='countries'&&url.searchParams.get('departureId')==='1')return json({ok:true,items:[{id:4,name:'Турция'}]});
+                  if(url.pathname==='/api-v2.php'){
+                    const action=url.searchParams.get('action');
+                    if(action==='meals'&&onlyParams('action'))return json([{id:7,name:'AI',russianName:'Всё включено'}]);
+                    if(['tour','flights'].includes(action)&&onlyParams('action','tourId','currency')&&url.searchParams.get('tourId')===tour.id&&url.searchParams.get('currency')==='RUB'){
+                      apiCalls[action]++;
+                      return json(action==='tour'?tour:flights);
+                    }
+                  }
+                }
+                unexpected.push(request.method()+' '+url.href);
+                return route.abort('blockedbyclient');
+              });
+              // No URL search parameters: native startup only loads fixture catalogs.
+              const response=await page.goto(base+'/index.php',{waitUntil:'domcontentloaded',timeout:45000});
               if(!response||response.status()!==200)throw new Error('HTTP '+(response&&response.status()));
+              await page.waitForFunction(()=>window.V2ResultsV5&&window.V2TourController&&window.V2CheckoutExperienceV1&&window.V2SelectedTourReturnV1&&document.getElementById('tourSearch')?.dataset.catalogSource==='anytour-departures');
+              if(!bundles.has('css')||!bundles.has('js'))throw new Error('native full CSS/JS bundles missing');
+              await page.evaluate(item=>window.V2ResultsV5.render([item]),hotel);
               await page.waitForSelector('.hotel-card .tour-row .direct-tour[data-tid]:not([data-tid=""])',{timeout:90000});
-              await page.addStyleTag({path:'v2/selected-tour-layout-guard-v1.css'});
               for(const width of [820,768]){
                 await page.setViewportSize({width,height:1000});
                 await page.waitForTimeout(120);
@@ -49,6 +108,7 @@ jobs:
                 await choose.click({timeout:10000});
                 await page.waitForSelector('#selectedTour:not([hidden]) .selected-head.checkout-head',{timeout:20000});
                 await page.waitForSelector('#selectedTour:not([hidden]) .lead-form',{timeout:10000});
+                await page.waitForFunction(id=>window.V2TourController.currentTour?.id===id&&document.querySelector('#selectedTour .flight-variant'),tour.id);
                 await page.waitForTimeout(180);
                 const state=await page.evaluate(()=>{
                   const root=document.querySelector('#selectedTour:not([hidden])');
@@ -68,7 +128,29 @@ jobs:
                 if(state.overflow)throw new Error(width+': horizontal overflow');
                 await page.locator('#selectedTour .back-results').click({timeout:10000});
                 await page.waitForSelector('.hotel-card',{state:'visible',timeout:10000});
+                const returnState=()=>page.evaluate(()=>{
+                  const selected=document.getElementById('selectedTour'),focus=document.activeElement;
+                  return {hidden:selected?.hidden,aria:selected?.getAttribute('aria-hidden'),focusId:focus?.id,focusTourId:focus?.dataset.tid,focusVisible:!!focus&&focus.getClientRects().length>0,sourceTourId:window.V2SelectedTourReturnV1.sourceTourId,bodyClass:document.body.className};
+                });
+                // The native return owner focuses #results when the source is hidden.
+                // DS2 hides the results layout until its MutationObserver clears the
+                // selected body class, after the owner's synchronous source lookup.
+                await page.waitForFunction(id=>{
+                  const selected=document.getElementById('selectedTour'),focus=document.activeElement,owner=window.V2SelectedTourReturnV1;
+                  const sourceFocus=focus===owner.sourceButton&&focus?.matches('.direct-tour')&&focus.dataset.tid===id;
+                  const nativeFocus=focus===document.getElementById('results')||sourceFocus;
+                  const visible=!!focus&&!focus.hidden&&focus.getClientRects().length>0&&getComputedStyle(focus).visibility!=='hidden';
+                  return selected?.hidden&&selected.getAttribute('aria-hidden')==='true'&&owner.sourceTourId===id&&nativeFocus&&visible;
+                },tour.id,{timeout:10000}).catch(async error=>{
+                  console.error('SELECTED_TABLET_RETURN_FAILURE_'+width,JSON.stringify(await returnState()));
+                  throw error;
+                });
+                console.log('SELECTED_TABLET_RETURN_STATE_'+width,JSON.stringify(await returnState()));
               }
+              if(apiCalls.tour!==2||apiCalls.flights!==2)throw new Error('native selection API calls: '+JSON.stringify(apiCalls));
+              if(unexpected.length)throw new Error('unexpected requests blocked: '+unexpected.join(' | '));
+              if(pageErrors.length)throw new Error('page errors: '+pageErrors.join(' | '));
+              console.log('SELECTED_TABLET_LOCAL_FIXTURE_OK',JSON.stringify({apiCalls,bundles:[...bundles].sort(),unexpected}));
               await page.close();
             }finally{await browser.close();}
             console.log('SELECTED_TOUR_TABLET_LAYOUT_OK');
