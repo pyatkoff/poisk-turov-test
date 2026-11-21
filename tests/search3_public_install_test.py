@@ -4734,6 +4734,7 @@ class RefactorClient(unittest.TestCase):
                 stack.enter_context(patch.object(m,'refactor_rollback_admission',return_value=(REFACTOR_IDENTITY,{'id':555,'digest':'sha256:'+m.sha(raw)})))
                 stack.enter_context(patch.object(m,'refactor_rollback_commands',return_value=REFACTOR_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
                 dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                restoration=stack.enter_context(patch.object(m,'handoff_restoration_evidence',return_value={'status':'absent'}))
                 download=stack.enter_context(patch.object(m,'download',return_value=raw))
                 for name in ('api','refactor_admission','refactor_final_heads','refactor_parent_admission','refactor_parent_evidence',
                              'refactor_package','site_continuation_collector_log','signing_evidence'):
@@ -4741,6 +4742,7 @@ class RefactorClient(unittest.TestCase):
                 stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
                 m.refactor(rollback=True)
                 self.assertEqual(dependency.call_count,2);download.assert_called_once_with(555,m.sha(raw))
+                self.assertEqual(restoration.call_count,2)
             path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
             self.assertEqual(value['status'],'refactor_rolled_back_verified')
             self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
@@ -4763,6 +4765,7 @@ class RefactorClient(unittest.TestCase):
                                                                 return_value='# inert native program'))
                         sequence=([copy.deepcopy(f.tv_evidence)] if stage=='recheck' else [])+[RuntimeError('tv_successor_original_missing')]
                         resolver=stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=sequence))
+                        stack.enter_context(patch.object(m,'handoff_restoration_evidence',return_value={'status':'absent'}))
                         remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
                         with self.assertRaises(RuntimeError):m.refactor(rollback)
                         self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
@@ -4773,6 +4776,749 @@ class RefactorClient(unittest.TestCase):
                         self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
 
 
+
+
+HANDOFF_IDENTITY={'control_source_sha':CONTROL,'run_id':'945678','command_comment_id':9013}
+HANDOFF_ROLLBACK_IDENTITY={'control_source_sha':'d'*40,'run_id':'956789','command_comment_id':9014}
+
+
+def handoff_test_event(rollback=False):
+    value=event();identity=HANDOFF_ROLLBACK_IDENTITY if rollback else HANDOFF_IDENTITY
+    body=(f'{m.HANDOFF_ROLLBACK_PREFIX} {identity["control_source_sha"]} {HANDOFF_IDENTITY["run_id"]} {m.HANDOFF_ROLLBACK_OPERATION}'
+          if rollback else f'{m.HANDOFF_PREFIX} {identity["control_source_sha"]} {m.HANDOFF_OPERATION}')
+    stamp='2026-11-21T15:10:00Z' if rollback else '2026-11-21T15:00:00Z'
+    value['comment'].update(id=identity['command_comment_id'],body=body,created_at=stamp,updated_at=stamp)
+    return value
+
+
+class HandoffTransaction(unittest.TestCase):
+    @staticmethod
+    def archive(value):
+        data=(json.dumps(value,sort_keys=True)+'\n').encode();packet=io.BytesIO()
+        with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',data)
+        return data,packet.getvalue()
+
+    @contextlib.contextmanager
+    def installed(self,tv=False):
+        helper=RefactorTransaction()
+        with helper.installed(tv) as f:
+            f.refactor_accepted=helper.execute(f)
+            self.assertEqual(f.refactor_accepted['status'],'refactor_updated_verified')
+            value={**REFACTOR_IDENTITY,'operation_id':m.REFACTOR_OPERATION,'source_sha':m.REFACTOR_SOURCE,
+                'manifest_sha256':m.REFACTOR_MANIFEST_SHA,'read_only':False,'phase':'complete','ssh_started':True,
+                'status':'refactor_updated_verified','parent_site':m.refactor_parent_identity(),
+                'parent_evidence':f.refactor_parent,'remote':f.refactor_accepted}
+            data,raw=self.archive(value)
+            pin=m.HANDOFF_PARENT|REFACTOR_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(raw),
+                'snapshot_manifest_sha256':f.refactor_accepted['snapshot_manifest_sha256']}
+            targets={};files={}
+            for path in m.HANDOFF_ORDER:
+                before=(f.root/path).read_bytes();after=('<?php /* approved country handoff '+path+' */\n').encode()
+                row=lambda data:{'state':'present','mode':'0644','size':len(data),'sha256':m.sha(data)}
+                targets[path]={'before':row(before),'after':row(after),
+                    'blob':m.hashlib.sha1(b'blob '+str(len(after)).encode()+b'\0'+after).hexdigest()}
+                files[path]=base64.b64encode(after).decode()
+            with patch.object(m,'HANDOFF_PARENT',pin),patch.object(m,'HANDOFF_TARGETS',targets):
+                f.handoff_parent=value;f.handoff_parent_raw=raw
+                f.handoff_policy=m.handoff_policy();f.handoff_files=files
+                f.handoff_private=f.private.parent/m.HANDOFF_OPERATION
+                f.handoff_rollback_private=f.private.parent/m.HANDOFF_ROLLBACK_OPERATION
+                yield f
+
+    def execute(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.handoff_remote_program(f.handoff_policy,f.handoff_files,HANDOFF_IDENTITY,f.handoff_parent,**kwargs)
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_handoff_result(HANDOFF_IDENTITY,value)
+        return value
+
+    def rollback(self,f,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.handoff_rollback_remote_program(f.handoff_policy,HANDOFF_ROLLBACK_IDENTITY,HANDOFF_IDENTITY,
+            f.handoff_accepted,f.handoff_parent,**kwargs)
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_handoff_result(HANDOFF_ROLLBACK_IDENTITY,value,HANDOFF_IDENTITY,f.handoff_accepted)
+        return value
+
+    def ancestor_records(self,f):
+        roots=(f.private,f.update_private,f.continuation_private,f.refactor_private)
+        return {str(path.relative_to(f.private.parent)):(UpdateTransaction().stamp(path),path.stat().st_ctime_ns,path.read_bytes())
+                for root in roots for path in root.rglob('*') if path.is_file()}
+
+    def evidence(self,f,result,rollback=False):
+        identity=HANDOFF_ROLLBACK_IDENTITY if rollback else HANDOFF_IDENTITY
+        value={**identity,'operation_id':m.HANDOFF_ROLLBACK_OPERATION if rollback else m.HANDOFF_OPERATION,
+            'source_sha':m.HANDOFF_SOURCE,'manifest_sha256':f.handoff_policy['manifest'],
+            'read_only':False,'phase':'complete','ssh_started':True,'status':result['status'],
+            'parent_refactor':m.handoff_parent_identity(),'parent_evidence':f.handoff_parent,'remote':result}
+        if rollback:value.update(original_handoff=HANDOFF_IDENTITY,original_handoff_run_id=HANDOFF_IDENTITY['run_id'])
+        return value
+
+    def restoration(self,f,result,automatic=False):
+        install=self.evidence(f,f.handoff_accepted)
+        return {'status':'restored','original':HANDOFF_IDENTITY,'install_evidence':install,
+            'restoration_evidence':install if automatic else self.evidence(f,result,True)}
+
+    def rollback_refactor(self,f,proof,change=None):
+        kwargs={'tv_successor':copy.deepcopy(f.tv_evidence)} if hasattr(f,'tv_evidence') else {}
+        program=m.refactor_rollback_remote_program(f.refactor_policy,REFACTOR_ROLLBACK_IDENTITY,REFACTOR_IDENTITY,
+            f.refactor_accepted,f.refactor_parent,handoff_restoration=proof,**kwargs)
+        result=UpdateTransaction().run_program(f,program,change)
+        m.valid_refactor_result(REFACTOR_ROLLBACK_IDENTITY,result,REFACTOR_IDENTITY,f.refactor_accepted)
+        return result
+
+    def assert_restored_guard(self,f,result):
+        self.assertEqual(set(result['restored_guard']),set(m.HANDOFF_ORDER))
+        for path in m.HANDOFF_ORDER:
+            stamp=(*UpdateTransaction().stamp(f.root/path),(f.root/path).stat().st_ctime_ns)
+            self.assertEqual(result['restored_guard'][path],[m.HANDOFF_TARGETS[path]['before'],list(stamp)])
+
+    def test_exact_php_roundtrip_retains_ctime_proof_and_full_historical_recovery(self):
+        self.assertEqual(m.HANDOFF_ORDER,('seo-page-primitives-v1.php','country-page-v1.php'))
+        for tv in (False,True):
+            with self.subTest(tv=tv),self.installed(tv) as f:
+                before=SiteTransaction().public_files(f);ancestors=self.ancestor_records(f)
+                original_ctimes={p:(f.root/p).stat().st_ctime_ns for p in m.HANDOFF_ORDER}
+                tv_proof=TvSuccessorTransaction().proof_records(f) if tv else None
+                f.handoff_accepted=self.execute(f)
+                self.assertEqual(f.handoff_accepted['status'],'country_handoff_updated_verified')
+                self.assertEqual(f.handoff_accepted['written_files'],list(m.HANDOFF_ORDER))
+                self.assertIsNone(f.handoff_accepted['restored_guard'])
+                after=SiteTransaction().public_files(f)
+                self.assertEqual({p for p in before if before[p]!=after[p]},set(m.HANDOFF_ORDER))
+                restored=self.rollback(f)
+                self.assertEqual(restored['status'],'country_handoff_rolled_back_verified')
+                self.assertEqual(restored['rollback_files'],list(reversed(m.HANDOFF_ORDER)))
+                self.assertEqual(SiteTransaction().public_files(f),before);self.assertEqual(self.ancestor_records(f),ancestors)
+                self.assert_restored_guard(f,restored)
+                for path in m.HANDOFF_ORDER:self.assertNotEqual((f.root/path).stat().st_ctime_ns,original_ctimes[path])
+                proof=self.restoration(f,restored);m.handoff_restoration_value(proof)
+                self.assertEqual(self.rollback_refactor(f,proof)['status'],'refactor_rolled_back_verified')
+                self.assertEqual(SiteContinuationTransaction().rollback(f)['status'],'site_rolled_back_verified')
+                self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+                self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+                if tv:
+                    self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                    self.assertEqual(TvSuccessorTransaction().proof_records(f),tv_proof)
+
+    def test_partial_auto_recovery_attests_both_php_and_keeps_parent_recovery_working(self):
+        with self.installed(True) as f:
+            before=SiteTransaction().public_files(f)
+            unchanged_ctime=(f.root/m.HANDOFF_ORDER[1]).stat().st_ctime_ns
+            f.handoff_accepted=self.execute(f,SiteTransaction().fail_after_exchange(0))
+            self.assertEqual(f.handoff_accepted['status'],'rolled_back_no_replay')
+            self.assertEqual(f.handoff_accepted['written_files'],[m.HANDOFF_ORDER[0]])
+            self.assertEqual(f.handoff_accepted['rollback_files'],[m.HANDOFF_ORDER[0]])
+            self.assertEqual(SiteTransaction().public_files(f),before)
+            self.assertEqual((f.root/m.HANDOFF_ORDER[1]).stat().st_ctime_ns,unchanged_ctime)
+            self.assert_restored_guard(f,f.handoff_accepted)
+            proof=self.restoration(f,f.handoff_accepted,True);m.handoff_restoration_value(proof)
+            self.assertEqual(self.rollback_refactor(f,proof)['status'],'refactor_rolled_back_verified')
+            self.assertEqual(SiteContinuationTransaction().rollback(f)['status'],'site_rolled_back_verified')
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+
+    def test_reserved_failure_before_first_intent_keeps_original_stamps_and_parent_recovery(self):
+        with self.installed(True) as f:
+            before=SiteTransaction().public_files(f)
+            original_ctimes={p:(f.root/p).stat().st_ctime_ns for p in m.HANDOFF_ORDER}
+            def fail(program):
+                line="  private.create('intent-'+str(index),canonical("
+                self.assertIn(line,program)
+                return program.replace(line,"  if index==0: raise RuntimeError('operation_failed')\n"+line,1)
+            f.handoff_accepted=self.execute(f,fail)
+            self.assertEqual(f.handoff_accepted['status'],'rolled_back_no_replay')
+            self.assertTrue(f.handoff_accepted['reservation_created'])
+            self.assertEqual(f.handoff_accepted['written_files'],[]);self.assertEqual(f.handoff_accepted['rollback_files'],[])
+            self.assertTrue((f.handoff_private/'stage/0').exists());self.assertFalse((f.handoff_private/'intent-0').exists())
+            self.assertEqual(SiteTransaction().public_files(f),before)
+            self.assertEqual({p:(f.root/p).stat().st_ctime_ns for p in m.HANDOFF_ORDER},original_ctimes)
+            self.assert_restored_guard(f,f.handoff_accepted)
+            proof=self.restoration(f,f.handoff_accepted,True);m.handoff_restoration_value(proof)
+            self.assertEqual(self.rollback_refactor(f,proof)['status'],'refactor_rolled_back_verified')
+            self.assertEqual(SiteContinuationTransaction().rollback(f)['status'],'site_rolled_back_verified')
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+
+    def test_restoration_attestation_does_not_accept_later_ctime_or_inode_changes(self):
+        for kind in ('helper-ctime','country-ctime','unrelated-ctime','helper-inode'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                f.handoff_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+                path=f.root/('data/db-v1.php' if kind=='unrelated-ctime' else
+                    m.HANDOFF_ORDER[1] if kind=='country-ctime' else m.HANDOFF_ORDER[0])
+                prior=path.stat();raw=path.read_bytes()
+                if kind=='helper-inode':
+                    other=path.with_name(path.name+'.foreign');other.write_bytes(raw);other.chmod(stat.S_IMODE(prior.st_mode))
+                    os.utime(other,ns=(prior.st_atime_ns,prior.st_mtime_ns));other.replace(path)
+                else:
+                    path.write_bytes(raw);os.utime(path,ns=(prior.st_atime_ns,prior.st_mtime_ns))
+                    self.assertEqual(path.stat().st_ino,prior.st_ino)
+                self.assertNotEqual(path.stat().st_ctime_ns,prior.st_ctime_ns)
+                before=f.filesystem_snapshot();value=self.rollback_refactor(f,proof)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_restoration_attestation_rejects_forged_or_unknown_child_receipts(self):
+        with self.installed(True) as f:
+            f.handoff_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+            m.handoff_restoration_value(proof)
+            mutations=(lambda p:p.update(status='absent'),
+                lambda p:p.update(original=REFACTOR_IDENTITY),
+                lambda p:p['install_evidence'].update(operation_id=m.REFACTOR_OPERATION),
+                lambda p:p['restoration_evidence'].update(status='unknown_no_replay'),
+                lambda p:p['restoration_evidence']['remote'].update(status='unknown_no_replay'),
+                lambda p:p['restoration_evidence']['remote'].update(restored_guard=None),
+                lambda p:p['restoration_evidence']['remote']['restored_guard'].pop(m.HANDOFF_ORDER[0]),
+                lambda p:p['restoration_evidence']['remote']['restored_guard'].update({'data/db-v1.php':[{},[]]}),
+                lambda p:p['restoration_evidence']['remote']['restored_guard'][m.HANDOFF_ORDER[0]][0].update(sha256='0'*64),
+                lambda p:p['restoration_evidence']['remote'].update(parent_receipt_sha256='0'*64))
+            for change in mutations:
+                bad=copy.deepcopy(proof);change(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.handoff_restoration_value(bad)
+
+    def test_child_private_proof_race_cannot_authorize_parent_public_writes(self):
+        with self.installed(True) as f:
+            f.handoff_accepted=self.execute(f);restored=self.rollback(f);proof=self.restoration(f,restored)
+            target=f.handoff_rollback_private/'result.json';original=target.read_bytes();original_inode=target.stat().st_ino
+            before=SiteTransaction().public_files(f)
+            def race(program):
+                self.assertIn('def refactor_check_ancestors():',program)
+                program=program.replace('def refactor_check_ancestors():','def fixture_original_refactor_check():',1)
+                wrapper=('fixture_refactor_checks=0\ndef refactor_check_ancestors():\n'
+                    ' global fixture_refactor_checks\n fixture_original_refactor_check()\n fixture_refactor_checks+=1\n'
+                    ' if fixture_refactor_checks==1:\n'
+                    +TvSuccessorTransaction().replace_same_bytes(target,indent='  '))
+                return program.replace('def refactor_check_targets(expected):',wrapper+'def refactor_check_targets(expected):',1)
+            value=self.rollback_refactor(f,proof,race)
+            self.assertIn(value['status'],('blocked_no_replay','unknown_no_replay'))
+            self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+            self.assertEqual(SiteTransaction().public_files(f),before)
+            self.assertEqual(target.read_bytes(),original);self.assertNotEqual(target.stat().st_ino,original_inode)
+
+    def test_preflight_drift_is_zero_write_and_preserves_foreign_state(self):
+        for kind in ('php-bytes','php-inode','parent-js','site-owner','parent-record','parent-stage','db-helper','own-namespace'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                if kind=='php-bytes':(f.root/m.HANDOFF_ORDER[1]).write_bytes(b'foreign country')
+                elif kind=='db-helper':(f.root/'data/db-v1.php').write_bytes(b'foreign dependency')
+                elif kind=='own-namespace':f.handoff_private.mkdir(mode=0o700)
+                # The parent result is written after its snapshot, so its
+                # native receipt authenticates bytes rather than an earlier
+                # inode. Its inode becomes binding at the first validated read.
+                elif kind=='parent-record':(f.refactor_private/'result.json').write_text('{}')
+                else:
+                    path=(f.root/m.HANDOFF_ORDER[0] if kind=='php-inode' else
+                          f.root/m.REFACTOR_ORDER[0] if kind=='parent-js' else
+                          f.root/m.SITE_ORDER[0] if kind=='site-owner' else f.refactor_private/'stage/0')
+                    prior=path.stat();other=path.with_name(path.name+'.foreign')
+                    other.write_bytes(path.read_bytes());other.chmod(stat.S_IMODE(prior.st_mode))
+                    os.utime(other,ns=(prior.st_atime_ns,prior.st_mtime_ns));other.replace(path)
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay')
+                self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+                self.assertFalse(value['reservation_created']);self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_validated_php_preimages_are_not_replaced_by_later_same_byte_inodes(self):
+        for tv in (False,True):
+            for target in m.HANDOFF_ORDER:
+                with self.subTest(tv=tv,target=target),self.installed(tv) as f:
+                    path=f.root/target;before=SiteTransaction().public_files(f);ancestors=self.ancestor_records(f)
+                    def race(program):
+                        self.assertIn('def handoff_refactor_parent():',program)
+                        program=program.replace('def handoff_refactor_parent():','def fixture_checked_handoff_parent():',1)
+                        wrapper=('fixture_parent_checked=False\ndef handoff_refactor_parent():\n'
+                            ' global fixture_parent_checked\n value=fixture_checked_handoff_parent()\n'
+                            ' if not fixture_parent_checked:\n  fixture_parent_checked=True\n'
+                            +TvSuccessorTransaction().replace_same_bytes(path,indent='  ')+' return value\n')
+                        return program.replace('def handoff_check_ancestors():',wrapper+'def handoff_check_ancestors():',1)
+                    value=self.execute(f,race)
+                    self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                    self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+                    self.assertFalse(f.handoff_private.exists());self.assertEqual(self.ancestor_records(f),ancestors)
+                    after=SiteTransaction().public_files(f)
+                    self.assertNotEqual(after[target][0],before[target][0]);self.assertEqual(after[target][1],before[target][1])
+                    self.assertEqual({p:v for p,v in after.items() if p!=target},{p:v for p,v in before.items() if p!=target})
+
+    def test_each_failed_exchange_recovers_only_owned_php_and_seals_replay(self):
+        for index in range(2):
+            with self.subTest(index=index),self.installed(True) as f:
+                before=SiteTransaction().public_files(f);ancestors=self.ancestor_records(f)
+                value=self.execute(f,SiteTransaction().fail_after_exchange(index))
+                self.assertEqual(value['status'],'rolled_back_no_replay')
+                self.assertEqual(value['written_files'],list(m.HANDOFF_ORDER[:index+1]))
+                self.assertEqual(value['rollback_files'],list(reversed(m.HANDOFF_ORDER[:index+1])))
+                self.assertEqual(SiteTransaction().public_files(f),before);self.assertEqual(self.ancestor_records(f),ancestors)
+                self.assertEqual(set(value['restored_guard']),set(m.HANDOFF_ORDER))
+                snapshot=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),snapshot)
+
+    def test_parent_proof_inode_is_bound_after_its_first_validated_read(self):
+        with self.installed(True) as f:
+            path=f.refactor_private/'result.json';original=path.read_bytes();original_inode=path.stat().st_ino
+            before=SiteTransaction().public_files(f)
+            def race(program):
+                program=program.replace('def handoff_refactor_parent():','def fixture_checked_handoff_parent():',1)
+                wrapper=('fixture_parent_checked=False\ndef handoff_refactor_parent():\n'
+                    ' global fixture_parent_checked\n value=fixture_checked_handoff_parent()\n'
+                    ' if not fixture_parent_checked:\n  fixture_parent_checked=True\n'
+                    +TvSuccessorTransaction().replace_same_bytes(path,indent='  ')+' return value\n')
+                return program.replace('def handoff_check_ancestors():',wrapper+'def handoff_check_ancestors():',1)
+            value=self.execute(f,race)
+            self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+            self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+            self.assertFalse(f.handoff_private.exists());self.assertEqual(SiteTransaction().public_files(f),before)
+            self.assertEqual(path.read_bytes(),original);self.assertNotEqual(path.stat().st_ino,original_inode)
+
+    def test_rollback_preflight_keeps_replaced_targets_stages_and_parent_proof(self):
+        for kind in ('target','stage','parent-js','parent-record','own-result'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                f.handoff_accepted=self.execute(f)
+                self.assertEqual(f.handoff_accepted['status'],'country_handoff_updated_verified')
+                if kind=='own-result':(f.handoff_private/'result.json').write_text('{}')
+                else:
+                    path=(f.root/m.HANDOFF_ORDER[1] if kind=='target' else
+                          f.handoff_private/'stage/0' if kind=='stage' else
+                          f.root/m.REFACTOR_ORDER[1] if kind=='parent-js' else f.refactor_private/'result.json')
+                    prior=path.stat();other=path.with_name(path.name+'.foreign');other.write_bytes(path.read_bytes())
+                    other.chmod(stat.S_IMODE(prior.st_mode));os.utime(other,ns=(prior.st_atime_ns,prior.st_mtime_ns));other.replace(path)
+                before=f.filesystem_snapshot();value=self.rollback(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertFalse(f.handoff_rollback_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_parent_or_int_replacement_after_first_write_stops_the_second_php(self):
+        for kind in ('parent-js','parent-record','int-record'):
+            with self.subTest(kind=kind),self.installed(True) as f:
+                foreign=(f.root/m.REFACTOR_ORDER[0] if kind=='parent-js' else
+                         f.refactor_private/'result.json' if kind=='parent-record' else f.tv_namespace/'result.json')
+                old_foreign=foreign.stat().st_ino;country=(f.root/m.HANDOFF_ORDER[1]).read_bytes()
+                def race(program):
+                    line="   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                    self.assertIn(line,program)
+                    injection="\n   if index==0:\n"+TvSuccessorTransaction().replace_same_bytes(foreign,indent='    ')
+                    return program.replace(line,line+injection,1)
+                value=self.execute(f,race)
+                self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual(value['written_files'],[m.HANDOFF_ORDER[0]])
+                self.assertEqual((f.root/m.HANDOFF_ORDER[1]).read_bytes(),country)
+                self.assertNotEqual(foreign.stat().st_ino,old_foreign)
+                self.assertFalse(value['protected_unchanged'])
+                before=f.filesystem_snapshot();again=self.execute(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_active_child_blocks_parent_rollback_without_parent_reservation(self):
+        with self.installed(True) as f:
+            f.handoff_accepted=self.execute(f)
+            self.assertEqual(f.handoff_accepted['status'],'country_handoff_updated_verified')
+            before=f.filesystem_snapshot();value=RefactorTransaction().rollback(f)
+            self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+            self.assertEqual(value['rollback_files'],[]);self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_each_rollback_interruption_is_sealed_and_never_replayed(self):
+        for index in (1,0):
+            with self.subTest(index=index),self.installed(True) as f:
+                f.handoff_accepted=self.execute(f)
+                def fail(program):
+                    line="  result['rollback_files'].append(path)"
+                    self.assertIn(line,program)
+                    return program.replace(line,line+f"\n  if index=={index}: raise RuntimeError('operation_failed')",1)
+                value=self.rollback(f,fail)
+                self.assertEqual(value['status'],'unknown_no_replay')
+                self.assertEqual(value['rollback_files'],list(reversed(m.HANDOFF_ORDER[index:])))
+                self.assertIsNone(value['restored_guard'])
+                before=f.filesystem_snapshot();again=self.rollback(f)
+                self.assertEqual(again['status'],'blocked_no_replay');self.assertEqual(f.filesystem_snapshot(),before)
+
+
+class HandoffAdmission(unittest.TestCase):
+    def metadata(self,path):
+        owner={'user':{'id':226193297},'author_association':'OWNER'};repo={'full_name':m.REPO}
+        if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
+        if path=='/pulls/'+str(m.HANDOFF_SOURCE_PR):
+            return {'state':'closed','merged':True,'merge_commit_sha':m.HANDOFF_SOURCE_MERGE,
+                'head':{'sha':m.HANDOFF_SOURCE,'repo':repo},'base':{'ref':'main','repo':repo}}
+        if path=='/git/commits/'+m.HANDOFF_SOURCE:return {'tree':{'sha':m.HANDOFF_TREE}}
+        if path=='/git/commits/'+m.HANDOFF_SOURCE_MERGE:
+            return {'tree':{'sha':m.HANDOFF_SOURCE_MERGE_TREE},'parents':[{'sha':m.HANDOFF_SOURCE_BASE},{'sha':m.HANDOFF_SOURCE}]}
+        if path=='/compare/'+m.HANDOFF_SOURCE_MERGE+'...'+CONTROL:
+            return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':m.HANDOFF_SOURCE_MERGE}}
+        for commit in (m.HANDOFF_SOURCE,m.HANDOFF_SOURCE_MERGE,CONTROL):
+            for name in m.HANDOFF_ORDER:
+                if path=='/contents/v2/'+name+'?ref='+commit:return {'type':'file','sha':m.HANDOFF_TARGETS[name]['blob']}
+        if path=='/contents/.github/workflows/deploy-anytoour.yml?ref='+CONTROL:
+            return {'type':'file','encoding':'base64','content':base64.b64encode(b'guarded manual publisher').decode()}
+        if path.startswith('/commits/'+m.HANDOFF_SOURCE+'/check-runs?'):
+            return {'total_count':len(m.HANDOFF_CHECKS)+1,'check_runs':[{'id':i+1,'name':name,'head_sha':m.HANDOFF_SOURCE,
+                'status':'completed','conclusion':'skipped' if name=='production-evidence' else 'success',
+                'app':{'slug':'github-actions'}} for i,name in enumerate((*m.HANDOFF_CHECKS,'production-evidence'))]}
+        parent=m.HANDOFF_PARENT
+        if path=='/actions/runs/'+parent['run_id']:
+            return {'id':int(parent['run_id']),'head_sha':parent['control_source_sha'],'head_branch':'main','path':m.WORKFLOW,
+                'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+parent['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':parent['job_id'],'run_id':int(parent['run_id']),'name':'public-install',
+                'status':'completed','conclusion':'success','steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py refactor',
+                'status':'completed','conclusion':'success'}]}]}
+        if path=='/actions/artifacts/'+str(parent['artifact_id']):
+            return {'id':parent['artifact_id'],'name':'search3-public-install-'+parent['run_id']+'-1','expired':False,
+                'digest':'sha256:'+parent['artifact_sha256'],'workflow_run':{'id':int(parent['run_id'])}}
+        if path.startswith('/issues/4709/comments?'):
+            return [handoff_test_event()['comment'],
+                owner|{'id':parent['command_comment_id'],'body':f'{m.REFACTOR_PREFIX} {parent["control_source_sha"]} {m.REFACTOR_OPERATION}'},
+                owner|{'id':parent['terminal_comment_id'],'body':'refactor_updated_verified '+' '.join(str(parent[k]) for k in
+                    ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256'))}]
+        raise AssertionError('unexpected handoff admission request: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with patch.object(m,'HANDOFF_SOURCE_MERGE','1'*40),patch.object(m,'HANDOFF_SOURCE_MERGE_TREE','2'*40), \
+             patch.object(m,'HANDOFF_SOURCE_BASE','3'*40),patch.object(m,'api',side_effect=api), \
+             patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'guarded manual publisher')), \
+             patch.object(m,'reviewed_control') as reviewed,patch.object(m.carrier,'run',side_effect=AssertionError('server during admission')):
+            m.handoff_admission(HANDOFF_IDENTITY);reviewed.assert_called_once_with(CONTROL)
+
+    def test_fixed_created_owner_command_and_original_attempt_only(self):
+        for rollback,identity in ((False,HANDOFF_IDENTITY),(True,HANDOFF_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            self.assertEqual(m.handoff_event_identity(handoff_test_event(rollback),env,rollback),
+                (identity,HANDOFF_IDENTITY['run_id']) if rollback else identity)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),
+                ('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch')):
+                with self.subTest(key=key),self.assertRaises(RuntimeError):m.handoff_event_identity(handoff_test_event(rollback),env|{key:value},rollback)
+            for change in (lambda e:e.update(action='edited'),lambda e:e['comment'].update(author_association='MEMBER'),
+                lambda e:e['comment'].update(body=e['comment']['body']+' arbitrary.php hash'),lambda e:e['issue'].update(pull_request={}),
+                lambda e:e['comment'].update(body=refactor_test_event(rollback)['comment']['body'])):
+                value=handoff_test_event(rollback);change(value)
+                with self.assertRaises(RuntimeError):m.handoff_event_identity(value,env,rollback)
+        for mode in ('handoff','handoff-rollback'):
+            self.assertEqual(m.command_mode([mode]),mode)
+            with self.assertRaises(RuntimeError):m.command_mode([mode,'arbitrary'])
+
+    def test_exact_source_parent_and_latest_required_ci_are_mandatory(self):
+        self.admit()
+        mutations=(
+            ('/git/ref/heads/main',lambda v:v['object'].update(sha='f'*40)),
+            ('/pulls/'+str(m.HANDOFF_SOURCE_PR),lambda v:v.update(merged=False)),
+            ('/pulls/'+str(m.HANDOFF_SOURCE_PR),lambda v:v['head'].update(sha='f'*40)),
+            ('/pulls/'+str(m.HANDOFF_SOURCE_PR),lambda v:v['head']['repo'].update(full_name='foreign/repository')),
+            ('/git/commits/'+m.HANDOFF_SOURCE,lambda v:v.update(tree={'sha':'f'*40})),
+            ('/git/commits/'+'1'*40,lambda v:v['parents'].reverse()),
+            ('/compare/'+'1'*40+'...'+CONTROL,lambda v:v.update(behind_by=1)),
+            ('/contents/v2/'+m.HANDOFF_ORDER[0]+'?ref='+CONTROL,lambda v:v.update(sha='f'*40)),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(status='in_progress',conclusion=None)),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(conclusion='failure')),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(conclusion='skipped')),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(head_sha='f'*40)),
+            ('/check-runs?',lambda v:v['check_runs'][0].update(app={'slug':'foreign-check'})),
+            ('/check-runs?',lambda v:v['check_runs'].append(v['check_runs'][0]|{'id':999,'conclusion':'failure'})),
+            ('/check-runs?',lambda v:v['check_runs'][-1].update(conclusion='success')),
+            ('/actions/runs/'+m.HANDOFF_PARENT['run_id'],lambda v:v.update(status='in_progress')),
+            ('/actions/runs/'+m.HANDOFF_PARENT['run_id'],lambda v:v.update(conclusion='failure')),
+            ('/actions/runs/'+m.HANDOFF_PARENT['run_id'],lambda v:v.update(run_attempt=True)),
+            ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py site-continue')),
+            ('/actions/artifacts/'+str(m.HANDOFF_PARENT['artifact_id']),lambda v:v.update(expired=True)),
+            ('/actions/artifacts/'+str(m.HANDOFF_PARENT['artifact_id']),lambda v:v.update(digest='sha256:'+'0'*64)),
+            ('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+            ('/comments?',lambda v:v.append(v[1]|{'id':99999})),
+            ('/comments?',lambda v:v[2].update(body='unrelated terminal')))
+        for part,mutate in mutations:
+            def change(path,value):
+                if path==part or part.endswith('?') and part in path:mutate(value)
+                return value
+            with self.subTest(part=part,mutate=mutate),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class HandoffRestorationAdmission(unittest.TestCase):
+    def zero_before_ssh(self,f):
+        return {**HANDOFF_IDENTITY,'operation_id':m.HANDOFF_OPERATION,'source_sha':m.HANDOFF_SOURCE,
+            'manifest_sha256':f.handoff_policy['manifest'],'read_only':False,'status':'blocked_no_replay',
+            'phase':'admission','ssh_started':False,'error_type':'RuntimeError'}
+
+    def resolve(self,f,value,change=None,rollback_admission=False,control_review=None):
+        _,raw=HandoffTransaction().archive(value);command=handoff_test_event()['comment']
+        conclusion='success' if value['status']=='country_handoff_updated_verified' else 'failure'
+        artifact={'id':987001,'name':'search3-public-install-'+HANDOFF_IDENTITY['run_id']+'-1','expired':False,
+            'workflow_run':{'id':int(HANDOFF_IDENTITY['run_id'])},'digest':'sha256:'+m.sha(raw)}
+        run={'id':int(HANDOFF_IDENTITY['run_id']),'head_sha':CONTROL,'head_branch':'main','path':m.WORKFLOW,
+            'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':conclusion,
+            'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+            'created_at':'2026-11-21T15:00:01Z','run_started_at':'2026-11-21T15:00:02Z','updated_at':'2026-11-21T15:00:05Z'}
+        job={'id':987002,'run_id':run['id'],'name':'public-install','status':'completed','conclusion':conclusion,
+            'steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py handoff','status':'completed',
+                'conclusion':conclusion,'started_at':'2026-11-21T15:00:03Z','completed_at':'2026-11-21T15:00:04Z'}]}
+        def api(path):
+            if path.startswith('/issues/4709/comments?'):
+                result=[copy.deepcopy(command)]+([handoff_test_event(True)['comment']] if rollback_admission else [])
+            elif path=='/git/ref/heads/main':result={'object':{'sha':HANDOFF_ROLLBACK_IDENTITY['control_source_sha']}}
+            elif path=='/actions/runs/'+HANDOFF_IDENTITY['run_id']:result=copy.deepcopy(run)
+            elif path.startswith('/actions/workflows/search3-root-gateway-install.yml/runs?'):
+                result={'total_count':1,'workflow_runs':[copy.deepcopy(run)]}
+            elif path.startswith('/actions/runs/'+HANDOFF_IDENTITY['run_id']+'/artifacts?'):
+                result={'total_count':1,'artifacts':[copy.deepcopy(artifact)]}
+            elif path.startswith('/actions/runs/'+HANDOFF_IDENTITY['run_id']+'/attempts/1/jobs?'):
+                result={'total_count':1,'jobs':[copy.deepcopy(job)]}
+            else:raise AssertionError('unexpected handoff proof lookup: '+path)
+            return change(path,result) if change else result
+        with patch.object(m,'api',side_effect=api),patch.object(m,'download',return_value=raw) as download, \
+             patch.object(m,'reviewed_control',side_effect=control_review) as reviewed, \
+             patch.object(m.carrier,'run',side_effect=AssertionError('server during proof resolution')):
+            result=(m.handoff_rollback_admission(HANDOFF_ROLLBACK_IDENTITY,HANDOFF_IDENTITY['run_id']) if rollback_admission
+                    else m.handoff_restoration_evidence())
+            self.assertEqual([call.args[0] for call in reviewed.call_args_list],
+                ([HANDOFF_ROLLBACK_IDENTITY['control_source_sha']] if rollback_admission else [])+[CONTROL])
+            download.assert_called_once_with(artifact['id'],m.sha(raw))
+            return result
+
+    def test_native_receipt_requires_review_of_original_executed_control(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            for rollback_admission in (False,True):
+                if rollback_admission:
+                    f.handoff_accepted=helper.execute(f);value=helper.evidence(f,f.handoff_accepted)
+                else:value=self.zero_before_ssh(f)
+                reviewed=[]
+                def refuse_original(control):
+                    reviewed.append(control)
+                    if control==CONTROL:raise RuntimeError('reviewed_control_missing')
+                with self.subTest(rollback_admission=rollback_admission),self.assertRaisesRegex(RuntimeError,'reviewed_control_missing'):
+                    self.resolve(f,value,rollback_admission=rollback_admission,control_review=refuse_original)
+                self.assertEqual(reviewed,
+                    ([HANDOFF_ROLLBACK_IDENTITY['control_source_sha']] if rollback_admission else [])+[CONTROL])
+
+    def test_actual_zero_write_command_is_distinct_from_absence_and_keeps_parent_guards(self):
+        for started in (False,True):
+            with self.subTest(ssh_started=started),HandoffTransaction().installed(True) as f:
+                helper=HandoffTransaction()
+                if started:
+                    def refuse(program):
+                        line=' guarded,before,ancestors=handoff_refactor_parent()'
+                        self.assertIn(line,program)
+                        return program.replace(line," raise RuntimeError('operation_failed')\n"+line,1)
+                    remote=helper.execute(f,refuse)
+                    self.assertEqual(remote['status'],'blocked_no_replay');self.assertFalse(remote['reservation_created'])
+                    value=helper.evidence(f,remote)
+                else:value=self.zero_before_ssh(f)
+                proof=self.resolve(f,value)
+                self.assertEqual(proof,{'status':'zero_write','original':HANDOFF_IDENTITY,'install_evidence':value})
+                self.assertFalse(f.handoff_private.exists());self.assertFalse(f.handoff_rollback_private.exists())
+                self.assertEqual(helper.rollback_refactor(f,proof)['status'],'refactor_rolled_back_verified')
+
+    def test_only_no_child_commands_is_absent_and_native_unknown_is_not_absence(self):
+        with patch.object(m,'api',return_value=[]),patch.object(m,'download') as download:
+            self.assertEqual(m.handoff_restoration_evidence(),{'status':'absent'});download.assert_not_called()
+        with HandoffTransaction().installed(True) as f:
+            value=self.zero_before_ssh(f)
+            mutations=(
+                ('/comments?',lambda v:v[0].update(updated_at='2026-11-21T15:01:00Z')),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99999})),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(status='in_progress',conclusion=None)),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(conclusion='cancelled')),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(conclusion='timed_out')),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(run_attempt=True)),
+                ('/runs?',lambda v:v['workflow_runs'][0].update(head_sha='f'*40)),
+                ('/artifacts?',lambda v:v.update(artifacts=[])),
+                ('/artifacts?',lambda v:v['artifacts'][0].update(expired=True)),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(conclusion='cancelled')),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py refactor')))
+            for part,mutate in mutations:
+                def change(path,result):
+                    if part in path:mutate(result)
+                    return result
+                with self.subTest(part=part,mutate=mutate),self.assertRaises(RuntimeError):self.resolve(f,value,change)
+            for change in (lambda v:v.update(status='unknown_no_replay'),
+                lambda v:v.update(error_type='TimeoutExpired'),lambda v:v.update(ssh_started=True),
+                lambda v:v.update(remote={}),lambda v:v.update(parent_refactor=SITE_CONTINUATION_IDENTITY)):
+                bad=copy.deepcopy(value);change(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):self.resolve(f,bad)
+
+    def test_zero_write_proof_cannot_hide_child_namespace_or_relax_original_php_stamp(self):
+        for kind in ('install-namespace','rollback-namespace','php-ctime'):
+            with self.subTest(kind=kind),HandoffTransaction().installed(True) as f:
+                helper=HandoffTransaction();proof=self.resolve(f,self.zero_before_ssh(f))
+                if kind=='php-ctime':
+                    path=f.root/m.HANDOFF_ORDER[0];prior=path.stat();path.write_bytes(path.read_bytes())
+                    os.utime(path,ns=(prior.st_atime_ns,prior.st_mtime_ns))
+                else:(f.handoff_private if kind=='install-namespace' else f.handoff_rollback_private).mkdir(mode=0o700)
+                before=f.filesystem_snapshot();value=helper.rollback_refactor(f,proof)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['reservation_created'])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_successful_active_child_is_pending_and_never_absence(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            f.handoff_accepted=helper.execute(f)
+            with self.assertRaisesRegex(RuntimeError,'handoff_restoration_pending'):
+                self.resolve(f,helper.evidence(f,f.handoff_accepted))
+
+    def test_own_rollback_admission_requires_exact_successful_native_child(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            f.handoff_accepted=helper.execute(f);value=helper.evidence(f,f.handoff_accepted)
+            original,artifact=self.resolve(f,value,rollback_admission=True)
+            self.assertEqual(original,HANDOFF_IDENTITY);self.assertEqual(artifact['id'],987001)
+            mutations=(
+                ('/git/ref/heads/main',lambda v:v['object'].update(sha=CONTROL)),
+                ('/actions/runs/'+HANDOFF_IDENTITY['run_id'],lambda v:v.update(run_attempt=2)),
+                ('/actions/runs/'+HANDOFF_IDENTITY['run_id'],lambda v:v.update(conclusion='failure')),
+                ('/artifacts?',lambda v:v['artifacts'][0].update(workflow_run={'id':int(m.HANDOFF_PARENT['run_id'])})),
+                ('/comments?',lambda v:v[0].update(body=refactor_test_event()['comment']['body'])),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99999})))
+            for part,mutate in mutations:
+                def change(path,result):
+                    if path==part or part.endswith('?') and part in path:mutate(result)
+                    return result
+                with self.subTest(part=part),self.assertRaises(RuntimeError):self.resolve(f,value,change,True)
+            for run in (m.HANDOFF_PARENT['run_id'],m.REFACTOR_PARENT['run_id'],HANDOFF_ROLLBACK_IDENTITY['run_id']):
+                with patch.object(m,'api') as api,self.assertRaises(RuntimeError):m.handoff_rollback_commands(HANDOFF_ROLLBACK_IDENTITY,run)
+                api.assert_not_called()
+
+
+class HandoffPayloadEvidence(unittest.TestCase):
+    def test_payload_reads_exact_two_pinned_php_blobs_and_rejects_changed_metadata_or_bytes(self):
+        helper=HandoffTransaction()
+        with helper.installed() as f:
+            def metadata(path):
+                for name in m.HANDOFF_ORDER:
+                    target=m.HANDOFF_TARGETS[name]
+                    if path=='/git/blobs/'+target['blob']:
+                        return {'sha':target['blob'],'encoding':'base64','size':target['after']['size'],
+                                'content':f.handoff_files[name]}
+                raise AssertionError('unexpected source read: '+path)
+            with patch.object(m,'api',side_effect=metadata) as api:
+                self.assertEqual(m.handoff_package(),f.handoff_files)
+            self.assertEqual([call.args[0] for call in api.call_args_list],
+                             ['/git/blobs/'+m.HANDOFF_TARGETS[p]['blob'] for p in m.HANDOFF_ORDER])
+            for change in (lambda v:v.update(sha='0'*40),lambda v:v.update(encoding='utf-8'),
+                lambda v:v.update(size=v['size']+1),
+                lambda v:v.update(content=base64.b64encode(b'x'*v['size']).decode())):
+                def api(path):
+                    value=metadata(path);change(value);return value
+                with self.subTest(change=change),patch.object(m,'api',side_effect=api),self.assertRaises(RuntimeError):m.handoff_package()
+
+    def test_authentic_nested_parent_is_pure_and_digest_bound(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            with patch.object(m,'api',side_effect=AssertionError('network in pure retained proof')):
+                self.assertEqual(m.handoff_parent_evidence(f.handoff_parent_raw),f.handoff_parent)
+            raw=bytearray(f.handoff_parent_raw);raw[-1]^=1
+            with self.assertRaises(RuntimeError):m.handoff_parent_evidence(bytes(raw))
+            bad=copy.deepcopy(f.handoff_parent);bad['remote']['written_files'].reverse()
+            with self.assertRaises(RuntimeError):m.handoff_parent_value(bad)
+
+    def test_own_receipt_retains_parent_and_rejects_incomplete_or_extra_success_claims(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            f.handoff_accepted=helper.execute(f);value=helper.evidence(f,f.handoff_accepted)
+            _,raw=helper.archive(value)
+            with patch.object(m,'api',side_effect=AssertionError('historical network during own recovery')):
+                policy,accepted,parent=m.handoff_source_evidence(raw,HANDOFF_IDENTITY)
+            self.assertEqual((policy,accepted,parent),(f.handoff_policy,f.handoff_accepted,f.handoff_parent))
+            mutations=(lambda v:v.update(lead_calls=1),lambda v:v.update(database_reads=True),
+                lambda v:v.update(protected_unchanged=False),lambda v:v.update(restore_drill_verified=False),
+                lambda v:v.update(written_files=list(reversed(m.HANDOFF_ORDER))),
+                lambda v:v.update(rollback_files=[m.HANDOFF_ORDER[0]]),
+                lambda v:v.update(snapshot_manifest_sha256=None),lambda v:v.update(restored_guard={}),
+                lambda v:v.update(parent_receipt_sha256='0'*64),lambda v:v.update(unreviewed=True))
+            for change in mutations:
+                bad=copy.deepcopy(f.handoff_accepted);change(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.valid_handoff_result(HANDOFF_IDENTITY,bad)
+            for change in (lambda v:v.update(operation_id=m.REFACTOR_OPERATION),
+                lambda v:v.update(parent_refactor=SITE_CONTINUATION_IDENTITY),
+                lambda v:v.update(status='unknown_no_replay'),
+                lambda v:v['parent_evidence'].update(command_comment_id=1)):
+                bad=copy.deepcopy(value);change(bad);_,packet=helper.archive(bad)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.handoff_source_evidence(packet,HANDOFF_IDENTITY)
+
+
+class HandoffClient(unittest.TestCase):
+    def env(self,f,name,rollback=False):
+        directory=f.base/name;directory.mkdir();event_path=directory/'event.json';event_path.write_text(json.dumps(handoff_test_event(rollback)))
+        identity=HANDOFF_ROLLBACK_IDENTITY if rollback else HANDOFF_IDENTITY
+        return directory,environment()|{'GITHUB_RUN_ID':identity['run_id'],'GITHUB_SHA':identity['control_source_sha'],
+            'RUNNER_TEMP':str(directory),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+            'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+
+    def test_live_client_retains_exact_parent_and_own_recovery_uses_no_historical_downloads(self):
+        helper=HandoffTransaction()
+        with helper.installed(True) as f:
+            f.handoff_accepted=helper.execute(f);runner,env=self.env(f,'handoff-client')
+            with patch.dict(os.environ,env),patch.object(m,'handoff_admission') as admission,patch.object(m,'handoff_final_heads'), \
+                 patch.object(m,'download',return_value=f.handoff_parent_raw) as download, \
+                 patch.object(m,'handoff_package',return_value=f.handoff_files), \
+                 patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)) as dependency, \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.handoff_accepted).encode()]),patch('builtins.print'):
+                m.handoff()
+            self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+            download.assert_called_once_with(m.HANDOFF_PARENT['artifact_id'],m.HANDOFF_PARENT['artifact_sha256'])
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value,helper.evidence(f,f.handoff_accepted))
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+            _,raw=helper.archive(value);restored=helper.rollback(f);runner,env=self.env(f,'handoff-recovery-client',True)
+            artifact={'id':987003,'digest':'sha256:'+m.sha(raw)}
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                admission=stack.enter_context(patch.object(m,'handoff_rollback_admission',return_value=(HANDOFF_IDENTITY,artifact)))
+                stack.enter_context(patch.object(m,'rollback_main'))
+                dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                download=stack.enter_context(patch.object(m,'download',return_value=raw))
+                for name in ('api','handoff_admission','handoff_final_heads','handoff_parent_admission','handoff_parent_evidence',
+                             'handoff_package','refactor_parent_admission','site_continuation_collector_log','signing_evidence'):
+                    stack.enter_context(patch.object(m,name,side_effect=AssertionError('historical handoff recovery dependency: '+name)))
+                stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(restored).encode()]))
+                m.handoff(rollback=True)
+                self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+                download.assert_called_once_with(artifact['id'],m.sha(raw))
+            path=runner/'search3-public-install/evidence.json';value=json.loads(path.read_text())
+            self.assertEqual(value,helper.evidence(f,restored,True))
+            self.assertFalse((path.parent/'key').exists());self.assertFalse((path.parent/'known').exists())
+
+    def test_unresolved_int_proof_never_starts_ssh_in_either_live_handoff_mode(self):
+        with HandoffTransaction().installed(True) as f:
+            for rollback in (False,True):
+                for stage in ('initial','recheck'):
+                    with self.subTest(rollback=rollback,stage=stage),contextlib.ExitStack() as stack:
+                        runner,env=self.env(f,'handoff-proof-'+str(rollback)+'-'+stage,rollback)
+                        stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                        stack.enter_context(patch.object(m,'handoff_admission'));stack.enter_context(patch.object(m,'rollback_main'))
+                        stack.enter_context(patch.object(m,'handoff_rollback_admission',return_value=(HANDOFF_IDENTITY,{'id':987004,'digest':'sha256:'+'5'*64})))
+                        stack.enter_context(patch.object(m,'download',return_value=f.handoff_parent_raw))
+                        stack.enter_context(patch.object(m,'handoff_source_evidence',return_value=(f.handoff_policy,{},f.handoff_parent)))
+                        stack.enter_context(patch.object(m,'handoff_package',return_value=f.handoff_files))
+                        builder=stack.enter_context(patch.object(m,'handoff_rollback_remote_program' if rollback else 'handoff_remote_program',
+                            return_value='# inert native program'))
+                        sequence=([copy.deepcopy(f.tv_evidence)] if stage=='recheck' else [])+[RuntimeError('tv_successor_original_missing')]
+                        resolver=stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=sequence))
+                        remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                        with self.assertRaises(RuntimeError):m.handoff(rollback)
+                        self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                        self.assertEqual([call.args[0][0] for call in remote.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                        if stage=='initial':builder.assert_not_called()
+                        else:self.assertEqual(builder.call_args.kwargs['tv_successor'],f.tv_evidence)
+                        value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                        self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+    def test_legacy_refactor_recovery_requires_stable_explicit_child_state_before_ssh(self):
+        with RefactorTransaction().installed(True) as f:
+            for stage in ('initial','recheck'):
+                with self.subTest(stage=stage),contextlib.ExitStack() as stack:
+                    runner,env=RefactorClient().env(f,'legacy-child-proof-'+stage,True)
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    stack.enter_context(patch.object(m,'refactor_rollback_admission',return_value=(REFACTOR_IDENTITY,{'id':987005,'digest':'sha256:'+'5'*64})))
+                    stack.enter_context(patch.object(m,'refactor_rollback_commands',return_value=REFACTOR_IDENTITY))
+                    stack.enter_context(patch.object(m,'rollback_main'));stack.enter_context(patch.object(m,'download',return_value=b'own fixture'))
+                    stack.enter_context(patch.object(m,'refactor_source_evidence',return_value=(f.refactor_policy,{},f.refactor_parent)))
+                    stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                    sequence=([{'status':'absent'}] if stage=='recheck' else [])+[RuntimeError('handoff_original_missing')]
+                    resolver=stack.enter_context(patch.object(m,'handoff_restoration_evidence',side_effect=sequence))
+                    builder=stack.enter_context(patch.object(m,'refactor_rollback_remote_program',return_value='# inert native program'))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                    with self.assertRaises(RuntimeError):m.refactor(rollback=True)
+                    self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                    self.assertEqual([call.args[0][0] for call in remote.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                    if stage=='initial':builder.assert_not_called()
+                    else:self.assertEqual(builder.call_args.kwargs['handoff_restoration'],{'status':'absent'})
+                    value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                    self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)
