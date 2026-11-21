@@ -1,5 +1,6 @@
 // Exercise the actual compiled lazy owner through the isolated offline PHP entry.
 'use strict';
+const {canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2'));
@@ -9,6 +10,7 @@ async function galleryAcceptance(browser,width,port){
  const lastPhoto=new Promise(resolve=>{releaseLast=resolve;}),secondPhoto=new Promise(resolve=>{releaseSecond=resolve;}),historyKey='anytour.prototype.v18.ui.v1';
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),'http://127.0.0.1:'+port);if(logoResponse){await route.fulfill(logoResponse);return;}
   const u=new URL(route.request().url());if(u.hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')external.push(u.pathname);await route.abort();return;}
   if(u.pathname.endsWith('/fixtures/live-search-2026-09-23.json')){const fixture=JSON.parse(fs.readFileSync(path.join(root,'visual-search/fixtures/live-search-2026-09-23.json'),'utf8'));fixture.hotels[0].photos=Array.from({length:photoCount},(_,i)=>`./assets/photo-${i%8+1}.jpg?gallery-corpus=${i}${heroPhase?'&tour-corpus=1':''}`);fixture.hotels[0].name='Демонстрационный длинный заголовок отеля для проверки фотографий '.repeat(3);await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fixture)});return;}
   if(u.searchParams.get('gallery-corpus')==='0'&&!permitFirst){await route.abort();return;}
@@ -42,6 +44,7 @@ async function roomPriceStatusAcceptance(browser,width,height,port){
  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),errors=[],forbidden=[];
  page.on('pageerror',error=>errors.push(error.message));
  await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),'http://127.0.0.1:'+port);if(logoResponse){await route.fulfill(logoResponse);return;}
   const request=route.request(),url=new URL(request.url());
   if(url.hostname!=='127.0.0.1'){if(request.resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
   if(/\/api-|lead\.php|\/data\/.*\.php/.test(url.pathname)){forbidden.push(url.pathname);await route.abort();return;}
@@ -105,6 +108,7 @@ const server=http.createServer((req,res)=>{
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),'http://127.0.0.1:'+server.address().port);if(logoResponse){await route.fulfill(logoResponse);return;}
    const url=new URL(route.request().url());if(url.hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
    if(url.pathname.endsWith('/hotel-details-v1.js')){requests++;assert.match(url.search,/^\?v=[0-9a-f]{12}$/,'PHP binds the actual cold asset hash');if(requests===1){await route.abort();return;}if(requests===2){pending=true;await new Promise(resolve=>{release=resolve;});}}
    await route.continue();

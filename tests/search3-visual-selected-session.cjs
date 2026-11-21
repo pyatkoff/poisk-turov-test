@@ -3,7 +3,7 @@
 // or lead request. Expiry changes the presentation; canonical locks stay owned
 // by the existing adapter. The browser clock models time, not a physical device.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const historyKey='anytour.prototype.v18.ui.v1';
 // Read-only layout evidence. Settle the existing viewport reveal before taking
 // a position baseline; expiry must preserve it whenever the input still fits.
@@ -69,6 +69,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.clock.install({time:new Date(receiptNow)});
    await page.clock.setFixedTime(new Date(receiptNow));
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){
@@ -266,7 +267,8 @@ module.exports=async function({browser,origin,base,evidence}){
    // A controllable visual viewport models keyboard contraction and Safari pan;
    // it does not create an OS keyboard or claim physical-device acceptance.
    await page.addInitScript(()=>{const viewport=new EventTarget();viewport.height=900;viewport.offsetTop=0;Object.defineProperty(window,'visualViewport',{configurable:true,value:viewport});window.__pickerViewport=viewport;});
-   await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){if(u.pathname===base+'visual-search/index.html'){const response=await route.fetch();await route.fulfill({response,contentType:'text/html; charset=utf-8'});}else await route.continue();}else{forbidden.push(u.pathname);await route.abort();}});
+   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}const u=new URL(route.request().url());if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){if(u.pathname===base+'visual-search/index.html'){const response=await route.fetch();await route.fulfill({response,contentType:'text/html; charset=utf-8'});}else await route.continue();}else{forbidden.push(u.pathname);await route.abort();}});
    // This existing CI server renders PHP without forwarding query parameters.
    // Use the same compiled offline entry, with its explicit fictional scenario.
    // Its bytes stay exact; the server omits HTML MIME for static files, so

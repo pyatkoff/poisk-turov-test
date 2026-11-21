@@ -3,7 +3,7 @@
 // All supplier transport is fictional; no deployed endpoint or paid search is used.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),http=require('node:http');
 const {execFileSync}=require('node:child_process'),{JSDOM}=require('jsdom');
-const {fixture,trip,profile,tour}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,profile,tour,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const repo=path.resolve(__dirname,'..'),sourceRoot=path.join(repo,'v2');
 const exported=process.env.LOCAL_TV_TEST_EXPORT||path.join(fs.mkdtempSync(path.join(os.tmpdir(),'local-tv-browser-')),'http.json');
 if(!fs.existsSync(exported))process.stdout.write(execFileSync('php',[path.join(__dirname,'local-tv-catalog-test.php')],{
@@ -176,6 +176,7 @@ async function browserAcceptance(){
    let current=original,contentReads=0,failed=false,gate=null,release;
    page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),u=new URL(req.url());
     if(u.pathname===reader){contentReads++;assert.deepEqual(u.searchParams.getAll('oldLocalHotelIds[]'),['501']);if(gate)await gate;
      await route.fulfill({status:failed?503:200,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:JSON.stringify(failed?{ok:false}:current)});return;}

@@ -5,6 +5,14 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
+      - 'v2/site-header-v2.php'
+      - 'v2/site-header-v2.css'
+      - 'v2/site-path-v1.php'
+      - 'v2/phone-value.php'
+      - 'v2/asset-version-v1.php'
+      - 'v2/home-v1.php'
+      - 'v2/home-v1.css'
+      - 'v2/home-hero-v1.jpg'
       - 'scripts/build/search3-js/**'
       - 'scripts/build/search3_production_inventory.py'
       - 'scripts/build/search3_public_candidate.py'
