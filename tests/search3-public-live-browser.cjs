@@ -150,6 +150,16 @@ const server=http.createServer((req,res)=>{
    };
    const noPhone=async()=>assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [type="submit"],#modal [data-action="messenger-phone"],#modal [data-messenger-phone-submit]').count(),0,'public contact has no phone fallback');
    const ready=()=>page.waitForFunction(()=>{const b=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];return b.length===2&&b.every(el=>!el.disabled);});
+   const cancelFlightDraft=async()=>{
+    const choice=handoffs.filter(row=>row.action==='handoff_freeze').at(-1).body.choice_ref;
+    // Back restores the previous enabled contact HTML before its new prepare
+    // settles; wait for that exact freeze before accepting the restored state.
+    const prepared=page.waitForResponse(response=>{
+     const request=response.request();if(request.method()!=='POST'||new URL(request.url()).pathname!==intPath)return false;
+     const body=JSON.parse(request.postData()||'{}');return body.action==='handoff_freeze'&&body.choice_ref===choice;
+    });
+    await page.locator('#modal-footer [data-action="modal-back"]').click();await prepared;await ready();
+   };
    const total=async()=>Number((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/[^0-9,.-]/g,'').replace(',','.'));
    page.on('pageerror',error=>errors.push(error.message));
    page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname}));
@@ -253,6 +263,18 @@ const server=http.createServer((req,res)=>{
     const row=()=>page.locator('.room-offer-choice[data-offer-key="tourvisor%3Avisual-tv-101"]');
     await row().locator('[data-action="select-hotel-offer"]').click();await ready();await noPhone();
     assert.equal(handoffs.some(row=>row.action==='handoff_create'),false,'entering contact only prepares');
+    const privateCount=action=>tv.calls.filter(row=>row.action===action).length;
+    assert.equal(privateCount('tv_flights'),0,'contact starts before flight inventory is read');
+    const quotesBeforeFlights=privateCount('tv_tour');
+    await page.locator('[data-action="contact-flights"]').click();
+    await page.locator('#tour-flight-options [name="flight-pair"][value="0"]').waitFor();
+    assert.equal(privateCount('tv_flights'),1,'the first messenger-only contact opens its deferred flight picker');
+    await capture('first-contact-flights');
+    await page.locator('#tour-flight-options [name="flight-pair"][value="0"]').click();
+    await cancelFlightDraft();await noPhone();
+    assert.equal(await total(),120000,'Cancel leaves the original whole-party amount');
+    assert.equal(frozen.observation.flights.state,'manager-deferred','a cancelled draft does not select a flight');
+    assert.equal(privateCount('tv_tour'),quotesBeforeFlights,'reading flights does not requote the tour');
     await page.locator('#modal-back').click();await row().waitFor({state:'visible'});
     await row().locator('[data-action="hotel-flights"]').click();await row().locator('[name="flight-pair"][value="1"]').waitFor();
     await row().locator('[name="flight-pair"][value="1"]').click();
@@ -265,6 +287,50 @@ const server=http.createServer((req,res)=>{
     assert.equal(frozen.observation.flights.state,'selected');assert.equal(frozen.observation.flights.outward.length,1);assert.equal(frozen.observation.flights.inward.length,1);
     assert.equal(await page.locator('#messenger-check').isVisible(),false,'ready contact keeps the status check hidden');
     await capture('contact');
+    // Exercise the details -> contact -> flights -> Apply -> Back route. A
+    // changed pair must replace this tour's earlier details snapshot and the
+    // retained selection, while an unapplied draft remains cancellable.
+    const tourReads=privateCount('tv_tour'),flightReads=privateCount('tv_flights');
+    const acceptedStay=structuredClone(frozen.observation.stay),acceptedTrip=structuredClone(frozen.observation.trip);
+    const resume=async()=>{
+     await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+     await page.waitForFunction(()=>!document.querySelector('#modal').open);
+     await page.locator('.current-card-selection [data-card-selection][data-key="tourvisor%3Avisual-tv-101"]').click();
+     await page.locator('#detail-total').waitFor();
+    };
+    const choose=async id=>{
+     await page.locator('[data-action="contact-flights"]').click();
+     await page.locator('#tour-flight-options [name="flight-pair"][value="'+id+'"]').click();
+    };
+    await resume();assert.equal(await total(),133500.5);
+    await page.locator('[data-action="confirm-tour"]').click();await ready();
+    await choose('0');await cancelFlightDraft();
+    assert.equal(await total(),133500.5,'Cancel keeps the previously applied pair price');
+    assert.match(frozen.observation.flights.outward[0].label,/TEST201/,'Cancel keeps the previously applied flight');
+    await choose('0');frozen=undefined;operationState='prepared';
+    await page.locator('[data-action="apply-flight"]').click();await ready();await noPhone();
+    assert.equal(await total(),120000);assert.equal(frozen.observation.price.amount,'120000');
+    assert.deepEqual(frozen.observation.stay,acceptedStay,'changing flights retains room, meal and operator');
+    assert.deepEqual(frozen.observation.trip,acceptedTrip,'changing flights retains dates and the complete family');
+    assert.match(frozen.observation.flights.outward[0].label,/TEST101/);assert.match(frozen.observation.flights.inward[0].label,/TEST102/);
+    await capture('applied-contact-flight');
+    await page.locator('#modal-back').click();await page.locator('#detail-total').waitFor();
+    assert.equal(await total(),120000,'Back to details retains the explicitly applied pair and whole-party price');
+    assert.match(await page.locator('.flight-summary').textContent(),/TEST101/);
+    assert.doesNotMatch(await page.locator('.flight-summary').textContent(),/TEST201/);
+    await capture('contact-flight-back');
+    await resume();assert.equal(await total(),120000,'Close and continue retains the same applied pair');
+    assert.match(await page.locator('.flight-summary').textContent(),/TEST101/);
+    await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open);
+    await page.locator('.hotel-card h3 [data-action="hotel-details"]').first().click();await row().waitFor({state:'visible'});
+    await row().locator('[data-action="select-hotel-offer"]').click();await ready();await noPhone();
+    assert.equal(await total(),120000,'the room entry also reuses the accepted selection');
+    assert.equal(privateCount('tv_tour'),tourReads,'Apply, Back and resume never requote the selected tour');
+    assert.equal(privateCount('tv_flights'),flightReads,'Apply, Back and resume reuse the loaded inventory');
+    assert.equal(handoffs.some(row=>row.action==='handoff_create'),false,'flight changes alone never create a messenger transition');
+    receipt.contactFlightReturn={firstDeferredOpen:true,cancelPreserved:true,backPreserved:true,resumePreserved:true,
+     beforeAmount:'133500.5',appliedAmount:'120000',outward:'TEST101',inward:'TEST102',adults:3,childAges:[0,12],additionalQuotes:0,additionalFlightReads:0};
     await page.locator('#messenger-entry [data-platform="telegram"]').click();await page.locator('#messenger-check').waitFor({state:'visible'});
     await noPhone();assert.match(await page.locator('#messenger-status').textContent(),/Не удалось подтвердить переход/);
     assert.doesNotMatch(await page.locator('#messenger-status').textContent(),/не отправля|не доставлен/i);
@@ -281,11 +347,11 @@ const server=http.createServer((req,res)=>{
     assert(events.includes('search_started'),'retained main analytics observes the public search');
     assert(!events.includes('lead_submitted'),'a handoff transition is never counted as delivery');
     assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
-    receipt.status='passed';receipt.runtime=config;receipt.finalOperation=operation;receipt.wholePartyAmount='133500.5';
+    receipt.status='passed';receipt.runtime=config;receipt.finalOperation=operation;receipt.wholePartyAmount='120000';
     receipt.privateTVActions=tv.calls.map(row=>row.action);receipt.analyticsEvents=events;receipt.loadedGraph=[...served].filter(file=>initial.includes(file)||lazy.includes(file));save();
    }catch(error){receipt.status='failed';receipt.error=error.message;receipt.errors=errors;receipt.forbidden=forbidden;save();await page.screenshot({path:path.join(output,'failure-'+width+'.png')});throw error;}
    finally{await context.close();}
   }
-  console.log('PASS compiled public LIVE 430/1280: actual PHP, retained main owners, complete initial/lazy graph, exact family pair/contact/unknown status/return; no phone; fictional transports only; supplier/bot/lead HTTP0');
+  console.log('PASS compiled public LIVE 430/1280: actual PHP, retained main owners, complete initial/lazy graph, first contact flight load and exact family Apply/Cancel/Back/resume, unknown status/return; no phone; fictional transports only; supplier/bot/lead HTTP0');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

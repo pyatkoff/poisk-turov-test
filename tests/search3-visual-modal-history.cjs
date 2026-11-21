@@ -47,6 +47,7 @@ function observe(source,s){
  if(s.setup)s.setup(ctx,node);
  ctx.formFiltersDraft=null;ctx.destinationPending=null;ctx.uiRoute=()=>({type:ctx.modalType,key:ctx.selectedOffer?.key});
  vm.createContext(ctx);vm.runInContext(owner(source),ctx);
+ if(s.exercise)return s.exercise(ctx,node);
  if(s.kind==='show')ctx.showModal(s.next,'new title','new kicker','<new>body</new>',!!s.wide);
  else if(s.kind==='close')ctx.closeModal({fromHistory:!!s.fromHistory});
  else ctx.modalBack();
@@ -183,6 +184,59 @@ for(const mode of ['current','retained','missing','foreign','loading','flights-l
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function terminalOfferQuote('),source.indexOf('function offerQuoteFailure('))+source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
 }
 console.log('PASS passive flight history: exact retained offer/raw inventory only; missing/foreign/loading/expired/empty/other rejected; supplier and lead HTTP0');
+
+// Contact can apply a different pair after details already captured the old
+// selection. Exercise the actual Apply/Back/cache owners with fictional totals.
+const contactPart=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert(a>=0&&b>a);return source.slice(a,b);};
+function contactPairHistory(exercise){
+ return observe(source,{open:true,current:'offer',exercise:(ctx,node)=>{
+  const search={origin:'Москва',country:'2',from:'2027-03-29',to:'2027-03-29',minNights:7,maxNights:7,adults:2,ages:[0,8]};
+  const offer=Object.assign(ctx.selectedOffer,{provider:'tourvisor',day:search.from,nights:7,adults:2,ages:[0,8],room:'Family Room',meal:'Всё включено',operator:'FUN&SUN',flight:'regular',search,
+   total:120000,quoteListingTotal:120000,tour:{id:'fixture-only',price:120000},variants:[{price:120000},{price:133500.5}],flightChoiceId:'0'});
+  const listing={...offer},initial=clone(offer);ctx.providerViews=new Map();ctx.offerFromKey=key=>key===offer.key?listing:null;
+  ctx.data={amount:value=>Number(value)||null,variantPrice:(tour,pair)=>pair.price};ctx.needsRefresh=o=>!!o.cached;
+  ctx.flightDraft=null;ctx.renderFlightPicker=()=>{};ctx.bindMessenger=()=>{};ctx.window.V2_CONFIG={search3ContactMode:'messenger-only'};
+  node('#modal').classList.add=()=>{};
+  ctx.openLeadPreview=next=>{ctx.selectedOffer=next;ctx.showModal('selected-tour','Связь по выбранному туру','','contact');};
+  vm.runInContext(source.split('\n').filter(line=>line.startsWith('const searchKey=')||line.startsWith('const flightPairFor=')||line.startsWith('function sameSelectedTourConditions(')).join('\n')+'\n'+
+   contactPart('function retainedProviderView(', '// Reflect the retained receipt')+
+   contactPart('function rememberProviderView(', 'function anexAdditionalUnconfirmed(')+
+   contactPart('function restoreProviderView(', 'const flightPairFor=')+
+   contactPart('function withFlightPair(', 'function legHTML(')+
+   contactPart('function openFlightPicker(', 'let flightPickerLoad=')+
+   contactPart('function applyFlightPair(', 'function flightConnectionText('),ctx);
+  ctx.rememberProviderView(offer,'tourvisor-selection');ctx.openLeadPreview(offer);ctx.openFlightPicker();ctx.flightDraft.id='1';
+  assert.deepEqual(ctx.modalHistory.map(step=>step.type),['offer','selected-tour']);
+  return exercise(ctx,{offer,listing,initial});
+ }});
+}
+contactPairHistory((ctx,{offer,listing,initial})=>{
+ const detail=ctx.modalHistory[0],foreign=[
+  {...offer,key:'another-offer'}, {...offer,raw:{...offer.raw}}, {...offer,ages:[0,9]},
+  {...offer,room:'Suite'}, {...offer,meal:'Завтраки'}, {...offer,search:{...offer.search,origin:'Казань'}}
+ ].map(o=>({...detail,offer:o}));
+ const before=foreign.map(step=>({offer:step.offer,value:clone(step.offer)}));ctx.modalHistory.unshift(...foreign);
+ ctx.applyFlightPair();assert.equal(ctx.modalType,'selected-tour');assert.equal(ctx.selectedOffer.total,133500.5);assert.equal(ctx.selectedOffer.flightChoiceId,'1');
+ foreign.forEach((step,i)=>{assert.strictEqual(step.offer,before[i].offer,'another selection keeps its own history snapshot');assert.deepEqual(clone(step.offer),before[i].value);});
+ ctx.modalBack();assert.equal(ctx.modalType,'offer');assert.equal(ctx.selectedOffer.flightChoiceId,'1','Back to details keeps the explicitly applied pair');
+ assert.equal(ctx.selectedOffer.total,133500.5,'Back keeps the fictional whole-family amount, without multiplying by guests');
+ assert.equal(ctx.selectedOffer.room,initial.room);assert.equal(ctx.selectedOffer.meal,initial.meal);assert.deepEqual(clone(ctx.selectedOffer.ages),[0,8]);assert.strictEqual(ctx.selectedOffer.raw,offer.raw);
+ assert.equal(ctx.retainedProviderView(listing).offer.flightChoiceId,'1','contact Apply updates the current-search TV return cache');
+ assert.equal(ctx.retainedProviderView(listing).offer.total,133500.5);
+ ctx.closeModal();ctx.selectedOffer={...listing};assert.equal(ctx.restoreProviderView(listing),true);
+ assert.equal(ctx.selectedOffer.flightChoiceId,'1','close and ordinary reopen reuse the latest applied pair');assert.equal(ctx.selectedOffer.total,133500.5);
+});
+contactPairHistory((ctx,{offer,listing,initial})=>{
+ ctx.modalBack();assert.equal(ctx.modalType,'selected-tour');assert.strictEqual(ctx.selectedOffer,offer,'Cancel preserves the original selection object');
+ ctx.modalBack();assert.equal(ctx.modalType,'offer');assert.deepEqual(clone(ctx.selectedOffer),initial,'Cancel cannot apply the draft pair or its price');
+ assert.deepEqual(clone(ctx.retainedProviderView(listing).offer),{...initial,loading:false},'Cancel leaves the retained TV selection unchanged');
+});
+contactPairHistory((ctx,{offer})=>{
+ offer.quoteErrorTerminal=true;const before=ctx.modalHistory.map(step=>step.offer),draft=ctx.flightDraft;ctx.applyFlightPair();
+ assert.strictEqual(ctx.flightDraft,draft);assert.strictEqual(ctx.selectedOffer,offer);assert.equal(ctx.modalType,'flights');
+ assert.deepEqual(ctx.modalHistory.map(step=>step.offer),before,'a terminal quote cannot rewrite any return snapshot');
+});
+console.log('PASS contact pair return: Apply→Back and close/reopen retain pair/full-family total; Cancel, foreign key/raw/party/stay/search and terminal guards; fictional supplier and lead HTTP0');
 
 // Run the actual lazy renderer, selection dispatch and in-place sync together.
 // Toggle names identify the exact offer; aria-pressed alone carries selection.
