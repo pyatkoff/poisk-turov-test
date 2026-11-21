@@ -7,6 +7,7 @@ fixed operation can consume its exact overlay after all dependency checks.
 """
 import ast
 import base64
+import datetime
 import hashlib
 import io
 import json
@@ -23,6 +24,7 @@ import zipfile
 
 import search3_root_gateway_install as carrier
 import search3_root_gateway_inspect as inspector
+import int_server_executor_search3_signing as tv_signing
 
 REPO = 'pyatkoff/poisk-turov-test'
 WORKFLOW = '.github/workflows/search3-root-gateway-install.yml'
@@ -268,6 +270,409 @@ UPDATE_PARENT = {
 api = carrier.checked_api
 need = carrier.need
 sha = carrier.sha
+
+# A current dependency transition, not a replacement of any accepted policy or
+# snapshot. Only the original, still unexecuted INT5090 maintenance can supply
+# the successor. The original protected hashes and their policy digest stay fixed.
+TV_SUCCESSOR = {
+    'path': '_preview/search3-anex-candidate/app/integrations/tourvisor-interactive-client.php',
+    'relative': 'app/integrations/tourvisor-interactive-client.php',
+    'operation_id': 'int-anex-tv-invalid-response-install-20261119-v1',
+    'mode': 'install-tv-invalid-response',
+    'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'before_sha256': '72056e5c4642daa9515d2d5dccece0804b6e3dd9c935b6250e0e29ca2e39daf9',
+    'after_sha256': '529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841',
+    'after_size': 9741,
+    # The original execute job runs these tests before dispatch. Pin their
+    # executed Python/PHP closure as well as the transport's companion modules;
+    # passive fixtures and files inspected only by php -l are not executable inputs.
+    'control_blobs': {
+        '.github/workflows/int-server-executor.yml': 'd5f530e5257052d32b91e5cc82e2dfb00247f5c0',
+        'scripts/deploy/int_server_executor.py': 'beaccacebd7864c3e41e8fb4bcf7fa9ab9357268',
+        'scripts/deploy/int_server_executor_anex_secret_transport.py': 'c548e445ae426934540ade3433f3eb6ddfd44a75',
+        'scripts/deploy/int_server_executor_firstpage_readback.py': '2fed14a625f56bfea42f1a7e3cc17e7408a5b4d1',
+        'scripts/deploy/int_server_executor_local_profile_acquire.py': '5610c13a42ba9f9eeeba18e3961b8375342971d4',
+        'scripts/deploy/int_server_executor_local_profile_apply.py': 'c840c47e1404b1eb8776957598c7947178d973ed',
+        'scripts/deploy/int_server_executor_local_profile_apply_source320.py': '416fbfa517298907d77feec5a36a45fcd76400f8',
+        'scripts/deploy/int_server_executor_local_profile_metadata.py': '63d0a543e7ac9b25c751270d0836d10ef6dd6e03',
+        'scripts/deploy/int_server_executor_local_profile_phase3_inspection.py': '3aa01e8ec679290d7d953507f3e684403e361803',
+        'scripts/deploy/int_server_executor_local_profile_plan.py': '85cb0494e9d7ba4ba1ddd94c4f1c11f3a2b01cc8',
+        'scripts/deploy/int_server_executor_local_profile_read.py': 'edd932d18ddbf224fb00e2825b2d1e76e2f8b70b',
+        'scripts/deploy/int_server_executor_local_profile_recovery_plan.py': 'e853b2ffd2933048d36b4b2354d6d94e528f3b57',
+        'scripts/deploy/int_server_executor_local_stay_read.py': '2ddfd0606a2110ea3e75cdfc3d85b3287f6207f7',
+        'scripts/deploy/int_server_executor_local_tv_capture.py': '8dac180c0f48490e39ebfb7a416520351a24e770',
+        'scripts/deploy/int_server_executor_local_tv_content.py': 'a352848a313bb25a81a2e83e1829c2c4ca05e86a',
+        'scripts/deploy/int_server_executor_local_tv_schema.py': '9d454798261e62e4ae9902485ad8ee2d2b4fb78d',
+        'scripts/deploy/int_server_executor_local_tv_seed.py': 'a89ea16920cb1495b2bfa28b83856933da7d3b6c',
+        'scripts/deploy/int_server_executor_match_primary.py': '3fe7781316c88bfd61573700b6916c866d36d480',
+        'scripts/deploy/int_server_executor_match_retained.py': 'affbf2d848f6a787bd36d5785cbdbc695ef7ed7d',
+        'scripts/deploy/int_server_executor_passive_fuel_readiness.py': '0cc93dc43f1a38c82633474557c51a5f2fc00ad2',
+        'scripts/deploy/int_server_executor_search3_signing.py': 'eb64ac13f9f27d32c02e2eaafe5e9362dd4a0aa5',
+        'scripts/diagnostics/int_funsun_direction_store_server_readback.py': '96bff671035241c869f772d14af5c45871aad0a6',
+        'scripts/diagnostics/local_profile_acquire_4191.php': '1ac2a0158efc21f1bb07a5b10af85835a5187ec3',
+        'scripts/diagnostics/local_profile_apply_4191.php': '5b8fbecb106ac266ed4c9b602f577a199e349628',
+        'scripts/diagnostics/local_profile_apply_source320_4191.php': 'e135ee29510b54b37260f1873a6aa7d3ad28ce85',
+        'scripts/diagnostics/local_profile_mass_apply2_4191.php': '9bdc84aea6c72bee01b3fc4ee5061d5104c0b83a',
+        'scripts/diagnostics/local_profile_mass_apply_4191.php': '19d3fa0c1683f35acfc63e1780300b66cec8bc42',
+        'scripts/diagnostics/local_profile_mass_plan2_4191.php': 'b9795f3baa07b13d1cdcb21f3323ac6fc0c87ec7',
+        'scripts/diagnostics/local_profile_mass_plan3_4191.php': '8c1179a6ccdcc37932212037d123db00cfe45987',
+        'scripts/diagnostics/local_profile_mass_plan_4191.php': '8a09058cb0253dd811990a547ad1740b84b2f79f',
+        'scripts/diagnostics/local_profile_metadata_4191.php': 'c1c1233e297529a2e45ae3f0b6529ee9a171ecd4',
+        'scripts/diagnostics/local_profile_plan_4191.php': '2e600b7a472cd4d278eca809a5b6129e68b7a991',
+        'tests/int_server_executor_anex_secret_transport_test.py': '0ecb910e4b395a44b4eccea765366568eba93d3a',
+        'tests/int_server_executor_firstpage_readback_test.py': '1e645f4b33e64f2feac743a1b17691451478a36d',
+        'tests/int_server_executor_local_profile_acquire_test.py': '88c7fa34faf26979b08df0c0e61dd18d59da965a',
+        'tests/int_server_executor_local_profile_apply_source320_test.py': '21d7a293cc5f83d62a7e43086bc9a0d4b0a8b7e4',
+        'tests/int_server_executor_local_profile_apply_test.py': '95573cc1adfd640de28a52f0fd4ad910ca482e77',
+        'tests/int_server_executor_local_profile_mass_apply2_test.py': 'c4788dfb2939014cd6c7cd7887ea578c0170a22f',
+        'tests/int_server_executor_local_profile_mass_apply_test.py': '2897e68199975ba24dcd79f54c5a5e041b7114b2',
+        'tests/int_server_executor_local_profile_mass_plan2_test.py': '1eb0509ea4b838f33686257f7de881f6d820703a',
+        'tests/int_server_executor_local_profile_mass_plan3_test.py': '914b948deda08b0d5e600bd0e557e4f4930dce74',
+        'tests/int_server_executor_local_profile_mass_plan_test.py': 'dfb5cc1c7d82f6fad60a9a5111329d1df8e4d6ec',
+        'tests/int_server_executor_local_profile_metadata_test.py': '5872eb60be0fec9cfd4423b759d849d6794452dc',
+        'tests/int_server_executor_local_profile_phase3_inspection_test.py': '7c3d7bbcdb40ed4d943b42c2ab977df30a971c3d',
+        'tests/int_server_executor_local_profile_plan_test.py': 'b147bffaeb7459fa7d38cf822328b9d465ac900c',
+        'tests/int_server_executor_local_profile_recovery_plan_test.py': '3cd6ce634d878dadbcaf7a1f1f3407ad295410fe',
+        'tests/int_server_executor_match_primary_test.py': 'be5ff3b1d9ccc3fd5f8df70a6833ece01e0d81eb',
+        'tests/int_server_executor_search3_signing_test.py': '92f74b938171b6753a22e404fad9df0be9ad6207',
+        'tests/int_server_executor_test.py': '19f14d8ca182e5891e737172ea1e118e1d378dbb',
+    },
+}
+TV_SUCCESSOR_REASONS = ('tv_successor_identity', 'tv_successor_namespace', 'tv_successor_record',
+                        'tv_successor_plan', 'tv_successor_backup', 'tv_successor_state',
+                        'tv_successor_time', 'tv_successor_target', 'tv_successor_snapshot',
+                        'tv_successor_changed')
+
+
+def tv_successor_result_valid(value):
+    command = {key: TV_SUCCESSOR[key] for key in ('source_sha', 'mode', 'operation_id')}
+    return (isinstance(value, dict)
+            and not set(value) & {'reason', 'rollback', 'install_failure_class'}
+            and tv_signing.completed_tv_invalid_response(command, value))
+
+
+def tv_successor_rollback_valid(value):
+    """Admit only the original installer's complete automatic restoration."""
+    if not isinstance(value, dict): return False
+    fixed = {'schema_version': 1, 'status': 'rolled_back', 'runtime_changed': False,
+             'public_ui_entrypoints_unchanged': True,
+             **{k: TV_SUCCESSOR[k] for k in ('source_sha', 'mode', 'operation_id')}}
+    if not all(type(value.get(k)) is type(v) and value[k] == v for k,v in fixed.items()): return False
+    if not all(type(value.get(k)) is int and value[k] == 0 for k in
+               ('supplier_calls', 'database_writes', 'booking_calls', 'lead_calls')): return False
+    rollback = value.get('rollback')
+    if (not isinstance(rollback, dict) or set(rollback) != {'status', 'restored_files'}
+            or rollback['status'] != 'complete' or type(rollback['restored_files']) is not int
+            or rollback['restored_files'] not in (0, 1)
+            or not isinstance(value.get('install_failure_class'), str)
+            or not re.fullmatch(r'[A-Za-z0-9_:-]{1,96}', value['install_failure_class'])
+            or 'reason' in value): return False
+    basis = {'parent_operation': tv_signing.TV_RECOVERY_OPERATION,
+             'parent_canonical_sha256': tv_signing.TV_ENABLED_CANONICAL,
+             'configuration_sha256': tv_signing.TV_ENABLED_CONFIG_SHA, 'configuration_mode': 0o644,
+             'receipt_and_configuration_unchanged': True}
+    public = {p: v.get('sha256') for p,v in tv_signing.TV_PUBLIC.items() if p != 'api-v2.php'}
+    if (value.get('production_before') != public or value.get('tv_gateway_public_before') != tv_signing.TV_PUBLIC
+            or value.get('diagnostic_basis_before') != basis
+            or value['diagnostic_basis_before'].get('receipt_and_configuration_unchanged') is not True): return False
+    for key, expected in (('production_after', public), ('tv_gateway_public_after', tv_signing.TV_PUBLIC),
+                          ('diagnostic_basis_after', basis)):
+        if key in value and value[key] != expected: return False
+    if ('diagnostic_basis_after' in value
+            and value['diagnostic_basis_after'].get('receipt_and_configuration_unchanged') is not True): return False
+    gateway = {'source_sha': TV_SUCCESSOR['source_sha'],
+               'files': tv_signing.tv_invalid_response_previous() |
+                        {TV_SUCCESSOR['relative']: TV_SUCCESSOR['after_sha256']},
+               'activation_performed': False, 'configuration_changed': False, 'signing_custody_changed': False}
+    if ('tv_gateway' in value and (value['tv_gateway'] != gateway or
+            any(value['tv_gateway'].get(k) is not False for k in
+                ('activation_performed', 'configuration_changed', 'signing_custody_changed')))): return False
+    if 'install' in value:
+        # Reuse the exact install-shape validator; filling known expected facts
+        # here validates the optional nested record, not a claimed runtime state.
+        trial = dict(value, status='installed', runtime_changed=True, production_after=public,
+                     tv_gateway_public_after=tv_signing.TV_PUBLIC, diagnostic_basis_after=basis,
+                     tv_gateway=gateway)
+        for key in ('rollback', 'install_failure_class'): trial.pop(key)
+        if not tv_successor_result_valid(trial): return False
+    return True
+
+
+def _tv_signer_source():
+    raw = Path(tv_signing.__file__).read_bytes()
+    blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+    need(blob == TV_SUCCESSOR['control_blobs']['scripts/deploy/int_server_executor_search3_signing.py'],
+         'tv_successor_validator_source')
+
+
+def _tv_json(raw):
+    def pairs(items):
+        value = {}
+        for key, item in items:
+            need(key not in value, 'tv_successor_json')
+            value[key] = item
+        return value
+    return json.loads(raw, object_pairs_hook=pairs)
+
+
+def _tv_time(value):
+    need(isinstance(value, str) and value.endswith('Z'), 'tv_successor_time')
+    parsed = datetime.datetime.fromisoformat(value[:-1] + '+00:00')
+    return int(parsed.timestamp())
+
+
+def _tv_commands():
+    command = '/run-int-server-v1 ' + ' '.join(TV_SUCCESSOR[k] for k in ('source_sha', 'mode', 'operation_id'))
+    rows = [row for row in pages('/issues/4709/comments')
+            if row.get('body', '').startswith('/run-int-server-v1 ')
+            and TV_SUCCESSOR['operation_id'] in row['body'].split()]
+    need(len(rows) <= 1, 'tv_successor_commands')
+    if rows:
+        row = rows[0]
+        need(row.get('body') == command and row.get('user', {}).get('id') == 226193297
+             and row.get('author_association') == 'OWNER'
+             and row.get('created_at') == row.get('updated_at'), 'tv_successor_command')
+        _tv_time(row.get('created_at'))
+    return rows
+
+
+def tv_successor_evidence():
+    """Resolve the one original INT result through its existing GitHub artifact.
+
+    INT's local receipt has no command/run IDs. Association is established here
+    by the unique exact owner command, original trusted-control attempt, exact
+    artifact tuple and its execution window; remote also checks reserved_at.
+    An existing command without a complete original receipt is never old-ready.
+    """
+    _tv_signer_source()
+    commands = _tv_commands()
+    if not commands:
+        return {'status': 'absent'}
+    command = commands[0]; created = _tv_time(command['created_at'])
+    # GitHub creates an issue_comment run at the event, even if its job then
+    # waits on concurrency. Bound creation discovery; unrelated later runs and
+    # their expiring artifacts must not become this fixed dependency's inputs.
+    end = datetime.datetime.fromtimestamp(created + 300, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    query = urllib.parse.quote(command['created_at'] + '..' + end, safe='')
+    runs = pages('/actions/workflows/int-server-executor.yml/runs?event=issue_comment&branch=main&created=' + query,
+                 'workflow_runs')
+    need(len(runs) <= 100, 'tv_successor_run_limit')
+    matches = []
+    for run in runs:
+        need(run.get('path') == '.github/workflows/int-server-executor.yml'
+             and run.get('head_branch') == 'main' and run.get('event') == 'issue_comment'
+             and created <= _tv_time(run.get('created_at')) <= created + 300, 'tv_successor_run')
+        artifacts = pages('/actions/runs/' + str(run['id']) + '/artifacts', 'artifacts')
+        candidates = [row for row in artifacts if row.get('name', '').startswith('int-server-executor-')]
+        for item in candidates:
+            digest = item.get('digest', '')
+            if (item.get('expired') is not False or not re.fullmatch(r'sha256:[a-f0-9]{64}', digest)
+                    or item.get('workflow_run', {}).get('id') != run['id']):
+                continue
+            # Unsupported artifacts cannot prove this operation. With no exact
+            # original proof below, a pending/malformed own attempt still blocks.
+            try:
+                with zip_files(download(item['id'], digest.removeprefix('sha256:'))) as archive:
+                    if archive.namelist() != ['result.json']: continue
+                    raw = archive.read('result.json')
+                    if len(raw) > 65536: continue
+                value = _tv_json(raw)
+            except (ValueError, RuntimeError, zipfile.BadZipFile):
+                continue
+            if not isinstance(value, dict) or value.get('operation_id') != TV_SUCCESSOR['operation_id']:
+                continue
+            restored = tv_successor_rollback_valid(value)
+            need(tv_successor_result_valid(value) or restored, 'tv_successor_result')
+            conclusion = 'failure' if restored else 'success'
+            need(type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+                 and run.get('status') == 'completed' and run.get('conclusion') == conclusion
+                 and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff'
+                 and item.get('name') == 'int-server-executor-' + str(run['id']) + '-1', 'tv_successor_run')
+            control = run.get('head_sha', '')
+            need(re.fullmatch('[a-f0-9]{40}', control), 'tv_successor_control')
+            entries = api('/contents/scripts/deploy?ref=' + control)
+            need(isinstance(entries, list), 'tv_successor_control')
+            selected = {row.get('path'): row for row in entries}
+            need(len(selected) == len(entries), 'tv_successor_control')
+            for path, expected in TV_SUCCESSOR['control_blobs'].items():
+                # The tests directory can exceed GitHub Contents' 1000-entry
+                # listing limit. Read each other fixed path explicitly.
+                blob = selected.get(path, {}) if path.startswith('scripts/deploy/') else api('/contents/' + path + '?ref=' + control)
+                need(blob.get('type') == 'file' and blob.get('sha') == expected, 'tv_successor_control')
+            jobs = [job for job in pages('/actions/runs/' + str(run['id']) + '/attempts/1/jobs', 'jobs')
+                    if job.get('name') == 'execute']
+            need(len(jobs) == 1 and jobs[0].get('run_id') == run['id']
+                 and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == conclusion, 'tv_successor_job')
+            steps = [step for step in jobs[0].get('steps', [])
+                     if step.get('name') == 'Execute bounded private INT operation, install, or DB/LOCAL readback']
+            need(len(steps) == 1 and steps[0].get('status') == 'completed'
+                 and steps[0].get('conclusion') == conclusion, 'tv_successor_step')
+            started, completed = _tv_time(steps[0].get('started_at')), _tv_time(steps[0].get('completed_at'))
+            need(created <= _tv_time(run.get('created_at')) <= _tv_time(run.get('run_started_at'))
+                 <= started <= completed <= _tv_time(run.get('updated_at')), 'tv_successor_time')
+            matches.append({'status': 'rolled_back' if restored else 'installed', 'result': value, 'run_id': run['id'],
+                            'command_comment_id': command['id'], 'control_source_sha': control,
+                            'job_id': jobs[0]['id'], 'artifact_id': item['id'],
+                            'artifact_sha256': digest.removeprefix('sha256:'),
+                            'created_at': created, 'started_at': started, 'completed_at': completed})
+    need(len(matches) == 1 and _tv_commands() == commands, 'tv_successor_original_missing')
+    return matches[0]
+
+
+def tv_successor_prefix(value):
+    # Pure builders remain usable for historical fixtures. Every live successor
+    # entry point passes an explicitly resolved value, including the absent case.
+    if value is not None:
+        _tv_signer_source()
+        need(isinstance(value, dict), 'tv_successor_identity')
+        if value.get('status') == 'absent':
+            need(value == {'status': 'absent'}, 'tv_successor_identity')
+        else:
+            keys = {'status', 'result', 'run_id', 'command_comment_id', 'control_source_sha', 'job_id',
+                    'artifact_id', 'artifact_sha256', 'created_at', 'started_at', 'completed_at'}
+            need(set(value) == keys and value['status'] in ('installed', 'rolled_back')
+                 and (tv_successor_result_valid(value['result']) if value['status'] == 'installed'
+                      else tv_successor_rollback_valid(value['result']))
+                 and all(type(value[k]) is int and value[k] > 0 for k in
+                         ('run_id', 'command_comment_id', 'job_id', 'artifact_id', 'created_at', 'started_at', 'completed_at'))
+                 and value['created_at'] <= value['started_at'] <= value['completed_at']
+                 and re.fullmatch('[a-f0-9]{40}', value['control_source_sha'])
+                 and re.fullmatch('[a-f0-9]{64}', value['artifact_sha256']), 'tv_successor_identity')
+    previous = tv_signing.tv_invalid_response_previous()
+    expected = previous | {TV_SUCCESSOR['relative']: TV_SUCCESSOR['after_sha256']}
+    pairs = [(path, path) for path in expected if path.startswith('app/integrations/')]
+    pairs += [('app/integrations/anex-initial-week-gate.php', 'app/integrations/anex-initial-week-gate.php'),
+              ('v2/api-anex-search3-preview.php', 'api-anex-search3-preview.php')]
+    # The dependency is selected separately by the original installer.
+    pins = dict(expected) | {'app/integrations/anex-initial-week-gate.php': tv_signing.TV_DEPENDENCIES['app/integrations/anex-initial-week-gate.php']}
+    old = dict(previous) | {'app/integrations/anex-initial-week-gate.php': tv_signing.TV_DEPENDENCIES['app/integrations/anex-initial-week-gate.php']}
+    dependency = 'app/integrations/anex-initial-week-gate.php'
+    install = {'status': 'installed', 'source_sha': TV_SUCCESSOR['source_sha'],
+               'files': 12, 'changed_files': 1, 'created_files': 0,
+               'endpoint': {'source': 'v2/api-anex-search3-preview.php', 'target': 'api-anex-search3-preview.php',
+                            'sha256': pins['v2/api-anex-search3-preview.php'], 'changed': False},
+               'dependency': {'source': dependency, 'target': dependency, 'sha256': pins[dependency], 'changed': False},
+               'tv_client': {'source': TV_SUCCESSOR['relative'], 'target': TV_SUCCESSOR['relative'],
+                             'sha256': TV_SUCCESSOR['after_sha256'], 'changed': True}}
+    constants = dict(TV_SUCCESSOR, files=[{'source': a, 'target': b} for a,b in pairs],
+                     previous={b: old[a] for a,b in pairs}, expected={b: pins[a] for a,b in pairs}, install=install)
+    return '\nTV_SUCCESSOR=' + repr(constants) + '\nTV_SUCCESSOR_PROOF=' + repr(value) + '\n'
+
+
+# These definitions run only inside the existing PUBLIC SSH program. They read
+# the fixed INT namespace; they never create a record, copy a dependency, execute
+# PHP or restore an INT file. Historical snapshots are inputs, never write targets.
+TV_SUCCESSOR_REMOTE = r'''
+_tv_successor_bound=None
+def tv_successor_namespace():
+ home=os.environ.get('HOME','');store=Files(home)
+ try:
+  with store.parent('.anytoour-int-executor/'+TV_SUCCESSOR['operation_id']) as (fd,name):
+   if fd is None:return False
+   root=os.fstat(fd)
+   require(stat.S_IMODE(root.st_mode)==0o700 and root.st_uid==os.getuid(),'tv_successor_namespace')
+   try:info=os.stat(name,dir_fd=fd,follow_symlinks=False)
+   except FileNotFoundError:return False
+   require(stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode)==0o700
+           and info.st_uid==os.getuid(),'tv_successor_namespace')
+   return True
+ finally:store.close()
+def tv_successor_read():
+ proof=TV_SUCCESSOR_PROOF;exists=tv_successor_namespace()
+ require((proof['status']!='absent')==exists,'tv_successor_namespace')
+ current=public.read(TV_SUCCESSOR['path'])[:2]
+ row,identity=current
+ require(row.get('state')=='present' and row.get('mode')=='0644'
+         and identity[6]==os.getuid(),'tv_successor_target')
+ if not exists:
+  require(row['sha256']==TV_SUCCESSOR['before_sha256'],'tv_successor_target')
+  return {'target':current,'records':None,'backup':row}
+ installed=proof['status']=='installed'
+ require((row['sha256']==TV_SUCCESSOR['after_sha256'] and row['size']==TV_SUCCESSOR['after_size']) if installed
+         else row['sha256']==TV_SUCCESSOR['before_sha256'],'tv_successor_target')
+ store=Files(os.environ['HOME']+'/.anytoour-int-executor/'+TV_SUCCESSOR['operation_id'])
+ try:
+  rows={};accepted=proof['result']
+  directories={'ancestors':tuple((name,expected) for _,name,_,expected in store.links)}
+  for relative in sorted({'/'.join(('backup/'+path).split('/')[:i])
+                          for path in TV_SUCCESSOR['previous'] for i in range(1,len(('backup/'+path).split('/')))}):
+   with store.parent(relative) as (fd,name):
+    require(fd is not None,'tv_successor_namespace')
+    info=os.stat(name,dir_fd=fd,follow_symlinks=False)
+    require(stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid(),'tv_successor_namespace')
+    directories[relative]=directory(info)
+  paths=('reservation.json','result.json','anex-preview-install-plan.json','install-state.json')
+  for path in (*paths,*('backup/'+path for path in TV_SUCCESSOR['previous'])):
+   record=store.read(path,True);meta,ident,raw=record
+   if path=='install-state.json' and not installed and meta=={'state':'absent'}:
+    rows[path]=record;continue
+   require(meta.get('state')=='present' and meta.get('mode')=='0600'
+           and ident[6]==os.getuid(),'tv_successor_record')
+   require(path.startswith('backup/') or len(raw)<=65536,'tv_successor_record')
+   rows[path]=record
+  require(rows['result.json'][2]==canonical(accepted),'tv_successor_state')
+  if installed:
+   require(rows['install-state.json'][2]==canonical(accepted['install']),'tv_successor_state')
+  else:
+   count=accepted['rollback']['restored_files'];state=rows['install-state.json']
+   if state[0]=={'state':'absent'}:
+    # replace may have succeeded before chmod or the first state write failed.
+    require('install' not in accepted,'tv_successor_state')
+   elif state[2]==canonical({'status':'applying-anex-preview','source_sha':TV_SUCCESSOR['source_sha'],
+                            'applied':[TV_SUCCESSOR['relative']]}):
+    require(count==1 and 'install' not in accepted,'tv_successor_state')
+   else:
+    value=json.loads(state[2]);manifest=value.get('manifest_sha256') if isinstance(value,dict) else None
+    require(count==1 and isinstance(manifest,str) and len(manifest)==64
+            and all(c in '0123456789abcdef' for c in manifest)
+            and state[2]==canonical(dict(TV_SUCCESSOR['install'],manifest_sha256=manifest))
+            and ('install' not in accepted or state[2]==canonical(accepted['install'])),'tv_successor_state')
+  reservation=json.loads(rows['reservation.json'][2])
+  fixed={k:TV_SUCCESSOR[k] for k in ('operation_id','source_sha','mode')}
+  require(isinstance(reservation,dict) and set(reservation)==set(fixed)|{'reserved_at'}
+          and all(type(reservation[k]) is type(v) and reservation[k]==v for k,v in fixed.items())
+          and type(reservation['reserved_at']) is int
+          and rows['reservation.json'][2]==json.dumps(reservation,sort_keys=True).encode(),'tv_successor_identity')
+  require(proof['started_at']<=reservation['reserved_at']<=proof['completed_at'],'tv_successor_time')
+  plan={'schema_version':1,'source_sha':TV_SUCCESSOR['source_sha'],'files':TV_SUCCESSOR['files'],
+        'changed_files':[TV_SUCCESSOR['relative']],
+        'previous':{p:{'exists':True,'sha256':h,'mode':0o644} for p,h in TV_SUCCESSOR['previous'].items()},
+        'expected':TV_SUCCESSOR['expected'],'status':'prepared'}
+  require(rows['anex-preview-install-plan.json'][2]==canonical(plan),'tv_successor_plan')
+  require(len(plan['files'])==len(plan['previous'])==len(plan['expected'])==12,'tv_successor_plan')
+  for path,expected in TV_SUCCESSOR['previous'].items():
+   require(rows['backup/'+path][0]['sha256']==expected,'tv_successor_backup')
+  prior=dict(rows['backup/'+TV_SUCCESSOR['relative']][0],mode='0644')
+  require(prior['sha256']==TV_SUCCESSOR['before_sha256'],'tv_successor_backup')
+  runtime={}
+  runtime_root=TV_SUCCESSOR['path'][:-len(TV_SUCCESSOR['relative'])]
+  for path,expected in (TV_SUCCESSOR['expected'] if installed else TV_SUCCESSOR['previous']).items():
+   item=public.read(runtime_root+path)[:2]
+   require(item[0].get('state')=='present' and item[0].get('sha256')==expected
+           and item[0].get('mode')=='0644' and item[1][6]==os.getuid(),'tv_successor_state')
+   runtime[path]=item
+  # File stamps include device/inode/mode/nlink/uid and both modification times.
+  # Retain raw records as well so a same-content replacement is still detected.
+  return {'target':current,'records':rows,'backup':prior,'directories':directories,'runtime':runtime}
+ finally:store.close()
+def tv_successor_stable():
+ if TV_SUCCESSOR_PROOF is not None and _tv_successor_bound is not None:
+  require(tv_successor_read()==_tv_successor_bound,'tv_successor_changed')
+def tv_successor_expected(snapshot):
+ global _tv_successor_bound
+ if TV_SUCCESSOR_PROOF is None:return snapshot
+ path=TV_SUCCESSOR['path']
+ require(isinstance(snapshot,dict) and path in snapshot,'tv_successor_snapshot')
+ observed=tv_successor_read()
+ if _tv_successor_bound is None:_tv_successor_bound=observed
+ else:require(observed==_tv_successor_bound,'tv_successor_changed')
+ # A later SITE snapshot may already contain the admitted successor. The old
+ # public snapshots continue to contain its independently checked backup row.
+ require(snapshot[path]==observed['backup'] or
+         TV_SUCCESSOR_PROOF['status']=='installed' and snapshot[path]==observed['target'][0],
+         'tv_successor_snapshot')
+ return dict(snapshot,**{path:observed['target'][0]})
+'''
 
 
 def fixed_command(inspect=False, continuation=False):
@@ -697,7 +1102,11 @@ class Files:
    require(stamp(os.stat(name,dir_fd=fd,follow_symlinks=False))==stamp(before),'file_changed')
    return {'state':'present','sha256':value.hexdigest(),'size':size,'mode':format(stat.S_IMODE(before.st_mode),'04o')},stamp(before),b''.join(chunks) if content else None
  def inventory(self, paths):
-  return {path:self.read(path)[:2] for path in paths}
+  check=globals().get('tv_successor_stable')
+  if check is not None:check()
+  rows={path:self.read(path)[:2] for path in paths}
+  if check is not None:check()
+  return rows
  def create(self, relative, data, mode=0o600):
   with self.parent(relative,True) as (fd,name):
    leaf=os.open(name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode,dir_fd=fd)
@@ -752,6 +1161,8 @@ def checked_protected_paths():
  return paths
 def dependency_matches(path,row):
  private_modes=('0400','0440','0444','0600','0640','0644')
+ if globals().get('TV_SUCCESSOR_PROOF') is not None and path==TV_SUCCESSOR['path']:
+  return _tv_successor_bound is not None and row==_tv_successor_bound['target'][0]
  if path in POLICY['protected']:
   return row.get('state')=='present' and row.get('sha256')==POLICY['protected'][path] and row.get('mode') in (private_modes if path==POLICY['private_config'] else ('0644',))
  if path in POLICY['opaque_settings']:
@@ -1031,7 +1442,7 @@ try:
          and digest(retained['snapshot/manifest.json'][2])==ACCEPTED['snapshot_manifest_sha256']
          and retained['snapshot/entry'][0]==POLICY['before'],'rollback_snapshot_conflict')
  candidate=public.inventory(POLICY['expected']);protected=public.inventory(protected_paths)
- require({p:r[0] for p,r in protected.items()}==snapshot['protected']
+ require({p:r[0] for p,r in protected.items()}==tv_successor_expected(snapshot['protected'])
          and all(dependency_matches(p,r[0]) for p,r in protected.items()),'protected_changed')
  def checked_stamp(value,row,owned=True):
   require(isinstance(value,list) and len(value)==9 and all(type(v) is int for v in value)
@@ -1115,12 +1526,12 @@ REASONS = ('fixed_path','fixed_root','unsafe_parent','parent_changed','directory
            'different_filesystem','operation_exists_no_replay','snapshot_invalid','restore_drill_failed','prewrite_race','addition_conflict',
            'addition_readback','entry_prewrite_race','addition_race','entry_readback','entry_exchange_conflict','installed_race','protected_changed',
            'operation_failed','receipt_failed','rollback_entry_conflict','parent_operation_exists')
-ROLLBACK_REASONS = REASONS + ('rollback_private_record','rollback_original_identity','rollback_snapshot_conflict',
+ROLLBACK_REASONS = REASONS + TV_SUCCESSOR_REASONS + ('rollback_private_record','rollback_original_identity','rollback_snapshot_conflict',
                              'rollback_candidate_changed','rollback_preflight_race','rollback_entry_readback',
                              'rollback_addition_conflict','rollback_incomplete')
 
 
-def rollback_remote_program(policy, identity, original, accepted):
+def rollback_remote_program(policy, identity, original, accepted, tv_successor=None):
     need(policy.get('operation') in (OPERATION, CONTINUATION_OPERATION) and policy.get('read_only') is False, 'mode')
     need(original['run_id'] != CONTINUATION_PARENT['run_id']
          and (original.get('operation_id') == CONTINUATION_OPERATION) == (policy['operation'] == CONTINUATION_OPERATION), 'rollback_install_identity')
@@ -1130,7 +1541,8 @@ def rollback_remote_program(policy, identity, original, accepted):
               + '\nROLLBACK_OPERATION=' + repr(ROLLBACK_OPERATION) + '\n')
     prefix += 'def re_safe(value): return value in ' + repr(ROLLBACK_REASONS) + '\n'
     # Share only filesystem definitions, never the inspect/install branches.
-    program = prefix + REMOTE.split('\ndef inspect_only():', 1)[0] + ROLLBACK_REMOTE
+    program = (prefix + tv_successor_prefix(tv_successor) + REMOTE.split('\ndef inspect_only():', 1)[0]
+               + TV_SUCCESSOR_REMOTE + ROLLBACK_REMOTE)
     ast.parse(program)
     return program
 
@@ -1531,7 +1943,7 @@ def parent_candidate(rows,updated=False):
 def parent_protected(rows):
  protected=public.inventory(checked_protected_paths())
  snapshot=json.loads(rows['snapshot/manifest.json'][2])
- require({p:r[0] for p,r in protected.items()}==snapshot['protected']
+ require({p:r[0] for p,r in protected.items()}==tv_successor_expected(snapshot['protected'])
          and all(dependency_matches(p,r[0]) for p,r in protected.items()),'dependency_drift')
  return protected
 def parent_hashes(rows): return {p:row[0]['sha256'] for p,row in rows.items()}
@@ -1678,7 +2090,7 @@ try:
  require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_install','path','before','protected','previous_identity','parent_records'}
          and snapshot['source']==UPDATE_POLICY['source'] and snapshot['manifest']==UPDATE_POLICY['manifest']
          and snapshot['parent_install']==ORIGINAL and snapshot['path']==path and snapshot['before']==POLICY['expected']
-         and snapshot['protected']=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
+         and tv_successor_expected(snapshot['protected'])=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
          and digest(update_records['snapshot/manifest.json'][2])==UPDATE_ACCEPTED['snapshot_manifest_sha256']
          and update_records['snapshot/app'][0]==UPDATE_POLICY['before'],'update_snapshot_conflict')
  old_identity=checked_stamp(snapshot['previous_identity'],UPDATE_POLICY['before'])
@@ -1766,30 +2178,31 @@ def update_parent_result(policy, original, accepted):
          and accepted['snapshot_manifest_sha256'] == UPDATE_PARENT['snapshot_manifest_sha256'], 'update_parent_result')
 
 
-def _update_program_prefix(policy, identity, original, accepted):
+def _update_program_prefix(policy, identity, original, accepted, tv_successor=None):
     return ('MAX_BYTES=' + repr(MAX_BYTES) + '\nPOLICY=' + repr(policy['previous'])
             + '\nUPDATE_POLICY=' + repr(policy) + '\nIDENTITY=' + repr(identity)
             + '\nORIGINAL=' + repr(original) + '\nPARENT_ACCEPTED=' + repr(accepted)
             + '\ndef re_safe(value): return value in ' + repr(UPDATE_REASONS) + '\n'
-            + REMOTE.split('\ndef inspect_only():', 1)[0] + UPDATE_COMMON_REMOTE)
+            + tv_successor_prefix(tv_successor) + REMOTE.split('\ndef inspect_only():', 1)[0]
+            + TV_SUCCESSOR_REMOTE + UPDATE_COMMON_REMOTE)
 
 
-def update_remote_program(policy, files, identity, original, accepted):
+def update_remote_program(policy, files, identity, original, accepted, tv_successor=None):
     update_policy_shape(policy); update_runtime_identity(identity); update_parent_result(policy, original, accepted)
     need(policy['release'] == UPDATE_RELEASE and isinstance(files, dict) and set(files) == {UPDATE_PATH}, 'update_payload')
     raw = base64.b64decode(files[UPDATE_PATH], validate=True)
     need(UPDATE_AFTER == {'state': 'present', 'sha256': sha(raw), 'size': len(raw), 'mode': '0644'}, 'update_asset_bytes')
-    program = _update_program_prefix(policy, identity, original, accepted) + '\nPAYLOAD=' + repr(files) + '\n' + UPDATE_REMOTE
+    program = _update_program_prefix(policy, identity, original, accepted, tv_successor) + '\nPAYLOAD=' + repr(files) + '\n' + UPDATE_REMOTE
     ast.parse(program)
     return program
 
 
-def update_rollback_remote_program(policy, identity, original, accepted, parent, parent_accepted):
+def update_rollback_remote_program(policy, identity, original, accepted, parent, parent_accepted, tv_successor=None):
     update_policy_shape(policy); update_runtime_identity(identity); update_runtime_identity(original)
     need(identity['run_id'] != original['run_id'] and identity['command_comment_id'] != original['command_comment_id'], 'update_rollback_identity')
     update_parent_result(policy, parent, parent_accepted)
     need(valid_update_result(original, policy, accepted), 'update_rollback_evidence')
-    program = (_update_program_prefix(policy, identity, parent, parent_accepted)
+    program = (_update_program_prefix(policy, identity, parent, parent_accepted, tv_successor)
                + '\nUPDATE_ORIGINAL=' + repr(original) + '\nUPDATE_ACCEPTED=' + repr(accepted)
                + '\nUPDATE_ROLLBACK_OPERATION=' + repr(UPDATE_ROLLBACK_OPERATION) + '\n' + UPDATE_ROLLBACK_REMOTE)
     ast.parse(program)
@@ -1944,7 +2357,9 @@ def update(rollback=False):
             original, artifact = update_rollback_admission(identity, original_run)
             evidence['phase'] = 'artifact'
             policy, accepted, parent_accepted = update_source_evidence(download(artifact['id'], artifact['digest'].removeprefix('sha256:')), original)
-            program = update_rollback_remote_program(policy, identity, original, accepted, update_parent_identity(), parent_accepted)
+            dependency = tv_successor_evidence()
+            program = update_rollback_remote_program(policy, identity, original, accepted, update_parent_identity(), parent_accepted,
+                                                     tv_successor=dependency)
             evidence.update(parent_install=update_parent_identity(), original_update=original)
         else:
             identity = update_event_identity(event, os.environ)
@@ -1953,7 +2368,8 @@ def update(rollback=False):
             previous, previous_files = package(download(ARTIFACT, ARTIFACT_SHA), continuation=True)
             parent_accepted = update_parent_evidence(download(UPDATE_PARENT['artifact_id'], UPDATE_PARENT['artifact_sha256']), previous)
             policy, files = update_package(download(UPDATE_ARTIFACT, UPDATE_ARTIFACT_SHA), previous, previous_files)
-            program = update_remote_program(policy, files, identity, update_parent_identity(), parent_accepted)
+            dependency = tv_successor_evidence()
+            program = update_remote_program(policy, files, identity, update_parent_identity(), parent_accepted, tv_successor=dependency)
             evidence.update(parent_install=update_parent_identity(), parent_result=parent_accepted,
                             previous_public=previous['expected'], release_sha=policy['release'])
         # The same fixed carrier, secrets and bounded SSH invocation as install.
@@ -1970,6 +2386,7 @@ def update(rollback=False):
         if rollback:
             update_rollback_commands(identity, original_run, original); rollback_main(identity)
         else: update_admission(identity)
+        need(tv_successor_evidence() == dependency, 'tv_successor_changed')
         evidence.update(status='unknown_no_replay', phase='remote', ssh_started=True)
         response = carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'], input=program.encode(), timeout=180)
         need(len(response) <= 32768, 'receipt_limit'); result = json.loads(response)
@@ -2417,7 +2834,7 @@ def site_parent_records():
  require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_install','path','before','protected','previous_identity','parent_records'}
          and snapshot['source']==UPDATE_POLICY['source'] and snapshot['manifest']==UPDATE_POLICY['manifest']
          and snapshot['parent_install']==ORIGINAL and snapshot['path']==path and snapshot['before']==POLICY['expected']
-         and snapshot['protected']=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
+         and tv_successor_expected(snapshot['protected'])=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
          and digest(rows['snapshot/manifest.json'][2])==UPDATE_ACCEPTED['snapshot_manifest_sha256']
          and rows['snapshot/app'][0]==UPDATE_POLICY['before'],'update_snapshot_conflict')
  old=checked_stamp(snapshot['previous_identity'],UPDATE_POLICY['before'])
@@ -2608,7 +3025,7 @@ try:
  require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_update','before','guarded','parent_records','update_records'}
          and snapshot['source']==SITE_POLICY['source'] and snapshot['manifest']==SITE_POLICY['manifest']
          and snapshot['parent_update']==UPDATE_ORIGINAL and set(snapshot['before'])==set(order)
-         and snapshot['guarded']=={p:row[0] for p,row in guarded.items()}
+         and tv_successor_expected(snapshot['guarded'])=={p:row[0] for p,row in guarded.items()}
          and snapshot['parent_records']==parent_hashes(retained) and snapshot['update_records']==parent_hashes(update_records)
          and digest(records['snapshot/manifest.json'][2])==SITE_ACCEPTED['snapshot_manifest_sha256'],'site_snapshot_conflict')
  current=public.inventory(order);prior={};old_identities={}
@@ -2662,21 +3079,21 @@ SITE_REASONS = UPDATE_REASONS + ('site_private_record','site_parent_changed','si
     'site_dependency_drift','site_readback','site_exchange_conflict','site_snapshot_conflict','site_original_identity')
 
 
-def _site_program_prefix(policy, identity, parent_value, continuation=False):
+def _site_program_prefix(policy, identity, parent_value, continuation=False, *, tv_successor=None):
     need(policy == site_policy(continuation), 'site_policy')
     update_runtime_identity(identity); need(identity['run_id'] != SITE_PARENT['run_id'], 'site_runtime_identity')
     previous, accepted, original = site_parent_value(parent_value)
     need(not set(SITE_ORDER) & (set(previous['previous']['expected']) | set(previous['previous']['protected'])
               | set(SITE_DEPENDENCIES) | set(SITE_OPTIONAL_DEPENDENCIES))
          and not set(SITE_DEPENDENCIES) & set(SITE_OPTIONAL_DEPENDENCIES), 'site_scope')
-    return (_update_program_prefix(previous, identity, update_parent_identity(), original)
+    return (_update_program_prefix(previous, identity, update_parent_identity(), original, tv_successor=tv_successor)
             + '\nSITE_POLICY=' + repr(policy) + '\nUPDATE_ORIGINAL=' + repr(site_parent_identity())
             + '\nUPDATE_ACCEPTED=' + repr(accepted)
             + '\ndef re_safe(value): return value in ' + repr(SITE_REASONS + ('site_failed_operation_exists',) if continuation else SITE_REASONS) + '\n' + SITE_COMMON_REMOTE)
 
 
-def site_remote_program(policy, files, identity, parent_value, continuation=False):
-    prefix = _site_program_prefix(policy, identity, parent_value, continuation)
+def site_remote_program(policy, files, identity, parent_value, continuation=False, *, tv_successor=None):
+    prefix = _site_program_prefix(policy, identity, parent_value, continuation, tv_successor=tv_successor)
     need(isinstance(files, dict) and set(files) == set(SITE_ORDER), 'site_payload')
     for path in SITE_ORDER:
         raw = base64.b64decode(files[path], validate=True)
@@ -2687,8 +3104,8 @@ def site_remote_program(policy, files, identity, parent_value, continuation=Fals
     return program
 
 
-def site_rollback_remote_program(policy, identity, original, accepted, parent_value, continuation=False):
-    prefix = _site_program_prefix(policy, identity, parent_value, continuation)
+def site_rollback_remote_program(policy, identity, original, accepted, parent_value, continuation=False, *, tv_successor=None):
+    prefix = _site_program_prefix(policy, identity, parent_value, continuation, tv_successor=tv_successor)
     update_runtime_identity(original)
     need(identity['run_id'] != original['run_id'] and identity['command_comment_id'] != original['command_comment_id']
          and valid_site_result(original, accepted, continuation=continuation), 'site_rollback_evidence')
@@ -2827,7 +3244,8 @@ def site_update(rollback=False, continuation=False):
             evidence.update(identity,original_site_run_id=original_run,phase='admission')
             original,artifact=site_rollback_admission(identity,original_run,continuation);evidence['phase']='artifact'
             policy,accepted,parent_value=site_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original,continuation)
-            program=site_rollback_remote_program(policy,identity,original,accepted,parent_value,continuation)
+            dependency=tv_successor_evidence()
+            program=site_rollback_remote_program(policy,identity,original,accepted,parent_value,continuation,tv_successor=dependency)
             evidence.update(parent_update=site_parent_identity(),original_site=original)
         else:
             identity=site_event_identity(event,os.environ,continuation=continuation);evidence.update(identity,phase='admission');site_admission(identity,continuation)
@@ -2837,7 +3255,8 @@ def site_update(rollback=False, continuation=False):
                 parent_value=site_continuation_inspection_value(inspection)
                 evidence.update(continuation_evidence=inspection,collector_evidence=site_continuation_collector_log())
             else: parent_value=site_parent_evidence(download(SITE_PARENT['artifact_id'],SITE_PARENT['artifact_sha256']))
-            program=site_remote_program(policy,site_package(),identity,parent_value,continuation)
+            dependency=tv_successor_evidence()
+            program=site_remote_program(policy,site_package(),identity,parent_value,continuation,tv_successor=dependency)
             evidence.update(parent_update=site_parent_identity(),parent_evidence=parent_value)
         # Same fixed carrier, credentials and bounded invocation as the original
         # public updater. No endpoint/application execution is added here.
@@ -2852,6 +3271,7 @@ def site_update(rollback=False, continuation=False):
         options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
         if rollback: site_rollback_commands(identity,original_run,original,continuation);rollback_main(identity)
         else: site_admission(identity,continuation)
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
         evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
         response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
         need(len(response)<=32768,'receipt_limit');result=json.loads(response)
@@ -3365,6 +3785,8 @@ def rollback():
             # proof. Recovery does not depend on the failed parent's availability.
             evidence.update(parent_failure=CONTINUATION_PARENT, dependency_policy_sha256=CONTINUATION_POLICY_SHA)
         accepted = rollback_source_evidence(download(artifact['id'], artifact['digest'].removeprefix('sha256:')), original, policy)
+        dependency = tv_successor_evidence()
+        program = rollback_remote_program(policy, identity, original, accepted, tv_successor=dependency)
         host, user = os.environ['PREVIEW_HOST'], os.environ['PREVIEW_USER']
         need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'ssh_identity')
         raw = os.environ['PREVIEW_KEY'].replace('\r', '')
@@ -3377,9 +3799,10 @@ def rollback():
         options = ['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
         rollback_commands(identity, original_run, original)
         rollback_main(identity)
+        need(tv_successor_evidence() == dependency, 'tv_successor_changed')
         evidence.update(status='unknown_no_replay', phase='remote', ssh_started=True)
         response = carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],
-                               input=rollback_remote_program(policy,identity,original,accepted).encode(), timeout=180)
+                               input=program.encode(), timeout=180)
         need(len(response) <= 32768, 'receipt_limit'); result = json.loads(response)
         complete = valid_rollback_result(identity,original,accepted,result); evidence['remote'] = result
         rollback_main(identity)

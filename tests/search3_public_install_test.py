@@ -1188,6 +1188,8 @@ class RollbackAdmission(unittest.TestCase):
             with self.assertRaises(RuntimeError): m.rollback_source_evidence(fixture(change), IDENTITY, policy)
 
     def test_changed_or_duplicate_command_is_checked_again_before_ssh(self):
+        raw, digest = archive_fixture()
+        with patch.object(m, 'MANIFEST_SHA', digest): policy, _ = m.package(raw)
         for mutate in [lambda rows: rows[1].update(body=rows[1]['body']+' edited'),
                        lambda rows: rows.append(rollback_event()['comment'] | {'id': 9003}),
                        lambda rows: rows[0].update(body=rows[0]['body'].replace(CONTROL, 'f'*40))]:
@@ -1198,8 +1200,9 @@ class RollbackAdmission(unittest.TestCase):
                     'PREVIEW_USER': 'fixture', 'PREVIEW_KEY': 'PRIVATE KEY fixture'}
                 rows = self.metadata('/issues/4709/comments?per_page=100&page=1'); mutate(rows)
                 with patch.dict(os.environ, env), patch.object(m, 'rollback_admission', return_value=(IDENTITY, {'id':333,'digest':'sha256:'+'5'*64})), \
-                     patch.object(m, 'download', return_value=b'x'), patch.object(m, 'package', return_value=({},{})), \
+                     patch.object(m, 'download', return_value=b'x'), patch.object(m, 'package', return_value=(policy,{})), \
                      patch.object(m, 'rollback_source_evidence', return_value=installed_result()), patch.object(m, 'api', return_value=rows), \
+                     patch.object(m, 'tv_successor_evidence', return_value={'status':'absent'}), \
                      patch.object(m, 'rollback_main'), patch.object(m.carrier, 'run', return_value=b'fixture known host') as run, \
                      patch('builtins.print'), self.assertRaisesRegex(RuntimeError, 'public_rollback_not_verified'):
                     m.rollback()
@@ -1630,6 +1633,7 @@ class RollbackTransaction(unittest.TestCase):
                  patch.object(m, 'download', side_effect=[b'compiled payload', stream.getvalue()]) as download, \
                  patch.object(m, 'package', return_value=(f.policy, {})), patch.object(m, 'rollback_commands', return_value=original), \
                  patch.object(m, 'rollback_main'), patch.object(m, 'continuation_parent_evidence', side_effect=AssertionError('expired parent fetch')) as parent_proof, \
+                 patch.object(m, 'tv_successor_evidence', return_value={'status':'absent'}), \
                  patch.object(m, 'signing_evidence', side_effect=AssertionError('signer gate')) as signer, \
                  patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(value).encode()]), patch('builtins.print'):
                 m.rollback()
@@ -2047,6 +2051,7 @@ class UpdateTransaction(unittest.TestCase):
                  patch.object(m, 'package', return_value=(f.policy, f.files)), \
                  patch.object(m, 'update_parent_evidence', return_value=f.accepted), \
                  patch.object(m, 'update_package', return_value=(f.update_policy, f.update_files)), \
+                 patch.object(m, 'tv_successor_evidence', return_value={'status':'absent'}), \
                  patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(f.update_accepted).encode()]), \
                  patch('builtins.print'):
                 m.update()
@@ -2101,6 +2106,7 @@ class UpdateTransaction(unittest.TestCase):
                 download = stack.enter_context(patch.object(m, 'download', return_value=raw))
                 stack.enter_context(patch.object(m, 'update_rollback_commands', return_value=UPDATE_IDENTITY))
                 stack.enter_context(patch.object(m, 'rollback_main'))
+                stack.enter_context(patch.object(m, 'tv_successor_evidence', return_value={'status':'absent'}))
                 for name in ('api', 'package', 'signing_evidence', 'update_parent_evidence', 'update_admission', 'update_final_heads'):
                     stack.enter_context(patch.object(m, name, side_effect=AssertionError('unnecessary recovery dependency: '+name)))
                 stack.enter_context(patch.object(m.carrier, 'run', side_effect=[b'fixture known host', json.dumps(restored).encode()]))
@@ -2602,6 +2608,7 @@ class SiteTransaction(unittest.TestCase):
                                'PREVIEW_HOST':'example.invalid','PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
             with patch.dict(os.environ,env),patch.object(m,'site_admission') as admission,patch.object(m,'site_final_heads'), \
                  patch.object(m,'download',return_value=f.site_parent_raw) as download,patch.object(m,'site_package',return_value=f.site_files), \
+                 patch.object(m,'tv_successor_evidence',return_value={'status':'absent'}), \
                  patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.site_accepted).encode()]),patch('builtins.print'):
                 m.site_update()
             self.assertEqual(admission.call_count,2);download.assert_called_once_with(m.SITE_PARENT['artifact_id'],m.SITE_PARENT['artifact_sha256'])
@@ -2635,6 +2642,7 @@ class SiteTransaction(unittest.TestCase):
                 stack.enter_context(patch.object(m,'SITE_PUBLISHER_GUARD_SHA',None))
                 stack.enter_context(patch.object(m,'site_rollback_admission',return_value=(SITE_IDENTITY,{'id':444,'digest':'sha256:'+m.sha(raw)})))
                 stack.enter_context(patch.object(m,'site_rollback_commands',return_value=SITE_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
+                stack.enter_context(patch.object(m,'tv_successor_evidence',return_value={'status':'absent'}))
                 download=stack.enter_context(patch.object(m,'download',return_value=raw))
                 for name in ('api','site_admission','site_final_heads','site_package','site_parent_admission','site_parent_evidence','signing_evidence'):
                     stack.enter_context(patch.object(m,name,side_effect=AssertionError('unnecessary recovery dependency: '+name)))
@@ -2889,6 +2897,673 @@ class SiteInspectionTransaction(unittest.TestCase):
             self.assertEqual(value['status'],'inspection_mismatch');self.assertTrue(value['read_only'])
             self.assertEqual(value['failed_evidence'],f.inspection_failed);self.assertEqual(value['remote']['server_writes'],0)
             self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
+
+
+class TvSuccessorTransaction(unittest.TestCase):
+    """Exercise the accepted INT maintenance against real retained public proofs."""
+
+    @contextlib.contextmanager
+    def successor(self, f, installed=True):
+        signing=m.tv_signing; contract=copy.deepcopy(m.TV_SUCCESSOR)
+        relative=contract['relative']; target=contract['path']
+        old=(f.root/target).read_bytes(); new=b'<?php /* fixed Tourvisor response and filters */\n'
+        dependency='app/integrations/anex-initial-week-gate.php'
+        previous=signing.tv_invalid_response_previous()
+        original_files={}
+        for source in [*previous,dependency]:
+            path=source if source.startswith('app/') else 'api-anex-search3-preview.php'
+            full='_preview/search3-anex-candidate/'+path
+            if not (f.root/full).exists():f.put(full,('retained INT '+path).encode())
+            original_files[path]=(f.root/full).read_bytes()
+        previous={source:m.sha(original_files[source if source.startswith('app/') else 'api-anex-search3-preview.php'])
+                  for source in previous}
+        dependencies=signing.TV_DEPENDENCIES|{dependency:m.sha(original_files[dependency])}
+        contract.update(before_sha256=m.sha(old),after_sha256=m.sha(new),after_size=len(new))
+        pins=previous|{relative:m.sha(new)}
+        command={key:contract[key] for key in ('source_sha','mode','operation_id')}
+        basis={'parent_operation':signing.TV_RECOVERY_OPERATION,'parent_canonical_sha256':signing.TV_ENABLED_CANONICAL,
+               'configuration_sha256':signing.TV_ENABLED_CONFIG_SHA,'configuration_mode':0o644,
+               'receipt_and_configuration_unchanged':True}
+        public={p:v.get('sha256') for p,v in signing.TV_PUBLIC.items() if p!='api-v2.php'}
+        result={'schema_version':1,**command,'status':'installed','supplier_calls':0,'database_writes':0,
+                'booking_calls':0,'lead_calls':0,'runtime_changed':True,'public_ui_entrypoints_unchanged':True,
+                'tv_gateway':{'source_sha':contract['source_sha'],'files':pins,'activation_performed':False,
+                              'configuration_changed':False,'signing_custody_changed':False},
+                'diagnostic_basis_before':basis,'diagnostic_basis_after':copy.deepcopy(basis),
+                'tv_gateway_public_before':signing.TV_PUBLIC,'tv_gateway_public_after':copy.deepcopy(signing.TV_PUBLIC),
+                'production_before':public,'production_after':dict(public),
+                'install':{'status':'installed','source_sha':contract['source_sha'],'files':12,
+                           'changed_files':1,'created_files':0,'manifest_sha256':'8'*64,
+                           'endpoint':{'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php',
+                                       'sha256':pins['v2/api-anex-search3-preview.php'],'changed':False},
+                           'dependency':{'source':dependency,'target':dependency,'sha256':dependencies[dependency],'changed':False},
+                           'tv_client':{'source':relative,'target':relative,'sha256':m.sha(new),'changed':True}}}
+        evidence={'status':'installed','result':result,'run_id':456780001,'command_comment_id':9601,
+                  'control_source_sha':'c'*40,'job_id':456780002,'artifact_id':456780003,
+                  'artifact_sha256':'9'*64,'created_at':1795266000,'started_at':1795266001,'completed_at':1795266100}
+        namespace=f.home/'.anytoour-int-executor'/contract['operation_id']
+        selected=[{'source':p,'target':p} for p in pins if p.startswith('app/integrations/')]
+        selected += [{'source':dependency,'target':dependency},
+                     {'source':'v2/api-anex-search3-preview.php','target':'api-anex-search3-preview.php'}]
+        expected={row['target']:pins[row['source']] if row['source'] in pins else dependencies[row['source']] for row in selected}
+        plan={'schema_version':1,'source_sha':contract['source_sha'],'files':selected,
+              'changed_files':[relative],'previous':{path:{'exists':True,'sha256':m.sha(raw),'mode':0o644}
+                                                   for path,raw in original_files.items()},
+              'expected':expected,'status':'prepared'}
+        records={'reservation.json':command|{'reserved_at':1795266002},'result.json':result,
+                 'anex-preview-install-plan.json':plan,'install-state.json':result['install']}
+        if installed:
+            namespace.parent.mkdir(mode=0o700);namespace.mkdir(mode=0o700)
+            for path,value in records.items():
+                # The frozen INT installer writes the reservation with spaces;
+                # result, prepared plan and final install-state are compact.
+                raw=json.dumps(value,sort_keys=True) if path=='reservation.json' else json.dumps(value,sort_keys=True,separators=(',',':'))
+                record=namespace/path;record.write_text(raw);record.chmod(0o600)
+            (namespace/'backup').mkdir(mode=0o700)
+            for path,raw in original_files.items():
+                backup=namespace/'backup'/path;backup.parent.mkdir(parents=True,exist_ok=True)
+                backup.write_bytes(raw);backup.chmod(0o600)
+            f.put(target,new)
+        f.tv_evidence=evidence if installed else {'status':'absent'}
+        f.tv_namespace=namespace;f.tv_target=target;f.tv_old=old;f.tv_new=new;f.tv_plan=plan
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.dict(os.environ,{'HOME':str(f.home)}))
+            stack.enter_context(patch.object(m,'TV_SUCCESSOR',contract))
+            stack.enter_context(patch.object(signing,'TV_INVALID_RESPONSE_SHA',m.sha(new)))
+            stack.enter_context(patch.object(signing,'tv_invalid_response_previous',return_value=previous))
+            stack.enter_context(patch.object(signing,'TV_DEPENDENCIES',dependencies))
+            self.assertTrue(m.tv_successor_result_valid(result))
+            for name in ('rollback_remote_program','update_remote_program','update_rollback_remote_program',
+                         'site_remote_program','site_rollback_remote_program'):
+                original=getattr(m,name)
+                def builder(*args,_original=original,**kwargs):
+                    return _original(*args,**(kwargs|{'tv_successor':copy.deepcopy(f.tv_evidence)}))
+                stack.enter_context(patch.object(m,name,side_effect=builder))
+            yield f
+
+    def proof_records(self,f):
+        if not f.tv_namespace.exists():return {}
+        return {str(path.relative_to(f.tv_namespace)):(UpdateTransaction().stamp(path),path.read_bytes())
+                for path in f.tv_namespace.rglob('*') if path.is_file()}
+
+    def assert_no_actions(self,value):
+        for key in ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls'):
+            self.assertIs(type(value[key]),int);self.assertEqual(value[key],0)
+
+    def replace_same_bytes(self,path,indent=' '):
+        # Preserve every content/mode/mtime assertion while replacing the inode.
+        # This catches a resolver that only compares parsed JSON or file hashes.
+        return '\n'.join(indent+line for line in (
+            'race_path='+repr(str(path)),
+            "race_stat=os.stat(race_path,follow_symlinks=False);race_raw=open(race_path,'rb').read()",
+            "race_fd=os.open(race_path+'.race',os.O_WRONLY|os.O_CREAT|os.O_EXCL,stat.S_IMODE(race_stat.st_mode))",
+            'os.write(race_fd,race_raw);os.close(race_fd)',
+            "os.utime(race_path+'.race',ns=(race_stat.st_atime_ns,race_stat.st_mtime_ns))",
+            "os.replace(race_path+'.race',race_path)"))+'\n'
+
+    def restored_maintenance(self,f,count=1):
+        value=copy.deepcopy(f.tv_evidence['result'])
+        for key in ('install','diagnostic_basis_after','tv_gateway_public_after','production_after'):value.pop(key)
+        value.update(status='rolled_back',runtime_changed=False,
+                     rollback={'status':'complete','restored_files':count},
+                     install_failure_class='anex_preview_install_readback_hash')
+        self.assertTrue(m.tv_successor_rollback_valid(value))
+        f.tv_evidence.update(status='rolled_back',result=value)
+        (f.tv_namespace/'result.json').write_text(json.dumps(value,sort_keys=True,separators=(',',':')))
+        state=f.tv_namespace/'install-state.json'
+        if count==0:state.unlink()
+        else:state.write_text(json.dumps({'status':'applying-anex-preview','source_sha':m.TV_SUCCESSOR['source_sha'],
+                                         'applied':[m.TV_SUCCESSOR['relative']]},sort_keys=True,separators=(',',':')))
+        f.put(f.tv_target,f.tv_old)
+
+    def test_fixed_production_transition_does_not_repin_historical_policy(self):
+        c=m.TV_SUCCESSOR
+        self.assertEqual(c['path'],'_preview/search3-anex-candidate/app/integrations/tourvisor-interactive-client.php')
+        self.assertEqual(c['relative'],'app/integrations/tourvisor-interactive-client.php')
+        self.assertEqual(c['operation_id'],'int-anex-tv-invalid-response-install-20261119-v1')
+        self.assertEqual(c['mode'],'install-tv-invalid-response')
+        self.assertEqual(c['source_sha'],'3207266e17ed4e8244aaf28d05b962747fd4cd3c')
+        self.assertEqual(c['before_sha256'],'72056e5c4642daa9515d2d5dccece0804b6e3dd9c935b6250e0e29ca2e39daf9')
+        self.assertEqual(c['after_sha256'],'529257a04d7526a758b49368959179e697279d223306d06a640e169c35148841')
+        self.assertEqual(c['after_size'],9741)
+        self.assertEqual(set(c['control_blobs']),{'.github/workflows/int-server-executor.yml'}|
+            {'scripts/deploy/int_server_executor'+suffix+'.py' for suffix in (
+                '', '_anex_secret_transport', '_firstpage_readback', '_local_profile_acquire',
+                '_local_profile_apply', '_local_profile_apply_source320', '_local_profile_metadata',
+                '_local_profile_phase3_inspection', '_local_profile_plan', '_local_profile_read',
+                '_local_profile_recovery_plan', '_local_stay_read', '_local_tv_capture', '_local_tv_content',
+                '_local_tv_schema', '_local_tv_seed', '_match_primary', '_match_retained',
+                '_passive_fuel_readiness', '_search3_signing')}|
+            {'tests/int_server_executor'+suffix+'_test.py' for suffix in (
+                '', '_anex_secret_transport', '_firstpage_readback', '_local_profile_acquire',
+                '_local_profile_apply_source320', '_local_profile_apply', '_local_profile_mass_apply2',
+                '_local_profile_mass_apply', '_local_profile_mass_plan2', '_local_profile_mass_plan3',
+                '_local_profile_mass_plan', '_local_profile_metadata', '_local_profile_phase3_inspection',
+                '_local_profile_plan', '_local_profile_recovery_plan', '_match_primary', '_search3_signing')}|
+            {'scripts/diagnostics/int_funsun_direction_store_server_readback.py'}|
+            {'scripts/diagnostics/local_profile_'+name+'_4191.php' for name in (
+                'acquire','apply','apply_source320','mass_apply2','mass_apply','mass_plan2',
+                'mass_plan3','mass_plan','metadata','plan')})
+        for policy in (m.PROTECTED,m.PREFLIGHT_ACCEPTED_PROTECTED,m.INSTALL_PROTECTED,m.CONTINUATION_PROTECTED):
+            self.assertEqual(policy[c['path']],c['before_sha256'])
+
+    def test_absent_maintenance_accepts_only_the_existing_old_dependency(self):
+        helper=UpdateTransaction()
+        with helper.installed() as f,self.successor(f,False):
+            proof=self.proof_records(f);records=RollbackTransaction().original_records(f)
+            value=helper.execute(f);self.assertEqual(value['status'],'updated_verified')
+            self.assert_no_actions(value);self.assertEqual(self.proof_records(f),proof)
+            self.assertEqual(RollbackTransaction().original_records(f),records)
+        for kind in ('unproved-new','third-hash','pending','wrong-mode'):
+            with self.subTest(kind=kind),helper.installed() as f,self.successor(f,False):
+                if kind=='pending':
+                    f.tv_namespace.parent.mkdir(mode=0o700);f.tv_namespace.mkdir(mode=0o700)
+                    (f.tv_namespace/'reservation.json').write_text('{}');(f.tv_namespace/'reservation.json').chmod(0o600)
+                elif kind=='wrong-mode':(f.root/f.tv_target).chmod(0o600)
+                else:f.put(f.tv_target,f.tv_new if kind=='unproved-new' else b'not an admitted client')
+                before=f.filesystem_snapshot();value=helper.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['written_files'],[])
+                self.assertFalse(f.update_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_update_and_both_rollback_levels_keep_new_client_and_immutable_original_records(self):
+        helper=UpdateTransaction()
+        with helper.installed() as f,self.successor(f):
+            records=RollbackTransaction().original_records(f);proof=self.proof_records(f)
+            f.update_accepted=helper.execute(f)
+            self.assertEqual(f.update_accepted['status'],'updated_verified');self.assert_no_actions(f.update_accepted)
+            self.assertEqual(RollbackTransaction().original_records(f),records);self.assertEqual(self.proof_records(f),proof)
+            updated_records={str(p.relative_to(f.update_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                             for p in f.update_private.rglob('*.json')}
+            value=helper.rollback(f);self.assertEqual(value['status'],'update_rolled_back_verified');self.assert_no_actions(value)
+            self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+            self.assertEqual({str(p.relative_to(f.update_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                              for p in f.update_private.rglob('*.json')},updated_records)
+            value=RollbackTransaction().execute(f);self.assertEqual(value['status'],'rolled_back_verified');self.assert_no_actions(value)
+            self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new);f.restored()
+            self.assertEqual(RollbackTransaction().original_records(f),records);self.assertEqual(self.proof_records(f),proof)
+
+    def test_update_created_before_maintenance_rolls_back_with_exact_successor(self):
+        helper=UpdateTransaction()
+        with helper.installed() as f:
+            f.update_accepted=helper.execute(f);self.assertEqual(f.update_accepted['status'],'updated_verified')
+            with self.successor(f):
+                records=RollbackTransaction().original_records(f);proof=self.proof_records(f)
+                value=helper.rollback(f);self.assertEqual(value['status'],'update_rolled_back_verified')
+                self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified')
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(RollbackTransaction().original_records(f),records);self.assertEqual(self.proof_records(f),proof)
+
+    def test_authentic_completed_int_rollback_preserves_public_recovery_with_old_client_only(self):
+        helper=UpdateTransaction()
+        for count in (0,1):
+            with self.subTest(restored_files=count),helper.installed() as f,self.successor(f):
+                self.restored_maintenance(f,count);records=RollbackTransaction().original_records(f);proof=self.proof_records(f)
+                value=RollbackTransaction().execute(f)
+                self.assertEqual(value['status'],'rolled_back_verified');self.assert_no_actions(value);f.restored()
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_old)
+                self.assertEqual(RollbackTransaction().original_records(f),records);self.assertEqual(self.proof_records(f),proof)
+        for kind in ('new-client','third-hash','unknown-local-result','wrong-unchanged-helper'):
+            with self.subTest(kind=kind),helper.installed() as f,self.successor(f):
+                self.restored_maintenance(f)
+                if kind in ('new-client','third-hash'):f.put(f.tv_target,f.tv_new if kind=='new-client' else b'foreign client')
+                elif kind=='wrong-unchanged-helper':
+                    f.put('_preview/search3-anex-candidate/app/integrations/anex-initial-week-gate.php',b'foreign dependency')
+                else:
+                    path=f.tv_namespace/'result.json';value=json.loads(path.read_text());value['status']='unknown_no_replay'
+                    path.write_text(json.dumps(value,sort_keys=True,separators=(',',':')))
+                before=f.filesystem_snapshot();value=RollbackTransaction().execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['rollback_files'],[])
+                self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_site_guarded_snapshot_from_before_maintenance_accepts_only_proven_transition(self):
+        helper=SiteTransaction()
+        with helper.installed() as f:
+            f.site_accepted=helper.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            with self.successor(f):
+                parents=helper.parent_records(f);proof=self.proof_records(f)
+                records={str(p.relative_to(f.site_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                         for p in f.site_private.rglob('*.json')}
+                value=helper.rollback(f);self.assertEqual(value['status'],'site_rolled_back_verified');self.assert_no_actions(value)
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(helper.parent_records(f),parents);self.assertEqual(self.proof_records(f),proof)
+                self.assertEqual({str(p.relative_to(f.site_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                                  for p in f.site_private.rglob('*.json')},records)
+                self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+                self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified')
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+
+    def test_site_update_after_maintenance_roundtrips_without_changing_int_proof(self):
+        helper=SiteTransaction()
+        with helper.installed() as f,self.successor(f):
+            parents=helper.parent_records(f);proof=self.proof_records(f)
+            f.site_accepted=helper.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            self.assertEqual(helper.rollback(f)['status'],'site_rolled_back_verified')
+            self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+            self.assertEqual(helper.parent_records(f),parents);self.assertEqual(self.proof_records(f),proof)
+
+    def test_site_child_snapshot_before_maintenance_rolls_back_with_new_client_and_original_history(self):
+        child=SiteContinuationTransaction();site=SiteTransaction()
+        with child.inspected() as f:
+            f.continuation_accepted=child.execute(f);self.assertEqual(f.continuation_accepted['status'],'site_updated_verified')
+            with self.successor(f):
+                parents=site.parent_records(f);proof=self.proof_records(f)
+                records={str(p.relative_to(f.continuation_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                         for p in f.continuation_private.rglob('*.json')}
+                value=child.rollback(f);self.assertEqual(value['status'],'site_rolled_back_verified');self.assert_no_actions(value)
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new);self.assertFalse(f.site_private.exists())
+                self.assertEqual(site.parent_records(f),parents);self.assertEqual(self.proof_records(f),proof)
+                self.assertEqual({str(p.relative_to(f.continuation_private)):(UpdateTransaction().stamp(p),p.read_bytes())
+                                  for p in f.continuation_private.rglob('*.json')},records)
+                for value in (UpdateTransaction().rollback(f),RollbackTransaction().execute(f)):
+                    self.assertIn(value['status'],('update_rolled_back_verified','rolled_back_verified'));self.assert_no_actions(value)
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(self.proof_records(f),proof)
+
+    def test_site_child_after_maintenance_roundtrips_and_retains_new_client_through_public_recovery(self):
+        child=SiteContinuationTransaction();site=SiteTransaction()
+        with child.inspected() as f,self.successor(f):
+            before=site.public_files(f);parents=site.parent_records(f);proof=self.proof_records(f)
+            inspected=copy.deepcopy(f.continuation_evidence);archived=f.continuation_raw
+            f.continuation_accepted=child.execute(f)
+            self.assertEqual(f.continuation_accepted['status'],'site_updated_verified');self.assert_no_actions(f.continuation_accepted)
+            self.assertTrue(f.continuation_accepted['failed_namespace_absent'])
+            self.assertEqual(site.parent_records(f),parents);self.assertEqual(self.proof_records(f),proof)
+            value=child.rollback(f);self.assertEqual(value['status'],'site_rolled_back_verified');self.assert_no_actions(value)
+            self.assertEqual(site.public_files(f),before);self.assertEqual(site.parent_records(f),parents)
+            self.assertEqual(f.continuation_evidence,inspected);self.assertEqual(f.continuation_raw,archived)
+            self.assertFalse(f.site_private.exists());self.assertEqual(self.proof_records(f),proof)
+            self.assertEqual(UpdateTransaction().rollback(f)['status'],'update_rolled_back_verified')
+            self.assertEqual(RollbackTransaction().execute(f)['status'],'rolled_back_verified');f.restored()
+            self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new);self.assertEqual(self.proof_records(f),proof)
+
+    def test_site_child_rechecks_tv_proof_after_activation_and_unwinds_only_owned_asset(self):
+        child=SiteContinuationTransaction();site=SiteTransaction()
+        with child.inspected() as f,self.successor(f):
+            before=site.public_files(f);parents=site.parent_records(f);proof=self.proof_records(f)
+            def change(program):
+                line='  site_check_targets(current);site_check_parents()'
+                injection='  if index==0:\n'+self.replace_same_bytes(f.tv_namespace/'result.json','   ')
+                self.assertIn(line,program);return program.replace(line,injection+line,1)
+            value=child.execute(f,change)
+            self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['protected_unchanged'])
+            self.assertEqual(value['written_files'],[m.SITE_ORDER[0]]);self.assertEqual(value['rollback_files'],[m.SITE_ORDER[0]])
+            self.assert_no_actions(value);self.assertEqual(site.public_files(f),before);self.assertEqual(site.parent_records(f),parents)
+            self.assertFalse(f.site_private.exists());current=self.proof_records(f)
+            self.assertNotEqual(current['result.json'][0],proof['result.json'][0]);self.assertEqual(current['result.json'][1],proof['result.json'][1])
+            for path,row in proof.items():
+                if path!='result.json':self.assertEqual(current[path],row)
+            consumed=f.filesystem_snapshot();self.assertEqual(child.execute(f)['status'],'blocked_no_replay')
+            self.assertEqual(f.filesystem_snapshot(),consumed)
+
+    def test_partial_tampered_or_downgraded_maintenance_never_reserves_public_write(self):
+        helper=UpdateTransaction()
+        kinds=('missing-result','unknown-result','different-result','wrong-reservation','wrong-plan','wrong-state',
+               'missing-backup','wrong-backup','record-mode','record-symlink','record-hardlink','namespace-mode',
+               'target-mode','target-symlink','third-hash','downgrade')
+        for kind in kinds:
+            with self.subTest(kind=kind),helper.installed() as f,self.successor(f):
+                ns=f.tv_namespace;target=f.root/f.tv_target;result=ns/'result.json';backup=ns/'backup'/m.TV_SUCCESSOR['relative']
+                if kind=='missing-result':result.unlink()
+                elif kind in ('unknown-result','different-result'):
+                    value=json.loads(result.read_text());value['status']='unknown_no_replay' if kind=='unknown-result' else 'rolled_back'
+                    result.write_text(json.dumps(value))
+                elif kind=='wrong-reservation':
+                    path=ns/'reservation.json';value=json.loads(path.read_text());value['operation_id']+='-alias';path.write_text(json.dumps(value))
+                elif kind=='wrong-plan':
+                    path=ns/'anex-preview-install-plan.json';value=json.loads(path.read_text());value['changed_files'].append('api-anex-search3-preview.php');path.write_text(json.dumps(value))
+                elif kind=='wrong-state':(ns/'install-state.json').write_text('{}')
+                elif kind=='missing-backup':backup.unlink()
+                elif kind=='wrong-backup':backup.write_bytes(b'not the retained predecessor')
+                elif kind=='record-mode':result.chmod(0o644)
+                elif kind=='record-symlink':result.rename(ns/'retained-result');result.symlink_to('retained-result')
+                elif kind=='record-hardlink':os.link(result,ns/'foreign-link')
+                elif kind=='namespace-mode':ns.chmod(0o755)
+                elif kind=='target-mode':target.chmod(0o600)
+                elif kind=='target-symlink':target.rename(target.with_suffix('.saved'));target.symlink_to(target.with_suffix('.saved').name)
+                elif kind=='third-hash':target.write_bytes(b'foreign client')
+                else:target.write_bytes(f.tv_old)
+                before=f.filesystem_snapshot();value=helper.execute(f)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['written_files'],[])
+                self.assertFalse(f.update_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_proof_or_client_inode_race_before_reservation_blocks_without_public_write(self):
+        helper=UpdateTransaction()
+        paths=('reservation.json','result.json','anex-preview-install-plan.json','install-state.json',
+               'backup/app/integrations/tourvisor-interactive-client.php','client')
+        for relative in paths:
+            with self.subTest(relative=relative),helper.installed() as f,self.successor(f):
+                target=f.root/f.tv_target if relative=='client' else f.tv_namespace/relative
+                public=helper.public_files(f);records=RollbackTransaction().original_records(f);proof=self.proof_records(f)
+                previous=target.stat();raw=target.read_bytes()
+                def change(program):
+                    line=" require(parent_records()==retained and public.inventory(POLICY['expected'])==before\n"
+                    self.assertIn(line,program);return program.replace(line,self.replace_same_bytes(target)+line,1)
+                value=helper.execute(f,change)
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['written_files'],[])
+                self.assertFalse(value['reservation_created']);self.assertFalse(f.update_private.exists());self.assert_no_actions(value)
+                self.assertEqual(target.read_bytes(),raw);self.assertNotEqual(target.stat().st_ino,previous.st_ino)
+                self.assertEqual(target.stat().st_mtime_ns,previous.st_mtime_ns)
+                current=helper.public_files(f)
+                for path,row in public.items():
+                    if relative!='client' or path!=f.tv_target:self.assertEqual(current[path],row)
+                self.assertEqual(RollbackTransaction().original_records(f),records)
+                for path,row in proof.items():
+                    if path!=relative:self.assertEqual(self.proof_records(f)[path],row)
+
+    def test_postwrite_proof_race_unwinds_only_public_asset_and_never_claims_verified(self):
+        helper=UpdateTransaction()
+        for relative in ('result.json','client'):
+            with self.subTest(relative=relative),helper.installed() as f,self.successor(f):
+                target=f.root/f.tv_target if relative=='client' else f.tv_namespace/relative
+                public=helper.public_files(f);records=RollbackTransaction().original_records(f)
+                def change(program):
+                    line=' candidate=parent_candidate(retained,True)'
+                    self.assertIn(line,program);return program.replace(line,self.replace_same_bytes(target)+line,1)
+                value=helper.execute(f,change)
+                self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['protected_unchanged'])
+                self.assertEqual(value['written_files'],[m.UPDATE_PATH]);self.assertEqual(value['rollback_files'],[m.UPDATE_PATH])
+                self.assert_no_actions(value)
+                current=helper.public_files(f)
+                for path,row in public.items():
+                    if relative!='client' or path!=f.tv_target:self.assertEqual(current[path],row)
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(RollbackTransaction().original_records(f),records)
+                consumed=f.filesystem_snapshot();self.assertEqual(helper.execute(f)['status'],'blocked_no_replay')
+                self.assertEqual(f.filesystem_snapshot(),consumed)
+
+    def test_site_proof_race_after_second_exchange_restores_owned_assets_and_preserves_dependency(self):
+        helper=SiteTransaction()
+        with helper.installed() as f,self.successor(f):
+            public=helper.public_files(f);records=helper.parent_records(f);proof=self.proof_records(f)
+            def change(program):
+                line='  site_check_targets(current);site_check_parents()'
+                injection='  if index==1:\n'+self.replace_same_bytes(f.tv_namespace/'install-state.json','   ')
+                self.assertIn(line,program);return program.replace(line,injection+line,1)
+            value=helper.execute(f,change)
+            self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['protected_unchanged'])
+            self.assertEqual(value['written_files'],list(m.SITE_ORDER[:2]))
+            self.assertEqual(value['rollback_files'],list(reversed(m.SITE_ORDER[:2])))
+            self.assertEqual(helper.public_files(f),public);self.assertEqual(helper.parent_records(f),records)
+            self.assert_no_actions(value)
+            current=self.proof_records(f)
+            self.assertNotEqual(current['install-state.json'][0],proof['install-state.json'][0])
+            self.assertEqual(current['install-state.json'][1],proof['install-state.json'][1])
+            for path,row in proof.items():
+                if path!='install-state.json':self.assertEqual(current[path],row)
+
+    def test_both_public_rollback_levels_recheck_proof_after_restoration(self):
+        helper=UpdateTransaction()
+        for level in ('update','original'):
+            with self.subTest(level=level),helper.installed() as f,self.successor(f):
+                if level=='update':
+                    f.update_accepted=helper.execute(f);self.assertEqual(f.update_accepted['status'],'updated_verified')
+                records=RollbackTransaction().original_records(f);proof=self.proof_records(f)
+                def change(program):
+                    if level=='update':
+                        line=" restore_capture(public,updated,path,'stage/app');result['rollback_files']=[path]\n"
+                    else:line=" result['rollback_files'].append(entry);result['phase']='additions'\n"
+                    self.assertIn(line,program);return program.replace(line,line+self.replace_same_bytes(f.tv_namespace/'result.json'),1)
+                value=helper.rollback(f,change) if level=='update' else RollbackTransaction().execute(f,change)
+                self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['protected_unchanged'])
+                self.assertEqual(value['rollback_files'],[m.UPDATE_PATH if level=='update' else m.ENTRY]);self.assert_no_actions(value)
+                self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(RollbackTransaction().original_records(f),records)
+                current=self.proof_records(f)
+                self.assertEqual(current['result.json'][1],proof['result.json'][1])
+                self.assertNotEqual(current['result.json'][0],proof['result.json'][0])
+
+    def test_site_rollback_rechecks_current_dependency_before_restoring_next_asset(self):
+        helper=SiteTransaction()
+        with helper.installed() as f,self.successor(f):
+            f.site_accepted=helper.execute(f);self.assertEqual(f.site_accepted['status'],'site_updated_verified')
+            records=helper.parent_records(f);proof=self.proof_records(f)
+            def change(program):
+                line="  result['rollback_files'].append(path)\n"
+                self.assertIn(line,program);return program.replace(line,line+self.replace_same_bytes(f.root/f.tv_target,'  '),1)
+            value=helper.rollback(f,change)
+            self.assertEqual(value['status'],'unknown_no_replay');self.assertFalse(value['protected_unchanged'])
+            self.assertEqual(value['rollback_files'],[m.SITE_ORDER[-1]]);self.assert_no_actions(value)
+            for index,path in enumerate(m.SITE_ORDER):
+                row=m.SITE_TARGETS[path]['before' if index==3 else 'after']
+                self.assertEqual(m.sha((f.root/path).read_bytes()),row['sha256'])
+            self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+            self.assertEqual(helper.parent_records(f),records);self.assertEqual(self.proof_records(f),proof)
+
+
+class TvSuccessorAdmission(unittest.TestCase):
+    @contextlib.contextmanager
+    def admitted(self, mutate=None):
+        with UpdateTransaction().installed() as f,TvSuccessorTransaction().successor(f):
+            command={'id':9601,'user':{'id':226193297},'author_association':'OWNER',
+                     'body':'/run-int-server-v1 '+' '.join(m.TV_SUCCESSOR[k] for k in ('source_sha','mode','operation_id')),
+                     'created_at':'2026-11-21T13:00:00Z','updated_at':'2026-11-21T13:00:00Z'}
+            run={'id':456780001,'path':'.github/workflows/int-server-executor.yml','head_branch':'main',
+                 'event':'issue_comment','head_sha':'c'*40,'run_attempt':1,'status':'completed','conclusion':'success',
+                 'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                 'created_at':'2026-11-21T13:00:01Z','run_started_at':'2026-11-21T13:00:02Z','updated_at':'2026-11-21T13:01:00Z'}
+            job={'id':456780002,'run_id':run['id'],'name':'execute','status':'completed','conclusion':'success',
+                 'steps':[{'name':'Execute bounded private INT operation, install, or DB/LOCAL readback',
+                           'status':'completed','conclusion':'success','started_at':'2026-11-21T13:00:03Z',
+                           'completed_at':'2026-11-21T13:00:50Z'}]}
+            value=copy.deepcopy(f.tv_evidence['result'])
+            packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('result.json',json.dumps(value,sort_keys=True,indent=2)+'\n')
+            raw=packet.getvalue()
+            artifact={'id':456780003,'name':'int-server-executor-'+str(run['id'])+'-1','expired':False,
+                      'workflow_run':{'id':run['id']},'digest':'sha256:'+m.sha(raw)}
+            data={'commands':[command],'runs':[run],'artifacts':[artifact],'jobs':[job],
+                  'blobs':copy.deepcopy(m.TV_SUCCESSOR['control_blobs']),'raw':raw,'value':value}
+            if mutate:mutate(data)
+            def pages(path,key=None):
+                if path=='/issues/4709/comments':return copy.deepcopy(data['commands'])
+                if path.startswith('/actions/workflows/int-server-executor.yml/runs?'):
+                    self.assertIn('event=issue_comment',path);self.assertIn('branch=main',path)
+                    self.assertIn('2026-11-21T13%3A00%3A00Z..2026-11-21T13%3A05%3A00Z',path)
+                    return copy.deepcopy(data['runs'])
+                if path=='/actions/runs/'+str(run['id'])+'/artifacts':return copy.deepcopy(data['artifacts'])
+                if path=='/actions/runs/'+str(run['id'])+'/attempts/1/jobs':return copy.deepcopy(data['jobs'])
+                raise AssertionError('Unrelated successor lookup: '+path)
+            def api(path):
+                if path=='/contents/scripts/deploy?ref='+run['head_sha']:
+                    return [{'type':'file','path':source,'sha':blob} for source,blob in data['blobs'].items()
+                            if source.startswith('scripts/deploy/')]
+                for source,blob in data['blobs'].items():
+                    if path=='/contents/'+source+'?ref='+run['head_sha']:return {'type':'file','sha':blob}
+                raise AssertionError('Unrelated successor provenance lookup: '+path)
+            def download(identity,digest):
+                m.need(identity==artifact['id'] and digest==m.sha(data['raw']),'tv_successor_test_artifact_digest')
+                return data['raw']
+            with patch.object(m,'pages',side_effect=pages),patch.object(m,'api',side_effect=api), \
+                 patch.object(m,'download',side_effect=download), \
+                 patch.object(m.carrier,'run',side_effect=AssertionError('admission must not contact the server')):
+                yield data
+
+    def test_absent_command_is_explicit_old_state_without_source_or_artifact_scan(self):
+        with patch.object(m,'pages',return_value=[]) as pages, \
+             patch.object(m,'api',side_effect=AssertionError('unnecessary source lookup')), \
+             patch.object(m,'download',side_effect=AssertionError('unnecessary artifact lookup')):
+            self.assertEqual(m.tv_successor_evidence(),{'status':'absent'})
+            pages.assert_called_once_with('/issues/4709/comments')
+
+    def test_unique_successful_original_operation_yields_bound_runtime_proof(self):
+        with self.admitted() as data:
+            value=m.tv_successor_evidence()
+            self.assertEqual(value,{'status':'installed','result':data['value'],'run_id':456780001,
+                                   'command_comment_id':9601,'control_source_sha':'c'*40,'job_id':456780002,
+                                   'artifact_id':456780003,'artifact_sha256':m.sha(data['raw']),
+                                   'created_at':m._tv_time('2026-11-21T13:00:00Z'),
+                                   'started_at':m._tv_time('2026-11-21T13:00:03Z'),
+                                   'completed_at':m._tv_time('2026-11-21T13:00:50Z')})
+            self.assertIn('TV_SUCCESSOR_PROOF=',m.tv_successor_prefix(value))
+
+    def test_every_loaded_control_blob_and_local_validator_must_be_authentic(self):
+        for source in m.TV_SUCCESSOR['control_blobs']:
+            with self.subTest(source=source),self.admitted(lambda d:d['blobs'].update({source:'0'*40})),self.assertRaises(RuntimeError):
+                m.tv_successor_evidence()
+        with tempfile.TemporaryDirectory() as directory:
+            changed=Path(directory)/'signing.py';changed.write_bytes(Path(m.tv_signing.__file__).read_bytes()+b'\n# unreviewed source\n')
+            with patch.object(m.tv_signing,'__file__',str(changed)), \
+                 patch.object(m,'pages',side_effect=AssertionError('must reject local validator before metadata')):
+                with self.assertRaisesRegex(RuntimeError,'tv_successor_validator_source'):m.tv_successor_evidence()
+                with self.assertRaisesRegex(RuntimeError,'tv_successor_validator_source'):m.tv_successor_prefix({'status':'absent'})
+
+    def test_authentic_failed_original_can_prove_complete_restoration_but_unknown_never_can(self):
+        def restored(data,change=None):
+            value=copy.deepcopy(data['value'])
+            for key in ('install','diagnostic_basis_after','tv_gateway_public_after','production_after'):value.pop(key)
+            value.update(status='rolled_back',runtime_changed=False,rollback={'status':'complete','restored_files':1},
+                         install_failure_class='anex_preview_install_readback_hash')
+            if change:change(value)
+            data['value']=value;packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('result.json',json.dumps(value,sort_keys=True,indent=2)+'\n')
+            data['raw']=packet.getvalue();data['artifacts'][0]['digest']='sha256:'+m.sha(data['raw'])
+            data['runs'][0]['conclusion']=data['jobs'][0]['conclusion']=data['jobs'][0]['steps'][0]['conclusion']='failure'
+        with self.admitted(restored) as data:
+            proof=m.tv_successor_evidence();self.assertEqual(proof['status'],'rolled_back')
+            self.assertEqual(proof['result'],data['value']);self.assertIn('TV_SUCCESSOR_PROOF=',m.tv_successor_prefix(proof))
+        for mutate in (lambda v:v.update(status='unknown_no_replay'),lambda v:v.update(runtime_changed=True),
+                       lambda v:v.update(supplier_calls=1),lambda v:v.update(reason='unknown'),
+                       lambda v:v['rollback'].update(status='failed'),lambda v:v['rollback'].update(restored_files=2),
+                       lambda v:v['rollback'].update(restored_files=True),lambda v:v.update(production_after={})):
+            with self.subTest(mutate=mutate),self.admitted(lambda d:restored(d,mutate)),self.assertRaises(RuntimeError):
+                m.tv_successor_evidence()
+        for item in ('run','job','step'):
+            with self.subTest(item=item),self.admitted(restored) as data:
+                row=data['runs'][0] if item=='run' else data['jobs'][0] if item=='job' else data['jobs'][0]['steps'][0]
+                row['conclusion']='success'
+                with self.assertRaises(RuntimeError):m.tv_successor_evidence()
+
+    def test_artifact_digest_duplicate_json_and_caller_supplied_proof_cannot_bypass_identity(self):
+        for kind in ('digest','duplicate-json'):
+            with self.subTest(kind=kind),self.admitted() as data:
+                if kind=='digest':data['artifacts'][0]['digest']='sha256:'+'0'*64
+                else:
+                    packet=io.BytesIO();raw=json.dumps(data['value'])
+                    with zipfile.ZipFile(packet,'w') as archive:
+                        archive.writestr('result.json','{"operation_id":"foreign",'+raw[1:])
+                    data['raw']=packet.getvalue();data['artifacts'][0]['digest']='sha256:'+m.sha(data['raw'])
+                with self.assertRaises(RuntimeError):m.tv_successor_evidence()
+        with self.admitted():
+            proof=m.tv_successor_evidence()
+            for change in (lambda v:v.update(run_id=True),lambda v:v.update(command_comment_id=0),
+                           lambda v:v.update(artifact_id=-1),lambda v:v.update(artifact_sha256='0'*63),
+                           lambda v:v.update(control_source_sha='main'),lambda v:v.update(started_at=v['completed_at']+1),
+                           lambda v:v.update(unreviewed=True),lambda v:v['result'].update(source_sha='0'*40)):
+                value=copy.deepcopy(proof);change(value)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.tv_successor_prefix(value)
+            with self.assertRaises(RuntimeError):m.tv_successor_prefix({'status':'absent','operation_id':m.TV_SUCCESSOR['operation_id']})
+
+    def test_duplicate_edited_or_unowned_command_cannot_authenticate_maintenance(self):
+        changes=(lambda d:d['commands'].append(copy.deepcopy(d['commands'][0])|{'id':9602}),
+                 lambda d:d['commands'][0]['user'].update(id=1),
+                 lambda d:d['commands'][0].update(author_association='MEMBER'),
+                 lambda d:d['commands'][0].update(updated_at='2026-11-21T13:00:01Z'),
+                 lambda d:d['commands'][0].update(body=d['commands'][0]['body']+'\n'),
+                 lambda d:d['commands'][0].update(body=d['commands'][0]['body'].replace(m.TV_SUCCESSOR['source_sha'],'0'*40)))
+        for index,change in enumerate(changes):
+            with self.subTest(index=index),self.admitted(change),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+
+    def test_pending_retry_foreign_control_or_failed_original_is_never_old_ready(self):
+        changes=(lambda d:d.update(runs=[]),
+                 lambda d:d.update(artifacts=[]),
+                 lambda d:d['runs'][0].update(status='in_progress',conclusion=None),
+                 lambda d:d['runs'][0].update(run_attempt=2),
+                 lambda d:d['runs'][0].update(run_attempt=True),
+                 lambda d:d['runs'][0].update(conclusion='failure'),
+                 lambda d:d['runs'][0]['actor'].update(login='unrelated'),
+                 lambda d:d['runs'][0]['triggering_actor'].update(login='unrelated'),
+                 lambda d:d['runs'][0].update(event='workflow_dispatch'),
+                 lambda d:d['runs'][0].update(head_branch='branch'),
+                 lambda d:d['blobs'].update({'scripts/deploy/int_server_executor_search3_signing.py':'0'*40}),
+                 lambda d:d['artifacts'][0].update(expired=True),
+                 lambda d:d['artifacts'][0].update(name='int-server-executor-456780001-2'),
+                 lambda d:d['artifacts'][0]['workflow_run'].update(id=1),
+                 lambda d:d['jobs'][0].update(conclusion='failure'),
+                 lambda d:d['jobs'][0].update(run_id=1),
+                 lambda d:d['jobs'][0]['steps'][0].update(conclusion='failure'),
+                 lambda d:d['jobs'][0]['steps'][0].update(started_at='2026-11-21T12:59:59Z'),
+                 lambda d:d['runs'][0].update(created_at='2026-11-21T12:59:59Z'),
+                 lambda d:d['jobs'][0]['steps'][0].update(completed_at='2026-11-21T13:01:01Z'),
+                 lambda d:d['runs'].append(copy.deepcopy(d['runs'][0])))
+        for index,change in enumerate(changes):
+            with self.subTest(index=index),self.admitted(change),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+
+    def test_original_artifact_must_be_single_successful_exact_tuple(self):
+        def archive_change(change,extra=False):
+            def mutate(data):
+                value=copy.deepcopy(data['value']);change(value);stream=io.BytesIO()
+                with zipfile.ZipFile(stream,'w') as archive:
+                    archive.writestr('result.json',json.dumps(value))
+                    if extra:archive.writestr('other.json','{}')
+                data['raw']=stream.getvalue();data['artifacts'][0]['digest']='sha256:'+m.sha(data['raw'])
+            return mutate
+        changes=(lambda v:v.update(operation_id='another-operation'),lambda v:v.update(source_sha='0'*40),
+                 lambda v:v.update(status='unknown_no_replay'),lambda v:v.update(schema_version=True),
+                 lambda v:v.update(supplier_calls=True),lambda v:v.update(reason='unknown'),
+                 lambda v:v.update(rollback={'status':'complete'}),
+                 lambda v:v['install'].update(changed_files=2),lambda v:v['install'].update(created_files=1),
+                 lambda v:v['install']['tv_client'].update(sha256='0'*64),
+                 lambda v:v['install']['endpoint'].update(changed=True),
+                 lambda v:v['diagnostic_basis_after'].update(receipt_and_configuration_unchanged=False))
+        for index,change in enumerate(changes):
+            with self.subTest(index=index),self.admitted(archive_change(change)),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+        with self.admitted(archive_change(lambda v:None,True)),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+
+    def test_command_change_during_proof_collection_invalidates_admission(self):
+        with self.admitted() as data:
+            original=m._tv_commands;calls=[]
+            def commands():
+                rows=original();calls.append(1)
+                if len(calls)>1:rows[0]['id']+=1
+                return rows
+            with patch.object(m,'_tv_commands',side_effect=commands),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+            self.assertEqual(len(calls),2)
+
+    def test_every_live_public_maintenance_path_requires_resolver_before_ssh_and_rechecks_it(self):
+        cases=((m.update,{},update_event(),UPDATE_IDENTITY,'update_remote_program'),
+               (m.update,{'rollback':True},update_rollback_event(),UPDATE_ROLLBACK_IDENTITY,'update_rollback_remote_program'),
+               (m.site_update,{},site_event(),SITE_IDENTITY,'site_remote_program'),
+               (m.site_update,{'rollback':True},site_event(True),SITE_ROLLBACK_IDENTITY,'site_rollback_remote_program'),
+               (m.site_update,{'continuation':True},site_continuation_event(),SITE_CONTINUATION_IDENTITY,'site_remote_program'),
+               (m.site_update,{'rollback':True,'continuation':True},site_continuation_event(True),SITE_CONTINUATION_ROLLBACK_IDENTITY,'site_rollback_remote_program'),
+               (m.rollback,{},rollback_event(),ROLLBACK_IDENTITY,'rollback_remote_program'))
+        artifact={'id':777,'digest':'sha256:'+'7'*64}
+        for call,options,event_value,identity,builder in cases:
+            for stage in ('initial','recheck'):
+                with self.subTest(path=builder,options=options,stage=stage),tempfile.TemporaryDirectory() as directory,contextlib.ExitStack() as stack:
+                    event_path=Path(directory)/'event.json';event_path.write_text(json.dumps(event_value))
+                    env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id'],
+                        'RUNNER_TEMP':directory,'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+                        'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    values={'rollback_admission':(IDENTITY,artifact),'update_rollback_admission':(UPDATE_IDENTITY,artifact),
+                            'site_rollback_admission':(SITE_IDENTITY,artifact),'download':b'inert source artifact',
+                            'package':({'expected':{},'release':RELEASE},{}),'rollback_source_evidence':{},
+                            'update_package':({'release':RELEASE},{}),'update_parent_evidence':{},
+                            'update_source_evidence':({'release':RELEASE},{},{}),'site_package':{},
+                            'site_parent_evidence':{},'site_source_evidence':(m.site_policy(),{},{}),
+                            'site_continuation_inspection_evidence':{},'site_continuation_inspection_value':{},
+                            'site_continuation_collector_log':{}}
+                    for name,value in values.items():stack.enter_context(patch.object(m,name,return_value=value))
+                    for name in ('rollback_main','rollback_commands','update_admission','update_rollback_commands',
+                                 'site_admission','site_rollback_commands'):
+                        stack.enter_context(patch.object(m,name))
+                    stack.enter_context(patch.object(m,'api',side_effect=AssertionError('unrelated network lookup')))
+                    program=stack.enter_context(patch.object(m,builder,return_value='# inert generated program'))
+                    sequence=([{'status':'absent'}] if stage=='recheck' else [])+[RuntimeError('tv_successor_original_missing')]
+                    resolver=stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=sequence))
+                    carrier=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                    with self.assertRaises(RuntimeError):call(**options)
+                    self.assertEqual(resolver.call_count,1 if stage=='initial' else 2)
+                    self.assertEqual([c.args[0][0] for c in carrier.call_args_list],[] if stage=='initial' else ['ssh-keyscan'])
+                    if stage=='initial':program.assert_not_called()
+                    else:
+                        self.assertEqual(program.call_count,1)
+                        self.assertEqual(program.call_args.kwargs['tv_successor'],{'status':'absent'})
+                    evidence=json.loads((Path(directory)/'search3-public-install/evidence.json').read_text())
+                    self.assertIs(evidence['ssh_started'],False);self.assertEqual(evidence['status'],'blocked_no_replay')
+                    self.assertFalse((Path(directory)/'search3-public-install/key').exists())
+                    self.assertFalse((Path(directory)/'search3-public-install/known').exists())
 
 
 SITE_CONTINUATION_IDENTITY={'control_source_sha':CONTROL,'run_id':'901234','command_comment_id':9009}
@@ -3250,6 +3925,7 @@ class SiteContinuationTransaction(unittest.TestCase):
             with patch.dict(os.environ,env),patch.object(m,'site_admission') as admission,patch.object(m,'site_inspect_heads'), \
                  patch.object(m,'download',return_value=f.continuation_raw) as download,patch.object(m,'site_package',return_value=f.site_files), \
                  patch.object(m,'site_continuation_collector_log',return_value=m.site_continuation_collector_value()) as collector, \
+                 patch.object(m,'tv_successor_evidence',return_value={'status':'absent'}), \
                  patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(f.continuation_accepted).encode()]),patch('builtins.print'):
                 m.site_update(continuation=True)
             self.assertEqual(admission.call_count,2);collector.assert_called_once_with()
@@ -3266,6 +3942,7 @@ class SiteContinuationTransaction(unittest.TestCase):
                 stack.enter_context(patch.dict(os.environ,env))
                 stack.enter_context(patch.object(m,'site_rollback_admission',return_value=(SITE_CONTINUATION_IDENTITY,{'id':444,'digest':'sha256:'+m.sha(raw)})))
                 stack.enter_context(patch.object(m,'site_rollback_commands',return_value=SITE_CONTINUATION_IDENTITY));stack.enter_context(patch.object(m,'rollback_main'))
+                stack.enter_context(patch.object(m,'tv_successor_evidence',return_value={'status':'absent'}))
                 download=stack.enter_context(patch.object(m,'download',return_value=raw))
                 for name in ('api','site_admission','site_inspect_heads','site_package','site_parent_admission','site_continuation_collector_log','site_continuation_collector_admission'):
                     stack.enter_context(patch.object(m,name,side_effect=AssertionError('unnecessary recovery dependency: '+name)))
