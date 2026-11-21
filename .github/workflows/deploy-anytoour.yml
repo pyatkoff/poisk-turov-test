@@ -1,12 +1,10 @@
 name: Deploy anytoour.ru
 
-# PR contracts run in search3-root-gateway-install.yml. This workflow name has
-# production workflow_run followers and must not run for PR-only validation.
+# Retained legacy whole-site publisher: explicit manual dispatch only.
+# Public Search3 now owns /poisk-turov/. Source merges must not start this broad
+# copy or its production workflow_run followers. Bounded updates use the existing
+# root-gateway carrier; both legacy ownership guards below remain mandatory.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'v2/**'
   workflow_dispatch:
 
 permissions:
@@ -22,7 +20,7 @@ jobs:
         run: python3 -B tests/anytoour_production_deploy_guard_test.py -v
 
   deploy:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     needs: contracts
     runs-on: ubuntu-latest
     timeout-minutes: 25

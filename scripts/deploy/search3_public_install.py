@@ -1987,7 +1987,841 @@ def update(rollback=False):
     print(json.dumps(evidence, sort_keys=True)); need(complete, 'public_update_rollback_not_verified' if rollback else 'public_update_not_verified')
 
 
+# This separately reviewed operation shares the existing transport and lock. It
+# neither reopens the consumed public transactions nor changes their policies.
+SITE_PREFIX = '/update-site-shared-assets'
+SITE_OPERATION = 'site-shared-assets-20261121-v1'
+SITE_ROLLBACK_PREFIX = '/rollback-site-shared-assets'
+SITE_ROLLBACK_OPERATION = 'site-shared-assets-rollback-20261121-v1'
+SITE_SOURCE_PR = 5133
+SITE_SOURCE = '53c523c3664d2e9e893942d0eb63b2637e1df978'
+SITE_TREE = 'ef15774d5209de96d589104486f6cd957b1ef0aa'
+SITE_PUBLISHER_GUARD_SHA = '025f31dd3c4d1e4f6f24578d0d29d975983ed21e1fa6cfef0d8bc54ccabfc851'
+SITE_CHECKS = ('guard','seo-core','navigation-contract','contract','predeploy-contract','content-live',
+               'publication-manifest','core','bundles','content-ux','tablet-selected-tour')
+SITE_PARENT = {
+    'operation_id': UPDATE_OPERATION, 'control_source_sha': 'efc380ffca5054cc46e764c56f4e04b251b71831',
+    'run_id': '44887902112', 'command_comment_id': 7060338922, 'job_id': 136797108099,
+    'artifact_id': 14700542611,
+    'artifact_sha256': '48465fa0afcbda66b704ea6d0fd9f182d6169497cfb250f3c0280818216147c7',
+    'receipt_sha256': 'ab52afbbb2031c75dea9873cc9fe4004356474fdb10273ff1ef2e993d5cc8274',
+    'snapshot_manifest_sha256': '707bb98e6f5be6a4ec74923de659a0b64741e097bde5d303bf5a8bf7839d93f1',
+}
+SITE_ORDER = ('bundle-manifest-v1.php','assets.php','bundle-v1.php','site-page-shell-v1.php')
+# Fixed reviewed source/preimage and dependency maps are deliberately independent
+# of any observed server bytes. No caller can supply a path, source or hash.
+SITE_TARGETS = {'assets.php': {'after': {'mode': '0644',
+                          'sha256': '58bc5a3ac26905e4779bbd7137be2b86f0f67023590523c816263723fc77de6e',
+                          'size': 2469,
+                          'state': 'present'},
+                'before': {'mode': '0644',
+                           'sha256': '432bff57cdb360176a9fcc409f2f66bcba97f3571c8d7c06c502b7a5b4f2f076',
+                           'size': 2105,
+                           'state': 'present'},
+                'blob': '5905c963dbdc78e3a936aa6b1dfcf162120b0831'},
+ 'bundle-manifest-v1.php': {'after': {'mode': '0644',
+                                      'sha256': 'd3476c2ffc66625ac1cc03e8ccc94def1354e185d56c44bde89be1136f4129fb',
+                                      'size': 3383,
+                                      'state': 'present'},
+                            'before': {'mode': '0644',
+                                       'sha256': '634ed68bb20d0ae93725e591b70901688fecdf5c9c08562025423c50fb0c9a5d',
+                                       'size': 2447,
+                                       'state': 'present'},
+                            'blob': 'f3bab968d4208c589b291e74fcbfd506ad4c8107'},
+ 'bundle-v1.php': {'after': {'mode': '0644',
+                             'sha256': '0a26b803e018a0e9dd8e063894fe10a3cc121aa88dd6220b72aedd5cca6f70ca',
+                             'size': 1406,
+                             'state': 'present'},
+                   'before': {'mode': '0644',
+                              'sha256': 'dc0d7a4037f9e13c6cc47c0d8713dae893b79146fbfab338b71ec452da878da7',
+                              'size': 1339,
+                              'state': 'present'},
+                   'blob': '7a55c859d9b47595b6c8fc0445add9b7eb57ea74'},
+ 'site-page-shell-v1.php': {'after': {'mode': '0644',
+                                      'sha256': 'a17162e1baa2364bc1d50fe9d57fb6007e0624b1b757b89652c6f9d1e415ec20',
+                                      'size': 5446,
+                                      'state': 'present'},
+                            'before': {'mode': '0644',
+                                       'sha256': 'e5f0009380d1fb35c047510e549bb3f066b0c9bdabad71362f01ab80174cb2b2',
+                                       'size': 6407,
+                                       'state': 'present'},
+                            'blob': '7ea5883d20325ea22cb44614d87a2a763cfb893e'}}
+SITE_DEPENDENCIES = {'accessibility.js': '24be740204c542579c1a3d3d3623b8907c03b117686bcb43dd53a0fc718bb99a',
+ 'analytics-config.php': '1cdb2d53eda3e52c5ba1480f3df5d184c3b51ecf707952cb49560c395e463a82',
+ 'analytics-v4.js': '9f91622ad81d1812753083008d8225e1619dd7fd7fb7ba8f0fdea0e7c65e8602',
+ 'anytour-brand.css': '12895260ab4e4a7fb944c7f90e6a5d1d915d344a245749e12b4282d5f2270b3f',
+ 'app.css': '01278d107734c5cefc147fc3dfb35bf61ade556c160f9cf27a56d1262200b091',
+ 'asset-version-v1.php': 'f39fc578b10180a992a4614dc880a0c1da6aaa52b0c1e851d5869096fd5b7950',
+ 'br3-control-consistency-v1.css': 'c4e7a6e55df39f942046cf3bebe1442a5e6dd68588bd139d96e91c2ee45ec0f1',
+ 'catalog-local-routing-v1.js': 'ed38a6450364b0d532d9975e86ee03aaede5cc568a68442946d71c9e70b20cd9',
+ 'catalogs-v2.js': 'fbad31a91e3503fafe654197a14ab85add6b81239e2168df1f8f91ee91213049',
+ 'checkout-experience-v1.css': '517957e6252681a29396828f069ddaf958419c19c7f7c389fd1f0a25d89b6ad0',
+ 'checkout-experience-v1.js': '9357649dde654687667a96da3a45d29ea6224a5d869e204d864c3b26e6930faf',
+ 'compare-refresh-guard-v1.js': 'a76cdd73b1f75d10ec1b3604c41520745551a49a8be21f31ac247b0cbcfe8801',
+ 'contacts/index.php': '39261fd38988102c93742409034781e60c0b5dd01083566e4fcb4c9053cc4d2c',
+ 'conversion-confidence-v1.css': '7c19ae3e4cd2f2ddacd7a70f57cd9e41f71395e305509127a5194cd3731563f5',
+ 'conversion-confidence-v1.js': '1b12a0b983b3b89e9f0a2cbb3bd92660ffed3ecc6c2d550061cf63e5a16de391',
+ 'country-matrix-routing-v1.js': '1c541f607386a8dd354c10137b904e183a014c2105b330cb03a4a6b67ddd5cb5',
+ 'country-page-v1.php': '7a1c91a899a3bac1daa285a07ad6b586604fb08008063b6263a91e6abd51017b',
+ 'country/index.php': '47e83c67fe7b3898ad913a4a76cac3955d303bc0f2b3934c6241ddcc8199f8df',
+ 'country/turkey/index.php': 'a67d6626ad396a9878037dc28cc903eaae334ebf595acd028c816d7a108fb956',
+ 'current-price-calendar-v1.css': 'adb40ad9e99a23cb598e6e1756a5518f85a7602845bdebc1db0d2e1a12d04fdb',
+ 'current-price-calendar-v1.js': '2645f215c244df674f686b939b6bb45557d76b18cba3ead7f365779b48f9b58f',
+ 'data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13',
+ 'data/hot-tours-read-v1.php': 'a57b170901b445911a97728479ca5bc6f654ef62af0681dc38b97d9db1d79616',
+ 'data/price-calendar-core-v1.php': '92f0e9df57555425ae1a861255a9346dbb13510dbfe81818486c1a0069659123',
+ 'data/price-confidence-v1.php': 'c8f607ab65f99d2991732dd539b00c4c34ec8cd7e9ac36077232335908e47759',
+ 'data/price-intelligence-v1.php': 'b49f7acf88b06bf3d204b845580f1b93a29e1ec70f4b27d0e1416551d1f3a174',
+ 'data/price-segment-v1.php': '6db65d0a8259d447c2fc1f3acf2f8cf9b5a758a660ca4ee3fd41db6420133b6f',
+ 'design-system-v2.css': '9d7cd0c1c330b7aa04bd87e5e0a9f0756c594f27803a67302330ab33a604aa70',
+ 'design-v1.css': '1a7884cb20b9209447edb00f867238686396dcd5ef734d2446553ecb89f902be',
+ 'ds2-results-filters.js': '6fdb1d4fbb177b2cead3a2f4b74adc5f5c7d26bb854f9516b38ff50c4d5325a5',
+ 'ds2-search-intro-v1.css': '4507a7b58e06ffdc5dc00d573f2ad08ba22692f2c7946387f418d0b7253ce7ae',
+ 'ds2-search-tablet-filters-v1.css': '6c098179c01ee7dfec3a22ee8d2a68995c86dd0cc1f4b075467729dbc291a2b3',
+ 'ds2-search.css': '170bab9840142b979a3b528a96c5605e7066099d8b977ac698954817d96bbfd7',
+ 'ds2-selected-tour-convergence-v1.css': 'b3d13752268dd23116fa4c250d479f75a74f663133114786972734eb94182d56',
+ 'editorial-ds2-convergence-v1.css': '81712d596910b1f3c8293c121b6af7d03424cb0882ab312771afe951a5528c4e',
+ 'editorial-rhythm-v1.css': '42824f1232b5c7be7f949612668feae91df81fb51b7948791db569eea1a4f137',
+ 'enhancements.css': '2242fd5b76f68a366cf6f60eeea81b545178da9b35256bab60fc670731253f89',
+ 'flight-empty-recovery-v1.js': 'def6cb029479cb7bb90bc44cbef82bb66a9e7ec240e8787c0c0562d7abdc73a9',
+ 'flight-price-sync-v1.js': '263a5795c61da3a7cc4018f04c513f7e59b7f9e0fb9c8918fb46298564fc42e8',
+ 'form-defaults.php': '88c3c09b899c7a4fe873575303f0d7b2e042c5725e44c04a1d032f56e926cff0',
+ 'header-current-site.css': '54c4cfffb2a26f50b2e2a839f3e7409a9d2b801d8a36aba87226dc7ee45f766a',
+ 'header-current-site.js': '40502bffcd32af366ba92fb271a16091b94d70febf0b555b2b56a144fd467dd8',
+ 'hot/index.php': 'a990d757ab8abb4efc0ed8108167c923a4a5f3b5d5a15f5e317495ab5c339225',
+ 'hotel-actions-v3.js': 'dcf931b02869bbec6f5dbe1768bcb8360b672e244f27f82c4d8862ce4160873d',
+ 'hotel-autocomplete-v1.css': '888743db25a2bb6a23850260c69d2947625e5c252fc131253b9b3da079804e6b',
+ 'hotel-autocomplete-v1.js': '32fba3272f2c7495210cbab7b0e439d880c44f5d36aa9e9a150ab963884fa64a',
+ 'hotel-details-design.css': 'e255c6393f64dbddd60fef95b390f9e79124f7645d621d91d80ca71b37143037',
+ 'how-to-buy/index.php': '11b3503979cba98cce9775525fa13070678bf2144496c8a841d192ee4d7c932d',
+ 'index.php': '80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
+ 'lead-form-guard-v1.js': '42427863281ca0bdcb7a84693f57687cd10747196dc85fc5daffdd477fc7c48a',
+ 'lead-search-context.js': '8d6eafbdf9fbb23aa5984edbe2c585b65c5647517492f7799c1dd732e710335f',
+ 'lead-ui-race-guard-v1.js': '75461d02a2416e5d1c8d53147603155c3868347d05a5cbed95b56803de3c3953',
+ 'mobile-results-filters-v1.css': '0843a90d2cd2c066749520cd70ee5cf791c243572362e65d8d24d7754a4e8431',
+ 'mobile-results-filters-v1.js': 'fe2a57b03e9fafca3cbea49edd0913470da8ee5ec9660f5c94a4f911f6da6821',
+ 'mobile-search-summary-v1.css': 'ed8cd7fdf24e1493154c825f4ae750164657eea4675560e39443151f7a62a979',
+ 'mobile-search-summary-v1.js': '65492407f049af1f04c930927f204ff7c29f5e37e47d79bbac79e3d226561fc2',
+ 'passive-price-observer-v1.js': 'edb52ffef902da3567a2fb8f6c4905cc0053cdb72b6123294baf963a19383260',
+ 'phone-value.php': 'cc94788cda8ae7fabd6b3d3964dff2f5b56d9e33cf83bd6289dfda3c60774a40',
+ 'price-confidence-v1.js': 'b02d9f5bc0c665c437d50055ad991b0e70cd50bc2ae1508b79891882b0238e0d',
+ 'primary-meal-ux-v1.css': '3b4eecd670545fb516d043d24164002cedaf60f382904c16a7c1f2875e726f9d',
+ 'primary-meal-ux-v1.js': '434a642dfdfbc477eec51cd2d0ad43baded834a3436e616a3f97dfe37b595d81',
+ 'privacy-config.php': '56fd870bdfdeba1bc663549f64cbbb456bd1c4601c583e7bd0dce28cdf4f61ed',
+ 'product-shell-v1.css': 'ed0e3035ae67f1fa6098c9ffd7f5661578491a0f15869b92dffd5cb3a000d102',
+ 'rb/index.php': '6c2dfa34f8c461b0b8d2efd6c80000ae5e298b7f41fb36b3ea9cad1ab9d4100e',
+ 'results-depth-v1.js': '3d7d7b8ac59fffb689521e48269403d86175c6ad5f848379bed4399f6873da1f',
+ 'results-experience-v1.css': '843cc5ac46ce722b05d90fad8b6af2c90ff99de2a9c7d80a418cc1856f0df42e',
+ 'results-filter-autorefresh-v1.js': '2266aafdbec74fcd4e44c624735a7498fc85c5029074e09c3d5d7841226d17ea',
+ 'results-layout-guard-v1.css': '45fa7e593a6503d8d614cf4d40415bb069d2b0e6f244992e42d43cba64e54b3d',
+ 'results-local-filters-v1.js': '2e8079d2be692c40fe25c97185f194434df2a93bd8b5ea97fa80517d2b324232',
+ 'results-renderer-v5.js': 'bc183434804b97e2bd6a46ace224d4a7d039b84b684cdb8f5bd093102a5d6972',
+ 'room-details-v3.js': '2aa8198d125d11ffda4f8a6d51faf73bf0dbd6640983bd3d913431cbfa5ec676',
+ 'room-details.css': 'bef58a245f388db3b434111d86e497619b4811eb66899e1f0ff28b2e49a86f5d',
+ 'runtime-retry-policy.js': '0fbb53a814e5aa18514ff97aa16ecbe7faaa247bb2cecbf2f9650db1bd29f140',
+ 'runtime-v3.js': '67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92',
+ 'sales-leader-ui-v1.css': 'eb85aa0ae7e7226c81bbbe342af631b7ac4c43bbb97a7c70c36e7a9691a1e6d6',
+ 'sales-leader-ui-v1.js': 'd85f369522b95e39c317c5b60704a550729ba38fb6040bd0560be62da76c6bfa',
+ 'search-complete-recovery-v1.js': 'f7ba7a75c1b55ee89a4128d550425821920d794593bf3c8ac8184a0a05cf1296',
+ 'search-continue-v6.js': 'ee90fc5eccca3cd63cb7c0159c06501ae1c2c94a195246095719f27a5676e38a',
+ 'search-dirty-ux-v1.css': '9df679a8593e79bf8580719668922416a28de86964f6f98dc28ea498dd9a2566',
+ 'search-dirty-ux-v1.js': '009437ebff77c0ea95978e78de0130279827209ad842c32e8cbbb31242a11059',
+ 'search-filters-ux-v1.css': 'a0cdb817c86aea37d1c276d6f479bbe0d371db8bf11c1d706fceeca98dc0fc53',
+ 'search-filters-ux-v1.js': '0dd1243ff20ac0852c9c716f6da61a8b48fcc5133f12d50dd17deee9523e0cc6',
+ 'search-footer-rhythm-v1.css': '86415ffa6a17545e6d8076265cfcdf7c91741fe15af81579a2aecae531e15307',
+ 'search-header-layout-guard-v1.css': '9026f76aaa794ea3371fcc4926a8a363ad414998c9ac408095e7ec0334ec4b06',
+ 'search-header-shared-shell-v1.css': 'f4171a0746316767a354b8266c7f52dcc498c318dec6e7a672e2e846d00be389',
+ 'search-lifecycle-v6.js': '3cc27d84a13ed010daa0cdf850c73e47e58aa7b9edff6a0155b4456d1e914e61',
+ 'search-page-v2.php': '80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
+ 'search-params-filter-rail-v1.css': '23b2d4801218f03fc34851e0eb909333585275e86680a55ff83752b440bb98ea',
+ 'search-params-filter-rail-v1.js': '9088c377cd67f820edf963eef185f6886b8ca3650b6688a357d40f84b8239a88',
+ 'search-progress-ux-v1.css': '8e9b0ee5b2bfe7916d97bdc1b58a64a39a6982d18986dd614e7e68d4d3d0671b',
+ 'search-progress-ux-v1.js': 'fae8898f03f86e278bed256e784efb3fea5dc65167d801053af5de963ff6aa3d',
+ 'search-redesign-v2.js': '39fc08a80007b2f06bf0a9156115bcd05d10095dcb29d35a00bf7ef5dbc1aed2',
+ 'search-shell-grid-v1.css': '9e877a4fbda2a87602ee1d99821cd1d636f7db6005ba4db6d40629777548f004',
+ 'search-states-design.css': '42294f4db86d4c69b318a67a4bedb7989335a04ca072e915dba4d5ead5c0d8bd',
+ 'selected-tour-description-v1.js': '0e081b613de51c1d665d8c869863a82c8cd8636aa0f9b7f957c463bfe031703f',
+ 'selected-tour-layout-guard-v1.css': '3fd0ec404c8be1a2a96249a4026f0532da68b4375a6b38fdefbabcdf53a8da37',
+ 'selected-tour-return-v1.js': '1c128bf379a64064bf54db24f010613c898a0a7d3db28d847824907191e4dc39',
+ 'selected-tour-ux.css': '18488cd90ef10d4d920abf347636f61a3e80d1a4b8a406005c917392f733b61a',
+ 'seo-config.php': 'efb78a7837f762b4992856903aafa0dad00449637a99bc668165e20bf2de9482',
+ 'seo-content-catalog-v1.php': 'a599fae60fcc66c17212ebbb8b3bcf96590daa89cb65fe67e1d49b1362ea1c6a',
+ 'seo-content-pilot-alanya-v1.php': 'ed59774abe650395b7b967bbdd716233a53abef7a2b6569e7dee27115e513dcf',
+ 'seo-content-pilot-antalya-v1.php': '705b5160af29eb06d6164c0b1eea5214bec28079c393b08776e78083980d9f96',
+ 'seo-content-pilot-belek-v1.php': '3633b7c29e8e3e034c6c7f5c1eeb4973d1ea393fcbc2125d1cb62aff7787d9c5',
+ 'seo-content-pilot-egypt-hotels-v1.php': 'b40b4b5b4bd5bb70ea9a30c423e136c49b07856f371ca29ca4e1530c88f90fd8',
+ 'seo-content-pilot-egypt-v1.php': 'cb692984dcbeb5fa30309098bfcfb2f2ca4700ec27c1c0387e087ad14882dd7c',
+ 'seo-content-pilot-kemer-v1.php': '70ddce168151614a31f497db481192e3a36dc6eac8497253ea811ee857f30315',
+ 'seo-content-pilot-maldives-hotels-v1.php': '2363046ca2c2133baf4806019caf922365066fe587ec9bcfe3f87a35abb0848b',
+ 'seo-content-pilot-maldives-v1.php': '5407ef0ac3b6650467d33c561a2eaf894e13eba1ed7ca8bc36c3a5e41a6610e8',
+ 'seo-content-pilot-side-v1.php': '0c8a6bb3f613206a574050677bf7799fb23382e3f330ee83610dd5c8a26d326d',
+ 'seo-content-pilot-turkey-v1.php': '86275866eb8427bfdb753208340d137a2b23fd1540ffbe4b7ead0bbf73d5ad0b',
+ 'seo-core-month-matrix-v1.php': 'a9876806a7ead25f4420d737129381b2c24cfe0eed0a2d24c6bc9b2c3f68c53a',
+ 'seo-core-month-navigation-v1.php': '36383bf64d418b70c51f3036ce0dabc230ba4268df9c152a0abe49e284c21212',
+ 'seo-core-resort-launch-state-v1.php': 'b636eb8d76072c6afe710e93228f78f82a0cb6fbac8ef125365a42ddadb94960',
+ 'seo-editorial-reference-v1.css': 'f3737ccf5a54ba15dd974f060971974027b2b31ba6252f2290dca0cb4a2ab8b0',
+ 'seo-hotel-launch-readiness-v1.php': 'c1bf44d35e5758f1cdf91d178d29bc6fb1300eabaaf07efd5597f34e87058302',
+ 'seo-hotel-tour-page-v1.php': '3d32fe1a1ab21a4a1ba470e1f0422ad125066035ea35a885199515690a266d1e',
+ 'seo-internal-links-v1.php': '14ce420034764af0b68d64e222a32007bf6042d329ef783173fb7772ebafaa0c',
+ 'seo-launch-slice-v1.php': '03238f3e98a10092384416e6585b088362c36efab1f99b4f0c259dce1f8ee071',
+ 'seo-offer-snapshot-v1.php': '673a177ec6da6e75501951d1e1819214eff3a2b7d924a7915c75f66ca090fd24',
+ 'seo-page-contract-v1.php': 'c553d42231d70eb2fb14a2f5c64d60e258db03277e2c548dd4c54ed7499015f6',
+ 'seo-page-graph-v1.php': '33293bc717f329e67c57fef5b11954e43e9d1f2ac9f4c41c80387847cca1c62b',
+ 'seo-page-launch-readiness-v1.php': '5a0172a28f304b28d050e4277e5af2a4ad32359b932d41c1a390999cd29aea52',
+ 'seo-page-primitives-v1.php': '91fd195d006c6579922280d37496e4d9ae523d962936cea088b02a7875574e0a',
+ 'seo-page-registry-v1.php': 'a59a4b178e160d019d18de487e2acd5c9f3b0ae6c506206f4569718bf31eb7e7',
+ 'seo-page-types-v1.php': '28d3250b7f35762960ec8fcf400c0451ba6d658c05e4aed5462baa177686a7c4',
+ 'seo-price-calendar-v1.css': 'ceaac69fd59f33752c17615fcb77439598921c4504be2e954e00922adb4d66a6',
+ 'seo-price-calendar-v1.php': 'e0d2c0c1ed66cae411950b15a739fbb01ea944224787bc01b6c242f36562fc5f',
+ 'seo-price-promo-v1.css': 'b2847f22869b4942ed57db02a447cdf24352709edd1d94d555ed9797e02c96fa',
+ 'seo-publication-manifest-v1.php': 'd18280435b6766474bd29d887c45909541067e14b25d41541bc4789016260b37',
+ 'seo-publishability-v1.php': '75fa938a9af159201db964fc358fef034ec65f5f3a71cf5b1d82612025beb597',
+ 'seo-resort-family-integrity-v1.php': '99d0701a5dc51ab9d050f4ef9e0ccfdd94b4ad2b015b9aa658e6add124e6c673',
+ 'seo-resort-page-v1.php': 'e8b5ee7fd6d38929787b1889506ee7e67be252c6182ab9c3ef68cca89602f2e4',
+ 'seo-seasonal-content-evidence-v1.php': '38dc6501b1638ee86398f3d176f55d22ac71b028e8affb1b107a39d2f84196df',
+ 'seo-seasonal-family-registry-v1.php': 'ce8b3486b2568af1130e9cce2fa24ba129d1f5675d3a0797d30c254529ac6597',
+ 'seo-seasonal-offer-snapshot-v1.php': 'db06d599fa30f462e0898dc83dc93395aefb4c4a829632741f9e3f7069c1e4a9',
+ 'seo-seasonal-page-v1.php': 'c4dda323f33f80b7b7e969826fed1eb00fdfb9ec33eeedeb20e6d3349a69c067',
+ 'seo-seasonal-review-content-v1.php': '7ee0e31b35ae43170ab5628679a955a6fd375c499aeca3e020c51315756899f5',
+ 'seo-seasonal-review-page-v1.php': '770e9e49b7d0e31cd315e435c60dcb2c34d0c98fc3a27fc19170c979b9492732',
+ 'seo-seasonal-source-registry-v1.php': '53a14324e881877267e317df3419f0c1d35a618c6bd50a4650d43b274c0ed213',
+ 'seo-seasonal-verified-content-evidence-v1.php': 'f6dbfa30a9dd77182c89ce2e94df07df66c2ead0dcd3a207ee97574413a20b19',
+ 'seo-sitemap-candidates-v1.php': 'f27ca5deb6cdb2ab7d1774ebf1e59b1f90b65f1423ec9b3a9e7e714ae3ead99d',
+ 'seo-structured-data-v1.php': '2976fe0b44e64c3552f1ba929a071408e29b5ff9fb7d902649e9ea591c9d3ec3',
+ 'shared-content-primitives-v1.css': '99ec994272255f59891c51506f7ae4eec7c68e6dbb366fdfe4d41ad356798d8e',
+ 'site-coherence-v1.css': '4ff92f81974c2945b05db9c5b44ef1893a27da7ff1cfc11032afa1bea9778e65',
+ 'site-footer-v1.css': 'a93168eb578ff26105fd467c5261ccdfe9c12a40323707dbdd75310d3ca44bab',
+ 'site-footer-v1.php': 'bf21442d0012437ef35c6a014a232e0e262f958cc238960c3a16b473ff3ba71d',
+ 'site-header-v2.css': '87654b6903e148306ff27ddf9453d608f8401089240192269cefe79c2607d777',
+ 'site-header-v2.php': '682a3fb907c8e6ac350a42822ba943097f4e42a277e6c489195724ea50619dd8',
+ 'site-page-v1.css': '579e8a261e4ae3dbf7c3b07bbf7f92883504555a1519d6483bcb15b2ed598ea2',
+ 'site-shell-alignment-v1.css': '65906a6f1243bdc0b55cef2bf70dd753509382e0614eb0b0357b7819b486a170',
+ 'tour-controller-v4.js': 'ad2e5e1e3e7c4d021d291cbb8a60748d8d9a54a7c1c1e3d4aefb7296d427c0ae',
+ 'tour-design-v1.css': 'b0305cd4f85e030b75de91d1e01d682a81e29648593beb791323c40411693799',
+ 'unpriced-flight-price-reset-v1.js': 'b81373bc8283bacef64e456fcc3001f838795f4ff7a229eb3c96d1ec2bc876a5',
+ 'url-primary-catalog-sync-v1.js': '00fdfc7c042d304c9b5758c9cfa86e86dfbfb109f4137f97da6d3a9208ee9cef'}
+SITE_OPTIONAL_DEPENDENCIES = {'seo-content-pilot-egypt-coral-hills-v1.php': 'fdbe4a1750df9e0d0685ac0986f5339766df6211130cbee1c2a105812e792a51',
+ 'seo-content-pilot-egypt-dexon-roma-v1.php': 'abc97e880a434203fef550f3abd4011555c8e593e2f9569c5393c6bf7fa61fdb',
+ 'seo-content-pilot-egypt-ecotel-dahab-v1.php': '31d39cfb822f0e7ae1956f19608d70a39f8de658103b82677940572fd2116063',
+ 'seo-content-pilot-egypt-eden-rock-v1.php': 'd9a3d246053b63ee2fe1da89597e0869798224eb86ce4c6f495e25c453805a5b',
+ 'seo-content-pilot-egypt-el-khan-v1.php': '2ced15070842a91d9aa0be5a039cc690492c6ad00b61d507718dc2e53f48d34f',
+ 'seo-content-pilot-egypt-empire-aqua-v1.php': 'b97274c753e11e6b7710c6a724f0f2e3928d08f8a0c556444ed1f773bd296cd7',
+ 'seo-content-pilot-egypt-falcon-naama-v1.php': 'd1464f6662593ed28cd8eea28f7cf7c698ac7dd97ee34e2e9b627ec770747e7e',
+ 'seo-content-pilot-egypt-faraana-v1.php': 'cc057c18f48b612c76b9ada305e59c8f5e07702d9cebba926b71122ef45598d6',
+ 'seo-content-pilot-egypt-geisum-v1.php': '78e488d20f0c0654824e9138ff115ebd1d2276dd79092758d81068fac96be8dd',
+ 'seo-content-pilot-egypt-il-mercato-v1.php': '53ef6abd34ca68ebe584a6f5245d89d27695e7ac8418af62ee31bbd52ce9d729',
+ 'seo-content-pilot-egypt-kiroseiz-v1.php': '81b827ec19842595a6eb9ee0b3491e92e99e80046a842e1186e347410199e9a7',
+ 'seo-content-pilot-egypt-mazar-v1.php': '2bc500ea19f5f1705cdc5a93a96b41d7b488df2ed7da7157acccd89d42b795d5',
+ 'seo-content-pilot-egypt-mirage-bay-v1.php': '855e08a82969831ea5435442febd1592fc2759cc1d3735adfeea566618554084',
+ 'seo-content-pilot-egypt-new-badawia-v1.php': '2cc499876e4a7ea8216259df6b70e78d424e73d0b20e2b865039ab6767da87e8',
+ 'seo-content-pilot-egypt-old-vic-v1.php': 'fb95e3a28fe1258c89c3e0c6bb5f2ef32fc7c07c01f99f3f4b8457f7c98c0516',
+ 'seo-content-pilot-egypt-onatti-v1.php': 'f4f6f2dc6f018f533b33ac2bbaba4254c04e2a720aeb09a33cb4fc0327a50945',
+ 'seo-content-pilot-egypt-panorama-naama-v1.php': '56b0c6e063a1ed6f014e89b0dfbd0b8fa104262ef9978034e6d153c77c9e8522',
+ 'seo-content-pilot-egypt-parrotel-aqua-v1.php': 'ca5a8087b15e45206b7e44d4c2e8bffacf62509da049bfb0488097153a9cd2fb',
+ 'seo-content-pilot-egypt-parrotel-beach-v1.php': 'f40fda80976efbfc9645ed1042038ac282fd072860cb82ee45de46a8ce71750b',
+ 'seo-content-pilot-egypt-parrotel-lagoon-v1.php': '7b219da8ef05ed2f22d894f358eb537a76538f9b9285ba466a09d3234d04c306',
+ 'seo-content-pilot-egypt-rehana-royal-v1.php': '382eb5a8e30ba3d3b11f3586ebbb1d15d4007e73ab9f99d71ec3fd0fdaeaeee7',
+ 'seo-content-pilot-egypt-rehana-sharm-v1.php': '3b705357a0a808dffc3c134399e25d68047b701564c8b377e991d6ef90389299',
+ 'seo-content-pilot-egypt-retac-qunay-v1.php': '9fa46d9a7820e8bd828f8f0d1470d1a959bf9ff3543444debdd6b4d5d8104e04',
+ 'seo-content-pilot-egypt-sand-beach-v1.php': '01636aabf32e4fe0a26b3cebc965fbc03697650049f35b1c042116354dd5c2e1',
+ 'seo-content-pilot-egypt-sun-sea-v1.php': '1e594ae7aaf0cf7a650c78d8221fa8c2a5a1d0f453b500fafe2dc235ebc5e7f7',
+ 'seo-content-pilot-egypt-swiss-heaven-v1.php': 'f676a565d071600c1c306062231d3c9dd530766ad6349b3b60f2f81aeb46a45c',
+ 'seo-content-pilot-egypt-tivoli-v1.php': 'f829cbca40d9d495ab03e34903772b4450c943942f44429ca90d6366973cd8a6',
+ 'seo-content-pilot-egypt-tropitel-dahab-v1.php': '47e8b551f2e2a0884221b9fe824781087b72ca9e92443dfa4ac110f441d07b59',
+ 'seo-content-pilot-egypt-uni-sharm-v1.php': '238dea1e0cd8bca848ec3cd823f0f318e616d0829639124d5e4808fd6639ed28',
+ 'seo-content-pilot-egypt-verginia-v1.php': 'a596848023fda14df93b1b59bbb30553c7406cc4ca2fae674f0b5b0857201f42',
+ 'seo-content-pilot-egypt-viking-v1.php': '5d8d4650011f2eaaebb983d15ab1d5a82b6d0ba5c8299a0158de52b4a4e10d47',
+ 'seo-content-pilot-egypt-viva-blue-v1.php': '97e272120decdaae62762dfeae5f67ce7d59daab2ec545627bf81334fa597868',
+ 'seo-content-pilot-egypt-viva-sharm-v1.php': '274fadb1bde7591432b097c30c3f4689fcda6389913c3c1529181adf9d7fd8e3',
+ 'seo-content-pilot-maldives-angsana-velavaru-v1.php': '4509f860090132fd10eed8f2fae9d03e843a87173d69fae343f7beff552c53ce',
+ 'seo-content-pilot-maldives-avani-fares-v1.php': '271fdd2227d152e21241de1324cb3d7c45fbf05ad3e434db4cce01dc1b33510e',
+ 'seo-content-pilot-maldives-ayada-v1.php': 'ce071fcdb749685e02892f3a4c341f5180c9d11c04302747be3552ce9e87dd3e',
+ 'seo-content-pilot-maldives-banyan-vabbinfaru-v1.php': '35ee28b5d6e35b66143648cc3c928ec050d9b6e59ac74a985499971afbeed196',
+ 'seo-content-pilot-maldives-barcelo-nasandhura-v1.php': 'ef36aef49a473e5f5988a39efd794970ee96408fb091baefc9889f2d2a846fdb',
+ 'seo-content-pilot-maldives-brennia-kottefaru-v1.php': '464956f8f4995ff8157346871ddf4b23e84d6a58d4498314f84e3cd6b6519887',
+ 'seo-content-pilot-maldives-cinnamon-hakuraa-v1.php': 'd1dd847773ae16856462622e406399a3f24e8ab158a630b5e3eff09ee1ce88ab',
+ 'seo-content-pilot-maldives-coco-bodu-hithi-v1.php': 'e9f2a3756077a4322ba57bb74d331f959e4b4869e39d1218aab6966768a1f925',
+ 'seo-content-pilot-maldives-dhawa-ihuru-v1.php': '9fde4025040a80fe50d3969a12f8311fddc61aaaa1736ae1c93a29c5557741f0',
+ 'seo-content-pilot-maldives-furaveri-v1.php': '53046d6c5b3c4bebe69d6e965954171c9a65ad6b3f5eb9774f766b15e6a72d27',
+ 'seo-content-pilot-maldives-grand-park-kodhipparu-v1.php': 'f167c6b59a46e21e887fab3683f8dc0d9510bad7bcf2ea681bf81fdfddb2f742',
+ 'seo-content-pilot-maldives-hard-rock-v1.php': '786607d3bf48ea485ebaebe9127baf7adc81a7ff3b5105cb1f0f643bed38e8c3',
+ 'seo-content-pilot-maldives-ifuru-v1.php': '95699a3ac2daa3c40602bfc6dc67ed26e9adc71009d1b3419c7bcf8cf553e008',
+ 'seo-content-pilot-maldives-kagi-v1.php': '889121502b6e05034fc8fe1bfe91067a8f396eecef701b2dd5da07407bacd9e6',
+ 'seo-content-pilot-maldives-kandima-v1.php': 'e52f45b4f1ff48191bb1ca120233ec9116f8e1c67a2b5198946540f20e6f990e',
+ 'seo-content-pilot-maldives-kurumba-v1.php': 'e60ae59e462318a3f9044c812f859dfbd5d26caab27402e78bc3af98966f9502',
+ 'seo-content-pilot-maldives-lux-south-ari-v1.php': '15c6ac3863b029ca99f681b3f7a03ed106093b33c8a266421c4952f7cccb4800',
+ 'seo-content-pilot-maldives-machchafushi-v1.php': 'b44cca93cc9303cd08bcddc657d4eea8ed44d96eecc5b9af64cd20e738a27d03',
+ 'seo-content-pilot-maldives-nh-reethi-v1.php': '2fafcc238b8aad54c14e306c36099e5be637e134bb9dfa8489fdd3c59918ada4',
+ 'seo-content-pilot-maldives-nika-v1.php': '75bf019fe5c94ad7584c6bde854632719c2236d7956446cdb00f5cd21595e704',
+ 'seo-content-pilot-maldives-nooe-kunaavashi-v1.php': '1884b02da84f9c9e79e797a366a0f09366246982c8ba40d50d34d7c53224bc24',
+ 'seo-content-pilot-maldives-royal-island-v1.php': '4b4533ca01b3ce9c55057fc33707482abaf432d4a81006ca0294faef295dbe47',
+ 'seo-content-pilot-maldives-saii-lagoon-v1.php': '2e9d46513eb5ad92f2841c3e6a0b320dd1d439aa379973fd0cde7f8942658740',
+ 'seo-content-pilot-maldives-sheraton-v1.php': '9154335fde115027cb81843fe4197353b1ed89d76051527361254f1fbb33acb0',
+ 'seo-content-pilot-maldives-taj-coral-reef-v1.php': '703ea81ebe09dc3e9232fd0c40b965660952eab79527fabafb07e628472db7e9',
+ 'seo-content-pilot-maldives-velassaru-v1.php': '569fccde913cb76e5288fc5aad99c57d4bbd317ef20db86192c095029919bd11',
+ 'seo-content-pilot-maldives-villa-nautica-v1.php': 'ba331dc9f68b6d63a8600ad52e6d42a538d641bc45f02b0aedcfaf5e6aadab21',
+ 'seo-content-pilot-maldives-villa-park-v1.php': 'bb925aca2e2dcfc1ec83c5a992fa0143d7ce20e1a5f7fbbf8f9bed9cbcf3c5d9',
+ 'seo-content-pilot-maldives-westin-v1.php': 'd477c8c9547bd89f30d903b1cfe601fd45abeed9a5f7d0466faa697395195b45'}
+
+
+def site_parent_identity():
+    return {k: SITE_PARENT[k] for k in ('control_source_sha','run_id','command_comment_id')}
+
+
+def site_policy():
+    policy = {'operation': SITE_OPERATION, 'source': SITE_SOURCE, 'tree': SITE_TREE,
+              'order': SITE_ORDER, 'targets': SITE_TARGETS, 'dependencies': SITE_DEPENDENCIES,
+              'optional_dependencies': SITE_OPTIONAL_DEPENDENCIES, 'parent': SITE_PARENT}
+    return policy | {'manifest': sha(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode())}
+
+
+def site_event_identity(event, env, rollback=False):
+    # Apply exactly the existing carrier's owner/event/attempt gate, then parse
+    # only these two fixed commands. The event body is never passed to a shell.
+    prefix, operation = (SITE_ROLLBACK_PREFIX, SITE_ROLLBACK_OPERATION) if rollback else (SITE_PREFIX, SITE_OPERATION)
+    control = env.get('GITHUB_SHA', '')
+    body = event.get('comment', {}).get('body', '')
+    original_run = None
+    if rollback:
+        match = re.fullmatch(re.escape(prefix+' '+control+' ') + r'([1-9][0-9]{0,19}) ' + re.escape(operation), body)
+        need(match is not None, 'command'); original_run = match[1]
+    else: need(body == f'{prefix} {control} {operation}', 'command')
+    synthetic = dict(event); synthetic['comment'] = dict(event.get('comment', {}))
+    synthetic['comment']['body'] = f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity = update_event_identity(synthetic, env)
+    need(identity['run_id'] != SITE_PARENT['run_id'], 'site_runtime_identity')
+    if rollback:
+        need(original_run not in (identity['run_id'], SITE_PARENT['run_id'], UPDATE_PARENT['run_id'], CONTINUATION_PARENT['run_id']), 'command')
+        return identity, original_run
+    return identity
+
+
+def site_final_heads(identity):
+    rollback_main(identity)
+    pr = api('/pulls/' + str(SITE_SOURCE_PR))
+    need(pr.get('state') == 'closed' and pr.get('merged') is True
+         and pr.get('merge_commit_sha') == identity['control_source_sha']
+         and pr.get('head', {}).get('sha') == SITE_SOURCE and pr.get('head', {}).get('repo', {}).get('full_name') == REPO
+         and pr.get('base', {}).get('ref') == 'main' and pr.get('base', {}).get('repo', {}).get('full_name') == REPO, 'site_candidate_moved')
+    for path in SITE_ORDER:
+        row = api('/contents/v2/' + path + '?ref=' + identity['control_source_sha'])
+        need(row.get('type') == 'file' and row.get('sha') == SITE_TARGETS[path]['blob'], 'site_merged_blob')
+
+
+def site_parent_admission():
+    parent = SITE_PARENT
+    run = api('/actions/runs/' + parent['run_id'])
+    need(run.get('id') == int(parent['run_id']) and run.get('head_sha') == parent['control_source_sha']
+         and run.get('head_branch') == 'main' and run.get('path') == WORKFLOW and run.get('event') == 'issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt'] == 1
+         and run.get('status') == 'completed' and run.get('conclusion') == 'success'
+         and run.get('actor', {}).get('login') == run.get('triggering_actor', {}).get('login') == 'pyatkoff', 'site_parent_run')
+    jobs = [j for j in pages('/actions/runs/' + parent['run_id'] + '/attempts/1/jobs', 'jobs') if j.get('name') == 'public-install']
+    need(len(jobs) == 1 and jobs[0].get('id') == parent['job_id'] and jobs[0].get('run_id') == int(parent['run_id'])
+         and jobs[0].get('status') == 'completed' and jobs[0].get('conclusion') == 'success', 'site_parent_job')
+    steps = [s for s in jobs[0].get('steps', []) if s.get('name', '').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps) == 1 and steps[0].get('status') == 'completed' and steps[0].get('conclusion') == 'success', 'site_parent_step')
+    artifact = api('/actions/artifacts/' + str(parent['artifact_id']))
+    need(artifact.get('id') == parent['artifact_id'] and artifact.get('name') == 'search3-public-install-'+parent['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run', {}).get('id') == int(parent['run_id'])
+         and artifact.get('digest') == 'sha256:' + parent['artifact_sha256'], 'site_parent_artifact')
+    _unique_update_command(pages('/issues/4709/comments'), UPDATE_PREFIX, UPDATE_OPERATION, site_parent_identity())
+
+
+def site_admission(identity):
+    site_final_heads(identity); reviewed_control(identity['control_source_sha'])
+    need(api('/git/commits/' + SITE_SOURCE).get('tree', {}).get('sha') == SITE_TREE, 'site_source_tree')
+    gate = api('/contents/.github/workflows/deploy-anytoour.yml?ref=' + identity['control_source_sha'])
+    need(gate.get('type') == 'file' and gate.get('encoding') == 'base64'
+         and sha(base64.b64decode(gate['content'])) == SITE_PUBLISHER_GUARD_SHA, 'site_publisher_guard')
+    checks = pages('/commits/' + SITE_SOURCE + '/check-runs', 'check_runs')
+    for name in (*SITE_CHECKS, 'production-evidence'):
+        latest = max((c for c in checks if c.get('name') == name and c.get('head_sha') == SITE_SOURCE), key=lambda c: c['id'], default={})
+        need(latest.get('status') == 'completed' and latest.get('app', {}).get('slug') == 'github-actions'
+             and latest.get('conclusion') == ('skipped' if name == 'production-evidence' else 'success'), 'site_source_ci')
+    for path in SITE_ORDER:
+        row = api('/contents/v2/' + path + '?ref=' + SITE_SOURCE)
+        need(row.get('type') == 'file' and row.get('sha') == SITE_TARGETS[path]['blob'], 'site_source_blob')
+    site_parent_admission()
+    _unique_update_command(pages('/issues/4709/comments'), SITE_PREFIX, SITE_OPERATION, identity)
+    site_final_heads(identity)
+
+
+def site_parent_value(value):
+    # Preserve the accepted parent's exact JSON proof in the SITE receipt. A
+    # later rollback needs no old artifact, source CI, release or signer fetch.
+    data = (json.dumps(value, sort_keys=True) + '\n').encode()
+    need(sha(data) == SITE_PARENT['receipt_sha256'], 'site_parent_digest')
+    packet = io.BytesIO()
+    with zipfile.ZipFile(packet, 'w') as archive: archive.writestr('evidence.json', data)
+    policy, accepted, original = update_source_evidence(packet.getvalue(), site_parent_identity())
+    need(accepted['snapshot_manifest_sha256'] == SITE_PARENT['snapshot_manifest_sha256'], 'site_parent_snapshot')
+    return policy, accepted, original
+
+
+def site_parent_evidence(raw):
+    need(sha(raw) == SITE_PARENT['artifact_sha256'], 'site_parent_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist() == ['evidence.json'], 'site_parent_artifact')
+        data = archive.read('evidence.json'); need(sha(data) == SITE_PARENT['receipt_sha256'], 'site_parent_digest')
+    value = json.loads(data); site_parent_value(value)
+    return value
+
+
+def site_package():
+    files = {}
+    for path in SITE_ORDER:
+        expected = SITE_TARGETS[path]; blob = api('/git/blobs/' + expected['blob'])
+        need(blob.get('sha') == expected['blob'] and blob.get('encoding') == 'base64'
+             and blob.get('size') == expected['after']['size'], 'site_payload_blob')
+        raw = base64.b64decode(blob['content'].replace('\n', ''), validate=True)
+        need(0 < len(raw) <= MAX_BYTES and raw.startswith(b'<?php')
+             and expected['after'] == {'state':'present','sha256':sha(raw),'size':len(raw),'mode':'0644'}
+             and hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest() == expected['blob'], 'site_payload_bytes')
+        files[path] = base64.b64encode(raw).decode()
+    return files
+
+
+SITE_COMMON_REMOTE = r'''
+UPDATE_RECORD_PATHS=('reservation.json','result.json','snapshot/manifest.json','snapshot/app','intent.json')
+SITE_PREPARED_PATHS=('reservation.json','snapshot/manifest.json')+tuple(p+str(i) for i in range(4) for p in ('snapshot/','drill/','intent-'))
+def site_read_records(store,paths):
+ rows={}
+ for path in paths:
+  row,identity,raw=store.read(path,True)
+  mode='0644' if path.startswith(('snapshot/','drill/')) and path!='snapshot/manifest.json' else '0600'
+  require(row.get('state')=='present' and row.get('mode')==mode and identity[6]==os.getuid(),'site_private_record')
+  rows[path]=(row,identity,raw)
+ return rows
+def site_parent_records():
+ retained=parent_records();candidate=parent_candidate(retained,True);protected=parent_protected(retained)
+ rows=read_records(updated,UPDATE_RECORD_PATHS);record=lambda p:json.loads(rows[p][2]);path=UPDATE_POLICY['path']
+ require(record('reservation.json')=={'operation':UPDATE_POLICY['operation'],**UPDATE_ORIGINAL,
+         'source':UPDATE_POLICY['source'],'manifest':UPDATE_POLICY['manifest'],'parent_install':ORIGINAL}
+         and record('result.json')==UPDATE_ACCEPTED,'update_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_install','path','before','protected','previous_identity','parent_records'}
+         and snapshot['source']==UPDATE_POLICY['source'] and snapshot['manifest']==UPDATE_POLICY['manifest']
+         and snapshot['parent_install']==ORIGINAL and snapshot['path']==path and snapshot['before']==POLICY['expected']
+         and snapshot['protected']=={p:r[0] for p,r in protected.items()} and snapshot['parent_records']==parent_hashes(retained)
+         and digest(rows['snapshot/manifest.json'][2])==UPDATE_ACCEPTED['snapshot_manifest_sha256']
+         and rows['snapshot/app'][0]==UPDATE_POLICY['before'],'update_snapshot_conflict')
+ old=checked_stamp(snapshot['previous_identity'],UPDATE_POLICY['before'])
+ require(old[:-1]==parent_intent(path,retained)[:-1],'update_parent_inode')
+ prior=updated.read('stage/app')[:2]
+ require(prior[0]==UPDATE_POLICY['before'] and prior[1][:-1]==old[:-1],'update_snapshot_conflict')
+ intent=record('intent.json')
+ require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+         and intent['path']==path and intent['before']==UPDATE_POLICY['before'] and intent['after']==UPDATE_POLICY['after']
+         and intent['previous_identity']==snapshot['previous_identity'],'update_private_record')
+ new=checked_stamp(intent['new_identity'],UPDATE_POLICY['after'])
+ require(candidate[path][1][:-1]==new[:-1],'rollback_candidate_changed')
+ dependencies=public.inventory(tuple(SITE_POLICY['dependencies'])+tuple(SITE_POLICY['optional_dependencies']))
+ for p,(row,_) in dependencies.items():
+  expected=SITE_POLICY['dependencies'].get(p,SITE_POLICY['optional_dependencies'].get(p))
+  require((p in SITE_POLICY['optional_dependencies'] and row=={'state':'absent'})
+          or row.get('state')=='present' and row.get('sha256')==expected and row.get('mode')=='0644','site_dependency_drift')
+ return retained,rows,prior,{**candidate,**protected,**dependencies}
+def site_check_parents():
+ require(parent_records()==retained and read_records(updated,UPDATE_RECORD_PATHS)==update_records
+         and updated.read('stage/app')[:2]==update_prior,'site_parent_changed')
+ require(public.inventory(guarded)==guarded,'protected_changed')
+def site_check_targets(expected):
+ require(public.inventory(SITE_POLICY['order'])==expected,'site_target_changed')
+def site_restore_one(store,path,index,current,prior,capture):
+ require(public.read(path)[:2]==current and store.read('stage/'+str(index))[:2]==prior,'rollback_preflight_race')
+ capture_owned(public,private,path,capture,current[0],current[1])
+ restore_capture(public,store,path,'stage/'+str(index))
+ restored=public.read(path)[:2]
+ require(restored[0]==prior[0] and restored[1][:-1]==prior[1][:-1],'rollback_incomplete')
+ return restored
+'''
+
+
+SITE_UPDATE_REMOTE = r'''
+result={'schema_version':1,'operation_id':SITE_POLICY['operation'],'source_sha':SITE_POLICY['source'],
+        'manifest_sha256':SITE_POLICY['manifest'],**IDENTITY,'parent_update':UPDATE_ORIGINAL,
+        'parent_receipt_sha256':SITE_POLICY['parent']['receipt_sha256'],'status':'blocked_no_replay','phase':'preflight',
+        'supplier_calls':0,'database_reads':0,'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
+        'written_files':[],'rollback_files':[],'reservation_created':False,'snapshot_verified':False,
+        'restore_drill_verified':False,'protected_unchanged':False,'unchanged_files_verified':False,
+        'parent_records_unchanged':False,'original_inodes_verified':False,'snapshot_manifest_sha256':None}
+public=base=original=updated=private=None;reserved=False;switched=[];owned={};prior={};prepared=None
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=SITE_POLICY['order'];targets=SITE_POLICY['targets']
+ require(len(order)==4 and set(PAYLOAD)==set(targets)==set(order)
+         and not set(order)&(set(POLICY['expected'])|set(checked_protected_paths())|set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])),'payload_scope')
+ payload={p:base64.b64decode(PAYLOAD[p],validate=True) for p in order}
+ require(all(targets[p]['after']=={'state':'present','sha256':digest(raw),'size':len(raw),'mode':'0644'}
+             and raw.startswith(b'<?php') and 0<len(raw)<=MAX_BYTES for p,raw in payload.items()),'payload_bytes')
+ home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ retained,update_records,update_prior,guarded=site_parent_records()
+ before=public.inventory(order)
+ require(all(row[0]==targets[p]['before'] and row[1][6]==os.getuid() for p,row in before.items()),'predecessor_drift')
+ site_check_parents();site_check_targets(before)
+ try: os.mkdir(SITE_POLICY['operation'],0o700,dir_fd=base.fd)
+ except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)
+ reservation={'operation':SITE_POLICY['operation'],**IDENTITY,'source':SITE_POLICY['source'],
+              'manifest':SITE_POLICY['manifest'],'parent_update':UPDATE_ORIGINAL}
+ private.create('reservation.json',canonical(reservation));result['phase']='snapshot'
+ snapshot={'source':SITE_POLICY['source'],'manifest':SITE_POLICY['manifest'],'parent_update':UPDATE_ORIGINAL,
+           'before':{p:[row,list(identity)] for p,(row,identity) in before.items()},
+           'guarded':{p:row[0] for p,row in guarded.items()},'parent_records':parent_hashes(retained),
+           'update_records':parent_hashes(update_records)}
+ for index,path in enumerate(order):
+  row,identity,raw=public.read(path,True);require((row,identity)==before[path],'predecessor_drift')
+  private.create('snapshot/'+str(index),raw,0o644)
+  require(private.read('snapshot/'+str(index))[0]==targets[path]['before'],'snapshot_invalid')
+ private.create('snapshot/manifest.json',canonical(snapshot))
+ require(private.read('snapshot/manifest.json',True)[2]==canonical(snapshot),'snapshot_invalid')
+ result['snapshot_manifest_sha256']=digest(canonical(snapshot));result['snapshot_verified']=True
+ for index,path in enumerate(order):
+  private.create('drill/'+str(index),private.read('snapshot/'+str(index),True)[2],0o644)
+  require(private.read('drill/'+str(index))[0]==targets[path]['before'],'restore_drill_failed')
+ result['restore_drill_verified']=True
+ for index,path in enumerate(order):
+  private.create('stage/'+str(index),payload[path],0o644);owned[path]=private.read('stage/'+str(index))[:2]
+  require(owned[path][0]==targets[path]['after'],'payload_bytes')
+  private.create('intent-'+str(index),canonical({'path':path,'before':targets[path]['before'],'after':targets[path]['after'],
+                 'previous_identity':list(before[path][1]),'new_identity':list(owned[path][1])}))
+ prepared=site_read_records(private,SITE_PREPARED_PATHS)
+ require(prepared['reservation.json'][2]==canonical(reservation) and prepared['snapshot/manifest.json'][2]==canonical(snapshot)
+         and all(prepared['snapshot/'+str(i)][0]==prepared['drill/'+str(i)][0]==targets[p]['before']
+                 and json.loads(prepared['intent-'+str(i)][2])=={'path':p,'before':targets[p]['before'],'after':targets[p]['after'],
+                      'previous_identity':list(before[p][1]),'new_identity':list(owned[p][1])} for i,p in enumerate(order)),'snapshot_invalid')
+ current=dict(before);result['phase']='assets'
+ for index,path in enumerate(order):
+  site_check_parents();site_check_targets(current)
+  require(site_read_records(private,SITE_PREPARED_PATHS)==prepared
+          and private.read('stage/'+str(index))[:2]==owned[path],'prewrite_race')
+  with private.parent('stage/'+str(index)) as (src,name),public.parent(path) as (dst,target):
+   require(public.read(path)[:2]==before[path],'entry_prewrite_race')
+   exchange(src,name,dst,target);switched.append(path);result['written_files'].append(path);sync(src);sync(dst)
+  observed=public.read(path)[:2]
+  require(observed[0]==targets[path]['after'] and observed[1][:-1]==owned[path][1][:-1],'site_readback')
+  owned[path]=observed;current[path]=observed
+  try:
+   prior[path]=private.read('stage/'+str(index))[:2]
+   require(prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==before[path][1][:-1],'site_exchange_conflict')
+  except Exception:
+   # An unexpected object raced the exchange. Return that exact captured object
+   # without overwriting a newer public writer, then unwind earlier own writes.
+   capture_owned(public,private,path,'rollback/conflict-'+str(index),observed[0],observed[1])
+   restore_capture(public,private,path,'stage/'+str(index));switched.remove(path)
+   raise RuntimeError('site_exchange_conflict')
+  site_check_targets(current);site_check_parents()
+ require(site_read_records(private,SITE_PREPARED_PATHS)==prepared
+         and all(private.read('stage/'+str(i))[:2]==prior[p] for i,p in enumerate(order)),'site_snapshot_conflict')
+ result.update(status='site_updated_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+ if reserved:
+  result['status']='unknown_no_replay';recovery_ok=True
+  for path in reversed(switched):
+   try:
+    index=order.index(path);current_row=public.read(path)[:2];saved=private.read('stage/'+str(index))[:2]
+    require(current_row[0]==targets[path]['after'] and current_row[1][:-1]==owned[path][1][:-1]
+            and saved[0]==targets[path]['before'] and saved[1][:-1]==before[path][1][:-1],'rollback_entry_conflict')
+    site_restore_one(private,path,index,current_row,saved,'rollback/'+str(index));result['rollback_files'].append(path)
+   except Exception: recovery_ok=False
+  try:
+   require(recovery_ok,'rollback_incomplete');site_check_parents()
+   restored=public.inventory(order)
+   require(all(row[0]==before[p][0] and row[1][:-1]==before[p][1][:-1] for p,row in restored.items())
+           and result['rollback_files']==list(reversed(result['written_files'])),'rollback_incomplete')
+   result.update(status='rolled_back_no_replay',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+                 parent_records_unchanged=True,original_inodes_verified=True)
+  except Exception: result['status']='unknown_no_replay'
+finally:
+ if reserved and private is not None:
+  try: private.create('result.json',canonical(result))
+  except Exception: result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,updated,original,base,public):
+  if store is not None: store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+SITE_ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':SITE_ROLLBACK_OPERATION,'source_sha':SITE_POLICY['source'],
+        'manifest_sha256':SITE_POLICY['manifest'],**IDENTITY,'parent_update':UPDATE_ORIGINAL,
+        'parent_receipt_sha256':SITE_POLICY['parent']['receipt_sha256'],'original_site':SITE_ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'snapshot_manifest_sha256':SITE_ACCEPTED['snapshot_manifest_sha256']}
+public=base=original=updated=published=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=SITE_POLICY['order'];targets=SITE_POLICY['targets'];home=os.environ.get('HOME','')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ retained,update_records,update_prior,guarded=site_parent_records()
+ record_paths=SITE_PREPARED_PATHS+('result.json',);records=site_read_records(published,record_paths)
+ record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':SITE_POLICY['operation'],**SITE_ORIGINAL,
+         'source':SITE_POLICY['source'],'manifest':SITE_POLICY['manifest'],'parent_update':UPDATE_ORIGINAL}
+         and record('result.json')==SITE_ACCEPTED,'site_original_identity')
+ snapshot=record('snapshot/manifest.json')
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_update','before','guarded','parent_records','update_records'}
+         and snapshot['source']==SITE_POLICY['source'] and snapshot['manifest']==SITE_POLICY['manifest']
+         and snapshot['parent_update']==UPDATE_ORIGINAL and set(snapshot['before'])==set(order)
+         and snapshot['guarded']=={p:row[0] for p,row in guarded.items()}
+         and snapshot['parent_records']==parent_hashes(retained) and snapshot['update_records']==parent_hashes(update_records)
+         and digest(records['snapshot/manifest.json'][2])==SITE_ACCEPTED['snapshot_manifest_sha256'],'site_snapshot_conflict')
+ current=public.inventory(order);prior={};old_identities={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'site_snapshot_conflict')
+  old_identities[path]=checked_stamp(before[1],targets[path]['before'])
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==targets[path]['before'],'site_snapshot_conflict')
+  intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'site_private_record')
+  new_identity=checked_stamp(intent['new_identity'],targets[path]['after'])
+  require(current[path][0]==targets[path]['after'] and current[path][1][:-1]==new_identity[:-1],'rollback_candidate_changed')
+  prior[path]=published.read('stage/'+str(index))[:2]
+  require(prior[path][0]==targets[path]['before'] and prior[path][1][:-1]==old_identities[path][:-1],'site_snapshot_conflict')
+ site_check_parents();site_check_targets(current)
+ require(site_read_records(published,record_paths)==records,'rollback_preflight_race')
+ result.update(snapshot_verified=True,restore_drill_verified=True)
+ try: os.mkdir(SITE_ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError: raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+SITE_ROLLBACK_OPERATION,('quarantine',),0o700);private_root(private)
+ private.create('reservation.json',canonical({'operation':SITE_ROLLBACK_OPERATION,**IDENTITY,'original_site':SITE_ORIGINAL,
+                'source':SITE_POLICY['source'],'manifest':SITE_POLICY['manifest'],'parent_update':UPDATE_ORIGINAL}))
+ result['phase']='assets'
+ for index in reversed(range(4)):
+  path=order[index];site_check_parents();site_check_targets(current)
+  require(site_read_records(published,record_paths)==records,'site_snapshot_conflict')
+  current[path]=site_restore_one(published,path,index,current[path],prior[path],'quarantine/'+str(index))
+  result['rollback_files'].append(path)
+  site_check_targets(current);site_check_parents()
+ require(all(current[p][0]==targets[p]['before'] and current[p][1][:-1]==old_identities[p][:-1] for p in order)
+         and site_read_records(published,record_paths)==records,'rollback_incomplete')
+ result.update(status='site_rolled_back_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try: private.create('result.json',canonical(result))
+  except Exception: result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,published,updated,original,base,public):
+  if store is not None: store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+SITE_REASONS = UPDATE_REASONS + ('site_private_record','site_parent_changed','site_target_changed',
+    'site_dependency_drift','site_readback','site_exchange_conflict','site_snapshot_conflict','site_original_identity')
+
+
+def _site_program_prefix(policy, identity, parent_value):
+    need(policy == site_policy(), 'site_policy')
+    update_runtime_identity(identity); need(identity['run_id'] != SITE_PARENT['run_id'], 'site_runtime_identity')
+    previous, accepted, original = site_parent_value(parent_value)
+    need(not set(SITE_ORDER) & (set(previous['previous']['expected']) | set(previous['previous']['protected'])
+              | set(SITE_DEPENDENCIES) | set(SITE_OPTIONAL_DEPENDENCIES))
+         and not set(SITE_DEPENDENCIES) & set(SITE_OPTIONAL_DEPENDENCIES), 'site_scope')
+    return (_update_program_prefix(previous, identity, update_parent_identity(), original)
+            + '\nSITE_POLICY=' + repr(policy) + '\nUPDATE_ORIGINAL=' + repr(site_parent_identity())
+            + '\nUPDATE_ACCEPTED=' + repr(accepted)
+            + '\ndef re_safe(value): return value in ' + repr(SITE_REASONS) + '\n' + SITE_COMMON_REMOTE)
+
+
+def site_remote_program(policy, files, identity, parent_value):
+    prefix = _site_program_prefix(policy, identity, parent_value)
+    need(isinstance(files, dict) and set(files) == set(SITE_ORDER), 'site_payload')
+    for path in SITE_ORDER:
+        raw = base64.b64decode(files[path], validate=True)
+        need(raw.startswith(b'<?php') and SITE_TARGETS[path]['after'] ==
+             {'state':'present','sha256':sha(raw),'size':len(raw),'mode':'0644'}, 'site_payload_bytes')
+    program = prefix + '\nPAYLOAD=' + repr(files) + '\n' + SITE_UPDATE_REMOTE
+    ast.parse(program)
+    return program
+
+
+def site_rollback_remote_program(policy, identity, original, accepted, parent_value):
+    prefix = _site_program_prefix(policy, identity, parent_value)
+    update_runtime_identity(original)
+    need(identity['run_id'] != original['run_id'] and identity['command_comment_id'] != original['command_comment_id']
+         and valid_site_result(original, accepted), 'site_rollback_evidence')
+    program = (prefix + '\nSITE_ORIGINAL=' + repr(original) + '\nSITE_ACCEPTED=' + repr(accepted)
+               + '\nSITE_ROLLBACK_OPERATION=' + repr(SITE_ROLLBACK_OPERATION) + '\n' + SITE_ROLLBACK_REMOTE)
+    ast.parse(program)
+    return program
+
+
+def valid_site_result(identity, result, original=None, accepted=None):
+    rollback = original is not None
+    fixed = {'schema_version':1,'operation_id':SITE_ROLLBACK_OPERATION if rollback else SITE_OPERATION,
+             'source_sha':SITE_SOURCE,'manifest_sha256':site_policy()['manifest'],**identity,
+             'parent_update':site_parent_identity(),'parent_receipt_sha256':SITE_PARENT['receipt_sha256']}
+    if rollback: fixed.update(original_site=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
+    counters = ('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags = ('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inodes_verified')
+    required = set(fixed) | set(counters) | set(flags) | {'status','phase','written_files','rollback_files','snapshot_manifest_sha256'}
+    need(isinstance(result, dict) and required <= set(result) <= required | {'reason'}, 'site_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k] == v for k,v in fixed.items()), 'site_receipt_identity')
+    need(all(type(result.get(k)) is int and result[k] == 0 for k in counters), 'site_receipt_counters')
+    need(all(type(result[k]) is bool for k in flags), 'site_receipt_flags')
+    success = 'site_rolled_back_verified' if rollback else 'site_updated_verified'
+    states = ('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
+    need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in result or result['reason'] in SITE_REASONS), 'site_receipt_status')
+    written, restored = result['written_files'], result['rollback_files']
+    need(isinstance(written,list) and written in [list(SITE_ORDER[:i]) for i in range(5)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored)
+         and len(set(restored))==len(restored), 'site_receipt_paths')
+    order = list(reversed(SITE_ORDER if rollback else written))
+    need(all(p in order for p in restored) and restored == [p for p in order if p in restored]
+         and (not rollback or not written), 'site_receipt_paths')
+    snapshot = result['snapshot_manifest_sha256']
+    need(snapshot is None or isinstance(snapshot,str) and re.fullmatch('[a-f0-9]{64}',snapshot), 'site_receipt_snapshot')
+    if result['status'] == 'blocked_no_replay':
+        need(not result['reservation_created'] and result['phase']=='preflight' and not written and not restored, 'site_receipt_incomplete')
+    if result['status'] in (success,'rolled_back_no_replay'):
+        need(result['phase']=='complete' and result['reservation_created'] and result['protected_unchanged']
+             and result['unchanged_files_verified'] and result['parent_records_unchanged']
+             and result['original_inodes_verified'], 'site_receipt_incomplete')
+    if result['status']=='rolled_back_no_replay':
+        need(restored==list(reversed(written)), 'site_receipt_incomplete')
+    if result['status']==success:
+        need(all(result[k] for k in flags) and snapshot is not None and 'reason' not in result
+             and (restored==list(reversed(SITE_ORDER)) if rollback else written==list(SITE_ORDER) and not restored), 'site_receipt_incomplete')
+    return result['status']==success
+
+
+def site_rollback_commands(identity, original_run, expected_original=None):
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
+         and original_run not in (identity['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],CONTINUATION_PARENT['run_id']), 'site_rollback_run')
+    comments = pages('/issues/4709/comments')
+    _unique_update_command(comments,SITE_ROLLBACK_PREFIX,SITE_ROLLBACK_OPERATION,identity,original_run)
+    installed = [c for c in comments if c.get('body','').strip().split()[:1]==[SITE_PREFIX]
+                 and SITE_OPERATION in c.get('body','').split()[1:]]
+    need(len(installed)==1 and installed[0].get('user',{}).get('id')==226193297
+         and installed[0].get('author_association')=='OWNER', 'site_rollback_command')
+    match = re.fullmatch(re.escape(SITE_PREFIX)+r' ([a-f0-9]{40}) '+re.escape(SITE_OPERATION),installed[0].get('body',''))
+    need(match is not None, 'site_rollback_command')
+    original = {'control_source_sha':match[1],'run_id':original_run,'command_comment_id':installed[0]['id']}
+    update_runtime_identity(original)
+    need(expected_original is None or original==expected_original,'site_rollback_command')
+    return original
+
+
+def site_rollback_admission(identity, original_run):
+    rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    original=site_rollback_commands(identity,original_run)
+    run=api('/actions/runs/'+original_run)
+    need(run.get('id')==int(original_run) and run.get('head_sha')==original['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','site_rollback_run')
+    jobs=[j for j in pages('/actions/runs/'+original_run+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('run_id')==int(original_run) and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')=='success','site_rollback_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','site_rollback_step')
+    name='search3-public-install-'+original_run+'-1'
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts') if a.get('name')==name]
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and artifacts[0].get('workflow_run',{}).get('id')==int(original_run)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'site_rollback_artifact')
+    rollback_main(identity)
+    return original,artifacts[0]
+
+
+def site_source_evidence(raw, original):
+    update_runtime_identity(original)
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'site_rollback_artifact')
+        value=json.loads(archive.read('evidence.json'))
+    fixed={**original,'operation_id':SITE_OPERATION,'source_sha':SITE_SOURCE,'manifest_sha256':site_policy()['manifest'],
+           'read_only':False,'phase':'complete','ssh_started':True,'status':'site_updated_verified',
+           'parent_update':site_parent_identity()}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'remote','parent_evidence'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'site_rollback_evidence')
+    site_parent_value(value['parent_evidence'])
+    need(valid_site_result(original,value['remote']),'site_rollback_evidence')
+    return site_policy(),value['remote'],value['parent_evidence']
+
+
+def site_update(rollback=False):
+    need(type(rollback) is bool,'mode')
+    policy=site_policy();operation=SITE_ROLLBACK_OPERATION if rollback else SITE_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':SITE_SOURCE,
+              'manifest_sha256':policy['manifest'],'read_only':False,'phase':'identity','ssh_started':False}
+    complete=False
+    try:
+        event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity,original_run=site_event_identity(event,os.environ,True)
+            evidence.update(identity,original_site_run_id=original_run,phase='admission')
+            original,artifact=site_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            policy,accepted,parent_value=site_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
+            program=site_rollback_remote_program(policy,identity,original,accepted,parent_value)
+            evidence.update(parent_update=site_parent_identity(),original_site=original)
+        else:
+            identity=site_event_identity(event,os.environ);evidence.update(identity,phase='admission');site_admission(identity)
+            evidence['phase']='artifact'
+            parent_value=site_parent_evidence(download(SITE_PARENT['artifact_id'],SITE_PARENT['artifact_sha256']))
+            program=site_remote_program(policy,site_package(),identity,parent_value)
+            evidence.update(parent_update=site_parent_identity(),parent_evidence=parent_value)
+        # Same fixed carrier, credentials and bounded invocation as the original
+        # public updater. No endpoint/application execution is added here.
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw: raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream: stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback: site_rollback_commands(identity,original_run,original);rollback_main(identity)
+        else: site_admission(identity)
+        evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=32768,'receipt_limit');result=json.loads(response)
+        complete=valid_site_result(identity,result,original,accepted) if rollback else valid_site_result(identity,result)
+        evidence['remote']=result
+        if rollback: rollback_main(identity)
+        else: site_final_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'SiteUpdateError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'site_rollback_not_verified' if rollback else 'site_update_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['site-update']: return 'site-update'
+    if arguments == ['site-rollback']: return 'site-rollback'
     if arguments == ['update']: return 'update'
     if arguments == ['update-rollback']: return 'update-rollback'
     if arguments == ['rollback']: return 'rollback'
@@ -2045,7 +2879,9 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'update': update()
+    if mode == 'site-update': site_update()
+    elif mode == 'site-rollback': site_update(rollback=True)
+    elif mode == 'update': update()
     elif mode == 'update-rollback': update(rollback=True)
     elif mode == 'rollback': rollback()
     elif mode == 'continue': install(continuation=True)
