@@ -63,6 +63,15 @@ function v2_price_observer_limit($value, int $default, int $max): int
     return max(1, min($max, (int)$n));
 }
 
+function v2_price_observer_db_now(PDO $pdo): string
+{
+    $value = $pdo->query('SELECT NOW()')->fetchColumn();
+    if (!is_string($value) || !preg_match('/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/D', $value)) {
+        throw new RuntimeException('Invalid database observation clock');
+    }
+    return $value;
+}
+
 function v2_data_observe_search_results(array $hotels, array $context): array
 {
     $searchId = v2_price_observer_id($context['searchId'] ?? null);
@@ -80,8 +89,6 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     $source = v2_price_observer_source($context['source'] ?? 'user_search');
     $maxHotels = v2_price_observer_limit($context['maxHotels'] ?? 100, 100, 5000);
     $maxTours = v2_price_observer_limit($context['maxTours'] ?? 400, 400, 50000);
-    $observedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
-
     $pdo = v2_data_db();
     // Registration is independent of tour-price validity, observation caps and
     // temporary history retention. Rollout stays opt-in until schema/readback.
@@ -96,6 +103,9 @@ function v2_data_observe_search_results(array $hotels, array $context): array
             error_log('LOCAL TV discovery failed: '.$e->getMessage());
         }
     }
+    // Use the same database clock as hotel-monitor-prices-v1.php freshness checks.
+    // PHP's default timezone may differ from the database session timezone.
+    $observedAt = v2_price_observer_db_now($pdo);
     $stmt = $pdo->prepare("INSERT IGNORE INTO tour_price_observations (
         fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,tour_id,
         departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,
