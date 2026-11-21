@@ -56,7 +56,7 @@ function privateFunctionBindings(tree,{preserveFunctions=[]}={}){
  }
  visit(tree);return dynamic?[]:[...candidates].filter(name=>called.has(name)&&!preserveFunctions.includes(name)).sort();
 }
-async function compile(code,{privateFunctions=false,preserveFunctions=[]}={}){
+async function compileAsset(code,{privateFunctions=false,preserveFunctions=[]}={}){
  const source=parsed(code),privateNames=privateFunctions?privateFunctionBindings(source.tree,{preserveFunctions}):[];
  const keepNames=privateNames.length?new RegExp('^(?!(?:'+privateNames.map(name=>name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')$)'):true;
  const exact=await terser.minify(code,{compress:false,mangle:false,keep_fnames:true,keep_classnames:true,
@@ -65,7 +65,10 @@ async function compile(code,{privateFunctions=false,preserveFunctions=[]}={}){
  const result=await terser.minify(code,{compress:false,mangle:{toplevel:false,eval:false,properties:false},keep_fnames:keepNames,keep_classnames:true,
   format:{comments:/^!|@(?:license|preserve|cc_on)|copyright|source(?:mapping)?url/i,quote_style:3,keep_quoted_props:true,keep_numbers:true}});
  assert.deepEqual(syntax(parsed(result.code).tree,true),syntax(source.tree,true),'Visual asset renaming changed statement/literal/arithmetic/public key structure');
- const output=result.code+'\n';return Buffer.byteLength(output)<Buffer.byteLength(code)?output:code;
+ const output=result.code+'\n';return {code:Buffer.byteLength(output)<Buffer.byteLength(code)?output:code,privateNames};
+}
+async function compile(code,options={}){
+ return (await compileAsset(code,options)).code;
 }
 function inventory(root){
  const php=fs.readFileSync(path.join(root,'visual-search/entry-v1.php'),'utf8');
@@ -114,9 +117,9 @@ async function build(root){
  for(const src of new Set(Object.values(graphs).flat())){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
-  const source=fs.readFileSync(input,'utf8'),privateFunctions=privateBindingAssets.has(relative),preserveFunctions=observedBindings[relative]||[],code=await compile(source,{privateFunctions,preserveFunctions}),target=relative;
+  const source=fs.readFileSync(input,'utf8'),privateFunctions=privateBindingAssets.has(relative),preserveFunctions=observedBindings[relative]||[],compiled=await compileAsset(source,{privateFunctions,preserveFunctions}),code=compiled.code,target=relative;
   const output=path.join(root,target);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,code);
-  files.push({src,source:relative,target,private_function_bindings:privateFunctions?privateFunctionBindings(parsed(source).tree,{preserveFunctions}):[],source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
+  files.push({src,source:relative,target,private_function_bindings:compiled.privateNames,source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
  }
  const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand],
   complete_public_live:[...graphs.public_live,...graphs.ondemand],complete_public_review:[...graphs.public_review,...graphs.ondemand]};
