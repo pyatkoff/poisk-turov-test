@@ -2661,6 +2661,236 @@ class SiteTransaction(unittest.TestCase):
                     with self.subTest(rollback=rollback,key=key),self.assertRaises(RuntimeError):verify(invalid)
 
 
+SITE_INSPECTION_IDENTITY = {'control_source_sha':'e'*40,'run_id':'890123','command_comment_id':9008}
+
+
+def site_inspection_event():
+    value=event();value['comment'].update(id=SITE_INSPECTION_IDENTITY['command_comment_id'],
+        body=f'{m.SITE_INSPECT_PREFIX} {SITE_INSPECTION_IDENTITY["control_source_sha"]} {m.SITE_INSPECT_OPERATION}')
+    return value
+
+
+class SiteInspectionAdmission(unittest.TestCase):
+    def metadata(self,path):
+        failed=m.SITE_INSPECT_FAILED
+        if path=='/git/ref/heads/main':return {'object':{'sha':SITE_INSPECTION_IDENTITY['control_source_sha']}}
+        if path=='/pulls/'+str(m.SITE_SOURCE_PR):
+            return {'state':'closed','merged':True,'merge_commit_sha':failed['control_source_sha'],
+                    'head':{'sha':m.SITE_SOURCE,'repo':{'full_name':m.REPO}},'base':{'ref':'main','repo':{'full_name':m.REPO}}}
+        if path.startswith('/contents/v2/'):
+            relative=path.split('/contents/v2/',1)[1].split('?')[0]
+            return {'type':'file','sha':m.SITE_TARGETS[relative]['blob']}
+        if path=='/actions/runs/'+failed['run_id']:
+            return {'id':int(failed['run_id']),'head_sha':failed['control_source_sha'],'head_branch':'main','path':m.WORKFLOW,
+                    'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'failure',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'}}
+        if path.startswith('/actions/runs/'+failed['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':failed['job_id'],'run_id':int(failed['run_id']),'name':'public-install',
+                    'status':'completed','conclusion':'failure','steps':[{'name':'Run python3 scripts/deploy/search3_public_install.py site-update',
+                                                                       'status':'completed','conclusion':'failure'}]}]}
+        if path=='/actions/artifacts/'+str(failed['artifact_id']):
+            return {'id':failed['artifact_id'],'name':'search3-public-install-'+failed['run_id']+'-1','expired':False,
+                    'workflow_run':{'id':int(failed['run_id'])},'digest':'sha256:'+failed['artifact_sha256']}
+        if path.startswith('/issues/4709/comments?'):
+            owner={'user':{'id':226193297},'author_association':'OWNER'}
+            return [owner|{'id':failed['command_comment_id'],'body':f'{m.SITE_PREFIX} {failed["control_source_sha"]} {m.SITE_OPERATION}'},
+                    owner|{'id':failed['terminal_comment_id'],'body':' '.join(str(failed[k]) for k in
+                       ('run_id','control_source_sha','command_comment_id','job_id','artifact_id','artifact_sha256','receipt_sha256'))+' blocked_no_replay dependency_drift NO_REPLAY'},
+                    site_inspection_event()['comment']]
+        raise AssertionError('Unrelated inspection dependency: '+path)
+
+    def admit(self,change=None):
+        def api(path):
+            value=self.metadata(path);return change(path,value) if change else value
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control') as reviewed, \
+             patch.object(m,'site_admission',side_effect=AssertionError('write admission during inspection')):
+            m.site_inspect_admission(SITE_INSPECTION_IDENTITY)
+            reviewed.assert_called_once_with(SITE_INSPECTION_IDENTITY['control_source_sha'])
+
+    def test_fixed_readonly_command_and_current_reviewed_control_can_advance(self):
+        env=environment()|{'GITHUB_SHA':SITE_INSPECTION_IDENTITY['control_source_sha'],'GITHUB_RUN_ID':SITE_INSPECTION_IDENTITY['run_id']}
+        self.assertEqual(m.site_inspect_event_identity(site_inspection_event(),env),SITE_INSPECTION_IDENTITY)
+        self.assertEqual(m.command_mode(['site-inspect']),'site-inspect');self.admit()
+        self.assertNotEqual(SITE_INSPECTION_IDENTITY['control_source_sha'],m.SITE_INSPECT_FAILED['control_source_sha'])
+        for key,value in (('GITHUB_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),('GITHUB_WORKFLOW_REF','other'),
+                          ('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch')):
+            with self.subTest(key=key),self.assertRaises(RuntimeError):m.site_inspect_event_identity(site_inspection_event(),env|{key:value})
+        for value in (site_event(),site_event(True),update_event(),event()):
+            with self.assertRaises(RuntimeError):m.site_inspect_event_identity(value,env)
+        for args in (['site-inspect','/tmp/root'],['site-inspect','continue'],['--site-inspect']):
+            with self.assertRaises(RuntimeError):m.command_mode(args)
+
+    def test_failed_identity_artifact_terminal_unique_commands_and_current_blobs_are_required(self):
+        cases=(('/git/ref/heads/main',lambda v:v['object'].update(sha='f'*40)),
+               ('/pulls/5133',lambda v:v.update(merge_commit_sha='f'*40)),('/pulls/5133',lambda v:v['head'].update(sha=m.UPDATE_SOURCE)),
+               ('/contents/v2/',lambda v:v.update(sha='0'*40)),('/actions/runs/'+m.SITE_INSPECT_FAILED['run_id'],lambda v:v.update(conclusion='success')),
+               ('/actions/runs/'+m.SITE_INSPECT_FAILED['run_id'],lambda v:v.update(run_attempt=2)),
+               ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(id=1)),('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(conclusion='success')),
+               ('/actions/artifacts/',lambda v:v.update(expired=True)),('/actions/artifacts/',lambda v:v.update(digest='sha256:'+'0'*64)),
+               ('/comments?',lambda v:v.append(v[-1]|{'id':9999})),('/comments?',lambda v:v.append(v[0]|{'id':9999})),
+               ('/comments?',lambda v:v[0].update(body=v[0]['body']+' edited')),('/comments?',lambda v:v[1].update(body='unknown outcome')),
+               ('/comments?',lambda v:v[1].update(author_association='MEMBER')))
+        for fragment,mutate in cases:
+            def change(path,value):
+                if path==fragment or (fragment.endswith('/') or fragment.endswith('?')) and fragment in path:mutate(value)
+                return value
+            with self.subTest(fragment=fragment),self.assertRaises(RuntimeError):self.admit(change)
+
+
+class SiteInspectionTransaction(unittest.TestCase):
+    @contextlib.contextmanager
+    def failed_attempt(self):
+        helper=SiteTransaction()
+        with helper.installed() as f:
+            target=f.root/'data/db-v1.php';saved=target.read_bytes();target.write_bytes(b'foreign root helper')
+            value=helper.execute(f);self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['reason'],'dependency_drift')
+            target.write_bytes(saved)
+            failed={**SITE_IDENTITY,'operation_id':m.SITE_OPERATION,'source_sha':m.SITE_SOURCE,'manifest_sha256':m.site_policy()['manifest'],
+                    'read_only':False,'phase':'complete','ssh_started':True,'status':'blocked_no_replay',
+                    'parent_update':m.site_parent_identity(),'parent_evidence':f.site_parent_value,'remote':value}
+            data=(json.dumps(failed,sort_keys=True)+'\n').encode();packet=io.BytesIO()
+            with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',data)
+            f.inspection_failed=failed;f.inspection_raw=packet.getvalue()
+            pin=m.SITE_INSPECT_FAILED|SITE_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(f.inspection_raw)}
+            with patch.object(m,'SITE_INSPECT_FAILED',pin):yield f
+
+    def execute(self,f,change=None):
+        program=m.site_inspect_remote_program(SITE_INSPECTION_IDENTITY,f.inspection_failed)
+        value=UpdateTransaction().run_program(f,program,change);m.valid_site_inspection_result(SITE_INSPECTION_IDENTITY,value)
+        return value
+
+    def test_actual_filesystem_match_is_readonly_with_complete_fixed_scope(self):
+        with self.failed_attempt() as f:
+            before=f.filesystem_snapshot();value=self.execute(f)
+            self.assertEqual(value['status'],'inspection_match');self.assertTrue(value['read_only'])
+            self.assertEqual(value['server_writes'],0);self.assertEqual(f.filesystem_snapshot(),before)
+            self.assertFalse(f.site_private.exists())
+            self.assertEqual(len(value['protected_comparisons'])+len(value['private_checks']),54)
+            self.assertEqual(len(value['private_checks']),5);self.assertEqual(set(value['target_comparisons']),set(m.SITE_ORDER))
+            self.assertEqual(value['checked_paths'],{'overlay':sorted((*m.ADDITIONS,m.ENTRY)),
+                'site_required':sorted(m.SITE_DEPENDENCIES),'site_optional':sorted(m.SITE_OPTIONAL_DEPENDENCIES)})
+            self.assertTrue(value['parent_records_stable'] and value['inventory_stable'] and value['failed_namespace_absent'])
+
+    def test_root_helper_drift_is_observed_without_repinning_or_repair(self):
+        with self.failed_attempt() as f:
+            target=f.root/'data/db-v1.php';target.write_bytes(b'candidate collector helper');before=f.filesystem_snapshot()
+            value=self.execute(f);self.assertEqual(value['status'],'inspection_mismatch')
+            row=value['protected_comparisons']['data/db-v1.php']
+            self.assertFalse(row['matches_parent_snapshot']);self.assertFalse(row['matches_compiled_policy'])
+            self.assertEqual(row['observed']['sha256'],m.sha(b'candidate collector helper'))
+            self.assertIn('data/db-v1.php',[r['path'] for r in value['site_mismatches']])
+            self.assertTrue(all(r['matches_predecessor'] for r in value['target_comparisons'].values()))
+            self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_private_comparisons_are_flags_only_even_for_content_mode_and_presence_drift(self):
+        with self.failed_attempt() as f:
+            secret=b'PRIVATE NEW SECRET DO NOT EXPORT';(f.root/m.PRIVATE_CONFIG).write_bytes(secret)
+            (f.root/'config.php').chmod(0o644);f.put('site_conf.php',b'private extra config')
+            f.put('_preview/search3-local-candidate/config.php',b'private shadow')
+            before=f.filesystem_snapshot();value=self.execute(f);encoded=json.dumps(value)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(f.filesystem_snapshot(),before)
+            for row in value['private_checks'].values():
+                self.assertEqual(set(row),{'readable','present','matches_parent_snapshot','matches_compiled_policy'})
+                self.assertTrue(all(type(flag) is bool for flag in row.values()))
+            self.assertFalse(value['private_checks']['public_config']['matches_parent_snapshot'])
+            self.assertTrue(value['private_checks']['public_config']['matches_compiled_policy'])
+            for text in (secret.decode(),m.sha(secret),m.PRIVATE_CONFIG,'_preview/search3-local-candidate/config.php',str(f.home)):
+                self.assertNotIn(text,encoded)
+
+    def test_full_worst_case_public_metadata_fits_only_the_explicit_readonly_bound(self):
+        with self.failed_attempt() as f:
+            private={m.PRIVATE_CONFIG,'config.php','site_conf.php','_preview/search3-local-candidate/config.php','_preview/search3-next-candidate/config.php'}
+            paths=(set(f.policy['expected'])|set(f.policy['protected'])|set(m.ABSENT_DEPENDENCIES)|set(m.SITE_ORDER)
+                   |set(m.SITE_DEPENDENCIES)|set(m.SITE_OPTIONAL_DEPENDENCIES))-private
+            for path in paths:f.put(path,('FOREIGN '+path).encode())
+            before=f.filesystem_snapshot();value=self.execute(f)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(f.filesystem_snapshot(),before)
+            self.assertEqual(len(value['overlay_mismatches']),42);self.assertEqual(len(value['site_mismatches']),216)
+            rows=[r['observed'] for name in ('protected_comparisons','target_comparisons') for r in value[name].values()]
+            rows += [r['observed'] for name in ('overlay_mismatches','site_mismatches') for r in value[name]]
+            for row in rows:row.update(size=m.MAX_BYTES,mode='7777')
+            self.assertTrue(m.valid_site_inspection_result(SITE_INSPECTION_IDENTITY,value))
+            length=len(json.dumps(value,sort_keys=True).encode())
+            self.assertGreater(length,32768);self.assertLess(length,m.SITE_INSPECT_RECEIPT_LIMIT)
+            self.assertEqual(m.SITE_INSPECT_RECEIPT_LIMIT,131072)
+
+    def test_unsafe_public_file_is_reported_without_following_it(self):
+        with self.failed_attempt() as f:
+            target=f.root/'data/db-v1.php';target.unlink();target.symlink_to(f.root/'config.php')
+            before=f.filesystem_snapshot();value=self.execute(f)
+            self.assertEqual(value['status'],'inspection_mismatch')
+            self.assertEqual(value['protected_comparisons']['data/db-v1.php']['observed'],{'state':'unreadable','reason':'unsafe_file'})
+            self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_existing_failed_namespace_or_changed_parent_proof_blocks_without_writes(self):
+        for kind in ('namespace','namespace-link','parent','update'):
+            with self.subTest(kind=kind),self.failed_attempt() as f:
+                if kind=='namespace':f.site_private.mkdir(mode=0o700)
+                elif kind=='namespace-link':f.site_private.symlink_to(f.home)
+                elif kind=='parent':(f.private/'result.json').write_bytes(b'{}')
+                else:(f.update_private/'result.json').write_bytes(b'{}')
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'inspection_blocked');self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_public_or_parent_race_is_unknown_and_never_repaired(self):
+        for kind in ('public','parent','namespace'):
+            with self.subTest(kind=kind),self.failed_attempt() as f:
+                def change(program):
+                    line=" result['inventory_stable']=continuation_inventory(public,scope)==rows"
+                    if kind=='namespace':inject=" os.mkdir(SITE_POLICY['operation'],0o700,dir_fd=base.fd)\n"
+                    else:
+                        store='public' if kind=='public' else 'original';path='data/db-v1.php' if kind=='public' else 'result.json'
+                        inject=f" with {store}.parent({path!r}) as (fd,name):\n  leaf=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(leaf,b'FOREIGN RACE');os.close(leaf)\n"
+                    self.assertIn(line,program);return program.replace(line,inject+line,1)
+                value=self.execute(f,change);self.assertEqual(value['status'],'inspection_unknown')
+                if kind=='namespace':self.assertTrue(f.site_private.exists())
+                else:self.assertEqual(((f.root/'data/db-v1.php') if kind=='public' else (f.private/'result.json')).read_bytes(),b'FOREIGN RACE')
+
+    def test_mutated_failed_receipts_never_become_read_or_write_admission(self):
+        with self.failed_attempt() as f:
+            self.assertEqual(m.site_inspect_failed_evidence(f.inspection_raw),f.inspection_failed)
+            with self.assertRaises(RuntimeError):m.site_inspect_failed_evidence(f.inspection_raw+b'changed')
+            changes=(lambda v:v.update(read_only=True),lambda v:v.update(status='unknown_no_replay'),lambda v:v.update(run_id='1'),
+                     lambda v:v['remote'].update(reason='site_dependency_drift'),lambda v:v['remote'].update(reservation_created=True),
+                     lambda v:v['remote'].update(written_files=list(m.SITE_ORDER)),lambda v:v['remote'].update(database_reads=1),
+                     lambda v:v['parent_evidence'].update(status='unknown_no_replay'))
+            for change in changes:
+                bad=copy.deepcopy(f.inspection_failed);change(bad)
+                pin=m.SITE_INSPECT_FAILED|{'receipt_sha256':m.sha((json.dumps(bad,sort_keys=True)+'\n').encode())}
+                with self.subTest(change=change),patch.object(m,'SITE_INSPECT_FAILED',pin),self.assertRaises(RuntimeError):m.site_inspect_failed_value(bad)
+
+    def test_result_schema_rejects_missing_scope_private_metadata_and_write_claims(self):
+        with self.failed_attempt() as f:
+            good=self.execute(f)
+            changes=(lambda v:v.update(read_only=False),lambda v:v.update(server_writes=1),lambda v:v.update(database_reads=True),
+                     lambda v:v['private_checks']['public_config'].update(sha256='0'*64),
+                     lambda v:v['private_checks']['public_config'].update(present='yes'),
+                     lambda v:v['checked_paths']['site_required'].pop(),lambda v:v['protected_comparisons'].pop('data/db-v1.php'),
+                     lambda v:v['target_comparisons'].pop(m.SITE_ORDER[0]),lambda v:v['protected_comparisons'].update({'config.php':{}}),
+                     lambda v:v.update(inventory_stable=False),lambda v:v.update(scope_matches=False),
+                     lambda v:v['overlay_mismatches'].append({'path':'unreviewed.php','observed':{'state':'absent'},'matches_bytes':False,'matches_inode':False}))
+            for change in changes:
+                value=copy.deepcopy(good);change(value)
+                with self.subTest(change=change),self.assertRaises(RuntimeError):m.valid_site_inspection_result(SITE_INSPECTION_IDENTITY,value)
+
+    def test_client_rechecks_admission_preserves_readonly_evidence_and_never_calls_write_modes(self):
+        with self.failed_attempt() as f:
+            (f.root/'data/db-v1.php').write_bytes(b'drift');result=self.execute(f)
+            runner=f.base/'inspection-runner';runner.mkdir();event_path=runner/'event.json';event_path.write_text(json.dumps(site_inspection_event()))
+            env=environment()|{'GITHUB_SHA':SITE_INSPECTION_IDENTITY['control_source_sha'],'GITHUB_RUN_ID':SITE_INSPECTION_IDENTITY['run_id'],
+                 'RUNNER_TEMP':str(runner),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid','PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+            with patch.dict(os.environ,env),patch.object(m,'site_inspect_admission') as admission,patch.object(m,'site_inspect_heads'), \
+                 patch.object(m,'download',return_value=f.inspection_raw) as download, \
+                 patch.object(m,'site_update',side_effect=AssertionError('mutation during inspection')), \
+                 patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(result).encode()]),patch('builtins.print'):
+                m.site_inspect()
+            self.assertEqual(admission.call_count,2);download.assert_called_once_with(m.SITE_INSPECT_FAILED['artifact_id'],m.SITE_INSPECT_FAILED['artifact_sha256'])
+            evidence=runner/'search3-public-install/evidence.json';value=json.loads(evidence.read_text())
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertTrue(value['read_only'])
+            self.assertEqual(value['failed_evidence'],f.inspection_failed);self.assertEqual(value['remote']['server_writes'],0)
+            self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
+
+
 class Receipt(unittest.TestCase):
     def test_workflow_stays_existing_locked_carrier(self):
         value=(ROOT/m.WORKFLOW).read_text()
@@ -2679,6 +2909,8 @@ class Receipt(unittest.TestCase):
         self.assertIn("' site-shared-assets-rollback-20261121-v1'",block)
         self.assertIn("&& 'site-update' ||",block)
         self.assertIn("&& 'site-rollback' ||",block)
+        self.assertIn("format('/inspect-site-shared-assets {0} site-shared-assets-drift-44897684408-v1', github.sha)",block)
+        self.assertIn("&& 'site-inspect' ||",block)
         self.assertIn("&& 'continue' ||", block)
         self.assertIn("&& 'rollback' ||", block)
         self.assertNotIn('${{ github.event.comment.body }}', block)
