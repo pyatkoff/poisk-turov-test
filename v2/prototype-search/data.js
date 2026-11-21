@@ -43,16 +43,18 @@
   }
   async function refreshHotelContent(ids){
     const target=localContentEndpoint();if(!target)return false;
-    const requested=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,100);
-    if(!requested.length)return false;
-    const epoch=generation,key=epoch+':'+requested.join(',');if(localContentReads.has(key))return localContentReads.get(key);
-    const task=(async()=>{
+    const wanted=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,100);
+    if(!wanted.length)return false;
+    const epoch=generation,pending=new Set();
+    const requested=wanted.filter(id=>{const task=localContentReads.get(epoch+':'+id);if(task)pending.add(task);return !task;});
+    // A result batch and an explicit hotel read share only their pending IDs.
+    const task=requested.length?(async()=>{
       const query=new URLSearchParams();requested.forEach(id=>query.append('oldLocalHotelIds[]',String(id)));
       const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
       try{
         const response=await fetch(target+'?'+query,{credentials:'same-origin',cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
-        if(!response.ok)return false;
-        const payload=await response.json();if(epoch!==generation||controller.signal.aborted)return false;
+        if(!response.ok)return [];
+        const payload=await response.json();if(epoch!==generation||controller.signal.aborted)return [];
         if(payload?.ok!==true||payload.source!=='anytour-local-tv-catalog-v1'||payload.catalog!=='local-tv'
           ||!Array.isArray(payload.items)||!Array.isArray(payload.links)||!Array.isArray(payload.missingIds)
           ||JSON.stringify(payload.requestedIds)!==JSON.stringify(requested))throw new Error('Invalid LOCAL content response');
@@ -74,11 +76,12 @@
         }
         for(const id of payload.missingIds){if(!requested.includes(id)||seen.has(id))throw new Error('Invalid missing LOCAL content');seen.add(id);}
         if(seen.size!==requested.length||new Set(payload.links.map(link=>link.tourvisorHotelId)).size!==items.size)throw new Error('Incomplete LOCAL response');
-        updates.forEach((content,id)=>localContents.set(id,content));return updates.size>0;
-      }catch{return false;}finally{clearTimeout(timeout);}
-    })();
-    localContentReads.set(key,task);
-    try{return await task;}finally{if(localContentReads.get(key)===task)localContentReads.delete(key);}
+        updates.forEach((content,id)=>localContents.set(id,content));return [...updates.keys()];
+      }catch{return [];}finally{clearTimeout(timeout);}
+    })().finally(()=>{for(const id of requested){const key=epoch+':'+id;if(localContentReads.get(key)===task)localContentReads.delete(key);}}):Promise.resolve([]);
+    requested.forEach(id=>localContentReads.set(epoch+':'+id,task));pending.add(task);
+    const loaded=await Promise.all(pending),wantedIds=new Set(wanted);
+    return epoch===generation&&loaded.some(changed=>changed.some(id=>wantedIds.has(id)));
   }
   function queueHotelContent(rows){
     if(!localContentEndpoint())return;
