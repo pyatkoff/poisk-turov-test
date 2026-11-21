@@ -3373,13 +3373,14 @@ class TvSuccessorAdmission(unittest.TestCase):
             def download(identity,digest):
                 m.need(identity==artifact['id'] and digest==m.sha(data['raw']),'tv_successor_test_artifact_digest')
                 return data['raw']
-            with patch.object(m,'pages',side_effect=pages),patch.object(m,'api',side_effect=api), \
+            with patch.object(m,'TV_SUCCESSOR_RETAINED',None), \
+                 patch.object(m,'pages',side_effect=pages),patch.object(m,'api',side_effect=api), \
                  patch.object(m,'download',side_effect=download), \
                  patch.object(m.carrier,'run',side_effect=AssertionError('admission must not contact the server')):
                 yield data
 
     def test_absent_command_is_explicit_old_state_without_source_or_artifact_scan(self):
-        with patch.object(m,'pages',return_value=[]) as pages, \
+        with patch.object(m,'TV_SUCCESSOR_RETAINED',None),patch.object(m,'pages',return_value=[]) as pages, \
              patch.object(m,'api',side_effect=AssertionError('unnecessary source lookup')), \
              patch.object(m,'download',side_effect=AssertionError('unnecessary artifact lookup')):
             self.assertEqual(m.tv_successor_evidence(),{'status':'absent'})
@@ -3960,6 +3961,244 @@ class SiteContinuationTransaction(unittest.TestCase):
                     m.site_update(continuation=True)
                 remote.assert_not_called();value=json.loads((runner/'search3-public-install/evidence.json').read_text())
                 self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+
+
+class TvSuccessorRetainedAdmission(unittest.TestCase):
+    @contextlib.contextmanager
+    def retained(self,change=None,result=None):
+        pin=copy.deepcopy(m.TV_SUCCESSOR_RETAINED);original=copy.deepcopy(pin['proof'])
+        if result is not None:
+            # Only the inert filesystem fixture substitutes bytes. Production
+            # receipt authenticity is checked independently against its actual hash.
+            pin['result_canonical_json']=json.dumps(result,sort_keys=True,separators=(',',':'))
+            pin['result_canonical_sha256']=m.sha(pin['result_canonical_json'].encode())
+        command={'id':7063787927,'user':{'id':226193297},'author_association':'OWNER',
+                 'body':'/run-int-server-v1 '+' '.join(m.TV_SUCCESSOR[k] for k in ('source_sha','mode','operation_id')),
+                 'created_at':'2026-11-21T14:03:31Z','updated_at':'2026-11-21T14:03:31Z'}
+        run={'id':44911949356,'path':'.github/workflows/int-server-executor.yml','head_branch':'main',
+             'event':'issue_comment','head_sha':'79ae813b41c933542dbb05577bd12ebcdfe3bc2b',
+             'run_attempt':1,'status':'completed','conclusion':'success',
+             'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+             'created_at':'2026-11-21T14:03:34Z','run_started_at':'2026-11-21T14:03:34Z',
+             'updated_at':'2026-11-21T14:06:12Z'}
+        job={'id':136869432183,'run_id':44911949356,'name':'execute','status':'completed','conclusion':'success',
+             'started_at':'2026-11-21T14:03:37Z','completed_at':'2026-11-21T14:06:11Z',
+             'steps':[{'name':'Execute bounded private INT operation, install, or DB/LOCAL readback',
+                       'status':'completed','conclusion':'success','started_at':'2026-11-21T14:05:54Z',
+                       'completed_at':'2026-11-21T14:06:06Z'}]}
+        data={'pin':pin,'commands':[command],'run':run,'jobs':[job],
+              'blobs':copy.deepcopy(m.TV_SUCCESSOR['control_blobs']),'calls':[]}
+        if change:change(data)
+        def pages(path,key=None):
+            data['calls'].append(('pages',path))
+            if path=='/issues/4709/comments':return copy.deepcopy(data['commands'])
+            if path=='/actions/runs/'+str(original['run_id'])+'/attempts/1/jobs':return copy.deepcopy(data['jobs'])
+            raise AssertionError('retained proof must not discover runs or artifacts: '+path)
+        def api(path):
+            data['calls'].append(('api',path))
+            if path=='/actions/runs/'+str(original['run_id']):return copy.deepcopy(data['run'])
+            if path=='/contents/scripts/deploy?ref='+original['control_source_sha']:
+                return [{'type':'file','path':source,'sha':blob} for source,blob in data['blobs'].items()
+                        if source.startswith('scripts/deploy/')]
+            for source,blob in data['blobs'].items():
+                if path=='/contents/'+source+'?ref='+original['control_source_sha']:return {'type':'file','sha':blob}
+            raise AssertionError('retained proof must not fetch artifacts or unrelated metadata: '+path)
+        with patch.object(m,'TV_SUCCESSOR_RETAINED',pin),patch.object(m,'pages',side_effect=pages), \
+             patch.object(m,'api',side_effect=api), \
+             patch.object(m,'download',side_effect=AssertionError('retained INT artifact download')) as download, \
+             patch.object(m.carrier,'run',side_effect=AssertionError('retained admission must not contact server')):
+            data['download']=download
+            yield data
+
+    def change_result(self,data,change,repin=False):
+        value=json.loads(data['pin']['result_canonical_json']);change(value)
+        raw=json.dumps(value,sort_keys=True,separators=(',',':'))
+        data['pin']['result_canonical_json']=raw
+        if repin:data['pin']['result_canonical_sha256']=m.sha(raw.encode())
+
+    def test_actual_terminal_receipt_and_provenance_are_frozen_exactly(self):
+        pin=m.TV_SUCCESSOR_RETAINED
+        self.assertEqual(set(pin),{'proof','run_attempt','run_created_at','run_started_at',
+                                  'result_canonical_json','result_canonical_sha256'})
+        self.assertEqual(pin['proof'],{'status':'installed','run_id':44911949356,'job_id':136869432183,
+            'command_comment_id':7063787927,'control_source_sha':'79ae813b41c933542dbb05577bd12ebcdfe3bc2b',
+            'artifact_id':14710576060,'artifact_sha256':'3e6a106c3f8529422a68e01cab27baca8b9037936a769301119a92a0f5fd3dd0',
+            'created_at':1795269811,'started_at':1795269954,'completed_at':1795269966})
+        self.assertIs(type(pin['run_attempt']),int);self.assertEqual(pin['run_attempt'],1)
+        self.assertEqual(pin['run_created_at'],'2026-11-21T14:03:34Z')
+        self.assertEqual(pin['run_started_at'],'2026-11-21T14:03:34Z')
+        raw=pin['result_canonical_json'].encode('ascii');value=json.loads(raw)
+        self.assertEqual(len(raw),4418)
+        self.assertEqual(m.sha(raw),'4bbfd3c2aad2d534c043c0efcbedb349c2374331c0be78d783d546d897a759d2')
+        self.assertEqual(pin['result_canonical_sha256'],m.sha(raw))
+        self.assertEqual(raw,json.dumps(value,sort_keys=True,separators=(',',':')).encode())
+        self.assertTrue(m.tv_successor_result_valid(value))
+        self.assertEqual(value['install']['manifest_sha256'],'c591ec8340d231221c20199e02fda954a51f8dcf25c2b3b9ebdb48942709e766')
+        self.assertEqual((value['install']['files'],value['install']['changed_files'],value['install']['created_files']),(12,1,0))
+
+    def test_retained_original_outlives_expired_or_deleted_artifact_without_artifact_lookups(self):
+        # Both lifecycle states deliberately have no artifact route: any list,
+        # metadata or ZIP lookup fails even when all remaining evidence is sound.
+        for lifecycle in ('expired','deleted'):
+            with self.subTest(lifecycle=lifecycle),self.retained() as data:
+                expected=data['pin']['proof']|{'result':json.loads(data['pin']['result_canonical_json'])}
+                value=m.tv_successor_evidence();self.assertEqual(value,expected)
+                self.assertEqual(set(value),set(data['pin']['proof'])|{'result'})
+                self.assertIn('TV_SUCCESSOR_PROOF=',m.tv_successor_prefix(value))
+                value['result']['install']['manifest_sha256']='0'*64
+                again=m.tv_successor_evidence();self.assertEqual(again,expected)
+                self.assertEqual(m.sha(data['pin']['result_canonical_json'].encode()),data['pin']['result_canonical_sha256'])
+                data['download'].assert_not_called()
+                self.assertEqual(sum(path=='/actions/runs/44911949356' for _,path in data['calls']),2)
+                self.assertFalse(any('/artifacts' in path or '/workflows/' in path and not path.startswith('/contents/')
+                                     for _,path in data['calls']))
+
+    def test_retained_tamper_and_invalid_result_never_fall_back_to_an_artifact(self):
+        changes=(lambda d:d['pin'].update(result_canonical_sha256='0'*64),
+                 lambda d:d['pin'].update(result_canonical_json=d['pin']['result_canonical_json']+'\n'),
+                 lambda d:d['pin'].update(run_attempt=True),lambda d:d['pin'].update(run_attempt=2),
+                 lambda d:d['pin']['proof'].update(run_id=True),lambda d:d['pin']['proof'].update(command_comment_id=0),
+                 lambda d:d['pin']['proof'].update(artifact_id=-1),lambda d:d['pin']['proof'].update(artifact_sha256='0'*63),
+                 lambda d:d['pin']['proof'].update(unreviewed=True),lambda d:d['pin'].update(unreviewed=True),
+                 lambda d:self.change_result(d,lambda v:v['install'].update(manifest_sha256='0'*64)),
+                 lambda d:self.change_result(d,lambda v:v.update(status='unknown_no_replay'),True),
+                 lambda d:self.change_result(d,lambda v:v.update(supplier_calls=1),True),
+                 lambda d:self.change_result(d,lambda v:v.update(schema_version=True),True),
+                 lambda d:self.change_result(d,lambda v:v.update(source_sha='0'*40),True),
+                 lambda d:self.change_result(d,lambda v:v['install']['tv_client'].update(sha256='0'*64),True))
+        for index,change in enumerate(changes):
+            with self.subTest(index=index),self.retained(change) as data,self.assertRaises(RuntimeError):m.tv_successor_evidence()
+            data['download'].assert_not_called()
+        for encoding in ('pretty','duplicate-key'):
+            with self.subTest(encoding=encoding),self.retained() as data:
+                raw=(json.dumps(json.loads(data['pin']['result_canonical_json']),indent=2) if encoding=='pretty'
+                     else '{"status":"unknown_no_replay",'+data['pin']['result_canonical_json'][1:])
+                data['pin'].update(result_canonical_json=raw,result_canonical_sha256=m.sha(raw.encode()))
+                with self.assertRaises(RuntimeError):m.tv_successor_evidence()
+                data['download'].assert_not_called()
+
+    def test_retained_original_requires_live_unique_command_original_run_job_and_full_control(self):
+        changes=(lambda d:d.update(commands=[]),
+                 lambda d:d['commands'].append(copy.deepcopy(d['commands'][0])|{'id':7063787928}),
+                 lambda d:d['commands'][0].update(id=7063787928),
+                 lambda d:d['commands'][0].update(body=d['commands'][0]['body']+' edited'),
+                 lambda d:d['commands'][0]['user'].update(id=1),lambda d:d['commands'][0].update(author_association='MEMBER'),
+                 lambda d:d['commands'][0].update(updated_at='2026-11-21T14:03:32Z'),
+                 lambda d:d['commands'][0].update(created_at='2026-11-21T14:03:32Z',updated_at='2026-11-21T14:03:32Z'),
+                 lambda d:d['run'].update(id=44911949357),lambda d:d['run'].update(head_sha='c'*40),
+                 lambda d:d['run'].update(run_attempt=2),lambda d:d['run'].update(run_attempt=True),
+                 lambda d:d['run'].update(status='in_progress',conclusion=None),lambda d:d['run'].update(conclusion='failure'),
+                 lambda d:d['run'].update(event='workflow_dispatch'),lambda d:d['run'].update(head_branch='branch'),
+                 lambda d:d['run'].update(path='.github/workflows/other.yml'),
+                 lambda d:d['run']['actor'].update(login='other'),lambda d:d['run']['triggering_actor'].update(login='other'),
+                 lambda d:d['run'].update(created_at='2026-11-21T14:03:35Z'),
+                 lambda d:d['run'].update(run_started_at='2026-11-21T14:03:35Z'),
+                 lambda d:d['run'].update(updated_at='2026-11-21T14:06:05Z'),
+                 lambda d:d.update(jobs=[]),lambda d:d['jobs'].append(copy.deepcopy(d['jobs'][0])),
+                 lambda d:d['jobs'][0].update(id=136869432184),lambda d:d['jobs'][0].update(run_id=44911949357),
+                 lambda d:d['jobs'][0].update(status='in_progress'),lambda d:d['jobs'][0].update(conclusion='failure'),
+                 lambda d:d['jobs'][0].update(steps=[]),
+                 lambda d:d['jobs'][0]['steps'].append(copy.deepcopy(d['jobs'][0]['steps'][0])),
+                 lambda d:d['jobs'][0]['steps'][0].update(name='another execute step'),
+                 lambda d:d['jobs'][0]['steps'][0].update(conclusion='failure'),
+                 lambda d:d['jobs'][0]['steps'][0].update(started_at='2026-11-21T14:05:55Z'),
+                 lambda d:d['jobs'][0]['steps'][0].update(completed_at='2026-11-21T14:06:05Z'))
+        for index,change in enumerate(changes):
+            with self.subTest(index=index),self.retained(change),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+        for source in m.TV_SUCCESSOR['control_blobs']:
+            with self.subTest(source=source),self.retained(lambda d:d['blobs'].update({source:'0'*40})),self.assertRaises(RuntimeError):
+                m.tv_successor_evidence()
+        with self.retained() as data:
+            original=m._tv_commands;calls=[]
+            def changing_command():
+                calls.append(1)
+                if len(calls)==2:data['commands'][0]['id']+=1
+                return original()
+            with patch.object(m,'_tv_commands',side_effect=changing_command),self.assertRaises(RuntimeError):m.tv_successor_evidence()
+            self.assertEqual(len(calls),2)
+        with self.retained() as data,tempfile.TemporaryDirectory() as directory:
+            signer=Path(directory)/'signing.py';signer.write_bytes(Path(m.tv_signing.__file__).read_bytes()+b'\n# unreviewed\n')
+            with patch.object(m.tv_signing,'__file__',str(signer)),self.assertRaisesRegex(RuntimeError,'tv_successor_validator_source'):
+                m.tv_successor_evidence()
+            self.assertEqual(data['calls'],[])
+
+    def test_all_seven_live_paths_recheck_actual_retained_provenance_before_ssh(self):
+        cases=((m.update,{},update_event(),UPDATE_IDENTITY,'update_remote_program'),
+               (m.update,{'rollback':True},update_rollback_event(),UPDATE_ROLLBACK_IDENTITY,'update_rollback_remote_program'),
+               (m.site_update,{},site_event(),SITE_IDENTITY,'site_remote_program'),
+               (m.site_update,{'rollback':True},site_event(True),SITE_ROLLBACK_IDENTITY,'site_rollback_remote_program'),
+               (m.site_update,{'continuation':True},site_continuation_event(),SITE_CONTINUATION_IDENTITY,'site_remote_program'),
+               (m.site_update,{'rollback':True,'continuation':True},site_continuation_event(True),SITE_CONTINUATION_ROLLBACK_IDENTITY,'site_rollback_remote_program'),
+               (m.rollback,{},rollback_event(),ROLLBACK_IDENTITY,'rollback_remote_program'))
+        artifact={'id':777,'digest':'sha256:'+'7'*64}
+        for call,options,event_value,identity,builder in cases:
+            with self.subTest(path=builder,options=options),self.retained() as data, \
+                 tempfile.TemporaryDirectory() as directory,contextlib.ExitStack() as stack:
+                event_path=Path(directory)/'event.json';event_path.write_text(json.dumps(event_value))
+                env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id'],
+                    'RUNNER_TEMP':directory,'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+                    'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+                stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                values={'rollback_admission':(IDENTITY,artifact),'update_rollback_admission':(UPDATE_IDENTITY,artifact),
+                        'site_rollback_admission':(SITE_IDENTITY,artifact),'package':({'expected':{},'release':RELEASE},{}),
+                        'rollback_source_evidence':{},'update_package':({'release':RELEASE},{}),'update_parent_evidence':{},
+                        'update_source_evidence':({'release':RELEASE},{},{}),'site_package':{},'site_parent_evidence':{},
+                        'site_source_evidence':(m.site_policy(),{},{}),'site_continuation_inspection_evidence':{},
+                        'site_continuation_inspection_value':{},'site_continuation_collector_log':{}}
+                for name,value in values.items():stack.enter_context(patch.object(m,name,return_value=value))
+                for name in ('rollback_main','rollback_commands','update_admission','update_rollback_commands',
+                             'site_admission','site_rollback_commands'):stack.enter_context(patch.object(m,name))
+                def public_download(artifact_id,digest):
+                    self.assertNotEqual(artifact_id,14710576060,'expired INT artifact must not be requested')
+                    return b'inert public artifact'
+                stack.enter_context(patch.object(m,'download',side_effect=public_download))
+                program=stack.enter_context(patch.object(m,builder,return_value='# inert generated program'))
+                original=m.tv_successor_evidence;calls=[]
+                def rechecked():
+                    calls.append(1)
+                    if len(calls)==2:data['run'].update(status='in_progress',conclusion=None)
+                    return original()
+                stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=rechecked))
+                carrier=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                with self.assertRaises(RuntimeError):call(**options)
+                self.assertEqual(len(calls),2);self.assertEqual(program.call_count,1)
+                self.assertEqual(program.call_args.kwargs['tv_successor'],data['pin']['proof']|
+                                 {'result':json.loads(data['pin']['result_canonical_json'])})
+                self.assertEqual([row.args[0][0] for row in carrier.call_args_list],['ssh-keyscan'])
+                evidence=json.loads((Path(directory)/'search3-public-install/evidence.json').read_text())
+                self.assertEqual(evidence['status'],'blocked_no_replay');self.assertFalse(evidence['ssh_started'])
+                self.assertFalse((Path(directory)/'search3-public-install/key').exists())
+                self.assertFalse((Path(directory)/'search3-public-install/known').exists())
+
+    def test_retained_resolution_keeps_remote_guards_and_full_public_recovery(self):
+        child=SiteContinuationTransaction();site=SiteTransaction();transition=TvSuccessorTransaction()
+        for damage in (None,'result','plan','state','backup','target'):
+            with self.subTest(damage=damage),child.inspected() as f,transition.successor(f), \
+                 self.retained(result=f.tv_evidence['result']) as data:
+                f.tv_evidence=m.tv_successor_evidence()
+                reservation=f.tv_namespace/'reservation.json';value=json.loads(reservation.read_text())
+                value['reserved_at']=f.tv_evidence['started_at']+1;reservation.write_text(json.dumps(value,sort_keys=True))
+                if damage is not None:
+                    path=({'result':f.tv_namespace/'result.json','plan':f.tv_namespace/'anex-preview-install-plan.json',
+                           'state':f.tv_namespace/'install-state.json',
+                           'backup':f.tv_namespace/'backup'/m.TV_SUCCESSOR['relative'],'target':f.root/f.tv_target})[damage]
+                    path.write_bytes(b'foreign replacement');before=f.filesystem_snapshot();value=child.execute(f)
+                    self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['written_files'],[])
+                    self.assertFalse(f.continuation_private.exists());self.assertEqual(f.filesystem_snapshot(),before)
+                    continue
+                parents=site.parent_records(f);proof=transition.proof_records(f)
+                f.continuation_accepted=child.execute(f);self.assertEqual(f.continuation_accepted['status'],'site_updated_verified')
+                transition.assert_no_actions(f.continuation_accepted);self.assertEqual(site.parent_records(f),parents)
+                records={str(path):(UpdateTransaction().stamp(path),path.read_bytes())
+                         for store in (f.private,f.update_private,f.continuation_private) for path in store.rglob('*.json')}
+                value=child.rollback(f);self.assertEqual(value['status'],'site_rolled_back_verified');transition.assert_no_actions(value)
+                self.assertEqual(site.parent_records(f),parents)
+                value=UpdateTransaction().rollback(f);self.assertEqual(value['status'],'update_rolled_back_verified');transition.assert_no_actions(value)
+                value=RollbackTransaction().execute(f);self.assertEqual(value['status'],'rolled_back_verified');transition.assert_no_actions(value)
+                f.restored();self.assertEqual((f.root/f.tv_target).read_bytes(),f.tv_new)
+                self.assertEqual(transition.proof_records(f),proof);self.assertFalse(f.site_private.exists())
+                for path,expected in records.items():self.assertEqual((UpdateTransaction().stamp(Path(path)),Path(path).read_bytes()),expected)
+                data['download'].assert_not_called()
 
 
 class Receipt(unittest.TestCase):
