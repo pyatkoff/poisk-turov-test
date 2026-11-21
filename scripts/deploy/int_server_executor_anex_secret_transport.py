@@ -76,6 +76,14 @@ local_profile_apply_source320 = importlib.util.module_from_spec(local_source320_
 local_source320_apply_spec.loader.exec_module(local_profile_apply_source320)
 local_profile_apply_source320.register_parser(core)
 
+LOCAL_OFFICIAL11_SCRIPT = SCRIPT.with_name('int_server_executor_local_official11.py')
+local_official11_spec = importlib.util.spec_from_file_location('int_server_executor_local_official11', LOCAL_OFFICIAL11_SCRIPT)
+if local_official11_spec is None or local_official11_spec.loader is None:
+    raise RuntimeError('local_official11_registration_import')
+local_official11 = importlib.util.module_from_spec(local_official11_spec)
+local_official11_spec.loader.exec_module(local_official11)
+local_official11.register_parser(core)
+
 FIRSTPAGE_SCRIPT = SCRIPT.with_name('int_server_executor_firstpage_readback.py')
 firstpage_spec = importlib.util.spec_from_file_location('int_server_executor_firstpage_readback', FIRSTPAGE_SCRIPT)
 if firstpage_spec is None or firstpage_spec.loader is None:
@@ -308,6 +316,7 @@ def main() -> None:
     local_profile_apply.activate(core, command)
     local_profile_acquire.activate(core, command)
     local_profile_apply_source320.activate(core, command)
+    local_official11.activate(core, command)
     firstpage_readback.activate(core, command)
     local_tv_schema.activate(core, command)
     local_tv_seed.activate(core, command)
