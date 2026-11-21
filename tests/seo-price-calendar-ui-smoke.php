@@ -95,6 +95,47 @@ cal_assert(str_contains($shell, "v2_bundle_asset('css', 'site')")
 cal_assert(str_contains($country, "v2_seo_country_snapshot_offers(\$countryId, 12)"), 'country_candidates');
 cal_assert(str_contains($country, "array_slice(\$offerCandidates, 0, 6)"), 'country_visible_six');
 cal_assert(str_contains($country, 'v2_seo_render_price_calendar'), 'country_calendar');
+
+$countryOffer = ['hotelName'=>'Тестовый отель','departureId'=>1,'departureName'=>'Москва',
+    'departureDate'=>'2026-11-25','nights'=>5,'price'=>120000,'currency'=>'RUB'];
+$countryState = ['country'=>4];
+$offerState = v2_seo_offer_search_state($countryState, $countryOffer);
+$expectedOfferHref = '/poisk-turov/?from=1&country=4&dateFrom=2026-11-25&dateTo=2026-11-25&daysFrom=5&daysTill=5&count_people=2';
+cal_assert(v2_seo_search_handoff_url('/poisk-turov/', $offerState) === $expectedOfferHref, 'country_offer_advertised_conditions');
+cal_assert($countryState === ['country'=>4]
+    && v2_seo_search_handoff_url('/poisk-turov/', $countryState) === '/poisk-turov/?country=4', 'generic_country_handoff_unchanged');
+
+// Execute the actual country card loop with a fixed offer, without loading its
+// DB-backed page shell. This catches a helper that exists but is never called.
+cal_assert(preg_match('/<\?php foreach \(\$offers as \$offer\):.*?<\?php endforeach; \?>/s', $country, $cardLoop) === 1, 'country_offer_loop');
+$cardHtml = (static function (string $template) use ($countryOffer, $countryState): string {
+    $offers = [$countryOffer];
+    $searchState = $countryState;
+    ob_start();
+    eval('?>' . $template);
+    return (string)ob_get_clean();
+})($cardLoop[0]);
+cal_assert(str_contains($cardHtml, '25.11.2026') && str_contains($cardHtml, '5 ночей'), 'country_offer_displayed_conditions');
+cal_assert(preg_match('/class="sp-secondary sp-offer-action" href="([^"]+)"/', $cardHtml, $cardLink) === 1, 'country_offer_action');
+cal_assert(html_entity_decode($cardLink[1], ENT_QUOTES | ENT_HTML5, 'UTF-8') === $expectedOfferHref, 'country_offer_rendered_handoff');
+
+$fallbackState = ['country'=>4,'from'=>2,'dateFrom'=>'2026-12-01','dateTo'=>'2026-12-07',
+    'daysFrom'=>7,'daysTill'=>10,'count_people'=>4];
+foreach ([1, 28] as $nights) {
+    $state = v2_seo_offer_search_state($fallbackState, ['departureId'=>1,'departureDate'=>'2028-02-29','nights'=>$nights]);
+    cal_assert($state['dateFrom'] === '2028-02-29' && $state['dateTo'] === '2028-02-29'
+        && $state['daysFrom'] === $nights && $state['daysTill'] === $nights
+        && $state['from'] === 1 && $state['count_people'] === 2, 'offer_handoff_valid_bounds_'.$nights);
+}
+foreach ([-1, 0, 29] as $nights) {
+    $state = v2_seo_offer_search_state($fallbackState, ['departureId'=>0,'departureDate'=>'2026-02-30','nights'=>$nights]);
+    cal_assert($state === array_replace($fallbackState, ['count_people'=>2]), 'offer_handoff_invalid_bounds_'.$nights);
+}
+foreach (['', '2026-2-03', '2026-11-25extra'] as $date) {
+    $state = v2_seo_offer_search_state($fallbackState, ['departureDate'=>$date]);
+    cal_assert($state === array_replace($fallbackState, ['count_people'=>2]), 'offer_handoff_invalid_date_'.$date);
+}
+
 cal_assert(str_contains($resort, "v2_seo_resort_snapshot_offers(\$countryId, \$regionId, 12)"), 'resort_candidates');
 cal_assert(str_contains($resort, "array_slice(\$offerCandidates, 0, 6)"), 'resort_visible_six');
 cal_assert(str_contains($resort, 'v2_seo_render_price_calendar'), 'resort_calendar');
