@@ -2,7 +2,7 @@
 // Compiled UI, retained fictional catalogues only. This accepts visible recovery
 // before any search; it does not measure live availability or a physical device.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 module.exports=async function({browser,origin,base,evidence}){
  const records=[],started=Date.now();
  const scenario=async(width,stress=false,movedFocus=false)=>{
@@ -88,6 +88,7 @@ module.exports=async function({browser,origin,base,evidence}){
   try{
    if(stress)await page.addInitScript(()=>document.addEventListener('DOMContentLoaded',()=>document.documentElement.style.fontSize='200%'));
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
     if(request.resourceType()==='image'){await route.abort();return;}

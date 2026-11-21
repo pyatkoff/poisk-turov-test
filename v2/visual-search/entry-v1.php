@@ -111,6 +111,14 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
     if ($public && ($config['profile'] ?? null) !== ($live ? 'live' : 'review')) {
         throw new RuntimeException('Search3 render/profile mismatch.');
     }
+    require_once dirname(__DIR__) . '/site-header-v2.php';
+    $phone = v2_site_phone($siteParams, '8 (800) 100 - 61 - 50');
+    ob_start();
+    v2_render_site_header($phone, v2_phone_href($phone), '/poisk-turov/', true);
+    $header = trim((string)ob_get_clean());
+    $html = v2_visual_search_replace($html, '<header class="header" data-site-header-slot></header>', $header);
+    $html = v2_visual_search_replace($html, 'class="brand footer-brand" href="/"',
+        'class="brand footer-brand" href="' . htmlspecialchars(v2_site_href('/'), ENT_QUOTES, 'UTF-8') . '"');
     if ($mode !== 'preview-offline') {
         $tags = [];
         foreach ($graph as $src) {

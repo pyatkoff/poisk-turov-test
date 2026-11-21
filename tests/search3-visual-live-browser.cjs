@@ -5,7 +5,7 @@ const {chromium}=require('playwright');
 const {tmpdir}=require('node:os');
 const {emitFirstOpenFile}=require('./search3-visual-first-open.cjs');
 const retainLosslessPngEvidence=require('../scripts/ci/search3_visual_evidence_retention.cjs');
-const {fixture:createFixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+const {fixture:createFixture,trip,hotelCatalogue,day,back,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 // Telephone journeys retain their supplier-only request ledger. The dedicated
 // messenger browser case separately proves successful freeze/CREATE/navigation.
 const fixture=(...args)=>{
@@ -82,7 +82,8 @@ const localCivilDateJourney=async(browser,origin,base,evidence)=>{
   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900},timezoneId:'Europe/Kaliningrad'}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   try{
    await page.addInitScript(instant=>{const NativeDate=Date;window.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[instant]));}static now(){return instant;}};},instant);
-   await page.route('**/*',async route=>{const request=route.request(),url=new URL(request.url());if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}});
+   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}const request=route.request(),url=new URL(request.url());if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}});
    await page.goto(origin+base+'visual-search/');await page.locator('.search-submit:not(:disabled)').waitFor();
    const initial=await page.evaluate(()=>({from:window.AnyTourPrototypeData.initialSearch.from,to:window.AnyTourPrototypeData.initialSearch.to,localDay:new Date().getDate(),localHour:new Date().getHours()}));assert.deepEqual(initial,{from:'2026-11-02',to:'2026-11-08',localDay:19,localHour:0});
    const label=await page.locator('#dates-label').textContent(),url=page.url();assert.match(label,/2–8 ноября/);
@@ -115,7 +116,8 @@ const resultFilterViewportJourney=async(browser,origin,base,evidence)=>{
  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage(),records=[];transport.state.wideFacets=true;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
  try{
    await page.addInitScript(()=>{const v=new EventTarget();v.height=innerHeight;v.offsetTop=0;v.scale=1;Object.defineProperty(window,'visualViewport',{value:v,configurable:true});window.__filterViewport=v;});
-  await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}});
+  await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}const req=route.request(),u=new URL(req.url());if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}});
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>{const status=document.querySelector('#search-status');return document.querySelector('.hotel-card')&&document.querySelector('#search-form').hidden&&(status.hidden||!status.querySelector('[data-action="stop-search"]'));});
   const starts=()=>transport.calls.filter(c=>c.action==='search_start').length,baselineStarts=starts(),baselineURL=page.url(),cards=()=>page.locator('.hotel-card').evaluateAll(rows=>rows.map(el=>el.id)),baselineCards=await cards();
    const viewport=async(height,offsetTop=0,event='resize',scale=1)=>page.evaluate(({height,offsetTop,event,scale})=>{Object.assign(window.__filterViewport,{height,offsetTop,scale});window.__filterViewport.dispatchEvent(new Event(event));},{height,offsetTop,event,scale});
@@ -177,6 +179,7 @@ const chosenDepartureJourney=async(browser,origin,base,evidence)=>{
  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
  try{
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -199,6 +202,7 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
   try{
    await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -308,6 +312,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -547,6 +552,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -847,6 +853,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
   page.on('requestfailed',request=>{const read=hotelReads.find(entry=>entry.request===request);if(read){read.failure=request.failure()?.errorText||null;read.failedResolve(read.failure);}});
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52"><rect fill="#bacad5" width="64" height="52"/></svg>'});return;}
@@ -1192,6 +1199,7 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   transport.state.hotelCatalogue=hotelCatalogue();page.on('pageerror',e=>errors.push(e.message));
   let releaseProfile,failProfile=false;const profileGate=new Promise(resolve=>releaseProfile=resolve);
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
@@ -1245,6 +1253,7 @@ const calendarViewportFitJourney=async(browser,origin,base,evidence)=>{
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1335,6 +1344,7 @@ const remainingCalendarJourney=async(browser,origin,base,evidence)=>{
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1414,6 +1424,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
  try{
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
    const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1516,6 +1527,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   const t=fixture(),faults=[],unexpected=[],starts=[],anexStarts=[],ctx=await browser.newContext({viewport:{width,height:width===1280?720:932}}),p=await ctx.newPage();t.state.hotelCatalogue=hotelCatalogue();p.setDefaultTimeout(10000);p.on('pageerror',e=>faults.push(e.message));
   try{
    await p.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),u=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
     try{
@@ -1575,6 +1587,7 @@ const terminalAnexExpansionJourney=async(browser,origin,base,evidence)=>{
   const expansions=()=>transport.calls.filter(c=>c.action==='expand').length;
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1602,6 +1615,7 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   let release,mark;const calculating=new Promise(resolve=>mark=resolve);
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),u=new URL(req.url());
     if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
@@ -1627,6 +1641,7 @@ const infantChargeQualification=async(browser,origin,base,evidence)=>{
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1729,6 +1744,7 @@ const inlineHotelContactJourney=async(browser,origin,base,evidence)=>{
   const capture=async stage=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(evidence,`inline-hotel-${stage}-${width}.png`)});};
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -1775,6 +1791,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
     if(request.resourceType()==='image'){await route.abort();return;}
@@ -1838,6 +1855,7 @@ const inlineContactFlightReturn=async(browser,origin,base,evidence)=>{
   const tag=width+'x'+height,amount=()=>page.locator('#modal-footer .footer-total>strong').textContent();
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const r=route.request(),u=new URL(r.url());
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
     if(r.resourceType()==='image'){await route.abort();return;}
@@ -1943,6 +1961,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),u=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=u.searchParams.get('action')||body.action;
     if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
@@ -2013,6 +2032,7 @@ async function roomLayoutsJourney(browser,origin,base,evidence){
   page.on('pageerror',error=>errors.push(error.message));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url()),action=url.searchParams.get('action');
     if(url.pathname==='/test-photo.svg'){
      await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect width="700" height="500" fill="#dae2f3"/></svg>'});return;
@@ -2075,6 +2095,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   const snapshot=()=>page.evaluate(()=>({trip:document.querySelector('#compact-search').textContent,filters:document.querySelector('#active-filters').textContent,query:document.querySelector('#hotel-query').value,max:document.querySelector('#max-price').value,sort:document.querySelector('#sort').value,keys:[...document.querySelectorAll('.hotel-card [data-card-entry]')].map(el=>el.dataset.key)}));
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),u=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=u.searchParams.get('action')||body.action;
     if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
@@ -2128,6 +2149,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   for(const width of [390,1280]){
    const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),url=new URL(req.url());
     if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
@@ -2172,6 +2194,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   let markAnexQuotePending;let anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
   let markSamoPairPending;let samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}

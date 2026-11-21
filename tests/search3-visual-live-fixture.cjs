@@ -1,5 +1,15 @@
 'use strict';
 // Fictional responses for the real canonical adapter. Never issue network requests.
+function canonicalLogoFixture(request,origin){
+ const url=new URL(request.url());
+ if(url.origin!==origin||url.pathname!=='/images/logo.svg'||url.search||url.hash||url.username||url.password
+  ||request.method()!=='GET'||request.resourceType()!=='image')return null;
+ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
+ const body=fs.readFileSync(path.join(__dirname,'../v2/visual-search/assets/anytour-logo.svg'));
+ assert.equal(crypto.createHash('sha256').update(body).digest('hex'),
+  '3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049','canonical logo fixture SHA256 mismatch');
+ return {status:200,contentType:'image/svg+xml',body};
+}
 const day=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
 const back=new Date(Date.parse(day+'T12:00:00Z')+7*86400000).toISOString().slice(0,10);
 const trip={origin:'Москва',country:'4',from:day,to:day,minNights:7,maxNights:7,adults:2,ages:[]};
@@ -143,4 +153,4 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false,clo
  };
  return {json,calls,state};
 }
-module.exports={fixture,trip,day,back,tour,flights,profile,hotelCatalogue};
+module.exports={fixture,trip,day,back,tour,flights,profile,hotelCatalogue,canonicalLogoFixture};

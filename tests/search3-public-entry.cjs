@@ -9,7 +9,7 @@ const graphs=inventory(root);
 assert.deepEqual(graphs.live,expectedLive,'accepted preview LIVE owners/order preserved');
 assert.deepEqual(graphs.offline,expectedOffline,'accepted preview OFFLINE owners/order preserved');
 assert.deepEqual(graphs.ondemand,['./offer-list-v1.js','./hotel-details-v1.js','./flight-picker-ui-v1.js']);
-assert.deepEqual(stylesheetInventory(root).initial,['./styles.css','./mobile-controls-v1.css']);
+assert.deepEqual(stylesheetInventory(root).initial,['./styles.css','./mobile-controls-v1.css','../site-header-v2.css']);
 assert.deepEqual(graphs.public_live,['./public-config-v1.js','../runtime-v3.js','../analytics-v4.js',...expectedLive.slice(2,-1),'./public-url-v1.js','./public-bootstrap-v1.js','./public-analytics-v1.js','./app.js']);
 assert.deepEqual(graphs.public_review,['./public-config-v1.js',...expectedOffline.slice(0,-1),'./public-url-v1.js','./public-bootstrap-v1.js','./app.js']);
 assert(!graphs.public_review.some(value=>/analytics|prototype-search\/config|live-bridge/.test(value)));
@@ -21,6 +21,23 @@ assert(!/\$_GET|\$_REQUEST/.test(publicEntry+entry),'public profile cannot origi
 assert(!/\$_SERVER\['SCRIPT_NAME'\]\s*=/.test(publicEntry),'no preview guard spoof');
 assert(!/<base\b/i.test(entry),'resource rewriting leaves local anchors/history untouched');
 assert(publicEntry.includes("$build['profile'] !== 'review'"),'whole-site prefix cannot admit live');
+assert(entry.includes("require_once dirname(__DIR__) . '/site-header-v2.php';"),'Search3 uses the canonical PHP header owner');
+assert(entry.includes("v2_render_site_header($phone, v2_phone_href($phone), '/poisk-turov/', true);"));
+assert.equal((html.match(/data-site-header-slot/g)||[]).length,1);
+assert(!html.includes('class="compact-brand"'),'compact route summary has no repeated logo');
+const app=fs.readFileSync(path.join(root,'visual-search/app.js'),'utf8'),start=app.indexOf('function handleSearchParameterAction('),end=app.indexOf('\nfunction ',start+1);
+assert(start>=0&&end>start);
+const vm=require('node:vm'),events=[],context={editSearch(){events.push('edit');}};
+vm.createContext(context);vm.runInContext(app.slice(start,end),context);
+for(const action of ['top','edit-search']){
+ events.length=0;
+ const menu={removeAttribute(name){assert.equal(name,'open');events.push('close');}};
+ const current={closest(selector){assert.equal(selector,'.at-global-header__mobile');return menu;}};
+ assert.equal(context.handleSearchParameterAction(action,current,0),true);
+ assert.deepEqual(events,['close','edit'],'current search closes its own mobile menu then calls the existing edit owner');
+ events.length=0;context.handleSearchParameterAction(action,{closest(){return null;}},0);
+ assert.deepEqual(events,['edit'],'existing search controls outside the header keep their edit path');
+}
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'search3-entry-graph-'));
 try{
  fs.mkdirSync(path.join(temp,'visual-search'));

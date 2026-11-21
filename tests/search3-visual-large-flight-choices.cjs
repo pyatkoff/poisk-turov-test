@@ -2,7 +2,7 @@
 // The real NEXT assets and existing fictional supplier fixture. No external requests.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),vm=require('node:vm');
 const {execFileSync}=require('node:child_process'),{chromium}=require('playwright');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/';
 const flightRef=i=>'flight_'+(i+1).toString(16).padStart(32,'0');
 function choices(seed,count=132){return Array.from({length:count},(_,i)=>({...seed[i<count/2?0:1],name:'TEST SAMO '+(i<count/2?'OUT':'BACK')+' '+(i+1),flight_ref:flightRef(i)}));}
@@ -58,6 +58,7 @@ async function run(){
    transport.state.samoFlightChoice=true;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    let supplied=[];
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),u=new URL(req.url());
     if(u.origin!==origin){forbidden.push('external_request');await route.abort();return;}
     if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}

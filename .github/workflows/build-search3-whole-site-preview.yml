@@ -288,7 +288,8 @@ jobs:
             fi
             echo "SEARCH3_PREVIEW_ROUTE_OK path=$path"
           done
-          grep -Fq "action=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
+          grep -Fq "class=\"primary home-search-link\" href=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
+          ! grep -Fq '<form' "$RUNNER_TEMP/site-_.html"
           grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/site-_poisk_turov_.html"
           grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$RUNNER_TEMP/site-_poisk_turov_.html"
           for page in "$RUNNER_TEMP/site-_poisk_turov_.html" "$RUNNER_TEMP/site-_poisk_turov_old_.html"; do

@@ -1,5 +1,6 @@
 // Actual compiled presentation: terminal tours have no flight/application actions.
 'use strict';
+const {canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process'),{chromium}=require('playwright');
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence/terminal-offers');fs.mkdirSync(evidence,{recursive:true});
 const server=http.createServer((req,res)=>{
@@ -14,7 +15,8 @@ const server=http.createServer((req,res)=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
  try{browser=await chromium.launch({headless:true});for(const width of [390,1280])for(const scenario of ['expired','unavailable','flight-error','flights']){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],external=[];
-  page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',async route=>{if(new URL(route.request().url()).hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')external.push(route.request().url());await route.abort();return;}await route.continue();});
+  page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),'http://127.0.0.1:'+server.address().port);if(logoResponse){await route.fulfill(logoResponse);return;}if(new URL(route.request().url()).hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')external.push(route.request().url());await route.abort();return;}await route.continue();});
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=${scenario}`);
    await page.locator('.hotel-card [data-action="offer"]').first().click();

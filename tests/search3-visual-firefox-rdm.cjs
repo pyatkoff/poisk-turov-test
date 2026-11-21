@@ -8,6 +8,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { startFirefox } = require('./search3-firefox-driver.cjs');
 const journey = require('./search3-firefox-journey.cjs');
+const {canonicalLogoFixture} = require('./search3-visual-live-fixture.cjs');
 
 const base = '/_preview/search3-next-candidate/';
 const entry = base + 'visual-search/';
@@ -36,6 +37,11 @@ async function run() {
       res.writeHead(403).end();
     };
     if (req.method !== 'GET') return reject();
+    const logoOrigin = 'http://127.0.0.1:' + server.address().port;
+    const logo = req.url === '/images/logo.svg' && req.headers.host === new URL(logoOrigin).host
+      && canonicalLogoFixture({url:()=>logoOrigin + req.url,method:()=>req.method,
+        resourceType:()=>req.headers['sec-fetch-dest']}, logoOrigin);
+    if (logo) {res.writeHead(logo.status, {'Content-Type':logo.contentType}).end(logo.body);return;}
     if (url.pathname === entry && url.searchParams.get('scenario') === 'journey') {
       const allowedSnapshot = 'http://127.0.0.1:' + server.address().port + snapshot;
       res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ${allowedSnapshot}; form-action 'none'; base-uri 'none'; report-uri /blocked-request`);

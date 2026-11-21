@@ -96,14 +96,18 @@ function inventory(root){
  return graphs;
 }
 // Keep visual CSS separate from the existing JS graph/size contract. Only these
-// two entry stylesheets receive syntax-preserving printing in the artifact.
+// two visual stylesheets and the one canonical shared header owner receive
+// syntax-preserving printing. The historical two-file entry remains readable;
+// any other extra/reordered stylesheet still needs an explicit graph review.
 const visualStyleOwners=['./styles.css','./mobile-controls-v1.css'];
+const sharedHeaderStyle='../site-header-v2.css';
 function stylesheetInventory(root){
  const html=fs.readFileSync(path.join(root,'visual-search/index.html'),'utf8');
  const initial=[...html.matchAll(/<link\b[^>]*>/g)]
   .filter(match=>/\brel="stylesheet"/.test(match[0]))
   .map(match=>match[0].match(/\bhref="([^"?]+\.css)"/)?.[1]);
- assert.deepEqual(initial,visualStyleOwners,'explicit two-owner visual stylesheet graph');
+ assert.deepEqual(initial,initial.length===2?visualStyleOwners:[...visualStyleOwners,sharedHeaderStyle],
+  'explicit visual and canonical shared-header stylesheet graph');
  return {initial};
 }
 // A bounded artifact allowlist, never a source/API edit. Other assets keep names.

@@ -2,7 +2,7 @@
 // The existing live-browser server supplies the actual compiled visual graph.
 // Every API and external navigation below is intercepted with fictional data.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const {fixture,trip,profile,day,back}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,profile,day,back,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const waitFor=(promise,label)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(label+' did not start')),10000);promise.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});
@@ -89,6 +89,7 @@ async function tourvisorJourney({browser,origin,base,output}){
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),url=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=url.searchParams.get('action')||body.action;
     try{
      if(Object.values(links).includes(url.href)&&req.isNavigationRequest()){navigations.push(url.href);await route.fulfill({contentType:'text/html',body:'<!doctype html><h1>Fictional TV navigation intercepted</h1>'});return;}
@@ -205,6 +206,7 @@ async function tourvisorFailedPreparationJourney({browser,origin,base,output}){
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const req=route.request(),url=new URL(req.url()),body=req.postData()?JSON.parse(req.postData()):{},action=url.searchParams.get('action')||body.action;
     try{
      assert.equal(url.origin,origin,'no external navigation or HTTP in failed preparation');
@@ -287,6 +289,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
   };
   try{
    await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
     const request=route.request(),url=new URL(request.url());
     try{
      // Never continue a request to a real bot, supplier or other external host.

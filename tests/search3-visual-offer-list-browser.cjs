@@ -1,5 +1,6 @@
 // Exercise the actual compiled lazy owner through the isolated offline PHP entry.
 'use strict';
+const {canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2'));
@@ -18,6 +19,7 @@ const server=http.createServer((req,res)=>{
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[],geometry=[],density=[],calendarContext=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),'http://127.0.0.1:'+server.address().port);if(logoResponse){await route.fulfill(logoResponse);return;}
    const url=new URL(route.request().url());if(url.hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
    if(url.pathname.endsWith('/offer-list-v1.js')){requests++;assert.match(url.search,/^\?v=[0-9a-f]{12}$/,'PHP binds the actual cold asset hash');if(requests===1){await route.abort();return;}if(requests===2){pending=true;await new Promise(resolve=>{release=resolve;});}}
    await route.continue();

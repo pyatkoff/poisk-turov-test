@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {canonicalLogoFixture} = require('./search3-visual-live-fixture.cjs');
 
 async function checkPhoneFlightOptions(evaluate) {
  const rows = await evaluate(`(() => {
@@ -315,6 +316,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
   page.on('pageerror',error=>failures.push(error.message));
   try{
    await page.route('**/*',async route=>{
+    const logo=canonicalLogoFixture(route.request(),origin);if(logo){await route.fulfill(logo);return;}
     const u=new URL(route.request().url());
     if(u.origin!==origin||!u.pathname.startsWith(base)||/\/(?:api-|data\/)|\.php$/.test(u.pathname)){
      external.push(u.pathname);await route.abort();return;

@@ -2,7 +2,7 @@
 // Controlled eager/deferred comparison of the same compiled UI and fictional
 // catalogue. Timings are observations, never a speed threshold or supplier test.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 module.exports=async function({browser,origin,base,evidence}){
  const records=[];
  for(const width of [390,1280])for(let trial=0;trial<5;trial++)for(const mode of trial%2?['deferred','eager']:['eager','deferred']){
@@ -15,6 +15,7 @@ module.exports=async function({browser,origin,base,evidence}){
    });observer.observe(document,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-busy','disabled']});
   });
   await page.route('**/*',async route=>{
+    const logoResponse=canonicalLogoFixture(route.request(),origin);if(logoResponse){await route.fulfill(logoResponse);return;}
    const request=route.request(),url=new URL(request.url());
    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
    if(request.resourceType()==='image'){await route.abort();return;}

@@ -4,6 +4,7 @@
 The existing visual compiler runs in a disposable full-source stage. Only its
 selected REVIEW or explicit LIVE closure is added to a staged main site. The public route is
 replaced; the known old-route predecessor may receive its page-alias correction.
+The approved common-header entry also carries its bounded home presentation.
 This is not an installer, a server snapshot, or production admission. No network,
 PHP server, supplier request, or lead request is started.
 """
@@ -46,6 +47,23 @@ LIVE_MAIN_DEPENDENCIES = (*sorted(RETAIN_MAIN), "analytics-config.php", "seo-con
 OPTIONAL_POPULARITY = "data/hotel-popularity-v1.php"
 CANONICAL_INPUTS = ("v2/tour-controller-v4.js", "v2/lead-form-guard-v1.js")
 ALIASES = (("search-page-v2.php", "index.php"), ("index.php", "home-entry-v1.php"))
+# Site234 is one coherent home/header package, selected only by the explicit
+# canonical-header graph. These four preimages were inspected in retained CI
+# MAIN e68fe088/c5513aae and current MAIN f6b75134; all three have identical blobs.
+# This is not permission to overwrite arbitrary shared files or a newer owner.
+SHARED_UI_PREDECESSORS = {
+    "home-v1.php": "d0c1d8a91118d6cc352afb42509e417ec921a4f7",
+    "home-v1.css": "79be40825c7f16f0b9dfd23e114d97b6a899f9a6",
+    "site-header-v2.php": "2249631c29cca6396befed0d94faf8709062e3d3",
+    "site-header-v2.css": "204d2c93dc5e82468d9a84ade392bb13115f5854",
+}
+SHARED_HOME_PATHS = ("v2/home-v1.php", "v2/home-v1.css", "v2/home-hero-v1.jpg")
+# Read-only production GET on 2026-11-21 proved the installed /images/logo.svg
+# is byte-identical to this existing immutable artwork. The local alias makes
+# review self-contained; it is never an installation overlay/replacement.
+LOCAL_LOGO_ALIAS = "images/logo.svg"
+LOCAL_LOGO_SOURCE = "v2/visual-search/assets/anytour-logo.svg"
+LOCAL_LOGO_SHA256 = "3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049"
 
 
 def load_module(path: Path, name: str):
@@ -125,6 +143,9 @@ def candidate_paths(graph: dict, roles: dict, source_tree: dict, resolver,
                  if set(labels) & {"static_asset", "font_license"})
     paths.update({"v2/visual-search/index.php", "v2/visual-search/entry-v1.php",
                   "v2/visual-search/index.html", OLD_ROUTE})
+    if graph.get("shared_header"):
+        paths.update(graph["shared_header"]["php_dependencies"])
+        paths.update(SHARED_HOME_PATHS)
     # These are the local demo photos returned by the fixed family adapter.
     # Snapshot hotels use the captured HTTPS URLs; journey-only photos are not
     # part of either allowed build profile. The test executes the served adapter.
@@ -140,7 +161,7 @@ def candidate_paths(graph: dict, roles: dict, source_tree: dict, resolver,
 
 
 def check_collisions(git: Git, source_tree: dict, main_tree: dict,
-                     owners: dict, paths: list[str]) -> set[str]:
+                     owners: dict, paths: list[str], shared_header: bool = False) -> set[str]:
     targets = {path.removeprefix("v2/"): path for path in paths}
     targets[BUILD_PROFILE] = None
     replacements = {PUBLIC_ROUTE}
@@ -158,6 +179,14 @@ def check_collisions(git: Git, source_tree: dict, main_tree: dict,
                 continue  # Already corrected: retain its main mode as well.
             need(main_tree[owners[target]]["blob_sha"] == OLD_ROUTE_PREDECESSOR_BLOB,
                  f"review would overwrite an unknown old-route owner: {target}")
+            replacements.add(target)
+            continue
+        if shared_header and target in SHARED_UI_PREDECESSORS and not same:
+            predecessor = main_tree[owners[target]]
+            need(source == "v2/" + target
+                 and predecessor["mode"] == "100644"
+                 and predecessor["blob_sha"] == SHARED_UI_PREDECESSORS[target],
+                 f"review would overwrite an unknown shared UI owner: {target}")
             replacements.add(target)
             continue
         need(same or target in RETAIN_MAIN,
@@ -275,7 +304,8 @@ def build(args) -> dict:
             if args.profile == "live":
                 for path in LIVE_MAIN_DEPENDENCIES:
                     need(path in baseline, f"public LIVE requires an existing main dependency: {path}")
-            replacements = check_collisions(git, source_tree, main_tree, owners, paths)
+            replacements = check_collisions(git, source_tree, main_tree, owners, paths,
+                                            shared_header=bool(graph.get("shared_header")))
 
             # Keep rollback material outside the served root. It contains only
             # replaced versioned routes, never installed configuration/credentials.
@@ -290,7 +320,8 @@ def build(args) -> dict:
             retained_compiled = [{"path": row["target"],
                                   "compiled_candidate": file_metadata(source / "v2" / row["target"]),
                                   "retained_main": baseline[row["target"]]}
-                                 for row in compiled["files"] if row["target"] in baseline]
+                                 for row in [*compiled["files"], *compiled["css"]["files"]]
+                                 if row["target"] in baseline and row["target"] not in replacements]
             for path in paths:
                 relative = path.removeprefix("v2/")
                 compiled_path = source / path
@@ -316,6 +347,20 @@ def build(args) -> dict:
             groups["added"].append({"path": BUILD_PROFILE, "source_path": None,
                                     "source": "explicit builder profile; never query-selected",
                                     "served": file_metadata(site / BUILD_PROFILE)})
+            if graph.get("shared_header"):
+                need(LOCAL_LOGO_SOURCE in source_tree, "canonical local logo source missing")
+                logo = git.metadata(source_tree[LOCAL_LOGO_SOURCE])
+                need(logo["sha256"] == LOCAL_LOGO_SHA256 and logo["mode"] == "100644",
+                     "canonical local logo source changed")
+                if LOCAL_LOGO_ALIAS in baseline:
+                    need(baseline[LOCAL_LOGO_ALIAS]["sha256"] == LOCAL_LOGO_SHA256,
+                         "unknown installed canonical logo owner")
+                else:
+                    write_blob(git, source_tree, LOCAL_LOGO_SOURCE, site / LOCAL_LOGO_ALIAS)
+                    groups["added"].append({"path": LOCAL_LOGO_ALIAS,
+                                            "source_path": LOCAL_LOGO_SOURCE, "source": logo,
+                                            "served": file_metadata(site / LOCAL_LOGO_ALIAS),
+                                            "candidate_only": True})
             for path in sorted(baseline):
                 if path in replacements:
                     continue
@@ -327,11 +372,14 @@ def build(args) -> dict:
                 rows.sort(key=lambda row: row["path"])
             overlay = package / "overlay"
             for row in groups["added"] + groups["replaced"]:
+                if row.get("candidate_only"):
+                    continue
                 target = overlay / row["path"]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(site / row["path"], target)
             need(files_metadata(overlay) == {row["path"]: row["served"]
-                                            for row in groups["added"] + groups["replaced"]},
+                                            for row in groups["added"] + groups["replaced"]
+                                            if not row.get("candidate_only")},
                  "overlay contains a missing or protected main file")
             rollback = rehearse(snapshot_helper, snapshot_dir, site, baseline, groups, work)
             manifest = {
@@ -345,6 +393,13 @@ def build(args) -> dict:
                 "overlay_scope": "bounded route replacements and listed additions only; not authorized for installation",
                 "resource_base": "/visual-search/", "public_path": "/poisk-turov/",
                 "aliases": [{"target": target, "source": source} for target, source in ALIASES],
+                "shared_ui": {"enabled": bool(graph.get("shared_header")),
+                              "home_source_paths": list(SHARED_HOME_PATHS) if graph.get("shared_header") else [],
+                              "header": graph.get("shared_header"),
+                              "replacement_preimages": {path: SHARED_UI_PREDECESSORS[path]
+                                                        for path in sorted(replacements)
+                                                        if path in SHARED_UI_PREDECESSORS}},
+                "candidate_only_aliases": [row for row in groups["added"] if row.get("candidate_only")],
                 args.profile + "_graph": graph[graph_key],
                 "graph": {"initial": graph[graph_key], "on_demand": graph["on_demand"], "styles": graph["styles"]},
                 "compilation": {"versions": versions,
@@ -356,7 +411,8 @@ def build(args) -> dict:
                 "files": groups, "rollback": rollback,
                 "boundaries": ["profile is selected at build time; query cannot change it",
                                "no PHP execution, browser/server check, supplier measurement or lead delivery is claimed",
-                               "main homepage, SEO, price, data and lead owners are retained; installed configuration is not copied",
+                               "only the explicit home/header source set may replace its inspected MAIN preimages; SEO, footer, assets, bundles, price, data and lead owners are retained",
+                               "main home-entry remains the root alias; installed configuration and installed-only brand assets are not inferred or copied",
                                "only the two page aliases are staged; installed standalone bridge/receiver configuration is not inferred",
                                "LIVE payload completeness does not verify installed INT/LOCAL/signer/bot dependencies or authorize a production switch"],
             }

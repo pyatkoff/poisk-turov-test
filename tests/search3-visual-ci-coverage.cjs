@@ -139,5 +139,34 @@ assert.throws(()=>verify(workflow.replace("      - '.github/workflows/build-sear
 verifyConcurrency(buildWorkflow,'ci-search3-build');
 assert.throws(()=>verifyConcurrency(buildWorkflow.replace('cancel-in-progress: true','cancel-in-progress: false'),'ci-search3-build'),/obsolete-head/,'obsolete build heads are cancelled independently');
 for(const file of leadSources)assert.throws(()=>verify(workflow.replace("      - '"+file+"'\n",''),bootstrap,html),/every entry dependency/,'generated projection retains canonical source coverage: '+file);
+
+// The canonical header adds one installed root asset to the isolated NEXT page.
+// Its fixture response must never admit another origin/path/method or fake artwork.
+const {canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
+const logoOrigin='http://127.0.0.1:43207',logoURL=logoOrigin+'/images/logo.svg';
+const logoRequest=(url=logoURL,method='GET',type='image')=>({url:()=>url,method:()=>method,resourceType:()=>type});
+const logoResponse=canonicalLogoFixture(logoRequest(),logoOrigin);
+assert.deepEqual(Object.keys(logoResponse).sort(),['body','contentType','status']);
+assert.equal(logoResponse.status,200);assert.equal(logoResponse.contentType,'image/svg+xml');
+assert.equal(require('node:crypto').createHash('sha256').update(logoResponse.body).digest('hex'),
+ '3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049');
+const deniedLogoRequests=[
+ logoRequest('https://external.invalid/images/logo.svg'),logoRequest('http://127.0.0.1:43208/images/logo.svg'),
+ logoRequest(logoOrigin+'/images/other.svg'),logoRequest(logoURL+'/'),logoRequest(logoURL+'?v=unreviewed'),
+ logoRequest(logoURL+'#fragment'),logoRequest('http://user@127.0.0.1:43207/images/logo.svg'),
+ logoRequest(logoURL,'POST'),logoRequest(logoURL,'HEAD'),logoRequest(logoURL,'GET','document'),
+ logoRequest(logoURL,'GET','fetch'),logoRequest(logoOrigin+'/api-v2.php?action=search_start')
+];
+for(const request of deniedLogoRequests)assert.equal(canonicalLogoFixture(request,logoOrigin),null);
+const logoModule={exports:{}},logoFixturePath=path.join(__dirname,'search3-visual-live-fixture.cjs');let logoReads=0;
+require('node:vm').runInNewContext(fs.readFileSync(logoFixturePath,'utf8'),{
+ module:logoModule,__dirname,URL,
+ require(name){if(name!=='node:fs')return require(name);return{readFileSync(file){logoReads++;assert.equal(file,path.join(root,'v2/visual-search/assets/anytour-logo.svg'));return Buffer.from('<svg/>');}};}
+},{filename:logoFixturePath});
+for(const request of deniedLogoRequests)assert.equal(logoModule.exports.canonicalLogoFixture(request,logoOrigin),null);
+assert.equal(logoReads,0,'unrelated requests cannot read or receive the canonical fixture');
+assert.throws(()=>logoModule.exports.canonicalLogoFixture(logoRequest(),logoOrigin),/canonical logo fixture SHA256 mismatch/);
+assert.equal(logoReads,1,'changed artwork fails closed before any response');
 console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; 37 original commands once; parallel exact-source lanes/strict result join; draft restoration/setup/concurrency mutations detected`);
+console.log('PASS canonical header logo fixture: exact same-origin GET image, pinned artwork; foreign/path/method/type/digest drift rejected');
 require('./search3-visual-lead-runtime.cjs');

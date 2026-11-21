@@ -5,6 +5,14 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
+      - 'v2/site-header-v2.php'
+      - 'v2/site-header-v2.css'
+      - 'v2/site-path-v1.php'
+      - 'v2/phone-value.php'
+      - 'v2/asset-version-v1.php'
+      - 'v2/home-v1.php'
+      - 'v2/home-v1.css'
+      - 'v2/home-hero-v1.jpg'
       - 'scripts/build/search3-js/**'
       - 'scripts/build/search3_production_inventory.py'
       - 'scripts/build/search3_public_candidate.py'
@@ -152,7 +160,7 @@ jobs:
         run: |
           python3 -B scripts/build/search3_public_candidate.py \
             --repo . --candidate-sha "$SOURCE_SHA" \
-            --main-sha e68fe088764521c7ff6b605403ca7f2ebb7e4dd6 \
+            --main-sha f6b7513445f599f332c5d9d4021b2537e2d3d609 \
             --output "$RUNNER_TEMP/search3-public-review" \
             --node-modules "$PWD/scripts/build/search3-js/node_modules"
       - name: Verify public review mobile and desktop journey
@@ -174,7 +182,7 @@ jobs:
         run: |
           python3 -B scripts/build/search3_public_candidate.py \
             --repo . --candidate-sha "$SOURCE_SHA" \
-            --main-sha c5513aaee18af701f1253678e79f41e5725b71a2 \
+            --main-sha f6b7513445f599f332c5d9d4021b2537e2d3d609 \
             --profile live --output "$RUNNER_TEMP/search3-public-live" \
             --node-modules "$PWD/scripts/build/search3-js/node_modules"
       - name: Verify the mixed-main compiled public LIVE graph with fictional transports
