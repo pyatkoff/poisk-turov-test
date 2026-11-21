@@ -33,14 +33,17 @@ if ($docRoot !== '' && is_file($siteConf)) require_once $siteConf;
   $siteConf=$docRoot.'/site_conf.php'; if($docRoot!==''&&is_file($siteConf)) require $siteConf;
 """, "  // Preview: do not execute production site_conf.\n")
 
-    # The compatibility entry otherwise includes the transformed homepage and
-    # retains a root-relative production lead URL. Keep the legacy UI isolated.
+    # Keep the compatibility entry's base and lead transport isolated. A built
+    # preview must require the maintained search, never fall back to its homepage.
     legacy = payload / "poisk-turov-old/index.php"
     replace_once(legacy, "define('V2_PUBLIC_BASE_PATH', '');", """require_once dirname(__DIR__) . '/site-path-v1.php';
 define('V2_PUBLIC_BASE_PATH', v2_site_base_path());
 define('V2_API_PUBLIC_PATH', '/api-v2.php');
 define('V2_LEAD_PUBLIC_PATH', v2_site_href('/preview-lead-disabled.php'));""")
-    replace_once(legacy, "require dirname(__DIR__) . '/index.php';", "require dirname(__DIR__) . '/search-page-v2.php';")
+    replace_once(legacy, """$root = dirname(__DIR__);
+$searchEntry = $root . '/search-page-v2.php';
+if (!is_file($searchEntry)) $searchEntry = $root . '/index.php';
+require $searchEntry;""", "require dirname(__DIR__) . '/search-page-v2.php';")
 
 
 if __name__ == "__main__":

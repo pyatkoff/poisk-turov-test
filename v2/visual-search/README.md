@@ -1,5 +1,185 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Shared lazy presentation loader — 21 November 2026
+
+`app.js` owns one cold-script lifecycle for the existing hotel-details, offer-list
+and flight-picker modules. Each adapter retains its exact asset reference,
+availability check, failure messages and 15-second timeout. Concurrent opens share
+one request; a failed request allows retry and a successful request stays cached.
+Settling removes the script and detaches both callbacks. A callback retained from
+a timed-out request cannot settle or clear a newer retry.
+
+The feature owners keep their synchronous warm rendering, current-view guards,
+history restoration and selection authority. The entry graph, visual composition,
+supplier, price, lead and analytics contracts are unchanged. The three existing
+lazy-owner suites cover the shared lifecycle through their actual host adapters;
+their prior journey assertions remain in place. This source refactor is not a new
+publication or supplier/physical-device acceptance.
+
+## Contact failure recovery — 26 October 2026
+
+While contact preparation is pending, Back/reopen makes a fresh UI capture but
+shares the same retained selector's request and outcome. Each capture keeps its
+own currentness check; a stale capture cannot CREATE or expose links. Pending
+identities reserve the existing eight-operation bound together with settled
+operations and retained failures. A settled failure remains non-replayable.
+
+The existing same-origin adapter and messenger flow retain only fixed public
+failure action/stage/code, an integer HTTP status and a complete allowlisted
+missing-field/owner pair. Request identities, tokens, cookies, private references,
+URLs, raw replies and exception messages never enter this failure view.
+Conditional Tourvisor selection is distinguished from token/freeze; local reply
+validation is distinguished from HTTP/transport failure. Existing TV errors and
+its existing diagnostic channel remain unchanged.
+
+A failed preparation shows a usable phone/return alternative. A status check is
+shown only for an existing operation; it never silently repeats preparation.
+Reopening the same failed selector keeps its original unavailable disposition
+without another token/select/freeze. UNKNOWN CREATE remains status-only and never
+creates another operation. Bot-first choice, optional phone, retained draft,
+price/selection binding, expiry and consent behavior keep their existing owners.
+
+This repairs the source-confirmed frontend loss from INT handoff
+[#2506/6402606612](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6402606612).
+It does not establish or fix the historical phone request's backend cause, the
+Tourvisor-after-filter failure, real bot delivery or production. Checks use only
+fictional intercepted replies; native CI/publication/runtime acceptance remain
+separate. Existing approved composition and CSS are unchanged.
+
+## Approved Site226 ordinary journey — 25 October 2026
+
+Owner continuation after the exact shown version226 authorizes this transfer:
+[#4709/6403338578](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6403338578).
+Same PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, source
+`a513a12c4e81225c92f25c42fa2af1b67b40dcbd`, evidence-only successor
+`e72f6509d3e8b65eb5e45836e56622431d4e7826`.
+Receiver base `30a7e7013edd7fe70a4700db0aafb2bf22ee05f8`;
+installed source before transfer `693f7ff9c1e2191ac2cb67ca34a35768445988c4`.
+
+Remove the form-only nested filter screen and its replaced handlers/state/CSS;
+primary search parameters and the existing result filters retain their owners.
+An explicit exact-room action now checks its price and opens canonical contacts
+without another Continue action. A changed amount remains visible for explicit
+acceptance before contacts; only that current exact identity can be accepted.
+Ordinary Back/reopen preserves acceptance, selected pair, phone draft and consent;
+a changed selection still resets consent. Equal meal/date/operator facts appear
+once per room group, while every exact offer key and amount remains separate.
+The contact summary shows the actual full room and meal; existing Telegram/MAX
+choices stay beside the contact question, with the optional phone path retained.
+
+Current NEXT data, lifecycle, supplier, quote/price, pair, lead and messenger
+context/flow owners remain authoritative. No donor fixtures, rehearsal lead shim,
+new controller, price formula, protected contract or supplier requests are copied.
+The Tourvisor after-filter failure remains a separate unresolved exact phone case;
+this transfer does not establish its cause or repair it. Native/physical430,
+Safari/safe area and real delivery remain unmeasured; keyboard passes are excluded.
+
+Local actual-owner tests use fictional replies only. Existing mandatory exact-head
+CI and compiled430/1280/short720 inspection, independent delta review, permitted
+release merge, an exclusive stock NEXT-only publisher, exact readback and affected
+installed boundary remain required. This source preparation is not an installed
+receipt or a whole-search score.
+
+## Retired calendar disclosure code — 25 October 2026
+
+The approved compact date picker renders its context through `renderCalendarScope`.
+The superseded disclosure template, unregistered toggle/visible-month callbacks,
+their unused toggle state and disclosure-only CSS have been removed together.
+The active calendar painter, viewport/scroll handling, month loading observer,
+prices, date selection and history remain unchanged. Existing passive-context
+and calendar parity checks retain their original observations and assertions.
+
+This is a technical cleanup of the existing owner, with no new composition or
+score increase. It starts from release `65d8d11b1cbc5b130a2fdf8f766daa3281282259`,
+which already includes the accepted PR4901 desktop calendar repair and LOCAL
+changes. Its final-source build, CI, visual review and NEXT publication require
+their own exact receipts; the earlier rejected c73 publisher remains sealed.
+
+## One lifecycle owner for live and labelled demo — 25 October 2026
+
+Both `index.php` and the offline `index.html` load
+`../prototype-search/search-lifecycle-v1.js` before the same application.
+The old local `search-lifecycle-v1.js` is a comment-only retired compatibility
+slot; it supplies no factory, listeners or fallback implementation.
+
+The replaced offline fork still executed a queued `requestSubmit()` after
+`invalidate()`, while the current canonical owner correctly canceled it.
+Using the same owner also keeps cancellation, explicit coverage/retry and cached
+resume semantics aligned without modifying live transport or the canonical file.
+Existing DOM fixtures point to that same source and retain their original journey
+assertions. The lifecycle check verifies both entry graphs and queued cancellation.
+
+This technical candidate requires applicable final-source CI and normal integration
+and publication. It changes no composition, price/party authority, supplier or lead
+contract, and is not a new live supplier or physical-device acceptance.
+
+## Approved whole Site203 journey — 19 October 2026
+
+Whole-version owner approval: [#4217/6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744). Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8c826b44bce5713adc04b5d06db19c4f6f3d67cd`, acceptance evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` / [6270378393](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393). Preserve project, history and public audience. This receiver adaptation starts from `c0be08868a9e940860bf7a5b7e5490b58f05aee9`, original NEXT installed source `55fbf6d98db877933ccf63ee2eb67dab2eb82b38`; source claim6270542519 plus controlled test-corpus extension6270605391.
+
+The existing tour body places full hotel/trip/party context in one disclosure while selecting flights. Existing ANEX rows show three pairs followed by a native disclosure for the remainder; full raw leg labels, exact selection and the selected tail pair survive pending calculation. The whole route retains a request with manager-selected flights after a current tour price, optional exact-pair selection, the existing canonical contact step, phone draft and consent reset on changed conditions, and Back/reopen state. The current receiver's canonical data, lead, quote, price, repricing, expiry, history and transport owners remain authoritative. Donor fixtures, rehearsal lead shims and provider contracts are not transferred.
+
+Source preparation is not publication or installed acceptance. Applicable focused/compiled checks and all final-head CI, independent real-frame review, permitted release merge, an exclusive stock NEXT-only publisher, exact readback and installed scenario are required. Donor contact/return quality is bounded `2/2/1.5/2/2=9.5`; it does not score the receiver or the whole product. Physical Safari/iPhone/keyboard/safe area remain not_measured;200% deferred. No supplier requests or real lead delivery are used for this transfer.
+
+## Approved original Site198 variant discovery — 15 October 2026
+
+Owner approved the complete Site198/package98/v234 in https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6187906754. Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8eff868acadbc81044595c044faf605b2881c1da`, audit `611502562a25c12149a96da9c10d28f1e07da9f5`. This bounded adaptation starts from release `a087f151c8380793bd84bb941f208defcdff754e` and installed source `298c9964f3be63e10c64f176cfdb1898050561cb`.
+
+The existing All variants control now follows the exact minimum price/CTA before supplementary room/operator/highlight text on ordinary mobile. It retains the existing handler, exact offers, photo1.8, current choice and contact/flight/price owners. Desktop/tablet grid positions stay unchanged; the approved disclosed DOM/Tab caveat visits About/AllVariants before operator-info. Runtime227 stays a separate receiver identifier from donor234. No donor fixtures, demos, data/parser/lifecycle/transport or money authority are copied.
+
+Candidate source requires applicable final-head focused/full compiled CI and visual inspection, a permitted release merge, separately claimed stock NEXT-only publication and installed readback. Preparation is not runtime acceptance. Original design-lab MobileC5=2 and clickable A11yC3=2 carry their exact receipt6180893455 without new growth; installed mobile remains not_measured until separately evidenced.200%deferred. No physical Safari, real supplier availability or lead delivery claim.
+
+## Confirmed live meal and contact repair — 2026-10-13
+
+Direct ANEX listing groups and their concrete offers now carry the same canonical
+search meal identity. The adapter reads a separate provider-qualified ANEX/global
+catalogue; it never borrows Tourvisor native IDs or infers identity from Russian
+display labels. Accepted mappings are the only authority when `available:true`.
+While a validated ANEX catalogue reports `available:false` and every native mapping
+is empty, the reviewed `anex-explicit-meal-code-v1` source policy classifies only
+the exact protocol strings `RO/BB/HB/FB/AI/UAI` through that catalogue's canonical
+codes and IDs. Unknown, branded, numeric, padded and lower-case values remain
+unclassified. Cross-catalogue conflicts fail closed. Raw provenance records the
+classification source and catalogue revision; this is not a DB mapping acceptance
+or a package/meal equivalence decision. Supplier payloads and native IDs are unchanged.
+
+The provider application already includes dates, nights and party. Its existing
+review now shows them by restricting the redundant-context CSS rule to the
+prototype's `details` review. Expanded flight details show each direction once;
+the compact names remain in the closed mobile summary. No lead runtime, payload,
+money, fuel, repricing cap or supplier mutation owner changes are included.
+
+Controlled adapter coverage includes mixed TV/ANEX groups and concrete offers,
+all six exact codes, negative/conflicting catalogues and a different canonical ID.
+The compiled contact matrix checks visible trip context, state-dependent flight
+names, wrapping, overflow, disclosure actions and contacts at all five widths.
+Final-source CI, inspected compiled evidence and installed NEXT readback are
+required separately; this entry is not a live supplier or physical Safari receipt.
+
+## Candidate: retained modal keyboard and focus — 2026-10-11
+
+The existing viewport owner now keeps every open mobile dialog inside the reduced
+visual viewport, including contact → retained tour while the keyboard is still
+open. Pinch zoom is excluded; short viewports have no 180px floor. Focused text
+controls reveal through modal-body scroll only, without replacing/refocusing the
+field or scrolling ancestors. Focus changes, restored modal snapshots, body resize
+from enlarged text/footer, dismissal and late events consume the same owner.
+Focused fields remain fully revealed after text/footer enlargement at mobile,
+tablet and desktop widths, with the keyboard dismissed too. Keyboard positioning
+remains mobile-only; tablet/desktop layout is unchanged.
+The filter-drawer branch is unchanged.
+The existing modal-position rule accounts for safe-area-top within the same bound.
+No new layout concept, card/profile redesign, renderer or style owner is included.
+
+Actual-owner source regression covers retained tour/contact at five widths with
+explicit rectangles, real DOM focus/caret and zero ancestor pan. The existing
+compiled application matrix additionally covers empty-phone validation, pinch,
+Back/reopen/history and exact price/pair/draft/operation guards. Source/compiled
+checks and final-head CI must be read separately; this candidate is not a published
+NEXT receipt or physical iPhone/Safari acceptance. The full Site135 design proposal
+and its owner visual+behavior approval gate remain separate and unchanged.
+
+
 ## Temporary SAMO pause — 2026-10-08
 
 The shared live configuration now enables only Tourvisor and direct ANEX. Both optional SAMO/Andromeda endpoints are disabled, so initial search, continuation and quote actions cannot send SAMO requests. The integration remains in the source for a later explicit re-enable; its retained regression journeys opt in only within fictional transport fixtures. The calendar still uses previously observed database prices.

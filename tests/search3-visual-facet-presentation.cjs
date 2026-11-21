@@ -5,12 +5,12 @@ const {JSDOM}=require('jsdom');
 const acorn=require('../scripts/build/search3-js/node_modules/acorn');
 const appSource=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8');
 const panelSource=fs.readFileSync(__dirname+'/../v2/visual-search/filter-panel-v1.js','utf8');
-const source=appSource+'\n'+panelSource;
+let source=appSource+'\n'+panelSource;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const declarationCache=new Map();
 function functions(source,names){let declarations=declarationCache.get(source);if(!declarations){const selected=[];function walk(node){if(!node||typeof node!=='object')return;if(node.type==='FunctionDeclaration'&&node.id?.name)selected.push(node);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(walk);else if(value&&typeof value==='object')walk(value);}walk(acorn.parse(source,{ecmaVersion:'latest'}));declarations=selected;declarationCache.set(source,declarations);}return declarations.filter(n=>names.includes(n.id.name)).map(n=>source.slice(n.start,n.end)).join('\n');}
 function context(c){
- c.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];c.destinationHotels||=new Map();c.destinationCountryList=false;
+ c.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];c.destinationHotels||=new Map();c.destinationCountryList=false;c.hotelStarsHTML=h=>'<span class="hotel-stars">'+h.stars+'★</span>';c.hotelCountText=n=>n+' отелей';
  c.getHotels=()=>c.hotels;c.getFilterDraft=()=>c.filterDraft;c.getViewportWidth=()=>c.innerWidth;
  if(c.countFacetOptions&&!c.countFacetOptionGroups)c.countFacetOptionGroups=(model,groups,selectedInventory,discover)=>{
   groups=new Map([...groups].map(([group,values])=>[group,[...values]]));
@@ -46,7 +46,7 @@ function amenities(source,selected){
  const fact={key:'pool',label:'Бассейн <&',groupId:1,group:'Удобства'},input=source.includes('function filterPresentationInventory(')?new Map([['pool',fact]]):[{amenities:[fact,{key:'hidden',label:'Нет данных',filterable:false}]}],html=c.amenityFilterGroups(input,filters);c.dom.window.close();return html;
 }
 function destination(source,s){
- const c=environment('<input id="destination-query"><button data-action="clear-destination-query"></button><p id="destination-scope"></p><div id="destination-country-context"></div><div id="destination-summary"></div><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
+ const c=environment(('<input id="destination-query"><button data-action="clear-destination-query"></button><p id="destination-scope"></p><div id="destination-country-context"></div><div id="destination-summary"></div><details id="destination-selection"><summary></summary><div class="destination-selected-resorts"></div><p class="picker-caption"></p></details><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>').replace('<details id="destination-selection"><summary></summary><div class="destination-selected-resorts"></div><p class="picker-caption"></p></details>',functions(source,['renderDestination']).includes("selection.querySelector")?'<details id="destination-selection"><summary></summary><div class="destination-selected-resorts"></div><p class="picker-caption"></p></details>':'<div id="destination-selection"></div>'));
  const rows=Array.from({length:24},(_,i)=>({id:i+1,country:'4',name:i%3?'Hotel '+i:'Resort '+i+' hotel',resort:'Курорт <&',stars:i%6,photos:['x<&']}));
  let calls=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],destinationChoice:{country:'4',resorts:s.resorts?['Регион <&']:[],hotelId:s.hotel?2:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:s.ready,catalogError:s.error?'Ошибка <&':'',catalogDeparture:'Москва',destinationHotel:id=>rows.find(h=>h.id===id),recentDestinations:()=>[{country:'4',resorts:[],hotelId:0}],destinationLabel:()=> 'Турция <&',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[{parent:{country:'4',name:'Регион <&'},children:[]}],resortChoiceHTML:r=>'<button>'+esc(r.name)+'</button>',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:rows.slice(0,12),matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:s.status,rows:rows.slice(8)},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:s.resolved?s.query:'',photoUrl:h=>h.photos[0],rememberUIRoute:()=>{}});
@@ -56,7 +56,7 @@ function destination(source,s){
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
 function destinationPaginationWork(code,fast){
- const c=environment('<input id="destination-query" value="hotel"><button data-action="clear-destination-query"></button><p id="destination-scope"></p><div id="destination-country-context"></div><div id="destination-summary"></div><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
+ const c=environment('<input id="destination-query" value="hotel"><button data-action="clear-destination-query"></button><p id="destination-scope"></p><div id="destination-country-context"></div><div id="destination-summary"></div><details id="destination-selection"><summary></summary><div class="destination-selected-resorts"></div><p class="picker-caption"></p></details><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
  const rows=Array.from({length:1000},(_,i)=>({id:i+1,country:'4',name:'Hotel '+i,resort:'Курорт '+i,stars:i%6,photos:['photo-'+i]}));
  let calls=0,hotelMarkup=0,routes=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],__rows:rows,
@@ -82,6 +82,11 @@ function facetRefresh(source,legacy=false){
  return {reads,scalarCalls,groupCalls,batchCalls,rows:inputs.map(input=>[input.label.textContent,input.label.ariaLabel,input.row.dataset.available,input.row.hidden]),tails};
 }
 function observations(source){const records=[];for(const group of ['resorts','operators','meals'])for(const n of [0,1,7,8,20])for(const query of ['', 'Вариант 1','елка','несуществующий'])for(const selected of [false,true])for(const expanded of [false,true])for(const focus of ['first','last','search'])records.push(facet(source,{group,n,query,selected,expanded,focus}));for(const selected of [false,true])records.push(amenities(source,selected));for(const query of ['', 'h','hotel','hot el','Ёлка'])for(const status of ['idle','loading','error','complete'])for(const ready of [false,true])for(const hotel of [false,true])for(const resorts of [false,true])for(const resolved of [false,true])records.push(destination(source,{query,status,ready,hotel,resorts,resolved,error:status==='error'}).result);return records;}
+const historicalDestination={"renderDestination": "function renderDestination(){\n const root=$('#destination-selection').contains(document.activeElement)?$('#destination-selection'):$('#destination-country-context').contains(document.activeElement)?$('#destination-country-context'):$('#destination-results'),focus=focusReference(document.activeElement,root);\n destinationMatchItems=[];\n const d=destinationChoice,q=normalizeSearch($('#destination-query').value),ids=destinationIds(d);\n $('#destination-query').setAttribute('aria-busy',String(destinationLookup.status==='loading'));\n $('[data-action=\"clear-destination-query\"]').hidden=!q;\n $('#destination-scope').textContent='Отели — '+(countryNames[d.country]||'в выбранной стране')+' · страны и курорты можно выбрать по названию';\n $('#destination-country-context').innerHTML=`<div class=\"destination-current-country\"><strong>${q.length>=2?'Отели: ':''}${esc(countryNames[d.country]||'Направление')}</strong><button class=\"text-button\" data-action=\"destination-countries\" aria-expanded=\"${destinationCountryList}\">Изменить</button></div>`;\n $('#destination-selection').hidden=!ids.length&&!d.resorts.length;\n $('#destination-selection').innerHTML=`<div class=\"destination-selection-heading\">ВЫБРАНО</div><div class=\"destination-selected-resorts\">${ids.length?ids.map(id=>`<button data-action=\"destination-remove\" data-id=\"${id}\" aria-label=\"${destinationHotel(id)?.name?'Убрать отель '+esc(destinationHotel(id).name):'Убрать выбранный отель'}\"><span>${esc(destinationHotel(id)?.name||'Выбранный отель')}</span>${icon('x')}</button>`).join(''):d.resorts.map(r=>`<button data-action=\"destination-remove\" data-value=\"${esc(r)}\" aria-label=\"Убрать курорт ${esc(r)}\"><span>${esc(r)}</span>${icon('x')}</button>`).join('')}</div><p class=\"picker-caption\">${ids.length?'Только выбранные отели':'Любой из выбранных курортов'}</p>`;\n let html='';const countryRows=Object.entries(countryNames).filter(([k,n])=>destinationCountryList||q&&normalizeSearch(n).includes(q)).sort((a,b)=>destinationOrder(a[1],b[1]));\n if(countryRows.length)html+=`<section class=\"destination-section\"><h3>Страны</h3>${countryRows.map(([k,n])=>`<button class=\"destination-row\" data-action=\"destination-country\" data-value=\"${k}\"><span><strong>${esc(n)}</strong><small>Страна${k===d.country?' · текущий выбор':''}</small></span><span class=\"chevron\">›</span></button>`).join('')}</section>`;\n if(!q&&!destinationCountryList)html+=`<button class=\"destination-row\" data-action=\"destination-all\" aria-pressed=\"${!ids.length&&!d.resorts.length}\"><span><strong>Вся страна</strong><small>Все курорты и отели ${esc(countryNames[d.country])}</small></span><span class=\"choice-check\">${!ids.length&&!d.resorts.length?icon('check'):''}</span></button>`;\n const groups=resortGroups(q,d.country),visible=q||destinationResortsExpanded?groups:groups.filter((g,i)=>i<destinationResortPreviewLimit||[g.parent,...g.children].some(r=>d.resorts.includes(r.name)));\n if(visible.length&&!destinationCountryList)html+=`<section class=\"destination-section\"><h3>Курорты${q?'':' · '+esc(countryNames[d.country])}</h3>${visible.map(({parent,children})=>`${resortChoiceHTML(parent,d.country,d.resorts,q?'Курорт · '+countryNames[parent.country]:'')}${children.filter(r=>q||d.resorts.includes(r.name)).map(r=>resortChoiceHTML(r,d.country,d.resorts,'Курорт · '+countryNames[r.country])).join('')}`).join('')}${!q&&groups.length>destinationResortPreviewLimit?`<button class=\"secondary destination-list-toggle\" data-action=\"toggle-destination-resorts\" aria-expanded=\"${destinationResortsExpanded}\">${destinationResortsExpanded?'Свернуть список':'Все курорты ('+groups.length+')'}</button>`:''}</section>`;\n const currentRows=destinationLookup.status==='complete'&&destinationLookup.query===q&&destinationLookup.country===d.country?destinationLookup.rows.filter(h=>String(h.country)===String(d.country)):[];\n const words=normalizeHotelQuery(q).split(' ').filter(Boolean),matches=destinationMatchItems=q.length>=2&&!destinationCountryList?rankDestinationHotels([...new Map([...hotels,...destinationHotels.values(),...destinationLookup.rows].filter(h=>String(h.country)===String(d.country)&&matchesHotelQuery(h,q)).concat(currentRows).map(h=>[h.id,h])).values()],words):[];\n if(matches.length)html+='<section id=\"destination-hotel-results\" class=\"destination-section\"></section>';\n if(!q&&!destinationCountryList)html+='<p class=\"picker-caption\">Для отеля введите название выше</p>';\n if(destinationLookup.status==='loading'&&!destinationCountryList)html+=`<p role=\"status\">Ищем отели · ${esc(countryNames[d.country]||'выбранная страна')}…</p>`;\n if(destinationLookup.status==='error')html+='<div class=\"destination-empty\" role=\"status\"><p>Не удалось загрузить отели. Запрос и выбранное направление сохранены.</p><button class=\"secondary\" data-action=\"retry-destination\">Повторить</button></div>';\n $('#destination-results').innerHTML=html||'<div class=\"destination-empty\" role=\"status\"><h3>Совпадений нет</h3><p>Проверьте название или сократите запрос. Выбранное направление сохранено.</p><button class=\"text-button\" data-action=\"clear-destination-query\">Очистить запрос</button></div>';\n if(matches.length)paintGeneratedRoots($('#destination-hotel-results'),[{id:'destination-hotels-heading',markup:`<h3 id=\"destination-hotels-heading\">Отели · ${matches.length} в списке</h3>`},...destinationHotelEntries(matches)],false);\n restoreFocus(focus,null,root);\n $('#destination-summary').textContent=destinationLabel(d,true);$('.destination-apply-context').textContent=ids.length?'Только выбранные отели':d.resorts.length?'Любой из выбранных курортов':'Все курорты и отели страны';const apply=$('[data-action=\"apply-destination\"]');apply.textContent=ids.length===1?'Выбрать отель':ids.length?'Выбрать отели ('+ids.length+')':d.resorts.length?'Выбрать курорты':'Выбрать страну';apply.disabled=!catalogReady||!countryNames[d.country];rememberUIRoute();\n}", "destinationHotelEntries": "function destinationHotelEntries(matches,start=0,limit=destinationHotelLimit){\n const ids=destinationIds(destinationChoice),entries=matches.slice(start,limit).map(h=>({id:'destination-hotel-'+h.id,markup:`<button id=\"destination-hotel-${h.id}\" class=\"destination-row destination-hotel\" data-action=\"destination-hotel\" data-id=\"${h.id}\" aria-pressed=\"${ids.includes(h.id)}\"><span class=\"destination-hotel-thumb\" aria-hidden=\"true\">${icon('image')}${h.photos?.length?`<img class=\"destination-hotel-image\" src=\"${esc(photoUrl(h))}\" alt=\"\" loading=\"lazy\" decoding=\"async\" width=\"64\" height=\"52\">`:''}</span><span class=\"destination-hotel-label\"><strong>${esc(h.name)}</strong><small>Отель · ${esc(h.resort)}, ${esc(countryNames[h.country]||'')}${h.stars?' · '+h.stars+'★':''}</small></span><span class=\"choice-check\">${ids.includes(h.id)?icon('check'):''}</span></button>`}));\n if(matches.length>limit)entries.push({id:'destination-more-hotels',markup:'<button id=\"destination-more-hotels\" class=\"secondary destination-list-toggle\" data-action=\"destination-more-hotels\">Показать ещё отели</button>'});return entries;\n}"};
+function destinationIdentityDigest(rows){const dom=new JSDOM(''),d=dom.window.document;const values=rows.map(r=>{d.body.innerHTML=r.html;return {disabled:r.disabled,rows:[...d.querySelectorAll('#destination-results [data-action]')].map(e=>[e.dataset.action,e.dataset.id,e.dataset.value,e.getAttribute('aria-pressed')])};});dom.window.close();return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex');}
+let historicalProjection;
+if(process.env.SEARCH3_FACET_HISTORICAL==='1'){for(const [name,code]of Object.entries(historicalDestination))source=source.replace(functions(source,[name]),()=>code);}
+else{const output=require('node:child_process').execFileSync(process.execPath,[__filename],{encoding:'utf8',env:{...process.env,SEARCH3_FACET_HISTORICAL:'1'},maxBuffer:1024*1024});historicalProjection=JSON.parse(output.match(/HISTORICAL_FACET (.+)/)[1]);}
 const actual=observations(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 // Actual destination action owner must retain the focused exact row across
 // selection and later inventory paints. Geometry is covered by compiled CI.
@@ -124,7 +129,10 @@ assert.throws(()=>destinationFocus(source.replace("$('#destination-country-conte
 console.log('PASS destination keyboard focus: actual select/deselect/multi-ID action, later paint, input caret, external focus and removed row; supplier/lead HTTP0');
 // Approved hotel photos, country scope and confirmation wording; ordinary
 // facet availability, ordering, selection and focus remain characterized.
-if(!process.argv.includes('--capture'))assert.equal(digest,'e17632718b1d1f2bca649f019dd7e3c7b67733cfed1c4d5ed8e81b98d1b04078','filter/destination HTML, availability, ordering, selection and focus');
+const projected={full:digest,facets:crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,722))).digest('hex'),destinations:destinationIdentityDigest(actual.slice(722))};
+if(process.env.SEARCH3_FACET_HISTORICAL==='1'){assert.equal(projected.full,'e17632718b1d1f2bca649f019dd7e3c7b67733cfed1c4d5ed8e81b98d1b04078','unchanged historical complete facet/destination pin');console.log('HISTORICAL_FACET '+JSON.stringify(projected));process.exit(0);}
+assert.equal(projected.facets,historicalProjection.facets,'all 722 facet/amenity HTML/focus observations remain unchanged');
+assert.equal(projected.destinations,historicalProjection.destinations,'exact destination ID/order/selection/action and Apply availability retained');
 const i=process.argv.indexOf('--compare'),rootBaselineIndex=process.argv.indexOf('--root-baseline'),rootBaseline=rootBaselineIndex>=0?fs.readFileSync(process.argv[rootBaselineIndex+1],'utf8'):null;if(i>=0){const baseline=fs.readFileSync(process.argv[i+1],'utf8');assert.deepEqual(actual,observations(baseline),'before/after presentation');for(const query of ['hotel 1','hotel 22','hotel 0','???'])assert.deepEqual(destination(source,{query,status:'complete',ready:true}).result,destination(baseline,{query,status:'complete',ready:true}).result,'mixed name preference and empty-word query');}
 if(source.includes('function filterCheckRowHTML(')){
  const scenario={group:'operators',n:20,query:'Вариант 1',selected:true,expanded:false,focus:'first'};
@@ -180,6 +188,27 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  c.updateMealPicker(selectedCount);assert.equal(scalarCalls,1,'same-call picker consumes the selected inventory; only any-meal count stays scalar');assert.equal(c.$('#meal-result-preview').textContent,'7 отелей · по загруженной выдаче');
  selectedCount=4;c.updateMealPicker();assert.equal(scalarCalls,2,'later picker edit recomputes a fresh selected count');assert.equal(c.$('#meal-result-preview').textContent,'5 отелей · по загруженной выдаче');
  current=null;c.updateMealCounts();assert.equal(c.$$('.meal-hotel-count').length,0,'new draft has no result counts');
+ c.dom.window.close();
+}
+{
+ const labels={AI:'Всё включено',UAI:'Ультра всё включено',BB:'Завтраки',HB:'Полупансион',FB:'Полный пансион',RO:'Без питания'};
+ const c=environment('<dialog id="modal"><div id="modal-body"></div><div id="modal-footer"></div></dialog>');
+ Object.assign(c,{mealNames:Object.fromEntries(Object.values(labels).map(label=>[label,label])),
+  pickerFilters:()=>({meals:['Завтраки']}),boundedHistoryStrings:()=>null,boundedHistoryText:()=>'',mealPreviewModel:()=>null,
+  compareMealLabels:(a,b)=>a.localeCompare(b,'ru'),showModal:(_type,_title,_kicker,body)=>{c.$('#modal-body').innerHTML=body;}});
+ context(c);vm.runInContext(functions(source,['openMeals','updateMealCounts','updateMealPicker']),c);
+ c.openMeals();
+ function matches(term){
+  c.$('#meal-query').value=term;c.updateMealPicker();
+  return c.$$('.meal-option').filter(row=>!row.hidden).map(row=>row.querySelector('input').value).filter(Boolean);
+ }
+ for(const [code,label] of Object.entries(labels)){
+  for(const query of [code,code.toLowerCase(),' '+code.toLowerCase()+' '])assert.deepEqual(matches(query),[label],query);
+ }
+ assert.deepEqual(matches('завтр'),['Завтраки']);
+ assert.deepEqual(matches('неизвестный код'),[]);assert.equal(c.$('#meal-no-match').hidden,false);
+ assert.equal(matches('').length,6);assert.equal(c.$('#meal-no-match').hidden,true);
+ assert.deepEqual(c.$$('.meal-option input:checked').map(input=>input.value),['Завтраки'],'search preserves the active selection');
  c.dom.window.close();
 }
 {
@@ -343,4 +372,108 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
  c.filterDraft=null;panel.renderFilters();assert.equal(c.$('#hotel-query').value,'','closing the draft restores the applied model');c.dom.window.close();
  assert(!appSource.includes('function paintFilters(')&&!appSource.includes('function renderFilters('),'presentation has one owner');
  console.log('PASS real filter factory: replacement hotel/draft/viewport inputs, delegated facet query and applied-model restore; supplier/lead HTTP0');
+}
+
+// A normal mobile recovery click must replace the leased query/budget editor,
+// not just the preview model: Apply reads these actual controls again.
+for(const action of ['recover-filters','reset'])for(const editor of ['#max-price','#hotel-query']){
+ const c=environment('<aside id="filter-panel"><div class="filter-top"><h3>Фильтры</h3><button id="filter-detail-back"></button></div><select id="filter-section-jump"></select><div id="filters"></div><button id="apply-filters"></button></aside><span id="beach-chip"></span><span id="family-chip"></span>');
+ const filters={q:'Azure',min:0,max:185000,stars:[],meals:['Всё включено'],resorts:[],operators:[],amenities:[],rating:false};
+ const reset=action==='reset',chosen={filters:reset?{...filters,q:'',max:null,meals:[]}: {...filters,q:editor==='#hotel-query'?'':filters.q,max:187000},onlyFavorites:false,selectedDate:reset?null:'2026-10-01'};
+ Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:5}],filterDraft:{filters:{...filters},onlyFavorites:false,selectedDate:'2026-10-01'},innerWidth:430,filterBudgetEdit:null,
+  editingFilterModel:()=>c.filterDraft,readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),budgetLabel:f=>'До '+f.max,countMatchingHotels:m=>m.filters.max===null||m.filters.max>=186400?1:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>200000,mealNames:{'Всё включено':1},ratingValue:()=>null,hotelPlaces:()=>[],operators:[],syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{},structuredClone,defaultFilters:()=>({...filters,q:'',max:null,meals:[]}),drawerSuggestions:[{model:chosen}],rememberUIRoute:()=>{},emptySuggestions:[]});
+ context(c);vm.runInContext(functions(appSource,['currentFilterBudgetEdit','syncBudgetControls','handleResultFilterAction']),c);vm.runInContext(panelSource,c);
+ const panel=c.window.AnyTourFilterPanelV1.create({...c,getFilterDraft:()=>c.filterDraft,getHotels:()=>c.hotels,getViewportWidth:()=>430});
+ c.filterEdited=()=>panel.renderFilters();panel.renderFilters();
+ const leased=c.$(editor);leased.focus();c.$('#apply-filters').focus();
+ c.handleResultFilterAction(action,{dataset:{source:'drawer',value:'0'},closest:()=>c.$('#filter-panel')});
+ assert.equal(c.$('#max-price').value,reset?'':'187000','recovery budget must reach the real editor before Apply');
+ assert.equal(c.$('#hotel-query').value,chosen.filters.q,'explicit recovery query must replace a leased previous query');
+ assert.equal(c.$('#hotel-query').value===''||c.$('#hotel-query').value==='Azure',true);
+ const appliedBudget=c.readBudgetFields(c.$('#min-price'),c.$('#max-price'));
+ assert.equal(appliedBudget.max,reset?null:187000,'Apply must not reinstate the pre-recovery budget');
+ assert.equal(c.countMatchingHotels({...c.filterDraft,filters:{...c.filterDraft.filters,...appliedBudget}}),1,'the announced recovered hotel survives Apply');
+ assert.deepEqual(Array.from(c.filterDraft.filters.meals),reset?[]:['Всё включено'],'reset clears meals; targeted recovery retains them');
+ assert.equal(c.filterDraft.selectedDate,reset?null:'2026-10-01','reset clears date facet; targeted recovery retains it');
+ c.dom.window.close();
+}
+console.log('PASS explicit mobile recovery: real retained filter owner/action synchronizes budget/query before Apply; meal/date preserved; supplier/lead HTTP0');
+
+// Blurring a budget editor emits change before the target receives click.
+// A repeated preview must keep unchanged recovery/chip buttons connected.
+{
+ const c=environment('<div id="drawer-context"></div><div id="drawer-selected"></div><div id="drawer-recovery"></div><div id="filter-preview-count"></div><input id="hotel-query" value="Azure"><input id="min-price"><input id="max-price" value="185000"><input id="price-range" type="range" max="200000"><button id="apply-filters"></button>');
+ const model={filters:{q:'Azure',min:0,max:185000,meals:['Всё включено']}};
+ Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),filterDraft:model,state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},countryNames:{4:'Турция'},countMatchingHotels:m=>m.filters.max>=186400?1:0,filterChipData:()=>[{key:'price',value:'',label:'До 185 000 ₽'}],syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2A+[0,8]',recoverySuggestions:()=>[{key:'budget',title:'Бюджет до 187 000 ₽',count:1,model:{...model,filters:{...model.filters,max:187000}}}],responseFor:()=>({phase:'complete'}),readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),showFilterBudgetValidity:()=>{},searchEditSession:null,filterBudgetEdit:null,editingFilterModel:()=>c.filterDraft,budgetScale:()=>200000,budgetLabel:f=>'До '+f.max,searchKey:()=> 'scope',syncFilterSections:()=>{},rememberUIRoute:()=>{},structuredClone});
+ context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryIntro','recoveryHTML','searchDeliveryIncomplete','updateDrawerPreview','editFilterBudget','syncBudgetControls','handleResultFilterChange','handleResultFilterAction']),c);
+ c.updateDrawerPreview();const recovery=c.$('[data-action="recover-filters"]'),chip=c.$('[data-action="remove-draft-filter"]');
+ c.filterEdited=()=>c.updateDrawerPreview();
+ c.$('#max-price').addEventListener('change',()=>c.handleResultFilterChange(c.$('#max-price')));
+ c.$('#max-price').dispatchEvent(new c.dom.window.Event('change',{bubbles:true}));
+ assert.equal(c.$('[data-action="recover-filters"]'),recovery,'budget blur must not remove the ordinary recovery click target');
+ assert.equal(c.$('[data-action="remove-draft-filter"]'),chip,'budget blur must not remove an unchanged filter-chip click target');
+ c.document.addEventListener('click',e=>{const target=e.target.closest('[data-action]');if(target)c.handleResultFilterAction(target.dataset.action,target);});
+ recovery.dispatchEvent(new c.dom.window.MouseEvent('click',{bubbles:true}));
+ assert.equal(c.$('#max-price').value,'187000','the original connected button reaches recovery and its authoritative budget');
+ assert.equal(c.readBudgetFields(c.$('#min-price'),c.$('#max-price')).max,187000,'Apply reads the clicked recovered budget');
+ assert.equal(c.$('[data-action="recover-filters"]'),null,'changed model removes obsolete recovery actions');
+ c.dom.window.close();
+ console.log('PASS drawer preview change: unchanged ordinary click targets retained; obsolete recovery removed');
+}
+// Failed source delivery is unknown availability, even when the lifecycle has
+// settled as complete. Exercise the actual results/drawer owners, not a copy.
+{
+ const c=environment('<div id="filter-preview-count"></div><div id="drawer-context"></div><div id="drawer-selected"></div><div id="drawer-recovery"></div><button id="apply-filters"></button><input id="min-price"><input id="max-price">'),model={filters:{hotelId:0,hotelIds:[4234,684],meals:['Всё включено']},selectedDate:null};
+ let response={phase:'complete',pending:false,providers:{tourvisor:'error',anex:'error'},sources:{tourvisor:{status:'error'},anex:{status:'error'}}},recoveryCalls=0;
+ Object.assign(c,{state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},data:{preview:false},filterDraft:model,searchEditSession:null,emptySuggestions:[],drawerSuggestions:[],generatedRootBindings:new WeakMap(),countryNames:{4:'Турция'},responseFor:()=>response,appliedFilterModel:()=>model,filterChipData:()=>[],countMatchingHotels:()=>0,syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых',recoverySuggestions:()=>{recoveryCalls++;return [];},emptyCalendarContext:()=>'<strong>Сохранённая цена 93 562 ₽</strong>',readBudgetFields:()=>({min:0,max:null}),showFilterBudgetValidity:()=>{}});
+ c.MutationObserver=c.dom.window.MutationObserver;
+ context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryIntro','recoveryHTML','searchDeliveryIncomplete','emptyResultsHTML','updateDrawerPreview']),c);
+ for(const providers of [{tourvisor:'error',anex:'error'},{tourvisor:'complete',anex:'error'},{tourvisor:'complete',anex:'partial'},{tourvisor:'complete',anex:'unknown'}]){
+  response={phase:'complete',pending:false,providers,sources:{}};
+  const html=c.emptyResultsHTML();assert.doesNotMatch(html,/Попробуйте другие даты|Выбрать другие даты|Подходящих предложений пока нет|93 562/,'incomplete delivery never claims unavailable tours or advertises date recovery/calendar prices');
+  assert.match(html,/Отсутствие результатов пока не означает/);assert.match(html,/Даты, туристы и фильтры сохранены/);
+  c.updateDrawerPreview();assert.doesNotMatch(c.$('#filter-preview-count').textContent,/туров нет/);assert.equal(c.$('#drawer-recovery .recovery-choice'),null);assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
+ }
+ assert.equal(recoveryCalls,0,'failed/partial/unknown source data cannot justify changing correct conditions');
+ response={phase:'complete',pending:false,providers:{tourvisor:'error',anex:'error'},sources:{},canContinue:true,retryRead:true};
+ const retained=c.emptyResultsHTML();assert.match(retained,/data-action="continue-search"/);assert.match(retained,/Проверить результат/);assert.doesNotMatch(retained,/data-action="retry-search"/,'retained read must not turn into a fresh supplier start');
+ response={phase:'complete',pending:false,providers:{tourvisor:'complete',anex:'complete'},sources:{}};
+ assert.match(c.emptyResultsHTML(),/Подходящих предложений пока нет/,'confirmed successful empty retains the existing date/filter recovery');
+ c.updateDrawerPreview();assert.match(c.$('#filter-preview-count').textContent,/туров нет/);
+ assert.equal(c.$('#drawer-recovery').children.length,0,'no recovery leaves no empty wrapper or prompt');
+ console.log('PASS failed-source zero results: criteria retained, no false availability/calendar/date recovery; successful empty preserved');
+
+ // Compare the choices a visitor sees on the results page and in the filter drawer.
+ c.structuredClone=structuredClone;
+ c.defaultFilters=()=>({max:null,meals:[],operators:[]});
+ c.rangeText=()=>'1–7 октября';
+ vm.runInContext(functions(appSource,['recoverySuggestions']),c);
+ const recoveryViews=()=>{
+  const results=c.document.createElement('section');
+  results.innerHTML=c.emptyResultsHTML();
+  c.updateDrawerPreview();
+  return [results,c.$('#drawer-recovery')];
+ };
+ const sharedHint='Измените одно условие. Остальные сохранятся.';
+ model.filters={max:null,meals:['Всё включено'],operators:['Демо-оператор']};
+ c.countMatchingHotelGroups=models=>models.map(m=>m.filters.meals.length?2:4);
+ for(const view of recoveryViews()){
+  assert.equal(view.textContent.split(sharedHint).length-1,1,'one shared hint for the ordinary alternatives');
+  const choices=[...view.querySelectorAll('.recovery-choice')];
+  assert.deepEqual(choices.map(button=>button.querySelector('strong').textContent),['Любое питание','Любой туроператор']);
+  assert.deepEqual(choices.map(button=>button.querySelector('.recovery-count').firstChild.textContent.trim()),[c.hotelCountText(4),c.hotelCountText(2)]);
+  assert.equal(view.querySelector('.recovery-choice small'),null);
+ }
+ const assertSpecialChoice=(view,key,description)=>{
+  assert.equal(view.querySelectorAll('.recovery-choice').length,1);
+  assert.equal(view.querySelector('[data-recovery-key="'+key+'"] small').textContent,description);
+  assert.equal(view.textContent.includes(sharedHint),false);
+ };
+ c.countMatchingHotelGroups=models=>models.map(m=>!m.filters.meals.length&&!m.filters.operators.length?4:0);
+ for(const view of recoveryViews())assertSpecialChoice(view,'reset','Город, страна, диапазон дат и туристы сохранятся');
+ model.filters=c.defaultFilters();
+ model.selectedDate='2026-10-02';
+ for(const view of recoveryViews())assertSpecialChoice(view,'date','В пределах выбранного диапазона вылета');
+ console.log('PASS recovery copy: shared hint, hotel counts and distinct date/reset consequences in results and drawer');
+ c.dom.window.close();
 }

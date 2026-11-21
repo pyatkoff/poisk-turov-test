@@ -6,14 +6,24 @@ on:
     paths:
       - 'v2/visual-search/**'
       - 'scripts/build/search3-js/**'
+      - 'scripts/build/search3_production_inventory.py'
+      - 'scripts/build/search3_public_candidate.py'
+      - 'scripts/deploy/search3_production_snapshot.py'
       - 'v2/prototype-search/config.js'
       - 'v2/runtime-v3.js'
+      - 'v2/analytics-v4.js'
+      - 'v2/analytics-config.php'
+      - 'v2/seo-config.php'
       - 'v2/lead-search-context.js'
       - 'v2/tour-controller-v4.js'
       - 'v2/lead-form-guard-v1.js'
       - 'v2/search3-canonical-profiles-v1.js'
       - 'v2/search3-local-db-provider-v1.js'
       - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/messenger-context-v1.js'
+      - 'v2/prototype-search/messenger-flow-v1.js'
+      - 'tests/search3-messenger-context.cjs'
+      - 'tests/search3-messenger-flow.cjs'
       - 'v2/prototype-search/calendar-exact-hotel-v1.js'
       - 'v2/prototype-search/source-receipt-v1.js'
       - 'v2/prototype-search/search-lifecycle-v1.js'
@@ -21,14 +31,23 @@ on:
       - 'v2/prototype-search/hotel-popularity-v1.js'
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
+      - 'tests/search3-public-*.cjs'
+      - 'tests/search3_public_entry_test.py'
+      - 'tests/fixtures/search3-preview-entry-before-public.php'
+      - 'scripts/ci/search3_visual_browser_dependencies.cjs'
+      - 'scripts/ci/search3_visual_evidence_retention.cjs'
       - 'tests/search3-prototype-*.cjs'
       - 'tests/local-tv-catalog-browser.cjs'
       - 'tests/local-tv-catalog-test.php'
       - 'v2/data/local-tv-catalog*.php'
       - 'v2/data/migrations/20261010-local-tv-catalog.sql'
       - '.github/workflows/search3-visual-migration.yml'
+      - '.github/workflows/build-search3-whole-site-preview.yml'
 permissions:
   contents: read
+concurrency:
+  group: ci-search3-visual-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   focused-presentation:
     # Drafts retain affected-owner checks without installing a browser matrix.
@@ -47,8 +66,16 @@ jobs:
       - name: Verify affected presentation owners and CI restoration
         run: |
           export NODE_PATH="$RUNNER_TEMP/facet-tools/node_modules"
+          node tests/search3-messenger-context.cjs
+          node tests/search3-messenger-flow.cjs
+          node tests/search3-prototype-messenger-handoff.cjs
+          node tests/search3-visual-messenger-entry.cjs
           node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-public-entry.cjs
+          node tests/search3-public-bindings.cjs
+          node tests/search3-visual-browser-dependencies.cjs
+          node tests/search3-visual-evidence-retention.cjs
           node tests/search3-visual-formatting.cjs
           node tests/search3-visual-calendar-inventory.cjs
           node tests/search3-visual-flight-filter-work.cjs
@@ -60,12 +87,11 @@ jobs:
           node tests/search3-visual-event-dispatch.cjs
           node tests/search3-visual-result-merge.cjs
           node tests/local-tv-catalog-browser.cjs
-  visual-migration:
-    # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
+  integration-contracts:
+    # Raw-source contracts run independently of the compiled browser matrix.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    # Existing full journey plus the five-width LOCAL SQL/API/browser acceptance.
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -74,40 +100,122 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/contract-tools" --no-audit --no-fund --no-save jsdom@26.1.0
+      - name: Verify complete raw-source integration contracts
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/contract-tools/node_modules"
+          node tests/search3-visual-offer-rendering.cjs
+          node tests/search3-visual-migration.cjs
+          node tests/search3-visual-live-bridge.cjs
+          node tests/search3-visual-anex-flight-continuation.cjs
+          node tests/search3-visual-v139-search-edit-tests.cjs
+          node tests/search3-visual-v120-recorded-journey-tests.cjs
+          python3 -B tests/search3_public_entry_test.py
+  browser-matrix:
+    # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    # Existing full journey plus the five-width LOCAL SQL/API/browser acceptance.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # The review artifact compares this head with one exact retained main commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
       - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
-      - run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Inspect installed Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu package mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
+      - name: Install missing Chromium system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Playwright Chromium
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"
       - name: Build the exact compiled visual fixture graph
         run: |
           npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
           cp -a v2 "$RUNNER_TEMP/visual-compiled"
           node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
           node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Build the isolated public review against exact main
+        id: public-review-build
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -B scripts/build/search3_public_candidate.py \
+            --repo . --candidate-sha "$SOURCE_SHA" \
+            --main-sha e68fe088764521c7ff6b605403ca7f2ebb7e4dd6 \
+            --output "$RUNNER_TEMP/search3-public-review" \
+            --node-modules "$PWD/scripts/build/search3-js/node_modules"
+      - name: Verify public review mobile and desktop journey
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_PUBLIC_REVIEW_ROOT: ${{ runner.temp }}/search3-public-review
+        run: node tests/search3-public-review-browser.cjs
+      - name: Retain exact public review and local rollback evidence
+        if: ${{ always() && steps.public-review-build.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-public-review-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/search3-public-review/
+          if-no-files-found: error
+      - name: Build the offline public LIVE candidate against inspected main
+        id: public-live-build
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -B scripts/build/search3_public_candidate.py \
+            --repo . --candidate-sha "$SOURCE_SHA" \
+            --main-sha c5513aaee18af701f1253678e79f41e5725b71a2 \
+            --profile live --output "$RUNNER_TEMP/search3-public-live" \
+            --node-modules "$PWD/scripts/build/search3-js/node_modules"
+      - name: Verify the mixed-main compiled public LIVE graph with fictional transports
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_PUBLIC_LIVE_ROOT: ${{ runner.temp }}/search3-public-live
+        run: node tests/search3-public-live-browser.cjs
+      - name: Retain exact offline LIVE candidate and rollback evidence
+        if: ${{ always() && steps.public-live-build.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-public-live-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/search3-public-live/
+          if-no-files-found: error
+      - name: Affected messenger flow on the exact compiled graph
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled
+        run: node tests/search3-visual-live-browser.cjs --messenger-only
+      - name: Retain affected messenger frames
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-messenger-${{ github.event.pull_request.head.sha }}
+          path: visual-live-evidence/messenger-entry/
+          compression-level: 0
+          if-no-files-found: error
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
-          node tests/search3-visual-facet-presentation.cjs
-          node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
-          node tests/search3-visual-event-dispatch.cjs
-          node tests/search3-visual-result-merge.cjs
           node tests/search3-visual-modal-history.cjs
-          node tests/search3-visual-offer-list-lazy.cjs
-          node tests/search3-visual-hotel-details-lazy.cjs
           node tests/search3-visual-hotel-details-rendering.cjs
-          node tests/search3-visual-hotel-content-text.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/local-tv-catalog-browser.cjs --browser
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
-          node tests/search3-visual-offer-rendering.cjs
-          node tests/search3-visual-migration.cjs
-          node tests/search3-visual-live-bridge.cjs
-          node tests/search3-visual-anex-flight-continuation.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
-          node tests/search3-visual-v139-search-edit-tests.cjs
-          node tests/search3-visual-v120-recorded-journey-tests.cjs
           php -l v2/visual-search/index.php
           php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'
           php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include "v2/visual-search/index.php";' | grep -Eq 'app.js\?v=[0-9a-f]{12}'
@@ -122,7 +230,7 @@ jobs:
           source = pathlib.Path("visual-live-evidence")
           target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "visual-acceptance-parts"
           limit = 24 * 1024 * 1024
-          parts = [[] for _ in range(4)]
+          parts = [[] for _ in range(5)]
           sizes = [0] * len(parts)
           if target.exists():
               raise SystemExit("Acceptance parts output already exists")
@@ -140,7 +248,7 @@ jobs:
           for entry in sorted(entries, key=lambda row: (-row["bytes"], row["path"])):
               part = min(range(len(parts)), key=lambda index: sizes[index])
               if sizes[part] + entry["bytes"] > limit:
-                  raise SystemExit("Complete acceptance evidence exceeds four bounded parts")
+                  raise SystemExit("Complete acceptance evidence exceeds five bounded parts")
               entry["part"] = f"{part + 1:02d}"
               parts[part].append(entry)
               sizes[part] += entry["bytes"]
@@ -218,3 +326,29 @@ jobs:
           compression-level: 0
           include-hidden-files: true
           if-no-files-found: error
+      - name: Retain visual bridge acceptance part 05
+        if: ${{ always() && steps.acceptance-parts.outputs.part05 == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-05
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-05/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+  visual-migration:
+    # Preserve the existing required status; every exact-source lane must pass.
+    needs: [focused-presentation, integration-contracts, browser-matrix]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require every full visual acceptance lane
+        env:
+          FOCUSED_RESULT: ${{ needs.focused-presentation.result }}
+          CONTRACTS_RESULT: ${{ needs.integration-contracts.result }}
+          BROWSER_RESULT: ${{ needs.browser-matrix.result }}
+        run: |
+          set -euo pipefail
+          test "$FOCUSED_RESULT" = success
+          test "$CONTRACTS_RESULT" = success
+          test "$BROWSER_RESULT" = success

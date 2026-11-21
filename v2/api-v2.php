@@ -8,6 +8,41 @@ if (is_file($privateConfig)) require_once $privateConfig;
 require_once __DIR__ . '/catalog-cache-v1.php';
 require_once dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php';
 
+/** The permanent INT carrier owns this existing runtime; never create a ROOT copy. */
+function tourvisor_fuel_passive_root(): ?string
+{
+    $preview = __DIR__ . '/_preview';
+    $runtime = $preview . '/search3-anex-candidate';
+    foreach ([$preview, $runtime] as $directory) {
+        if (!is_dir($directory) || is_link($directory)) return null;
+    }
+    return $runtime;
+}
+
+/** Optional passive evidence uses only the existing INT runtime's helpers. */
+function tourvisor_fuel_passive_bootstrap(): void
+{
+    $classes = ['AnyTourTourvisorOperatorFuelPassiveIntakeV1',
+        'AnyTourTourvisorOperatorFuelRetainedIntakeV1',
+        'AnyTourOperatorFuelRuleStoreV1', 'AnyTourOperatorFuelRuleEvidenceV1'];
+    $loaded = count(array_filter($classes, static fn(string $class): bool => class_exists($class, false)));
+    if ($loaded !== 0) return;
+    $files = ['tourvisor-operator-fuel-passive-intake.php',
+        'tourvisor-operator-fuel-retained-intake.php',
+        'operator-fuel-rule-store.php', 'operator-fuel-rule-evidence.php'];
+    $runtime = tourvisor_fuel_passive_root();
+    if ($runtime === null) return;
+    $directory = $runtime . '/app/integrations';
+    foreach ([$runtime . '/app', $directory] as $ancestor) {
+        if (!is_dir($ancestor) || is_link($ancestor)) return;
+    }
+    foreach ($files as $file) {
+        if (!is_file($directory . '/' . $file) || is_link($directory . '/' . $file)) return;
+    }
+    require_once $directory . '/tourvisor-operator-fuel-passive-intake.php';
+}
+tourvisor_fuel_passive_bootstrap();
+
 function out($data, int $status = 200)
 {
     http_response_code($status);
@@ -59,7 +94,7 @@ function short_text($value, int $max = 200)
     return mb_substr(trim((string)$value), 0, $max, 'UTF-8');
 }
 
-function request_array(string $key, int $maxItems = 100)
+function request_array(string $key, int $maxItems = 100, bool $deduplicate = true)
 {
     $value = $_GET[$key] ?? [];
     if ($value === '' || $value === null) return [];
@@ -69,12 +104,13 @@ function request_array(string $key, int $maxItems = 100)
         $v = short_text($v, 80);
         if ($v !== '') $out[] = $v;
     }
-    return array_values(array_unique($out));
+    return $deduplicate ? array_values(array_unique($out)) : $out;
 }
 
 function child_ages()
 {
-    $ages = request_array('childs', 3);
+    // Each age represents one child, including siblings of the same age.
+    $ages = request_array('childs', 3, false);
     $out = [];
     foreach ($ages as $age) {
         $v = filter_var($age, FILTER_VALIDATE_INT);
@@ -111,6 +147,24 @@ function query_string(array $params)
     return implode('&', $parts);
 }
 
+/** Fixed categories and numeric timings only; never paths, IDs or supplier text. */
+function tv_failure_diagnostics(string $path, int $errno, int $status, float $seconds): array
+{
+    $stage = 'other';
+    if ($path === '/tours/search') $stage = 'search_start';
+    elseif (preg_match('~\A/tours/search/[1-9][0-9]*/status\z~D', $path)) $stage = 'search_status';
+    elseif (preg_match('~\A/tours/search/[1-9][0-9]*/continue\z~D', $path)) $stage = 'search_continue';
+    elseif (preg_match('~\A/tours/search/[1-9][0-9]*\z~D', $path)) $stage = 'search_results';
+    elseif (preg_match('~\A/tours/[^/]+/flights\z~D', $path)) $stage = 'flights';
+    elseif (preg_match('~\A/tours/[^/]+\z~D', $path)) $stage = 'tour';
+    $facts = ['provider' => 'tourvisor', 'stage' => $stage,
+        'category' => $errno !== 0 ? ($errno === 28 ? 'timeout' : 'transport') : 'http'];
+    if ($status >= 0 && $status <= 599) $facts['httpStatus'] = $status;
+    if ($errno >= 0 && $errno <= 999) $facts['curlErrno'] = $errno;
+    if (is_finite($seconds) && $seconds >= 0 && $seconds <= 3600) $facts['elapsedMs'] = (int)round($seconds * 1000);
+    return $facts;
+}
+
 function tv_get(string $path, array $params = [])
 {
     $token = jwt();
@@ -130,16 +184,21 @@ function tv_get(string $path, array $params = [])
     $body = curl_exec($ch);
     $errno = curl_errno($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $seconds = (float)curl_getinfo($ch, CURLINFO_TOTAL_TIME);
     curl_close($ch);
 
-    if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error'], 502);
+    if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error',
+        'diagnostics' => tv_failure_diagnostics($path, $errno, $code, $seconds)], 502);
 
-    $decoded = json_decode((string)$body, true);
+    // Error bodies are not part of the public response; do not decode them.
+    // Large error JSON must not exhaust memory before the existing error output.
     if ($code < 200 || $code >= 300) {
         $status = ($code >= 400 && $code < 600) ? $code : 502;
-        out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code], $status);
+        out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code,
+            'diagnostics' => tv_failure_diagnostics($path, $errno, $code, $seconds)], $status);
     }
 
+    $decoded = json_decode((string)$body, true);
     return is_array($decoded) ? $decoded : ['raw' => short_text((string)$body, 1000)];
 }
 
@@ -191,7 +250,15 @@ function tourvisor_autosave_results(int $searchId, int $limit, array $response):
         require_once __DIR__ . '/data/local-tv-catalog-v1.php';
         if (LocalTvCatalogV1::enabled() && $searchId > 0 && array_is_list($response)
             && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
-            require_once __DIR__ . '/data/db-v1.php';
+            (static function (): void {
+                $helpers = ['v2_data_db_config', 'v2_data_db', 'v2_data_normalize_text', 'v2_data_slug'];
+                $loaded = count(array_filter($helpers, 'function_exists'));
+                if ($loaded === 0) {
+                    require_once __DIR__ . '/data/db-v1.php';
+                } elseif ($loaded !== count($helpers)) {
+                    throw new RuntimeException('Incomplete data DB helpers');
+                }
+            })();
             (new LocalTvCatalogV1(v2_data_db()))->discover($response, 'user_search', gmdate('Y-m-d H:i:s'));
         }
     } catch (Throwable $ignored) {
@@ -205,6 +272,58 @@ function tourvisor_autosave_results(int $searchId, int $limit, array $response):
             new DateTimeImmutable('now', new DateTimeZone('UTC'))
         );
     } catch (Throwable $ignored) {
+    }
+}
+
+/** Existing private Andromeda searches directory is the single INT evidence store. */
+function tourvisor_fuel_passive_runtime(): ?array
+{
+    if (!class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', false)) return null;
+    // Reuse complete gateway DB globals; never redeclare or complete a partial set.
+    $helpers = ['v2_data_db_config', 'v2_data_db', 'v2_data_normalize_text', 'v2_data_slug'];
+    $loaded = count(array_filter($helpers, 'function_exists'));
+    if ($loaded === 0) {
+        require_once __DIR__ . '/data/db-v1.php';
+    } elseif ($loaded !== count($helpers)) {
+        return null;
+    }
+    $root = tourvisor_fuel_passive_root();
+    if ($root === null) return null;
+    $private = $root . '/.andromeda-private.php';
+    if (!is_file($private) || is_link($private)) return null;
+    $config = require $private;
+    $catalog = is_array($config) ? ($config['catalog_path'] ?? null) : null;
+    if (!is_string($catalog) || $catalog === '') return null;
+    $directory = dirname($catalog) . '/searches';
+    if (!is_dir($directory) || is_link($directory)) return null;
+    return ['db' => v2_data_db(), 'directory' => $directory];
+}
+
+function tourvisor_fuel_passive_tour(string $tourId, array $response): void
+{
+    try {
+        $runtime = tourvisor_fuel_passive_runtime();
+        if ($runtime === null) return;
+        AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour(
+            $tourId, $response, $runtime['db'], $runtime['directory'],
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+        // Evidence intake cannot replace a successful supplier response.
+    }
+}
+
+function tourvisor_fuel_passive_flights(string $tourId, array $response): void
+{
+    try {
+        $runtime = tourvisor_fuel_passive_runtime();
+        if ($runtime === null) return;
+        AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights(
+            $tourId, $response, $runtime['directory'],
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+        // Evidence intake cannot replace a successful supplier response.
     }
 }
 
@@ -345,12 +464,16 @@ switch ($action) {
     case 'tour':
         $id = short_text($_GET['tourId'] ?? '', 200);
         if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id), ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']));
+        $data = tv_get('/tours/' . rawurlencode($id), ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']);
+        tourvisor_fuel_passive_tour($id, $data);
+        out($data);
 
     case 'flights':
         $id = short_text($_GET['tourId'] ?? '', 200);
         if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id) . '/flights', ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']));
+        $data = tv_get('/tours/' . rawurlencode($id) . '/flights', ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']);
+        tourvisor_fuel_passive_flights($id, $data);
+        out($data);
 
     case 'rooms':
         out(tv_get('/rooms', ['ids' => request_array('ids', 30)]));

@@ -293,6 +293,51 @@ tv_autosave_check(strpos($apiSource, 'tourvisor_autosave_results($id, $limit, $d
 tv_autosave_check(substr_count($apiSource, "tv_get('/tours/search', \$searchParams)") === 1, 'no_extra_search_start_call');
 tv_autosave_check(strpos($apiSource, 'catch (Throwable $ignored)') !== false, 'fail_open_gateway');
 
+// Exercise the new internal handoff without loading another DB/supplier client.
+// The receiving private-runtime implementation is tested in its own INT suite.
+$fuelContextCalls=[];$fuelContextThrows=false;
+function tourvisor_fuel_passive_runtime(): ?array { return ['directory'=>'/test-only/searches']; }
+class AnyTourTourvisorOperatorFuelPassiveIntakeV1
+{
+    public static function captureSearchContexts(array $entries, string $directory, DateTimeImmutable $now): array
+    {
+        global $fuelContextCalls,$fuelContextThrows;
+        if ($fuelContextThrows) throw new RuntimeException('test-only private write failure');
+        $fuelContextCalls[]=['entries'=>$entries,'directory'=>$directory,'at'=>$now];
+        return ['status'=>'search_contexts_retained'];
+    }
+}
+$fuelContextMethod=new ReflectionMethod(AnyTourTourvisorOfferAutosaveV1::class,'captureFuelContexts');
+$bgUnknownTour=$unknownTour;$bgUnknownTour['id']='73333333333331';$bgUnknownTour['operator']='Библио-Глобус';
+$bgUnknownEntry=$entryMethod->invoke(null,$searchId,3417,77,$bgUnknownTour,2,1,[0],'2026-09-17T09:30:00Z',$now);
+$contextBefore=$bgUnknownEntry;
+$fuelContextMethod->invoke(null,[$bgUnknownEntry],$now);
+tv_autosave_check(count($fuelContextCalls)===1
+    &&$fuelContextCalls[0]['entries']===[$contextBefore]
+    &&$fuelContextCalls[0]['directory']==='/test-only/searches'
+    &&$fuelContextCalls[0]['at']==$now,'exact compiled search entry handed to existing private owner once');
+tv_autosave_check($fuelContextCalls[0]['entries'][0]['offer']['party']===['adults'=>2,'children'=>1,'child_ages'=>[0]],
+    'age zero and accompanying adults are retained, not reconstructed');
+$notReadyIngestCalls=0;
+$contextProducer=AnyTourIntOfferSnapshotProducerV1::produce('tourvisor',$scope,
+    ['complete'=>true,'authoritative_empty'=>false,'offers'=>[$bgUnknownEntry]],$now,
+    static function() use (&$notReadyIngestCalls): array { ++$notReadyIngestCalls; return []; });
+tv_autosave_check($notReadyIngestCalls===0 && $contextProducer['published']===false
+    &&$contextProducer['reason']==='no_final_price_ready_resolved_offers','context handoff cannot publish unpriced offers');
+tv_autosave_check($bgUnknownEntry===$contextBefore
+    &&$bgUnknownEntry['offer']['final_price_verified']===false,'context handoff changes no source amount or quote authority');
+$fuelContextThrows=true;
+$fuelContextMethod->invoke(null,[$entry],$now);
+$keptRows=[];
+$kept=AnyTourIntOfferSnapshotProducerV1::produce('tourvisor',$scope,
+    ['complete'=>true,'authoritative_empty'=>false,'offers'=>[$entry]],$now,
+    static function(string $provider,array $params,array $rows) use (&$keptRows): array { $keptRows=$rows;return ['test_only'=>true]; });
+tv_autosave_check($kept['published']===true && count($keptRows)===1 && $keptRows[0]['dto']['price']==='150824',
+    'context write failure cannot suppress an existing ready-price snapshot');
+$contextPosition=strpos($helperSource,'self::captureFuelContexts($entries, $now);');
+tv_autosave_check($contextPosition!==false&&$contextPosition<strpos($helperSource,'AnyTourIntOfferSnapshotProducerV1::produce('),
+    'context reaches its owner before the protected final-price gate');
+
 @unlink($statePath);
 @unlink($nestedPath);
 

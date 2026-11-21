@@ -187,4 +187,84 @@ packet_expect(
     'HOTEL_STAY_REVIEW_PACKET_BATCH_SIZE','oversized batch blocked'
 );
 
-echo "ANYTOUR_HOTEL_STAY_REVIEW_PACKET_V2_OK checks=$checks actionable=2 blocked_pending=1 compiled=2 recommendations=0 auto=0 db=0 supplier=0\n";
+// The saved-offer collector emits distinct room+meal pairs. Their individual
+// room/meal references must remain reviewable when that cross-product repeats.
+$pairs=$inventory;$pairs['cohorts']=[];
+foreach ([
+    ['STANDARD ROOM','AI',2,'2026-09-18 14:21:00'],
+    ['STANDARD ROOM','UAI',3,'2026-09-18 14:24:00'],
+    ['DELUXE ROOM','AI',5,'2026-09-18 14:22:00'],
+    ['DELUXE ROOM','UAI',7,'2026-09-18 14:23:00'],
+] as [$roomRaw,$mealRaw,$observed,$lastSeen]) {
+    $cohort=$inventory['cohorts'][0];
+    $cohort['roomRaw']=$roomRaw;$cohort['mealRaw']=$mealRaw;
+    $cohort['observedCount']=$observed;$cohort['lastSeenAt']=$lastSeen;
+    $cohort['match']=[
+        'room'=>['status'=>'unmapped','canonical'=>null],
+        'meal'=>['status'=>'unmapped','canonical'=>null],
+    ];
+    $pairs['cohorts'][]=$cohort;
+}
+$originalPairs=$pairs;
+$pairPacket=AnyTourHotelStayReviewPacketV2::build($pairs,2);
+packet_check($pairs===$originalPairs,'pair inventory remains unchanged');
+packet_check($pairPacket['actionableItemCount']===4&&$pairPacket['blockedItemCount']===0,'four pairs produce four unique review references');
+packet_check(count($pairPacket['batches'])===2,'unique references respect batch size');
+$pairItems=[];
+foreach ($pairPacket['batches'] as $batch) foreach ($batch['items'] as $item) $pairItems[$item['kind'].':'.$item['raw']]=$item;
+foreach ([
+    'room:STANDARD ROOM'=>[5,'2026-09-18 14:24:00'],
+    'room:DELUXE ROOM'=>[12,'2026-09-18 14:23:00'],
+    'meal:AI'=>[7,'2026-09-18 14:22:00'],
+    'meal:UAI'=>[10,'2026-09-18 14:24:00'],
+] as $key=>[$observed,$lastSeen]) {
+    packet_check($pairItems[$key]['observedCount']===$observed&&$pairItems[$key]['lastSeenAt']===$lastSeen,'exact observation aggregate '.$key);
+    packet_check($pairItems[$key]['recommendedTarget']===null&&$pairItems[$key]['automaticDecision']===false,'no inferred target '.$key);
+}
+packet_check($pairItems['room:DELUXE ROOM']['itemId']===$room['itemId'],'existing scoped reference identity remains stable');
+$reversedPairs=$pairs;$reversedPairs['cohorts']=array_reverse($pairs['cohorts']);
+packet_check(AnyTourHotelStayReviewPacketV2::build($reversedPairs,2)===$pairPacket,'pair aggregation independent of source order');
+$pairReview=$review;$pairReview['packetSha256']=$pairPacket['packetSha256'];$pairReview['decisions']=[];
+foreach ($pairItems as $item) $pairReview['decisions'][]=['itemId'=>$item['itemId'],'state'=>'rejected','targetLocalKey'=>null];
+$pairManifest=AnyTourHotelStayReviewPacketV2::compile($pairPacket,$pairReview);
+packet_check(count($pairManifest['decisions'])===4,'one explicit reviewed decision per unique reference compiles');
+foreach ($pairManifest['decisions'] as $decision) {
+    packet_check($decision['state']==='rejected'&&$decision['targetLocalKey']===null
+        &&$decision['anytourHotelId']===11&&$decision['providerHotelRefDigest']===$digestA
+        &&$decision['evidenceRef']===$review['evidenceRef'],'compiled decision retains exact scope and explicit negative');
+}
+$pendingPairs=$pairs;
+foreach ($pendingPairs['cohorts'] as &$cohort) {
+    $cohort['match']['room']['status']='pending';
+    $cohort['match']['meal']['status']='accepted';
+}
+unset($cohort);
+$pendingPacket=AnyTourHotelStayReviewPacketV2::build($pendingPairs);
+packet_check($pendingPacket['actionableItemCount']===0&&$pendingPacket['blockedItemCount']===2,'repeated pending rooms stay blocked');
+foreach ($pendingPacket['blocked'] as $item) {
+    packet_check($item['currentStatus']==='pending'&&$item['actionable']===false
+        &&$item['blockedReason']==='existing-pending-requires-reconcile'
+        &&$item['observedCount']===$pairItems['room:'.$item['raw']]['observedCount'],'pending aggregates without promotion');
+}
+$inconsistentPairs=$pairs;$inconsistentPairs['cohorts'][0]['match']['room']['status']='pending';
+packet_expect(fn()=>AnyTourHotelStayReviewPacketV2::build($inconsistentPairs),'HOTEL_STAY_REVIEW_PACKET_DUPLICATE_ITEM','inconsistent repeated reference remains blocked');
+$duplicatePair=$pairs;$duplicatePair['cohorts'][]=$pairs['cohorts'][0];
+packet_expect(fn()=>AnyTourHotelStayReviewPacketV2::build($duplicatePair),'HOTEL_STAY_REVIEW_PACKET_DUPLICATE_ITEM','exact repeated pair cannot inflate counts');
+$overflowPairs=$pairs;$overflowPairs['cohorts'][0]['observedCount']=PHP_INT_MAX;
+packet_expect(fn()=>AnyTourHotelStayReviewPacketV2::build($overflowPairs),'HOTEL_STAY_REVIEW_PACKET_OBSERVED','observation total cannot overflow to float');
+$separateScopes=$pairs;
+foreach (['hotel','legacy','provider','digest','operator'] as $scopePart) {
+    $cohort=$pairs['cohorts'][0];
+    if ($scopePart==='hotel') $cohort['hotelId']=22;
+    elseif ($scopePart==='legacy') $cohort['legacyHotelId']=202;
+    elseif ($scopePart==='provider') $cohort['provider']='anex';
+    elseif ($scopePart==='digest') $cohort['providerHotelRefDigest']=$digestB;
+    else $cohort['operatorRaw']='Another operator';
+    $separateScopes['cohorts'][]=$cohort;
+}
+packet_check(AnyTourHotelStayReviewPacketV2::build($separateScopes)['actionableItemCount']===14,'equal raw labels in different exact scopes remain separate');
+$qualifiedPairs=$pairs;$cohort=$pairs['cohorts'][0];$cohort['roomRaw']='STANDARD SEA VIEW';$qualifiedPairs['cohorts'][]=$cohort;
+$qualifiedPacket=AnyTourHotelStayReviewPacketV2::build($qualifiedPairs);
+packet_check($qualifiedPacket['actionableItemCount']===5,'room qualifier keeps a separate review reference');
+
+echo "ANYTOUR_HOTEL_STAY_REVIEW_PACKET_V2_OK checks=$checks repeated_pair_references=4 recommendations=0 auto=0 db=0 supplier=0\n";

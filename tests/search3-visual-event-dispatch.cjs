@@ -50,7 +50,8 @@ function characterize(source, scenario) {
   const state = {filters:filters(),sort:'recommended',onlyFavorites:false,selectedDate:'2026-10-15',openHotel:7,hasSearched:false,search:{country:'Turkey',from:'2026-10-14',to:'2026-10-20'}};
   const model = {filters:filters(),onlyFavorites:false,selectedDate:null};
   const choice = {model:{filters:filters(),onlyFavorites:true,selectedDate:'2026-10-18'}};
-  const ctx = {console, Math, Number, String, Array, Set, Map, JSON, Date, structuredClone,
+  // Public analytics is optional in the preview, but the browser window always exists.
+  const ctx = {window:{}, console, Math, Number, String, Array, Set, Map, JSON, Date, structuredClone,
     Event:class Event {constructor(type,options){this.type=type;this.options=options;}},
     $:node, $$:s=>[node(s+'[0]'),node(s+'[1]')],
     document:{addEventListener:(type,fn)=>{assert(!listeners[type],'one registration per type');listeners[type]=fn;}},
@@ -81,11 +82,11 @@ function characterize(source, scenario) {
   // External collaborators are observable boundaries; the actual handlers and
   // extracted helpers execute unchanged. No collaborator issues an HTTP request.
   const keywords = new Set(['if','switch','for','while','catch','function','Number','String','Math','Date','Set','Map','Event','structuredClone']);
-  for (const [,name] of code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)) {
+  for (const [,name] of [...code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g),['','applyQuickFilters']]) {
     if (!keywords.has(name) && !(name in ctx)) ctx[name]=(...args)=>{trace.push([name,...args.map(x=>x&&typeof x==='object'?(x.focus?'DOM:'+x.id:copy(x)):x)]);checkpoints.push({name,state:copy(state),model:copy(model),draft:copy(ctx.draft),dateDraft:copy(ctx.dateDraft),guestDraft:copy(ctx.guestDraft)});};
   }
   ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
- ctx.agesNeedReview=false;ctx.formFiltersDraft=null;ctx.starsDraft=[];ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
+ ctx.agesNeedReview=false;ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
  ctx.pickerFilters=()=>ctx.state.filters;ctx.finishFilterPicker=ctx.applyQuickFilters;
  vm.createContext(ctx);vm.runInContext(code,ctx);
   const t=node('target');Object.assign(t,{id:'',name:'',value:'new',max:'2000',checked:true,dataset:{}},scenario.target||{});
@@ -164,15 +165,64 @@ add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setu
 // openHotel belonged to the retired inline result expansion. It never changed
 // connected markup. Project only that discarded field from each state snapshot;
 // all 153 retained actions, collaborator calls, DOM and ordering still compare.
-function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
+function records(source){return scenarios.map(s=>{const result=characterize(source,s);
+ // Explicit month navigation now resets its new month independently of focus.
+ // Assert the exact added call and unchanged state, then project only that call
+ // to retain the historical observations for every other dispatcher boundary.
+ if(['click:month-prev','click:month-next'].includes(s.name)&&source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();')){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['renderDateCalendar'],['revealCalendarMonth'],['loadCalendarPrices'],['rememberUIRoute']],s.name+' reset belongs between render and loading');
+  const reset=result.checkpoints.findIndex(c=>c.name==='revealCalendarMonth');
+  assert(reset>0,'month reset checkpoint exists');
+  assert.deepEqual({...result.checkpoints[reset],name:'renderDateCalendar'},result.checkpoints[reset-1],'month reset preserves the exact draft/state');
+  result.trace.splice(2,1);result.checkpoints.splice(reset,1);
+ }
+
+ // Explicit drawer recovery now synchronizes the authoritative model into
+ // retained controls before painting. Assert exactly this new boundary, then
+ // keep the historical digest for all remaining actions/state/order.
+ if(['click:recover-filters','filter panel reset'].includes(s.name)&&source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;")){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['syncBudgetControls',result.filterDraft.filters],['filterEdited',true],...(s.name==='click:recover-filters'?[['focus','#apply-filters',{preventScroll:true}]]:[])],'recovery/reset sync precedes the existing paint and Apply action');
+  assert.deepEqual({...result.checkpoints[0],name:'filterEdited'},result.checkpoints[1],'recovery synchronization preserves all unrelated state');
+  const queryIndex=s.name==='filter panel reset'?2:1;
+  assert.deepEqual(result.dom[queryIndex],['#hotel-query',{value:result.filterDraft.filters.q,checked:false,hidden:false,textContent:'',scrollTop:37}],'explicit recovery writes the chosen query');
+  result.trace.splice(1,1);result.checkpoints.splice(0,1);result.dom.splice(queryIndex,1);
+ }
+ // Confirming the initial family now persists its URL after the existing UI
+ // update. Assert only that added boundary and identical state before removing
+ // it from the historical 153-case digest; every other call remains observable.
+ if(s.name==='valid guest apply'&&result.trace.some(call=>call[0]==='updateURL')){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI'],['updateURL']],'initial family persistence follows the existing close/UI order');
+  assert.equal(result.state.hasSearched,false,'only the initial family scenario is projected');
+  assert.deepEqual(result.checkpoints.map(checkpoint=>checkpoint.name),['closeModal','updateSearchUI','updateURL'],'exactly one initial URL boundary is added');
+  assert.deepEqual({...result.checkpoints[2],name:'updateSearchUI'},result.checkpoints[1],'initial URL persistence leaves the exact confirmed draft and applied state unchanged');
+  result.trace.splice(3,1);result.checkpoints.splice(2,1);
+ }
+ delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
+assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');
+assert(source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;"),'explicit recovery synchronizes retained controls before Apply');
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='79c27bc86f9ac4d7d0a11d40648922a68e5f76192268f3a80cbca6d1489035ec';
+// The inactive budget recovery button is inert outside its budget dialog.
+const BASELINE='b258cb0b417012c1bdf16932db1a6a7a0ccb46c21f33bc8c76bd681abe021874';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
+const initialGuestApply=characterize(source,scenarios.find(s=>s.name==='valid guest apply'));
+assert.deepEqual(initialGuestApply.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI'],['updateURL']],'current initial family Apply must persist its URL without a search or transport call');
+let retainedGuestSearch;
+const appliedGuestApply=characterize(source,{type:'click',action:'apply-guests',setup:c=>{
+ c.state.hasSearched=true;c.state.search.adults=2;c.state.search.ages=[5];retainedGuestSearch=structuredClone(c.state.search);
+ c.guestDraft={adults:3,ages:[0,12]};
+}});
+assert.deepEqual(appliedGuestApply.trace,[['queueMicrotask'],['closeModal'],['updateSearchUI']],'guest Apply for existing results cannot write the URL or start a search/transport');
+assert.deepEqual(appliedGuestApply.state.search,retainedGuestSearch,'existing results retain their exact applied search identity');
+assert.equal(appliedGuestApply.state.hasSearched,true);assert.equal(appliedGuestApply.draft.adults,3);assert.deepEqual(appliedGuestApply.draft.ages,[0,12],'the changed family remains only in the form draft');
 const result=name=>actual.find(r=>r.name===name).result;
+assert.deepEqual(result('click:budget-adjust-max').trace,[['queueMicrotask']]);
+const pickedBudget=characterize(source,{type:'click',action:'budget-adjust-max',dataset:{value:'2000'},setup:c=>{c.modalType='budget';c.searchEditSession={};}});
+assert.deepEqual(pickedBudget.trace,[['queueMicrotask'],['collapseSearch'],['applyQuickFilters']],'the budget suggestion opens filtered results without sending a search');
+assert.equal(pickedBudget.state.filters.max,2000);assert.deepEqual(pickedBudget.state.filters.meals,['AI']);
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
 assert.equal(result('trigger replaced before microtask').triggerAfterDrain,'other');
@@ -196,5 +246,10 @@ for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEq
 // Prove these observations reject two plausible extraction regressions.
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
-assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
+// Keep the optional analytics observation intact while reversing the actual state/render order.
+const sortStep=source.match(/state\.sort=t\.value;(?:window\.AnyTourPublicAnalyticsV1\?\.sort\(t\.value\);)?renderResults\(\{keepFilters:true\}\)/)?.[0];
+assert(sortStep,'actual sort state/render mutation boundary');
+const sortMutation=source.replace(sortStep,sortStep.replace('state.sort=t.value;','')+';state.sort=t.value');
+assert.notEqual(sortMutation,source,'sort ordering mutation is applied');
+assert.notDeepEqual(records(sortMutation),actual,'state-before-render mutation detected');
 console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, approved presentation digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);

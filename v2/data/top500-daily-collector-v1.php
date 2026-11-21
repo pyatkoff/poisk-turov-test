@@ -89,8 +89,10 @@ $dateFrom = $today->modify('+'.$startOffset.' days')->format('Y-m-d');
 $dateTo = $today->modify('+'.($startOffset + 20).' days')->format('Y-m-d');
 
 $pdo = v2_data_db();
-$priorityIds = array_values(v2_priority_hotel_ids());
-if ($priorityIds === []) throw new RuntimeException('top500 priority list empty');
+$registry = v2_top500_registry($pdo);
+v2_top500_log_resolution($registry);
+$priorityIds = array_values(v2_priority_hotel_ids($registry));
+if ($priorityIds === []) { echo "TOP500_DAILY_HOLD no_resolved_anex_identities\n"; exit(0); }
 $csv = implode(',', array_map('intval', $priorityIds));
 $hotelRows = $pdo->query("SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN (".$csv.") ORDER BY id")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 $departureRows = $pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id")->fetchAll(PDO::FETCH_ASSOC) ?: [];

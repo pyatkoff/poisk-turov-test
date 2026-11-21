@@ -40,7 +40,9 @@ async function run(){
   const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
   const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
   if(!fs.existsSync(file)){res.writeHead(404).end();return;}
-  if(file.endsWith('.php')){const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]);res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
+  // This independent SAMO/legacy TV matrix owns only the unmarked ROOT fixture.
+  // The actual marked NEXT entry is covered by mandatory messenger + LOCAL cases.
+  if(file.endsWith('.php')){const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]).toString().replace(' data-search3-tv-session="enabled"','');res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
   let body=fs.readFileSync(file);
   // Retain the large SAMO inventory regression only in this fictional server.
   if(file.endsWith('/prototype-search/config.js'))body=body.toString()+"\nwindow.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';window.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';\n";
@@ -76,6 +78,7 @@ async function run(){
    try{
     await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
     await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+    assert.equal(await page.evaluate(()=>window.V2_CONFIG.search3TVSessionEnabled),false,'this retained matrix uses the actual unmarked legacy TV consumer');
     assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
     await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
     const startsFor=name=>transport.calls.filter(c=>c.url.endsWith('/api-'+name+'-search3-preview.php')&&(!c.action||c.action==='search'));
@@ -111,6 +114,8 @@ async function run(){
     await choose('tourvisor');assert.equal(transport.calls.filter(c=>c.action==='tour'||c.action==='flights').length,0,'opening the tour only shows its exact conditions');
     await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
     assert.equal(transport.calls.filter(c=>c.action==='tour').length,1);assert.equal(transport.calls.filter(c=>c.action==='flights').length,1);
+    assert.equal(await page.locator('#prototype-lead-form').count(),0,'flight Apply retains the same tour before explicit application continuation');
+    await page.locator('[data-action="confirm-tour"]').click();
     await page.locator('#prototype-lead-form').waitFor();
     assert.equal(await page.locator('.quote-price-change strong').textContent(),'Цена с выбранным перелётом','application explains that the selected flight pair changed the whole-tour price');
     await application('tourvisor-application');

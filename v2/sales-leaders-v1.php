@@ -64,11 +64,11 @@ function sales_leader_index(): array
     }
     return $index;
 }
-function sales_leader_match(array $hotel): ?array
+function sales_leader_match(array $hotel, ?AnyTourAnexSearchMappingRegistry $registry = null): ?array
 {
     $legacyId=filter_var($hotel['id']??null,FILTER_VALIDATE_INT);
     if($legacyId!==false){
-        $rank=v2_hotel_popularity_legacy_rank((int)$legacyId);
+        $rank=v2_hotel_popularity_legacy_rank((int)$legacyId,$registry);
         if($rank!==null)return ['rank'=>$rank];
     }
     // Compatibility fallback for legacy payloads that do not carry a stable
@@ -85,9 +85,10 @@ function sales_leader_match(array $hotel): ?array
 }
 function sales_leader_enrich_results(array $results): array
 {
+    $registry=v2_hotel_popularity_registry();
     foreach($results as $i=>$hotel){
         if(!is_array($hotel))continue;
-        $match=sales_leader_match($hotel);
+        $match=sales_leader_match($hotel,$registry);
         if(!$match)continue;
         $results[$i]['salesLeader']=true;
         $results[$i]['salesLeaderRank']=$match['rank'];

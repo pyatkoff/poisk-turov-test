@@ -1,14 +1,9 @@
 <?php
-/**
- * Backward-compatible TOP500 collector input.
- *
- * Canonical ordered cohort now lives in hotel-popularity-v1.php so search,
- * collectors and legacy sales-leader enrichment read one source of truth.
- */
+/** Tourvisor priority input, projected from the owner's explicitly ANEX roster. */
 declare(strict_types=1);
-require_once __DIR__ . '/hotel-popularity-v1.php';
+require_once __DIR__ . '/top500-anex-priority-v1.php';
 
-function v2_priority_hotel_ids(): array
+function v2_priority_hotel_ids(?AnyTourAnexSearchMappingRegistry $registry = null): array
 {
-    return v2_hotel_popularity_legacy_ids();
+    return v2_top500_resolution($registry)['tourvisor_ids'];
 }

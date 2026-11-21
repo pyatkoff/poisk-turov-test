@@ -1,0 +1,241 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+const start=app.indexOf('let messengerOwners=null,messengerUi=null;'),end=app.indexOf('function openAnexApplicationPreview(){',start);assert.ok(start>=0&&end>start);
+let fixtures=fs.readFileSync(path.join(__dirname,'search3-messenger-context.cjs'),'utf8');const runner="function test(name,fn){fn();count++;console.log('PASS '+name);}";assert.ok(fixtures.includes(runner));
+fixtures=fixtures.replace(runner,'function test(){}');fixtures=fixtures.slice(0,fixtures.lastIndexOf('\nconsole.log('));
+const old=vm.createContext({require,__dirname,structuredClone,console:{log(){throw Error('old baseline ran');}}});vm.runInContext(fixtures+'\nglobalThis.owner={applicationFixture,tourvisorFixture,api,existingCasesRun:count};',old);assert.equal(old.owner.existingCasesRun,0);
+const flowRoot={};vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/messenger-flow-v1.js'),'utf8'),{window:flowRoot,URL});
+const plain=x=>JSON.parse(JSON.stringify(x)),id='f'.repeat(32),csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=fixture-only',max:'https://max.ru/id9704048781_bot?start=fixture-only'};
+const defer=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
+async function spin(check){for(let i=0;i<150;i++){if(check())return;await Promise.resolve();}throw Error('fixture did not settle');}
+function setup(route,{tv=false,manager=false,publicMode=false,review=false}={}){
+  const input=tv?old.owner.tourvisorFixture(manager):old.owner.applicationFixture(true,'anex_quote:'+'c'.repeat(64)),calls=[],navigation=[],buttons=[{disabled:true},{disabled:true}],submit={hidden:true},phoneInput={value:'',focuses:0,focus(){this.focuses++;}},nodes={
+    '#messenger-methods':{hidden:false},'#messenger-phone':{hidden:true},'#messenger-status':{textContent:''},'#messenger-check':{hidden:true,disabled:false},'[name="phone"]':phoneInput};
+  const scope={isConnected:true,querySelector:key=>nodes[key],querySelectorAll:()=>buttons},modal={open:true},body={scrollTop:0};
+  const retained=tv?null:{type:'anex-quote',choice:input.application.choiceRef,pending:false,error:'',sealed:false,result:{state:'quote_verified',finalPrice:{amount:input.application.price}}};
+  let ctx,observation;
+  const window={V2_CONFIG:{search3MessengerEnabled:true},AnyTourSearch3MessengerContextV1:old.owner.api,AnyTourSearch3MessengerFlowV1:flowRoot.AnyTourSearch3MessengerFlowV1,
+    AnyTourPrototypeLead:{markup:()=>'<form id="prototype-lead-form"><input name="phone" required></form>',action:()=>'<button type="submit" form="prototype-lead-form">Проверить заявку</button>'},location:{assign:url=>navigation.push(url)}};
+  const data={live:true,tourvisorHandoffSelection:(o,h)=>tv&&o.raw===input.offer.raw&&h===input.hotel?{selector:input.selector,party:input.requestParty}:null,messengerHandoff:async(action,fields)=>{
+    calls.push({action,fields:plain(fields||{})});if(route){const reply=route(action,fields);if(reply!==undefined)return reply;}
+    if(action==='handoff_token')return {ok:true,csrf};
+    if(action==='handoff_freeze'){observation=observation||plain(ctx.test.snapshot());if(tv)observation.price.expiresAt=Math.floor(Date.now()/1000)+600;return {ok:true,data:{operation_id:id,state:'prepared',observation}};}
+    return {ok:true,data:{operation_id:id,state:'ready',links}};
+  }};
+  if(publicMode){window.V2_CONFIG.search3ContactMode='messenger-only';window.V2_CONFIG.search3PublicEntry=review?'review':'live';
+    window.AnyTourPrototypeLead.markup=()=>assert.fail('Public contact must not render the legacy phone form');
+    window.AnyTourPrototypeLead.action=()=>assert.fail('Public contact must not render the legacy submit');}
+  if(review){data.live=false;data.preview=true;data.messengerContactPreview=Object.freeze({ready:'Демонстрация: готово. Заявки не отправляются.',unavailable:'Демонстрация: переход недоступен. Заявка не отправлялась.'});
+    window.V2_CONFIG.search3MessengerEnabled=false;delete window.AnyTourSearch3MessengerContextV1;delete window.AnyTourSearch3MessengerFlowV1;
+    delete data.messengerHandoff;}
+  ctx=vm.createContext({window,data,selectedOffer:input.offer,anexApplicationDraft:input.application,selectionGeneration:input.revision,modalType:tv?'selected-tour':'anex-application',
+    leadReadyOffer:o=>o,flightPairFor:o=>o.flightChoiceId===null?null:o.variants?.[Number(o.flightChoiceId)],
+    selectedTourHotel:()=>input.hotel,retainedProviderView:()=>retained,$:key=>key==='#modal'?modal:key==='#modal-body'?body:key==='#messenger-entry'?scope:key==='[data-messenger-phone-submit]'?submit:null});
+  vm.runInContext(app.slice(start,end)+'\nglobalThis.test={available:messengerAvailable,markup:messengerContactHTML,bind:bindMessenger,open:messengerOpen,phone:messengerPhone,check:messengerCheck,snapshot:()=>messengerUi?.snapshot};',ctx);
+  return {ctx,window,data,input,calls,navigation,buttons,submit,phoneInput,nodes,scope,modal,body,retained,test:ctx.test,settled:()=>spin(()=>buttons.every(b=>!b.disabled))};
+}
+const tests=[];const test=(name,fn)=>tests.push({name,fn});
+test('Actual config enables only the explicitly marked original NEXT live entry',async()=>{
+  const config=fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/config.js'),'utf8');
+  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/entry-v1.php'),'utf8');
+  const attrs=index.match(/data-local-tv-catalog="enabled"[^']*/)?.[0]||'';
+  assert.match(attrs,/data-search3-messenger="enabled"/,'the real config script owns the NEXT opt-in');
+  assert.match(attrs,/data-search3-tv-session="enabled"/);
+  const marked={search3Messenger:'enabled',search3TvSession:'enabled',localTvCatalog:'enabled'};
+  function read(pathname,dataset,search=''){
+    const window={location:{pathname,search},document:dataset===null?{currentScript:null}:{currentScript:{dataset}}};
+    vm.runInNewContext(config,{window});return window.V2_CONFIG;
+  }
+  assert.equal(read('/_preview/search3-next-candidate/visual-search/',marked).search3MessengerEnabled,true);
+  assert.equal(read('/_preview/search3-next-candidate/visual-search/',marked).search3TVSessionEnabled,true);
+  for(const pathname of ['/poisk-turov/','/_preview/search3-design-v2-candidate/visual-search/','/_preview/search3-local-candidate/visual-search/','/_preview/search3-next-candidate/prototype-search/','/_preview/search3-next-candidate/visual-search-fake/']){
+    assert.equal(read(pathname,marked).search3MessengerEnabled,false,pathname);
+    assert.equal(read(pathname,marked).search3TVSessionEnabled,false,pathname);
+  }
+  for(const dataset of [{},{search3Messenger:'true'},{search3Messenger:'disabled'},null]){
+    assert.equal(read('/_preview/search3-next-candidate/visual-search/',dataset,'?search3MessengerEnabled=true').search3MessengerEnabled,false);
+    assert.equal(read('/_preview/search3-next-candidate/visual-search/',dataset,'?search3TVSessionEnabled=true').search3TVSessionEnabled,false);
+  }
+  assert.equal(read('/_preview/search3-local-candidate/prototype-search/',marked).localTvCatalogEnabled,true,'existing catalogue opt-in is preserved');
+});
+test('Activation defaults off and unsupported receipts retain the existing phone owner',async()=>{
+  const x=setup();delete x.window.V2_CONFIG.search3MessengerEnabled;assert.equal(x.test.available(x.input.application),false);assert.equal(x.test.markup(x.input.application),x.window.AnyTourPrototypeLead.markup());
+  x.window.V2_CONFIG.search3MessengerEnabled=true;assert.equal(x.test.available({...x.input.application,finalPriceVerified:false}),false);assert.equal(x.calls.length,0);
+});
+test('Contact entry only freezes; three method buttons precede the hidden phone form',async()=>{
+  const x=setup(),html=x.test.markup(x.input.application);assert.match(html,/Telegram/);assert.match(html,/>MAX</);assert.match(html,/По телефону/);
+  assert.ok(html.indexOf('data-action="messenger-phone"')<html.indexOf('<form'));assert.match(html,/<div id="messenger-phone" hidden>/);
+  x.test.bind();await x.settled();assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze']);assert.equal(x.navigation.length,0);assert.equal(x.submit.hidden,true);assert.equal(x.nodes['#messenger-phone'].hidden,true);assert.equal(x.phoneInput.focuses,0);
+});
+test('An explicit bot choice creates once and navigates with the current platform link without phone',async()=>{
+  const x=setup();x.test.bind();await x.settled();await x.test.open('max');assert.deepEqual(x.navigation,[links.max]);assert.equal(x.calls.filter(c=>c.action==='handoff_create').length,1);assert.equal(x.phoneInput.value,'');assert.equal(x.phoneInput.focuses,0);
+});
+test('Explicit phone choice retains the same draft nodes and only then exposes submit',async()=>{
+  const x=setup();x.test.bind();await x.settled();x.test.phone(true);assert.equal(x.nodes['#messenger-methods'].hidden,true);assert.equal(x.nodes['#messenger-phone'].hidden,false);assert.equal(x.submit.hidden,false);
+  x.phoneInput.value='fixture draft';const node=x.phoneInput;x.body.scrollTop=127;x.test.phone(false);assert.equal(x.body.scrollTop,0,'return to methods shows the full choice heading');x.test.phone(true);assert.equal(x.phoneInput,node);assert.equal(x.phoneInput.value,'fixture draft');assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+});
+test('Switching to phone and back during a pending create cancels its navigation intent',async()=>{
+  const gate=defer(),x=setup(action=>action==='handoff_create'?gate.promise:undefined);x.test.bind();await x.settled();const task=x.test.open('telegram');await spin(()=>x.calls.some(c=>c.action==='handoff_create'));
+  x.test.phone(true);x.test.phone(false);gate.resolve({ok:true,data:{operation_id:id,state:'ready',links}});await task;assert.equal(x.navigation.length,0);
+});
+test('A delayed result cannot navigate after conditions change or the modal closes',async()=>{
+  for(const invalidate of [x=>x.ctx.selectionGeneration++,x=>x.modal.open=false]){
+    const gate=defer(),x=setup(action=>action==='handoff_create'?gate.promise:undefined);x.test.bind();await x.settled();const task=x.test.open('telegram');await spin(()=>x.calls.some(c=>c.action==='handoff_create'));invalidate(x);
+    gate.resolve({ok:true,data:{operation_id:id,state:'ready',links}});await task;assert.equal(x.navigation.length,0);
+  }
+});
+test('A lost create response offers status and never repeats create',async()=>{
+  const x=setup(action=>action==='handoff_create'?Promise.reject(Error('timeout')):undefined);x.test.bind();await x.settled();await x.test.open('telegram');assert.equal(x.navigation.length,0);assert.equal(x.nodes['#messenger-check'].hidden,false);assert.ok(x.buttons.every(b=>b.disabled));
+  await x.test.check();assert.ok(x.buttons.every(b=>!b.disabled));await x.test.open('telegram');assert.deepEqual(x.navigation,[links.telegram]);assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze','handoff_create','handoff_status']);
+});
+test('Mismatched canonical review cannot enable a bot or create a capability',async()=>{
+  let x; x=setup(action=>action==='handoff_freeze'?{ok:true,data:{operation_id:id,state:'prepared',observation:{...plain(x.ctx.test.snapshot()),hotel:{uiId:3634,name:'Other hotel'}}}}:undefined);
+  x.test.bind();await spin(()=>x.nodes['#messenger-status'].textContent.includes('Условия тура изменились'));await x.test.open('telegram');assert.ok(x.buttons.every(b=>b.disabled));assert.equal(x.navigation.length,0);assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+});
+test('Pending, sealed and foreign retained views do not make a dispatcher request',async()=>{
+  for(const change of [x=>x.retained.pending=true,x=>x.retained.sealed=true,x=>x.retained.choice='foreign']){
+    const x=setup();change(x);x.test.bind();await Promise.resolve();assert.equal(x.calls.length,0);assert.equal(x.navigation.length,0);assert.equal(x.submit.hidden,true);
+  }
+});
+test('The real graph and existing action dispatcher connect the reviewed owners without changing lead code',async()=>{
+  const index=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/entry-v1.php'),'utf8');for(const name of ['messenger-context-v1.js','messenger-flow-v1.js'])assert.ok(index.includes(name));
+  for(const action of ['messenger-open','messenger-phone','messenger-other','messenger-check'])assert.ok(app.includes("case '"+action+"':"));
+  const footer=app.slice(app.indexOf('function providerApplicationFooterHTML('),app.indexOf('\nfunction renderRealOffer'));
+  assert.match(footer,/data-messenger-phone-submit hidden/);assert.match(footer,/window\.AnyTourPrototypeLead\.action\(\)/);
+});
+test('Actual TV selected-tour entry freezes manager or exact-pair context before explicit bot continuation',async()=>{
+ for(const manager of [true,false]){
+  const x=setup(undefined,{tv:true,manager});assert.equal(x.test.available(x.input.offer),true);x.test.bind();await x.settled();
+  assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze']);assert.deepEqual(x.calls[1].fields,{...plain(x.input.selector),csrf});
+  assert.equal(x.test.snapshot().flights.state,manager?'manager-deferred':'selected');assert.equal(x.test.snapshot().price.finalPriceVerified,false);
+  x.test.phone(true);x.phoneInput.value='TV draft';x.test.phone(false);assert.equal(x.phoneInput.value,'TV draft');
+  await x.test.open('max');assert.deepEqual(x.navigation,[links.max]);assert.equal(x.calls.filter(c=>c.action==='handoff_create').length,1);
+ }
+});
+test('TV contact no longer authorizes a delayed bot navigation after Back or selection change',async()=>{
+ const gate=defer(),x=setup(action=>action==='handoff_create'?gate.promise:undefined,{tv:true,manager:true});x.test.bind();await x.settled();
+ const task=x.test.open('telegram');await spin(()=>x.calls.some(c=>c.action==='handoff_create'));x.ctx.selectionGeneration++;
+ gate.resolve({ok:true,data:{operation_id:id,state:'ready',links}});await task;assert.deepEqual(x.navigation,[]);
+});
+test('TV family contact matches canonical request ages while retaining the entered UI order',async()=>{
+ const x=setup(undefined,{tv:true,manager:true});x.input.offer.ages=[12,0];x.input.requestParty.childAges=[0,12];x.test.bind();await x.settled();
+ assert.deepEqual(plain(x.test.snapshot().trip.childAges),[0,12]);assert.deepEqual(plain(x.input.offer.ages),[12,0]);await x.test.open('telegram');assert.deepEqual(x.navigation,[links.telegram]);
+});
+test('Failed preparation shows a useful contact alternative without a misleading status/retry action',async()=>{
+ for(const code of ['retained_fact_missing','handoff_limit','forbidden','handoff_stale','signer_unavailable','temporarily_unavailable','handoff_unavailable']){
+  const x=setup(action=>action==='handoff_freeze'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{action,stage:'http',code,httpStatus:422,field:'stay.room',owner:'INT'}})):undefined);
+  x.test.bind();await spin(()=>x.nodes['#messenger-status'].textContent&&x.nodes['#messenger-status'].textContent!=='Подготавливаем переход…');
+  assert.ok(x.buttons.every(b=>b.disabled));assert.equal(x.nodes['#messenger-check'].hidden,true);
+  assert.match(x.nodes['#messenger-status'].textContent,/телефону|выбору тура/);
+  assert.doesNotMatch(x.nodes['#messenger-status'].textContent,/PRIVATE|422|stay\.room|retained_fact|INT/);
+  const before=x.calls.length;await x.test.check();assert.equal(x.calls.length,before,'no operation means no status or replacement preparation');
+  x.test.phone(true);x.phoneInput.value='synthetic draft';x.test.phone(false);assert.equal(x.phoneInput.value,'synthetic draft');
+  assert.deepEqual(x.navigation,[]);assert.equal(x.calls.some(c=>c.action==='handoff_create'),false);
+ }
+});
+test('Public contact never renders or reveals the phone fallback, including unsupported receipts',async()=>{
+ for(const unavailable of ['none','disabled','estimate','missing-owner']){
+  const x=setup(undefined,{publicMode:true});
+  let receipt=x.input.application;
+  if(unavailable==='disabled')x.window.V2_CONFIG.search3MessengerEnabled=false;
+  if(unavailable==='estimate'){receipt={...receipt,finalPriceVerified:false};x.ctx.anexApplicationDraft=receipt;}
+  if(unavailable==='missing-owner')delete x.window.AnyTourSearch3MessengerFlowV1;
+  const html=x.test.markup(receipt);
+  assert.match(html,/data-search3-public-contact="messenger-only"/);assert.match(html,/data-platform="telegram"/);assert.match(html,/data-platform="max"/);
+  assert.match(html,/data-action="modal-back">Вернуться к туру/);assert.doesNotMatch(html,/prototype-lead-form|messenger-phone|type="submit"/);
+  x.test.bind();
+  if(unavailable==='none')await x.settled();else{await Promise.resolve();assert.equal(x.calls.length,0);assert.ok(x.buttons.every(b=>b.disabled));}
+  x.test.phone(true);assert.equal(x.nodes['#messenger-phone'].hidden,true);assert.equal(x.submit.hidden,true);assert.equal(x.phoneInput.focuses,0);
+  assert.doesNotMatch(x.nodes['#messenger-status'].textContent,/телефону|другой способ/);
+  x.ctx.offerDetailFooterHTML=(offer,action,status)=>({offer,action,status});
+  const begin=app.indexOf('function providerApplicationFooterHTML('),finish=app.indexOf('\nfunction renderRealOffer',begin);
+  vm.runInContext(app.slice(begin,finish),x.ctx);
+  const footer=x.ctx.providerApplicationFooterHTML(x.input.application);
+  assert.equal(footer.action,'');assert.equal(footer.offer.total,x.input.application.price);
+ }
+});
+test('Public failed preparation preserves a return route without status, retry, or phone',async()=>{
+ for(const code of ['retained_fact_missing','handoff_limit','forbidden','signer_unavailable','temporarily_unavailable']){
+  const x=setup(action=>action==='handoff_freeze'?Promise.reject(Object.assign(Error('PRIVATE'),{handoffFailure:{action,stage:'http',code,httpStatus:422}})):undefined,{publicMode:true});
+  x.test.bind();await spin(()=>x.nodes['#messenger-status'].textContent&&x.nodes['#messenger-status'].textContent!=='Подготавливаем переход…');
+  assert.ok(x.buttons.every(b=>b.disabled));assert.equal(x.nodes['#messenger-check'].hidden,true);
+  assert.match(x.nodes['#messenger-status'].textContent,/вернуться|Вернитесь/);assert.doesNotMatch(x.nodes['#messenger-status'].textContent,/телефону|PRIVATE|422|INT/);
+  const before=plain(x.calls);await x.test.check();x.test.bind();await Promise.resolve();await Promise.resolve();
+  assert.deepEqual(x.calls,before,'reopening a failed exact identity does not replay preparation');assert.deepEqual(x.navigation,[]);
+ }
+});
+test('Public UNKNOWN offers only the original operation status and never reports successful or absent delivery',async()=>{
+ const x=setup(action=>action==='handoff_create'?Promise.reject(Error('timeout')):undefined,{publicMode:true});
+ x.test.bind();await x.settled();await x.test.open('max');
+ assert.equal(x.navigation.length,0);assert.ok(x.buttons.every(b=>b.disabled));assert.equal(x.nodes['#messenger-check'].hidden,false);
+ assert.match(x.nodes['#messenger-status'].textContent,/Не удалось подтвердить переход/);
+ assert.doesNotMatch(x.nodes['#messenger-status'].textContent,/не отправл|отправлена|передан|телефону/);
+ assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze','handoff_create']);
+ await x.test.check();await x.test.open('max');
+ assert.deepEqual(x.calls.map(c=>c.action),['handoff_token','handoff_freeze','handoff_create','handoff_status']);assert.deepEqual(x.navigation,[links.max]);
+});
+test('Public REVIEW uses local display states without live flag, handoff owner, navigation, or phone',async()=>{
+ for(const platform of ['telegram','max']){
+  const x=setup(undefined,{tv:true,publicMode:true,review:true}),offer=plain(x.input.offer);
+  assert.equal(x.test.available(x.input.offer),false);assert.match(x.test.markup(x.input.offer),/data-search3-review-messenger="true"/);
+  x.test.bind();assert.ok(x.buttons.every(b=>!b.disabled));assert.match(x.nodes['#messenger-status'].textContent,/^Демонстрация:/);
+  await x.test.open(platform);assert.ok(x.buttons.every(b=>b.disabled));assert.match(x.nodes['#messenger-status'].textContent,/^Демонстрация:.*недоступен/);
+  await x.test.check();x.test.phone(true);assert.equal(x.nodes['#messenger-check'].hidden,true);assert.equal(x.nodes['#messenger-phone'].hidden,true);
+  x.test.bind();assert.ok(x.buttons.every(b=>!b.disabled),'reopen starts the explicit demonstration again');
+  assert.deepEqual(plain(x.input.offer),offer);assert.deepEqual(x.calls,[]);assert.deepEqual(x.navigation,[]);
+  assert.equal(x.data.live,false);assert.equal(x.window.V2_CONFIG.search3MessengerEnabled,false);
+ }
+});
+// Use the existing TV fixture and actual contact/loading owners. The deferred
+// provider reply is local; no supplier, messenger or phone transport is called.
+function contactFlightSetup(){
+ const x=setup(undefined,{tv:true,manager:true,publicMode:true}),gate=defer(),opened=[],painted=[],overview={outerHTML:''};
+ const offer=x.input.offer,search={origin:'Москва',country:'2',from:offer.day,to:offer.day,minNights:7,maxNights:7,adults:2,ages:[0,8]};
+ Object.assign(offer,{ages:[0,8],placement:'2AD+2CH',search,quoteListingTotal:offer.total});offer.tour.price=offer.total;x.input.requestParty.childAges=[0,8];
+ const listing={...offer},select=x.ctx.$;let overviewPresent=true,flightCalls=0;
+ x.ctx.$=key=>key==='.application-flight-overview'?overviewPresent?overview:null:select(key);
+ x.ctx.state={search};x.ctx.hotelDetailsView=null;x.ctx.hotelOfferDraft=null;x.ctx.offerFromKey=key=>key===offer.key?listing:null;
+ x.ctx.needsRefresh=()=>false;x.ctx.esc=String;x.ctx.renderRealOffer=()=>painted.push(x.ctx.modalType);
+ x.ctx.openFlightPicker=()=>{opened.push(x.ctx.selectedOffer);x.ctx.modalType='flights';};
+ x.window.AnyTourPrototypeLead.canApply=value=>!!value?.tour;
+ x.data.amount=value=>Number(value?.value??value)||null;
+ x.data.flights=async tour=>{assert.strictEqual(tour,offer.tour);flightCalls++;return gate.promise;};
+ const part=(from,to)=>{const a=app.indexOf(from),b=app.indexOf(to,a);assert(a>=0&&b>a);return app.slice(a,b);};
+ vm.runInContext(app.split('\n').filter(line=>line.startsWith('const searchKey=')||line.startsWith('function sameSelectedTourConditions(')).join('\n')+'\n'+
+  part('function hotelOfferCheckActive(', 'async function quoteSelectedOffer(')+
+  part('async function loadRealFlights(', 'async function openLeadWithQuote(')+
+  part('function contactFlightSummaryHTML(', 'function openLeadPreview('),x.ctx);
+ return {...x,gate,opened,painted,overview,listing,flightCalls:()=>flightCalls,removeOverview:()=>overviewPresent=false};
+}
+test('Public messenger-only contact opens the first asynchronously loaded flight choices without a phone form',async()=>{
+ const x=contactFlightSetup(),before=plain(x.input.offer),variants=old.owner.tourvisorFixture(false).offer.variants;
+ assert.equal(x.ctx.$('#prototype-lead-form'),null);assert.doesNotMatch(x.test.markup(x.input.offer),/prototype-lead-form|messenger-phone/);
+ const task=x.ctx.openContactFlights(x.input.offer.key);assert.equal(x.flightCalls(),1);assert.equal(x.opened.length,0);
+ assert.equal(x.ctx.selectedOffer.flightsLoading,true);const loadingMarkup=x.overview.outerHTML;
+ x.gate.resolve(variants);await task;
+ assert.equal(x.opened.length,1,'the first flight response opens the picker in messenger-only contact');assert.equal(x.ctx.modalType,'flights');
+ assert.match(loadingMarkup,/Загружаем варианты рейсов/);
+ assert.equal(x.ctx.selectedOffer.flightsLoading,false);assert.equal(x.ctx.selectedOffer.contactFlightEditing,false);assert.strictEqual(x.ctx.selectedOffer.variants,variants);
+ assert.equal(x.ctx.selectedOffer.flightChoiceId,null,'loading choices does not select pair zero');assert.equal(x.ctx.selectedOffer.total,before.total);
+ assert.deepEqual(plain(x.ctx.selectedOffer.ages),[0,8]);assert.equal(x.ctx.selectedOffer.room,before.room);assert.equal(x.ctx.selectedOffer.meal,before.meal);assert.strictEqual(x.ctx.selectedOffer.raw,x.input.offer.raw);
+ assert.deepEqual(x.painted,[],'loading keeps the contact view until the picker opens');assert.deepEqual(x.calls,[]);assert.deepEqual(x.navigation,[]);assert.equal(x.phoneInput.focuses,0);
+});
+test('A late first-flight response cannot reopen a cancelled or different contact intent',async()=>{
+ for(const [name,invalidate] of [
+  ['Back',x=>{x.ctx.cancelHotelOfferCheck();x.ctx.modalType='offer';}],
+  ['closed',x=>{x.modal.open=false;}],
+  ['new request',x=>{x.ctx.selectionGeneration++;}],
+  ['other offer',x=>{x.ctx.selectedOffer={...x.ctx.selectedOffer,key:'another-offer'};}],
+  ['other dialog',x=>{x.ctx.modalType='dates';}],
+  ['editing cancelled',x=>{x.ctx.selectedOffer={...x.ctx.selectedOffer,contactFlightEditing:false};}],
+  ['contact removed',x=>{x.removeOverview();}]
+ ]){
+  const x=contactFlightSetup(),task=x.ctx.openContactFlights(x.input.offer.key);assert.equal(x.flightCalls(),1,name);
+  invalidate(x);const current=x.ctx.selectedOffer,before=plain(current);
+  x.gate.resolve(old.owner.tourvisorFixture(false).offer.variants);await task;
+  assert.equal(x.opened.length,0,name+' cannot open a picker');assert.strictEqual(x.ctx.selectedOffer,current,name+' cannot replace another selection');assert.deepEqual(plain(current),before,name+' cannot consume stale variants or price');
+  assert.deepEqual(x.calls,[]);assert.deepEqual(x.navigation,[]);assert.equal(x.phoneInput.focuses,0);
+ }
+});
+(async()=>{for(const {name,fn} of tests){await fn();console.log('PASS '+name);}assert.equal(old.owner.existingCasesRun,0);console.log(JSON.stringify({groups:tests.length,result:'PASS',contextBaselineRun:0,supplierRequests:0,botMessages:0,nativeNavigation:'intercepted-function-fixture',physicalAcceptance:false}));})().catch(e=>{console.error(e);process.exitCode=1;});

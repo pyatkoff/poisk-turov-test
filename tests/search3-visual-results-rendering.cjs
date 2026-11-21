@@ -9,14 +9,72 @@ const source=app+'\n'+section(cold,'function offerListInventory(','function moun
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
-const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String});
+// Source status must describe this current canonical inventory, not an earlier
+// terminal/raw-source receipt. Execute the real presentation owner without HTTP.
+{
+ const {JSDOM}=require('jsdom'),dom=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div>'),d=dom.window.document;
+ const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
+  searchResponse:{phase:'complete',pending:false,canContinue:true,currentInventory:true,providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{offers:99},anex:{offers:88}},union:{offersByProvider:{tourvisor:7,anex:6}}},
+  sameSelectedTourConditions:()=>false,needsRefresh:()=>false,icon:()=>'',esc,
+  clearSearchTimers(){this.stops=(this.stops||0)+1;},searchLifecycle:{invalidate(){}},renderResults(){}};
+ vm.createContext(context);vm.runInContext(section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
+ const render=(items=[{}])=>context.renderSearchStatus(items,3),notice=()=>d.querySelector('#search-status');
+ render();
+ assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 1$/);
+ assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 2$/);
+ assert.ok(notice().querySelector('[data-action="continue-search"]'),'partial notice offers the action its message names');
+ assert.equal(notice().querySelector('[data-action="retry-search"]'),null,'available continuation is not presented as restart');
+ notice().querySelector('details').open=true;notice().querySelector('[data-action="continue-search"]').focus();
+ context.hotels[0].offers.push({provider:'tourvisor'});render();
+ assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'later published offers replace the stale receipt count');
+ assert.equal(notice().querySelector('details').open,true);assert.equal(d.activeElement.dataset.action,'continue-search','progressive repaint preserves the active continuation');
+ context.hotels[0].offers.splice(1,1,{provider:'anex'},{provider:'anex'});render();
+ assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 3$/,'concrete replacement is counted from current exact offers');
+ context.searchResponse.retryRead=true;render();assert.equal(notice().querySelector('[data-action="continue-search"]').textContent,'Проверить результат','uncertain operation retains read-only recovery label');
+ context.searchResponse.canContinue=false;render();assert.ok(notice().querySelector('[data-action="retry-search"]'),'exhausted/error recovery keeps the explicit restart');
+ context.terminalizeSearchForVerification();render();assert.match(notice().textContent,/Найденные туры сохранены/);assert.doesNotMatch(notice().textContent,/Поиск остановлен/,'entering tour conditions is not attributed to user Stop');
+ context.stopSearch();render();assert.match(notice().textContent,/Поиск остановлен/,'explicit Stop remains truthful');
+ context.searchResponse={phase:'complete',canContinue:true,providers:{tourvisor:'partial'}};render();notice().querySelector('[data-action="continue-search"]').focus();
+ context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
+ const placeholder=d.querySelector('#cards .search-skeleton');assert(placeholder);render([]);assert.strictEqual(d.querySelector('#cards .search-skeleton'),placeholder,'progress updates retain the existing loading placeholder');
+ assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
+ assert.doesNotMatch(notice().textContent,/Вариантов до фильтров/,'retained previous-run offers cannot become current source counts before this generation receives results');context.searchResponse.currentInventory=true;render([]);assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'accepted progressive inventory supplies counts during loading');context.hotels=[];
+ const cardAction=d.createElement('button');d.body.append(cardAction);cardAction.focus();
+ context.searchResponse.currentInventory=false;render();assert.equal(notice().querySelector('details'),null,'previous-run cards leave the initial source status expanded');
+ context.searchResponse.currentInventory=true;render();
+ assert.equal(notice().querySelector('details').open,false);assert.match(notice().querySelector('summary').textContent,/Туры найдены, поиск продолжается/);
+ assert.strictEqual(d.activeElement,cardAction);assert(notice().querySelector('[data-action="stop-search"]'));assert(notice().querySelector('[data-action="edit-search"]'));assert.equal(notice().querySelector('[data-action="retry-search"]'),null);
+ notice().querySelector('details').open=true;notice().querySelector('[data-action="stop-search"]').focus();render();
+ assert(notice().querySelector('details').open);assert.equal(d.activeElement.dataset.action,'stop-search','progress preserves the open details and keyboard action');
+ context.searchResponse.providers.anex='error';render();assert.equal(notice().querySelector('details'),null);assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/не загрузились/);assert.equal(d.activeElement.dataset.action,'stop-search');
+ delete context.searchResponse.providers.anex;render();assert(notice().querySelector('details').open,'a focused action remains visible when the panel becomes compact');assert.equal(d.activeElement.dataset.action,'stop-search');
+ context.searchResponse.exactRefresh=true;render();assert.equal(notice().querySelector('details'),null,'a pending exact refresh keeps its full context');
+ for(const status of ['unknown','error','partial']){context.searchResponse={phase:'error',pending:false,providers:{tourvisor:status}};render([]);assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'unconfirmed empty source is not reported as received zero: '+status);}
+ context.searchResponse={phase:'complete',providers:{tourvisor:'complete',anex:'error'}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 0$/,'completed empty source has a known zero');
+ context.data.live=false;context.searchResponse={phase:'complete',pending:false,canContinue:true,providers:{tourvisor:'partial'},sources:{tourvisor:{offers:4}}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 4$/,'offline fixtures retain their recorded source scope');
+ dom.window.close();console.log('PASS current result status: canonical progressive/concrete counts, colocated continuation, retained/user-stop distinction, focus and recovery labels; no HTTP');
+}
+const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String,data:{}});
+// Site197 alert presentation must leave the canonical failure and retry policy intact.
+{
+ const context={data:{live:true}};vm.createContext(context);
+ vm.runInContext(section(app,'function offerQuoteErrorText(','function offerDetailBodyHTML('),context);
+ const cases=[['offer_expired',false,false,'Срок предложения истёк. Выберите другой тур.'],['offer_unavailable',false,false,'Этот тур больше недоступен. Выберите другой вариант.'],['',true,false,'Не удалось подтвердить этот тур. Выберите другой вариант.'],['price_unknown',false,false,'Итоговая цена выбранного тура не подтверждена. Повторите проверку.'],['network_error',false,false,'Не удалось проверить цену и наличие тура. Повторите проверку.']];
+ for(const [code,terminal,unavailable,expected]of cases){const offer=Object.freeze({quoteErrorCode:code,quoteError:'HTTP500 internal<&>',key:'exact-offer',total:199900}),before=JSON.stringify(offer);assert.equal(context.offerQuoteErrorText(offer,terminal,unavailable),expected);assert.equal(JSON.stringify(offer),before);}
+ context.data.live=false;assert.equal(context.offerQuoteErrorText({quoteError:'raw'},false,true),'Не удалось подтвердить актуальность тура. Вернитесь к результатам.');
+ console.log('PASS quote alert projection: customer recovery text, raw exact failure/amount untouched; no transport');
+}
+{
+ const context={};vm.createContext(context);vm.runInContext(app.match(/^const operatorAssets=[^\n]+/m)[0]+'\n'+section(app,'function cardOperatorLayoutClass(','function minimumOfferSummary('),context);
+ for(const [name,expected]of [['ANEX',' logo-operator compact-operator'],['TUI',' compact-operator short-operator'],['Длинный туроператор без логотипа',''],['',''],[null,'']])assert.equal(context.cardOperatorLayoutClass(name),expected);
+}
 for(const value of ['On Request','on request','  ON REQUEST  ']){
  assert.equal(requestLabels.displayMealLabel({meal:value}),'Питание уточняется');assert.equal(requestLabels.roomLabel({room:value}),'Номер уточняется');
 }
 assert.equal(requestLabels.mealLabel({meal:'On Request'}),'On Request','raw meal identity remains unchanged');
 assert.equal(requestLabels.displayMealLabel({meal:'Upon Request'}),'Upon Request');assert.equal(requestLabels.roomLabel({room:'Request'}),'Request','unconfirmed near matches are not rewritten');
-const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function minimumOfferSummary(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
- flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>''
+const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function cardOperatorLayoutClass(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
+ flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>'',operatorAssets:{}
 });
 const requestSummaryText=requestSummary.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
 assert.match(requestSummaryText,/Номер уточняется/);assert.doesNotMatch(requestSummaryText,/Номер Номер уточняется/,'result card does not duplicate the room label');
@@ -24,6 +82,9 @@ for(const name of ['andromedaApplicationReceipt','anexApplicationReceipt']){
  const owner=section(app,`function ${name}(`,name==='andromedaApplicationReceipt'?'function openAndromedaVerified(':'function openAnexApplicationPreview(');
  assert.match(owner,/meal:String\(mealLabel\(o\)\|\|''\)/,name+' keeps the raw lead receipt owner');assert.doesNotMatch(owner,/displayMealLabel|roomLabel/,name+' receipt has no presentation projection');
 }
+const appliedPartyLabel=vm.runInNewContext(
+ section(app,'const childAgeText =','const childAgesLabel =')+section(app,'const partyLabel=','function finishFilterPicker()')+'\nappliedPartyLabel'
+);
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
@@ -48,15 +109,15 @@ function observe(source,s){
   };
   const n=new Proxy(target,{set:(t,k,v)=>{record('write',key,k,v);t[k]=v;return true;}});nodes.set(key,n);return n;
  }
- const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:[0,17]};
+ const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:s.ages??[0,17]};
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
  ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
    selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
-   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
+   draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
-  appliedDestination:call('appliedDestination',()=>({kind:'resort',id:9})),destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
+  appliedDestination:call('appliedDestination',()=>source.slice(source.indexOf('function renderResultHeadings('),source.indexOf('function paintResultCards(')).includes('destinationIds')?{kind:'resort',id:9,country:'4',resorts:[],hotelIds:[]}:{kind:'resort',id:9}),destinationIds:()=>[],destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
   dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),departureScopeValue:call('departureScopeValue',()=>s.selected?ctx.dateText('2026-10-15'):ctx.rangeText(search.from,search.to)),
   responseFor:call('responseFor',()=>({phase:s.phase||'complete'})),hotelCountText:call('hotelCountText',n=>n+' отелей'),
   cardHTML:call('cardHTML',r=>`<card id="${r.hotel.id}">${r.offers.length}</card>`),emptyResultsHTML:call('emptyResultsHTML',()=>'<empty>'),
@@ -77,6 +138,7 @@ function observe(source,s){
  ctx.offerRefinementLabel=call('offerRefinementLabel',(field,value)=>field+':'+value);
  for(const name of ['flightLabel','offerSearchContext','offerCountText','nightsText','operatorBadge','offerMetaNote','offerActionLabel','icon','mealLabel','offerRefinementRecovery'])ctx[name]=call(name,v=>name+':'+(v?.key??v?.operator??v?.meal??v??''));
  ctx.displayMealLabel=o=>Object.keys(o).length===1?o.meal||'Питание уточняется':ctx.mealLabel(o);ctx.roomLabel=o=>o.room||'Номер уточняется';
+ ctx.unknownInfantCharge=()=>false;
  ctx.sharedOfferNote=call('sharedOfferNote',()=>s.shared?'Общее примечание':'');
  ctx.byId=id=>node('#'+id);
  ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
@@ -87,15 +149,37 @@ function observe(source,s){
  // The real bulk algorithm is characterized in calendar-inventory.cjs.
  ctx.calendarMinimums=(days,options,observations)=>days.map(day=>ctx.calendarMinimum(day,options,observations));
  ctx.setComparisonQuotes=value=>{ctx.comparisonQuotes=value;};
- const observedOwner=owner(source,s.kind);
+ const destinationNameOwner=s.kind==='results'&&source.includes('function appliedDestinationNameHTML(')?section(source,'function appliedDestinationNameHTML(','function collapseSearch('):'';
+ const observedOwner=destinationNameOwner+owner(source,s.kind);
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
- vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
+ vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
+  if(s.progressive){
+   Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery')});
+   // Both retained arrow and current method syntax share this named owner boundary.
+   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure')+'})',ctx);
+   const event=type=>handlers.afterEvent({type},ctx.searchResponse);
+   const count=name=>trace.filter(entry=>entry[0]===name).length;
+   ctx.searchResponse={key:'current',pending:true};trace.length=0;
+   event('loading');event('provider');event('provider');event('provider');handlers.afterStart(ctx.searchResponse);event('progress');
+   assert.equal(count('results'),1,'synchronous loading followed by statuses and afterStart only lays out the initial scope once');
+   assert.equal(count('renderSearchStatus'),5,'each pending source/progress update reaches its status owner');
+   items.push({hotel:{id:3},offers:[{key:'third'}]});event('results');assert(ctx.searchResponse.currentInventory);
+   assert.equal(count('results'),2,'incoming inventory is visible during its own event');
+   event('provider');assert.equal(count('results'),2);assert.equal(trace.at(-1)[0],'renderSearchStatus');assert.equal(trace.at(-1)[2],4,'the status receives the updated filtered offer total');
+   ctx.modalType='dates';event('progress');assert.equal(count('results'),2);assert.equal(count('refreshCalendarPrices'),1,'the open result date picker follows pending progress');
+   ctx.searchEditSession=true;event('provider');
+   assert.equal(count('results'),2,'an edited form retains the existing inventory');assert.equal(count('refreshCalendarPrices'),2,'active date/draft refresh is preserved');
+   ctx.modalType='';ctx.searchEditSession=false;
+   for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
+   assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
+   ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+  }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
  if(s.paginate||s.paginateAll){
@@ -161,28 +245,44 @@ function visibleRecords(rows){return rows.map((row,index)=>{
  return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)&&!key.startsWith('#group-')).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(key==='#all-offers-list'?listHTML:dom.innerHTML)}]),trace}};
  });}
 const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
-// Keep the historical digest intact; the owner-authorized departure fix changes
-// only the compact heading and its existing scope collaborator. Do not rebaseline
-// unrelated result/calendar/list observations from the new output.
-const appliedCompact='Вылет ${departureScopeValue()} · ${durationText()} · ${partyLabel(state.search)}';
-const historicalCompact='Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}';
-assert.equal(source.split(appliedCompact).length,2,'one compact applied departure owner');
-const historicalSource=source.replace(appliedCompact,historicalCompact);
+// Historical presentation from installed source7691cc4, preserved as an input.
+// Whole Site185 approval changes only headings/calendar units in this harness;
+// all data, state, inventory, pagination and other DOM observations stay pinned.
+const historicalHeading="function renderResultHeadings(items,total,pristine){\n $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);\n $('#compact-route').textContent=`${state.search.origin} → ${destinationLabel(appliedDestination())}`;\n $('#compact-details').textContent=`Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}`;\n\n $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;\n $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':`Отели и туры · ${countryNames[state.search.country]||'Выберите направление'}`;\n const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';\n $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;\n const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;\n}";
+const historicalCalendar="function renderCalendarStrip(){\n const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;\n loadResultCalendar();\n if(refreshBase)prepareResultCalendarBase();\n const model=resultCalendarModel(),{s,source,scope}=model;\n $('#calendar-units').textContent=`От, тыс. ₽ · весь тур за ${partyLabel(s)}`;\n const monthName=day=>dateObj(day).toLocaleDateString('ru-RU',{month:'long',timeZone:'UTC'}),fromYear=s.from.slice(0,4),toYear=s.to.slice(0,4);\n const monthRange=s.from.slice(0,7)===s.to.slice(0,7)?`${monthName(s.from)} ${fromYear}`:fromYear===toYear?`${monthName(s.from)} — ${monthName(s.to)} ${toYear}`:`${monthName(s.from)} ${fromYear} — ${monthName(s.to)} ${toYear}`;\n $('#calendar-month-label').textContent=monthRange.charAt(0).toLocaleUpperCase('ru-RU')+monthRange.slice(1);\n $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;\n const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));\n paintCalendarStrip(strip,calendarStripEntries(model));\n const minimumDay=model.days[model.prices.indexOf(model.min)];\n $('#calendar-minimum-legend').textContent=Number.isFinite(model.min)?`Минимум: ${dateText(minimumDay)} · ${money(model.min)}`:'';\n $('#calendar-minimum-legend').hidden=!Number.isFinite(model.min);\n $('#calendar-selected-date').textContent=state.selectedDate?`Вылет ${dateLong(state.selectedDate)}`:'';\n $('#calendar-selected-date').parentElement.hidden=!state.selectedDate;\n $('#clear-date').hidden=!state.selectedDate;\n refreshEmptyCalendarContext();\n}";
+const historicalSource=source.replace(section(source,'function renderResultHeadings(','function paintResultCards('),()=>historicalHeading+'\n').replace(section(source,'function renderCalendarStrip(){','function renderActive('),()=>historicalCalendar+'\n');
 const baseline=visibleRecords(records(historicalSource.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
-if(process.argv.includes('--capture'))console.log('Retained historical reference digest: '+baselineDigest);
-else assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','approved result/calendar/list observations');
-const expected=copy(baseline);
-for(const [index,row] of expected.entries()){
- if(scenarios[index].kind!=='results'||scenarios[index].draft)continue;
- const trace=row.result.trace,write=trace.findIndex(call=>call[0]==='write'&&call[1]==='#compact-details'&&call[2]==='textContent');
- const range=trace.findIndex(call=>call[0]==='rangeText');
- assert(range>=0&&range<write,'historical compact date collaborator precedes its write');
- trace[write][3]='Вылет '+(scenarios[index].selected?'date:2026-10-15':'2026-10-14 — 2026-10-16')+trace[write][3].slice(trace[write][3].indexOf(' · '));
- trace.splice(range,1,['departureScopeValue'],scenarios[index].selected?['dateText','2026-10-15']:trace[range]);
- const node=row.result.dom.find(([key])=>key==='#compact-details');node[1].textContent=trace[write+1][3];
+assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','unchanged historical result/calendar/list oracle');
+const headingNodes=new Set(['#compact-route','#compact-details','#compact-search .secondary[data-action="top"]','#route-label','#results-title','#results-summary','.sort-label','.mobile-sort']);
+function stableObservations(rows){return rows.map((row,index)=>{
+ const r=copy(row.result),scenario=scenarios[index];
+ if(scenario.kind==='results'&&!scenario.draft){
+  const begin=r.trace.findIndex(c=>c[0]==='classToggle'&&c[1]==='#results'&&c[2]==='results-pristine'),end=r.trace.findIndex(c=>c[0]==='write'&&c[1]==='.mobile-sort'&&c[2]==='hidden');
+  assert(begin>=0&&end>begin,'isolated presentation heading boundary');
+  r.trace.splice(begin,end-begin+1);r.dom=r.dom.filter(([key])=>!headingNodes.has(key));
+ }
+ if(scenario.kind==='calendar'){
+  for(const c of r.trace)if(c[0]==='write'&&c[1]==='#calendar-units'&&c[2]==='textContent')c[3]='approved whole-tour unit label';
+  for(const [key,n]of r.dom)if(key==='#calendar-units')n.textContent='approved whole-tour unit label';
+  // The new mobile disclosure is separately exercised by the actual calendar
+  // runner. Preserve this historical price/data oracle and remove only its
+  // explicitly new display nodes; every price/date/state observation remains.
+  const disclosureNodes=new Set(['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range']);
+  r.trace=r.trace.filter(c=>!disclosureNodes.has(c[1]));r.dom=r.dom.filter(([key])=>!disclosureNodes.has(key));
+ }
+ return {...row,result:r};
+});}
+assert.deepEqual(stableObservations(actual),stableObservations(baseline),'only explicitly approved heading/unit presentation may change');
+for(const [index,row]of actual.entries()){
+ const scenario=scenarios[index];if(scenario.kind!=='results'||scenario.draft)continue;
+ const nodes=new Map(row.result.dom),day=scenario.selected?'date:2026-10-15':'2026-10-14 — 2026-10-16';
+ assert.equal(nodes.get('#compact-route').textContent,'Москва<& → Турция');
+ assert.equal(nodes.get('#compact-route').title,'Москва<& → Кемер');
+ assert.equal(nodes.get('#compact-details').textContent,'Вылет '+day+' · 7–10 ночей · 2 взр. · 2 реб. (до года, 17 лет)');
+ assert.equal(nodes.get('#results-title').textContent,scenario.pristine?'Ваш следующий отдых':'Отели и туры');
+ assert(row.result.trace.some(c=>c[0]==='attribute'&&c[1]==='#compact-search .secondary[data-action="top"]'&&c[2]==='aria-label'&&c[3]==='Изменить поиск: Москва<& → Кемер'));
 }
-assert.deepEqual(actual,expected,'only the authorized compact departure context and bounded pure grouping/note work may change');
 if(i>=0){
  const coldIndex=process.argv.indexOf('--compare-offer-list');
  const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList('):'');
@@ -195,6 +295,8 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace('!offerView.departure||o.day===offerView.departure', 'true||o.day===offerView.departure')),'list departure scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+observe(source,{kind:'results',count:2,progressive:true});
+console.log('PASS progressive result presentation: one initial scope, immediate new inventory, retained status counts, edits, continuation and terminal states');
 
 // Loading another card page used to repeat the entire result inventory and
 // page-level rendering cascade. Compare the actual fast path against that
@@ -252,12 +354,14 @@ function previousCardSource(code){
 }
 function cardRatingOwner(code){
  const work={evaluations:0,reads:0},state={openHotel:null,photoIndexes:{},favorites:[]},ctx={Number,Intl,work,state,optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingFormatter:new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}),
-  esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlightsHTML:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
+  dateText:x=>x,nightsText:x=>String(x),mealLabel:()=>'',selectedOffer:null,sameSelectedTourConditions:()=>false,searchKey:()=>'',needsRefresh:()=>false,savedFlightLegs:()=>[],savedFlightTextPlain:()=>'',selectedPriceStatus:()=>'',esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlightsHTML:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
- vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
- const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
- return {work,render};
+ const infantChargeSource=code.match(/^const unknownInfantCharge=[^\n]+/m)[0];
+ vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
+ const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
+ ctx.offerCountText=n=>n+' тура';
+ return {work,render,card:row=>ctx.cardHTML(row),setFilters:f=>{state.filters=f;}};
 }
 const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
 for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(currentCard.render(value),previousCard.render(value),'card rating markup '+String(value));
@@ -287,16 +391,63 @@ assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offer
 console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
 
+{
+ const owner=cardRatingOwner(source),hotel={id:42,name:'Hotel',resort:'Кемер',country:'4',stars:4,photos:[],
+  amenities:[{key:'3:11',label:'Детский клуб',filterable:true},{key:'1:22',label:'Пляж <&',filterable:true},
+   {key:'local-service:9',label:'Услуга из описания',filterable:false}],family:true,beach:90};
+ const offer={key:'verified-listing',total:120000,nights:7};
+ hotel.offers=[offer];
+ const render=filters=>{owner.setFilters(filters);return JSDOM.fragment(owner.card({hotel,offers:[offer]}));};
+ const reasons=doc=>[...doc.querySelectorAll('.hotel-match-line li')].map(e=>e.textContent);
+ const both=render({amenities:['3:11','1:22','local-service:9'],family:true,beach:true});
+ assert.deepEqual(reasons(both),['Детский клуб','Пляж <&','90 м до пляжа']);
+ assert.equal(both.querySelector('.hotel-match-facts').nextElementSibling.className.trim(),'hotel-price');
+ assert.deepEqual(reasons(render({amenities:['1:22']})),['Пляж <&']);
+ hotel.beach=null;
+ assert.deepEqual(reasons(render({amenities:['3:99'],beach:true,spa:true})),[]);
+ assert.equal(render({meals:['Завтраки'],stars:[4]}).querySelector('.hotel-facts').textContent,'Пляж рядом');
+}
+
+// Site224 card entry: presentation must retain the representative exact key and
+// the separate list owner, without advertising alternatives after local filtering.
+{
+ const owner=cardRatingOwner(source),hotel={id:501,name:'Hotel <& family',resort:'Кемер',country:'4',stars:5,rating:4.5,photos:[],offers:[]};
+ for(const provider of ['tourvisor','anex','fixture']){
+  const first={key:provider+'%3Aexact-b',provider,total:125500,day:'2026-11-08',nights:7},other={key:provider+'%3Aexact-a',provider,total:119000,day:'2026-11-07',nights:7};
+  hotel.offers=[other,first,{key:'outside-current-filter',total:99000}];
+  const row={hotel,offers:[first,other],rating:4.5},before=JSON.stringify(row),html=owner.card(row);
+  const primary=html.match(/<button class="primary"[^>]*data-card-entry="true"[^>]*>[\s\S]*?<\/button>/)?.[0];assert(primary);
+  assert.match(primary,/data-action="offer"/,'card keeps the existing provider dispatch');
+  assert(primary.includes('data-key="'+first.key+'"'),'clicked representative key is preserved, not replaced by hotel minimum');
+  assert(primary.includes(provider==='fixture'?'Смотреть тур':'Номера и цены'),'label describes the actual existing route');
+  assert(primary.includes('125500 ₽')&&primary.includes('2026-11-08'),'price and dates belong to the same representative');
+  const infantOffer={...first,raw:{infantCharge:{status:'unknown'}}};
+  const infantCard=JSDOM.fragment(owner.card({...row,offers:[infantOffer]}));
+  assert.equal(infantCard.querySelector('.starting-price>span').textContent,provider==='anex'?'Цена из поиска за 2 взр.':'За 2 взр. · весь тур');
+  if(provider==='anex')assert.match(infantCard.querySelector('.fuel-note').textContent,/не подтвердил, входит ли доплата за младенца/);
+  const more=html.match(/<div class="hotel-more has-variants">([\s\S]*?)<\/div>/)?.[1];assert(more);
+  assert.equal((more.match(/<button /g)||[]).length,1,'only the subordinate list action remains in the card footer');
+  assert.match(more,/class="text-button card-all-offers"/);assert.match(more,/data-action="all-offers" data-id="501"/);
+  assert.match(more,/Туры списком \(2\)/,'count refers to this filtered offer array, not all hotel records');
+  assert.equal((html.match(/data-action="hotel-details"/g)||[]).length,1,'hotel-name entry preserves information without a duplicate action');
+  assert(html.includes('aria-label="Об отеле: Hotel &lt;&amp; family"'));
+  assert.equal(JSON.stringify(row),before,'rendering cannot change offer identity, order, amounts or hotel inventory');
+  const single=owner.card({hotel,offers:[first],rating:4.5});
+  assert(!single.includes('card-all-offers')&&!single.includes('hotel-more'),'one current offer has no phantom list action or empty footer');
+ }
+ console.log('PASS Site224 card entry: live rooms/legacy distinction, representative key/price/date, independent filtered list, single-choice and unchanged inventory');
+}
+
 // Compare the actual summary owner with uncached full replacement. The pinned
 // markup digest comes from the pre-O34 owner; DOM identity/work is checked apart
 // from the generated strings, including edits made outside the application.
 function summaryDOM({full=false,code=source}={}){
  const dom=new JSDOM('<section id="search"><form id="search-form"></form><div class="intro"></div><div id="applied-search"></div></section>'),document=dom.window.document,summary=document.querySelector('#applied-search');let parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
- const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,MutationObserver:dom.window.MutationObserver,esc,
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,MutationObserver:dom.window.MutationObserver,esc,appliedPartyLabel,
   $:selector=>document.querySelector(selector),icon:name=>`<i data-icon="${name}"></i>`,
   state:{search:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},filters:{stars:[],meals:[],min:0,max:null}},
-  appliedDestination:()=>ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
+  destinationIds:()=>[],hotelCountText:n=>n+' отелей',countryNames:{'4':'Турция','1':'Египет','9':'Направление'},appliedDestination:()=>section(code,'function renderSummary(){','function editSearch(){').includes('destinationIds')?{country:ctx.state.search.country,resorts:[],hotelIds:[]}:ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
   updateCompactSearch:()=>{},departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
   durationText:()=>ctx.state.search.minNights+'–'+ctx.state.search.maxNights+' ночей',guestsText:()=>ctx.state.search.adults+' взрослых · '+ctx.state.search.ages.join('/'),
   budgetLabel:f=>f.min+'–'+(f.max??'любой'),filterCount:()=>ctx.state.filters.stars.length+ctx.state.filters.meals.length+(ctx.state.filters.min?1:0)+(ctx.state.filters.max===null?0:1)};
@@ -307,8 +458,60 @@ function summaryDOM({full=false,code=source}={}){
  return {dom,ctx,summary,render:()=>{ctx.renderSummary();return observer.takeRecords();},parsed:()=>parsed,
   close:()=>{observer.disconnect();dom.window.close();}};
 }
+{
+ const current=summaryDOM(),draftAges=[13];
+ try{
+  const {ctx,summary}=current;
+  vm.runInContext(app.match(/^const guestsText=[^\n]+/m)[0],ctx);
+  const checks=[
+   {ages:[7],desktop:'2 взр. · 1 реб. (7 лет)',mobile:'2 взр. · 1 реб. (7 лет)'},
+   {ages:[10],desktop:'2 взр. · 1 реб. (10 лет)',mobile:'2 взр. · 1 реб. (10 лет)'},
+   {ages:[0,10],desktop:'2 взр. · 2 реб. (до года, 10 лет)',mobile:'2 взр. · 2 реб. (до года, 10 лет)'},
+   {ages:[],desktop:'2 взр.',mobile:'2 взрослых'}
+  ];
+  for(const {ages,desktop,mobile} of checks){
+   ctx.state.search.ages=ages;ctx.draft={...ctx.state.search,ages:draftAges};current.render();
+   const party=[...summary.querySelectorAll('.applied-trip dt')].find(node=>node.textContent==='Туристы');
+   assert.equal(party.nextElementSibling.textContent,desktop,'desktop recap shows the applied party');
+   const heading=observe(source,{kind:'results',ages,draftAges});
+   assert.equal(new Map(heading.dom).get('#compact-details').textContent,'Вылет 2026-10-14 — 2026-10-16 · 7–10 ночей · '+mobile,'compact recap shows the applied party');
+  }
+ }finally{current.close();}
+}
 const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
+{
+ const current=summaryDOM(),{ctx,summary}=current,hotel='Coast Club <b>Семейный</b> & "Spa"';
+ try{
+  ctx.document.body.insertAdjacentHTML('beforeend','<div id="compact-search"><strong id="compact-route"></strong><span id="compact-details"></span><button class="secondary" data-action="top"></button></div><div id="results"><span id="route-label"></span><h2 id="results-title"></h2><p id="results-summary"></p><span class="sort-label"></span><span class="mobile-sort"></span></div>');
+  Object.assign(ctx,{destinationIds:d=>d.hotelIds,destinationHotel:id=>id===501?{name:hotel,country:'4',resort:'Белек'}:null,
+   hotelRestorePending:true,hotelCountText:n=>n===1?'1 отель':n+' отеля',catalogReady:true,departureScopeValue:()=> '12–18 октября',departureScopeText:()=> 'Вылет 12–18 октября'});
+  vm.runInContext(section(app,'function destinationLabel(','function recentDestinations(')+section(app,'function renderResultHeadings(','function paintResultCards('),ctx);
+  const cases=[
+   {hotelIds:[501],resorts:[],name:hotel,route:'Турция'},
+   {hotelIds:[],resorts:['Кемер'],name:'Кемер',route:'Турция'},
+   {hotelIds:[501,502],resorts:[],count:'2 отеля',route:'Турция'},
+   {hotelIds:[],resorts:['Кемер','Белек'],count:'2 курорта',route:'Турция · 2 курорта'},
+   {hotelIds:[502],resorts:[],count:'1 отель',route:'Турция'},
+   {hotelIds:[],resorts:[],count:'',route:'Турция'}
+  ];
+  for(const {hotelIds,resorts,name,count,route} of cases){
+   ctx.appliedDestination=()=>({country:'4',hotelId:hotelIds.length===1?hotelIds[0]:0,hotelIds,resorts});
+   current.render();ctx.renderResultHeadings([{}],1,false);
+   const compact=ctx.$('#compact-details');
+   assert.equal(summary.querySelector('.applied-route strong').textContent,'Москва→'+route);
+   assert.equal(ctx.$('#compact-route').textContent,'Москва → Турция');
+   for(const view of [summary,compact]){
+    const label=view.querySelector('.applied-destination-name');
+    assert.equal(label?.textContent,name);assert.equal(label?.title,name);
+   }
+   assert(compact.textContent.startsWith((name||count||'')+(name||count?' · ':'')+'Вылет 12–18 октября'));
+   assert(compact.textContent.includes('2 взрослых'));
+  }
+ }finally{current.close();}
+}
 const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
+const historicalSummary="function renderSummary(){const s=state.search;paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class=\"applied-main\"><div class=\"applied-route\"><span class=\"summary-icon\">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class=\"applied-trip\"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class=\"secondary\" data-action=\"edit-search\" aria-controls=\"search-form\" aria-expanded=\"false\">${icon('sliders')} Изменить поиск</button></div>`}]);}";
+const historicalSummarySource=source.replace(section(source,'function renderSummary(){','function editSearch(){'),()=>historicalSummary+'\n');
 {
  const current=summaryDOM(),legacy=summaryDOM({full:true,code:summaryBaseline});
  try{
@@ -333,18 +536,18 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
  }finally{current.close();legacy.close();}
 }
 {
- const current=summaryDOM(),legacy=summaryDOM({full:true,code:summaryBaseline}),markup=[];let seed=34567;
+ const current=summaryDOM(),legacy=summaryDOM({full:true,code:summaryBaseline}),historical=summaryDOM({full:true,code:historicalSummarySource}),markup=[];let seed=34567;
  const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
  try{
   for(let round=0;round<100;round++){
    const state={search:{origin:['Москва','Гранд <&"','A\nB','Αθήνα'][round%4],country:['4','1','9'][round%3],from:'2026-10-'+String(1+round%27).padStart(2,'0'),to:'2026-11-'+String(1+round%27).padStart(2,'0'),minNights:1+Math.floor(random()*14),maxNights:15+Math.floor(random()*7),adults:1+Math.floor(random()*5),ages:[[],[0],[2,17],[0,8,17]][round%4]},filters:{stars:[[],[5],[5,3],[4,5]][round%4].slice(),meals:[[],['AI'],['BB','UAI'],['Питание <&"']][round%4].slice(),min:round%2?50000+round:0,max:round%3?150000+round:null}};
    current.ctx.state=state;legacy.ctx.state=structuredClone(state);const before=JSON.stringify(state);current.render();legacy.render();
    assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'changed search/filter summary equals uncached rendering');assert.equal(JSON.stringify(state),before,'summary preserves raw search/filter values and order');
-   markup.push(legacy.summary.innerHTML);
+   historical.ctx.state=structuredClone(state);historical.render();markup.push(historical.summary.innerHTML);
   }
   const digest=crypto.createHash('sha256').update(JSON.stringify(markup)).digest('hex');
   assert.equal(digest,'8d70225f024d799e8be04095f7d1693906daee940ba212b594c1799e11458c01','approved compact summary for 100 search/filter states');
-  console.log('PASS summary parity: 100 original search/filter/escaping/party states; digest '+digest+'; raw input order preserved');
+  historical.close();console.log('PASS summary parity: 100 original search/filter/escaping/party states; digest '+digest+'; raw input order preserved');
  }finally{current.close();legacy.close();}
 }
 // Identical keys in independent containers must never share a dirty/markup
@@ -370,21 +573,33 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
 // date roots must survive provider/status refreshes. Live-only edits still
 // invalidate the generated-markup binding and are repaired on the next pass.
 function calendarDOM(code=source){
- const dom=new JSDOM('<p id="calendar-units"></p><p id="calendar-month-label"></p><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
+ const dom=new JSDOM('<section id="price-calendar"><button class="result-calendar-disclosure"></button><span id="result-calendar-range"></span><div class="result-date-heading"><p id="calendar-units"></p><p id="calendar-month-label"></p></div><div id="calendar-preview"><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button></div></section>'),document=dom.window.document,strip=document.querySelector('#price-strip');
  let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
- const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,
-  state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,innerWidth:1280,
+  state:{search:{from:'2026-10-01',to:'2026-10-21',ages:[]},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
   calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
-  dateObj:day=>new Date(day+'T12:00:00Z'),loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
+  dateObj:day=>new Date(day+'T12:00:00Z'),rangeText:(from,to)=>from+' — '+to,loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
- vm.createContext(ctx);vm.runInContext(owner(code,'calendar'),ctx);
+ vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(owner(code,'calendar'),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(strip,{childList:true});
  return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
   setPrice:(index,value)=>{prices[index]=value;},setPrices:value=>{prices=value.slice();},markup:()=>vm.runInContext('calendarStripHTML(resultCalendarModel())',ctx),
   close:()=>{observer.disconnect();dom.window.close();}};
+}
+{
+ const family=calendarDOM();
+ try{
+  family.setPrice(1,100000);
+  const units=family.ctx.document.querySelector('#calendar-units');
+  for(const [ages,expected] of [[[],'От, тыс. ₽ · весь тур'],[[1],'От, тыс. ₽ · доплата за младенца уточняется'],[[7,0],'От, тыс. ₽ · доплата за младенца уточняется'],[[2],'От, тыс. ₽ · весь тур']]){
+   family.ctx.state.search.ages=ages;family.render();
+   assert.equal(units.textContent,expected);
+   assert.equal(family.strip.querySelectorAll('.date-price.best').length,2,'both tied daily minima retain their amounts regardless of party');
+  }
+ }finally{family.close();}
 }
 const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].filter(node=>node.matches?.('.date-price')).length,0);
 {

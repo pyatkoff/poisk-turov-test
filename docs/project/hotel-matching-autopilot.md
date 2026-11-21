@@ -1,7 +1,8 @@
 # AnyTour MATCH — автономное сопоставление отелей
 
 Направление выделено 2026-09-11. Исполняемая очередь: **#1971**.
-Каноническая координация: **#4217**; #3419, #2530, #996 и #1759 — только history/no-replay.
+Каноническая координация: **#4709**; #4217 (2500 comments), #3419, #2530, #996 и #1759 — history/no-replay.
+Все незавершённые claims, reservations, UNKNOWN и ограничения из этих журналов сохраняются.
 Постоянная логика уточнена владельцем 2026-09-19:
 [поручение и границы](https://github.com/pyatkoff/poisk-turov-test/issues/2530#issuecomment-5738102955).
 Состав Tourvisor расширен владельцем в тот же день до **ANEX, FUN&SUN,
@@ -10,7 +11,7 @@
 
 MATCH — отдельное направление, не INT #1717 и не SEARCH. Этот документ задаёт
 алгоритм и границы, но не доказывает, что все его режимы уже реализованы или запущены.
-Текущие source/CI/execution/DB receipts и active claims находятся в #1971/#4217.
+Текущие source/CI/execution/DB receipts и active claims находятся в #1971/#4709.
 Изменение документа или задания автопилота не равно запуску постоянного серверного worker.
 
 ## Миссия и приоритет
@@ -19,24 +20,362 @@ MATCH — отдельное направление, не INT #1717 и не SEAR
 начиная с отелей, реально появившихся в поисковой выдаче. Единица работы —
 **несопоставленный отель и конкретная отсутствующая provider-связь**, а не все его туры.
 
-Сначала обрабатывать `source=user_search` и недостающие связи реально виденных
-туристами отелей, затем новые несопоставленные ANEX/SAMO observations и остальной
-CURRENT unresolved catalog. Использовать уже сохранённые ссылки, справочники и
-ответы прежде дополнительных вызовов. Полный повтор каталога ради счётчика не нужен.
-Безопасные независимые строки обрабатывать сотнями/тысячами; лимит30 относится
-к совместимой поисковой пачке, а не к размеру всей работы или одному PR на отель.
+## Исполняемый план — решение владельца 20.10.2026
+
+Владелец поручил изменить существующий план после оценки его эффективности.
+Этот раздел задаёт текущий порядок работы MATCH в той же очереди **#1971**,
+координация **#4709**. Он заменяет несовместимые приоритеты старых редакций,
+сохраняет алгоритм A/B/C и все действующие ограничения ниже. Другие направления,
+`AUTOPILOT_STATE.json.current_task`, расписания и enabled/paused состояния не меняются.
+
+### Источник текущего прохода — поручение 20.10.2026
+
+**Уточнение владельца: бюджет Турвизора — 5000 запросов в сутки суммарно на
+учётку, для всех ТО.** В этом проходе планировать до5000 физических HTTP;
+tariff/search units учитывать отдельно, не выдавая их за число HTTP или отелей.
+Свободный остаток определяется общим account/provider-day ledger с уже
+израсходованными, зарезервированными и UNKNOWN вызовами и учётом остальных
+потребителей этой учётки. Неизмеренный глобальный расход не означает5000 свободных.
+
+**Реализовано и применено20.10.2026:** общий helper
+`hotel_match_tourvisor_quota_v1.py` и owner policy5000 в существующем
+account/provider-day ledger (успешный run39341012567, день2026-10-20).
+Physical HTTP и tariff units раздельны; reservation до HTTP, request-ID no-replay,
+оба существующих lock protocol и used/operations/UNKNOWN сохранены. Новый acquisition
+обязан использовать этот helper; старые frozen runners/receipts не переоткрываются.
+Глобальный расход учётки остаётся not_measured:5000 не объявляются свободным остатком.
+
+Все новые supplier-запросы MATCH для hotel/operator identity выполнять через
+**Турвизор, учётка `TOURVISOR_ANEX_JWT`**. Это выделенный ключ Турвизора,
+а не прямой API ANEX. В scope остаются common4: ANEX/FUN&SUN/БГ/Интурист,
+с фактической привязкой операторов к этой учётке и общим ledger/лимитом.
+Новые acquisition через обычный `TOURVISOR_JWT`, прямой ANEX или SAMO/Andromeda
+не входят в этот проход. Сохранённые доказательства и принятые связи этих источников
+переиспользуются; настройки и выполнение INT/SEARCH этим поручением не меняются.
+
+Проверка второго ключа 19.10 дала 25 hotel groups/103 tours у ANEX13, но не
+доказала доступ всего common4, полноту каталога или свободный остаток бюджета.
+Её search13943616554 и fixed operation завершены/no-replay; raw body не сохранён.
+Новый проход использует существующий account/provider-day ledger без сброса
+и новое обоснованное evidence, а не повтор этого теста.
+
+**Входящие совпадения проверять до нового платного сбора.** Найденные материалы
+зафиксированы в [результате проверки передачи](../../reports/hotel-match-tourvisor-handoff-review-20261020.json):
+
+| Найдено | Использование в MATCH |
+| --- | --- |
+| LOCAL: 5075 old→TV links, 6175 ready cards | Принятые каталоговые bridges; не число новых совпадений с ТО |
+| 37076 старых source records в before snapshot и `tour_operator_identity_observations` | Приоритетный retained intake: точные namespaces/IDs/operator links/paths/native fields/provenance; число новых допустимых пар ещё не измерено |
+| Старый CSV BG18 от 28.09 | Уже существующая candidate-only группа; `102+ID` не доказывает bridge, consumed scopes не открывать повторно |
+| Три проверенные legacy_catalog→own→TV цепочки | 1546→736→1546 (A11), 1584→763→1584 (WASSERMANN), 9374→1554→9374 (SUNRISE); это target proof, не принятие native-TO пары |
+
+В проверенных #4217/INT/LOCAL после 08.10 отдельный новый список точных
+hotel↔TO pairs не найден. Это граница выполненного поиска, не утверждение
+об отсутствии другой передачи. Новые исходные файлы принимаются в ту же очередь.
+
+Два явных public saved-data bridges подтвердили LOCAL↔TV targets трёх retained
+кандидатов. Полный raw каждого правильного ответа захвачен до parsing; в отчёте
+сохранены проверенные проекции, hashes и точные request/response receipts.
+Первый контрольный lookup с чужим namespace не используется как proof этих отелей.
+Operator/native source proof, CURRENT guards и SUNRISE/Kemper qualifier/cluster holds
+остаются отдельными; новых принятых соответствий это не создаёт.
+
+**Пакетный intake реализован и выполнен20.10.2026.** Штатный carrier теперь
+читает `tour_operator_identity_observations` и проверенные
+`local_tv_legacy_links.snapshot_json.sources[]` одной SELECT-only snapshot,
+сохраняет private raw до parsing и sanitized projection. Используется reviewed DB
+helper из immutable source bundle; меняющаяся installed копия не исполняется.
+Target SELECT ограничен observed/legacy IDs, без переписи всего каталога.
+
+Фактический результат и receipts — в
+[отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json):
+13611 observations,14687 sources,15298 registry rows,5310 scoped targets,
+raw62108585bytes/SHA25600c992ec…. Saved projection повторно использует эту выгрузку
+без нового чтения БД и supplier calls; parent receipt/raw остаются неизменными.
+Проверены448 уже accepted common4 tuples на195 TV hotels; **новых accepted0**.
+Registry counts относятся к `andromeda_hotel_identities`, direct ANEX effective
+registry и live30/SEARCH эффект в этом пакете не измерялись.
+
+Рабочий retained cohort5214 TV-ID включает5075 мигрированных и139 дополнительных
+ID наблюдений. Это не139 новых отелей или доказанных missing-provider связей.
+6917 наблюдений отнесены к common4 по retained ID hints13/18/25/43; остальные6694
+сохранены как other/unbound. Hints не доказывают доступ текущей учётки или namespace
+bridge. Завершённый saved-link audit run39346987559 установил: во всех13611
+observations поля operator_link и native_id_value равны NULL; все14687 source JSON
+разобраны, буквальных operatorLink/operator_link ключей во вложенных объектах нет.
+Это проверка полей этой выгрузки, не других передач или JSON внутри строк.
+Гипотеза нераспознанного формата этих сохранённых ссылок закрыта: повторять этот
+parsing/intake без новых данных нельзя. Raw/parent receipt неизменны, все прежние
+projection fields совпали; новых accepted0/HTTP0/DBreads0/mappingwrites0.
+Исправление источника #4672/control #4673 проверено native20tests и штатным
+contract39346753081/Security39346734598+39346753057 SUCCESS.
+
+**Сквозной data-пакет20.10.2026 выполнен:** CURRENT39348390675 проверил те же5214
+IDs через штатный direct ANEX resolver с manual/exclusions.3689 имеют прямую связь,
+из них3650активных/неисключённых;136targetsнепригодны, активный denominator5078.
+613missing directANEX имели валидные canonical anchors и реальные будущие контексты.
+Для105Turkey4/Moscow1/2A/nochildren выполнены10поисков через `TOURVISOR_ANEX_JWT`:
+38physicalHTTP,8вернувшихсяANEXhotels,7точных native pairs,1ссылка без nativeID.
+Отсутствие остальных97в этих контекстах не означает глобальное отсутствие у ТО.
+Binding operator13/этойучётки подтверждён фактическим detail/anextour URL.
+
+Writer39353313622 принял **7новых ANEX-связей на7отелях**, каждая проверена после
+COMMIT и через canonical resolver.38HTTP — полный supplier расход этого пакета;
+write/post-CURRENT новых supplier calls не делали. Первый writer39352154123 имел
+0writes из-за порядка ключей JSON; это дефект адаптера, а не7реальных conflicts.
+Исправление сохраняет точный6-field set/типы/значения/хеши, canonical-roundtrip
+регрессия и real MySQL COMMIT/HOLD/rollback/UNKNOWN входят в28tests. Старый0write
+receipt сохранён и обязателен для отдельного repairedv2; ни старый writer, ни HTTP
+не replay. Legacy fixed5 writer/validator не изменены и не ретаргетированы.
+
+Post-CURRENT39353523840 на **тех же5214IDs** подтвердил ровно7новых пар без удаления
+старых: directANEX3696на всём наборе/3657на5078пригодных; ANEX union cSAMO3663,
+FUNSUN1004, BGunion1544, INTOURIST1073на том же пригодном наборе. Это identity
+registry/resolver coverage, не подтверждённая live30 availability или SEARCH rendering.
+Полные receipts/хеши/точныеIDs/исходный и конечный срезы — в
+[отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json).
+
+### Актуальный checkpoint и порядок продолжения — 20.10.2026, после readback-v8
+
+Exact IDs/hashes/receipts — в
+[существующем отчёте](../../reports/hotel-match-retained-intake-execution-20261020.json)
+и [terminal acquire-v9](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295373481).
+Исходная приёмка7 связей и все прежние terminal/UNKNOWN остаются историей/no-replay.
+
+- **Подтверждённый прирост:7 прямых ANEX-связей**, COMMIT + per-row readback +
+  canonical resolver. На том же CURRENT-v2 наборе3650→3657 eligible,3689→3696 all;
+  SEARCH effect не измерен. После первых105Turkey следующие25HTTP/9starts дали
+  0 новых native pairs/связей. Own known lineage63HTTP/19starts/3UNKNOWN;
+  GLOBAL usage/remaining NOT_MEASURED, общий account/provider-day limit5000.
+- **Общий механизм каталога партий реализован, проверен, merged и исполнен.**
+  Feature PR4756/helper6b52756c, main PR4758/controller5dea4d17; actual native CI
+  39453791525 выполнила63tests/0skips с MySQL/CURRENT/writer/resolver и stock;
+  Security, независимое review и exact merged-byte readback пройдены.
+  Не создавать повторно этот механизм или новый controller для следующего roster.
+- Acquire-v9 выбрал2 новых IDs345/131024 по exact saved user_search
+  30Oct2026/6n/country1/departure10/2A/nochildren. Сохранённые SAMO operator_5
+  anchors345[5215]/131024[37718,4958] использованы только как ANEX-related
+  candidate signals, оба токена131024 сохранены. Это не прямые Online IDs
+  и не доказательство текущих продаж. Run39454278331 completed/search_complete,
+  1start+1status+1results=3HTTP/UNKNOWN0;0selected ANEX hotels/details/nativepairs/
+  accepted/committed/readback/gain. Writer/CURRENT NOT_RUN_ZERO_PAIRS/ZERO_GAIN.
+  Ноль относится к этим IDs/условиям, не к стране/ТО вообще.
+- 105/55/22, alternate25/v4,25/v5,25/v6,13/v7,9Maldives/v8 и2Egypt/v9 — consumed.
+  Диагностика v5/v6, разборы8038/616 sealed; old UNKNOWN сохраняются. Ни replay,
+  ни новое имя, ни empty writer/CURRENT census по нулю не разрешены.
+- 206 ever-selected/407 never-selected (199 selected-ready+407=606) — bookkeeping
+  того же immutable CURRENT-v2, не новая перепись. Второй catalogue scope8Thailand/
+  departure3/22Feb2027/7n проверен и merged как config, **исполнение NOT_RUN**.
+  Он не автоматический next после нуля.4Thailand/departure22/11Nov10n — только
+  draft вне каталога. Названия departure3/10/22 не угадывать.
+- MATCH Client.call60s уже подключён; старые30s UNKNOWN не переписываются,
+  историческая причина и provider-wide recovery не установлены.
+
+#### Проверенные новые поля и исправление receipt — выполнено
+
+[Terminal readback-v8](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6296318031),
+run39460843892/execute118759596161: **0supplierHTTP/0DB/0mapping**.
+Это отдельные ранее не проверенные reference/yield поля, не новый intake,
+повтор native-link audit, CURRENT census или acquisition-v9.
+
+- В том же сохранённом остатке407 проверены787observation rows по285targets;
+  у122 нет matching observation **в этой capture**. Колонки
+  `tour_id/search_id/source` присутствуют, но `tour_id=NULL`787 и
+  `search_id=NULL`787; source —787opaque strings, не tourrefs.
+  Новых reference candidates0. Гипотеза пригодных tour/search refs закрыта
+  только для этого immutable capture и407roster; повторять её без новых входов нельзя.
+- Actual acquire-v9 response3 — распознанный пустой `[]` до всех hotel/operator/
+  tour-ID фильтров. Локальная потеря строк в этом теле не установлена; не менять
+  parser/transport и не повторять поиск ради этой гипотезы. Это не отсутствие
+  отелей/продаж у страны/ТО вообще и не provider-wide recovery.
+- PR4763/sourcea344d70b→main532b144a исправил наш receiver: завершение producer
+  записывает в `batches[].search_complete`, а не в отсутствующий top-level flag.
+  Будущий ложный sibling HOLD устранён через строгую одну завершённую bounded batch
+  и согласованные sent/returned/actions/HTTP/reservation/tariff/edge counts.
+  Actual v9 receipt regression и26negative mutations,72actual native/no skips+
+  stock/Security/exact review/merged bytes и live read-only reconciliation пройдены.
+  Старые receipts/reservations/UNKNOWN не изменены и не переиграны.
+- Все16protected inputs/3ledgers unchanged; private refs0600, native/account
+  authority=false. Новых unique acquisition targets/pairs/accepted/committed/
+  per-row post-COMMIT/gain0; writer/CURRENT NOT_RUN_ZERO_PROOF/ZERO_GAIN.
+  Own63HTTP/19starts/3UNKNOWN,206ever/407never и прежние7verified links сохранены.
+  ZIP/CRC/soleJSON/jobJSON/source/control/parent/counters/evidence verified.
+
+Readback использует тот же fixed-profile `match-retained-readback` и serial executor.
+В fresh wrapper109d820e этот0HTTP режим не входит в `SUPPLIER_SLOT_MODES`;
+acquisition slot guards, actor/source/manifest/no-replay/production и чужие claims
+не изменены. Это не новый mode/runner или способ запускать supplierHTTP во времяbusy.
+
+[Официальный Tourvisor OpenAPI v1.2.4](https://api.tourvisor.ru/search/docs)
+подтвердил текущую repeated-key serialization и optional `onlyDirect=false`.
+`operatorLink` документирован как string-ссылка на тур у оператора; native hotel ID
+или decoder/opaque-link гарантия не документированы. Спекулятивный transport/parser
+ремонт не обоснован. Нужен **НОВЫЙ** авторитетный native fact/namespace bridge или
+новый operator-specific offer/tourref с конкретным путём получить пригодный proof.
+Подготовленная Thailand8 не становится automatic next после этого нулевого исхода.
+
+#### Реализованный допуск партий
+
+Конечный каталог `scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json`
+живёт в trusted main. Parser читает его **до** supplier checkout, поэтому команда
+не может передать произвольный путь/roster/лимит. Exact bytes каталога входят в
+штатный source manifest отдельно от pinned17feature files. Catalogue SHA и
+canonical member SHA связываются в parser→remote→helper→result; обе начальные
+партии используют один код и один feature pin.
+
+Совместимые изменения данных каталога проходят concrete config review и тот же
+native CI через exact pathfilter, current merged bytes/owner/ordinary slot.
+Отдельный runner/controller/sourcepin на каждую партию не нужен; новые execution
+modes, provider/party contracts и расширения прежних bounds требуют своих
+действующих проверок. Каталог не заменяет и не ослабляет эти gates.
+
+В baseline сохраняются204 hotel claims и8actual acquisition receipts/request
+metadata, включая3UNKNOWN; текущие catalogue siblings проверяются по точным
+operation IDs, retained source catalogue+manifest, receipt и actual wire.
+Unknown/missing sibling receipt или непредставленный consumed hotel claim — HOLD,
+а не unspent. Существующие hotel/context/account ledgers не создаются заново
+и не сбрасываются; fresh hotel claims append под прежним lock/fsync.
+Исторический member при append остаётся неизменным. Если есть proven pairs,
+завершить writer **в той же catalogue revision** до append: совместимость
+незавершённого writer между версиями пока HOLD, не реализованный обход.
+
+Одна команда исполняет **одну bounded операцию**: до25IDs в текущем helper
+(до30 — общий API предел),1start/30physicalHTTP/60s, общий5000account/provider-day
+ledger, reserve BEFORE каждогоHTTP, raw private до parsing, first UNKNOWN stop,
+без /continue/full-drain/auto-drain. Код не перебирает каталог автоматически.
+Frozen generic400/NEXT/60/wide/13/9 profiles и их markers не ретаргетируются.
+
+#### Следующий полезный результат
+
+| Приоритет | Конкретная работа и условие результата |
+| --- | --- |
+| Готовые доказательства | Новые retained native facts/accepted anchors/точные handoffs → namespace/uniqueness → штатная CURRENT/guarded запись/readback. Готовая независимая пара не ждёт новой конфигурации |
+| Общий пробел native proof | Для8038/616 уже получены только non_identifier_text HOTELLIST/TOWNFROM,0positive native tokens/native authority=false. Нужен **новый** авторитетный формат/семантика/независимый bridge. Это не доказательство шифрования/дефекта parser; тот же raw не перечитывать |
+| Отбор следующего сбора | Ранжировать новый exact-compatible scope по спросу, сохранённым operator-specific tour/offer hints, ожидаемому native proof и цене. Saved user_search и размер группы не доказывают продажи ANEX. Это приоритет, не новый общий acceptance gate |
+| Остальной common4 | Отдельно закрывать фактическое account access и operator-native namespace proof FUN&SUN/БГ/Интуриста на новых материалах; ANEX13/detail binding на них не переносится |
+| Семейный frontier | Nochildren helper не поддерживает все семьи. Сохранять как unsupported party contract, не как непригодные/отсутствующие отели. Расширение требует подтверждённой wire age semantics и конкретного review |
+
+После повторяющегося нулевого исхода сначала пересмотреть operator evidence/
+группировку/доступность нужного proof; не запускать автоматически оставшуюся
+восьмёрку, новую дату/страну или очередной census. Новый поиск требует конкретного
+недостающего факта и обоснованной возможности его получить, fresh claim/source/slot.
+Owner continuation сохраняется для полезных новых неперекрывающихся scopes;
+час или само наличие407 не являются новой гипотезой. Один HOLD не останавливает
+независимую разрешённую MATCH работу. Code/CI/документы не matching gain.
+
+### 1. Общий измеримый срез по ТО
+
+Сопоставимый read-only срез получать из того же пакетного intake, когда он
+доступен в текущем разрешённом контуре; отдельная полная перепись не является
+предварительным этапом обработки готовых связей. Сначала переиспользовать пригодные сохранённые результаты;
+если они устарели или несопоставимы, зафиксировать точный необходимый новый scope.
+Этот план сам не выдаёт supplier/server/DB/CURRENT допуска и не переоткрывает
+consumed/UNKNOWN операции. Ожидание среза не задерживает независимо доказанную
+пару, для которой уже доступны штатная CURRENT-проверка и разрешённая запись.
+
+- Раздельно показать **весь реестр** и **отели из фактических поисков за 30 дней**.
+  Внутри каждой таблицы — одна дата/время, фильтр, источник и общий набор hotel IDs;
+  TV-live30, SAMO-live30 и старые catalog/cache cohorts имеют отдельные знаменатели.
+- По ANEX, FUN&SUN, Библио-Глобусу и Интуристу показать accepted rows,
+  уникальные local hotels, pending/conflict, отели без подтверждённой связи и
+  пересечения. Для рабочего search cohort считать долю связанных отелей на том же
+  наборе; неизвестную доступность ТО не превращать в доказанное отсутствие.
+- Прямой ANEX registry и ANEX через SAMO `operator_5` считать отдельно.
+  БГ `bgoperator` и SAMO `operator_115` показать раздельно и с union по local ID;
+  совпавшие числа ID не доказывают namespace bridge. FUN&SUN — `operator_315`,
+  Интурист — `operator_342`; `andromeda_catalog` — общий каталог, а не отдельный ТО.
+- Сохранить срез в существующих MATCH evidence/reporting и #1971/#4709.
+  Дальше показывать проверенные delta по точным IDs; повторное измерение нужно
+  при новом решении, изменении состава/свежести или подтверждённом расхождении.
+  Не запускать неизменённую полную перепись по таймеру ради отчёта.
+
+### 2. Выбор одного полезного пакета
+
+Рабочая очередь — существующий unresolved frontier с актуальными receipts,
+claims и reason codes, без нового параллельного tracker. Группа объединяет
+**одну устранимую причину**, совместимые входы и проверяемый путь до результата.
+
+Приоритет: фактический user_search спрос/свежесть и полезная недостающая связь →
+доступность независимого доказательства → стоимость по времени/HTTP.
+Завершение triple полезно, но самостоятельная доказанная hotel/provider-пара
+может быть принята раньше. При равной полезности предпочитать группу с большим
+числом проверяемых связей; ANEX не монополизирует common4 очередь.
+Число заблокированных offers брать только из сохранённых фактов с датой;
+исторические 29/15/2 offers не выдавать за сегодняшний спрос.
+
+Для выбранной группы до исполнения записать: exact source+target namespaces/IDs,
+число кандидатов и пересечения, общую причину, имеющиеся доказательства,
+конкретный недостающий proof, существующий маршрут проверки/записи, бюджет,
+зависимость/допуск и условие завершения. Неизвестное помечать unknown.
+Масштабировать пригодную группу на сотни/тысячи, если это допускает контур;
+новый общий порог «не менее 100» не вводится и полезные малые delta не задерживаются.
+
+### 3. Пакетный цикл доказательство → запись → проверка
+
+- Сначала использовать уже accepted chains, raw links и доказательства из
+  сохранённых ответов. Разобранную native-absent3 и другие retained группы
+  хранить с их точными пробелами; одна HOLD-группа не становится всей очередью.
+- Переиспользовать существующие parser/helpers, executor и transactional writer.
+  Дополнять их по подтверждённой общей причине, с нужной проверкой всего пакета;
+  отдельный runner/control PR для каждого поля не является стандартным этапом.
+  Если штатного разрешённого маршрута нет — это конкретный blocker,
+  а не повод подать произвольный roster в закрытый fixed mode.
+- Готовые независимые строки проходят существующие CURRENT identity/manual/
+  exclusion/occupancy/geo guards, transactional delta, per-row post-COMMIT readback
+  и effective resolver. HOLD отдельной строки не мешает остальным, когда это
+  допускает действующий writer; его политику этот документ не меняет.
+- Новые supplier calls нужны для установленного пробела или обоснованной
+  ограниченной гипотезы. Их результат может быть неизвестен заранее; сохраняются
+  точный scope/допуск, общий бюджет, reservation и no-replay.
+- Настоящие неоднозначности и protected ownership остаются отдельной ручной
+  очередью с обеими сторонами и версиями доказательств. Механический дефект
+  обработки устраняется в tooling, а не передаётся человеку как matching.
+- Room/meal соответствия и LOCAL profile fill не задерживают иначе готовую
+  hotel-пару. Канонические отображаемые названия номеров/питания принадлежат LOCAL;
+  MATCH передаёт raw facts и принятые IDs без нового словаря отображения.
+
+### 4. Результат, эффект и продолжение
+
+| Что показать после пакета | Условие зачёта |
+| --- | --- |
+| Новые связи по каждому ТО и уникальные local hotels | COMMIT + per-row readback + resolver; кандидаты и CI отдельно |
+| Остаток на том же наборе IDs | accepted/pending/conflict/missing, reason codes; смена cohort отмечена |
+| Использование связей поиском | Отдельный handoff SEARCH: readable/merged/rendered hotels/offers, причина исключения; непроверенное = unknown |
+| Цена продвижения | Фактические HTTP и время, исходы UNKNOWN сохранены; без повторного списания старых вызовов |
+| Следующий шаг | Одна доступная группа либо точный blocker, зависимость и условие возобновления |
+
+Запись в registry завершает этап identity после readback/resolver. Видимость
+в поиске проверяется отдельно совместно с SEARCH; отсутствие LOCAL profile,
+отключённый provider или отсутствие актуального offer не объявляются ошибкой
+MATCH автоматически. Это не требует включать provider или менять UI/INT.
+
+После ограниченной диагностики blocker продолжать другую независимую разрешённую
+группу в том же цикле. Закрытый PR, CI или нулевой перечёт не заменяют продвижение.
+При отсутствии всех доступных действий сохранить конечный checkpoint и точное
+условие продолжения, без неизменённых нулевых прогонов/новых имён старых операций.
+
+**Критерий следующего результата:** новая проверенная hotel/provider-связь либо
+устранённый общий пробел доказательства/допуска с конкретным рабочим продолжением.
+Считать отдельно committed/readback/gain, новые verified native proofs, уникальные
+новые targets, physicalHTTP/tariff/time/UNKNOWN. PR/CI/каталог scopes сами по себе
+не являются matching gain. При blocked proof lane продолжать независимую разрешённую
+работу; не выдавать одну HOLD за остановку всего MATCH. Полностью completed/UNKNOWN0
+и native proof обязательны перед нынешним acceptance; все manual/occupancy/geo>5km/
+source ambiguity/protected2000086118/transaction/pre-COMMIT/resolver guards действуют.
+Изменение плана не меняет SEARCH/INT/LOCAL, production или расписания.
 
 ## Старт каждого запуска
 
 1. Прочитать свежие `AGENTS.md`, scoped инструкции затрагиваемых файлов,
-   `docs/project/anytour-development.md`, этот документ и #1971/#4217.
+   `docs/project/anytour-development.md`, этот документ и #1971/#4709; унаследованные
+   claims/no-replay из #4217 сохраняются.
    Организационные документы читать на свежей release, если их нет на feature.
 2. Проверить fresh head `feature/anex-search-adapter-20260907`, открытые PR,
    CI/actions, active claims, завершённые receipts и фактический доступ к execution.
    Документация MATCH живёт на release; это не разрешение менять SEARCH runtime.
 3. Не исполнять старый `next_action`/snapshot как новую очередь. Состояние данных,
    owner decisions и закрытые операции перепроверять перед новой работой.
-4. Claim в #4217: #1971, branch/PR, exact owned paths, входное evidence,
+4. Claim в #4709: #1971, branch/PR, exact owned paths, входное evidence,
    граница provider/DB access. Не дублировать active operation или чужой shared writer.
 5. Terminal/unknown operations не replay. Потеря receipt требует отдельной
    reconciliation, а не повтора. Отказ security/tool gate нельзя обходить новым
@@ -106,6 +445,9 @@ ANEX-ссылку или terminal/unknown операцию повторять н
 
 ### C. Несопоставленные ANEX ↔ SAMO/Andromeda напрямую
 
+В текущем проходе20Oct этот общий алгоритм использует только сохранённые факты:
+новые прямые ANEX/SAMO/Andromeda calls не разрешены TV-only поручением выше.
+
 Искать в SAMO/Andromeda по **ТО ANEX**, известному отелю, дате и географии;
 прежде нового запроса использовать уже сохранённые ответы/принятые связки.
 Получить фактический SAMO hotel ID вместе с namespace и operator fingerprint,
@@ -146,6 +488,9 @@ SAMO-ответе оператор ANEX, его hotel ID не становитс
 
 ### Отдельная явно назначенная resort/star coverage lane
 
+В текущем TV-only identity проходе эта отдельная lane не активирована: её
+описание не разрешает новые прямые supplier calls или full-drain.
+
 Это не постоянный identity lookup. Для нового измерения покрытия явно задаётся
 общий ТО из актуального TV∩SAMO состава. Сначала supplier evidence (для ANEX —
 прямой ANEX source) и SAMO/Andromeda подтверждают общую дату и **конкретные
@@ -175,12 +520,14 @@ ANEX + FUN&SUN + Библио-Глобус + Интурист**. Прежнее 
 нужна подтверждённая operator-specific обработка без изменения INT transport/auth.
 Иные недоступные ТО отложить, не объявляя их отели отсутствующими.
 
-Лимит этой учётки **остаётся3000 HTTP/сутки суммарно на все четыре ТО**,
-не3000 на каждого. Durable daily accounting продолжается в существующем ledger
+**Уточнение владельца20.10.2026: лимит5000 запросов/сутки суммарно на учётку
+для всех четырёх ТО**, не5000 на каждого. Для текущего прохода общий физический
+HTTP-бюджет — до5000, tariff/search units измеряются отдельно. Durable daily
+accounting продолжается в существующем ledger
 по реальной учётке и её суткам: резервирование и учёт **каждого физического запроса
 до HTTP**, включая dictionaries/start/status/results/detail, ошибки и неизвестные
 исходы. Параллельные операции используют общий защищённый ledger. Добавление ТО
-не обнуляет уже потраченные/unknown запросы; не обходить3000/day новым именем
+не обнуляет уже потраченные/unknown запросы; не обходить5000/day новым именем
 операции, файла счётчика или четырьмя отдельными бюджетами.
 Прямой ANEX API имеет отдельный лимит60 запросов/мин; Andromeda —5000000/месяц.
 Эти бюджеты не суммируются и не подменяют друг друга; сохранять прочие provider limits.
@@ -250,7 +597,8 @@ TV room ↔ SAMO room ↔ direct ANEX room. Raw names сохранять; уби
 MATCH владеет matching/evidence diagnostics, cross-provider bridge tooling,
 operatorLink/hotelCode extraction, review datasets/reason taxonomy, bounded
 registry-delta importer/manifest, coverage reports и hotel-local correspondences.
-Shared registry runtime-файл — только после exact-path claim в #4217, один writer.
+Shared registry runtime-файл — только после exact-path claim в #4709, один writer;
+незавершённые унаследованные claims из #4217 не освобождаются автоматически.
 
 Не менять INT supplier auth/transport/search/package/price/fuel, SEARCH renderer/UI,
 LOCAL presentation, SITE/SEO, Metrika/goals, lead delivery/booking/manager routing,
@@ -266,7 +614,7 @@ protected public API payloads, main/production или соседние прое�
 CI fixture не называть live readback; ссылки/число туров/число PR не заменяют accepted.
 Когортные числа не складывать в global frontier без дедупликации и CURRENT recount.
 
-Следующий шаг выбирается из свежих #1971/#4217 по текущим новым наблюдениям и
+Следующий шаг выбирается из свежих #1971/#4709 по текущим новым наблюдениям и
 недостающим provider-связям согласно A/B/C. Сначала закончить полезную проверку
 сохранённого evidence, затем выполнять только необходимые новые queries.
 Не зацикливаться на одном HOLD: другие независимые строки продолжаются.
@@ -301,3 +649,5 @@ per-row post-COMMIT readback. На тот момент:
 Все более поздние terminal/unknown операции также сохраняют no-replay статус.
 Проверять актуальные receipts/claims/ledger; этот список и датированные снимки
 не заменяют CURRENT DB/operation check и не дают разрешения повторять запись.
+
+

@@ -4,16 +4,85 @@ const {JSDOM,VirtualConsole}=require(process.env.ANYTOUR_QA_DOM||'jsdom');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(process.env.ANYTOUR_QA_ROOT||path.join(__dirname,'../v2/visual-search'));
 const pause=()=>new Promise(resolve=>setTimeout(resolve,30)),historyKey='anytour.prototype.v18.ui.v1';
-async function run(width,photoCount=24){
+async function run(width,photoCount=24,progressive=false){
  const errors=[],reads=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://site.test/?scenario=snapshot&searched=1',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
  const w=dom.window,d=w.document;w.CSS={escape:v=>String(v).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};w.structuredClone=structuredClone;w.innerWidth=width;w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};
  w.matchMedia=q=>({matches:q.includes('max-width')&&width<=Number(q.match(/\d+/)?.[0]||0),addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}disconnect(){}unobserve(){}};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
  w.fetch=async input=>{const url=new URL(input,w.location.href);assert.equal(url.origin,'https://site.test');reads.push(url.pathname);const file=path.resolve(root,'.'+url.pathname);assert(file.startsWith(root+path.sep));const body=JSON.parse(fs.readFileSync(file,'utf8'));body.hotels[0].photos=Array.from({length:photoCount},(_,i)=>`./assets/photo-${i%8+1}.jpg?gallery-corpus=${i}`);return{ok:true,json:async()=>body};};
- for(const name of ['fixture-data.js','local-db-parser.js','recorded-data.js','search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js'])w.eval(fs.readFileSync(path.join(root,name),'utf8'));
+ let updatePhotos;
+ for(const name of ['fixture-data.js','local-db-parser.js','recorded-data.js','../prototype-search/search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','filter-panel-v1.js','offer-list-v1.js','hotel-details-v1.js','flight-picker-ui-v1.js','app.js']){
+  w.eval(fs.readFileSync(path.join(root,name),'utf8'));
+  if(progressive&&name==='fixture-data.js'){
+   const owner=w.AnyTourPrototypeData;
+   w.AnyTourPrototypeData={...owner,search:(s,emit,...args)=>owner.search(s,event=>{
+    if(event.type==='results'){
+     let rows=event.hotels;
+     updatePhotos=(id,photos)=>{rows=rows.map(h=>h.id===id?{...h,photos:[...photos]}:h);emit({type:'results',hotels:rows});};
+    }
+    emit(event);
+   },...args)};
+  }
+ }
+ async function traverseHistory(direction,open){
+  let traversed=false;
+  const onPopstate=()=>{traversed=true;};
+  w.addEventListener('popstate',onPopstate,{once:true});
+  try{
+   const deadline=Date.now()+2000;
+   w.history[direction]();
+   while(!traversed||d.querySelector('#modal').open!==open){
+    assert(Date.now()<deadline,`history ${direction} must settle with modal open=${open}`);
+    await pause();
+   }
+  }finally{w.removeEventListener('popstate',onPopstate);}
+ }
  try{
   await pause();await pause();const trigger=d.querySelector('.hotel-card [data-action="gallery"]');assert(trigger);const id=Number(trigger.dataset.id),url=w.location.href,photos=d.querySelector('.hotel-card .hotel-photos'),cardImage=photos.querySelector('.hotel-image');
+  if(progressive){
+   const a=cardImage.getAttribute('src'),b='./assets/photo-2.jpg?gallery-corpus=1',c='./assets/photo-3.jpg?gallery-corpus=2';
+   const conditions=()=>{const card=d.querySelector('.hotel-card').cloneNode(true);card.querySelector('.hotel-photos').remove();return card.outerHTML;},before=conditions();
+   cardImage.dispatchEvent(new w.Event('error'));assert.equal(trigger.disabled,false,'one failed photo remains available for enlargement and retry');
+   trigger.click();const image=d.querySelector('#gallery-image'),stage=d.querySelector('.gallery-stage'),strip=d.querySelector('.gallery-thumbs');
+   const q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+   const check=(src,index,count)=>{assert.equal(q('#gallery-image').getAttribute('src'),src);assert(q('#gallery-image').alt.startsWith(`Фото ${index+1} из ${count} `));assert.equal(q('[data-gallery-count]').textContent,`${index+1} / ${count}`);assert.equal(strip.children.length,count);assert.equal(strip.querySelectorAll('.active').length,1);assert.equal(strip.querySelector('.active img').getAttribute('src'),src);assert.equal(w.history.state[historyKey].index,index);};
+   const onlyPhoto=src=>{
+    const card=q('.hotel-card .hotel-photos');
+    assert.equal(card.querySelector('.hotel-image').getAttribute('src'),src);
+    assert.equal(card.querySelector('.hotel-image-button').disabled,false);
+    assert.equal(card.querySelector('.card-photo-arrow,.card-thumb'),null);
+    assert(card.querySelector('.photo-count').hidden&&card.querySelector('.card-thumbs').hidden);
+    assert.equal(image.getAttribute('src'),src);assert.match(image.alt,/^Фото отеля /);
+    assert(stage.querySelector('.gallery-arrow.prev').hidden&&stage.querySelector('.gallery-arrow.next').hidden);
+    assert(q('[data-gallery-count]').hidden&&strip.hidden);assert.equal(strip.childElementCount,0);
+   };
+   onlyPhoto(a);
+   const status=q('.gallery-state [role="status"]'),retry=q('[data-action="gallery-retry"]');
+   image.dispatchEvent(new w.Event('error'));assert.equal(retry.hidden,false);assert.doesNotMatch(status.textContent,/другое/);
+   retry.focus();retry.click();assert.equal(image.getAttribute('src'),a);assert.equal(stage.getAttribute('aria-busy'),'true');assert.equal(d.activeElement,q('#modal-title'));
+   const arrow=new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true});stage.dispatchEvent(arrow);
+   assert.equal(arrow.defaultPrevented,false,'a lone photo does not consume a navigation key');
+   image.dispatchEvent(new w.Event('error'));updatePhotos(id,[a,b]);
+   assert.match(status.textContent,/другое/,'more photos become available even while the current photo has failed');
+   assert.equal(q('[data-gallery-count]').hidden,false);assert.equal(strip.hidden,false);
+   assert.equal(stage.querySelector('.gallery-arrow.next').hidden,false);assert.equal(q('.hotel-card .card-thumb')!==null,true);
+   updatePhotos(id,[a]);onlyPhoto(a);assert.doesNotMatch(status.textContent,/другое/);
+   updatePhotos(id,[a,b]);click('[data-action="gallery-index"][data-value="1"]');updatePhotos(id,[a,b,c]);check(b,1,3);
+   assert.equal(q('#gallery-image'),image);assert.equal(q('.gallery-stage'),stage);assert.equal(q('.gallery-thumbs'),strip,'progressive updates retain the existing gallery owners');
+   click('[data-action="gallery-next"]');check(c,2,3);click('[data-action="gallery-prev"]');check(b,1,3);
+   strip.children[1].focus();updatePhotos(id,[c,a,b]);check(b,2,3);assert.equal(d.activeElement,strip.children[2],'reordered selected thumbnail keeps its destination');
+   click('[data-action="gallery-next"]');check(c,0,3,'the first click after reorder advances normally');
+   click('[data-action="gallery-index"][data-value="2"]');strip.children[2].focus();updatePhotos(id,[a]);onlyPhoto(a);
+   assert.equal(d.activeElement,q('#modal-title'),'a removed thumbnail returns focus to the open gallery');
+   updatePhotos(id,[]);assert.match(q('#modal-body').textContent,/Фото пока недоступны/);assert.equal(q('.gallery-arrow'),null);assert.equal(q('.gallery-thumbs'),null);assert.equal(q('#modal').open,true,'empty photos keep a usable return path');
+   updatePhotos(id,[b,c]);const restoredStrip=q('.gallery-thumbs');assert.equal(restoredStrip.children.length,2);assert.equal(q('#gallery-image').getAttribute('src'),b);click('[data-action="gallery-next"]');assert.equal(q('#gallery-image').getAttribute('src'),c);
+   await traverseHistory('back',false);assert.equal(q('#modal').open,false);
+   click('.hotel-card .card-photo-arrow.next');assert.equal(q('.hotel-card .hotel-image').getAttribute('src'),c,'the card can advance after a second photo arrives');
+   await traverseHistory('forward',true);assert.equal(q('#modal').open,true);assert.equal(q('#gallery-image').getAttribute('src'),c,'Back/Forward restores the current valid photo');
+   assert.equal(conditions(),before,'photo enrichment preserves every offer/card condition');assert.equal(w.location.href,url);assert.deepEqual(errors,[]);assert.equal(reads.length,1);
+   return{width,progressive_gallery:true,grow_reorder_shrink_empty_restore:true,first_next_after_update:true,stable_stage_image_strip:true,passive_back_forward:true,supplier_requests:0,lead_requests:0,browser_layout:false};
+  }
   if(!photoCount){assert(photos.classList.contains('photo-unavailable'));assert.equal(trigger.disabled,true);assert.match(photos.querySelector('.photo-missing-label').textContent,/Нет фотографий/);assert.match(photos.querySelector('.photo-count').textContent,/0 \/ 0/);trigger.click();assert.equal(d.querySelector('#modal').open,false);const choice=d.querySelector('.hotel-card [data-action="offer"][data-card-entry]');assert(choice);choice.click();await pause();const hero=d.querySelector('.tour-hero');assert(hero);assert.equal(hero.querySelector('img'),null);assert.equal(hero.querySelector('.tour-photo-missing').hidden,false);assert.match(hero.querySelector('.tour-photo-missing').textContent,/Нет фото/);assert(reads.every(p=>p.startsWith('/fixtures/')));return{width,photo_count:0,compact_absent_placeholder:true,tour_genuine_absence:true,supplier_requests:0,lead_requests:0,browser_layout:false};}
   const conditions=()=>{const el=d.querySelector('.hotel-card').cloneNode(true);el.querySelector('.hotel-photos').remove();return el.outerHTML;},initialConditions=conditions(),original=cardImage.getAttribute('src');
   const pristineCard=d.querySelector('.hotel-card').outerHTML;Object.defineProperty(cardImage,'naturalWidth',{configurable:true,value:800});cardImage.dispatchEvent(new w.Event('load'));assert.equal(d.querySelector('.hotel-card').outerHTML,pristineCard,'initial successful image load does not mutate the applied result');Object.defineProperty(cardImage,'naturalWidth',{configurable:true,value:0});
@@ -29,16 +98,16 @@ async function run(width,photoCount=24){
   next.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));assert.equal(w.history.state[historyKey].index,2);
   const stage=d.querySelector('.gallery-stage'),touch=new w.Event('touchstart',{bubbles:true});Object.defineProperty(touch,'touches',{value:[{clientX:190,clientY:90}]});stage.dispatchEvent(touch);const end=new w.Event('touchend',{bubbles:true});Object.defineProperty(end,'changedTouches',{value:[{clientX:70,clientY:95}]});stage.dispatchEvent(end);assert.equal(w.history.state[historyKey].index,3,'swipe stores the exact current photo');
   strip.children[23].click();assert.equal(w.history.state[historyKey].index,23);next.click();assert.equal(w.history.state[historyKey].index,0,'wraparound preserves the real photo count');assert.equal(strip.querySelectorAll('[aria-pressed="true"]').length,1);
-  strip.children[7].click();w.history.back();await pause();await pause();assert.equal(d.querySelector('#modal').open,false);w.history.forward();await pause();await pause();assert.equal(d.querySelector('#modal').open,true);assert.equal(w.history.state[historyKey].index,7);assert.match(d.querySelector('[data-gallery-count]').textContent,/8 \/ 24/);const returned=d.querySelector('#gallery-image');image.onerror();assert.equal(d.querySelector('#gallery-image'),returned,'obsolete image failure cannot replace a reopened gallery');assert.equal(d.querySelector('.gallery-stage').classList.contains('photo-failed'),false,'obsolete image callback cannot mark the new gallery failed');
-  w.history.back();await pause();await pause();assert.equal(d.querySelector('#modal').open,false);
+  strip.children[7].click();await traverseHistory('back',false);assert.equal(d.querySelector('#modal').open,false);await traverseHistory('forward',true);assert.equal(d.querySelector('#modal').open,true);assert.equal(w.history.state[historyKey].index,7);assert.match(d.querySelector('[data-gallery-count]').textContent,/8 \/ 24/);const returned=d.querySelector('#gallery-image');image.onerror();assert.equal(d.querySelector('#gallery-image'),returned,'obsolete image failure cannot replace a reopened gallery');assert.equal(d.querySelector('.gallery-stage').classList.contains('photo-failed'),false,'obsolete image callback cannot mark the new gallery failed');
+  await traverseHistory('back',false);assert.equal(d.querySelector('#modal').open,false);
   const selected=d.querySelector('.hotel-card [data-action="offer"][data-card-entry]');assert(selected);const selectedKey=selected.dataset.key;selected.click();await pause();await pause();
   const hero=d.querySelector('.tour-hero'),heroImage=hero.querySelector('img'),missing=hero.querySelector('.tour-photo-missing'),heroSrc=heroImage.getAttribute('src'),body=d.querySelector('#modal-body'),footer=d.querySelector('#modal-footer');assert(missing);assert.equal(missing.hidden,true);
   const bodyBefore=body.innerHTML,footerBefore=footer.innerHTML,focusBefore=d.activeElement;Object.defineProperty(heroImage,'naturalWidth',{configurable:true,value:800});heroImage.dispatchEvent(new w.Event('load'));assert.equal(body.innerHTML,bodyBefore,'pristine hero load is passive');
   const tourConditions=()=>{const el=body.cloneNode(true);el.querySelector('.tour-hero>img').remove();el.querySelector('.tour-hero>.tour-photo-missing').remove();return el.innerHTML;},conditionsBefore=tourConditions();Object.defineProperty(heroImage,'naturalWidth',{configurable:true,value:0});heroImage.dispatchEvent(new w.Event('error'));assert.equal(heroImage.hidden,true);assert.equal(missing.hidden,false);assert.match(missing.textContent,/Сбой загрузки/);assert.equal(missing.getAttribute('aria-label'),'Фото не загрузилось');assert.equal(heroImage.getAttribute('src'),heroSrc);assert.equal(tourConditions(),conditionsBefore);assert.equal(footer.innerHTML,footerBefore);assert.equal(d.activeElement,focusBefore);assert.equal(d.querySelector('#modal').open,true);const failedBody=body.innerHTML;heroImage.dispatchEvent(new w.Event('error'));assert.equal(body.innerHTML,failedBody,'duplicate error is idempotent');
   Object.defineProperty(heroImage,'naturalWidth',{configurable:true,value:800});heroImage.dispatchEvent(new w.Event('load'));assert.equal(heroImage.hidden,false);assert.equal(missing.hidden,true);assert.equal(heroImage.getAttribute('src'),heroSrc);assert.equal(body.innerHTML,bodyBefore,'actual hero recovery restores the original exact tour markup');assert.equal(footer.innerHTML,footerBefore);assert.equal(d.activeElement,focusBefore);
-  w.history.back();await pause();await pause();assert.equal(d.querySelector('#modal').open,false);const other=[...d.querySelectorAll('.hotel-card [data-action="offer"][data-card-entry]')].find(b=>b.dataset.key!==selectedKey);assert(other,'independent exact offer exists');other.click();await pause();await pause();assert.equal(heroImage.isConnected,false);const otherBody=body.innerHTML,otherFooter=footer.innerHTML;heroImage.dispatchEvent(new w.Event('error'));heroImage.dispatchEvent(new w.Event('load'));assert.equal(body.innerHTML,otherBody,'detached prior photo cannot mutate another exact tour');assert.equal(footer.innerHTML,otherFooter);
-  assert.equal(w.location.href,url);assert.equal(d.querySelector('.hotel-card').outerHTML,card,'viewing photos does not change offer/card conditions');assert.deepEqual(errors,[]);assert(reads.every(p=>p.startsWith('/fixtures/')));return{width,photo_count:24,next_key_swipe_history:true,exact_retry:true,stable_dom_focus:true,passive_back_forward:true,stale_image_ignored:true,card_failed_photo_reachable:true,card_next_recovery:true,card_conditions_unchanged:true,tour_failed_photo_truthful:true,tour_recovery_exact:true,independent_tour_stale_photo_ignored:true,supplier_requests:0,lead_requests:0,browser_layout:false};
+  await traverseHistory('back',false);assert.equal(d.querySelector('#modal').open,false);const other=[...d.querySelectorAll('.hotel-card [data-action="offer"][data-card-entry]')].find(b=>b.dataset.key!==selectedKey);assert(other,'independent exact offer exists');other.click();await pause();await pause();assert.equal(heroImage.isConnected,false);const otherBody=body.innerHTML,otherFooter=footer.innerHTML;heroImage.dispatchEvent(new w.Event('error'));heroImage.dispatchEvent(new w.Event('load'));assert.equal(body.innerHTML,otherBody,'detached prior photo cannot mutate another exact tour');assert.equal(footer.innerHTML,otherFooter);
+  assert.equal(w.location.href,url);const unchangedCard=d.querySelector('.hotel-card').cloneNode(true);unchangedCard.querySelector('.current-card-selection')?.remove();assert.equal(unchangedCard.outerHTML,card,'viewing photos and passive chosen-tour strip keep every original offer/card condition');assert.deepEqual(errors,[]);assert(reads.every(p=>p.startsWith('/fixtures/')));return{width,photo_count:24,next_key_swipe_history:true,exact_retry:true,stable_dom_focus:true,passive_back_forward:true,stale_image_ignored:true,card_failed_photo_reachable:true,card_next_recovery:true,card_conditions_unchanged:true,tour_failed_photo_truthful:true,tour_recovery_exact:true,independent_tour_stale_photo_ignored:true,supplier_requests:0,lead_requests:0,browser_layout:false};
  }finally{dom.window.close();}
 }
-async function verify(){const rows=[];for(const width of [360,390,430,768,1280])rows.push(await run(width),await run(width,0));const folder=path.resolve('visual-live-evidence/hotel-gallery');fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(path.join(folder,'source-receipt.json'),JSON.stringify(rows,null,2)+'\n');console.log('PASS source hotel-gallery',JSON.stringify(rows));}
+async function verify(){const rows=[];for(const width of [360,390,430,768,1280])rows.push(await run(width),await run(width,0));for(const width of [430,1280])rows.push(await run(width,1,true));const folder=path.resolve('visual-live-evidence/hotel-gallery');fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(path.join(folder,'source-receipt.json'),JSON.stringify(rows,null,2)+'\n');console.log('PASS source hotel-gallery',JSON.stringify(rows));}
 verify().catch(e=>{console.error(e);process.exitCode=1;});

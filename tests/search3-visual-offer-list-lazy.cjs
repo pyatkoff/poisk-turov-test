@@ -2,16 +2,17 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
-const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('function confirmTour(){',start);assert(start>=0&&end>start);
+const start=app.indexOf('let offerListRequest=0,'),end=app.indexOf('function confirmTour(){',start);assert(start>=0&&end>start);
+const loaderStart=app.indexOf('function createPresentationLoader('),loaderEnd=app.indexOf('// The hotel shell enters history immediately;',loaderStart);assert(loaderStart>=0&&loaderEnd>loaderStart,'actual shared presentation loader');
 const openStart=app.indexOf('let offerView=null;'),openEnd=app.indexOf('const offerCountText=',openStart);assert(openStart>=0&&openEnd>openStart);
-let source=app.slice(openStart,openEnd)+app.slice(start,end);const groupKeyOwner="const offerGroupKey=o=>encodeURIComponent(o.room+'|'+o.meal);";assert(source.includes(groupKeyOwner),'exact group-key owner');source=source.replace(groupKeyOwner,"const offerGroupKey=o=>(groupKeyCalls++,encodeURIComponent(o.room+'|'+o.meal));");
+let source=app.slice(loaderStart,loaderEnd)+app.slice(openStart,openEnd)+app.slice(start,end);const groupKeyOwner="const offerGroupKey=o=>encodeURIComponent(o.room+'|'+o.meal);";assert(source.includes(groupKeyOwner),'exact group-key owner');source=source.replace(groupKeyOwner,"const offerGroupKey=o=>(groupKeyCalls++,encodeURIComponent(o.room+'|'+o.meal));");
 const context=source.match(/const api=owner.create\(\{([^}]+)\}\);/);assert(context,'real cold owner renderer context');
 const dependencies=context[1].split(',').map(name=>name.trim());assert(dependencies.every(name=>/^[$A-Z_a-z][$\w]*$/.test(name)),'cold renderer context contains named live dependencies');
 const flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(rows=[{key:'one',day:'2026-10-10',flight:'regular',room:'SEA',meal:'BB',total:100000}]){
  const scripts=[],timers=new Map(),renders=[],list={innerHTML:'before'},modal={open:true,classList:{add:()=>{}}},filters={open:false},body={scrollTop:0};let nextTimer=0,remembers=0,hotelCalls=0;
  const ctx={window:{},Promise,Error,WeakMap,Number,Map,Object,groupKeyCalls:0,modalType:'all-offers',offerView:{id:1},hotels:[{id:1,name:'Hotel',offers:rows}],
-  setTimeout:fn=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
+  setTimeout:(fn,delay)=>{assert.equal(delay,15000,'offer module keeps its bounded load timeout');const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   document:{head:{dataset:{offerListSrc:'./offer-list-v1.js?v=exact'},append:script=>scripts.push(script)},createElement:()=>({removed:false,remove(){this.removed=true;}})},
   $:selector=>({'#all-offers-list':list,'#modal':modal,'.offer-filter-disclosure':filters,'#modal-body':body}[selector]),
   hotelOffers:()=>{hotelCalls++;return rows;},showModal:()=>{ctx.modalType='all-offers';modal.open=true;},boundedHistoryStrings:value=>Array.isArray(value)?value:[],offerMetaNote:()=>'',
@@ -38,9 +39,18 @@ function fixture(rows=[{key:'one',day:'2026-10-10',flight:'regular',room:'SEA',m
  }
  const g=fixture();g.ctx.renderOfferList();vm.runInContext('offerView={id:2}',g.ctx);g.ctx.renderOfferList(true);g.ctx.window.AnyTourOfferList=g.owner;g.scripts[0].onload();await flush();assert.equal(g.renders.length,1);assert.equal(g.renders[0].view.id,2,'new view replaces queued old hotel');
  for(const failure of ['network','timeout','missing-owner']){
-  const e=fixture();e.ctx.renderOfferList(true);if(failure==='network')e.scripts[0].onerror();else if(failure==='timeout')[...e.timers.values()][0]();else e.scripts[0].onload();await flush();
+  const e=fixture();if(failure==='missing-owner')e.ctx.window.AnyTourOfferList={};e.ctx.renderOfferList(true);const outcome=vm.runInContext('loadOfferList()',e.ctx).catch(error=>error.message);if(failure==='network')e.scripts[0].onerror();else if(failure==='timeout')[...e.timers.values()][0]();else e.scripts[0].onload();await flush();
+  assert.equal(await outcome,{network:'Offer list load failed',timeout:'Offer list load timed out','missing-owner':'Offer list owner missing'}[failure]);assert.equal(e.scripts[0].onload,null);assert.equal(e.scripts[0].onerror,null);
   assert.match(e.list.innerHTML,/role="alert"/);assert.match(e.list.innerHTML,/data-action="retry-offer-list"/);assert(e.scripts[0].removed);assert.equal(e.timers.size,0);
-  e.ctx.renderOfferList(true);assert.equal(e.scripts.length,2,failure+' permits retry');e.ctx.window.AnyTourOfferList=e.owner;e.scripts[1].onload();await flush();assert.equal(e.renders.length,1);
+  e.ctx.document.head.dataset.offerListSrc='./offer-list-v1.js?v=later';e.ctx.renderOfferList(true);assert.equal(e.scripts.length,2,failure+' permits retry');assert.equal(e.scripts[1].src,'./offer-list-v1.js?v=exact','retry retains the captured offer-list asset');e.ctx.window.AnyTourOfferList=e.owner;e.scripts[1].onload();await flush();assert.equal(e.renders.length,1);
+ }
+ {
+  const e=fixture();e.ctx.renderOfferList(true);const expired=e.scripts[0],lateLoad=expired.onload,lateError=expired.onerror;
+  [...e.timers.values()][0]();await flush();e.ctx.renderOfferList(true);const retry=vm.runInContext('loadOfferList()',e.ctx);let settled=false;retry.then(()=>settled=true);
+  lateLoad();lateError();await flush();assert.strictEqual(vm.runInContext('loadOfferList()',e.ctx),retry,'expired callbacks cannot clear the shared retry');assert.equal(e.scripts.length,2);assert.equal(e.timers.size,1);
+  e.ctx.window.AnyTourOfferList=e.owner;lateLoad();await flush();assert.equal(settled,false,'expired load cannot resolve a newer request');assert.equal(e.renders.length,0);
+  e.scripts[1].onload();assert.strictEqual(await retry,e.owner);await flush();assert.equal(e.renders.length,1);assert.equal(e.timers.size,0);assert.equal(e.scripts[1].onload,null);assert.equal(e.scripts[1].onerror,null);
+  delete e.ctx.window.AnyTourOfferList;assert.strictEqual(vm.runInContext('loadOfferList()',e.ctx),retry,'successful load remains cached');assert.equal(e.scripts.length,2);
  }
  const h=fixture();vm.runInContext('offerListRestores.set(offerView,{filtersOpen:true,scroll:713})',h.ctx);h.ctx.renderOfferList();h.ctx.window.AnyTourOfferList=h.owner;h.scripts[0].onload();await flush();assert.equal(h.filters.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1,'history restoration happens after the actual renderer');
  const c=fixture();c.ctx.renderOfferList();c.modal.open=false;const pending=c.list.innerHTML;c.scripts[0].onerror();await flush();assert.equal(c.list.innerHTML,pending,'late failure cannot edit a closed modal');

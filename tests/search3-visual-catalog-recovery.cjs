@@ -40,7 +40,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.waitForFunction(selector=>document.activeElement?.matches(selector),selector);
    assert.equal(await page.locator(selector).evaluate(el=>document.activeElement===el),true,'catalogue keyboard focus belongs to '+selector+' at '+label);
   };
-  const geometryOf=async(locator)=>locator.evaluate(el=>{const r=el.getBoundingClientRect(),form=el.closest('#search-form').getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,formLeft:form.x,formRight:form.right,viewportWidth:innerWidth,viewportHeight:innerHeight,centerHit:!!hit&&(hit===el||el.contains(hit)),scrollY};});
+  const geometryOf=async(locator)=>locator.evaluate(el=>{const r=el.getBoundingClientRect(),form=document.querySelector('#search-form').getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,formLeft:form.x,formRight:form.right,viewportWidth:innerWidth,viewportHeight:innerHeight,centerHit:!!hit&&(hit===el||el.contains(hit)),scrollY};});
   const assertVisibleGeometry=(geometry,description)=>{
    assert(geometry.x>=geometry.formLeft-1&&geometry.right<=geometry.formRight+1&&geometry.right<=geometry.viewportWidth+1,description+' stays inside the form at '+label);
    assert(geometry.top>=-1&&geometry.bottom<=geometry.viewportHeight+1,description+' is fully visible in the viewport at '+label);
@@ -54,7 +54,7 @@ module.exports=async function({browser,origin,base,evidence}){
    assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false','failed catalogue is settled, not a perpetual busy state');
    await assertControls(true);await assertVisibleTrip('failure '+index);assert.equal(await retry.isEnabled(),true,'visible recovery remains usable after failure');
    assert.equal(await error.locator('[data-action="retry-catalog"]').count(),1,'one recovery action belongs to the existing error owner');
-   if(index===2)await assertFocus(movedFocus?'#search-form .form-all-filters':'#catalog-error [data-action="retry-catalog"]');
+   if(index===2)await assertFocus(movedFocus?'.demo-note > summary':'#catalog-error [data-action="retry-catalog"]');
    if(previousScroll!==undefined)assert(Math.abs(await page.evaluate(()=>scrollY)-previousScroll)<=2,'catalogue failure preserves the active keyboard position at '+label);
    await retry.scrollIntoViewIfNeeded();const geometry=await geometryOf(retry);
    assert(geometry.width>=44&&geometry.height>=44,'catalogue retry has a44px hit target at '+label);
@@ -76,8 +76,8 @@ module.exports=async function({browser,origin,base,evidence}){
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'pending catalogue has no horizontal overflow at '+label);
    assertPassive();await assertURL();await page.screenshot({path:path.join(evidence,`catalog-recovery-${label}-pending${index}.png`)});
    if(movedFocus){
-    assert.equal(await page.locator('#search-form .form-all-filters').isEnabled(),true,'an existing independent control remains available');
-    await page.keyboard.press('Tab');await assertFocus('#search-form .form-all-filters');
+    assert.equal(await page.locator('.demo-note > summary').isEnabled(),true,'the existing data disclosure remains available independently of catalogue hydration');
+    await page.keyboard.press('Tab');await assertFocus('.demo-note > summary');
    }
    geometry.completionScroll=await page.evaluate(()=>scrollY);
    return geometry;
@@ -128,9 +128,9 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.keyboard.press('Enter');await successReached;const pendingSuccess=await pending(2,successScroll);
    releaseRetry();releaseRetry=null;transport.state.countryGates['1']=null;
    await page.waitForFunction(()=>document.querySelector('#search-form').getAttribute('aria-busy')==='false'&&!document.querySelector('#search-form .search-submit').disabled);
-   await assertFocus(movedFocus?'#search-form .form-all-filters':'#country');
+   await assertFocus(movedFocus?'.demo-note > summary':'#country');
    const settledScroll=await page.evaluate(()=>scrollY);assert(Math.abs(settledScroll-pendingSuccess.completionScroll)<=2,'catalogue completion does not jump the retained focus position at '+label);
-   const settledFocus=await geometryOf(page.locator(movedFocus?'#search-form .form-all-filters':'#country'));assertVisibleGeometry(settledFocus,'settled keyboard focus');
+   const settledFocus=await geometryOf(page.locator(movedFocus?'.demo-note > summary':'#country'));assertVisibleGeometry(settledFocus,'settled keyboard focus');
    await assertControls(false);await assertVisibleTrip('ready');await assertURL();assertPassive();
    assert.equal(countryReads(),3,'success belongs to the next explicit retry');
    assert.equal(await page.locator('#catalog-error').isVisible(),false,'successful canonical catalogue clears the existing error');

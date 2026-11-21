@@ -1,6 +1,8 @@
 'use strict';
 // Offline UI fixtures. No supplier, pricing or lead API is called from this Site.
 (() => {
+  const publicConfig=window.AnyTourPublicConfigV1,resource=name=>publicConfig?.valid?publicConfig.asset(name):'./'+name;
+  const reviewScenario=publicConfig?.valid&&publicConfig.profile==='review'?window.V2_CONFIG.search3ReviewScenario:null;
   const clone = value => structuredClone(value);
   const text = value => typeof value === 'string' ? value : value?.name || value?.russianName || '';
   const amount = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
@@ -19,11 +21,15 @@
     UAI:'Ультра всё включено','ULTRA ALL':'Ультра всё включено','ULTRA ALL INCLUSIVE':'Ультра всё включено','УЛЬТРА ВСЕ ВКЛЮЧЕНО':'Ультра всё включено','УЛЬТРА ВСЁ ВКЛЮЧЕНО':'Ультра всё включено'
   });
   const meal=value=>{const label=text(value).trim(),normalized=label.toLocaleUpperCase('ru-RU').replace(/\s+/g,' ');return mealAliases[normalized]||label;};
-  const scenarios = new Set(['snapshot', 'flights', 'flight-error', 'empty', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired']);
-  let scenario = new URLSearchParams(location.search).get('scenario') || 'snapshot';
+  const scenarios = new Set(['snapshot', 'journey', 'flights', 'flight-error', 'empty', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired']);
+  let scenario = reviewScenario || new URLSearchParams(location.search).get('scenario') || 'snapshot';
   if (!scenarios.has(scenario)) scenario = 'snapshot';
   let snapshot, rows = [], generation = 0;
-  const scenarioSearch = () => ({...clone(search), ages: scenario === 'family' ? [0, 8] : []});
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
+  const scenarioSearch = () => scenario === 'journey'
+    ? {...clone(search), from:addDays(today,21), to:addDays(today,27)}
+    : {...clone(search), ages: scenario === 'family' ? [0, 8] : []};
   const catalog = {countries: [{id: '4', name: 'Турция'}], departures: [{id: '1', name: 'Москва'}], meals: [], regions: {'4': []}};
   const search = {origin: 'Москва', country: '4', from: '2026-10-01', to: '2026-10-07', minNights: 7, maxNights: 7, adults: 2, ages: []};
   const iso = day => '2026-10-' + String(day).padStart(2, '0');
@@ -50,8 +56,26 @@
       nights: s.minNights, adults: s.adults, ages: [...s.ages], meal: 'Всё включено', room: 'Standard · демонстрационный номер',
       operator: 'Демо-оператор', flight: 'regular', total: 186400, flightChoiceId: null};
     const hotels = [{id: 900001, name: 'Azure Bay Resort · демо', country: s.country, resort: 'Белек', region: '', subRegion: '',
-      stars: 5, rating: null, beach: null, family: false, spa: false, photos: ['./assets/photo-1.jpg', './assets/photo-2.jpg'],
+      stars: 5, rating: null, beach: null, family: false, spa: false, photos: [resource('assets/photo-1.jpg'),resource('assets/photo-2.jpg')],
       amenities: [], legacyIds: [], raw: {description: 'Вымышленный отель и расписание для проверки выбора рейсов.', arrival: 'Анталья'}, offers: [offer]}];
+    if (scenario === 'journey') {
+      const examples = [
+        ['Azure Bay Resort','Белек',5,4.8,1,186400],
+        ['Palm Garden','Кемер',4,4.6,4,154800],
+        ['Coast Club','Белек',4,4.5,7,161900],
+        ['City Rooms','Анталья',3,4.2,3,119600]
+      ];
+      return examples.map(([name,resort,stars,score,photo,base],index) => {
+        const h = {...hotels[0], id:900001+index, name:name+' · демо', resort, stars, rating:score,
+          photos:[photo,photo%8+1].map(n=>resource('assets/photo-'+n+'.jpg')),
+          raw:{description:'Демонстрационный отель в Турции.',arrival:'Анталья'}};
+        h.offers = [['Стандартный номер','Завтраки',0],['Стандартный номер','Всё включено',6800],['Семейный номер','Всё включено',14700]].map(([room,meal,supplement],variant) => ({
+          ...offer, key:'journey-'+h.id+'-'+variant, hotelId:h.id, variant, room, meal, total:base+supplement,
+          raw:{selectionEnabled:true,previewRooms:true}
+        }));
+        return h;
+      });
+    }
     if (scenario === 'mixed') {
       // Explicitly synthetic service descriptions exercise the hotel overview.
       hotels[0].raw.hotelInformation = {services: {free: 'Wi-Fi в общественных зонах · учебный пример.', child: 'Детский бассейн · учебный пример.'}, infrastructure: {territory: 'Бассейн и зона отдыха · учебный пример.'}};
@@ -95,13 +119,14 @@
     catalog.regions['4'] = [...new Set(source.map(h => h.resort))].map((name, i) => ({id: String(i + 1), name, country: '4'}));
   }
   function describe() {
+    if(scenario==='journey')return 'Демонстрационные отели и цены. Можно выбрать номер и рейсы и открыть учебную заявку.';
     const labels={mixed:'5 вымышленных отелей: разные категории, номера, питание, чартеры и регулярные рейсы.',family:'Демо: двое взрослых, младенец 0 лет и ребёнок 8 лет. Проверка состава туристов до заявки.',incomplete:'Демо: нет фото, категории и сведений о багаже. Неизвестное остаётся неизвестным.', 'price-change':'Демо: цена при выборе меняется с 186 400 до 195 400 ₽. В заявку должна попасть новая цена.',unavailable:'Демо: выбранный тур исчез при проверке. Другой вариант автоматически не подставляется.',expired:'Демо: срок предложения истёк. Этот сценарий включается вручную; остальные не зависят от времени.'};
     if(labels[scenario])return labels[scenario]+' Нет запросов поставщикам и отправки заявки.';
     return scenario === 'snapshot' ? `Снимок 23.09.2026: 1 047 отелей, 1 453 видимых предложения. Москва → Турция, 1–7 октября, 7 ночей, 2 взрослых.`
       : scenario === 'flights' ? '24 вымышленные пары рейсов: прямые, с пересадкой, без цены и с неизвестным багажом.'
       : scenario === 'flight-error' ? 'Демонстрация ошибки рейсов. Условия и цена — примеры.' : 'Демонстрация пустой выдачи.';
   }
-  const ready = fetch('./fixtures/live-search-2026-09-23.json').then(response => {
+  const ready = fetch(resource('fixtures/live-search-2026-09-23.json')).then(response => {
     if (!response.ok) throw new Error('Не удалось открыть сохранённый пример. Обновите страницу.');
     return response.json();
   }).then(raw => {snapshot = raw; rows = normalize(raw); updateCatalog();});
@@ -119,7 +144,12 @@
   }
   window.AnyTourPrototypeData = Object.freeze({
     preview: true, catalog, text, amount, meal, date: value => String(value || ''),
-    get initialSearch() {return scenarioSearch();}, clockStart: '2026-09-24', describe, get scenario() {return scenario;},
+    // Presentation-only review states. They are not handoff facts or a transport.
+    messengerContactPreview: reviewScenario ? Object.freeze({
+      ready: 'Демонстрация: выбранный тур готов к показу перехода. Заявки не отправляются.',
+      unavailable: 'Демонстрация: переход в Telegram и MAX сейчас недоступен. Заявка не отправлялась. Вернитесь к выбранному туру.'
+    }) : null,
+    get initialSearch() {return scenarioSearch();}, get clockStart() {return scenario === 'journey' ? today : '2026-09-24';}, describe, get scenario() {return scenario;},
     async init() {await ready; return {origin: 'Москва', ...catalog};},
     async countries() {await ready; return {origin: 'Москва', ...catalog};},
     async regions(country) {await ready; return catalog.regions[country] || [];},
@@ -150,7 +180,7 @@
       return variants;
     },
     variantPrice: (tour, v) => amount(v?.price), fuel: (tour, v) => v?.fuelCharge ?? null,
-    async setScenario(value) {if (!scenarios.has(value)) return; generation++; scenario = value; await ready; updateCatalog();},
+    async setScenario(value) {if (reviewScenario||!scenarios.has(value)) return; generation++; scenario = value; await ready; updateCatalog();},
     get metadata() {return snapshot ? {capturedAt: snapshot.capturedAt, hotels: rows.length, offers: snapshot.capturedOfferCount, sourceOffers: snapshot.visibleTotalOffers} : null;}
   });
 })();

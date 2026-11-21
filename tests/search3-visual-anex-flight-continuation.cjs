@@ -1,10 +1,58 @@
 'use strict';
 // Target visual-search, fictional HTTP only. Empty APD must not end flight reads.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+async function ordinaryRegularRoutingVM(){
+ const vm=require('node:vm'),app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const slice=(a,b)=>{const start=app.indexOf(a),end=app.indexOf(b,start);assert(start>=0&&end>start,a);return app.slice(start,end);};
+ const functions=[slice('function continueHotelOffer(','function acceptSelectedOfferPrice('),slice('async function refreshLiveHotel(','function refreshHotel('),
+  slice('function restoreProviderView(','const flightPairFor='),slice('async function loadAnexPackageQuote(','function anexFlightInventoryHTML('),
+  slice('function terminalOfferQuote(','function offerQuoteFailure('),slice('function retainedProviderView(','// Reflect the retained receipt'),
+  slice('function hotelOfferCheckActive(','function contactFlightActive('),slice('function anexAdditionalUnconfirmed(','function rememberAndromedaFlightChoice(')].join('\n');
+ function setup(flight='regular',type=null,extra={}){
+  const calls={current:0,additional:0,quote:0},raw={anexKind:'concrete',anexSessionCurrent:true},search={adults:2,ages:[]};
+  const listing={key:'regular-room',hotelId:1,provider:'anex',flight,raw,search,total:121000,adults:2,ages:[]},views=new Map();
+  if(type)views.set(listing.key,{offer:{...listing},type,result:{state:'current'},error:'',pending:false,...extra});
+  const modal={open:true},nav={dataset:{hotelId:'1'}},c=vm.createContext({selectedOffer:{...listing},listing,providerViews:views,
+   selectionGeneration:0,modalType:'hotel-details',hotelDetailsView:{id:1,checkKey:null},hotelOfferDraft:{hotelId:1,key:listing.key},state:{search},anexCurrentDraft:null,
+   $:s=>s==='.hotel-section-nav'?nav:s==='#modal'?modal:{textContent:'',disabled:false},
+   offerFromKey:key=>key===listing.key?listing:null,selectedTourHotel:()=>({id:1}),needsRefresh:()=>true,
+   sameSelectedTourConditions:(a,b)=>a.raw===b.raw,searchKey:s=>JSON.stringify(s),unknownInfantCharge:()=>false,
+   isCurrentOfferRequest:(run,key)=>run===c.selectionGeneration&&modal.open&&c.selectedOffer?.key===key,
+   renderRealOffer(){},renderOfferProgress(){},toast(){},offerQuoteFailure:(o,e)=>({...o,loading:false,quoteError:e.message}),
+   data:{live:true,verifyAnexConcrete:async()=>{calls.current++;return {state:'current'};},verifyAnexPackage:async()=>{calls.quote++;return {state:'quote_choices',choices:[{},{}]};}},
+  });
+  c.rememberProviderView=(o,type,result,error='',pending=false)=>views.set(o.key,{offer:{...o,loading:false},type,result,error,pending});
+  c.openAnexConcreteCurrent=(o,result)=>{const previous=c.retainedProviderView(o);c.rememberProviderView(o,'anex-current',result,previous?.error,previous?.pending);c.selectedOffer={...o,loading:false};c.anexCurrentDraft={offer:o,current:result};};
+  c.openAnexAdditionalEstimate=(o,result)=>c.rememberProviderView(o,'anex-additional',result);
+  c.openAnexPackageQuote=(o,result,error='',pending=false)=>{c.modalType='anex-quote';c.rememberProviderView(o,'anex-quote',result,error,pending);};
+  c.applyAnexAdditionalPrices=async()=>{calls.additional++;};
+  vm.runInContext(functions,c);
+  vm.runInContext('globalThis.tasks=[];const actualRefresh=refreshLiveHotel;refreshLiveHotel=(...args)=>{const task=actualRefresh(...args);tasks.push(task);return task;}',c);
+  const select=async()=>{c.continueHotelOffer(listing.key);await Promise.all(c.tasks);};
+  return {c,calls,listing,views,modal,select};
+ }
+ for(const type of [null,'anex-current','anex-additional']){
+  const x=setup('regular',type);await x.select();
+  assert.deepEqual(x.calls,{current:type?0:1,additional:0,quote:1},'ordinary regular selection uses the existing full-package path, including retained inline current/additional');
+  await x.select();assert.equal(x.calls.quote,1,'return restores the quote view without another quote_start');
+ }
+ for(const extra of [{pending:true},{error:'Consumed failure'},{terminal:true}]){
+  const x=setup('regular','anex-current',extra);if(extra.terminal)x.views.get(x.listing.key).offer.quoteErrorTerminal=true;await x.select();await x.select();
+  assert.deepEqual(x.calls,{current:0,additional:0,quote:0},'repeated selections keep pending/error/terminal retained evidence closed');
+ }
+ for(const extra of [{},{pending:true},{sealed:true},{error:'UNKNOWN'}]){
+  const x=setup('regular','anex-quote',extra);await x.select();await x.select();assert.deepEqual(x.calls,{current:0,additional:0,quote:0},'existing quote states are restored repeatedly without replay');
+ }
+ for(const flight of ['charter','unknown']){const x=setup(flight);await x.select();assert.deepEqual(x.calls,{current:1,additional:1,quote:0},'other existing inline APD routes are preserved');}
+ {const x=setup();x.c.continueHotelOffer(x.listing.key);x.c.continueHotelOffer(x.listing.key);await Promise.all(x.c.tasks);assert.deepEqual(x.calls,{current:1,additional:0,quote:1},'double selection shares the current pending intent');}
+ {const x=setup();let release;x.c.data.verifyAnexConcrete=()=>{x.calls.current++;return new Promise(resolve=>release=resolve);};x.c.continueHotelOffer(x.listing.key);x.modal.open=false;x.c.selectionGeneration++;release({state:'current'});await Promise.all(x.c.tasks);assert.deepEqual(x.calls,{current:1,additional:0,quote:0},'a late current response cannot start a package operation after leaving');}
+ console.log('VISUAL_ANEX_ORDINARY_REGULAR_VM_OK current/fullquote routing, retained inline reuse, denial/pending/sealed/terminal/double/late guards; supplier HTTP 0');
+}
+if(process.argv.includes('--ordinary-regular-vm')){ordinaryRegularRoutingVM().catch(e=>{console.error(e);process.exitCode=1;});return;}
 const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
-const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
+const scripts=[...source('visual-search/entry-v1.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 function loadFixtureScripts(w){
@@ -12,6 +60,119 @@ function loadFixtureScripts(w){
  // This retained multi-provider regression uses fictional transport only.
  w.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';
  w.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';
+}
+
+async function ordinaryRegularScenario(mode='fresh'){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ transport.state.anexQuoteFailure=mode==='failed';
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ w.fetch=async(url,options={})=>{
+  const action=options.body&&JSON.parse(options.body).action;
+  assert.notEqual(action,'additional_prices','ordinary regular package actualization must not depend on static APD');
+  const value=await transport.json(url,options);
+  if(action==='expand')for(const hotel of value.data.hotels||[])for(const tour of hotel.tours||[])tour.flight_type='regular';
+  return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+ };
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150)),count=action=>transport.calls.filter(c=>c.action===action).length;
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Ordinary regular timeout: '+d.body.textContent.slice(-2200)+' calls='+transport.calls.map(c=>c.action).join(','));};
+ const selectRoom=async()=>{click('[data-action="hotel-details"][data-id="501"]');await wait(()=>q('[data-action="select-hotel-offer"][data-key^="anex%3A"]'));click('[data-action="select-hotel-offer"][data-key^="anex%3A"]');};
+ try{
+  loadFixtureScripts(w);await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+  await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');
+  click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));click('[data-action="close-modal"]');await settle();
+  if(mode==='retained-current'){
+   click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');
+   click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));click('[data-action="close-modal"]');await settle();
+  }
+  await selectRoom();await wait(()=>q('[name="anex-package-choice"]'));
+  assert.equal(count('expand'),1,'the exact regular offer comes from the canonical current-session expansion');
+  assert.equal(count('offer'),1,'fresh and retained current ordinary entries each consume current context only once');
+  assert.equal(count('quote_start'),1);assert.equal(count('quote_calculate'),0);assert.equal(count('additional_prices'),0);
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'uncalculated package choices grant no price authority');
+  const before=transport.calls.length;click('[data-action="close-modal"]');await settle();await selectRoom();await wait(()=>q('[name="anex-package-choice"]'));
+  assert.equal(transport.calls.length,before,'ordinary return restores the same package choices without replay');
+  const choices=[...d.querySelectorAll('[name="anex-package-choice"]')];assert.equal(choices.length,2);choices[1].click();click('[data-action="anex-package-calculate"]');
+  if(mode==='failed'){
+   await wait(()=>q('#anex-package-status')?.textContent.length>0&&!q('[data-action="anex-package-calculate"]'));
+   assert.equal(q('[data-action="anex-application-preview"]'),null,'a failed complete quote grants no price authority');
+  }else{
+   await wait(()=>q('[data-action="anex-application-preview"]'));
+   assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/,'only the full package calculation authorizes its gross price');
+   assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
+  }
+  const after=transport.calls.length;click('[data-action="close-modal"]');await settle();await selectRoom();await settle();
+  assert.equal(transport.calls.length,after,'successful and failed quote returns cannot acquire another mutable operation');
+  assert.equal(count('quote_start'),1);assert.equal(count('quote_calculate'),1);assert.equal(count('additional_prices'),0);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+}
+
+async function unconfirmedAdditionalScenario(inline,mode='valid'){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ w.fetch=async(url,options={})=>{
+  const value=await transport.json(url,options),action=options.body&&JSON.parse(options.body).action;
+  if(action==='additional_prices'){
+   value.data.additional_prices={source:'anex_b2b_additional_prices_daily',scope:'tour_program_date_nights_currency',offer_specific:false,
+    rows:[],total_count:0,truncated:false,application_state:'unknown',application_reason:'rate_rows_unconfirmed',arithmetic_applied:false,
+    final_price_verified:false,currency:null,converted_currency:null,per_person_or_package:'unknown',fuel_equivalence_verified:false,
+    included_in_search_price:'unknown',search_price:null,party_surcharge:null,search_plus_additional:null};
+   if(mode==='identity')value.data.offer_ref='anex_online:'+'f'.repeat(64);
+   if(mode==='malformed')value.data.additional_prices.party_surcharge={amount:'0',currency:'RUB'};
+  }
+  return new Response(JSON.stringify(value),{status:action==='additional_prices'&&mode==='http'?503:200,headers:{'Content-Type':'application/json'}});
+ };
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Unconfirmed APD timeout: '+d.body.textContent.slice(-2200));};
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150)),count=action=>transport.calls.filter(c=>c.action===action).length;
+ const openSelection=async()=>{
+  if(inline){click('[data-action="hotel-details"][data-id="501"]');await wait(()=>q('[data-action="select-hotel-offer"][data-key^="anex%3A"]'));click('[data-action="select-hotel-offer"][data-key^="anex%3A"]');}
+  else{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');}
+ };
+ try{
+  loadFixtureScripts(w);await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+  await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
+  await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));click('[data-action="close-modal"]');await settle();
+  await openSelection();if(!inline){click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));click('[data-action="anex-additional-prices"]');}
+  await wait(()=>count('additional_prices')===1);await settle();
+  assert.equal(count('quote_start'),0,'empty APD never starts a package request automatically');
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'unconfirmed APD cannot authorize a priced application');
+  assert.equal(q('#prototype-lead-form'),null);
+  if(mode!=='valid'){
+   assert(q('#hotel-detail-offers').disabled,'invalid/HTTP/identity failures retain the existing closed inline state');
+   assert.equal(q('#hotel-detail-offers').dataset.action,'anex-additional-prices');
+   assert.equal(q('#modal [data-action="anex-package-quote"]'),null,'only valid empty evidence gains the inline recovery action');
+   assert.equal(count('quote_start'),0);assert.deepEqual(errors,[]);return;
+  }
+  const verifyUnknown=()=>{
+   const button=q('#modal-footer [data-action="anex-package-quote"]');assert(button&&!button.disabled,'valid empty rates keep explicit complete-price continuation available');
+   assert.match(inline?q('#hotel-detail-price-status').textContent:q('#anex-additional-error').textContent,/не передал ставки доплат/);
+   assert.doesNotMatch(q('#modal-footer').textContent,/Доплата.*0|Доплаты рассчитаны|К заявке/);
+   assert.equal(q('#modal [data-action="anex-additional-prices"]'),null,'the spent APD action is no longer offered');
+  };
+  verifyUnknown();const before=transport.calls.length;
+  click('[data-action="close-modal"]');await settle();await openSelection();await settle();verifyUnknown();
+  assert.equal(transport.calls.length,before,'close/reopen restores the same unconfirmed outcome without repeating APD');
+  click('#modal-footer [data-action="anex-package-quote"]');await wait(()=>q('[name="anex-package-choice"]'));
+  assert.equal(count('quote_start'),1);assert.equal(count('additional_prices'),1);assert.equal(count('quote_calculate'),0);
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'flight inventory alone grants no price authority');
+  click('[data-action="anex-package-calculate"]');await wait(()=>q('[data-action="anex-application-preview"]'));
+  assert.equal(count('quote_calculate'),1);assert.equal(count('additional_prices'),1);
+  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/,'only the independently verified full-package price is actionable');
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
 }
 
 async function expansionEntryScenario(count,late=false){
@@ -51,10 +212,12 @@ async function expansionEntryScenario(count,late=false){
    assert.match(q('#modal-body').textContent,/ANEX STANDARD/,'late expansion does not replace the original group inventory');
    assert.doesNotMatch(q('#modal-body').textContent,/ANEX CONCRETE/);
   }else if(count===0){
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('не вернул конкретные'));
-   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty supplier expansion keeps existing recovery');
-   assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
+   const terminal=()=>{assert.equal(q('#modal-body .error-text')?.textContent.trim(),'Не удалось подтвердить этот тур. Выберите другой вариант.');assert(q('#modal-footer [data-action="all-offers"]'));assert(!q('#modal [data-action="refresh-hotel"]'));assert.match(q('.footer-price-status').textContent,/не подтверждена/);};
+   await wait(()=>q('#modal-body .error-text'));terminal();
+   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty expansion preserves the existing selected-tour view');
+   assert.equal(q('#all-offers-list'),null);
    click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/ANEX STANDARD/);
+   click('#modal-body [data-action="offer"][data-key^="anex%3A"]');await settle();terminal();assert.equal(transport.calls.filter(c=>c.action==='expand').length,1,'ordinary return cannot replay an empty expansion');
   }else if(count===2){
    await wait(()=>q('#all-offers-list')&&q('#modal-body').textContent.includes('ANEX ALTERNATIVE'));
    assert.equal(d.querySelectorAll('#all-offers-list [data-action="offer"][data-key^="anex%3A"]').length,2,'multiple exact offers retain explicit choice');
@@ -187,7 +350,7 @@ async function soleSamoPriceScenario(mode){
    click('[data-action="close-modal"]');await settle();await reopen();
   }else releaseCalc();
   if(mode==='failed'){
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
    assert.equal(q('[data-action="andromeda-application-preview"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
    click('[data-action="close-modal"]');await settle();await reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
   }else{
@@ -336,7 +499,42 @@ async function boundedRepriceScenario(provider,mode,width=390){
   assert.equal(aborts,0,'changing or leaving the picker never aborts mutable supplier work');assert.deepEqual(errors,[]);
  }finally{release?.();await settle();dom.window.close();}
 }
+async function compactAnexScenario(width){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ transport.state.anexPackageChoiceCount=40;
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});w.innerWidth=width;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ let release;
+ w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(options.body&&JSON.parse(options.body).action==='quote_calculate')await new Promise(resolve=>release=resolve);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,70)),wait=async fn=>{for(let i=0;i<90;i++){if(fn())return;await settle();}assert.fail('Compact ANEX timeout at '+width+' '+q('#modal-body')?.textContent.slice(-1800)+' errors='+JSON.stringify(errors)+' actions='+transport.calls.map(c=>c.action).join(','));};
+ try{
+  loadFixtureScripts(w);await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));click('[data-action="select-anex-tour"]');await wait(()=>d.querySelectorAll('[name="anex-package-choice"]').length===40);
+  assert(q('#modal').classList.contains('tour-flight-editing'));assert.equal(d.querySelectorAll('.anex-package-options>.anex-pair-option').length,3);assert.equal(d.querySelectorAll('.anex-more-options>.anex-pair-option').length,37);assert.equal(q('.anex-more-options').open,false);
+  assert.equal(d.querySelectorAll('.anex-pair-option .flight-option-price strong').length,0,'uncalculated pairs have no numeric price');assert.equal(q('[data-action="anex-application-preview"]'),null);assert.match(q('.tour-flight-context').textContent,/ANEX CONCRETE/);
+  const radio=d.querySelectorAll('[name="anex-package-choice"]')[39],ref=radio.value;
+  q('.anex-more-options').open=true;radio.click();assert.equal(radio.checked,true);q('#modal-body').scrollTop=3200;click('[data-action="anex-package-calculate"]');await wait(()=>release);
+  assert.equal(q('[name="anex-package-choice"]:checked').value,ref);assert.equal(q('#modal-body').scrollTop,3200,'legacy pending retains the same picker scroll; source/DOM only');assert.equal(q('.anex-more-options').open,true,'pending last pair is revealed');assert([...d.querySelectorAll('[name="anex-package-choice"]')].every(el=>el.disabled));assert.equal(q('[data-action="anex-application-preview"]'),null);
+  release();await wait(()=>q('[data-action="anex-application-preview"]'));assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 OUT/);assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 BACK/);assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/);
+  click('[data-action="anex-application-preview"]');const form=q('#prototype-lead-form');form.elements.phone.value='+79990000000';form.elements.phone.dispatchEvent(new w.Event('input',{bubbles:true}));form.elements.consent.checked=true;
+  const before=transport.calls.length;click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 OUT/);click('[data-action="anex-application-preview"]');assert.equal(q('[name="phone"]').value,'+79990000000');assert.equal(q('[name="consent"]').checked,false);
+  click('[data-action="close-modal"]');await settle();w.history.forward();await wait(()=>q('#prototype-lead-form'));assert.equal(q('[name="phone"]').value,'+79990000000');assert.equal(transport.calls.length,before,'contact Back/reopen/Forward never repeats calculation');
+  assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,1);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,ref);assert.deepEqual(errors,[]);
+ }finally{release?.();await settle();dom.window.close();}
+}
 (async()=>{
+ await ordinaryRegularRoutingVM();
+ for(const mode of ['fresh','retained-current','failed'])await ordinaryRegularScenario(mode);
+ console.log('VISUAL_ANEX_ORDINARY_REGULAR_OK inline full-package selection/reopen/pair/failure; no automatic static APD, supplier HTTP 0');
+ if(process.argv.includes('--ordinary-regular'))return;
+ for(const inline of [false,true])await unconfirmedAdditionalScenario(inline);
+ for(const mode of ['malformed','identity','http'])await unconfirmedAdditionalScenario(true,mode);
+ console.log('VISUAL_ANEX_UNCONFIRMED_APD_OK inline/modal explicit package continuation/reopen and invalid rejection; supplier HTTP 0');
+ if(process.argv.includes('--empty-apd'))return;
+ for(const width of [360,390,430,768,1280])await compactAnexScenario(width);
  await boundedRepriceScenario('anex','initial-busy');
  console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
  // Every case has its own window, transport, history and quote state. Keep
@@ -400,6 +598,10 @@ async function boundedRepriceScenario(provider,mode,width=390){
    assert.equal(q('[data-action="anex-additional-prices"]'),null,'retained APD requires no repeated supplier request');
    click('[data-action="anex-application-preview"]');
    const form=q('#prototype-lead-form');assert(form);assert.match(q('#modal-footer').textContent,zero?/121\s*000/:/123\s*000/);
+   const parts=()=>Object.fromEntries([...d.querySelectorAll('.application-price-breakdown [data-price-part]')].map(el=>[el.dataset.pricePart,el.querySelector('dd').textContent.replace(/\s/g,'')]));
+   const expectedParts={tour:'121000₽',party:zero?'0₽':'+2000₽',total:zero?'121000₽':'123000₽'};
+   assert.deepEqual(parts(),expectedParts,'the estimate retains the operator-provided breakdown, including an explicit zero charge');
+   assert.equal(q('[data-price-part="total"] dt').textContent,'Расчётная сумма');
    assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);assert.match(q('#modal-body').textContent,/Расчётная стоимость требует подтверждения оператором/);
    form.elements.phone.value='+79990000000';form.elements.consent.checked=true;
    form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
@@ -411,6 +613,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
    assert.equal(q('#prototype-lead-form').elements.phone.value,'+79990000000');
    assert.equal(q('#prototype-lead-form').elements.consent.checked,false);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
    assert.equal(q('#modal-body').scrollTop,73);assert.match(q('#modal-footer').textContent,zero?/121\s*000/:/123\s*000/);
+   assert.deepEqual(parts(),expectedParts,'restoring the exact application retains its estimate');
    assert.equal(transport.calls.length,beforeForward,'browser Forward never repeats current/APD/flights or submits a lead');
    const before=transport.calls.length;
    click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="anex-application-preview"]');

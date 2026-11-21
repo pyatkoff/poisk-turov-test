@@ -1,52 +1,23 @@
 # AnyTour — единая организация разработки
 
-## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
+## Действующий Search3 план — 26.10.2026
 
-По прямому поручению владельца подготовить сначала цельные desktop/mobile
-макеты и кликабельный прототип всего пути. Действующая детализация —
-[Search3 product plan](search3-product-development-plan.md), раздел
-«Поручение владельца10.10.2026». Это уточнение существующего
-`S3_PRODUCT_CURRENT_ACCEPTANCE`, не новый координатор, tracker или расписание.
+Исполняемая очередь, текущие source/runtime, этапы готовности и следующий результат —
+[единый продуктовый план](search3-product-development-plan.md#текущая-очередь-search3--26102026).
+Текущий исполнитель/claims/новые события — [4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709);
+задача — `AUTOPILOT_STATE.json.current_task`, SEARCH1646.
+Этот указатель не создаёт второй очереди или нового допуска.
+Блокер supplier не останавливает независимое разрешённое UI-исправление.
+[Полный прежний checkpoint PR4927](search3-product-development-plan.md#исторический-checkpoint-pr4927--26102026)
+сохранён дословно; остальные исторические разделы ниже не исполняются.
+Production, protected contracts, no-replay и допуски других направлений сохраняются.
 
-| Роль | Ближайший законченный результат |
-| --- | --- |
-| SITE/design #1719 | В существующем публичном Sites проекте один целостный draft: параметры/выдача/фильтры → отель/вариант/выбранный тур → контакт/возврат; desktop1280/mobile390 + адаптив360/430/768 |
-| SEARCH #1646 | Exact текущие owners/data/state ограничения и сохранённый корпус для дизайна; перенос полного пакета после конкретного visual+behavior approval |
-| Независимый QA через #4217 | Короткий baseline затрагиваемых экранов, review макетов/prototype, затем сопоставление того же NEXT по SEARCH-QUALITY-1 |
-| Координатор #4217 | Свободные scoped claims, один интегратор, handoff, конкретные версии и следующий безопасный шаг |
+## История организации
 
-Baseline, дизайн и полная оценка идут параллельно; завершение всех55 критериев,
-physical Safari и готовность всех данных не являются предварительным условием
-создания макетов. Цель≥9,5 в каждой полностью измеренной применимой строке;
-макет/prototype/NEXT/physical/real supplier отмечаются отдельно в существующем
-audit. Новый общий средний балл не вводится. Первый design deliverable —
-рабочая ссылка/exact версия, минимум восемь основных desktop/mobile кадров,
-переходы и состояния; один статусный отчёт его не заменяет.
-
-Единственная визуальная приёмка ближайшего пакета — просмотр всей готовой
-кликабельной версии по внешнему виду и поведению. Новые концепции получают
-explicit owner approval перед переносом в NEXT. Внутри approved решения
-подтверждённые дефекты устраняются автономно. PR4502 и Site106 сохраняются draft,
-Site100/package34 и завершённый PR4501 не открываются заново.
-
-До будущего source-пакета заново проверить реальную карту подключения:
-NEXT target `v2/visual-search/index.php` → `v2/visual-search/app.js`;
-исторические таблицы `v2/index.php`/`src/search3/` ниже не дают права править
-неподключённый owner. SITE не пишет NEXT renderer/CSS параллельно SEARCH.
-Один writer общего файла/проектной версии; независимая подготовка и QA параллельны.
-INT/LOCAL/MATCH дают только существующий bounded фактический handoff, не
-переносят supplier/DB очередь в дизайн.
-
-При ожидании approval/CI/данных сохранить конкретный artifact/checkpoint и
-продолжать независимую разрешённую работу, затем возобновлять тот же пакет.
-Старый source-reduction `next_action` в current_task заменяется этим поручением;
-завершённые refactor receipts/no-replay/guards сохраняются в Git и журнале.
-Protected contracts, SAMO paused, бюджеты, применимый CI, NEXT publisher и
-production approval остаются. Расписания/модели/enabled/paused не изменены.
-
-Поручение владельца от 2026-09-09: улучшать интеграции ANEX/Андромеды,
-сопоставление отелей, поиск, сайт и SEO параллельно, с одной общей координацией.
-Репозиторий: только `pyatkoff/poisk-turov-test`.
+[Полный документ до чистки — 21.10.2026](anytour-development-history-20261021.md)
+содержит прежние checkpoint, назначения и датированные receipts дословно. Они не
+являются исполняемой очередью. Рабочая маршрутизация и владельцы — ниже; текущая
+продуктовая задача — `AUTOPILOT_STATE.json.current_task` и свежий #4709.
 
 ## Старт и источники текущего состояния
 
@@ -54,7 +25,7 @@ production approval остаются. Расписания/модели/enabled/
 2. Выбрать направление в таблице ниже; прочитать его актуальный state/план и issue.
 3. Освежить head ветки, открытые PR, последние сообщения владельца/координатора и
    активные CI/deploy. Исторический SHA или старый автоматический prompt не заменяет свежую точку.
-4. Объявить задачу и точные общие файлы в [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
+4. Объявить задачу и точные общие файлы в [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
    Если их уже меняет другой исполнитель — передать ему требование либо взять независимый файл.
 
 Этот документ владеет распределением работы. `AGENTS.md` и `OWNER_PRIORITY.json`
@@ -64,7 +35,7 @@ production approval остаются. Расписания/модели/enabled/
 
 | Что нужно узнать | Авторитетная точка |
 | --- | --- |
-| Общие приоритеты, владение общими файлами, передача между направлениями | Этот документ и #4217 |
+| Общие приоритеты, владение общими файлами, передача между направлениями | Этот документ и #4709 |
 | Текущий исполняемый продуктовый пакет общего Search3/сайта | Свежая release: `AUTOPILOT_STATE.json.current_task`; конкретные evidence — профильный audit |
 | Порядок продуктовых этапов | `docs/project/search3-product-development-plan.md` на свежей release |
 | Текущие supplier/API задачи и доказательства | `docs/integrations/anex-search3-autopilot.md` на свежей ANEX-ветке |
@@ -84,11 +55,11 @@ production approval остаются. Расписания/модели/enabled/
 | --- | --- | --- | --- |
 | INT — интеграции и provider data | Supplier transport/auth/search/package/price, provider response normalization, сохранённые supplier observations и контракты границы с SEARCH | umbrella draft #1493; Андромеда #1717; состав цены #1685 отдельным пакетом | Сейчас `feature/anex-search-adapter-20260907`; перенос в release отдельным согласованным пакетом |
 | MATCH — hotel identity | Массовое Tourvisor ↔ ANEX ↔ Andromeda сопоставление, evidence, accepted/manual/conflict/exclusion registry delta и остаточный review | #1971; история выполненных пакетов #1759 | Matching source на свежей `feature/anex-search-adapter-20260907`; организационный план в release |
-| SEARCH — поиск и выдача | Форма, lifecycle, карточки/фильтры/сортировка, общая выдача, выбор/возврат и контекст конкретного предложения | #1646; текущий release-пакет в `current_task`, координация #4217 | `release/search3-production-ready-v1`; существующий ANEX addon временно остаётся в своей ветке |
+| SEARCH — поиск и выдача | Форма, lifecycle, карточки/фильтры/сортировка, общая выдача, выбор/возврат и контекст конкретного предложения | #1646; текущий release-пакет в `current_task`, координация #4709 | `release/search3-production-ready-v1`; существующий ANEX addon временно остаётся в своей ветке |
 | SITE — сайт и путь к покупке | Общий shell, главная и страницы, навигация, правдивый контент, переходы в поиск | #1719; существующий продуктовый план | Свежая release |
 | SEO — органический поиск | Типы посадочных, URL/metadata, ссылки, содержательность и правила будущей индексации | #1720; существующий #395 — зависимость данных/история | Свежая release; сначала read-only аудит и требования |
 
-Координатор в #4217 выбирает ближайшие пакеты по пользе, устраняет пересечения,
+Координатор в #4709 выбирает ближайшие пакеты по пользе, устраняет пересечения,
 собирает совместимые результаты и ведёт единое опубликованное состояние.
 Рабочие чаты/агенты — исполнители этих задач; переписка не создаёт новую ветку продукта.
 INT может иметь независимые задачи ANEX и Андромеды, но не владеет очередью hotel identity.
@@ -97,6 +68,11 @@ MATCH не меняет supplier transport/search/price/package и получа�
 
 ## Владельцы компонентов — текущие пути, без массового переноса файлов
 
+Перед чтением таблицы проверить текущий consumer: ORIGINAL NEXT загружает
+`v2/visual-search/index.php` → `v2/visual-search/app.js`. Исторические `v2/index.php`/
+`src/search3/` строки ниже не разрешают менять неподключённый owner; нужны свежая
+consumer map и свободный scoped claim. Это карта ответственности, не новая очередь.
+
 | Компонент | Основной владелец | Реальные точки изменения / взаимодействия |
 | --- | --- | --- |
 | Native search form | SEARCH | `v2/index.php`; `src/search3/behavior/search-form.js` только shell/busy/edit |
@@ -104,7 +80,7 @@ MATCH не меняет supplier transport/search/price/package и получа�
 | Оформление формы, карточек и selected | SEARCH | `src/search3/styles/entry-native-controls.css`, `styles/results-layout.css` |
 | Общие results/selected/lifecycle | SEARCH | `v2/results-renderer-v5.js`, `tour-controller-v4.js`, `runtime-v3.js`, `search-lifecycle-v6.js`, `search-continue-v6.js`, `catalogs-v2.js` |
 | Supplier transport и response normalization | INT | `app/integrations/anex-client.php`, `anex-search.php`, `anex-preview-gateway.php`, `anex-normalizer.php` |
-| Принятые ANEX/Andromeda hotel identities / manual / pair exclusions | MATCH | действующие mapping/identity registries; сохранять текущую БД, manual решения и exclusions; shared path только после claim #4217 |
+| Принятые ANEX/Andromeda hotel identities / manual / pair exclusions | MATCH | действующие mapping/identity registries; сохранять текущую БД, manual решения и exclusions; shared path только после claim #4709 |
 | Matching diagnostics / bridge / review datasets | MATCH | существующие `scripts/diagnostics/*matching*`, Andromeda/ANEX bridge diagnostics и новый bounded MATCH tooling; не создавать дублирующий resolver без необходимости |
 | Граница provider → Search3 | INT + SEARCH, один исполнитель на пакет | `v2/api-anex-search3-preview.php` и соответствующая Andromeda projection; input/projection меняются по согласованному контракту |
 | Временный own-preview addon | SEARCH в ANEX-ветке | `v2/anex-search3-preview-v1.js`; не копировать поверх актуального UI и не добавлять третий renderer |
@@ -135,13 +111,13 @@ identity и нормализованные данные. Карточки/фил
 Общий provider contract описан в `docs/integrations/multi-provider-search-plan.md`
 на ANEX-ветке. Это целевой контракт, не заявление о готовом универсальном registry:
 `hotel-identities.php` пока pilot JSON registry, действующие provider resolvers проверяются по свежему source.
-Текущей public ANEX projection ещё не хватает полного offer/search context для выбора.
+Текущий доступный ANEX offer/search context и его ограничения определяются свежими accepted handoff/receipts; прежняя оценка projection не является новым блокером.
 
 Передача INT → SEARCH включает: source SHA, целевую свежую release SHA, ограниченный
 список файлов, поля/fixtures и неизвестные сведения, supplier budget, проверки,
 checked/published/deferred, issue принимающего владельца. MATCH передаёт только проверенную
 hotel identity/provenance и не подменяет offer/search/package identity. Затем:
-1. SEARCH/INT фиксируют один provider contract и владельца общих файлов в #4217; MATCH отдельно claim-ит shared registry paths, если они нужны.
+1. SEARCH/INT фиксируют один provider contract и владельца общих файлов в #4709; MATCH отдельно claim-ит shared registry paths, если они нужны.
 2. Короткая ветка от свежей release получает только необходимый bounded пакет.
 3. Актуальные UI-владельцы подключают данные; календарь/фильтры/выбор проходят узкий
    совместный сценарий. Новый поиск инвалидирует старые ответы каждого источника.
@@ -176,7 +152,7 @@ implemented, checked, preview-published и production-approved; они не вз
 Перед каждым интегрированием освежать head и проверять чужие изменения; без force-push.
 На один общий файл — один активный writer, на одну задачу — один source PR.
 Чтение/подготовка независимых компонентов параллельны; shared edits и deploy последовательны.
-В #4217 claim включает issue, branch/PR, paths и последний подтверждённый шаг.
+В #4709 claim включает issue, branch/PR, paths и последний подтверждённый шаг.
 Зависший claim не снимается по таймеру: сначала проверить PR/CI и текущего исполнителя.
 
 Автопилотные очереди разделены по пяти направлениям. MATCH #1971 — самостоятельная очередь,
@@ -226,27 +202,13 @@ canonical/redirects/sitemap не менять без отдельного явн
 
 ## Ближайшие задачи — ссылки, без второй копии очереди
 
-- MATCH: #1971; продолжать только от CURRENT DB после `hotel-full-catalog-delta-1759-20260911-v2`.
-  Сначала cross-provider bridge и сохранённое evidence, затем Tourvisor→ANEX operator link→
-  `HOTELLIST`/`hotelCode`, manual только последним. Completed/unknown operation не replay.
-- SEARCH: продолжить актуальный `current_task` release и #1646; конкретный point-тур
-  должен сохранить свой search context до выбора/возврата. Готовые point/reveal/filter
-  пакеты не повторять; минимумы источников не объявлять одинаковыми пакетами.
-- INT: #1685 — отдельный владелец состава цены; #1717 — supplier/API/package контракт Андромеды.
-  Matching #1971 не является INT-задачей. Блокер API не блокирует остальные задачи.
-  Старые supplier unknown/completed не переигрывать.
-- SITE: #1719, оставшиеся реальные сценарии приёмки и один подтверждённый дефект.
-- SEO: #1720, матрица существующих типов страниц/данных/URL/indexability; старые
-  main-based SEO PR сначала сверить с актуальной release, не запускать автоматически.
+Задачу брать из актуального state/плана и issue направления, перечисленных выше.
+Прежние поимённые следующие действия вынесены в архив; проверять fresh head/claim
+и terminal до продолжения. Полное сопоставление, supplier-сбой или physical gate
+не блокируют независимый разрешённый шаг другого направления.
 
-Уточнение владельца 2026-09-09: развивать продукт до уровня ведущих ОТА.
-Новая продуктовая последовательность, критерии сравнения и границы будущего
-онлайн-бронирования находятся в [действующем product plan](search3-product-development-plan.md),
-подробности — в [SEARCH](anytour-roadmap/search.md). `current_task`/`active_queue_ids`
-переключаются на первый полезный пакет выдачи; завершённая доступная приёмка
-TV-only остаётся evidence, physical Safari/production approval — внешними gates.
-Это не новый координатор/план исполнения и не разрешение на production или SEO-indexation.
-
-Отчёт владельцу: новое улучшение и ссылка, что фактически проверено/опубликовано,
-существенный блокер и следующий шаг. Число PR, алиасов или неизменный snapshot не
-подменяют результат; нулевой прогресс без новых фактов не требует повторного уведомления.
+Цель продукта — уровень ведущих ОТА; действующий [product plan](search3-product-development-plan.md)
+содержит обычный путь, SEARCH-QUALITY-1 и точный остаток. Owner-решения, protected
+contracts, production/SEO approval и существующие ограничения других направлений сохраняются.
+Отчёт владельцу — новый работающий эффект/ссылка либо точный блокер; документы,
+число PR и повтор неизменного snapshot не заменяют продуктовый результат.

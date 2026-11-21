@@ -4,21 +4,40 @@
   const rt = root.V2Runtime;
   const local = '/_preview/search3-local-candidate/';
   const catalog = { departures: [], countries: [], meals: [], mealPlans: [], mealPlanRevision: null, mealPlanAvailable: false, regions: {} };
+  const providerMealPlans=new Map();
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
-  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
-  const anexPackageReceipts=new Map();
+  const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexAdditionalReceipts=new Map(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
+  const anexPackageReceipts=new Map(),anexExpansionAttempts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
+  let generation = searchGenerationSeed(), searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   const localContents=new Map(),localContentReads=new Map(),localContentAttempted=new Set();
   const localContentQueue=[];let localContentWorkers=0;
   const contentFields=['name','country','region','subRegion','category','rating','description','primaryImage','images','photoDetails','hotelInformation','descriptionSections','coordinates','address','place','build','repair','square'];
+  async function readRoomLayouts(ids){
+    const requested=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,30);
+    if(!requested.length)return [];
+    const payload=await rt.api('rooms',{ids:requested},{timeout:8000});
+    const rooms=Array.isArray(payload)?payload:payload?.rooms;
+    if(!Array.isArray(rooms))throw new Error('Invalid room descriptions');
+    const seen=new Set();
+    return rooms.flatMap(room=>{
+      const value=room?.id;
+      const id=typeof value==='string'&&/^[1-9]\d*$/.test(value)?Number(value):value;
+      if(!requested.includes(id))return [];
+      if(seen.has(id))throw new Error('Conflicting room descriptions');
+      seen.add(id);
+      return [{id,bedroomCount:Number.isSafeInteger(room.bedroomCount)&&room.bedroomCount>0?room.bedroomCount:null,
+        sleepingPlaces:typeof room.sleepingPlaces==='string'?room.sleepingPlaces:''}];
+    });
+  }
   function localContentEndpoint(){
     if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
     const path=String(root.location?.pathname||'');
+    if(root.V2_CONFIG?.search3PublicEntry==='live'&&['/poisk-turov/','/poisk-turov/index.php'].includes(path))return '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php';
     return path.startsWith('/_preview/search3-next-candidate/')? '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php'
       :path.startsWith(local)?local+'data/local-tv-catalog-read-v1.php':null;
   }
@@ -78,15 +97,300 @@
     if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
     try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname===expectedPath&&!url.search&&!url.hash?url:null;}catch{return null;}
   }
+  // Consume the accepted private TV session; native DTOs and prices pass through.
+  // An uncertain request never falls back to root or gains a new operation ID.
+  let tvTokenTask=null;
+  const tvCheckedTours=new WeakMap(),tvFlightChoices=new WeakMap();
+  const tvSessionEnabled=()=>root.V2_CONFIG?.search3TVSessionEnabled===true;
+  const tvFailures=new WeakSet();
+  const tvFailureCodes=new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request',
+    'tv_invalid_request','tv_invalid_identity','tv_operator_unverified','tv_operator_listing_only','tv_price_currency','tv_price_missing',
+    'tv_label_missing','tv_stale_context','tv_context_changed','tv_context_limit','tv_response_limit','tv_pair_incomplete',
+    'tv_checked_tour_missing','tv_pair_missing','tv_pair_expired','tv_capture_held','tv_request_integrity','tv_request_changed',
+    'tv_operation_unknown','tv_offer_not_owned','tv_operation_already_attempted','tv_supplier_response_error','tv_invalid_search_response',
+    'tv_invalid_results','tv_catalog_mismatch','tv_offer_identity_changed','tv_tour_mismatch','tv_operator_changed','tv_tour_already_checked',
+    'tv_tour_expired','tv_invalid_flights','tv_flights_already_loaded','tv_pair_mismatch','tv_pair_duplicate','tv_temporarily_unavailable']);
+  function tvMismatchFacts(value){
+    const fields=['tour_id','hotel_id','adults','children','departure_id','date','nights'];
+    const types=['null','integer','string','number','boolean','array','other'];
+    const formats=['iso','dmy','other','non-string'];
+    const object=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+    const keys=(v,expected)=>object(v)&&Object.keys(v).sort().join(',')===[...expected].sort().join(',');
+    const selected=value.mismatchFields,reported=value.mismatchTypes;
+    if(!Array.isArray(selected)||!selected.length||selected.length>fields.length
+      ||JSON.stringify(selected)!==JSON.stringify(fields.filter(field=>selected.includes(field)))||!keys(reported,selected))return null;
+    const cleaned={};
+    for(const field of selected){
+      const pair=reported[field];
+      if(!keys(pair,['supplier','context'])||!types.includes(pair.supplier)||!types.includes(pair.context))return null;
+      cleaned[field]=Object.freeze({supplier:pair.supplier,context:pair.context});
+    }
+    const result={mismatchFields:Object.freeze([...selected]),mismatchTypes:Object.freeze(cleaned)};
+    if(Object.hasOwn(value,'dateFormats')){
+      const pair=value.dateFormats;
+      if(!selected.includes('date')||!keys(pair,['supplier','context'])||!formats.includes(pair.supplier)||!formats.includes(pair.context))return null;
+      result.dateFormats=Object.freeze({supplier:pair.supplier,context:pair.context});
+    }
+    return result;
+  }
+  function tvLimitFacts(value){
+    const profiles={request_count:[640,['admission']],context_bytes:[20971520,['admission','reservation','capture','reply']],
+      offer_count:[2000,['results']],generation:[2147483647,['admission']]};
+    if(!Object.hasOwn(profiles,value.limitKind))return null;
+    const [maximum,phases]=profiles[value.limitKind];
+    if(!phases.includes(value.limitPhase)||value.limitMax!==maximum||!Number.isSafeInteger(value.limitValue)
+      ||value.limitValue<maximum)return null;
+    if(value.limitKind==='offer_count'&&value.stage!=='search_results'
+      ||value.limitKind==='generation'&&value.stage!=='search_start'
+      ||value.limitPhase==='capture'&&!['tour','other'].includes(value.stage))return null;
+    if(value.limitValue===maximum&&!(value.limitPhase==='admission'&&['request_count','context_bytes'].includes(value.limitKind)))return null;
+    return {limitKind:value.limitKind,limitPhase:value.limitPhase,limitValue:value.limitValue,limitMax:maximum};
+  }
+  function tvResponseFacts(payload){
+    const fixedErrors={'Tourvisor request failed':'tourvisor_request_failed','Tourvisor connection error':'tourvisor_connection_error',
+      'Tourvisor is not configured':'tourvisor_not_configured'};
+    const reported=payload?.error;
+    const facts={code:tvFailureCodes.has(reported)?reported:typeof reported==='string'&&Object.hasOwn(fixedErrors,reported)?fixedErrors[reported]:'unknown'};
+    const value=payload?.diagnostics;
+    if(value&&typeof value==='object'&&!Array.isArray(value)&&value.provider==='tourvisor'){
+      if(['search_start','search_continue','search_status','search_results','tour','flights','other'].includes(value.stage))facts.backendStage=value.stage;
+      if(['timeout','transport','http'].includes(value.category))facts.backendCategory=value.category;
+      if(facts.code==='tv_tour_mismatch'&&value.stage==='tour'&&value.category==='context'){
+        facts.backendCategory='context';const detail=tvMismatchFacts(value);if(detail)Object.assign(facts,detail);
+      }
+      if(facts.code==='tv_context_limit'&&facts.backendStage&&value.category==='limit'){
+        facts.backendCategory='limit';const detail=tvLimitFacts(value);if(detail)Object.assign(facts,detail);
+      }
+      for(const [key,max] of Object.entries({httpStatus:599,curlErrno:999,elapsedMs:3600000}))
+        if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)facts[key==='httpStatus'?'upstreamStatus':key]=value[key];
+    }
+    return facts;
+  }
+  function tvFailure(status=0,facts={phase:'local'}){
+    const failure=Object.assign(new Error(status===410?'Срок предложения истёк. Выполните новый поиск.':'Не удалось подтвердить TV-сессию. Сохранённый результат не отправляется повторно.'),
+      {code:status===410?'offer_expired':'tourvisor_session_unavailable',retryable:false,status,failureFacts:Object.freeze({...facts})});
+    tvFailures.add(failure);return failure;
+  }
+  const tvRef=value=>typeof value==='string'&&/^tourvisor:[a-f0-9]{64}$/.test(value);
+  const tvChoice=value=>value==='manager-deferred'||typeof value==='string'&&/^tourvisor_pair:[a-f0-9]{64}$/.test(value);
+  function tvSelectorValid(value){
+    return !!value&&Object.keys(value).sort().join(',')==='choice_ref,generation,local_hotel_id,offer_ref,provider,search_ref'
+      &&value.provider==='tourvisor'&&Number.isSafeInteger(value.generation)&&value.generation>0&&value.generation<=2147483647
+      &&typeof value.search_ref==='string'&&/^[a-f0-9]{32}$/.test(value.search_ref)&&tvRef(value.offer_ref)
+      &&Number.isSafeInteger(value.local_hotel_id)&&value.local_hotel_id>0&&value.local_hotel_id<=2147483647&&tvChoice(value.choice_ref);
+  }
+  async function tvFetch(action,fields,run=null){
+    const url=nativeEndpoint(root.V2_CONFIG?.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!tvSessionEnabled()||!url||url.username||url.password||run&&!current(run))throw tvFailure();
+    const controller=new AbortController(),abort=()=>controller.abort(),timeout=setTimeout(abort,55000);
+    run?.controller.signal.addEventListener('abort',abort,{once:true});
+    if(run?.controller.signal.aborted)abort();
+    try{
+      const token=action==='tv_token',options={method:token?'GET':'POST',credentials:'same-origin',mode:'same-origin',
+        cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal,headers:{Accept:'application/json'}};
+      if(token)url.search=new URLSearchParams({action}).toString();
+      else{options.headers['Content-Type']='application/json';options.headers['X-Requested-With']='AnyTourSearch3';options.body=JSON.stringify({action,...fields});}
+      const response=await fetch(url.href,options),raw=await response.text();
+      if(controller.signal.aborted)throw tvFailure(0,{phase:'aborted'});
+      if(run&&!current(run))throw tvFailure(0,{phase:'stale'});
+      const httpFacts=Number.isInteger(response.status)&&response.status>=100&&response.status<=599?{httpStatus:response.status}:{};
+      if(new TextEncoder().encode(raw).length>1048576)throw tvFailure(0,{phase:'response_limit',...httpFacts});
+      let result;try{result=JSON.parse(raw);}catch{throw tvFailure(0,{phase:'invalid_json',...httpFacts});}
+      if(!response.ok||result?.ok!==true)throw tvFailure(response.status,{phase:'response',...tvResponseFacts(result)});
+      return result;
+    }catch(error){
+      const failure=tvFailures.has(error)?error:tvFailure(0,{phase:controller.signal.aborted?'aborted':'transport'});
+      // Same browser-local failure channel as the other providers; never raw JSON,
+      // response text, URLs, selectors or exception messages. The retained operation
+      // carries this same safe error, so reopening does not emit another request.
+      const detail=Object.freeze({provider:'tourvisor',action,...failure.failureFacts,
+        ...(Number.isInteger(failure.status)&&failure.status>=100&&failure.status<=599?{httpStatus:failure.status}:{})});
+      if((!run||current(run))&&detail.phase!=='aborted'&&detail.phase!=='stale'){
+        try{root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+        }catch{}
+      }
+      throw failure;
+    }
+    finally{clearTimeout(timeout);run?.controller.signal.removeEventListener('abort',abort);}
+  }
+  function tvToken(){
+    if(!tvTokenTask)tvTokenTask=tvFetch('tv_token',{}).then(reply=>{
+      if(reply.provider!=='tourvisor'||typeof reply.csrf!=='string'||!/^[a-f0-9]{64}$/.test(reply.csrf))throw tvFailure();
+      return reply.csrf;
+    });
+    return tvTokenTask;
+  }
+  function tvRequestId(){
+    if(typeof root.crypto?.getRandomValues!=='function')throw tvFailure();
+    const bytes=new Uint8Array(16);root.crypto.getRandomValues(bytes);
+    return Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  function tvRequest(run,action,fields={},key=null){
+    if(!run||!current(run)||!run.tv) return Promise.reject(tvFailure());
+    if(key&&run.tv.requests.has(key))return run.tv.requests.get(key);
+    // Create and retain the operation before yielding, including failures.
+    const requestId=tvRequestId(),task=(async()=>{
+      const csrf=await tvToken();if(!current(run))throw tvFailure();
+      const pins=action==='tv_search'?{}:{generation:run.tv.generation,search_ref:run.tv.searchRef};
+      if(action!=='tv_search'&&(!Number.isSafeInteger(pins.generation)||!pins.search_ref))throw tvFailure();
+      const reply=await tvFetch(action,{provider:'tourvisor',csrf,request_id:requestId,...pins,...fields},run),value=reply.data;
+      if(!value||value.provider!=='tourvisor'||!Number.isSafeInteger(value.generation)||value.generation<1||value.generation>2147483647
+        ||typeof value.search_ref!=='string'||!/^[a-f0-9]{32}$/.test(value.search_ref)||!Object.hasOwn(value,'data'))throw tvFailure();
+      if(action==='tv_search'){run.tv.generation=value.generation;run.tv.searchRef=value.search_ref;}
+      else if(value.generation!==pins.generation||value.search_ref!==pins.search_ref)throw tvFailure();
+      return value;
+    })();
+    if(key)run.tv.requests.set(key,task);return task;
+  }
+  async function tvResultMembership(run,reply){
+    if(!Array.isArray(reply.data)||!Array.isArray(reply.offers))throw tvFailure();
+    const selectors=new Map();
+    for(const pin of reply.offers){
+      if(!pin||!tvRef(pin.offer_ref)||!Number.isSafeInteger(pin.local_hotel_id)||pin.local_hotel_id<1
+        ||selectors.has(pin.offer_ref))throw tvFailure();
+      selectors.set(pin.offer_ref,pin.local_hotel_id);
+    }
+    // Bind opaque returned refs to the actual returned tour IDs, never labels,
+    // positions, aliases or browser amounts. Only server-returned members qualify.
+    const members=await Promise.all(reply.data.flatMap(hotel=>{
+      const localId=Number(hotel?.id);
+      if(!hotel||!Number.isSafeInteger(localId)||localId<1||!Array.isArray(hotel.tours))throw tvFailure();
+      return hotel.tours.map(async tour=>{
+        if(!tour||!['string','number'].includes(typeof tour.id)||!(/^[A-Za-z0-9._:-]{1,220}$/).test(String(tour.id)))throw tvFailure();
+        const ref='tourvisor:'+await digestRef('tourvisor:tour:'+String(tour.id));
+        return selectors.get(ref)===localId?[String(tour.id),{ref,localHotelId:localId}]:null;
+      });
+    }));
+    if(!current(run))throw tvFailure();
+    const seen=new Set();for(const entry of members.filter(Boolean)){
+      if(seen.has(entry[0]))throw tvFailure();seen.add(entry[0]);
+      const old=run.tv.members.get(entry[0]);
+      if(old&&(old.ref!==entry[1].ref||old.localHotelId!==entry[1].localHotelId))throw tvFailure();
+      run.tv.members.set(...entry);
+    }
+  }
+  function tvCheckSelector(run,selector,member,choice){
+    if(!tvSelectorValid(selector)||selector.generation!==run.tv.generation||selector.search_ref!==run.tv.searchRef
+      ||selector.offer_ref!==member.ref||selector.local_hotel_id!==member.localHotelId||selector.choice_ref!==choice)throw tvFailure();
+    return Object.freeze({...selector});
+  }
+  async function tvNative(run,action,fields){
+    if(!run?.tv){if(tvSessionEnabled())throw tvFailure();return rt.api(action,fields);}
+    const actions={search_start:'tv_search',search_continue:'tv_continue',search_status:'tv_status',search_results:'tv_results',tour:'tv_tour',flights:'tv_flights'};
+    if(!Object.hasOwn(actions,action))throw tvFailure();
+    const member=['tour','flights'].includes(action)?run.tv.members.get(String(fields.tourId)):null;
+    if(['tour','flights'].includes(action)&&!member)throw tvFailure();
+    const body=action==='search_start'?{params:fields}:member?{offer_ref:member.ref}:{};
+    const reply=await tvRequest(run,actions[action],body,member?action+':'+member.ref:null),value=reply.data;
+    if(action==='search_results')await tvResultMembership(run,reply);
+    if(action==='tour'){
+      const selector=tvCheckSelector(run,reply.selector,member,'manager-deferred');
+      if(!value||typeof value!=='object'||Array.isArray(value)||typeof reply.record_sha256!=='string'||!/^[a-f0-9]{64}$/.test(reply.record_sha256))throw tvFailure();
+      tvCheckedTours.set(value,{run,selector});
+    }
+    if(action==='flights'){
+      const pairs=Array.isArray(value)?value:value?.flights;
+      if(!Array.isArray(pairs)||!Array.isArray(reply.choices)||reply.choices.length>100)throw tvFailure();
+      const seen=new Set();for(const pin of reply.choices){
+        if(!Number.isSafeInteger(pin?.index)||pin.index<0||pin.index>=pairs.length||seen.has(pin.index)
+          ||typeof pin.choice_ref!=='string'||!/^tourvisor_pair:[a-f0-9]{64}$/.test(pin.choice_ref)||!pairs[pin.index]||typeof pairs[pin.index]!=='object')throw tvFailure();
+        seen.add(pin.index);tvFlightChoices.set(pairs[pin.index],{run,offerRef:member.ref,choice:pin.choice_ref});
+      }
+    }
+    return value;
+  }
+  function tourvisorHandoffSelection(o,h){
+    const receipt=quoteReceipts.get(o?.tour),saved=tvCheckedTours.get(o?.tour),run=saved?.run;
+    if(!tvSessionEnabled()||!run||!current(run)||receipt?.generation!==generation||receipt.searchId!==searchId||receipt.raw!==o.raw||receipt.failure
+      ||o.provider!=='tourvisor'||o.cached||o.raw?.selectionEnabled===false||o.loading||o.flightsLoading||o.flightsError||o.quoteError||o.pricePending
+      ||String(o.tour.id)!==String(o.raw?.id)||o.key!==encodeURIComponent('tourvisor:'+String(o.raw.id))||h?.id!==o.hotelId
+      ||o.room!==text(o.tour.roomType)||o.meal!==meal(o.tour.meal)||text(o.tour.departure)!==(o.origin||o.search?.origin)
+      ||!searchParams||o.adults!==run.search.adults||JSON.stringify(o.ages)!==JSON.stringify(run.search.ages))return null;
+    const member=run.tv.members.get(String(o.raw.id));
+    if(!member||member.ref!==saved.selector.offer_ref||member.localHotelId!==saved.selector.local_hotel_id
+      ||h.id!==member.localHotelId&&!(h.legacyIds||[]).map(String).includes(String(member.localHotelId)))return null;
+    let choice='manager-deferred',total=amount(o.tour.price);
+    if(o.flightChoiceId!==undefined&&o.flightChoiceId!==null){
+      const pair=o.variants?.[Number(o.flightChoiceId)],pin=tvFlightChoices.get(pair);
+      if(!pin||pin.run!==run||pin.offerRef!==member.ref||o.hotelFlightDeferred===true)return null;
+      choice=pin.choice;total=amount(pair.price);
+    }
+    if(!total||amount(o.total)!==total)return null;
+    return Object.freeze({selector:Object.freeze({...saved.selector,choice_ref:choice}),
+      party:Object.freeze({adults:searchParams.adults,childAges:Object.freeze([...searchParams.childs])})});
+  }
+  async function prepareTourvisorHandoff(fields){
+    const run=activeSearch,member=run?.tv&&[...run.tv.members.values()].find(x=>x.ref===fields.offer_ref);
+    if(!run||!current(run)||!member||fields.generation!==run.tv.generation||fields.search_ref!==run.tv.searchRef
+      ||fields.local_hotel_id!==member.localHotelId)throw tvFailure();
+    const reply=await tvRequest(run,'tv_select',{offer_ref:fields.offer_ref,choice_ref:fields.choice_ref},'select:'+fields.offer_ref+':'+fields.choice_ref);
+    tvCheckSelector(run,reply.selector,member,fields.choice_ref);
+    if(typeof reply.record_sha256!=='string'||!/^[a-f0-9]{64}$/.test(reply.record_sha256))throw tvFailure();
+  }
   const anexSearchFailureCodes=new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request','search_not_supported','rate_limited','supplier_conditions_rejected','supplier_timeout','supplier_unavailable','unknown']);
-  function anexSearchError(response,payload,stage){
-    const failure={stage,code:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
+  const anexSearchDiagnosticEnums=Object.freeze({
+    backendFailure:new Set(['ANEX_HTTP_ERROR','ANEX_TRANSPORT_ERROR','ANEX_SUPPLIER_ERROR','ANEX_INVALID_RESPONSE',
+      'ANEX_RESPONSE_TOO_LARGE','ANEX_INVALID_PRICES','ANEX_REPEATED_PRICE_PAGE','ANEX_INVALID_PUBLIC_RESULT',
+      'ANEX_REQUEST_LIMIT','ANEX_SESSION_UNAVAILABLE','ANEX_SESSION_EXPIRED','ANEX_CLOCK_ERROR',
+      'ANEX_RESERVATION_REQUIRED','ANEX_RATE_LIMIT','ANEX_CLIENT_UNAVAILABLE','ANEX_INVALID_PARAMS',
+      'ANEX_SESSION_OFFER_LIMIT','ANEX_SEARCH_NOT_STARTED','ANEX_EXPANSION_NOT_LOADED','ANEX_DATABASE_ERROR','ANEX_TYPE_ERROR','ANEX_INTERNAL_ERROR']),
+    backendStage:new Set(['search','expand']),backendPhase:new Set(['gateway','projection']),backendCategory:new Set(['transport','http','supplier','database','limit','response','application']),
+    nativeAction:new Set(['SearchTour_TOWNFROMS','SearchTour_STATES','SearchTour_CURRENCIES','SearchTour_PRICES'])
+  });
+  const anexSearchDiagnosticBounds=Object.freeze({upstreamStatus:599,supplierCode:99999,transportCode:999,elapsedMs:120000});
+  function cleanAnexSearchDiagnostics(value){
+    const result={};if(!value||typeof value!=='object'||Array.isArray(value))return result;
+    for(const [key,allowed] of Object.entries(anexSearchDiagnosticEnums))if(allowed.has(value[key]))result[key]=value[key];
+    for(const [key,max] of Object.entries(anexSearchDiagnosticBounds))if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)result[key]=value[key];
+    return result;
+  }
+  function anexSearchDiagnostics(response,reported){
+    const values={},headers={backendFailure:'Failure',backendStage:'Stage',backendPhase:'Phase',backendCategory:'Category',nativeAction:'Native-Action',
+      upstreamStatus:'Upstream-Status',supplierCode:'Supplier-Code',transportCode:'Transport-Code',elapsedMs:'Elapsed-Ms'};
+    for(const [key,suffix] of Object.entries(headers)){
+      let value;try{value=response?.headers?.get?.('X-AnyTour-Anex-'+suffix);}catch{}
+      if(value==null&&reported&&typeof reported==='object'&&!Array.isArray(reported))value=reported['X-AnyTour-Anex-'+suffix];
+      if(typeof value!=='string')continue;
+      if(Object.hasOwn(anexSearchDiagnosticBounds,key)){
+        if(!/^(?:0|[1-9][0-9]{0,5})$/.test(value))continue;
+        value=Number(value);
+      }
+      values[key]=value;
+    }
+    return cleanAnexSearchDiagnostics(values);
+  }
+  const anexClientGuards=new Set(['envelope','envelope_provider','envelope_generation','envelope_search_ref','envelope_offer_ref','envelope_status',
+    'envelope_hotels_type','envelope_hotels_count','envelope_hotel_identity','envelope_tours_type','envelope_tours_empty',
+    'tour_identity','amount','offer_scope','selected_meal','exact_stay','projected_identity','unknown']);
+  function anexProjectionError(clientGuard,message){return Object.assign(new Error(message),{anexClientGuard:clientGuard});}
+  function anexSearchError(response,payload,stage,clientPhase='',clientGuard=''){
+    const expansion=stage==='expand',status=expansion?payload?.data?.status:null;
+    const failure={stage,code:expansion&&clientPhase?'client_'+clientPhase+'_unconfirmed'
+      :expansion&&['expansion_unknown','expired','not_loaded'].includes(status)?status:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
     if(Number.isInteger(response?.status)&&response.status>=100&&response.status<=599)failure.httpStatus=response.status;
-    return Object.assign(new Error(stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
+    if(expansion&&clientPhase)failure.clientPhase=clientPhase;
+    else {
+      const diagnostic=anexSearchDiagnostics(response,expansion?(payload?.diagnostics||payload?.data?.diagnostics):undefined);
+      if(!expansion||diagnostic.backendStage==='expand')Object.assign(failure,diagnostic);
+    }
+    if(expansion&&clientPhase==='projection')failure.clientGuard=anexClientGuards.has(clientGuard)?clientGuard:'unknown';
+    // Public enums and bounded numeric facts only; never response text or identities.
+    try{root.console?.warn?.('[AnyTour search] '+JSON.stringify({provider:'anex',...failure}));}catch{}
+    const error=Object.assign(new Error(expansion?'Не удалось подтвердить конкретные варианты тура.':stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
+    if(expansion){
+      error.code=status==='expired'&&!clientPhase?'offer_expired':'anex_expand_unconfirmed';
+      // The producer owns a sealed UNKNOWN; local unreadable/projection outcomes
+      // are independently unconfirmed. Neither can be repaired by replaying POST.
+      if(clientPhase||payload?.retryable===false||payload?.data?.retryable===false)error.retryable=false;
+      else if(payload?.retryable===true||payload?.data?.retryable===true)error.retryable=true;
+    }
+    return error;
   }
   function anexSearchFailure(error,stage){
     const value=error?.searchFailure,result={stage,code:anexSearchFailureCodes.has(value?.code)?value.code:'unknown'};
     if(Number.isInteger(value?.httpStatus)&&value.httpStatus>=100&&value.httpStatus<=599)result.httpStatus=value.httpStatus;
+    Object.assign(result,cleanAnexSearchDiagnostics(value));
     return result;
   }
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
@@ -152,24 +456,54 @@
     return candidates.find(candidate=>!(/^[A-Z]{1,7}\+?$/).test(candidate))||candidates[0]||'';
   }
   function meal(value){return indexedMeal(value,mealIndexes());}
-  function installMealPlans(payload){
-    if(!payload||payload.ok!==true||payload.source!=='anytour-search-meal-v1'||payload.provider!=='tourvisor'||payload.scopeKey!=='global'
+  function installMealPlans(payload,provider='tourvisor'){
+    if(!['tourvisor','anex'].includes(provider)||!payload||payload.ok!==true||payload.source!=='anytour-search-meal-v1'||payload.provider!==provider||payload.scopeKey!=='global'
       ||typeof payload.available!=='boolean'||!Array.isArray(payload.plans)||payload.plans.length>1000)return false;
-    const plans=[],ids=new Set(),nativeIds=new Set();
+    const revision=typeof payload.revision==='string'&&/^[a-f0-9]{64}$/.test(payload.revision)?payload.revision:null;
+    if(provider==='anex'&&revision===null)return false;
+    const plans=[],ids=new Set(),codes=new Set(),nativeIds=new Set();
     for(const row of payload.plans){
       if(!row||!Number.isSafeInteger(row.id)||row.id<1||ids.has(row.id)||typeof row.code!=='string'||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(row.code)
         ||typeof row.nameRu!=='string'||!row.nameRu.trim()||row.nameRu.length>255||!Array.isArray(row.nativeIds))return false;
+      if(provider==='anex'&&(codes.has(row.code)||/[\u0000-\u001f\u007f]/.test(row.nameRu)))return false;
       const native=[];
       for(const raw of row.nativeIds){
         if(typeof raw!=='string'||!raw.trim()||raw.length>128||/[\u0000-\u001f\u007f]/.test(raw)||nativeIds.has(raw))return false;
         nativeIds.add(raw);native.push(raw);
       }
-      ids.add(row.id);plans.push(Object.freeze({id:row.id,code:row.code,nameRu:row.nameRu.trim(),nativeIds:Object.freeze(native)}));
+      ids.add(row.id);codes.add(row.code);plans.push(Object.freeze({id:row.id,code:row.code,nameRu:row.nameRu.trim(),nativeIds:Object.freeze(native)}));
+    }
+    if(provider==='anex'){
+      providerMealPlans.set(provider,Object.freeze({available:payload.available,revision,plans:Object.freeze(plans)}));
+      return true;
     }
     catalog.mealPlans=plans;
     catalog.mealPlanAvailable=payload.available;
-    catalog.mealPlanRevision=typeof payload.revision==='string'&&/^[a-f0-9]{64}$/.test(payload.revision)?payload.revision:null;
+    catalog.mealPlanRevision=revision;
     return true;
+  }
+  const anexSearchMealCodePolicy=Object.freeze({RO:'no-meals',BB:'breakfast',HB:'half-board',FB:'full-board',AI:'all-inclusive',UAI:'ultra-all-inclusive'});
+  function providerMealPlan(value,provider){
+    const snapshot=providerMealPlans.get(provider);
+    if(provider!=='anex'||!snapshot||typeof value!=='string'||!value||value.length>128||/[\u0000-\u001f\u007f]/.test(value))return null;
+    // Native IDs are provider-qualified facts. Russian display aliases and the
+    // Tourvisor meal catalogue cannot supply ANEX mapping authority.
+    let matches,source;
+    if(snapshot.available===true){
+      matches=snapshot.plans.filter(plan=>plan.nativeIds.includes(value));source='anytour-search-meal-v1';
+    }else{
+      // Reviewed source policy for six exact ANEX codes, only while its native
+      // mapping schema is unavailable. IDs come from this ANEX catalogue; this
+      // is search classification, not an accepted DB/provider or package match.
+      // A partial available mapping stays authoritative and never uses this policy.
+      if(!snapshot.plans.every(plan=>plan.nativeIds.length===0)||!Object.hasOwn(anexSearchMealCodePolicy,value))return null;
+      matches=snapshot.plans.filter(plan=>plan.code===anexSearchMealCodePolicy[value]);source='anex-explicit-meal-code-v1';
+    }
+    if(matches.length!==1)return null;
+    const plan=matches[0],known=catalog.mealPlans.find(row=>row?.id===plan.id);
+    if(known&&(known.code!==plan.code||known.nameRu!==plan.nameRu)
+      ||catalog.mealPlans.some(row=>row?.code===plan.code&&row.id!==plan.id))return null;
+    return Object.freeze({id:plan.id,code:plan.code,nameRu:plan.nameRu,source,revision:snapshot.revision});
   }
   function supplierMealNativeId(value,indexes=mealIndexes()){
     const direct=value&&typeof value==='object'?String(value.id??''):'';
@@ -209,6 +543,14 @@
     const key=label.toLocaleUpperCase('ru-RU').replace(/[._-]+/g,' ').replace(/\s*&\s*/g,'&').replace(/\s+/g,' ').trim();
     return operatorAliases[key]||label;
   }
+  function assertTourvisorRecalculationSupported(...values){
+    const blocked=new Set(['CORAL','CORAL TRAVEL','КОРАЛ','КОРАЛ ТРЕВЕЛ','КОРАЛ ТРЭВЕЛ','SUNMAR','SUNMAR TOUR','САНМАР']);
+    for(const value of values){
+      const labels=value&&typeof value==='object'?[value.name,value.russianName]:[value];
+      if(labels.some(label=>typeof label==='string'&&blocked.has(label.trim().toLocaleUpperCase('ru-RU').replace(/[._-]+/g,' ').replace(/\s+/g,' ').trim())))
+        throw Object.assign(new Error('Актуализация и рейсы Coral Travel и Sunmar через Tourvisor недоступны.'),{code:'tourvisor_operator_unsupported',retryable:false});
+    }
+  }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   async function destinationCatalog(action,params={},signal){
     const query=new URLSearchParams({action});Object.entries(params).forEach(([key,value])=>{if(value!==''&&value!==null&&value!==undefined)query.set(key,String(value));});
@@ -234,9 +576,9 @@
     return ids[0];
   }
   async function regions(country) {
-    const key=String(country);
+    const key=String(country),cache=catalog.regions;
     countryRow(key);
-    if(catalog.regions[key])return catalog.regions[key];
+    if(cache[key])return cache[key];
     if(regionRequests.has(key))return regionRequests.get(key);
     const request=destinationCatalog('regions',{countryId:key}).then(rows=>{
       const seen=new Set(),items=[],regionIds=new Set();
@@ -254,8 +596,8 @@
         }
       }
       for(const item of items)if(item.kind==='subregion'&&!regionIds.has(item.parentId))throw new Error('Не удалось проверить иерархию курортов.');
-      catalog.regions[key]=items;return items;
-    }).finally(()=>regionRequests.delete(key));
+      cache[key]=items;return items;
+    }).finally(()=>{if(regionRequests.get(key)===request)regionRequests.delete(key);});
     regionRequests.set(key,request);return request;
   }
   function destinationScope(s,filters) {
@@ -282,8 +624,10 @@
     const chosenMealIds=selectedPlans.length?[...selectedPlans[0].nativeIds]:[];
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
     const resorts=[...new Set((filters.resorts||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
-    const exactHotel=Number(filters.hotelId),supplierHotels=[...new Set((hotelIds||[]).map(String).filter(Boolean))].sort();
-    const hotel=Number.isSafeInteger(exactHotel)&&exactHotel>0?'local:'+exactHotel:supplierHotels.length?'supplier:'+supplierHotels.join(','):'';
+    // Keep the same canonical OR identity at request time and passive inspection;
+    // native IDs remain only the supplier request projection, never local IDs.
+    const localHotels=[...new Set((filters.hotelIds?.length?filters.hotelIds:[filters.hotelId]).map(Number).filter(id=>Number.isSafeInteger(id)&&id>0))].sort((a,b)=>a-b),supplierHotels=[...new Set((hotelIds||[]).map(String).filter(Boolean))].sort();
+    const hotel=localHotels.length?'local:'+localHotels.join(','):supplierHotels.length?'supplier:'+supplierHotels.join(','):'';
     const priceFrom=filters.min>0?String(filters.min):'',hasMax=filters.max!==null&&filters.max!==undefined&&filters.max!=='',priceTo=hasMax?String(filters.max):'';
     return Object.freeze({
       hotel,
@@ -304,7 +648,10 @@
     if(!previous||!next||!Array.isArray(previous.resorts)||!Array.isArray(next.resorts)
       ||!Number.isFinite(previous.min)||!Number.isFinite(next.min)
       ||previous.max!==null&&!Number.isFinite(previous.max)||next.max!==null&&!Number.isFinite(next.max))return false;
-    if(previous.hotel&&previous.hotel!==next.hotel)return false;
+    if(previous.hotel){
+      const before=/^(local|supplier):(.+)$/.exec(previous.hotel),after=/^(local|supplier):(.+)$/.exec(next.hotel);
+      if(!before||!after||before[1]!==after[1]||!after[2].split(',').every(id=>before[2].split(',').includes(id)))return false;
+    }
     if(previous.resorts.length&&(!next.resorts.length||!next.resorts.every(value=>previous.resorts.includes(value))))return false;
     if(previous.hotelCategory&&previous.hotelCategory!==next.hotelCategory)return false;
     if(previous.meal&&previous.meal!==next.meal)return false;
@@ -390,6 +737,23 @@
     const key=typeof part.localKey==='string'&&part.localKey.length<=128&&!/[\u0000-\u001f\u007f]/.test(part.localKey)?part.localKey.trim():'';
     return name&&key?name:'';
   }
+  function stayLabel(o,kind){
+    const field=kind==='room'?'room':kind==='meal'?'meal':null;
+    if(!field)return '';
+    const label=typeof o?.[field]==='string'?o[field]:'';
+    // Selected values remain supplier facts for the existing quote/bot guards.
+    // Reuse an accepted LOCAL label only for the same unchanged quoted fact.
+    if(!o?.tour||String(o.tour.id)!==String(o.raw?.id))return label;
+    const key=kind==='room'?'roomType':'meal',before=o.raw?.[key],after=o.tour[key];
+    const fact=value=>{
+      const fields=[text(value),text(value?.name),text(value?.russianName),text(value?.fullName),text(value?.fullRussianName),text(value?.id)]
+        .map(value=>value.replace(/\s+/g,' ').trim());
+      return fields.slice(0,5).some(Boolean)?JSON.stringify(fields):null;
+    };
+    const original=fact(before);
+    if(!original||original!==fact(after)||label!==(kind==='room'?text(after):meal(after)))return label;
+    return localStayName(o.raw,{id:o.hotelId},kind)||label;
+  }
   function offer(t, h, s, index, indexes=mealIndexes()) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
@@ -425,12 +789,20 @@
   }
   function publish() {if(owner&&context&&activeSearch&&current(activeSearch)){const rows=project(owner.read(raw,{}),context);notify({type:'results',hotels:rows});queueHotelContent(rows);}}
   function current(run){return activeSearch===run&&run.generation===generation;}
+  function searchGenerationSeed(){
+    // The supplier session is shared across pages; a page-local zero restarts its
+    // first-week identity. Random lower30 bits keep the int31 ABI and increment headroom.
+    const entropy=new Uint32Array(1);
+    if(root.crypto?.getRandomValues)root.crypto.getRandomValues(entropy);
+    else entropy[0]=Math.floor(Math.random()*0x100000000);
+    return entropy[0]>>>2;
+  }
   function stop(){
     localContentAttempted.clear();
     localContentQueue.length=0;
-    clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
+    clearCalendarWindows();generation=generation<2147483647?generation+1:searchGenerationSeed()+1;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexAdditionalReceipts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();anexExpansionAttempts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -457,27 +829,35 @@
     const bytes=await subtle.digest('SHA-256',new Encoder().encode(value));
     return Array.from(new Uint8Array(bytes),byte=>byte.toString(16).padStart(2,'0')).join('');
   }
-  async function directAnexOffer(hotel,tour,run,p,seen){
+  async function directAnexOffer(hotel,tour,run,p,seen,onReject){
     if(!tour||typeof tour!=='object'||!tour.price||tour.price.currency!=='RUB'
       ||typeof tour.price.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(tour.price.amount)
-      ||Number(tour.price.amount)<=0)throw new Error('Invalid ANEX price');
+      ||Number(tour.price.amount)<=0)throw anexProjectionError('amount','Invalid ANEX price');
     const day=date(tour.checkin),nights=Number(tour.nights),searchRef=String(tour.search_ref||''),offerRef=String(tour.offer_ref||'');
     if(!day||day<p.dateFrom||day>p.dateTo||!Number.isInteger(nights)||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo)
       ||Number(tour.adults)!==Number(p.adults)||Number(tour.children)!==p.childs.length
       ||!(/^[a-f0-9]{32}$/).test(searchRef)||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)
-      ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw new Error('Invalid ANEX offer');
+      ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw anexProjectionError('offer_scope','Invalid ANEX offer');
     seen.add(offerRef);
-    const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется';
-    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
+    let infantCharge;
+    if(tour.infants!==undefined||tour.infant_charge!==undefined){
+      const count=p.childs.filter(age=>age<2).length,charge=tour.infant_charge;
+      if(count<1||tour.infants!==count||!charge||charge.status!=='unknown'||charge.amount!==null||charge.included_in_search_price!==null)
+        throw anexProjectionError('infant_charge','Invalid ANEX infant charge');
+      infantCharge=Object.freeze({status:'unknown',amount:null,includedInSearchPrice:null});
+    }
+    const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется',plan=providerMealPlan(tour.meal,'anex');
+    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo)){onReject?.('amount');return null;}
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
-    if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
+    if(selectedMeals.length&&!selectedMeals.includes(mealName)){onReject?.('selected_meal');return null;}
     const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
     return {id:offerRef,offerRef,offerIdentityDigest,searchRef,provider:'anex',price:total,date:day,nights,
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
+      ...(plan?{searchMealPlan:Object.freeze({id:plan.id,code:plan.code,nameRu:plan.nameRu}),searchMealPlanSource:plan.source,searchMealPlanRevision:plan.revision}:{}),
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
       anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
-      anexSessionCurrent:run?.anexSessionCurrent===true};
+      anexSessionCurrent:run?.anexSessionCurrent===true,...(infantCharge?{infantCharge}: {})};
   }
   function directFirstWeekScopes(p){
     const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;
@@ -541,26 +921,24 @@
     if(page===1?!!previous:(!previous||previous.pagesRead!==page-1||previous.searchRef!==data.search_ref
       ||previous.continuation?.next_page!==page||previous.requestedPage!==page||!continuation
       ||data.page!==page||data.pages_read!==1||data.first_page_only!==false||run.anexWindowsTotal!==total))throw new Error('Invalid ANEX page sequence');
-    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let receivedOffers=0;
+    const seenHotels=new Set(),seenOffers=new Set();let receivedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||seenHotels.has(hotel.local_id)
         ||hotel.catalog?.source!=='tourvisor'||Number(hotel.catalog?.hotel_id)!==hotel.local_id
         ||!Array.isArray(hotel.tours)||hotel.tours.length<1||hotel.tours.length>300)throw new Error('Invalid ANEX hotel');
       seenHotels.add(hotel.local_id);receivedOffers+=hotel.tours.length;
-      for(const tour of hotel.tours){
-        if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
-        const normalized=await directAnexOffer(hotel,tour,run,p,seenOffers);
-        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
-      }
     }
     if(receivedOffers>300)throw new Error('Invalid ANEX result size');
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>{
+      if(tour.search_ref!==data.search_ref)throw new Error('Invalid ANEX search identity');
+      return directAnexOffer(hotel,tour,run,p,seenOffers);
+    }):[];
+    if(!current(run))return null;
     // Existing first-page cap is retained; each explicit page has the same cap.
     const priorOffers=[...windows.values()].reduce((sum,window)=>sum+window.receivedOffers,0);
     const initialOffers=[...windows.values()].reduce((sum,window)=>sum+(window.initialReceivedOffers??window.receivedOffers),0);
     if((page===1&&initialOffers+receivedOffers>1200)||priorOffers+receivedOffers>1200*12
       ||(previous?.receivedOffers||0)+receivedOffers>300*12)throw new Error('Invalid ANEX result size');
-    // No asynchronous digest from an old generation may mutate the current union.
-    if(!current(run))return null;
     windows.set(index,{prepared:previous?[...previous.prepared,...prepared]:prepared,
       hotelIds:[...new Set([...(previous?.hotelIds||[]),...seenHotels])],
       receivedOffers:(previous?.receivedOffers||0)+receivedOffers,mappedOffers:(previous?.mappedOffers||0)+receivedOffers,
@@ -703,6 +1081,31 @@
     if(tour.search_surcharge&&typeof tour.search_surcharge==='object')normalized.search_surcharge=structuredClone(tour.search_surcharge);
     return normalized;
   }
+  async function prepareDirectPage(run,hotels,normalize){
+    const prepared=[],pending=[];
+    // Stay within the validated page. Source order also determines duplicate
+    // checks and publication order, regardless of when individual digests finish.
+    async function prepareOffer(hotel,tour){
+      const item=await normalize(hotel,tour);
+      return item&&{legacyHotelId:hotel.local_id,tour:item};
+    }
+    async function finishBatch(){
+      for(const entry of await Promise.all(pending))if(entry)prepared.push(entry);
+      pending.length=0;
+    }
+    if(!current(run))return null;
+    for(const hotel of hotels){
+      for(const tour of hotel.tours){
+        pending.push(prepareOffer(hotel,tour));
+        if(pending.length===16){
+          await finishBatch();
+          if(!current(run))return null;
+        }
+      }
+    }
+    if(pending.length)await finishBatch();
+    return prepared;
+  }
   function andromedaBranch(run,index,total,p){
     if(!Number.isInteger(index)||index<0||!Number.isInteger(total)||total<1||index>=total)throw new Error('Invalid Andromeda destination branch');
     const branches=run.andromedaBranches||(run.andromedaBranches=new Map());
@@ -757,17 +1160,15 @@
       if(pages.size||branch.searchRef&&branch.searchRef!==data.search_ref)throw new Error('Invalid Andromeda page sequence');
       branch.searchRef=data.search_ref;
     }else if(branch.searchRef!==data.search_ref||pages.has(data.page)||!pages.has(data.page-1))throw new Error('Invalid Andromeda page sequence');
-    const seenHotels=new Set(),seenOffers=new Set(),prepared=[];let projectedOffers=0;
+    const seenHotels=new Set(),seenOffers=new Set();let projectedOffers=0;
     for(const hotel of data.hotels){
       if(!hotel||!Number.isSafeInteger(hotel.local_id)||hotel.local_id<1||hotel.mapping_status!=='resolved'||seenHotels.has(hotel.local_id)
         ||!Array.isArray(hotel.tours)||hotel.tours.length<1)throw new Error('Invalid Andromeda hotel');
       seenHotels.add(hotel.local_id);projectedOffers+=hotel.tours.length;
       if(projectedOffers>15000)throw new Error('Invalid Andromeda result size');
-      for(const tour of hotel.tours){
-        const normalized=await directAndromedaOffer(hotel,tour,run,p,seenOffers,data);
-        if(normalized)prepared.push({legacyHotelId:hotel.local_id,tour:normalized});
-      }
     }
+    const prepared=data.hotels.length?await prepareDirectPage(run,data.hotels,(hotel,tour)=>directAndromedaOffer(hotel,tour,run,p,seenOffers,data)):[];
+    if(!current(run))return null;
     const branches=run.andromedaBranches;
     const accumulated=[...branches.values()].reduce((sum,item)=>sum+[...item.pages.values()].reduce((inner,page)=>inner+page.projectedOffers,0),0);
     if(accumulated+projectedOffers>15000)throw new Error('Invalid Andromeda result size');
@@ -954,13 +1355,13 @@
   async function pollSearch(run){
     if(!current(run))return;
     try{
-      const status=await rt.api('search_status',{searchId:run.searchId});if(!current(run))return;
+      const status=await tvNative(run,'search_status',{searchId:run.searchId});if(!current(run))return;
       const progress=Math.max(0,Math.min(100,Number(status.progress)||0));
       const complete=progress>=100||status.status==='complete';notify({type:'progress',progress});if(!current(run))return;
       if(complete||progress>=run.lastProgress+10||Date.now()-run.lastRead>7000){
-        // #3444 validates this explicit request in the existing gateway. This
-        // is a response-size bound, not a claim that these are all market tours.
-        const rows=await rt.api('search_results',{searchId:run.searchId,limit:complete||run.continued?5000:25});
+        // The legacy root owner accepts this limit; the private TV owner uses
+        // its accepted fixed portion. Neither is a claim of market completeness.
+        const rows=await tvNative(run,'search_results',{searchId:run.searchId,limit:complete||run.continued?5000:25});
         if(!current(run))return;
         if(!Array.isArray(rows))throw new Error('Не удалось прочитать предложения.');
         raw=rows;run.lastProgress=progress;run.lastRead=Date.now();publish();if(!current(run))return;
@@ -991,6 +1392,7 @@
       sourceCounts:cached
         ?{tourvisor:skipped(),anex:skipped(),andromeda:skipped(),database:skipped()}
         :{database:skipped()}};
+    if(tvSessionEnabled()&&!cached)run.tv={generation:null,searchRef:null,members:new Map(),requests:new Map()};
     activeSearch=run;
     return {run,params:p};
   }
@@ -1004,11 +1406,12 @@
   async function search(s, callback, hotelIds=[], filters={}) {
     const {run,params:p}=prepareSearchRun(s,callback,hotelIds,filters,false);
     callback({type:'loading'});if(!current(run))return;
+    if(run.tv){try{await tvToken();if(!current(run))return;}catch(error){await searchError(run,error);return;}}
     run.andromeda=enrichAndromeda(run,p);
     run.anex=enrichAnex(run,p);
     notify({type:'provider',provider:'tourvisor',status:'loading'});if(!current(run))return;
     try{
-      const started=await rt.api('search_start',p);if(!current(run))return;
+      const started=await tvNative(run,'search_start',p);if(!current(run))return;
       searchId=Number(started.searchId);
       if(!Number.isSafeInteger(searchId)||searchId<1)throw new Error('Не удалось запустить поиск.');
       run.searchId=searchId;rt.setSearchId(searchId);
@@ -1051,7 +1454,7 @@
         if(anexUrl)run.anexContinuation=continueAnexPages(run,anexUrl.href);
       }
       if(tvCan){
-        if(!retryRead){await rt.api('search_continue',{searchId:run.searchId});if(!current(run))return false;}
+        if(!retryRead){await tvNative(run,'search_continue',{searchId:run.searchId});if(!current(run))return false;}
         await pollSearch(run);return current(run);
       }
       if(!(await settleContinuedSources(run)))return false;
@@ -1119,7 +1522,7 @@
     // Party and canonical region OR are exact first-class observation scopes.
     // The observation reader has no exact subregion dimension yet: suppress it
     // instead of presenting a broader parent-region minimum as exact.
-    if(filters.hotelId||filters.q||observationBudget(filters)===null
+    if(filters.hotelId||filters.hotelIds?.length||filters.q||observationBudget(filters)===null
       ||['stars','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
     try{if(destinationScope(s,filters).subregionIds.length)return false;}catch{return false;}
@@ -1178,27 +1581,63 @@
     if(failed.length===settled.length)throw failed[0].reason;
     return {...snapshot,partial:failed.length>0};
   }
-  async function init(origin='Москва') {
-    try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))catalog.departures=data.items;}catch{}
-    if(!catalog.departures.length)catalog.departures=await rt.api('departures',{departureCountryId:1});
-    if(!Array.isArray(catalog.departures)||!catalog.departures.length)throw new Error('Не удалось загрузить города вылета.');
-    try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+  async function loadDepartures() {
+    let rows=catalog.departures;
+    try{const response=await fetch('/data/departures-v1.php',{credentials:'same-origin'});const data=await response.json();if(response.ok&&data.ok&&Array.isArray(data.items))rows=data.items;}catch{}
+    if(!Array.isArray(rows)||!rows.length)rows=await rt.api('departures',{departureCountryId:1});
+    if(!Array.isArray(rows)||!rows.length)throw new Error('Не удалось загрузить города вылета.');
+    catalog.departures=rows;
+  }
+  async function readMealPlans(provider) {
     try{
       const response=await fetch(local+'data/search3-local-results-read-v1.php',{
         method:'POST',credentials:'same-origin',cache:'no-store',
         headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
-        body:JSON.stringify({action:'meal_catalog',provider:'tourvisor',scopeKey:'global'})
+        body:JSON.stringify({action:'meal_catalog',provider,scopeKey:'global'})
       });
       const payload=await response.json();
-      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data}))throw new Error('Invalid canonical meal catalogue');
-    }catch{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
-    return countries(origin);
+      if(response.ok&&payload?.ok===true&&payload.data)return {ok:true,...payload.data};
+    }catch{}
+    return null;
   }
-  let catalogGeneration=0;
-  async function countries(origin) {
-    const run=++catalogGeneration,departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
+  let catalogGeneration=0,catalogBootstrap=null;
+  function init(origin='Москва',options={}) {
+    if(!catalogBootstrap){
+      const departures=loadDepartures();
+      const plans=Promise.all([readMealPlans('tourvisor'),readMealPlans('anex')]);
+      const meals=departures.then(async()=>{
+        try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+        const [tourvisor,anex]=await plans;
+        if(!installMealPlans(tourvisor)){catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
+        if(!installMealPlans(anex,'anex'))providerMealPlans.delete('anex');
+      });
+      catalogBootstrap={departures,meals};
+    }
+    return countries(origin,options);
+  }
+  async function countryOptions(origin,run,bootstrap,options) {
+    if(bootstrap)await bootstrap.departures;
+    if(run!==catalogGeneration)return null;
+    let departure;
+    if(options&&Object.hasOwn(options,'departureId')){
+      const id=String(options.departureId),matches=/^[1-9]\d*$/.test(id)?catalog.departures.filter(row=>String(row.id)===id):[];
+      if(matches.length!==1||!text(matches[0])){const error=new Error('Город вылета из ссылки недоступен.');error.code='PUBLIC_DEPARTURE_UNMAPPED';throw error;}
+      departure=matches[0];
+    }else departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
     const rows=await destinationCatalog('countries',{departureId:departure.id});
-    if(run!==catalogGeneration)return null;if(!rows.length)throw new Error('Для этого города список стран недоступен.');
+    return {rows,departure};
+  }
+  async function countries(origin,options={}) {
+    const run=++catalogGeneration,bootstrap=catalogBootstrap;
+    // A retry can reuse the global reads even if an earlier origin failed.
+    // Settle both before releasing the bootstrap or committing country state.
+    const [result,meals]=await Promise.allSettled([countryOptions(origin,run,bootstrap,options),bootstrap?.meals]);
+    if(run!==catalogGeneration)return null;
+    catalogBootstrap=null;
+    if(result.status==='rejected')throw result.reason;
+    if(meals.status==='rejected')throw meals.reason;
+    const {rows,departure}=result.value;
+    if(!rows.length)throw new Error('Для этого города список стран недоступен.');
     const seen=new Set(),items=[];
     for(const row of rows){
       const id=String(row?.id||''),name=text(row).trim();
@@ -1206,11 +1645,12 @@
       const native=tourvisorIds(row);if(native.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
       seen.add(id);items.push({id,name,russianName:name,tourvisorIds:native});
     }
-    catalog.countries=items;catalog.regions={};return {departures:catalog.departures,countries:items,origin:text(departure)};
+    catalog.countries=items;catalog.regions={};regionRequests.clear();return {departures:catalog.departures,countries:items,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
-  async function lookupHotels(q,country,signal){
+  async function lookupHotels(q,country,signal,onContent){
     if(q.trim().length<2)return[];
+    const epoch=generation;
     const read=async url=>{const r=await fetch(url,{signal,credentials:'same-origin',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Hotel catalogue unavailable');const p=await r.json();if(p?.ok!==true||!Array.isArray(p.items))throw new Error('Invalid hotel catalogue');return p;};
     const nativeCountryId=tourvisorCountryId(country);
     const found=await read('/data/hotel-search-v1.php?'+new URLSearchParams({q:q.trim(),countryId:nativeCountryId,limit:'10'}));
@@ -1219,12 +1659,20 @@
     const query=new URLSearchParams({catalog:'anytour'});ids.forEach(id=>query.append('legacyHotelIds[]',id));
     const p=await read(local+'data/hotel-details-read-v1.php?'+query);
     if(p.source!=='anytour-canonical-catalog'||p.catalog!=='anytour'||!Array.isArray(p.links)||!Array.isArray(p.requestedLegacyIds)||p.requestedLegacyIds.map(String).join(',')!==ids.join(','))throw new Error('Invalid canonical hotel lookup');
-    return p.items.map(raw=>{
+    const rows=p.items.map(raw=>{
       if(raw.catalog!=='anytour'||!Number.isSafeInteger(raw.id)||raw.id<1||typeof raw.name!=='string'||!raw.name.trim())throw new Error('Invalid canonical hotel');
       const legacyIds=p.links.filter(link=>Number(link.anytourHotelId)===raw.id&&ids.includes(String(link.legacyHotelId))).map(link=>String(link.legacyHotelId));
       if(!legacyIds.length)throw new Error('Missing hotel search identity');
-      return hotel({...raw,canonicalLegacyIds:legacyIds},{country});
+      return {...raw,canonicalLegacyIds:legacyIds};
     });
+    if(signal?.aborted||epoch!==generation)throw new DOMException('Aborted','AbortError');
+    const present=()=>rows.map(raw=>hotel(raw,{country})),initial=present();
+    // Optional saved content must not delay verified suggestions or ID restore.
+    // Reproject the same canonical rows only for the current lookup/generation.
+    Promise.resolve().then(()=>signal?.aborted||epoch!==generation?false:refreshHotelContent(rows.map(h=>h.id)))
+      .then(changed=>{if(changed&&!signal?.aborted&&epoch===generation&&typeof onContent==='function')onContent(present());})
+      .catch(()=>{});
+    return initial;
   }
   async function restoreHotel(id,country){
     if(!owner)throw new Error('Hotel catalogue unavailable');
@@ -1256,38 +1704,67 @@
     const p=directFirstWeekScopes(params(o.search,[String(localHotelId)]))[0],epoch=generation;
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
+    const attemptKey=JSON.stringify([epoch,searchRef,targetRef,localHotelId,exact,filters]),previous=anexExpansionAttempts.get(attemptKey);
+    if(previous?.error)throw previous.error;
+    if(previous?.pending)return previous.pending;
     activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    let response=null;
     const request=async body=>{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+      response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
       const payload=await response.json().catch(()=>null);
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data)throw new Error('ANEX не смог проверить выбранное предложение.');
+      if(!response.ok||payload?.ok!==true||!payload.data)throw anexSearchError(response,payload,'expand',
+        !payload||typeof payload!=='object'||Array.isArray(payload)||response.ok&&payload?.ok!==false?'response':'');
       return payload.data;
     };
+    const attempt={error:null,pending:null};anexExpansionAttempts.set(attemptKey,attempt);
+    attempt.pending=(async()=>{
     try{
       // The initial search already retained this exact group on the server.
       // A narrowed replacement search would violate its first-week window gate.
       const expanded=await request({action:'expand',generation:epoch,search_ref:searchRef,offer_ref:targetRef,local_hotel_id:localHotelId});
-      if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searchRef||expanded.offer_ref!==targetRef
-        ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
-        ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
-        throw new Error('ANEX не вернул конкретные варианты выбранного тура.');
+      if(expanded.provider==='anex'&&expanded.generation===epoch&&expanded.search_ref===searchRef&&expanded.offer_ref===targetRef
+        &&['expansion_unknown','expired','not_loaded'].includes(expanded.status)&&expanded.retryable===false){
+        throw anexSearchError(response,{data:expanded},'expand');
       }
-      const seen=new Set(),normalized=[];
+      const envelopeGuard=expanded.provider!=='anex'?'envelope_provider':expanded.generation!==epoch?'envelope_generation'
+        :expanded.search_ref!==searchRef?'envelope_search_ref':expanded.offer_ref!==targetRef?'envelope_offer_ref'
+        :expanded.status!=='expanded'?'envelope_status':!Array.isArray(expanded.hotels)?'envelope_hotels_type'
+        :expanded.hotels.length!==1?'envelope_hotels_count':Number(expanded.hotels[0]?.local_id)!==localHotelId?'envelope_hotel_identity'
+        :!Array.isArray(expanded.hotels[0]?.tours)?'envelope_tours_type':!expanded.hotels[0].tours.length?'envelope_tours_empty':'';
+      if(envelopeGuard) {
+        throw anexProjectionError(envelopeGuard,'ANEX не вернул конкретные варианты выбранного тура.');
+      }
+      const seen=new Set(),normalized=[],rejected=new Set();
       for(const tour of expanded.hotels[0].tours){
-        if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw new Error('ANEX вернул некорректный конкретный вариант.');
-        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
+        if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw anexProjectionError('tour_identity','ANEX вернул некорректный конкретный вариант.');
+        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen,guard=>rejected.add(guard));
         if(item&&item.date===o.day&&item.nights===o.nights)normalized.push(item);
+        else if(item)rejected.add('exact_stay');
       }
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
+      if(!normalized.length)throw anexProjectionError(rejected.size===1?[...rejected][0]:'unknown','Конкретные варианты ANEX больше недоступны.');
       const projected=project([{anytourHotelId:o.hotelId,canonicalLegacyIds:[String(localHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
       if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.raw?.anexKind!=='concrete'||Number(item.raw?.anexLocalHotelId)!==localHotelId)) {
-        throw new Error('Не удалось подготовить конкретные варианты ANEX.');
+        throw anexProjectionError('projected_identity','Не удалось подготовить конкретные варианты ANEX.');
       }
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
-    }finally{if(activeVerification===controller)activeVerification=null;}
+    }catch(error){
+      if(epoch!==generation)throw error;
+      // Switching offers can abort this POST without changing the search. Its
+      // unknown outcome still belongs to this offer; only a new generation clears it.
+      const failure=controller.signal.aborted?anexSearchError(response,null,'expand','transport')
+        :error?.searchFailure?error:anexSearchError(response,null,'expand',response?'projection':'transport',error?.anexClientGuard);
+      if(failure.retryable===false)attempt.error=failure;
+      throw failure;
+    }finally{
+      attempt.pending=null;
+      if(!attempt.error&&anexExpansionAttempts.get(attemptKey)===attempt)anexExpansionAttempts.delete(attemptKey);
+      if(activeVerification===controller)activeVerification=null;
+    }
+    })();
+    return attempt.pending;
   }
   function anexConcreteKey(o){
     const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
@@ -1334,12 +1811,80 @@
       repeated:'Рейсы уже запрашивались. Неизвестный результат не запрашивается повторно.',
       limit:'Лимит проверки рейсов ANEX временно исчерпан.',failed:'Не удалось получить рейсы ANEX.',
       invalid:'Рейсы выбранного предложения не подтверждены.'},
-    additional_prices:{normalize:normalizeAnexAdditional,attempts:anexAdditionalAttempts,
+    additional_prices:{normalize:normalizeAnexAdditional,attempts:anexAdditionalAttempts,receipts:anexAdditionalReceipts,
       stale:'Сначала подтвердите актуальность конкретного предложения ANEX.',
       repeated:'Обязательные доплаты уже запрашивались для этого предложения. Повторите поиск для новой проверки.',
       limit:'Лимит проверки доплат ANEX временно исчерпан.',failed:'ANEX не смог уточнить обязательные доплаты.',
       invalid:'ANEX не вернул применимый расчёт обязательных доплат.'}
   });
+  // Fixed same-origin retained-tour API. Independent from supplier verification.
+  async function messengerHandoff(action,fields={}){
+    const shapes={handoff_token:[],handoff_freeze:['generation','search_ref','offer_ref','local_hotel_id','choice_ref','csrf'],
+      handoff_create:['operation_id','csrf'],handoff_status:['operation_id','csrf'],handoff_revoke:['operation_id','csrf']};
+    const failures=new WeakSet(),safeCodes=new Set(['invalid_request','forbidden','not_found','handoff_limit','handoff_missing','handoff_stale','handoff_session_changed','signer_unavailable','retained_fact_missing','handoff_unavailable','handoff_unknown','temporarily_unavailable']);
+    const safeFields=new Set(['flights.retained_pair','flights.retained_pair_binding','flights.selected_labels','handoff.session','hotel.catalog_labels','offer.retained_identity','price.receiver_bounds','price.retained','quote.complete_exact_pair','quote.observed_deadline','record.checkpoint_changed','record.checkpoint_deadline','record.checkpoint_unknown','record.clock','record.current_retained','record.immutable_terms','record.integrity','record.invalid_retained','record.limit','record.observed_deadline','record.receiver_size','record.server_terms','record.source','search.current_context','selection.pins','stay.hotel_place','stay.meal','stay.operator','stay.placement','stay.retained','stay.room','trip.childAges','trip.countryUiId','trip.departure_nights','trip.origin','trip.party','trip.retained','trip.stayEnd']);
+    const denied=(code,stage='request',httpStatus=null,payload=null,actualAction=action)=>{
+      const handoffFailure={...(Object.hasOwn(shapes,actualAction)||actualAction==='tv_select'?{action:actualAction}:{}),stage,code};
+      if(Number.isInteger(httpStatus)&&httpStatus>=100&&httpStatus<=599)handoffFailure.httpStatus=httpStatus;
+      if(code==='retained_fact_missing'&&safeFields.has(payload?.field)&&['INT','SEARCH','anex_session'].includes(payload?.owner)){
+        handoffFailure.field=payload.field;handoffFailure.owner=payload.owner;
+      }
+      const error=Object.assign(new Error('Не удалось подготовить переход в бот.'),{code,handoffFailure:Object.freeze(handoffFailure)});
+      failures.add(error);return error;
+    };
+    const tv=action==='handoff_freeze'&&fields?.provider==='tourvisor';
+    const expected=typeof action==='string'&&Object.hasOwn(shapes,action)?[...shapes[action],...(tv?['provider']:[])]:null;
+    if(!expected||!fields||typeof fields!=='object'||Array.isArray(fields)
+      ||Object.keys(fields).length!==expected.length||expected.some(key=>!Object.hasOwn(fields,key)))throw denied('invalid_request');
+    if(action!=='handoff_token'&&!(typeof fields.csrf==='string'&&/^[a-f0-9]{64}$/.test(fields.csrf)))throw denied('invalid_request');
+    if(action==='handoff_freeze'){
+      if(!Number.isSafeInteger(fields.generation)||fields.generation<1||fields.generation>2147483647
+        ||!Number.isSafeInteger(fields.local_hotel_id)||fields.local_hotel_id<1||fields.local_hotel_id>2147483647
+        ||typeof fields.search_ref!=='string'||!/^[a-f0-9]{32}$/.test(fields.search_ref)
+        ||typeof fields.offer_ref!=='string'||!(tv?tvRef(fields.offer_ref):/^anex_online:[a-f0-9]{64}$/.test(fields.offer_ref))
+        ||typeof fields.choice_ref!=='string'||!(tv?tvChoice(fields.choice_ref):/^anex_quote:[a-f0-9]{64}$/.test(fields.choice_ref)))throw denied('invalid_request');
+    }else if(action!=='handoff_token'&&(typeof fields.operation_id!=='string'||!/^[a-f0-9]{32}$/.test(fields.operation_id)))throw denied('invalid_request');
+    const url=nativeEndpoint(root.V2_CONFIG?.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+    if(!url||url.username||url.password)throw denied('handoff_unavailable');
+    if(tv){
+      try{await prepareTourvisorHandoff(fields);}
+      catch(error){
+        const phase=error?.failureFacts?.phase,stage=phase==='response'?'http':phase==='local'||phase==='stale'?'request':phase==='invalid_json'||phase==='response_limit'?'response':'transport';
+        const failure=denied(error?.status===410?'handoff_stale':'handoff_unavailable',stage,error?.status,null,'tv_select');
+        if(error&&typeof error==='object'){error.handoffFailure=failure.handoffFailure;throw error;}
+        throw failure;
+      }
+    }
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+    try{
+      const token=action==='handoff_token',options={method:token?'GET':'POST',credentials:'same-origin',mode:'same-origin',
+        cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal,headers:{Accept:'application/json'}};
+      if(token)url.search=new URLSearchParams({action}).toString();
+      else{options.headers['Content-Type']='application/json';options.headers['X-Requested-With']='AnyTourSearch3';options.body=JSON.stringify({action,...fields});}
+      const response=await fetch(url.href,options),raw=await response.text();
+      if(controller.signal.aborted)throw denied('handoff_unknown','transport');
+      if(new TextEncoder().encode(raw).length>32768)throw denied('handoff_unavailable','response',response.status);
+      let payload;try{payload=JSON.parse(raw);}catch{throw denied('handoff_unavailable','response',response.status);}
+      if(!response.ok||payload?.ok!==true){
+        throw denied(safeCodes.has(payload?.error)?payload.error:'handoff_unavailable',response.ok?'response':'http',response.status,payload);
+      }
+      if(token){
+        if(typeof payload.csrf!=='string'||!/^[a-f0-9]{64}$/.test(payload.csrf))throw denied('handoff_unavailable','response',response.status);
+        return Object.freeze({ok:true,csrf:payload.csrf});
+      }
+      if(!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw denied('handoff_unavailable','response',response.status);
+      return {ok:true,data:payload.data};
+    }catch(error){
+      const failure=failures.has(error)?error:denied('handoff_unknown','transport');
+      // Reuse the browser-local safe failure channel. No request identity,
+      // response text, guessed supplier, storage or new diagnostic endpoint.
+      const detail=Object.freeze({scope:'messenger',...failure.handoffFailure});
+      try{root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+        if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+      }catch{}
+      throw failure;
+    }finally{clearTimeout(timeout);}
+  }
   async function verifyAnexFollowUp(o,action){
     if(activeVerification?.quoteMutation)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
     const operation=anexFollowUps[action],identity=anexConcreteKey(o);
@@ -1358,11 +1903,23 @@
       const payload=await response.json().catch(()=>null);
       if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
       if(!response.ok||payload?.ok!==true||action!=='flights'&&!payload.data)throw new Error(response.status===429?operation.limit:operation.failed);
-      const result=operation.normalize(payload.data,o);if(!result)throw new Error(operation.invalid);
+      const result=operation.normalize(payload.data,o);
+      if(!result){
+        if(action==='additional_prices'){
+          const detail=anexAdditionalDiagnostic(payload.data,identity,response.status);
+          if(detail)try{
+            root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+            if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function'){
+              root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
+            }
+          }catch{}
+        }
+        throw new Error(operation.invalid);
+      }
       if(action==='offer'){
         const currentIdentity=anexConcreteKey(o);if(!currentIdentity)throw new Error('Условия поиска изменились. Выберите тур заново.');
         anexCurrentReceipts.add(currentIdentity.key);
-      }else operation.receipts?.set(identity.key,result);
+      }else if(action!=='additional_prices'||result.state==='additional_prices_unconfirmed')operation.receipts?.set(identity.key,result);
       return result;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
@@ -1588,6 +2145,22 @@
   async function verifyAnexFlights(o){return verifyAnexFollowUp(o,'flights');}
   function normalizeAnexAdditional(value,o,status='additional_prices'){
     const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
+    if(status==='additional_prices'&&identity&&value?.provider==='anex'&&value.generation===identity.epoch
+      &&value.search_ref===identity.searchRef&&value.offer_ref===identity.offerRef&&value.status===status
+      &&value.selection_state==='disabled'&&evidence&&typeof evidence==='object'&&!Array.isArray(evidence)
+      &&(evidence.source==='anex_b2b_additional_prices_daily'
+        ||evidence.source==='anex_b2b_additional_prices_daily_cache'&&evidence.cache_source==='anytour_anex_apd_rates')
+      &&evidence.scope==='tour_program_date_nights_currency'&&evidence.offer_specific===false
+      &&Array.isArray(evidence.rows)&&evidence.rows.length===0&&evidence.total_count===0&&evidence.truncated===false
+      &&evidence.application_state==='unknown'&&evidence.application_reason==='rate_rows_unconfirmed'
+      &&evidence.arithmetic_applied===false&&evidence.final_price_verified===false
+      &&evidence.currency===null&&evidence.converted_currency===null&&evidence.per_person_or_package==='unknown'
+      &&evidence.fuel_equivalence_verified===false&&evidence.included_in_search_price==='unknown'
+      &&evidence.search_price===null&&evidence.party_surcharge===null&&evidence.search_plus_additional===null){
+      return Object.freeze({state:'additional_prices_unconfirmed',finalPriceVerified:false,arithmeticApplied:false,
+        applicationState:'unknown',applicationReason:'rate_rows_unconfirmed',rowCount:0,totalCount:0,truncated:false,
+        searchPrice:null,partySurcharge:null,calculatedTotal:null});
+    }
     if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
       ||value.offer_ref!==identity.offerRef||value.status!==status||value.selection_state!=='disabled'
       ||!evidence||evidence.application_state!=='applied'||evidence.arithmetic_applied!==true||evidence.final_price_verified!==false
@@ -1599,9 +2172,31 @@
       ||evidence.party_surcharge.source!=='anex_b2b_additional_prices_daily'
       ||evidence.search_plus_additional.formula!=='search_price_plus_program_date_party_additional')return null;
     return Object.freeze({state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,
+      applicationState:'applied',...(evidence.application_reason==='applied'?{applicationReason:'applied'}:{}),
       searchPrice:Object.freeze({amount:search.amount,currency:'RUB'}),
       partySurcharge:Object.freeze({amount:surcharge.amount,currency:'RUB'}),
       calculatedTotal:Object.freeze({amount:total.amount,currency:'RUB'})});
+  }
+  function anexAdditionalDiagnostic(value,identity,httpStatus){
+    if(!identity||!value||typeof value!=='object'||Array.isArray(value)||value.provider!=='anex'
+      ||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef
+      ||!['additional_prices','additional_prices_unavailable','additional_prices_unknown'].includes(value.status))return null;
+    const detail={provider:'anex',action:'additional_prices',code:'quote_unconfirmed',
+      ...(Number.isInteger(httpStatus)&&httpStatus>=100&&httpStatus<=599?{httpStatus}:{}),responseStatus:value.status};
+    if(value.status==='additional_prices'&&value.additional_prices&&typeof value.additional_prices==='object'
+      &&!Array.isArray(value.additional_prices)){
+      const applicationState=['applied','unknown'].includes(value.additional_prices.application_state)
+        ?value.additional_prices.application_state:null;
+      if(applicationState){
+        detail.applicationState=applicationState;
+        const reason=value.additional_prices.application_reason;
+        if(applicationState==='applied'&&reason==='applied'
+          ||applicationState==='unknown'&&['rate_rows_unconfirmed','party_unconfirmed','money_unconfirmed','amount_out_of_range'].includes(reason)){
+          detail.applicationReason=reason;
+        }
+      }
+    }
+    return Object.freeze(detail);
   }
   async function verifyAnexAdditional(o){return verifyAnexFollowUp(o,'additional_prices');}
   function andromedaContext(value,depth=0){
@@ -1866,17 +2461,37 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     })();
     return attempt.promise;
   }
+  function tourvisorQuoteFailure(error,tour){
+    if(error?.status!==410||!(error.code==='HTTP_ERROR'||error.code==='offer_expired'&&error.retryable===false))return error;
+    const failure=Object.assign(error,{message:'Срок предложения истёк. Выполните новый поиск.',code:'offer_expired',retryable:false});
+    // A provider-confirmed expiry revokes this exact receipt, including sessions
+    // already created from it. Search TTL is not a supplier quote deadline.
+    const receipt=quoteReceipts.get(tour);if(receipt)receipt.failure=failure;
+    return failure;
+  }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
+    assertTourvisorRecalculationSupported(o.raw.operator,o.raw.operatorName);
+    const previous=String(o.tour?.id)===String(o.raw.id)?o.tour:null;
+    const failure=quoteReceipts.get(previous)?.failure;if(failure)throw failure;
     const run=generation,id=searchId;
-    const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
+    const sourceOperators=[o.raw.operator,o.raw.operatorName];
+    let t;
+    try{t=await tvNative(activeSearch,'tour',{tourId:o.raw.id,currency:'RUB'});}
+    catch(error){throw tourvisorQuoteFailure(error,previous);}
     if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
     if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
-    quoteReceipts.set(t,{generation:run,searchId:id});
+    assertTourvisorRecalculationSupported(...sourceOperators,t.operator,t.operatorName);
+    quoteReceipts.set(t,{generation:run,searchId:id,sourceOperators,raw:o.raw});
     return t;
   }
   async function flights(t) {
-    const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
+    const receipt=quoteReceipts.get(t);
+    assertTourvisorRecalculationSupported(...(receipt?.sourceOperators||[]),t?.operator,t?.operatorName);
+    if(receipt?.failure)throw receipt.failure;
+    let data;
+    try{data=await tvNative(activeSearch,'flights',{tourId:t.id,currency:'RUB'});}
+    catch(error){throw tourvisorQuoteFailure(error,t);}
     if(Array.isArray(data))return data;
     if(Array.isArray(data?.flights))return data.flights;
     throw new Error('Не удалось загрузить рейсы. Попробуйте ещё раз.');
@@ -1886,6 +2501,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     const run=generation,id=searchId;
     const receipt=quoteReceipts.get(o.tour);
     if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
+    if(receipt.failure)throw receipt.failure;
     if(o.flightsLoading||o.flightsError)throw new Error(o.flightsLoading?'Дождитесь загрузки рейсов.':'Не удалось загрузить рейсы. Повторите загрузку перед выбором тура.');
     if(o.pricePending||!amount(o.tour.price))throw new Error('Цена тура пока не подтверждена. Проверьте условия заново.');
     let flight=null;
@@ -1895,7 +2511,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
       if(!flight||!variantPrice(o.tour,flight))throw new Error('Цена выбранного перелёта пока не подтверждена. Выберите другой вариант.');
     }
     const session=root.V2TourController.createLeadSession({tour:o.tour,flight,searchId:id,search:searchParams});
-    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');};
+    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');if(receipt.failure)throw receipt.failure;};
     return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
   }
   function variantPrice(t,v){return amount(v?.price);}
@@ -1905,5 +2521,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,messengerHandoff,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,tourvisorHandoffSelection,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,stayLabel,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,readRoomLayouts,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

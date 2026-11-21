@@ -7,6 +7,10 @@ on:
       - 'src/search3/**'
       - 'scripts/build/search3_assets.py'
       - 'scripts/build/search3-js/**'
+      - 'scripts/build/search3_production_inventory.py'
+      - 'scripts/build/search3_public_candidate.py'
+      - 'scripts/deploy/search3_production_snapshot.py'
+      - 'tests/search3_public_candidate_test.py'
       - 'tests/search3-js-compaction.cjs'
       - 'tests/search3-visual-asset-size.cjs'
       - 'tests/search3-visual-live-browser.cjs'
@@ -20,13 +24,16 @@ on:
       - 'tests/search3-prototype-continuation-coverage.cjs'
       - 'tests/search3-prototype-anex-continuation.cjs'
       - 'tests/search3-prototype-selected-tour-retention.cjs'
+      - 'tests/search3-prototype-flight-price.cjs'
       - 'tests/search3-prototype-provider-config-v1.cjs'
       - 'tests/search3-prototype-inventory-browser.py'
       - 'tests/search3-hotel-content-browser.py'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
+      - 'app/integrations/anex-search-mapping-registry.php'
       - 'tests/site-preview-path-smoke.php'
       - 'tests/search-handoff-smoke.php'
+      - 'tests/jaz-hotel-page-browser.cjs'
       - 'tests/seo-price-calendar-ui-smoke.php'
       - 'tests/home-search-loading-handoff.cjs'
       - 'tests/search3_production_presentation_test.py'
@@ -51,6 +58,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-search3-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   PREVIEW_BASE: /_preview/search3-site-candidate
 
@@ -58,7 +69,7 @@ jobs:
   build-preview-artifact:
     # Build once on the working PR; release/docs retain that exact source artifact.
     if: ${{ !github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check out exact PR head
@@ -107,10 +118,12 @@ jobs:
           node tests/search3-prototype-continuation-coverage.cjs
           node tests/search3-prototype-anex-continuation.cjs
           node tests/search3-prototype-selected-tour-retention.cjs
+          node tests/search3-prototype-flight-price.cjs
           node tests/search3-prototype-provider-application-preview.cjs
           node tests/search3-prototype-provider-config-v1.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
+          python3 -B tests/search3_public_candidate_test.py
           python3 -B tests/search3_site_preview_isolation_test.py
           echo SEARCH3_SITE_SOURCE_CONTRACTS_OK
 
@@ -139,6 +152,11 @@ jobs:
             --exclude='lead-price-v1.php' \
             --exclude='lead-idempotency-v1.php' \
             v2/ "$payload/"
+
+          # The TOP500 reader uses the unchanged MATCH resolver inside this package.
+          mkdir -p "$payload/app/integrations"
+          cp app/integrations/anex-search-mapping-registry.php "$payload/app/integrations/"
+          cmp app/integrations/anex-search-mapping-registry.php "$payload/app/integrations/anex-search-mapping-registry.php"
 
           test -f "$payload/index.php"
           test -f "$payload/home-entry-v1.php"
@@ -404,8 +422,20 @@ jobs:
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Detect JAZ hotel page changes
+        id: jaz-hotel-page
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/jaz-makadi-saraya tests/jaz-hotel-page-browser.cjs .github/workflows/build-search3-whole-site-preview.yml; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install browser geometry tooling
-        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true' || steps.jaz-hotel-page.outputs.required == 'true'
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
@@ -413,6 +443,37 @@ jobs:
           if [ "${{ steps.results-geometry.outputs.native-date }}" = "true" ] || [ "${{ steps.results-geometry.outputs.hotel-tabs }}" = "true" ]; then
             "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps webkit
           fi
+
+      - name: Verify JAZ hotel page and contextual search handoff
+        if: steps.jaz-hotel-page.outputs.required == 'true'
+        shell: bash
+        env:
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          JAZ_HOTEL_OUTPUT: ${{ runner.temp }}/jaz-hotel-page
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          mkdir -p "$JAZ_HOTEL_OUTPUT"
+          # Reuse the accepted hotel photograph and original AnyTour artwork only.
+          curl -fsSL --max-time 30 'https://static.tourvisor.ru/hotel_pics/verybig/1/iberotel-makadi-saraya-resort-19573305.jpg' -o "$JAZ_HOTEL_OUTPUT/jaz-real-photo.jpg"
+          curl -fsSL --max-time 30 'https://anytoour.ru/images/logo.svg' -o "$JAZ_HOTEL_OUTPUT/anytour-logo.svg"
+          grep -qi '<svg' "$JAZ_HOTEL_OUTPUT/anytour-logo.svg"
+          cat > "$RUNNER_TEMP/jaz-hotel-router.php" <<'PHP'
+          <?php
+          $prefix = '/_preview/search3-site-candidate/';
+          $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+          if (!in_array($path, [$prefix . 'jaz-makadi-saraya/', $prefix . 'poisk-turov/'], true)) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $path . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/jaz-hotel-router.php" >"$JAZ_HOTEL_OUTPUT/php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/jaz-makadi-saraya/" -o /dev/null && break; sleep 0.25; done
+          node --check tests/jaz-hotel-page-browser.cjs
+          node tests/jaz-hotel-page-browser.cjs
 
       - name: Verify half-size reset core journey
         if: steps.half-size-reset.outputs.active == 'true'
@@ -568,6 +629,15 @@ jobs:
           name: search3-results-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
           path: ${{ runner.temp }}/search3-results-geometry/
           if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain JAZ hotel page evidence
+        if: always() && steps.jaz-hotel-page.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: jaz-hotel-page-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/jaz-hotel-page/
+          if-no-files-found: error
           retention-days: 30
 
       - name: Upload exact whole-site artifact

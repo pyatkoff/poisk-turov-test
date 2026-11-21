@@ -120,7 +120,34 @@ function resumeCompleted(hydrated){
  const refresh=status.querySelector('.results-state-retry');if(refresh){refresh.classList.add('search3-resume-refresh');refresh.setAttribute('aria-label','Обновить предложения');}
  window.dispatchEvent(new CustomEvent('v2:search-resumed',{detail:{searchId,generation,savedAt:restoredAt}}));return true;
 }
-async function boot(){catalogs.renderChildAges();try{await catalogs.init();}catch(e){console.warn('catalog init before URL hydration',e);}const hydrated=hydrateUrlState();if(await openHotelDetail(hydrated.query))return;if(resumeCompleted(hydrated))return;if(document.body&&document.body.classList.contains('search3-candidate')&&hydrated.query&&hydrated.query.get('search3_restore')==='1'){const issue=validationIssue(params());if(issue){show(issue.message);focusValidationIssue(issue);}else{show('Параметры сохранённого поиска восстановлены. Проверьте даты и нажмите «Найти туры».');requestAnimationFrame(()=>{const first=form.elements.from;if(first)first.focus();});}return;}if(hydrated.auto){const validation=validate(params());if(!validation)setTimeout(()=>submit({historyMode:'replace'}),0);else show(validation);}}
+async function boot(){
+ const bootGeneration=generation;
+ catalogs.renderChildAges();
+ try{await catalogs.init();}catch(e){console.warn('catalog init before URL hydration',e);}
+ // A submitted search can update the URL while the catalogs are loading.
+ if(generation!==bootGeneration)return;
+ const hydrated=hydrateUrlState();
+ if(generation!==bootGeneration)return;
+ if(await openHotelDetail(hydrated.query)||generation!==bootGeneration)return;
+ if(resumeCompleted(hydrated))return;
+ if(document.body&&document.body.classList.contains('search3-candidate')&&hydrated.query&&hydrated.query.get('search3_restore')==='1'){
+  const issue=validationIssue(params());
+  if(issue){show(issue.message);focusValidationIssue(issue);}
+  else{
+   show('Параметры сохранённого поиска восстановлены. Проверьте даты и нажмите «Найти туры».');
+   requestAnimationFrame(()=>{const first=form.elements.from;if(first)first.focus();});
+  }
+  return;
+ }
+ if(hydrated.auto){
+  const validation=validate(params());
+  if(validation){show(validation);return;}
+  const queuedGeneration=generation;
+  setTimeout(()=>{
+   if(generation===queuedGeneration)return submit({historyMode:'replace'});
+  },0);
+ }
+}
 form.addEventListener('input',e=>{if(e.target&&e.target.matches('input,textarea')){e.target.removeAttribute('aria-invalid');markDirty('parameters_input');}});
 form.addEventListener('change',e=>{if(e.target&&e.target.matches('input,select,textarea'))e.target.removeAttribute('aria-invalid');if(e.target&&e.target.name==='child_count')delete e.target.dataset.invalidHydratedCount;markDirty('parameters_changed');Promise.resolve(catalogs.handleChange(e)).catch(err=>console.warn('catalog change',err));});
 form.addEventListener('submit',e=>{e.preventDefault();e.stopImmediatePropagation();submit();},true);

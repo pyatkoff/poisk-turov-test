@@ -18,6 +18,8 @@ assert.deepEqual(config,{
   andromedaApi:null,
   andromedaQuoteApi:null,
   anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php',
+  search3TVSessionEnabled:false,
+  search3MessengerEnabled:false,
   localTvCatalogEnabled:false
 });
 assert.doesNotMatch(source,/https?:\/\//i);

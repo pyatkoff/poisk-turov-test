@@ -41,7 +41,7 @@ const currentAnexConcrete=(body,{ready=false}={})=>({ok:true,data:{
 }});
 const additionalAnexConcrete=(body,{search='1510000',surcharge='20000',total='1530000'}={})=>({ok:true,data:{
  provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'additional_prices',selection_state:'disabled',
- additional_prices:{source:'anex_b2b_additional_prices_daily',application_state:'applied',converted_currency:'RUB',
+ additional_prices:{source:'anex_b2b_additional_prices_daily',application_state:'applied',application_reason:'applied',converted_currency:'RUB',
   per_person_or_package:'per_person_by_party_type',included_in_search_price:false,arithmetic_applied:true,final_price_verified:false,
   party_surcharge:{amount:surcharge,currency:'RUB',source:'anex_b2b_additional_prices_daily'},
   search_price:{amount:search,currency:'RUB',source:'direct_anex_search'},
@@ -77,11 +77,35 @@ function rehydratableSnapshot(params,provider){
 }
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
-const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,clock=()=>Date.now()}={}){
+const waitFor=async(predicate,message)=>{const deadline=performance.now()+2000;do{if(predicate())return;await new Promise(resolve=>setTimeout(resolve,1));}while(performance.now()<deadline);assert.fail(message);};
+function canonicalMealCatalogue(provider,accepted=true){
+ const rows=[
+  [2,'breakfast','Завтраки','3','BB'],
+  [3,'half-board','Полупансион','4','HB'],
+  [7,'all-inclusive','Всё включено','7','AI'],
+  [8,'ultra-all-inclusive','Ультра всё включено','9','UAI']
+ ];
+ return {source:'anytour-search-meal-v1',provider,scopeKey:'global',available:accepted,revision:hash('meal-catalog-fixture-'+provider),
+  plans:rows.map(([id,code,nameRu,tvNative,anexNative])=>({id,code,nameRu,nativeIds:accepted?[provider==='tourvisor'?tvNative:anexNative]:[]}))};
+}
+function unmappedAnexMealCatalogue(){
+ const definitions=[
+  ['no-meals','Без питания'],['breakfast','Завтраки'],['half-board','Полупансион'],['half-board-plus','Полупансион плюс'],
+  ['full-board','Полный пансион'],['full-board-plus','Полный пансион плюс'],['all-inclusive','Всё включено'],
+  ['ultra-all-inclusive','Ультра всё включено'],['soft-all-inclusive','Мягкое всё включено'],['alcohol-free-all-inclusive','Всё включено без алкоголя']
+ ];
+ // Same ten-plan shape as the read-only installed ANEX catalogue; the revision
+ // and supplier replies in this test remain explicitly fictional.
+ return {source:'anytour-search-meal-v1',provider:'anex',scopeKey:'global',available:false,revision:hash('unmapped-anex-catalogue-fixture'),
+  plans:definitions.map(([code,nameRu],index)=>({id:index+1,code,nameRu,nativeIds:[]}))};
+}
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,departures,destinations,mealCatalogue,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
+  if(departures&&target.pathname==='/data/departures-v1.php'){
+   return {ok:true,json:async()=>({ok:true,items:await departures()})};
+  }
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
    assert.ok(andromedaQuote,'unexpected Andromeda quote request');
    assert.equal(options.credentials,'same-origin');assert.equal(options.headers?.['X-Requested-With'],'AnyTourSearch3');
@@ -125,15 +149,8 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
    const body=JSON.parse(options.body);
    if(body.action==='meal_catalog'){
     mealCatalogCalls.push({body:structuredClone(body),headers:structuredClone(options.headers||{})});
-    return {ok:true,json:async()=>({ok:true,data:{
-     source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:hash('meal-catalog-fixture'),
-     plans:[
-      {id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']},
-      {id:3,code:'half-board',nameRu:'Полупансион',nativeIds:['4']},
-      {id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},
-      {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']}
-     ]
-    }})};
+    const catalogue=mealCatalogue?await mealCatalogue(body):canonicalMealCatalogue(body.provider,body.provider==='tourvisor');
+    return {ok:true,json:async()=>({ok:true,data:catalogue})};
    }
    if(body.action==='price_calendar'){
     const childAges=[...(body.childs||[])].map(Number).sort((a,b)=>a-b);
@@ -163,7 +180,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
   if(action==='search_results')return live();
   throw Error('unexpected API '+action);
  }};
- const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:crypto.webcrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
+ const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:browserCrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
  if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  win.CustomEvent=class extends Event{constructor(type,{detail}){super(type);this.detail=detail;}};
@@ -181,6 +198,105 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+for(const provider of ['anex','andromeda']){
+ const source=provider==='anex'?directAnex:directAndromeda;
+ const ref=id=>(provider==='anex'?'anex_online:':'offer_')+id.toString(16).padStart(64,'0');
+ const ids=Array.from({length:20},(_,index)=>index+1);
+ function page(body,offerIds){
+  const value=source(body);
+  value.data.hotels=offerIds.map((id,index)=>source(body,{offerRef:ref(id),localId:101+index}).data.hotels[0]);
+  return value;
+ }
+ function setup(reply,digest){
+  const route=provider==='anex'?'anex':'native';
+  const h=harness({[route]:async(body,signal,calls)=>({response:{ok:true,json:async()=>reply(body,calls.length)}}),
+   browserCrypto:{getRandomValues:values=>crypto.webcrypto.getRandomValues(values),subtle:{digest}}});
+  return {h,requests:provider==='anex'?h.anexCalls:h.nativeCalls};
+ }
+ test(provider+' admits a bounded set of concurrent digests across hotels and preserves source order',async()=>{
+  const gates=[];
+  const {h,requests}=setup(body=>page(body,ids),async(algorithm,bytes)=>{
+   const gate=defer();gates.push(gate);await gate.promise;return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();
+  assert.equal(gates.length,16);assert.equal(h.latest().length,0);
+  gates.slice().reverse().forEach(gate=>gate.resolve());
+  await waitFor(()=>gates.length===ids.length,'remaining digests must run after the first batch');
+  assert.equal(h.latest().length,0,'an incomplete page cannot publish offers');
+  gates.slice(16).reverse().forEach(gate=>gate.resolve());
+  await waitFor(()=>h.latest().length===ids.length,'the first valid provider page must publish without a TV poll');
+  const offers=h.latest().flatMap(hotel=>hotel.offers);
+  assert.deepEqual(Array.from(offers,offer=>offer.raw.offerRef),ids.map(ref));
+  assert.deepEqual(Array.from(offers,offer=>offer.raw.offerIdentityDigest),ids.map(id=>hash(ref(id))));
+  assert.equal(requests.length,1);assert.equal(h.calls.filter(call=>call.action==='search_status').length,0);
+ });
+ for(const fault of ['duplicate','bad currency','missing offer','digest failure'])test(provider+' rejects the entire page on a late '+fault,async()=>{
+  const {h,requests}=setup(body=>{
+   const value=page(body,fault==='duplicate'?[...ids.slice(0,-1),ids[0]]:ids);
+   if(fault==='bad currency')value.data.hotels.at(-1).tours[0].price.currency='USD';
+   if(fault==='missing offer')delete value.data.hotels.at(-1).tours[0];
+   return value;
+  },async(algorithm,bytes)=>{
+   if(fault==='digest failure'&&Buffer.from(bytes).toString()===ref(ids.at(-1)))throw Error('digest unavailable');
+   return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();await waitFor(()=>h.events.some(e=>e.type==='provider'&&e.provider===provider&&e.status==='error'),'page validation must fail');
+  assert(!h.events.some(e=>e.type==='results'&&e.hotels.length));assert.equal(requests.length,1);
+ });
+ for(const count of [7,20])test(provider+' discards an obsolete '+count+'-offer page during digest verification',async()=>{
+  const hold=defer(),started=[];
+  const {h,requests}=setup((body,call)=>page(body,call===1?ids.slice(0,count):[99]),async(algorithm,bytes)=>{
+   const id=Buffer.from(bytes).toString();started.push(id);if(id!==ref(99))await hold.promise;
+   return crypto.createHash('sha256').update(bytes).digest();
+  });
+  await h.start();assert.equal(started.length,Math.min(count,16));
+  await h.start();await waitFor(()=>h.latest().some(hotel=>hotel.offers.some(offer=>offer.raw.offerRef===ref(99))),'new page must publish independently');
+  const settled=h.events.length;hold.resolve();await flush();
+  assert.deepEqual(started,[...ids.slice(0,Math.min(count,16)),99].map(ref));
+  assert.equal(h.events.length,settled,'obsolete verification must not touch the new inventory');
+  assert.deepEqual(Array.from(h.latest().flatMap(hotel=>hotel.offers),offer=>offer.raw.offerRef),[ref(99)]);
+  assert.equal(requests.length,2);
+ });
+}
+test('independent pages do not restart the same ANEX search identity at an identical clock',async()=>{
+ // One shared-session fixture models the accepted integer/window contract, not
+ // PHP execution. Distinct entropy makes the old page-local counter fail reliably.
+ let initial;const admitted=[],skipped=[];
+ const anex=async body=>{
+  assert.equal(body.action,'search');assert(Number.isInteger(body.generation)&&body.generation>0&&body.generation<=2147483647);
+  const window=body.params.dateFrom+':'+body.params.dateTo;
+  if(initial?.generation===body.generation&&initial.window!==window){
+   skipped.push(body);return {response:{ok:true,json:async()=>({ok:true,data:{provider:'anex',generation:body.generation,
+    date_range:{from:body.params.dateFrom,to:body.params.dateTo},hotels:[],pages_read:0,first_page_only:true,skipped:true,skip_reason:'initial_week_only'}})}};
+  }
+  initial={generation:body.generation,window};admitted.push(body);
+  return {response:{ok:true,json:async()=>directAnex(body)}};
+ };
+ const page=entropy=>harness({anex,clock:()=>1792590000000,browserCrypto:{subtle:crypto.webcrypto.subtle,
+  getRandomValues(values){values.fill(entropy);return values;}}});
+ const a=page(0),b=page(0xffffffff);
+ await a.start();await a.poll();assert(a.providers().includes('anex'));
+ const next={...trip,from:'2026-10-06',to:'2026-10-12'};
+ await b.data.search(next,event=>b.events.push(event));await flush();await b.poll();
+ assert.notEqual(a.anexCalls[0].generation,b.anexCalls[0].generation,'independent pages need independent namespaces');
+ assert(b.providers().includes('anex'),'the second page retains its own initial ANEX offers');
+ assert.equal(admitted.length,2);assert.equal(skipped.length,0);
+ assert.deepEqual(Object.keys(b.anexCalls[0]).sort(),['action','generation','params'],'no new backend contract field');
+});
+for(const entropy of [0,0xffffffff])test('page search lifecycle stays positive int31 and invalidates prior offers: entropy '+entropy,async()=>{
+ const h=harness({anex:body=>({response:{ok:true,json:async()=>directAnex(body)}}),
+  browserCrypto:{subtle:crypto.webcrypto.subtle,getRandomValues(values){values.fill(entropy);return values;}}});
+ await h.start();await h.poll();const previous=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ h.data.stop();await h.start();await h.poll();
+ const generations=h.anexCalls.map(body=>body.generation);assert.equal(new Set(generations).size,2);
+ assert(generations.every(value=>Number.isInteger(value)&&value>0&&value<=2147483647));
+ const sent=h.anexCalls.length;await assert.rejects(h.data.expandAnexGroup(previous),/нельзя конкретизировать/);
+ assert.equal(h.anexCalls.length,sent,'previous-page-lifecycle selection cannot authorize supplier work');
+});
+test('TV-only pages remain usable without Web Crypto',async()=>{
+ const h=harness({browserCrypto:null});await h.start();await h.poll();
+ assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.anexCalls.length,0);
+});
 for(const mode of ['http','quota','invalid-json','missing-data','false-data','injection','transport','projection','empty','success','aborted'])test('SAMO ordinary search diagnostic '+mode,async()=>{
  const secret='PRIVATE-RESPONSE-AND-URL';
  const h=harness({native:async body=>{
@@ -255,14 +371,86 @@ function canonicalMeals(h){
   {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']});
  h.data.catalog.mealPlanAvailable=true;
 }
+test('cold init overlaps independent catalogues and only the latest origin becomes ready',async()=>{
+ const cities=defer(),meals=defer(),plans=defer(),oldCountries=defer();
+ let cityReads=0;
+ const h=harness({
+  departures:()=>{cityReads++;return cities.promise;},
+  api:action=>{assert.equal(action,'meals');return meals.promise;},
+  mealCatalogue:async body=>{await plans.promise;return canonicalMealCatalogue(body.provider);},
+  destinations:(action,params)=>{assert.equal(action,'countries');if(params.departureId==='1')return oldCountries.promise;},
+ });
+ const first=h.data.init('Москва');
+ await flush();
+ assert.deepEqual(h.mealCatalogCalls.map(call=>call.body.provider),['tourvisor','anex']);
+ assert.equal(h.calls.length,0,'no upstream catalogue call while the departure is unknown');
+ assert.equal(h.destinationCalls.length,0);
+ cities.resolve([{id:1,name:'Москва'},{id:2,name:'Казань'}]);
+ await flush();
+ assert.deepEqual(h.calls.map(call=>call.action),['meals']);
+ assert.equal(h.destinationCalls[0].params.departureId,'1','country read starts with both kinds of meals still pending');
+ let ready=false;
+ const latest=h.data.init('Казань').then(catalog=>{ready=true;return catalog;});
+ meals.resolve([{id:7,name:'AI'}]);
+ await flush();
+ assert.deepEqual(h.destinationCalls.map(call=>call.params.departureId),['1','2']);
+ assert.equal(ready,false,'restored meal filters must wait for canonical provider identities');
+ plans.resolve();
+ assert.equal((await latest).origin,'Казань');
+ oldCountries.reject(Error('old origin failed'));
+ assert.equal(await first,null,'an obsolete country failure cannot replace the current origin or its status');
+ assert.equal(cityReads,1);
+ assert.deepEqual(h.calls.map(call=>call.action),['meals']);
+ assert.equal(h.mealCatalogCalls.length,2);
+ assert.equal(h.data.catalog.mealPlanAvailable,true);
+});
+test('departure failure spends no meal API call and late local reads cannot overwrite a retry',async()=>{
+ const stale=defer();
+ let retry=false;
+ const h=harness({
+  departures:()=>retry?[{id:1,name:'Москва'}]:[],
+  api:action=>{if(action==='departures')return [];if(action==='meals')return [{id:7,name:'AI'}];},
+  mealCatalogue:async body=>{if(!retry){await stale.promise;return null;}return canonicalMealCatalogue(body.provider);},
+ });
+ await assert.rejects(h.data.init(),/города вылета/);
+ assert.deepEqual(h.calls.map(call=>call.action),['departures']);
+ assert.equal(h.destinationCalls.length,0);
+ retry=true;
+ assert.equal((await h.data.init()).origin,'Москва');
+ stale.resolve();
+ await flush();
+ assert.equal(h.data.catalog.mealPlanAvailable,true);
+ assert.deepEqual(h.calls.map(call=>call.action),['departures','meals']);
+ assert.equal(h.destinationCalls.length,1);
+});
+test('late resorts from a previous country catalogue cannot replace a current in-flight read',async()=>{
+ const gates=[defer(),defer()];
+ let regionReads=0;
+ const h=harness({destinations:action=>{if(action==='regions')return gates[regionReads++].promise;}});
+ const previous=h.data.regions('4');
+ await h.data.countries('Москва');
+ const current=h.data.regions('4');
+ assert.equal(regionReads,2);
+ const resort=name=>[{id:21,kind:'region',parentId:4,name,tourvisorIds:['21']}];
+ gates[0].resolve(resort('Прежний'));
+ await previous;
+ assert.equal(h.data.catalog.regions['4'],undefined);
+ const same=h.data.regions('4');
+ assert.equal(regionReads,2,'the previous completion leaves the current deduplication entry intact');
+ gates[1].resolve(resort('Текущий'));
+ assert.equal((await current)[0].name,'Текущий');
+ assert.equal((await same)[0].name,'Текущий');
+ assert.equal(h.data.catalog.regions['4'][0].name,'Текущий');
+});
 test('init loads canonical meal authority through the exposed LOCAL reader action',async()=>{
  const h=harness({api:(action)=>{
   if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
  }});
  h.data.catalog.mealPlans.splice(0);h.data.catalog.mealPlanAvailable=false;h.data.catalog.mealPlanRevision=null;
  await h.data.init('Москва');
- assert.equal(h.mealCatalogCalls.length,1);
+  assert.equal(h.mealCatalogCalls.length,2,'each provider reads its own accepted canonical mappings');
  assert.deepEqual(JSON.parse(JSON.stringify(h.mealCatalogCalls[0].body)),{action:'meal_catalog',provider:'tourvisor',scopeKey:'global'});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.mealCatalogCalls[1].body)),{action:'meal_catalog',provider:'anex',scopeKey:'global'});
  assert.equal(h.mealCatalogCalls[0].headers['X-Requested-With'],'AnyTourSearch3');
  assert.equal(h.mealCatalogCalls[0].headers['Content-Type'],'application/json');
  assert.equal(h.data.catalog.mealPlanAvailable,true);
@@ -270,6 +458,119 @@ test('init loads canonical meal authority through the exposed LOCAL reader actio
   [2,'breakfast','Завтраки',['3']],[3,'half-board','Полупансион',['4']],
   [7,'all-inclusive','Всё включено',['7']],[8,'ultra-all-inclusive','Ультра всё включено',['9']]
  ]);
+  assert.equal(h.anexCalls.length,0,'catalogue initialization starts no supplier search');
+  assert.equal(h.calls.filter(call=>call.action==='search_start').length,0);
+});
+function breakfastAnex(body){
+ const value=body.action==='expand'?expandedAnex(body):directAnex(body);
+ value.data.hotels[0].tours.forEach(t=>{t.meal='BB';});
+ return {response:{ok:true,json:async()=>value}};
+}
+for(const accepted of [true,false])test((accepted?'accepted ANEX native mapping':'explicit ANEX code policy')+' gives group and concrete breakfast the same numeric facet as Tourvisor',async()=>{
+ const anexCatalogue=accepted?canonicalMealCatalogue('anex'):unmappedAnexMealCatalogue(),beforeCatalogue=JSON.stringify(anexCatalogue);
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?anexCatalogue:canonicalMealCatalogue(body.provider),anex:breakfastAnex,api:action=>{
+  if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
+  if(action==='search_results'){const rows=live();rows[0].tours[0].meal={id:3,name:'BB'};return rows;}
+ }});
+ await h.data.init();await h.start();await h.poll();
+ const offers=h.latest().flatMap(row=>row.offers),group=offers.find(o=>o.provider==='anex'),tv=offers.find(o=>o.provider==='tourvisor');
+ assert.equal(group.mealPlanId,2);assert.equal(group.mealPlanCode,'breakfast');assert.equal(group.mealFacet,'Завтраки');
+ assert.equal(tv.mealPlanId,group.mealPlanId,'different supplier native values resolve the same accepted plan');
+ assert.equal(h.data.supplierScope({meals:['Завтраки']}).meal,'3','ANEX BB never replaces Tourvisor native request identity');
+ assert.equal(group.total,1490000);assert.equal(group.room,'STANDARD');assert.equal(group.raw.anexKind,'group_minimum');
+ assert.equal(group.raw.searchMealPlanSource,accepted?'anytour-search-meal-v1':'anex-explicit-meal-code-v1');
+ assert.equal(group.raw.searchMealPlanRevision,anexCatalogue.revision);
+ const concrete=await h.data.expandAnexGroup(group);
+ assert.equal(concrete.offers.length,2);
+ for(const offer of concrete.offers){
+  assert.equal(offer.mealPlanId,2);assert.equal(offer.mealPlanCode,'breakfast');assert.equal(offer.mealFacet,'Завтраки');
+  assert.equal(offer.meal,'Завтраки');assert.equal(offer.raw.anexKind,'concrete');assert.equal(offer.day,group.day);assert.equal(offer.nights,group.nights);
+  assert.equal(offer.raw.searchMealPlanSource,group.raw.searchMealPlanSource);assert.equal(offer.raw.searchMealPlanRevision,anexCatalogue.revision);
+ }
+ assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],'mapping reads do not replay supplier operations');
+ assert.equal(JSON.stringify(anexCatalogue),beforeCatalogue,'source classification never writes or synthesizes native mappings');
+});
+for(const [name,mutate] of [
+ ['unavailable with contradictory native relations',value=>{value.available=false;}],
+ ['missing native relation',value=>{value.plans.forEach(plan=>plan.nativeIds=[]);} ],
+ ['another provider',value=>{value.provider='tourvisor';}],
+ ['another scope',value=>{value.scopeKey='operator:123';}],
+ ['missing revision',value=>{value.revision=null;}],
+ ['duplicate native identity',value=>{value.plans[2].nativeIds.push('BB');}],
+ ['duplicate code',value=>{value.plans[2].code='breakfast';}],
+ ['canonical definition conflict',value=>{value.plans[0].nameRu='Different canonical definition';}]
+])test('ANEX breakfast stays unclassified through group and concrete when mapping is '+name,async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  const value=canonicalMealCatalogue(body.provider);if(body.provider==='anex')mutate(value);return value;
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlanAvailable,true,'ANEX mapping failure preserves Tourvisor authority');
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ const concrete=await h.data.expandAnexGroup(group);
+ for(const offer of [group,...concrete.offers]){
+  assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'');assert.equal(offer.meal,'Завтраки','display translation cannot invent canonical identity');
+ }
+ assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
+});
+for(const native of ['3','On Request','High Class All Inclusive','Soft AI'])test('accepted ANEX mapping never guesses plan from unmapped native '+native,async()=>{
+ const h=harness({mealCatalogue:body=>canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'','TV native IDs and supplier display aliases grant no ANEX authority');
+});
+test('accepted ANEX UAI mapping stays separate from all-inclusive',async()=>{
+ const h=harness({mealCatalogue:body=>canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal='UAI';return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,8);assert.equal(offer.mealPlanCode,'ultra-all-inclusive');assert.notEqual(offer.mealPlanId,7);
+});
+test('Tourvisor meal catalogue failure does not remove independently accepted ANEX mapping',async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider==='tourvisor')throw Error('Fictional catalogue unavailable');return canonicalMealCatalogue(body.provider);
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlanAvailable,false);
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,2);assert.equal(group.mealFacet,'Завтраки');
+});
+for(const [native,id,code] of [['RO',1,'no-meals'],['BB',2,'breakfast'],['HB',3,'half-board'],['FB',5,'full-board'],['AI',7,'all-inclusive'],['UAI',8,'ultra-all-inclusive']])test('explicit ANEX code policy classifies only the exact standard code '+native,async()=>{
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?unmappedAnexMealCatalogue():canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,id);assert.equal(offer.mealPlanCode,code);assert.equal(offer.raw.searchMealPlanSource,'anex-explicit-meal-code-v1');
+});
+for(const native of ['bb',' BB ','Breakfast','BB - Premium','Завтраки','AO','3','On Request','High Class All Inclusive','Soft AI'])test('explicit ANEX code policy rejects display aliases and unknown native '+JSON.stringify(native),async()=>{
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?unmappedAnexMealCatalogue():canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'');assert.equal(offer.raw.searchMealPlanSource,undefined);
+});
+for(const [name,mutate] of [
+ ['foreign provider',value=>{value.provider='tourvisor';}],
+ ['foreign scope',value=>{value.scopeKey='operator:123';}],
+ ['invalid revision',value=>{value.revision=null;}],
+ ['duplicate canonical code',value=>{value.plans[6].code='breakfast';}],
+ ['contradictory native relation',value=>{value.plans[1].nativeIds=['BB'];}],
+ ['conflicting canonical definition',value=>{value.plans[1].nameRu='Another definition';}],
+ ['conflicting canonical ID',value=>{value.plans[1].id=202;}]
+])test('explicit ANEX code policy refuses '+name,async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider!=='anex')return canonicalMealCatalogue(body.provider);const value=unmappedAnexMealCatalogue();mutate(value);return value;
+ }});
+ await h.data.init();await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,null);assert.equal(group.raw.searchMealPlanSource,undefined);
+});
+test('explicit ANEX code policy reads the canonical ID from its own catalogue independently of Tourvisor',async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider==='tourvisor')throw Error('Fictional catalogue unavailable');
+  const value=unmappedAnexMealCatalogue();value.plans[1].id=202;return value;
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlans.length,0);
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,202);assert.equal(group.mealPlanCode,'breakfast');assert.equal(group.raw.searchMealPlanSource,'anex-explicit-meal-code-v1');
+ const concrete=await h.data.expandAnexGroup(group);assert.ok(concrete.offers.every(o=>o.mealPlanId===202));
 });
 test('canonical mealPlanId owns top-level taxonomy while raw meal stays detail',async()=>{
  const h=harness();canonicalMeals(h);
@@ -374,7 +675,8 @@ test('ANEX retained expansion never substitutes a different valid day when the s
   return {response:{ok:true,json:async()=>value}};
  }});
  canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- await assert.rejects(h.data.expandAnexGroup(group),/Конкретные варианты ANEX больше недоступны/);
+ let failure;await assert.rejects(h.data.expandAnexGroup(group),error=>{failure=error;return error.code==='anex_expand_unconfirmed'&&error.retryable===false&&error.searchFailure?.clientPhase==='projection';});
+ await assert.rejects(h.data.expandAnexGroup(group),error=>error===failure,'missing selected day cannot authorize replay');
  assert.deepEqual(h.anexCalls.map(c=>c.action),['search','expand']);
 });
 test('ANEX expands the retained group without a second initial search or a new generation',async()=>{
@@ -440,7 +742,7 @@ for(const phase of ['initial','flight-choices','verified','failed'])test('ANEX e
  await assert.rejects(h.data.expandAnexGroup(group),/нельзя конкретизировать/);
  assert.equal(h.anexCalls.length,before,'old ANEX groups cannot restart after explicit Stop or a changed search');
 });
-test('a superseded ANEX expansion cannot publish its late response in the same search',async()=>{
+test('duplicate pending ANEX expansion shares one response without aborting or restarting the same group',async()=>{
  const gate=defer(),verifyRef='a'.repeat(32);let verification=false,firstSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='expand'&&!firstSignal){firstSignal=signal;await gate.promise;}
@@ -451,9 +753,10 @@ test('a superseded ANEX expansion cannot publish its late response in the same s
  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');verification=true;
  const pending=h.data.expandAnexGroup(group);
  await waitFor(()=>firstSignal!==null,'first expansion reaches its pending response');
- const current=await h.data.expandAnexGroup(group);
- assert.equal(current.offers.length,2);assert.equal(firstSignal.aborted,true);
- gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ const duplicate=h.data.expandAnexGroup(group);
+ assert.equal(firstSignal.aborted,false);assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
+ gate.resolve();const [current,same]=await Promise.all([pending,duplicate]);assert.strictEqual(same,current);assert.equal(current.offers.length,2);
+ assert.equal(firstSignal.aborted,false);assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
  h.data.stop();
 });
 test('expanded concrete ANEX offer verifies in the same provider session without Tourvisor fallback',async()=>{
@@ -599,12 +902,60 @@ test('ANEX AdditionalPrices requires a current concrete receipt and is explicit 
  assert.equal(request.action,'additional_prices');assert.equal(request.generation,concrete.raw.anexGeneration);
  assert.equal(request.search_ref,verifyRef);assert.equal(request.offer_ref,concrete.raw.offerRef);assert.equal(request.local_hotel_id,101);
  assert.equal(result.state,'additional_prices');assert.equal(result.finalPriceVerified,false);assert.equal(result.arithmeticApplied,true);
+ assert.equal(result.applicationState,'applied');assert.equal(result.applicationReason,'applied');
  assert.deepEqual(JSON.parse(JSON.stringify(result.searchPrice)),{amount:'1510000',currency:'RUB'});
  assert.deepEqual(JSON.parse(JSON.stringify(result.partySurcharge)),{amount:'20000',currency:'RUB'});
  assert.deepEqual(JSON.parse(JSON.stringify(result.calculatedTotal)),{amount:'1530000',currency:'RUB'});
  const sent=h.anexCalls.length;
  await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/);
  assert.equal(h.anexCalls.length,sent,'same AdditionalPrices request cannot replay in one browser generation');
+});
+test('ANEX AdditionalPrices failure keeps only bound fixed application diagnostics without replay',async()=>{
+ const cases=[
+  ['rate rows','additional_prices','unknown','rate_rows_unconfirmed',false,true],
+  ['party','additional_prices','unknown','party_unconfirmed',false,true],
+  ['money','additional_prices','unknown','money_unconfirmed',false,true],
+  ['range','additional_prices','unknown','amount_out_of_range',false,true],
+  ['applied invalid money','additional_prices','applied','applied',false,true],
+  ['unknown private reason','additional_prices','unknown','private token URL',false,true],
+  ['inconsistent reason','additional_prices','applied','money_unconfirmed',false,true],
+  ['unavailable','additional_prices_unavailable','unknown','money_unconfirmed',false,true],
+  ['unknown status','additional_prices_unknown','unknown','money_unconfirmed',false,true],
+  ['unlisted status','quote_failed','unknown','money_unconfirmed',false,false],
+  ['identity mismatch','additional_prices','unknown','money_unconfirmed',true,false]
+ ];
+ for(const [name,status,state,reason,mismatch,retained] of cases){
+  const groupRef='anex_online:'+'b'.repeat(64),verifyRef='a'.repeat(32);let verification=false;
+  const h=harness({anex:async body=>{
+   let value;
+   if(body.action==='search'&&verification)value=directAnex(body,{offerRef:groupRef,localId:101,searchRef:verifyRef});
+   else if(body.action==='expand')value=expandedAnex(body,{groupRef,searchRef:verifyRef,localId:101});
+   else if(body.action==='offer')value=currentAnexConcrete(body);
+   else if(body.action==='additional_prices'){
+    value=additionalAnexConcrete(body);value.data.status=status;
+    value.data.additional_prices.application_state=state;value.data.additional_prices.application_reason=reason;
+    value.data.additional_prices.search_plus_additional.amount='1540000';
+    if(mismatch)value.data.offer_ref='anex_online:'+'9'.repeat(64);
+   }else value=directAnex(body,{offerRef:groupRef,localId:101});
+   return {response:{ok:true,status:207,json:async()=>value}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');verification=true;
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];await h.data.verifyAnexConcrete(concrete);
+  await assert.rejects(h.data.verifyAnexAdditional(concrete),/применимый расчёт/,name);
+  const expected={provider:'anex',action:'additional_prices',code:'quote_unconfirmed',httpStatus:207,responseStatus:status};
+  if(status==='additional_prices'&&!mismatch){
+   expected.applicationState=state;
+   if(state==='unknown'&&['rate_rows_unconfirmed','party_unconfirmed','money_unconfirmed','amount_out_of_range'].includes(reason)
+     ||state==='applied'&&reason==='applied')expected.applicationReason=reason;
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(h.quoteFailures)),retained?[expected]:[],name);
+  assert.deepEqual(h.quoteWarnings,retained?['[AnyTour quote] '+JSON.stringify(expected)]:[],name);
+  const sent=h.anexCalls.filter(call=>call.action==='additional_prices').length;
+  await assert.rejects(h.data.verifyAnexAdditional(concrete),/уже запрашивались/,name+' no replay');
+  assert.equal(h.anexCalls.filter(call=>call.action==='additional_prices').length,sent,name+' one request');
+  assert.doesNotMatch(h.quoteWarnings.join(''),/private|secret|token|URL|offer_ref|search_ref/,name);
+ }
 });
 test('ANEX accepts an evidenced zero surcharge but rejects missing or negative money',async()=>{
  for(const [surcharge,valid] of [['0',true],['0.0000',true],['-1',false],[null,false]]){
@@ -718,7 +1069,8 @@ test('ANEX retained group expansion rejects foreign or unavailable response cont
    return {response:{ok:true,json:async()=>value}};
   }});
   canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
-  await assert.rejects(h.data.expandAnexGroup(offer),/ANEX/,name);
+  let failure;await assert.rejects(h.data.expandAnexGroup(offer),error=>{failure=error;return error.code==='anex_expand_unconfirmed'&&error.retryable===false&&error.searchFailure?.clientPhase==='projection';},name);
+  await assert.rejects(h.data.expandAnexGroup(offer),error=>error===failure,name+' cannot replay a locally unconfirmed projection');
   assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],name+' cannot trigger a replacement search');
  }
 });
@@ -782,7 +1134,12 @@ test('mixed region and subregion OR is split only for native providers and union
   }
  });
  await h.data.regions('4');
- await h.start({resorts:['Белек','Кадрие'],min:0,max:null});await h.poll();await flush();
+ await h.start({resorts:['Белек','Кадрие'],min:0,max:null});
+ // The terminal union below is for four projected branch profiles. Their
+ // catalogue reads finish independently of the fixture's manual Tourvisor poll.
+ const branchProfiles=[301,302,401,402].map(id=>profile(id).id);
+ await waitFor(()=>branchProfiles.every(id=>h.latest().some(hotel=>hotel.id===id)),'both branches of each native provider must be visible before the terminal poll');
+ await h.poll();await flush();
  const tv=h.calls.find(call=>call.action==='search_start').params;
  assert.deepEqual(Array.from(tv.regionIds),['21']);assert.deepEqual(Array.from(tv.subregionIds),['2101'],'Tourvisor keeps canonical mixed OR');
  assert.equal(h.dbBodies.length,0,'mixed live supplier scope does not query LOCAL offers');
@@ -1127,7 +1484,11 @@ test('stop aborts a pending explicit Andromeda continuation before another page 
  assert.equal(h.events.length,before,'stopped generation must ignore the late continuation page');
 });
 test('native Andromeda offers are visible without any LOCAL live read',async()=>{
- const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>assert.fail('live search must not read LOCAL offers')});
+ const h=harness({
+  browserCrypto:{subtle:{digest:async(...args)=>{await new Promise(resolve=>setTimeout(resolve,10));return crypto.webcrypto.subtle.digest(...args);}},getRandomValues:values=>crypto.webcrypto.getRandomValues(values)},
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),
+  database:async()=>assert.fail('live search must not read LOCAL offers')
+ });
  await h.start();await waitFor(()=>h.providers().includes('andromeda'),'successful native Andromeda must become visible directly');
  assert.ok(h.providers().includes('andromeda'));
  await h.poll();assert.deepEqual(h.providers(),['andromeda','tourvisor']);
@@ -1600,6 +1961,68 @@ function cachedProviderSnapshot(params,provider,operatorName){
  row.listing.operator={raw:operatorName,canonical_name:operatorName};
  return data;
 }
+test('accepted LOCAL stay labels survive actual tour selection without changing supplier facts',async()=>{
+ const raw={id:'fictional-local-stay',provider:'tourvisor',price:129258,date:trip.from,nights:7,
+  roomType:'standard land view',meal:{name:'AI',fullName:'AI - Все Включено'},operator:{name:'FUN&SUN'},
+  localStay:{source:'anytour-hotel-stay-v2',room:{kind:'room',hotelId:501,id:11,revision:2,localKey:'room-11',nameRu:'Стандарт · территория'},
+   meal:{kind:'meal',hotelId:501,id:12,revision:3,localKey:'meal-12',nameRu:'Программа питания отеля'}}};
+ const original=JSON.stringify(raw),quoted={id:raw.id,price:129258,roomType:raw.roomType,meal:structuredClone(raw.meal)};
+ const h=harness({api:action=>action==='tour'?structuredClone(quoted):undefined});await h.start();
+ const initial=h.data.project([{id:501,name:'FICTIONAL LOCAL HOTEL',tours:[raw]}],trip)[0].offers[0];
+ assert.equal(initial.room,'Стандарт · территория');assert.equal(initial.meal,'Программа питания отеля');
+ for(const value of ['AI - Все Включено',{name:'AI',fullName:'AI - Все Включено'}])assert.equal(h.data.meal(value),'Всё включено');
+ const visual=fs.readFileSync(path.join(rootDir,'v2/visual-search/app.js'),'utf8');
+ const block=(start,end)=>{const a=visual.indexOf(start),b=visual.indexOf(end,a);assert(a>=0&&b>a);return visual.slice(a,b);};
+ let contact=null,rendered=0;
+ // This extracted preview owner runs in a browser window without public analytics.
+ const ctx=vm.createContext({window:{},data:h.data,selectedOffer:initial,
+  terminalOfferQuote:()=>false,isCurrentOfferRequest:()=>true,renderOfferProgress:()=>rendered++,openLeadPreview:o=>contact=o,
+  esc:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  rangeText:(a,b)=>a+' → '+b,nightsText:n=>n+' ночей',guestsText:()=> '2 взрослых',icon:()=>'',
+  offerQuoteFailure:(o,error)=>{throw error;}});
+ vm.runInContext(block('const mealLabel=','const matchesMeal=')+block('function chosenStayHTML(','function offerSelectionHint(')
+  +block('async function quoteSelectedOffer(','async function openOffer('),ctx);
+ const before=ctx.chosenStayHTML(initial),calls=h.calls.length;
+ await ctx.quoteSelectedOffer(initial,1);
+ assert.equal(h.calls.length,calls+1,'one fictional quote only, no extra source reads');
+ assert.equal(rendered,1);assert.equal(contact,ctx.selectedOffer,'the actual ordinary contact path consumes the same selected object');
+ const selected=ctx.selectedOffer,after=ctx.chosenStayHTML(selected);
+ for(const html of [before,after]){
+  assert.match(html,/<dd>Стандарт · территория<\/dd>/);
+  assert.match(html,/<dd>Программа питания отеля<\/dd>/);
+ }
+ assert.equal(selected.room,h.data.text(selected.tour.roomType),'raw room equality used by TV handoff remains intact');
+ assert.equal(selected.meal,h.data.meal(selected.tour.meal),'raw meal equality used by TV handoff remains intact');
+ assert.equal(selected.total,129258);assert.equal(selected.key,initial.key);assert.equal(selected.hotelId,501);
+ assert.equal(JSON.stringify(selected.ages),JSON.stringify(initial.ages));assert.equal(selected.raw,raw);
+ assert.equal(JSON.stringify(raw),original,'LOCAL presentation never rewrites supplier input/provenance');
+ for(const [kind,field,quotedField,value]of [['room','room','roomType','different room'],['meal','meal','meal',{name:'BB'}]]){
+  const tour={...selected.tour,[quotedField]:value},fallback=kind==='room'?h.data.text(value):h.data.meal(value);
+  assert.equal(h.data.stayLabel({...selected,tour,[field]:fallback},kind),fallback,'changed quote fact cannot inherit an old LOCAL label');
+ }
+ for(const mutate of [
+  o=>o.raw.localStay.source='unaccepted',o=>o.raw.localStay.room.hotelId=502,o=>o.raw.localStay.room.kind='meal',
+  o=>o.raw.localStay.room.id=0,o=>o.raw.localStay.room.revision=0,o=>o.raw.localStay.room.localKey='',
+  o=>o.tour.id='different-tour',o=>o.raw.roomType='different original room',
+  o=>o.raw.localStay.room.nameRu='invalid\u0000label',o=>delete o.raw.localStay
+ ]){
+  const bad=structuredClone(selected);mutate(bad);
+  assert.equal(h.data.stayLabel(bad,'room'),selected.room,'unaccepted, foreign or changed evidence stays verbatim');
+ }
+ const unknown={...selected,raw:{...raw,localStay:undefined}};
+ assert.equal(h.data.stayLabel(unknown,'room'),'standard land view','no hotel-scoped mapping means no invented translation');
+ for(const [kind,key,name,changed]of [['room','roomType','STANDARD','DELUXE'],['meal','meal','AI','UAI']]){
+  const value={id:7,name,russianName:'Исходная подпись'},fallback=kind==='room'?h.data.text(value):h.data.meal(value);
+  const sample={...selected,[kind]:fallback,raw:{...raw,[key]:value},tour:{...selected.tour,[key]:{...value}}};
+  assert.notEqual(h.data.stayLabel(sample,kind),fallback,'matching complete raw fact may use the accepted LOCAL label');
+  sample.tour[key].name=changed;
+  assert.equal(h.data.stayLabel(sample,kind),fallback,'localized text cannot conceal a changed supplier name or qualifier');
+ }
+ assert.equal(h.data.stayLabel(selected,'invalid'),'');
+ assert.equal(h.data.stayLabel({...selected,room:'On Request'},'room'),'On Request','changed displayed fact cannot be hidden');
+ assert.equal(JSON.stringify(raw),original);
+});
+
 (async()=>{for(const [name,fn]of tests){await fn();console.log('PASS',name);}console.log('SEARCH3_PROTOTYPE_INVENTORY_LIFECYCLE_OK',tests.length);})().catch(error=>{console.error(error);process.exitCode=1;});
 
 

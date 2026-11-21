@@ -1,175 +1,240 @@
 # Search3 — продуктовый план и критерии качества
 
-## Поручение владельца 10.10.2026: цельный SEARCH visual/UX 9,5–10
+## Текущая очередь Search3 — 26.10.2026
 
-**Активный результат ближайшего этапа — полный пакет макетов и кликабельный
-прототип пути desktop + mobile, а не очередная отдельная карточка или отчёт.**
-Это уточнение действующей очереди `S3_PRODUCT_CURRENT_ACCEPTANCE`, SEARCH #1646,
-SITE/design #1719 и координации #4217; новый roadmap, score tracker и расписание
-не создаются. Прежние завершённые этапы, source/publication receipts и ограничения
-сохраняются. Более ранний гейт «сначала измерить все55 критериев, потом начинать
-макеты» заменён порядком ниже: короткий baseline затрагиваемых экранов, дизайн
-и полная оценка идут параллельно. Непроверенные supplier/physical области
-не блокируют создание макетов и не считаются проверенными.
+Актуализировано 01.11.2026 после публикации исправления выбора ANEX PR4964. Один исполняемый план для
+`S3_PRODUCT_CURRENT_ACCEPTANCE`; статус
+`NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN` сохраняется.
+[SEARCH1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646) ведёт пользовательский результат;
+[4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709) хранит владельца, claims и terminal.
+Исторические checkpoint, `resume_evidence` и старые следующие действия не являются заданиями.
 
-### Цель и один способ оценки
+**Установленный ORIGINAL NEXT:** [поисковик](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
+source `2f2bffcd1f9bb8275cc4ce8efd7e56820cc4956f` → runtime release
+`0068e86e6cd7a87c7cba0864c9a178197780cf20`.
+[Публикация PR4964 и сверка исходной квитанции](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6558704009),
+[полный регулярный расчёт и RELEASE](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6531021572).
+PR4964 устранил потерю выбранного конкретного ANEX-тура при позднем обновлении исходной выдачи.
+Целевая проверка сохраняет тур/условия/2A+[1] и одно fictional-продолжение; все7 штатных source checks и stock NEXT readback приняты.
+Прежний PR4962 восстановил обычный переход из регулярного предложения в полный quote; его2A receipt не доказывает новую семейную цену. Прежние пояснения PR4946 о запуске Telegram/MAX сохраняются;
+бронирование и оплата на сайте не выполняются.
+Согласованная композиция — прежний Site226 / PR4909; нового design-кандидата нет.
+Историческая оценка9.5/9.5 относится только к принятому compiled ordinary430/1280,
+включая720. Новая публикация и документация не повышают её и не доказывают готовность всего поиска.
 
-Рубрика остаётся **SEARCH-QUALITY-1**: 11 обязательных строк × те же пять
-критериев, Compare/shortlist deferred. Цель — **не менее9,5/10 в каждой
-применимой полностью измеренной строке**, стремление к10/10; общий средний
-балл не скрывает слабый mobile. Шкала0/1/1,5/2 и `not_measured` не меняется.
-Итог9,5 требует всех пяти измерений: максимум один1,5, остальные2.
-Конкретное существенное неудобство означает незакрытый критерий, а не
-произвольное округление до9,5.
+### Один ближайший пользовательский результат
 
-Макет, кликабельный прототип, compiled fixture, установленный NEXT, physical
-и real supplier — разные evidence scopes **в существующем audit**. Макет может
-доказать визуальные критерии; поведение, exact identity, price authority,
-архитектурная чистота и реальная доступность подтверждаются соответствующими
-проверками. Статичная картинка не закрывает эти строки. Физический Safari и
-реальные заявки не получают ни фиктивного passed, ни штрафа к unrelated visual.
-До полной сопоставимой приёмки не объявлять весь поиск9,5–10.
-Не оценивать новый макет по одному удачному экрану, а NEXT — по другой методике.
+Установить сохранённый исход исходного v4 через подтверждённую серверную привязку, затем
+получить полную цену ANEX для2взрослых и ребёнка1года штатным программным
+`quote_start → quote_calculate` (`bron/start+transports → SetTransport+calcfull`).
+Чартер или регулярный допустимы; состав — ADL2/CHD0/INF1, всего3туриста.
+Полная цена требует одного явного RUB gross за точный пакет/пару; неизвестная доплата не становится0.
+v4 остаётся UNKNOWN: чтение `quote_receipt` вернуло `forbidden`, что не доказывает отсутствие расчёта или токена.
+Серверные чтения PR4965/4966 не восстановили доступ: первое не нашло project-owned настройки сессий,
+второе [41322561025](https://github.com/pyatkoff/poisk-turov-test/actions/runs/41322561025)
+остановилось с `configured_vhost / retained_permission_denied` до определения PHP-пула и чтения сессий.
+Оба разовых чтения consumed/no-replay, supplier/DB/session/cache writes0; отсутствие расчёта не доказано.
+По [уточнению 02.11.2026](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6560219779)
+существующее подключение найдено и ранее работало. Исполнителю доступны фиксированные
+серверные действия; оба чтения v4 consumed/no-replay, непотреблённого штатного действия
+для чтения исходного v4 нет. Существующий read-only web-метод требует подтверждённой
+привязки к исходной серверной сессии, которой в разрешённом программном контексте пока нет.
+Условие продолжения — конкретный разрешённый способ получить сохранённый исход именно
+исходного v4 с такой привязкой; после появления входа — одно отдельно допущенное точное
+чтение существующим исполнителем. Поиск нового подключения или администратора и
+повторная Nginx-диагностика не являются следующим действием.
+До восстановления привязки к исходному retained state новый mutable расчёт не повторяется вслепую.
+Windows/браузер/координатор разрешены Павлом только для оценки iPhone.
+ANEX, восстановление сессии и получение цены выполняются серверным программным путём; Windows для них не использовать. Принятую Павлом передачу MAX/TG не повторять;
+CI/config и поддержку не затрагивать. Старый post1202-case остаётся consumed/no-replay;
+натуральная новая карточка, physical и production сохраняют отдельные непроверенные свойства без автоматического нового прогона.
+SEARCH владеет frontend; INT — supplier/runtime/party/price. Один исполнитель точной операции.
 
-### Три крупных связанных блока
-
-| Блок | Законченный пользовательский результат | Макеты и состояния |
+| Пакет | Текущее состояние и следующее действие | Условие завершения |
 | --- | --- | --- |
-| 1. Параметры → выдача → отель | Полная форма и редактирование поездки; понятный календарь; достоверные фильтры и сортировка; обозримая выдача с фото, условиями, ценой и действием | Initial/expanded/family form, date/night/party controls, календарь sparse/full/unknown, loaded/partial/empty/error results, active filters/zero-match/reset, фото/error, short/long hotel cards |
-| 2. Отель → вариант → выбранный тур | Понятные различия номера, питания, оператора, дат и цены; выбор точного offer; ясный состав и статус цены/рейсов; смена варианта и возврат | Variants/selected variant, selected-tour summary, price loading/pending/verified/changed/expired, flights known/unknown/empty/error, сохранённый выбор и Back |
-| 3. Выбранный тур → контакт → возврат | Однозначный следующий шаг; контактный draft и отдельное согласие; понятные ошибки; возвращение к тому же туру и выдаче | Lead form, validation/pending/error/disabled submit, Cancel/Back/reopen, изменения условий и сброс согласия, keyboard/focus и короткий экран |
+| Потеря выбранного ANEX после «Проверить цену» | [PR4964](https://github.com/pyatkoff/poisk-turov-test/pull/4964), SOURCE2f2bffcd1f9bb8275cc4ce8efd7e56820cc4956f/runtime0068e86e6cd7a87c7cba0864c9a178197780cf20, all7 source checks; stock41311578883/attempt1 и original receipt13085348671 приняты | Исправлено и опубликовано в NEXT. Поздняя исходная выдача больше не перезаписывает expanded concrete во время проверки; source/CI/readback не устанавливают фактический исход v4 и не подтверждают семейную цену. Нового GUI/ANEX/MAX/TG прогона не было |
+| ANEX2A+[1]: исход v4 → программная полная цена | v4 UNKNOWN, семейная полная цена UNVERIFIED. PR4966/read41322561025: HOLD configured_vhost/retained_permission_denied до pool/session; PR4965/read41317360551: project-owned override отсутствует. Оба consumed/no-replay. Подключение найдено и ранее работало. Нужен конкретный разрешённый метод чтения именно исходного v4 с подтверждённой серверной привязкой; непотреблённого штатного действия сейчас нет. Одно отдельно допущенное чтение после появления этого входа; программный quote только после установления исхода. Общий поиск доступа и повторная диагностика не требуются | Точный tour/party/pair на всех стадиях и один явный RUB calcfull gross за3. Неизвестный infant/fuel/APD не оценивать и не складывать повторно. Same Chrome instance/sessionName не доказывает PHP-session; cookie/права/guards не обходить |
+| Исторический поиск → новая карточка в боте | `search3-post1202-native-preview-20261027`: [канонический terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451184937) и [фактическое восстановление/закрытие](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6452059012). После исходного Find сессия уже восстановлена; один первый TVcheck предложения136703₽ завершился NOT_CONFIRMED. CONSUMED_NO_REPLAY; freeze/CREATE/native/send0, rawHTTP не сохранён. Все leases RELEASED | Закрытый case не возобновлять и не заменять другой платформой/датой/профилем. Естественная bot1202-карточка и тот же Manager2 остаются отдельным неподтверждённым gate; только новый отдельно допущенный case может дать новый receipt. Причина TV-отказа по DOM не установлена |
+| Регулярный ANEX: выбор → полный расчёт → возврат | [PR4962](https://github.com/pyatkoff/poisk-turov-test/pull/4962), все7 existing exact-source checks SUCCESS; один штатный NEXT publisher41104992141/attempt1. Координатор подтвердил BEACH SAFARI NUBIAN RESORT / StandardRoom / AI /19–26Dec2026/7n/2A: ordinary concrete regular → full quote, первая пара Pegasus PC389+PC624 / PC621+PC388,155687→185244₽ за весь состав. Back/Close/повторное открытие сохраняют185244₽ и пару без нового Find/calc; [terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6531021572) | Закрыто в этом technical scope, consumed/no-replay. Разница — актуализация полной цены, не APD/fuel. Retained receipt: quote_verified и4 завершённыхHTTP200; raw amount-basis/final_price_verified не экспортированы и не объявляются прочитанными. Contact/native/freeze/CREATE/lead/booking/support0. Source-only review контактной границы и существующий тест подтверждают quote price/ANEX identity/party/flights; новой живой отправки не было. Причина прежних пустых APD этим не установлена |
+| Цена и приём выбранных условий | [Принятый INT-контракт](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6445236990) допускает честно обозначенную сохранённую TV-цену со сроком и basis, `checked`, `finalPriceVerified=false`, `browser-observation-only`. Freeze не продлевает срок. Old MAX119887₽ [уже истёк и consumed](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451325789); это не цена нового case | Сохранены exact offer/party/search/pair и квалификация цены. Более сильный `final_verified` требует реального подходящего supplier proof и своего принятого контракта. Native entry, сообщение туриста, получение менеджером и physical phone имеют отдельные фактические receipts; установка bot1202 сама по себе их не доказывает |
+| Пояснения и публикация | PR4946 source/4checks/парные compiled430×900 и1280×720 приняты; один штатный NEXT publisher40570004014/attempt1 завершён, predecessor сохранён. Installed DOM-readback1363×936 подтвердил обе строки и отсутствие overflow без Find | Закрыто в указанном scope. Compiled430/1280 не объявляются новым native/physical проходом. Не повторять сборку, публикацию или source/frame-приёмку ради документа |
+| Ускорение CI | [PR4931](https://github.com/pyatkoff/poisk-turov-test/pull/4931) и [PR4945/terminal](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6450802576) завершены. Системная подготовка в сравненных запусках668→15с; локальная обработка одного корпуса786кадров/963файлов156.6→91.5с, все выходные байты одинаковы | Применимые exact-source проверки пройдены, прежнее покрытие сохранено. Это отдельные наблюдения подготовки и encoder, не среднее/p95/обещание42% ускорения всего CI или поиска. Закрытые прогоны и corpus не повторять |
 
-Первый дизайн-пакет содержит **все три блока как один продукт**. Они дают
-ограниченные implementation packets после согласования, не три конкурирующих
-версии. Уже принятые формы/фото/календарь/переходы сохранять там, где они проходят
-критерии. PR4501 не повторять. PR4502 — неутверждённый кандидат мобильной
-иерархии; Site106/package35 — неутверждённый вариант выбора тура. Их можно
-использовать как материал для общего прототипа, нельзя принимать/публиковать
-автоматически. Site100/package34 и история одобрения сохраняются.
+Блокер старого ANEX6418719912 больше не задаёт следующий шаг всего SEARCH:
+его операция consumed/no-replay, а текущая граница и её неизвестные факты описаны выше.
+При конкретном новом backend-дефекте INT получает один точный handoff; отсутствие
+нового факта не создаёт задания на ещё один collector/reader или supplier-пробу.
+Независимое существенное frontend-исправление допускается по подтверждённому дефекту,
+без перезапуска принятого corpus и косметической очереди.
 
-### Первое исполняемое задание SITE/design #1719
+### Работы по итогам обзора ОТА от 19 ноября 2026
 
-Продолжать **существующий публичный проект «AnyTour Search3 — дизайн»**
-`appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, сохраняя аудиторию и историю.
-Зафиксировать текущие owner instructions/версию и объявить свободный scoped
-claim до изменений. Собирать новые макеты как явно draft внутри этого проекта;
-не обновлять старый приватный прототип и не подменять approved reference.
+План для Search3 NEXT по результатам сравнения с восемью площадками. Ориентир для
+приоритизации — экспертная оценка NEXT **6,9 из 10** по семи параметрам. За отзывы
+получено 2/10, за возврат к выбору — 4/10. Приёмка релиза ведётся по действующей
+рубрике SEARCH-QUALITY-1. Проверенные примеры NEXT относятся к ноябрьским
+сборкам, включая [проверку экрана номеров](https://github.com/pyatkoff/poisk-turov-test/pull/5109).
 
-1. Взять краткий baseline тех же экранов установленного NEXT и уже проверенные
-   сохранённые данные. Записать exact source, сценарий и конкретные ограничения
-   в существующий audit; полную оценку продолжать параллельно, не ждать её
-   завершения для начала макетов. Новые supplier searches не нужны.
-2. Подготовить цельную композицию основных экранов **форма / выдача /
-   выбранный тур / контактная форма** на390 и1280: минимум восемь основных
-   кадров, плюс раскрытия календаря, фильтров, фото и вариантов и нужные
-   состояния из таблицы. Мобильная композиция самостоятельная.
-3. Проверить360/430/768, короткий desktop1280×720, длинные названия/цены,
-   семьи0/1/2/3 ребёнка, отсутствующие данные и увеличение текста200%.
-   Если статичный макет не позволяет проверить interaction/zoom, выполнить
-   это в кликабельном прототипе и точно назвать scope.
-4. Включить реальные сохранённые примеры с происхождением и контролируемые
-   демонстрационные состояния; не выдумывать рейтинг, отзывы, гарантию цены,
-   наличие, время подтверждения, багаж, fuel или преимущества.
-5. Собрать кликабельный полный путь: параметры → фильтры/выдача →
-   фото/варианты → exact tour/цена/рейсы → контакт → возврат/редактирование.
-   Работают Apply/Cancel/Back, локальные изменения и явно демонстрационные
-   loading/empty/error/unknown/changed-price. Прототип не отправляет заявки
-   и не доказывает supplier acceptance.
-6. До показа владельцу исправить замечания собственной и независимой
-   проверки всего пакета. Выход: рабочая ссылка, exact версия/source,
-   просмотренные desktop/mobile кадры, переходы/состояния, оценки применимых
-   критериев и оставшиеся конкретные ограничения. **Статусный отчёт без
-   этих материалов не считается выполнением.**
+**В первую очередь — цена и ограничения поиска**
 
-### Конкретные визуальные требования к ближайшему пакету
+1. **Цена для семьи с ребёнком до двух лет.** Согласовать подпись в ленте дат,
+   раскрытом календаре и выбранном предложении. Для двух взрослых и младенца
+   при неизвестной доплате везде виден статус «уточняется». Полный итог за троих
+   допустим при подтверждённом составе цены. Проверить также двоих взрослых без
+   детей. Использовать статус цены поставщика и уже исправленную компактную ленту.
+   [Исходное исправление](https://github.com/pyatkoff/poisk-turov-test/pull/5092)
+2. **Слишком низкий бюджет.** Показать в форме уже рассчитанный ближайший
+   подходящий бюджет. При вводе суммы ниже минимальной турист видит новый порог,
+   может применить его одним действием и получает подходящий вариант из загруженных
+   предложений. Остальные фильтры сохраняются. Если подходящих предложений нет
+   при любом бюджете, сумма для расширения не предлагается.
+   [Предыдущая правка формы](https://github.com/pyatkoff/poisk-turov-test/pull/5102)
+3. **Поиск по коду питания.** Находить тип питания по русскому названию и по
+   отображаемым кодам AI, UAI, BB, HB, FB и RO в обоих регистрах. Например,
+   `bb` и «Завтраки» ведут к одному варианту. После применения в выдаче
+   сохраняется выбранное питание.
+   [Выбор питания в форме](https://github.com/pyatkoff/poisk-turov-test/pull/5097)
 
-- Сохранить полный состав основной формы и единственный календарь; полная
-  форма открыта при вводе/редактировании, в выдаче — понятный контекст поездки
-  и действие изменения. Компактность не достигается скрытием обязательных полей.
-- Верх выдачи содержит необходимый контекст, открытую полосу **семи дат/цен
-  с месяцем/годом**, одно объяснение статуса данных и доступные фильтры.
-  Убирать повторные заголовки/пояснения; выигрыш высоты проверять на том же корпусе.
-- Desktop: понятная левая колонка фильтров и доступные нижние действия на коротком
-  экране. Mobile: одно понятное раскрытие фильтров, Apply/Cancel, активные значения
-  и сброс; фиксированные элементы не перекрывают содержание, CTA и клавиатуру.
-- Карточка: неизменное крупное полноширинное mobile фото **1.8**, читаемые
-  название/место; рядом с ценой и CTA краткие **даты · ночи · питание** того же
-  exact offer, при необходимости номер/оператор. Подробности доступны без дублей.
-  Новый порядок этих блоков — часть полного согласуемого макета; PR4502 не
-  устанавливает его автоматически. Фото открывается и имеет понятный возврат.
-- Варианты внутри отеля сравнимы по номеру/питанию/оператору/датам/итогу,
-  выбор однозначен. Минимум отеля, конкретная цена, сохранённая цена и ожидаемая
-  проверка различимы без технической терминологии.
-- Выбранный тур даёт одну сводку предложения и одну область цены/действия.
-  Указания по рейсам находятся в разделе рейсов; исходная цена явно обозначена
-  при pending. Неизвестное не zero/final. После успешной цены рейсы уточняет
-  менеджер по действующему контракту; неподтверждённая цена не маскируется CTA.
-- Контактный шаг сохраняет выбранный тур, показывает понятные labels,
-  ошибки и согласие. Нативные controls, понятный focus и доступные44px цели;
-  не обещать бронь/оплату/мгновенное подтверждение вместо заявки менеджеру.
-- Единые brand assets, типографика, сетка, отступы, цвета и иконки на всех экранах.
-  Оригинальный AnyTour logo не менять. Не добавлять новый renderer/style layer
-  при переносе; замещённые правила удалять вместе с заменой.
+**Следом — выбор отеля и конкретного номера**
 
-### Назначения и параллельность
+4. **Показать, почему отель подходит запросу.** В существующей карточке первым
+   вывести подтверждённый факт по выбранному условию, например детский клуб
+   или расстояние до пляжа. В сценарии на 430 px сравнить до и после на одном
+   наборе отелей время до выбора двух подходящих вариантов и число лишних
+   открытий. На 430 и 1280 px проверить видимость суммы за всех и кнопки выбора.
+5. **Объяснить гостевую оценку.** Указать источник и число отзывов, когда они
+   известны. При наличии подходящих текстов дать открыть отзывы по выбранной
+   теме, например о питании или пляже. Проверить карточки с полными и частичными
+   данными, включая отсутствие числа отзывов. [Пример тематических отзывов](https://level.travel/hotels/42416-Akka_Hotels_Alinda/reviews/pages/5)
+6. **Показать условия выбранного номера.** К его цене и питанию добавить
+   подтверждённые сведения о спальнях и кроватях. Проверить два номера одного
+   отеля с разной планировкой. При выборе и возврате сохраняются точный номер,
+   условия и его цена. Уже работающая разница в рублях остаётся рядом с вариантами.
+   [Сравнение цен номеров](https://github.com/pyatkoff/poisk-turov-test/pull/5095) · [Пример описания спальных мест](https://www.trip.com/hotels/antalya-hotel-detail-10717956/swandor-hotels-resorts-topkap-palace/)
 
-| Исполнитель | Задание в ближайших запусках | Граница |
-| --- | --- | --- |
-| SITE/design #1719 | Цельный пакет макетов и кликабельный прототип всех трёх блоков; доводка до визуальных критериев9,5 перед показом | Один writer существующего Sites проекта; не пишет NEXT app.js/shared CSS параллельно SEARCH |
-| SEARCH #1646 | Передать exact owner/data/state constraints и сохранённый корпус, проверить реализуемость; затем переносить только согласованный полный пакет | Пока дизайн draft, закрывать только подтверждённые дефекты уже approved поведения в свободных owners; новые концепции в NEXT не внедрять |
-| Независимый QA через #4217 | Baseline и проверка полного макета/prototype, затем того же NEXT; конкретные замечания по SEARCH-QUALITY-1 | Read-only исходники, одинаковые данные/ширины/сценарии, отдельные evidence scopes; тесты не заменяют визуальный осмотр |
-| INT / LOCAL / MATCH | Передавать существующие подтверждённые факты и bounded contracts по запросу владельца UI | Новый supplier/DB/identity backlog сюда не переносить; их полная готовность не блокирует дизайн |
+**После запуска — проверка спроса.** Предложить семье сохранить два-три конкретных
+тура и сопоставить даты, номер, питание, рейс, багаж и сумму за всех. При повторном
+открытии должны различаться сохранённая цена, актуальная цена и недоступное
+предложение. Оценивать, может ли семья вернуться к тем же вариантам и объяснить
+свой выбор. Базовый сценарий — [возврат к одному выбранному туру](https://github.com/pyatkoff/poisk-turov-test/pull/5105).
 
-Три design-блока можно прорабатывать параллельно при непересекающихся файлах и
-одном интеграторе; shared components/tokens/renderer и публикация последовательны.
-Приёмка целостности общая. Координатор #4217 собирает пакет, устраняет пересечения,
-фиксирует handoff и выбирает следующий безопасный этап.
+Отдельная гипотеза для существующего календаря — показать разницу в рублях за
+всех при сдвиге вылета. Для сравнения нужны одинаковые состав туристов, число
+ночей, отель, номер, питание и условия перелёта. Для архивной цены показывать
+время получения, если оно известно. Сезонные подсказки и подписку на снижение
+цены рассмотреть при подтверждённом спросе и наличии подходящих данных.
 
-### Гейты и продолжение до результата
+### Три этапа готовности
 
-| Этап | Проверяемый выход и следующий шаг |
+| Этап | Состояние |
 | --- | --- |
-| Макеты/прототип | Exact версия и все кадры/переходы; independent review и исправления; доступные применимые визуальные строки≥9,5, остальные критерии с точным scope или not_measured |
-| Решение владельца | Один просмотр всей готовой кликабельной версии одновременно по внешнему виду и поведению. Записать конкретный visual+behavior approval перед новым решением в NEXT; не согласовывать отдельно каждый отступ/кнопку |
-| Перенос SEARCH | Утверждённый handoff → существующие реально подключённые owners → focused/compiled и применимый exact-head CI. Skipped/pending и старый SHA не passed |
-| NEXT | Отдельный exclusive publisher, exact artifact/receipt/readback; повторить те же сценарии/данные/кадры и рубрику. Расхождения устранять до закрытия блока; перенос сам по себе не повышает оценку |
-| Production/реальные проверки | Физический iPhone/Safari, real supplier и реальная доставка имеют собственные evidence и допуски; production — отдельное одобрение конкретной версии |
+| Согласованный ordinary UI | Принят в своих исторических exact scopes. Текущий PR4964 установлен; selection-retention проверен на exact source/CI, прежний regular ANEX принят в отдельном technical scope; оценки прежнего corpus и compiled/frame/publication/live различаются |
+| Функциональный NEXT | Текущий незавершённый результат — v4 retained outcome и полная ANEX-цена2A+[1]. Передача MAX/TG принята владельцем и не требует повтора после этой правки. Непроверенные natural-card/physical свойства отдельно, без автоматического нового gate. `checked/false` не становится `final_verified` от отправки в бот |
+| Production и коммерческий пилот | Открыты: конкретная полная версия, применимые gates и отдельное одобрение владельца. Производственный эффект не измерен; цели Метрики и lead-механизм не меняются |
 
-До переноса QA проходит пять существующих задач: найти отель; сравнить два
-варианта поездки внутри поиска (не deferred compare); объяснить цену/состав;
-изменить условия и вернуться; открыть контактную форму нужного тура.
-Пилот4из5 участников из прежнего плана — отдельный not_measured до проведения,
-не выдумывать результаты и не ждать участников для подготовки макетов.
+### Действующий порядок продолжения
 
-При занятости owner, ожидании CI/approval или внешнем блокере сохранить artifact,
-точную причину и ближайший независимый шаг в #4217; продолжать безопасную часть.
-После возобновления брать тот же пакет, не перезапускать roadmap/завершённый
-аудит. UNKNOWN сначала читать, не replay. Если безопасных шагов нет, назвать
-подготовленный результат и единственный фактический блокер.
+Для публикации **ORIGINAL NEXT** уже существует штатный
+`.github/workflows/update-search3-local-preview.yml` на main: созданная OWNER-команда
+`/update-search3-next-preview <source> <release> <build_run> <artifact> <previous_source>`
+в4709 связывается с фиксированным NEXT target, проверяет predecessor и сохраняет rollback.
+[Маршрутизация проверена по текущему main](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6451605153).
+`Publish checked Search3 site preview` — другой carrier; ожидание его browser dispatch
+не блокирует уже допущенную NEXT-команду. Новый publisher/allowlist/transport не нужен.
+Перед каждой будущей публикацией заново проверить текущие source/release/claims и
+применимые exact-source gates; закрытые4946/4962/4964 не отправлять повторно.
+Docs/state-only актуализация не создаёт product build, publisher или browser/supplier проверку.
 
-**Этот план не является одобрением4502/Site106, новой публикацией, запуском
-расписания или свидетельством фоновой работы.** Existing scheduler prompts,
-schedule/enabled/paused состояния не меняются. Live остаётся по свежему поручению
-**Tourvisor + direct ANEX; SAMO paused**. URL/payload/auth, money/fuel/authority,
-lead/CRM/Metrika/goals, DB/LOCAL/MATCH, main/production/SEO и соседние проекты
-сохраняются. Новые supplier операции/реальные заявки этим документом не запускаются.
+Standing [6323725979](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323725979)
+сохраняет автономные обоснованные проверки в stock limits с конечным scope/budget/claim.
+5000/сутки — бюджет разработки и тестов данного исполнителя, не общий лимит пользователей
+или измеренный баланс. Исторический учёт27Oct4640 включал прежние UNKNOWN,
+резерв1536 и32на pristine bootstrap; это не текущий расход/остаток/refund.
+Новые30Oct admissions и непогашенные holds сохраняются в соответствующих terminal4709;
+эта документация их не суммирует, не освобождает и не объявляет остатком аккаунта.
+Чужие и consumed/UNKNOWN/refused операции не повторять и не переименовывать.
+Paid fallback, realLead/booking, protected contracts и production сохраняют отдельные допуски.
+Keyboard/Tab/A11y-only запрещены; новые размеры/200%/Compare deferred, существующий обязательный CI сохранён.
 
-Актуализация очереди: **2026-09-29** по уточнению владельца
-[#1646 comment5857899726](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5857899726).
-Примеры Onlinetours, Level.Travel и Travelata от 2026-09-19 и требование
-«минимум поиск на 9 из 10» сохраняются.
-Владелец SEARCH — #1646; единственная текущая координация — #4217. #3419, #2530 и #996 — история.
-Общая организация: [AnyTour development](anytour-development.md).
-Основа: свежая `release/search3-production-ready-v1`.
+**Обновление:** текущий результат и один следующий шаг — здесь; один terminal/RELEASE
+со ссылками — в4709. STATE хранит текущие pins и ссылки. История ниже не переписывается.
+Расписания, модели, enabled/paused и чужие задачи не меняются.
 
-Этот документ определяет продуктовые требования и порядок, а не дублирует журнал
-исполнения. Перед каждым запуском читать AGENTS/scoped инструкции, свежие
-`AUTOPILOT_STATE.json.current_task` и `continuation_policy.active_queue_ids`, heads,
-#4217/#1646, открытые PR/CI/deploy и exact owned paths. Старые snapshots, pins,
-`next_action` и названия уже выполненных стадий не являются новой очередью.
-При расхождении датированного состояния с новым поручением владельца или свежими
-исходниками использовать актуальное поручение и evidence, записав обнаруженный drift.
-Не создавать второй current_task/координатор или повторную автоматизацию.
+
+## Исторический checkpoint PR4927 — 26.10.2026
+
+Следующий сохранённый блок — точный прежний checkpoint, до улучшения плана.
+Его формулировки «следующий результат» и прежние references — история, не очередь.
+Актуальные действия определяет верхний раздел и свежие события4709.
+
+<details>
+<summary>Прежний checkpoint и полный набор доказательств — без изменений</summary>
+
+## Текущий проверенный checkpoint — 26.10.2026, ORIGINAL NEXT
+
+Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, статус `NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN`, SEARCH [#1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646), координация [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709). Обычный compiled UI-этап430/1280, включая1280×720, принят в точном scope; полная поставка, physical и production остаются отдельными gates.
+
+| Уже закрыто | Точная основа и предел доказательства |
+| --- | --- |
+| Действующий установленный NEXT | PR4926/source `03638572ed7634797fe690f774282e288c06c4b7` → runtime release `e9b2bc741da26107cd5878a492739c0de3a837e1`, [terminal6417128363](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417128363), [readback6417167272](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6417167272). All4 applicable exact-source gates SUCCESS; build40325298693/artifact12649769394 → stock40329694345/receipt12653472504.845files/43visualassets/9routes200, production/sibling unchanged, predecessor5c9c retained. Installed `messenger-flow-v1.js?v=579e307c0a45` matches exact compiled hash. Source/CI/deploy/readback не новый UI-балл |
+| Упрощение обычного пути — принятый PR4909 | Site226 → source `6cb2592417f121ca8566f32bea798aa11ee24d5e`; убран дублирующий экран параметров, room→contact2→1 при прежнем explicit new-price acceptance. [Audit6404297016](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6404297016): compiled430/1280incl720 **9.5/9.5** с5reasons в каждом exactscope, не wholeSearch/physical. [Installed6406164959](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6406164959): SAME offline price-change186400→195400→contacts→Back/continue, draft retained. CONSUMED/NO_REPLAY |
+| Отказ перехода в бот — принятый PR4920 | Понятное фиксированное объяснение/телефон/Back; Check только для status существующей операции; тот же failed selector не повторяет token/select/freeze. [Audit6409669527](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6409669527):6affected compiledPNG430/1280short + bounded installed offlinefamily1363×936 contact/draft/Back/continue,186400за2A+[0,8], consentfalse/submit0. Synthetic отказ не причина historicalphone и не natural installed proof. Ordinary9.5/9.5 unchanged delta0; fullerror/realdelivery N без суммы |
+| Повторное открытие контактов во время pending preparation — PR4926 | Подтверждённая гонка двух fresh capture одного selector исправлена в существующем lifecycle owner: Back/reopen использует один token/select/freeze и сохраняет failure/draft. Source32flowgroups;10 affected compiled430/1280 frames via7PNG; installed DOM-only readback совпал с hash. Fictional deferred request, supplier0/CREATE0/lead0; natural delivery/physical/native430/production и historical TV-after-filter cause не доказаны. Композиция и ordinary9.5/9.5 неизменны, UI delta0 |
+| Исторический UI baseline3d7 до последующих пакетов | Baseline source `3d7d50d17aec24cecc74fb25d04ee7015601daf1`, [audit6319858062](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6319858062):24 matched compiledPNG+receipts, Desktop9.5/Mobile10/Filters10/Selected10/Calendar9.5, FIRST baselines/UI0. Это не native430/physical и не wholeSearch9.5 |
+| Прежнее исправление PR4811 — статус цены номера | PR4811/source `15d1e2947a72d80a336434fcec8cebb90970a570` → runtime release `0683a51ff0c72e347eb8a4c02c2fd69b179f510c`, appSHA256 `a45dbe60335e51cf5c4b549c2bfb51fa813e5cf544553b9ce001378766716431`, hotel-detailsSHA256 `11181d9845ef1d2e373283adb32f761bf1826969d55f40109147849eb5d51850`, dataSHA256 `c3c755d92c389a6e3496941eede2ba3a34364fcbbd92bf69ab834937672c1d92` unchanged. Все5 final-source checks и один stock39742252376 приняты; [publisher6335567621](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6335567621). [Terminal/RELEASE6335661236](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6335661236), [audit6335648109](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6335648109): при сравнении и выборе номера сохраняется пометка происхождения/неподтверждённости цены; сумма за всех, exact key и выбранная строка сохраняются после «К отелю». Compiled430/1280/short720 и installed offline1363×936 проверены отдельно; bounded C4 1.5→2, полная строка N, baseline3d7/quality без изменений |
+| Предыдущее исправление PR4796 — фильтры | PR4796/source `9f8e14c8d3a60bbd6e26a1c3c7d9134cac953d64` → runtime release `c44a30c19a207005a9888b00429b84d49c83e3ee`, appSHA256 `e493b58973369146519b0f4d8e1ff640a6250c426899b24d90bffa885ed13f98`, dataSHA256 `c3c755d92c389a6e3496941eede2ba3a34364fcbbd92bf69ab834937672c1d92`. Все5 final-source checks и один stock39662545481 приняты. [Terminal/RELEASE6324876115](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6324876115), [audit6324888881](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6324888881): глубокая desktop-фильтрация и Reset открывают начало новых результатов; compiled1280×900/720 и installed snapshot1363×936 проверены отдельно, без нового полного балла |
+| Реальный обычный путь и семья | [ANEX146015/2A6319827377](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6319827377): выбранная пара/контактный черновик/возврат. [Семья6321337269](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6321337269):2A+[5,5]/SU420-SU421/230151₽ за4/контакт без ввода/возврат. [Charter131890/2A6323775660](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323775660):одна returned pair/контакт→Back. Разные exact scopes; realLead0, не physical/infant/fuel breakdown/globalfinalverified |
+| ANEX receiving и две реальные пары | SOURCE receiving [6323462398](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323462398) закрыт. Единственный INT case [6324054718](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6324054718): A→B→cachedA, обе153695₽ за2A, фактический quote receipt0→4→6→6. SEARCH принял ту же UI-границу в6324888881, без второго supplier run/source audit. CONSUMED/NO_REPLAY; не all40/infant/fuel/expiry-boundary proof |
+| Выбор конкретных Rixos — форма | [6325145066](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6325145066): actual canonical queryRix, local684Belek+687Tekirova, Apply→reopen→изменение без Apply→Close→reopen сохраняют оба/OR. Installed1363×936, Find/quote0; это pre-submit draft, не alias authority/фактические submitted IDs/native430/physical. Список10 подсказок не полнота каталога и не лимит offercards |
+| TV410 — прежнее принятое исправление | Sourceb8c/runtimec899/[terminal6322744838](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6322744838) +[receiving6322830603](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6322830603): истёкшая exact котировка/session теряют authority, повтор0HTTP; PR4796/9f8 сохранил data c3c. Новый provider410 не провоцируется, старый source не текущий runtime |
+| Исторический просмотр Site205 | Тот же PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, Site205/source74490263/[6317776266](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6317776266): LIVE открывает top-level NEXT, iframe — demo. Site203 остаётся согласованным product reference |
+
+**Действующее разрешение:** прямое21.10.2026 [6323725979](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323725979) — обоснованные разовые проверки и серии, включая live/quote/repeated ANEX, автономно в stock limits с конечным scope/physical budget/reservation/claim; повторного per-check/per-series вопроса нет. Старый repeated-check approval-wait заменён. Consumed/UNKNOWN/отклонённые операции не повторять/не переименовывать; paid fallback, realLead/booking, production и защищённые изменения сохраняют отдельные допуски. Квоты/config не расширяются.
+
+**Следующий результат:** собственная UI-граница ОДНОГО нового принятого natural INT handoff/executor/case/receipt либо связное исправление нового существенного подтверждённого frontend-дефекта. Пакет4926 fresh-capture pending-contact race завершён: SOURCE036385/RELEASEe9b2, terminal6417128363, DOM-readback6417167272; его source/CI/publisher/readback/fictional affected case CONSUMED_NO_REPLAY. INT владеет supplier/backend/price/stage facts; SEARCH не запускает параллельную диагностику, подготовку контракта или supplier-серию. Пока нового результата/дефекта нет, закрытые пакеты4920/4926, ordinary UI corpus и supplier/browser cases не повторять и косметический пакет не создавать. Native430/physical, canonical aliases/actual submittedIDs, natural failure/real delivery/LeadC3 и production сохраняют отдельные owner/gates; wholeSearch не DONE. Standing6323725979 разрешает обоснованные проверки/серии в stock limits с конечным scope/budget/reservation/claim без per-check/per-series вопроса; consumed/UNKNOWN/отклонённое не повторять, paid fallback/realLead/booking/protected/prod отдельно.
+
+**Разделение:** SEARCH — форма/выдача/фильтры/отображение цены/выбор/контакт/возврат; INT — supplier transport/auth/backend/price authority/физические stage facts. Один case/executor/receipt на общей границе; второй потребляет его, review ограничен delta. LiveTV+directANEX, SAMO paused; fuel0 только SAMO/search/Biblio, не Tourvisor/directANEX/final price. Missing/pending/expired не0/final; чужая цена не подтверждает новый выбор, fuel/markup/APD не начисляются повторно.
+
+Оба пути заявки сохраняются: актуальная цена тура позволяет оставить рейсы менеджеру; optional exact pair требует собственной цены за всю группу. Keyboard/Tab/A11y-only запрещены; другие размеры/200%/Compare deferred. Native/physical/alias/submittedIDs/real delivery/production не подменяются compiled, form, source или частным баллом. История/snapshots/root next_action не исполняемая очередь. Собственная автоматизация и чужие задачи/модели/расписания не меняются. Этот factual sync фиксирует принятые4909/4920/4926; UI delta0. Публикация и один DOM-only readback относятся к завершённому пакету4926; сам docs-sync не запускает browser/build/publisher/runtime. Ссылки ниже сохраняют свои исторические exact scopes и не возобновляют операции.
+
+</details>
+
+## История и актуальные доказательства
+
+- [Полный план до чистки — 21.10.2026](search3-product-development-plan-history-20261021.md): все прежние checkpoint, решения, no-replay, PR/SHA, оценки и evidence сохранены дословно; это архив, а не очередь.
+- [Архив до 09.09.2026](search3-product-development-history-20260909.md).
+- [Подробные сценарии SEARCH](anytour-roadmap/search.md) — backlog, не вторая копия текущей задачи.
+- Активные claims и события после checkpoint — [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709), SEARCH [#1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646) и `AUTOPILOT_STATE.json.current_task` свежей release. Датированный архив не возобновляет закрытые операции.
+
+## Исполняемый порядок — решение владельца 19.10.2026
+
+### Конечный результат и рабочие размеры
+
+Обычный путь: параметры → выдача/фильтры → отель/варианты → точный тур и итог за всю
+группу → необязательные рейсы → контакты → возврат с сохранением выбора и допустимого
+черновика. Текущий UI-этап — 430/mobile и1280/desktop, включая1280×720.
+Другие размеры,200% текста и Compare/shortlist deferred. Завершённые retained
+360/390/768 и обычный compiled430/1280 corpus не становятся новой очередью.
+Существующие обязательные final-source CI сохраняются.
+
+### Основная поставка — существующий NEXT
+
+Целевой runtime: [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/),
+repo `pyatkoff/poisk-turov-test`, branch `release/search3-production-ready-v1`.
+Design-lab: тот же PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, история
+и аудитория сохраняются. Текущая согласованная композиция — Site226/PR4909; Site203/source8c826b44 и
+[6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744) — история.
+Новая композиция требует конкретного whole-version visual+behavior approval.
+Site205: LIVE открывает top-level NEXT, iframe — demo. Не возвращать cross-site live iframe.
+Foreign `release/search3-design-v2` и его preview принадлежат другому исполнителю;
+shared paths требуют свободного claim независимо от URL/ветки.
+
+### Следующее действие
+
+Следовать верхней [текущей очереди](#текущая-очередь-search3--26102026) и свежему terminal/claim4709.
+Таблица зависимостей ниже уточняет отдельные gates, не заменяет ближайший результат.
+При расхождении dated checkpoint и нового события сверять source/CI/установку отдельно.
+Source-ready не означает installed; старые Find/quote/публикации/UNKNOWN не повторять.
 
 ## Действующее поручение и границы
 
@@ -179,7 +244,7 @@ lead/CRM/Metrika/goals, DB/LOCAL/MATCH, main/production/SEO и соседние 
 `v2/visual-search/index.php` загружает `v2/visual-search/app.js`.
 `v2/prototype-search/app.js` — отдельный интерфейс; его исправление не продвигает
 приёмку target. Общие data/lifecycle/calendar/lead зависимости менять только после
-подтверждения подключения и свежей передачи владения в #4217. Исторические пути
+подтверждения подключения и свежей передачи владения в #4709. Исторические пути
 DS2/renderer/controller ниже не заменяют эту проверку.
 
 Очередь запуска: основной поиск → выдача → конкретный offer → актуализация → рейсы →
@@ -188,10 +253,10 @@ DS2/renderer/controller ниже не заменяют эту проверку.
 Выбранное предложение в текущем поиске и его возврат остаются в этой очереди.
 Визуальный refactor, MATCH и INT fuel-learning не входят в неё.
 
-Live выдача: Tourvisor + direct ANEX + SAMO/Andromeda. DB offers/prices служат
+Live выдача: Tourvisor + direct ANEX; SAMO/Andromeda paused по решению08.10.2026. DB offers/prices служат
 календарю, истории и SEO; поток live → DB, никогда DB → live. Локальные профили,
 фото и matching сохраняются. Первый поиск — один логический старт источника и
-первые порции, SAMO page1, direct dates первоначально первая неделя; продолжение
+первые порции активных источников, direct dates первоначально первая неделя; продолжение
 только явной кнопкой с бюджетом. Unknown не zero, estimate не final_verified;
 SEARCH не вводит собственную формулу топлива.
 
@@ -199,7 +264,7 @@ SEARCH не вводит собственную формулу топлива.
 Будущая production `/poisk-turov/`/PR #1334 требует отдельного допуска; работа
 над preview, зелёный CI и локальная проверка заявки не являются таким допуском.
 Минималистичная форма допустима на главной, но её развитие принадлежит SITE #1719.
-В этой очереди исполняются только SEARCH #1646 и координация #4217. SITE #1719,
+В этой очереди исполняются только SEARCH #1646 и координация #4709. SITE #1719,
 SEO #1720, INT #1717/#1685 и MATCH #1971/история #1759 имеют других владельцев;
 API, matching и получение/наполнение контента здесь не выполняются.
 
@@ -222,37 +287,36 @@ URL hydration, FormData и единственного владельца фор�
 макета неподтверждённые отзывы, гарантии, моментальное подтверждение или «купить сейчас».
 Не возвращать старые DS1/ANEX UI owners и не создавать вторую форму/renderer/filter owner.
 
-### Разбор мобильного видео — решение владельца 2026-09-29
+### Сохраняемые решения по интерфейсу и данным
 
-Владелец одобрил реализацию замечаний к текущему target («Давай делать», 10:57 МСК).
-Это уточнение действующего плана, не отдельная версия ТЗ. Диагностика:
-[#1646 comment5886028928](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5886028928).
-
-- Город вылета: поиск по доступным городам, текущий/недавние сверху, остальные по алфавиту;
-  один канонический select сохраняет значение. Смена города не запускает поиск туров.
-- Направления: основные страны в устойчивом редакционном порядке, остальные по алфавиту
-  (не выдавать это за измеренную популярность). Курорты группировать по LOCAL parentId/kind;
-  не менять соответствия и не смешивать регионы и субкурорты в плоский список.
-- Календарь: выбранное питание должно участвовать в точной DB-выборке. Исторические
-  native meal IDs связывать с AnyTour только через принятый каталог. Не подставлять
-  более дешёвую цену другого питания, неизвестное соответствие или DB-тур в live выдачу.
-  Бюджет «От/До» применяется включительно к последней известной цене каждого точного
-  сегмента, совместно с питанием, регионом и составом туристов. Старую более дешёвую
-  запись не возвращать вместо последней цены, вышедшей за бюджет. Нет подходящей
-  истории — неизвестная цена, без автоматического запуска поиска поставщиков.
-- Питание: устойчивый порядок — любое, AI, UAI, завтраки, полупансион, полный пансион,
-  без питания; дополнительные подтверждённые варианты сохраняются. Выбор не переставляет строки.
-- Выдача: явное «Изменить поиск», без дублирующего ряда звёзды/питание/бюджет;
-  применённые фильтры и основная кнопка фильтров остаются. После окончания поиска
-  большая плашка исчезает; частичная выдача получает короткое предупреждение.
-- Календарь выдачи: компактная полоса дат/цен открывает полный календарь, без двух
-  заголовков и пустого контейнера в свёрнутом состоянии.
-- Конкретный тур: сначала номер/питание/условия, затем явный переход к актуализации
-  и рейсам, затем заявка. Возврат использует сохранённый результат шага без повторного запроса.
-  Изменение полного итога после выбора рейса видно относительно цены выбранного предложения.
-- Багаж относится к конкретным рейсам; повторяющиеся общие фразы о перелёте и
-  неподтверждённых условиях убираются. Фокус клавиатуры сохраняется без рамки вокруг
-  программно сфокусированного заголовка. Размещение и туристы не перекрываются на телефоне.
+- Форма: один canonical select, поиск доступного города; текущие/недавние сверху,
+  остальные по алфавиту. Смена города не запускает supplier search. Страны — в
+  устойчивом редакционном порядке, курорты — по принятым LOCAL parentId/kind.
+  Питание: любое, AI, UAI, завтраки, полупансион, полный пансион, без питания;
+  дополнительные подтверждённые варианты сохраняются, выбор не меняет порядок.
+- Calendar history: только принятые meal mappings; последние точные сегменты,
+  полный состав туристов, питание/регион и включительный бюджет «От/До» совместно.
+  Старый более дешёвый snapshot не заменяет последнюю цену вне бюджета.
+  Нет подходящей истории — unknown без автоматического supplier search.
+- Выдача: явное «Изменить поиск», локальные applied filters/счётчики/сброс;
+  без повторного ряда звёзд/питания/бюджета. Одна полоса семи дат/цен с месяцем/годом
+  открывает полный календарь. После окончания поиска большая плашка исчезает,
+  partial получает короткое честное предупреждение; свёрнутый календарь без пустот/дублей.
+- Desktop — левая колонка фильтров и доступные действия на коротком экране;
+  mobile — одно раскрытие с Apply/Cancel, без перекрытий контента и CTA.
+  Карточка сохраняет крупное полноширинное mobile фото1.8 и открытие/возврат;
+  даты · ночи · питание рядом с ценой/CTA принадлежат тому же exact offer.
+- Номер/питание/условия → актуализация/необязательные рейсы → контакты.
+  Одна сводка и область цены; минимум, конкретная/сохранённая/pending цена различимы.
+  Изменение итога после выбора рейса видно; багаж относится к конкретным рейсам,
+  непроверенные условия/отзывы/рейтинг/преимущества не выдумываются.
+- Обычный возврат сохраняет filters/date/sort/room/exactIDs, OR exactIDs,
+  draft/apply/cancel, выбранный тур/рейс и контакты. Смена identity сбрасывает consent;
+  повторы навигации не запрашивают supplier заново. Семьи/длинные имена остаются читаемыми.
+- Контакты: понятные labels/ошибки/согласие и доступные цели44px; заявка менеджеру
+  без обещаний брони/оплаты/мгновенного подтверждения. Единые бренд/типографика/сетка,
+  оригинальный AnyTour logo неизменен; замещённые handlers/стили удаляются с заменой.
+  Отдельные keyboard/focus проверки не назначаются: действует поздний запрет владельца.
 
 ### Заявка без выбранных рейсов — уточнение владельца 2026-09-29
 
@@ -273,106 +337,111 @@ URL hydration, FormData и единственного владельца фор�
 Мобильную браузерную проверку исполнитель выполняет самостоятельно; запись владельца
 нужна только для дополнительного неповторяемого контекста, а не как обязательный этап.
 
-### Примеры конкурентов — поручение владельца 2026-09-19
+### Способ приёмки и пределы текущего этапа
 
-Повторно получены мобильные снимки полного пути трёх сервисов и два PDF:
-карточка Throne Beach Resort & Spa (Onlinetours) и выдача туров (Travelata).
-Это визуальные наблюдения из материалов владельца, не исследование конверсии или
-доказательство качества внутренних алгоритмов конкурентов. Сохраняем фирменный
-стиль AnyTour и согласованный макет; заимствуем проверяемые приёмы взаимодействия.
+Основной способ — мышь на desktop и тапы в mobile scope. **Клавиатурные
+пользовательские проходы, Tab-циклы, отдельные A11y-only/keyboard/focus задачи
+не выполнять и не ставить в очередь.** Не начинать отдельную правку рамок по
+кадру клавиатурного теста. Изменение выделения допустимо лишь при подтверждённом
+существенном неудобстве обычного клика/тапа в текущем связанном пакете.
 
-| Наблюдение в примерах | Применение в Search3 | Приёмка |
-| --- | --- | --- |
-| Onlinetours: крупные панели выбора даты, диапазона ночей и туристов; явная кнопка с выбранными значениями | Дать выбору понятное подтверждение и удобные области нажатия. Основные поля Search3 остаются видимыми; существующие native controls/FormData сохраняются | До подтверждения результаты и условия не меняются; после — выбранные значения точны. Закрытие, клавиатура, длинные значения и семья с детьми не теряют данные |
-| Onlinetours: цены рядом с датами; Travelata: обозримая полоса дат | Развивать единственный текущий календарь сохранённых наблюдений. Выбор дня выделен отдельно от самой низкой цены; отдельное действие запускает поиск на выбранную дату | Перебор/выбор дат не вызывает supplier search; чтение DB не является live выдачей. Выбранные даты сохраняются до явного поиска через существующий однократный submit; другие поля неизменны. Нет цены — не ноль |
-| Travelata: поиск страны, курорта или отеля с понятной текущей выборкой | Упростить нахождение направления/отеля в существующих справочниках, показать загрузку, пустой ответ и ошибку. Не маскировать ошибку каталога под отсутствие отеля | Выбор соответствует фактическому ID; быстрый ввод и смена страны не показывают старые подсказки. Мобильная клавиатура не закрывает результаты и действие |
-| Onlinetours/Travelata: крупное фото, отель, место, рейтинг, условия и цена в читаемой иерархии | Сохранить одну карточку отеля и понятное открытие фотографий; отделить общие факты от конкретного минимального предложения | Фото открывается и следует за миниатюрой; цена/питание/ночи относятся к одному offer. Нет выдуманных отзывов, шкалы рейтинга, расстояний или гарантий |
-| Level.Travel: номер и питание сгруппированы, соседние даты/длительности легко сравнить | Сделать список вариантов внутри отеля обозримым и сравнимым на телефоне, с точными условиями каждого предложения | Группировка не смешивает разные room/meal/operator/offer identity. Любое действие ведёт к тому же конкретному туру и сохраняет путь назад |
-| Travelata: отдельные блоки «туда/обратно», багаж, состав и различие ночей в туре/отеле | Упростить сводку выбранного тура и переход к существующей заявке менеджеру | Показываются только подтверждённые данные. Неизвестное остаётся неизвестным; неизвестный сбор не превращается в окончательную цену. Отправка заявки/паспортные поля/онлайн-оплата не добавляются из чужого сценария |
+Существующую рубрику12/11/5 и шкалу не менять. Запрещённый владельцем клавиатурный
+scope сохраняет честныйN/deferred, не даёт фиктивных баллов и не становится
+блокером обычной UI-поставки. Physical/native430, реальная цена/данные/доставка
+и production сохраняют собственные evidence scopes/разрешения; compiled и donor
+их не подменяют. Ни документ, ни первый baseline не являются ростом UI.
+Не запускать отдельную очередь проверок или переписывание плана без нового
+существенного факта/прямого уточнения владельца.
 
-Минимум владельца **9/10** — порог результата; ранее согласованная цель **9.5 по
-каждой оси SEARCH-QUALITY-1** ниже не отменяется. Новую шкалу или усреднение,
-скрывающее слабый мобильный сценарий, не вводить. До сквозной приёмки одного exact
-source на общем корпусе нельзя объявлять поиск достигшим 9/10. Отдельные зелёные
-PR, снимки и изменения календаря не повышают автоматически остальные оси.
+### Незакрытые зависимости и точные условия продолжения
 
-Порядок продуктовых пакетов остаётся единым: параметры поездки → выдача/фильтры →
-отель/конкретный offer → актуализация/рейсы → честная цена → preview заявка/возврат.
-Исторический пакет возврата #3001 проверяется по свежему статусу и не перезапускается.
-Независимые изменения календаря и фото выполняются в их действующих владельцах.
-Остановленный подготовительный refactor-pass не возобновляется этим поручением.
+Действующий остаток после установленного PR4926/source036385/runtimee9b2 и принятых4909/4920. Закрытые shared A/B/A, form-only684/687 и все прежние runtime/cases сохраняют exact evidence/no-replay; это не новое задание. Ближайший результат — верхняя текущая очередь.
 
-## Порядок оставшейся SEARCH-работы
+| Область / состояние | Ответственный | Следующее действие | Доказательство закрытия |
+| --- | --- | --- | --- |
+| Native430 / physicalSafari / safearea — отдельные N | SEARCH + QA при штатной capability | Только фактически доступный native/physical ordinary путь; не повторять принятый compiled430/1280 corpus или закрытые supplier cases | Свой exact native/physical факт; compiled/iframe/technical1363×936 его не подменяют |
+| Rix: form684/687 принята; aliases / actual submittedIDs — N | LOCAL — canonical факты; SEARCH — применение | При accepted canonical alias/handoff и штатном безопасном actual-ID receipt проверить применение в новом обоснованном ordinary intent; не запускать supplier-пробу ради поиска наблюдаемости | Canonical alias и фактические OR submittedIDs в своих scopes. Pre-submit draft/DOMlocal IDs/список10 подсказок не wire/full-inventory proof |
+| ANEX SOURCE и bounded A/B/cachedA закрыты; family/infant отдельный текущий INT scope | INT#2506; SEARCH — только consumer | Следовать свежему активному INT2506/4709 и его текущему claim; старый owner6325033841 не исполняемая команда. Один допустимый собственный family/infant результат принимает SEARCH только на UI-границе; receiving6323462398/двухпарный6324054718 не повторять | Exact full-party/infant/currency/whole-gross safe facts от INT; существующая двухпарная приёмка не доказывает infants/fuel/expiry или все40пар |
+| LeadC3 / реальная доставка — N, preview delivery выключена | Owner-reviewed lead transport; SEARCH — consumer | После точного допуска защищённого scope проверить штатные pending/error/retry/success; локальный контакт/возврат отдельно | Свой real-delivery receipt; UI/quote expiry/preview validation его не доказывают |
+| Production — отдельное approval | Владелец + штатный publisher | Предъявить конкретную полную поставку после применимых gates; публиковать только по отдельному approval | Exact approved artifact/receipt/runtime. Текущий installed036385/runtimee9b2, прежние9f8/art12373527335 и baseline3d7 не получают production-допуск от плана |
 
-Это уточнение текущей приёмки `S3_PRODUCT_CURRENT_ACCEPTANCE`, не семь новых очередей.
-Действующие `S3_OTA_PROVIDER_PARITY` и `S3_PRODUCT_APPROVED_MIGRATION` сохраняют свои
-внешние зависимости и допуски. Детализация существующих сценариев —
-[SEARCH backlog](anytour-roadmap/search.md); его выполненные стадии не перезапускаются.
-Один writer на shared renderer/controller/lifecycle/CSS; каждый следующий пакет сначала
-проверяется на наличие свежего claim и уже выполненного исправления.
+Остальные применимые N сохраняют конкретный пробел в существующем SEARCH-QUALITY-1. Они проверяются в связанном пользовательском пути при доступном разрешённом scope; отдельная косметическая/QA-only очередь не возникает. Один внешний gate не останавливает независимый разрешённый шаг. Keyboard запрещён;200%/Compare/другие размеры deferred.
 
+### Маршрут проверки и действующие разрешения
 
-### Подготовительный технический refactor-pass — поручение владельца 2026-09-12/13
+Использовать сохранённые exact-source compiled430/1280 evidence и реально доступную
+штатную capability. CloudChrome доказывает свой installed desktop scope, не native430
+или physicalSafari. Demo iframe, compiled и physical не подменяют друг друга.
+Мышь/тапы — основной путь; keyboard запрет и отдельные внешние gates сохраняются.
+TinyFish metered; consumed6279010055 не повторять. Нет нового платного fallback,
+preview server/browser install, proxy или смены carrier ради обхода.
 
-Исторический этап, остановлен: уточнение от 2026-09-27 не возобновляет его и не
-возвращает compare/shortlist в запуск. Ниже сохранены прежние критерии для provenance.
-Владелец ранее одобрил этот этап первым и включил его в существующий SEARCH-автопилот.
-Это ограниченная подготовка внутри `S3_PRODUCT_CURRENT_ACCEPTANCE`; global DS2 mode,
-исторический `technical_refactor` и `active_queue_ids` не переключаются.
+Постоянное разрешение владельца21.10.2026 [6323725979](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6323725979) заменяет старое ожидание per-check/per-series approval, включая repeated ANEX. Обоснованные разовые проверки и серии выполняются автономно в штатном executor/stock UI с конечным scope/physical budget/reservation/claim до расхода. SharedTVANEX3000/сутки, directANEX60/мин, Andromeda5млн/месяц и реальные account/rate guards сохраняются; owner-reported5000 не измеренный остаток и не изменение config. Consumed/UNKNOWN/отклонённые операции не повторяются/не переименовываются; auto-drain/платный fallback/реальная заявка/booking/production и защищённые изменения требуют своих отдельных допусков. Один INT/SEARCH case/исполнитель/receipt, без параллельной копии supplier diagnosis или полного аудита.
 
-1. Сверить фактическую карту включений/owners формы, renderer, controller, lifecycle,
-   локальных filters/shortlist и CSS с `src/search3/manifest.json`,
-   `v2/search3-presentation-v1.php`, bundle и README. Retired provenance slots
-   не восстанавливать и не считать вторым активным owner.
-2. Проследить форму → URL → результаты/projection → compare → selected → возврат:
-   кто хранит состояние, кто инвалидирует старый поиск и где значения теряются.
-   Предварительно подтверждённый остаток — отсутствие обратной записи условий в URL.
-3. Проверить конкурирующие handlers/rules и дубли display helpers. Первый кандидат —
-   существующая operator display identity renderer против raw operator keys в facet;
-   затем meal summary против локальной meal classification. Реальные supplier
-   identities/значения и различия питания сохраняются.
-4. Проверить source/generated/hash и существующие guards. Выполнять маленькие
-   обоснованные исправления в текущем owner, удаляя заменённый код в том же пакете.
-   Широкие переносы файлов и новый слой не являются результатом этого этапа.
-5. CSS-очистку, зависящую от новой композиции, выполнять вместе с соответствующим
-   UI-пакетом. Уже claimed #2261 не дублировать; до правки любого shared path читать #4217.
+### Организация каждого прохода
 
-**Выход из подготовительного этапа:** в существующем
-[техническом audit](search3-technical-audit-20260912.md) записаны exact base/карта owners,
-проверенные контракты, конкретные исправления/CI и оставшиеся ограниченные пакеты либо
-точные dependencies. После фиксации completed проход не начинается заново каждый час:
-автопилот продолжает незавершённый пункт и затем продуктовый порядок ниже.
-Сборка, blocked artifact access или занятый owner не дают права обходить gate;
-пока один пакет blocked, выполнять независимый разрешённый SEARCH-шаг.
-Refactor не повышает визуальную оценку без exact browser evidence.
+- Один продуктовый WIP и максимум один ещё не просмотренный visual candidate.
+  Один writer точных paths, один интегратор; независимый read-only review
+  параллельно. Отдельный publisher — только для готового изменённого artifact.
+- На старте освежить heads/PR/CI/claims, текущие сообщения #4709/#1646/#1719,
+  верхний исполняемый раздел и `current_task`. Для уже полностью прочитанных
+  инструкций/consumer map сравнить SHA: неизменённый текст переиспользовать;
+  изменённые и новые scoped-инструкции прочитать до действия.
+- До записи закрепить в существующем claim target/project/branch/exact paths,
+  исходный source, ожидаемый пользовательский результат, доступный путь проверки,
+  минимальные кадры/действия и непокрытый scope. Claims не истекают по давности.
+- Перед новой продуктовой сборкой согласовать корневой AUTOPILOT.md и другие общие файлы с их writer; зафиксировать их версии. Перед публикацией проверить source/release projection тем же штатным правилом. Изменение общего файла после build требует честно согласованного пакета, а не ослабления guard или повтора sealed команды. Docs-only/state sync не запускает build/publisher.
+- Во время исправления выполнять узкие проверки по его риску. Все применимые
+  обязательные проверки — на законченном source; успешный byte-identical результат
+  переиспользовать. Новый source/failure/изменённый риск дают причину нового запуска.
+- Для правки управления: diff/JSON/неизменность protected state,
+  независимый review и применимые owner-policy/security gates. UI/browser/deploy
+  не запускать ради плана. Draft/ready, workflows и allowlists не менять для CI.
+- Подтверждённые исправления approved UI: focused/compiled → обязательные CI
+  на финальном source → разрешённый release merge → эксклюзивный штатный
+  NEXT-only publisher exact artifact → readback → установленное затронутое действие.
+  Новый дизайн сначала проходит whole-version visual+behavior approval в том же
+  design-lab; разрешение плана не согласует невиданный UI.
 
-| Приоритет | Конкретное улучшение | Проверяемый результат / граница |
-| --- | --- | --- |
-| 1. Полная основная форма | Сохранить все обязательные поля; улучшить читаемость длинных направлений/отелей, выбор диапазонов и размещение возрастов рядом с туристами | Все primary-поля видимы; значения из URL и после редактирования не теряются; 0/1/2/3 ребёнка и граничные возраста сохраняют исходный mapping; disabled/loading/error понятны. Не переделывать справочники или API |
-| 2. Desktop geometry и самостоятельный mobile | Сбалансированные два/несколько рядов, выровненные группы/контролы, соразмерный CTA, без пустых колонок и растянутых child-age; компактность mobile без потери полей | Приёмка точных скриншотов, а не только overflow. Проверять затронутые промежуточные ширины и невысокий desktop; возраста логически и визуально связаны с туристами. Уже принятые сетки не переписывать заново |
-| 3. Календарь | Читаемые даты и цены, понятный минимум и выбор дня, ясная связь с условиями формы | Единственный текущий календарь; выбор пользователя сохраняется при rerender. Цена из DB — ранее найденное наблюдение для точного контекста поездки, не live availability/final price; нет данных — не ноль. Изменение условий инвалидирует чужие цены. Выбор даты/локальная фильтрация не запускают supplier search; поиск запускается явным действием |
-| 4. Стартовые параметры и result filters | Название отеля, курорт/район, звёздность, питание, цена, туроператор; видимые активные значения, доступный сброс, понятный нулевой результат | Фильтры работают в текущем canonical owner по загруженной выдаче без supplier search; цена/питание/оператор проверяются на одном конкретном offer. При неполных данных facet скрывается/сбрасывается; счётчик не обещает полноту рынка. Нижние фильтры доступны на коротком desktop; mobile использует те же элементы |
-| 5. Выдача, карточки, цена/CTA | Иерархия фото → отель/место → полезные факты → условия поездки → цена/действие; убрать повторы; сделать варианты обозримыми | Улучшать отображение уже доступных проверенных фото/рейтинга/местоположения, не изобретать контент. Факты и цена соответствуют representative offer после фильтра. Групповой минимум, конкретная цена, сохранённая цена и требующая проверки цена не смешиваются; source отделён от оператора; понятен следующий шаг |
-| 6. Конкретный offer → актуализация → рейсы → preview заявка | Сводка номера/питания/туристов/рейса/состава и возврат к результатам в текущем поиске | Сохранить exact hotel/offer/search identity и выбранные условия. Только подтверждённые данные; неизвестные сборы/багаж/рейсы не объявляются включёнными, estimate не final_verified. Возврат не повторяет уже потреблённый supplier шаг. Handoff сохраняет выбранное предложение и допустимый контактный черновик; согласие не переносится на другой тур. Lead transport/field mapping не менять, реальные заявки не отправлять |
-| 7. Накопленная mobile/desktop acceptance | Цельный путь: параметры → локальные фильтры → конкретный offer → актуализация/рейсы → честная цена → preview заявка → возврат/редактирование | Проверить затронутые состояния, длинные названия/суммы, семью, empty/error/partial/stale, клавиатуру и фокус. Physical Safari/iPhone отдельно passed/deferred. Green отдельного пакета не означает качество всего поиска 9.5 |
+### Завершение, зависимости и отчёт
 
-Рейтинг, пляж/расстояния, тип и услуги становятся result-фасетами только при достаточной
-подтверждённой полноте данных и явной политике unknown. Новые фото/описания/отзывы,
-новый рыночный календарь, карта, price-watch и уведомления не включаются скрыто:
-это отдельные входы INT/content/владельца канала. Их отсутствие не блокирует улучшение
-имеющейся карточки, но и не считается решённым CSS-правкой.
+В существующем SEARCH-QUALITY-1/audit сохранить12 исторических строк,
+11 обязательных, пять критериев0/1/1.5/2, N без суммы. Проверенные неизменённые
+критерии сохраняют exact evidence; первый baseline не рост. Порог≥9,5 проверяется
+по каждой ключевой применимой полностью измеренной строке; среднее не скрывает
+слабый mobile. Mockup/clickable/compiled/installed/physical/real supplier раздельны.
 
-### Уже выполненное не считать новой работой
+Закрытый наблюдавшийся UI corpus не переоткрывается из старого next_action.
+Admission и каждое внешнее доказательство получают собственный terminal в существующей
+координации; один BLOCKED scope не превращается в глобальный стоп доступной работы.
+Пакет предъявляется на итоговый просмотр, когда его оставшиеся действия проверены,
+подтверждённые существенные дефекты устранены, применимые gates выполнены и audit
+показывает фактический результат. Полное поручение не объявляется завершённым при
+N в ключевом применимом критерии. Отдельные внешние зависимости перечисляются
+точно, без фиктивного passed и без блокировки независимой разрешённой работы:
 
-Проверять свежий статус PR и их exact evidence. В частности, #2079 (mobile preferences
-и приёмка реального served route) и #2080 (sparse calendar grid) уже имеют release-merge;
-старый красный прогон #2079 не является текущим заданием исправить ту же ошибку.
-#2076 был no-op для Search3; #2074 затрагивал исключённый compatibility CSS — эти изменения
-не являются доказательством улучшения фактически подключённого интерфейса.
+Точные исполнители, условия и следующий факт перечислены в таблице выше.
+Приёмка установленного UI и внешние зависимости фиксируются раздельно;
+глобальное DONE не выставляется до обязательных gates и применимых критериев.
 
-История формы/фасетов/selected/shortlist и опубликованных пакетов сохранена по ссылкам
-в конце документа. Не объявлять существующие функции отсутствующими по названию файла
-или одному fixture-скриншоту. Наличие тестовых данных не доказывает живой supplier availability.
+Один значимый результат: #4709 — claim/terminal/RELEASE и следующий шаг;
+#1646 — изменённая оценка с пятью основаниями/evidence; #1719 — стадия и ссылка.
+Не копировать весь один и тот же отчёт в три журнала. Владельцу — работающий эффект
+или новый точный блокер, компактная таблица до/после только при новом результате.
+Документы/CI/версия не улучшают UI: для этой организации delta0.
+
+Если безопасный следующий шаг отсутствует, зафиксировать одно конкретное условие
+продолжения и сохранить пакет. Не заменять его повторным аудитом/пустым уведомлением;
+блокер одного маршрута не объявлять остановкой всего проекта.
+
+**200% текста и Compare/shortlist — deferred/not_measured**. Новые прогоны/UI
+для200% не добавлять и отсутствие покрытия не считать блокером. Сохраняются оба
+application пути: актуальный тур с рейсами менеджеру либо optional exact pair с
+собственной подтверждённой ценой за группу. Missing/pending/expired не0/final;
+fuel/markup/APD не начисляются повторно. Supplier/API/price/FX/lead/Metrika/DB/
+MATCH/LOCAL/main/production/siblings/workflows/secrets защищены прежними правилами;
+обоснованные live-проверки/серии следуют standing6323725979 и конечному budget/reservation/stockexecutor без нового per-check/per-series вопроса. Paid fallback/realLead/production и защищённые изменения сохраняют отдельный exact допуск.
+Расписания, enabled/paused, модели, настройки и другие задания не изменяются.
 
 ## Неизменная оценка: 12 параметров отдельно
 
@@ -443,90 +512,3 @@ Median/p95 только при достаточных данных. CSS/JS initi
 уведомления, онлайн-оплата, бронь/документы/личный кабинет — отдельные согласованные
 задачи. Наш текущий целевой результат — выбор и заявка менеджеру, не OTA checkout.
 
-## Исполнение, проверки и публикация
-
-Один связный пакет: fresh short branch → exact claim #4217 → изменение текущего owner
-→ source/generated/hash вместе → узкие тесты и применимые Security/owner/isolation
-checks → exact artifact → визуальная проверка затронутых widths → merge в release
-при green → полезная накопленная публикация → readback/receipt.
-
-Проверять реальный served route и фактически подключённый CSS/JS. Изменение теста
-не доказывает его выполнение: сверять invocation/detection и артефакт. При реальном
-дефекте исправлять runtime; ошибочный тест исправлять по подтверждённому контракту,
-не ослабляя значимые assertions ради зелёного результата. Не восстанавливать retired fixtures.
-Для UI нужны точные screenshots; overflow-тестов недостаточно. Каждый пакет проверяет
-затронутые ширины/состояния, полная накопленная матрица — отдельный полезный рубеж.
-Docs-only: проверка ссылок/согласованности и применимые guards, без asset build/browser/deploy.
-
-Полезный рост разрешён; заменённые owners/rules/handlers удалять в том же пакете.
-Большой технический refactor-pass не подменяет продуктовую очередь: сначала доказанный
-дефект/польза, затем ограниченное исправление. При blocked-пакете записывать причину
-и продолжать независимый SEARCH-шаг. **Не останавливаться после одного PR, если есть
-время и следующий безопасный шаг.** Не повторять отказы инструментов, trigger-only
-commits, завершённые supplier operations или публикацию без проверки её фактического исхода.
-
-`checked`, `merged`, `preview-published`, `production-approved` — разные состояния.
-Активация preview с успешными HTTP checks, но красным финальным verification step,
-не считается полностью зелёной публикацией; сначала зафиксировать receipt и точный
-остаточный read-only verification, а не повторять deploy.
-
-Публиковать только `/_preview/search3-site-candidate/`, один свободный publisher,
-штатный exact artifact, noindex, disabled real leads, counter0, rollback и fingerprints.
-Production/main не менять, кроме отдельно уже одобренной preview infrastructure.
-#1334/#1493 production migration требует отдельного явного согласования конкретной версии.
-Tourvisor/API URL/payload, price arithmetic, lead transport/field mapping, Metrika/goals,
-analytics, catalog/manual mappings, server config и production SEO-indexation не менять.
-Не отправлять реальные заявки. Полная готовность INT/MATCH не блокирует независимый SEARCH.
-
-
-## Живой аудит 2026-09-12: ближайшие пакеты до 9.5
-
-[Дополнение к существующему техническому/визуальному аудиту](search3-technical-audit-20260912.md)
-содержит exact source/release/publication pins, реальные browser-сценарии,
-пять компонент SEARCH-QUALITY-1 по каждой оси, найденные причины и acceptance matrix.
-Это более позднее evidence, не вторая очередь или state tracker.
-
-Осмотренный published desktop: полнота формы **8.0/10**, filters/decision **8.0/10**,
-карточки/price/CTA **6.5/10** в указанном там scope. По остальным строкам полного
-измерения нет; особенно mobile и соответствие недоступному approved image —
-`not_measured`. Не переносить эти оценки на ещё не опубликованный release.
-
-Ближайшая конкретизация действующего порядка:
-
-1. Полный primary flow и постоянный контекст поездки: после submit сейчас скрыта
-   вся форма, URL не хранит условия, hotel chooser ограничен загруженным списком.
-   Исправлять существующие owners; полнота нового каталога — внешняя dependency.
-2. Принять текущую desktop-family работу [#2261](https://github.com/pyatkoff/poisk-turov-test/pull/2261),
-   включая три возраста, 1199/1200 и невысокий desktop; не создавать второго CSS writer.
-3. Календарь: 3-day live grid, локальные минимумы и точная дата проверены;
-   добрать sparse/full/mobile/unknown/transient-zero corpus. Не повторять #2080
-   и не считать однодневное скрытие новым дефектом без изменения требования.
-4. В существующем lifecycle обеспечить URL round-trip/reload/Back; в текущих
-   facets переиспользовать reviewed operator display identity, улучшить точный
-   бюджет и согласованность meal labels. Local filters — ноль supplier searches.
-5. Структурно уменьшить пустоты cards/expanded offers, убрать ложные counts
-   одинакового питания, объяснять readiness минимальной цены до раскрытия.
-   Уже merged #2246 и другие density-пакеты учитывать в свежем baseline.
-6. Compare: правильная сетка 1/2/3, раскрытие и восстановление условий сохранённого
-   снимка; selected не оттесняется полным compare. Не переиспользовать stale identity.
-7. Selected/lead: ясные unknown fee/flight labels и контекст возле контактов;
-   учесть уже merged #2204 и fresh controller/date claim. Проверки ошибок/draft/
-   consent через controlled fixtures, без реальных заявок и новых price/lead contracts.
-8. Накопленная mobile/desktop/mockup/a11y приёмка — все 12 строк отдельно ≥9.5.
-   Отсутствующий reference, непроверенный mobile или внешний handoff не считать passed.
-
-Publisher SSH reset и недоступные для просмотра mobile/reference artifacts отмечены
-как точные зависимости в audit. Они не запрещают независимый SEARCH-пакет,
-но не позволяют заявить публикацию/визуальную приёмку. Этот docs-only план
-не запускает supplier operations, build/deploy или production migration.
-
-## История и актуальные доказательства
-
-- [План до этой актуализации, immutable release 827fb8ab](https://github.com/pyatkoff/poisk-turov-test/blob/827fb8abc0b68cf6fa2ac6d9e1f6f391d72fe85c/docs/project/search3-product-development-plan.md): прежние этапы, опубликованные пакеты, исходные источники сравнения ОТА и dated evidence сохранены в Git без переписывания истории.
-- [Архив до 2026-09-09](search3-product-development-history-20260909.md).
-- [SEARCH — детализация существующих сценариев](anytour-roadmap/search.md).
-- Текущий claim, checked/merged/published pins и blockers — свежие #4217/#1646 и профильный audit; не копировать сюда новый конкурирующий checkpoint.
-
-Смена формулировок плана не утверждает, что перечисленные улучшения уже реализованы,
-опубликованы или достигли 9.5. Следующий пакет выбирается по текущему дефекту/evidence,
-а не по старому неисполненному `next_action`.

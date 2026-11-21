@@ -24,6 +24,7 @@ const cases = freeze([
   ['missing-routes', {testTotal: null}],
   ['empty-routes', pair([], [], null)],
   ['one-direction', pair([segment()], [], 110000)],
+  ['different-bags', pair([segment()], [segment({baggage:15})])],
   ['connections', pair([segment(), segment({departure: {port: 'BBB'}, arrival: {port: 'CCC'}})], [segment()])],
   ['airport-change', pair([segment(), segment({departure: {port: 'XXX'}, arrival: {port: 'CCC'}})], [segment()])],
   ['placeholder', pair([segment({number: 'EX000', baggage: 0, carryOn: '0', departure: {time: '00:00'}, arrival: {time: '00:00'}})], [segment()])],
@@ -39,6 +40,20 @@ const routes = (html, end) => {
   assert.ok(start >= 0 && stop > start, 'expected existing route wrapper');
   return html.slice(start, stop);
 };
+function checkReopenedPrices(api, candidate, helpers) {
+  const offer = {tour: {id: 'reopened'}, quoteListingTotal: 120000, total: 130000,
+    flightChoiceId: '1', variants: [candidate, alternative]};
+  const labels = (checked, listing) => {
+    const reopened = {...offer, tour: {...offer.tour, price: checked}, quoteListingTotal: listing};
+    const html = api.render(reopened, reopened.flightChoiceId, {...helpers, amount: value => Number(value?.value ?? value)});
+    return Array.from(html.matchAll(/<span data-flight-difference>([^<]*)<\/span>/g), match => match[1]);
+  };
+  for (const checked of [123456.5, {value: '123456.50', currency: 'RUB'}]) {
+    assert.deepEqual(labels(checked, offer.quoteListingTotal), ['Без доплаты', '+6543.50 ₽ к туру']);
+  }
+  assert.deepEqual(labels({value: 0}, 123456.5), ['Без доплаты', '+6543.50 ₽ к туру']);
+  assert.deepEqual(labels(undefined, 0), ['На 6543.50 ₽ дешевле выбранного', 'Выбрано']);
+}
 function collect(code) {
   const window = {};
   vm.runInNewContext(code, {window}, {filename: sourcePath});
@@ -53,6 +68,10 @@ function collect(code) {
       legHTML: (segments, label) => `<p>${esc(label)}: ${esc(JSON.stringify(segments || []))}</p>`,
       fuelText(offer) {fuelCalls.push([offer.tour.id, offer.flightChoiceId]); return 'уточняется';}
     };
+    if (name === 'same-carrier') {
+      checkReopenedPrices(api, candidate, helpers);
+      priceCalls.length = 0; fuelCalls.length = 0;
+    }
     const summary = api.pairSummary(candidate, helpers);
     const summaryRoutes = routes(summary, '<div class="chosen-flight-allowances">');
     assert.equal(priceCalls.length, 0, 'summary cannot calculate a price');
@@ -73,8 +92,16 @@ function collect(code) {
     output.push({name, summary});
     for (const selected of [null, '0', '1', '12', '99']) {
       priceCalls.length = 0; fuelCalls.length = 0;
-      const offer = freeze({tour: {id: name}, variants: [candidate, alternative]});
+      const offer = freeze({tour: {id: name}, total:123456.5, variants: [candidate, alternative]});
       const html = api.render(offer, selected, helpers);
+      const [brief, second] = Array.from(html.matchAll(/<div class="flight-comparison">(.+?)<\/div>/g), match => match[1]);
+      assert.ok(second.includes('+6543.50 ₽ к туру'), 'drafting a different pair keeps the original tour price as its reference');
+      if (name === 'same-carrier') assert.match(brief, /Без доплаты.*Вылет 09:10.*Багаж 20 кг/);
+      if (name === 'different-bags') assert.match(brief, /Багаж туда — 20 кг, обратно — 15 кг/);
+      if (name === 'mixed-allowances') assert.match(brief, /Разный багаж по участкам/);
+      if (name === 'one-direction') assert.match(brief, /−13456.50 ₽ к туру.*Багаж туда — 20 кг, обратно — уточняется/);
+      if (name === 'missing-routes') assert.match(brief, /data-flight-difference><\/span><span>Вылет уточняется<\/span><span>Багаж уточняется/);
+      if (name === 'placeholder') assert.match(brief, /Вылет уточняется.*Багаж туда — уточняется, обратно — 20 кг/);
       assert.equal(routes(html, '<div class="flight-price">'), summaryRoutes, `${name}: picker/summary route parity`);
       assert.equal((html.match(/class="flight-option flight-option-compact"/g) || []).length, 2);
       assert.ok(html.includes('data-flight-index="0"')); assert.ok(html.includes('data-flight-index="1"'));
@@ -89,6 +116,24 @@ function collect(code) {
   return output;
 }
 const output = collect(source);
+{
+  const app = fs.readFileSync(path.resolve(__dirname, '../v2/visual-search/app.js'), 'utf8');
+  const start = app.indexOf('function contactFlightAllowance('), end = app.indexOf('function finalFlightDetailsHTML(', start);
+  assert.ok(start >= 0 && end > start);
+  const window = {};
+  vm.runInNewContext(source, {window});
+  const summary = vm.runInNewContext('(' + app.slice(start, end).trim() + ')', {window});
+  const pairs = Object.fromEntries(cases);
+  assert.equal(summary(pairs['same-carrier'], 'baggage', 'Багаж'), 'Багаж 20 кг');
+  assert.equal(summary(pairs['same-carrier'], 'carryOn', 'Ручная кладь'), 'Ручная кладь 5 кг');
+  assert.equal(summary(pairs['different-bags'], 'baggage', 'Багаж'), 'Багаж туда — 20 кг, обратно — 15 кг');
+  assert.equal(summary(pairs['placeholder'], 'baggage', 'Багаж'), 'Багаж туда — уточняется, обратно — 20 кг');
+  assert.equal(summary(pairs['mixed-allowances'], 'carryOn', 'Ручная кладь'), 'Ручная кладь различается по участкам');
+  assert.equal(summary(pairs['unknown-facts'], 'baggage', 'Багаж'), 'Багаж уточняется');
+  const noBags = pair([segment({baggage: 0, carryOn: '0'})], [segment({baggage: 0, carryOn: '0'})]);
+  assert.equal(summary(noBags, 'baggage', 'Багаж'), 'Без багажа');
+  assert.equal(summary(noBags, 'carryOn', 'Ручная кладь'), 'Без ручной клади');
+}
 if (process.argv[2]) {
   assert.equal(process.argv[2], '--compare', 'expected --compare /path/to/exact-baseline.js');
   assert.ok(process.argv[3], 'baseline path required');

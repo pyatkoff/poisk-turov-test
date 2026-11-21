@@ -6,6 +6,95 @@ const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators
 const day=i=>new Date(Date.UTC(2026,9,28+i)).toISOString().slice(0,10);
 function fixture(){return Array.from({length:12},(_,i)=>({id:i+1,country:i===11?'9':'4',name:'Hotel '+i,subRegion:i%2?'Кемер':'Анталья',region:'Анталья',resort:'Кемер',stars:i%4+2,rating:i%3?4.8:3.2,beach:i%2?100:null,family:!!(i%2),spa:!!(i%3),amenities:i%2?[{key:'pool'}]:[],offers:Array.from({length:18},(_,j)=>({key:i+':'+j,search:{origin:j===17?'Казань':'Москва',country:j===16?'9':'4'},adults:j===15?3:2,ages:j===14?[0]:j===13?['17',0]:j===12?[17,0]:[0,17],day:day(j%7),nights:j===11?10:7,meal:j%2?'AI':'BB',mealPlanId:j%2?7:3,total:j===0?0:j===1?Infinity:100000+i*100+j*10,operator:j%2?'A':'B',flight:j%2?'charter':'regular'}))}));}
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first);return source.slice(a,b);}
+// Freeze the real clock, but retain native local calendar fields in each zone.
+// Execute both connected owners; neither bootstrap nor a supplier runs here.
+{
+ const bridge=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/live-bridge.js'),'utf8'),clock=section(source,'const dateObj =','const formatDate='),period=source.match(/^const startDay=[^\n]+/m)[0],restore=section(source,'function parseURLParty(','let compactSearchFrame='),previousTZ=process.env.TZ,NativeDate=Date,rows=[];
+ const cases=[
+  ['Europe/Kaliningrad','2026-10-18T22:30:00Z','2026-10-20','2026-11-02','2026-11-08'],
+  ['Europe/Kaliningrad','2026-10-19T09:00:00Z','2026-10-20','2026-11-02','2026-11-08'],
+  ['America/Los_Angeles','2026-10-19T06:30:00Z','2026-10-19','2026-11-01','2026-11-07'],
+  ['Europe/Kaliningrad','2026-12-31T22:30:00Z','2027-01-02','2027-01-15','2027-01-21'],
+  ['America/Los_Angeles','2027-01-01T07:30:00Z','2027-01-01','2027-01-14','2027-01-20'],
+  ['Pacific/Kiritimati','2026-12-31T10:30:00Z','2027-01-02','2027-01-15','2027-01-21'],
+  ['America/Los_Angeles','2026-03-02T07:30:00Z','2026-03-02','2026-03-15','2026-03-21'],
+  ['Europe/Berlin','2026-10-22T22:30:00Z','2026-10-24','2026-11-06','2026-11-12'],
+  ['UTC','2026-10-19T00:30:00Z','2026-10-20','2026-11-02','2026-11-08']
+ ];
+ try{for(const [zone,instant,min,from,to] of cases){
+  process.env.TZ=zone;const now=NativeDate.parse(instant);class FrozenDate extends NativeDate{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
+  const window={AnyTourPrototypeData:{},AnyTourPrototypeLead:{}},context={Date:FrozenDate,window,document:{getElementById:()=>null},data:{date:value=>value},URLSearchParams,structuredClone,state:{search:{},selectedDate:null},location:{search:''}};
+  vm.createContext(context);vm.runInContext(bridge,context);vm.runInContext(clock+'\n'+period+'\n'+restore+'\nglobalThis.clockPeriod={startDay,endDay};globalThis.dateOnly=[iso(dateObj("2026-12-31")),addDays("2026-12-31",1),addDays("2028-02-28",1),addDays("2026-03-28",2)];',context);
+  const initial=window.AnyTourPrototypeData.initialSearch;rows.push({zone,instant,actual:[context.clockPeriod.startDay,initial.from,initial.to],expected:[min,from,to]});
+  assert.deepEqual(Array.from(context.dateOnly),['2026-12-31','2027-01-01','2028-02-29','2026-03-30'],'UTC date-only arithmetic is independent of the local clock');
+  context.state.search={...initial};context.location.search='?'+new URLSearchParams({from,to,date:from,minNights:'7',maxNights:'10',adults:'3',ages:'0,17'});context.restoreURL(true);assert.deepEqual(JSON.parse(JSON.stringify(context.state.search)),{...initial,from,to,minNights:7,maxNights:10,adults:3,ages:[0,17]},'explicit valid URL dates and party remain exact');assert.equal(context.state.selectedDate,from);assert.deepEqual(JSON.parse(JSON.stringify(context.draft)),JSON.parse(JSON.stringify(context.state.search)));
+  const saved={...context,data:{clockStart:'2026-09-24',date:value=>value},state:{search:{...initial},selectedDate:null},location:{search:'?from=2026-10-01&to=2026-10-07&date=2026-10-03&adults=2&ages=0,8'}};vm.createContext(saved);vm.runInContext(clock+'\n'+period+'\n'+restore+'\nglobalThis.snapshotStart=startDay;',saved);saved.restoreURL(true);assert.equal(saved.snapshotStart,'2026-09-24');assert.equal(saved.state.search.from,'2026-10-01');assert.equal(saved.state.search.to,'2026-10-07');assert.equal(saved.state.selectedDate,'2026-10-03');assert.deepEqual(Array.from(saved.state.search.ages),[0,8]);
+ }}finally{if(previousTZ===undefined)delete process.env.TZ;else process.env.TZ=previousTZ;}
+ assert.deepEqual(rows.map(row=>row.actual),rows.map(row=>row.expected),'real-clock minimum/default dates follow local civil days across midnight, month/year and DST boundaries');
+ console.log('PASS local civil calendar day: '+rows.length+' native timezone/frozen-clock cases, actual app/bridge owners, UTC date-only/leap/year arithmetic, explicit URL/party and snapshot clockStart retained; supplier/lead HTTP0');
+}
+// Exercise the actual mobile disclosure without bootstrap/network suppliers.
+// The UI preference is independent of the applied dates, prices and URL.
+{
+ const nodes=new Map(),node=()=>({hidden:false,textContent:'',attrs:{},classList:{values:new Set(),toggle(k,v){v?this.values.add(k):this.values.delete(k);}},setAttribute(k,v){this.attrs[k]=v;}});
+ for(const key of ['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range'])nodes.set(key,node());
+ const state={search:{from:'2026-10-27',to:'2026-11-02',adults:2,ages:[0,8]},selectedDate:null,filters:{meals:['AI']},offers:[{key:'exact-a',total:198600}]},before=JSON.stringify(state);
+ const context={innerWidth:390,state,$:key=>{assert(nodes.has(key),key);return nodes.get(key);},departureRangeText:(from,to)=>from+' — '+to,location:{href:'unchanged'},updateURL:()=>assert.fail('disclosure must not write URL'),startSearch:()=>assert.fail('disclosure must not start a supplier search')};
+ vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip(){'),context);
+ const button=nodes.get('.result-calendar-disclosure'),preview=nodes.get('#calendar-preview'),heading=nodes.get('#price-calendar .result-date-heading');
+ const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);assert(toggle,'existing action dispatcher owns the disclosure');
+ const act=()=>vm.runInContext(toggle[1],context);
+ for(const width of [360,390,430]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,false);assert.equal(button.attrs['aria-expanded'],'false');assert.equal(preview.hidden,true);assert.equal(heading.hidden,true);assert.match(nodes.get('#result-calendar-range').textContent,/2026/);}
+ act();assert.equal(button.attrs['aria-expanded'],'true');assert.equal(preview.hidden,false);assert.equal(heading.hidden,false);
+ context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false,'late data/rerender keeps explicit expansion');
+ for(const width of [768,1280]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,true);assert.equal(preview.hidden,false,'desktop rail stays open');}
+ context.innerWidth=390;context.syncResultCalendarDisclosure();assert.equal(button.attrs['aria-expanded'],'true','return to mobile retains the explicit preference');
+ act();assert.equal(preview.hidden,true);context.innerWidth=1280;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false);context.innerWidth=360;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,true,'desktop does not rewrite collapsed mobile preference');
+ assert.equal(JSON.stringify(state),before);assert.equal(context.location.href,'unchanged');
+ state.selectedDate='2026-10-29';context.syncResultCalendarDisclosure();assert.match(nodes.get('#result-calendar-range').textContent,/2026-10-29 — 2026-10-29/,'collapsed context follows the actual applied single date');assert.equal(preview.hidden,true);
+ console.log('PASS result calendar disclosure: five ordinary widths, default collapsed/current range, explicit toggle, late rerender, responsive preference, selected-day context; source data/URL/supplier operations unchanged');
+}
+// Keep a flight card visible on a short viewport by moving the existing price
+// into the same inner scroll flow. Other tour modes retain the 200px policy.
+{
+ const block=section(source," if(m.open&&m.classList.contains('tour-dialog')){"," if(m.open&&(v?.scale||1)<=1.01){");
+ const run=(editing,height)=>{
+  const values=new Set(['tour-dialog',...(editing?['tour-flight-editing']:[])]),body={clientHeight:height,append(el){el.parentElement=this;}},footer={prepend(el){el.parentElement=this;}},price={parentElement:footer,getBoundingClientRect:()=>({height:87})};
+  const m={open:true,classList:{contains:k=>values.has(k),toggle(k,v){v?values.add(k):values.delete(k);},remove:k=>values.delete(k)},querySelector:()=>price};
+  const context={innerWidth:360,body,footer,m};vm.createContext(context);const update=()=>vm.runInContext(block,context);update();return {body,footer,price,values,update};
+ };
+ const short=run(true,231);assert.strictEqual(short.price.parentElement,short.body,'short flight choice moves price to preserve list space');short.body.clientHeight=338;short.update();assert.strictEqual(short.price.parentElement,short.body,'height subtraction and hysteresis avoid observer oscillation');short.body.clientHeight=700;short.update();assert.strictEqual(short.price.parentElement,short.footer,'a tall flight viewport restores the fixed price');
+ const ordinary=run(false,231);assert.strictEqual(ordinary.price.parentElement,ordinary.footer,'ordinary selected tour retains its existing 200px decision');
+ console.log('PASS flight viewport allowance: short list retains scroll-flow price, existing subtraction/hysteresis, tall recovery and other-tour200 policy');
+}
+// Execute the connected reveal owner: initial selection stays visible
+// through late ordinary price notices, until the user takes over the view.
+{
+ const run=(revealSelection,{top=620,bottom=670,missing=false,width=1280}={})=>{
+  const listeners=new Map(),geometry={bottom:400,notice:0},body={scrollTop:97,getBoundingClientRect:()=>({top:100,bottom:geometry.bottom}),addEventListener:(event,fn)=>listeners.set('body:'+event,fn)},modal={addEventListener:(event,fn)=>listeners.set('modal:'+event,fn)};
+  const selected=missing?null:{getBoundingClientRect:()=>({top:top+geometry.notice-body.scrollTop,bottom:bottom+geometry.notice-body.scrollTop})};
+  const draft={from:'2026-10-27',to:'2026-11-02',phase:0};
+  const dateContext={source:'form'};
+  const context={innerWidth:width,modalType:'dates',dateContext,calendarOpeningAnchor:null,calendarMonth:'2026-10-01',dateDraft:draft,$:selector=>selector==='#modal'?modal:selector==='#modal-body'?body:selector.includes('data-date=')?selected:null};
+  vm.createContext(context);vm.runInContext(section(source,'// Initial price notices may change','let dateContext='),context);vm.runInContext(section(source,'function revealCalendarMonth(',source.includes('function syncCalendarScopeDisclosure(')?'function syncCalendarScopeDisclosure(':'function calendarPriceInventory('),context);
+  context.revealCalendarMonth(revealSelection);
+  assert.deepEqual(draft,{from:'2026-10-27',to:'2026-11-02',phase:0},'reveal never changes the chosen range');
+  return {context,body,geometry,listeners,get scroll(){return body.scrollTop;},get selected(){return selected?.getBoundingClientRect();}};
+ };
+ const short=run(true);assert(short.selected.top>=100&&short.selected.bottom<=400,'selected departure is visible on initial short-desktop open');
+ short.geometry.bottom-=20;short.context.revealCalendarMonth(true,true);assert(short.selected.bottom<=short.geometry.bottom,'late price footer growth retains the initial visible departure');
+ short.geometry.notice=26;short.context.revealCalendarMonth(true,true);assert(short.selected.bottom<=short.geometry.bottom,'late error notice retains the initial visible departure');
+ const settled=short.scroll;short.context.revealCalendarMonth(true,true);assert.equal(short.scroll,settled,'unchanged geometry does not restart the scroll');
+ for(const event of ['pointerdown','wheel','touchstart','keydown','focusin']){const owned=run(true),scroll=owned.scroll;owned.listeners.get('modal:'+event)();owned.geometry.notice=26;owned.context.revealCalendarMonth(true,true);assert.equal(owned.scroll,scroll,event+' keeps the user view during late prices');}
+ const manual=run(true);manual.body.scrollTop-=80;manual.listeners.get('body:scroll')();const manualScroll=manual.scroll;manual.geometry.notice=26;manual.context.revealCalendarMonth(true,true);assert.equal(manual.scroll,manualScroll,'manual scroll wins over a late response');
+ const chosen=run(true);chosen.context.dateDraft.from='2026-10-28';const chosenScroll=chosen.scroll;chosen.geometry.notice=26;chosen.context.revealCalendarMonth(true,true);assert.equal(chosen.scroll,chosenScroll,'a new selected range disables the old opening anchor');
+ const restored=run(false);restored.body.scrollTop=83;restored.geometry.notice=26;restored.context.revealCalendarMonth(true,true);assert.equal(restored.scroll,83,'history/explicit month scope is never re-anchored by prices');
+ const mobile=run(false,{width:390});mobile.body.scrollTop=83;mobile.context.revealCalendarMonth(true,true);assert.equal(mobile.scroll,83,'mobile keeps its existing month scroll owner');
+ assert.equal(run(false).scroll,0,'explicit month navigation preserves the existing month-top behavior');
+ assert.equal(run(true,{top:220,bottom:270}).scroll,0,'a visible selected date does not cause unnecessary scrolling');
+ assert.equal(run(true,{missing:true}).scroll,0,'missing or disabled date does not invent a selection');
+ console.log('PASS ordinary selected-date reveal: short-desktop initial/late footer/error, user scroll/focus/action ownership, unchanged mobile/history/month scope and exact range retained');
+}
 const facetSection=source=>section(source,source.includes('function facetCountPlan(')?'function facetCountPlan(':'function countFacetOptions(','const hotelCountText=');
 const matchingCountSection=source=>source.includes('function matchingHotelPlan(')?section(source,'function matchingHotelPlan(','// Facet counts'):source.match(/^const countMatchingHotels=[^\n]+/m)[0];
 function make(source,hotels){

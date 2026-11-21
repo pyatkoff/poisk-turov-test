@@ -23,16 +23,19 @@ function page(number=1,state='available',ids=[number],searchRef=ref){
 }
 function samoPage(number=1,total=2){return {provider:'andromeda',generation:1,search_ref:'2'.repeat(64),page:number,pages_count:total,
  date_range:{from:params.dateFrom,to:params.dateTo},hotels:[],status:'complete',selection_enabled:false,first_page_only:false};}
+const responseHeaders=values=>({get(name){return values[name.toLowerCase()]??null;}});
+const searchWarning=line=>{assert(line.startsWith('[AnyTour search] '));return JSON.parse(line.slice('[AnyTour search] '.length));};
 function harness(){
- const stored=new Map(),calls=[],events=[],apiCalls=[];
+ const stored=new Map(),calls=[],events=[],apiCalls=[],warnings=[];
  let clock=Date.now();class ClockDate extends Date{static now(){return clock;}}
  const profile={clearOffers(src){for(const [k,v] of stored)if(v.source===src)stored.delete(k);},upsertLegacyOffer(id,tour,{source}){stored.set(source+':'+tour.offerRef,{id,tour,source});},refresh(){},reset(){stored.clear();},
   read(){const hotels=new Map();for(const v of stored.values()){if(!hotels.has(v.id))hotels.set(v.id,{id:v.id,name:'Hotel',canonicalLegacyIds:[v.id],tours:[]});hotels.get(v.id).tours.push(v.tour);}return [...hotels.values()];}};
  let fetchImpl=async (url,body)=>({ok:true,data:url.includes('api-andromeda-')?samoPage(body.page):page(body.page)});
  let apiImpl=async(action)=>action==='search_status'?{progress:100,status:'complete'}:action==='search_results'?[]:{};
  const sandbox={console,URL,Map,Set,WeakMap,AbortController,TextEncoder,Date:ClockDate,structuredClone,Uint8Array,setTimeout,clearTimeout,DOMException,
-  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,json:async()=>result};}};
+  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,headers:result.responseHeaders,json:async()=>{if(result.unreadable)throw Error('PRIVATE_UNREADABLE_BODY');return result;}};}};
  const root={location:{origin,href:origin+'/_preview/search3-next-candidate/visual-search/'},crypto:webcrypto,TextEncoder,
+  console:{warn(line){warnings.push(line);}},
   V2_CONFIG:{anexApi:endpoint,andromedaApi:origin+'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'},
   V2Runtime:{api:async(action,p)=>{apiCalls.push({action,params:p});return apiImpl(action,p);},setSearchId(){}},
   Search3CanonicalProfilesV1:{create:()=>profile}};
@@ -45,6 +48,8 @@ set(run,callback){activeSearch=run;generation=run.generation;searchId=run.search
 offers(){return project(owner.read(raw,{}),context).flatMap(h=>h.offers);},
 receipt(o){const key=anexConcreteKey(o);return key&&anexPackageReceipts.get(key.key);},
 applied(value){context=structuredClone(value);},
+expansionCatalog(){catalog.departures=[{id:1,name:'Москва'}];catalog.countries=[{id:'4',name:'Турция',tourvisorIds:['4']}];},
+dropProjectedOffer(){const actual=project;project=(list,s)=>{const rows=actual(list,s);rows[0]?.offers.pop();return rows;};},
 epoch(value){generation=value;activeSearch.generation=value;},
 search(value){searchId=value;activeSearch.searchId=value;},
 snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCurrentReceipts],receipts:[...anexPackageReceipts].map(([key,r])=>({key,...r,pending:Boolean(r.pending),quotes:[...r.quotes]})),active:Boolean(activeVerification),deadline:activeSearch.deadline});},
@@ -54,12 +59,278 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   continued:false,expired:false,sourceCounts:{},lastProgress:-10,lastRead:0,deadline:0};
  let notify=event=>events.push(event);
  root.__test.set(run,event=>notify(event));
- return {run,calls,events,apiCalls,stored,t:root.__test,root,advance(ms){clock+=ms;},
+ return {run,calls,events,apiCalls,warnings,stored,t:root.__test,root,now(){return clock;},advance(ms){clock+=ms;},
   setFetch(fn){fetchImpl=fn;},setApi(fn){apiImpl=fn;},setNotify(fn){notify=fn;},
   initial(data=page(),index=0,total=1){return root.__test.applyDirectAnex(run,data,params,index,total);},
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+function emptyAdditional(overrides={}){
+ return {source:'anex_b2b_additional_prices_daily',rows:[],total_count:0,truncated:false,
+  scope:'tour_program_date_nights_currency',offer_specific:false,currency:null,converted_currency:null,
+  per_person_or_package:'unknown',fuel_equivalence_verified:false,included_in_search_price:'unknown',
+  arithmetic_applied:false,final_price_verified:false,application_state:'unknown',application_reason:'rate_rows_unconfirmed',
+  party_surcharge:null,search_price:null,search_plus_additional:null,...overrides};
+}
+async function additionalHarness(evidence,mutate=value=>value,flightType='regular'){
+ const h=harness(),p=page();h.run.anexSessionCurrent=true;p.hotels[0].tours[0].flight_type=flightType;
+ await h.initial(p);const o=h.t.offers()[0];
+ h.setFetch(async(url,body)=>{
+  const identity={provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref};
+  if(body.action==='offer')return{ok:true,data:{...identity,status:'current',selection_state:'disabled',offer:{final_price_verified:false},
+   context:{status:'current',current_context_verified:true,selection_state:'disabled'},finalPriceReady:false}};
+  assert.equal(body.action,'additional_prices');
+  return{ok:true,data:mutate({...identity,status:'additional_prices',selection_state:'disabled',additional_prices:evidence})};
+ });
+ await h.root.AnyTourPrototypeData.verifyAnexConcrete(o);
+ return {...h,o,additional:()=>h.root.AnyTourPrototypeData.verifyAnexAdditional(o)};
+}
+test('valid empty APD is typed unconfirmed and the same receipt never repeats a request',async()=>{
+ for(const flightType of ['regular','charter'])for(const origin of [{},{source:'anex_b2b_additional_prices_daily_cache',cache_source:'anytour_anex_apd_rates'}]){
+  const h=await additionalHarness(emptyAdditional(origin),value=>value,flightType),before=JSON.stringify(h.t.offers());
+  const result=await h.additional();
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),{state:'additional_prices_unconfirmed',finalPriceVerified:false,arithmeticApplied:false,
+   applicationState:'unknown',applicationReason:'rate_rows_unconfirmed',rowCount:0,totalCount:0,truncated:false,
+   searchPrice:null,partySurcharge:null,calculatedTotal:null});
+  assert(Object.isFrozen(result));assert.strictEqual(await h.additional(),result);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);assert.equal(h.warnings.length,0);
+  assert.equal(JSON.stringify(h.t.offers()),before,'an empty rate list cannot change listing money or final-price authority');
+  h.t.stop();await assert.rejects(h.additional());assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ }
+});
+test('malformed or contradictory empty APD remains a sealed failure rather than zero or an unconfirmed receipt',async()=>{
+ const faults=[{source:'other'},{source:'anex_b2b_additional_prices_daily_cache',cache_source:'other'},
+  {scope:'other'},{offer_specific:true},{rows:[{}]},{total_count:1},{total_count:'0'},{truncated:true},
+  {application_state:'applied'},{application_reason:'party_unconfirmed'},{application_reason:undefined},
+  {arithmetic_applied:true},{final_price_verified:true},{currency:'RUB'},{converted_currency:'RUB'},
+  {per_person_or_package:'per_person_by_party_type'},{fuel_equivalence_verified:true},{included_in_search_price:false},
+  {search_price:{amount:'100000',currency:'RUB'}},{party_surcharge:{amount:'0',currency:'RUB'}},
+  {search_plus_additional:{amount:'100000',currency:'RUB'}},{search_price:undefined},{party_surcharge:undefined},
+  {search_plus_additional:undefined}];
+ for(const fault of faults){
+  const h=await additionalHarness(emptyAdditional(fault));
+  await assert.rejects(h.additional(),/применимый расчёт/);await assert.rejects(h.additional(),/уже запрашивались/);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);assert.equal(h.t.offers()[0].total,100000);
+ }
+ // The old sparse empty shape is deliberately malformed; it does not gain a success path.
+ const sparse=await additionalHarness({application_state:'unknown',rows:[],total_count:0});
+ await assert.rejects(sparse.additional(),/применимый расчёт/);assert.equal(sparse.calls.length,2);
+});
+test('empty APD requires the original exact envelope identity and action status',async()=>{
+ const faults=[{provider:'other'},{generation:2},{search_ref:'f'.repeat(32)},{offer_ref:offerRef(9)},
+  {selection_state:'enabled'},{status:'current'},{status:'additional_prices_unknown'},{status:'additional_prices_unavailable'}];
+ for(const fault of faults){
+  const h=await additionalHarness(emptyAdditional(),value=>({...value,...fault}));
+  await assert.rejects(h.additional(),/применимый расчёт/);await assert.rejects(h.additional(),/уже запрашивались/);
+  assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ }
+});
+test('applied APD retains its exact money contract and cannot fall back to unconfirmed on bad arithmetic',async()=>{
+ const evidence={...emptyAdditional(),rows:[{price_converted_adult:'50'}],total_count:1,
+  application_state:'applied',application_reason:'applied',arithmetic_applied:true,included_in_search_price:false,
+  converted_currency:'RUB',per_person_or_package:'per_person_by_party_type',
+  search_price:{amount:'100000',currency:'RUB',source:'direct_anex_search'},
+  party_surcharge:{amount:'100',currency:'RUB',source:'anex_b2b_additional_prices_daily'},
+  search_plus_additional:{amount:'100100',currency:'RUB',formula:'search_price_plus_program_date_party_additional'}};
+ const h=await additionalHarness(evidence),result=await h.additional();
+ assert.deepEqual(JSON.parse(JSON.stringify(result)),{state:'additional_prices',finalPriceVerified:false,arithmeticApplied:true,
+  applicationState:'applied',applicationReason:'applied',searchPrice:{amount:'100000',currency:'RUB'},
+  partySurcharge:{amount:'100',currency:'RUB'},calculatedTotal:{amount:'100100',currency:'RUB'}});
+ await assert.rejects(h.additional(),/уже запрашивались/);assert.equal(h.calls.filter(c=>c.body.action==='additional_prices').length,1);
+ const bad=await additionalHarness({...evidence,search_plus_additional:{...evidence.search_plus_additional,amount:'100101'}});
+ await assert.rejects(bad.additional(),/применимый расчёт/);assert.equal(bad.calls.filter(c=>c.body.action==='additional_prices').length,1);
+});
+test('a typed empty APD receipt leaves the explicit package quote path available',async()=>{
+ const h=await additionalHarness(emptyAdditional());await h.additional();
+ const choices=[{choice_ref:pairRef(1),legs:[{label:'TEST OUT'},{label:'TEST BACK'}],current:true}];
+ h.setFetch(async(url,body)=>{
+  assert.equal(body.action,'quote_start');
+  return{ok:true,data:{...expandIdentity(body),status:'quote_choices',selection_state:'disabled',final_price_verified:false,choices,
+   repricing:{enabled:true,max_pairs:3,used_pairs:0,remaining_pairs:3}}};
+ });
+ const quote=await h.root.AnyTourPrototypeData.verifyAnexPackage(h.o);
+ assert.equal(quote.state,'quote_choices');assert.equal(quote.finalPriceVerified,false);
+ assert.deepEqual(h.calls.map(c=>c.body.action),['offer','additional_prices','quote_start']);
+});
+test('infant listing retains an unknown charge through initial projection and one group expansion',async()=>{
+ const h=harness(),family={...params,childs:[1,8]},search={origin:'Москва',country:'4',adults:2,ages:[1,8],from:params.dateFrom,to:params.dateTo,minNights:7,maxNights:7};
+ h.t.applied(search);h.t.expansionCatalog();h.run.anexSessionCurrent=true;
+ const familyPage=(kind,id)=>{const p=page(1,'available',[id]);Object.assign(p.hotels[0].tours[0],{children:2,infants:1,kind,infant_charge:{status:'unknown',amount:null,included_in_search_price:null}});return p;};
+ await h.t.applyDirectAnex(h.run,familyPage('group_minimum',1),family,0,1);
+ const group=h.t.offers()[0];
+ assert.equal(group.total,100000);assert.deepEqual(Array.from(group.ages),[1,8]);assert.equal(group.raw.finalPriceVerified,false);
+ assert.deepEqual(JSON.parse(JSON.stringify(group.raw.infantCharge)),{status:'unknown',amount:null,includedInSearchPrice:null});
+ assert(Object.isFrozen(group.raw.infantCharge));assert.equal(h.calls.length,0);
+ h.setFetch(async(url,body)=>({ok:true,data:{...expandIdentity(body),status:'expanded',hotels:familyPage('concrete',2).hotels}}));
+ const result=await h.root.AnyTourPrototypeData.expandAnexGroup(group),exact=result.offers[0];
+ assert.equal(exact.total,100000);assert.deepEqual(Array.from(exact.ages),[1,8]);assert.equal(exact.raw.finalPriceVerified,false);
+ assert.deepEqual(JSON.parse(JSON.stringify(exact.raw.infantCharge)),{status:'unknown',amount:null,includedInSearchPrice:null});
+ assert.equal(h.calls.length,1);assert.equal(h.calls[0].body.action,'expand');assert.equal(h.apiCalls.length,0);
+});
+test('infant charge cannot acquire zero, inclusion or authority from malformed public facts',async()=>{
+ for(const fault of [{infants:0},{infants:2},{infants:'1'},{infant_charge:null},{infant_charge:{status:'unknown',amount:0,included_in_search_price:null}},
+  {infant_charge:{status:'unknown',amount:null,included_in_search_price:false}},{infant_charge:{status:'included',amount:null,included_in_search_price:null}}]){
+  const h=harness(),p=page();Object.assign(p.hotels[0].tours[0],{children:1,infants:1,infant_charge:{status:'unknown',amount:null,included_in_search_price:null}},fault);
+  await assert.rejects(h.t.applyDirectAnex(h.run,p,{...params,childs:[1]},0,1),e=>e.anexClientGuard==='infant_charge');
+  assert.equal(h.stored.size,0);assert.equal(h.calls.length,0);assert.equal(h.apiCalls.length,0);
+ }
+ const legacy=harness();await legacy.initial();assert.equal(legacy.t.offers()[0].raw.infantCharge,undefined,'ordinary no-infant projection stays unchanged');
+});
+test('stop preserves cleanup and the positive int31 generation contract at exhaustion',()=>{
+ const h=harness();h.t.epoch(2147483647);
+ const next=h.t.stop();assert(Number.isInteger(next)&&next>0&&next<=2147483647);
+ assert(h.run.controller.signal.aborted);
+ assert.equal(h.t.stop(),next+1,'ordinary within-page invalidation remains monotonic');
+});
+async function expansionHarness(ids=[1]){
+ const h=harness(),p=page(1,'available',ids);h.run.anexSessionCurrent=true;h.t.expansionCatalog();
+ p.hotels[0].tours.forEach(t=>t.kind='group_minimum');await h.initial(p);
+ const offers=h.t.offers();assert.equal(offers.length,ids.length);
+ return {...h,offers,o:offers[0],expand(o=offers[0]){return h.root.AnyTourPrototypeData.expandAnexGroup(o);}};
+}
+const expandDiagnostic={
+ 'X-AnyTour-Anex-Stage':'expand','X-AnyTour-Anex-Phase':'gateway','X-AnyTour-Anex-Failure':'ANEX_HTTP_ERROR',
+ 'X-AnyTour-Anex-Category':'http','X-AnyTour-Anex-Native-Action':'SearchTour_PRICES',
+ 'X-AnyTour-Anex-Upstream-Status':'502','X-AnyTour-Anex-Elapsed-Ms':'1450',private:'PRIVATE_TOKEN'
+};
+const expandIdentity=body=>({provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref});
+test('one sealed expansion retains safe producer facts and never repeats or promotes its listing',async()=>{
+ const h=await expansionHarness(),gate=deferred();h.setFetch(()=>gate.promise);
+ const first=h.expand(),duplicate=h.expand();assert.equal(h.calls.length,1,'pending duplicates share the canonical attempt');
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic,message:'PRIVATE_BODY'});
+ let failure;await assert.rejects(first,e=>{failure=e;return e.retryable===false&&e.code==='anex_expand_unconfirmed';});
+ await assert.rejects(duplicate,e=>e===failure);await assert.rejects(h.expand(),e=>e===failure);
+ assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'supplier_unavailable',httpStatus:502,
+  backendStage:'expand',backendPhase:'gateway',backendFailure:'ANEX_HTTP_ERROR',backendCategory:'http',nativeAction:'SearchTour_PRICES',upstreamStatus:502,elapsedMs:1450}]);
+ assert.equal(h.calls.length,1);assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.o.total,100000);assert.equal(h.o.raw.finalPriceVerified,false);
+ assert.equal(h.apiCalls.length,0,'diagnostics do not add a provider request');
+});
+test('legacy UNKNOWN and explicit post-HTTP terminal outcomes retain noReplay without inventing a cause',async()=>{
+ for(const status of ['expansion_unknown','expired','not_loaded']){
+  const h=await expansionHarness();h.setFetch(async(url,body)=>({ok:true,data:{...expandIdentity(body),status,retryable:false,
+   ...(status==='expansion_unknown'?{}:{diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Phase':'projection',
+    ...(status==='not_loaded'?{'X-AnyTour-Anex-Failure':'ANEX_EXPANSION_NOT_LOADED','X-AnyTour-Anex-Category':'application','X-AnyTour-Anex-Upstream-Status':'200'}:{})}})}}));
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.code===(status==='expired'?'offer_expired':'anex_expand_unconfirmed');});
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  const fact=searchWarning(h.warnings[0]);assert.equal(fact.code,status);assert.equal(fact.httpStatus,200);
+  if(status==='expansion_unknown')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200});
+  else {
+   assert.equal(fact.backendPhase,'projection');
+   if(status==='not_loaded')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200,
+    backendStage:'expand',backendPhase:'projection',backendFailure:'ANEX_EXPANSION_NOT_LOADED',backendCategory:'application',
+    nativeAction:'SearchTour_PRICES',upstreamStatus:200,elapsedMs:1450});
+  }
+ }
+});
+test('HTTP status alone does not invent a producer retry policy',async()=>{
+ for(const status of [400,429,502,503]){
+  const h=await expansionHarness();h.setFetch(async()=>({ok:false,status,error:'temporarily_unavailable'}));
+  await assert.rejects(h.expand(),e=>e.retryable===undefined);assert.equal(h.calls.length,1);
+  h.setFetch(async()=>({ok:false,status,error:'temporarily_unavailable',retryable:true}));
+  await assert.rejects(h.expand(),e=>e.retryable===true);assert.equal(h.calls.length,2,'an explicit unsealed retry remains possible');
+ }
+});
+test('post200 rejection retains only the actual fixed client guard and cannot borrow supplied diagnostics',async()=>{
+ const cases=[['identity','envelope_generation'],['empty','envelope_hotels_count'],['kind','tour_identity'],['search_ref','tour_identity'],
+  ['amount','amount'],['offer_ref','offer_scope'],['meal','selected_meal'],['stay','exact_stay'],
+  ['projection','projected_identity'],['mixed','unknown'],['unknown','unknown'],['coarse','envelope']];
+ for(const [fault,guard] of cases){
+  const h=await expansionHarness();
+  if(fault==='projection')h.t.dropProjectedOffer();
+  if(fault==='unknown')h.root.crypto={subtle:{digest(){throw Object.assign(new Error('PRIVATE_INTERNAL_URL'),{anexClientGuard:'PRIVATE_GUARD'});}}};
+  if(fault==='coarse')h.root.crypto={subtle:{digest(){throw Object.assign(new Error('PRIVATE_INTERNAL_URL'),{anexClientGuard:'envelope'});}}};
+  h.setFetch(async(url,body)=>{
+   const p=page(1,'available',fault==='mixed'?[2,3]:[2]),tour=p.hotels[0].tours[0];
+   if(fault==='kind')tour.kind='group_minimum';
+   if(fault==='search_ref')tour.search_ref='f'.repeat(32);
+   if(fault==='amount')tour.price.amount='1e9';
+   if(fault==='offer_ref')tour.offer_ref='PRIVATE_OFFER';
+   if(fault==='meal'||fault==='mixed')tour.meal='BB';
+   if(fault==='stay')tour.checkin='2026-10-11';
+   if(fault==='mixed')p.hotels[0].tours[1].checkin='2026-10-11';
+   return {ok:true,data:{...expandIdentity(body),status:'expanded',diagnostics:expandDiagnostic,clientGuard:'PRIVATE_PAYLOAD_GUARD',
+    ...(fault==='identity'?{generation:999}:{}),hotels:fault==='empty'?[]:p.hotels}};
+  });
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.searchFailure.clientPhase==='projection'&&e.searchFailure.clientGuard===guard;},fault);
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',httpStatus:200,clientPhase:'projection',clientGuard:guard}],fault);
+  assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.apiCalls.length,0);assert.equal(h.o.raw.finalPriceVerified,false);
+ }
+});
+test('envelope rejection retains the first predicate without reading later fields or logging their values',async()=>{
+ const later=()=>{throw new Error('PRIVATE_LATER_FIELD');};
+ const poison=(object,key)=>Object.defineProperty(object,key,{get:later});
+ const cases=[
+  ['provider',d=>{d.provider='PRIVATE_PROVIDER';poison(d,'generation');}],
+  ['generation',d=>{d.generation='PRIVATE_GENERATION';poison(d,'search_ref');}],
+  ['search_ref',d=>{d.search_ref='PRIVATE_SEARCH';poison(d,'offer_ref');}],
+  ['offer_ref',d=>{d.offer_ref='PRIVATE_OFFER';poison(d,'status');}],
+  ['status',d=>{d.status='PRIVATE_STATUS';poison(d,'hotels');}],
+  ['hotels_type',d=>{d.hotels={};poison(d.hotels,'length');}],
+  ['hotels_count',d=>{d.hotels.push({});poison(d.hotels[0],'local_id');}],
+  ['hotel_identity',d=>{d.hotels[0].local_id='PRIVATE_ID';poison(d.hotels[0],'tours');}],
+  ['tours_type',d=>{d.hotels[0].tours={};poison(d.hotels[0].tours,'length');}],
+  ['tours_empty',d=>{d.hotels[0].tours=[];}]
+ ];
+ for(const [predicate,change] of cases){
+  const h=await expansionHarness();h.setFetch(async(url,body)=>{
+   const data={...expandIdentity(body),status:'expanded',hotels:page(1,'available',[2]).hotels,
+    diagnostics:expandDiagnostic,clientGuard:'PRIVATE_PAYLOAD_GUARD'};
+   change(data);return {ok:true,data};
+  });
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false
+   &&e.searchFailure.clientPhase==='projection'&&e.searchFailure.clientGuard==='envelope_'+predicate;},predicate);
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',
+   httpStatus:200,clientPhase:'projection',clientGuard:'envelope_'+predicate}],predicate);
+  assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.apiCalls.length,0);assert.equal(h.o.raw.finalPriceVerified,false);
+ }
+});
+test('local guard hints do not reject an expansion with an exact surviving concrete offer',async()=>{
+ const h=await expansionHarness();h.setFetch(async(url,body)=>{
+  const p=page(1,'available',[2,3,4]);p.hotels[0].tours[1].meal='BB';p.hotels[0].tours[2].checkin='2026-10-11';
+  return {ok:true,data:{...expandIdentity(body),status:'expanded',clientGuard:'PRIVATE_PAYLOAD_GUARD',hotels:p.hotels}};
+ });
+ const expanded=await h.expand();assert.equal(expanded.offers.length,1);assert.equal(expanded.offers[0].raw.offerRef,offerRef(2));
+ assert.equal(expanded.offers[0].raw.finalPriceVerified,false);assert.equal(h.calls.length,1);assert.deepEqual(h.warnings,[]);assert.equal(h.apiCalls.length,0);
+});
+test('unreadable success and lost transport remain local unknown with no raw error or fake backend status',async()=>{
+ for(const response of [null,{ok:true}]){
+  const h=await expansionHarness();h.setFetch(async()=>{if(response===null)throw new Error('PRIVATE_TRANSPORT_URL');return response;});
+  await assert.rejects(h.expand(),e=>e.retryable===false);await assert.rejects(h.expand());assert.equal(h.calls.length,1);
+  const fact=searchWarning(h.warnings[0]);assert.equal(fact.clientPhase,response===null?'transport':'response');
+  assert.equal(Object.hasOwn(fact,'httpStatus'),response!==null);assert.equal(Object.hasOwn(fact,'backendFailure'),false);assert(!JSON.stringify(fact).includes('PRIVATE_'));
+ }
+});
+test('an unreadable non-2xx response remains local unknown rather than a new replay permission',async()=>{
+ for(const status of [200,502,503]){
+  const h=await expansionHarness();h.setFetch(async()=>({ok:status===200,status,unreadable:true,responseHeaders:responseHeaders(Object.fromEntries(Object.entries(expandDiagnostic).map(([k,v])=>[k.toLowerCase(),v])))}));
+  await assert.rejects(h.expand(),e=>e.retryable===false);await assert.rejects(h.expand());assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_response_unconfirmed',httpStatus:status,clientPhase:'response'}]);
+ }
+});
+test('malformed expansion diagnostics stay absent and a failed offer cannot poison another offer',async()=>{
+ const h=await expansionHarness([1,2]);h.setFetch(async()=>({ok:false,status:503,error:'temporarily_unavailable',retryable:false,
+  diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Failure':'PRIVATE_FAILURE','X-AnyTour-Anex-Phase':'PRIVATE_PHASE',
+   'X-AnyTour-Anex-Upstream-Status':'999','X-AnyTour-Anex-Supplier-Code':'-1','X-AnyTour-Anex-Elapsed-Ms':'1e3'}}));
+ await assert.rejects(h.expand());await assert.rejects(h.expand(h.offers[1]));assert.equal(h.calls.length,2,'independent exact offer has its own attempt');
+ await assert.rejects(h.expand());assert.equal(h.calls.length,2);assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));
+ for(const fact of h.warnings.map(searchWarning))for(const field of ['backendFailure','backendPhase','upstreamStatus','supplierCode','elapsedMs'])assert.equal(Object.hasOwn(fact,field),false);
+});
+test('switching offers retains an interrupted POST as local unknown without poisoning the independent offer',async()=>{
+ const h=await expansionHarness([1,2]),gate=deferred();h.setFetch(async(url,body)=>body.offer_ref===offerRef(1)?gate.promise
+  :{ok:true,data:{...expandIdentity(body),status:'expanded',hotels:page(1,'available',[3]).hotels}});
+ const pending=h.expand(),rejected=assert.rejects(pending,e=>e.retryable===false&&e.searchFailure.clientPhase==='transport');
+ const other=await h.expand(h.offers[1]);assert.equal(other.offers[0].raw.anexKind,'concrete');
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic});await rejected;
+ await assert.rejects(h.expand(),e=>e.retryable===false);assert.equal(h.calls.length,2,'returning to A cannot send a second POST A');
+ const fact=searchWarning(h.warnings[0]);assert.equal(fact.clientPhase,'transport');assert.equal(Object.hasOwn(fact,'backendFailure'),false,'interruption cannot borrow the late producer cause');
+});
+test('a stopped expansion cannot log or retain a late failure in the next generation',async()=>{
+ const h=await expansionHarness(),gate=deferred();h.setFetch(()=>gate.promise);const pending=h.expand();h.t.stop();
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic});
+ await assert.rejects(pending);assert.deepEqual(h.warnings,[]);assert.equal(h.calls.length,1);
+});
 test('initial endpoint rejection retains only its public code and HTTP status',async()=>{
  for(const [code,status] of [['invalid_request',400],['forbidden',403],['search_not_supported',422],['rate_limited',429],['supplier_timeout',502],['temporarily_unavailable',503]]){
   const h=harness();h.setFetch(async()=>({ok:false,status,error:code,message:'PRIVATE_MESSAGE',url:'PRIVATE_URL',diagnostic:{token:'PRIVATE_TOKEN'}}));
@@ -85,6 +356,58 @@ test('transport exception is observable without exporting its message or guessin
  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),{stage:'search',code:'unknown'});
  assert(!JSON.stringify(h.events).includes('PRIVATE_'));assert.equal(h.calls.length,1);
 });
+test('one initial failed response retains safe header diagnostics and emits one public warning',async()=>{
+ const h=harness(),headers={'x-anytour-anex-failure':'ANEX_HTTP_ERROR','x-anytour-anex-stage':'search',
+  'x-anytour-anex-category':'http','x-anytour-anex-native-action':'SearchTour_PRICES','x-anytour-anex-upstream-status':'503',
+  'x-anytour-anex-supplier-code':'101','x-anytour-anex-transport-code':'0','x-anytour-anex-elapsed-ms':'30219',
+  'x-anytour-anex-private':'PRIVATE_HEADER','authorization':'PRIVATE_TOKEN'};
+ h.setFetch(async()=>({ok:false,status:502,error:'supplier_unavailable',message:'PRIVATE_MESSAGE',url:'PRIVATE_URL',
+  responseHeaders:responseHeaders(headers)}));
+ await h.t.enrichAnex(h.run,params);await h.t.pollSearch(h.run);
+ const expected={stage:'search',code:'supplier_unavailable',httpStatus:502,backendFailure:'ANEX_HTTP_ERROR',backendStage:'search',
+  backendCategory:'http',nativeAction:'SearchTour_PRICES',upstreamStatus:503,supplierCode:101,transportCode:0,elapsedMs:30219};
+ assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.events.at(-1).sources.anex.failure)),expected);
+ assert.equal(h.warnings.length,1,'Terminal publication does not log the response again');
+ assert.deepEqual(searchWarning(h.warnings[0]),{provider:'anex',...expected});
+ assert(!JSON.stringify([...h.events,...h.warnings]).includes('PRIVATE_'));
+ assert.equal(h.calls.length,1);assert.deepEqual(h.calls[0],{url:endpoint,body:{action:'search',generation:1,params}});
+});
+test('malformed and missing response headers cannot leak text or change the ordinary error',async()=>{
+ const invalid={'x-anytour-anex-failure':'PRIVATE_FAILURE','x-anytour-anex-stage':'PRIVATE_STAGE','x-anytour-anex-category':'PRIVATE_CATEGORY',
+  'x-anytour-anex-native-action':'PRIVATE_ACTION','x-anytour-anex-upstream-status':'600','x-anytour-anex-supplier-code':'100000',
+  'x-anytour-anex-transport-code':'1000','x-anytour-anex-elapsed-ms':'120001'};
+ for(const headers of [undefined,null,{},responseHeaders(invalid),{get(){throw new Error('PRIVATE_HEADER_ERROR');}},
+  responseHeaders(Object.fromEntries(Object.keys(invalid).map(key=>[key,'PRIVATE_TOKEN\nPRIVATE_URL'])))]){
+  const h=harness();h.setFetch(async()=>({ok:false,status:502,error:'supplier_timeout',responseHeaders:headers}));
+  await h.t.enrichAnex(h.run,params);
+  const expected={stage:'search',code:'supplier_timeout',httpStatus:502};
+  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',...expected}]);
+  assert.equal(h.calls.length,1);assert(!JSON.stringify([...h.events,...h.warnings]).includes('PRIVATE_'));
+ }
+});
+test('header numbers retain only exact bounded integers including explicit zero',async()=>{
+ const limits={'upstream-status':599,'supplier-code':99999,'transport-code':999,'elapsed-ms':120000};
+ for(const value of ['0','max','-1','1.5',' 1','1 ','01','1e2',false,28]){
+  const h=harness(),headers=Object.fromEntries(Object.entries(limits).map(([key,max])=>['x-anytour-anex-'+key,value==='max'?String(max):value]));
+  h.setFetch(async()=>({ok:false,status:502,error:'supplier_unavailable',responseHeaders:responseHeaders(headers)}));
+  await h.t.enrichAnex(h.run,params);
+  const expected={stage:'search',code:'supplier_unavailable',httpStatus:502};
+  if(value==='0'||value==='max')Object.assign(expected,{upstreamStatus:value==='0'?0:599,supplierCode:value==='0'?0:99999,
+   transportCode:value==='0'?0:999,elapsedMs:value==='0'?0:120000});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',...expected}]);assert.equal(h.calls.length,1);
+ }
+});
+test('successful responses never log failure headers and a failing console cannot change an error',async()=>{
+ const h=harness();h.setFetch(async()=>({ok:true,data:page(),responseHeaders:responseHeaders({'x-anytour-anex-failure':'ANEX_HTTP_ERROR'})}));
+ await h.t.enrichAnex(h.run,params);assert.equal(h.run.sourceCounts.anex.status,'partial');assert.deepEqual(h.warnings,[]);assert.equal(h.calls.length,1);
+ const broken=harness();broken.root.console.warn=()=>{throw new Error('PRIVATE_CONSOLE_ERROR');};
+ broken.setFetch(async()=>({ok:false,status:429,error:'rate_limited'}));await broken.t.enrichAnex(broken.run,params);
+ assert.deepEqual(JSON.parse(JSON.stringify(broken.run.sourceCounts.anex.failure)),{stage:'search',code:'rate_limited',httpStatus:429});
+ assert.equal(broken.calls.length,1);assert(!JSON.stringify(broken.events).includes('PRIVATE_'));
+});
 test('continued endpoint rejection retains diagnostics and the consumed page fence',async()=>{
  const h=harness();await h.initial();h.setFetch(async()=>({ok:false,status:502,error:'supplier_timeout',message:'PRIVATE_MESSAGE'}));
  await h.t.continueSearch();
@@ -98,6 +421,7 @@ test('stopped initial search cannot publish a late rejected response',async()=>{
  const pending=h.t.enrichAnex(h.run,params);h.t.stop();
  d.resolve({ok:false,status:429,error:'rate_limited'});await pending;
  assert.equal(h.events.filter(event=>event.status==='error').length,0);assert.equal(h.run.sourceCounts.anex,undefined);assert.equal(h.calls.length,1);
+ assert.deepEqual(h.warnings,[],'A stopped generation cannot emit a late failure warning');
 });
 test('legacy endpoint: retain first page; do not invent continuation',async()=>{const h=harness(),p=page();delete p.continuation;await h.initial(p);assert.equal(h.stored.size,1);assert.equal(h.t.available(h.run),false);assert.equal(h.calls.length,0);assert.equal(await h.t.continueSearch(),false);});
 test('initial available page is immediate and does not auto-drain',async()=>{const h=harness();await h.initial();assert.equal(h.t.available(h.run),true);assert.equal(h.calls.length,0);assert.equal(h.run.sourceCounts.anex.status,'partial');});
@@ -128,7 +452,7 @@ test('invalid last offer cannot partially append the preceding valid offers',asy
 // verification path. A comparison read never executes this transport.
 const pairRef=n=>'anex_quote:'+String(n).repeat(64);
 async function pricedHarness({legacy=false,ids=[1]}={}){
- const h=harness(),used=new Map(),expires=Math.floor(Date.now()/1000)+600;
+ const h=harness(),used=new Map(),expires=Math.floor(h.now()/1000)+600;
  h.run.anexSessionCurrent=true;await h.initial(page(1,'available',ids));
  const offers=h.t.offers(),choices=[1,2,3,4].map(n=>({choice_ref:pairRef(n),legs:[{label:'TEST OUT '+n},{label:'TEST BACK '+n}],current:false}));
  h.setFetch(async(url,body)=>{
@@ -140,12 +464,20 @@ async function pricedHarness({legacy=false,ids=[1]}={}){
   assert.equal(body.action,'quote_calculate');pairs.add(body.choice_ref);
   const n=choices.findIndex(c=>c.choice_ref===body.choice_ref)+1;
   return{ok:true,data:{...identity,status:'quote_verified',selection_state:'preview_only',final_price_verified:true,choice:choices[n-1],choices,
-   price:{amount:String(100000+n*1000),currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:expires,...capability()}};
+   price:{amount:String(100000+n*1000),currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(h.now()/1000),expires_at:expires,...capability()}};
  });
  for(const o of offers){await h.root.AnyTourPrototypeData.verifyAnexConcrete(o);await h.root.AnyTourPrototypeData.verifyAnexPackage(o);}
  return{...h,offers,o:offers[0],choices,used,calculate(o,n){return h.root.AnyTourPrototypeData.verifyAnexPackage(o,pairRef(n));},prices(o=offers[0]){return h.root.AnyTourPrototypeData.anexPackagePrices(o);},count(){return h.calls.filter(c=>c.body.action==='quote_calculate').length;}};
 }
 const facts=rows=>JSON.parse(JSON.stringify(rows.map(row=>({choice:row.choiceRef,amount:row.finalPrice.amount,currency:row.finalPrice.currency}))));
+test('quote fixture uses the controlled clock when the outer wall clock crosses a second',async()=>{
+  const h=await pricedHarness(),wallNow=Date.now;
+  try{
+    Date.now=()=>h.now()+1000;
+    await h.calculate(h.o,1);
+    assert.deepEqual(facts(h.prices()),[{choice:pairRef(1),amount:'101000',currency:'RUB'}]);
+  }finally{Date.now=wallNow;}
+});
 test('A/B/cached A compares two exact whole-party prices with zero read effects and no fourth operation',async()=>{
  const h=await pricedHarness();assert.deepEqual(facts(h.prices()),[],'uncalculated choices stay unknown');
  await h.calculate(h.o,1);await h.calculate(h.o,2);const cachedA=await h.calculate(h.o,1);assert.equal(cachedA.choice.choiceRef,pairRef(1));assert.equal(h.count(),2);
@@ -190,14 +522,14 @@ test('expired, revoked, queued or mismatched receipt facts expose no stale amoun
 test('healthy pending B then queued cached A settles without another mutation or changing its retained queue',async()=>{
  const h=await pricedHarness();await h.calculate(h.o,1);const d=deferred(),transport=h.calls.length;
  h.setFetch(async(url,body)=>{await d.promise;return{ok:true,data:{provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'quote_verified',selection_state:'preview_only',final_price_verified:true,
-  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
+  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(h.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
  const b=h.calculate(h.o,2),a=h.calculate(h.o,1);assert.deepEqual(facts(h.prices()),[],'pending cached draft has no authority');d.resolve();await b;const settled=await a;
  assert.equal(settled.choice.choiceRef,pairRef(1));assert.equal(h.calls.length,transport+1);assert.equal(h.t.receipt(h.o).queuedChoice,pairRef(1),'reader must not clear the existing retained queue field');
  const before=h.t.snapshot();assert.deepEqual(facts(h.prices()),[{choice:pairRef(1),amount:'101000',currency:'RUB'},{choice:pairRef(2),amount:'102000',currency:'RUB'}]);assert.equal(h.t.snapshot(),before);
 });
 test('comparison rejects absent gross/RUB/final/pair provenance without changing normalized results',async()=>{
  const h=await pricedHarness();await h.calculate(h.o,1);const receipt=h.t.receipt(h.o),result=receipt.quotes.get(pairRef(1));
- for(const fault of [{priceBasis:undefined},{finalPriceVerified:false},{finalPrice:{amount:'101000',currency:'USD'}},{verifiedAt:0},
+ for(const fault of [{priceBasis:undefined},{finalPriceVerified:false},{finalPrice:{amount:'101000',currency:'USD'}},{verifiedAt:0},{verifiedAt:Math.floor(h.now()/1000)+1},
   {choice:{...result.choice,choiceRef:pairRef(2)}},{choice:{...result.choice,legs:[{label:'OTHER OUT'},result.choice.legs[1]]}},{choices:undefined}]){
   receipt.quotes.set(pairRef(1),Object.freeze({...result,...fault}));const before=h.t.snapshot();assert.deepEqual(facts(h.prices()),[]);assert.equal(h.t.snapshot(),before);
  }

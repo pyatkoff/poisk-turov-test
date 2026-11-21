@@ -55,6 +55,11 @@ w.matchMedia = () => ({matches: true, addEventListener() {}, removeEventListener
 w.CSS = {escape: value => String(value).replace(/[^a-zA-Z0-9_-]/g, x => '\\' + x)};
 w.IntersectionObserver = class {observe() {} unobserve() {} disconnect() {}};
 w.HTMLElement.prototype.scrollIntoView = function() {};
+// JSDOM has no Element.scrollTo; model the used options without claiming layout.
+w.HTMLElement.prototype.scrollTo = function(options = {}) {
+  if (Number.isFinite(options.top)) this.scrollTop = options.top;
+  if (Number.isFinite(options.left)) this.scrollLeft = options.left;
+};
 w.scrollTo = () => {};
 w.HTMLDialogElement.prototype.showModal = function() {this.open = true;};
 w.HTMLDialogElement.prototype.close = function() {this.open = false;};
@@ -63,7 +68,7 @@ w.fetch = async url => {
   assert.equal(url, './fixtures/live-search-2026-09-23.json', 'No supplier or contact API may be contacted');
   return {ok: true, json: async () => JSON.parse(fs.readFileSync(path.join(root, url), 'utf8'))};
 };
-for (const name of ['fixture-data.js', 'recorded-data.js', 'search-lifecycle-v1.js', 'flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js', 'preview-lead.js', 'offer-list-v1.js', 'hotel-details-v1.js', 'app.js']) {
+for (const name of ['fixture-data.js', 'recorded-data.js', '../prototype-search/search-lifecycle-v1.js', 'flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js', 'preview-lead.js', 'offer-list-v1.js', 'hotel-details-v1.js', 'app.js']) {
   const source=fs.readFileSync(path.join(root, name), 'utf8');
   // Exercise the preserved favorites UI in this fixture only. The product's
   // existing paused-shortlist flag is unchanged.
@@ -84,7 +89,7 @@ const assertRetiredSelectionAbsent=()=>{
 const continueToFlights=async()=>{
  if(!d.querySelector('[data-action="start-tour-flights"]'))return;
  click('[data-action="start-tour-flights"]');await settle(140);
- if(d.querySelector('[data-action="apply-flight"]')){click('[data-action="apply-flight"]');await settle();assert(d.querySelector('#prototype-lead-form'),'selected flights continue directly to application');click('#modal-back');await settle();}
+ if(d.querySelector('[data-action="apply-flight"]')){click('[data-action="apply-flight"]');await settle();assert(!d.querySelector('#prototype-lead-form'),'selected flights return to exact tour');click('[data-action="confirm-tour"]');await settle();assert(d.querySelector('#prototype-lead-form'),'explicit continue opens application');click('#modal-back');await settle();}
 };
 (async()=>{
  await settle(200);
@@ -135,6 +140,8 @@ const continueToFlights=async()=>{
 
    click('[data-action="close-modal"]');await settle();
   }
+  const firstCard=d.querySelector('.hotel-card [data-action="offer"]').closest('.hotel-card');
+  const expectedRoute=d.querySelector('#origin-label').textContent+' → '+firstCard.querySelector('.hotel-location>span').textContent;
   click('.hotel-card [data-action="offer"]');await settle(130);await continueToFlights();
   if(scenario==='mixed'){
    const before=d.querySelector('#modal-footer .footer-total strong').textContent;
@@ -150,17 +157,24 @@ const continueToFlights=async()=>{
   if(scenario==='incomplete')assert.match(d.querySelector('#modal-body').textContent,/Багаж.*уточняется/s);
   const expected=d.querySelector('#detail-total').textContent;
   const chosenConditions=d.querySelector('.chosen-trip').textContent;
-  const exactRows=[...d.querySelectorAll('.chosen-stay dd')].map(el=>el.textContent);
+  const exactRows=Object.fromEntries([...d.querySelectorAll('.chosen-stay dl > div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]));
   click('[data-action="confirm-tour"]');await settle();
   const form=d.querySelector('#prototype-lead-form');assert(form,scenario+' reaches contact check');
-  assert.equal(d.querySelector('.chosen-trip').textContent,chosenConditions,scenario+' carries the same trip into the application');
-  assert.deepEqual([...d.querySelectorAll('.chosen-stay dd')].map(el=>el.textContent),exactRows);
+  const review=d.querySelector('.application-review-card');assert(review,scenario+' uses the approved contact summary');
+  const heading=review.querySelector('.application-review-heading');
+  assert.equal(heading.querySelector('.application-route').textContent,expectedRoute,scenario+' confirms the same departure and destination as the selected listing');
+  assert.equal(!!review.querySelector('[data-action="change-room"]'),scenario==='mixed',scenario+' offers to change the stay only when other rooms or meals are available');
+  assert.equal(heading.querySelector('span').textContent+heading.querySelector('small').textContent,chosenConditions,scenario+' carries the same dates, nights and party into the application');
+  assert.equal(heading.querySelector('.application-review-stay').textContent,exactRows['Номер']+' · '+exactRows['Питание'],scenario+' exposes the full exact room and meal before contacts');
+  const detailRows=Object.fromEntries([...review.querySelectorAll('details.application-review > dl > div')].map(row=>[row.querySelector('dt').textContent.replace('Туроператор','Оператор'),row.querySelector('dd').textContent]));
+  assert.deepEqual(detailRows,Object.fromEntries(Object.entries(exactRows).filter(([key])=>!['Номер','Питание'].includes(key))),scenario+' retains the same operator and placement details');
   assert.equal(d.querySelectorAll('.summary-price').length,1,'One application total');
   assert(d.querySelector('#modal-footer .summary-price'),'The application total remains beside its action');
   assert(!form.querySelector('.rehearsal-optional').open,'Optional fields start collapsed');
   const flightDetails=d.querySelector('.summary-flight-details');assert(flightDetails,scenario+' keeps flight details');
   assert.equal(flightDetails.open,false,scenario+' keeps mobile flight details collapsed');
-  assert(form.compareDocumentPosition(flightDetails)&w.Node.DOCUMENT_POSITION_PRECEDING,scenario+' shows the approved tour/flight review before the contact form');
+  assert(form.compareDocumentPosition(heading)&w.Node.DOCUMENT_POSITION_PRECEDING,scenario+' presents the exact stay before the contact form');
+  assert(form.compareDocumentPosition(flightDetails)&w.Node.DOCUMENT_POSITION_FOLLOWING,scenario+' keeps the flight details after the ways to continue');
   assert(flightDetails.querySelector('.saved-flight-summary'),scenario+' reveals both supplied flight legs');
   assert.equal(d.querySelector('#modal-title').textContent,'Заявка на тур');
   const applicationRoute=w.history.state?.['anytour.prototype.v18.ui.v1'];
@@ -198,7 +212,7 @@ const continueToFlights=async()=>{
  await change('snapshot');
  const hotelQuery=d.querySelector('#hotel-query');hotelQuery.value='THE LAILA';hotelQuery.dispatchEvent(new w.Event('input',{bubbles:true}));await settle(220);
  click('.hotel-card [data-action="hotel-details"]');await settle();
- click('[data-action="close-modal"]');await settle();click('.hotel-card [data-action="offer"]');await settle();await continueToFlights();assert(!d.querySelector('[data-action="confirm-tour"]'),'Snapshot cannot open a fake application or summary');assert.match(d.querySelector('.tour-recording-limit').textContent,/Перейти к заявке здесь нельзя/);assert(!d.querySelector('#prototype-lead-form'),'Real snapshot must not gain invented quote/flights');click('#modal-footer [data-action="close-modal"]');await settle();assert(!d.querySelector('#modal').open,'Snapshot returns to results');
+ click('[data-action="close-modal"]');await settle();const snapshotCard=d.querySelector('.hotel-card [data-action="offer"]'),snapshotKey=snapshotCard.dataset.key;snapshotCard.click();await settle();assert(d.querySelector('#hotel-room-count'),'Snapshot card enters the existing hotel rooms');const snapshotChoice=d.querySelector('.room-offer-choice[data-offer-key="'+snapshotKey+'"] [data-action="select-hotel-offer"]');assert(snapshotChoice,'Snapshot retains the exact clicked room action');assert(!d.querySelector('[data-action="confirm-tour"]')&&!d.querySelector('#prototype-lead-form'));snapshotChoice.click();await settle();await continueToFlights();assert(!d.querySelector('[data-action="confirm-tour"]'),'Snapshot cannot open a fake application or summary');assert.match(d.querySelector('.tour-recording-limit').textContent,/Перейти к заявке здесь нельзя/);assert(!d.querySelector('#prototype-lead-form'),'Real snapshot must not gain invented quote/flights');click('#modal-footer [data-action="close-modal"]');await settle();assert(!d.querySelector('#modal').open,'Snapshot returns to results');
  await change('family');
  let recordedHotels;await w.AnyTourPrototypeData.search(w.AnyTourPrototypeData.initialSearch,e=>{if(e.type==='results')recordedHotels=e.hotels;});
  const record={schemaVersion:1,kind:'demo',currency:'RUB',countryName:'Турция',capturedAt:'2026-09-24T12:00:00Z',source:'Synthetic fixture for import regression',search:structuredClone(w.AnyTourPrototypeData.initialSearch),hotels:structuredClone(recordedHotels),entries:[]};

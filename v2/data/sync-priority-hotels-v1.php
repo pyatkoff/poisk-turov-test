@@ -37,7 +37,7 @@ function ph_upsert(PDO $pdo,array $row,string $now): bool {
 }
 
 $limitRaw=filter_var(ph_arg($argv,'limit','500'),FILTER_VALIDATE_INT); $limit=$limitRaw===false?500:max(1,min(500,(int)$limitRaw));
-$pdo=v2_data_db(); $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids()))); $csv=implode(',',$ids);
+$pdo=v2_data_db(); $registry=v2_top500_registry($pdo); v2_top500_log_resolution($registry); $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids($registry)))); $csv=implode(',',$ids)?:'0';
 $present=$pdo->query("SELECT id FROM catalog_hotels WHERE id IN ($csv) AND is_active=1")->fetchAll(PDO::FETCH_COLUMN)?:[];
 $missing=array_values(array_diff($ids,array_map('intval',$present))); $batch=array_slice($missing,0,$limit); $now=(new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 if($batch===[]){echo "PRIORITY_HOTEL_SYNC_UP_TO_DATE total=".count($ids)."\n";exit(0);} 

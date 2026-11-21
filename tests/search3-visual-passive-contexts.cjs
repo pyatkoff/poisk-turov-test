@@ -11,7 +11,7 @@ function owner(source,kind){
  if(kind==='capture')return section(source,source.includes('function providerHistoryRoute(')?'function providerHistoryRoute(':'function uiRoute(){','function rememberUIRoute(){');
  if(kind==='restore')return section(source,'function retainedProviderView(o){','function rememberProviderView(')+section(source,source.includes('function restoreProviderHistoryRoute(')?'function restoreProviderHistoryRoute(':'function reopenUIRoute(route){','function restoreHistoryView(route){');
  if(kind==='scope')return section(source,source.includes('function calendarScopeHTML(')?'function calendarScopeHTML(':'function renderCalendarScope(){','function mealPreviewModel(){');
- if(kind==='dates')return section(source,"function createDateContext(source='form'){",'const dateContextLabel=')+section(source,source.includes('function prepareDatePicker(')?'function prepareDatePicker(':"function openDates(source='form',restore=null){",'function refreshCalendarPriceCache(){');
+ if(kind==='dates')return (source.includes('function calendarPriceUnits(')?section(source,'function calendarPriceUnits(','function calendarStripEntries('):'')+section(source,"function createDateContext(source='form'){",'const dateContextLabel=')+section(source,source.includes('function prepareDatePicker(')?'function prepareDatePicker(':"function openDates(source='form',restore=null){",'function refreshCalendarPriceCache(){');
  return section(source,'function calendarSelectionPhase(){','function openCalendar(){');
 }
 function observe(source,s){
@@ -20,9 +20,10 @@ function observe(source,s){
  const record=(name,...args)=>trace.push([name,...args.map(normalize),{modal:ctx?.modalType,selected:ctx?.selectedOffer?.key,phase:ctx?.dateDraft?.phase,month:ctx?.calendarMonth}]);
  const call=(name,fn)=>(...args)=>{record(name,...args);return fn?.(...args);};
  function node(key){
+  if(key==='#messenger-methods'&&!s.messengerMethods)return null;
   if(s.noNode&&(key==='#date-selection-price'||key==='.calendar-context'))return null;
   if(nodes.has(key))return nodes.get(key);
-  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:true,offsetHeight:80,dataset:{room:'r1'},style:{removeProperty:()=>{},setProperty:call('style:'+key)},
+  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:key==='#messenger-methods'?false:true,offsetHeight:80,dataset:{room:'r1'},style:{removeProperty:()=>{},setProperty:call('style:'+key)},
    classList:{contains:()=>false,toggle:()=>{}},getBoundingClientRect:()=>({top:0,bottom:0}),querySelector:()=>null,closest:()=>null,
    scrollIntoView:call('scrollIntoView:'+key),setAttribute:call('attribute:'+key)},
    {set:(t,k,v)=>{record('write:'+key,k,v);t[k]=v;return true;}});
@@ -76,10 +77,21 @@ for(const noNode of [false,true])for(const noAges of [false,true])for(const noFi
 for(const phase of ['loading','error','idle','complete'])for(const prices of [[null,null,null],[110,90,null],[0,-1,NaN]])for(const range of [{from:'2026-10-14',to:'2026-10-16'},{from:'2026-10-15',to:'2026-10-15'},{from:'',to:''},{from:'2026-10-14',to:'2026-11-10'}])add('price:'+JSON.stringify([phase,prices,range]),{kind:'price',phase,prices,range});
 add('catalog loading',{kind:'price',catalogLoading:true,prices:[120]});add('catalog error',{kind:'price',catalogLoading:true,catalogError:true});add('absent price node',{kind:'price',noNode:true});
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
+for(const fromResults of [false,true]){
+ for(const [noAges,expected] of [[false,'От, тыс. ₽ · доплата за младенца уточняется'],[true,'От, тыс. ₽ · весь тур за 2 взрослых']]){
+  const view=observe(source,{kind:'dates',fromResults,noAges});
+  const markup=view.trace.find(([name])=>name==='showModal')[4];
+  assert.equal(markup.match(/class="picker-caption calendar-units">([^<]*)<\/p>/)[1],expected);
+ }
+}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after passive route/calendar observations');
-if(!process.argv.includes('--capture'))assert.equal(digest,'161e34c0b2119a96a31279c66959d93399a3bcbd4dcc329afef061c58e50a514','approved calendar and retained provider context observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,'13cbd4f3a7ce53329dcadfd56ae5be6dffaf3bb97a92f9f37f35272ad7cefe3b','calendar units honor infant party scope and retained provider context observations');
 assert.equal(crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,203))).digest('hex'),'351941150be5e80e8a32a115c77132f8abb8563acf191ed81e99d66d4ce316cb','unchanged b74ac0 provider-view history records');
+const messengerScenario={kind:'restore',type:'anex-application',viewType:'anex-quote',verified:true,messengerMethods:true};
+const messengerRestore=observe(source,messengerScenario),scrollOf=result=>result.dom.find(([key])=>key==='#modal-body')[1].scrollTop;
+assert.equal(scrollOf(messengerRestore),0,'Forward opens the actually rendered messenger chooser at its top');
+assert.notEqual(scrollOf(observe(source.replace("if(methods&&!methods.hidden)$('#modal-body').scrollTop=0;","if(methods&&!methods.hidden)$('#modal-body').scrollTop=83;"),messengerScenario)),0,'old telephone scroll into the chooser is detected');
 const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
 assert(changed(source.replace('view.offer.raw===o.raw','true')),'retained raw identity mutation detected');
 assert(changed(source.replace("modalType==='andromeda-flights'&&!view.pending","modalType==='andromeda-flights'")),'pending history choice mutation detected');

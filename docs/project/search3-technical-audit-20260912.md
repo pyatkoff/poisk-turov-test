@@ -1145,3 +1145,632 @@ Physical iPhone/Safari/OSkeyboard/safearea/text-only200% UNVERIFIED; concrete fu
 перед NEXT переносом отдельно. Нет MAIN/production/provider/money/DB/LOCAL/MATCH/lead/analytics/
 workflows/secrets/чужих schedules изменений; liveTV+directANEX, SAMOpaused сохраняются.
 Sourceclaim6097349819/publisher6097466847/auditclaim6097515037 terminal после audit exact-headCI/release/readback.
+
+
+## SEARCH-QUALITY-1 — contact46 / Site127, 2026-10-10
+
+**Работающий эффект.** На мобильном экране заявки после смены пары рейсов
+первое поле телефона теперь полностью видно без прокрутки. Свёрнутая сводка
+сохраняет название, даты/ночи, группу и точные возраста детей; полные номер,
+питание, оператор, рейсы и багаж раскрываются в прежнем review. Итог за всех
+и действие остаются на экране. Исправлен конкретный family-contact дефект,
+существующие application/contact/style owners; money/identity/eligibility/
+draft/consent/transport owners не менялись. Новой формы/renderer/helper/override слоя нет.
+
+**Exact artifact.** Site127/package46/v169, pushed source
+`59ab358019454c953e7726991f7356cf6f607da3`;
+native version
+`appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_a6fbb069497c81918b86f1c8c64ee83b`;
+deployment `appgdep_6aca399b449c8191a4dac8c9f0240464` SUCCEEDED
+2026-10-10T13:12:11.639501Z. Stock local gzip SHA256
+`6abb9dece0aa3dcc75f36f3f0eab9edae01d8d8a4020dff587ea0209388c6564`;
+native normalized tar SHA256
+`6513c82913c8ad0fd335211e870db2a14d8882a9687bd89a3914418f02c53261`.
+Exact native source/version/deployment/archive readback совпал;
+actual footer46/v169. Acceptance-only source `1354712a8f299750415c227bcc50bdec48d9a173`
+retains current images, receipt and independent review; changed paths only
+qa/contact46/**, dist/hosting byte-identical installed59ab358. Второго save/deploy нет.
+Public URL verified by actual Chrome:
+https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=360
+
+**Оценка, сопоставимость и новый scope.** Та же SEARCH-QUALITY-1:
+12 исторических строк/11 обязательных, Compare deferred, те же пять
+критериев0/1/1.5/2. N=not_measured, с N сумма не вычисляется. Previous exact
+Site126/source982ff812/acceptance2f4ed600, formal report
+[#1646/6097561905](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6097561905).
+Прежние measured criteria переносятся с указанным exact evidence.
+Прежний MobileC5=2 относится к profile corpus и не объявлен падением.
+Новый short-family-contact corpus имеет первый formal baseline на retained
+before126; он не заменяет прежний scope и не является новой рубрикой/tracker.
+Экспертная оценка не измеряет конверсию.
+
+| Параметр | Previous126: пять баллов; сумма | Current127: пять баллов; сумма | Delta; доказательство или недостающий критерий |
+| --- | --- | --- | --- |
+| Desktop visual | 2/2/2/2/N; N | 2/2/2/2/N; N | measured0; no full matched desktop gain. C5 intermediate/short form+rail+cards целиком отсутствует |
+| Mobile visual — прежний profile scope | 2/2/2/N/2; N | 2/2/2/N/2; N | measured0; unchanged profile criteria carry. C4 full long room/meal/operator/baggage+family0–3/text200 не закрыт |
+| Соответствие целевому макету | N/N/N/N/N; N | N/N/N/N/N; N | Нет полного exact approved-reference form/calendar/filters/card/mobile сравнения |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; owner byte-identical, previous exact actual evidence + current full five-width compiled suite |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; exact facets/chips/reset/same-offer/state carry, results suite PASS |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; source owner byte-identical, prior125→126 density gain не повторён |
+| Календарь | 2/N/2/2/2; N | 2/N/2/2/2; N | measured0; full sparse/full geometry отсутствует, owner byte-identical |
+| Compare / shortlist — deferred | N/N/N/N/N; deferred | N/N/N/N/N; deferred | Вне11 обязательных, не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 в bounded prototype scope; actual same pair/party/total/Back + compiled independent offers |
+| Lead-form handoff | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 в bounded scope; actual validation/focus/review/consent/return и current compiled guards |
+| Accessibility / state UX | 2/2/N/2/2; N | 2/2/N/2/2; N | measured0; labels/focus/state retained, полный readability/targets/text200 corpus отсутствует |
+| Архитектурная чистота / стабильность | N/N/N/N/N; N | N/N/N/N/N; N | Нет полного comparable5-criteria baseline; focused invariants не превратились в quality sum |
+
+**Наблюдаемый прирост в новом одинаковом scope существующего MobileC5.**
+
+| Канонический критерий и scope | Before126 baseline | After127 | Delta | Основание |
+| --- | --- | --- | --- | --- |
+| MobileC5 — отсутствие перекрытий/лишней прокрутки, initial short-family-contact360/390/430×480 | 1.5/2 — первый baseline | 2/2 | +0.5 | Поле телефона из-под первого viewport перемещено полностью в видимую body; итог/action остаются на экране |
+
+Это +0.5 конкретного критерия в одинаковом расширенном scope, **не +0.5
+к придуманной полной Mobile сумме**, не повторная награда за предыдущий profile2
+и не baseline recalibration. MobileC1composition2/C2readability2/C3actions2/C4N/
+C5profile2 с новым accepted contact2; полная сумма остаётсяN.
+
+**Matched before/after.** Тот же явно отмеченный demo AzureBayResort,
+1→8Oct/7nights, 2adults/children0+8; Standard demo-room/all-inclusive/demo-operator.
+Применена пара2: outbound06:05→10:40 SVO→AYT, inbound08:05→12:40 AYT→SVO,
+airlineA/demo, baggage20kg/hand5kg. Whole-party187700 вместо186400;
+demonstration_price, не live/final_price_verified и не supplier recalculation.
+
+Actual360/390/430×480, review collapsed, initial scroll0:
+phone top469.953125/bottom515.953125→top332.265625/bottom378.265625;
+body bottom343.828125→380.71875; footerheight136.171875→99.28125;
+CTA134–140×70.78125. Phone теперь целиком внутриbody, horizontaloverflow0.
+Имя/даты/ночей/точные возраста0+8 видны, «Условия» однозначно раскрываются;
+доступное summary сохраняет полное «Условия тура и перелёта».
+Не уменьшаются genuine mobile photo1.8/открытая seven-price month/year rail/form/calendar.
+
+Actual768/1280 iframe modal/phone/footer geometry без overflow;
+before outer-wrapper wide frames частично обрезаны и не доказывают
+полный desktop visual gain. Дополнительно actual full desktop1363×936,
+application review open по существующему desktop default: две колонки,
+контакты/phone/consent/CTA видны без overlap, footer/action48.39px.
+Это supplemental after coverage, не замена matched1280 baseline.
+Reopen application defaults collapsed наmobile как прежний renderer;
+перенос open-state через этот переход не заявлен. Native viewport change
+сохраняет текущий review state; отдельный compiled native review-state PASS.
+
+**Действия и пять причин fully-covered затронутых строк.**
+
+- Lead2/2/2/2/2=10 в bounded прототипном scope, delta0:
+  C1 правильный same exact offer/дат/ночей/party0+8/187700, доступные room/meal/operator;
+  C2 первое поле/action видимы и actual settled error показывает phonefocus;
+  C3 empty-phone и consent errors видимы; pending/unknown/expired guards current suites;
+  C4 valid test phone+checked no-error и actual reopen; compiled draft preservation и
+  consent revocation для другого offer/другой применённой pair;
+  C5 controlled Back сохраняет состав/условия/187700, compiled passive/cancel guards,
+  zero real sending. Эти2 не являются real lead transport/physical acceptance.
+- Selected2/2/2/2/2=10 в bounded scope, delta0:
+  C1 offer/key/generation и distinct offers guards byte-identical+current tests;
+  C2 Standard/all-inclusive/demo-operator/ages0+8 actual, families0–3 semantic tests;
+  C3 full rendered demo-flight/baggage facts и existing honestunknown gates;
+  C4 same whole-party187700/changed-price status без новых money/fuel formulas;
+  C5 native Back/reopen и compiled cancel/other-offer/consent без подмены тура.
+- Form2/2/2/2/2=10 carry:
+  C1 city/destination и C2 dates/nights прежние exact43/45 actions;
+  C3 children0–3/ages semantic current suite плюс previous43 actual0/8/17;
+  C4 canonical IDs OR/cap20/21st rejection/query/Cancel/Apply previous45+current suite;
+  C5 budget/primary-advanced previous exact evidence. Owner byte-identical, gain0.
+- Filters2/2/2/2/2=10 carry:
+  C1 facets; C2 chips/count; C3 reset/zero; C4 same-offer combinations;
+  C5 no-supplier state предыдущий exact42/45 corpus и current results suite, gain0.
+- Cards2/2/2/2/2=10 carry:
+  C1 media/name/place; C2 nonduplicated facts; C3 representative offer;
+  C4 minimum/concrete/saved distinction; C5 accessible CTA previous45
+  actual1280/768/360/390/430 + current suite. Этот owner byte-identical, gain0.
+
+**Проверки и независимый review.** Шесть final applicable compiled/jsdom suites
+exit0/PASS: mobile-form, selection-return, decision-prototype, results-block,
+search-editor, sites-interactions; syntax/diffPASS. Initial MODULE_NOT_FOUND
+runs не дошли до assertions, retained dependency-missing logs не passing evidence.
+Family-summary age assertion initially выявил потерю возрастов в collapsedsummary;
+implementation исправлена до единственной публикации, assertion не ослаблен.
+Final rerun selection-return/decision PASS. JSdom без layout engine; реальные
+rectangles/screenshots отдельно actual Chrome.
+
+Read-only reviewer /root/contact46_independent_qa лично осмотрел matched360/390/430,
+settled empty-phone/consent/checked/Back/reopen, aftertablet/wide и full1363 desktop.
+Существенного нового дефекта в scope не найдено; extended MobileC5 baseline1.5→2
+поддержан. Полные Mobile/Desktop строки не закрыты, физический scope отсутствует.
+Review не писал files/browser/issues и не публиковал. Обработка redacted field
+values не обходилась: draft assertion отдельно compiled, actual settled image
+показывает только заведомо учебный телефон0.
+
+**Retained evidence.** `qa/contact46/before/contacts-{360,390,430}.jpg/json`;
+wide before768/1280 markedpartial. `after/contacts-{360,390,430}.jpg/json`;
+`after/after768-collapsed.jpg/json`, `after/after1280.jpg/json`,
+`after/desktop-full-settled.jpg`+`desktop-full.json`,
+`after/phone-error-settled.jpg`, `contact-checked-settled.jpg`,
+`back-tour-settled.jpg`, `reopen-settled.jpg`;
+`runtime-receipt.json`+`REVIEW.md`+`README.md` и focused receipts/logs.
+Три preceding-paint frames в excluded/ не визуальные доказательства:
+phone-error.jpg/contact-focus.jpg/desktop-full.jpg; early error-JSON scroll
+не accepted screenshot geometry. Несинхронизированные missing files не coverage.
+After alias duplicates — те же retainedbytes, не дополнительные проверки.
+
+**Стадии и следующий крупный блок.** Макет: реальные desktop/mobile layout,
+контактный MobileC5 gain+0.5, full visual rowsN. Кликабельный прототип:
+exact Site127/source59ab358 установлен и relevant actual actions приняты в scope,
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+NEXT остаётся отдельным published source73a8e38d2b179cc7334c547e093207ba052082d3,
+terminal[#4217/6097387169](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6097387169);
+новый Site UX не переносился, его баллы NEXT не наследуются и повторный deploy
+не запускался. Физические iPhone/Safari/OSkeyboard/safearea/text-only200%,
+real delivery и user pilotUNVERIFIED.
+
+Следующий связный разрешённый этап: long hotel/room/meal/operator/baggage и
+семьи0–3 form→hotel→exacttour→contacts→Back на360/390/430 с supported увеличенным
+текстом; добирать отсутствующий corpus и устранять наблюдаемые препятствия
+в существующих owners. Full DesktopC5 короткая/промежуточная форма+rail+card
+остаётся отдельным точным пробелом. Не повторять byte-identical блоки ради баллов,
+не ждать all55 до макета, не создавать новый tracker/дизайн или косметическую очередь.
+Full concrete prototype approval beforeNEXT — отдельный гейт. Нет MAIN/production/
+supplier/real lead/provider/money/DB/LOCAL/MATCH/analytics/workflow/чужих schedules
+изменений; свежие liveTV+directANEX/SAMOpaused сохранены.
+Source6097770426/publisher6097853495/audit6097913058 RELEASE после
+exact audit sourceCI/release/readback.
+
+
+## SEARCH-QUALITY-1 — quality47 / Site128, 2026-10-10
+
+**Работающий эффект.** Исправлены подтверждённые маленькие области нажатия в связанном
+пути форма→локальный поиск/фильтры→даты/ночи→возврат к туру: строки питания44px,
+очистка/сброс44px, планшетные Close/месяц44×44, семь кнопок ночей на360px теперь
+не уже44px. Изменены только существующие CSS owners и package/cache labels.
+Нового renderer/helper/style owner/override слоя нет. Calendar trigger/result reset/
+facet expansion уже44+ и не менялись; скрытый saved-tour shortcut не менялся/не оценивался.
+Семантика query/ID/OR/draft/Apply/Cancel/price/lead не переписана.
+
+**Exact artifact и стадия.** Site128/package47/v170, опубликованный pushed source
+`b5956a6a40845342e3ea59e4d79555139f9958be`, version
+`appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_1c078dcf506481918e5465d88eb44445`;
+deployment `appgdep_6aca47ebcf64819182a197f328a94d2f` SUCCEEDED
+2026-10-10T14:13:15.238711Z. Stock gzipSHA256
+`b1022be89ad48af2708cdf2d73aeceb57cf117ff0b97160adb846b6ae66e178b`;
+native normalized tarSHA256
+`062aae05301f8d53aad561b0c44079644a743fe2d6e59dee66429cc35c0513ae`.
+Native exact source/version/deployment/archive readback и actual footer47/v170 совпали.
+QA-only pushed source `fc72fb8d315204e9443cc4d09f0f2bda48f06596` меняет
+только qa/quality47/**; dist/hosting byte-identical опубликованномуb5956a6.
+Save/deploy выполнены один раз. Public/history/project/audience сохранены:
+https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+
+**Фиксированная оценка.** SEARCH-QUALITY-1 не меняется:12historical/11required,
+Compare deferred, пять0/1/1.5/2. N=not_measured, сумма строки сN не вычисляется.
+Previous exact Site127/source59ab358/acceptance1354712, formal
+[#1646/6097948283](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6097948283)
+и audit contact46 выше. Прежние exact measured criteria carry, отсутствие нового
+coverage не0/регрессия. Новый normal-scale touch subset имеет первый comparable
+baseline существующих критериев, не новую методику/tracker и не перекалибровку
+старого profile2. Expert scores не являются измерением конверсии.
+
+| Параметр | Previous127: C1/C2/C3/C4/C5; сумма | Current128: C1/C2/C3/C4/C5; сумма | Delta; evidence или точный пробел |
+| --- | --- | --- | --- |
+| Desktop visual | 2/2/2/2/N; N | 2/2/2/2/N; N | measured0; C5 full matched intermediate/short form+rail+cards corpus ещё не закрыт |
+| Mobile visual — прежний profile scope | 2/2/2/N/2; N | 2/2/2/N/2; N | measured0; C4 full long room/meal/operator/baggage+family0–3/text200 не закрыт |
+| Соответствие целевому макету | N/N/N/N/N; N | N/N/N/N/N; N | Нет полного exact approved-reference пяти-сценарного сравнения |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; same owners/state carry плюс actual family3/Cancel/recovery и current compiled |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; current actual check/reset/Apply, unchanged same-offer contract |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; existing card owner bytes unchanged, exact45/46 evidence carry |
+| Календарь | 2/N/2/2/2; N | 2/N/2/2/2; N | measured0; sparse/full geometry whole corpus C2 остаётсяN; current Next/Cancel не закрывает его |
+| Compare / shortlist — deferred | N/N/N/N/N; deferred | N/N/N/N/N; deferred | Вне11required, не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; family0/8/17, demo pair2/187700/Back actual и current guards |
+| Lead-form handoff | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; exact contact46 validation/draft/consent carry, current family3 return |
+| Accessibility / state UX | 2/2/N/2/2; N | 2/2/N/2/2; N | measured0; full C3 readability/target corpus/text200 отсутствует; city Clear focus gap остаётся |
+| Архитектурная чистота / стабильность | N/N/N/N/N; N | N/N/N/N/N; N | Нет полного comparable пяти-критериального baseline |
+
+**Новый сопоставимый subset, без выдуманной общей суммы.**
+
+| Канонический критерий и scope | Before127 — первый baseline | After128 | Delta | Подтверждённое устранение неудобства |
+| --- | --- | --- | --- | --- |
+| MobileC3 — размер известных undersized form/filter/night/recovery controls, normal scale | 1.5/2 | 2/2 | +0.5 | meal39040→44; clear/reset39029.59375→44; night36043.421875→44.28125 приheight54 |
+| DesktopC4 — tablet768 picker Close и month navigation, normal scale | 1.5/2 | 2/2 | +0.5 | Close/Next36×36→44×44, те же snapshot2/1–7Oct/calendar facts |
+| A11yC3 — тот же target-size subset | 1.5/2 | 2/2 partial | same evidence, не отдельный gain | full criterion остаётсяN; readability/text200 не принят |
+
+Эти delta относятся только к размерам конкретных ранее неудобных controls,
+не к полному Mobile/Desktop/A11y и не отдельный балл за каждую кнопку.
+MobileC3/profile2 и DesktopC4/profile2 сохраняются в исходном scope.
+Contact46MobileC5+0.5 и decision45DesktopC2+0.5 повторно не начисляются.
+Summary390 geometry358×32→358×44 подтверждена, но ей не добавляется ещё score.
+
+**Actual browser evidence/actions.** before/after CSS-pixel JSON:
+meal-row390350×40→350×44; form-filter reset133.390625×29.59375→133.390625×44;
+meal-query reset113.171875×29.59375→113.171875×44;
+departure/destination empty reset119.21875×29.59375→119.21875×44.
+Nights360 seven columns, body/scrollWidth360;430 body/scrollWidth430,
+first54.28125×54, sticky confirmation доступно на480height.
+Calendar768 snapshot2/1–7Oct/7nights same retained23.09 prices, unknownNovember honest;
+Next показываетNovember/December, pending Apply всё ещё1–7Oct, Cancel сохраняетдаты.
+Form1280×720 body/scroll1265/1265, all fields/search/Cancel visible.
+Supplemental card768 shows full FOUR-G card; first-card rect top-281.625 is not
+a full first-card visual acceptance.
+
+After mainframes form/results/selected/contact390 и1280×720 лично осмотрены,
+plus affected controls360/390/430/768. Explicit family demo2adults/ages0/8/17:
+local empty-query clearing не меняет city/country; night1 draft cancelled→7;
+result meal checked/applied, form filter reset cancelled→mealAllInclusive retained.
+Search→tour→pair2→contacts→controlled Back сохраняет 06:05→10:40SVO→AYT,
+08:05→12:40AYT→SVO, baggage20kg/hand5kg и187700 whole-party demo total.
+186400→187700 is demonstration_price, не live/final_price_verified/repeated supplier pricing.
+Current actual snapshot filter AllInclusive count291→reset1047 separately recorded;
+all operations snapshot/demo only, supplier0/reallead0.
+
+**Остающееся наблюдаемое неудобство.** Departure empty-query «Очистить запрос»
+очищаетvalue, но input.focused=false: для продолжения ввода нужен tap.
+Beforefocus отсутствует, поэтому это не доказанный regression и не negative delta.
+CSS не выдаётся за улучшение keyboard/focus. Следующий связный mobile long-content/
+recovery package должен исправить existing clear owner после fresh claim.
+
+**Пять причин полностью covered строк; все пять2, gain0.**
+- Form: C1city/destination visible; C2date/night Cancel сохраняет1–7Oct/7;
+  C3exact children0–3 иage guards current suite + actual0/8/17; C4canonicalID OR/cap20/
+  query/Cancel/Apply previous43/45 exact evidence/current suite, owner unchanged;
+  C5budget/primary-advanced carry + current cancelled reset preservesmeal.
+- Filters: C1facets actual; C2check/count; C3reset/zero-state previous42/45+current;
+  C4same-offer combination current results suite; C5local no-provider state/action gates.
+- Cards: C1media/name/place; C2nonduplicate facts; C3representative offer; C4minimum/
+  concrete/saved distinction; C5accessible CTA exact45/46 frames+current results suite,
+  owner byte-identical, current supplemental768 не новое улучшение.
+- Selected: C1identity/generation/distinct offers; C2exactroom/meal/operator/ages;
+  C3rendered pair/baggage and honestunknown; C4whole-party total/current changed-price
+  guards withoutmoney/fuel formula changes; C5Back/reopen/cancel/independentoffer carry
+  + actual family3/187700 return.
+- Lead: C1sameoffer/party/total; C2phone/action availability previous46/current390/1280;
+  C3actual previous46 phone/consent errors + current late/duplicate/expiry/unknown guards;
+  C4draft/consent reset previousexact46/current suites; C5controlled Back/no real sending.
+  Это bounded prototype scores, не live booking/lead delivery/physical acceptance.
+
+**Checks/review/limitations.** Six applicable compiled/jsdom suites exit0:
+mobile-form/search-editor/results-block/decision-prototype/selection-return/sites-interactions;
+syntax/diffPASS. Exact artifacts/logs retained; jsdom has no layout engine.
+Independent read-only /root/quality47_prior_evidence personally viewed16 actual frames;
+no new visual blocker in shown product, target-size subset supported; state/data/viewport
+differences explicitly excluded from whole composition/route gain. It changed no files,
+browser, claims/comments and published nothing. Full physicaliPhone/Safari/OSkeyboard/
+safearea/text-only200% remainsUNVERIFIED. Regular/short emulation is not physicalkeyboard.
+
+Retained qa/quality47/{before,after,logs}/**, before/after-measurements.json,
+README/REVIEW/runtime-receipt. afterselected390 shows186400 beforepair;
+selected1280/contactafter shows187700 afterpair2, not one unchanged state.
+beforeform1280 is2adults/Любое; afterfamily3/AllInclusive, no matchedcompositiongain.
+beforemeal390 nestedBack/footer and afterdirectmeal differ; only same-control size
+supports gain. excludedcropped contacts1280-short/formfilters390 not acceptance.
+after/formfilters390-full snapshot2 supplemental, not matchedfamily3 composition.
+No repeat save/deploy for QA-only source.
+
+**Стадии/следующий блок.** Макет: current actual layout и bounded target-size gain;
+full visual rowsN. Clickable: installedSite128 relevant controls/path accepted in scope,
+pending fullowner approval beforeNEXT. Installed NEXT remains separate
+source73a8e38d2b179cc7334c547e093207ba052082d3/terminal6097387169; thisUX not transferred,
+delta0 and no scoreinheritance. New goal9.5–10 has not been confirmed.
+Next permitted block: whole mobile longhotel/room/meal/operator/baggage+families0–3
+form→hotel→tour→contacts→Back with supported increasedtext and recoveryfocus;
+separately finish missing short/intermediate desktop form/rail/cards. Fix observed
+defects in existing owners, do not restartall55/roadmap/newtracker/newdesign.
+No MAIN/production/supplier/real lead/provider/money/DB/LOCAL/MATCH/analytics/workflow/
+secret/other schedule action. Fresh liveTV+directANEX/SAMOpaused preserved.
+Source6098308051/publisher6098371799/audit6098501460 RELEASE after exact audit CI/merge/readback.
+
+
+## SEARCH-QUALITY-1 — quality48 / Site129, 2026-10-10
+
+**Новый работающий эффект.** В существующем departure Clear handler после очистки
+и прежнего render возвращается фокус тому же input с preventScroll. Обе кнопки
+очистки теперь позволяют сразу продолжить ввод без второго tap. City selection,
+query independence, draft/Apply/Cancel, exact IDs и история не менялись. Это
+подтверждённый UX-дефект и его исправление, не новый дизайн или рост за номер версии.
+Другие product changes — только package/cache labels; CSS/renderer/fixtures/contracts
+не менялись. Полный mobile long-content блок этим небольшим исправлением не закрыт.
+
+**Exact artifact и стадия.** Existing public project
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a, Site129/package48/v171,
+pushed product `8a599958e77afdf0686cc11a897fc4b3972154bd`;
+version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5f84cf81089c8191a4efae4b021eec7d`;
+deployment `appgdep_6aca50d3db788191bcaa544a59c93887` SUCCEEDED
+2026-10-10T14:51:15.046065Z. Stock gzipSHA256
+`40da97e31bcd771f278ad38ad5be81798e724a74aae1c5ef5b9fc0f86dadb5ab`;
+native normalized tarSHA256
+`576014b816ce4c2634501e05c3713e7d696e08db4390689f5f5ea786846bd517`.
+Exact native source/archive/version/deployment readback и actual footer48/v171
+совпали. Save/deploy один раз, project/history/public audience сохранены.
+https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+QA-only pushed source `adbb0d2e8ffe35d09d0949ae7bfe4190b6bbf5dc` changes only
+qa/quality48/**; dist/hosting byte-identical to published8a599958, no second save/deploy.
+
+**Фиксированная оценка и comparable baseline.** Existing SEARCH-QUALITY-1:
+12historical/11required, Compare deferred, пять0/1/1.5/2. N=not_measured, без
+суммы строки. Previous exact Site128/b5956a6/QAfc72fb8,
+[#1646/6098573849](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6098573849)
+и quality47 выше carry с прежним exact scope. Новый Clear-recovery subset A11yC1
+имеет первый формальный comparable baseline before1.5/2 (лишний tap), after2/2
+(+0.5). Это не перекалибровка прежнего profile2 и не прирост полной A11y строки.
+Не начислять тот же эффект ещё раз Form/Mobile; визуальные delta0.
+Expert scores не измеряют конверсию; незавершённые строки не выдаются за9.5–10.
+
+| Параметр | Previous128: C1/C2/C3/C4/C5; сумма | Current129: C1/C2/C3/C4/C5; сумма | Delta / доказательство или пробел |
+| --- | --- | --- | --- |
+| Desktop visual | 2/2/2/2/N; N | 2/2/2/2/N; N | measured0; C5 matched intermediate/short form+rail+cards corpus отсутствует |
+| Mobile visual | 2/2/2/N/2; N | 2/2/2/N/2; N | measured0; C4 long room/meal/operator/baggage/family0–3/text200 не полностью принят |
+| Соответствие целевому макету | N/N/N/N/N; N | N/N/N/N/N; N | full exact approved-reference comparison отсутствует |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 прежний scope; current Clear/query/Cancel и compiled matrix не создают новый full score |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; owner unchanged, exact47/45 evidence carry |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; owner byte-identical, exact45/46 evidence carry |
+| Календарь | 2/N/2/2/2; N | 2/N/2/2/2; N | measured0; whole sparse/full geometry C2 ещёN |
+| Compare / shortlist — deferred | N/N/N/N/N; deferred | N/N/N/N/N; deferred | вне11required, не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; exact46/47 return evidence + current identity/party guards |
+| Lead-form handoff | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; exact46 validation/draft/consent + current guards |
+| Accessibility / state UX — прежний profile | 2/2/N/2/2; N | 2/2/N/2/2; N | measured0; new C1 Clear subset +0.5 отдельно, full C3 text/readability corpusN |
+| Архитектурная чистота / стабильность | N/N/N/N/N; N | N/N/N/N/N; N | full comparable five-criteria baseline отсутствует |
+
+**Пять причин fully-covered строк, все пять2, gain0 в прежнем scope.**
+Form: C1city/destination existing exact43/45 + current recovery; C2dates/nights
+Cancel47/current suite; C3children0–3 ages current semantic + exact47actual0/8/17;
+C4canonicalID OR/cap20/query/Cancel/Apply45/current suite; C5budget/primary-advanced
+exact45/47, owner unchanged. Filters: C1facets; C2active/count; C3reset/zero;
+C4same-offer combinations; C5local no-supplier state — unchanged exact42/45/47
+and current results suite. Cards: C1media/name/place; C2nonduplicate facts;
+C3representative offer; C4minimum/concrete/saved distinction; C5accessible CTA —
+unchanged exact45/46/47 and current results suite. Selected: C1identity/generation/
+distinct offer; C2room/meal/party; C3known demo baggage/honest unknown; C4whole-party
+total/changed-price guards; C5Back/reopen/independent offer — unchanged exact46/47
+and current decision/selection suites. Lead: C1sameoffer/party/total; C2action/focus;
+C3validation/pending/error; C4draft/separate consent/reset; C5controlled Back —
+exact46/47 and current suites. Эти10 не являются real lead/booking/physical acceptance.
+
+**Actual browser before/after и checks.** Before Site128 at390×480:
+empty-query Clear value='' / focused=false. After Site129 same snapshot2adults,
+Moscow/Turkey/1–7Oct/7nights: both pointer Clear entries value='' / focused=true;
+native typeText(null,'Мос') без inputtap → value='Мос'/focused=true;
+pageY0/scrollTop0; Cancel/reopen restores empty query/Moscow/same exact URL.
+Other actual dialog widths360/430/768/1280: focusedtrue/overflow0/pageY0/scrollTop0.
+Settled390 frame shows visible focus ring, selected city and available confirmation;
+wide1280 actual dialog readable. Wrapper scrollbar is not product overflow proof.
+Immediate after-Clear preceding-paint image excluded.
+
+Focused compiled regression deliberately transfers focus to Clear before click:
+before FAIL “Clear returns typing focus”, after PASS5widths with same input,
+typing, selection, Cancel/Apply, history and exact family/search/offer. Six applicable
+compiled/jsdom suites exit0: mobile-form/search-editor/results-block/selection-return/
+decision-prototype/sites-interactions; syntax/diffPASS. jsdom has no layout engine,
+its scroll property is not geometry/physical keyboard evidence. Supplier0/reallead0.
+
+Actual saved hotel4496/TUI MAGIC LIFE BODRUM ADULT ONLY16+ and49-character room
+at360×480: full canonical identity/geography/footer facts/CTA readable, body
+scroll reaches selected room action. This two-adult AdultOnly offer is not combined
+with children; family0/8/17 belongs to labelled demo/semantic matrix. This limited
+new corpus does not close full MobileC4 or earn visualgain. No invented photos/
+stars/aliases/baggage/matching or supplier-money contracts.
+
+Read-only reviewer /root/quality48_long_content_review personally viewed after390/
+1280, source/regression and beforelongroom; supports only new Clear subset1.5→2,
+no fullrow/visual/physical gain. Retained qa/quality48/{before,after,logs}/**,
+browser-recovery.json390 trace+four widths, recovery-behavior.json,
+verify-recovery.cjs, README/REVIEW/runtime-receipt. Existing rubric/audit only.
+
+**Стадии и следующий конкретный этап.** Макет: visual delta0, full rowsN.
+Clickable Site129: relevant Clear recovery accepted, subset +0.5; full owner
+visual+behavior approval beforeNEXT остаётся. Installed NEXT source
+`73a8e38d2b179cc7334c547e093207ba052082d3`/terminal6097387169 separate,
+this package NOT transferred, no inherited scores/deploy.
+PhysicaliPhone/Safari/OSkeyboard/safearea/text-only200%UNVERIFIED.
+Next unresolved product block remains whole mobile longhotel/room/meal/operator/
+baggage + families0–3 through form→hotel→tour→contacts→Back,360/390/430 and
+supported increased text, plus exact short/intermediate desktop composition.
+Do not replace this with versions/audit/CI or repeat unchanged controls for points.
+No main/production/NEXT/provider/supplier/lead/money/fuel/FX/DB/LOCAL/MATCH/
+analytics/workflow/secret/other schedule changes. FreshTV+directANEX/SAMOpaused.
+Source6098640363/publisher6098740513/audit6098783297 RELEASE at canonical terminal.
+
+
+## 2026-10-10 — quality49: точная цена карточки и продолжение решения
+
+**Работающий эффект.** На фактическом Site129 при сохранённом demo-variants-1
+(1 окт, Standard, Всё включено, новая цена195400) карточка минимума159800/6 окт/
+Завтраки открывала этот другой сохранённый тур. Card CTA больше не перенаправляется
+через cardEntryOfferKey: открывается exact advertised key demo-variants-5.
+Отдельная сводка «Ваш выбор» и «Продолжить выбор» ведут к retained exact offer,
+показывают его даты/номер/питание/туристов/оператора, пару, сумму и existing price status.
+После explicit demo pair2 итог196700, контакты/согласие сохраняются при пассивном
+возврате. Текущий выбор вне filters явно отмечен; фильтры не изменяются. Новый applied
+search убирает старую сводку. Close заменяет только сводку через существующий
+cardHTML/renderResultCards owner, не исходную карточку/minimum CTA/input. Supplier0/reallead0.
+
+**Exact artifact / стадии.** Existing PUBLIC project appgprj_6abcd9299ef88191bbce1fc1bf8c767a,
+Site131/package49/v173, pushed product13632e17eab2be0c2f00336de635f0bf2dd0820a;
+version appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_b7cc8196319881919abe9f7ee4c9cb35;
+deployment appgdep_6aca5b97d7b4819181ea2a9513421d27 SUCCEEDED2026-10-10T15:37:12.015326Z.
+Stock gzipSHA256ef0f598a66e862d23dade1d44f64bd9ba6f2bd7466c27eb7054525f756d669dc;
+native normalized tarSHA256e768c6c432a74e7210af0f045b8dd6c5fd1c22fed00f1a3aa9b85af66965347c.
+Actual footer49/v173 и native source/archive/version/deployment readback совпали.
+URL https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+
+Initial Site130/fbf9b414407d260be15aaeff26eac3bc15a3fb0e/v172 deployment
+appgdep_6aca59f78c988191b9bf3fd816d72407 succeeded15:30:21.980422Z; publisher6099108194
+RELEASE6099139938. Actual pair390 revealed raw savedFlightTextPlain summary378.5px
+with ISO dates/route/carrier/numbers. Final173 projects short direction/date/time from
+existing savedFlightLegs; full data remains exact-tour details. Final390303.5px,
+desktop1280147px. Each publication had its own exact claim/native receipt; do not replay.
+Intermediate stock preparation953ac0a18a56a33419727c8a666aa02bb1649d35 retained/pushed
+source but refused archive because test logs appeared during save. Stock OPEN reconciled
+same pushed head; final clean preparation13632e17 included completed logs. No native
+save/deploy existed for953ac0; no UNKNOWN operation repeated.
+
+**SEARCH-QUALITY-1 whole profile.** Same12historical/11required, Compare deferred,
+five0/1/1.5/2. N=not_measured; never sum an incomplete row. Previous exact bounded
+Site129/#1646/6098806766/audit quality48 evidence carried, not rerun for points.
+Whole search score remains N: 5/11 fully summed rows,41/55 measured criteria and14
+missing. These are coverage counts, not7.45/10 or mean10 of measured cells.
+First comparable broadened minimumA→CTA→exact-tour→return CardsC5 baseline1/2
+(wrong tour) → current2/2 (correct A, distinct B continuation), delta+1 in that
+criterion only. Historical bounded Cards10 did not include this defect; no old10→9
+regression/recalibration and no scope-mixed row9→10 or whole-search +1 claim.
+Expert score, not conversion measurement.
+
+| Параметр | Previous129 C1/C2/C3/C4/C5; сумма | Current131 C1/C2/C3/C4/C5; сумма | Delta / точное ограничение |
+| --- | --- | --- | --- |
+| Desktop visual |2/2/2/2/N;N|2/2/2/2/N;N|measured0; C5 whole intermediate/short form+calendar+rail+cards missing|
+| Mobile visual |2/2/2/N/2;N|2/2/2/N/2;N|measured0; C4 whole longhotel/room/meal/operator/baggage/family0–3/increased-text corpus missing|
+| Соответствие целевому макету |N/N/N/N/N;N|N/N/N/N/N;N|exact approved Site100 comparison for all five criteria missing|
+| Основная форма |2/2/2/2/2;10|2/2/2/2/2;10|0 bounded previous scope; no inherited overall visual10|
+| Filters / decision UX |2/2/2/2/2;10|2/2/2/2/2;10|0 unchanged bounded scope|
+| Cards / price / CTA — historical bounded scope |2/2/2/2/2;10|2/2/2/2/2;10|0 carried profile; expanded CardsC5 baseline1→2 separately|
+| Calendar |2/N/2/2/2;N|2/N/2/2/2;N|measured0; full sparse/full geometry C2 missing|
+| Compare / shortlist — deferred |N/N/N/N/N;deferred|N/N/N/N/N;deferred|excluded from11required, not restarted|
+| Selected tour |2/2/2/2/2;10|2/2/2/2/2;10|0 bounded prototype, no live final-price/booking claim|
+| Lead/contact |2/2/2/2/2;10|2/2/2/2/2;10|0 controlled prototype; no delivery|
+| A11y / state UX |2/2/N/2/2;N|2/2/N/2/2;N|measured0; C3 whole readability/targets/increased-text missing|
+| Architecture / stability |N/N/N/N/N;N|N/N/N/N/N;N|whole five-criteria comparable baseline missing; greenCI not score|
+
+**Все пять критериев, неизменённые именования/смысл.** Desktop:
+C1grid/alignment;C2density/spacing;C3typography/long text;C4CTA/control sizing;
+C5form/rail/cards intermediate+short screens. Mobile:C1independentcomposition;
+C2readability/no field loss;C3actions available;C4longcontent/family/increasedtext;
+C5nooverlap/excessscroll in checked browser. Reference:C1formstructure;
+C2calendarposition;C3filter/resultcomposition;C4card/priceCTA hierarchy;
+C5approved mobile/brand/no false promises. Form:C1city/destination;
+C2dates/nights;C3party/childages;C4region/hotel/stars/meal;C5budget and primary/advanced
+fields without primary operator. Filters:C1truthful facets;C2activevalues/counts;
+C3reset/zero recovery;C4same-offer condition combination;C5state/no supplier calls.
+Cards:C1media/name/place;C2truthful nonduplicate facts;C3representative exact offer;
+C4minimum/concrete/saved/unverified distinction;C5clear accessible exact action.
+Calendar:C1dates/prices readable;C2sparse/full geometry;C3truthfulminimum/coverage;
+C4filter/continuation/disclosure sync;C5exact date/Submit.
+Compare:C1add/remove/cap;C2differences;C3exactIDs;C4history/price/unavailable;
+C5reload/storageerror/focus. Selected:C1exactoffercontext;C2room/meal/party;
+C3verifiedflights/honestunknown;C4whole-party price/composition/authority;
+C5change/return without replacement. Lead:C1correcttour;C2clear action/focus;
+C3validation/pending/error;C4draft/separateconsent;C5controlledreturn.
+A11y:C1keyboard/focus;C2labels/semantics;C3readability/targets;C4loading/empty/error/
+partial;C5state restore. Architecture:C1oneconnectedowner;C2replacedcode removed;
+C3source/generated/hashes;C4protectedcontract isolation;C5regressions/races/repeatability.
+
+**Five reasons for fully covered carried rows (all five2, delta0).** Form:
+C1exact43/45city/destination/current editor;C2exact47dates/nights Cancel;C3current
+compiled families0–3 and exact47actual0/8/17;C4canonical hotel OR/cap20/query/Cancel/
+Apply exact45/currentform suite;C5budget/primary-advanced exact45/47.
+Filters:C1facets,C2active/count,C3reset/zero,C4same-offer combinations,C5local
+no-supplier state — exact42/45/47 + current finalresults suite.
+Cards:C1media/name/place,C2nonduplicatefacts,C3representativeconditions,C4price
+distinctions,C5accessibleCTA — historical45/46/47/48 bounded scope retained;
+new expandedC5 separately proven beforeFAIL/current finalfivewidth matrix+actual131.
+Selected:C1identity/generation/differentoffer,C2room/meal/party,C3known demo baggage/
+honestunknown,C4whole-party total/changed-price gate,C5Back/reopen/independentoffer —
+exact46/47/currentdecision/currentfinalselection+cardcontinuity.
+Lead:C1sameoffer/party/total,C2action/focus,C3validation/pending/error,
+C4draft/consent/reset,C5controlledBack — exact46/47 + currentcompiled/actual131.
+No double-award of same repair to Mobile/A11y/Selected; no physical score inheritance.
+
+**Checks and actual evidence.** Final focused card-continuity-final.json:
+PASS360/390/430/768/1280; before log FAIL exact expected key5/actual key1. Covers
+minimum vscontinuation, changedprice acceptance, pair/total/contact/consent,
+outsidefilters/currentsearch, cancelled flights/form, independentoffer and
+unknown/error/expired/pending/late/duplicate with no quote/flight/data replay.
+Six applicable compiled suites passed; after compact projection final results-block
+and selection-return passed again, other four tests cover unchanged owners.
+Syntax/diffPASS. JSDOM no layout/OS keyboard; separate actual geometry below.
+
+Actual131: key1 retained and196700/06:05+08:05 pair after repeated passive contacts/
+Close at allfivewidths; consenttrue;focus returns exact continuation key1.
+No horizontal overflow; continuebutton48pxmobile,63.1875pxdesktop/tablet.
+Actual390 synthetic phone visible after reopen in final-contact-retained390 and
+compiled exact-value regressionPASS. Browser read-only DOM masks phone value:
+raw equalityfalse is retained as inconclusive in receipt, not a regression or PASS.
+Actualminimum action key5,159800,6–13Oct,breakfast; previousB cannot replace it.
+Actual short360/390/430×480 body footer overlap0; internal430 scroll0→362 of639
+with277pxclient reaches bottom while footer accessible. Actual key5 explicitdemo
+quote expiry:159800 labelled unconfirmed/chooseother; return summary saysprice/
+conditions need check, not verified. This demo is not live capacity/speed/price.
+
+Retained qa/quality49/{before,after,logs}/**, focused script/JSON,
+final-publication.json, final-installed-dist-hashes.json. Stabilized images selected;
+immediate preceding-paint captures were overwritten/excluded. Independent read-only
+source/screenshot review recorded in final receipt. No invented photo/star/alias/
+hotelmatching or money formula. Removed obsolete redirection, existing card CSSowner
+only. Large mobile photos1.8, open seven-price rail, form/calendar foundation retained.
+
+**Конечный путь, не очередь микроисправлений.** Один цельный desktop/mobile
+prototype has three complete blocks: (1) form/calendar/hotelpicker/filters/results;
+(2) exacttour/flightpair/wholepartyprice/changed-unknown-error and return;
+(3) contactdraft/consent/recovery and return. Main eight frames form/results/tour/
+contact at390+1280, plus360/430/768/shortdesktop/longcanonicalcontent/families0–3/
+supported increased text. Existing unchanged evidence carried instead of all55-before-
+any-mockup. Missing14criteria are one whole acceptance corpus, not14PRs.
+End: every applicable required row≥9.5 same rubric/artifact, owner whole visual+
+behavior approval, then authorized exact NEXT transfer and separate installed acceptance.
+Mockup whole scoreN; clickable131 repaired connected scope accepted/full scoreN;
+installed NEXT73a8e38d2b179cc7334c547e093207ba052082d3/terminal6097387169 unchanged/
+NOT transferred/no inherited scores. PhysicaliPhone/Safari/OSkeyboard/safearea/
+text-only200%UNVERIFIED. No main/production/NEXT/supplier/provider/leadtransport/
+money/fuel/FX/DB/LOCAL/MATCH/analytics/workflow/secret/other schedule changes.
+FreshTV+directANEX/SAMOpaused. Claims source6099025667+6099055371,
+finalpublisher6099169659 andaudit6099156831 require canonical terminalRELEASE.
+
+
+## 2026-10-13 — original Site185 transfer to existing NEXT (implementation candidate)
+
+Owner whole-version visual+behavior approval: direct «давай переносить», recorded
+in #4217/6140805640. Donor remains PUBLIC original project
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a, Site185/package88/v224,
+source dee9043bfce695de275223c417902f393f6c9114, native version
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_71bf1c751c348191b6790481583f2eaf,
+archive SHA256 e7b6c44438eb98e0cebaf774d56c45bd21c9c6a23879edf1d8f5e5a16914f115.
+Receiver only /_preview/search3-next-candidate/visual-search/ on
+release/search3-production-ready-v1, base919bb3a1aa30a6e50845a7998388f9e0c091f66f.
+Installed predecessor source7691cc485fb3b32effe0fc6c28850c9e0d1c8b29.
+No design-v2 score, evidence, branch or publisher is part of this transfer.
+
+The existing owners receive the approved card hierarchy and separate exact saved
+choice, country/count summaries, thumbnail/geography/stars picker presentation,
+hotel-room draft + explicit continue, same-tour flight editing and explicit
+application continuation, compact contact review and bounded visible viewport.
+Raw canonical catalogue/OR/generation/lookup cache, cold loader fences, incremental
+rendering, original numeric/ranking/calendar/list oracles and all transport/money/
+fuel/FX/lead owners remain. Two CSS owners only. Immutable brand/media unchanged.
+
+Independent read-only review found and corrected bare-defer live-graph template
+serialization, a cold draft-context access, a stale raw-generation selection
+strip, lost saved fixture pair on reopen, and old relocated price on provider
+receipt expiry. Expiry clears presentation only, without recalculation. Historical
+Site100 approval and complete historical test pins remain explicit inputs; changes
+to test collaborators/actions apply solely to approved presentation boundaries.
+
+Local source matrices and compiled static offline demo geometry passed at
+360/390/430/768/1280, including pair3/whole total190300, explicit continuation and
+passive exact saved-choice reopen. The static offline layout harness is not the
+PHP live-entry or installed-runtime gate. Final exact-head stock CI, PHP compiled
+browser evidence and artifact readback are still required before publication.
+No supplier HTTP or real lead delivery was used in this acceptance. Physical
+iPhone/Safari/OS keyboard/safe-area/text-only200% remains UNVERIFIED.
+
+SEARCH-QUALITY-1 retains12 historical/11 required rows and five0/1/1.5/2 criteria.
+Design-lab mockup, design-lab clickable path and installed NEXT remain independent.
+Installed NEXT stays unchanged until publication; no donor score inheritance, no
+new quality increase for approval, source adaptation, CI or branch integration.
+New NEXT visual/UX criteria remain not_measured until exact installed acceptance.
+
+
+
+## Original Site191 approved transfer — 2026-10-14
+
+Owner answered «да» to whole Site191 visual+behavior approval, recorded in #4217/6157263706. Exact donor54f7154ad595544da3dc10ef116cda02483f14ef / PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a; nativeversionappgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_be83bbb7ca8c8191ae26384b09f8c1eb, terminal6157154465. Receiver only existing NEXT release/search3-production-ready-v1 at2012c7df85a7806c976d4d9a8882b0a0d47a91a1, installed712ac9923b93916f375d14a635bd4635e4f52332. Claims6157276748/6157292784; foreignv2 and draft4502 remain separate.
+
+Existing generic TV/demo picker now offers explicit manager handoff for a pair without a whole-tour amount: commits no pair, retains checked offer amount, clears old leg/fuel/baggage metadata; contact/Back/reopen has no implicit pair0; explicit known0 remains valid. New chosen pair clears stale manager metadata. Existing local picker refinements/history and quote/identity gates remain. Falsy malformed flight projection takes existing recoverable error instead of erasing selected offer. Provider-specific ANEX/SAMO flight/application paths and money contracts stay unchanged.
+
+Existing price explanation separates listing, checked offer, and committed pair totals. Provider renderer passes its canonical receipt amount explicitly; generic tour.price is not adopted as provider authority. Pending/error/loading amount cannot become final or zero; draft footer does not rewrite committed facts. No formula, price arithmetic, provider call, lead transport, new renderer/CSS layer, catalogue/mapping/DB, main/workflow or schedule change. 200% remains deferred; no new scenarios.
+
+Focused full-source JSDOM price-origin/provider authority, manager/contact/Back/null/known0, lazy cold loading/history, live bridge/recovery and passive295 exact digest pass. Source compiler preserves AST/protected lead runtime and emits exact derived graph. This is preparation, not CI/merge/publication/runtime acceptance. Existing full CI and compiled ordinary360/390/430/768/1280 journeys must pass on the final head before release and separately claimed stock NEXT publication. Physical Safari not_measured; whole SEARCH-QUALITY-1 score not_measured, no donor score inheritance or points for approval.
+
+## Original Site198 → existing NEXT: approved source preparation, 15.10.2026
+
+Owner: «Разрешаю перенос», canonical approval6187906754; source claim6187946347. Target ONLY `/_preview/search3-next-candidate/visual-search/`, release/search3-production-ready-v1 basea087f151, predecessor source298c9964/artifact11917935223. Original Site project/history/PUBLIC retained; donor8eff868/package98/v234/native198 and evidence61150256 unchanged. Old4502 preparation RELEASE6091497274; withdrawn4611 remains closed/unmerged; foreign4605/4609 paths and publishers protected.
+
+Approved connected effect: existing AllVariants follows price/CTA before supplementary card content on mobile, with all exact fields/media/selection retained. Existing app cardHTML + three mobile CSS order values only; no second renderer/style/handler or donor data/price/lead owner. Desktop/tablet grid unchanged, disclosed Tab-order caveat explicitly retained. Receiver227 is distinct from donor234. Source/CI/merge/publication/installed acceptance remain separate statuses.
+
+SEARCH-QUALITY-1: fixed12historical/11mandatory/5criteria. Original mockup MobileC5 long-family2→2 delta0; clickable A11yC3 action2→2 delta0; installed NEXT MobileC5 not_measured→not_measured delta0 pending actual native360/390/430 path. Carry exact prior receipt6180893455; no row total or whole grade from transfer. PhysicalSafari/keyboard/safearea and real delivery unmeasured;200%deferred/no new run. Future compiled controlled evidence stays a separate scope. Required exact-head gates/stock publisher/runtime receipts will be recorded in#4217/#1646 without awarding quality points for CI or publication.

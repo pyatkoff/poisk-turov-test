@@ -67,6 +67,7 @@
  window.AnyTourRecording=Object.freeze({validate,load(raw){const next=validate(raw);base.stop();recording=next;return {hotels:next.hotels.length,offers:next.entries.size};}});
  document.addEventListener('DOMContentLoaded',()=>{
   const input=document.getElementById('recording-file'),status=document.getElementById('recording-status');
+  if(!input||!status)return;
   input.addEventListener('change',async()=>{
    const file=input.files?.[0];if(!file)return;status.textContent='Проверяем запись…';
    try{if(file.size>5*1024*1024)fail('Запись должна быть не больше 5 МБ');const counts=window.AnyTourRecording.load(JSON.parse(await file.text()));const select=document.getElementById('fixture-scenario');if(!select.querySelector('[value="recorded"]'))select.add(new Option('Загруженная запись · без отправки','recorded'));select.value='recorded';select.dispatchEvent(new Event('change',{bubbles:true}));status.textContent=`Загружено ${counts.hotels} отелей и ${counts.offers} туров. Файл остаётся только в этой вкладке.`;}

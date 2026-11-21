@@ -1,6 +1,41 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),crypto=require('crypto'),{JSDOM}=require('jsdom');
 const source=fs.readFileSync(__dirname+'/../v2/visual-search/hotel-details-v1.js','utf8');
+function anexAdditionalOwner(appSource){
+ const start=appSource.indexOf('function anexAdditionalUnconfirmed('),end=appSource.indexOf('function rememberAndromedaFlightChoice(',start);
+ assert(start>=0&&end>start,'actual ANEX unconfirmed helper boundaries');return appSource.slice(start,end);
+}
+function verifyInfantChargeStatus(appSource,hotelSource){
+ const start=appSource.indexOf('const cachedPriceNote='),end=appSource.indexOf('// Meal identities',start);
+ assert(start>=0&&end>start);
+ const q=vm.runInNewContext(appSource.slice(start,end)+';({priceNote,cardPriceNote});',{
+  data:{scenario:'live',preview:false},needsRefresh:o=>o.provider==='anex'});
+ const listing={key:'infant-base',hotelId:1,provider:'anex',raw:{infantCharge:Object.freeze({status:'unknown',amount:null,includedInSearchPrice:null})},
+  total:100000,adults:2,ages:[1,8],room:'Standard',meal:'AI',day:'2026-10-10',returnDay:'2026-10-17',nights:7,operator:'ANEX'};
+ assert.match(q.priceNote(listing),/доплата за младенца уточняется/i);
+ const ordinary={...listing,raw:{},ages:[]};
+ assert.equal(q.cardPriceNote(ordinary),'Цена из текущего поиска · требует подтверждения');
+ const rowStart=hotelSource.indexOf('function roomOfferChoiceHTML('),rowEnd=hotelSource.indexOf('function renderHotelRooms(',rowStart);
+ const helpers={context:{hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null},esc:v=>String(v),sameSelectedTourConditions:()=>false,
+  selectedPriceStatus:()=>'',cardPriceNote:q.cardPriceNote,displayMealLabel:o=>o.meal,operatorBadge:o=>o,flightLabel:()=>'',
+  dateText:v=>v,nightsText:v=>v+' ночей',guestsText:()=> '2 взрослых + дети 1, 8 лет',money:v=>v+' ₽'};
+ const rowContext=vm.createContext(helpers);vm.runInContext(hotelSource.slice(rowStart,rowEnd),rowContext);
+ const html=rowContext.roomOfferChoiceHTML(listing);
+ assert.match(html,/room-offer-price-status[^>]*>[^<]*доплата за младенца уточняется/i);
+ assert.match(html,/<strong>100000 ₽<\/strong>/);assert.equal(listing.raw.infantCharge.amount,null);assert.equal(listing.total,100000);
+ const footerStart=appSource.indexOf('function syncHotelOfferSelection('),footerEnd=appSource.indexOf('function observeHotelRoomChoices(',footerStart);
+ const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
+ const f={...helpers,hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:{hotelId:1,key:listing.key},selectedOffer:null,
+  data:{amount:value=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):null},state:{search:{}},searchKey:()=>'',needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[],mealLabel:o=>o.meal};
+ vm.createContext(f);vm.runInContext(anexAdditionalOwner(appSource)+appSource.slice(footerStart,footerEnd),f);f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i);
+ assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');assert.equal(nodes['#hotel-detail-offers'].dataset.key,listing.key);
+ f.hotelOfferCheckActive=()=>true;f.selectedOffer=listing;f.retainedProviderView=()=>({type:'anex-current'});f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/доплата за младенца уточняется/i,'current-context check does not erase the unresolved component');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'100000 ₽');
+ console.log('PASS actual infant price qualifiers: card/room/selected footer retain unknown/null and exact whole listing amount; ordinary copy unchanged');
+}
+verifyInfantChargeStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
 function records(code,baseline=false,requestPlaceholder=false){const output=[],checkInvocation=code===source&&!baseline&&!requestPlaceholder;
  for(const mode of ['empty','single','two','many','incomplete'])for(const long of [false,true])for(const meal of ['', 'BB']){
   const dom=new JSDOM('<div id="modal-body"></div><div id="modal-footer" hidden></div><dialog id="modal"></dialog>'),doc=dom.window.document;
@@ -8,20 +43,110 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
   const h={id:1,name:'Hotel<&',resort:'Resort<&',stars:mode==='incomplete'?0:5,photos:mode==='incomplete'?[]:['photo1','photo2','photo3','photo4'],amenities:mode==='incomplete'?[]:Array.from({length:long?4:1},(_,i)=>({label:'Услуга<&'+i,group:'Группа<&'})),raw:mode==='incomplete'?{}:{description:long?'Длинное описание<& '.repeat(60):'Описание<&',hotelInformation:{services:{available:long?'Услуги<& '.repeat(45):'Услуги<&'},infrastructure:{beach:['Пляж<&','Пляж<&']}}}};
   let remembered=0,observed=0,synced=0,offerInventories=0;
   const ctx={window:dom.window,document:doc,queueMicrotask:fn=>fn(),$:s=>doc.querySelector(s),$$:s=>[...doc.querySelectorAll(s)],data:{text:v=>String(v??'')},hotels:[h],modalType:'hotel-details',
-   plainHotelText:v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),esc:v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),hotelOffers:()=>{offerInventories++;return offers;},
+   plainHotelText:v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),esc:v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),hotelOfferDraft:null,selectedOffer:null,sameSelectedTourConditions:(a,b)=>a.key===b.key&&a.room===b.room&&a.meal===b.meal,selectedPriceStatus:()=> 'Цена с выбранными рейсами',needsRefresh:()=>false,operatorBadge:o=>'[operator:'+o+']',syncHotelOfferSelection:()=>{},hotelOffers:()=>{offerInventories++;return offers;},
    mealLabel:o=>o.meal,displayMealLabel:o=>String(o.meal??'').trim().toLowerCase()==='on request'?'Питание уточняется':o.meal||'Питание уточняется',roomLabel:o=>String(o.room??'').trim().toLowerCase()==='on request'?'Номер уточняется':o.room||'Номер уточняется',dateText:d=>d,nightsText:n=>n+' ночей',flightLabel:o=>o.flight,guestsText:()=> '2 взрослых',money:n=>n+' ₽',icon:n=>'['+n+']',offerCountText:n=>n+' туров',cardPriceNote:()=> 'Цена предложения',observeHotelRoomChoices:()=>observed++,syncHotelSectionNavigation:()=>synced++,rememberUIRoute:()=>remembered++,ratingValue:()=>mode==='incomplete'?null:4.5,ratingText:()=> '4,5',departureScopeText:()=> '1–7 октября',durationText:()=> '7 ночей',
    showModal:(type,title,kicker,body)=>{doc.querySelector('#modal-body').innerHTML=body;}
   };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);const mountedOffers=owner.openHotelDetails(1);if(checkInvocation){assert.equal(offerInventories,1,'opening reuses one synchronous offer inventory');assert.strictEqual(mountedOffers,offers,'opening exposes the exact mounted offer array for same-turn restoration');}owner.renderHotelRooms(1,meal,['Standard<&']);if(checkInvocation)assert.equal(offerInventories,2,'later render computes a fresh offer inventory');
   output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,...(requestPlaceholder?{text:doc.querySelector('#modal-body').textContent}:{}),footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});
-  if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}dom.window.close();
+  if(checkInvocation&&mode==='many'&&long&&meal==='BB'){
+   const body=doc.querySelector('#modal-body'),rooms=body.querySelector('.hotel-room-section'),filter=rooms.querySelector('#hotel-room-meal'),choose=rooms.querySelector('[data-action="select-hotel-offer"]'),footer=doc.querySelector('#hotel-detail-offers');
+   filter.value='BB';choose.focus();const before=rooms.innerHTML,amount=doc.querySelector('#hotel-detail-min').textContent;
+   body.scrollTop=120;body.getBoundingClientRect=()=>({top:0,bottom:500});
+   rooms.getBoundingClientRect=()=>({top:(body.textContent.includes('Обновлённое описание')?300:210)-body.scrollTop,bottom:680});
+   const top=rooms.getBoundingClientRect().top;
+   h.photos=['new-photo.jpg'];h.raw.description='Обновлённое описание. '.repeat(35);owner.refreshHotelProfile(h,null);
+   assert.equal(body.querySelector('.hotel-photo-section img').getAttribute('src'),'new-photo.jpg');assert.match(body.textContent,/Обновлённое описание/);
+   assert.strictEqual(doc.activeElement,choose);assert.strictEqual(body.querySelector('.hotel-room-section'),rooms);assert.equal(rooms.innerHTML,before);assert.equal(filter.value,'BB');
+   assert.strictEqual(doc.querySelector('#hotel-detail-offers'),footer);assert.equal(doc.querySelector('#hotel-detail-min').textContent,amount);assert.equal(rooms.getBoundingClientRect().top,top,'profile growth keeps the focused tariff at the same viewport location');
+   const description=body.querySelector('.hotel-description');description.open=true;description.querySelector('summary').focus();
+   h.raw.description+='Дополнение';owner.refreshHotelProfile(h,null);const updated=body.querySelector('.hotel-description');
+   assert(updated.open);assert.strictEqual(doc.activeElement,updated.querySelector('summary'),'reading the description keeps its disclosure and focus');
+   owner.refreshHotelProfile(h,null);assert.strictEqual(body.querySelector('.hotel-description'),updated,'unchanged catalog projection preserves the profile DOM');
+   doc.activeElement.blur();body.scrollTop=0;body.querySelector('[data-target="hotel-rooms-heading"]').setAttribute('aria-current','location');
+   h.raw.description='Профиль после входа по названию';owner.refreshHotelProfile(h,null);assert.equal(body.scrollTop,0,'opening the hotel itself stays at the top as its profile arrives');
+  }
+  if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}
+  if(checkInvocation&&mode==='many'&&!long&&!meal){
+   const standard=offers[0];
+   const cards=doc.querySelector('.hotel-room-cards'),shared=cards.querySelector('.room-inventory-facts');
+   assert(shared,'matching conditions across room categories are shown once');
+   assert(shared.textContent.includes(standard.day)&&shared.textContent.includes(standard.operator));
+   for(const row of cards.querySelectorAll('.room-offer-choice'))assert(!row.textContent.includes(standard.day)&&!row.textContent.includes(standard.operator),'shared terms do not displace the meal and price');
+   const changed={...standard,key:'other-date',day:'2026-10-03',returnDay:'2026-10-10',meal:'BB',operator:'Other Operator',flight:'regular'};
+   offers=[standard,changed];
+   owner.renderHotelRooms(1);
+   const card=doc.querySelector('.hotel-room-card');
+   assert.equal(card.querySelector('h4').textContent,standard.room);
+   const rows=[...card.querySelectorAll('.room-offer-choice')];
+   assert.equal(rows.length,2,'same amount retains two distinct tariffs');
+   for(const [index,offer] of offers.entries()){
+    const row=rows[index],details=row.querySelector('[data-action="offer"]'),choose=row.querySelector('[data-action="select-hotel-offer"]');
+    assert.equal(details.dataset.key,offer.key);
+    assert.equal(details.querySelector('.room-offer-meal').textContent,offer.meal,'the tariff heading also opens its exact conditions');
+    assert.equal(choose.dataset.key,offer.key,'checking the price acts on the identified tariff in one step');
+    assert.equal(row.querySelector('.hotel-room-price>strong').textContent,offer.total+' ₽');
+    for(const value of [offer.day,offer.returnDay,offer.flight,offer.operator])assert(row.textContent.includes(value),'differing terms belong to their exact offer: '+value);
+   }
+   assert(!rows[0].textContent.includes(changed.operator)&&!rows[1].textContent.includes(standard.operator));
+   const differences=()=>Array.from(cards.querySelectorAll('.room-price-difference'),el=>el.textContent);
+   assert.deepEqual(differences(),[],'identical totals need no difference label');
+   offers=[standard,{...changed,total:standard.total+1535}];
+   owner.renderHotelRooms(1);
+   assert.deepEqual(differences(),['На 1535 ₽ выше минимума']);
+   owner.renderHotelRooms(1,changed.meal);
+   assert.deepEqual(differences(),[],'filtering out the cheapest offer resets the minimum');
+   offers[1]={...offers[1],ages:[7]};
+   owner.renderHotelRooms(1);
+   assert.deepEqual(differences(),[],'different guest parties are not compared');
+   const base={...standard,provider:'fixture',total:154800,raw:{}};
+   const inclusive={...base,key:'inclusive',meal:'BB',total:161600,raw:{}};
+   const family={...inclusive,key:'family',room:'Family',total:169500,raw:{}};
+   offers=[family,inclusive,base];
+   ctx.selectedOffer={...base,quoteListingTotal:base.total,total:156100,tour:{price:base.total}};
+   owner.renderHotelRooms(1,'',[base.room]);
+   const rowFor=o=>cards.querySelector('[data-offer-key="'+o.key+'"]');
+   const header=cards.querySelector('.room-overview-price'),button=rowFor(base).querySelector('[data-action="select-hotel-offer"]');
+   const amount=o=>rowFor(o).querySelector('.hotel-room-price strong').textContent;
+   const delta=o=>rowFor(o).querySelector('.room-price-difference')?.textContent;
+   assert.equal(header.textContent,'от 156100 ₽');
+   assert.equal(delta(inclusive),'На 5500 ₽ выше минимума');
+   assert.equal(delta(family),'На 13400 ₽ выше минимума');
+   button.focus();
+   ctx.selectedOffer={...ctx.selectedOffer,total:171000};
+   owner.syncRoomPriceComparison(cards,offers);
+   assert.equal(header.textContent,'от 161600 ₽','the other offer becomes cheapest within the same group');
+   assert.equal(delta(inclusive),undefined);
+   assert.equal(delta(base),'На 9400 ₽ выше минимума');
+   assert.equal(amount(base),'171000 ₽');assert.match(button.getAttribute('aria-label'),/171000 ₽$/);
+   assert.strictEqual(doc.activeElement,button,'changing prices retains the focused button');
+   ctx.selectedOffer={...ctx.selectedOffer,total:152000};
+   owner.syncRoomPriceComparison(cards,offers);
+   assert.equal(header.textContent,'от 152000 ₽');assert.equal(delta(inclusive),'На 9600 ₽ выше минимума');
+   ctx.selectedOffer={...ctx.selectedOffer,pricePending:true};
+   owner.syncRoomPriceComparison(cards,offers);
+   assert.deepEqual(differences(),[]);assert.equal(header.textContent,'Цена уточняется');
+   assert.equal(amount(base),'Цена уточняется');
+   ctx.selectedOffer={...ctx.selectedOffer,pricePending:false,provider:'tourvisor'};
+   owner.syncRoomPriceComparison(cards,offers);
+   assert.deepEqual(differences(),[],'a checked live quote is not compared with listings');
+   ctx.selectedOffer=null;
+   owner.syncRoomPriceComparison(cards,offers);
+   assert.equal(amount(base),'154800 ₽');assert.match(button.getAttribute('aria-label'),/154800 ₽$/);
+   assert.equal(header.textContent,'от 154800 ₽');assert.equal(delta(inclusive),'На 6800 ₽ выше минимума');
+   assert.deepEqual(offers.map(o=>o.total),[169500,161600,154800],'original amounts and order remain intact');
+  }
+  dom.window.close();
  }return output;
 }
 const compare=process.argv.indexOf('--compare');if(compare>=0)assert.deepEqual(records(source),records(fs.readFileSync(process.argv[compare+1],'utf8'),true),'actual before/after hotel HTML and room DOM equivalence');
-const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+const actual=records(source);for(const record of actual)if(!record.footerHidden)assert.match(record.footer,/Весь тур · 2 взрослых/,'current footer labels the whole tour for the group');const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const placeholder=records(source,false,true).find(record=>record.mode==='incomplete'&&!record.long&&!record.meal);assert(placeholder);
 assert.match(placeholder.text,/Номер уточняется/);assert.match(placeholder.text,/Питание уточняется/);assert.doesNotMatch(placeholder.text,/on request/i);
 assert.match(placeholder.body,/data-room=" on request "/,'raw room identity stays on the existing grouping owner');assert.match(placeholder.body,/<option value="On Request">Питание уточняется<\/option>/,'raw meal filter value stays exact while its label is readable');
-if(!process.argv.includes('--capture'))assert.equal(digest,'d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5','original hotel presentation observations');
+const historicalRoomOwner="function roomOfferChoiceHTML(o){\n return `<div class=\"room-offer-choice\" data-offer-key=\"${esc(o.key)}\"><div class=\"room-offer-conditions\"><strong class=\"room-offer-meal\">${esc(displayMealLabel(o))}</strong><dl class=\"room-choice-facts\"><div><dt class=\"sr-only\">Даты и отдых</dt><dd><time datetime=\"${esc(o.day)}\">${dateText(o.day)}</time> → <time datetime=\"${esc(o.returnDay)}\">${dateText(o.returnDay)}</time> · ${nightsText(o.nights)}</dd></div></dl><span class=\"room-offer-operator\">${esc(o.operator)}${flightLabel(o)?' · '+flightLabel(o):''}</span></div><div class=\"hotel-room-price\"><small>Весь тур · ${guestsText(o)}</small><strong>${money(o.total)}</strong><button class=\"primary\" data-action=\"offer\" data-key=\"${esc(o.key)}\" aria-label=\"Смотреть тур: ${esc(displayMealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}\">Смотреть тур ${icon('arrow')}</button></div></div>`;\n}\nfunction renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){\n const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;\n const allOffers=initialOffers||hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];\n let mealControl=$('#hotel-room-meal');\n if(!mealControl&&meals.length>1&&allOffers.length>2){$('#hotel-room-count').insertAdjacentHTML('beforebegin',`<label class=\"hotel-room-meal-filter\">Питание в туре<select id=\"hotel-room-meal\" data-id=\"${h.id}\"></select></label>`);mealControl=$('#hotel-room-meal');}\n if(mealControl){const values=['',...meals];if(meal&&!values.includes(meal))values.push(meal);if(JSON.stringify([...mealControl.options].map(o=>o.value))!==JSON.stringify(values))mealControl.innerHTML=values.map(value=>`<option value=\"${esc(value)}\">${esc(value?displayMealLabel({meal:value}):'Любое питание')}</option>`).join('');}\n const offers=allOffers.filter(o=>!meal||o.meal===meal),rooms=[],byRoom=new Map();\n // Set merges signed zero; strict equality leaves the NaN group empty.\n offers.forEach(o=>{\n  const room=o.room;let group=byRoom.get(room);\n  if(!group){group={room:room===0?0:room,offers:[]};byRoom.set(room,group);rooms.push(group);}\n  if(room===room)group.offers.push(o);\n });\n $('#hotel-room-count').textContent=`Номера: ${rooms.length} · Туры: ${offers.length}`;\n const roomCards=$('.hotel-room-cards');roomCards.classList.toggle('single-direct-offer',offers.length===1);\n roomCards.innerHTML=rooms.map(({room,offers:rows})=>{\n  const choices=`<div class=\"room-offer-list\">${rows.slice(0,2).map(roomOfferChoiceHTML).join('')}${rows.length>2?`<details class=\"hotel-room-more\"><summary><span class=\"room-more-closed\">Ещё ${offerCountText(rows.length-2)}</span><span class=\"room-more-open\">Скрыть остальные туры</span></summary>${rows.slice(2).map(roomOfferChoiceHTML).join('')}</details>`:''}</div>`;\n  const title=`<h4>${esc(roomLabel({room}))}</h4>`;\n  if(rooms.length===1)return `<article class=\"hotel-room-card\" data-room=\"${esc(room)}\"><header class=\"room-choice-main\">${title}<span class=\"room-choice-label\">${offerCountText(rows.length)}</span></header>${choices}</article>`;\n  const meals=[...new Set(rows.map(displayMealLabel))].map(esc).join(' · '),min=Math.min(...rows.map(o=>o.total));\n  return `<details class=\"hotel-room-card room-overview\" data-room=\"${esc(room)}\" ${restoredRooms?.includes(room)?'open':''}><summary class=\"room-overview-toggle\"><span class=\"room-overview-name\">${title}<span class=\"room-overview-meals\">${meals}</span></span><span class=\"room-overview-bottom\"><strong class=\"room-overview-price\">от ${money(min)}</strong><span class=\"room-overview-action\"><span class=\"room-overview-closed\">${offerCountText(rows.length)}</span><span class=\"room-overview-open\">Свернуть</span><span class=\"rotate-arrow\" aria-hidden=\"true\">⌄</span></span></span></summary>${choices}</details>`;\n }).join('')||'<p class=\"tour-missing\">По текущим условиям предложений нет. Измените даты или фильтры поиска.</p>';\n const control=$('#hotel-room-meal');if(control){control.value=meal;[...control.options].forEach(option=>option.defaultSelected=option.value===meal);}\n const price=$('#hotel-detail-min'),button=$('#hotel-detail-offers');\n if(price)price.textContent=offers.length?(offers.length>1?'от ':'')+money(offers[0].total):'Нет предложений';\n const status=$('#hotel-detail-price-status');if(status)status.textContent=offers.length?cardPriceNote(offers[0]):'';\n if(button){button.dataset.action=offers.length===1?'offer':'hotel-section';button.dataset.target='hotel-rooms-heading';if(offers.length===1)button.dataset.key=offers[0].key;else delete button.dataset.key;button.innerHTML=(offers.length===1?'Смотреть тур':'Выбрать тур')+' '+icon('arrow');button.disabled=!offers.length;}\n queueMicrotask(()=>{observeHotelRoomChoices();syncHotelSectionNavigation();});\n rememberUIRoute();\n}\n";
+const historicalSource=source.slice(0,source.indexOf('function roomOfferChoiceHTML('))+historicalRoomOwner+source.slice(source.indexOf('function openHotelDetails(')).replace('renderHotelRooms,syncRoomPriceComparison','renderHotelRooms').replace('<span>Весь тур · ${guestsText()}</span>','<span>За ${guestsText()}</span>');
+const historical=records(historicalSource);assert.equal(crypto.createHash('sha256').update(JSON.stringify(historical)).digest('hex'),'d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5','unchanged historical room/filter/footer oracle');
+for(let n=0;n<actual.length;n++){const facts=r=>{const d=new JSDOM(r.body).window.document;return {roomKeys:[...d.querySelectorAll('[data-room]')].map(e=>e.dataset.room),mealOptions:[...d.querySelectorAll('#hotel-room-meal option')].map(e=>[e.value,e.textContent]),choices:[...d.querySelectorAll('.room-offer-choice')].map(e=>[e.dataset.offerKey,e.querySelector('.hotel-room-price strong').textContent])};};assert.deepEqual(facts(actual[n]),facts(historical[n]),'exact room group/meal/raw key/whole price inventory retained');}
 assert.notDeepEqual(records(source.replace('rows.slice(0,2)','rows.slice(0,1)')),actual,'lost visible room choice detected');
 assert.notDeepEqual(records(source.replace('o.meal===meal','o.meal!==meal')),actual,'wrong meal selection detected');
 console.log('PASS hotel presentation '+actual.length+' observations: original HTML/footer/rooms/meal/price/escaping and two mutations; '+digest);
@@ -30,7 +155,7 @@ console.log('PASS hotel presentation '+actual.length+' observations: original HT
 // The original Set + strict-equality filters remain the test-only reference.
 const inventoryStart=source.indexOf(' const offers=allOffers.filter('),inventoryEnd=source.indexOf(" $('#hotel-room-count').textContent",inventoryStart);
 assert(inventoryStart>=0&&inventoryEnd>inventoryStart,'actual room inventory boundaries');
-const inventory=vm.runInNewContext('(allOffers,meal)=>{'+source.slice(inventoryStart,inventoryEnd)+'return {offers,rooms};}',{Map,Set});
+const inventory=vm.runInNewContext('(allOffers,meal)=>{'+source.slice(inventoryStart,inventoryEnd)+'return {offers,rooms};}',{Map,Set,id:1,context:{hotelOfferDraft:null}});
 const originalInventory=(allOffers,meal)=>{const offers=allOffers.filter(o=>!meal||o.meal===meal);return {offers,rooms:[...new Set(offers.map(o=>o.room))].map(room=>({room,offers:offers.filter(o=>o.room===room)}))};};
 let inventoryCases=0;
 function checkInventory(allOffers,meal){
@@ -57,3 +182,87 @@ const grown=inventory(growingInput(),'AI'),oldGrown=originalInventory(growingInp
 let reads=0;const work=Array.from({length:1000},(_,index)=>({key:'work:'+index,meal:'AI',get room(){reads++;return 'Room '+index%50;}}));
 originalInventory(work,'');const oldReads=reads;reads=0;const current=inventory(work,'');assert.equal(oldReads,51000);assert.equal(reads,1000);assert.equal(current.rooms.length,50);assert.equal(current.rooms.reduce((sum,group)=>sum+group.offers.length,0),1000);
 console.log('PASS hotel room inventory: '+inventoryCases+' original grouping cases; native sparse/inherited/initial-length, zero/NaN and raw identity/order; room reads '+oldReads+'→'+reads+'; supplier/lead HTTP 0');
+
+// Price-note regression: comparisons never silently promote listing money.
+function verifyRoomPriceStatus(appSource,hotelSource){
+ const rowStart=hotelSource.indexOf('function roomOfferChoiceHTML('),rowEnd=hotelSource.indexOf('function renderHotelRooms(',rowStart);
+ const footerStart=appSource.indexOf('function syncHotelOfferSelection('),footerEnd=appSource.indexOf('function observeHotelRoomChoices(',footerStart);
+ assert(rowStart>=0&&rowEnd>rowStart&&footerStart>=0&&footerEnd>footerStart);
+ const raw={},search={origin:'Москва',country:'4'},listing={key:'one',hotelId:1,raw,search,total:99938,room:'Standard',meal:'BB',day:'2026-10-05',returnDay:'2026-10-12',nights:7,operator:'FUN&SUN',provider:'tourvisor',cached:true};
+ const snapshot='Снимок · цена требует проверки',priced='Цена с выбранными рейсами · сбор включён';
+ const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const retained={...listing,cached:false,tour:{price:99938},quoteListingTotal:99938,flightChoiceId:'pair-2'};
+ const context={hotelOfferDraft:{hotelId:1,key:'one'},selectedOffer:null};
+ const same=(a,b)=>a.room===b.room&&a.meal===b.meal&&a.day===b.day;
+ const helpers={context,esc,sameSelectedTourConditions:same,selectedPriceStatus:o=>o.tour?priced:'Цена из выдачи · демо',cardPriceNote:()=>snapshot,displayMealLabel:o=>o.meal,operatorBadge:o=>o,flightLabel:()=>'',dateText:v=>v,nightsText:v=>v+' ночей',guestsText:()=> '2 взр.',money:v=>v+' ₽'};
+ const rowContext=vm.createContext(helpers);vm.runInContext(hotelSource.slice(rowStart,rowEnd),rowContext);
+ const row=o=>rowContext.roomOfferChoiceHTML(o);
+ const rowNote=html=>html.match(/<small class="room-offer-price-status">([^<]+)<\/small>/)?.[1];
+ assert.equal(rowNote(row(listing)),snapshot,'room comparison retains the listing source/status');
+ context.selectedOffer=retained;
+ assert.equal(rowNote(row(listing)),priced,'a matched retained choice keeps selected pair/fuel status');
+ context.selectedOffer={...retained,key:'another'};
+ assert.equal(rowNote(row(listing)),snapshot,'another offer cannot lend its verified status');
+ context.selectedOffer={...retained,pricePending:true};
+ assert.equal(rowNote(row(listing)),snapshot,'pending pair cannot lend its verified status');
+ context.selectedOffer=null;helpers.cardPriceNote=()=>'<unverified>';
+ assert.equal(rowNote(row(listing)),'&lt;unverified&gt;','price-note text stays escaped');
+ const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
+ const f={hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:null,selectedOffer:null,state:{search},searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:same,selectedPriceStatus:helpers.selectedPriceStatus,cardPriceNote:()=>snapshot,money:helpers.money,mealLabel:helpers.displayMealLabel,dateText:helpers.dateText,needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[]};
+ vm.createContext(f);vm.runInContext(anexAdditionalOwner(appSource)+appSource.slice(footerStart,footerEnd),f);
+ f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'minimum footer identifies listing price');
+ f.hotelOfferDraft={hotelId:1,key:'one'};f.syncHotelOfferSelection(1);
+ assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'selected listing footer retains uncertainty');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'99938 ₽');
+ f.selectedOffer=retained;f.syncHotelOfferSelection(1);
+ assert(nodes['#hotel-detail-price-status'].textContent.endsWith(priced),'retained footer preserves the current pair/fuel status');
+ assert.equal(nodes['#hotel-detail-min'].textContent,'99938 ₽','annotation cannot add fuel to the amount');
+ f.selectedOffer={...retained,search:{...search,origin:'Другой город'}};f.syncHotelOfferSelection(1);
+ assert(nodes['#hotel-detail-price-status'].textContent.endsWith(snapshot),'another search cannot lend its verified status');
+ assert.equal(nodes['#hotel-detail-offers'].dataset.key,'one','exact offer action stays unchanged');
+}
+verifyRoomPriceStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
+console.log('PASS room price status: listing/minimum/selected/current pair/pending/foreign identity/escaping; amounts unchanged');
+
+async function verifyInfantInlineQuoteTransition(appSource){
+ const owner=(start,end)=>{const a=appSource.indexOf(start),b=appSource.indexOf(end,a);assert(a>=0&&b>a);return appSource.slice(a,b);};
+ const code=appSource.match(/^const unknownInfantCharge=.*$/m)[0]+'\n'
+  +anexAdditionalOwner(appSource)
+  +owner('function isCurrentOfferRequest(','function terminalOfferQuote(')
+  +owner('function restoreProviderView(','const flightPairFor=')
+  +owner('async function refreshLiveHotel(','function refreshHotel(')
+  +owner('async function loadAnexPackageQuote(','function anexFlightInventoryHTML(');
+ function harness({infant=true,inline=true,count=2,currentGate=null,quoteError=false,retainedCurrent=false}={}){
+  const views=new Map(),calls=[],modal={open:true},offer={key:'exact-anex',hotelId:501,provider:'anex',total:147744,adults:2,ages:infant?[1]:[],raw:{anexKind:'concrete',anexSessionCurrent:true,...(infant?{infantCharge:{status:'unknown',amount:null,includedInSearchPrice:null}}:{})}};
+  const choices=Array.from({length:count},(_,i)=>({choiceRef:'pair-'+(i+1)}));
+  const c={selectedOffer:offer,selectionGeneration:0,modalType:inline?'hotel-details':'offer',calls,anexCurrentDraft:null,
+   $:s=>s==='#modal'?modal:s==='[name="anex-package-choice"]:checked'?{value:'pair-2'}:null,
+   selectedTourHotel:()=>({id:501}),needsRefresh:()=>true,terminalOfferQuote:()=>false,
+   hotelOfferCheckActive:key=>c.modalType==='hotel-details'&&key===c.selectedOffer?.key,
+   retainedProviderView:o=>views.get(o?.key),rememberProviderView:(o,type,result,error='',pending=false)=>views.set(o.key,{offer:o,type,result,error,pending}),
+   renderOfferProgress:()=>{},toast:()=>{},offerQuoteFailure:(o,e)=>({...o,loading:false,quoteError:e.message}),
+   openAnexConcreteCurrent:(o,current)=>{c.selectedOffer={...o,loading:false};c.anexCurrentDraft={offer:o,current};if(!inline)c.modalType='anex-current';},
+   applyAnexAdditionalPrices:async()=>{calls.push('APD');},
+   openAnexPackageQuote:(o,result,error='',pending=false)=>{c.selectedOffer={...o,loading:false};c.modalType='anex-quote';c.rememberProviderView(o,'anex-quote',result,error,pending);},
+   data:{verifyAnexConcrete:async()=>{calls.push('current');if(currentGate)await currentGate;return {state:'current',finalPriceReady:false};},
+    verifyAnexPackage:async(o,choice)=>{assert.strictEqual(o.raw,offer.raw,'exact current identity reaches existing quote owner');calls.push(choice?'calculate:'+choice:'quote_start');if(quoteError)throw Error('Whole-party quote unavailable');return choice?{state:'quote_verified',finalPriceVerified:true,finalPrice:{amount:157594,currency:'RUB'},choice:{choiceRef:choice}}:{state:'quote_choices',choices};}}
+  };
+  if(retainedCurrent)views.set(offer.key,{offer,type:'anex-current',result:{state:'current',finalPriceReady:false},error:'',pending:false});
+  vm.createContext(c);vm.runInContext(code,c);return {c,calls,offer,views};
+ }
+ const multi=harness();await multi.c.refreshLiveHotel(501);
+ assert.deepEqual(multi.calls,['current','quote_start'],'unknown infant component must enter full quote without an APD prerequisite');
+ assert.equal(multi.c.modalType,'anex-quote');assert.equal(multi.views.get(multi.offer.key).result.choices.length,2,'multiple pairs await explicit choice');
+ assert.equal(multi.offer.total,147744);assert.equal(multi.offer.raw.infantCharge.amount,null);
+ await multi.c.loadAnexPackageQuote(true);assert.deepEqual(multi.calls,['current','quote_start','calculate:pair-2']);
+ assert.equal(multi.views.get(multi.offer.key).result.finalPrice.amount,157594,'whole-party gross is retained without adding an infant amount');
+ const sole=harness({count:1});await sole.c.refreshLiveHotel(501);assert.deepEqual(sole.calls,['current','quote_start','calculate:pair-1'],'existing sole-pair continuation retained');
+ const ordinary=harness({infant:false});await ordinary.c.refreshLiveHotel(501);assert.deepEqual(ordinary.calls,['current','APD'],'ordinary manager-flight estimate path remains available');
+ const retained=harness({retainedCurrent:true});await retained.c.refreshLiveHotel(501);assert.deepEqual(retained.calls,['quote_start'],'retained exact current context enters full quote without repeating current or APD');
+ const explicit=harness({infant:false,inline:false});await explicit.c.refreshLiveHotel(501,{selectFlights:true});assert.deepEqual(explicit.calls,['current','quote_start'],'existing optional full-quote entry unchanged');
+ const failed=harness({quoteError:true});await failed.c.refreshLiveHotel(501);assert.deepEqual(failed.calls,['current','quote_start']);assert.equal(failed.views.get(failed.offer.key).error,'Whole-party quote unavailable');assert.equal(failed.views.get(failed.offer.key).result,null,'failure never borrows a price or falls back to infant APD');
+ let release;const gate=new Promise(resolve=>release=resolve),late=harness({currentGate:gate}),pending=late.c.refreshLiveHotel(501);late.c.selectionGeneration++;late.c.selectedOffer={key:'another-offer'};release();await pending;assert.deepEqual(late.calls,['current'],'late current context cannot start a quote');assert.equal(late.c.selectedOffer.key,'another-offer');
+ console.log('PASS actual infant inline transition: current→whole-party quote, explicit multi/sole pair, gross unchanged, ordinary manager path, failure and late selection; supplier0');
+}
+verifyInfantInlineQuoteTransition(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8')).catch(error=>{console.error(error);process.exitCode=1;});

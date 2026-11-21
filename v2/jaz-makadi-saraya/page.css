@@ -1,0 +1,249 @@
+/* SITE1719: route-owned layout; shared shell and DS2 tokens remain canonical. */
+.jaz-page{display:grid;gap:36px}
+.jaz-page>section{margin:0!important;min-width:0;scroll-margin-top:88px}
+.jaz-page h1,.jaz-page h2,.jaz-page h3{color:var(--at-ink);letter-spacing:-.035em;text-wrap:balance}
+.jaz-eyebrow{display:block;color:var(--at-brand);font-size:12px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;line-height:1.5}
+.jaz-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"heading photo" "price photo" "body photo";column-gap:36px;padding:30px;border:1px solid var(--at-line);border-radius:24px;background:#fff;box-shadow:0 12px 36px rgba(31,51,112,.055)}
+.jaz-hero__heading{grid-area:heading;align-self:end}
+.jaz-hero h1{margin:10px 0 0;font-size:clamp(34px,3.8vw,48px);line-height:1.03}
+.jaz-hero__price{grid-area:price;min-width:0;align-self:start}
+.jaz-hero__body{grid-area:body;align-self:start;min-width:0}
+.jaz-lead{margin:18px 0 0;color:var(--at-muted);font-size:17px;line-height:1.55}
+.jaz-facts{display:flex;flex-wrap:wrap;gap:8px 18px;padding:0;margin:18px 0 0;list-style:none;color:var(--at-ink);font-size:13px;line-height:1.5;font-weight:700}
+.jaz-facts li{display:flex;align-items:center;gap:7px}
+.jaz-facts li:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--at-brand);flex:none}
+.jaz-hero__actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;margin-top:24px}
+.jaz-hero__actions .sp-primary{min-height:50px;padding-inline:22px}
+.jaz-text-link{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;color:var(--at-brand);font-size:14px;font-weight:750;text-decoration:none}
+.jaz-text-link:hover{text-decoration:underline}
+.jaz-caption{margin:12px 0 0;color:var(--at-muted);font-size:13px;line-height:1.5}
+.jaz-hero__photo{grid-area:photo;display:flex;flex-direction:column;margin:0;min-width:0;align-self:center}
+.jaz-hero__photo>a{position:relative;display:block;border-radius:16px;overflow:hidden}
+.jaz-hero__photo img{display:block;width:100%;height:auto;aspect-ratio:1.35;object-fit:cover;border-radius:16px}
+.jaz-photo-hint{position:absolute;right:14px;bottom:14px;padding:8px 12px;border-radius:10px;background:#fff;color:var(--at-ink);font-size:12px;font-weight:750;line-height:1.5;box-shadow:0 2px 12px #0c153a26}
+.jaz-hero__photo figcaption{margin-top:9px;color:var(--at-muted);font-size:12px;line-height:1.5}
+.jaz-handoff-notice{margin:14px 0 0;padding:12px 14px;border-left:3px solid var(--at-accent);border-radius:0 8px 8px 0;background:#fff5ed;color:#75411c;font-size:14px;line-height:1.5}
+.jaz-section-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:20px}
+.jaz-section-heading h2{margin:7px 0 0;max-width:640px;font-size:clamp(27px,2.6vw,34px);line-height:1.13}
+.jaz-section-heading>p{max-width:310px;margin:0;color:var(--at-muted);font-size:14px;line-height:1.55}
+.jaz-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.jaz-gallery figure{min-width:0;margin:0}
+.jaz-gallery a{display:block;overflow:hidden;border-radius:16px;background:var(--at-soft-blue)}
+.jaz-gallery img{display:block;width:100%;height:auto;aspect-ratio:1024/683;object-fit:cover}
+.jaz-gallery figcaption{margin-top:10px;color:var(--at-ink);font-size:14px;font-weight:700;line-height:1.4}
+.jaz-gallery+.jaz-caption{max-width:85ch}
+.jaz-rooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.jaz-room{display:flex;flex-direction:column;min-width:0;padding:24px;border:1px solid var(--at-line);border-radius:18px;background:#fff}
+.jaz-room__heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.jaz-room h3{margin:0;font-size:20px;line-height:1.2}
+.jaz-room__area{flex:none;color:var(--at-brand);font-size:28px;font-weight:800;letter-spacing:-.04em;white-space:nowrap}
+.jaz-room__area small{font-size:15px;font-weight:600}
+.jaz-room__name{margin:8px 0 0;color:var(--at-muted);font-size:13px;line-height:1.5}
+.jaz-room dl{display:grid;gap:18px;margin:22px 0}
+.jaz-room dt{color:var(--at-muted);font-size:12px;line-height:1.4}
+.jaz-room dd{margin:5px 0 0;color:var(--at-ink);font-size:15px;line-height:1.5}
+.jaz-room__choice{margin:auto 0 0;padding-top:16px;border-top:1px solid var(--at-line);color:var(--at-muted);font-size:13px;line-height:1.55}
+.jaz-room-note{display:grid;grid-template-columns:170px minmax(0,1fr);gap:18px;margin-top:16px;padding:18px 22px;border-radius:14px;background:var(--at-soft-blue);font-size:14px;line-height:1.6}
+.jaz-room-note strong{color:var(--at-brand)}
+.jaz-room-note p{margin:0;color:var(--at-muted)}
+.jaz-stay{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.jaz-stay article{padding:24px;border-radius:16px;background:var(--at-soft-blue)}
+.jaz-stay h3{margin:0 0 10px;font-size:20px;line-height:1.25}
+.jaz-stay p{margin:0;color:var(--at-muted);font-size:15px;line-height:1.65}
+.jaz-stay+.jaz-caption{max-width:100ch}
+.jaz-location{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.jaz-location article{padding:22px 0;border-top:1px solid var(--at-line)}
+.jaz-location h3{margin:0 0 10px;font-size:20px;line-height:1.25}
+.jaz-location p{margin:0;max-width:62ch;color:var(--at-muted);font-size:15px;line-height:1.65}
+.jaz-address{padding-top:20px;border-top:1px solid var(--at-line)}
+.jaz-address address{margin-top:8px;font-style:normal;font-size:15px;line-height:1.6;color:var(--at-ink);overflow-wrap:anywhere}
+.jaz-address a{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--at-brand);font-size:14px;font-weight:700;text-decoration:none}
+.jaz-address a:hover{text-decoration:underline}
+.jaz-search{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:32px;padding:30px 32px;border:1px solid var(--at-line-strong);border-radius:20px;background:var(--at-soft-blue)}
+.jaz-search h2{margin:7px 0 12px;font-size:clamp(26px,2.5vw,32px);line-height:1.15}
+.jaz-search p{max-width:720px;margin:0;color:var(--at-muted);font-size:15px;line-height:1.6}
+.jaz-search p.jaz-search__availability{margin-top:12px;font-size:13px}
+.jaz-search .sp-primary{display:inline-flex;gap:10px;min-height:52px;white-space:nowrap}
+.jaz-sources{border-top:1px solid var(--at-line);border-bottom:1px solid var(--at-line)}
+.jaz-sources summary{padding:20px 0;color:var(--at-brand);font-size:16px;font-weight:750;line-height:1.5;cursor:pointer}
+.jaz-sources__body{max-width:90ch;padding-bottom:22px;color:var(--at-muted);font-size:14px;line-height:1.65}
+.jaz-sources__body p{margin:0 0 14px}
+.jaz-sources__body ul{padding-left:20px;margin:0 0 16px}
+.jaz-sources__body li+li{margin-top:10px}
+.jaz-sources__body a{color:var(--at-brand);text-underline-offset:3px}
+.jaz-viewer-heading{flex:1;min-width:0}
+.jaz-viewer-note{margin:6px 0 0;color:var(--at-muted);font-size:12px;line-height:1.4}
+@media(max-width:900px){
+  .jaz-hero{column-gap:24px;padding:24px}
+  .jaz-hero h1{font-size:36px}
+  .jaz-room{padding:18px}
+  .jaz-room__heading{align-items:start;flex-direction:column;gap:8px}
+  .jaz-section-heading{align-items:start;flex-direction:column;gap:12px}
+  .jaz-section-heading>p{max-width:none}
+  .jaz-search{grid-template-columns:1fr;gap:20px}
+  .jaz-search .sp-primary{justify-self:start}
+}
+@media(max-width:600px){
+  .jaz-page{gap:28px}
+  .jaz-hero{grid-template-columns:1fr;grid-template-areas:"heading" "price" "body" "photo";gap:12px;padding:18px;border-radius:18px}
+  .jaz-hero h1{font-size:36px;max-width:360px}
+  .jaz-hero__photo img{aspect-ratio:1.85;border-radius:12px}
+  .jaz-hero__photo>a{border-radius:12px}
+  .jaz-photo-hint{right:10px;bottom:10px;font-size:11px;padding:6px 10px}
+  .jaz-hero__photo figcaption{font-size:11px;margin-top:7px}
+  .jaz-lead{margin:0;font-size:16px}
+  .jaz-facts{gap:8px 16px;margin-top:14px;font-size:12px}
+  .jaz-hero__actions{display:grid;gap:4px;margin-top:20px}
+  .jaz-hero__actions .sp-primary{width:100%;justify-content:center}
+  .jaz-caption{margin-top:8px;font-size:12px}
+  .jaz-section-heading h2{font-size:27px}
+  .jaz-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
+  .jaz-gallery figure:first-child{grid-column:1/-1}
+  .jaz-gallery a{border-radius:12px}
+  .jaz-gallery figcaption{margin-top:7px;font-size:13px}
+  .jaz-rooms{grid-template-columns:1fr;gap:12px}
+  .jaz-room{padding:20px}
+  .jaz-room__heading{align-items:center;flex-direction:row}
+  .jaz-room dl{gap:16px;margin:20px 0}
+  .jaz-room-note{grid-template-columns:1fr;gap:6px;padding:16px 18px;font-size:13px}
+  .jaz-stay{grid-template-columns:1fr;gap:10px}
+  .jaz-stay article{padding:20px}
+  .jaz-location{grid-template-columns:1fr;gap:0}
+  .jaz-location article{padding:20px 0}
+  .jaz-search{padding:22px 20px;border-radius:18px}
+  .jaz-search h2{font-size:27px}
+  .jaz-search .sp-primary{width:100%;justify-content:center;white-space:normal}
+  .jaz-sources summary{font-size:15px}
+}
+
+/* SITE1719 phase4: concise wayfinding, a mid-page conversion step and readable FAQs. */
+.jaz-lead strong{color:var(--at-ink)}
+.jaz-quick-nav{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;padding:0 4px;color:var(--at-muted);font-size:13px;line-height:1.4}
+.jaz-quick-nav>span{font-weight:750}
+.jaz-quick-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 12px;border:1px solid var(--at-line);border-radius:999px;background:#fff;color:var(--at-ink);font-weight:700;text-decoration:none}
+.jaz-quick-nav a:hover,.jaz-quick-nav a:focus-visible{border-color:var(--at-brand);color:var(--at-brand)}
+.jaz-room-step{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:16px;padding:20px 24px;border:1px solid var(--at-line);border-radius:16px;background:#fff}
+.jaz-room-step strong{display:block;color:var(--at-ink);font-size:17px}
+.jaz-room-step p{margin:6px 0 0;max-width:66ch;color:var(--at-muted);font-size:13px;line-height:1.55}
+.jaz-room-step .sp-primary{flex:none;min-height:46px}
+.jaz-questions__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.jaz-questions__grid details{min-width:0;border:1px solid var(--at-line);border-radius:14px;background:#fff}
+.jaz-questions__grid summary{padding:18px 20px;color:var(--at-ink);font-size:15px;font-weight:750;line-height:1.5;cursor:pointer}
+.jaz-questions__grid details[open]{border-color:var(--at-line-strong)}
+.jaz-questions__grid p{margin:0;padding:0 20px 20px;color:var(--at-muted);font-size:14px;line-height:1.65}
+@media(max-width:600px){
+  .jaz-quick-nav{gap:7px;padding:0}
+  .jaz-quick-nav>span{width:100%}
+  .jaz-quick-nav a{font-size:12px;min-height:40px;padding:7px 10px}
+  .jaz-room-step{display:grid;gap:14px;padding:18px}
+  .jaz-room-step .sp-primary{width:100%;justify-content:center}
+  .jaz-questions__grid{grid-template-columns:1fr;gap:10px}
+  .jaz-questions__grid summary{padding:16px;font-size:14px}
+  .jaz-questions__grid p{padding:0 16px 16px;font-size:13px}
+}
+
+/* SITE1719 phase5 media candidates: official photos; production reuse requires rights verification. */
+.jaz-official-photo{margin:16px 0;min-width:0}
+.jaz-official-photo a{display:block;overflow:hidden;border-radius:12px;background:var(--at-soft-blue)}
+.jaz-official-photo img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
+.jaz-stay .jaz-official-photo{margin:0 0 14px}
+.jaz-rooms+.jaz-caption{max-width:95ch}
+@media(max-width:600px){.jaz-official-photo img{aspect-ratio:16/10}}
+
+/* SITE1719 phase6: opt-in retained observation, explicitly not current price or availability. */
+.jaz-price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;padding:26px 30px;border:1px solid var(--at-line);border-radius:20px;background:#fff}
+.jaz-price h2{margin:8px 0 12px;font-size:clamp(26px,2.6vw,32px)}
+.jaz-price p{margin:10px 0 0;color:var(--at-muted);font-size:14px;line-height:1.6}
+.jaz-price p strong{color:var(--at-ink)}
+.jaz-price__action{min-width:0}
+.jaz-price__button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 20px;border:0;border-radius:11px;background:var(--at-brand);color:#fff;font:inherit;font-size:14px;font-weight:750;cursor:pointer}
+.jaz-price__button:disabled{opacity:.65;cursor:wait}
+.jaz-price__button:focus-visible{outline:3px solid var(--at-accent);outline-offset:3px}
+.jaz-price .jaz-price__status{margin:10px 0 0;font-size:13px}
+.jaz-price__result{min-width:0;margin-top:16px;padding:20px;border:1px solid var(--at-line);border-radius:14px;background:var(--at-soft-blue)}
+.jaz-price__tag{color:var(--at-brand);font-size:12px;font-weight:700}
+.jaz-price__amount{display:block;margin-top:10px;color:var(--at-ink);font-size:clamp(26px,3vw,34px);font-weight:800}
+.jaz-price__result p{margin:9px 0 0}
+.jaz-price__result .jaz-price__warning{color:var(--at-ink);font-size:13px}
+.jaz-price__result .jaz-price__source{font-size:12px}
+.jaz-price__result a{margin-top:8px}
+.jaz-price [hidden]{display:none!important}
+@media(max-width:760px){
+  .jaz-price{grid-template-columns:1fr;gap:18px;padding:20px}
+  .jaz-price__button{width:100%}
+  .jaz-price__result{padding:16px}
+}
+
+/* SITE1719 phase7: cheapest-observation first; room information stays secondary. */
+.jaz-hero .jaz-price{display:block;scroll-margin-top:88px;margin-top:14px;padding:14px 16px;border:1px solid var(--at-line-strong);border-radius:14px;background:var(--at-soft-blue)}
+.jaz-hero .jaz-price h2{margin:4px 0 0;font-size:clamp(19px,2vw,24px);line-height:1.2}
+.jaz-hero .jaz-price .jaz-eyebrow{font-size:11px}
+.jaz-hero .jaz-price p{margin:4px 0 0;font-size:12px;line-height:1.4}
+.jaz-hero .jaz-price .jaz-caption{margin:4px 0 0;font-size:11px}
+.jaz-hero .jaz-price__result{margin:8px 0 0;padding:10px 0 0;border:0;border-top:1px solid var(--at-line);border-radius:0;background:transparent}
+.jaz-hero .jaz-price__tag{display:block;font-size:11px}
+.jaz-hero .jaz-price__amount{margin:3px 0 0;font-size:clamp(30px,3.2vw,41px);line-height:1.1}
+.jaz-hero .jaz-price__result p{font-size:12px;line-height:1.4}
+.jaz-hero .jaz-price__result .jaz-price__source{font-size:11px}
+.jaz-hero .jaz-price__button{display:inline-flex;min-height:36px;margin-top:8px;padding:6px 0;background:transparent;color:var(--at-brand);font-size:12px;text-decoration:underline;text-underline-offset:2px}
+.jaz-hero .jaz-price__status{font-size:11px}
+.jaz-hero .jaz-price__result a{font-size:13px;margin-top:6px}
+.jaz-hero__body .jaz-facts{margin-top:12px;font-size:12px}
+.jaz-hero__body .jaz-hero__actions{margin-top:14px}
+.jaz-room-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.jaz-room-photos figure{min-width:0}
+.jaz-room-photos figcaption{margin:7px 0 0;color:var(--at-ink);font-size:13px;font-weight:700;line-height:1.4}
+@media(max-width:600px){
+ .jaz-hero .jaz-price{padding:12px 14px;margin-top:8px}
+ .jaz-hero .jaz-price h2{font-size:20px}
+ .jaz-hero .jaz-price__amount{font-size:34px}
+ .jaz-hero .jaz-price p{font-size:11px}
+ .jaz-room-photos{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .jaz-room-photos figcaption{font-size:11px;overflow-wrap:anywhere}
+}
+
+/* SITE1719 phase7 review: one compact observed minimum, immediately followed by tour search. */
+.jaz-hero .jaz-price{margin-top:3px;padding:11px 14px}
+.jaz-hero .jaz-price h2{margin-top:2px;font-size:19px}
+.jaz-hero .jaz-price__action{display:block}
+.jaz-hero .jaz-price__result{margin:5px 0 0;padding:5px 0 0}
+.jaz-hero .jaz-price__amount{margin-top:0;font-size:clamp(31px,3.2vw,40px)}
+.jaz-hero .jaz-price__tag{display:block;margin-top:3px;color:var(--at-muted);font-size:11px}
+.jaz-hero .jaz-price__result p{margin-top:4px;font-size:11px;line-height:1.35}
+.jaz-hero .jaz-price__result a{min-height:34px;margin-top:4px;font-weight:750}
+.jaz-hero .jaz-price__details{margin:3px 0 0}
+.jaz-hero .jaz-price__details summary{font-size:11px;color:var(--at-muted);cursor:pointer}
+.jaz-hero .jaz-price__details .jaz-price__source{margin:4px 0 0;font-size:11px}
+.jaz-hero .jaz-price__status{margin:5px 0 0;font-size:11px}
+.jaz-hero .jaz-price[data-price-state="observed"] .jaz-price__status{display:none}
+.jaz-hero .jaz-price__button{min-height:28px;margin:0;padding:2px 0;font-size:11px}
+.jaz-hero__body .jaz-hero__actions{margin-top:8px}
+.jaz-hero__body .jaz-facts{margin-top:7px}
+@media(max-width:600px){
+ .jaz-hero .jaz-price{padding:10px 12px}
+ .jaz-hero .jaz-price h2{font-size:18px}
+ .jaz-hero .jaz-price__amount{font-size:34px}
+ .jaz-hero .jaz-price__result p{font-size:10.5px}
+}
+
+/* SITE1719 phase8: price and search action before the image on a phone. */
+@media(max-width:600px){
+  .jaz-hero__heading{align-self:start}
+  .jaz-hero__body{display:flex;flex-direction:column;gap:8px}
+  .jaz-hero__body .jaz-hero__actions{order:0;margin-top:0}
+  .jaz-hero__body .jaz-facts{order:1;margin-top:0}
+  .jaz-hero__body .jaz-caption{order:2;margin-top:0}
+  .jaz-hero__photo{margin-top:0}
+  .jaz-hero__photo img{aspect-ratio:2/1}
+}
+@media(max-width:400px){
+  .jaz-hero{padding:14px;gap:9px}
+  .jaz-hero h1{font-size:32px;line-height:1.04}
+  .jaz-hero .jaz-price{padding:8px 10px}
+  .jaz-hero .jaz-price h2{font-size:17px}
+  .jaz-hero .jaz-price__amount{font-size:31px}
+  .jaz-hero .jaz-price__result p{font-size:10px;line-height:1.28}
+  .jaz-hero .jaz-price__result a{margin-top:2px}
+  .jaz-hero .jaz-price__button{min-height:26px}
+  .jaz-hero__actions .sp-primary{min-height:48px}
+}
