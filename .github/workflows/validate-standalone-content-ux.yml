@@ -65,9 +65,9 @@ jobs:
           grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
           grep -Fq '.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}' v2/site-coherence-v1.css
           ! grep -Fq '.sp-header' v2/site-page-v1.css
-          grep -Fq 'background:var(--at-accent)' v2/home-v1.css
+          grep -Fq 'background:var(--at-brand)' v2/home-v1.css
           grep -Fq 'color:var(--at-brand)' v2/home-v1.css
-          grep -Fq '.at-home-search button:focus-visible,.at-home-search__more:focus-visible' v2/home-v1.css
+          grep -Fq '.at-home-main a:focus-visible,.home-skip:focus-visible' v2/home-v1.css
           ! grep -Fq '.at-home-header' v2/home-v1.css
           ! grep -Fq -- '--at-orange:' v2/home-v1.css
           ! grep -Fq -- '--at-blue:' v2/home-v1.css

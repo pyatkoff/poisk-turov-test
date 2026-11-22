@@ -4345,15 +4345,18 @@ def refactor_remote_program(policy, files, identity, parent_value, *, tv_success
     return program
 
 
-def refactor_rollback_remote_program(policy, identity, original, accepted, parent_value, *, tv_successor=None, handoff_restoration=None):
+def refactor_rollback_remote_program(policy, identity, original, accepted, parent_value, *, tv_successor=None, handoff_restoration=None, home_restoration=None):
     prefix=_refactor_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
     need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
          and valid_refactor_result(original,accepted),'refactor_rollback_evidence')
     if handoff_restoration is not None and handoff_restoration.get('status')=='restored':
         need(original==handoff_parent_identity(),'handoff_restoration_parent')
+    if home_restoration is not None:
+        need(handoff_restoration is not None,'home_restoration_parent')
+        if home_restoration.get('status')=='restored':need(original==handoff_parent_identity(),'home_restoration_parent')
     program=(prefix+'\nREFACTOR_ORIGINAL='+repr(original)+'\nREFACTOR_ACCEPTED='+repr(accepted)
              +'\nREFACTOR_ROLLBACK_OPERATION='+repr(REFACTOR_ROLLBACK_OPERATION)+'\n'
-             +handoff_restoration_prefix(handoff_restoration)+REFACTOR_ROLLBACK_REMOTE)
+             +handoff_restoration_prefix(handoff_restoration)+home_restoration_prefix(home_restoration,'refactor')+REFACTOR_ROLLBACK_REMOTE)
     ast.parse(program);return program
 
 
@@ -4469,9 +4472,11 @@ def refactor(rollback=False):
             policy,accepted,parent_value=refactor_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
             dependency=tv_successor_evidence()
             restoration=handoff_restoration_evidence()
+            home_restoration=home_restoration_evidence()
             program=refactor_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency,
-                                                    handoff_restoration=restoration)
-            evidence.update(parent_site=refactor_parent_identity(),original_refactor=original,handoff_restoration_evidence=restoration)
+                                                    handoff_restoration=restoration,home_restoration=home_restoration)
+            evidence.update(parent_site=refactor_parent_identity(),original_refactor=original,handoff_restoration_evidence=restoration,
+                            home_restoration_evidence=home_restoration)
         else:
             identity=refactor_event_identity(event,os.environ);evidence.update(identity,phase='admission');refactor_admission(identity)
             evidence['phase']='artifact'
@@ -4493,7 +4498,9 @@ def refactor(rollback=False):
         if rollback:refactor_rollback_commands(identity,original_run,original);rollback_main(identity)
         else:refactor_admission(identity)
         need(tv_successor_evidence()==dependency,'tv_successor_changed')
-        if rollback:need(handoff_restoration_evidence()==restoration,'handoff_restoration_changed')
+        if rollback:
+            need(handoff_restoration_evidence()==restoration,'handoff_restoration_changed')
+            need(home_restoration_evidence()==home_restoration,'home_restoration_changed')
         evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
         response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
         need(len(response)<=32768,'receipt_limit');result=json.loads(response)
@@ -4914,11 +4921,14 @@ def handoff_remote_program(policy,files,identity,parent_value,*,tv_successor=Non
     return program
 
 
-def handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,*,tv_successor=None):
+def handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,*,tv_successor=None,home_restoration=None):
     prefix=_handoff_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
     need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
          and valid_handoff_result(original,accepted),'handoff_rollback_evidence')
-    program=(prefix+'\nHANDOFF_ORIGINAL='+repr(original)+'\nHANDOFF_ACCEPTED='+repr(accepted)+'\n'+HANDOFF_ROLLBACK_REMOTE)
+    if home_restoration is not None and home_restoration.get('status')=='restored':
+        need(original==home_parent_identity(),'home_restoration_parent')
+    program=(prefix+'\nHANDOFF_ORIGINAL='+repr(original)+'\nHANDOFF_ACCEPTED='+repr(accepted)+'\n'
+             +home_restoration_prefix(home_restoration,'handoff')+HANDOFF_ROLLBACK_REMOTE)
     ast.parse(program);return program
 
 
@@ -4980,8 +4990,10 @@ def _handoff_source_value(value,original,*,recovery=False,rollback_original=None
            'source_sha':HANDOFF_SOURCE,'manifest_sha256':handoff_policy()['manifest'],'read_only':False,
            'phase':'complete','ssh_started':True,'status':status,'parent_refactor':handoff_parent_identity()}
     if rollback:fixed.update(original_handoff=rollback_original,original_handoff_run_id=rollback_original['run_id'])
-    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}
+    optional={'home_restoration_evidence'} if rollback and isinstance(value,dict) and 'home_restoration_evidence' in value else set()
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}|optional
          and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'handoff_rollback_evidence')
+    if optional:home_restoration_value(value['home_restoration_evidence'])
     handoff_parent_value(value['parent_evidence'])
     success=valid_handoff_result(original,value['remote'],rollback_original,accepted)
     need(success or recovery and value['remote']['status']=='rolled_back_no_replay','handoff_rollback_evidence')
@@ -5370,8 +5382,11 @@ def handoff(rollback=False):
             original,artifact=handoff_rollback_admission(identity,original_run);evidence['phase']='artifact'
             policy,accepted,parent_value=handoff_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
             dependency=tv_successor_evidence()
-            program=handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency)
-            evidence.update(parent_refactor=handoff_parent_identity(),parent_evidence=parent_value,original_handoff=original)
+            restoration=home_restoration_evidence()
+            program=handoff_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency,
+                                                    home_restoration=restoration)
+            evidence.update(parent_refactor=handoff_parent_identity(),parent_evidence=parent_value,original_handoff=original,
+                            home_restoration_evidence=restoration)
         else:
             identity=handoff_event_identity(event,os.environ);evidence.update(identity,phase='admission');handoff_admission(identity)
             evidence['phase']='artifact'
@@ -5395,6 +5410,7 @@ def handoff(rollback=False):
             need(checked==original and latest_artifact==artifact,'handoff_rollback_changed')
         else:handoff_admission(identity)
         need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        if rollback:need(home_restoration_evidence()==restoration,'home_restoration_changed')
         evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
         response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
         need(len(response)<=32768,'receipt_limit');result=json.loads(response)
@@ -5412,7 +5428,1226 @@ def handoff(rollback=False):
     print(json.dumps(evidence,sort_keys=True));need(complete,'handoff_rollback_not_verified' if rollback else 'handoff_not_verified')
 
 
+HOME_PREFIX = '/update-site-home-navigation'
+HOME_OPERATION = 'site-home-navigation-20261121-v1'
+HOME_ROLLBACK_PREFIX = '/rollback-site-home-navigation'
+HOME_ROLLBACK_OPERATION = 'site-home-navigation-rollback-20261121-v1'
+# Draft admission is deliberately closed until the approved SOURCE and its exact
+# modern LIVE artifact have frozen. No caller supplies paths, sources or hashes.
+HOME_SOURCE_PR = 5157
+HOME_SOURCE = 'be5d04ea6580a51e046eeec5d0a2da3b846725c2'
+HOME_TREE = '2088eb9a22c1a7c16e6626ba6c71722cea6fe0d9'
+HOME_SOURCE_MERGE = 'ee3e7c9bfc70e46db59720ba06e58946c7349a9b'
+HOME_SOURCE_MERGE_TREE = '28324059d18ccc057227c504e38a13ec3871ae93'
+HOME_RELEASE_BASE = '44515801b01f536e571fc3444276e1dd4bbdcd0b'
+HOME_MAIN_BASE = 'f6b7513445f599f332c5d9d4021b2537e2d3d609'
+HOME_ARTIFACT = 14752234533
+HOME_ARTIFACT_SHA = '3d8afde87847b83da4d3a01e0b6a9edc4474df3a5ee9a723aef02e06095e11c7'
+HOME_MANIFEST_SHA = 'bcb3d8ec1b181c29e86b6964b410e8eb0ab74afabf9e9492482f9e344e71bb46'
+HOME_BUILD_RUN = 45019050793
+HOME_SOURCE_BRANCH = 'feat/site234-home-search3-form-20261122'
+HOME_CHECKS = ('browser-matrix','build-preview-artifact','content-ux','focused-presentation','guard',
+               'integration-contracts','lead-source','navigation-contract','preview-boundary','visual-migration')
+HOME_APPROVAL_COMMENT = 7065453587
+HOME_PARENT = {
+    'control_source_sha':HOME_MAIN_BASE,'run_id':'44919131549','command_comment_id':7064864145,
+    'job_id':136891096904,'artifact_id':14712672447,
+    'artifact_sha256':'eff55d658065fc0722e6eb443528e042c18402f54dd401c4be4c06fae5b9da0b',
+    'receipt_sha256':'901477edeee5ceb162559520b0f73b7509e26709b8a49fba184dde8c621ba523',
+    'policy_sha256':'d2f80312b7dfb70261641b1ac5f5ca779d804d1dfcffb439d7c92c029efbc271',
+    'snapshot_manifest_sha256':'5a5158c8d409ade5477c528105cf2750a238a55e356ff9ea758663586079ea85',
+    'terminal_comment_id':7064974626,
+}
+HOME_SHARED_ORDER = ('site-path-v1.php','home-hero-v1.jpg','home-v1.css','site-header-v2.css',
+                     'home-v1.php','site-header-v2.php')
+HOME_SEARCH_ORDER = ('visual-search/styles.css',
+ 'visual-search/mobile-controls-v1.css',
+ 'visual-search/app.js',
+ 'visual-search/index.html',
+ 'visual-search/entry-v1.php',
+ 'visual-search/public-config-v1.js',
+ 'visual-search/public-bootstrap-v1.js',
+ 'search3-canonical-profiles-v1.js',
+ 'prototype-search/data.js')
+HOME_ORDER = HOME_SHARED_ORDER + HOME_SEARCH_ORDER + ('index.php',)
+HOME_ENTRY = {'source_ref':HOME_MAIN_BASE,'source_path':'v2/home-entry-v1.php',
+              'blob':'2e066c7fb83832d7115e698d2079e5661f45e413',
+              'before':{'state':'present','mode':'0644','size':12305,
+                        'sha256':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f'},
+              'after':{'state':'present','mode':'0644','size':433,
+                       'sha256':'bef590b35ec45d2ac21a5c41c1d6d49bd36da25798e720aa2d23dca152d3688c'}}
+HOME_TARGETS = {'site-path-v1.php': {'before': {'state': 'absent'},
+                      'after': {'state': 'present',
+                                'size': 2205,
+                                'mode': '0644',
+                                'sha256': '031f3ff136c0adcbcd4895a2e29e1997200f437280e0e206e6950e353c225101'},
+                      'source_path': 'v2/site-path-v1.php',
+                      'source': {'mode': '100644',
+                                 'blob_sha': 'f472f245da352a0c69749869c55809f903432e9b',
+                                 'size': 2205,
+                                 'sha256': '031f3ff136c0adcbcd4895a2e29e1997200f437280e0e206e6950e353c225101'}},
+ 'home-hero-v1.jpg': {'before': {'state': 'absent'},
+                      'after': {'state': 'present',
+                                'size': 109085,
+                                'mode': '0644',
+                                'sha256': '1968129469a1f348df4a7246f4d45cf9d4404e8e30f27806fda95b69a80ed82e'},
+                      'source_path': 'v2/home-hero-v1.jpg',
+                      'source': {'mode': '100644',
+                                 'blob_sha': '5bf213f51829c89cb884db031477a016a0990006',
+                                 'size': 109085,
+                                 'sha256': '1968129469a1f348df4a7246f4d45cf9d4404e8e30f27806fda95b69a80ed82e'}},
+ 'home-v1.css': {'before': {'state': 'present',
+            'mode': '0644',
+            'size': 9914,
+            'sha256': '844e106d1ba42f92bf5bce807cee88e53247e8acd807c76cc67fa11293beb08e'},
+ 'after': {'state': 'present',
+           'size': 9529,
+           'mode': '0644',
+           'sha256': '76ad044d1ec5aa0e3121314986bbab504c1de642220a77ec2b2f6484a3e8bbb5'},
+ 'source_path': 'v2/home-v1.css',
+ 'source': {'mode': '100644',
+            'blob_sha': 'ba26b284aa9c09c30ee41437283f44615fcfbbf5',
+            'size': 9529,
+            'sha256': '76ad044d1ec5aa0e3121314986bbab504c1de642220a77ec2b2f6484a3e8bbb5'}},
+ 'site-header-v2.css': {'before': {'state': 'present',
+                                   'mode': '0644',
+                                   'size': 5198,
+                                   'sha256': '87654b6903e148306ff27ddf9453d608f8401089240192269cefe79c2607d777'},
+                        'after': {'state': 'present',
+                                  'size': 4683,
+                                  'mode': '0644',
+                                  'sha256': '63ce25e14ec66ed24dba597e6ca94d0821f51889eaa22b778dfd791bce6e07ba'},
+                        'source_path': 'v2/site-header-v2.css',
+                        'source': {'mode': '100644',
+                                   'blob_sha': 'f5b9998fc1eae3133167b47698909af84f9cb457',
+                                   'size': 4802,
+                                   'sha256': 'f0009423c54e0077a4aa5209c34482761175bbd93c96d9fd1418e3c9bb1d683e'}},
+ 'home-v1.php': {'before': {'state': 'present',
+            'mode': '0644',
+            'size': 10663,
+            'sha256': '081389eb4980e41a5801943a752ccbc16fb1326682a199c0e29f31525d4f270d'},
+ 'after': {'state': 'present',
+           'size': 8695,
+           'mode': '0644',
+           'sha256': '86c634204db376421188d33cf26c7cca7283dacc9c0584cb2e1f25118178dad2'},
+ 'source_path': 'v2/home-v1.php',
+ 'source': {'mode': '100644',
+            'blob_sha': '060e273199b858d96d9913a014d4984569c6df79',
+            'size': 8695,
+            'sha256': '86c634204db376421188d33cf26c7cca7283dacc9c0584cb2e1f25118178dad2'}},
+ 'site-header-v2.php': {'before': {'state': 'present',
+                                   'mode': '0644',
+                                   'size': 3472,
+                                   'sha256': '682a3fb907c8e6ac350a42822ba943097f4e42a277e6c489195724ea50619dd8'},
+                        'after': {'state': 'present',
+                                  'size': 4326,
+                                  'mode': '0644',
+                                  'sha256': 'a31026a8fb723ac71df72e282dc8e7b716c488aeecb4b8d97fc430f9b117fcd3'},
+                        'source_path': 'v2/site-header-v2.php',
+                        'source': {'mode': '100644',
+                                   'blob_sha': '18527d0bb9cea79425d478f038036417d4ddf47b',
+                                   'size': 4326,
+                                   'sha256': 'a31026a8fb723ac71df72e282dc8e7b716c488aeecb4b8d97fc430f9b117fcd3'}},
+ 'visual-search/styles.css': {'before': {'mode': '0644',
+                                         'sha256': 'f2f6585cc128d5ff122d8ea4486424de234f5561461f0aaca3bbe785f5444af3',
+                                         'size': 270030,
+                                         'state': 'present'},
+                              'after': {'state': 'present',
+                                        'size': 268471,
+                                        'mode': '0644',
+                                        'sha256': '8d137710f2e52c6666096b533c62e88d75e185e096067189e9235be06fe0cfea'},
+                              'source_path': 'v2/visual-search/styles.css',
+                              'source': {'mode': '100644',
+                                         'blob_sha': '965edcea9eb4a5b750d405bd6d057ef8e88a627c',
+                                         'size': 280924,
+                                         'sha256': '459c7d84e6642d5f274526e236f9397ffdc9d085e0ecf499bb6fba375374b525'}},
+ 'visual-search/mobile-controls-v1.css': {'before': {'mode': '0644',
+                                                     'sha256': '362df43e79697ae6ae2932758e5fe671b634fb2d8aa2d0a34d1bd6009e2b7784',
+                                                     'size': 15665,
+                                                     'state': 'present'},
+                                          'after': {'state': 'present',
+                                                    'size': 15615,
+                                                    'mode': '0644',
+                                                    'sha256': 'f3321da94bf770e243be441f302b81707bac5a5c5e3aebfd14f104e12128771a'},
+                                          'source_path': 'v2/visual-search/mobile-controls-v1.css',
+                                          'source': {'mode': '100644',
+                                                     'blob_sha': '1ddd76b5cbbe63ac4937e3886d92d4a06d22c11b',
+                                                     'size': 18888,
+                                                     'sha256': 'de1dad08ac1f22ede59e84c4df7b47bf7b3e95a86e90f5f8c95b190859e66781'}},
+ 'visual-search/app.js': {'before': {'state': 'present',
+            'mode': '0644',
+            'size': 310844,
+            'sha256': 'efb3870d23c3e0d3c3fbb53fff4967a6ee3d901bebdf5502b7d78c6e2d2bbe92'},
+ 'after': {'state': 'present',
+           'size': 312104,
+           'mode': '0644',
+           'sha256': 'e1c5735e41affcac3cf2853bacb110e4a0ce7924118801bc1d542ef20d623fb7'},
+ 'source_path': 'v2/visual-search/app.js',
+ 'source': {'mode': '100644',
+            'blob_sha': 'cd74f089663bef114c5cbc396b793b3a7813c830',
+            'size': 408874,
+            'sha256': 'bbce130c7be0c982fdcc092ed3af28050ec391877bff990bb6168133e0ff0efc'}},
+ 'visual-search/index.html': {'before': {'mode': '0644',
+                                         'sha256': '8ff5bf5fc2d4340b2e7e98c7662dc581cb33fafe31cb152f3cd2e36fbcfe1e5f',
+                                         'size': 15715,
+                                         'state': 'present'},
+                              'after': {'state': 'present',
+                                        'size': 15293,
+                                        'mode': '0644',
+                                        'sha256': '96091fb0fed9e6c097fb4f91855e840249b91461e7a4eb791b7efed6111cc996'},
+                              'source_path': 'v2/visual-search/index.html',
+                              'source': {'mode': '100644',
+                                         'blob_sha': 'ad32640d9c068e5c36e690d775642c775d8f2e9b',
+                                         'size': 15293,
+                                         'sha256': '96091fb0fed9e6c097fb4f91855e840249b91461e7a4eb791b7efed6111cc996'}},
+ 'visual-search/entry-v1.php': {'before': {'mode': '0644',
+            'sha256': '48898849b5ebdb9c2961087e7ad6c4dbd9ec0546675eaa9240870f4d59b03ac9',
+            'size': 10376,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 13704,
+           'mode': '0644',
+           'sha256': 'a5f685876b0b7b66dc89732984f4bcebf0a13d1a1a2e6fbb34a024a0922e0fa8'},
+ 'source_path': 'v2/visual-search/entry-v1.php',
+ 'source': {'mode': '100644',
+            'blob_sha': '002eb613189ae799cdf202171f283c50be4c8ff9',
+            'size': 13704,
+            'sha256': 'a5f685876b0b7b66dc89732984f4bcebf0a13d1a1a2e6fbb34a024a0922e0fa8'}},
+ 'visual-search/public-config-v1.js': {'before': {'mode': '0644',
+            'sha256': '5753a21bbee45bfd925a7e4b5815b43f143f5c4b37ae02c7cef416e3808fdc3e',
+            'size': 1678,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 1848,
+           'mode': '0644',
+           'sha256': '28f2762809add82b16f79f564634d686c63a6e10dd9970b82c53e6732a11f922'},
+ 'source_path': 'v2/visual-search/public-config-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '24ac0fe0b7e0bd371d9b6e60f276b3d8c4e41609',
+            'size': 2423,
+            'sha256': '3495f1ed45d1472c178ef06aa575ccc2484c45d93658b463daf2d641441496f2'}},
+ 'visual-search/public-bootstrap-v1.js': {'before': {'mode': '0644',
+            'sha256': 'eb9c9c0b1545a5ac6d7ecd931c762d21407574370cadb60a95b35800ba3429b4',
+            'size': 2277,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 2399,
+           'mode': '0644',
+           'sha256': '9772352181baa938da93d5462859bddba05dd08983a9a4a39f7e7222b02c478d'},
+ 'source_path': 'v2/visual-search/public-bootstrap-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': 'af4b0ee0409037428608cec2de0b37bb7e1745e9',
+            'size': 3391,
+            'sha256': 'fec0de624189de029e1c3c5a1311f8ef99734ff070e7d5167d1117512a46e922'}},
+ 'search3-canonical-profiles-v1.js': {'before': {'mode': '0644',
+            'sha256': '73006ce55ff61d4ea01338d92e80518d545eb741183b3ba9d29bcf355ce7e3ef',
+            'size': 11572,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 11773,
+           'mode': '0644',
+           'sha256': '3e1cc4b9cd985bad0bec86e7ed1c85ebbd57f511870ead69161dc1fcf30dc915'},
+ 'source_path': 'v2/search3-canonical-profiles-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '8e8fe70612e9210d7f42ea5af1b2165aaf3cd0ca',
+            'size': 17256,
+            'sha256': '00ea5b9fe8775fa1df24a2d7022dd66cd5851e4d6813251849aa88fbeec601ed'}},
+ 'prototype-search/data.js': {'before': {'mode': '0644',
+            'sha256': '5752c94377e5f506788bcda293fcfa072434ebc915c5d5e3e28a29d5a69f0e80',
+            'size': 134455,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 134732,
+           'mode': '0644',
+           'sha256': 'd52436403c6a6adaf5bf05307acd151bb56081b46d10c97ca5269c0dc54149f7'},
+ 'source_path': 'v2/prototype-search/data.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '0666e444119cd8d3ba55890ab5e2e4991021e647',
+            'size': 195720,
+            'sha256': 'f3a70925b74e037ff237785e7d1fa3e87422818867d92891d4016c80309d637c'}}}
+HOME_TARGETS['index.php'] = HOME_ENTRY
+
+HOME_DEPENDENCIES = {'images/logo.svg':{'state':'present','mode':'0644','size':11649,
+    'sha256':'3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049'}}
+
+
+def home_parent_identity():
+    return {k:HOME_PARENT[k] for k in ('control_source_sha','run_id','command_comment_id')}
+
+
+def home_policy():
+    value={'operation':HOME_OPERATION,'source':HOME_SOURCE,'tree':HOME_TREE,'manifest_source':HOME_MANIFEST_SHA,
+           'order':HOME_ORDER,'targets':HOME_TARGETS,'dependencies':HOME_DEPENDENCIES,'parent':HOME_PARENT,
+           'main_base':HOME_MAIN_BASE,'entry':HOME_ENTRY}
+    return value|{'manifest':sha(json.dumps(value,sort_keys=True,separators=(',',':')).encode())}
+
+
+def home_parent_value(value):
+    raw=(json.dumps(value,sort_keys=True)+'\n').encode()
+    need(sha(raw)==HOME_PARENT['receipt_sha256'],'home_parent_digest')
+    packet=io.BytesIO()
+    with zipfile.ZipFile(packet,'w') as archive:archive.writestr('evidence.json',raw)
+    policy,accepted,previous=handoff_source_evidence(packet.getvalue(),home_parent_identity())
+    need(policy['manifest']==HOME_PARENT['policy_sha256']
+         and accepted['snapshot_manifest_sha256']==HOME_PARENT['snapshot_manifest_sha256'],'home_parent_receipt')
+    return policy,accepted,previous
+
+
+def home_parent_evidence(raw):
+    need(sha(raw)==HOME_PARENT['artifact_sha256'],'home_parent_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_parent_artifact')
+        data=archive.read('evidence.json');need(sha(data)==HOME_PARENT['receipt_sha256'],'home_parent_digest')
+    value=json.loads(data);home_parent_value(value)
+    return value
+
+
+def home_overlay_predecessor(parent_value):
+    # Project only the accepted overlays. The historical SITE/PUBLIC policies
+    # retain their original maps and still validate their original receipts.
+    _,_,refactor_value=home_parent_value(parent_value)
+    _,_,site_value=handoff_parent_value(refactor_value)
+    _,_,update_value=refactor_parent_value(site_value)
+    update_policy_value,_,_=site_parent_value(update_value)
+    overlay=dict(update_policy_value['previous']['expected'])
+    overlay[UPDATE_PATH]=UPDATE_AFTER
+    overlay.update({p:r['after'] for p,r in REFACTOR_TARGETS.items()})
+    need(len(overlay)==42 and set(overlay)==set(ADDITIONS)|{ENTRY},'home_parent_scope')
+    return overlay
+
+
+HOME_COMMON_REMOTE = r'''
+HOME_PREPARED_PATHS=('reservation.json','snapshot/manifest.json')+tuple(p+str(i) for i in range(len(HOME_POLICY['order'])) for p in ('snapshot/','drill/','intent-'))
+HOME_EMPTY={'state':'present','mode':'0644','size':0,'sha256':digest(b'')}
+_home_local_before=None
+_home_local_restored=None
+def home_ident(value):return list(value) if value is not None else None
+def home_backup_row(path):
+ before=HOME_POLICY['targets'][path]['before']
+ return HOME_EMPTY if before=={'state':'absent'} else before
+def home_before_identity(value,row):
+ if row=={'state':'absent'}:
+  require(value is None,'home_snapshot_conflict');return None
+ return checked_stamp(value,row)
+def home_same_original(current,prior):
+ return current==prior if prior[1] is None else current[0]==prior[0] and current[1] is not None and current[1][:-1]==prior[1][:-1]
+def home_projection(saved,before,restored):
+ require(isinstance(before,dict) and isinstance(restored,dict)
+         and set(before)==set(restored)==set(HOME_POLICY['order']),'home_restoration_scope')
+ projected=dict(saved)
+ for path in HOME_POLICY['order']:
+  target=HOME_POLICY['targets'][path];old=before[path];current=restored[path]
+  require(isinstance(old,list) and len(old)==2 and old[0]==target['before']
+          and isinstance(current,list) and len(current)==2 and current[0]==old[0],'home_restoration_before')
+  prior=home_before_identity(old[1],old[0]);now=home_before_identity(current[1],current[0])
+  require((now is None if prior is None else now is not None and now[:-1]==prior[:-1]),'home_restoration_target')
+  if path in saved:
+   require(saved[path]==old,'home_restoration_before');projected[path]=current
+ return projected
+def home_ancestor_inventory():
+ value=handoff_ancestor_inventory()
+ value['handoff']=refactor_stamp_rows(site_read_records(handed,HANDOFF_PREPARED_PATHS+('result.json',)))
+ value['handoff_stage']=refactor_stamp_rows({p:handed.read('stage/'+str(i))[:2] for i,p in enumerate(HANDOFF_POLICY['order'])})
+ return value
+def home_handoff_parent():
+ site_continuation_namespace_absent();handoff_absent(REFACTOR_ROLLBACK_OPERATION);handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+ records=site_read_records(handed,HANDOFF_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':HANDOFF_POLICY['operation'],**HANDOFF_ORIGINAL,
+         'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}
+         and record('result.json')==HANDOFF_ACCEPTED,'home_parent_identity')
+ snapshot=record('snapshot/manifest.json');order=HANDOFF_POLICY['order'];targets=HANDOFF_POLICY['targets']
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+         and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+         and snapshot['parent_refactor']==REFACTOR_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==((set(POLICY['expected'])|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order']))-set(order))
+         and digest(records['snapshot/manifest.json'][2])==HANDOFF_ACCEPTED['snapshot_manifest_sha256'],'home_parent_snapshot')
+ saved=snapshot['guarded']
+ if _home_local_restored is not None:saved=home_projection(saved,_home_local_before,_home_local_restored)
+ previous=refactor_guard_from_snapshot(saved)
+ require(handoff_ancestor_inventory()==snapshot['ancestors'],'home_parent_changed')
+ current=public.inventory(order);stages={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'home_parent_snapshot')
+  old=checked_stamp(before[1],targets[path]['before']);intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'home_parent_identity')
+  new=checked_stamp(intent['new_identity'],targets[path]['after']);prior=handed.read('stage/'+str(index))[:2];stages[path]=prior
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==targets[path]['before']
+          and current[path][0]==targets[path]['after'] and current[path][1][:-1]==new[:-1]
+          and prior[0]==targets[path]['before'] and prior[1][:-1]==old[:-1],'home_parent_snapshot')
+ inherited=previous|current
+ extra=(set(HOME_POLICY['order'])|set(HOME_POLICY['dependencies']))-set(inherited)
+ complete=inherited|public.inventory(extra)
+ require(all(complete[p][0]==r for p,r in HOME_POLICY['dependencies'].items()),'home_dependency_changed')
+ before={p:complete[p] for p in HOME_POLICY['order']}
+ require(all(row[0]==HOME_POLICY['targets'][p]['before']
+             and (row[1] is None if row[0]=={'state':'absent'} else row[1][6]==os.getuid()) for p,row in before.items()),
+         'predecessor_drift')
+ ancestors={**snapshot['ancestors'],'handoff':refactor_stamp_rows(records),'handoff_stage':refactor_stamp_rows(stages)}
+ return ({p:r for p,r in complete.items() if p not in HOME_POLICY['order']},before,ancestors)
+def home_check_ancestors():
+ site_continuation_namespace_absent();handoff_absent(REFACTOR_ROLLBACK_OPERATION);handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+ require(home_ancestor_inventory()==ancestors,'home_parent_changed')
+ require(public.inventory(guarded)==guarded,'protected_changed')
+def home_check_targets(expected):
+ require(public.inventory(HOME_POLICY['order'])==expected,'home_target_changed')
+def home_restore_one(store,path,index,current,prior,capture):
+ home_check_ancestors()
+ require(public.read(path)[:2]==current and store.read('stage/'+str(index))[:2]==prior,'rollback_preflight_race')
+ capture_owned(public,private,path,capture,current[0],current[1])
+ if prior[0]!={'state':'absent'}:restore_capture(public,store,path,'stage/'+str(index))
+ restored=public.read(path)[:2];require(home_same_original(restored,prior),'rollback_incomplete')
+ return restored
+def home_bind_restoration(before):
+ global _home_local_before,_home_local_restored
+ home_check_ancestors();restored=public.inventory(HOME_POLICY['order'])
+ require(all(home_same_original(row,before[p]) for p,row in restored.items()),'rollback_incomplete')
+ _home_local_before=refactor_stamp_rows(before);_home_local_restored=refactor_stamp_rows(restored)
+ home_handoff_parent();home_check_targets(restored);home_check_ancestors()
+ return _home_local_restored
+def home_original_records():
+ records=site_read_records(homed,HOME_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':HOME_POLICY['operation'],**HOME_ORIGINAL,
+         'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL}
+         and record('result.json')==HOME_ACCEPTED,'home_original_identity')
+ snapshot=record('snapshot/manifest.json');order=HOME_POLICY['order'];targets=HOME_POLICY['targets']
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_handoff','before','guarded','ancestors'}
+         and snapshot['source']==HOME_POLICY['source'] and snapshot['manifest']==HOME_POLICY['manifest']
+         and snapshot['parent_handoff']==HANDOFF_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==((set(POLICY['expected'])|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order'])
+             |set(HOME_POLICY['dependencies']))-set(order))
+         and digest(records['snapshot/manifest.json'][2])==HOME_ACCEPTED['snapshot_manifest_sha256'],'home_snapshot_conflict')
+ guarded=refactor_guard_from_snapshot(snapshot['guarded'])
+ require(home_ancestor_inventory()==snapshot['ancestors'],'home_parent_changed')
+ current=public.inventory(order);prior={};old_identities={}
+ for index,path in enumerate(order):
+  before=snapshot['before'][path]
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'home_snapshot_conflict')
+  old_identities[path]=home_before_identity(before[1],targets[path]['before'])
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==home_backup_row(path),'home_snapshot_conflict')
+  intent=record('intent-'+str(index))
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==before[1],'home_original_identity')
+  new=checked_stamp(intent['new_identity'],targets[path]['after']);prior[path]=homed.read('stage/'+str(index))[:2]
+  require(current[path][0]==targets[path]['after'] and current[path][1][:-1]==new[:-1]
+          and home_same_original(prior[path],(before[0],old_identities[path])),'home_snapshot_conflict')
+ return snapshot,records,guarded,current,prior,old_identities
+'''
+
+
+HOME_REMOTE = r'''
+result={'schema_version':1,'operation_id':HOME_POLICY['operation'],'source_sha':HOME_POLICY['source'],
+        'manifest_sha256':HOME_POLICY['manifest'],**IDENTITY,'parent_handoff':HANDOFF_ORIGINAL,
+        'parent_receipt_sha256':HOME_POLICY['parent']['receipt_sha256'],
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,'snapshot_manifest_sha256':None,'restored_guard':None}
+public=base=original=updated=published=refactored=handed=private=None;reserved=False;switched=[];owned={};prior={};prepared=None;reservation=None
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=HOME_POLICY['order'];targets=HOME_POLICY['targets'];home=os.environ.get('HOME','')
+ require(len(order)==len(set(order))==16 and set(PAYLOAD)==set(targets)==set(order)
+         and not set(order)&(set(HANDOFF_POLICY['order'])|set(SITE_POLICY['order'])),'home_scope')
+ payload={p:base64.b64decode(PAYLOAD[p],validate=True) for p in order}
+ require(all(targets[p]['after']=={'state':'present','sha256':digest(raw),'size':len(raw),'mode':'0644'}
+             and 0<len(raw)<=MAX_BYTES for p,raw in payload.items()),'payload_bytes')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handed=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);private_root(handed)
+ handoff_absent(HOME_ROLLBACK_OPERATION)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ guarded,before,ancestors=home_handoff_parent()
+ require(all(row[0]==targets[p]['before'] and (row[1] is None or row[1][6]==os.getuid()) for p,row in before.items()),'predecessor_drift')
+ home_check_ancestors();home_check_targets(before)
+ try:os.mkdir(HOME_POLICY['operation'],0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+HOME_POLICY['operation'],('snapshot','drill','stage','rollback'),0o700);private_root(private)
+ reservation={'operation':HOME_POLICY['operation'],**IDENTITY,'source':HOME_POLICY['source'],
+              'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL}
+ private.create('reservation.json',canonical(reservation));result['phase']='snapshot'
+ snapshot={'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL,
+           'before':refactor_stamp_rows(before),'guarded':refactor_stamp_rows(guarded),'ancestors':ancestors}
+ for index,path in enumerate(order):
+  row,identity,raw=public.read(path,True);require((row,identity)==before[path],'predecessor_drift')
+  private.create('snapshot/'+str(index),raw if raw is not None else b'',0o644)
+  require(private.read('snapshot/'+str(index))[0]==home_backup_row(path),'snapshot_invalid')
+ private.create('snapshot/manifest.json',canonical(snapshot))
+ require(private.read('snapshot/manifest.json',True)[2]==canonical(snapshot),'snapshot_invalid')
+ result['snapshot_manifest_sha256']=digest(canonical(snapshot));result['snapshot_verified']=True
+ for index,path in enumerate(order):
+  private.create('drill/'+str(index),private.read('snapshot/'+str(index),True)[2],0o644)
+  require(private.read('drill/'+str(index))[0]==home_backup_row(path),'restore_drill_failed')
+ result['restore_drill_verified']=True
+ for index,path in enumerate(order):
+  private.create('stage/'+str(index),payload[path],0o644);owned[path]=private.read('stage/'+str(index))[:2]
+  require(owned[path][0]==targets[path]['after'],'payload_bytes')
+  private.create('intent-'+str(index),canonical({'path':path,'before':targets[path]['before'],'after':targets[path]['after'],
+                 'previous_identity':home_ident(before[path][1]),'new_identity':list(owned[path][1])}))
+ prepared=site_read_records(private,HOME_PREPARED_PATHS)
+ require(prepared['reservation.json'][2]==canonical(reservation) and prepared['snapshot/manifest.json'][2]==canonical(snapshot)
+         and all(prepared['snapshot/'+str(i)][0]==prepared['drill/'+str(i)][0]==home_backup_row(p)
+                 and json.loads(prepared['intent-'+str(i)][2])=={'path':p,'before':targets[p]['before'],'after':targets[p]['after'],
+                      'previous_identity':home_ident(before[p][1]),'new_identity':list(owned[p][1])} for i,p in enumerate(order)),'snapshot_invalid')
+ current=dict(before);result['phase']='assets'
+ for index,path in enumerate(order):
+  home_check_ancestors();home_check_targets(current)
+  require(site_read_records(private,HOME_PREPARED_PATHS)==prepared
+          and private.read('stage/'+str(index))[:2]==owned[path],'prewrite_race')
+  with private.parent('stage/'+str(index)) as (src,name),public.parent(path) as (dst,target):
+   require(public.read(path)[:2]==before[path],'entry_prewrite_race')
+   if before[path][0]=={'state':'absent'}:move_noreplace(src,name,dst,target)
+   else:exchange(src,name,dst,target)
+   switched.append(path);result['written_files'].append(path);sync(src);sync(dst)
+  observed=public.read(path)[:2]
+  require(observed[0]==targets[path]['after'] and observed[1][:-1]==owned[path][1][:-1],'home_readback')
+  owned[path]=observed;current[path]=observed
+  try:
+   prior[path]=private.read('stage/'+str(index))[:2]
+   require(home_same_original(prior[path],before[path]),'home_exchange_conflict')
+  except Exception:
+   home_check_ancestors()
+   capture_owned(public,private,path,'rollback/conflict-'+str(index),observed[0],observed[1])
+   if before[path][0]!={'state':'absent'}:restore_capture(public,private,path,'stage/'+str(index))
+   switched.remove(path)
+   raise RuntimeError('home_exchange_conflict')
+  home_check_targets(current);home_check_ancestors()
+ require(site_read_records(private,HOME_PREPARED_PATHS)==prepared
+         and all(private.read('stage/'+str(i))[:2]==prior[p] for i,p in enumerate(order)),'home_snapshot_conflict')
+ result.update(status='home_navigation_updated_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+ if reserved:
+  result['status']='unknown_no_replay';recovery_ok=True
+  for path in reversed(switched):
+   try:
+    index=order.index(path);current_row=public.read(path)[:2];saved=private.read('stage/'+str(index))[:2]
+    require(current_row[0]==targets[path]['after'] and current_row[1][:-1]==owned[path][1][:-1]
+            and home_same_original(saved,before[path]),'rollback_entry_conflict')
+    home_restore_one(private,path,index,current_row,saved,'rollback/'+str(index));result['rollback_files'].append(path)
+   except Exception:recovery_ok=False
+  try:
+   require(recovery_ok,'rollback_incomplete');home_check_ancestors()
+   restored=public.inventory(order)
+   require(all(home_same_original(row,before[p]) for p,row in restored.items())
+           and result['rollback_files']==list(reversed(result['written_files'])),'rollback_incomplete')
+   require(private is not None and isinstance(reservation,dict),'home_restoration_record')
+   proof_record=site_read_records(private,('reservation.json',))
+   require(proof_record['reservation.json'][2]==canonical(reservation),'home_restoration_record')
+   result['restored_guard']=home_bind_restoration(before)
+   result.update(status='rolled_back_no_replay',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+                 parent_records_unchanged=True,original_inodes_verified=True)
+  except Exception:result['status']='unknown_no_replay'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+HOME_ROLLBACK_REMOTE = r'''
+result={'schema_version':1,'operation_id':HOME_ROLLBACK_OPERATION,'source_sha':HOME_POLICY['source'],
+        'manifest_sha256':HOME_POLICY['manifest'],**IDENTITY,'parent_handoff':HANDOFF_ORIGINAL,
+        'parent_receipt_sha256':HOME_POLICY['parent']['receipt_sha256'],'original_home':HOME_ORIGINAL,
+        'status':'blocked_no_replay','phase':'preflight','supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'written_files':[],'rollback_files':[],
+        'reservation_created':False,'snapshot_verified':False,'restore_drill_verified':False,
+        'protected_unchanged':False,'unchanged_files_verified':False,'parent_records_unchanged':False,
+        'original_inodes_verified':False,'failed_namespace_absent':False,
+        'snapshot_manifest_sha256':HOME_ACCEPTED['snapshot_manifest_sha256'],'restored_guard':None}
+public=base=original=updated=published=refactored=handed=homed=private=None;reserved=False
+try:
+ require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
+         and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
+ order=HOME_POLICY['order'];targets=HOME_POLICY['targets'];home=os.environ.get('HOME','')
+ public=Files(home+'/www/anytoour.ru');base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handed=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);private_root(handed)
+ homed=Files(home+'/.anytoour-search3-root-gateway/'+HOME_POLICY['operation']);private_root(homed)
+ require(os.fstat(base.fd).st_dev==os.fstat(public.fd).st_dev,'different_filesystem')
+ site_continuation_namespace_absent()
+ paths=HOME_PREPARED_PATHS+('result.json',)
+ snapshot,records,guarded,current,prior,old_identities=home_original_records();ancestors=snapshot['ancestors']
+ home_check_ancestors();home_check_targets(current)
+ require(site_read_records(homed,paths)==records,'rollback_preflight_race')
+ result.update(snapshot_verified=True,restore_drill_verified=True)
+ try:os.mkdir(HOME_ROLLBACK_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('operation_exists_no_replay') from None
+ reserved=True;result['reservation_created']=True;sync(base.fd)
+ private=Files(home+'/.anytoour-search3-root-gateway/'+HOME_ROLLBACK_OPERATION,('quarantine',),0o700);private_root(private)
+ private.create('reservation.json',canonical({'operation':HOME_ROLLBACK_OPERATION,**IDENTITY,'original_home':HOME_ORIGINAL,
+                'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL}))
+ result['phase']='assets'
+ for index in reversed(range(len(order))):
+  path=order[index];home_check_ancestors();home_check_targets(current)
+  require(site_read_records(homed,paths)==records,'home_snapshot_conflict')
+  current[path]=home_restore_one(homed,path,index,current[path],prior[path],'quarantine/'+str(index))
+  result['rollback_files'].append(path)
+  home_check_targets(current);home_check_ancestors()
+ require(all(home_same_original(current[p],(targets[p]['before'],old_identities[p])) for p in order)
+         and site_read_records(homed,paths)==records,'rollback_incomplete')
+ result['restored_guard']=home_bind_restoration({p:(snapshot['before'][p][0],tuple(snapshot['before'][p][1]) if snapshot['before'][p][1] is not None else None) for p in order})
+ result.update(status='home_navigation_rolled_back_verified',phase='complete',protected_unchanged=True,unchanged_files_verified=True,
+               parent_records_unchanged=True,original_inodes_verified=True)
+except Exception as error:
+ result['status']='unknown_no_replay' if reserved else 'blocked_no_replay'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ if reserved and private is not None:
+  try:private.create('result.json',canonical(result))
+  except Exception:result.update(status='unknown_no_replay',reason='receipt_failed')
+ for store in (private,homed,handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+HOME_REASONS = HANDOFF_REASONS + ('home_scope','home_parent_identity','home_parent_snapshot','home_parent_changed',
+    'home_dependency_changed','home_target_changed','home_readback','home_exchange_conflict','home_snapshot_conflict',
+    'home_original_identity','home_restoration_scope','home_restoration_before','home_restoration_target',
+    'home_restoration_record','home_restoration_changed')
+
+
+def _home_program_prefix(policy,identity,parent_value,tv_successor=None):
+    need(policy==home_policy(),'home_policy');update_runtime_identity(identity)
+    need(identity['run_id']!=HOME_PARENT['run_id'],'home_runtime_identity')
+    parent,accepted,previous=home_parent_value(parent_value)
+    return (_handoff_program_prefix(parent,identity,previous,tv_successor)
+            +'\nHOME_POLICY='+repr(policy)+'\nHANDOFF_ORIGINAL='+repr(home_parent_identity())
+            +'\nHANDOFF_ACCEPTED='+repr(accepted)+'\nHOME_ROLLBACK_OPERATION='+repr(HOME_ROLLBACK_OPERATION)
+            +'\ndef re_safe(value): return value in '+repr(HOME_REASONS)+'\n'+HOME_COMMON_REMOTE)
+
+
+def home_remote_program(policy,files,identity,parent_value,*,tv_successor=None):
+    prefix=_home_program_prefix(policy,identity,parent_value,tv_successor)
+    need(isinstance(files,dict) and set(files)==set(HOME_ORDER),'home_payload')
+    for path in HOME_ORDER:
+        raw=base64.b64decode(files[path],validate=True)
+        need(0<len(raw)<=MAX_BYTES and HOME_TARGETS[path]['after']==
+             {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'home_payload_bytes')
+    program=prefix+'\nPAYLOAD='+repr(files)+'\n'+HOME_REMOTE;ast.parse(program)
+    return program
+
+
+def home_rollback_remote_program(policy,identity,original,accepted,parent_value,*,tv_successor=None):
+    prefix=_home_program_prefix(policy,identity,parent_value,tv_successor);update_runtime_identity(original)
+    need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+         and valid_home_result(original,accepted),'home_rollback_evidence')
+    program=(prefix+'\nHOME_ORIGINAL='+repr(original)+'\nHOME_ACCEPTED='+repr(accepted)+'\n'+HOME_ROLLBACK_REMOTE)
+    ast.parse(program);return program
+
+
+def _home_restored_guard(value):
+    need(isinstance(value,dict) and set(value)==set(HOME_ORDER),'home_restoration_scope')
+    for path,row in value.items():
+        need(isinstance(row,list) and len(row)==2 and row[0]==HOME_TARGETS[path]['before'],'home_restoration_target')
+        ident=row[1]
+        if row[0]=={'state':'absent'}:
+            need(ident is None,'home_restoration_target');continue
+        need(isinstance(ident,list) and len(ident)==9 and all(type(v) is int for v in ident)
+             and ident[0]>=0 and ident[1]>0 and ident[2]==(stat.S_IFREG|0o644) and ident[3]==1
+             and ident[4]==row[0]['size'] and all(ident[i]>=0 for i in (5,6,7,8)),'home_restoration_target')
+
+
+def valid_home_result(identity,result,original=None,accepted=None):
+    rollback=original is not None;policy=home_policy()
+    fixed={'schema_version':1,'operation_id':HOME_ROLLBACK_OPERATION if rollback else HOME_OPERATION,
+           'source_sha':HOME_SOURCE,'manifest_sha256':policy['manifest'],**identity,
+           'parent_handoff':home_parent_identity(),'parent_receipt_sha256':HOME_PARENT['receipt_sha256']}
+    if rollback:fixed.update(original_home=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
+    counters=('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+           'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')
+    required=set(fixed)|set(counters)|set(flags)|{'status','phase','written_files','rollback_files','snapshot_manifest_sha256','restored_guard'}
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'home_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()),'home_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters)
+         and all(type(result[k]) is bool for k in flags),'home_receipt_counters')
+    success='home_navigation_rolled_back_verified' if rollback else 'home_navigation_updated_verified'
+    states=('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
+    need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in result or result['reason'] in HOME_REASONS),'home_receipt_status')
+    written,restored=result['written_files'],result['rollback_files']
+    need(isinstance(written,list) and written in [list(HOME_ORDER[:i]) for i in range(len(HOME_ORDER)+1)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored) and len(set(restored))==len(restored),'home_receipt_paths')
+    order=list(reversed(HOME_ORDER if rollback else written))
+    need(all(p in order for p in restored) and restored==[p for p in order if p in restored]
+         and (not rollback or not written),'home_receipt_paths')
+    snapshot=result['snapshot_manifest_sha256']
+    need(snapshot is None or isinstance(snapshot,str) and re.fullmatch('[a-f0-9]{64}',snapshot),'home_receipt_snapshot')
+    if result['status']=='blocked_no_replay':
+        need(not result['reservation_created'] and result['phase']=='preflight' and not written and not restored,'home_receipt_incomplete')
+    if result['status'] in (success,'rolled_back_no_replay'):
+        need(result['phase']=='complete' and all(result[k] for k in ('reservation_created','protected_unchanged',
+             'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')),'home_receipt_incomplete')
+    if result['status']=='rolled_back_no_replay':need(restored==list(reversed(written)),'home_receipt_incomplete')
+    if result['status']==success:
+        need(all(result[k] for k in flags) and snapshot is not None and 'reason' not in result
+             and (restored==list(reversed(HOME_ORDER)) if rollback else written==list(HOME_ORDER) and not restored),'home_receipt_incomplete')
+    if result['status'] in ('rolled_back_no_replay','home_navigation_rolled_back_verified'):_home_restored_guard(result['restored_guard'])
+    elif result['status']!='unknown_no_replay':need(result['restored_guard'] is None,'home_receipt_incomplete')
+    return result['status']==success
+
+
+def _home_source_value(value,original,*,recovery=False,rollback_original=None,accepted=None):
+    update_runtime_identity(original)
+    rollback=rollback_original is not None
+    status='home_navigation_rolled_back_verified' if rollback else 'rolled_back_no_replay' if recovery else 'home_navigation_updated_verified'
+    fixed={**original,'operation_id':HOME_ROLLBACK_OPERATION if rollback else HOME_OPERATION,
+           'source_sha':HOME_SOURCE,'manifest_sha256':home_policy()['manifest'],'read_only':False,
+           'phase':'complete','ssh_started':True,'status':status,'parent_handoff':home_parent_identity()}
+    if rollback:fixed.update(original_home=rollback_original,original_home_run_id=rollback_original['run_id'])
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'home_rollback_evidence')
+    home_parent_value(value['parent_evidence'])
+    success=valid_home_result(original,value['remote'],rollback_original,accepted)
+    need(success or recovery and value['remote']['status']=='rolled_back_no_replay','home_rollback_evidence')
+    return home_policy(),value['remote'],value['parent_evidence']
+
+
+def home_source_evidence(raw,original):
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_rollback_artifact')
+        value=json.loads(archive.read('evidence.json'))
+    return _home_source_value(value,original)
+
+
+def home_restoration_value(value):
+    need(isinstance(value,dict),'home_restoration_proof')
+    if value=={'status':'absent'}:return value
+    if value.get('status')=='zero_write':
+        need(set(value)=={'status','original','install_evidence'},'home_restoration_proof')
+        _home_zero_write_value(value['install_evidence'],value['original'])
+        return value
+    need(set(value)=={'status','original','install_evidence','restoration_evidence'} and value['status']=='restored',
+         'home_restoration_proof')
+    original=value['original'];installed=value['install_evidence'];restored=value['restoration_evidence']
+    need(isinstance(installed,dict) and isinstance(restored,dict),'home_restoration_proof')
+    recovery=installed.get('status')=='rolled_back_no_replay'
+    _,accepted,_=_home_source_value(installed,original,recovery=recovery)
+    if recovery:need(restored==installed,'home_restoration_proof')
+    else:
+        identity={k:restored.get(k) for k in ('control_source_sha','run_id','command_comment_id')}
+        need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id'],
+             'home_restoration_proof')
+        _home_source_value(restored,identity,rollback_original=original,accepted=accepted)
+    return value
+
+
+def _home_zero_write_value(value,identity):
+    update_runtime_identity(identity)
+    fixed={**identity,'operation_id':HOME_OPERATION,'source_sha':HOME_SOURCE,
+           'manifest_sha256':home_policy()['manifest'],'read_only':False,'status':'blocked_no_replay'}
+    need(isinstance(value,dict) and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),
+         'home_zero_write')
+    allowed=set(fixed)|{'phase','ssh_started','parent_handoff','parent_evidence','remote','error_type'}
+    need(set(value)<=allowed and type(value.get('ssh_started')) is bool,'home_zero_write')
+    if value['ssh_started']:
+        need(value.get('phase')=='complete' and 'remote' in value and 'error_type' not in value,'home_zero_write')
+        valid_home_result(identity,value['remote'])
+        need(value['remote']['status']=='blocked_no_replay','home_zero_write')
+        home_parent_value(value.get('parent_evidence'))
+    else:
+        need(value.get('phase') in ('admission','artifact') and 'remote' not in value
+             and value.get('error_type') in ('RuntimeError','ValueError','KeyError','OSError','CalledProcessError'),
+             'home_zero_write')
+        if 'parent_evidence' in value:home_parent_value(value['parent_evidence'])
+    if 'parent_handoff' in value:need(value['parent_handoff']==home_parent_identity(),'home_zero_write')
+
+
+
+HOME_RESTORATION_REMOTE = r'''
+_home_restoration_bound=None
+_home_restoration_saved=None
+_home_parent_active_bound=False
+_home_original_guard=refactor_guard_from_snapshot
+_home_original_check=handoff_check_ancestors if HOME_PARENT_CONTEXT=='handoff' else refactor_check_ancestors
+_home_original_target_check=refactor_check_targets
+def home_restoration_read(saved):
+ proof=HOME_RESTORATION_PROOF
+ if proof['status'] in ('absent','zero_write'):
+  handoff_absent(HOME_POLICY['operation']);handoff_absent(HOME_ROLLBACK_OPERATION)
+  return {'status':proof['status']}
+ install=proof['install_evidence']['remote'];terminal=proof['restoration_evidence']['remote'];identity=proof['original']
+ recovery=install['status']=='rolled_back_no_replay';written=install['written_files'];stores=[]
+ try:
+  child=Files(home+'/.anytoour-search3-root-gateway/'+HOME_POLICY['operation']);stores.append(child);private_root(child)
+  rows={}
+  for path in HOME_PREPARED_PATHS+('result.json',):
+   row,ident,raw=child.read(path,True)
+   if row=={'state':'absent'}:
+    require(recovery and not written and path not in ('reservation.json','result.json'),'home_restoration_record')
+   else:
+    mode='0644' if path.startswith(('snapshot/','drill/')) and path!='snapshot/manifest.json' else '0600'
+    require(row.get('mode')==mode and ident[6]==os.getuid(),'home_restoration_record')
+   rows[path]=(row,ident,raw)
+  require(rows['reservation.json'][2]==canonical({'operation':HOME_POLICY['operation'],**identity,
+          'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HOME_PARENT_IDENTITY})
+          and rows['result.json'][2]==canonical(install),'home_restoration_record')
+  snapshot_row=rows['snapshot/manifest.json'];snapshot=None
+  if snapshot_row[0]!={'state':'absent'}:
+   snapshot=json.loads(snapshot_row[2])
+   require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_handoff','before','guarded','ancestors'}
+           and snapshot['source']==HOME_POLICY['source'] and snapshot['manifest']==HOME_POLICY['manifest']
+           and snapshot['parent_handoff']==HOME_PARENT_IDENTITY and set(snapshot['before'])==set(HOME_POLICY['order'])
+           and snapshot_row[2]==canonical(snapshot) and digest(snapshot_row[2])==install['snapshot_manifest_sha256'],
+           'home_restoration_record')
+   before=snapshot['before']
+  else:
+   require(recovery and not written and install['snapshot_manifest_sha256'] is None,'home_restoration_record')
+   before=terminal['restored_guard']
+  projected=home_projection(saved,before,terminal['restored_guard'])
+  restore_rows={}
+  if recovery:
+   handoff_absent(HOME_ROLLBACK_OPERATION);restore=child;capture_prefix='rollback/'
+  else:
+   restore=Files(home+'/.anytoour-search3-root-gateway/'+HOME_ROLLBACK_OPERATION);stores.append(restore);private_root(restore)
+   restore_rows=site_read_records(restore,('reservation.json','result.json'));capture_prefix='quarantine/'
+   restore_identity={k:terminal[k] for k in ('control_source_sha','run_id','command_comment_id')}
+   require(restore_rows['reservation.json'][2]==canonical({'operation':HOME_ROLLBACK_OPERATION,**restore_identity,
+           'original_home':identity,'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],
+           'parent_handoff':HOME_PARENT_IDENTITY}) and restore_rows['result.json'][2]==canonical(terminal),
+           'home_restoration_record')
+  for index,path in enumerate(HOME_POLICY['order']):
+   target=HOME_POLICY['targets'][path];intent_row=rows['intent-'+str(index)];intent=None
+   if intent_row[0]!={'state':'absent'}:
+    intent=json.loads(intent_row[2])
+    require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+            and intent['path']==path and intent['before']==target['before'] and intent['after']==target['after']
+            and intent['previous_identity']==before[path][1] and intent_row[2]==canonical(intent),'home_restoration_record')
+    new=checked_stamp(intent['new_identity'],target['after'])
+   for prefix in ('snapshot/','drill/'):
+    if rows[prefix+str(index)][0]!={'state':'absent'}:
+     require(rows[prefix+str(index)][0]==home_backup_row(path),'home_restoration_record')
+   stage=child.read('stage/'+str(index))[:2];capture=restore.read(capture_prefix+str(index))[:2]
+   rows['stage/'+str(index)]=stage;restore_rows[capture_prefix+str(index)]=capture
+   if path in written:
+    require(intent is not None and stage==({'state':'absent'},None) and capture[0]==target['after']
+            and capture[1][:-1]==new[:-1],'home_restoration_record')
+   else:
+    require(recovery and capture==({'state':'absent'},None) and terminal['restored_guard'][path]==before[path],
+            'home_restoration_record')
+    if stage[0]!={'state':'absent'}:
+     require(stage[0].get('mode')=='0644' and stage[1][6]==os.getuid(),'home_restoration_record')
+     # No exchanges can precede complete preparation. With written=[] the
+     # native terminal may bind a stage created just before its missing intent.
+     if written or intent is not None:
+      require(intent is not None and stage[0]==target['after'] and stage[1][:-1]==new[:-1],'home_restoration_record')
+  # Hold every restored full stamp until the parent's first checked current
+  # inventory is bound below. Only then may its fixed REFACTOR targets change,
+  # under the original intent/inode and per-exchange current-target checks.
+  active=set(REFACTOR_POLICY['order']) if HOME_PARENT_CONTEXT=='refactor' else set()
+  scope=set(HOME_POLICY['order']) if not _home_parent_active_bound else set(HOME_POLICY['order'])-active
+  require(public.inventory(scope)=={p:(terminal['restored_guard'][p][0],
+          tuple(terminal['restored_guard'][p][1]) if terminal['restored_guard'][p][1] is not None else None) for p in scope},
+          'home_restoration_target')
+  return {'status':'restored','before':before,'restored':terminal['restored_guard'],'records':rows,'restore_records':restore_rows,
+          'directories':[[name,expected] for store in stores for _,name,_,expected in store.links]}
+ finally:
+  for store in reversed(stores):store.close()
+def home_restoration_stable():
+ if _home_restoration_bound is not None:
+  require(home_restoration_read(_home_restoration_saved)==_home_restoration_bound,'home_restoration_changed')
+def refactor_guard_from_snapshot(saved):
+ global _home_restoration_bound,_home_restoration_saved
+ observed=home_restoration_read(saved)
+ if _home_restoration_bound is None:
+  _home_restoration_bound=observed;_home_restoration_saved=saved
+ else:require(observed==_home_restoration_bound,'home_restoration_changed')
+ projected=home_projection(saved,observed['before'],observed['restored']) if observed['status']=='restored' else saved
+ result=_home_original_guard(projected);home_restoration_stable();return result
+def home_parent_check():
+ home_restoration_stable();_home_original_check();home_restoration_stable()
+def home_parent_target_check(expected):
+ global _home_parent_active_bound
+ require(_home_restoration_bound is not None,'home_restoration_target')
+ home_restoration_stable()
+ if not _home_parent_active_bound and _home_restoration_bound['status']=='restored':
+  for path in set(HOME_POLICY['order'])&set(REFACTOR_POLICY['order']):
+   row=_home_restoration_bound['restored'][path]
+   require(expected.get(path)==(row[0],tuple(row[1]) if row[1] is not None else None),'home_restoration_target')
+ _home_original_target_check(expected)
+ _home_parent_active_bound=True
+ home_restoration_stable()
+if HOME_PARENT_CONTEXT=='handoff':handoff_check_ancestors=home_parent_check
+else:
+ refactor_check_ancestors=home_parent_check
+ refactor_check_targets=home_parent_target_check
+'''
+
+
+def home_restoration_prefix(value,context):
+    need(context in ('handoff','refactor'),'home_restoration_parent')
+    if value is None:return ''
+    home_restoration_value(value)
+    need(not set(HOME_ORDER)&set(HANDOFF_ORDER) and set(HOME_ORDER)&set(REFACTOR_ORDER)=={UPDATE_PATH},
+         'home_restoration_scope')
+    return ('\nHOME_POLICY='+repr(home_policy())+'\nHOME_ROLLBACK_OPERATION='+repr(HOME_ROLLBACK_OPERATION)
+            +'\nHOME_PARENT_IDENTITY='+repr(home_parent_identity())+'\nHOME_PARENT_CONTEXT='+repr(context)
+            +'\nHOME_RESTORATION_PROOF='+repr(value)+'\n'+HOME_COMMON_REMOTE+HOME_RESTORATION_REMOTE)
+
+
+def home_pending_pins():
+    need(type(HOME_SOURCE_PR) is int and HOME_SOURCE_PR>0 and type(HOME_ARTIFACT) is int and HOME_ARTIFACT>0
+         and type(HOME_BUILD_RUN) is int and HOME_BUILD_RUN>0
+         and isinstance(HOME_SOURCE_BRANCH,str) and HOME_SOURCE_BRANCH
+         and HOME_CHECKS and len(set(HOME_CHECKS))==len(HOME_CHECKS)
+         and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{40}',v)
+                 for v in (HOME_SOURCE,HOME_TREE,HOME_SOURCE_MERGE,HOME_SOURCE_MERGE_TREE,HOME_RELEASE_BASE,HOME_MAIN_BASE))
+         and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in (HOME_ARTIFACT_SHA,HOME_MANIFEST_SHA)),
+         'home_pending_final_evidence')
+
+
+def home_package(raw,parent_value):
+    need(sha(raw)==HOME_ARTIFACT_SHA,'home_artifact')
+    expected=home_overlay_predecessor(parent_value)
+    need(len(HOME_ORDER)==16 and set(HOME_ORDER)==set(HOME_TARGETS)
+         and set(HOME_SEARCH_ORDER)<set(expected) and set(HOME_SHARED_ORDER).isdisjoint(expected)
+         and all(HOME_TARGETS[p]['before']==expected[p] for p in HOME_SEARCH_ORDER),'home_predecessor')
+    with zip_files(raw) as archive:
+        manifest_raw=archive.read('manifest.json');need(sha(manifest_raw)==HOME_MANIFEST_SHA,'manifest_digest')
+        manifest=json.loads(manifest_raw)
+        need(manifest.get('candidate')=={'sha':HOME_SOURCE,'tree_sha':HOME_TREE}
+             and manifest.get('main')=={'sha':HOME_MAIN_BASE,'tree_sha':'39d167395c96680250e4bee5ba8c599f236ea5c8'}
+             and manifest.get('profile')=={'schemaVersion':1,'profile':'live','scenario':'family'}
+             and manifest.get('shared_ui',{}).get('enabled') is True,'home_manifest_identity')
+        added,replaced=manifest['files']['added'],manifest['files']['replaced']
+        candidate=[r for r in added if r.get('candidate_only') is True]
+        need(len(candidate)==1 and candidate[0]['path']=='images/logo.svg'
+             and candidate[0]['source_path']=='v2/visual-search/assets/anytour-logo.svg'
+             and {'state':'present',**candidate[0]['served']}==HOME_DEPENDENCIES['images/logo.svg']
+             and manifest.get('candidate_only_aliases')==candidate,'home_candidate_alias')
+        rows=[r for r in added if r not in candidate]+replaced
+        scope=set(expected)|set(HOME_SHARED_ORDER)
+        need(len(rows)==len(scope)==48 and {r['path'] for r in rows}==scope
+             and {r['path'] for r in replaced}=={ENTRY,'home-v1.php','home-v1.css','site-header-v2.php','site-header-v2.css'}
+             and {x for x in archive.namelist() if x.startswith('overlay/') and not x.endswith('/')}
+                 =={'overlay/'+p for p in scope},'home_overlay_scope')
+        files={}
+        for item in rows:
+            path=item['path'];data=archive.read('overlay/'+path);record={'state':'present',**item['served']}
+            need(item['served']=={'size':len(data),'mode':'0644','sha256':sha(data)}
+                 and 0<len(data)<=MAX_BYTES,'overlay_bytes')
+            if path in HOME_TARGETS:
+                target=HOME_TARGETS[path]
+                need(record==target['after'] and item['source_path']==target['source_path']
+                     and item['source']==target['source'],'home_payload_bytes')
+                if path in HOME_SHARED_ORDER and target['before']!={'state':'absent'}:
+                    need(item.get('before')=={k:v for k,v in target['before'].items() if k!='state'},'home_predecessor')
+                files[path]=base64.b64encode(data).decode()
+            else:need(record==expected[path],'home_unexpected_delta')
+    # The approved root entry is MAIN's existing 433-byte entry. SOURCE's
+    # different entry and the candidate-only logo are never installed.
+    blob=api('/git/blobs/'+HOME_ENTRY['blob'])
+    need(blob.get('sha')==HOME_ENTRY['blob'] and blob.get('encoding')=='base64'
+         and blob.get('size')==HOME_ENTRY['after']['size'],'home_entry_blob')
+    data=base64.b64decode(blob['content'].replace('\n',''),validate=True)
+    need({'state':'present','mode':'0644','size':len(data),'sha256':sha(data)}==HOME_ENTRY['after']
+         and hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==HOME_ENTRY['blob'],'home_entry_blob')
+    files['index.php']=base64.b64encode(data).decode();need(set(files)==set(HOME_ORDER),'home_payload')
+    return home_policy(),files
+
+
+def home_final_heads(identity):
+    home_pending_pins();rollback_main(identity)
+    need(api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==HOME_SOURCE_MERGE,'home_release_moved')
+    pr=api('/pulls/'+str(HOME_SOURCE_PR))
+    need(pr.get('state')=='closed' and pr.get('merged') is True and pr.get('merge_commit_sha')==HOME_SOURCE_MERGE
+         and pr.get('head',{}).get('sha')==HOME_SOURCE and pr.get('head',{}).get('repo',{}).get('full_name')==REPO
+         and pr.get('base',{}).get('ref')=='release/search3-production-ready-v1'
+         and pr.get('base',{}).get('repo',{}).get('full_name')==REPO,'home_candidate_moved')
+    need(api('/git/commits/'+HOME_SOURCE).get('tree',{}).get('sha')==HOME_TREE,'home_source_tree')
+    merged=api('/git/commits/'+HOME_SOURCE_MERGE)
+    need(merged.get('tree',{}).get('sha')==HOME_SOURCE_MERGE_TREE
+         and [p.get('sha') for p in merged.get('parents',[])]==[HOME_RELEASE_BASE,HOME_SOURCE],'home_source_merge')
+    relation=api('/compare/'+HOME_MAIN_BASE+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==HOME_MAIN_BASE,'home_control_ancestry')
+    for commit in (HOME_SOURCE,HOME_SOURCE_MERGE):
+        for path in HOME_SHARED_ORDER+HOME_SEARCH_ORDER:
+            target=HOME_TARGETS[path];row=api('/contents/'+target['source_path']+'?ref='+commit)
+            need(row.get('type')=='file' and row.get('sha')==target['source']['blob_sha'],'home_source_blob')
+    # Shared MAIN owners stay aligned for future bounded operations; their
+    # current source bytes never redefine production BEFORE rows.
+    for path in HOME_SHARED_ORDER:
+        row=api('/contents/'+HOME_TARGETS[path]['source_path']+'?ref='+identity['control_source_sha'])
+        need(row.get('type')=='file' and row.get('sha')==HOME_TARGETS[path]['source']['blob_sha'],'home_main_shared_blob')
+    for commit in (HOME_MAIN_BASE,identity['control_source_sha']):
+        row=api('/contents/'+HOME_ENTRY['source_path']+'?ref='+commit)
+        need(row.get('type')=='file' and row.get('sha')==HOME_ENTRY['blob'],'home_entry_blob')
+
+
+def home_admission(identity):
+    home_final_heads(identity);reviewed_control(identity['control_source_sha'])
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+HOME_SOURCE+'/check-runs','check_runs')
+    for name in HOME_CHECKS:
+        latest=max((c for c in checks if c.get('name')==name and c.get('head_sha')==HOME_SOURCE),key=lambda c:c['id'],default={})
+        need(latest.get('status')=='completed' and latest.get('app',{}).get('slug')=='github-actions'
+             and latest.get('conclusion')=='success','home_source_ci')
+    run=api('/actions/runs/'+str(HOME_BUILD_RUN))
+    need(run.get('id')==HOME_BUILD_RUN and run.get('head_sha')==HOME_SOURCE
+         and run.get('head_branch')==HOME_SOURCE_BRANCH and run.get('path')=='.github/workflows/search3-visual-migration.yml'
+         and run.get('event')=='pull_request' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,'home_build')
+    artifact=api('/actions/artifacts/'+str(HOME_ARTIFACT))
+    need(artifact.get('id')==HOME_ARTIFACT and artifact.get('name')=='search3-public-live-'+HOME_SOURCE
+         and artifact.get('expired') is False and artifact.get('digest')=='sha256:'+HOME_ARTIFACT_SHA
+         and artifact.get('workflow_run',{}).get('id')==HOME_BUILD_RUN
+         and artifact.get('workflow_run',{}).get('head_sha')==HOME_SOURCE,'home_artifact')
+    home_parent_admission()
+    _unique_update_command(pages('/issues/4709/comments'),HOME_PREFIX,HOME_OPERATION,identity)
+    home_final_heads(identity)
+
+
+def home_event_identity(event,env,rollback=False):
+    need(type(rollback) is bool,'mode')
+    prefix,operation=(HOME_ROLLBACK_PREFIX,HOME_ROLLBACK_OPERATION) if rollback else (HOME_PREFIX,HOME_OPERATION)
+    control=env.get('GITHUB_SHA','');body=event.get('comment',{}).get('body','');original_run=None
+    if rollback:
+        match=re.fullmatch(re.escape(prefix+' '+control+' ')+r'([1-9][0-9]{0,19}) '+re.escape(operation),body)
+        need(match is not None,'command');original_run=match[1]
+    else:need(body==f'{prefix} {control} {operation}','command')
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity=update_event_identity(synthetic,env)
+    excluded=(HOME_PARENT['run_id'],HANDOFF_PARENT['run_id'],REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],UPDATE_PARENT['run_id'],
+              CONTINUATION_PARENT['run_id'],SITE_INSPECT_FAILED['run_id'],SITE_CONTINUATION_INSPECTION['run_id'],
+              SITE_CONTINUATION_COLLECTOR['run_id'])
+    need(identity['run_id'] not in excluded and original_run not in excluded,'home_runtime_identity')
+    if rollback:need(original_run!=identity['run_id'],'command')
+    return (identity,original_run) if rollback else identity
+
+
+def home_parent_admission():
+    pin=HOME_PARENT;run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','home_parent_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')=='success','home_parent_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py handoff'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success','home_parent_step')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'],'home_parent_artifact')
+    comments=pages('/issues/4709/comments');_unique_update_command(comments,HANDOFF_PREFIX,HANDOFF_OPERATION,home_parent_identity())
+    terminal=next((c for c in comments if c.get('id')==pin['terminal_comment_id']),{})
+    tokens=[str(pin[k]) for k in ('run_id','artifact_id','artifact_sha256','receipt_sha256','snapshot_manifest_sha256')]
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and all(t in terminal.get('body','') for t in tokens+['country_handoff_updated_verified']),'home_parent_terminal')
+
+
+def _home_commands():
+    comments=pages('/issues/4709/comments');selected={}
+    for prefix,operation in ((HOME_PREFIX,HOME_OPERATION),(HOME_ROLLBACK_PREFIX,HOME_ROLLBACK_OPERATION)):
+        rows=[c for c in comments if c.get('body','').strip().split()[:1]==[prefix]
+              and operation in c.get('body','').split()[1:]]
+        need(len(rows)<=1,'home_commands')
+        if not rows:continue
+        row=rows[0];rollback=prefix==HOME_ROLLBACK_PREFIX
+        pattern=re.escape(prefix)+r' ([a-f0-9]{40}) '+(r'([1-9][0-9]{0,19}) ' if rollback else '')+re.escape(operation)
+        match=re.fullmatch(pattern,row.get('body',''))
+        need(match is not None and row.get('user',{}).get('id')==226193297 and row.get('author_association')=='OWNER'
+             and row.get('created_at')==row.get('updated_at'),'home_command')
+        _tv_time(row.get('created_at'));selected['rollback' if rollback else 'install']=row
+    need('rollback' not in selected or 'install' in selected,'home_commands')
+    return selected
+
+
+def home_rollback_commands(identity,original_run,expected_original=None):
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
+         and original_run not in (identity['run_id'],HOME_PARENT['run_id'],HANDOFF_PARENT['run_id'],REFACTOR_PARENT['run_id'],SITE_PARENT['run_id'],
+                                  UPDATE_PARENT['run_id'],CONTINUATION_PARENT['run_id']),'home_rollback_run')
+    comments=pages('/issues/4709/comments')
+    _unique_update_command(comments,HOME_ROLLBACK_PREFIX,HOME_ROLLBACK_OPERATION,identity,original_run)
+    commands=_home_commands();need('install' in commands,'home_rollback_command')
+    installed=commands['install'];control=installed['body'].split()[1]
+    original={'control_source_sha':control,'run_id':original_run,'command_comment_id':installed['id']}
+    update_runtime_identity(original)
+    need(expected_original is None or original==expected_original,'home_rollback_command')
+    return original
+
+
+def _home_native_proof(command,run,value,artifact,*,rollback=False,original=None,accepted=None):
+    created=_tv_time(command['created_at']);tokens=command['body'].split();control=tokens[1]
+    identity={'control_source_sha':control,'run_id':str(run.get('id')),'command_comment_id':command['id']}
+    update_runtime_identity(identity)
+    if rollback:
+        need(tokens[2]==original['run_id'],'home_native_command')
+        _home_source_value(value,identity,rollback_original=original,accepted=accepted);conclusion='success'
+    elif value.get('status')=='blocked_no_replay':
+        _home_zero_write_value(value,identity);conclusion='failure'
+    else:
+        recovery=value.get('status')=='rolled_back_no_replay'
+        _home_source_value(value,identity,recovery=recovery);conclusion='failure' if recovery else 'success'
+    need(run.get('head_sha')==control and run.get('head_branch')=='main' and run.get('path')==WORKFLOW
+         and run.get('event')=='issue_comment' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')==conclusion
+         and created<=_tv_time(run.get('created_at'))<=created+300
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff','home_native_run')
+    # Restoration introduces a new full-stamp authority. Bind the controller
+    # actually executed by this historical run to its reviewed tree and CI;
+    # a later controller revision is neither a substitute nor a blocker.
+    reviewed_control(control)
+    jobs=[j for j in pages('/actions/runs/'+identity['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('run_id')==run['id'] and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')==conclusion,'home_native_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    mode='home-rollback' if rollback else 'home'
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py '+mode
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')==conclusion,'home_native_step')
+    need(created<=_tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))<=_tv_time(run.get('updated_at')),
+         'home_native_time')
+    need(artifact.get('name')=='search3-public-install-'+identity['run_id']+'-1' and artifact.get('expired') is False
+         and artifact.get('workflow_run',{}).get('id')==run['id']
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifact.get('digest','')),'home_native_artifact')
+    return identity,value
+
+
+def _home_command_evidence(command,*,rollback=False,original=None,accepted=None):
+    created=_tv_time(command['created_at'])
+    end=datetime.datetime.fromtimestamp(created+300,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    query=urllib.parse.quote(command['created_at']+'..'+end,safe='')
+    runs=pages('/actions/workflows/search3-root-gateway-install.yml/runs?event=issue_comment&branch=main&created='+query,'workflow_runs')
+    need(len(runs)<=100,'home_native_run_limit');matches=[]
+    for run in runs:
+        if run.get('head_sha')!=command['body'].split()[1]:continue
+        for artifact in pages('/actions/runs/'+str(run['id'])+'/artifacts','artifacts'):
+            if artifact.get('name')!='search3-public-install-'+str(run['id'])+'-1':continue
+            digest=artifact.get('digest','')
+            if artifact.get('expired') is not False or not re.fullmatch(r'sha256:[a-f0-9]{64}',digest):continue
+            with zip_files(download(artifact['id'],digest.removeprefix('sha256:'))) as archive:
+                need(archive.namelist()==['evidence.json'],'home_native_artifact')
+                raw=archive.read('evidence.json');need(len(raw)<=262144,'home_native_artifact')
+                value=_tv_json(raw)
+            if not isinstance(value,dict) or value.get('command_comment_id')!=command['id']:continue
+            matches.append(_home_native_proof(command,run,value,artifact,rollback=rollback,original=original,accepted=accepted))
+    need(len(matches)==1,'home_original_missing')
+    return matches[0]
+
+
+def home_restoration_evidence():
+    commands=_home_commands()
+    if not commands:return {'status':'absent'}
+    original,installed=_home_command_evidence(commands['install'])
+    if installed['status']=='blocked_no_replay':
+        need('rollback' not in commands,'home_restoration_pending')
+        value={'status':'zero_write','original':original,'install_evidence':installed}
+    elif installed['status']=='rolled_back_no_replay':
+        need('rollback' not in commands,'home_restoration_pending')
+        value={'status':'restored','original':original,'install_evidence':installed,'restoration_evidence':installed}
+    else:
+        need('rollback' in commands,'home_restoration_pending')
+        _,restored=_home_command_evidence(commands['rollback'],rollback=True,original=original,accepted=installed['remote'])
+        value={'status':'restored','original':original,'install_evidence':installed,'restoration_evidence':restored}
+    home_restoration_value(value);need(_home_commands()==commands,'home_commands_changed')
+    return value
+
+
+def home_rollback_admission(identity,original_run):
+    rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    original=home_rollback_commands(identity,original_run);run=api('/actions/runs/'+original_run)
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts')
+               if a.get('name')=='search3-public-install-'+original_run+'-1']
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'home_rollback_artifact')
+    artifact=artifacts[0]
+    with zip_files(download(artifact['id'],artifact['digest'].removeprefix('sha256:'))) as archive:
+        need(archive.namelist()==['evidence.json'],'home_rollback_artifact');value=_tv_json(archive.read('evidence.json'))
+    command=_home_commands()['install'];checked,_=_home_native_proof(command,run,value,artifact)
+    need(checked==original and value['status']=='home_navigation_updated_verified','home_rollback_evidence')
+    rollback_main(identity);return original,artifact
+
+
+def home(rollback=False):
+    need(type(rollback) is bool,'mode')
+    operation=HOME_ROLLBACK_OPERATION if rollback else HOME_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':HOME_SOURCE,
+              'manifest_sha256':home_policy()['manifest'],'read_only':False,'phase':'identity','ssh_started':False}
+    complete=False
+    try:
+        event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity,original_run=home_event_identity(event,os.environ,True)
+            evidence.update(identity,original_home_run_id=original_run,phase='admission')
+            original,artifact=home_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            policy,accepted,parent_value=home_source_evidence(download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
+            dependency=tv_successor_evidence()
+            program=home_rollback_remote_program(policy,identity,original,accepted,parent_value,tv_successor=dependency)
+            evidence.update(parent_handoff=home_parent_identity(),parent_evidence=parent_value,original_home=original)
+        else:
+            identity=home_event_identity(event,os.environ);evidence.update(identity,phase='admission');home_admission(identity)
+            evidence['phase']='artifact'
+            parent_value=home_parent_evidence(download(HOME_PARENT['artifact_id'],HOME_PARENT['artifact_sha256']))
+            policy,files=home_package(download(HOME_ARTIFACT,HOME_ARTIFACT_SHA),parent_value)
+            dependency=tv_successor_evidence()
+            program=home_remote_program(policy,files,identity,parent_value,tv_successor=dependency)
+            evidence.update(parent_handoff=home_parent_identity(),parent_evidence=parent_value)
+        # Exact existing carrier, key handling, options, output bound and timeout.
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:
+            checked,latest_artifact=home_rollback_admission(identity,original_run)
+            need(checked==original and latest_artifact==artifact,'home_rollback_changed')
+        else:home_admission(identity)
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=32768,'receipt_limit');result=json.loads(response)
+        complete=valid_home_result(identity,result,original,accepted) if rollback else valid_home_result(identity,result)
+        evidence['remote']=result
+        if rollback:rollback_main(identity)
+        else:home_final_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HandoffError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'home_rollback_not_verified' if rollback else 'home_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['home']: return 'home'
+    if arguments == ['home-rollback']: return 'home-rollback'
     if arguments == ['handoff']: return 'handoff'
     if arguments == ['handoff-rollback']: return 'handoff-rollback'
     if arguments == ['refactor']: return 'refactor'
@@ -5482,7 +6717,9 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'handoff': handoff()
+    if mode == 'home': home()
+    elif mode == 'home-rollback': home(rollback=True)
+    elif mode == 'handoff': handoff()
     elif mode == 'handoff-rollback': handoff(rollback=True)
     elif mode == 'refactor': refactor()
     elif mode == 'refactor-rollback': refactor(rollback=True)
