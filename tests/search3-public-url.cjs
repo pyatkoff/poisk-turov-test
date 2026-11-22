@@ -38,12 +38,13 @@ function oldHydration(query='',owner=old){
  return {keys:[...keys],partyWrites,fields,services:services.map(node=>({value:node.value,checked:node.checked})),events,auto:ctx.result.auto};
 }
 function currentNextKeys(){
- const start=source.indexOf('function updateURL(){'),end=source.indexOf('const generatedRootBindings=',start);assert(start>=0&&end>start,'actual NEXT URL owner');
+ const start=source.indexOf('function searchURLParameters('),end=source.indexOf('const generatedRootBindings=',start);assert(start>=0&&end>start,'actual NEXT URL owner');
+ const homeMode=source.match(/^const homeFormOnly=[^\n]+/m);assert(homeMode,'actual guarded HOME mode owner');
  let query='';
- const ctx={URLSearchParams,searchEditSession:null,urlStateHydrated:true,data:{scenario:'live'},location:{search:'',hash:''},history:{state:{},replaceState:(_state,_title,value)=>{query=value;}},destinationIds:f=>f.hotelIds,amenityLabel:()=> 'Пляж',
+ const ctx={URLSearchParams,window:{},searchEditSession:null,urlStateHydrated:true,data:{scenario:'live'},location:{search:'',hash:''},history:{state:{},replaceState:(_state,_title,value)=>{query=value;}},destinationIds:f=>f.hotelIds,amenityLabel:()=> 'Пляж',
   state:{search:{origin:'Москва',country:'101',from:'2026-12-20',to:'2026-12-24',minNights:9,maxNights:11,adults:3,ages:[0,8]},selectedDate:'2026-12-21',hasSearched:true,onlyFavorites:true,sort:'price',
    filters:{stars:[5],meals:['AI'],resorts:['Курорт'],operators:['Оператор'],flight:['charter'],amenities:['1:1'],beach:true,rating:true,family:true,spa:true,hotelId:11,hotelIds:[11,12],q:'отель',min:100000,max:200000}}};
- vm.createContext(ctx);vm.runInContext(source.slice(start,end)+'\nupdateURL();',ctx);
+ vm.createContext(ctx);vm.runInContext(homeMode[0]+'\n'+source.slice(start,end)+'\nupdateURL();',ctx);
  assert(query);return [...new URLSearchParams(query).keys()];
 }
 const helpers={};vm.createContext(helpers);

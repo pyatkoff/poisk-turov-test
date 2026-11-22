@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "57854ebfd2eb597931f86d9a4f54686781158796c8474fc6a3fd0bd9553c4157",
+    "app.js": "bbce130c7be0c982fdcc092ed3af28050ec391877bff990bb6168133e0ff0efc",
     "fixture-data.js": "895ce084ec8a8e14e90b7aae2508ecae8b10f75c15d7361cf004fefd2668f4ce",
     "index.html": "96091fb0fed9e6c097fb4f91855e840249b91461e7a4eb791b7efed6111cc996",
     "styles.css": "459c7d84e6642d5f274526e236f9397ffdc9d085e0ecf499bb6fba375374b525",
@@ -71,11 +71,11 @@
     "lead-runtime-v1.js": "9e0e9e4393b0b019c51616acb4aff20231c911cf7f0426b49a1e9b8624bfc065",
     "search-lifecycle-v1.js": "8fb5d00d59eab7fc320ba1c8a7272b191e08b3b2fe9e08f48f6987be095161f9",
     "recorded-data.js": "ffdcfb03e3cb977d2a3c14656101b01b80765dee85a571b789ab4b88a142cd02",
-    "entry-v1.php": "4f2d166e250d83af42c2b1a76ea7aed19d76787890e0a9b912d00dfeb8e7b063",
+    "entry-v1.php": "a5f685876b0b7b66dc89732984f4bcebf0a13d1a1a2e6fbb34a024a0922e0fa8",
     "public-entry-v1.php": "4df2762bffe464b2e28a4a577f11089c4958e750d6eb63224a18909ed6552616",
     "public-url-v1.js": "9f25085a14e1e766051313001d3a05a8d3fdf347e15b19ed219496445a877572",
-    "public-config-v1.js": "b56321f0a5f3f0438bbeca6932f641284b8850f8fcf955886282573a807c9e38",
-    "public-bootstrap-v1.js": "716b1132b92995434268cecb810bf4fa99cddf41664e7c36fe96494b103466ea",
+    "public-config-v1.js": "3495f1ed45d1472c178ef06aa575ccc2484c45d93658b463daf2d641441496f2",
+    "public-bootstrap-v1.js": "fec0de624189de029e1c3c5a1311f8ef99734ff070e7d5167d1117512a46e922",
     "public-analytics-v1.js": "3d562cce2ca033c5d62243bf0559f6a7c6c43d54fe38e68f84fd26997d47c8bd"
   },
   "quoteRecovery": {
@@ -359,7 +359,7 @@
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
       "../prototype-search/messenger-flow-v1.js": "18d52f878669185b41d335938755b684c5d470e48fe4ce8a71faefa33298e687",
-      "../prototype-search/data.js": "16bb911aa318e583ae6f8130fd8439c40350796500cb0bbf7320633a2a40d45c",
+      "../prototype-search/data.js": "f3a70925b74e037ff237785e7d1fa3e87422818867d92891d4016c80309d637c",
       "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",

@@ -10,6 +10,21 @@ $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
 $homeMetrikaCounter = v2_metrika_counter_id();
 $homeSchema = v2_seo_schema($homePhone, $homeDescription);
+$homePrefix = v2_site_base_path();
+if (!in_array((string)($_SERVER['SCRIPT_NAME'] ?? ''), [$homePrefix . '/', $homePrefix . '/index.php'], true)) {
+    http_response_code(403);
+    exit('The home form requires its exact home route.');
+}
+if (!defined('V2_VISUAL_ENTRY_ALLOWED')) define('V2_VISUAL_ENTRY_ALLOWED', true);
+require_once __DIR__ . '/visual-search/entry-v1.php';
+$homeSearch = null;
+try {
+    $homeBuild = v2_visual_search_public_build(__DIR__ . '/visual-search/public-build.json');
+    $homeConfig = v2_visual_search_public_config($homeBuild, $homePrefix, 'home');
+    $homeSearch = v2_visual_search_home_parts($homeConfig, $homeSiteParams);
+} catch (Throwable $error) {
+    http_response_code(503);
+}
 function home_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?><!doctype html>
 <html lang="ru">
@@ -28,8 +43,9 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <meta property="og:url" content="<?=$homeCanonical?>">
   <meta property="og:locale" content="ru_RU">
   <script type="application/ld+json"><?=json_encode($homeSchema,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?></script>
+  <?= $homeSearch['head'] ?? '' ?>
   <link rel="stylesheet" href="<?=home_e(v2_asset('design-system-v2.css'))?>">
-  <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
+  <?php if ($homeSearch === null): ?><link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>"><?php endif; ?>
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-footer-v1.css'))?>">
 </head>
@@ -42,10 +58,16 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
         <p class="home-eyebrow">Пакетные туры · AnyTour</p>
         <h1 id="home-title">Ваш следующий<br>отдых — здесь</h1>
         <p class="home-lead">Море, новый город или отпуск всей семьёй. Выберите тур, сравните условия и продолжите с менеджером.</p>
-        <a class="primary home-search-link" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Найти свой тур </a>
-        <p class="home-hero-caption">Даты, отель, питание и перелёт — в одном поиске</p>
       </div>
       <div class="home-hero-image"><img src="<?=home_e(v2_asset('home-hero-v1.jpg'))?>" alt="Песчаный берег и море в мягком вечернем свете" width="1100" height="731" fetchpriority="high"><span>Пора сменить вид из окна</span></div>
+      <div class="home-search-surface">
+        <?php if ($homeSearch !== null): ?>
+          <?= $homeSearch['form'] ?>
+        <?php else: ?>
+          <p role="status">Форма сейчас недоступна. Откройте поиск, чтобы выбрать условия поездки.</p>
+          <a class="primary home-search-link" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Открыть поиск туров</a>
+        <?php endif; ?>
+      </div>
     </section>
 
     <section class="home-section home-directions" id="countries" aria-labelledby="countries-title">
@@ -70,7 +92,6 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     <section class="home-contact" id="contacts" aria-labelledby="contact-title"><div><p class="home-eyebrow">Будем на связи</p><h2 id="contact-title">Сначала выберите тур.<br>Дальше — удобный вам мессенджер.</h2><p>Telegram и MAX доступны на шаге связи с менеджером.</p></div><a class="primary" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Выбрать тур </a></section>
   </main>
 <?php v2_render_site_footer($homePhone, $homePhoneHref); ?>
-<script>window.V2_CONFIG=Object.assign({},window.V2_CONFIG||{},{metrikaCounter:<?=json_encode($homeMetrikaCounter,JSON_UNESCAPED_SLASHES)?>});</script>
-<script src="<?=home_e(v2_asset('analytics-v4.js'))?>"></script>
+<?= $homeSearch['support'] ?? '' ?>
 </body>
 </html>

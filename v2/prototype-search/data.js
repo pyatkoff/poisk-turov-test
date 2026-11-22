@@ -37,6 +37,9 @@
   function localContentEndpoint(){
     if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
     const path=String(root.location?.pathname||'');
+    const homeEntry=root.AnyTourPublicConfigV1?.valid===true&&root.AnyTourPublicConfigV1.entry==='home'
+      &&root.V2_CONFIG?.search3FormOnly===true&&root.V2_CONFIG?.search3PublicEntry==='live'&&['/','/index.php'].includes(path);
+    if(homeEntry)return '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php';
     if(root.V2_CONFIG?.search3PublicEntry==='live'&&['/poisk-turov/','/poisk-turov/index.php'].includes(path))return '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php';
     return path.startsWith('/_preview/search3-next-candidate/')? '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php'
       :path.startsWith(local)?local+'data/local-tv-catalog-read-v1.php':null;

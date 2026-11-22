@@ -38,8 +38,9 @@
   if(converted){output.set('origin',catalog.origin);output.set('scenario',cfg.search3PublicEntry==='live'?'live':cfg.search3ReviewScenario);}
   if(cfg.search3PublicEntry==='review')output.set('scenario',cfg.search3ReviewScenario);
   if(converted?.autoSearch)output.set('searched','1');
-  return Object.freeze({catalog,query:output.toString(),rewrite:legacy||cfg.search3PublicEntry==='review',
-   autoSearch:converted?converted.autoSearch:output.get('searched')==='1',namespace:inspection.namespace});
+  if(cfg.search3FormOnly===true)output.delete('searched');
+  return Object.freeze({catalog,query:output.toString(),rewrite:legacy||cfg.search3PublicEntry==='review'||cfg.search3FormOnly===true&&input.has('searched'),
+   autoSearch:cfg.search3FormOnly!==true&&(converted?converted.autoSearch:output.get('searched')==='1'),namespace:inspection.namespace});
  }
  root.AnyTourPublicBootstrapV1=Object.freeze({selected,prepare});
 })(window);
