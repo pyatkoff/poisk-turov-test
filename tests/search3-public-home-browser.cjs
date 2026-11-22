@@ -35,16 +35,24 @@ async function chooseFamily(page){
  await page.locator('#quick-stars [data-value="4"]').click();await page.locator('#quick-stars [data-value="5"]').click();
  await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value="Всё включено"]').check();
  await page.locator('[data-action="apply-meals"]').click();await idleModal(page);
- await page.locator('.home-search-more > summary').click();await page.locator('#quick-budget').click();
+ const disclosureState=()=>page.locator('#quick-budget').evaluate(el=>({open:el.closest('details.home-search-more').open,
+  visible:el.checkVisibility()&&getComputedStyle(el).visibility==='visible'}));
+ await page.locator('.home-search-more > summary').click();const opened=await disclosureState();
+ assert(opened.open&&opened.visible,'opening additional parameters exposes the budget control');
+ await page.locator('#quick-budget').click();
  await page.locator('#budget-max').fill('240000');await page.locator('[data-action="apply-budget"]').click();await idleModal(page);
- await page.locator('.home-search-more > summary').click();
+ await page.locator('.home-search-more > summary').click();const closed=await disclosureState();
+ assert(!closed.open&&!closed.visible,'closing additional parameters hides the budget control');
+ return {opened,closed};
 }
 async function geometry(page,viewport,home){
  await page.evaluate(()=>document.fonts.ready);
  if(home)await page.evaluate(()=>window.scrollTo(0,0));
  return page.evaluate(({viewport,home})=>{
   const box=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-  const visible=el=>!!el&&el.getClientRects().length>0&&getComputedStyle(el).visibility!=='hidden';
+  // Rects can exist below closed details in Chromium. Native visibility follows
+  // its user-agent shadow tree and content-visibility, as Playwright does.
+  const visible=el=>!!el&&el.checkVisibility()&&el.getClientRects().length>0&&getComputedStyle(el).visibility==='visible';
   const result={viewport,pageWidth:document.documentElement.scrollWidth};
   const modal=document.querySelector('#modal');
   if(modal?.open){
@@ -54,6 +62,7 @@ async function geometry(page,viewport,home){
   if(home){
    result.formsInHero=document.querySelectorAll('.home-hero form').length;
    result.budgetDisclosed=!!document.querySelector('#quick-budget')?.closest('details.home-search-more');
+   result.budgetOpen=document.querySelector('#quick-budget')?.closest('details.home-search-more')?.open??null;
    result.budgetHidden=!visible(document.querySelector('#quick-budget'));
    const selectors=['#search-form [data-action="departure"]','#search-form [data-action="destination"]',
     '#search-form [data-action="dates"]','#search-form [data-action="nights"]','#search-form [data-action="guests"]',
@@ -76,7 +85,7 @@ function checkGeometry(value,label,home){
  }
  if(!home)return;
  assert.equal(value.formsInHero,1,label+' has one actual form in the hero');
- assert(value.budgetDisclosed&&value.budgetHidden,label+' keeps budget inside closed additional parameters');
+ assert(value.budgetDisclosed&&value.budgetOpen===false&&value.budgetHidden,label+' keeps budget inside closed additional parameters');
  for(const [selector,control]of Object.entries(value.controls)){
   assert.equal(control.count,1,label+' has one '+selector);assert(control.visible,label+' shows '+selector);
   assert(control.rect.width>0&&control.rect.height>0&&control.rect.x>=-1&&control.rect.right<=width+1,label+' fits '+selector);
@@ -195,7 +204,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
    await page.goto(origin+'/?'+initial);await readyHome(page);
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
-   await capture('initial',true);await chooseFamily(page);
+   await capture('initial',true);row.budgetDisclosure=await chooseFamily(page);
    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);
    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
    assert.equal(privateRequests(),0,'editing HOME controls starts no private supplier preparation');await capture('family',true);

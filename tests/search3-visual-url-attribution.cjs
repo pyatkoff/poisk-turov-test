@@ -9,11 +9,12 @@ const lead=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/lead-runt
 const fields=['yclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'];
 const plain=value=>JSON.parse(JSON.stringify(value));
 function owner(first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first+' owner found');return source.slice(a,b);}
-const code=[owner('function updateURL(){','const generatedRootBindings='),
+const homeMode=source.match(/^const homeFormOnly=[^\n]+/m);assert(homeMode,'actual guarded HOME mode owner found');
+const code=[homeMode[0],owner('function searchURLParameters(','const generatedRootBindings='),
  owner('function editSearch(){','const hotelPlaces='),
  owner('function commitSearchDraft(){','const searchLifecycle='),
  owner('function restoreHistoryView(route){','function updateModalBack(){')].join('\n');
-function setup(href){
+function setup(href,{home=false}={}){
  let url=new URL(href);const writes=[],nodes=new Map(),listeners=new Map(),requests=[];
  const blocked=()=>{requests.push('blocked');throw Error('network forbidden');};
  const noop=()=>{};
@@ -29,7 +30,7 @@ function setup(href){
   uiHistoryOpen:false,uiHistoryClosing:false,pendingPageReturn:null,uiHistoryKey:'search3-ui',modalHistory:[],handlingUIBack:false,restoringUIHistory:false,
   reopenUIRoute:()=>true,uiRoute:()=>({type:'selected-tour'}),addEventListener:(type,fn)=>listeners.set(type,fn),fetch:blocked,
   document:{cookie:'_ym_uid=fixture-client',activeElement:null,querySelector:()=>null,body:{classList:{add:noop}}},
-  window:{V2Runtime:{state:{}},V2_CONFIG:{leadApi:'/lead-adapter-v2.php'},fetch:blocked,scrollTo:noop}};
+  window:{AnyTourPublicConfigV1:{valid:true},V2Runtime:{state:{}},V2_CONFIG:{leadApi:'/lead-adapter-v2.php',search3FormOnly:home},fetch:blocked,scrollTo:noop}};
  for(const name of ['stopSearch','closeFilters','updateSearchUI','collapseSearch','renderFilters','loadCountries','restoreFocus','rememberDestination','finishPageReturn','modalBack','setFilterSectionOpen','closeModal'])context[name]=noop;
  vm.createContext(context);vm.runInContext(code+'\n'+lead,context,{filename:appPath});
  const session=context.window.V2TourController.createProviderLeadSession({provider:'anex',offerRef:'offline-only',current:noop,payload:()=>({provider:'anex',providerOfferRef:'offline-only'})});
@@ -53,6 +54,7 @@ assert.equal(first.origin,landing.origin);assert.equal(first.pathname,landing.pa
 assert.equal(first.searchParams.getAll('yclid').length,1,'same first-value semantics as the lead reader');
 assert.equal(first.searchParams.has('utm_id'),false);assert.equal(first.searchParams.has('leadApi'),false,'unrecognized parameters stay excluded');
 assert.equal(first.searchParams.get('ages'),'0,8');assert.equal(first.searchParams.get('stars'),'4|5');
+assert.equal(first.searchParams.get('searched'),'1','the receiving search keeps its applied-search flag');
 assert(!f.location.href.includes('<img'),'untrusted attribution remains URL-encoded');
 assert.strictEqual(f.history.state.unchanged,'retained','history state is preserved');
 const firstWrites=f.writes.length;ctx.updateURL();assert.equal(f.writes.length,firstWrites,'unchanged URL does not replace history');
@@ -76,5 +78,23 @@ const cold=setup(landing.href);cold.context.urlStateHydrated=false;cold.context.
 const organic=setup('https://example.invalid/poisk-turov/?utm_campaign=&other=discard');organic.context.updateURL();
 assert.equal(new URL(organic.location.href).searchParams.get('utm_campaign'),'','present empty value stays empty');
 for(const key of fields.filter(key=>key!=='utm_campaign'))assert.equal(new URL(organic.location.href).searchParams.has(key),false,'absent attribution is not fabricated');
-for(const fixture of [f,reloaded,cold,organic])assert.equal(fixture.requests.length,0,'supplier and lead HTTP 0');
-console.log('PASS URL attribution: first rewrite, 3 edit/cancel/commit/Back/resume cycles, reload, encoding, duplicate/empty/absent values; unchanged lead payload contract; supplier/lead HTTP 0');
+const homeLanding=new URL(landing);homeLanding.pathname='/';homeLanding.searchParams.set('searched','1');
+const home=setup(homeLanding.href,{home:true}),homeContext=home.context;
+homeContext.updateURL();
+assert.equal(new URL(home.location.href).pathname,'/','HOME keeps its current route');
+assert.equal(new URL(home.location.href).searchParams.has('searched'),false,'HOME removes a stale searched flag');
+assert.deepEqual(home.attribution(),expected,'HOME rewrite preserves existing attribution');
+homeContext.editSearch();homeContext.draft.adults=3;homeContext.draft.ages=[0,12];homeContext.draft.minNights=8;homeContext.draft.maxNights=8;
+assert.deepEqual(plain(homeContext.commitSearchDraft()),{});
+assert.equal(homeContext.state.hasSearched,false,'committing HOME conditions does not mark a search as started');
+const homeURL=new URL(home.location.href);
+assert.equal(homeURL.searchParams.has('searched'),false,'committed HOME URL stays without searched');
+assert.equal(homeURL.searchParams.get('adults'),'3');assert.equal(homeURL.searchParams.get('ages'),'0,12');assert.equal(homeURL.searchParams.get('minNights'),'8');
+assert.deepEqual(home.attribution(),expected,'HOME commit preserves existing attribution');
+const homeWrites=home.writes.length,receiver=homeContext.searchURLParameters(true);
+assert.equal(receiver.get('searched'),'1','the same serializer can authorize the receiving search');
+assert.equal(receiver.get('ages'),'0,12');for(const key of fields)assert.equal(receiver.get(key),expected[key]);
+assert.equal(home.location.href,homeURL.href,'serializing the receiver leaves HOME history unchanged');
+homeContext.updateURL();assert.equal(home.writes.length,homeWrites,'unchanged HOME URL does not replace history');
+for(const fixture of [f,reloaded,cold,organic,home])assert.equal(fixture.requests.length,0,'supplier and lead HTTP 0');
+console.log('PASS URL attribution: first rewrite, 3 edit/cancel/commit/Back/resume cycles, reload, encoding, duplicate/empty/absent values; HOME clean history and receiving serialization; unchanged lead payload contract; supplier/lead HTTP 0');
