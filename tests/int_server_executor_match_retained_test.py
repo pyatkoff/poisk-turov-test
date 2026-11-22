@@ -3310,6 +3310,351 @@ class Local9BridgeNativeTest(unittest.TestCase):
             self.assertNotIn(token,run.stdout)
 
 
+class Local26IdentityControlTest(unittest.TestCase):
+    """New receiving measurement; no legacy operation or native binding replay."""
+    PARENT_ZLIB_BASE64 = 'eNrdVst2GzcM3ecrfNRtFPFNMH/Qr9ABSVCe49HMdB5KfXLy7wUVjTx24mbRbtqVbYBzQQD3Xvrrh4eHXez7p6Y7HRO27bT7/CA+1mjGGSNOdPwyNjPVuFXXREuY35xt6YTp+eXkLdrzqWNfSpMabJXjxFeOcwbT3PTddJweUdka32VNMkkbUArvNJBwIVpyJISOJWAWYElJgEhBR5SokofirQCRo0+Gdh9vyMMw9hcuO1KpuI/zPEyfD4dTMz8u8VPqz4fhGecnvtVh6JvpaT8v/MGe7z0fmmlaaDoYL8Jv19/5+Jm6ee+F98EYpcJaJ/H1lzONXAdzxPR0vNDYlIYyV53Hhd6ee2k1RlFyEmAyRWnJUFQeYnRClZClkwq1Vi7ISNJYDznYkqMOEaz2RBY3V5jHvq3IFVYlbW1KwepstEPnHRYpGSV7GYPIJJRTHFo/f2+/nKJx7Mdj6jNxtFva9hbn9lpefb9083RfZoWiKY3NUHfKYeU+ronmjKcrtLL32DBydHz+vaaumWvi27bEdFwGvt51lv6G9nOOcfyMXVN4e5sJezA6Kps0s4S3AwUBSu0ewYsMaFzwymPSDmQRGpCMhBggCe2t1LC7Qw9DFcYPNfuBRqztHpt6x13DHMEuj/2ZMu6vvN+/8H7PMO3zXvECpFRqf7nvoB+bU9MxWwdmEM9j00NIFNGDjZAi98IMIINISVDSJmuhydqQI2ltvZfeFg+oAEJyWiYf7oLov3RXlibiBW1ZqI0k5WNmphiTQCFJr5PJniEzSGdktDUFomhBJrlotEaINjqIzq34Q4vdBhaC0cZEFguATiC1DBq0Txad8BKSYfYL5J9WqMT4AYuLRJH/ZhXJ+7WHkSYaL5SP3xmxGT4LvDTthrcr4dbMlj7b3EyJg0csM41b+rKQSnP6NDwOtQPJNqN5+jJYR8wfA0VgMN4CqaS0DSpoIiGzEzK5ULwSqILhzjL6zK5zZ3pV2CFH3veKnWQCI7OG5BQYG5mBdY1cMKP0JIxkE0w25hxEsNKXkoSKtsTIuypS715p5aWlSKUf6X/S04U67NI7+700melcXf31E8TZXzjxSH+wuc9bRt295SW3UmhbdkqPdMYKO313OPk68YM9TP0yJlqN2RgrLQgZhSy2DsfLwhrm58Q7kjmzJHLKIq7Un2bm7nWy/Po0c73VvaP1yMKO0vAg7jP4cBvhO561O38389073nSzpH/H2Oqe8nJ94t+IjfEy/bkyBwQF5h0INImf//r0SfAURCkZUsmYEwlw1geQOcpgVCgAirLK1Y9WVu4u6oBDs7+oG/DmxeLUtuTrTP1HZo8ZB77i66/v09x08kZj/+VWli49Ynd6pZD3bPVvFPmOMH4ui38iiqsklummiaGlmW7xH3Xw7cNfQeEdgQ=='
+
+    def parent(self):
+        import base64,zlib
+        return json.loads(zlib.decompress(base64.b64decode(self.PARENT_ZLIB_BASE64)))
+
+    def command(self):
+        c=core();m.register_parser(c);p=m.LOCAL26_IDENTITY
+        body=c.PREFIX+' '.join([p['source_sha'],'match-retained-current',p['operation_id'],p['cohort'],p['parent_operation_id']])
+        return c,c.parse_command(body),body
+
+    def snapshot(self):
+        p=m.LOCAL26_IDENTITY;owns=[];sources=[];targets=[]
+        for own,tv,name,country,region in p['pairs']:
+            identity={'name':name,'country':country,'region':region,'country_id':None,'region_id':None}
+            fields={key:{'present':True,'sha256':value,'expected_sha256':value,'matches':True}
+                for key,value in p['expected_fields'][str(own)].items()}
+            owns.append({'own_id':own,'revision':2,'active':True,'identity':identity,'profile_sha256':'1'*64,
+                'profile_integrity':True,'approved_fields':fields})
+            sources.append({'own_id':own,'namespace':'legacy_catalog','external_key':str(tv),'acquired_via':'saved_catalog',
+                'source_sha256':'2'*64,'source_integrity':True,'source_identity_id':tv,'identity':copy.deepcopy(identity)})
+            empty={k:None for k in identity}
+            targets.append({'tv_id':tv,'state':'pending','revision':1,'discovery_identity':copy.deepcopy(identity),
+                'content_identity':empty,'manual_identity':copy.deepcopy(empty),'manual_fields':[],
+                'discovery_sha256':'3'*64,'content_sha256':'4'*64,'manual_sha256':'4'*64,'source_absent_sha256':'5'*64,
+                'source_present':False,'source_sha256':None,'source_integrity':None,'source_identity_id':None})
+        return {'schema_version':1,'state':'local26_identity_snapshot','captured_at_utc':'2026-11-23T02:00:00+00:00',
+            'database_snapshot':'repeatable-read-read-only','own_rows':owns,'source_rows':sources,'link_rows':[],
+            'target_rows':targets,'supplier_calls':0,'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+            'approved_manifest_sha256':p['approved_manifest_sha256'],'actions_sha256':p['actions_sha256']}
+
+    def link(self,own,tv):
+        return {'own_id':own,'tv_id':tv,'snapshot_sha256':'6'*64,'snapshot_integrity':True,'snapshot_own_id':own,
+            'snapshot_revision':1,'snapshot_profile_sha256':'7'*64,'snapshot_profile_integrity':True,
+            'migration_issue_fields':['originKnown','preservedFields'],'migration_issues_sha256':'8'*64,
+            'snapshot_source_count':3,'snapshot_sources_integrity':True}
+
+    def fixture(self,root):
+        p=m.LOCAL26_IDENTITY;c,command,body=self.command()
+        private=root/'private';target=private/p['parent_operation_id'];target.mkdir(parents=True)
+        op=private/p['operation_id'];op.mkdir();stage=op/'source';stage.mkdir()
+        project=root/'project';(project/'data').mkdir(parents=True)
+        (project/'config.php').write_text('PRIVATE_LOCAL26_CONFIG_SENTINEL')
+        (project/'data/db-v1.php').write_bytes((SOURCE/'v2/data/db-v1.php').read_bytes())
+        (target/'result.json').write_bytes(m.l11_json(self.parent()))
+        (target/'reservation.json').write_text(json.dumps({'operation_id':p['parent_operation_id'],
+            'source_sha':p['parent_source_sha'],'mode':'local-official26-apply-v1','reserved_at':1795346000}))
+        def fail(reason):raise ValueError(reason)
+        space={'LOCAL26_IDENTITY':p,'LOCAL26_HASHES':m.LOCAL26_HASHES,'LOCAL26_RUNNER':m.LOCAL26_RUNNER,
+            'private':private,'op':op,'project':project,'source':p['source_sha'],'operation':p['operation_id'],
+            'payload':dict(command,match_retained_control_sha=CONTROL),'mode':'match-retained-current',
+            'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),'subprocess':subprocess,'fail':fail,
+            'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=bound}
+        exec(m.LOCAL11_VALIDATOR+m.LOCAL26_VALIDATOR+m.LOCAL26_HANDLER,space)
+        raw=self.snapshot()
+        def child(args,**kwargs):
+            self.assertEqual({'pairs':[r[:2] for r in p['pairs']]},json.loads((op/'local26-scope.json').read_text()))
+            self.assertEqual(str(stage/m.LOCAL26_RUNNER),args[-1]);self.assertEqual(project,kwargs['cwd'])
+            self.assertIn('allow_url_fopen=0',args)
+            self.assertIn('disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen',args)
+            self.assertLessEqual(set(kwargs['env']),{'HOME','PATH','LANG','LC_ALL','MATCH_RETAINED_DIR','MATCH_RETAINED_SOURCE_ROOT'})
+            self.assertEqual(120,kwargs['timeout']);self.assertIs(False,kwargs['text'])
+            return subprocess.CompletedProcess(args,0,m.l11_json(raw),b'')
+        return command,space,child,target,op,stage,raw
+
+    def result(self,command,evidence):
+        before={k:'a'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        return {'schema_version':1,**{k:command[k] for k in ('operation_id','source_sha','mode')},
+            'status':'complete','production_unchanged':True,'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+            'booking_calls':0,'lead_calls':0,'production_before':before,'production_after':copy.deepcopy(before),'match_retained':evidence}
+
+    def test_exact_read_admission_bundle_and_all_consumed_generated_commands_stay_frozen(self):
+        import base64,zlib
+        c,command,body=self.command();p=m.LOCAL26_IDENTITY
+        for bad in (body+' extra',body.replace(p['source_sha'],SHA),body.replace('match-retained-current','match-retained-acquire'),
+            body.replace(p['operation_id'],p['operation_id']+'-retry'),body.replace(p['cohort'],'local11-identity-20261122'),
+            body.replace(p['parent_operation_id'],m.LOCAL11_IDENTITY['parent_operation_id'])):
+            with self.subTest(command=bad),self.assertRaises(ValueError):c.parse_command(bad)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE);self.assertIn('def current_local26_identity(stage):',c.REMOTE)
+        self.assertNotIn('def apply_local9_bridge(stage):',c.REMOTE);self.assertNotIn('def current_local11_identity(stage):',c.REMOTE)
+        self.assertIn("globals().get('local26_reserved') is True",c.REMOTE)
+        self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-current','reconcile',"))
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        self.assertLessEqual(len(("python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'").encode()),65536)
+        bundle,hashes=c.bundle_source(SOURCE);self.assertEqual(m.LOCAL26_HASHES,hashes)
+        with tarfile.open(fileobj=io.BytesIO(bundle),mode='r:gz') as archive:
+            self.assertEqual({*m.LOCAL26_HASHES,'manifest.json'},set(archive.getnames()))
+            self.assertTrue(all(item.mode==0o600 for item in archive.getmembers()))
+            self.assertEqual((ROOT/m.LOCAL26_MANIFEST).read_bytes(),archive.extractfile(m.LOCAL26_MANIFEST).read())
+        old,legacy,_=Local9ApplyControlTest().command()
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(old,legacy)
+        self.assertEqual('a7a8e12e3072516270c5abf1b0999d69bab344026999e745a1a162451b45d8c2',hashlib.sha256(old.REMOTE.encode()).hexdigest())
+        # Existing LOCAL11 and OWNER7 tests independently pin their complete remote bytes and SOURCE17.
+        old_ids={pair[0] for pair in m.LOCAL11_IDENTITY['pairs']}
+        self.assertFalse(old_ids.intersection(pair[0] for pair in p['pairs']))
+
+    def test_actual_consumed_parent_and_manifest_field_hashes_are_exact(self):
+        parent=self.parent();p=m.LOCAL26_IDENTITY;m.l26_parent(parent,p)
+        self.assertEqual('82eebab327b6e43bb9c3342d4b6696d7769632b65eb956af1516509ef31fbd55',hashlib.sha256(m.l11_json(parent)).hexdigest())
+        for mutate in (lambda d:d['local_official26'].update(control_sha=CONTROL),
+            lambda d:d['local_official26'].update(fields_updated=78),lambda d:d.update(mapping_writes=1),
+            lambda d:d['local_official26'].update(consumer_readback_verified=False)):
+            changed=copy.deepcopy(parent);mutate(changed)
+            with self.assertRaisesRegex(ValueError,'local26_actual_parent_material'):m.l26_parent(changed,p)
+        manifest=json.loads((ROOT/m.LOCAL26_MANIFEST).read_bytes())
+        fields={str(a['anytour_hotel_id']):{v['field']:hashlib.sha256(json.dumps(v['after'],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+            for v in a['field_changes']} for a in manifest['proposed_actions']}
+        self.assertEqual(fields,p['expected_fields']);self.assertEqual(76,sum(len(v) for v in fields.values()))
+        self.assertEqual({'description'},set(fields['4172']))
+
+    def test_approved_values_are_observed_independently_of_historical_revision_and_identity(self):
+        raw=self.snapshot();p=m.LOCAL26_IDENTITY;data=m.l26_project(raw,p)
+        self.assertEqual((76,76,26),(data['summary']['approved_fields_requested'],data['summary']['approved_fields_matching'],data['summary']['approved_profiles_all_fields_matching']))
+        hilton=next(r for r in raw['own_rows'] if r['own_id']==4172)
+        hilton['revision']=3;hilton['approved_fields']['description'].update(sha256='f'*64,matches=False)
+        data=m.l26_project(raw,p);row=next(r for r in data['rows'] if r['own_id']==4172)
+        self.assertEqual(75,data['summary']['approved_fields_matching']);self.assertTrue(row['own']['profile_integrity'])
+        self.assertEqual('approved_fields_missing_or_changed',row['approved_content_status'])
+        self.assertNotIn('official26_revision_not_observed',row['reasons'])
+        hilton['approved_fields']['images']={'present':True,'sha256':'a'*64,'expected_sha256':'a'*64,'matches':True}
+        with self.assertRaisesRegex(ValueError,'local26_approved_field_set'):m.l26_project(raw,p)
+
+    def test_actual_bridge_leg_and_all_its_owners_are_separate_from_candidate(self):
+        raw=self.snapshot();p=m.LOCAL26_IDENTITY;first,second=p['pairs'][:2]
+        raw['link_rows']=[self.link(first[0],first[1]),self.link(second[0],500000),self.link(999998,500000)]
+        raw['target_rows'][0]['state']='excluded'
+        other=copy.deepcopy(raw['target_rows'][1]);other['tv_id']=500000;raw['target_rows'].append(other)
+        rows=m.l26_project(raw,p)['rows']
+        self.assertEqual(('candidate_target','target_excluded','historical_profile'),
+            tuple(rows[0][k] for k in ('bridge_status','reverse_visibility','snapshot_profile_relation')))
+        self.assertEqual('different_target',rows[1]['bridge_status']);self.assertEqual(500000,rows[1]['linked_target']['tv_id'])
+        self.assertEqual([second[0],999998],rows[1]['linked_target_link_owners'])
+        self.assertIn('actual_target_linked_to_other_own',rows[1]['reasons'])
+        self.assertEqual('observed_candidate_edge',rows[1]['legacy_candidate_status'])
+        self.assertEqual(0,m.l26_project(raw,p)['accepted_native_bindings'])
+        raw['link_rows'][1]['snapshot_sources_integrity']=False
+        self.assertEqual('invalid',m.l26_project(raw,p)['rows'][1]['snapshot_profile_relation'])
+
+    def test_raw_scope_duplicate_ownership_and_field_match_forgery_are_rejected(self):
+        for mutate in (lambda d:d.update(database_writes=True),lambda d:d.update(approved_manifest_sha256='a'*64),
+            lambda d:d['own_rows'].append(copy.deepcopy(d['own_rows'][0])),
+            lambda d:d['own_rows'][0]['approved_fields']['description'].update(expected_sha256='f'*64),
+            lambda d:d['own_rows'][0]['approved_fields']['description'].update(matches=False),
+            lambda d:d['target_rows'][0].update(tv_id=999999),
+            lambda d:d['source_rows'][0].update(own_id=999999,namespace='operator_315')):
+            raw=self.snapshot();mutate(raw)
+            with self.subTest(mutate=mutate),self.assertRaises(ValueError):m.l26_project(raw,m.LOCAL26_IDENTITY)
+
+    def test_runtime_terminal_preserves_parent_rejects_replay_and_rehashed_forgery(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage,raw=self.fixture(Path(td));before={p.name:p.read_bytes() for p in target.iterdir()}
+            with mock.patch.object(subprocess,'run',side_effect=child) as call:
+                evidence=space['current_local26_identity'](stage)
+                with self.assertRaises(FileExistsError):space['current_local26_identity'](stage)
+            self.assertEqual(1,call.call_count);self.assertEqual(before,{p.name:p.read_bytes() for p in target.iterdir()})
+            result=self.result(command,evidence);self.assertTrue(m.completed_result(command,result,CONTROL))
+            self.assertNotIn('PRIVATE_LOCAL26_CONFIG_SENTINEL',json.dumps(result))
+            self.assertEqual(hashlib.sha256((op/'local26-raw.json').read_bytes()).hexdigest(),evidence['data']['current_raw_sha256'])
+            for mutate in (lambda d:d['summary'].update(approved_fields_matching=75),
+                lambda d:d.update(accepted_native_bindings=26),lambda d:d.update(safe_to_write_now=True),
+                lambda d:d.update(parent_canonical_sha256='f'*64),
+                lambda d:d['rows'][0].update(legacy_candidate_status='accepted_native'),
+                lambda d:d['rows'][0]['own']['approved_fields']['description'].update(expected_sha256='f'*64),
+                lambda d:d['protected_after'].update(**{'config.php':'f'*64})):
+                changed=copy.deepcopy(result);mutate(changed['match_retained']['data'])
+                changed['match_retained']['evidence_sha256']=hashlib.sha256(m.l11_json(changed['match_retained']['data'])).hexdigest()
+                self.assertFalse(m.completed_result(command,changed,CONTROL))
+
+    def test_parent_reservation_and_postread_protected_drift_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage,raw=self.fixture(Path(td))
+            (target/'reservation.json').write_text('{}')
+            with mock.patch.object(subprocess,'run') as call,self.assertRaisesRegex(ValueError,'local26_parent_reservation'):
+                space['current_local26_identity'](stage)
+            call.assert_not_called()
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage,raw=self.fixture(Path(td))
+            def drift(*args,**kwargs):
+                response=child(*args,**kwargs);(target/'result.json').write_text('{}');return response
+            with mock.patch.object(subprocess,'run',side_effect=drift),self.assertRaisesRegex(ValueError,'local26_protected_drift'):
+                space['current_local26_identity'](stage)
+            self.assertFalse((op/'retained-evidence.json').exists())
+
+    @unittest.skipUnless(__import__('shutil').which('php'),'native PHP required')
+    def test_cli_manifest_tamper_is_rejected_before_private_configuration(self):
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);project=home/'www/anytoour.ru';project.mkdir(parents=True)
+            op=home/'.anytoour-int-executor'/m.LOCAL26_IDENTITY['operation_id'];stage=op/'source'
+            for rel in m.LOCAL26_HASHES:
+                path=stage/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_bytes((SOURCE/rel).read_bytes() if rel=='v2/data/db-v1.php' else (ROOT/rel).read_bytes())
+            (op/'local26-scope.json').write_text(json.dumps({'pairs':[r[:2] for r in m.LOCAL26_IDENTITY['pairs']]}))
+            (stage/m.LOCAL26_MANIFEST).write_bytes((stage/m.LOCAL26_MANIFEST).read_bytes()+b'\n')
+            marker=home/'configuration_loaded';(project/'config.php').write_text('<?php file_put_contents('+json.dumps(str(marker))+',"unexpected");')
+            env={k:os.environ[k] for k in ('PATH','LANG','LC_ALL') if k in os.environ}
+            env.update(HOME=str(home),MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+            call=subprocess.run(['php',str(stage/m.LOCAL26_RUNNER)],cwd=project,env=env,capture_output=True,text=True,timeout=20)
+            self.assertEqual(1,call.returncode,call.stderr);self.assertEqual('',call.stderr)
+            result=json.loads(call.stdout);self.assertEqual('failed_read_only',result['state']);self.assertFalse(marker.exists())
+            self.assertEqual(hashlib.sha256(b'local26_manifest_hash').hexdigest(),result['error_sha256'])
+
+
+@unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL/PHP CI required')
+class Local26IdentityNativeTest(unittest.TestCase):
+    def test_actual_readonly_snapshot_provenance_approved_fields_and_all_linked_owners(self):
+        lint=subprocess.run(['php','-l',str(ROOT/m.LOCAL26_RUNNER)],capture_output=True,text=True,timeout=20)
+        self.assertEqual(0,lint.returncode,lint.stderr)
+        code=r'''define('MATCH_LOCAL26_IDENTITY_LIBRARY_ONLY',true);require $argv[1];
+        class Local26ReadProbePDO extends PDO {
+          public bool $probe=false;public bool $denied=false;
+          public function prepare(string $query,array $options=[]): PDOStatement|false {
+            if($this->probe && str_contains($query,'FROM anytour_hotels')){
+              $this->probe=false;
+              try{$this->exec('UPDATE anytour_hotels SET revision=revision+1 WHERE id=4511');}
+              catch(PDOException $error){$this->denied=($error->errorInfo[1]??null)===1792;}
+              if(!$this->denied)throw new RuntimeException('fixture_read_only_dml_not_denied');
+            }
+            return parent::prepare($query,$options);
+          }
+        }
+        function json26(mixed $v): string {return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+        function need26(bool $v,string $reason): void {if(!$v)throw new RuntimeException($reason);}
+        function hashes26(PDO $db): array {
+          $out=[];
+          foreach(['anytour_hotels'=>'id','anytour_hotel_sources'=>'anytour_hotel_id,namespace,external_key','local_tv_legacy_links'=>'old_local_id','local_tv_hotels'=>'id'] as $table=>$order)
+            $out[$table]=hash('sha256',json26($db->query('SELECT * FROM '.$table.' ORDER BY '.$order)->fetchAll(PDO::FETCH_ASSOC)));
+          return $out;
+        }
+        function identity26(array $identity): array {
+          return ['name'=>$identity['name'],'country'=>['name'=>$identity['country']],'region'=>['name'=>$identity['region']]];
+        }
+        $manifest=json_decode(file_get_contents($argv[2]),true,64,JSON_THROW_ON_ERROR);
+        $scope=['pairs'=>MatchLocal26IdentityV1::PAIRS];$actions=$identities=[];
+        foreach($manifest['proposed_actions'] as $a)$actions[$a['anytour_hotel_id']]=$a;
+        foreach($manifest['targets'] as $target)$identities[$target['anytourHotelId']]=$target['expectedIdentity'];
+        $db=new Local26ReadProbePDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
+        $name='match_local26_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+        try{
+          $db->exec('CREATE TABLE anytour_hotels(id BIGINT UNSIGNED PRIMARY KEY,profile_json LONGTEXT NOT NULL,profile_sha256 CHAR(64) NOT NULL,revision BIGINT UNSIGNED NOT NULL,is_active TINYINT UNSIGNED NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE anytour_hotel_sources(anytour_hotel_id BIGINT UNSIGNED NOT NULL,namespace VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,external_key VARBINARY(128) NOT NULL,acquired_via VARCHAR(64) NOT NULL,source_json LONGTEXT NOT NULL,source_sha256 CHAR(64) NOT NULL,first_seen_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,UNIQUE KEY(namespace,external_key),KEY ix_own(anytour_hotel_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_legacy_links(old_local_id BIGINT UNSIGNED PRIMARY KEY,tv_id INT UNSIGNED NOT NULL,snapshot_json LONGTEXT NOT NULL,snapshot_sha256 CHAR(64) NOT NULL,migration_issues_json LONGTEXT NOT NULL,KEY ix_tv(tv_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_hotels(id INT UNSIGNED PRIMARY KEY,state VARCHAR(24) NOT NULL,revision BIGINT UNSIGNED NOT NULL,discovery_json LONGTEXT NOT NULL,content_json LONGTEXT NOT NULL,manual_json LONGTEXT NOT NULL,source_json LONGTEXT NULL,source_sha256 CHAR(64) NULL,source_absent_json LONGTEXT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $insertOwn=$db->prepare('INSERT INTO anytour_hotels VALUES(?,?,?,?,?)');
+          $insertSource=$db->prepare("INSERT INTO anytour_hotel_sources VALUES(?,?,?,?,?,?,'2026-10-01 00:00:00','2026-11-22 11:00:00')");
+          $insertTarget=$db->prepare('INSERT INTO local_tv_hotels VALUES(?,?,?,?,?,?,?,?,?)');
+          foreach($scope['pairs'] as $index=>[$own,$tv]){
+            $profile=identity26($identities[$own]);
+            foreach($actions[$own]['field_changes'] as $change)$profile[$change['field']]=$change['after'];
+            if($own===4172){
+              $profile['primaryImage']='https://example.invalid/retained-hilton-primary.jpg';$profile['images']=[];
+              for($i=0;$i<44;$i++)$profile['images'][]='https://example.invalid/retained-hilton-'.($i+1).'.jpg';
+            }
+            $profile['private_fixture_note']='PRIVATE_LOCAL26_PROFILE_SENTINEL';
+            $raw=json26($profile);$insertOwn->execute([$own,$raw,hash('sha256',$raw),2,1]);
+            foreach([['anytour_local_id',(string)$tv,'canonical_local_alias_v1'],['legacy_catalog',(string)$tv,'saved_catalog'],['profile_enrichment:official_review_v1',$manifest['proposed_actions_sha256'].':'.$own,'profile_fill_official_v1']] as [$ns,$key,$via]){
+              $payload=$ns==='legacy_catalog'?(['id'=>$tv]+identity26($identities[$own])):['fixture'=>'PRIVATE_LOCAL26_SOURCE_SENTINEL'];
+              $raw=json26($payload);$hash=($index===5 && $ns==='legacy_catalog')?str_repeat('f',64):hash('sha256',$raw);
+              $insertSource->execute([$own,$ns,$key,$via,$raw,$hash]);
+            }
+            if($index===2)continue;
+            $discovery=identity26($identities[$own]);if($index===8)$discovery['name']='ANOTHER HOTEL';
+            $manual=$index===3?json26(['description'=>'PRIVATE_LOCAL26_MANUAL_SENTINEL','country.name'=>'Manual country']):'{}';
+            $source=$index===4?json26(['id'=>999991,'private'=>'PRIVATE_LOCAL26_NATIVE_SENTINEL']):null;
+            $insertTarget->execute([$tv,$index===1?'excluded':($index===4?'ready':'pending'),1,json26($discovery),'{}',$manual,$source,$source===null?null:hash('sha256',$source),'[]']);
+          }
+          foreach([999996,999997,999998] as $id){$raw='{}';$insertOwn->execute([$id,$raw,hash('sha256',$raw),1,1]);}
+          // The candidate legacy key is owned by somebody else, independently of the own-ID namespace.
+          $db->exec("DELETE FROM anytour_hotel_sources WHERE anytour_hotel_id=14932 AND namespace='legacy_catalog'");
+          $raw=json26(['id'=>113544]+identity26($identities[14932]));
+          $insertSource->execute([999996,'legacy_catalog','113544','saved_catalog',$raw,hash('sha256',$raw)]);
+          $raw='{"id":4511}';$insertSource->execute([4511,'operator_315','4511','native_fixture',$raw,hash('sha256',$raw)]);
+          // A linked non-candidate target and its other owner must both be measured, without recursion.
+          $insertTarget->execute([500000,'pending',1,json26(['name'=>'Alternate linked target']),'{}','{}',null,null,'[]']);
+          $insertLink=$db->prepare('INSERT INTO local_tv_legacy_links VALUES(?,?,?,?,?)');
+          foreach([[4511,2490,1],[7599,500000,2],[999997,2490,1],[999998,500000,1]] as [$own,$tv,$revision]){
+            $q=$db->prepare('SELECT id,profile_json,profile_sha256,revision,is_active FROM anytour_hotels WHERE id=?');$q->execute([$own]);$profile=$q->fetch(PDO::FETCH_ASSOC);$profile['revision']=$revision;
+            $q=$db->prepare("SELECT namespace,external_key,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at FROM anytour_hotel_sources WHERE anytour_hotel_id=? AND namespace<>'operator_315' ORDER BY namespace,external_key");$q->execute([$own]);$sources=$q->fetchAll(PDO::FETCH_ASSOC);
+            $raw=json26(['profile'=>$profile,'sources'=>$sources]);
+            $insertLink->execute([$own,$tv,$raw,hash('sha256',$raw),json26(['preservedFields'=>[],'originKnown'=>true])]);
+          }
+          $before=hashes26($db);$db->probe=true;$db->denied=false;
+          $first=MatchLocal26IdentityV1::run($db,$scope,$manifest);
+          need26($db->denied && !$db->inTransaction(),'read_only_transaction_not_closed');
+          need26($before===hashes26($db),'first_snapshot_changed_database');
+          $own=[];foreach($first['own_rows'] as $row)$own[$row['own_id']]=$row;
+          $matches=0;foreach($own as $row)foreach($row['approved_fields'] as $field){need26($field['present'] && $field['matches'] && $field['sha256']===$field['expected_sha256'],'approved_field_mismatch');$matches++;}
+          need26($matches===76 && array_keys($own[4172]['approved_fields'])===['description'],'approved_field_count_or_hilton_scope');
+          // A validly re-hashed canonical edit is measured as value drift, not hidden by profile integrity.
+          $q=$db->query('SELECT profile_json FROM anytour_hotels WHERE id=4511');$profile=json_decode($q->fetchColumn(),true,64,JSON_THROW_ON_ERROR);
+          $profile['description'].=' fixture drift';$raw=json26($profile);
+          $q=$db->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=? WHERE id=4511');$q->execute([$raw,hash('sha256',$raw)]);
+          $driftBefore=hashes26($db);$db->probe=true;$db->denied=false;
+          $drift=MatchLocal26IdentityV1::run($db,$scope,$manifest);
+          need26($db->denied && !$db->inTransaction() && $driftBefore===hashes26($db),'drift_snapshot_not_read_only');
+          $bad=$scope;$bad['pairs'][0]=[2490,4511];$scopeDenied=false;
+          try{MatchLocal26IdentityV1::run($db,$bad,$manifest);}catch(RuntimeException $e){$scopeDenied=$e->getMessage()==='local26_scope';}
+          need26($scopeDenied && !$db->inTransaction(),'cross_namespace_scope_accepted');
+          $db->exec('ALTER TABLE anytour_hotel_sources ENGINE=MyISAM');$engineDenied=false;
+          try{MatchLocal26IdentityV1::run($db,$scope,$manifest);}catch(RuntimeException $e){$engineDenied=$e->getMessage()==='local26_snapshot_engine';}
+          need26($engineDenied && !$db->inTransaction(),'nontransactional_source_accepted');
+          echo json26(['snapshot'=>$first,'drift'=>$drift,'dml_denied'=>true,'unchanged'=>true,'scope_denied'=>$scopeDenied,'engine_denied'=>$engineDenied]);
+        }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
+        run=subprocess.run(['php','-r',code,str(ROOT/m.LOCAL26_RUNNER),str(ROOT/m.LOCAL26_MANIFEST)],capture_output=True,text=True,timeout=90)
+        self.assertEqual(0,run.returncode,run.stderr)
+        data=json.loads(run.stdout);raw=data['snapshot'];drift=data['drift']
+        for key in ('dml_denied','unchanged','scope_denied','engine_denied'):self.assertTrue(data[key])
+        self.assertEqual('repeatable-read-read-only',raw['database_snapshot'])
+        self.assertEqual((26,79,4,26),tuple(len(raw[k]) for k in ('own_rows','source_rows','link_rows','target_rows')))
+        for key in ('supplier_calls','provider_http_calls','database_writes','mapping_writes'):self.assertEqual(0,raw[key])
+        own={r['own_id']:r for r in raw['own_rows']}
+        self.assertEqual(76,sum(field['matches'] for row in own.values() for field in row['approved_fields'].values()))
+        self.assertEqual(['description'],list(own[4172]['approved_fields']))
+        changed={r['own_id']:r for r in drift['own_rows']}
+        self.assertTrue(changed[4511]['profile_integrity']);self.assertFalse(changed[4511]['approved_fields']['description']['matches'])
+        self.assertEqual(75,sum(field['matches'] for row in changed.values() for field in row['approved_fields'].values()))
+        sources=raw['source_rows'];legacy={r['external_key']:r for r in sources if r['namespace']=='legacy_catalog'}
+        self.assertEqual(999996,legacy['113544']['own_id']);self.assertFalse(legacy['74509']['source_integrity'])
+        self.assertTrue(any(r['namespace']=='operator_315' and r['external_key']=='4511' for r in sources))
+        links={r['own_id']:r for r in raw['link_rows']}
+        self.assertEqual({4511,7599,999997,999998},set(links))
+        self.assertEqual((2490,1,3,True),(links[4511]['tv_id'],links[4511]['snapshot_revision'],links[4511]['snapshot_source_count'],links[4511]['snapshot_sources_integrity']))
+        self.assertEqual((500000,500000),(links[7599]['tv_id'],links[999998]['tv_id']))
+        targets={r['tv_id']:r for r in raw['target_rows']}
+        self.assertNotIn(7831,targets);self.assertIn(500000,targets)
+        self.assertEqual('excluded',targets[22940]['state'])
+        self.assertEqual('Manual country',targets[4283]['manual_identity']['country'])
+        self.assertIn('description',targets[4283]['manual_fields'])
+        self.assertEqual((True,True,999991),(targets[97001]['source_present'],targets[97001]['source_integrity'],targets[97001]['source_identity_id']))
+        self.assertEqual('ANOTHER HOTEL',targets[52337]['discovery_identity']['name'])
+        projected=m.l26_project(raw,m.LOCAL26_IDENTITY)
+        rows={row['own_id']:row for row in projected['rows']}
+        self.assertEqual([7599,999998],rows[7599]['linked_target_link_owners'])
+        self.assertEqual('different_target',rows[7599]['bridge_status'])
+        self.assertEqual([999996],rows[14932]['expected_legacy_owners'])
+        self.assertTrue(all(row['approved_content_status']=='exact_approved_values' for row in rows.values()))
+        changed_rows={row['own_id']:row for row in m.l26_project(drift,m.LOCAL26_IDENTITY)['rows']}
+        self.assertEqual('approved_fields_missing_or_changed',changed_rows[4511]['approved_content_status'])
+        for sentinel in ('PRIVATE_LOCAL26_PROFILE_SENTINEL','PRIVATE_LOCAL26_SOURCE_SENTINEL','PRIVATE_LOCAL26_MANUAL_SENTINEL','PRIVATE_LOCAL26_NATIVE_SENTINEL','retained-hilton-'):
+            self.assertNotIn(sentinel,run.stdout)
+
+
 if __name__=='__main__':unittest.main()
 
 
