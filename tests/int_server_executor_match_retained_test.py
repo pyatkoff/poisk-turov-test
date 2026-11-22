@@ -267,7 +267,7 @@ class ContractTest(unittest.TestCase):
         c=core();original=c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0')
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
-        for mode,cohort in m.MODES.items():
+        for mode,cohort in m.LEGACY_MODES.items():
             op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1','match-retained-anex-write-v2':'int-andromeda-match-retained-anex-write-20261020-v2'}[mode]
             command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') else '')
             parsed=c.parse_command(command)
@@ -289,7 +289,7 @@ class ContractTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'reviewed_source_changed'):m.bundle_source(td)
 
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
-        for mode,cohort in m.MODES.items():
+        for mode,cohort in m.LEGACY_MODES.items():
             c=core();m.register_parser(c)
             op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1','match-retained-anex-write-v2':'int-andromeda-match-retained-anex-write-20261020-v2'}[mode]
             cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') else ''))
@@ -2938,6 +2938,376 @@ class Local11IdentityNativeTest(unittest.TestCase):
         self.assertEqual('excluded',second['target']['state'])
         self.assertIn('target_linked_to_other_own',second['reasons'])
         self.assertIn('own_source_integrity_failed',rows[2]['reasons'])
+
+
+class Local9ApplyControlTest(unittest.TestCase):
+    """Admission, actual consumed-parent binding and honest write receipts."""
+    # The sanitized actual read receipt is embedded solely as an immutable test
+    # input. Runtime consumes the private parent's original result and reservation.
+    PARENT_ZLIB_BASE64 = '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'
+
+    def parent(self):
+        import base64,zlib
+        return json.loads(zlib.decompress(base64.b64decode(self.PARENT_ZLIB_BASE64)))
+
+    def command(self):
+        p=m.LOCAL9_APPLY;c=core();m.register_parser(c)
+        body=c.PREFIX+' '.join([p['source_sha'],p['mode'],p['operation_id'],p['cohort'],p['parent_operation_id']])
+        return c,c.parse_command(body),body
+
+    def terminal(self,state='committed_verified'):
+        p=m.LOCAL9_APPLY;committed=state in ('committed_verified','post_commit_readback_unknown')
+        verified=state=='committed_verified';unknown=state in ('commit_unknown','rollback_unknown')
+        hashes={'canonical_rows_sha256':'1'*64,'target_preserved_rows_sha256':'2'*64,'excluded_rows_sha256':'3'*64}
+        counts=dict(zip(('database_writes','mapping_writes','native_updates','manual_field_writes'),
+            [None]*4 if unknown else [18,9,9,27] if committed else [0]*4))
+        return {'schema_version':'anytour_local9_bridge_apply_v1','operation_id':p['operation_id'],
+            'state':state,'completed_at_utc':'2026-11-23T00:00:00+00:00','proposal_sha256':p['proposal_sha256'],
+            'approval_ref':p['approval_ref'],'no_replay':True,'supplier_calls':0,'provider_http_calls':0,**counts,
+            'canonical_profile_writes':0,'source_writes':0,'new_target_inserts':0,'accepted_native_bindings':0,
+            'commit_acknowledged':committed,'readback_verified':verified,'before':hashes,
+            'after':copy.deepcopy(hashes) if verified else None,
+            'checks':{'fresh_parent_match':True,'canonical_unchanged':True if verified else None,
+                'target_preserved':True if verified else None,'excluded_unchanged':True if verified else None,
+                'direct_tv_sql':verified,'own_to_tv_sql':verified,'snapshots_verified':verified},
+            'pairs':[{'own_id':own,'tv_id':tv,'revision_from':1,'revision_to':2,
+                'manual_fields':['description','primaryImage','images'],'manual_sha256':manual,
+                'snapshot_sha256':hashlib.sha256(str(own).encode()).hexdigest(),
+                'direct_tv_sql':verified,'own_to_tv_sql':verified} for own,tv,manual in p['pairs']] if verified else [],
+            'error':None if verified else {'code':'local9_fixture_failure','message_sha256':'e'*64}}
+
+    def fixture(self,root,terminal=None):
+        p=m.LOCAL9_APPLY;c,command,body=self.command()
+        private=root/'private';target=private/p['parent_operation_id'];target.mkdir(parents=True)
+        op=private/p['operation_id'];op.mkdir();stage=op/'source';stage.mkdir()
+        project=root/'project';(project/'data').mkdir(parents=True)
+        (project/'config.php').write_text('PRIVATE_CONFIGURATION_SENTINEL')
+        (project/'data/db-v1.php').write_bytes((SOURCE/'v2/data/db-v1.php').read_bytes())
+        (target/'result.json').write_bytes(m.l11_json(self.parent()))
+        (target/'reservation.json').write_text(json.dumps({'operation_id':p['parent_operation_id'],
+            'source_sha':p['parent_source_sha'],'mode':'match-retained-current','reserved_at':1795344304}))
+        def fail(reason):raise ValueError(reason)
+        space={'LOCAL9_APPLY':p,'LOCAL9_HASHES':m.LOCAL9_HASHES,'LOCAL9_RUNNER':m.LOCAL9_RUNNER,
+            'LOCAL11_IDENTITY':m.LOCAL11_IDENTITY,'LOCAL11_HASHES':m.LOCAL11_HASHES,
+            'completed_local11_identity':m.completed_local11_identity,'private':private,'op':op,'project':project,
+            'source':p['source_sha'],'operation':p['operation_id'],'payload':dict(command,match_retained_control_sha=CONTROL),
+            'mode':p['mode'],'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),'subprocess':subprocess,'fail':fail,
+            'result':{'supplier_calls':0,'database_writes':0,'mapping_writes':0},
+            'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=bound}
+        exec(m.LOCAL11_VALIDATOR+m.LOCAL9_VALIDATOR+m.LOCAL9_HANDLER,space)
+        terminal=terminal or self.terminal()
+        def child(args,**kwargs):
+            self.assertEqual(str(stage/m.LOCAL9_RUNNER),args[-1]);self.assertEqual(project,kwargs['cwd'])
+            self.assertIn('allow_url_fopen=0',args)
+            self.assertIn('disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen',args)
+            self.assertLessEqual(set(kwargs['env']),{'HOME','PATH','LANG','LC_ALL','MATCH_RETAINED_DIR','MATCH_RETAINED_SOURCE_ROOT'})
+            self.assertEqual(120,kwargs['timeout']);self.assertIs(False,kwargs['text'])
+            reservation=json.loads((op/'local9-child-reservation.json').read_text())
+            self.assertEqual(p['approval_ref'],reservation['approval_ref']);self.assertTrue(reservation['no_replay'])
+            return subprocess.CompletedProcess(args,0 if terminal['state']=='committed_verified' else 1,m.l11_json(terminal),b'')
+        return command,space,child,target,op,stage
+
+    def result(self,command,evidence):
+        before={k:'a'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        terminal=evidence['data']['terminal']
+        return {'schema_version':1,**{k:command[k] for k in ('operation_id','source_sha','mode')},
+            'status':'complete','production_unchanged':True,'supplier_calls':0,
+            'database_writes':terminal['database_writes'],'mapping_writes':terminal['mapping_writes'],
+            'booking_calls':0,'lead_calls':0,'production_before':before,'production_after':copy.deepcopy(before),
+            'match_retained':evidence}
+
+    def rehash(self,result):
+        result['match_retained']['evidence_sha256']=hashlib.sha256(m.l11_json(result['match_retained']['data'])).hexdigest()
+
+    def test_dedicated_exact_write_command_and_frozen_current_read_command(self):
+        import base64,zlib
+        c,command,body=self.command();p=m.LOCAL9_APPLY
+        for bad in (body+' extra',body.replace(p['source_sha'],SHA),body.replace(p['mode'],'match-retained-current'),
+            body.replace(p['operation_id'],p['operation_id']+'-replay'),body.replace(p['cohort'],'common4-retained'),
+            body.replace(p['parent_operation_id'],m.LOCAL11_IDENTITY['parent_operation_id'])):
+            with self.subTest(command=bad),self.assertRaises(ValueError):c.parse_command(bad)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE)
+        self.assertIn('def apply_local9_bridge(stage):',c.REMOTE);self.assertNotIn('def run_match_retained(stage):',c.REMOTE)
+        self.assertIn("result['database_writes']=result['mapping_writes']=None",c.REMOTE)
+        self.assertEqual(2,c.REMOTE.count("if mode not in ('local9-bridge-apply-v1','reconcile',"))
+        self.assertIn("globals().get('local9_reserved') is True",c.REMOTE)
+        self.assertIn('len(members)!=4',c.REMOTE)
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        self.assertLessEqual(len(("python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'").encode()),65536)
+        old,read_command=Local11IdentityTest().command()
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(old,read_command)
+        self.assertEqual('b9bdbe96297307e3a9919c6c075beff720509f4099e26b89bf2a241e6dcaa1ab',hashlib.sha256(old.REMOTE.encode()).hexdigest())
+
+    def test_bundle_uses_main_writer_and_immutable_proposal_not_feature_copies(self):
+        with tempfile.TemporaryDirectory() as td:
+            source=Path(td)/'source';control=Path(td)/'control'
+            for rel in m.LOCAL9_HASHES:
+                path=source/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_bytes((SOURCE/rel).read_bytes() if rel=='v2/data/db-v1.php' else b'FEATURE CANNOT SELECT THE WRITER OR PROPOSAL')
+                if rel!='v2/data/db-v1.php':
+                    path=control/rel;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes((ROOT/rel).read_bytes())
+            bundle,hashes=m.bundle_local9_source(source)
+            with tarfile.open(fileobj=io.BytesIO(bundle),mode='r:gz') as archive:
+                self.assertEqual({*m.LOCAL9_HASHES,'manifest.json'},set(archive.getnames()))
+                self.assertEqual((ROOT/m.LOCAL9_PROPOSAL).read_bytes(),archive.extractfile(m.LOCAL9_PROPOSAL).read())
+                self.assertTrue(all(item.mode==0o600 for item in archive.getmembers()))
+            self.assertEqual(m.LOCAL9_HASHES,hashes)
+            (control/m.LOCAL9_PROPOSAL).write_bytes((control/m.LOCAL9_PROPOSAL).read_bytes()+b'\n')
+            with mock.patch.object(m,'__file__',str(control/'scripts/deploy/controller.py')):
+                with self.assertRaisesRegex(ValueError,'local9_source_drift'):m.bundle_local9_source(source)
+
+    def test_actual_parent_receipt_pin_rejects_even_rehashed_substitution(self):
+        prior=self.parent();m.l9_parent(prior)
+        self.assertEqual(m.LOCAL9_APPLY['parent_evidence_sha256'],prior['match_retained']['evidence_sha256'])
+        for mutate in (lambda d:d.update(control_source_sha=CONTROL),lambda d:d.update(current_raw_sha256='9'*64),
+            lambda d:d['rows'][0]['own'].update(profile_sha256='e'*64)):
+            changed=copy.deepcopy(prior);mutate(changed['match_retained']['data']);self.rehash(changed)
+            with self.assertRaises(ValueError):m.l9_parent(changed)
+
+    @unittest.skipUnless(__import__('shutil').which('php'),'native PHP required')
+    def test_cli_rejects_reencoded_or_repinned_proposal_before_loading_private_configuration(self):
+        proposal=json.loads((ROOT/m.LOCAL9_PROPOSAL).read_bytes())
+        proposals=[json.dumps(proposal,ensure_ascii=False).encode()]
+        changed=copy.deepcopy(proposal);changed['pairs'][0]['before']['own']['profile_sha256']='1'*64
+        proposals.append(json.dumps(changed,ensure_ascii=False).encode())
+        for raw in proposals:
+            with self.subTest(raw_sha256=hashlib.sha256(raw).hexdigest()),tempfile.TemporaryDirectory() as td:
+                home=Path(td);project=home/'www/anytoour.ru';project.mkdir(parents=True)
+                op=home/'.anytoour-int-executor'/m.LOCAL9_APPLY['operation_id'];stage=op/'source'
+                for rel in m.LOCAL9_HASHES:
+                    path=stage/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                    path.write_bytes((SOURCE/rel).read_bytes() if rel=='v2/data/db-v1.php' else (ROOT/rel).read_bytes())
+                (stage/m.LOCAL9_PROPOSAL).write_bytes(raw)
+                marker=home/'configuration_loaded'
+                (project/'config.php').write_text('<?php file_put_contents('+json.dumps(str(marker))+',"unexpected");')
+                env={k:os.environ[k] for k in ('PATH','LANG','LC_ALL') if k in os.environ}
+                env.update(HOME=str(home),MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+                call=subprocess.run(['php',str(stage/m.LOCAL9_RUNNER)],cwd=project,env=env,capture_output=True,text=True,timeout=20)
+                self.assertEqual(1,call.returncode,call.stderr);self.assertEqual('',call.stderr)
+                terminal=json.loads(call.stdout);m.l9_terminal(terminal)
+                self.assertEqual('rejected_before_write',terminal['state'])
+                self.assertEqual('local9_proposal_hash',terminal['error']['code'])
+                self.assertEqual(0,terminal['database_writes']);self.assertFalse(marker.exists())
+
+    def test_success_preserves_actual_parent_and_is_not_replayable(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            before={path.name:path.read_bytes() for path in target.iterdir()}
+            with mock.patch.object(subprocess,'run',side_effect=child) as call:
+                evidence=space['apply_local9_bridge'](stage)
+                with self.assertRaises(FileExistsError):space['apply_local9_bridge'](stage)
+            self.assertEqual(1,call.call_count);self.assertEqual(before,{path.name:path.read_bytes() for path in target.iterdir()})
+            self.assertEqual((18,9),(space['result']['database_writes'],space['result']['mapping_writes']))
+            result=self.result(command,evidence);self.assertTrue(m.completed_result(command,result,CONTROL))
+            self.assertNotIn('PRIVATE_CONFIGURATION_SENTINEL',json.dumps(result))
+            self.assertEqual(evidence['data']['raw_sha256'],hashlib.sha256((op/'local9-raw.json').read_bytes()).hexdigest())
+            for mutate in (lambda d:d['terminal'].update(database_writes=True),
+                lambda d:d['terminal'].update(provider_http_calls=1),lambda d:d['terminal'].update(accepted_native_bindings=9),
+                lambda d:d['terminal']['pairs'][0].update(manual_sha256='f'*64),
+                lambda d:d['terminal']['pairs'][0].update(own_id=4516),
+                lambda d:d['terminal']['after'].update(excluded_rows_sha256='f'*64),
+                lambda d:d.update(approval_ref='https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208')):
+                changed=copy.deepcopy(result);mutate(changed['match_retained']['data']);self.rehash(changed)
+                self.assertFalse(m.completed_result(command,changed,CONTROL))
+
+    def test_failed_child_receipts_and_unknown_commit_counts_are_preserved(self):
+        for state in ('rejected_before_write','rolled_back','commit_unknown','rollback_unknown','post_commit_readback_unknown'):
+            with self.subTest(state=state),tempfile.TemporaryDirectory() as td:
+                terminal=self.terminal(state);command,space,child,target,op,stage=self.fixture(Path(td),terminal)
+                with mock.patch.object(subprocess,'run',side_effect=child):evidence=space['apply_local9_bridge'](stage)
+                self.assertEqual(terminal,evidence['data']['terminal'])
+                self.assertEqual(terminal['database_writes'],space['result']['database_writes'])
+                self.assertEqual(terminal['mapping_writes'],space['result']['mapping_writes'])
+                self.assertEqual(1,evidence['data']['child_exit_code'])
+                self.assertFalse(m.completed_result(command,self.result(command,evidence),CONTROL))
+                self.assertEqual(terminal,json.loads((op/'local9-raw.json').read_bytes()))
+                if state in ('commit_unknown','rollback_unknown'):
+                    bad=copy.deepcopy(terminal);bad.update(database_writes=0,mapping_writes=0,native_updates=0,manual_field_writes=0)
+                    with self.assertRaisesRegex(ValueError,'local9_write_counts'):m.l9_terminal(bad)
+
+    def test_timeout_and_postwrite_guard_failure_cannot_be_reported_as_zero(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            timeout=subprocess.TimeoutExpired('php',120,output=b'{"partial":')
+            with mock.patch.object(subprocess,'run',side_effect=timeout),self.assertRaisesRegex(ValueError,'timeout_no_replay'):
+                space['apply_local9_bridge'](stage)
+            self.assertIsNone(space['result']['database_writes']);self.assertIsNone(space['result']['mapping_writes'])
+            self.assertEqual(b'{"partial":',(op/'local9-raw.json').read_bytes())
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            def drift(*args,**kwargs):
+                response=child(*args,**kwargs);(target/'reservation.json').write_text('{}');return response
+            with mock.patch.object(subprocess,'run',side_effect=drift),self.assertRaisesRegex(ValueError,'local9_protected_inputs'):
+                space['apply_local9_bridge'](stage)
+            self.assertEqual(18,space['result']['database_writes']);self.assertEqual(9,space['result']['mapping_writes'])
+            self.assertEqual('committed_verified',space['result']['match_retained']['data']['terminal']['state'])
+            self.assertFalse(space['result']['match_retained']['data']['protected_inputs_unchanged'])
+
+
+@unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL/PHP CI required')
+class Local9BridgeNativeTest(unittest.TestCase):
+    """Exercise the real writer and accepted reader against independent MySQL fixtures."""
+    def test_atomic_apply_rollback_guards_uncertainty_and_actual_consumers(self):
+        consumer=Path(os.environ['MATCH_LOCAL9_CONSUMER_ROOT'])/'v2/data'
+        for name,digest in {
+            'local-tv-catalog-v1.php':'abbed95e0343ce402cdcfb11ef7819da0a12e5bafb7e5bf7f22cbb9260167b11',
+            'hotel-details-v1.php':'137bbf53ef87fab50505ecd41a075cb5f571193480da7f0e3face51190c0f77f',
+        }.items():
+            self.assertEqual(digest,hashlib.sha256((consumer/name).read_bytes()).hexdigest())
+        lint=subprocess.run(['php','-l',str(ROOT/m.LOCAL9_RUNNER)],capture_output=True,text=True,timeout=20)
+        self.assertEqual(0,lint.returncode,lint.stderr)
+        code=r'''define('ANYTOUR_LOCAL9_BRIDGE_APPLY_LIBRARY_ONLY',true);require $argv[1];
+        require $argv[3];
+        class Local9FaultPDO extends PDO {
+          public bool $armed=false;public bool $committed=false;public int $updates=0;public string $fault='';
+          public function prepare(string $query,array $options=[]): PDOStatement|false {
+            if($this->armed && $this->committed && $this->fault==='readback'
+                && preg_match('/^\s*SELECT\b/i',$query))throw new RuntimeException('fixture_postcommit_read_failure');
+            return parent::prepare($query,$options);
+          }
+          public function commit(): bool {
+            $ok=parent::commit();
+            if($this->armed){$this->committed=true;if($this->fault==='commit_ack')throw new RuntimeException('fixture_commit_ack_lost');}
+            return $ok;
+          }
+        }
+        class Local9FaultStatement extends PDOStatement {
+          protected function __construct(private Local9FaultPDO $owner) {}
+          public function execute(?array $params=null): bool {
+            if($this->owner->armed && preg_match('/^\s*UPDATE\s+local_tv_hotels\s/i',$this->queryString)){
+              $this->owner->updates++;
+              if($this->owner->fault==='mid_write' && $this->owner->updates===2)throw new RuntimeException('fixture_second_update_failure');
+            }
+            return parent::execute($params);
+          }
+        }
+        function j9(mixed $v): string {return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+        function need9(bool $v,string $why): void {if(!$v)throw new RuntimeException($why);}
+        function ident9(array $x): array {
+          $out=['name'=>$x['name']];
+          foreach(['country','region'] as $key){
+            if($x[$key]!==null){$out[$key]=['name'=>$x[$key]];if($x[$key.'_id']!==null)$out[$key]['id']=$x[$key.'_id'];}
+          }
+          return $out;
+        }
+        function hashes9(PDO $db): array {
+          $out=[];
+          foreach(['anytour_hotels'=>'id','anytour_hotel_sources'=>'id','local_tv_hotels'=>'id','local_tv_legacy_links'=>'old_local_id'] as $table=>$key)
+            $out[$table]=hash('sha256',j9($db->query('SELECT * FROM '.$table.' ORDER BY '.$key)->fetchAll(PDO::FETCH_ASSOC)));
+          return $out;
+        }
+        function seed9(PDO $db,array $proposal): array {
+          $db->exec('CREATE TABLE anytour_hotels(id BIGINT UNSIGNED PRIMARY KEY,profile_json LONGTEXT NOT NULL,profile_sha256 CHAR(64) NOT NULL,revision BIGINT UNSIGNED NOT NULL,is_active TINYINT UNSIGNED NOT NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE anytour_hotel_sources(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,namespace VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,external_key VARBINARY(128) NOT NULL,anytour_hotel_id BIGINT UNSIGNED NOT NULL,acquired_via VARCHAR(64) NOT NULL,source_json LONGTEXT NOT NULL,source_sha256 CHAR(64) NOT NULL,first_seen_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,UNIQUE KEY uq_source(namespace,external_key),KEY ix_owner(anytour_hotel_id),FOREIGN KEY(anytour_hotel_id) REFERENCES anytour_hotels(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_hotels(id INT UNSIGNED PRIMARY KEY,first_seen_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,pending_since DATETIME NOT NULL,state VARCHAR(24) NOT NULL,discovery_json LONGTEXT NOT NULL,content_json LONGTEXT NOT NULL,manual_json LONGTEXT NOT NULL,source_json LONGTEXT NULL,source_sha256 CHAR(64) NULL,source_fetched_at DATETIME NULL,source_absent_json LONGTEXT NOT NULL,revision BIGINT UNSIGNED NOT NULL,next_attempt_at DATETIME NULL,last_error VARCHAR(1000) NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_legacy_links(old_local_id BIGINT UNSIGNED PRIMARY KEY,tv_id INT UNSIGNED NOT NULL,snapshot_json LONGTEXT NOT NULL,snapshot_sha256 CHAR(64) NOT NULL,migration_issues_json LONGTEXT NOT NULL,migrated_at DATETIME NOT NULL,KEY ix_tv(tv_id),FOREIGN KEY(tv_id) REFERENCES local_tv_hotels(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $own=$db->prepare("INSERT INTO anytour_hotels VALUES(?,?,?,2,1,'2026-10-01 00:00:00','2026-11-21 12:34:56')");
+          $src=$db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES(?,?,?,?,?,?,'2026-10-01 00:00:00','2026-11-21 12:34:56')");
+          $target=$db->prepare("INSERT INTO local_tv_hotels VALUES(?,'2026-10-02 00:00:00','2026-11-20 13:24:35','2026-10-02 00:00:00','pending',?,'{}','{}',NULL,NULL,NULL,'[]',1,'2026-12-01 01:02:03','private_schedule_sentinel')");
+          foreach(['pairs','excluded_pairs'] as $group){
+            foreach($proposal[$group] as &$row){
+              $profile=ident9($row['before']['own']['identity']);
+              $profile += $row['proposed_after']['target']['manual_json']??['description'=>'excluded_private_description','primaryImage'=>'https://example.invalid/excluded.jpg','images'=>['https://example.invalid/excluded.jpg']];
+              $profile['private_fixture_sentinel']='do_not_emit_raw_profile';
+              $raw=j9($profile);$hash=hash('sha256',$raw);$row['before']['own']['profile_sha256']=$hash;
+              $own->execute([$row['own_id'],$raw,$hash]);
+              foreach($row['before']['own_sources'] as &$source){
+                $payload=$source['namespace']==='legacy_catalog'?(['id'=>$row['tv_id']]+ident9($source['identity'])):['fixtureProvenance'=>$source['namespace'],'privateFixtureValue'=>'do_not_emit_raw_source'];
+                $raw=j9($payload);$hash=hash('sha256',$raw);$source['source_sha256']=$hash;
+                $src->execute([$source['namespace'],$source['external_key'],$row['own_id'],$source['acquired_via'],$raw,$hash]);
+              }
+              unset($source);
+              if($group==='pairs'){
+                $discovery=j9(ident9($row['before']['target']['discovery_identity']));
+                $row['before']['target']['discovery_sha256']=hash('sha256',$discovery);
+                $target->execute([$row['tv_id'],$discovery]);
+              }
+            }
+            unset($row);
+          }
+          return $proposal;
+        }
+        $template=json_decode(file_get_contents($argv[2]),true,64,JSON_THROW_ON_ERROR);$results=[];
+        foreach(['success','mid_write','manual_drift','profile_drift','foreign_link','commit_ack','readback'] as $scenario){
+          $db=new Local9FaultPDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
+          $db->setAttribute(PDO::ATTR_STATEMENT_CLASS,[Local9FaultStatement::class,[$db]]);
+          $name='match_local9_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+          try{
+            $proposal=seed9($db,$template);
+            if($scenario==='manual_drift')$db->exec("UPDATE local_tv_hotels SET manual_json='{\"description\":\"existing_manual\"}' WHERE id=12120");
+            if($scenario==='profile_drift')$db->exec('UPDATE anytour_hotels SET revision=3 WHERE id=5371');
+            if($scenario==='foreign_link'){
+              $insert=$db->prepare("INSERT INTO local_tv_legacy_links VALUES(999999,12120,?,?,?,'2026-11-21 00:00:00')");
+              $insert->execute(['{}',hash('sha256','{}'),'{}']);
+            }
+            $before=hashes9($db);$db->fault=$scenario;$db->armed=true;
+            $out=AnyTourLocal9BridgeApplyV1::run($db,$proposal);
+            $db->armed=false;need9(!$db->inTransaction(),'open_transaction_'.$scenario);
+            $after=hashes9($db);$links=(int)$db->query('SELECT COUNT(*) FROM local_tv_legacy_links')->fetchColumn();
+            $updated=(int)$db->query('SELECT COUNT(*) FROM local_tv_hotels WHERE revision=2')->fetchColumn();
+            need9($before['anytour_hotels']===$after['anytour_hotels'] && $before['anytour_hotel_sources']===$after['anytour_hotel_sources'],'canonical_changed_'.$scenario);
+            need9((int)$db->query('SELECT COUNT(*) FROM local_tv_hotels WHERE id IN(2526,7458)')->fetchColumn()===0,'excluded_created');
+            if(in_array($scenario,['success','commit_ack','readback'],true)){
+              need9($links===9 && $updated===9,'missing_atomic_rows_'.$scenario);
+              foreach($proposal['pairs'] as $pair){
+                $q=$db->prepare('SELECT * FROM local_tv_hotels WHERE id=?');$q->execute([$pair['tv_id']]);$target=$q->fetch(PDO::FETCH_ASSOC);
+                need9($target['manual_json']===$pair['proposed_after']['target']['manual_json_exact_utf8'],'manual_raw_bytes');
+                need9($target['state']==='pending' && $target['source_json']===null && $target['source_sha256']===null && $target['source_fetched_at']===null && $target['content_json']==='{}' && $target['source_absent_json']==='[]','native_state_changed');
+                need9($target['next_attempt_at']==='2026-12-01 01:02:03' && $target['last_error']==='private_schedule_sentinel' && $target['last_seen_at']==='2026-11-20 13:24:35','scheduling_changed');
+                $q=$db->prepare('SELECT * FROM local_tv_legacy_links WHERE old_local_id=?');$q->execute([$pair['own_id']]);$link=$q->fetch(PDO::FETCH_ASSOC);
+                need9(hash('sha256',$link['snapshot_json'])===$link['snapshot_sha256'],'snapshot_hash');
+                $snap=json_decode($link['snapshot_json'],true,64,JSON_THROW_ON_ERROR);
+                need9(array_keys($snap)===['profile','sources'] && count($snap['profile'])===5 && count($snap['sources'])===3,'snapshot_shape');
+                $q=$db->prepare('SELECT id,profile_json,profile_sha256,revision,is_active FROM anytour_hotels WHERE id=?');$q->execute([$pair['own_id']]);
+                need9($snap['profile']===$q->fetch(PDO::FETCH_ASSOC),'snapshot_original_profile');
+                $q=$db->prepare('SELECT namespace,external_key,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at FROM anytour_hotel_sources WHERE anytour_hotel_id=? ORDER BY namespace,external_key');$q->execute([$pair['own_id']]);
+                need9($snap['sources']===$q->fetchAll(PDO::FETCH_ASSOC),'snapshot_original_sources');
+              }
+            }else{
+              need9($before===$after,'partial_write_survived_'.$scenario);
+              need9($out['database_writes']===0 && $out['mapping_writes']===0 && $out['native_updates']===0 && $out['manual_field_writes']===0,'failed_nonzero_counts');
+            }
+            if($scenario==='success'){
+              need9($out['state']==='committed_verified' && $out['readback_verified']===true && $out['database_writes']===18,'success_terminal');
+              $catalog=new LocalTvCatalogV1($db);
+              $direct=$catalog->read(array_column($proposal['pairs'],'tv_id'));
+              $old=$catalog->read(array_column($proposal['pairs'],'own_id'),true);
+              need9(count($direct['items'])===9 && count($old['items'])===9 && count($old['links'])===9 && $direct['missingIds']===[] && $old['missingIds']===[],'real_reader_counts');
+              foreach([$direct,$old] as $read){
+                $items=[];foreach($read['items'] as $item)$items[$item['id']]=$item;
+                foreach($proposal['pairs'] as $pair){
+                  $item=$items[$pair['tv_id']];
+                  foreach(['description','primaryImage','images'] as $field)need9($item[$field]===$pair['proposed_after']['target']['manual_json'][$field],'real_reader_value_'.$field);
+                  need9($item['revision']===2 && $item['detailsAvailable']===false && $item['contentState']==='pending','real_reader_state');
+                  need9($item['manualFields']===['description','primaryImage','images'],'real_reader_manual_fields');
+                }
+              }
+              foreach($old['links'] as $i=>$link)need9($link===['oldLocalId'=>$proposal['pairs'][$i]['own_id'],'tourvisorHotelId'=>$proposal['pairs'][$i]['tv_id']],'real_reader_link');
+              $out['native_consumer_verified']=true;
+            }elseif($scenario==='mid_write'){
+              need9($db->updates===2 && $out['state']==='rolled_back','rollback_not_exercised');
+            }elseif($scenario==='commit_ack'){
+              need9($out['state']==='commit_unknown' && $out['database_writes']===null && $out['mapping_writes']===null && $out['readback_verified']===false,'commit_unknown_misreported');
+            }elseif($scenario==='readback'){
+              need9($out['state']==='post_commit_readback_unknown' && $out['database_writes']===18 && $out['commit_acknowledged']===true && $out['readback_verified']===false,'postcommit_unknown_misreported');
+            }else need9($out['state']==='rejected_before_write','drift_not_rejected');
+            $results[$scenario]=$out;
+          }finally{$db->armed=false;if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}
+        }
+        echo j9($results);'''
+        run=subprocess.run(['php','-r',code,str(ROOT/m.LOCAL9_RUNNER),str(ROOT/m.LOCAL9_PROPOSAL),
+                            str(consumer/'local-tv-catalog-v1.php')],capture_output=True,text=True,timeout=90)
+        self.assertEqual(0,run.returncode,run.stderr)
+        results=json.loads(run.stdout)
+        self.assertEqual({'success','mid_write','manual_drift','profile_drift','foreign_link','commit_ack','readback'},set(results))
+        self.assertTrue(results['success'].pop('native_consumer_verified'))
+        for terminal in results.values():
+            m.l9_terminal(terminal)
+        self.assertEqual('committed_verified',results['success']['state'])
+        for token in ('do_not_emit_raw_profile','do_not_emit_raw_source','excluded_private_description','private_schedule_sentinel'):
+            self.assertNotIn(token,run.stdout)
 
 
 if __name__=='__main__':unittest.main()

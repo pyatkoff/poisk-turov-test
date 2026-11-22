@@ -1,0 +1,1587 @@
+{
+  "schema_version": 1,
+  "status": "owner_review_required",
+  "execution_admitted": false,
+  "write_implementation_validated": false,
+  "proposal_scope_frozen": true,
+  "read_evidence": {
+    "result_sha256": "2e740b2fba6778bbd3e33e264ff01a0fa64395d540c7db82d80e74b33e696667",
+    "evidence_sha256": "ab9a4c8f8c98c454c3cad9e1b81d55c871f622ed8f914880d913f660405fcfea",
+    "artifact_id": 14750732202,
+    "artifact_zip_sha256": "2a6d582769f9631af14712f2aafbd9dc48422fc5393ff5b7f1697958f253736f",
+    "captured_at_utc": "2026-11-22T10:45:04+00:00",
+    "run_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/45013793676/attempts/1",
+    "job_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/45013793676/job/137181639294",
+    "source_sha": "3207266e17ed4e8244aaf28d05b962747fd4cd3c",
+    "control_source_sha": "23f702c75ebcd9293672d9478373322683678153",
+    "existing_legacy_edges_revalidated": 11,
+    "new_native_acceptances": 0,
+    "live_mutations": 0
+  },
+  "content_authority": {
+    "manifest_sha256": "93e0ea33e64ce2c41d68ffb54e9efaf6e383f3cdde68f01c6aa4ab51f4e5a242",
+    "proposed_actions_sha256": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4",
+    "previous_content_approval": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208",
+    "new_bridge_and_native_manual_write_approval": "required; prior content-only approval is not reused"
+  },
+  "requested_delta": {
+    "bridge_inserts": 9,
+    "native_target_updates": 9,
+    "native_manual_field_values": 27,
+    "database_rows_changed": 18,
+    "target_revision_from": 1,
+    "target_revision_to": 2,
+    "own_profile_updates": 0,
+    "own_source_updates": 0,
+    "provider_or_native_identity_acceptance_beyond_the_exact_nine_legacy_bridges": 0,
+    "new_native_target_inserts": 0,
+    "supplier_or_provider_http_calls": 0
+  },
+  "pairs": [
+    {
+      "work_id": "EXP002",
+      "own_id": 5371,
+      "tv_id": 12120,
+      "name": "ANANTARA KIHAVAH VILLAS",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Мальдивы",
+            "country_id": null,
+            "name": "ANANTARA KIHAVAH VILLAS",
+            "region": "Мальдивы",
+            "region_id": null
+          },
+          "own_id": 5371,
+          "profile_integrity": true,
+          "profile_sha256": "e1ce3226e06dc753f9e22bab7f7e7bf94e99de2872c028075d3ed4ca23a232b5",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "12120",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 5371,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "23e3db503d3cdb9bef11f868c5a801ce523be04e17684da4ccfd2fbf0d39bb3c"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "12120",
+            "identity": {
+              "country": "Мальдивы",
+              "country_id": 8,
+              "name": "ANANTARA KIHAVAH VILLAS",
+              "region": "Мальдивы",
+              "region_id": 42
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 5371,
+            "source_identity_id": 12120,
+            "source_integrity": true,
+            "source_sha256": "8a9dbb97035e13ee95bc370f5425118d4df64e3bd7cbb5b4f082decb3417bc60"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:5371",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 5371,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "68b8b825b0c73f6e0e8cca5a97122c13128961d4b7f90ed43ec1da23c55f1921"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Мальдивы",
+            "country_id": 8,
+            "name": "ANANTARA KIHAVAH VILLAS",
+            "region": "Мальдивы",
+            "region_id": 42
+          },
+          "discovery_sha256": "66c727d76a6e38a079d572f0343f8ce96792caee0b6d96c10636dba5acf62566",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 12120
+        },
+        "expected_legacy_owners": [
+          5371
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 5371,
+          "tv_id": 12120,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Anantara Kihavah Maldives Villas расположен на острове Кихава Хуравали в атолле Баа, на территории биосферного резервата ЮНЕСКО. Курорт предлагает 80 пляжных и надводных вилл и резиденций с бассейнами. На острове есть домашний риф, дайвинг-центр и центр водных видов спорта. Среди ресторанов — подводный SEA; в SKY оборудована надводная обсерватория. Полёт на гидросамолёте из Мале занимает около 35 минут и выполняется в светлое время суток. Для позднего прибытия отель описывает маршрут через внутренний аэропорт Дхаравандху и последующий 30-минутный путь на катере. Детский клуб Thiththi Boli рассчитан на детей 4–12 лет. В ресторанах предусмотрены детские блюда; услуги няни доступны по запросу, в том числе для малышей от трёх месяцев.",
+            "primaryImage": "https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg",
+            "images": [
+              "https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg",
+              "https://assets.anantara.com/image/upload/q_auto,f_auto/media/minor/anantara/images/anantara-kihavah-maldives-villas/accommodation/details-page/beach-pool-villa/new_july_2025/beach_pool_villa_exterior_984x532.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Anantara Kihavah Maldives Villas расположен на острове Кихава Хуравали в атолле Баа, на территории биосферного резервата ЮНЕСКО. Курорт предлагает 80 пляжных и надводных вилл и резиденций с бассейнами. На острове есть домашний риф, дайвинг-центр и центр водных видов спорта. Среди ресторанов — подводный SEA; в SKY оборудована надводная обсерватория. Полёт на гидросамолёте из Мале занимает около 35 минут и выполняется в светлое время суток. Для позднего прибытия отель описывает маршрут через внутренний аэропорт Дхаравандху и последующий 30-минутный путь на катере. Детский клуб Thiththi Boli рассчитан на детей 4–12 лет. В ресторанах предусмотрены детские блюда; услуги няни доступны по запросу, в том числе для малышей от трёх месяцев.\",\"primaryImage\":\"https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg\",\"images\":[\"https://assets.anantara.com/image/upload/q_auto,f_auto,c_limit,w_1920/media/minor/anantara/images/anantara-kihavah-maldives-villas/the-resort/desktop-banner/aerial_view_anantara_kihavah_maldives_villas_1920x900.jpg\",\"https://assets.anantara.com/image/upload/q_auto,f_auto/media/minor/anantara/images/anantara-kihavah-maldives-villas/accommodation/details-page/beach-pool-villa/new_july_2025/beach_pool_villa_exterior_984x532.jpg\"]}",
+          "manual_json_sha256": "f6356e45bac53f8c2c7a88c4470efec7d09cda6d4a5cba69914383b03e03d651",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP032",
+      "own_id": 6014,
+      "tv_id": 64957,
+      "name": "KUDADOO MALDIVES PRIVATE ISLAND",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Мальдивы",
+            "country_id": null,
+            "name": "KUDADOO MALDIVES PRIVATE ISLAND",
+            "region": "Мальдивы",
+            "region_id": null
+          },
+          "own_id": 6014,
+          "profile_integrity": true,
+          "profile_sha256": "5aa2af5e6a4ebb0050c824fecd23b9e541e071ad2d1717bc7378b462f1dd237e",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "64957",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 6014,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "64efff530281b79494b87c90f085b9b8bb158b1d0b12ae228e74fc3de313f282"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "64957",
+            "identity": {
+              "country": "Мальдивы",
+              "country_id": 8,
+              "name": "KUDADOO MALDIVES PRIVATE ISLAND",
+              "region": "Мальдивы",
+              "region_id": 42
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 6014,
+            "source_identity_id": 64957,
+            "source_integrity": true,
+            "source_sha256": "ae6da4d6797fbf439189dfdfcc475ee2549ac188bcf4076c20c3387ae7c115e3"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:6014",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 6014,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "ebfd4dd67e6cb457fd0ddd47ec90d4bda7ce73147139b6388fa2c30e0a0bfc4e"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Мальдивы",
+            "country_id": 8,
+            "name": "KUDADOO MALDIVES PRIVATE ISLAND",
+            "region": "Мальдивы",
+            "region_id": 42
+          },
+          "discovery_sha256": "52b9ced1d94da6bddfb5da8cb4f49fd92526e1cf4345da18db6dc303032f8145",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 64957
+        },
+        "expected_legacy_owners": [
+          6014
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 6014,
+          "tv_id": 64957,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Kudadoo Maldives Private Island находится в атолле Лавияни. На острове 15 надводных резиденций с отдельными террасами и бассейнами. Для резиденций с одной спальней указана общая площадь 310 м², с двумя спальнями — 390 м²; площадь частного бассейна составляет 44 м². Гостям предоставляется круглосуточная помощь персонального батлера. Основной маршрут из Мале — гидросамолёт, около 40 минут в пути. Питание организовано в ресторане Keyolhu в комплексе The Retreat, в резиденции или в выбранном месте на острове. В The Retreat также есть бар; диетические предпочтения учитываются по запросу. Курорт предлагает формат fully-inclusive, но отдельно указывает доплату за посещение подводного ресторана 5.8 на соседнем Hurawalhi. На Kudadoo имеются сырная комната и винный погреб.",
+            "primaryImage": "https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg",
+            "images": [
+              "https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Kudadoo Maldives Private Island находится в атолле Лавияни. На острове 15 надводных резиденций с отдельными террасами и бассейнами. Для резиденций с одной спальней указана общая площадь 310 м², с двумя спальнями — 390 м²; площадь частного бассейна составляет 44 м². Гостям предоставляется круглосуточная помощь персонального батлера. Основной маршрут из Мале — гидросамолёт, около 40 минут в пути. Питание организовано в ресторане Keyolhu в комплексе The Retreat, в резиденции или в выбранном месте на острове. В The Retreat также есть бар; диетические предпочтения учитываются по запросу. Курорт предлагает формат fully-inclusive, но отдельно указывает доплату за посещение подводного ресторана 5.8 на соседнем Hurawalhi. На Kudadoo имеются сырная комната и винный погреб.\",\"primaryImage\":\"https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg\",\"images\":[\"https://d2qwq69i2ic1pk.cloudfront.net/2020/03/kudadoo_OceanResidence_1000x1000.jpg\"]}",
+          "manual_json_sha256": "5fd49755df7d4abe7b9b2b45aefd7a3f532618005d4f93670421480048e52cc4",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP058",
+      "own_id": 6202,
+      "tv_id": 76029,
+      "name": "THE RITZ CARLTON MALDIVES FARI ISLANDS",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Мальдивы",
+            "country_id": null,
+            "name": "THE RITZ CARLTON MALDIVES FARI ISLANDS",
+            "region": "Мальдивы",
+            "region_id": null
+          },
+          "own_id": 6202,
+          "profile_integrity": true,
+          "profile_sha256": "fb83cf1f21084c1fb1eacc9ef2576eb0ce34bb9a230cac8d2f8b50affdf7dac8",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "76029",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 6202,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "0eb8f724e82fd1e51d7c1c2a1feb4d4c661a42ea9c120ad1f24ce5938b88cf86"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "76029",
+            "identity": {
+              "country": "Мальдивы",
+              "country_id": 8,
+              "name": "THE RITZ CARLTON MALDIVES FARI ISLANDS",
+              "region": "Мальдивы",
+              "region_id": 42
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 6202,
+            "source_identity_id": 76029,
+            "source_integrity": true,
+            "source_sha256": "fd88df577ba1c9df4e963576a920a0ce68ecd211f1a87ac3188cf7f124b30d1a"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:6202",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 6202,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "4cbaf60600a85efa707da201026eda4bd7bafa3c77106bee3c37b9ba69610391"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Мальдивы",
+            "country_id": 8,
+            "name": "THE RITZ CARLTON MALDIVES FARI ISLANDS",
+            "region": "Мальдивы",
+            "region_id": 42
+          },
+          "discovery_sha256": "693450ad483582fdcb29aed713d4326454be17f476d1d81c73a9f6b9b4378b72",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 76029
+        },
+        "expected_legacy_owners": [
+          6202
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 6202,
+          "tv_id": 76029,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "The Ritz-Carlton Maldives, Fari Islands расположен на островах Фари в атолле Северный Мале. Пляжные и надводные виллы оснащены частными панорамными бассейнами и террасами; гостям помогает персональный батлер Aris Meeha. Семь ресторанов и баров распределены между Culinary Island, пляжем Grand Sunset Beach и Fari Marina Village. Среди них — итальянская La Locanda, кантонский Summer Pavilion и Beach Shack со средиземноморской кухней. Трансфер из международного аэропорта Велана выполняется скоростным катером; отель заявляет круглосуточную работу этой услуги по предварительному заказу. Клуб Ritz Kids предназначен для детей 4–12 лет: предусмотрены игровые пространства и бассейн с горками. Услуги няни предоставляются за дополнительную плату по запросу. На курорте также доступны теннис, каякинг, снорклинг и надводный спа.",
+            "primaryImage": "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336",
+            "images": [
+              "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336",
+              "https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-20763:Classic-Hor?fit=constrain&wid=1300"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"The Ritz-Carlton Maldives, Fari Islands расположен на островах Фари в атолле Северный Мале. Пляжные и надводные виллы оснащены частными панорамными бассейнами и террасами; гостям помогает персональный батлер Aris Meeha. Семь ресторанов и баров распределены между Culinary Island, пляжем Grand Sunset Beach и Fari Marina Village. Среди них — итальянская La Locanda, кантонский Summer Pavilion и Beach Shack со средиземноморской кухней. Трансфер из международного аэропорта Велана выполняется скоростным катером; отель заявляет круглосуточную работу этой услуги по предварительному заказу. Клуб Ritz Kids предназначен для детей 4–12 лет: предусмотрены игровые пространства и бассейн с горками. Услуги няни предоставляются за дополнительную плату по запросу. На курорте также доступны теннис, каякинг, снорклинг и надводный спа.\",\"primaryImage\":\"https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336\",\"images\":[\"https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-12075:Classic-Hor?fit=constrain&wid=1336\",\"https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-aerial-view-20763:Classic-Hor?fit=constrain&wid=1300\"]}",
+          "manual_json_sha256": "574c75fc5369dd898416e52728371f2d3b5f8e98acd24c7fc20aec7e6fd58e33",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP069",
+      "own_id": 5160,
+      "tv_id": 66198,
+      "name": "WALDORF ASTORIA MALDIVES ITHAAFUSHI",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Мальдивы",
+            "country_id": null,
+            "name": "WALDORF ASTORIA MALDIVES ITHAAFUSHI",
+            "region": "Мальдивы",
+            "region_id": null
+          },
+          "own_id": 5160,
+          "profile_integrity": true,
+          "profile_sha256": "943e4fcab1203c10e162b36171087475f50601b6934be5a23f22a28152abe640",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "66198",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 5160,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "86e22036276f101ce395bc593778104f9bf6deda22129c7a45f576a55298c998"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "66198",
+            "identity": {
+              "country": "Мальдивы",
+              "country_id": 8,
+              "name": "WALDORF ASTORIA MALDIVES ITHAAFUSHI",
+              "region": "Мальдивы",
+              "region_id": 42
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 5160,
+            "source_identity_id": 66198,
+            "source_integrity": true,
+            "source_sha256": "7c8f3c39dc57516504fc058b933d02eb886c42a7f8b79b3f2d04ff5bb9cd16f6"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:5160",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 5160,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "e3896e94e0ec431f9112f8a273e2b3e6a26263cf53711a9097c47f51e6c13ad6"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Мальдивы",
+            "country_id": 8,
+            "name": "WALDORF ASTORIA MALDIVES ITHAAFUSHI",
+            "region": "Мальдивы",
+            "region_id": 42
+          },
+          "discovery_sha256": "85391a116a272a0abe386c6a39ab9d54eac7fd377d112fd9fdfc32c4b3aa0c67",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 66198
+        },
+        "expected_legacy_owners": [
+          5160
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 5160,
+          "tv_id": 66198,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Waldorf Astoria Maldives Ithaafushi расположен на острове Итаафуши в атолле Южный Мале. Отель описывает размещение на трёх островах и 117 вилл трёх типов: пляжные, рифовые и надводные. У каждой виллы есть собственный бассейн и вид на океан. Из международного аэропорта Велана организован трансфер на яхте, занимающий около 40 минут; ожидание отправления учитывается отдельно. На курорте заявлены десять ресторанов, баров и лаунжей. Среди них — Terra со столами в бамбуковых конструкциях среди деревьев, китайский Li Long и Tasting Table с международной кухней. Детский Stars Club рассчитан на возраст 4–11 лет; малыши младше четырёх могут приходить с сопровождающим. Для семей предусмотрены игровые зоны, водные горки и splash pad. Некоторые детские занятия оплачиваются отдельно.",
+            "primaryImage": "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg",
+            "images": [
+              "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg",
+              "https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_crop,w_2344,h_2999,q_80,f_auto,x_1772/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/MLEONWA_F_B_Terra_Aeraial.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Waldorf Astoria Maldives Ithaafushi расположен на острове Итаафуши в атолле Южный Мале. Отель описывает размещение на трёх островах и 117 вилл трёх типов: пляжные, рифовые и надводные. У каждой виллы есть собственный бассейн и вид на океан. Из международного аэропорта Велана организован трансфер на яхте, занимающий около 40 минут; ожидание отправления учитывается отдельно. На курорте заявлены десять ресторанов, баров и лаунжей. Среди них — Terra со столами в бамбуковых конструкциях среди деревьев, китайский Li Long и Tasting Table с международной кухней. Детский Stars Club рассчитан на возраст 4–11 лет; малыши младше четырёх могут приходить с сопровождающим. Для семей предусмотрены игровые зоны, водные горки и splash pad. Некоторые детские занятия оплачиваются отдельно.\",\"primaryImage\":\"https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg\",\"images\":[\"https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_fill,w_1920,h_1080,q_70,f_auto,g_auto/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/WAMI_DRONE_1_.jpg\",\"https://assets.hiltonstatic.com/hilton-asset-cache/image/upload/c_crop,w_2344,h_2999,q_80,f_auto,x_1772/Imagery/Property%20Photography/Waldorf%20Astoria/M/MLEONWA/MLEONWA_F_B_Terra_Aeraial.jpg\"]}",
+          "manual_json_sha256": "84e6876908884f8f173e1978b32de19c8d6049f66964d985a0a1dd84cd67cfa2",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP072",
+      "own_id": 5794,
+      "tv_id": 49750,
+      "name": "SONEVA JANI RESORT",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Мальдивы",
+            "country_id": null,
+            "name": "SONEVA JANI RESORT",
+            "region": "Мальдивы",
+            "region_id": null
+          },
+          "own_id": 5794,
+          "profile_integrity": true,
+          "profile_sha256": "3dfb3181af64c79771decd21e831e7a40656fcfaee7d3f0839718a18cb9fdf34",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "49750",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 5794,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "af110ad80678cc9e412fd5b2284373d77b08445c733524ad151c3abab35de94d"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "49750",
+            "identity": {
+              "country": "Мальдивы",
+              "country_id": 8,
+              "name": "SONEVA JANI RESORT",
+              "region": "Мальдивы",
+              "region_id": 42
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 5794,
+            "source_identity_id": 49750,
+            "source_integrity": true,
+            "source_sha256": "e2f802b72767c7e3ab9fdfc78e4028ccc4a2817c2398dc2db2e47ee4150398c7"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:5794",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 5794,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "0212eb5f5e27a145b15e378f6692903ba7917a6069164829e58249756264a340"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Мальдивы",
+            "country_id": 8,
+            "name": "SONEVA JANI RESORT",
+            "region": "Мальдивы",
+            "region_id": 42
+          },
+          "discovery_sha256": "ec30496602a660f53f9a0db7e59f7f4b1ca6bca6dc9e0c57b3078612a9630845",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 49750
+        },
+        "expected_legacy_owners": [
+          5794
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 5794,
+          "tv_id": 49750,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Soneva Jani находится в лагуне Медхуфару, в атолле Ноону. Курорт предлагает пляжные виллы среди растительности и надводные виллы с выходом к воде; в отдельных категориях надводных вилл предусмотрены раздвижные крыши и горки. Маршрут из Мале предусматривает гидросамолёт либо перелёт в Маафару с последующим коротким трансфером на катере. В официальном описании указаны около 40 минут для прямого перелёта гидросамолётом и около 10 минут на катере из Маафару. В ресторане SAJI представлена индонезийская кухня, в Primitive — мальдивские блюда и приготовление на открытом огне; есть питание на вилле. Сырная и шоколадная комнаты работают круглосуточно. Детское пространство The Den и его программа рассчитаны на детей и подростков 4–17 лет; для младших доступна индивидуальная няня.",
+            "primaryImage": "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg",
+            "images": [
+              "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg",
+              "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2026/11/06142119/Soneva-Jani-Crabshack-Dining-Table-1-1600x900.webp",
+              "https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2023/08/30172435/Soneva-Jani-The-Den-Architecture-3-Large-1-scaled.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Soneva Jani находится в лагуне Медхуфару, в атолле Ноону. Курорт предлагает пляжные виллы среди растительности и надводные виллы с выходом к воде; в отдельных категориях надводных вилл предусмотрены раздвижные крыши и горки. Маршрут из Мале предусматривает гидросамолёт либо перелёт в Маафару с последующим коротким трансфером на катере. В официальном описании указаны около 40 минут для прямого перелёта гидросамолётом и около 10 минут на катере из Маафару. В ресторане SAJI представлена индонезийская кухня, в Primitive — мальдивские блюда и приготовление на открытом огне; есть питание на вилле. Сырная и шоколадная комнаты работают круглосуточно. Детское пространство The Den и его программа рассчитаны на детей и подростков 4–17 лет; для младших доступна индивидуальная няня.\",\"primaryImage\":\"https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg\",\"images\":[\"https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2025/03/14231246/Retractable-Roof_-1600x900.jpg\",\"https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2026/11/06142119/Soneva-Jani-Crabshack-Dining-Table-1-1600x900.webp\",\"https://soneva-offload-media-library.storage.googleapis.com/wp-content/uploads/2023/08/30172435/Soneva-Jani-The-Den-Architecture-3-Large-1-scaled.jpg\"]}",
+          "manual_json_sha256": "41cb4867d5704205b687981fc91db531c903c6302351825f2547155b5eed8a67",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP092",
+      "own_id": 7218,
+      "tv_id": 123247,
+      "name": "JUMEIRAH MARSA AL ARAB",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "ОАЭ",
+            "country_id": null,
+            "name": "JUMEIRAH MARSA AL ARAB",
+            "region": "Дубай",
+            "region_id": null
+          },
+          "own_id": 7218,
+          "profile_integrity": true,
+          "profile_sha256": "412f62ba58153fb0d76f84473902e14e484ab3214515065a7602967687fc15df",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "123247",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 7218,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "3d0d6e46b85ec3435688331a3900b6ec5d3bdeb4188c043bbf2290677f2647c4"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "123247",
+            "identity": {
+              "country": "ОАЭ",
+              "country_id": 9,
+              "name": "JUMEIRAH MARSA AL ARAB",
+              "region": "Дубай",
+              "region_id": 45
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 7218,
+            "source_identity_id": 123247,
+            "source_integrity": true,
+            "source_sha256": "2907f4187e03318576c7c10cd92ff743b4e3be7abfc726b07f0d576758202515"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:7218",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 7218,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "d8e4798845985e29425aec6445ca0cee3d4814aae51cacadcbbed35a555639d4"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "ОАЭ",
+            "country_id": 9,
+            "name": "JUMEIRAH MARSA AL ARAB",
+            "region": "Дубай",
+            "region_id": 45
+          },
+          "discovery_sha256": "ca480a699fbe1e5d725343172c11df4cbfbd3ca739ec8a54ffd3170f1eca95e6",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 123247
+        },
+        "expected_legacy_owners": [
+          7218
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 7218,
+          "tv_id": 123247,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Jumeirah Marsa Al Arab находится на побережье Дубая, в районе Умм-Сукейм 3, между Jumeirah Beach Hotel и Burj Al Arab. В комплексе представлены номера, люксы и резиденции с террасами и видами на море, марину или город. Например, Ocean Deluxe Room имеет площадь 67 м², включая террасу 11 м², и ванную комнату с ванной и тропическим душем. У курорта есть частный пляж, несколько бассейнов и прогулочная зона марины с кафе и ресторанами. Комплекс Talise занимает три этажа: здесь размещены процедурные кабинеты, отдельный женский этаж, крытый бассейн длиной 20 метров и фитнес-центр. Для детей предусмотрен Family Club Jumeirah Circle. Доступ к отдельному бассейновому клубу на официальном сайте выделен как преимущество гостей люксов; его не следует распространять на все категории размещения.",
+            "primaryImage": "https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f",
+            "images": [
+              "https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f",
+              "https://cdn.jumeirah.com/api/public/content/aa77f30362434186b198f935279eda5b?v=fd58c0bc"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Jumeirah Marsa Al Arab находится на побережье Дубая, в районе Умм-Сукейм 3, между Jumeirah Beach Hotel и Burj Al Arab. В комплексе представлены номера, люксы и резиденции с террасами и видами на море, марину или город. Например, Ocean Deluxe Room имеет площадь 67 м², включая террасу 11 м², и ванную комнату с ванной и тропическим душем. У курорта есть частный пляж, несколько бассейнов и прогулочная зона марины с кафе и ресторанами. Комплекс Talise занимает три этажа: здесь размещены процедурные кабинеты, отдельный женский этаж, крытый бассейн длиной 20 метров и фитнес-центр. Для детей предусмотрен Family Club Jumeirah Circle. Доступ к отдельному бассейновому клубу на официальном сайте выделен как преимущество гостей люксов; его не следует распространять на все категории размещения.\",\"primaryImage\":\"https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f\",\"images\":[\"https://cdn.jumeirah.com/api/public/content/2a67f4468c584236894167b85068c9ca?v=685b466f\",\"https://cdn.jumeirah.com/api/public/content/aa77f30362434186b198f935279eda5b?v=fd58c0bc\"]}",
+          "manual_json_sha256": "1abe89f5849383275c910bb9daaf74abb02d2af168415e22c6809d4e6861ed36",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP095",
+      "own_id": 12008,
+      "tv_id": 48184,
+      "name": "JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "ОАЭ",
+            "country_id": null,
+            "name": "JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)",
+            "region": "Дубай",
+            "region_id": null
+          },
+          "own_id": 12008,
+          "profile_integrity": true,
+          "profile_sha256": "71489a020700d7d1f2d71b89ca9d542c74672cd19d258dc4ac51d5795ca84200",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "48184",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 12008,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "7da18a97f69747f4cb6507158637281e7f8b08e3d82375649c50859ffdccdf7d"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "48184",
+            "identity": {
+              "country": "ОАЭ",
+              "country_id": 9,
+              "name": "JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)",
+              "region": "Дубай",
+              "region_id": 45
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 12008,
+            "source_identity_id": 48184,
+            "source_integrity": true,
+            "source_sha256": "daadc88bfd63115496149dfc2ac3b5c6fbfce4b32e3b7b36d37af5da3b82de5d"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:12008",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 12008,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "9fc895d0fd68005cbee78a5dc86e06497d181227fb77639722d8b48155d0f509"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "ОАЭ",
+            "country_id": 9,
+            "name": "JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)",
+            "region": "Дубай",
+            "region_id": 45
+          },
+          "discovery_sha256": "51c6065e3bc6642efb4c90c32ebcaa9d4713b0c1da4923433f03f0a2173aad6d",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 48184
+        },
+        "expected_legacy_owners": [
+          12008
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 12008,
+          "tv_id": 48184,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Jumeirah Al Naseem входит в комплекс Madinat Jumeirah на побережье Дубая, в районе Умм-Сукейм. В отеле представлены номера, клубные категории, люксы и пентхаусы; из разных вариантов размещения открываются виды на сады, море или Burj Al Arab. Для семей предусмотрена категория Two Bedroom Family Room, объединяющая два сообщающихся номера и располагающая балконом с видом на море. Инфраструктура включает частный пляж и пять бассейнов, в том числе отдельный бассейн для взрослых. На официальном сайте также указаны спа Talise, фитнес-центр, рестораны и детский клуб Jumeirah Circle. На территории находится лагуна проекта реабилитации морских черепах: здесь наблюдают за восстановлением спасённых животных перед возвращением в море. У разных бассейнов действуют собственные возрастные правила, поэтому доступ для детей следует уточнять для конкретной зоны.",
+            "primaryImage": "https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7",
+            "images": [
+              "https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7",
+              "https://cdn.jumeirah.com/api/public/content/6465470bcba84a5aa36cf3bdbcb08b15?v=f826904b"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Jumeirah Al Naseem входит в комплекс Madinat Jumeirah на побережье Дубая, в районе Умм-Сукейм. В отеле представлены номера, клубные категории, люксы и пентхаусы; из разных вариантов размещения открываются виды на сады, море или Burj Al Arab. Для семей предусмотрена категория Two Bedroom Family Room, объединяющая два сообщающихся номера и располагающая балконом с видом на море. Инфраструктура включает частный пляж и пять бассейнов, в том числе отдельный бассейн для взрослых. На официальном сайте также указаны спа Talise, фитнес-центр, рестораны и детский клуб Jumeirah Circle. На территории находится лагуна проекта реабилитации морских черепах: здесь наблюдают за восстановлением спасённых животных перед возвращением в море. У разных бассейнов действуют собственные возрастные правила, поэтому доступ для детей следует уточнять для конкретной зоны.\",\"primaryImage\":\"https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7\",\"images\":[\"https://cdn.jumeirah.com/api/public/content/5b4d07695d4f4c9ba924228e1ebcfce3?v=594427e7\",\"https://cdn.jumeirah.com/api/public/content/6465470bcba84a5aa36cf3bdbcb08b15?v=f826904b\"]}",
+          "manual_json_sha256": "47d2dd2b58cd23d619a361d8a9caa08cde76cb9fa1860b6e0c93f314331babb5",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP083",
+      "own_id": 5598,
+      "tv_id": 32322,
+      "name": "FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "ОАЭ",
+            "country_id": null,
+            "name": "FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH",
+            "region": "Дубай",
+            "region_id": null
+          },
+          "own_id": 5598,
+          "profile_integrity": true,
+          "profile_sha256": "29264a397fa48fb22c9422281122baa7b99ce83d7146e36b30baf417a18cf3f4",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "32322",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 5598,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "31b9adfc50f8da50959b1b5cc2804ce7a9129146a01b67e3598bc318e9a235fc"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "32322",
+            "identity": {
+              "country": "ОАЭ",
+              "country_id": 9,
+              "name": "FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH",
+              "region": "Дубай",
+              "region_id": 45
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 5598,
+            "source_identity_id": 32322,
+            "source_integrity": true,
+            "source_sha256": "0c89083c23c8a12d72e67ccaab413807f96a3cb5597d977077521357f694c7cd"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:5598",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 5598,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "f269fd0a4ac3c8721742a704f4243bce3e107ca8053e3b0375c8efe1c6a4afea"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "ОАЭ",
+            "country_id": 9,
+            "name": "FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH",
+            "region": "Дубай",
+            "region_id": 45
+          },
+          "discovery_sha256": "3dcb43dfea8afbfe1fc51c9989a836d180e38abaa20c2d5d31ac6ae32795962e",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 32322
+        },
+        "expected_legacy_owners": [
+          5598
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 5598,
+          "tv_id": 32322,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Four Seasons Resort Dubai at Jumeirah Beach расположен в Дубае, в районе Jumeirah 2, непосредственно у Персидского залива. У курорта есть частный пляж протяжённостью 270 метров. Для размещения предлагаются номера и люксы; категории Deluxe Partial Sea-View, Deluxe City-View и Deluxe Resort-View имеют площадь 70 м². На территории работают отдельные открытые бассейны для взрослых и семей, а также крытый бассейн для плавания. В The Pearl Spa and Wellness Jumeirah предусмотрены десять процедурных кабинетов; фитнес-центр открыт круглосуточно. Детский центр Kids For All Seasons принимает детей от 4 до 12 лет, также есть водная игровая площадка. У пляжа расположен ресторан Sea Fu. Вид и оснащение номера зависят от выбранной категории.",
+            "primaryImage": "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg",
+            "images": [
+              "https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg",
+              "https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_2104_original.jpg",
+              "https://www.fourseasons.com/alt/img-opt/~70.1530/publish/content/dam/fourseasons/images/web/DJB/DJB_270_aspect16x9.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Four Seasons Resort Dubai at Jumeirah Beach расположен в Дубае, в районе Jumeirah 2, непосредственно у Персидского залива. У курорта есть частный пляж протяжённостью 270 метров. Для размещения предлагаются номера и люксы; категории Deluxe Partial Sea-View, Deluxe City-View и Deluxe Resort-View имеют площадь 70 м². На территории работают отдельные открытые бассейны для взрослых и семей, а также крытый бассейн для плавания. В The Pearl Spa and Wellness Jumeirah предусмотрены десять процедурных кабинетов; фитнес-центр открыт круглосуточно. Детский центр Kids For All Seasons принимает детей от 4 до 12 лет, также есть водная игровая площадка. У пляжа расположен ресторан Sea Fu. Вид и оснащение номера зависят от выбранной категории.\",\"primaryImage\":\"https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg\",\"images\":[\"https://www.fourseasons.com/alt/img-opt/~70.1530.0%2C0000-163%2C7500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_210_original.jpg\",\"https://www.fourseasons.com/alt/img-opt/~75.701.0%2C0000-156%2C2500-3000%2C0000-1687%2C5000/publish/content/dam/fourseasons/images/web/DJB/DJB_2104_original.jpg\",\"https://www.fourseasons.com/alt/img-opt/~70.1530/publish/content/dam/fourseasons/images/web/DJB/DJB_270_aspect16x9.jpg\"]}",
+          "manual_json_sha256": "8b4b6a722032d4af2a74e434ccd3f398c1c336eaac9962b28f3b1efecdc50ef5",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    },
+    {
+      "work_id": "EXP015",
+      "own_id": 10771,
+      "tv_id": 28272,
+      "name": "ANANTARA PHUKET LAYAN RESORT & SPA",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Таиланд",
+            "country_id": null,
+            "name": "ANANTARA PHUKET LAYAN RESORT & SPA",
+            "region": "Пхукет",
+            "region_id": null
+          },
+          "own_id": 10771,
+          "profile_integrity": true,
+          "profile_sha256": "b619adad334408125bfef8aced2fd269444ced74d6a3ec26b16dbf2ba81e9108",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "28272",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 10771,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "b05713f2a0ffb2c91b3a5bc653a49be5efcf9fcef73bc7b3b87c6d79dc9f1ec2"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "28272",
+            "identity": {
+              "country": "Таиланд",
+              "country_id": 2,
+              "name": "ANANTARA PHUKET LAYAN RESORT & SPA",
+              "region": "Пхукет",
+              "region_id": 8
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 10771,
+            "source_identity_id": 28272,
+            "source_integrity": true,
+            "source_sha256": "a36038719950171f3cc4200737afe4aaf3a131caf157c4d6e26718ee239282d4"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:10771",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 10771,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "eabdc183294ecff7a0ce104435af8a9932eb7c9ba6e9fea9c87371dd01bc7f58"
+          }
+        ],
+        "bridge": null,
+        "target": {
+          "content_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "content_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "discovery_identity": {
+            "country": "Таиланд",
+            "country_id": 2,
+            "name": "ANANTARA PHUKET LAYAN RESORT & SPA",
+            "region": "Пхукет",
+            "region_id": 8
+          },
+          "discovery_sha256": "85266c5010edc4caee9a2cad1d5207eaf315ae9690848489d36258dba138ae32",
+          "manual_fields": [],
+          "manual_identity": {
+            "country": null,
+            "country_id": null,
+            "name": null,
+            "region": null,
+            "region_id": null
+          },
+          "manual_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "revision": 1,
+          "source_absent_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "source_identity_id": null,
+          "source_integrity": null,
+          "source_present": false,
+          "source_sha256": null,
+          "state": "pending",
+          "tv_id": 28272
+        },
+        "expected_legacy_owners": [
+          10771
+        ],
+        "target_link_owners": []
+      },
+      "proposed_after": {
+        "bridge": {
+          "old_local_id": 10771,
+          "tv_id": 28272,
+          "snapshot_policy": "exact locked own DB row plus all three verified source DB rows, standard profile/sources shape; hash raw snapshot_json bytes",
+          "migration_issues_json": {
+            "preservedFields": [
+              "description",
+              "primaryImage",
+              "images"
+            ],
+            "originKnown": true
+          },
+          "migrated_at": "execution UTC timestamp, only after fresh explicit owner approval and admitted writer"
+        },
+        "target": {
+          "changed_columns": [
+            "manual_json",
+            "revision"
+          ],
+          "manual_json": {
+            "description": "Anantara Layan Phuket Resort находится у пляжа Лаян на Пхукете. Курорт предлагает номера и люксы на склоне, а также виллы с собственными бассейнами. В категории Premier Room площадь составляет 56 м², в Deluxe Layan Suite — 79 м²; площади вилл различаются по категории. На территории есть общий бассейн, фитнес-центр, теннисный корт и зона активного отдыха Layan Active Zone. Детский Chang Club рассчитан на возраст от 4 до 12 лет; детям младше четырёх необходимо сопровождение родителя или няни. Гости могут заниматься муай-тай, каякингом и сапбордингом, посещать занятия тайской кулинарии. Работают Anantara Spa и центр Layan Life by Anantara. Доступность занятий и условия трансфера уточняются при бронировании.",
+            "primaryImage": "https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png",
+            "images": [
+              "https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png",
+              "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/gallery/alay_deluxe-layan-suite-984x532.jpg",
+              "https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/accommodation/room-type/pool-villas/alay_accommodation_poolvilla_984x532.jpg"
+            ]
+          },
+          "manual_json_exact_utf8": "{\"description\":\"Anantara Layan Phuket Resort находится у пляжа Лаян на Пхукете. Курорт предлагает номера и люксы на склоне, а также виллы с собственными бассейнами. В категории Premier Room площадь составляет 56 м², в Deluxe Layan Suite — 79 м²; площади вилл различаются по категории. На территории есть общий бассейн, фитнес-центр, теннисный корт и зона активного отдыха Layan Active Zone. Детский Chang Club рассчитан на возраст от 4 до 12 лет; детям младше четырёх необходимо сопровождение родителя или няни. Гости могут заниматься муай-тай, каякингом и сапбордингом, посещать занятия тайской кулинарии. Работают Anantara Spa и центр Layan Life by Anantara. Доступность занятий и условия трансфера уточняются при бронировании.\",\"primaryImage\":\"https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png\",\"images\":[\"https://assets.anantara.com/image/upload/q_auto%2Cf_auto%2Cc_limit%2Cw_1920/media/minor/anantara/images/anantara-layan-phuket-resort/new-images-2026/anantara-layan-phuket-resort-hero-shot-1920-x-1080-1-2.png\",\"https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/gallery/alay_deluxe-layan-suite-984x532.jpg\",\"https://assets.anantara.com/image/upload/q_auto%2Cf_auto/media/minor/anantara/images/anantara-layan-phuket-resort/accommodation/room-type/pool-villas/alay_accommodation_poolvilla_984x532.jpg\"]}",
+          "manual_json_sha256": "1b29726139bfb05effe46309f697b9d9d3f85dbd06344472c6060ec18beabd09",
+          "revision": 2,
+          "preserved_state": "pending",
+          "preserved_content_json": {},
+          "preserved_source_json": null,
+          "preserved_source_sha256": null,
+          "preserved_source_absent_json": []
+        },
+        "own_and_sources": "unchanged"
+      },
+      "fresh_value_guard": "Every locked own description/primaryImage/images value must exactly equal the corresponding approved manifest proposed_value; any mismatch aborts the entire packet."
+    }
+  ],
+  "excluded_pairs": [
+    {
+      "work_id": "EXP091",
+      "own_id": 4516,
+      "tv_id": 2526,
+      "name": "BURJ AL ARAB",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "ОАЭ",
+            "country_id": null,
+            "name": "BURJ AL ARAB",
+            "region": "Дубай",
+            "region_id": null
+          },
+          "own_id": 4516,
+          "profile_integrity": true,
+          "profile_sha256": "d793c5abc0feb4cc6b5fe8bc5cd97b18cba0ab565e68bb4f10d573b8a7f732a9",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "2526",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 4516,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "4f051010e93c386be39e12fcf1369ba6a32afa908fe54288449a8ef7d8a6b8bc"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "2526",
+            "identity": {
+              "country": "ОАЭ",
+              "country_id": 9,
+              "name": "BURJ AL ARAB",
+              "region": "Дубай",
+              "region_id": 45
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 4516,
+            "source_identity_id": 2526,
+            "source_integrity": true,
+            "source_sha256": "7554e48d072541cdda7bd226539d40823292643c7c890a28a9e66fe460d3e097"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:4516",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 4516,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "5d5b30a26b0dfa717a4b19e673397608534e6c46297910908cdf9b32c5eccbc0"
+          }
+        ],
+        "bridge": null,
+        "target": null,
+        "expected_legacy_owners": [
+          4516
+        ],
+        "target_link_owners": []
+      },
+      "excluded_reason": "native_target_absent",
+      "proposed_changes": [],
+      "commercial_hold": true
+    },
+    {
+      "work_id": "EXP081",
+      "own_id": 8689,
+      "tv_id": 7458,
+      "name": "FOUR SEASONS THE NAM HAI",
+      "before": {
+        "own": {
+          "active": true,
+          "identity": {
+            "country": "Вьетнам",
+            "country_id": null,
+            "name": "FOUR SEASONS THE NAM HAI",
+            "region": "Хой Ан",
+            "region_id": null
+          },
+          "own_id": 8689,
+          "profile_integrity": true,
+          "profile_sha256": "0d47ec624ee8d3a2058ea9841b695b65e4d46acbbab645001af7ae225fbcb35a",
+          "revision": 2
+        },
+        "own_sources": [
+          {
+            "acquired_via": "canonical_local_alias_v1",
+            "external_key": "7458",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "anytour_local_id",
+            "own_id": 8689,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "8b6aa56feaeb1d87ac51988e1f320f28350ac24922956d232bd1b80090b80bc7"
+          },
+          {
+            "acquired_via": "saved_catalog",
+            "external_key": "7458",
+            "identity": {
+              "country": "Вьетнам",
+              "country_id": 16,
+              "name": "FOUR SEASONS THE NAM HAI",
+              "region": "Хой Ан",
+              "region_id": 105
+            },
+            "namespace": "legacy_catalog",
+            "own_id": 8689,
+            "source_identity_id": 7458,
+            "source_integrity": true,
+            "source_sha256": "5099a078c59e3de5a750a6f5435b2555da9823c3aa1eac66f8da363f910df777"
+          },
+          {
+            "acquired_via": "profile_fill_official_v1",
+            "external_key": "45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4:8689",
+            "identity": {
+              "country": null,
+              "country_id": null,
+              "name": null,
+              "region": null,
+              "region_id": null
+            },
+            "namespace": "profile_enrichment:official_review_v1",
+            "own_id": 8689,
+            "source_identity_id": null,
+            "source_integrity": true,
+            "source_sha256": "0aec6bf05dd91000e3ca625767df20c26250edc95a24cb30757b3746b375518d"
+          }
+        ],
+        "bridge": null,
+        "target": null,
+        "expected_legacy_owners": [
+          8689
+        ],
+        "target_link_owners": []
+      },
+      "excluded_reason": "native_target_absent",
+      "proposed_changes": [],
+      "commercial_hold": false
+    }
+  ],
+  "required_guards": [
+    "Fresh exact nine-row own/source/native/link preconditions must match all recorded pins before any mutation; if any precondition differs, abort the entire packet.",
+    "One explicit bounded transaction for all nine bridge INSERTs and all nine manual_json/revision UPDATEs; never call global migrateLinks(). This is a required design constraint, not evidence of an implemented or validated writer.",
+    "Lock the exact own and native rows; verify all three sources and their hashes, single legacy owner, no existing bridge or foreign target owner, active own revision2, native pending revision1, empty content/manual, native source absent, unchanged discovery/source_absent hashes.",
+    "Copy only the three approved values into native manual_json; validate fresh own values equal approved manifest exact values; preserve their provenance through a full standard bridge snapshot and operation receipt.",
+    "Preserve native content_json, state, source_json, source_sha256, source_fetched_at, discovery_json, source_absent_json, scheduling fields, canonical profile/source tables, operator mappings, exclusions, commercial HOLD, posts and publication.",
+    "Keep pending state and detailsAvailable=false; do not report provider/native source acquisition or count any unrelated MATCH acceptance.",
+    "Require exact row-count assertions and independent bounded post-commit readback; commit-unknown means stop and read only, never retry blindly.",
+    "Require fresh explicit owner approval of this complete nine-pair/27-value/18-row packet and a separately reviewed/admitted writer before execution."
+  ],
+  "consumer_semantics": "Current oldLocal lookup has no bridge for any of the eleven own IDs. The nine existing native targets have discovery-only data. A bridge alone would expose that incomplete direct native projection. Current UI fallback preserves nonempty canonical fields; no UI erasure is asserted. The proposed manual values make the direct native projection carry and protect the already approved descriptions and images."
+}

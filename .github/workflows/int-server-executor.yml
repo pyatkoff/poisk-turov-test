@@ -79,6 +79,8 @@ on:
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'
       - 'scripts/deploy/int_server_executor_match_retained.py'
+      - 'scripts/catalog/anytour_local9_bridge_apply_v1.php'
+      - 'scripts/catalog/anytour-local9-bridge-proposal-20261122.json'
       - 'scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json'
       - 'tests/int_server_executor_match_retained_test.py'
   workflow_dispatch:
@@ -336,6 +338,7 @@ jobs:
       - name: MATCH retained intake and shared quota native acceptance
         env:
           MATCH_RETAINED_SOURCE_ROOT: ${{ github.workspace }}/match-retained-source
+          MATCH_LOCAL9_CONSUMER_ROOT: ${{ github.workspace }}/local-official11-source
           MATCH_RETAINED_NATIVE_CI: '1'
           MATCH_RETAINED_TEST_DSN: mysql:host=127.0.0.1;port=3306;charset=utf8mb4
           MATCH_RETAINED_TEST_PASSWORD: local_tv_schema_test_only
@@ -344,6 +347,7 @@ jobs:
           php -l match-retained-source/scripts/diagnostics/hotel_match_retained_intake_v1.php
           php -l match-retained-source/scripts/diagnostics/hotel_match_retained_current_v1.php
           php -l match-retained-source/scripts/diagnostics/hotel_match_retained_anex_write_v1.php
+          php -l scripts/catalog/anytour_local9_bridge_apply_v1.php
           python3 tests/int_server_executor_match_retained_test.py -v
       - name: Exact passive fuel capture installation source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -491,7 +495,7 @@ jobs:
           path: source
           persist-credentials: false
       - name: Recheck new MATCH source contract before its operation
-        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy' || steps.command.outputs.mode == 'match-retained-readback' || steps.command.outputs.mode == 'match-retained-project' || steps.command.outputs.mode == 'match-retained-current' || steps.command.outputs.mode == 'match-retained-acquire' || steps.command.outputs.mode == 'match-retained-anex-write' || steps.command.outputs.mode == 'match-retained-anex-write-v2'
+        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy' || steps.command.outputs.mode == 'match-retained-readback' || steps.command.outputs.mode == 'match-retained-project' || steps.command.outputs.mode == 'match-retained-current' || steps.command.outputs.mode == 'match-retained-acquire' || steps.command.outputs.mode == 'match-retained-anex-write' || steps.command.outputs.mode == 'match-retained-anex-write-v2' || steps.command.outputs.mode == 'local9-bridge-apply-v1'
         env:
           MATCH_RETAINED_SOURCE_ROOT: ${{ github.workspace }}/source
         run: python3 tests/int_server_executor_match_retained_test.py -q
