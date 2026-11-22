@@ -31,35 +31,65 @@ jobs:
     timeout-minutes: 3
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
+      - name: Set native HOME fixture path
+        shell: bash
+        run: echo "HOME_NATIVE_FIXTURE=$RUNNER_TEMP/home-native-favicon" >> "$GITHUB_ENV"
+      - name: Prepare exact controller-pinned native HOME fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tests/home-native-artifact-fixture.py --output "$HOME_NATIVE_FIXTURE"
       - name: Validate static head icons and preserve other page behavior
         shell: bash
         run: |
           set -euo pipefail
           for file in v2/site-header-v2.php v2/home-v1.php v2/index.php; do php -l "$file"; done
-          mkdir -p /tmp/favicon-empty-root
-          for entry in home-entry-v1.php poisk-turov/index.php; do
-            FAVICON_TEST_ENTRY="$entry" php <<'PHP'
+          # Native HOME and Search3 use their admitted PHP owners. Retain the
+          # unchanged MAIN receiving entry and its original root-icon contract.
+          for fixture_case in native-home native-search legacy-main-search; do
+            FAVICON_TEST_CASE="$fixture_case" php <<'PHP'
           <?php
-          $_SERVER['DOCUMENT_ROOT']='/tmp/favicon-empty-root';
+          $case=getenv('FAVICON_TEST_CASE');
+          $cases=[
+              'native-home'=>['site','index.php','/index.php','/'],
+              'native-search'=>['site','poisk-turov/index.php','/poisk-turov/index.php','/poisk-turov/'],
+              'legacy-main-search'=>['legacy','poisk-turov/index.php','/poisk-turov/index.php','/poisk-turov/'],
+          ];
+          if(!isset($cases[$case]))throw new RuntimeException('unknown favicon fixture case');
+          [$tree,$entry,$script,$route]=$cases[$case];
+          $root=realpath(getenv('HOME_NATIVE_FIXTURE').'/'.$tree);
+          if($root===false)throw new RuntimeException('missing verified native favicon fixture');
+          $_SERVER['DOCUMENT_ROOT']=$root;
           $_SERVER['HTTP_HOST']='anytoour.ru';
-          $_SERVER['SCRIPT_NAME']=getenv('FAVICON_TEST_ENTRY')==='home-entry-v1.php'?'/index.php':'/poisk-turov/index.php';
+          $_SERVER['SCRIPT_NAME']=$script;
+          $_SERVER['REQUEST_URI']=$route;
           $_GET=[];
-          ob_start(); require 'v2/'.getenv('FAVICON_TEST_ENTRY'); $html=(string)ob_get_clean();
+          ob_start(); require $root.'/'.$entry; $html=(string)ob_get_clean();
+          if((http_response_code()?:200)!==200)throw new RuntimeException('favicon entry did not render HTTP 200');
           $end=strpos($html,'</head>');
           if($end===false)throw new RuntimeException('missing head');
           $head=substr($html,0,$end);
-          $version=v2_asset_content_version('v2/favicon.svg');
-          foreach(['png','ico'] as $ext){
-              if(!str_contains($head,'href="/favicon.'.$ext.'?v='.$version.'"'))throw new RuntimeException('missing versioned '.$ext.' head icon');
+          $icons=preg_match_all('/<link\b[^>]*\brel="(?:shortcut )?icon"[^>]*>/',$head);
+          if($case==='native-search'){
+              $expected='<link rel="icon" href="/visual-search/assets/favicon.png" type="image/png">';
+              if($icons!==1||substr_count($head,$expected)!==1)throw new RuntimeException('native Search3 favicon owner changed');
+              if(!is_file($root.'/visual-search/assets/favicon.png'))throw new RuntimeException('native Search3 favicon asset missing');
+          }else{
+              $version=v2_asset_content_version('v2/favicon.svg');
+              if($version==='0')throw new RuntimeException('original favicon artwork missing');
+              foreach(['png','ico'] as $ext){
+                  if(!str_contains($head,'href="/favicon.'.$ext.'?v='.$version.'"'))throw new RuntimeException('missing versioned '.$ext.' head icon');
+              }
+              if($icons!==2)throw new RuntimeException('expected exactly two root head icons');
           }
           if(str_contains($html,'data-anytour-favicon-bootstrap'))throw new RuntimeException('home/search still rewrites icons');
           foreach(['/contacts/','/country/turkey/kemer/november/'] as $path){
               ob_start(); v2_render_site_header('80000000000','80000000000',$path); $other=(string)ob_get_clean();
               if(!str_contains($other,'data-anytour-favicon-bootstrap')||!str_contains($other,"/favicon.php?v=20260903"))throw new RuntimeException('unrelated route behavior changed');
           }
-          echo 'FAVICON_HEAD_OK entry='.getenv('FAVICON_TEST_ENTRY')." static=2 original_artwork=1 other_routes_preserved=1\n";
+          echo 'FAVICON_HEAD_OK case='.$case.' entry='.$entry.' static='.$icons." owner_preserved=1 other_routes_preserved=1\n";
           PHP
           done
       - name: Inspect public page declarations and favicon responses

@@ -64,8 +64,17 @@ async function checkCta(page) {
   const colors = await button.evaluate(element => { const style = getComputedStyle(element); return [style.color, style.backgroundColor]; });
   const [foreground, background] = colors.map(value => luminance(rgb(value)));
   assert((Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05) >= 4.5, 'CTA text contrast >= 4.5');
-  await button.focus();
-  assert(await button.evaluate(element => parseFloat(getComputedStyle(element).outlineWidth)) >= 2, 'visible keyboard focus');
+  let keyboardFocused = false;
+  for (let tabs = 0; tabs < 64; tabs++) {
+    await page.keyboard.press('Tab');
+    keyboardFocused = await button.evaluate(element => document.activeElement === element);
+    if (keyboardFocused) break;
+  }
+  const focus = await button.evaluate(element => ({ active: document.activeElement === element,
+    focusVisible: element.matches(':focus-visible'), outlineWidth: parseFloat(getComputedStyle(element).outlineWidth),
+    activeTag: document.activeElement?.tagName, activeAction: document.activeElement?.getAttribute('data-action') }));
+  assert(keyboardFocused && focus.active && focus.focusVisible, 'canonical CTA receives keyboard focus: ' + JSON.stringify(focus));
+  assert(focus.outlineWidth >= 2, 'visible keyboard focus: ' + JSON.stringify(focus));
   await button.blur();
 }
 async function geometry(page, home) {
