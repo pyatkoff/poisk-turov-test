@@ -10,6 +10,10 @@ on:
       - 'scripts/catalog/anytour_local_official11_apply_v1.php'
       - 'scripts/catalog/anytour-local-official11-approved-20261121.json'
       - 'tests/int_server_executor_local_official11_test.py'
+      - 'scripts/catalog/anytour_local_official26_apply_v1.php'
+      - 'scripts/catalog/anytour-local-official26-approved-20261122.json'
+      - 'tests/int_server_executor_local_official26_test.py'
+      - 'tests/fixtures/anytour-local-official26-before-20261122.json'
       - 'scripts/deploy/int_server_executor_passive_fuel_readiness.py'
       - 'tests/int_server_executor_passive_fuel_install_test.py'
       - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
@@ -161,6 +165,22 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_local_official11.py
           php -l scripts/catalog/anytour_local_official11_apply_v1.php
           python3 tests/int_server_executor_local_official11_test.py -v
+      - name: Exact approved official LOCAL26 source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 6af9180edbfa3a2b15199cbd8ad04842ea42dfb3 # reviewed SOURCE candidate; runtime release-head gate remains
+          path: local-official26-source
+          persist-credentials: false
+      - name: Official LOCAL26 mixed-field admission and native MySQL apply/readback
+        env:
+          LOCAL_OFFICIAL26_SOURCE_ROOT: ${{ github.workspace }}/local-official26-source
+          LOCAL_OFFICIAL26_NATIVE_CI: '1'
+          ANYTOUR_PROFILE_ENRICH_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytour_official11_fixture;charset=utf8mb4
+          ANYTOUR_PROFILE_ENRICH_TEST_PASSWORD: local_tv_schema_test_only
+        run: |
+          python3 -m py_compile scripts/deploy/int_server_executor_local_official11.py
+          php -l scripts/catalog/anytour_local_official26_apply_v1.php
+          python3 tests/int_server_executor_local_official26_test.py -v
       - name: Exact reviewed private TV session gateway source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -449,6 +469,8 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_local_official11.py
           php -l scripts/catalog/anytour_local_official11_apply_v1.php
           python3 tests/int_server_executor_local_official11_test.py --control-only -v
+          php -l scripts/catalog/anytour_local_official26_apply_v1.php
+          python3 tests/int_server_executor_local_official26_test.py --control-only -v
       - name: Parse and authorize exact current-source command
         id: command
         env:
