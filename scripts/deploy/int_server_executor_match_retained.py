@@ -284,6 +284,16 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if len(parts) >= 3 and (parts[2] == LOCAL11_IDENTITY['operation_id']
+                or (len(parts) >= 4 and parts[3] == LOCAL11_IDENTITY['cohort'])):
+            profile = LOCAL11_IDENTITY
+            need(len(parts) == 5 and parts[1] == 'match-retained-current'
+                 and parts[2] == profile['operation_id'] and parts[3] == profile['cohort']
+                 and parts[4] == profile['parent_operation_id'], 'local11_fixed_scope')
+            need(core.SHA_RE.fullmatch(parts[0]) is not None, 'retained_source_sha')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) >= 4 and (parts[3] == OWNER_TOP500_CURRENT['cohort']
                                 or parts[2] == OWNER_TOP500_CURRENT['operation_id']):
             profile = OWNER_TOP500_CURRENT
@@ -2158,6 +2168,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == LOCAL11_IDENTITY['cohort'] or command.get('operation_id') == LOCAL11_IDENTITY['operation_id']:
+        return completed_local11_identity(command, result, control_sha)
     if command.get('cohort') == FUNSUN_RU_IDENTITY_SCOPE['cohort']:
         return completed_bg_identity(command, result, control_sha, FUNSUN_RU_IDENTITY_SCOPE)
     if command.get('cohort') == OPERATOR_ALIAS_AUDIT['cohort']:
@@ -2276,6 +2288,7 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
+    local11 = command.get('cohort') == LOCAL11_IDENTITY['cohort']
     reconciliation_v2 = command.get('cohort') == BINDING_RECONCILIATION_V2['cohort']
     reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort'] or reconciliation_v2
     alias_audit = command.get('cohort') == OPERATOR_ALIAS_AUDIT['cohort']
@@ -2286,6 +2299,9 @@ def activate(core, command):
     policy = FUNSUN_RU_IDENTITY_SCOPE if funsun_identity else OPERATOR_ALIAS_AUDIT if alias_audit else BG_IDENTITY_SCOPE if bg_identity else BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING_FULL if binding_full else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
     handler = REMOTE_HANDLER
+    if local11:
+        handler = '\ndef run_match_retained(stage):\n    return current_local11_identity(stage)\n'
+        handler += '\nLOCAL11_IDENTITY='+repr(LOCAL11_IDENTITY)+'\nLOCAL11_HASHES='+repr(LOCAL11_HASHES)+'\nLOCAL11_RUNNER='+repr(LOCAL11_RUNNER)+'\n'+LOCAL11_VALIDATOR+LOCAL11_HANDLER
     if alias_audit:
         anchor = '    config=project/\'config.php\';dbhelper=project/\'data/db-v1.php\''
         need(handler.count(anchor) == 1, 'alias_audit_dispatch_anchor')
@@ -2314,17 +2330,379 @@ def activate(core, command):
     remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nOWNER_TOP500_CURRENT='+repr(OWNER_TOP500_CURRENT)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
-    hashes=dict(SOURCE_HASHES)
+    hashes=dict(LOCAL11_HASHES if local11 else SOURCE_HASHES)
     if catalogue:hashes[CATALOGUE_PATH]=policy['catalogue_sha256']
     remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(hashes)+": fail('retained_manifest')",1)
+    if local11:
+        members='        members=package.getmembers()\n'
+        need(remote.count(members)==1, 'local11_archive_anchor')
+        remote=remote.replace(members,members+"        if len(members)!=3 or {m.name for m in members}!={*LOCAL11_HASHES,'manifest.json'}: fail('local11_archive_members')\n",1)
     reservation='    op.mkdir(mode=0o700)\n'
     receipt="if 'op' in globals() and op.exists():"
     need(remote.count(reservation)==1 and remote.count(receipt)==1,'retained_reservation_anchor')
     remote=remote.replace(reservation,reservation+'    retained_reserved=True\n',1)
     remote=remote.replace(receipt,"if globals().get('retained_reserved') is True and op.exists():",1)
     ast.parse(remote)
-    core.REMOTE=remote;core.bundle_source=lambda source_root:bundle_source(source_root,catalogue=catalogue)
+    core.REMOTE=remote;core.bundle_source=bundle_local11_source if local11 else lambda source_root:bundle_source(source_root,catalogue=catalogue)
     original=core.completed_result
     core.completed_result=lambda cmd,res: completed_result(cmd,res,control) if cmd.get('mode') in MODES else original(cmd,res)
 
+
+
+
+# This finite profile has new raw bridge/manual/excluded evidence. It does not
+# replay the consumed owner7/current profile or the official11 apply operation.
+LOCAL11_RUNNER = 'scripts/diagnostics/hotel_match_local11_identity_v1.php'
+LOCAL11_HASHES = {
+    'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13',
+    LOCAL11_RUNNER: '60ac74200a678ada4e4e7d6561b31b9ef95568155c4f4be9e3f07906a403843a',
+}
+LOCAL11_IDENTITY = {
+    'cohort': 'local11-identity-20261122',
+    'operation_id': 'int-andromeda-match-retained-current-20261122-v1',
+    'parent_operation_id': 'int-andromeda-local-official11-apply-20261121-v1',
+    'parent_source_sha': '8b804957501d5b4715bd6f400fb794f02792d3de',
+    'parent_control_sha': '458602aa945afec1c3d4a20434bae1945e2a6844',
+    'plan_sha256': '57cadce752698c97269b174fa5a94afb254b1ec279ca87fd2ba32aa0a8bbca71',
+    'owner_receipt_sha256': 'bc4cf1f52b0ad94c7ef3c25c24b6da277c633ee4726e5d9989ae4d92944dc865',
+    'source_contract': {
+        'own_namespace': 'anytour_hotels.id',
+        'legacy_source_namespace': 'legacy_catalog',
+        'target_namespace': 'local_tv_hotels.id=Tourvisor',
+        'bridge_columns': ['local_tv_legacy_links.old_local_id', 'local_tv_legacy_links.tv_id'],
+        'expected_own_manifest_sha256': '93e0ea33e64ce2c41d68ffb54e9efaf6e383f3cdde68f01c6aa4ab51f4e5a242',
+        'native_catalogue_sha256': 'b262df970a51376ca3e34f5529809446781db45df4ba63ff1f2456970d071c47',
+        'native_catalogue_commit': '586313554d03fd6fc96516ce0f1376988cd33819',
+        'own_bridge_receipt': '4709/6918997216',
+        'native_proof_receipt': '1971/6919021923',
+    },
+    # own ID, TV ID, canonical/native name, own country/region, TV country/region IDs.
+    'pairs': [
+        [5371,12120,'ANANTARA KIHAVAH VILLAS','Мальдивы','Мальдивы',8,42],
+        [6014,64957,'KUDADOO MALDIVES PRIVATE ISLAND','Мальдивы','Мальдивы',8,42],
+        [6202,76029,'THE RITZ CARLTON MALDIVES FARI ISLANDS','Мальдивы','Мальдивы',8,42],
+        [5160,66198,'WALDORF ASTORIA MALDIVES ITHAAFUSHI','Мальдивы','Мальдивы',8,42],
+        [5794,49750,'SONEVA JANI RESORT','Мальдивы','Мальдивы',8,42],
+        [4516,2526,'BURJ AL ARAB','ОАЭ','Дубай',9,45],
+        [7218,123247,'JUMEIRAH MARSA AL ARAB','ОАЭ','Дубай',9,45],
+        [12008,48184,'JUMEIRAH AL NASEEM (EX. MADINAT JUMEIRAH AL NASEEM)','ОАЭ','Дубай',9,45],
+        [5598,32322,'FOUR SEASONS RESORT DUBAI AT JUMEIRAH BEACH','ОАЭ','Дубай',9,45],
+        [10771,28272,'ANANTARA PHUKET LAYAN RESORT & SPA','Таиланд','Пхукет',2,8],
+        [8689,7458,'FOUR SEASONS THE NAM HAI','Вьетнам','Хой Ан',16,105],
+    ],
+}
+
+# Shared strict observation/material validation runs in the remote and receiver.
+LOCAL11_VALIDATOR = r'''
+def l11_need(value,reason='local11_material'):
+    if not value: raise ValueError(reason)
+def l11_json(value):
+    return json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+def l11_unique(pairs):
+    result={}
+    for key,value in pairs:
+        l11_need(key not in result,'local11_duplicate_json_key');result[key]=value
+    return result
+def l11_hash(value):
+    return isinstance(value,str) and re.fullmatch(r'[a-f0-9]{64}',value) is not None
+def l11_int(value):
+    return type(value) is int and 0<value<10**15
+def l11_time(value):
+    l11_need(isinstance(value,str) and len(value)<=32)
+    stamp=__import__('datetime').datetime.fromisoformat(value.replace('Z','+00:00'))
+    l11_need(stamp.utcoffset()==__import__('datetime').timedelta(0))
+def l11_fields(value):
+    l11_need(isinstance(value,list) and len(value)<=128
+             and all(isinstance(k,str) and re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_.]{0,95}',k) for k in value)
+             and value==sorted(set(value)))
+def l11_identity(value):
+    l11_need(isinstance(value,dict) and set(value)=={'name','country','region','country_id','region_id'})
+    for key in ('name','country','region'):
+        item=value[key]
+        l11_need(item is None or (isinstance(item,str) and len(item.encode())<=1024
+            and not any(ord(c)<32 for c in item)))
+    for key in ('country_id','region_id'):l11_need(value[key] is None or l11_int(value[key]))
+def l11_observation(value,kind):
+    fields={
+      'own':{'own_id','revision','active','identity','profile_sha256','profile_integrity'},
+      'source':{'own_id','namespace','external_key','acquired_via','source_sha256','source_integrity','source_identity_id','identity'},
+      'link':{'own_id','tv_id','snapshot_sha256','snapshot_integrity','snapshot_own_id','snapshot_revision',
+              'snapshot_profile_sha256','snapshot_profile_integrity','migration_issue_fields','migration_issues_sha256'},
+      'target':{'tv_id','state','revision','discovery_identity','content_identity','manual_identity','manual_fields',
+                'discovery_sha256','content_sha256','manual_sha256','source_absent_sha256','source_present',
+                'source_sha256','source_integrity','source_identity_id'}}
+    l11_need(isinstance(value,dict) and set(value)==fields[kind])
+    for key in fields[kind] & {'own_id','tv_id','revision'}:l11_need(l11_int(value[key]))
+    for key in fields[kind] & {'source_identity_id','snapshot_own_id','snapshot_revision'}:
+        l11_need(value[key] is None or l11_int(value[key]))
+    for key in fields[kind]:
+        if key.endswith('_sha256'):
+            nullable=key=='snapshot_profile_sha256' or (key=='source_sha256' and kind=='target' and not value['source_present'])
+            l11_need((nullable and value[key] is None) or l11_hash(value[key]))
+    for key in fields[kind] & {'active','profile_integrity','source_integrity','snapshot_integrity','snapshot_profile_integrity','source_present'}:
+        l11_need((kind=='target' and key=='source_integrity' and not value['source_present'] and value[key] is None)
+                 or type(value[key]) is bool)
+    for key in fields[kind]:
+        if key.endswith('identity') or key=='identity':l11_identity(value[key])
+    if kind=='source':
+        for key in ('namespace','acquired_via'):
+            l11_need(isinstance(value[key],str) and re.fullmatch(r'[a-zA-Z0-9_.:-]{1,64}',value[key]))
+        l11_need(isinstance(value['external_key'],str) and 0<len(value['external_key'].encode())<=128
+                 and not any(ord(c)<32 for c in value['external_key']))
+    if kind=='link':l11_fields(value['migration_issue_fields'])
+    if kind=='target':
+        l11_fields(value['manual_fields'])
+        l11_need(value['state'] in ('pending','ready','retry','excluded','generic'))
+        if not value['source_present']:
+            l11_need(value['source_sha256'] is None and value['source_integrity'] is None and value['source_identity_id'] is None)
+def l11_parent(prior,p):
+    keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+          'booking_calls','lead_calls','production_before','production_after','production_unchanged',
+          'profile_writes','provenance_writes','mapping_writes','legacy_writes','schema_writes','local_official11'}
+    l11_need(isinstance(prior,dict) and set(prior)==keys,'local11_parent_shape')
+    l11_need(type(prior['schema_version']) is int and prior['schema_version']==1
+        and prior['operation_id']==p['parent_operation_id'] and prior['source_sha']==p['parent_source_sha']
+        and prior['mode']=='local-official11-apply-v1' and prior['status']=='complete'
+        and prior['production_unchanged'] is True,'local11_parent_terminal')
+    before=prior['production_before']
+    l11_need(isinstance(before,dict) and set(before)=={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        and before==prior['production_after'] and all(v is None or l11_hash(v) for v in before.values()),'local11_parent_production')
+    d=prior['local_official11']
+    fields={'schema_version','operation_id','source_sha','control_sha','manifest_sha256','actions_sha256',
+          'original_package_sha256','approval_ref','state','requested_profiles','requested_fields','plan_sha256',
+          'profiles_updated','fields_updated','field_counts','preserved_fields','profile_writes','provenance_writes',
+          'database_writes','supplier_calls','provider_http_calls','mapping_writes','legacy_writes','schema_writes',
+          'readback_verified','consumer_readback_verified','consumer_sha256','owner_receipt_sha256',
+          'protected_before','protected_after','error_code'}
+    l11_need(isinstance(d,dict) and set(d)==fields,'local11_parent_material')
+    expected={'operation_id':p['parent_operation_id'],'source_sha':p['parent_source_sha'],'control_sha':p['parent_control_sha'],
+        'state':'committed_verified','manifest_sha256':p['source_contract']['expected_own_manifest_sha256'],
+        'actions_sha256':'45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4',
+        'original_package_sha256':'01090549e278cbd739efa4936472c256724f6c555bd0d44864d6d21d2ce15123',
+        'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208',
+        'plan_sha256':p['plan_sha256'],'owner_receipt_sha256':p['owner_receipt_sha256'],
+        'consumer_sha256':'956f73539da2d6a25cd9c39770eb1e733b5a1c143fe2270856a833696aec7943',
+        'readback_verified':True,'consumer_readback_verified':True,'error_code':None}
+    l11_need(all(type(d[k]) is type(v) and d[k]==v for k,v in expected.items()),'local11_parent_pins')
+    counts={'schema_version':1,'requested_profiles':11,'requested_fields':33,'profiles_updated':11,'fields_updated':33,
+        'preserved_fields':0,'profile_writes':11,'provenance_writes':11,'database_writes':22,
+        'supplier_calls':0,'provider_http_calls':0,'mapping_writes':0,'legacy_writes':0,'schema_writes':0}
+    l11_need(all(type(d[k]) is int and d[k]==v for k,v in counts.items()),'local11_parent_counts')
+    l11_need(isinstance(d['field_counts'],dict) and set(d['field_counts'])=={'description','primaryImage','images'}
+        and all(type(v) is int and v==11 for v in d['field_counts'].values()) and l11_hash(d['consumer_sha256']),
+        'local11_parent_readback')
+    protected=d['protected_before']
+    l11_need(isinstance(protected,dict) and set(protected)=={'config.php','data/db-v1.php'}
+        and protected==d['protected_after'] and all(l11_hash(v) for v in protected.values())
+        and protected['data/db-v1.php']==LOCAL11_HASHES['v2/data/db-v1.php'],'local11_parent_protected')
+    outer={'supplier_calls':0,'booking_calls':0,'lead_calls':0,'mapping_writes':0,'legacy_writes':0,'schema_writes':0,
+           'profile_writes':11,'provenance_writes':11,'database_writes':22}
+    l11_need(all(type(prior[k]) is int and prior[k]==v for k,v in outer.items()),'local11_parent_outer_counts')
+def l11_row_facts(row,pair):
+    own,tv,name,country,region,country_id,region_id=pair
+    l11_need(row['own_id']==own and type(row['own_id']) is int and row['tv_id']==tv and type(row['tv_id']) is int)
+    reasons=[];a=row['own'];b=row['bridge'];t=row['target'];linked=row['linked_target']
+    for value,kind,key,identity in ((a,'own','own_id',own),(b,'link','own_id',own),(t,'target','tv_id',tv)):
+        if value is not None:l11_observation(value,kind);l11_need(value[key]==identity)
+    if linked is not None:
+        l11_observation(linked,'target');l11_need(b is not None and b['tv_id']!=tv and linked['tv_id']==b['tv_id'])
+    for ids in (row['expected_legacy_owners'],row['target_link_owners']):
+        l11_need(isinstance(ids,list) and len(ids)<=128 and all(l11_int(v) for v in ids) and ids==sorted(set(ids)))
+    sources=row['own_sources']
+    l11_need(isinstance(sources,list) and len(sources)<=256)
+    for s in sources:l11_observation(s,'source');l11_need(s['own_id']==own)
+    l11_need(len({(s['namespace'],s['external_key']) for s in sources})==len(sources))
+    legacy=[s for s in sources if s['namespace']=='legacy_catalog']
+    if a is None:reasons.append('own_missing')
+    else:
+        if not a['active']:reasons.append('own_inactive')
+        if not a['profile_integrity']:reasons.append('own_profile_integrity_failed')
+        if [a['identity'][k] for k in ('name','country','region')]!=[name,country,region]:reasons.append('own_identity_drift')
+        if a['revision']<2:reasons.append('official11_revision_not_observed')
+    if any(not s['source_integrity'] for s in sources):reasons.append('own_source_integrity_failed')
+    if not legacy:reasons.append('legacy_source_absent')
+    elif len(legacy)!=1:reasons.append('legacy_source_ambiguous')
+    if any(s['external_key']!=str(tv) for s in legacy):reasons.append('legacy_source_target_differs')
+    if any(s['source_identity_id']!=tv for s in legacy):reasons.append('legacy_source_identity_unconfirmed')
+    if any(s['acquired_via']!='saved_catalog' for s in legacy):reasons.append('legacy_source_origin_unconfirmed')
+    l11_need((own in row['expected_legacy_owners'])==any(s['external_key']==str(tv) for s in legacy))
+    if any(v!=own for v in row['expected_legacy_owners']):reasons.append('legacy_target_owned_by_other_own')
+    if any(v!=own for v in row['target_link_owners']):reasons.append('target_linked_to_other_own')
+    if t is None:reasons.append('expected_target_absent')
+    else:
+        if t['state'] in ('excluded','generic'):reasons.append('expected_target_'+t['state'])
+        if t['manual_fields']:reasons.append('target_manual_fields_present')
+        if set(t['manual_fields'])&{'name','country','region','country.name','country.id','region.name','region.id'}:
+            reasons.append('target_manual_identity_present')
+        if not t['source_present']:reasons.append('target_source_absent')
+        elif not t['source_integrity']:reasons.append('target_source_integrity_failed')
+        if t['source_present'] and t['source_identity_id']!=tv:reasons.append('target_source_identity_unconfirmed')
+        identities=[t[k] for k in ('discovery_identity','content_identity','manual_identity')]
+        facts={'name':name,'country_id':country_id,'region_id':region_id}
+        if any(i[k] is not None and i[k]!=value for i in identities for k,value in facts.items()):
+            reasons.append('target_identity_differs_from_native_proof')
+        if any(not any(i[k]==value for i in identities) for k,value in facts.items()):
+            reasons.append('target_identity_incomplete')
+    status='absent' if b is None else 'expected_target' if b['tv_id']==tv else 'different_target'
+    relation='no_bridge'
+    if b is None:reasons.append('bridge_absent');l11_need(linked is None and own not in row['target_link_owners'])
+    else:
+        l11_need((own in row['target_link_owners'])==(b['tv_id']==tv))
+        if b['tv_id']!=tv:reasons.append('bridge_target_differs')
+        if b['tv_id']==tv:l11_need(linked is None)
+        if not b['snapshot_integrity'] or not b['snapshot_profile_integrity']:
+            reasons.append('bridge_snapshot_integrity_failed');relation='invalid'
+        elif b['snapshot_own_id']!=own:reasons.append('bridge_snapshot_own_differs');relation='identity_mismatch'
+        elif a is None:relation='own_missing'
+        elif b['snapshot_revision']==a['revision'] and b['snapshot_profile_sha256']==a['profile_sha256']:
+            relation='same_profile'
+        else:relation='historical_profile'
+    actual=t if b is not None and b['tv_id']==tv else linked
+    visibility='missing_link' if b is None else 'target_missing' if actual is None else 'target_excluded' if actual['state']=='excluded' else 'visible'
+    return {'reasons':sorted(reasons),'bridge_status':status,'snapshot_profile_relation':relation,'reverse_visibility':visibility}
+def l11_project(raw,p):
+    keys={'schema_version','state','captured_at_utc','database_snapshot','own_rows','source_rows','link_rows','target_rows',
+          'supplier_calls','provider_http_calls','database_writes','mapping_writes'}
+    l11_need(isinstance(raw,dict) and set(raw)==keys,'local11_snapshot_shape')
+    l11_need(type(raw['schema_version']) is int and raw['schema_version']==1
+        and raw['state']=='local11_identity_snapshot' and raw['database_snapshot']=='repeatable-read-read-only')
+    l11_time(raw['captured_at_utc'])
+    for k in ('supplier_calls','provider_http_calls','database_writes','mapping_writes'):
+        l11_need(type(raw[k]) is int and raw[k]==0,'local11_snapshot_writes')
+    own_ids={r[0] for r in p['pairs']};tv_ids={r[1] for r in p['pairs']}
+    for name,kind,limit in (('own_rows','own',11),('source_rows','source',256),('link_rows','link',128),('target_rows','target',22)):
+        l11_need(isinstance(raw[name],list) and len(raw[name])<=limit)
+        for value in raw[name]:l11_observation(value,kind)
+    own={r['own_id']:r for r in raw['own_rows']};links={r['own_id']:r for r in raw['link_rows']}
+    targets={r['tv_id']:r for r in raw['target_rows']};sources=raw['source_rows']
+    l11_need(len(own)==len(raw['own_rows']) and set(own)<=own_ids)
+    l11_need(len(links)==len(raw['link_rows']) and all(r['own_id'] in own_ids or r['tv_id'] in tv_ids for r in links.values()))
+    l11_need(len(targets)==len(raw['target_rows']) and set(targets)<=tv_ids|{r['tv_id'] for r in links.values() if r['own_id'] in own_ids})
+    l11_need(len({(r['namespace'],r['external_key']) for r in sources})==len(sources))
+    l11_need(all(r['own_id'] in own_ids or (r['namespace']=='legacy_catalog' and r['external_key'] in {str(v) for v in tv_ids}) for r in sources))
+    rows=[]
+    for pair in p['pairs']:
+        a,tv=pair[:2];b=links.get(a)
+        row={'own_id':a,'tv_id':tv,'own':own.get(a),'bridge':b,'target':targets.get(tv),
+            'linked_target':targets.get(b['tv_id']) if b is not None and b['tv_id']!=tv else None,
+            'own_sources':sorted([r for r in sources if r['own_id']==a],key=lambda r:(r['namespace'],r['external_key'])),
+            'expected_legacy_owners':sorted({r['own_id'] for r in sources if r['namespace']=='legacy_catalog' and r['external_key']==str(tv)}),
+            'target_link_owners':sorted({r['own_id'] for r in links.values() if r['tv_id']==tv})}
+        row.update(l11_row_facts(row,pair));rows.append(row)
+    return {'state':'local11_identity_inspected_read_only','captured_at_utc':raw['captured_at_utc'],
+        'database_snapshot':raw['database_snapshot'],'rows':rows,'source_contract':p['source_contract'],
+        'scope_sha256':hashlib.sha256(l11_json(p['pairs'])).hexdigest(),
+        'supplier_calls':0,'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+        'safe_to_write_now':False,'publication_admission':False,'accepted_native_bindings':0}
+def l11_validate_data(data,p):
+    keys={'state','captured_at_utc','database_snapshot','rows','source_contract','scope_sha256',
+        'supplier_calls','provider_http_calls','database_writes','mapping_writes','safe_to_write_now',
+        'publication_admission','accepted_native_bindings','operation_id','source_sha','control_source_sha',
+        'cohort','target_operation_id','parent_receipt_sha256','parent_semantic_pins',
+        'current_raw_sha256','no_replay','new_database_reads'}
+    l11_need(isinstance(data,dict) and set(data)==keys)
+    l11_need(data['state']=='local11_identity_inspected_read_only' and data['database_snapshot']=='repeatable-read-read-only')
+    l11_time(data['captured_at_utc'])
+    l11_need(data['source_contract']==p['source_contract'] and data['scope_sha256']==hashlib.sha256(l11_json(p['pairs'])).hexdigest())
+    l11_need(data['parent_semantic_pins']=={k:p[k] for k in ('parent_operation_id','parent_source_sha','parent_control_sha','plan_sha256','owner_receipt_sha256')})
+    for k in ('supplier_calls','provider_http_calls','database_writes','mapping_writes','accepted_native_bindings'):
+        l11_need(type(data[k]) is int and data[k]==0)
+    l11_need(data['safe_to_write_now'] is False and data['publication_admission'] is False and data['no_replay'] is True
+        and type(data['new_database_reads']) is int and data['new_database_reads']==1
+        and l11_hash(data['current_raw_sha256']) and l11_hash(data['parent_receipt_sha256']))
+    l11_need(isinstance(data['rows'],list) and len(data['rows'])==11)
+    keys={'own_id','tv_id','own','bridge','target','linked_target','own_sources','expected_legacy_owners','target_link_owners',
+          'reasons','bridge_status','snapshot_profile_relation','reverse_visibility'}
+    for row,pair in zip(data['rows'],p['pairs']):
+        l11_need(isinstance(row,dict) and set(row)==keys)
+        l11_need(all(row[k]==v for k,v in l11_row_facts(row,pair).items()),'local11_derived_fact_drift')
+'''
+exec(LOCAL11_VALIDATOR)
+
+
+def bundle_local11_source(source_root):
+    root=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in LOCAL11_HASHES.items():
+            path=(control if relative==LOCAL11_RUNNER else root)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path and path.stat().st_nlink==1,'local11_source_path')
+            raw=path.read_bytes()
+            need(0<len(raw)<=1048576 and hashlib.sha256(raw).hexdigest()==digest,'local11_source_drift')
+            info=tarfile.TarInfo(relative);info.size=len(raw);info.mode=0o600;info.mtime=0
+            archive.addfile(info,io.BytesIO(raw))
+        raw=l11_json({'schema_version':1,'files':LOCAL11_HASHES})
+        info=tarfile.TarInfo('manifest.json');info.size=len(raw);info.mode=0o600;info.mtime=0
+        archive.addfile(info,io.BytesIO(raw))
+    return out.getvalue(),dict(LOCAL11_HASHES)
+
+
+LOCAL11_HANDLER = r'''
+def current_local11_identity(stage):
+    p=LOCAL11_IDENTITY
+    if (mode!='match-retained-current' or operation!=p['operation_id'] or payload.get('cohort')!=p['cohort']
+        or payload.get('target_operation_id')!=p['parent_operation_id']):fail('local11_scope')
+    target=private/p['parent_operation_id'];parent=target/'result.json';reservation=target/'reservation.json'
+    for path in (parent,reservation,project/'config.php'):
+        if not safe_file(path,1048576) or path.resolve()!=path:fail('local11_private_path')
+    parent_bytes=parent.read_bytes();parent_hash=hashlib.sha256(parent_bytes).hexdigest()
+    prior=json.loads(parent_bytes,object_pairs_hook=l11_unique);l11_parent(prior,p)
+    reserved=json.loads(reservation.read_bytes(),object_pairs_hook=l11_unique)
+    if (not isinstance(reserved,dict) or set(reserved)!={'operation_id','source_sha','mode','reserved_at'}
+        or reserved.get('operation_id')!=p['parent_operation_id'] or reserved.get('source_sha')!=p['parent_source_sha']
+        or reserved.get('mode')!='local-official11-apply-v1' or not l11_int(reserved.get('reserved_at'))):
+        fail('local11_parent_reservation')
+    protected={path:hashlib.sha256(path.read_bytes()).hexdigest() for path in (parent,reservation,project/'config.php')}
+    scope=l11_json({'pairs':[r[:2] for r in p['pairs']]})
+    fd=os.open(op/'local11-scope.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(scope);handle.flush();os.fsync(handle.fileno())
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+        '-d','memory_limit=256M','-d','disable_functions='+disabled,str(stage/LOCAL11_RUNNER)],
+        cwd=project,env=env,capture_output=True,text=True,timeout=120)
+    raw=run.stdout.encode()
+    if len(raw)>1048576:fail('local11_output_bound')
+    fd=os.open(op/'local11-raw.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    if run.returncode or run.stderr.strip():fail('local11_child_failed_no_replay')
+    data=l11_project(json.loads(raw,object_pairs_hook=l11_unique),p)
+    if any(not safe_file(path,1048576) or path.resolve()!=path or hashlib.sha256(path.read_bytes()).hexdigest()!=digest
+           for path,digest in protected.items()):fail('local11_protected_drift')
+    data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
+        cohort=p['cohort'],target_operation_id=p['parent_operation_id'],parent_receipt_sha256=parent_hash,
+        parent_semantic_pins={k:p[k] for k in ('parent_operation_id','parent_source_sha','parent_control_sha','plan_sha256','owner_receipt_sha256')},
+        current_raw_sha256=hashlib.sha256(raw).hexdigest(),no_replay=True,new_database_reads=1)
+    l11_validate_data(data,p)
+    evidence=l11_json(data)
+    fd=os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(evidence);handle.flush();os.fsync(handle.fileno())
+    return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+'''
+
+
+def completed_local11_identity(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+              'booking_calls','lead_calls','production_before','production_after','production_unchanged',
+              'mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        before=result['production_before']
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result['production_after'] or any(v is not None and not l11_hash(v) for v in before.values())):return False
+        p=LOCAL11_IDENTITY;data=result['match_retained']['data'];l11_validate_data(data,p)
+        for k,v in {'mode':'match-retained-current','operation_id':p['operation_id'],'cohort':p['cohort'],
+                    'target_operation_id':p['parent_operation_id']}.items():
+            if command.get(k)!=v:return False
+        if not re.fullmatch(r'[a-f0-9]{40}',str(command.get('source_sha',''))) or not re.fullmatch(r'[a-f0-9]{40}',str(control)):return False
+        if (result.get('status')!='complete' or result.get('production_unchanged') is not True
+            or data['control_source_sha']!=control or data['operation_id']!=command['operation_id']
+            or data['source_sha']!=command['source_sha'] or data['cohort']!=command['cohort']
+            or data['target_operation_id']!=command['target_operation_id']):return False
+        if any(result.get(k)!=command[k] for k in ('mode','operation_id','source_sha')):return False
+        if any(type(result.get(k)) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        if set(result['match_retained'])!={'evidence_sha256','data'}:return False
+        return result['match_retained']['evidence_sha256']==hashlib.sha256(l11_json(data)).hexdigest()
+    except (ValueError,KeyError,TypeError,AttributeError,OverflowError):
+        return False
 

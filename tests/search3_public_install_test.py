@@ -5618,7 +5618,7 @@ class HomeTransaction(unittest.TestCase):
         return rows
 
     def test_home_root_and_navigation_roundtrip_preserves_full_parent_chain(self):
-        self.assertEqual(m.HOME_ORDER[-1],'index.php');self.assertEqual(len(m.HOME_ORDER),12)
+        self.assertEqual(m.HOME_ORDER[-1],'index.php');self.assertEqual(len(m.HOME_ORDER),16)
         self.assertEqual(set(m.HOME_ORDER)&set(m.REFACTOR_ORDER),{m.UPDATE_PATH})
         for tv in (False,True):
             with self.subTest(tv=tv),self.installed(tv) as f:
@@ -5990,12 +5990,31 @@ class HomePackage(unittest.TestCase):
              patch.object(m,'HOME_ENTRY',entry_pin),patch.object(m,'api',side_effect=api):
             return m.home_package(raw,f.home_parent)
 
-    def test_home_package_uses_exact_twelve_payloads_and_separate_main_root_entry(self):
+    def test_home_package_uses_exact_sixteen_payloads_and_separate_main_root_entry(self):
         with HomeTransaction().installed() as f:
             policy,files=self.call(f)
             self.assertEqual(files,f.home_files);self.assertEqual(set(policy['targets']),set(m.HOME_ORDER))
             self.assertNotIn('images/logo.svg',files);self.assertNotIn('home-entry-v1.php',files)
             self.assertNotIn(m.ENTRY,files);self.assertNotIn(m.REFACTOR_ORDER[0],files)
+
+    def test_home_form_dependencies_require_the_accepted_parent_and_exact_source_bytes(self):
+        paths=('visual-search/public-config-v1.js','visual-search/public-bootstrap-v1.js',
+               'search3-canonical-profiles-v1.js','prototype-search/data.js')
+        with HomeTransaction().installed() as f:
+            for path in paths:
+                with self.subTest(path=path,mutation='predecessor'):
+                    changed=copy.deepcopy(m.HOME_TARGETS)
+                    changed[path]['before']['sha256']='0'*64
+                    with patch.object(m,'HOME_TARGETS',changed),self.assertRaisesRegex(RuntimeError,'home_predecessor'):
+                        self.call(f)
+                with self.subTest(path=path,mutation='source'):
+                    def source_changed(value,data):
+                        next(r for r in value['files']['added'] if r['path']==path)['source']['blob_sha']='f'*40
+                    with self.assertRaisesRegex(RuntimeError,'home_payload_bytes'):
+                        self.call(f,source_changed)
+                with self.subTest(path=path,mutation='payload'):
+                    with self.assertRaisesRegex(RuntimeError,'overlay_bytes'):
+                        self.call(f,lambda value,data:data.update({'overlay/'+path:b'foreign form dependency'}))
 
     def test_home_package_refuses_hidden_overlay_changes_and_unlisted_source_rows(self):
         with HomeTransaction().installed() as f:

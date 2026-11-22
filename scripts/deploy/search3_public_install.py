@@ -5434,18 +5434,18 @@ HOME_ROLLBACK_PREFIX = '/rollback-site-home-navigation'
 HOME_ROLLBACK_OPERATION = 'site-home-navigation-rollback-20261121-v1'
 # Draft admission is deliberately closed until the approved SOURCE and its exact
 # modern LIVE artifact have frozen. No caller supplies paths, sources or hashes.
-HOME_SOURCE_PR = 5149
-HOME_SOURCE = '65912ec05e02a5afa3fcc02cc8419f0efbc874ab'
-HOME_TREE = '751d1df49cfd72abf1c161e1172ce2b3090e9d51'
-HOME_SOURCE_MERGE = '67ed1eede9d1a916b9f2946fbab23ba5c0e519d6'
-HOME_SOURCE_MERGE_TREE = '751d1df49cfd72abf1c161e1172ce2b3090e9d51'
-HOME_RELEASE_BASE = '8b804957501d5b4715bd6f400fb794f02792d3de'
+HOME_SOURCE_PR = 5157
+HOME_SOURCE = 'be5d04ea6580a51e046eeec5d0a2da3b846725c2'
+HOME_TREE = '2088eb9a22c1a7c16e6626ba6c71722cea6fe0d9'
+HOME_SOURCE_MERGE = 'ee3e7c9bfc70e46db59720ba06e58946c7349a9b'
+HOME_SOURCE_MERGE_TREE = '28324059d18ccc057227c504e38a13ec3871ae93'
+HOME_RELEASE_BASE = '44515801b01f536e571fc3444276e1dd4bbdcd0b'
 HOME_MAIN_BASE = 'f6b7513445f599f332c5d9d4021b2537e2d3d609'
-HOME_ARTIFACT = 14718669462
-HOME_ARTIFACT_SHA = '913300913279450615ef0d62dbcc15b4ad7321d847d643f60678b9b267af064c'
-HOME_MANIFEST_SHA = '41f2d155abb4ee5e281251d7c88fc7f678de609b491283e0f2276f65e3e037ea'
-HOME_BUILD_RUN = 44934589236
-HOME_SOURCE_BRANCH = 'feat/site234-home-common-navigation-20261121'
+HOME_ARTIFACT = 14752234533
+HOME_ARTIFACT_SHA = '3d8afde87847b83da4d3a01e0b6a9edc4474df3a5ee9a723aef02e06095e11c7'
+HOME_MANIFEST_SHA = 'bcb3d8ec1b181c29e86b6964b410e8eb0ab74afabf9e9492482f9e344e71bb46'
+HOME_BUILD_RUN = 45019050793
+HOME_SOURCE_BRANCH = 'feat/site234-home-search3-form-20261122'
 HOME_CHECKS = ('browser-matrix','build-preview-artifact','content-ux','focused-presentation','guard',
                'integration-contracts','lead-source','navigation-contract','preview-boundary','visual-migration')
 HOME_APPROVAL_COMMENT = 7065453587
@@ -5460,7 +5460,15 @@ HOME_PARENT = {
 }
 HOME_SHARED_ORDER = ('site-path-v1.php','home-hero-v1.jpg','home-v1.css','site-header-v2.css',
                      'home-v1.php','site-header-v2.php')
-HOME_SEARCH_ORDER = ('visual-search/styles.css', 'visual-search/mobile-controls-v1.css', 'visual-search/app.js', 'visual-search/index.html', 'visual-search/entry-v1.php')
+HOME_SEARCH_ORDER = ('visual-search/styles.css',
+ 'visual-search/mobile-controls-v1.css',
+ 'visual-search/app.js',
+ 'visual-search/index.html',
+ 'visual-search/entry-v1.php',
+ 'visual-search/public-config-v1.js',
+ 'visual-search/public-bootstrap-v1.js',
+ 'search3-canonical-profiles-v1.js',
+ 'prototype-search/data.js')
 HOME_ORDER = HOME_SHARED_ORDER + HOME_SEARCH_ORDER + ('index.php',)
 HOME_ENTRY = {'source_ref':HOME_MAIN_BASE,'source_path':'v2/home-entry-v1.php',
               'blob':'2e066c7fb83832d7115e698d2079e5661f45e413',
@@ -5489,18 +5497,18 @@ HOME_TARGETS = {'site-path-v1.php': {'before': {'state': 'absent'},
                                  'size': 109085,
                                  'sha256': '1968129469a1f348df4a7246f4d45cf9d4404e8e30f27806fda95b69a80ed82e'}},
  'home-v1.css': {'before': {'state': 'present',
-                            'mode': '0644',
-                            'size': 9914,
-                            'sha256': '844e106d1ba42f92bf5bce807cee88e53247e8acd807c76cc67fa11293beb08e'},
-                 'after': {'state': 'present',
-                           'size': 7579,
-                           'mode': '0644',
-                           'sha256': '22f8f434baf70a4c82ce43cd81c49e7de08f9020bc966c29bfab4ca8ebdb4de2'},
-                 'source_path': 'v2/home-v1.css',
-                 'source': {'mode': '100644',
-                            'blob_sha': '23c71e4989a3da0aa73a4773de499e914a8209ca',
-                            'size': 7579,
-                            'sha256': '22f8f434baf70a4c82ce43cd81c49e7de08f9020bc966c29bfab4ca8ebdb4de2'}},
+            'mode': '0644',
+            'size': 9914,
+            'sha256': '844e106d1ba42f92bf5bce807cee88e53247e8acd807c76cc67fa11293beb08e'},
+ 'after': {'state': 'present',
+           'size': 9529,
+           'mode': '0644',
+           'sha256': '76ad044d1ec5aa0e3121314986bbab504c1de642220a77ec2b2f6484a3e8bbb5'},
+ 'source_path': 'v2/home-v1.css',
+ 'source': {'mode': '100644',
+            'blob_sha': 'ba26b284aa9c09c30ee41437283f44615fcfbbf5',
+            'size': 9529,
+            'sha256': '76ad044d1ec5aa0e3121314986bbab504c1de642220a77ec2b2f6484a3e8bbb5'}},
  'site-header-v2.css': {'before': {'state': 'present',
                                    'mode': '0644',
                                    'size': 5198,
@@ -5515,18 +5523,18 @@ HOME_TARGETS = {'site-path-v1.php': {'before': {'state': 'absent'},
                                    'size': 4802,
                                    'sha256': 'f0009423c54e0077a4aa5209c34482761175bbd93c96d9fd1418e3c9bb1d683e'}},
  'home-v1.php': {'before': {'state': 'present',
-                            'mode': '0644',
-                            'size': 10663,
-                            'sha256': '081389eb4980e41a5801943a752ccbc16fb1326682a199c0e29f31525d4f270d'},
-                 'after': {'state': 'present',
-                           'size': 7850,
-                           'mode': '0644',
-                           'sha256': '924950c7ce14bd84578c75e60dc6a8ff8ff7fdcb12ba7961fe7be1dd95f1a0db'},
-                 'source_path': 'v2/home-v1.php',
-                 'source': {'mode': '100644',
-                            'blob_sha': '0cb46030a66f8f3794a219dbb200a36d8ed64569',
-                            'size': 7850,
-                            'sha256': '924950c7ce14bd84578c75e60dc6a8ff8ff7fdcb12ba7961fe7be1dd95f1a0db'}},
+            'mode': '0644',
+            'size': 10663,
+            'sha256': '081389eb4980e41a5801943a752ccbc16fb1326682a199c0e29f31525d4f270d'},
+ 'after': {'state': 'present',
+           'size': 8695,
+           'mode': '0644',
+           'sha256': '86c634204db376421188d33cf26c7cca7283dacc9c0584cb2e1f25118178dad2'},
+ 'source_path': 'v2/home-v1.php',
+ 'source': {'mode': '100644',
+            'blob_sha': '060e273199b858d96d9913a014d4984569c6df79',
+            'size': 8695,
+            'sha256': '86c634204db376421188d33cf26c7cca7283dacc9c0584cb2e1f25118178dad2'}},
  'site-header-v2.php': {'before': {'state': 'present',
                                    'mode': '0644',
                                    'size': 3472,
@@ -5567,18 +5575,18 @@ HOME_TARGETS = {'site-path-v1.php': {'before': {'state': 'absent'},
                                                      'size': 18888,
                                                      'sha256': 'de1dad08ac1f22ede59e84c4df7b47bf7b3e95a86e90f5f8c95b190859e66781'}},
  'visual-search/app.js': {'before': {'state': 'present',
-                                     'mode': '0644',
-                                     'size': 310844,
-                                     'sha256': 'efb3870d23c3e0d3c3fbb53fff4967a6ee3d901bebdf5502b7d78c6e2d2bbe92'},
-                          'after': {'state': 'present',
-                                    'size': 310908,
-                                    'mode': '0644',
-                                    'sha256': '008c4812e74ae771b0cda229eb682022d05dd718b2e5155c889ddda09ddced50'},
-                          'source_path': 'v2/visual-search/app.js',
-                          'source': {'mode': '100644',
-                                     'blob_sha': '8b1e7a0a795e506bba6f8fa7066db4daa0801d3c',
-                                     'size': 406890,
-                                     'sha256': '57854ebfd2eb597931f86d9a4f54686781158796c8474fc6a3fd0bd9553c4157'}},
+            'mode': '0644',
+            'size': 310844,
+            'sha256': 'efb3870d23c3e0d3c3fbb53fff4967a6ee3d901bebdf5502b7d78c6e2d2bbe92'},
+ 'after': {'state': 'present',
+           'size': 312104,
+           'mode': '0644',
+           'sha256': 'e1c5735e41affcac3cf2853bacb110e4a0ce7924118801bc1d542ef20d623fb7'},
+ 'source_path': 'v2/visual-search/app.js',
+ 'source': {'mode': '100644',
+            'blob_sha': 'cd74f089663bef114c5cbc396b793b3a7813c830',
+            'size': 408874,
+            'sha256': 'bbce130c7be0c982fdcc092ed3af28050ec391877bff990bb6168133e0ff0efc'}},
  'visual-search/index.html': {'before': {'mode': '0644',
                                          'sha256': '8ff5bf5fc2d4340b2e7e98c7662dc581cb33fafe31cb152f3cd2e36fbcfe1e5f',
                                          'size': 15715,
@@ -5593,18 +5601,70 @@ HOME_TARGETS = {'site-path-v1.php': {'before': {'state': 'absent'},
                                          'size': 15293,
                                          'sha256': '96091fb0fed9e6c097fb4f91855e840249b91461e7a4eb791b7efed6111cc996'}},
  'visual-search/entry-v1.php': {'before': {'mode': '0644',
-                                           'sha256': '48898849b5ebdb9c2961087e7ad6c4dbd9ec0546675eaa9240870f4d59b03ac9',
-                                           'size': 10376,
-                                           'state': 'present'},
-                                'after': {'state': 'present',
-                                          'size': 10948,
-                                          'mode': '0644',
-                                          'sha256': '4f2d166e250d83af42c2b1a76ea7aed19d76787890e0a9b912d00dfeb8e7b063'},
-                                'source_path': 'v2/visual-search/entry-v1.php',
-                                'source': {'mode': '100644',
-                                           'blob_sha': 'a29ae79d9dc66dd14ae7603134376f5e822eb989',
-                                           'size': 10948,
-                                           'sha256': '4f2d166e250d83af42c2b1a76ea7aed19d76787890e0a9b912d00dfeb8e7b063'}}}
+            'sha256': '48898849b5ebdb9c2961087e7ad6c4dbd9ec0546675eaa9240870f4d59b03ac9',
+            'size': 10376,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 13704,
+           'mode': '0644',
+           'sha256': 'a5f685876b0b7b66dc89732984f4bcebf0a13d1a1a2e6fbb34a024a0922e0fa8'},
+ 'source_path': 'v2/visual-search/entry-v1.php',
+ 'source': {'mode': '100644',
+            'blob_sha': '002eb613189ae799cdf202171f283c50be4c8ff9',
+            'size': 13704,
+            'sha256': 'a5f685876b0b7b66dc89732984f4bcebf0a13d1a1a2e6fbb34a024a0922e0fa8'}},
+ 'visual-search/public-config-v1.js': {'before': {'mode': '0644',
+            'sha256': '5753a21bbee45bfd925a7e4b5815b43f143f5c4b37ae02c7cef416e3808fdc3e',
+            'size': 1678,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 1848,
+           'mode': '0644',
+           'sha256': '28f2762809add82b16f79f564634d686c63a6e10dd9970b82c53e6732a11f922'},
+ 'source_path': 'v2/visual-search/public-config-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '24ac0fe0b7e0bd371d9b6e60f276b3d8c4e41609',
+            'size': 2423,
+            'sha256': '3495f1ed45d1472c178ef06aa575ccc2484c45d93658b463daf2d641441496f2'}},
+ 'visual-search/public-bootstrap-v1.js': {'before': {'mode': '0644',
+            'sha256': 'eb9c9c0b1545a5ac6d7ecd931c762d21407574370cadb60a95b35800ba3429b4',
+            'size': 2277,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 2399,
+           'mode': '0644',
+           'sha256': '9772352181baa938da93d5462859bddba05dd08983a9a4a39f7e7222b02c478d'},
+ 'source_path': 'v2/visual-search/public-bootstrap-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': 'af4b0ee0409037428608cec2de0b37bb7e1745e9',
+            'size': 3391,
+            'sha256': 'fec0de624189de029e1c3c5a1311f8ef99734ff070e7d5167d1117512a46e922'}},
+ 'search3-canonical-profiles-v1.js': {'before': {'mode': '0644',
+            'sha256': '73006ce55ff61d4ea01338d92e80518d545eb741183b3ba9d29bcf355ce7e3ef',
+            'size': 11572,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 11773,
+           'mode': '0644',
+           'sha256': '3e1cc4b9cd985bad0bec86e7ed1c85ebbd57f511870ead69161dc1fcf30dc915'},
+ 'source_path': 'v2/search3-canonical-profiles-v1.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '8e8fe70612e9210d7f42ea5af1b2165aaf3cd0ca',
+            'size': 17256,
+            'sha256': '00ea5b9fe8775fa1df24a2d7022dd66cd5851e4d6813251849aa88fbeec601ed'}},
+ 'prototype-search/data.js': {'before': {'mode': '0644',
+            'sha256': '5752c94377e5f506788bcda293fcfa072434ebc915c5d5e3e28a29d5a69f0e80',
+            'size': 134455,
+            'state': 'present'},
+ 'after': {'state': 'present',
+           'size': 134732,
+           'mode': '0644',
+           'sha256': 'd52436403c6a6adaf5bf05307acd151bb56081b46d10c97ca5269c0dc54149f7'},
+ 'source_path': 'v2/prototype-search/data.js',
+ 'source': {'mode': '100644',
+            'blob_sha': '0666e444119cd8d3ba55890ab5e2e4991021e647',
+            'size': 195720,
+            'sha256': 'f3a70925b74e037ff237785e7d1fa3e87422818867d92891d4016c80309d637c'}}}
 HOME_TARGETS['index.php'] = HOME_ENTRY
 
 HOME_DEPENDENCIES = {'images/logo.svg':{'state':'present','mode':'0644','size':11649,
@@ -5794,7 +5854,7 @@ try:
  require(hasattr(os,'O_PATH') and hasattr(os,'O_NOFOLLOW') and hasattr(os,'O_DIRECTORY')
          and hasattr(ctypes.CDLL(None),'renameat2'),'unsupported_platform')
  order=HOME_POLICY['order'];targets=HOME_POLICY['targets'];home=os.environ.get('HOME','')
- require(len(order)==len(set(order))==12 and set(PAYLOAD)==set(targets)==set(order)
+ require(len(order)==len(set(order))==16 and set(PAYLOAD)==set(targets)==set(order)
          and not set(order)&(set(HANDOFF_POLICY['order'])|set(SITE_POLICY['order'])),'home_scope')
  payload={p:base64.b64decode(PAYLOAD[p],validate=True) for p in order}
  require(all(targets[p]['after']=={'state':'present','sha256':digest(raw),'size':len(raw),'mode':'0644'}
@@ -6259,7 +6319,7 @@ def home_pending_pins():
 def home_package(raw,parent_value):
     need(sha(raw)==HOME_ARTIFACT_SHA,'home_artifact')
     expected=home_overlay_predecessor(parent_value)
-    need(len(HOME_ORDER)==12 and set(HOME_ORDER)==set(HOME_TARGETS)
+    need(len(HOME_ORDER)==16 and set(HOME_ORDER)==set(HOME_TARGETS)
          and set(HOME_SEARCH_ORDER)<set(expected) and set(HOME_SHARED_ORDER).isdisjoint(expected)
          and all(HOME_TARGETS[p]['before']==expected[p] for p in HOME_SEARCH_ORDER),'home_predecessor')
     with zip_files(raw) as archive:

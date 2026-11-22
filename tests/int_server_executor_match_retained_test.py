@@ -2614,6 +2614,332 @@ class OwnerTop500CurrentTest(unittest.TestCase):
                 changed=copy.deepcopy(command);changed['cohort']='common4-retained'
                 self.assertFalse(m.completed_result(changed,result,CONTROL))
 
+
+
+class Local11IdentityTest(unittest.TestCase):
+    """New evidence for exact own→TV pairs; historical profiles remain frozen."""
+    def fields(self):
+        p=m.LOCAL11_IDENTITY
+        return [SHA,'match-retained-current',p['operation_id'],p['cohort'],p['parent_operation_id']]
+
+    def command(self):
+        c=core();m.register_parser(c)
+        return c,c.parse_command(c.PREFIX+' '.join(self.fields()))
+
+    def identity(self,pair,empty=False):
+        return dict(zip(('name','country','region','country_id','region_id'),
+                        [None]*5 if empty else pair[2:]))
+
+    def snapshot(self):
+        owns=[];sources=[];targets=[]
+        for index,pair in enumerate(m.LOCAL11_IDENTITY['pairs']):
+            own,tv=pair[:2];identity=self.identity(pair)
+            owns.append({'own_id':own,'revision':2,'active':True,'identity':identity,
+                         'profile_sha256':'1'*64,'profile_integrity':True})
+            sources.append({'own_id':own,'namespace':'legacy_catalog','external_key':str(tv),
+                'acquired_via':'saved_catalog','source_sha256':'2'*64,'source_integrity':True,
+                'source_identity_id':tv,'identity':identity})
+            if tv in (2526,7458):continue
+            targets.append({'tv_id':tv,'state':'pending','revision':1,'discovery_identity':identity,
+                'content_identity':self.identity(pair,True),'manual_identity':self.identity(pair,True),
+                'manual_fields':[],'discovery_sha256':'3'*64,'content_sha256':'4'*64,'manual_sha256':'4'*64,
+                'source_absent_sha256':'5'*64,'source_present':False,'source_sha256':None,
+                'source_integrity':None,'source_identity_id':None})
+        return {'schema_version':1,'state':'local11_identity_snapshot','captured_at_utc':'2026-11-22T10:00:00+00:00',
+                'database_snapshot':'repeatable-read-read-only','own_rows':owns,'source_rows':sources,'link_rows':[],
+                'target_rows':targets,'supplier_calls':0,'provider_http_calls':0,'database_writes':0,'mapping_writes':0}
+
+    def link(self,own=5371,tv=12120):
+        return {'own_id':own,'tv_id':tv,'snapshot_sha256':'6'*64,'snapshot_integrity':True,
+            'snapshot_own_id':own,'snapshot_revision':1,'snapshot_profile_sha256':'7'*64,
+            'snapshot_profile_integrity':True,'migration_issue_fields':['originKnown','preservedFields'],
+            'migration_issues_sha256':'8'*64}
+
+    def parent(self):
+        p=m.LOCAL11_IDENTITY
+        protected={'config.php':'9'*64,'data/db-v1.php':m.LOCAL11_HASHES['v2/data/db-v1.php']}
+        terminal={'schema_version':1,'operation_id':p['parent_operation_id'],'source_sha':p['parent_source_sha'],
+            'control_sha':p['parent_control_sha'],'manifest_sha256':p['source_contract']['expected_own_manifest_sha256'],
+            'actions_sha256':'45e11557da29ecc652589e5cc89a6dcfa457b57e1a8936fe87d57d2ceb12edb4',
+            'original_package_sha256':'01090549e278cbd739efa4936472c256724f6c555bd0d44864d6d21d2ce15123',
+            'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208',
+            'state':'committed_verified','requested_profiles':11,'requested_fields':33,
+            'plan_sha256':p['plan_sha256'],'profiles_updated':11,'fields_updated':33,
+            'field_counts':{'description':11,'primaryImage':11,'images':11},'preserved_fields':0,
+            'profile_writes':11,'provenance_writes':11,'database_writes':22,'supplier_calls':0,
+            'provider_http_calls':0,'mapping_writes':0,'legacy_writes':0,'schema_writes':0,
+            'readback_verified':True,'consumer_readback_verified':True,
+            'consumer_sha256':'956f73539da2d6a25cd9c39770eb1e733b5a1c143fe2270856a833696aec7943',
+            'owner_receipt_sha256':p['owner_receipt_sha256'],'protected_before':protected,
+            'protected_after':copy.deepcopy(protected),'error_code':None}
+        before={k:'a'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        return {'schema_version':1,'operation_id':p['parent_operation_id'],'source_sha':p['parent_source_sha'],
+            'mode':'local-official11-apply-v1','status':'complete','supplier_calls':0,'database_writes':22,
+            'booking_calls':0,'lead_calls':0,'production_before':before,'production_after':copy.deepcopy(before),
+            'production_unchanged':True,'profile_writes':11,'provenance_writes':11,'mapping_writes':0,
+            'legacy_writes':0,'schema_writes':0,'local_official11':terminal}
+
+    def fixture(self,root):
+        p=m.LOCAL11_IDENTITY;c,command=self.command()
+        private=root/'private';target=private/p['parent_operation_id'];target.mkdir(parents=True)
+        op=private/p['operation_id'];op.mkdir();project=root/'project';project.mkdir()
+        (project/'config.php').write_text('PRIVATE_CONFIG_SENTINEL')
+        (target/'result.json').write_bytes(m.l11_json(self.parent()))
+        (target/'reservation.json').write_text(json.dumps({'operation_id':p['parent_operation_id'],
+            'source_sha':p['parent_source_sha'],'mode':'local-official11-apply-v1','reserved_at':1795290000}))
+        raw=self.snapshot()
+        def fail(reason):raise ValueError(reason)
+        space={'LOCAL11_IDENTITY':p,'LOCAL11_HASHES':m.LOCAL11_HASHES,'LOCAL11_RUNNER':m.LOCAL11_RUNNER,
+            'private':private,'op':op,'project':project,'source':SHA,'operation':p['operation_id'],
+            'payload':dict(command,match_retained_control_sha=CONTROL),'mode':command['mode'],
+            'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),'subprocess':subprocess,'fail':fail,
+            'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=bound}
+        exec(m.LOCAL11_VALIDATOR+m.LOCAL11_HANDLER,space)
+        def child(*args,**kwargs):
+            self.assertEqual({'pairs':[v[:2] for v in p['pairs']]},json.loads((op/'local11-scope.json').read_text()))
+            self.assertEqual(str(SOURCE/m.LOCAL11_RUNNER),args[0][-1])
+            self.assertIn('allow_url_fopen=0',args[0])
+            self.assertIn('disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen',args[0])
+            self.assertEqual(120,kwargs['timeout'])
+            self.assertLessEqual(set(kwargs['env']),{'HOME','PATH','LANG','LC_ALL','MATCH_RETAINED_DIR','MATCH_RETAINED_SOURCE_ROOT'})
+            return subprocess.CompletedProcess(args,0,json.dumps(raw),'')
+        return command,space,child,target,op,project,raw
+
+    def result(self,command,evidence):
+        before={k:'a'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        return {'schema_version':1,**{k:command[k] for k in ('operation_id','source_sha','mode')},
+            'status':'complete','production_unchanged':True,'supplier_calls':0,'database_writes':0,
+            'mapping_writes':0,'booking_calls':0,'lead_calls':0,'production_before':before,
+            'production_after':copy.deepcopy(before),'match_retained':evidence}
+
+    def test_exact_command_narrow_bundle_and_legacy_generated_bytes(self):
+        import base64,zlib
+        c,command=self.command()
+        for index,value in ((0,'z'*40),(1,'match-retained-acquire'),(2,'int-andromeda-match-retained-current-20261122-v2'),
+                            (3,'owner-top500-retained7-20261106'),(4,m.OWNER_TOP500_CURRENT['parent_operation_id'])):
+            fields=self.fields();fields[index]=value
+            with self.subTest(index=index),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(fields))
+        for fields in (self.fields()[:-1],self.fields()+['999999']):
+            with self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(fields))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):
+            c.parse_command(c.PREFIX+' '.join(self.fields()))
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE);self.assertIn('def current_local11_identity(stage):',c.REMOTE)
+        self.assertNotIn('def current_retained_target(stage):',c.REMOTE)
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        self.assertLessEqual(len(("python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'").encode()),65536)
+        bundle,hashes=c.bundle_source(SOURCE)
+        self.assertEqual(m.LOCAL11_HASHES,hashes)
+        with tarfile.open(fileobj=io.BytesIO(bundle),mode='r:gz') as archive:
+            self.assertEqual({*m.LOCAL11_HASHES,'manifest.json'},{v.name for v in archive.getmembers()})
+            self.assertTrue(all(v.mode==0o600 for v in archive.getmembers()))
+        with tempfile.TemporaryDirectory() as td:
+            db=Path(td)/'v2/data/db-v1.php';db.parent.mkdir(parents=True);db.write_text('source drift')
+            with self.assertRaisesRegex(ValueError,'source_drift'):m.bundle_local11_source(Path(td))
+        old=core();m.register_parser(old);p=m.OWNER_TOP500_CURRENT
+        command=old.parse_command(old.PREFIX+' '.join([SHA,'match-retained-current',p['operation_id'],p['cohort'],p['parent_operation_id']]))
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(old,command)
+        self.assertEqual('6cfe1fc88ce03feaefded7692db023cebad894c62f0e65b4dfb1d87c59154eba',hashlib.sha256(old.REMOTE.encode()).hexdigest())
+        self.assertEqual('c6b262c97a5a47957c2336f6d1109ebec3e081b3b5ee06e78525dc0ab9ef8048',hashlib.sha256(m.REMOTE_HANDLER.encode()).hexdigest())
+        self.assertEqual(17,len(m.SOURCE_FILES))
+        _,legacy_hashes=m.bundle_source(SOURCE);self.assertEqual(m.SOURCE_HASHES,legacy_hashes)
+
+    def test_pending_visibility_historical_snapshot_and_absent_targets_are_distinct(self):
+        raw=self.snapshot();raw['link_rows']=[self.link()]
+        data=m.l11_project(raw,m.LOCAL11_IDENTITY);first=data['rows'][0]
+        self.assertEqual('visible',first['reverse_visibility'])
+        self.assertEqual('expected_target',first['bridge_status'])
+        self.assertEqual('historical_profile',first['snapshot_profile_relation'])
+        self.assertNotIn('bridge_snapshot_integrity_failed',first['reasons'])
+        self.assertEqual('pending',first['target']['state'])
+        self.assertEqual([4516,8689],[r['own_id'] for r in data['rows'] if r['target'] is None])
+        self.assertEqual(10,sum(r['bridge_status']=='absent' for r in data['rows']))
+        raw['target_rows'][0]['state']='excluded';raw['target_rows'][0]['manual_fields']=['description']
+        first=m.l11_project(raw,m.LOCAL11_IDENTITY)['rows'][0]
+        self.assertEqual('target_excluded',first['reverse_visibility'])
+        self.assertIn('target_manual_fields_present',first['reasons'])
+
+    def test_cross_namespace_collision_integrity_and_wrong_bridge_material(self):
+        raw=self.snapshot();first=raw['source_rows'][0]
+        first['namespace']='operator_315';first['external_key']='12120'
+        row=m.l11_project(raw,m.LOCAL11_IDENTITY)['rows'][0]
+        self.assertIn('legacy_source_absent',row['reasons']);self.assertEqual([],row['expected_legacy_owners'])
+        foreign=copy.deepcopy(first);foreign.update(own_id=999999,namespace='legacy_catalog',source_integrity=False)
+        raw['source_rows'].append(foreign);raw['link_rows']=[self.link(999999,12120),self.link(5371,64957)]
+        row=m.l11_project(raw,m.LOCAL11_IDENTITY)['rows'][0]
+        self.assertEqual([999999],row['expected_legacy_owners'])
+        self.assertIn('legacy_target_owned_by_other_own',row['reasons'])
+        self.assertIn('target_linked_to_other_own',row['reasons'])
+        self.assertEqual('different_target',row['bridge_status']);self.assertEqual(64957,row['linked_target']['tv_id'])
+        raw['link_rows'][1]['snapshot_integrity']=False
+        self.assertIn('bridge_snapshot_integrity_failed',m.l11_project(raw,m.LOCAL11_IDENTITY)['rows'][0]['reasons'])
+        for mutate in (lambda x:x['own_rows'][0].update(own_id=12120),
+                       lambda x:x['own_rows'][0].update(profile_sha256='bad'),
+                       lambda x:x['source_rows'].append(copy.deepcopy(x['source_rows'][0])),
+                       lambda x:x['target_rows'][0].update(tv_id=True),
+                       lambda x:x.update(database_snapshot='read-write'),
+                       lambda x:x.update(database_writes=True)):
+            bad=self.snapshot();mutate(bad)
+            with self.assertRaises(ValueError):m.l11_project(bad,m.LOCAL11_IDENTITY)
+
+    def test_parent_exact_semantic_pins_reject_partial_unknown_and_bool_counts(self):
+        m.l11_parent(self.parent(),m.LOCAL11_IDENTITY)
+        for mutate in (lambda p:p.update(status='unknown_no_replay'),
+                       lambda p:p.update(source_sha='f'*40),
+                       lambda p:p['local_official11'].update(control_sha='f'*40),
+                       lambda p:p['local_official11'].update(plan_sha256='f'*64),
+                       lambda p:p['local_official11'].update(owner_receipt_sha256='f'*64),
+                       lambda p:p['local_official11'].update(consumer_sha256='f'*64),
+                       lambda p:p['local_official11'].update(readback_verified=False),
+                       lambda p:p['local_official11'].update(profiles_updated=10),
+                       lambda p:p['local_official11']['field_counts'].update(description=True),
+                       lambda p:p['local_official11'].pop('protected_after')):
+            prior=self.parent();mutate(prior)
+            with self.assertRaises(ValueError):m.l11_parent(prior,m.LOCAL11_IDENTITY)
+        with self.assertRaises(ValueError):json.loads('{"id":1,"id":2}',object_pairs_hook=m.l11_unique)
+
+    def test_private_single_run_and_strict_receiver_rehashed_forgery(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,project,raw=self.fixture(Path(td))
+            protected={p:p.read_bytes() for p in [*target.iterdir(),project/'config.php']}
+            with mock.patch.object(subprocess,'run',side_effect=child) as call:
+                evidence=space['current_local11_identity'](SOURCE)
+                with self.assertRaises(FileExistsError):space['current_local11_identity'](SOURCE)
+                self.assertEqual(1,call.call_count)
+            self.assertEqual(protected,{p:p.read_bytes() for p in protected})
+            for name in ('local11-scope.json','local11-raw.json','retained-evidence.json'):
+                self.assertEqual(0o600,(op/name).stat().st_mode & 0o777)
+            self.assertNotIn('PRIVATE_CONFIG_SENTINEL',json.dumps(evidence))
+            result=self.result(command,evidence);self.assertTrue(m.completed_result(command,result,CONTROL))
+            for mutate in (lambda d:d['rows'].reverse(),
+                           lambda d:d['rows'][0].update(own_id=12120),
+                           lambda d:d['rows'][0].update(reverse_visibility='visible'),
+                           lambda d:d['rows'][0].update(reasons=[]),
+                           lambda d:d['rows'][0]['target'].update(state='accepted'),
+                           lambda d:d['rows'][0]['target'].update(source_sha256='bad'),
+                           lambda d:d['rows'][0].update(profile_json='PRIVATE'),
+                           lambda d:d.update(publication_admission=True),
+                           lambda d:d.update(safe_to_write_now=True),
+                           lambda d:d.update(accepted_native_bindings=1),
+                           lambda d:d.update(database_writes=True),
+                           lambda d:d.update(source_contract={}),
+                           lambda d:d.update(new_database_reads=2)):
+                bad=copy.deepcopy(result);mutate(bad['match_retained']['data'])
+                bad['match_retained']['evidence_sha256']=hashlib.sha256(m.l11_json(bad['match_retained']['data'])).hexdigest()
+                self.assertFalse(m.completed_result(command,bad,CONTROL))
+            bad=copy.deepcopy(result);bad['production_after']['index.php']='f'*64
+            self.assertFalse(m.completed_result(command,bad,CONTROL))
+            bad=copy.deepcopy(result);bad['match_retained']['evidence_sha256']='f'*64
+            self.assertFalse(m.completed_result(command,bad,CONTROL))
+
+    def test_parent_or_child_drift_fails_closed_and_no_dml_or_http_in_helper(self):
+        for cause in ('parent','reservation','child_scope','child_counter','protected'):
+            with self.subTest(cause=cause),tempfile.TemporaryDirectory() as td:
+                command,space,child,target,op,project,raw=self.fixture(Path(td))
+                if cause=='parent':
+                    prior=self.parent();prior['local_official11']['state']='held_before_write'
+                    (target/'result.json').write_text(json.dumps(prior))
+                if cause=='reservation':(target/'reservation.json').write_text('{}')
+                if cause=='child_scope':raw['target_rows'][0]['tv_id']=999999
+                if cause=='child_counter':raw['provider_http_calls']=1
+                def run(*args,**kwargs):
+                    value=child(*args,**kwargs)
+                    if cause=='protected':(project/'config.php').write_text('changed')
+                    return value
+                with mock.patch.object(subprocess,'run',side_effect=run) as call,self.assertRaises(ValueError):
+                    space['current_local11_identity'](SOURCE)
+                if cause in ('parent','reservation'):call.assert_not_called()
+                self.assertFalse((op/'retained-evidence.json').exists())
+        php=(ROOT/m.LOCAL11_RUNNER).read_text()
+        self.assertNotRegex(php,r'(?i)\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE|DROP|TRUNCATE|migrateLinks|curl_exec|file_put_contents)\b')
+        self.assertIn("SET TRANSACTION READ ONLY",php)
+        self.assertIn("namespace='legacy_catalog' AND external_key IN",php)
+        self.assertIn('WHERE old_local_id IN ($marks) OR tv_id IN ($marks)',php)
+
+
+@unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL/PHP CI required')
+class Local11IdentityNativeTest(unittest.TestCase):
+    def test_actual_bounded_snapshot_excluded_manual_namespace_hash_and_read_only(self):
+        lint=subprocess.run(['php','-l',str(ROOT/m.LOCAL11_RUNNER)],capture_output=True,text=True,timeout=20)
+        self.assertEqual(0,lint.returncode,lint.stderr)
+        code=r'''define('MATCH_LOCAL11_IDENTITY_LIBRARY_ONLY',true);require $argv[1];
+        class Local11ProbePDO extends PDO {
+          public bool $probe=true;public bool $denied=false;
+          public function prepare(string $query,array $options=[]): PDOStatement|false {
+            if($this->probe && str_contains($query,'FROM anytour_hotels')){
+              $this->probe=false;
+              try{$this->exec('DELETE FROM anytour_hotels');}catch(PDOException $error){$this->denied=true;}
+              if(!$this->denied)throw new RuntimeException('read_only_dml_not_denied');
+            }
+            return parent::prepare($query,$options);
+          }
+        }
+        $db=new Local11ProbePDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),
+            [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+        $name='match_local11_test_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+        try{
+          $db->exec('CREATE TABLE anytour_hotels(id BIGINT PRIMARY KEY,profile_json LONGTEXT,profile_sha256 CHAR(64),revision BIGINT,is_active INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anytour_hotel_sources(anytour_hotel_id BIGINT,namespace VARCHAR(64),external_key VARBINARY(128),acquired_via VARCHAR(64),source_json LONGTEXT,source_sha256 CHAR(64),first_seen_at DATETIME,last_seen_at DATETIME,UNIQUE KEY(namespace,external_key)) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE local_tv_legacy_links(old_local_id BIGINT PRIMARY KEY,tv_id BIGINT,snapshot_json LONGTEXT,snapshot_sha256 CHAR(64),migration_issues_json LONGTEXT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE local_tv_hotels(id BIGINT PRIMARY KEY,state VARCHAR(24),revision BIGINT,discovery_json LONGTEXT,content_json LONGTEXT,manual_json LONGTEXT,source_json LONGTEXT NULL,source_sha256 CHAR(64) NULL,source_absent_json LONGTEXT) ENGINE=InnoDB');
+          $scope=['pairs'=>MatchLocal11IdentityV1::PAIRS];
+          $proof=json_decode($argv[2],true,16,JSON_THROW_ON_ERROR);
+          $insertOwn=$db->prepare('INSERT INTO anytour_hotels VALUES(?,?,?,?,?)');
+          $insertSource=$db->prepare("INSERT INTO anytour_hotel_sources VALUES(?,?,?,?,?,?,'2026-11-21','2026-11-21')");
+          $insertTarget=$db->prepare('INSERT INTO local_tv_hotels VALUES(?,?,?,?,?,?,?,?,?)');
+          foreach($scope['pairs'] as $index=>[$own,$tv]){
+            $identity=$proof[$index];
+            $profile=json_encode(['name'=>$identity[2],'country'=>['name'=>$identity[3]],'region'=>['name'=>$identity[4]]]);
+            $insertOwn->execute([$own,$profile,hash('sha256',$profile),2,1]);
+            $source=json_encode(['id'=>$tv,'name'=>$identity[2]]);
+            $insertSource->execute([$own,'legacy_catalog',(string)$tv,'saved_catalog',$source,
+                $index===2?str_repeat('f',64):hash('sha256',$source)]);
+            if(in_array($tv,[2526,7458],true))continue;
+            $discovery=json_encode(['name'=>$identity[2],'country'=>['id'=>$identity[5],'name'=>$identity[3]],'region'=>['id'=>$identity[6],'name'=>$identity[4]]]);
+            $insertTarget->execute([$tv,$index===1?'excluded':'pending',1,$discovery,'{}',
+                $index===0?'{"description":"PRIVATE_MANUAL_SENTINEL","country.name":"Manual country"}':'{}',null,null,'[]']);
+          }
+          $insertOwn->execute([999999,'{}',hash('sha256','{}'),1,1]);
+          $insertSource->execute([5371,'operator_315','5371','native_fixture','{"id":5371}',hash('sha256','{"id":5371}')]);
+          $old=['id'=>5371,'profile_json'=>'{}','profile_sha256'=>hash('sha256','{}'),'revision'=>1,'is_active'=>1];
+          $snapshot=json_encode(['profile'=>$old,'sources'=>[]]);
+          $link=$db->prepare('INSERT INTO local_tv_legacy_links VALUES(?,?,?,?,?)');
+          $link->execute([5371,12120,$snapshot,hash('sha256',$snapshot),'{"preservedFields":[],"originKnown":true}']);
+          $link->execute([999999,64957,$snapshot,hash('sha256',$snapshot),'{}']);
+          $before=[];foreach(['anytour_hotels','anytour_hotel_sources','local_tv_legacy_links','local_tv_hotels'] as $table)
+            $before[$table]=hash('sha256',json_encode($db->query('SELECT * FROM '.$table)->fetchAll(PDO::FETCH_ASSOC)));
+          $result=MatchLocal11IdentityV1::run($db,$scope);
+          if(!$db->denied || $db->inTransaction())throw new RuntimeException('snapshot_not_read_only_or_not_closed');
+          $after=[];foreach(array_keys($before) as $table)
+            $after[$table]=hash('sha256',json_encode($db->query('SELECT * FROM '.$table)->fetchAll(PDO::FETCH_ASSOC)));
+          if($before!==$after)throw new RuntimeException('fixture_database_changed');
+          $bad=$scope;$bad['pairs'][0]=[12120,5371];$scopeDenied=false;
+          try{MatchLocal11IdentityV1::run($db,$bad);}catch(RuntimeException $e){$scopeDenied=$e->getMessage()==='local11_scope';}
+          if(!$scopeDenied)throw new RuntimeException('cross_namespace_scope_admitted');
+          $db->exec('ALTER TABLE anytour_hotel_sources ENGINE=MyISAM');$engineDenied=false;
+          try{MatchLocal11IdentityV1::run($db,$scope);}catch(RuntimeException $e){$engineDenied=$e->getMessage()==='local11_snapshot_engine';}
+          if(!$engineDenied || $db->inTransaction())throw new RuntimeException('nontransactional_schema_admitted');
+          echo json_encode(['snapshot'=>$result,'dml_denied'=>$db->denied,'unchanged'=>$before===$after,'engine_denied'=>$engineDenied],JSON_THROW_ON_ERROR);
+        }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
+        run=subprocess.run(['php','-r',code,str(ROOT/m.LOCAL11_RUNNER),json.dumps(m.LOCAL11_IDENTITY['pairs'])],capture_output=True,text=True,timeout=60)
+        self.assertEqual(0,run.returncode,run.stderr);data=json.loads(run.stdout);raw=data['snapshot']
+        self.assertTrue(data['dml_denied']);self.assertTrue(data['unchanged']);self.assertTrue(data['engine_denied'])
+        self.assertEqual(11,len(raw['own_rows']));self.assertEqual(9,len(raw['target_rows']))
+        self.assertEqual(12,len(raw['source_rows']));self.assertEqual(2,len(raw['link_rows']))
+        self.assertNotIn('PRIVATE_MANUAL_SENTINEL',run.stdout)
+        rows=m.l11_project(raw,m.LOCAL11_IDENTITY)['rows']
+        first=rows[0];second=rows[1]
+        self.assertEqual('visible',first['reverse_visibility'])
+        self.assertEqual('historical_profile',first['snapshot_profile_relation'])
+        self.assertIn('target_manual_fields_present',first['reasons'])
+        self.assertIn('target_manual_identity_present',first['reasons'])
+        self.assertEqual('Manual country',first['target']['manual_identity']['country'])
+        self.assertNotIn('own_identity_drift',first['reasons'])
+        self.assertEqual('excluded',second['target']['state'])
+        self.assertIn('target_linked_to_other_own',second['reasons'])
+        self.assertIn('own_source_integrity_failed',rows[2]['reasons'])
+
+
 if __name__=='__main__':unittest.main()
 
 
