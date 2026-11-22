@@ -6645,7 +6645,351 @@ def home(rollback=False):
     print(json.dumps(evidence,sort_keys=True));need(complete,'home_rollback_not_verified' if rollback else 'home_not_verified')
 
 
+# One finite, read-only audit of the retained HOME refusal. This profile cannot
+# reserve, resume, repair, install or roll back any runtime operation.
+HOME_INSPECT_PREFIX = '/inspect-site-home-guard'
+HOME_INSPECT_OPERATION = 'site-home-guard-inspect-45078958662-v1'
+HOME_INSPECT_RECEIPT_LIMIT = 262144
+HOME_INSPECT_FAILED = {
+    'operation_id': HOME_OPERATION,
+    'control_source_sha': '428a3a5f8aab838daa3413020194dadeeea25bfc',
+    'run_id': '45078958662', 'command_comment_id': 7086983423, 'job_id': 137382493638,
+    'artifact_id': 14776437137,
+    'artifact_sha256': 'b63c34ef5ecdf0582da5d206db326fd9403559281f4ad88987982877e700b877',
+    'receipt_sha256': 'e9d378accedcbe5be9f3cd12594359d0ce2997ba614c6e8c62c0dc9189146cb3',
+    'terminal_comment_id': 7087105642,
+}
+HOME_INSPECT_ROW_FIELDS = ('state','sha256','size','mode')
+HOME_INSPECT_STAT_FIELDS = ('st_dev','st_ino','st_mode','st_nlink','st_size','st_mtime_ns','st_uid','st_gid','st_ctime_ns')
+HOME_INSPECT_ANCESTORS = ('public','update','update_stage','site','site_stage','refactor','refactor_stage')
+HOME_INSPECT_REASONS = HOME_REASONS + ('home_inspection_namespace','home_inspection_scope',
+    'home_inspection_snapshot','home_inspection_unreadable','home_inspection_race')
+
+
+def home_inspect_scope():
+    private = {PRIVATE_CONFIG:'anex_private_config','config.php':'public_config','site_conf.php':'site_config',
+               '_preview/search3-local-candidate/config.php':'local_config',
+               '_preview/search3-next-candidate/config.php':'next_config'}
+    guarded = (set(ADDITIONS)|{ENTRY}|set(CONTINUATION_PROTECTED)|set(OPAQUE_SETTINGS)|set(ABSENT_DEPENDENCIES)
+               |set(SITE_DEPENDENCIES)|set(SITE_OPTIONAL_DEPENDENCIES)|set(SITE_ORDER))-set(HANDOFF_ORDER)
+    need(set(private)<=guarded and len(private)==5 and len(guarded)<=512,'home_inspection_scope')
+    return tuple(sorted(guarded-set(private))),private
+
+
+def home_inspect_event_identity(event,env):
+    control=env.get('GITHUB_SHA','')
+    need(event.get('comment',{}).get('body')==f'{HOME_INSPECT_PREFIX} {control} {HOME_INSPECT_OPERATION}','command')
+    synthetic=json.loads(json.dumps(event))
+    synthetic['comment']['body']=f'{HOME_PREFIX} {control} {HOME_OPERATION}'
+    identity=home_event_identity(synthetic,env)
+    need(identity['run_id']!=HOME_INSPECT_FAILED['run_id'],'home_inspection_identity')
+    return identity
+
+
+def home_inspect_failed_value(value):
+    need(sha((json.dumps(value,sort_keys=True)+'\n').encode())==HOME_INSPECT_FAILED['receipt_sha256'],
+         'home_inspection_failed_digest')
+    original={k:HOME_INSPECT_FAILED[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    _home_zero_write_value(value,original)
+    remote=value.get('remote',{})
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+           'unchanged_files_verified','parent_records_unchanged','original_inodes_verified')
+    need(value.get('phase')=='complete' and value.get('ssh_started') is True
+         and remote.get('status')=='blocked_no_replay' and remote.get('phase')=='preflight'
+         and remote.get('reason')=='protected_changed' and remote.get('failed_namespace_absent') is True
+         and remote.get('snapshot_manifest_sha256') is None and remote.get('restored_guard') is None
+         and all(remote.get(k) is False for k in flags),'home_inspection_failed_evidence')
+    return value['parent_evidence']
+
+
+def home_inspect_failed_evidence(raw):
+    need(sha(raw)==HOME_INSPECT_FAILED['artifact_sha256'],'home_inspection_failed_artifact_digest')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_inspection_failed_artifact')
+        data=archive.read('evidence.json')
+        need(sha(data)==HOME_INSPECT_FAILED['receipt_sha256'],'home_inspection_failed_digest')
+    value=_tv_json(data);home_inspect_failed_value(value)
+    return value
+
+
+def home_inspect_heads(identity):
+    home_final_heads(identity)
+    relation=api('/compare/'+HOME_INSPECT_FAILED['control_source_sha']+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==HOME_INSPECT_FAILED['control_source_sha'],
+         'home_inspection_control_ancestry')
+
+
+def home_inspect_admission(identity):
+    home_inspect_heads(identity);reviewed_control(identity['control_source_sha'])
+    checks=pages('/commits/'+HOME_SOURCE+'/check-runs','check_runs')
+    for name in HOME_CHECKS:
+        latest=max((c for c in checks if c.get('name')==name and c.get('head_sha')==HOME_SOURCE),
+                   key=lambda c:c['id'],default={})
+        need(green(latest),'home_source_ci')
+    comments=pages('/issues/4709/comments');failed=HOME_INSPECT_FAILED
+    original={k:failed[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    _unique_update_command(comments,HOME_PREFIX,HOME_OPERATION,original)
+    _unique_update_command(comments,HOME_INSPECT_PREFIX,HOME_INSPECT_OPERATION,identity)
+    need(not any(c.get('body','').strip().split()[:1]==[HOME_ROLLBACK_PREFIX]
+                 and HOME_ROLLBACK_OPERATION in c.get('body','').split()[1:] for c in comments),
+         'home_inspection_original_changed')
+    command=next(c for c in comments if c['id']==original['command_comment_id'])
+    current=next(c for c in comments if c['id']==identity['command_comment_id'])
+    for row in (command,current):
+        _tv_time(row.get('created_at'))
+        need(row.get('created_at')==row.get('updated_at'),'home_inspection_edited_command')
+    terminal=next((c for c in comments if c['id']==failed['terminal_comment_id']),{})
+    tokens=[str(failed[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id',
+                                    'artifact_id','artifact_sha256','receipt_sha256')]
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and all(t in terminal.get('body','') for t in tokens+['blocked_no_replay','protected_changed','NO REPLAY'])
+         and terminal.get('created_at')==terminal.get('updated_at')
+         and _tv_time(command['created_at'])<=_tv_time(terminal.get('created_at'))<=_tv_time(current['created_at']),
+         'home_inspection_failed_terminal')
+    run=api('/actions/runs/'+failed['run_id'])
+    artifact=api('/actions/artifacts/'+str(failed['artifact_id']))
+    need(artifact.get('id')==failed['artifact_id'] and artifact.get('digest')=='sha256:'+failed['artifact_sha256']
+         and artifact.get('workflow_run',{}).get('head_sha')==failed['control_source_sha'],
+         'home_inspection_failed_artifact')
+    value=home_inspect_failed_evidence(download(failed['artifact_id'],failed['artifact_sha256']))
+    checked,_=_home_native_proof(command,run,value,artifact)
+    need(checked==original,'home_inspection_failed_identity')
+    jobs=[j for j in pages('/actions/runs/'+failed['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==failed['job_id'],'home_inspection_failed_job')
+    home_inspect_heads(identity)
+    return value
+
+
+HOME_INSPECT_REMOTE = r'''
+def home_inspection_absent(operation):
+ with base.parent(operation) as (fd,name):
+  try: os.stat(name,dir_fd=fd,follow_symlinks=False)
+  except FileNotFoundError:return True
+  return False
+def home_inspection_namespaces():
+ site_continuation_namespace_absent()
+ handoff_absent(REFACTOR_ROLLBACK_OPERATION);handoff_absent(HANDOFF_ROLLBACK_OPERATION)
+ result['home_namespace_absent']=(home_inspection_absent(HOME_POLICY['operation'])
+                                  and home_inspection_absent(HOME_ROLLBACK_OPERATION))
+ result['inspection_namespace_absent']=home_inspection_absent(INSPECTION_OPERATION)
+ require(result['home_namespace_absent'] and result['inspection_namespace_absent'],'home_inspection_namespace')
+def home_inspection_parent_proof():
+ # Authenticate the unchanged COUNTRY snapshot before looking at its paths.
+ # Current protected values are measurements, never replacement authority.
+ records=site_read_records(handed,HANDOFF_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':HANDOFF_POLICY['operation'],**HANDOFF_ORIGINAL,
+         'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}
+         and record('result.json')==HANDOFF_ACCEPTED,'home_parent_identity')
+ snapshot=record('snapshot/manifest.json')
+ scope=((set(POLICY['expected'])|set(checked_protected_paths())|set(SITE_POLICY['dependencies'])
+         |set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order']))-set(HANDOFF_POLICY['order']))
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+         and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+         and snapshot['parent_refactor']==REFACTOR_ORIGINAL and set(snapshot['before'])==set(HANDOFF_POLICY['order'])
+         and set(snapshot['guarded'])==scope and scope==set(INSPECTION_PUBLIC_PATHS)|set(private_labels())
+         and set(snapshot['ancestors'])==set(INSPECTION_ANCESTORS)
+         and digest(records['snapshot/manifest.json'][2])==HANDOFF_ACCEPTED['snapshot_manifest_sha256'],
+         'home_inspection_snapshot')
+ return records,snapshot
+def home_inspection_stat_changes(expected,current):
+ if expected is None or current is None:
+  return [] if expected is None and current is None else list(INSPECTION_STAT_FIELDS)
+ require(isinstance(expected,(list,tuple)) and isinstance(current,(list,tuple)) and len(expected)==len(current)==9,
+         'home_inspection_snapshot')
+ return [name for i,name in enumerate(INSPECTION_STAT_FIELDS) if expected[i]!=current[i]]
+def home_inspection_ancestor_check(expected,current,confirmed):
+ same_scope=set(expected)==set(current)
+ return {'matches_scope':same_scope,
+         'matches_rows':same_scope and all(expected[p][0]==current[p][0] for p in expected),
+         'matches_identity':same_scope and all(expected[p][1]==current[p][1] for p in expected),
+         'stable':current==confirmed}
+result={'schema_version':1,'operation_id':INSPECTION_OPERATION,'source_sha':HOME_POLICY['source'],
+        'manifest_sha256':HOME_POLICY['manifest'],**IDENTITY,'failed_attempt':FAILED,'parent_handoff':HANDOFF_ORIGINAL,
+        'parent_receipt_sha256':HOME_POLICY['parent']['receipt_sha256'],
+        'parent_snapshot_manifest_sha256':HOME_POLICY['parent']['snapshot_manifest_sha256'],
+        'read_only':True,'server_writes':0,'supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'status':'inspection_blocked','phase':'preflight',
+        'parent_records_verified':False,'parent_records_stable':False,'inventory_stable':False,
+        'failed_namespace_absent':False,'home_namespace_absent':False,'inspection_namespace_absent':False,'scope_matches':False,
+        'checked_public_paths':[],'public_mismatches':[],'private_checks':{},'ancestor_checks':{}}
+public=base=original=updated=published=refactored=handed=None
+try:
+ home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handed=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);private_root(handed)
+ home_inspection_namespaces()
+ records,snapshot=home_inspection_parent_proof();saved=snapshot['guarded']
+ ancestors=home_ancestor_inventory()
+ require(set(ancestors)==set(INSPECTION_ANCESTORS)|{'handoff','handoff_stage'},'home_inspection_scope')
+ result['parent_records_verified']=True
+ expected=refactor_expected({p:r[0] for p,r in saved.items()})
+ labels=private_labels();scope=tuple(sorted(saved))
+ rows=continuation_inventory(public,scope)
+ for path in scope:
+  row,identity=rows[path];previous=saved[path][1]
+  if TV_SUCCESSOR_PROOF is not None and path==TV_SUCCESSOR['path']:previous=_tv_successor_bound['target'][1]
+  row_changes=[name for name in INSPECTION_ROW_FIELDS if row.get(name)!=expected[path].get(name)]
+  stat_changes=home_inspection_stat_changes(previous,identity)
+  if path in labels:
+   result['private_checks'][labels[path]]={'readable':row.get('state')!='unreadable','present':row.get('state')=='present',
+       'expected_present':expected[path].get('state')=='present','matches_row':row==expected[path],
+       'matches_identity':not stat_changes}
+  elif row!=expected[path] or stat_changes:
+   result['public_mismatches'].append({'path':path,'expected':expected[path],'observed':row,
+       'changed_row_fields':row_changes,'changed_stat_fields':stat_changes})
+ result['checked_public_paths']=list(INSPECTION_PUBLIC_PATHS)
+ confirmed=continuation_inventory(public,scope)
+ confirmed_ancestors=home_ancestor_inventory()
+ for group in INSPECTION_ANCESTORS:
+  result['ancestor_checks'][group]=home_inspection_ancestor_check(snapshot['ancestors'][group],
+      ancestors[group],confirmed_ancestors[group])
+ result['inventory_stable']=confirmed==rows
+ result['parent_records_stable']=(confirmed_ancestors==ancestors
+     and site_read_records(handed,HANDOFF_PREPARED_PATHS+('result.json',))==records)
+ home_inspection_namespaces()
+ tv_successor_stable()
+ require(result['inventory_stable'] and result['parent_records_stable'],'home_inspection_race')
+ require(all(row[0].get('state')!='unreadable' for row in rows.values()),'home_inspection_unreadable')
+ result['scope_matches']=(not result['public_mismatches']
+     and all(r['readable'] and r['matches_row'] and r['matches_identity'] for r in result['private_checks'].values())
+     and all(r['matches_scope'] and r['matches_rows'] and r['matches_identity'] for r in result['ancestor_checks'].values()))
+ result.update(status='inspection_match' if result['scope_matches'] else 'inspection_mismatch',phase='complete')
+except Exception as error:
+ result['status']='inspection_unknown' if result['parent_records_verified'] else 'inspection_blocked'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ for store in (handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+def home_inspect_remote_program(identity,failed_value,*,tv_successor=None):
+    parent=home_inspect_failed_value(failed_value)
+    need(identity['run_id']!=HOME_INSPECT_FAILED['run_id'],'home_inspection_identity')
+    public,_=home_inspect_scope()
+    program=(_home_program_prefix(home_policy(),identity,parent,tv_successor)
+        +'\nFAILED='+repr(HOME_INSPECT_FAILED)+'\nINSPECTION_OPERATION='+repr(HOME_INSPECT_OPERATION)
+        +'\nINSPECTION_PUBLIC_PATHS='+repr(public)+'\nINSPECTION_ANCESTORS='+repr(HOME_INSPECT_ANCESTORS)
+        +'\nINSPECTION_ROW_FIELDS='+repr(HOME_INSPECT_ROW_FIELDS)+'\nINSPECTION_STAT_FIELDS='+repr(HOME_INSPECT_STAT_FIELDS)
+        +'\ndef re_safe(value): return value in '+repr(HOME_INSPECT_REASONS)+'\n'+HOME_INSPECT_REMOTE)
+    ast.parse(program)
+    return program
+
+
+def valid_home_inspection_result(identity,result):
+    fixed={'schema_version':1,'operation_id':HOME_INSPECT_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_policy()['manifest'],**identity,'failed_attempt':HOME_INSPECT_FAILED,
+        'parent_handoff':home_parent_identity(),'parent_receipt_sha256':HOME_PARENT['receipt_sha256'],
+        'parent_snapshot_manifest_sha256':HOME_PARENT['snapshot_manifest_sha256'],'read_only':True}
+    counters=('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags=('parent_records_verified','parent_records_stable','inventory_stable','failed_namespace_absent',
+           'home_namespace_absent','inspection_namespace_absent','scope_matches')
+    required=set(fixed)|set(counters)|set(flags)|{'status','phase','checked_public_paths','public_mismatches','private_checks','ancestor_checks'}
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'home_inspection_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()),'home_inspection_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters),'home_inspection_receipt_counters')
+    need(all(type(result[k]) is bool for k in flags),'home_inspection_receipt_flags')
+    need(result['status'] in ('inspection_match','inspection_mismatch','inspection_blocked','inspection_unknown')
+         and result['phase'] in ('preflight','complete')
+         and ('reason' not in result or result['reason'] in HOME_INSPECT_REASONS),'home_inspection_receipt_status')
+    public,private=home_inspect_scope()
+    need(result['checked_public_paths'] in ([],list(public)),'home_inspection_checked_scope')
+    def observed(row,unreadable=False):
+        need(isinstance(row,dict),'home_inspection_observed')
+        if row.get('state')=='present':
+            need(set(row)=={'state','sha256','size','mode'} and isinstance(row['sha256'],str)
+                 and re.fullmatch('[a-f0-9]{64}',row['sha256']) and type(row['size']) is int and 0<=row['size']<=MAX_BYTES
+                 and isinstance(row['mode'],str) and re.fullmatch('[0-7]{4}',row['mode']),'home_inspection_observed')
+        else:
+            need(row=={'state':'absent'} or unreadable and set(row)=={'state','reason'}
+                 and row['state']=='unreadable' and row['reason'] in HOME_INSPECT_REASONS,'home_inspection_observed')
+    def booleans(row,keys):
+        need(isinstance(row,dict) and set(row)==set(keys) and all(type(row[k]) is bool for k in keys),
+             'home_inspection_boolean_fields')
+    mismatches=result['public_mismatches'];seen=set()
+    need(isinstance(mismatches,list) and len(mismatches)<=len(public),'home_inspection_mismatch_scope')
+    for row in mismatches:
+        need(isinstance(row,dict) and set(row)=={'path','expected','observed','changed_row_fields','changed_stat_fields'}
+             and isinstance(row['path'],str) and row['path'] in public and row['path'] not in seen,
+             'home_inspection_mismatch_scope')
+        seen.add(row['path']);observed(row['expected']);observed(row['observed'],True)
+        expected_changes=[k for k in HOME_INSPECT_ROW_FIELDS if row['expected'].get(k)!=row['observed'].get(k)]
+        need(row['changed_row_fields']==expected_changes and isinstance(row['changed_stat_fields'],list)
+             and all(isinstance(k,str) for k in row['changed_stat_fields'])
+             and row['changed_stat_fields']==[k for k in HOME_INSPECT_STAT_FIELDS if k in row['changed_stat_fields']]
+             and (row['expected']!=row['observed'] or row['changed_stat_fields']),'home_inspection_comparison')
+    private_checks=result['private_checks'];ancestors=result['ancestor_checks']
+    need(isinstance(private_checks,dict) and set(private_checks)<=set(private.values())
+         and isinstance(ancestors,dict) and set(ancestors)<=set(HOME_INSPECT_ANCESTORS),'home_inspection_comparison_scope')
+    for row in private_checks.values():
+        booleans(row,('readable','present','expected_present','matches_row','matches_identity'))
+        need(not row['matches_row'] or row['readable'] and row['present']==row['expected_present'],
+             'home_inspection_private_comparison')
+    for row in ancestors.values():
+        booleans(row,('matches_scope','matches_rows','matches_identity','stable'))
+        need(row['matches_scope'] or not(row['matches_rows'] or row['matches_identity']),'home_inspection_ancestor_comparison')
+    complete=result['status'] in ('inspection_match','inspection_mismatch')
+    if complete:
+        need(result['phase']=='complete' and 'reason' not in result and result['checked_public_paths']==list(public)
+             and set(private_checks)==set(private.values()) and set(ancestors)==set(HOME_INSPECT_ANCESTORS)
+             and all(result[k] for k in flags if k!='scope_matches')
+             and all(row['readable'] for row in private_checks.values()) and all(row['stable'] for row in ancestors.values())
+             and all(row['observed'].get('state')!='unreadable' for row in mismatches),'home_inspection_receipt_incomplete')
+        match=(not mismatches and all(r['matches_row'] and r['matches_identity'] for r in private_checks.values())
+               and all(r['matches_scope'] and r['matches_rows'] and r['matches_identity'] for r in ancestors.values()))
+        need(result['scope_matches']==match and (result['status']=='inspection_match')==match,'home_inspection_receipt_incomplete')
+    else:
+        need(result['phase']=='preflight' and not result['scope_matches'] and 'reason' in result
+             and result['parent_records_verified']==(result['status']=='inspection_unknown'),'home_inspection_receipt_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode())<=HOME_INSPECT_RECEIPT_LIMIT,'home_inspection_receipt_limit')
+    return complete
+
+
+def home_inspect():
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'inspection_blocked','operation_id':HOME_INSPECT_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_policy()['manifest'],'read_only':True,'phase':'identity','ssh_started':False,
+        'failed_attempt':HOME_INSPECT_FAILED}
+    complete=False
+    try:
+        identity=home_inspect_event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+        evidence.update(identity,phase='admission');failed=home_inspect_admission(identity);evidence['phase']='artifact'
+        dependency=tv_successor_evidence()
+        program=home_inspect_remote_program(identity,failed,tv_successor=dependency);evidence['failed_evidence']=failed
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        need(home_inspect_admission(identity)==failed,'home_inspection_failed_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='inspection_unknown',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=HOME_INSPECT_RECEIPT_LIMIT,'home_inspection_receipt_limit');result=_tv_json(response)
+        complete=valid_home_inspection_result(identity,result);evidence['remote']=result
+        home_inspect_heads(identity);evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HomeInspectionError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'home_inspection_not_verified')
+
+
 def command_mode(arguments):
+    if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'
     if arguments == ['home-rollback']: return 'home-rollback'
     if arguments == ['handoff']: return 'handoff'
@@ -6717,7 +7061,8 @@ def rollback():
 if __name__ == '__main__':
     import sys
     mode = command_mode(sys.argv[1:])
-    if mode == 'home': home()
+    if mode == 'home-inspect': home_inspect()
+    elif mode == 'home': home()
     elif mode == 'home-rollback': home(rollback=True)
     elif mode == 'handoff': handoff()
     elif mode == 'handoff-rollback': handoff(rollback=True)

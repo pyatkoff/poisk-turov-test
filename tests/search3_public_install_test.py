@@ -6246,4 +6246,546 @@ class HomeClient(unittest.TestCase):
                         self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
 
 
+HOME_INSPECTION_IDENTITY={'control_source_sha':'e'*40,'run_id':'989012','command_comment_id':9017}
+
+
+def home_inspection_event():
+    value=event();value['comment'].update(id=HOME_INSPECTION_IDENTITY['command_comment_id'],
+        body=f'{m.HOME_INSPECT_PREFIX} {HOME_INSPECTION_IDENTITY["control_source_sha"]} {m.HOME_INSPECT_OPERATION}')
+    return value
+
+
+class HomeInspectionAdmission(unittest.TestCase):
+    def metadata(self,path):
+        failed=m.HOME_INSPECT_FAILED;current=HOME_INSPECTION_IDENTITY['control_source_sha']
+        owner={'user':{'id':226193297},'author_association':'OWNER'}
+        if path=='/git/ref/heads/main':return {'object':{'sha':current}}
+        for ancestor in (m.HOME_MAIN_BASE,failed['control_source_sha']):
+            if path=='/compare/'+ancestor+'...'+current:
+                return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':ancestor}}
+        if path=='/actions/runs/'+failed['run_id']:
+            return {'id':int(failed['run_id']),'head_sha':failed['control_source_sha'],'head_branch':'main',
+                'path':m.WORKFLOW,'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'failure',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                'created_at':'2026-11-22T05:00:01Z','run_started_at':'2026-11-22T05:00:02Z','updated_at':'2026-11-22T05:01:01Z'}
+        if path.startswith('/actions/runs/'+failed['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':failed['job_id'],'run_id':int(failed['run_id']),
+                'name':'public-install','status':'completed','conclusion':'failure','steps':[
+                    {'name':'Run python3 scripts/deploy/search3_public_install.py home','status':'completed',
+                     'conclusion':'failure','started_at':'2026-11-22T05:00:03Z','completed_at':'2026-11-22T05:01:00Z'}]}]}
+        if path=='/actions/artifacts/'+str(failed['artifact_id']):
+            return {'id':failed['artifact_id'],'name':'search3-public-install-'+failed['run_id']+'-1',
+                'expired':False,'digest':'sha256:'+failed['artifact_sha256'],
+                'workflow_run':{'id':int(failed['run_id']),'head_sha':failed['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):
+            original=owner|{'id':failed['command_comment_id'],
+                'body':f'{m.HOME_PREFIX} {failed["control_source_sha"]} {m.HOME_OPERATION}',
+                'created_at':'2026-11-22T05:00:00Z','updated_at':'2026-11-22T05:00:00Z'}
+            terminal=owner|{'id':failed['terminal_comment_id'],'created_at':'2026-11-22T05:02:00Z','updated_at':'2026-11-22T05:02:00Z',
+                'body':' '.join(str(failed[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id',
+                    'artifact_id','artifact_sha256','receipt_sha256'))+' blocked_no_replay protected_changed NO REPLAY'}
+            command=home_inspection_event()['comment']|{'created_at':'2026-11-22T05:03:00Z','updated_at':'2026-11-22T05:03:00Z'}
+            return [original,terminal,command]
+        return HomeAdmission().metadata(path)
+
+    def admit(self,f,change=None):
+        seen=[]
+        def api(path):
+            seen.append(path);value=self.metadata(path)
+            return change(path,value) if change else value
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(m,'api',side_effect=api))
+            reviewed=stack.enter_context(patch.object(m,'reviewed_control'))
+            download=stack.enter_context(patch.object(m,'download',return_value=f.home_inspection_raw))
+            for name in ('home_admission','home','home_remote_program','home_rollback_remote_program'):
+                stack.enter_context(patch.object(m,name,side_effect=AssertionError('mutating admission during inspection: '+name)))
+            stack.enter_context(patch.object(m.carrier,'run',side_effect=AssertionError('transport during admission')))
+            value=m.home_inspect_admission(HOME_INSPECTION_IDENTITY)
+            self.assertEqual(value,f.home_inspection_failed)
+            self.assertEqual([c.args[0] for c in reviewed.call_args_list],
+                [HOME_INSPECTION_IDENTITY['control_source_sha'],m.HOME_INSPECT_FAILED['control_source_sha']])
+            download.assert_called_once_with(m.HOME_INSPECT_FAILED['artifact_id'],m.HOME_INSPECT_FAILED['artifact_sha256'])
+        return seen
+
+    def test_exact_failed_run_job_artifact_terminal_current_source_and_receipt_are_required(self):
+        with HomeInspectionTransaction().failed_attempt() as f:
+            self.admit(f);failed=m.HOME_INSPECT_FAILED;run='/actions/runs/'+failed['run_id']
+            cases=(('/git/ref/heads/main',lambda v:v['object'].update(sha='0'*40)),
+                ('/git/ref/heads/release/search3-production-ready-v1',lambda v:v['object'].update(sha='0'*40)),
+                ('/pulls/'+str(m.HOME_SOURCE_PR),lambda v:v['head'].update(sha='0'*40)),
+                ('/git/commits/'+m.HOME_SOURCE,lambda v:v['tree'].update(sha='0'*40)),
+                ('/compare/'+failed['control_source_sha']+'...'+HOME_INSPECTION_IDENTITY['control_source_sha'],lambda v:v.update(behind_by=1)),
+                ('/check-runs?',lambda v:v['check_runs'].append(v['check_runs'][0]|{'id':99999,'conclusion':'failure'})),
+                (run,lambda v:v.update(id=1)),(run,lambda v:v.update(head_sha='0'*40)),
+                (run,lambda v:v.update(event='workflow_dispatch')),(run,lambda v:v.update(run_attempt=2)),
+                (run,lambda v:v.update(run_attempt=True)),(run,lambda v:v.update(conclusion='success')),
+                (run,lambda v:v.update(path='.github/workflows/other.yml')),(run,lambda v:v['actor'].update(login='other')),
+                (run,lambda v:v.update(created_at='2026-11-22T04:59:59Z')),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(id=1)),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0].update(run_id=1)),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py home-rollback')),
+                ('/attempts/1/jobs?',lambda v:v['jobs'][0]['steps'][0].update(conclusion='success')),
+                ('/actions/artifacts/',lambda v:v.update(id=1)),('/actions/artifacts/',lambda v:v.update(expired=True)),
+                ('/actions/artifacts/',lambda v:v.update(digest='sha256:'+'0'*64)),
+                ('/actions/artifacts/',lambda v:v['workflow_run'].update(head_sha='0'*40)),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99990})),('/comments?',lambda v:v.append(v[2]|{'id':99991})),
+                ('/comments?',lambda v:v[0].update(updated_at='2026-11-22T05:00:01Z')),
+                ('/comments?',lambda v:v[2].update(updated_at='2026-11-22T05:03:01Z')),
+                ('/comments?',lambda v:v[1].update(body='blocked_no_replay without verified receipt')),
+                ('/comments?',lambda v:v[1].update(author_association='MEMBER')),
+                ('/comments?',lambda v:v[1].update(created_at='2026-11-22T05:04:00Z',updated_at='2026-11-22T05:04:00Z')),
+                ('/comments?',lambda v:v.append(v[0]|{'id':99992,'body':f'{m.HOME_ROLLBACK_PREFIX} {CONTROL} {failed["run_id"]} {m.HOME_ROLLBACK_OPERATION}'})))
+            for fragment,mutate in cases:
+                def change(path,value):
+                    if path==fragment or (fragment.endswith('/') or fragment.endswith('?')) and fragment in path:mutate(value)
+                    return value
+                with self.subTest(fragment=fragment,mutate=mutate),self.assertRaises(RuntimeError):self.admit(f,change)
+            with patch.object(m,'api',side_effect=self.metadata),patch.object(m,'reviewed_control'), \
+                 patch.object(m,'download',return_value=f.home_inspection_raw+b'altered'),self.assertRaises(RuntimeError):
+                m.home_inspect_admission(HOME_INSPECTION_IDENTITY)
+
+    def test_all_comment_pages_and_final_head_recheck_reject_replay_and_races(self):
+        with HomeInspectionTransaction().failed_attempt() as f:
+            for duplicate in (None,0,2):
+                pages_seen=[]
+                def comments(path,value):
+                    if '/comments?' not in path:return value
+                    page=int(path.rsplit('page=',1)[1]);pages_seen.append(page)
+                    if page==1:return value+[{'id':10000+i,'body':'unrelated coordination'} for i in range(97)]
+                    return [] if duplicate is None else [value[duplicate]|{'id':20000+duplicate}]
+                if duplicate is None:self.admit(f,comments)
+                else:
+                    with self.subTest(duplicate=duplicate),self.assertRaises(RuntimeError):self.admit(f,comments)
+                self.assertEqual(pages_seen,[1,2])
+            reads=0
+            def changed_head(path,value):
+                nonlocal reads
+                if path=='/git/ref/heads/main':
+                    reads+=1
+                    if reads>1:value['object']['sha']='0'*40
+                return value
+            with self.assertRaises(RuntimeError):self.admit(f,changed_head)
+            self.assertEqual(reads,2)
+
+    def test_exact_reader_identity_mode_and_workflow_share_the_original_strict_carrier(self):
+        identity=HOME_INSPECTION_IDENTITY
+        env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+        self.assertEqual(m.home_inspect_event_identity(home_inspection_event(),env),identity)
+        self.assertEqual(m.command_mode(['home-inspect']),'home-inspect')
+        for name,value in (('GITHUB_REPOSITORY','other/repository'),('GITHUB_ACTOR','other'),
+            ('GITHUB_TRIGGERING_ACTOR','other'),('GITHUB_REF','refs/heads/topic'),('GITHUB_WORKFLOW_REF','other'),
+            ('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch'),
+            ('GITHUB_RUN_ID',m.HOME_INSPECT_FAILED['run_id'])):
+            with self.subTest(name=name),self.assertRaises(RuntimeError):m.home_inspect_event_identity(home_inspection_event(),env|{name:value})
+        changes=(lambda e:e.update(action='edited'),lambda e:e['repository'].update(full_name='other/repository'),
+            lambda e:e['comment'].update(author_association='MEMBER'),lambda e:e['comment']['user'].update(id=1),
+            lambda e:e['issue'].update(number=1719),lambda e:e['issue'].update(pull_request={}),
+            lambda e:e['comment'].update(body=e['comment']['body']+' arbitrary.php hash'),
+            lambda e:e['comment'].update(body=e['comment']['body'].replace(identity['control_source_sha'],'0'*40)))
+        for mutate in changes:
+            value=home_inspection_event();mutate(value)
+            with self.subTest(mutate=mutate),self.assertRaises(RuntimeError):m.home_inspect_event_identity(value,env)
+        for other in (home_test_event(),home_test_event(True),site_inspection_event(),handoff_test_event(),event()):
+            with self.assertRaises(RuntimeError):m.home_inspect_event_identity(other,env)
+        for arguments in (['home-inspect','/tmp/root'],['home-inspect','continue'],['--home-inspect']):
+            with self.assertRaises(RuntimeError):m.command_mode(arguments)
+        workflow=(ROOT/m.WORKFLOW).read_text()
+        section=workflow.split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
+        gate="github.event.comment.body == format('/inspect-site-home-guard {0} site-home-guard-inspect-45078958662-v1', github.sha)"
+        self.assertEqual(section.count(gate),2);self.assertIn(gate+" && 'home-inspect'",section)
+        self.assertNotIn("startsWith(github.event.comment.body, '/inspect-site-home-guard",section)
+        for token in ("github.repository == 'pyatkoff/poisk-turov-test'", "github.ref == 'refs/heads/main'",
+            "github.actor == 'pyatkoff'", "github.triggering_actor == 'pyatkoff'",'github.run_attempt == 1',
+            "github.event_name == 'issue_comment'", "github.event.action == 'created'",'github.event.issue.number == 4709',
+            '!github.event.issue.pull_request','github.event.comment.user.id == 226193297',
+            "github.event.comment.author_association == 'OWNER'",'group: deploy-anytoour-production',
+            'cancel-in-progress: false','timeout-minutes: 10',
+            'permissions: {contents: read, issues: read, checks: read, actions: read}',
+            'python3 tests/search3_public_install_test.py','python3 tests/anytoour_production_deploy_guard_test.py'):
+            self.assertIn(token,section)
+
+    def test_original_failed_attempt_and_home_policy_pins_remain_immutable(self):
+        expected={'operation_id':m.HOME_OPERATION,'control_source_sha':'428a3a5f8aab838daa3413020194dadeeea25bfc',
+            'run_id':'45078958662','command_comment_id':7086983423,'job_id':137382493638,'artifact_id':14776437137,
+            'artifact_sha256':'b63c34ef5ecdf0582da5d206db326fd9403559281f4ad88987982877e700b877',
+            'receipt_sha256':'e9d378accedcbe5be9f3cd12594359d0ce2997ba614c6e8c62c0dc9189146cb3',
+            'terminal_comment_id':7087105642}
+        for key,value in expected.items():self.assertEqual(m.HOME_INSPECT_FAILED[key],value)
+        self.assertEqual(m.HOME_INSPECT_PREFIX,'/inspect-site-home-guard')
+        self.assertEqual(m.HOME_INSPECT_OPERATION,'site-home-guard-inspect-45078958662-v1')
+        self.assertEqual(m.HOME_SOURCE,'be5d04ea6580a51e046eeec5d0a2da3b846725c2')
+        self.assertEqual(m.home_policy()['manifest'],'2a2bb1f0b1ba9968395180f7fcb968441075dbfbb1d25eea56fea27369c4ddbb')
+        self.assertEqual(m.HOME_PARENT['receipt_sha256'],'901477edeee5ceb162559520b0f73b7509e26709b8a49fba184dde8c621ba523')
+
+
+class HomeInspectionTransaction(unittest.TestCase):
+    """Execute the actual readonly program against retained native parent records."""
+    private_fields={'readable','present','expected_present','matches_row','matches_identity'}
+    ancestor_fields={'matches_scope','matches_rows','matches_identity','stable'}
+    ancestor_groups={'public','update','update_stage','site','site_stage','refactor','refactor_stage'}
+    counters=('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+
+    @contextlib.contextmanager
+    def failed_attempt(self,tv=True):
+        helper=HomeTransaction()
+        with helper.installed(tv) as f,contextlib.ExitStack() as stack:
+            if not tv:stack.enter_context(TvSuccessorTransaction().successor(f,installed=False))
+            # The already tested HOME guard is faulted before reservation solely
+            # to construct an exact-shape failed receipt without changing ctime
+            # in this reader's otherwise matching parent filesystem fixture.
+            def protected_fault(program):
+                line="  require(current==(saved[path][0],tuple(saved[path][1]) if saved[path][1] is not None else None),'protected_changed')"
+                self.assertEqual(program.count(line),1)
+                return program.replace(line,"  require(False,'protected_changed')",1)
+            before=f.filesystem_snapshot();remote=helper.execute(f,protected_fault)
+            self.assertEqual(remote['status'],'blocked_no_replay');self.assertEqual(remote['reason'],'protected_changed')
+            self.assertFalse(remote['reservation_created']);self.assertEqual(remote['written_files'],[])
+            self.assertEqual(f.filesystem_snapshot(),before)
+            value=helper.evidence(f,remote);data,raw=helper.archive(value)
+            pin=m.HOME_INSPECT_FAILED|HOME_IDENTITY|{'receipt_sha256':m.sha(data),'artifact_sha256':m.sha(raw)}
+            f.home_inspection_failed=value;f.home_inspection_raw=raw
+            with patch.object(m,'HOME_INSPECT_FAILED',pin):yield f
+
+    def audit_program(self,program):
+        # This is fixture instrumentation, never part of the shipped reader.
+        # The final assertion detects even a forbidden attempt caught by it.
+        guard='''
+import os as _hi_os, sys as _hi_sys
+_hi_mutations=[]
+def _hi_audit(event,args):
+ forbidden=event in {'os.mkdir','os.remove','os.rename','os.rmdir','os.link','os.symlink',
+  'os.chmod','os.chown','os.utime','os.truncate','os.system','os.posix_spawn',
+  'subprocess.Popen','socket.__new__','socket.connect'}
+ if event=='open':
+  flags=args[2]
+  forbidden=type(flags) is int and bool(flags & (_hi_os.O_WRONLY|_hi_os.O_RDWR|_hi_os.O_CREAT|_hi_os.O_TRUNC|_hi_os.O_APPEND))
+ if forbidden:
+  _hi_mutations.append(event)
+  raise RuntimeError('fixture_forbids_server_mutation')
+_hi_sys.addaudithook(_hi_audit)
+'''
+        return guard+program+"\nassert not _hi_mutations, 'readonly program attempted a mutation or external request'\n"
+
+    def execute(self,f,change=None,*,audit=True):
+        proof=copy.deepcopy(f.tv_evidence) if hasattr(f,'tv_evidence') else {'status':'absent'}
+        program=m.home_inspect_remote_program(HOME_INSPECTION_IDENTITY,f.home_inspection_failed,tv_successor=proof)
+        if change:program=change(program)
+        if audit:program=self.audit_program(program)
+        value=UpdateTransaction().run_program(f,program)
+        m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,value)
+        self.assertIs(value['read_only'],True)
+        for name in self.counters:self.assertIs(type(value[name]),int);self.assertEqual(value[name],0)
+        self.assertNotIn('written_files',value);self.assertNotIn('rollback_files',value)
+        return value
+
+    def assert_private(self,value,*,allow_empty=False):
+        _,private=m.home_inspect_scope();encoded=json.dumps(value,sort_keys=True)
+        expected=set() if allow_empty and not value['private_checks'] else set(private.values())
+        self.assertEqual(set(value['private_checks']),expected)
+        if expected:self.assertEqual(len(value['private_checks']),5)
+        for row in value['private_checks'].values():
+            self.assertEqual(set(row),self.private_fields)
+            self.assertTrue(all(type(flag) is bool for flag in row.values()))
+        for path,label in private.items():
+            self.assertFalse(json.dumps(path) in encoded,'private path exported under '+label)
+
+    def test_actual_parent_and_accepted_tv_successor_match_without_a_server_mutation(self):
+        for tv in (False,True):
+            with self.subTest(tv=tv),self.failed_attempt(tv) as f:
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'inspection_match');self.assertEqual(value['phase'],'complete')
+                self.assertEqual(f.filesystem_snapshot(),before);self.assertFalse(f.home_private.exists())
+                public,private=m.home_inspect_scope()
+                self.assertEqual(len(public),299);self.assertEqual(len(set(public)|set(private)),304)
+                self.assertEqual(value['checked_public_paths'],list(public));self.assertEqual(value['public_mismatches'],[])
+                for name in ('parent_records_verified','parent_records_stable','inventory_stable',
+                    'failed_namespace_absent','home_namespace_absent','inspection_namespace_absent','scope_matches'):
+                    self.assertIs(value[name],True)
+                self.assertEqual(set(value['ancestor_checks']),self.ancestor_groups)
+                for row in value['ancestor_checks'].values():
+                    self.assertEqual(set(row),self.ancestor_fields);self.assertTrue(all(flag is True for flag in row.values()))
+                self.assert_private(value)
+
+    def test_content_drift_reports_public_metadata_without_repair_or_repinning(self):
+        with self.failed_attempt() as f:
+            path='data/db-v1.php';raw=b'foreign public helper after the accepted parent'
+            (f.root/path).write_bytes(raw);before=f.filesystem_snapshot();value=self.execute(f)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(f.filesystem_snapshot(),before)
+            row=next(r for r in value['public_mismatches'] if r['path']==path)
+            self.assertEqual(row['observed']['sha256'],m.sha(raw));self.assertIn('sha256',row['changed_row_fields'])
+            self.assertIn('st_ctime_ns',row['changed_stat_fields']);self.assertIs(value['inventory_stable'],True)
+            self.assertEqual(set(row),{'path','expected','observed','changed_row_fields','changed_stat_fields'})
+            self.assert_private(value)
+
+    def test_ctime_only_drift_is_visible_even_when_bytes_inode_mode_and_mtime_match(self):
+        with self.failed_attempt() as f:
+            path='data/db-v1.php';target=f.root/path;raw=target.read_bytes();old=target.stat()
+            target.chmod(stat.S_IMODE(old.st_mode)^0o100);target.chmod(stat.S_IMODE(old.st_mode));now=target.stat()
+            self.assertNotEqual(now.st_ctime_ns,old.st_ctime_ns)
+            self.assertEqual(UpdateTransaction().stamp(target),
+                (old.st_dev,old.st_ino,old.st_mode,old.st_nlink,old.st_size,old.st_mtime_ns,old.st_uid,old.st_gid))
+            before=f.filesystem_snapshot();value=self.execute(f)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(target.read_bytes(),raw)
+            self.assertEqual(f.filesystem_snapshot(),before)
+            row=next(r for r in value['public_mismatches'] if r['path']==path)
+            self.assertEqual(row['expected'],row['observed']);self.assertEqual(row['changed_row_fields'],[])
+            self.assertEqual(row['changed_stat_fields'],['st_ctime_ns'])
+
+    def test_replaced_same_bytes_file_reports_identity_without_exporting_stat_values(self):
+        with self.failed_attempt() as f:
+            path='data/db-v1.php';target=f.root/path;old=target.stat();raw=target.read_bytes()
+            replacement=target.with_name('reader-fixture-replacement');replacement.write_bytes(raw)
+            replacement.chmod(stat.S_IMODE(old.st_mode));os.utime(replacement,ns=(old.st_atime_ns,old.st_mtime_ns))
+            replacement.replace(target);self.assertNotEqual(target.stat().st_ino,old.st_ino)
+            before=f.filesystem_snapshot();value=self.execute(f)
+            row=next(r for r in value['public_mismatches'] if r['path']==path)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(row['changed_row_fields'],[])
+            self.assertIn('st_ino',row['changed_stat_fields']);self.assertEqual(f.filesystem_snapshot(),before)
+            self.assertEqual(set(row),{'path','expected','observed','changed_row_fields','changed_stat_fields'})
+
+    def test_all_five_private_records_export_only_opaque_labels_and_boolean_comparisons(self):
+        with self.failed_attempt() as f:
+            _,private=m.home_inspect_scope();secrets=[]
+            for index,path in enumerate(private):
+                raw=('PRIVATE_DIAGNOSTIC_SENTINEL_'+str(index)+'_'*(index+19)).encode();secrets.append(raw)
+                f.put(path,raw)
+            before=f.filesystem_snapshot();value=self.execute(f);encoded=json.dumps(value,sort_keys=True)
+            self.assertEqual(value['status'],'inspection_mismatch');self.assertEqual(f.filesystem_snapshot(),before)
+            self.assert_private(value)
+            for row in value['private_checks'].values():self.assertFalse(row['matches_row']);self.assertFalse(row['matches_identity'])
+            for raw in secrets:self.assertNotIn(raw.decode(),encoded);self.assertNotIn(m.sha(raw),encoded)
+            self.assertNotIn(str(f.home),encoded)
+
+    def test_missing_and_unsafe_files_are_reported_without_following_private_symlinks(self):
+        for private,kind in ((False,'missing'),(False,'symlink'),(True,'missing'),(True,'symlink')):
+            with self.subTest(private=private,kind=kind),self.failed_attempt() as f:
+                path=m.PRIVATE_CONFIG if private else 'data/db-v1.php';target=f.root/path;target.unlink()
+                if kind=='symlink':target.symlink_to(f.root/'config.php')
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'inspection_unknown' if kind=='symlink' else 'inspection_mismatch')
+                self.assertEqual(f.filesystem_snapshot(),before);self.assert_private(value)
+                self.assertNotIn(f.secret.decode(),json.dumps(value));self.assertNotIn(m.sha(f.secret),json.dumps(value))
+
+    def test_existing_namespaces_and_changed_parent_records_block_without_server_writes(self):
+        for kind in ('home','home-rollback','inspection','inspection-link','parent-result','parent-snapshot'):
+            with self.subTest(kind=kind),self.failed_attempt() as f:
+                if kind=='home':f.home_private.mkdir(mode=0o700)
+                elif kind=='home-rollback':f.home_rollback_private.mkdir(mode=0o700)
+                elif kind=='inspection':(f.private.parent/m.HOME_INSPECT_OPERATION).mkdir(mode=0o700)
+                elif kind=='inspection-link':(f.private.parent/m.HOME_INSPECT_OPERATION).symlink_to(f.home)
+                elif kind=='parent-result':(f.handoff_private/'result.json').write_bytes(b'{}')
+                else:(f.handoff_private/'snapshot/manifest.json').write_bytes(b'{}')
+                before=f.filesystem_snapshot();value=self.execute(f)
+                self.assertEqual(value['status'],'inspection_blocked');self.assertEqual(f.filesystem_snapshot(),before)
+                self.assert_private(value,allow_empty=True)
+
+    def test_public_parent_and_namespace_races_never_become_a_complete_inspection(self):
+        for kind in ('public','parent','namespace','tv-record'):
+            with self.subTest(kind=kind),self.failed_attempt() as f:
+                def change(program):
+                    line=' confirmed=continuation_inventory(public,scope)'
+                    if kind=='namespace':inject=" os.mkdir(INSPECTION_OPERATION,0o700,dir_fd=base.fd)\n"
+                    elif kind=='tv-record':
+                        inject=" _race_tv=Files(home+'/.anytoour-int-executor/'+TV_SUCCESSOR['operation_id'])\n with _race_tv.parent('result.json') as (fd,name):\n  leaf=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(leaf,b'FOREIGN READER RACE');os.close(leaf)\n _race_tv.close()\n"
+                    else:
+                        store='public' if kind=='public' else 'handed'
+                        path='data/db-v1.php' if kind=='public' else 'result.json'
+                        inject=f" with {store}.parent({path!r}) as (fd,name):\n  leaf=os.open(name,os.O_WRONLY|os.O_TRUNC,dir_fd=fd);os.write(leaf,b'FOREIGN READER RACE');os.close(leaf)\n"
+                    self.assertEqual(program.count(line),1);return program.replace(line,inject+line,1)
+                before=f.filesystem_snapshot();value=self.execute(f,change,audit=False);after=f.filesystem_snapshot()
+                self.assertEqual(value['status'],'inspection_unknown');self.assertNotEqual(value['phase'],'complete')
+                if kind=='public':self.assertIs(value['inventory_stable'],False)
+                elif kind=='parent':self.assertIs(value['parent_records_stable'],False)
+                elif kind=='namespace':
+                    self.assertIs(value['inspection_namespace_absent'],False)
+                    self.assertTrue((f.private.parent/m.HOME_INSPECT_OPERATION).is_dir())
+                changed={p for p in set(before)|set(after) if before.get(p)!=after.get(p)}
+                if kind=='namespace':
+                    self.assertEqual(changed,{str(f.private.parent.relative_to(f.base)),
+                        str((f.private.parent/m.HOME_INSPECT_OPERATION).relative_to(f.base))})
+                else:
+                    target=(f.root/'data/db-v1.php' if kind=='public' else
+                        f.handoff_private/'result.json' if kind=='parent' else f.tv_namespace/'result.json')
+                    self.assertEqual(target.read_bytes(),b'FOREIGN READER RACE')
+                    self.assertEqual(changed,{str(target.relative_to(f.base))})
+                self.assertFalse(f.home_private.exists());self.assertFalse(f.home_rollback_private.exists())
+
+    def test_invalid_tv_proof_is_rejected_before_program_execution(self):
+        with self.failed_attempt() as f:
+            self.execute(f);before=f.filesystem_snapshot()
+            changes=(lambda v:v.update(status='unknown'),lambda v:v.update(run_id=True),
+                     lambda v:v['result'].update(status='failed'),lambda v:v['result'].update(source_sha='0'*40),
+                     lambda v:v['result']['install']['tv_client'].update(sha256='0'*64))
+            for mutate in changes:
+                proof=copy.deepcopy(f.tv_evidence);mutate(proof)
+                with self.subTest(mutate=mutate),self.assertRaises(RuntimeError):
+                    m.home_inspect_remote_program(HOME_INSPECTION_IDENTITY,f.home_inspection_failed,tv_successor=proof)
+            self.assertEqual(f.filesystem_snapshot(),before)
+
+    def test_failed_receipt_requires_exact_archive_and_original_zero_write_failure(self):
+        with self.failed_attempt() as f:
+            self.assertEqual(m.home_inspect_failed_evidence(f.home_inspection_raw),f.home_inspection_failed)
+            with self.assertRaises(RuntimeError):m.home_inspect_failed_evidence(f.home_inspection_raw+b'changed')
+            changes=(lambda v:v.update(run_id='1'),lambda v:v.update(command_comment_id=1),
+                lambda v:v.update(control_source_sha='0'*40),lambda v:v.update(source_sha='0'*40),
+                lambda v:v.update(manifest_sha256='0'*64),lambda v:v.update(read_only=True),
+                lambda v:v.update(ssh_started=False),lambda v:v.update(status='unknown_no_replay'),
+                lambda v:v['remote'].update(reason='predecessor_drift'),lambda v:v['remote'].update(phase='snapshot'),
+                lambda v:v['remote'].update(reservation_created=True),lambda v:v['remote'].update(snapshot_manifest_sha256='0'*64),
+                lambda v:v['remote'].update(written_files=[m.HOME_ORDER[0]]),lambda v:v['remote'].update(rollback_files=[m.HOME_ORDER[0]]),
+                lambda v:v['remote'].update(database_reads=1),lambda v:v['parent_evidence'].update(status='unknown_no_replay'))
+            for mutate in changes:
+                value=copy.deepcopy(f.home_inspection_failed);mutate(value)
+                pin=m.HOME_INSPECT_FAILED|{'receipt_sha256':m.sha((json.dumps(value,sort_keys=True)+'\n').encode())}
+                with self.subTest(mutate=mutate),patch.object(m,'HOME_INSPECT_FAILED',pin),self.assertRaises(RuntimeError):
+                    m.home_inspect_failed_value(value)
+            data=(json.dumps(f.home_inspection_failed,sort_keys=True)+'\n').encode();stream=io.BytesIO()
+            with zipfile.ZipFile(stream,'w') as archive:
+                archive.writestr('evidence.json',data);archive.writestr('extra.json',b'{}')
+            raw=stream.getvalue()
+            with patch.object(m,'HOME_INSPECT_FAILED',m.HOME_INSPECT_FAILED|{'artifact_sha256':m.sha(raw)}),self.assertRaises(RuntimeError):
+                m.home_inspect_failed_evidence(raw)
+
+    def test_result_validator_rejects_private_metadata_incomplete_scope_false_match_and_write_claims(self):
+        with self.failed_attempt() as f:
+            good=self.execute(f)
+            changes=(lambda v:v.update(read_only=False),lambda v:v.update(server_writes=1),
+                lambda v:v.update(database_reads=True),lambda v:v.update(status='home_navigation_updated_verified'),
+                lambda v:v.update(written_files=[]),lambda v:v['checked_public_paths'].pop(),
+                lambda v:v['checked_public_paths'].append('unreviewed.php'),lambda v:v['ancestor_checks'].pop('site'),
+                lambda v:v['ancestor_checks']['public'].update(matches_identity=False),
+                lambda v:v.update(inventory_stable=False),lambda v:v.update(parent_records_stable=False),
+                lambda v:v.update(scope_matches=False),lambda v:v['failed_attempt'].update(run_id='1'),
+                lambda v:v['private_checks'].pop('public_config'),
+                lambda v:v['private_checks']['public_config'].update(present=1),
+                lambda v:v['private_checks']['public_config'].update(matches_identity=False))
+            for mutate in changes:
+                value=copy.deepcopy(good);mutate(value)
+                with self.subTest(mutate=mutate),self.assertRaises(RuntimeError):m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,value)
+            for field,extra in (('path',m.PRIVATE_CONFIG),('sha256','0'*64),('size',21),('content','secret'),
+                ('reason','unsafe_file'),('changed_row_fields',['sha256']),('changed_stat_fields',['st_ctime_ns'])):
+                value=copy.deepcopy(good);value['private_checks']['public_config'][field]=extra
+                with self.subTest(private_field=field),self.assertRaises(RuntimeError):m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,value)
+            public,private=m.home_inspect_scope()
+            self.assertEqual(m.HOME_INSPECT_RECEIPT_LIMIT,262144)
+            length=len(json.dumps(good,sort_keys=True).encode())
+            self.assertLess(length,m.HOME_INSPECT_RECEIPT_LIMIT)
+            # Exercise the byte-boundary itself with an otherwise valid receipt.
+            with patch.object(m,'HOME_INSPECT_RECEIPT_LIMIT',length):
+                self.assertTrue(m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,good))
+            with patch.object(m,'HOME_INSPECT_RECEIPT_LIMIT',length-1),self.assertRaisesRegex(RuntimeError,'home_inspection_receipt_limit'):
+                m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,good)
+            for bad_path in (next(iter(private)),'unreviewed.php','../outside.php'):
+                value=copy.deepcopy(good);value.update(status='inspection_mismatch')
+                value['public_mismatches']=[{'path':bad_path,'expected':{'state':'absent'},'observed':{'state':'absent'},
+                    'changed_row_fields':[],'changed_stat_fields':['st_ctime_ns']}]
+                with self.subTest(path=bad_path),self.assertRaises(RuntimeError):m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,value)
+            value=copy.deepcopy(good);value.update(status='inspection_mismatch',scope_matches=False)
+            row={'path':public[0],'expected':{'state':'absent'},'observed':{'state':'absent'},
+                 'changed_row_fields':[],'changed_stat_fields':['st_ctime_ns']}
+            value['public_mismatches']=[row,copy.deepcopy(row)]
+            with self.assertRaises(RuntimeError):m.valid_home_inspection_result(HOME_INSPECTION_IDENTITY,value)
+
+
+class HomeInspectionClient(unittest.TestCase):
+    def env(self,f,name):
+        directory=f.base/name;directory.mkdir();event_path=directory/'event.json'
+        event_path.write_text(json.dumps(home_inspection_event()));identity=HOME_INSPECTION_IDENTITY
+        return directory,environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id'],
+            'RUNNER_TEMP':str(directory),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+            'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY fixture'}
+
+    def server_snapshot(self,f):
+        return {p:r for p,r in f.filesystem_snapshot().items() if p=='home' or p.startswith('home/')}
+
+    def prohibit_writers(self,stack):
+        for name in ('home','home_admission','home_remote_program','home_rollback_remote_program','home_package',
+            'handoff','site_update','update','install','rollback'):
+            stack.enter_context(patch.object(m,name,side_effect=AssertionError('write mode reached by reader: '+name)))
+
+    def test_client_rechecks_exact_evidence_and_dependency_and_retains_readonly_match_or_mismatch(self):
+        helper=HomeInspectionTransaction()
+        with helper.failed_attempt() as f:
+            for kind in ('match','mismatch'):
+                if kind=='mismatch':(f.root/'data/db-v1.php').write_bytes(b'foreign public helper')
+                result=helper.execute(f);runner,env=self.env(f,'reader-client-'+kind);before=self.server_snapshot(f)
+                with contextlib.ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    admission=stack.enter_context(patch.object(m,'home_inspect_admission',return_value=f.home_inspection_failed))
+                    dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                    heads=stack.enter_context(patch.object(m,'home_inspect_heads'))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(result).encode()]))
+                    self.prohibit_writers(stack);m.home_inspect()
+                self.assertEqual(admission.call_count,2);self.assertEqual(dependency.call_count,2)
+                heads.assert_called_once_with(HOME_INSPECTION_IDENTITY)
+                self.assertEqual([c.args[0][0] for c in remote.call_args_list],['ssh-keyscan','ssh'])
+                self.assertEqual(remote.call_args.args[0][-1],'python3 -I -S -B -')
+                self.assertEqual(remote.call_args.kwargs['timeout'],180)
+                evidence=runner/'search3-public-install/evidence.json';value=json.loads(evidence.read_text())
+                self.assertEqual(value['status'],'inspection_'+kind);self.assertIs(value['read_only'],True)
+                self.assertEqual(value['failed_evidence'],f.home_inspection_failed);self.assertEqual(value['remote'],result)
+                self.assertEqual(self.server_snapshot(f),before)
+                self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
+
+    def test_changed_admission_or_tv_proof_blocks_before_ssh_and_never_replays_home(self):
+        helper=HomeInspectionTransaction()
+        with helper.failed_attempt() as f:
+            for case in ('admission-initial','admission-recheck','receipt-changed','tv-initial','tv-recheck','tv-changed'):
+                runner,env=self.env(f,'reader-blocked-'+case);before=self.server_snapshot(f)
+                admissions=[f.home_inspection_failed,f.home_inspection_failed]
+                dependencies=[copy.deepcopy(f.tv_evidence),copy.deepcopy(f.tv_evidence)]
+                if case=='admission-initial':admissions=[RuntimeError('fixture current control moved')]
+                elif case=='admission-recheck':admissions[1]=RuntimeError('fixture current control moved')
+                elif case=='receipt-changed':admissions[1]=f.home_inspection_failed|{'run_id':'1'}
+                elif case=='tv-initial':dependencies=[RuntimeError('fixture unresolved successor')]
+                elif case=='tv-recheck':dependencies[1]=RuntimeError('fixture changed successor')
+                else:dependencies[1]=dependencies[1]|{'artifact_sha256':'0'*64}
+                with self.subTest(case=case),contextlib.ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    stack.enter_context(patch.object(m,'home_inspect_admission',side_effect=admissions))
+                    stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=dependencies))
+                    stack.enter_context(patch.object(m,'home_inspect_heads'))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                    self.prohibit_writers(stack)
+                    with self.assertRaises(RuntimeError):m.home_inspect()
+                    self.assertEqual([c.args[0][0] for c in remote.call_args_list],
+                        [] if case in ('admission-initial','tv-initial') else ['ssh-keyscan'])
+                evidence=runner/'search3-public-install/evidence.json';value=json.loads(evidence.read_text())
+                self.assertEqual(value['status'],'inspection_blocked');self.assertIs(value['ssh_started'],False)
+                self.assertIs(value['read_only'],True);self.assertNotIn('remote',value)
+                self.assertEqual(self.server_snapshot(f),before)
+                self.assertFalse((evidence.parent/'key').exists());self.assertFalse((evidence.parent/'known').exists())
+
+    def test_oversized_truncated_or_unverified_response_never_becomes_complete(self):
+        helper=HomeInspectionTransaction()
+        with helper.failed_attempt() as f:
+            good=helper.execute(f);encoded=json.dumps(good).encode()
+            for case in ('over-limit','truncated','private-metadata','server-write','final-head'):
+                runner,env=self.env(f,'reader-response-'+case);before=self.server_snapshot(f)
+                if case=='over-limit':response=b' '*(m.HOME_INSPECT_RECEIPT_LIMIT+1)
+                elif case=='truncated':response=encoded[:-1]
+                elif case=='private-metadata':
+                    bad=copy.deepcopy(good);bad['private_checks']['public_config']['changed_stat_fields']=['st_ctime_ns']
+                    response=json.dumps(bad).encode()
+                elif case=='server-write':
+                    bad=copy.deepcopy(good);bad['server_writes']=1;response=json.dumps(bad).encode()
+                else:response=encoded
+                with self.subTest(case=case),contextlib.ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    stack.enter_context(patch.object(m,'home_inspect_admission',return_value=f.home_inspection_failed))
+                    stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                    stack.enter_context(patch.object(m,'home_inspect_heads',side_effect=RuntimeError('fixture head moved') if case=='final-head' else None))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',response]))
+                    self.prohibit_writers(stack)
+                    with self.assertRaises(RuntimeError):m.home_inspect()
+                value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                self.assertEqual(value['status'],'inspection_unknown');self.assertIs(value['read_only'],True)
+                self.assertIs(value['ssh_started'],True);self.assertNotEqual(value['phase'],'complete')
+                self.assertEqual([c.args[0][0] for c in remote.call_args_list],['ssh-keyscan','ssh'])
+                if case!='final-head':self.assertNotIn('remote',value)
+                self.assertEqual(self.server_snapshot(f),before)
+                self.assertFalse((runner/'search3-public-install/key').exists())
+                self.assertFalse((runner/'search3-public-install/known').exists())
+
+
 if __name__ == '__main__': unittest.main(verbosity=2)
