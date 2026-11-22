@@ -168,7 +168,7 @@ jobs:
       - name: Exact approved official LOCAL26 source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 6af9180edbfa3a2b15199cbd8ad04842ea42dfb3 # reviewed SOURCE candidate; runtime release-head gate remains
+          ref: 44515801b01f536e571fc3444276e1dd4bbdcd0b # accepted SOURCE5155 release; exact runtime release-head gate remains
           path: local-official26-source
           persist-credentials: false
       - name: Official LOCAL26 mixed-field admission and native MySQL apply/readback

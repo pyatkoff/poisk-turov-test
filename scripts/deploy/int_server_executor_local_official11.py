@@ -42,7 +42,7 @@ SOURCE_HASHES = {
 # The original LOCAL11 constants above are immutable historical evidence.
 MODE26 = 'local-official26-apply-v1'
 OPERATION26 = 'int-andromeda-local-official26-apply-20261122-v1'
-SOURCE_SHA26 = '6af9180edbfa3a2b15199cbd8ad04842ea42dfb3'
+SOURCE_SHA26 = '44515801b01f536e571fc3444276e1dd4bbdcd0b'
 APPROVAL_REF26 = 'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7077944229'
 ORIGINAL_PACKAGE_SHA26 = '9ceba785b8cbb25db3e4aaec0ec34d303e559dbe33577175f78a2889c631c79e'
 APPROVED_SHA26 = '7843b25c32c7adb8fa88f262aa870d8a469727ac3681f038ae418b98c0375138'
