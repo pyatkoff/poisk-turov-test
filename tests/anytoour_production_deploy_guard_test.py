@@ -2,6 +2,7 @@
 """Exercise the existing publisher's ownership guards with inert SSH only."""
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -95,6 +96,39 @@ def fingerprints(site: Path) -> dict:
 
 
 class ProductionPublisherGuard(unittest.TestCase):
+    def test_favicon_push_requires_artwork_and_keeps_explicit_dispatch(self):
+        workflow = (ROOT / ".github/workflows/deploy-favicon.yml").read_text()
+        events = workflow.split("\non:\n", 1)[1].split("\nconcurrency:\n", 1)[0]
+
+        def event(name):
+            value = events.split("  " + name + ":\n", 1)[1]
+            return re.split(r"(?m)^  [a-z_]+:", value, maxsplit=1)[0]
+
+        push = event("push")
+        self.assertIn("    branches: [main]\n", push)
+        paths = re.findall(r"(?m)^      - '([^']+)'$", push)
+        self.assertEqual(paths, ["v2/favicon.svg"])
+
+        def push_eligible(changed):
+            return any(fnmatch.fnmatchcase(path, pattern)
+                       for path in changed for pattern in paths)
+
+        self.assertFalse(push_eligible([".github/workflows/deploy-favicon.yml"]),
+                         "a CI-only merge must not write production favicon files")
+        self.assertFalse(push_eligible(["v2/home-v1.php", "v2/site-header-v2.php", "v2/index.php"]),
+                         "HOME source changes must not invoke the favicon publisher")
+        self.assertTrue(push_eligible(["v2/favicon.svg"]), "actual artwork changes retain their publisher")
+        self.assertTrue(push_eligible(["v2/favicon.svg", ".github/workflows/deploy-favicon.yml"]))
+        self.assertIn("  workflow_dispatch:\n", events)
+        pr_paths = re.findall(r"(?m)^      - '([^']+)'$", event("pull_request"))
+        for path in (".github/workflows/deploy-favicon.yml",
+                     "tests/anytoour_production_deploy_guard_test.py",
+                     "tests/public-favicon-inspection-test.py"):
+            self.assertIn(path, pr_paths)
+        deploy = workflow.split("\n  deploy-favicon:\n", 1)[1]
+        self.assertEqual(re.findall(r"(?m)^    if: (.+)$", deploy), [
+            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'"])
+
     def test_legacy_publisher_is_manual_only_without_source_push_followers(self):
         events = WORKFLOW.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(WORKFLOW.splitlines()[0], "name: Deploy anytoour.ru")
