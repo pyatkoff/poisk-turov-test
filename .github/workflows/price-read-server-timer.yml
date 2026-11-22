@@ -175,6 +175,62 @@ jobs:
               exit(1);
           }
           PHP
+
+      - name: Compare PRICE export transport with the installed saved-price reader
+        if: github.event_name == 'push' && github.run_attempt == 1
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && timeout 115s /usr/bin/php -d display_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $today = new DateTimeImmutable('today', new DateTimeZone('Europe/Moscow'));
+          $scope = ['departureId'=>1,'dateFrom'=>$today->modify('+1 day')->format('Y-m-d'),
+              'dateTo'=>$today->modify('first day of this month')->modify('+12 months')->modify('-1 day')->format('Y-m-d')];
+          $batch = [63208,64954,76011,82790,2479,30158,2418,2460,12125,57335,2469,2491,79323,68971,2948,7831,2470,2417,2466,85417,116932,50262,598,2451,12120];
+          $failed = false;
+          foreach ([[66198], $batch] as $ids) {
+              $query = ['tourvisorHotelIds'=>$ids] + $scope;
+              $url = 'https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'.http_build_query($query,'','&',PHP_QUERY_RFC3986);
+              $curl = curl_init($url);
+              curl_setopt_array($curl,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,
+                  CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>40,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+                  CURLOPT_HTTPHEADER=>['Cache-Control: no-cache']]);
+              $body = curl_exec($curl);
+              $info = curl_getinfo($curl);
+              $errno = curl_errno($curl);
+              curl_close($curl);
+              $data = is_string($body) ? json_decode($body,true) : null;
+              $returned = is_array($data['items']??null) ? count($data['items']) : 0;
+              $ok = ($info['http_code']??0)===200 && ($data['ok']??false)===true && $returned===count($ids);
+              $failed = $failed || !$ok;
+              echo 'PRICE_EXPORT_HTTP ',json_encode(['asked'=>count($ids),'returned'=>$returned,'ok'=>$ok,
+                  'curl_errno'=>$errno,'http'=>$info['http_code']??0,'dns_s'=>$info['namelookup_time']??0,
+                  'connect_s'=>$info['connect_time']??0,'tls_us'=>$info['appconnect_time_us']??0,
+                  'first_byte_s'=>$info['starttransfer_time']??0,'total_s'=>$info['total_time']??0,
+                  'bytes'=>is_string($body)?strlen($body):0]),PHP_EOL;
+          }
+          if ($failed) {
+              $started = hrtime(true);
+              try {
+                  require_once 'db-v1.php';
+                  require_once 'hotel-monitor-prices-v1.php';
+                  $data = v2_hmp_read(v2_data_db(), ['tourvisorHotelIds'=>$batch] + $scope);
+                  $count = count($data['items'] ?? []);
+                  echo 'PRICE_EXPORT_LOCAL ',json_encode(['asked'=>count($batch),'returned'=>$count,
+                      'ok'=>($data['ok']??false)===true && $count===count($batch),
+                      'elapsed_ms'=>(int)((hrtime(true)-$started)/1000000)]),PHP_EOL;
+              } catch (Throwable $e) {
+                  echo 'PRICE_EXPORT_LOCAL ',json_encode(['ok'=>false,'error_type'=>get_class($e),
+                      'elapsed_ms'=>(int)((hrtime(true)-$started)/1000000)]),PHP_EOL;
+              }
+          }
+          PHP
+
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
