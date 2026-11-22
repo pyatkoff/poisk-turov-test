@@ -42,10 +42,11 @@ jobs:
     # Keep the pinned Playwright 1.55 browser on its supported Ubuntu image.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    env:
-      HOME_NATIVE_FIXTURE: ${{ runner.temp }}/home-native-content
     steps:
       - uses: actions/checkout@v4
+      - name: Set native HOME fixture path
+        shell: bash
+        run: echo "HOME_NATIVE_FIXTURE=$RUNNER_TEMP/home-native-content" >> "$GITHUB_ENV"
       - name: Install Chromium
         run: |
           npm init -y >/dev/null 2>&1

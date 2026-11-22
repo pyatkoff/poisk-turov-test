@@ -27,10 +27,11 @@ permissions:
 jobs:
   navigation-contract:
     runs-on: ubuntu-latest
-    env:
-      HOME_NATIVE_FIXTURE: ${{ runner.temp }}/home-native-navigation
     steps:
       - uses: actions/checkout@v4
+      - name: Set native HOME fixture path
+        shell: bash
+        run: echo "HOME_NATIVE_FIXTURE=$RUNNER_TEMP/home-native-navigation" >> "$GITHUB_ENV"
       - name: Keep one canonical navigation renderer
         shell: bash
         run: |
