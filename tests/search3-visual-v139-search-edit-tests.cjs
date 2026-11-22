@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
+const homeModeOwner=source=>{const declaration=source.match(/^const homeFormOnly=[^\n]+/m);assert(declaration,'actual public Home form guard');return declaration[0]+'\n';};
 
 // The selected-date summary must not turn pending/failed DB reads into an empty result.
 {
@@ -9,10 +10,10 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  const node={innerHTML:'',attributes:{},setAttribute(name,value){this.attributes[name]=value;}};
  const context={catalogReady:true,catalogError:'',calendarLoads:new Map(),dateDraft:{from:'2026-10-13',to:'2026-10-19'},dateContext:{search:{}},startDay:'2026-09-29',endDay:'2027-09-29',dateObj:day=>new Date(day+'T12:00:00Z'),addDays:(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),$:()=>node,calendarPrice:()=>null,esc:String,guestsText:()=> '2 взр.',calendarSourceLabel:()=> 'Ранее найденная цена',money:String};
  context.dateText||=(day=>String(day));
- vm.createContext(context);
+ context.window={};vm.createContext(context);
  const summaryStart=source.indexOf('function calendarSelectionPhase(){'),summaryEnd=source.indexOf('function openCalendar(){',summaryStart);
  assert(summaryStart>=0&&summaryEnd>summaryStart,'actual selected-price owner and dependencies');
- vm.runInContext(extract('dateRangeError')+'\n'+source.slice(summaryStart,summaryEnd),context);
+ vm.runInContext(homeModeOwner(source)+extract('dateRangeError')+'\n'+source.slice(summaryStart,summaryEnd),context);
  const render=()=>{vm.runInContext('renderDateSelectionPrice()',context);return node.innerHTML;};
  assert.match(render(),/ещё не загружена/,'unobserved mobile month is not an empty result');
  context.calendarLoads.set('2026-10-01','loading');
@@ -44,10 +45,10 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  const context={state,draft:structuredClone(trip),structuredClone,URLSearchParams,countryNames:{4:'Турция'},startDay:'2026-09-27',endDay:'2027-09-27',dateObj:v=>new Date(v+'T12:00:00Z'),data:{scenario:'live',catalog:{departures:[{name:'Москва'}]},text:x=>x.name,date:v=>v,meal:v=>v},$:()=>({value:''}),location:{search:'',hash:''},history:{state:null,replaceState(next,__,query){this.state=next;context.location.search=query;}},searchEditSession:null,urlStateHydrated:true,urlPartyIssues:[]};
  context.dateText||=(day=>String(day));
  context.validIds=ids=>[...new Set(ids.filter(id=>Number.isSafeInteger(id)&&id>0))].slice(0,20);context.destinationIds=f=>context.validIds(f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[]);context.setDestinationIds=(f,ids)=>{f.hotelIds=context.validIds(ids);f.hotelId=f.hotelIds.length===1?f.hotelIds[0]:0;};
- vm.createContext(context);
+ context.window={};vm.createContext(context);
  context.amenityNames=new Map();
  context.linkedAmenityLabels=new Map();
- vm.runInContext(['parseURLParty','urlPartyReviewText','restoreURL','restoreAmenityLabels','updateURL'].map(extract).join('\n')+
+ vm.runInContext(homeModeOwner(source)+['parseURLParty','urlPartyReviewText','restoreURL','restoreAmenityLabels','searchURLParameters','updateURL'].map(extract).join('\n')+
   '\n'+source.match(/^function amenityLabel[^\n]+/m)[0],context);
  state.filters={...defaults(),flight:['charter'],beach:true,family:true,spa:true,rating:true};
  vm.runInContext('updateURL()',context);const shared=context.location.search;
@@ -119,10 +120,10 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  const extract=name=>source.match(new RegExp('function '+name+'\\([^]*?\\n\\}'))[0];
  const calls=[];
  const automatic={urlPartyIssues:['invalid-adults'],state:{hasSearched:true},editSearch:()=>calls.push('edit'),renderResults:()=>calls.push('render'),updateSearchUI:()=>calls.push('ui')};
- vm.createContext(automatic);vm.runInContext(extract('prepareSearchRun'),automatic);
+ automatic.window={};vm.createContext(automatic);vm.runInContext(homeModeOwner(source)+extract('prepareSearchRun'),automatic);
  assert.equal(vm.runInContext('prepareSearchRun()',automatic),null);assert.equal(automatic.state.hasSearched,false);assert.deepEqual(calls,['edit','render','ui'],'automatic search returns before any data or supplier owner');
  const submitted={urlPartyIssues:['too-many-children'],openGuests:()=>calls.push('guests')};
- vm.createContext(submitted);vm.runInContext(extract('commitSearchDraft'),submitted);
+ submitted.window={};vm.createContext(submitted);vm.runInContext(homeModeOwner(source)+extract('commitSearchDraft'),submitted);
  assert.equal(vm.runInContext('commitSearchDraft()',submitted),false);assert.equal(calls.at(-1),'guests','explicit submit routes the user to the existing party editor');
  console.log('PASS unresolved URL party: automatic and explicit search blocked until guest ages are complete');
 }

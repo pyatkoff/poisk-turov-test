@@ -90,7 +90,7 @@ body.at-home-page{margin:0;padding-bottom:0;background:#fff;font-size:16px;line-
 @media(max-width:760px){
  .home-content{padding:14px 16px 20px}
  .home-hero{grid-template-columns:minmax(0,1fr);border-radius:18px;min-height:0}
- .home-hero-copy{padding:20px 20px 18px}.home-hero h1{font-size:30px;line-height:1.08;margin:10px 0 12px;letter-spacing:-.04em}
+ .home-hero-copy{padding:16px 20px 12px}.home-hero h1{font-size:30px;line-height:1.08;margin:10px 0 12px;letter-spacing:-.04em}
  .home-lead{font-size:14px;line-height:1.5}.home-search-link{margin-top:22px}.home-hero-caption{margin-top:12px;font-size:11px}
  .home-hero-image{display:none}
  .home-search-surface{padding:16px 14px 14px;border-radius:0 0 18px 18px}
