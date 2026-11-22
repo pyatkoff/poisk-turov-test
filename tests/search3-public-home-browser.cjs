@@ -123,7 +123,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
  async function runCase(owner,{viewport,platform=null,historyCache=false}){
   const id=(platform|| (historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
-  const transport=fixture(),tv=privateTVFixture(transport,origin),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],handoffs=[],externalNavigations=[];
+  const transport=fixture(),tv=privateTVFixture(transport,origin),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen;
@@ -135,9 +135,12 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations.push(frame.url());});
+  // History.replaceState emits framenavigated too. Count actual document loads
+  // separately while retaining every URL rewrite in the diagnostic trace.
+  page.on('domcontentloaded',()=>documentCommits.push(page.url()));
   page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname,
    document:request.isNavigationRequest()&&request.frame()===page.mainFrame()}));
-  const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,handoffs,externalNavigations,stages:[],status:'running'};
+  const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
   receipt.cases.push(row);save();
   const privateRequests=()=>network.filter(request=>request.path===intPath).length;
   const capture=async(name,home=false)=>{
@@ -146,7 +149,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    await page.screenshot({path:path.join(directory,file)});checkGeometry(value,id+' '+name,home);
   };
   async function submit(nights,expected){
-   const beforeNavigation=navigations.filter(url=>new URL(url).pathname==='/poisk-turov/').length;
+   const beforeNavigation=documentCommits.filter(url=>new URL(url).pathname==='/poisk-turov/').length;
+   const beforeDocumentId=await page.evaluate(()=>window.__homeDocumentId);
    const beforeDocuments=network.filter(request=>request.document&&request.path==='/poisk-turov/').length;
    const response=action=>page.waitForResponse(result=>{
     const request=result.request();if(new URL(request.url()).pathname!==intPath||request.method()!=='POST')return false;
@@ -155,7 +159,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    await Promise.all([page.waitForURL(url=>url.pathname==='/poisk-turov/'),response('tv_search'),response('search'),doubleSubmit(page)]);
    await page.waitForFunction(()=>Number(window.AnyTourPrototypeData?.searchId)>0&&window.dataLayer?.some(row=>row.v2_event==='search_complete'));
    checkTrip(page.url(),nights,true);
-   assert.equal(navigations.filter(url=>new URL(url).pathname==='/poisk-turov/').length-beforeNavigation,1,'double submit commits one navigation');
+   assert.equal(documentCommits.filter(url=>new URL(url).pathname==='/poisk-turov/').length-beforeNavigation,1,'double submit commits one receiver document');
+   assert.notEqual(await page.evaluate(()=>window.__homeDocumentId),beforeDocumentId,'the receiver has a new document identity');
    assert.equal(network.filter(request=>request.document&&request.path==='/poisk-turov/').length-beforeDocuments,1,'double submit requests one receiver document');
    assert.deepEqual(counts(transport,tv),{tv:expected,anex:expected},'receiver starts each supplier once');
   }
@@ -254,7 +259,9 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
    row.status='passed';save();
   }catch(error){
-   row.status='failed';row.error=error.stack||error.message;save();
+   row.status='failed';row.error=error.stack||error.message;
+   row.generationCounts=counts(transport,tv);
+   row.supplierActions={tv:tv.calls.map(call=>call.action),anex:transport.calls.filter(call=>call.url===intPath).map(call=>call.action)};save();
    await page.screenshot({path:path.join(directory,id+'-failure.png')}).catch(()=>{});
    fs.writeFileSync(path.join(directory,id+'-failure.html'),await page.content().catch(()=>''));throw error;
   }finally{await context.close();}
