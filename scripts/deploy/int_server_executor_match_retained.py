@@ -5,6 +5,7 @@ import copy
 import datetime as dt
 import hashlib
 import io
+import inspect
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,11 @@ MODES = {'match-retained-intake': 'common4-retained',
          'match-retained-acquire': 'anex105-current',
          'match-retained-anex-write': 'anex7-verified',
          'match-retained-anex-write-v2': 'anex7-reconciled'}
+# The legacy remote dictionary is byte-frozen. The explicit LOCAL9 write mode
+# is registered with the existing carrier without changing any read profile.
+LEGACY_MODES = dict(MODES)
+LOCAL9_APPLY_MODE = 'local9-bridge-apply-v1'
+MODES[LOCAL9_APPLY_MODE] = 'local9-bridge-manual27-20261123'
 # Historical accepted pairs from the owner's ANEX roster. This current read
 # grants no website/Online equivalence, canonical publication binding or write.
 OWNER_TOP500_CURRENT = {
@@ -284,6 +290,15 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if parts[1] == LOCAL9_APPLY_MODE or (len(parts) >= 3 and parts[2] == LOCAL9_APPLY['operation_id']) or (len(parts) >= 4 and parts[3] == LOCAL9_APPLY['cohort']):
+            profile = LOCAL9_APPLY
+            need(len(parts) == 5 and parts[1] == LOCAL9_APPLY_MODE
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local9_fixed_write_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) >= 3 and (parts[2] == LOCAL11_IDENTITY['operation_id']
                 or (len(parts) >= 4 and parts[3] == LOCAL11_IDENTITY['cohort'])):
             profile = LOCAL11_IDENTITY
@@ -2168,6 +2183,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('mode') == LOCAL9_APPLY_MODE or command.get('operation_id') == LOCAL9_APPLY['operation_id'] or command.get('cohort') == LOCAL9_APPLY['cohort']:
+        return completed_local9_apply(command, result, control_sha)
     if command.get('cohort') == LOCAL11_IDENTITY['cohort'] or command.get('operation_id') == LOCAL11_IDENTITY['operation_id']:
         return completed_local11_identity(command, result, control_sha)
     if command.get('cohort') == FUNSUN_RU_IDENTITY_SCOPE['cohort']:
@@ -2273,6 +2290,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == LOCAL9_APPLY_MODE:
+        return activate_local9_apply(core, command)
     if command.get('mode') not in MODES:
         return
     fields=('source_sha','mode','operation_id','cohort')+ (('target_operation_id',) if command.get('mode') in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') else ())
@@ -2327,7 +2346,7 @@ def activate(core, command):
         need(handler.count(anchor) == 1, 'funsun_ru_identity_dispatch_anchor')
         handler = handler.replace(anchor, "    if mode=='match-retained-acquire':return retained_funsun_ru_identity(stage)", 1)
         handler += funsun_ru_identity_handler()
-    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nOWNER_TOP500_CURRENT='+repr(OWNER_TOP500_CURRENT)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(LEGACY_MODES)+'\nOWNER_TOP500_CURRENT='+repr(OWNER_TOP500_CURRENT)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
     hashes=dict(LOCAL11_HASHES if local11 else SOURCE_HASHES)
@@ -2705,4 +2724,278 @@ def completed_local11_identity(command,result,control):
         return result['match_retained']['evidence_sha256']==hashlib.sha256(l11_json(data)).hexdigest()
     except (ValueError,KeyError,TypeError,AttributeError,OverflowError):
         return False
+
+
+# Owner approval 4709/7086996252 covers exactly these nine bridges and the
+# already approved 27 manual values. The historical proposal bytes stay frozen;
+# neither its earlier pending flags nor the read profile confer write authority.
+LOCAL9_RUNNER = 'scripts/catalog/anytour_local9_bridge_apply_v1.php'
+LOCAL9_PROPOSAL = 'scripts/catalog/anytour-local9-bridge-proposal-20261122.json'
+LOCAL9_APPLY = {
+    'mode': LOCAL9_APPLY_MODE,
+    'cohort': 'local9-bridge-manual27-20261123',
+    'operation_id': 'int-andromeda-local9-bridge-apply-20261123-v1',
+    'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'approval_ref': 'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7086996252',
+    'proposal_sha256': '4ffb86ff073be9b9b0d2f89bf29d508099a22f94e2e5bbdf03e3c3a218fedc55',
+    'parent_operation_id': 'int-andromeda-match-retained-current-20261122-v1',
+    'parent_source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'parent_control_sha': '23f702c75ebcd9293672d9478373322683678153',
+    'parent_evidence_sha256': 'ab9a4c8f8c98c454c3cad9e1b81d55c871f622ed8f914880d913f660405fcfea',
+    'parent_raw_sha256': '6b5e4cddac3f2a11ad1ec1376a041faf11f7277fbed9ec5125354a4d057e54e7',
+    'pairs': [
+        [5371,12120,'f6356e45bac53f8c2c7a88c4470efec7d09cda6d4a5cba69914383b03e03d651'],
+        [6014,64957,'5fd49755df7d4abe7b9b2b45aefd7a3f532618005d4f93670421480048e52cc4'],
+        [6202,76029,'574c75fc5369dd898416e52728371f2d3b5f8e98acd24c7fc20aec7e6fd58e33'],
+        [5160,66198,'84e6876908884f8f173e1978b32de19c8d6049f66964d985a0a1dd84cd67cfa2'],
+        [5794,49750,'41cb4867d5704205b687981fc91db531c903c6302351825f2547155b5eed8a67'],
+        [7218,123247,'1abe89f5849383275c910bb9daaf74abb02d2af168415e22c6809d4e6861ed36'],
+        [12008,48184,'47d2dd2b58cd23d619a361d8a9caa08cde76cb9fa1860b6e0c93f314331babb5'],
+        [5598,32322,'8b4b6a722032d4af2a74e434ccd3f398c1c336eaac9962b28f3b1efecdc50ef5'],
+        [10771,28272,'1b29726139bfb05effe46309f697b9d9d3f85dbd06344472c6060ec18beabd09'],
+    ],
+    'excluded_pairs': [[4516,2526],[8689,7458]],
+}
+LOCAL9_HASHES = {
+    'v2/data/db-v1.php': SOURCE_HASHES['v2/data/db-v1.php'],
+    LOCAL9_RUNNER: '072d3a554ae87bed84f754d8b5e2b85e31dbb5b6fdef44bcd18fb1d7fe0b8ae1',
+    LOCAL9_PROPOSAL: LOCAL9_APPLY['proposal_sha256'],
+}
+
+LOCAL9_VALIDATOR = r'''
+def l9_parent(prior):
+    p=LOCAL9_APPLY
+    command={'source_sha':p['parent_source_sha'],'mode':'match-retained-current',
+        'operation_id':p['parent_operation_id'],'cohort':LOCAL11_IDENTITY['cohort'],
+        'target_operation_id':LOCAL11_IDENTITY['parent_operation_id']}
+    l11_need(completed_local11_identity(command,prior,p['parent_control_sha']),'local9_parent_terminal')
+    material=prior['match_retained']
+    l11_need(material['evidence_sha256']==p['parent_evidence_sha256']
+        and material['data']['current_raw_sha256']==p['parent_raw_sha256'],'local9_parent_evidence')
+
+def l9_terminal(value):
+    keys={'schema_version','operation_id','state','completed_at_utc','proposal_sha256','approval_ref','no_replay',
+        'supplier_calls','provider_http_calls','database_writes','mapping_writes','native_updates','manual_field_writes',
+        'canonical_profile_writes','source_writes','new_target_inserts','accepted_native_bindings',
+        'commit_acknowledged','readback_verified','before','after','checks','pairs','error'}
+    p=LOCAL9_APPLY
+    l11_need(isinstance(value,dict) and set(value)==keys,'local9_terminal_shape')
+    l11_need(value['schema_version']=='anytour_local9_bridge_apply_v1'
+        and value['operation_id']==p['operation_id'] and value['proposal_sha256']==p['proposal_sha256']
+        and value['approval_ref']==p['approval_ref'] and value['no_replay'] is True,'local9_terminal_identity')
+    l11_time(value['completed_at_utc'])
+    for key in ('supplier_calls','provider_http_calls','canonical_profile_writes','source_writes','new_target_inserts','accepted_native_bindings'):
+        l11_need(type(value[key]) is int and value[key]==0,'local9_forbidden_writes')
+    state=value['state'];committed=state in ('committed_verified','post_commit_readback_unknown')
+    unknown=state in ('commit_unknown','rollback_unknown')
+    l11_need(committed or unknown or state in ('rejected_before_write','rolled_back'),'local9_terminal_state')
+    for key,count in zip(('database_writes','mapping_writes','native_updates','manual_field_writes'),(18,9,9,27)):
+        l11_need(value[key] is None if unknown else type(value[key]) is int and value[key]==(count if committed else 0),
+            'local9_write_counts')
+    l11_need(type(value['commit_acknowledged']) is bool and value['commit_acknowledged']==committed
+        and type(value['readback_verified']) is bool and value['readback_verified']==(state=='committed_verified'),
+        'local9_commit_semantics')
+    for name in ('before','after'):
+        hashes=value[name]
+        l11_need(hashes is None or isinstance(hashes,dict) and set(hashes)=={
+            'canonical_rows_sha256','target_preserved_rows_sha256','excluded_rows_sha256'}
+            and all(l11_hash(v) for v in hashes.values()),'local9_row_digests')
+    checks=value['checks']
+    l11_need(isinstance(checks,dict) and set(checks)=={'fresh_parent_match','canonical_unchanged',
+        'target_preserved','excluded_unchanged','direct_tv_sql','own_to_tv_sql','snapshots_verified'},'local9_checks')
+    for name,v in checks.items():
+        l11_need(type(v) is bool or name in ('canonical_unchanged','target_preserved','excluded_unchanged') and v is None,
+            'local9_checks')
+    pairs=value['pairs']
+    l11_need(isinstance(pairs,list) and len(pairs) in (0,9),'local9_pair_count')
+    for row,expected in zip(pairs,p['pairs']):
+        l11_need(isinstance(row,dict) and set(row)=={'own_id','tv_id','revision_from','revision_to','manual_fields',
+            'manual_sha256','snapshot_sha256','direct_tv_sql','own_to_tv_sql'},'local9_pair_shape')
+        for name,want in zip(('own_id','tv_id','revision_from','revision_to'),(*expected[:2],1,2)):
+            l11_need(type(row[name]) is int and row[name]==want,'local9_pair_identity')
+        l11_need(row['manual_fields']==['description','primaryImage','images'] and row['manual_sha256']==expected[2]
+            and l11_hash(row['snapshot_sha256']) and type(row['direct_tv_sql']) is bool
+            and type(row['own_to_tv_sql']) is bool,'local9_pair_evidence')
+    if state=='committed_verified':
+        l11_need(value['before'] is not None and value['before']==value['after'] and len(pairs)==9
+            and all(v is True for v in checks.values()) and all(r['direct_tv_sql'] and r['own_to_tv_sql'] for r in pairs)
+            and value['error'] is None,'local9_committed_readback')
+    else:
+        error=value['error']
+        l11_need(isinstance(error,dict) and set(error)=={'code','message_sha256'}
+            and isinstance(error['code'],str) and re.fullmatch(r'[a-z0-9_]{1,96}',error['code'])
+            and l11_hash(error['message_sha256']),'local9_failure_evidence')
+    return value
+
+def l9_validate_data(data,command,control):
+    keys={'operation_id','source_sha','control_source_sha','cohort','target_operation_id','approval_ref','proposal_sha256',
+        'parent_receipt_sha256','parent_evidence_sha256','raw_sha256','no_replay','child_exit_code','child_stderr_sha256',
+        'protected_before','protected_after','protected_inputs_unchanged','terminal'}
+    l11_need(isinstance(data,dict) and set(data)==keys,'local9_data_shape')
+    p=LOCAL9_APPLY
+    for key,want in {'operation_id':p['operation_id'],'source_sha':p['source_sha'],'cohort':p['cohort'],
+        'target_operation_id':p['parent_operation_id'],'approval_ref':p['approval_ref'],'proposal_sha256':p['proposal_sha256'],
+        'parent_evidence_sha256':p['parent_evidence_sha256'],'control_source_sha':control}.items():
+        l11_need(data[key]==want,'local9_data_binding')
+    l11_need(all(command.get(k)==p[k] for k in ('operation_id','source_sha','cohort','mode'))
+        and command.get('target_operation_id')==p['parent_operation_id']
+        and re.fullmatch(r'[a-f0-9]{40}',str(control)) is not None,'local9_command_binding')
+    l11_need(data['no_replay'] is True and l11_hash(data['parent_receipt_sha256']) and l11_hash(data['raw_sha256'])
+        and (data['child_stderr_sha256'] is None or l11_hash(data['child_stderr_sha256'])),'local9_data_evidence')
+    terminal=l9_terminal(data['terminal'])
+    l11_need(type(data['child_exit_code']) is int and data['child_exit_code']==(0 if terminal['state']=='committed_verified' else 1),
+        'local9_child_exit')
+    before=data['protected_before']
+    l11_need(isinstance(before,dict) and set(before)=={'parent/result.json','parent/reservation.json','config.php','data/db-v1.php'}
+        and all(l11_hash(v) for v in before.values()) and data['protected_after']==before
+        and before['parent/result.json']==data['parent_receipt_sha256']
+        and before['data/db-v1.php']==LOCAL9_HASHES['v2/data/db-v1.php']
+        and data['protected_inputs_unchanged'] is True,'local9_protected_inputs')
+'''
+exec(LOCAL9_VALIDATOR)
+
+
+def bundle_local9_source(source_root):
+    root=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in LOCAL9_HASHES.items():
+            path=(root if relative=='v2/data/db-v1.php' else control)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path and path.stat().st_nlink==1,'local9_source_path')
+            raw=path.read_bytes()
+            need(0<len(raw)<=1048576 and hashlib.sha256(raw).hexdigest()==digest,'local9_source_drift')
+            info=tarfile.TarInfo(relative);info.size=len(raw);info.mode=0o600;info.mtime=0
+            archive.addfile(info,io.BytesIO(raw))
+        raw=l11_json({'schema_version':1,'files':LOCAL9_HASHES})
+        info=tarfile.TarInfo('manifest.json');info.size=len(raw);info.mode=0o600;info.mtime=0
+        archive.addfile(info,io.BytesIO(raw))
+    return out.getvalue(),dict(LOCAL9_HASHES)
+
+
+LOCAL9_HANDLER = r'''
+def apply_local9_bridge(stage):
+    p=LOCAL9_APPLY
+    if (mode!=p['mode'] or operation!=p['operation_id'] or source!=p['source_sha']
+        or payload.get('cohort')!=p['cohort'] or payload.get('target_operation_id')!=p['parent_operation_id']):
+        fail('local9_fixed_write_scope')
+    target=private/p['parent_operation_id']
+    paths={'parent/result.json':target/'result.json','parent/reservation.json':target/'reservation.json',
+        'config.php':project/'config.php','data/db-v1.php':project/'data/db-v1.php'}
+    def guarded_hashes():
+        out={}
+        for name,path in paths.items():
+            if not safe_file(path,1048576) or path.resolve()!=path or path.stat().st_nlink!=1:fail('local9_protected_path')
+            out[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+        return out
+    protected=guarded_hashes()
+    if protected['data/db-v1.php']!=LOCAL9_HASHES['v2/data/db-v1.php']:fail('local9_installed_db_helper_drift')
+    prior=json.loads(paths['parent/result.json'].read_bytes(),object_pairs_hook=l11_unique);l9_parent(prior)
+    reserved=json.loads(paths['parent/reservation.json'].read_bytes(),object_pairs_hook=l11_unique)
+    if (not isinstance(reserved,dict) or set(reserved)!={'operation_id','source_sha','mode','reserved_at'}
+        or reserved.get('operation_id')!=p['parent_operation_id'] or reserved.get('source_sha')!=p['parent_source_sha']
+        or reserved.get('mode')!='match-retained-current' or not l11_int(reserved.get('reserved_at'))):
+        fail('local9_parent_reservation')
+    def write_once(name,raw):
+        fd=os.open(op/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    write_once('local9-child-reservation.json',l11_json({'operation_id':operation,'source_sha':source,
+        'control_source_sha':payload['match_retained_control_sha'],'approval_ref':p['approval_ref'],
+        'proposal_sha256':p['proposal_sha256'],'parent_evidence_sha256':p['parent_evidence_sha256'],'no_replay':True}))
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    result['database_writes']=result['mapping_writes']=None
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+            '-d','memory_limit=256M','-d','disable_functions='+disabled,str(stage/LOCAL9_RUNNER)],
+            cwd=project,env=env,capture_output=True,text=False,timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raw=exc.stdout or b''
+        if isinstance(raw,str):raw=raw.encode()
+        write_once('local9-raw.json',raw[:1048576])
+        fail('local9_child_timeout_no_replay')
+    raw=run.stdout
+    write_once('local9-raw.json',raw[:1048576])
+    if len(raw)>1048576:fail('local9_output_bound_no_replay')
+    terminal=l9_terminal(json.loads(raw,object_pairs_hook=l11_unique))
+    result['database_writes']=terminal['database_writes'];result['mapping_writes']=terminal['mapping_writes']
+    after=guarded_hashes()
+    data={'operation_id':operation,'source_sha':source,'control_source_sha':payload['match_retained_control_sha'],
+        'cohort':p['cohort'],'target_operation_id':p['parent_operation_id'],'approval_ref':p['approval_ref'],
+        'proposal_sha256':p['proposal_sha256'],'parent_receipt_sha256':protected['parent/result.json'],
+        'parent_evidence_sha256':p['parent_evidence_sha256'],'raw_sha256':hashlib.sha256(raw).hexdigest(),
+        'no_replay':True,'child_exit_code':run.returncode,
+        'child_stderr_sha256':hashlib.sha256(run.stderr).hexdigest() if run.stderr else None,
+        'protected_before':protected,'protected_after':after,'protected_inputs_unchanged':protected==after,'terminal':terminal}
+    evidence=l11_json(data);write_once('retained-evidence.json',evidence)
+    material={'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+    result['match_retained']=material
+    l9_validate_data(data,payload,payload['match_retained_control_sha'])
+    if run.stderr:fail('local9_child_stderr_no_replay')
+    return material
+'''
+
+LOCAL9_DISPATCH = r'''    if mode==LOCAL9_APPLY['mode']:
+        result['supplier_calls']=result['database_writes']=result['mapping_writes']=0
+        result['match_retained']=apply_local9_bridge(stage)
+        terminal=result['match_retained']['data']['terminal']
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']=('complete' if terminal['state']=='committed_verified' else
+            'rolled_back_no_replay' if terminal['state']=='rolled_back' else
+            'rejected_no_replay' if terminal['state']=='rejected_before_write' else 'unknown_no_replay')
+'''
+
+
+def completed_local9_apply(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result.get(k)!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        before=result['production_before']
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result['production_after'] or any(v is not None and not l11_hash(v) for v in before.values())):return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=material['data'];l9_validate_data(data,command,control)
+        if data['terminal']['state']!='committed_verified' or data['child_stderr_sha256'] is not None:return False
+        for name,want in {'supplier_calls':0,'database_writes':18,'mapping_writes':9,'booking_calls':0,'lead_calls':0}.items():
+            if type(result[name]) is not int or result[name]!=want:return False
+        return material['evidence_sha256']==hashlib.sha256(l11_json(data)).hexdigest()
+    except (ValueError,KeyError,TypeError,AttributeError,OverflowError):
+        return False
+
+
+def activate_local9_apply(core,command):
+    fields=('source_sha','mode','operation_id','cohort','target_operation_id')
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in fields))
+    need(command==expected,'local9_command_shape')
+    control=os.environ.get('GITHUB_SHA','')
+    need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local9_control_sha')
+    command['match_retained_control_sha']=control
+    remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'members':'        members=package.getmembers()\n','reservation':'    op.mkdir(mode=0o700)\n',
+        'receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():
+        need(remote.count(anchor)==(2 if key=='collector' else 1),'local9_registration_drift_'+key)
+    handler='\nLOCAL11_IDENTITY='+repr(LOCAL11_IDENTITY)+'\nLOCAL11_HASHES='+repr(LOCAL11_HASHES)+'\n'+LOCAL11_VALIDATOR
+    handler+='\n'+inspect.getsource(completed_local11_identity)
+    handler+='\nLOCAL9_APPLY='+repr(LOCAL9_APPLY)+'\nLOCAL9_HASHES='+repr(LOCAL9_HASHES)+'\nLOCAL9_RUNNER='+repr(LOCAL9_RUNNER)+'\n'
+    handler+=LOCAL9_VALIDATOR+LOCAL9_HANDLER
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],LOCAL9_DISPATCH+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('local9-bridge-apply-v1','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(LOCAL9_HASHES)+": fail('local9_manifest')",1)
+    remote=remote.replace(anchors['members'],anchors['members']+"        if len(members)!=4 or {m.name for m in members}!={*LOCAL9_HASHES,'manifest.json'}: fail('local9_archive_members')\n",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    local9_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('local9_reserved') is True and op.exists():",1)
+    ast.parse(remote)
+    core.REMOTE=remote;core.bundle_source=bundle_local9_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local9_apply(cmd,res,control) if cmd.get('mode')==LOCAL9_APPLY_MODE else original(cmd,res)
 
