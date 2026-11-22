@@ -207,7 +207,7 @@ jobs:
               $data = is_string($body) ? json_decode($body,true) : null;
               $returned = is_array($data['items']??null) ? count($data['items']) : 0;
               $ok = ($info['http_code']??0)===200 && ($data['ok']??false)===true && $returned===count($ids);
-              $failed = $failed || !$ok;
+              $failed = $failed || !$ok || ($info['total_time']??0)>=10;
               echo 'PRICE_EXPORT_HTTP ',json_encode(['asked'=>count($ids),'returned'=>$returned,'ok'=>$ok,
                   'curl_errno'=>$errno,'http'=>$info['http_code']??0,'dns_s'=>$info['namelookup_time']??0,
                   'connect_s'=>$info['connect_time']??0,'tls_us'=>$info['appconnect_time_us']??0,
@@ -330,6 +330,12 @@ jobs:
           with ThreadPoolExecutor(max_workers=3) as pool:
               for found in pool.map(check, batches):
                   observed.update(found)
+          unread = sorted(set(pairs) - set(observed))
+          if 0 < len(unread) <= 100:
+              retry_batches = [unread[offset:offset+5] for offset in range(0, len(unread), 5)]
+              with ThreadPoolExecutor(max_workers=2) as pool:
+                  for found in pool.map(check, retry_batches):
+                      observed.update(found)
           print('PRICE_SOURCE_AUDIT', json.dumps({'checked':len(observed),'unread':len(pairs)-len(observed),
               'fresh':sum(observed.values()), 'fresh_by_published_state':dict(Counter(
                   states[hotel] for hotel, fresh in observed.items() if fresh))}))
