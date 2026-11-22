@@ -239,6 +239,16 @@ if name=='monitor-price-hook.php':
         self.assertIn('--budget=64',collect);self.assertIn('--months=12',collect)
         self.assertNotIn('scheduled-collector-v1.php',names)
 
+    def test_busy_collector_defers_both_price_publishers(self):
+        result, names, _ = self.run_pass(collector_stdout='TOP500_MONTHLY_BUSY\n',
+                                         promoted_installed=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('PRICE_DEFERRED_COLLECTOR_BUSY', result.stdout)
+        self.assertNotIn('monitor-price-hook.php', names)
+        self.assertNotIn('apply_promoted_hotel_prices.php', names)
+        self.assertIn('build-seo-offer-snapshots-v1.php', names)
+        self.assertIsNone(self.hook_context)
+
     def test_failed_search_does_not_start_post_edits(self):
         result,names,_=self.run_pass(collector=2)
         self.assertEqual(result.returncode,2)

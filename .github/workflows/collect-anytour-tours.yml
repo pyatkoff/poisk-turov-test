@@ -404,7 +404,9 @@ jobs:
                 completed_partial=1
                 echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
               fi
-              if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
+              if grep -Fxq TOP500_MONTHLY_BUSY \"\$collector_log\"; then
+                echo PRICE_DEFERRED_COLLECTOR_BUSY
+              elif [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
                 hook_status=0
                 ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || hook_status=\$?
                 if [ \"\$hook_status\" -ne 0 ]; then
