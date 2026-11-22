@@ -290,6 +290,16 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if len(parts) >= 3 and (parts[2] == LOCAL26_IDENTITY['operation_id']
+                or (len(parts) >= 4 and parts[3] == LOCAL26_IDENTITY['cohort'])):
+            profile = LOCAL26_IDENTITY
+            need(len(parts) == 5 and parts[1] == 'match-retained-current'
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local26_fixed_read_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if parts[1] == LOCAL9_APPLY_MODE or (len(parts) >= 3 and parts[2] == LOCAL9_APPLY['operation_id']) or (len(parts) >= 4 and parts[3] == LOCAL9_APPLY['cohort']):
             profile = LOCAL9_APPLY
             need(len(parts) == 5 and parts[1] == LOCAL9_APPLY_MODE
@@ -2183,6 +2193,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == LOCAL26_IDENTITY['cohort'] or command.get('operation_id') == LOCAL26_IDENTITY['operation_id']:
+        return completed_local26_identity(command, result, control_sha)
     if command.get('mode') == LOCAL9_APPLY_MODE or command.get('operation_id') == LOCAL9_APPLY['operation_id'] or command.get('cohort') == LOCAL9_APPLY['cohort']:
         return completed_local9_apply(command, result, control_sha)
     if command.get('cohort') == LOCAL11_IDENTITY['cohort'] or command.get('operation_id') == LOCAL11_IDENTITY['operation_id']:
@@ -2290,6 +2302,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('cohort') == LOCAL26_IDENTITY['cohort']:
+        return activate_local26_identity(core, command)
     if command.get('mode') == LOCAL9_APPLY_MODE:
         return activate_local9_apply(core, command)
     if command.get('mode') not in MODES:
@@ -2999,3 +3013,479 @@ def activate_local9_apply(core,command):
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local9_apply(cmd,res,control) if cmd.get('mode')==LOCAL9_APPLY_MODE else original(cmd,res)
 
+
+
+# Finite LOCAL26 receiving measurement. Earlier before-pins are historical;
+# current canonical values and every bridge leg are observed without writes.
+LOCAL26_RUNNER = 'scripts/diagnostics/hotel_match_local26_identity_v1.php'
+LOCAL26_MANIFEST = 'scripts/catalog/anytour-local-official26-approved-20261122.json'
+LOCAL26_IDENTITY = {'cohort': 'local26-identity-20261123',
+ 'operation_id': 'int-andromeda-match-retained-current-20261123-v1',
+ 'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+ 'parent_operation_id': 'int-andromeda-local-official26-apply-20261122-v1',
+ 'parent_source_sha': '44515801b01f536e571fc3444276e1dd4bbdcd0b',
+ 'parent_control_sha': '2c355cc953d436a676af111bed71b90de0262af1',
+ 'parent_canonical_sha256': '82eebab327b6e43bb9c3342d4b6696d7769632b65eb956af1516509ef31fbd55',
+ 'plan_sha256': '894344b944883c813193837c5a60718c4bb00a8c4502c5679af6beeb450bac1e',
+ 'owner_receipt_sha256': 'b341e27bda6744c82ae173c4d7e33d81641b5674480f30e4c6b433a8b5b68b66',
+ 'consumer_sha256': 'bb0fdc084deb15e4eb278bb602f9d1612a332691be14578d95fdb39b8537ee5a',
+ 'approved_manifest_sha256': '7843b25c32c7adb8fa88f262aa870d8a469727ac3681f038ae418b98c0375138',
+ 'actions_sha256': 'd3e1c159a107638e069b5e6e003bf9ad085e2188be93ba1a2c78f75080db7c4e',
+ 'source_contract': {'own_namespace': 'anytour_hotels.id',
+                     'legacy_source_namespace': 'legacy_catalog',
+                     'candidate_target_namespace': 'local_tv_hotels.id=Tourvisor',
+                     'bridge_columns': ['local_tv_legacy_links.old_local_id', 'local_tv_legacy_links.tv_id'],
+                     'receiving_handoff': '4709/7087129483',
+                     'read_scope_claim': '4709/7087404248',
+                     'native_binding_admission': False},
+ 'pairs': [[4511, 2490, 'VILAMENDHOO ISLAND RESORT', 'Мальдивы', 'Мальдивы'],
+           [10334, 22940, 'ANANTARA SIR BANI YAS ISLAND AL YAMM VILLA RESORT', 'ОАЭ', 'Абу-Даби'],
+           [8751, 7831, 'ANANTARA BANGKOK RIVERSIDE RESORT & SPA', 'Таиланд', 'Бангкок'],
+           [4679, 4283, 'ANANTARA SIAM BANGKOK (EX. FOUR SEASONS HOTEL BANGKOK)', 'Таиланд', 'Бангкок'],
+           [14397, 97001, 'FOUR SEASONS HOTEL ALEXANDRIA AT SAN STEFANO', 'Египет', 'Александрия'],
+           [13766, 74509, 'FOUR SEASONS HOTEL CAIRO AT NILE PLAZA', 'Египет', 'Каир'],
+           [7599, 2458, 'KOMANDOO ISLAND RESORT', 'Мальдивы', 'Мальдивы'],
+           [14932, 113544, 'ANANTARA SANTORINI ABU DHABI RETREAT', 'ОАЭ', 'Абу-Даби'],
+           [12248, 52337, 'FOUR SEASONS HOTEL ABU DHABI AT AL MARYAH ISLAND', 'ОАЭ', 'Абу-Даби'],
+           [4609, 2948, 'ANANTARA RESORT & SPA HUA HIN', 'Таиланд', 'Хуа Хин'],
+           [12520, 57536, 'AL BALEED RESORT SALALAH BY ANANTARA', 'Оман', 'Салала'],
+           [12839, 61241, 'ANANTARA AL JABAL AL AKHDAR RESORT', 'Оман', 'Маскат'],
+           [13686, 73477, 'SIYAM WORLD', 'Мальдивы', 'Мальдивы'],
+           [13066, 64648, 'FOUR SEASONS DUBAI INTERNATIONAL FINANCIAL CENTRE', 'ОАЭ', 'Дубай'],
+           [4533, 2588, 'JUMEIRAH BEACH HOTEL', 'ОАЭ', 'Дубай'],
+           [7619, 2611, 'JUMEIRAH AL QASR (EX. MADINAT JUMEIRAH AL QASR)', 'ОАЭ', 'Дубай'],
+           [9843, 17424, 'FOUR SEASONS HOTEL ISTANBUL AT THE BOSPHORUS', 'Турция', 'Стамбул'],
+           [9842, 17423, 'FOUR SEASONS AT SULTANAHMET', 'Турция', 'Стамбул'],
+           [10377, 23718, 'ANANTARA HOI AN RESORT (EX. LIFE HERITAGE RESORT)', 'Вьетнам', 'Хой Ан'],
+           [4172, 80008, 'HILTON MALDIVES AMINGIRI', 'Мальдивы', 'Мальдивы'],
+           [4539, 2612, 'JUMEIRAH MINA AL SALAM (EX. MADINAT JUMEIRAH MINA A SALAM HOTEL)', 'ОАЭ', 'Дубай'],
+           [4538, 2610, 'JUMEIRAH DAR AL MASYAF', 'ОАЭ', 'Дубай'],
+           [4601, 2931, 'JUMEIRAH ZABEEL SARAY', 'ОАЭ', 'Дубай'],
+           [14029, 78669, 'FOUR SEASONS HOTEL BANGKOK AT CHAO PHRAYA RIVER', 'Таиланд', 'Бангкок'],
+           [12816, 60788, 'FOUR SEASONS HOTEL CAIRO AT THE FIRST RESIDENCE', 'Египет', 'Каир'],
+           [14013, 78456, 'JUMEIRAH MUSCAT BAY', 'Оман', 'Маскат']],
+ 'expected_fields': {'4511': {'description': '9babd0fd0d9ccf47811bb4cea812f0a0823b1c59477a24fb4cb1c5628476a744',
+                              'primaryImage': '18a26a4e2b085766aff2bed4fcdaf417774874fcbff58bfcfc8e3d4b7fa6cf90',
+                              'images': 'b81b89086d9ea602ce0ec41148f4a56878efe4bace0361a92cc66e77cda305e1'},
+                     '10334': {'description': 'e745d64bc5a8c6d27e8f8a33974b185da803e247bcbdaff0f47c532f991a325b',
+                               'primaryImage': 'e76864f02bf1ec7e4679d67f31e06c34494bb52242dbfebf6ef10636b51411cd',
+                               'images': 'f1ca168c64f3683b29cf57c45b2639fd031ccdd1f42b6861ec7c65485f411d22'},
+                     '8751': {'description': '1467b9281b93d62c093cef3d6bc7b1ee336e252ca6167f0e576bae2121bc8439',
+                              'primaryImage': '7e6755414df64f5cae06fa86a650f85b9d3becc206a8672c78b53c3ba09c90ab',
+                              'images': '9a8e4db039bc7effd3e60a2bc52ff9242b25e1ae0770f147034292a2df82e907'},
+                     '4679': {'description': '520f7768333106492618d944af5a13026df14af7527b7dba4e422df3f8bb261f',
+                              'primaryImage': '14de21667318eed8a2258bdc9a2ff437bc16f24d576a5750fc72d9df6d491229',
+                              'images': '75766f0bf0155261476e8795c9ecf6e96a467c9a6b2e44af1988050629c7d824'},
+                     '14397': {'description': 'af0aea0aee2f71f82dfa258751dded4069053304dcbcb52f709d604d6241c743',
+                               'primaryImage': 'c577e1974f8b45a5ddceeb565b2f32543e5d5e63fffb4d17fdd9e580e0fc9f02',
+                               'images': 'c09c8c6e137f3d0e6c9152923e1133899565f58fb70783bcd7b9199542e3e574'},
+                     '13766': {'description': '8e2e98176bee9317d88cf80ef52d6531f52b3a8d2733d47ed7e532683cd79ae5',
+                               'primaryImage': '1daf580e1afec21627f1368c90584472a157e0581361bebbcbf27a1389d7ec7d',
+                               'images': '16830a723c0a7b10f30cb168001c06897955350b11323d89a13527c21b0b07b8'},
+                     '7599': {'description': 'e2a592dce62c6d98381fac1052f9d0c006a8b672b5dfd99fbaefa2cd1b64c88d',
+                              'primaryImage': '1f1d1655c7ef004047ef10b5d0917c6f6ee6b00a19ce437770c955a1696d6876',
+                              'images': '221dcacae0ac2600a881b8654ac6821b3fb979d7b79926f4359cb6a456ead3b0'},
+                     '14932': {'description': '73a85a18f684ffd2139d383f39f55b7f7673a6dc97076ac968f4427a9cebebf2',
+                               'primaryImage': 'd08d45f17d633cb9a678b64b3120cd34315b46396d32da4cf97d7324bc267e98',
+                               'images': 'aedde6b27b45961b097025f0d4671e14c1306809d312ead97471c5cfe5de60ce'},
+                     '12248': {'description': '97050741b6cfcf1887083570033949d5e7eaf915b0e8581b996b0db1e67b5728',
+                               'primaryImage': 'a0ecf0446721dba0d462c733dad58c5e7ec043f05280bd3e9420d6fc96a0c501',
+                               'images': '258b8667378b37f0039c93b78ec86800c3fdbc3ccb58ea26a5b83b9ae4999d30'},
+                     '4609': {'description': '1e97a428c23875d6afdf8b55d7dfcf6c1b75a3ab605d829e1f5a710d3095723e',
+                              'primaryImage': 'c60e528553fe1b063824ca37bd006566294ea109626c8a185a19d86416e0bee1',
+                              'images': '85d404699084e16a2e6b7298418f51b7519a742444f12cd30043318bab13856e'},
+                     '12520': {'description': '790d46bb018cabd741a298aeb06efc53d8d4b29939d4c7bc3d91243c65844f40',
+                               'primaryImage': 'f51d91325928fdad7e39c370ac929a7a0b279740906fe191ee2a3529acf7cfcd',
+                               'images': 'ecc96a3fe2b4d857d5d0d493bccd9a3fd7a55b7cf03f82aa4de46446d6ae6500'},
+                     '12839': {'description': 'dd3379fb63a3c2753c2608cc8cfb2186e215ccdfde593ce540fc3cd042b04dd5',
+                               'primaryImage': 'd4d0ed97cd77adc8c0f0537f6e22a8f7140dbaa05f5f863e90f6557ea3a823e4',
+                               'images': '91f982a9b59e57e7a1283c2aaa93f3f194df79c3659012bebaaa3488d2cef75c'},
+                     '13686': {'description': '9e4ed44913bf227ac63081c517ca01c37a2e26e752f96ca9986596eecf19ebe2',
+                               'primaryImage': 'a3d49d579cb6e671e5f7cfdf2713d851849f918cbb568e56d4d89b555565a092',
+                               'images': 'adf4deabd669db9b5ac0b1f2e11fe680a63d54da3be85012d6147a04c4a0179f'},
+                     '13066': {'description': '1e6e816c95728be8d0f02b42b1070cf81034b5525acc3dc47cdbdf15f7c40b7c',
+                               'primaryImage': '7f2b74aef416f74d21fbfe66b325e691dd759c7ae40d5f8576cd1af8c0a3547d',
+                               'images': '6fa6131da41ef0bce1978821a59cb5bae4002739678c23d685219e828f924efa'},
+                     '4533': {'description': '59cdc7b62d176f33cdd2d5cea2d4d740ed23a4e97e8721162d6982d4ab1e0387',
+                              'primaryImage': '8547ab3e7553e93475dd9509e605e0554e14b187076e3033ac4714b2f423639b',
+                              'images': 'aa15db4a728b06d66c58fa323bbe5f5cd6dad3a0f9789faa1ede44875b580334'},
+                     '7619': {'description': '1af57c319a8d4b2407826ca0952a86bfbaa9663d4fbb8fef50b417a15664215a',
+                              'primaryImage': 'd12fd0e2127dc4fc2539c68c0da406a32ff4dcd90b0f8f1ba20a0720a3845406',
+                              'images': 'a7122580e6a788f1d171aa5ea7804b12d68c28cbc3d43817c08a841141fc96a6'},
+                     '9843': {'description': '1c313769c489ad13b40200035d44fd0c333a4d768aa7b136ce6259bb6e7a873a',
+                              'primaryImage': '4e78a58405434dbd17c3fdf25c9878ea7e76a1cc329aa8036e0bfcb408bba0a1',
+                              'images': 'c35c25134283f8c0c3fca69cbc371fcf171b5e35b509f19041c6cffbddba3d2c'},
+                     '9842': {'description': 'd49ac082ce36771ff498abfa7a571cf595ea75cea753255070db6a403e101b0f',
+                              'primaryImage': '0311a4e1926a9a2d8fb562103421bee9f828d9a563915ba80af5d462c39d7825',
+                              'images': 'ec8104c76a3f324fa4b6f49d52e23be0eef61fe9b579c6b00ba58980d2f65f5c'},
+                     '10377': {'description': 'fec44b9f3a06937da0884d35c1b8809bad5bcce07bb0919c77571b260708f98d',
+                               'primaryImage': '7578c5bbf6ff22cc85f0c8a7a647fba52701a9155994a4e8840baa9cf2065ec8',
+                               'images': '2e20f51551c59bd8c2bb5e63c5959d27e21f7df1de0876de4b3f81e2a17fa50b'},
+                     '4172': {'description': '99ef74925bb040cf38bf5e330a1754e84570ed0035951383e732d3ce4ae34914'},
+                     '4539': {'description': '5581a2619280c28193085704916aed3925befb6fdeb91b441ceae264d41bfded',
+                              'primaryImage': '140af709a244edafab53adcfef939b510b8792b2009d18f44b2f025cd11cf960',
+                              'images': 'ef45efcef638a345ecac03dadb31d295e8cd7a8554e74a167bb6157a8cf8aabc'},
+                     '4538': {'description': '5217a47726664563b9bd2d7ac073f581b9b63e7d6b3ee239099dd0340079eb95',
+                              'primaryImage': 'a8f0bca0618e66f1697512dc88bcc3997c77aab91ae97fda87009037454fd202',
+                              'images': '6c4931f747bf18457271cf74cb18542f9e21a663dce718ccbd49a8d198260365'},
+                     '4601': {'description': 'c4c4bd1a190263337dd0a6d1293656431be14b6c1b8a41e7c621e2c1e7e2f662',
+                              'primaryImage': '72ad785932d3c601d3acbeb5088520ae1e953230ea810e0b11faa33d79dcbf03',
+                              'images': 'e4cb9206012a8cee3be753c3269d56bbd9a0311c6f03435d0759d896ef28851c'},
+                     '14029': {'description': 'cc138fa78b4002362eddbda4f63eafe6b0298d6ebfea3e8def33532e2523c4d0',
+                               'primaryImage': 'f7961f68efb4b3c20ef09d2be10ea2d3c65d437d1ecfb3d735ee6e3cd76e0133',
+                               'images': 'd19a1847cd2dc1631950f61b9cdc3f94bc85e49d90f86e05429e6a8c1d1a306b'},
+                     '12816': {'description': 'c740b0b8d7512266313dbea717623d55598e425f585369e7bdd214a9b92b7b40',
+                               'primaryImage': '1c1cee7087c4d6773e1cee08f8ec673de6adf0d81f1ad6ffe0dcad9bdeb314e2',
+                               'images': 'ef700edb881a258efb8a9cb2e6776e3257e7376e7cd41f322f899c2f6bf91661'},
+                     '14013': {'description': 'c24882960380230bedffd27ff857f238abc75ff8b43ed57f6fd600f70634f8ef',
+                               'primaryImage': 'ff10f3769abf5e70537473ed4a4e27f5c1b7b5664b133fd96ff09f613b2e3653',
+                               'images': 'a60d328821b7abf766902dee7220443557ebb7c92197a814c4e35a8252adb210'}}}
+LOCAL26_HASHES = {
+    'v2/data/db-v1.php': SOURCE_HASHES['v2/data/db-v1.php'],
+    LOCAL26_RUNNER: 'c6110cacb58d99589875f825d343a3ec8995e34c08746d648aa212bb595839e5',
+    LOCAL26_MANIFEST: LOCAL26_IDENTITY['approved_manifest_sha256'],
+}
+
+LOCAL26_VALIDATOR = r'''
+def l26_parent(prior,p):
+    # Canonicalize parsed JSON; the downloaded pretty artifact hash is not a
+    # private-file hash. The exact consumed parent's entire material is pinned.
+    l11_need(isinstance(prior,dict) and hashlib.sha256(l11_json(prior)).hexdigest()==p['parent_canonical_sha256'],
+        'local26_actual_parent_material')
+    terminal=prior['local_official26']
+    l11_need(prior['status']=='complete' and prior['mode']=='local-official26-apply-v1'
+        and prior['operation_id']==p['parent_operation_id'] and prior['source_sha']==p['parent_source_sha']
+        and prior['production_unchanged'] is True and prior['production_before']==prior['production_after'],
+        'local26_parent_terminal')
+    expected={'operation_id':p['parent_operation_id'],'source_sha':p['parent_source_sha'],
+        'control_sha':p['parent_control_sha'],'manifest_sha256':p['approved_manifest_sha256'],
+        'actions_sha256':p['actions_sha256'],'plan_sha256':p['plan_sha256'],
+        'owner_receipt_sha256':p['owner_receipt_sha256'],'consumer_sha256':p['consumer_sha256'],
+        'state':'committed_verified','requested_profiles':26,'profiles_updated':26,'requested_fields':76,'fields_updated':76,
+        'database_writes':52,'profile_writes':26,'provenance_writes':26,'mapping_writes':0,'supplier_calls':0,
+        'provider_http_calls':0,'legacy_writes':0,'schema_writes':0,'preserved_fields':0,
+        'readback_verified':True,'consumer_readback_verified':True,'error_code':None}
+    l11_need(all(type(terminal[k]) is type(v) and terminal[k]==v for k,v in expected.items()),'local26_parent_pins')
+    l11_need(terminal['field_counts']=={'description':26,'primaryImage':25,'images':25}
+        and terminal['protected_before']==terminal['protected_after']
+        and terminal['protected_before']['data/db-v1.php']==LOCAL26_HASHES['v2/data/db-v1.php'],'local26_parent_readback')
+
+def l26_observation(value,kind,p):
+    l11_need(isinstance(value,dict),'local26_observation_shape')
+    if kind=='own':
+        l11_observation({k:v for k,v in value.items() if k!='approved_fields'},kind)
+        expected=p['expected_fields'].get(str(value['own_id']))
+        fields=value.get('approved_fields')
+        l11_need(expected is not None and isinstance(fields,dict) and set(fields)==set(expected),'local26_approved_field_set')
+        for name,want in expected.items():
+            field=fields[name]
+            l11_need(isinstance(field,dict) and set(field)=={'present','sha256','expected_sha256','matches'}
+                and type(field['present']) is bool and type(field['matches']) is bool
+                and field['expected_sha256']==want,'local26_approved_field_shape')
+            l11_need(l11_hash(field['sha256']) if field['present'] else field['sha256'] is None,'local26_field_digest')
+            l11_need(field['matches']==(field['present'] and field['sha256']==want),'local26_field_match')
+    elif kind=='link':
+        l11_need(set(value)>={'snapshot_source_count','snapshot_sources_integrity'},'local26_snapshot_sources')
+        l11_observation({k:v for k,v in value.items() if k not in ('snapshot_source_count','snapshot_sources_integrity')},kind)
+        count=value['snapshot_source_count'];valid=value['snapshot_sources_integrity']
+        l11_need((count is None or type(count) is int and 0<=count<=64) and type(valid) is bool
+            and (not valid or count is not None),'local26_snapshot_sources')
+    else:l11_observation(value,kind)
+
+def l26_row_facts(row,pair,p):
+    own,tv,name,country,region=pair
+    l11_need(row.get('own_id')==own and type(row['own_id']) is int and row.get('tv_id')==tv and type(row['tv_id']) is int,
+        'local26_pair_identity')
+    a=row['own'];b=row['bridge'];t=row['target'];linked=row['linked_target'];reasons=[]
+    for value,kind,key,want in ((a,'own','own_id',own),(b,'link','own_id',own),(t,'target','tv_id',tv)):
+        if value is not None:l26_observation(value,kind,p);l11_need(value[key]==want,'local26_observation_identity')
+    if linked is not None:
+        l26_observation(linked,'target',p)
+        l11_need(b is not None and b['tv_id']!=tv and linked['tv_id']==b['tv_id'],'local26_linked_target')
+    for key in ('expected_legacy_owners','target_link_owners','linked_target_link_owners'):
+        ids=row[key]
+        l11_need(isinstance(ids,list) and len(ids)<=128 and all(l11_int(v) for v in ids)
+            and ids==sorted(set(ids)),'local26_owner_ids')
+    sources=row['own_sources']
+    l11_need(isinstance(sources,list) and len(sources)<=256,'local26_source_bound')
+    for source in sources:l26_observation(source,'source',p);l11_need(source['own_id']==own,'local26_source_owner')
+    l11_need(len({(s['namespace'],s['external_key']) for s in sources})==len(sources),'local26_duplicate_source')
+    identity=None if a is None else [a['identity'][k] for k in ('name','country','region')]==[name,country,region]
+    content='own_missing' if a is None else 'exact_approved_values' if all(v['matches'] for v in a['approved_fields'].values()) else 'approved_fields_missing_or_changed'
+    if a is None:reasons.append('own_missing')
+    else:
+        if not a['active']:reasons.append('own_inactive')
+        if not a['profile_integrity']:reasons.append('own_profile_integrity_failed')
+        if not identity:reasons.append('canonical_identity_changed')
+        if a['revision']<2:reasons.append('official26_revision_not_observed')
+        if content!='exact_approved_values':reasons.append(content)
+    if any(not s['source_integrity'] for s in sources):reasons.append('own_source_integrity_failed')
+    legacy=[s for s in sources if s['namespace']=='legacy_catalog']
+    l11_need((own in row['expected_legacy_owners'])==any(s['external_key']==str(tv) for s in legacy),'local26_legacy_owner_consistency')
+    if not legacy:legacy_status='absent';reasons.append('legacy_source_absent')
+    elif len(legacy)!=1:legacy_status='ambiguous';reasons.append('legacy_source_ambiguous')
+    elif legacy[0]['external_key']!=str(tv):legacy_status='different_candidate';reasons.append('legacy_source_target_differs')
+    elif not legacy[0]['source_integrity'] or legacy[0]['source_identity_id']!=tv or legacy[0]['acquired_via']!='saved_catalog':
+        legacy_status='unverified';reasons.append('legacy_source_provenance_unconfirmed')
+    elif row['expected_legacy_owners']!=[own]:legacy_status='conflicting_owners'
+    else:legacy_status='observed_candidate_edge'
+    if any(v!=own for v in row['expected_legacy_owners']):reasons.append('legacy_candidate_owned_by_other_own')
+    if any(v!=own for v in row['target_link_owners']):reasons.append('candidate_linked_to_other_own')
+    if any(v!=own for v in row['linked_target_link_owners']):reasons.append('actual_target_linked_to_other_own')
+    if t is None:reasons.append('candidate_target_absent')
+    else:
+        if t['state'] in ('excluded','generic'):reasons.append('candidate_target_'+t['state'])
+        if t['manual_fields']:reasons.append('candidate_manual_fields_present')
+        if set(t['manual_fields'])&{'name','country','region','country.name','country.id','region.name','region.id'}:
+            reasons.append('candidate_manual_identity_present')
+        if not t['source_present']:reasons.append('candidate_native_source_absent')
+        elif not t['source_integrity']:reasons.append('candidate_native_source_integrity_failed')
+        if t['source_present'] and t['source_identity_id']!=tv:reasons.append('candidate_native_source_identity_unconfirmed')
+        identities=[t[k] for k in ('discovery_identity','content_identity','manual_identity')]
+        expected={'name':name,'country':country,'region':region}
+        if any(i[k] is not None and i[k]!=v for i in identities for k,v in expected.items()):
+            reasons.append('candidate_identity_differs_from_canonical')
+        if any(not any(i[k]==v for i in identities) for k,v in expected.items()):reasons.append('candidate_identity_incomplete')
+    status='absent' if b is None else 'candidate_target' if b['tv_id']==tv else 'different_target'
+    relation='no_bridge'
+    if b is None:
+        reasons.append('bridge_absent')
+        l11_need(linked is None and own not in row['target_link_owners'] and row['linked_target_link_owners']==[],
+            'local26_absent_bridge_consistency')
+    else:
+        l11_need((own in row['target_link_owners'])==(b['tv_id']==tv) and own in row['linked_target_link_owners'],
+            'local26_bridge_owner_consistency')
+        if b['tv_id']!=tv:reasons.append('bridge_target_differs')
+        else:l11_need(linked is None and row['linked_target_link_owners']==row['target_link_owners'],'local26_candidate_bridge_consistency')
+        if not b['snapshot_integrity'] or not b['snapshot_profile_integrity'] or not b['snapshot_sources_integrity']:
+            reasons.append('bridge_snapshot_integrity_failed');relation='invalid'
+        elif b['snapshot_own_id']!=own:reasons.append('bridge_snapshot_own_differs');relation='identity_mismatch'
+        elif a is None:relation='own_missing'
+        elif b['snapshot_revision']==a['revision'] and b['snapshot_profile_sha256']==a['profile_sha256']:relation='same_profile'
+        else:relation='historical_profile'
+        if not b['snapshot_source_count']:reasons.append('bridge_source_snapshot_absent')
+    actual=t if b is not None and b['tv_id']==tv else linked
+    visibility='missing_link' if b is None else 'target_missing' if actual is None else 'target_excluded' if actual['state']=='excluded' else 'visible'
+    return {'reasons':sorted(reasons),'own_identity_matches':identity,'approved_content_status':content,
+        'legacy_candidate_status':legacy_status,'bridge_status':status,'snapshot_profile_relation':relation,
+        'reverse_visibility':visibility,'reverse_details_available':actual is not None and visibility=='visible'
+            and actual['state']=='ready' and actual['source_present']}
+
+def l26_summary(rows):
+    fields=[v for row in rows if row['own'] is not None for v in row['own']['approved_fields'].values()]
+    return {'requested_profiles':26,'approved_fields_requested':76,'own_profiles_present':sum(r['own'] is not None for r in rows),
+        'own_profiles_integrity_ok':sum(r['own'] is not None and r['own']['profile_integrity'] for r in rows),
+        'canonical_identities_matching':sum(r['own_identity_matches'] is True for r in rows),
+        'approved_fields_present':sum(v['present'] for v in fields),'approved_fields_matching':sum(v['matches'] for v in fields),
+        'approved_profiles_all_fields_matching':sum(r['approved_content_status']=='exact_approved_values' for r in rows),
+        'legacy_candidate_edges_observed':sum(r['legacy_candidate_status']=='observed_candidate_edge' for r in rows),
+        'bridges_present':sum(r['bridge'] is not None for r in rows),
+        'bridges_to_candidate':sum(r['bridge_status']=='candidate_target' for r in rows),
+        'bridges_to_other_target':sum(r['bridge_status']=='different_target' for r in rows),
+        'candidate_targets_present':sum(r['target'] is not None for r in rows),
+        'candidate_targets_excluded':sum(r['target'] is not None and r['target']['state']=='excluded' for r in rows),
+        'reverse_visible':sum(r['reverse_visibility']=='visible' for r in rows)}
+
+def l26_project(raw,p):
+    keys={'schema_version','state','captured_at_utc','database_snapshot','own_rows','source_rows','link_rows','target_rows',
+        'supplier_calls','provider_http_calls','database_writes','mapping_writes','approved_manifest_sha256','actions_sha256'}
+    l11_need(isinstance(raw,dict) and set(raw)==keys,'local26_snapshot_shape')
+    l11_need(type(raw['schema_version']) is int and raw['schema_version']==1 and raw['state']=='local26_identity_snapshot'
+        and raw['database_snapshot']=='repeatable-read-read-only','local26_snapshot_type');l11_time(raw['captured_at_utc'])
+    for key in ('supplier_calls','provider_http_calls','database_writes','mapping_writes'):
+        l11_need(type(raw[key]) is int and raw[key]==0,'local26_snapshot_writes')
+    for key in ('approved_manifest_sha256','actions_sha256'):l11_need(raw[key]==p[key],'local26_approval_pin')
+    own_ids={pair[0] for pair in p['pairs']};tv_ids={pair[1] for pair in p['pairs']}
+    for name,kind,limit in (('own_rows','own',26),('source_rows','source',256),('link_rows','link',128),('target_rows','target',52)):
+        l11_need(isinstance(raw[name],list) and len(raw[name])<=limit,'local26_snapshot_bound')
+        for value in raw[name]:l26_observation(value,kind,p)
+    own={r['own_id']:r for r in raw['own_rows']};links={r['own_id']:r for r in raw['link_rows']}
+    targets={r['tv_id']:r for r in raw['target_rows']};sources=raw['source_rows']
+    l11_need(len(own)==len(raw['own_rows']) and set(own)<=own_ids,'local26_own_scope')
+    target_ids=tv_ids|{r['tv_id'] for r in links.values() if r['own_id'] in own_ids}
+    l11_need(len(target_ids)<=52 and len(links)==len(raw['link_rows'])
+        and all(r['own_id'] in own_ids or r['tv_id'] in target_ids for r in links.values()),'local26_link_scope')
+    l11_need(len(targets)==len(raw['target_rows']) and set(targets)<=target_ids,'local26_target_scope')
+    l11_need(len({(r['namespace'],r['external_key']) for r in sources})==len(sources),'local26_source_unique')
+    l11_need(all(r['own_id'] in own_ids or (r['namespace']=='legacy_catalog' and r['external_key'] in {str(v) for v in tv_ids})
+        for r in sources),'local26_source_scope')
+    rows=[]
+    for pair in p['pairs']:
+        a,tv=pair[:2];b=links.get(a)
+        row={'own_id':a,'tv_id':tv,'own':own.get(a),'bridge':b,'target':targets.get(tv),
+            'linked_target':targets.get(b['tv_id']) if b is not None and b['tv_id']!=tv else None,
+            'own_sources':sorted([r for r in sources if r['own_id']==a],key=lambda r:(r['namespace'],r['external_key'])),
+            'expected_legacy_owners':sorted({r['own_id'] for r in sources if r['namespace']=='legacy_catalog' and r['external_key']==str(tv)}),
+            'target_link_owners':sorted({r['own_id'] for r in links.values() if r['tv_id']==tv}),
+            'linked_target_link_owners':sorted({r['own_id'] for r in links.values() if b is not None and r['tv_id']==b['tv_id']})}
+        row.update(l26_row_facts(row,pair,p));rows.append(row)
+    return {'state':'local26_identity_inspected_read_only','captured_at_utc':raw['captured_at_utc'],
+        'database_snapshot':raw['database_snapshot'],'rows':rows,'summary':l26_summary(rows),'source_contract':p['source_contract'],
+        'scope_sha256':hashlib.sha256(l11_json(p['pairs'])).hexdigest(),'approved_manifest_sha256':p['approved_manifest_sha256'],
+        'actions_sha256':p['actions_sha256'],'supplier_calls':0,'provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+        'safe_to_write_now':False,'publication_admission':False,'accepted_native_bindings':0}
+
+def l26_validate_data(data,p):
+    keys={'state','captured_at_utc','database_snapshot','rows','summary','source_contract','scope_sha256','approved_manifest_sha256',
+        'actions_sha256','supplier_calls','provider_http_calls','database_writes','mapping_writes','safe_to_write_now',
+        'publication_admission','accepted_native_bindings','operation_id','source_sha','control_source_sha','cohort','target_operation_id',
+        'parent_receipt_sha256','parent_canonical_sha256','parent_semantic_pins','current_raw_sha256','no_replay','new_database_reads',
+        'protected_before','protected_after','protected_inputs_unchanged'}
+    l11_need(isinstance(data,dict) and set(data)==keys,'local26_data_shape')
+    l11_need(data['state']=='local26_identity_inspected_read_only' and data['database_snapshot']=='repeatable-read-read-only',
+        'local26_data_type');l11_time(data['captured_at_utc'])
+    for key in ('approved_manifest_sha256','actions_sha256','parent_canonical_sha256'):l11_need(data[key]==p[key],'local26_data_pin')
+    l11_need(data['source_contract']==p['source_contract'] and data['scope_sha256']==hashlib.sha256(l11_json(p['pairs'])).hexdigest(),
+        'local26_scope_digest')
+    l11_need(data['parent_semantic_pins']=={k:p[k] for k in ('parent_operation_id','parent_source_sha','parent_control_sha',
+        'plan_sha256','owner_receipt_sha256','consumer_sha256')},'local26_parent_semantics')
+    for k in ('supplier_calls','provider_http_calls','database_writes','mapping_writes','accepted_native_bindings'):
+        l11_need(type(data[k]) is int and data[k]==0,'local26_forbidden_mutation')
+    l11_need(data['safe_to_write_now'] is False and data['publication_admission'] is False and data['no_replay'] is True
+        and type(data['new_database_reads']) is int and data['new_database_reads']==1
+        and l11_hash(data['current_raw_sha256']) and l11_hash(data['parent_receipt_sha256']),'local26_read_semantics')
+    protected=data['protected_before']
+    l11_need(isinstance(protected,dict) and set(protected)=={'parent/result.json','parent/reservation.json','config.php','data/db-v1.php'}
+        and all(l11_hash(v) for v in protected.values()) and protected==data['protected_after']
+        and protected['parent/result.json']==data['parent_receipt_sha256']
+        and protected['data/db-v1.php']==LOCAL26_HASHES['v2/data/db-v1.php']
+        and data['protected_inputs_unchanged'] is True,'local26_protected_inputs')
+    rows=data['rows'];l11_need(isinstance(rows,list) and len(rows)==26,'local26_row_count')
+    keys={'own_id','tv_id','own','bridge','target','linked_target','own_sources','expected_legacy_owners','target_link_owners',
+        'linked_target_link_owners','reasons','own_identity_matches','approved_content_status','legacy_candidate_status',
+        'bridge_status','snapshot_profile_relation','reverse_visibility','reverse_details_available'}
+    targets={}
+    for row,pair in zip(rows,p['pairs']):
+        l11_need(isinstance(row,dict) and set(row)==keys,'local26_row_shape')
+        l11_need(all(type(row[k]) is type(v) and row[k]==v for k,v in l26_row_facts(row,pair,p).items()),'local26_derived_fact_drift')
+        for target in (row['target'],row['linked_target']):
+            if target is not None:
+                tid=target['tv_id'];l11_need(tid not in targets or targets[tid]==target,'local26_shared_target_drift');targets[tid]=target
+    summary=l26_summary(rows)
+    l11_need(isinstance(data['summary'],dict) and set(data['summary'])==set(summary)
+        and all(type(data['summary'][k]) is int and data['summary'][k]==v for k,v in summary.items()),'local26_summary_drift')
+'''
+exec(LOCAL26_VALIDATOR)
+
+
+def bundle_local26_source(source_root):
+    root=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in LOCAL26_HASHES.items():
+            path=(root if relative=='v2/data/db-v1.php' else control)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path and path.stat().st_nlink==1,'local26_source_path')
+            raw=path.read_bytes()
+            need(0<len(raw)<=1048576 and hashlib.sha256(raw).hexdigest()==digest,'local26_source_drift')
+            info=tarfile.TarInfo(relative);info.size=len(raw);info.mode=0o600;info.mtime=0
+            archive.addfile(info,io.BytesIO(raw))
+        raw=l11_json({'schema_version':1,'files':LOCAL26_HASHES})
+        info=tarfile.TarInfo('manifest.json');info.size=len(raw);info.mode=0o600;info.mtime=0
+        archive.addfile(info,io.BytesIO(raw))
+    return out.getvalue(),dict(LOCAL26_HASHES)
+
+
+LOCAL26_HANDLER = r'''
+def current_local26_identity(stage):
+    p=LOCAL26_IDENTITY
+    if (mode!='match-retained-current' or operation!=p['operation_id'] or source!=p['source_sha']
+        or payload.get('cohort')!=p['cohort'] or payload.get('target_operation_id')!=p['parent_operation_id']):fail('local26_scope')
+    target=private/p['parent_operation_id']
+    paths={'parent/result.json':target/'result.json','parent/reservation.json':target/'reservation.json',
+        'config.php':project/'config.php','data/db-v1.php':project/'data/db-v1.php'}
+    def protected_hashes():
+        hashes={}
+        for name,path in paths.items():
+            if not safe_file(path,1048576) or path.resolve()!=path or path.stat().st_nlink!=1:fail('local26_private_path')
+            hashes[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+        return hashes
+    protected=protected_hashes()
+    prior=json.loads(paths['parent/result.json'].read_bytes(),object_pairs_hook=l11_unique);l26_parent(prior,p)
+    if protected['data/db-v1.php']!=LOCAL26_HASHES['v2/data/db-v1.php']:fail('local26_installed_db_helper_drift')
+    reserved=json.loads(paths['parent/reservation.json'].read_bytes(),object_pairs_hook=l11_unique)
+    if (not isinstance(reserved,dict) or set(reserved)!={'operation_id','source_sha','mode','reserved_at'}
+        or reserved.get('operation_id')!=p['parent_operation_id'] or reserved.get('source_sha')!=p['parent_source_sha']
+        or reserved.get('mode')!='local-official26-apply-v1' or not l11_int(reserved.get('reserved_at'))):fail('local26_parent_reservation')
+    def write_once(name,raw):
+        fd=os.open(op/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    write_once('local26-scope.json',l11_json({'pairs':[r[:2] for r in p['pairs']]}))
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+            '-d','memory_limit=256M','-d','disable_functions='+disabled,str(stage/LOCAL26_RUNNER)],
+            cwd=project,env=env,capture_output=True,text=False,timeout=120)
+    except subprocess.TimeoutExpired:fail('local26_child_timeout_no_replay')
+    raw=run.stdout;write_once('local26-raw.json',raw[:1048576])
+    if len(raw)>1048576:fail('local26_output_bound')
+    if run.returncode or run.stderr:fail('local26_child_failed_no_replay')
+    data=l26_project(json.loads(raw,object_pairs_hook=l11_unique),p);after=protected_hashes()
+    if after!=protected:fail('local26_protected_drift')
+    data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
+        cohort=p['cohort'],target_operation_id=p['parent_operation_id'],parent_receipt_sha256=protected['parent/result.json'],
+        parent_canonical_sha256=p['parent_canonical_sha256'],parent_semantic_pins={k:p[k] for k in (
+            'parent_operation_id','parent_source_sha','parent_control_sha','plan_sha256','owner_receipt_sha256','consumer_sha256')},
+        current_raw_sha256=hashlib.sha256(raw).hexdigest(),no_replay=True,new_database_reads=1,
+        protected_before=protected,protected_after=after,protected_inputs_unchanged=True)
+    l26_validate_data(data,p);evidence=l11_json(data);write_once('retained-evidence.json',evidence)
+    return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+'''
+
+LOCAL26_DISPATCH = r'''    if mode=='match-retained-current':
+        result['supplier_calls']=result['database_writes']=result['mapping_writes']=0
+        result['match_retained']=current_local26_identity(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def completed_local26_identity(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes','booking_calls',
+            'lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        p=LOCAL26_IDENTITY
+        if (command.get('mode')!='match-retained-current' or command.get('operation_id')!=p['operation_id']
+            or command.get('source_sha')!=p['source_sha'] or command.get('cohort')!=p['cohort']
+            or command.get('target_operation_id')!=p['parent_operation_id'] or not re.fullmatch(r'[a-f0-9]{40}',str(control))):return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result.get(k)!=command[k] for k in ('operation_id','source_sha','mode')):return False
+        before=result['production_before']
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result['production_after'] or any(v is not None and not l11_hash(v) for v in before.values())):return False
+        if any(type(result[k]) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=material['data'];l26_validate_data(data,p)
+        if any(data[k]!=command[k] for k in ('operation_id','source_sha','cohort','target_operation_id')) or data['control_source_sha']!=control:return False
+        return material['evidence_sha256']==hashlib.sha256(l11_json(data)).hexdigest()
+    except (ValueError,KeyError,TypeError,AttributeError,OverflowError):
+        return False
+
+
+def activate_local26_identity(core,command):
+    fields=('source_sha','mode','operation_id','cohort','target_operation_id')
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in fields))
+    need(command==expected,'local26_command_shape')
+    control=os.environ.get('GITHUB_SHA','');need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local26_control_sha')
+    command['match_retained_control_sha']=control;remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n','dispatch':"    if mode=='match-tv942-write':\n",
+        'collector':"    if mode not in ('reconcile',",'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'members':'        members=package.getmembers()\n','reservation':'    op.mkdir(mode=0o700)\n',
+        'receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():need(remote.count(anchor)==(2 if key=='collector' else 1),'local26_registration_drift_'+key)
+    handler='\nLOCAL26_IDENTITY='+repr(LOCAL26_IDENTITY)+'\nLOCAL26_HASHES='+repr(LOCAL26_HASHES)+'\nLOCAL26_RUNNER='+repr(LOCAL26_RUNNER)+'\n'
+    handler+=LOCAL11_VALIDATOR+LOCAL26_VALIDATOR+LOCAL26_HANDLER
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],LOCAL26_DISPATCH+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-current','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(LOCAL26_HASHES)+": fail('local26_manifest')",1)
+    remote=remote.replace(anchors['members'],anchors['members']+"        if len(members)!=4 or {m.name for m in members}!={*LOCAL26_HASHES,'manifest.json'}: fail('local26_archive_members')\n",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    local26_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('local26_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_local26_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local26_identity(cmd,res,control) if cmd.get('cohort')==LOCAL26_IDENTITY['cohort'] else original(cmd,res)
