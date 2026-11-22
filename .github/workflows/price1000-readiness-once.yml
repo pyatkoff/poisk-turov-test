@@ -9,7 +9,7 @@ permissions:
   pull-requests: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '8fa3ccaf3eb1c9009c0afd62da98b05dabf67e3a'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '6f25b9cf9ea3751d51a55d41dd12382af745710d'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -23,14 +23,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          test "$(gh api repos/pyatkoff/max-search-bot/git/ref/heads/main --jq .object.sha)" = '1f864595459abbda21c34ced4f10e3c28e50f7c7'
-          gh api repos/pyatkoff/poisk-turov-test/pulls/5153 | jq -e '.state == "open" and .draft and .head.sha == "7e63619248e2f4d8bf06b05c3f0917c9cec60ab9" and .base.sha == "f6b7513445f599f332c5d9d4021b2537e2d3d609"' >/dev/null
+          test "$(gh api repos/pyatkoff/max-search-bot/git/ref/heads/main --jq .object.sha)" = '1c37cc3adf3c35668083c6b557ff5b804bcd725c'
+          gh api repos/pyatkoff/poisk-turov-test/pulls/5153 | jq -e '.state == "open" and .draft and .head.sha == "b37c8833f59cc28f9be71945aed67a01774798a0" and .base.sha == "f6b7513445f599f332c5d9d4021b2537e2d3d609"' >/dev/null
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/44995004932 | jq -e '.status == "completed" and .conclusion == "failure" and .run_attempt == 1' >/dev/null
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45010445635 | jq -e '.status == "completed" and .conclusion == "success" and .head_sha == "7e63619248e2f4d8bf06b05c3f0917c9cec60ab9"' >/dev/null
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45025716604 | jq -e '.status == "completed" and .conclusion == "success" and .head_sha == "b37c8833f59cc28f9be71945aed67a01774798a0"' >/dev/null
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: 3486bfc06b54947ddbecb8cc9a1efbfa43ff7304
+          ref: a83d24d07ad8e72848db9023c6661b224df35acd
           path: hotel-price-publisher
           persist-credentials: false
       - name: Build the exact inspected publisher bundle
@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = c5326d840f68a15311524e81ea98febb597f090f1a73389f6310be90de3a4aa9
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = c9d3bfcb9ef2ad5c139ded5ffb99d07d2f7726d1a557fb16e5cf6e1f2bd70d34
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -79,7 +79,7 @@ jobs:
             export GIT_OPTIONAL_LOCKS=0
             unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES ANYTOUR_MONITOR_COLLECTION_STARTED_AT ANYTOUR_MONITOR_COLLECTOR_RUN_ID
             cd /var/www/anytoour/data/www/app.anytoour.ru
-            test "$(git rev-parse HEAD)" = 1f864595459abbda21c34ced4f10e3c28e50f7c7
+            test "$(git rev-parse HEAD)" = 1c37cc3adf3c35668083c6b557ff5b804bcd725c
             journal=/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl
             test -f "$journal" && test ! -L "$journal"
             snapshot() {
@@ -115,7 +115,7 @@ jobs:
           if unchanged:
               i = log.index('PRICE_READBACK_AFTER')
               for line in log[i+1:i+7]: print('PRICE_SERVER_READBACK', line)
-          assert int(sys.argv[1]) == 0 and unchanged and result.get('ok') is True and result.get('installed_sha') == '1f864595459abbda21c34ced4f10e3c28e50f7c7'
+          assert int(sys.argv[1]) == 0 and unchanged and result.get('ok') is True and result.get('installed_sha') == '1c37cc3adf3c35668083c6b557ff5b804bcd725c'
           assert result.get('mode') == 'read_only_hook_inspection' and result.get('scanned_pairs') == result.get('roster_pairs') == 1000
           assert all(result.get(k) == 0 for k in ('updated_pairs', 'new_posts', 'supplier_calls', 'site_writes'))
           PY
