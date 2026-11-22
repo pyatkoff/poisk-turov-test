@@ -1,4 +1,4 @@
-name: PRICE read-only readiness for the MAX2 compatibility fix
+name: PRICE read-only channel permissions check
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,12 +9,12 @@ permissions:
   pull-requests: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '00f95794b0ab5a6dfbb7a257d2f4ddc7e88cb916'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '49097719983a69f8f37ebbb92f340d6d3a8f2d7e'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 4
     steps:
       - name: Verify original PRICE receipt and current candidate
         env:
@@ -27,19 +27,6 @@ jobs:
           gh api repos/pyatkoff/poisk-turov-test/pulls/5153 | jq -e '.state == "open" and .draft and .head.sha == "35c5d23a0fcb86c69e2db205012fa1ba4da615e7" and .base.sha == "f6b7513445f599f332c5d9d4021b2537e2d3d609"' >/dev/null
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/44960678432 | jq -e '.status == "completed" and .conclusion == "failure" and .run_attempt == 1' >/dev/null
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/44969921832 | jq -e '.status == "completed" and .conclusion == "success" and .head_sha == "35c5d23a0fcb86c69e2db205012fa1ba4da615e7"' >/dev/null
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          repository: pyatkoff/max-search-bot
-          ref: af96435d93cd21af6fb8c81e0da87ba2648c2df5
-          path: hotel-price-publisher
-          persist-credentials: false
-      - name: Build the exact inspected publisher bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
-          php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 3e62eaecbc18f91a129450abe0720685d52abf22f7c91090a270df1b6a60af41
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -65,60 +52,68 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Inspect remote runtime, original journal and enrolled publications
+      - name: Read the exact channel identities and edit rights
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         shell: bash
         run: |
           set -euo pipefail
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
-          set +e
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
           ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" '
             set -eu
             export GIT_OPTIONAL_LOCKS=0
-            unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES ANYTOUR_MONITOR_COLLECTION_STARTED_AT ANYTOUR_MONITOR_COLLECTOR_RUN_ID
+            unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
             cd /var/www/anytoour/data/www/app.anytoour.ru
             test "$(git rev-parse HEAD)" = 3ffc092f2c98ab3ed9cca3e32f29ebe1b7229e09
-            journal=/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl
-            test -f "$journal" && test ! -L "$journal"
-            snapshot() {
-              git rev-parse HEAD
-              stat -Lc "%d:%i:%s:%Y:%Z" "$journal"
-              sha256sum /var/www/anytoour/data/www/anytoour.ru/data/monitor-price-hook.php feed/hotel-posts-max.xml feed/hotel-posts-telegram.xml feed/hotel-posts-all.xml
-            }
-            before=$(snapshot)
-            printf "PRICE_READBACK_BEFORE\n%s\n" "$before"
-            set +e
-            ANYTOUR_MONITOR_HOOK_INSPECT=1 /usr/bin/php -d display_errors=0
-            result=$?
-            set -e
-            after=$(snapshot)
-            printf "PRICE_READBACK_AFTER\n%s\n" "$after"
-            test "$before" = "$after"
-            printf "PRICE_READBACK_UNCHANGED\n"
-            exit "$result"
-          ' < "$RUNNER_TEMP/monitor-price-hook.php" > "$RUNNER_TEMP/price-inspect.log"
-          native_status=$?
-          set -e
-          python3 - "$native_status" <<'PY'
-          import json, os, pathlib, sys
-          log = (pathlib.Path(os.environ['RUNNER_TEMP']) / 'price-inspect.log').read_text().splitlines()
-          unchanged = 'PRICE_READBACK_UNCHANGED' in log
-          payloads = [l.removeprefix('MONITOR_POST_FEED_RESULT=') for l in log if l.startswith('MONITOR_POST_FEED_RESULT=')]
-          result = json.loads(payloads[0]) if len(payloads) == 1 else {}
-          keys = ('ok', 'mode', 'error', 'installed_sha', 'journal_read', 'roster_pairs', 'scanned_pairs', 'remaining_unscanned_pairs', 'eligible_pairs', 'held_pairs', 'updated_pairs', 'unchanged_pairs', 'new_posts', 'supplier_calls', 'site_writes', 'deferred_counts', 'timings_ms')
-          priority = {12120, 76029, 66198, 49750}
-          scope = {str(id): next((stage for stage in ('eligible', 'held', 'unchanged') if id in result.get(stage+'_ids', [])), 'unconfirmed') for id in sorted(priority)}
-          summary = {key: result.get(key) for key in keys}
-          print('PRICE_CANDIDATE_READONLY', json.dumps(dict(summary, files_and_journal_stat_unchanged=unchanged, priority=scope, native_status=int(sys.argv[1]))))
-          if unchanged:
-              i = log.index('PRICE_READBACK_AFTER')
-              for line in log[i+1:i+7]: print('PRICE_SERVER_READBACK', line)
-          assert int(sys.argv[1]) == 0 and unchanged and result.get('ok') is True and result.get('installed_sha') == '3ffc092f2c98ab3ed9cca3e32f29ebe1b7229e09'
-          assert result.get('mode') == 'read_only_hook_inspection' and result.get('scanned_pairs') == result.get('roster_pairs') == 1000
-          assert all(result.get(k) == 0 for k in ('updated_pairs', 'new_posts', 'supplier_calls', 'site_writes'))
-          PY
+            test -z "$(git -c core.fsmonitor=false -c core.untrackedCache=false status --porcelain --untracked-files=no)"
+            /usr/bin/php -d display_errors=0 -d log_errors=0
+            test "$(git rev-parse HEAD)" = 3ffc092f2c98ab3ed9cca3e32f29ebe1b7229e09
+          ' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $targets = [
+              'max' => ['id9704048781_1_bot', '-80492244209683', 'max_anytour_msk1', 9],
+              'telegram' => ['anyru_bot', '-1002262666616', 'tg_anytour_msk', 10],
+          ];
+          try {
+              ob_start();
+              try {
+                  require getcwd().'/config.php';
+                  require_once getcwd().'/services/ChannelPostRuntime.php';
+                  require_once getcwd().'/services/ChannelPostAdminService.php';
+                  require_once getcwd().'/integrations/ChannelPostApiTransport.php';
+                  require_once getcwd().'/services/ChannelPostButtonTransport.php';
+              } finally {
+                  ob_end_clean();
+              }
+              $registry = new ChannelPostRegistryService(ConversationDb::connection());
+              $ok = true;
+              foreach ($targets as $platform => [$bot, $id, $source, $registryId]) {
+                  $identity = ChannelPostRuntime::identity($platform);
+                  $channel = $registry->channel('anytour', $platform, $bot, $id);
+                  if (($identity['project_key'] ?? null) !== 'anytour' || ($identity['bot_key'] ?? null) !== $bot
+                      || (int)($channel['id'] ?? 0) !== $registryId || ($channel['source_key'] ?? null) !== $source
+                      || (int)($channel['config_version'] ?? 0) !== 2 || ($channel['button_text'] ?? null) !== '✈️ Узнать стоимость тура') {
+                      $result = ['state' => 'held', 'reason' => 'channel_configuration_changed', 'receipt' => ['write_attempts' => 0, 'request_count' => 0]];
+                  } else {
+                      $result = (new ChannelPostButtonTransport)->verifyChannel($channel);
+                  }
+                  $reason = $result['reason'] ?? null;
+                  $state = $result['state'] ?? null;
+                  if (!is_string($reason) || !preg_match('/\A[a-z0-9_]{1,100}\z/D', $reason)) $reason = 'unclassified';
+                  if (!in_array($state, ['ready','held','unknown','requires_attention'], true)) $state = 'unknown';
+                  $writes = $result['receipt']['write_attempts'] ?? null;
+                  $reads = $result['receipt']['request_count'] ?? null;
+                  echo 'PRICE_PERMISSION_READBACK ', json_encode(['platform' => $platform, 'state' => $state, 'reason' => $reason, 'requests' => $reads, 'write_attempts' => $writes], JSON_THROW_ON_ERROR), PHP_EOL;
+                  $ok = $ok && $state === 'ready' && $reason === 'capability_verified' && $writes === 0;
+              }
+              exit($ok ? 0 : 2);
+          } catch (Throwable $e) {
+              echo 'PRICE_PERMISSION_READBACK bootstrap_or_registry_failed', PHP_EOL;
+              exit(2);
+          }
+          PHP
       - name: Cleanup original connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
