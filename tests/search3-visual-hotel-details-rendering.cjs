@@ -36,6 +36,54 @@ function verifyInfantChargeStatus(appSource,hotelSource){
  console.log('PASS actual infant price qualifiers: card/room/selected footer retain unknown/null and exact whole listing amount; ordinary copy unchanged');
 }
 verifyInfantChargeStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
+function verifyManualContentAttribution(h,owner,doc){
+ const saved={raw:h.raw,photos:h.photos,note:h.note},rooms=doc.querySelector('.hotel-room-section'),footer=doc.querySelector('#modal-footer'),roomHTML=rooms.innerHTML;
+ const primary='https://fixture.example.test/manual.jpg',gallery='https://fixture.example.test/gallery.jpg';
+ const manual=['description','primaryImage','images'],meta={source:'anytour-local-tv-catalog-v1',anytourHotelId:h.id,tourvisorHotelId:101,revision:2,
+  contentState:'pending',detailsAvailable:false,detailsFetchedAt:null,manualFields:manual,sourceAbsent:[]};
+ const cases=[
+  {name:'LOCAL19 pending manual description and photos',expected:'Описание и фото: материалы AnyTour'},
+  {name:'ready source still contains manual overrides',meta:{contentState:'ready',detailsAvailable:true},expected:'Описание и фото: материалы AnyTour'},
+  {name:'retry retains manual attribution',meta:{contentState:'retry'},expected:'Описание и фото: материалы AnyTour'},
+  {name:'ready without manual fields',meta:{contentState:'ready',detailsAvailable:true,manualFields:[]}},
+  {name:'missing metadata',missing:true},
+  {name:'unknown manual fields',meta:{manualFields:null}},
+  {name:'malformed manual fields',meta:{manualFields:'description'}},
+  {name:'foreign source',meta:{source:'supplier'}},
+  {name:'foreign own identity',meta:{anytourHotelId:h.id+1}},
+  {name:'foreign native identity',meta:{tourvisorHotelId:102}},
+  {name:'foreign revision',meta:{revision:3}},
+  {name:'incomplete revision',meta:{revision:undefined},raw:{localContentRevision:undefined}},
+  {name:'manual description only',meta:{manualFields:['description']},expected:'Описание: материалы AnyTour'},
+  {name:'manual gallery with another primary',meta:{manualFields:['images']},expected:'Часть фото: материалы AnyTour'},
+  {name:'manual gallery covers every displayed photo',meta:{manualFields:['images']},photos:[gallery],expected:'Фото: материалы AnyTour'},
+  {name:'manual primary with source gallery',meta:{manualFields:['primaryImage']},expected:'Часть фото: материалы AnyTour'},
+  {name:'description and mixed photos',meta:{manualFields:['description','primaryImage']},expected:'Описание и часть фото: материалы AnyTour'},
+  {name:'cleared primary may be a source gallery fallback',meta:{manualFields:['primaryImage']},raw:{primaryImage:gallery},photos:[gallery]},
+  {name:'manual description cleared, note inherited',meta:{manualFields:['description']},raw:{description:''},note:'Canonical fallback'},
+  {name:'manual gallery cleared, primary inherited',meta:{manualFields:['images']},raw:{images:[]},photos:[primary]},
+  {name:'nested image path is not whole-gallery provenance',meta:{manualFields:['images.0']}},
+  {name:'unrelated manual field',meta:{manualFields:['address']},raw:{address:'Редакционный адрес'}},
+  {name:'manual URLs are absent from the displayed set',meta:{manualFields:['images']},photos:['https://fixture.example.test/other.jpg']},
+  {name:'normalized manual URL matches presentation',meta:{manualFields:['images']},raw:{images:['https://fixture.example.test/ручное.jpg']},photos:[new URL('https://fixture.example.test/ручное.jpg').href],expected:'Фото: материалы AnyTour'}
+ ];
+ try{
+  for(const test of cases){
+   h.raw={description:'Ручное описание',primaryImage:primary,images:[gallery],localHotelId:101,localContentRevision:2,...test.raw,
+    ...(test.missing?{}:{localContentMeta:{...meta,...test.meta}})};
+   h.photos=test.photos||[primary,gallery];h.note=test.note||'';
+   const rawBefore=JSON.stringify(h.raw);owner.refreshHotelProfile(h,null);
+   const labels=doc.querySelectorAll('.hotel-content-attribution');
+   assert.equal(labels.length,test.expected?1:0,test.name);
+   if(test.expected)assert.equal(labels[0].textContent,test.expected,test.name);
+   assert.doesNotMatch(doc.querySelector('#modal-body').textContent,/подтвержден[оы]?\s+(?:Tourvisor|поставщик)/i,'provenance never invents supplier confirmation');
+   assert.strictEqual(doc.querySelector('.hotel-room-section'),rooms,'profile attribution keeps the existing tariffs mounted');
+   assert.equal(rooms.innerHTML,roomHTML);assert.strictEqual(doc.querySelector('#modal-footer'),footer);
+   assert.equal(JSON.stringify(h.raw),rawBefore,'rendering never mutates profile or provenance');
+  }
+ }finally{Object.assign(h,saved);owner.refreshHotelProfile(h,null);}
+ console.log('PASS manual content attribution: '+cases.length+' cases; LOCAL19 pending, ready overrides, mixed photos, primary fallback, unknown/foreign metadata; tariffs unchanged');
+}
 function records(code,baseline=false,requestPlaceholder=false){const output=[],checkInvocation=code===source&&!baseline&&!requestPlaceholder;
  for(const mode of ['empty','single','two','many','incomplete'])for(const long of [false,true])for(const meal of ['', 'BB']){
   const dom=new JSDOM('<div id="modal-body"></div><div id="modal-footer" hidden></div><dialog id="modal"></dialog>'),doc=dom.window.document;
@@ -49,6 +97,7 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
   };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);const mountedOffers=owner.openHotelDetails(1);if(checkInvocation){assert.equal(offerInventories,1,'opening reuses one synchronous offer inventory');assert.strictEqual(mountedOffers,offers,'opening exposes the exact mounted offer array for same-turn restoration');}owner.renderHotelRooms(1,meal,['Standard<&']);if(checkInvocation)assert.equal(offerInventories,2,'later render computes a fresh offer inventory');
   output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,...(requestPlaceholder?{text:doc.querySelector('#modal-body').textContent}:{}),footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});
   if(checkInvocation&&mode==='many'&&long&&meal==='BB'){
+   verifyManualContentAttribution(h,owner,doc);
    const body=doc.querySelector('#modal-body'),rooms=body.querySelector('.hotel-room-section'),filter=rooms.querySelector('#hotel-room-meal'),choose=rooms.querySelector('[data-action="select-hotel-offer"]'),footer=doc.querySelector('#hotel-detail-offers');
    filter.value='BB';choose.focus();const before=rooms.innerHTML,amount=doc.querySelector('#hotel-detail-min').textContent;
    body.scrollTop=120;body.getBoundingClientRect=()=>({top:0,bottom:500});

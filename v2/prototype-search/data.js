@@ -17,6 +17,21 @@
   const localContents=new Map(),localContentReads=new Map(),localContentAttempted=new Set();
   const localContentQueue=[];let localContentWorkers=0;
   const contentFields=['name','country','region','subRegion','category','rating','description','primaryImage','images','photoDetails','hotelInformation','descriptionSections','coordinates','address','place','build','repair','square'];
+  function localContentFieldNames(value,item){
+    if(!Array.isArray(value)||value.length>256)return null;
+    for(const field of value){
+      if(typeof field!=='string'||field.length>192||!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*$/.test(field))return null;
+      const root=field.split('.')[0];if(!contentFields.includes(root)||item&&!Object.hasOwn(item,root))return null;
+    }
+    return Object.freeze([...new Set(value)].sort());
+  }
+  function localContentMetadata(item,anytourHotelId){
+    return Object.freeze({source:'anytour-local-tv-catalog-v1',anytourHotelId,tourvisorHotelId:item.id,revision:item.revision,
+      contentState:['pending','ready','retry','generic'].includes(item.contentState)?item.contentState:null,
+      detailsAvailable:typeof item.detailsAvailable==='boolean'?item.detailsAvailable:null,
+      detailsFetchedAt:typeof item.detailsFetchedAt==='string'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(item.detailsFetchedAt)?item.detailsFetchedAt:null,
+      manualFields:localContentFieldNames(item.manualFields,item),sourceAbsent:localContentFieldNames(item.sourceAbsent)});
+  }
   async function readRoomLayouts(ids){
     const requested=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,30);
     if(!requested.length)return [];
@@ -70,11 +85,16 @@
           if(!requested.includes(link?.oldLocalId)||seen.has(link.oldLocalId)||!items.has(link.tourvisorHotelId))throw new Error('Invalid LOCAL crosswalk');
           seen.add(link.oldLocalId);const item=items.get(link.tourvisorHotelId),previous=localContents.get(link.oldLocalId);
           const content=Object.fromEntries(contentFields.filter(field=>Object.hasOwn(item,field)).map(field=>[field,item[field]]));
+          const meta=localContentMetadata(item,link.oldLocalId);
           // Absent fields never blank a good compatible card during rollout.
-          for(const field of Object.keys(content))if(!item.manualFields?.includes(field)
+          // Display metadata bounds do not remove the authority of an explicit manual empty value.
+          for(const field of Object.keys(content))if(!(Array.isArray(item.manualFields)&&item.manualFields.includes(field))
             &&(content[field]===null||content[field]===''||Array.isArray(content[field])&&!content[field].length))delete content[field];
           content.localHotelId=item.id;content.localContentRevision=item.revision;
-          if(previous&&item.revision===previous.localContentRevision&&JSON.stringify(content)!==JSON.stringify(previous))throw new Error('Conflicting LOCAL content revision');
+          // Retry status and an unchanged-source fetch time can change without a content revision.
+          const previousContent=previous&&Object.fromEntries(Object.entries(previous).filter(([field])=>field!=='localContentMeta'));
+          if(previous&&item.revision===previous.localContentRevision&&JSON.stringify(content)!==JSON.stringify(previousContent))throw new Error('Conflicting LOCAL content revision');
+          content.localContentMeta=meta;
           if(!previous||item.revision>=previous.localContentRevision)updates.set(link.oldLocalId,content);
         }
         for(const id of payload.missingIds){if(!requested.includes(id)||seen.has(id))throw new Error('Invalid missing LOCAL content');seen.add(id);}
@@ -729,6 +749,7 @@
   }
   function hotel(h, s) {
     const saved=localContents.get(Number(h.anytourHotelId||h.id));if(saved)h={...h,...saved};
+    else if(Object.hasOwn(h,'localContentMeta')){h={...h};delete h.localContentMeta;}
     const own=Number(h.anytourHotelId || h.id), photos=[h.primaryImage,...(Array.isArray(h.images)?h.images:[])].map(image).filter(Boolean);
     const rating=Number(h.rating && typeof h.rating === 'object' ? h.rating.value : h.rating);
     const ratingScale=Number(h.rating && typeof h.rating === 'object' ? h.rating.scale : 5);

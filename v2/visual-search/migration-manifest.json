@@ -64,7 +64,7 @@
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
     "offer-list-v1.js": "93035f86eb6df8cdb1154136e4454a8dc3e49b0c813f0072078890de99e41db2",
     "mobile-controls-v1.css": "de1dad08ac1f22ede59e84c4df7b47bf7b3e95a86e90f5f8c95b190859e66781",
-    "hotel-details-v1.js": "37a81f88cfad261559bf3df2ac4479003775880e7003d582d9e9356dd74edddc",
+    "hotel-details-v1.js": "6e68993a554c2534530a28f44bfbe4e9f7d9b842eb33387fab275c9822a866b4",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "bfda6c091544c13d157537879adaa7037e3bff3dface2fb5b3a77067808da339",
     "flight-picker-ui-v1.js": "03e90fe433c2df837e3f62d8761694a9e1fbb369845cac998f7ef6aa18a6227d",
@@ -359,7 +359,7 @@
     "sourceFiles": {
       "../prototype-search/messenger-context-v1.js": "b7d0b0a90c0622e42d0b0bb6478748f16e758383f98a765e9ec952c4c4f5e8e4",
       "../prototype-search/messenger-flow-v1.js": "18d52f878669185b41d335938755b684c5d470e48fe4ce8a71faefa33298e687",
-      "../prototype-search/data.js": "91fabf12b53747de35e9ffa7850928aa4ac2e1f2ed07949868272a128113d5d3",
+      "../prototype-search/data.js": "1659378ca648db53252454c2ea878be807572b0b74d839f5dfe74ba0a10062a7",
       "../prototype-search/config.js": "90b5776650c3c6f72fcc523633bb6432cacd4109b1dc84678ebc1c47b809b3d3"
     },
     "entryOptIn": "NEXT live index.php data-search3-messenger=enabled only; no query or global default",
