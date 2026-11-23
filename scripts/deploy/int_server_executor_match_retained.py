@@ -25,6 +25,8 @@ MODES = {'match-retained-intake': 'common4-retained',
 LEGACY_MODES = dict(MODES)
 LOCAL9_APPLY_MODE = 'local9-bridge-apply-v1'
 MODES[LOCAL9_APPLY_MODE] = 'local9-bridge-manual27-20261123'
+LOCAL19_APPLY_MODE = 'local19-bridge-apply-v1'
+MODES[LOCAL19_APPLY_MODE] = 'local19-bridge-manual57-20261123'
 # Historical accepted pairs from the owner's ANEX roster. This current read
 # grants no website/Online equivalence, canonical publication binding or write.
 OWNER_TOP500_CURRENT = {
@@ -290,6 +292,16 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if parts[1] == LOCAL19_APPLY_MODE or (len(parts) >= 3 and parts[2] == LOCAL19_APPLY['operation_id']) or (len(parts) >= 4 and parts[3] == LOCAL19_APPLY['cohort']):
+            profile = LOCAL19_APPLY
+            need(len(parts) == 5 and parts[1] == LOCAL19_APPLY_MODE
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local19_fixed_write_scope')
+            l19_admission(profile)
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) >= 3 and (parts[2] == LOCAL26_IDENTITY['operation_id']
                 or (len(parts) >= 4 and parts[3] == LOCAL26_IDENTITY['cohort'])):
             profile = LOCAL26_IDENTITY
@@ -2193,6 +2205,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
+        return completed_local19_apply(command, result, control_sha)
     if command.get('cohort') == LOCAL26_IDENTITY['cohort'] or command.get('operation_id') == LOCAL26_IDENTITY['operation_id']:
         return completed_local26_identity(command, result, control_sha)
     if command.get('mode') == LOCAL9_APPLY_MODE or command.get('operation_id') == LOCAL9_APPLY['operation_id'] or command.get('cohort') == LOCAL9_APPLY['cohort']:
@@ -2302,6 +2316,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
+        return activate_local19_apply(core, command)
     if command.get('cohort') == LOCAL26_IDENTITY['cohort']:
         return activate_local26_identity(core, command)
     if command.get('mode') == LOCAL9_APPLY_MODE:
@@ -3489,3 +3505,307 @@ def activate_local26_identity(core,command):
     ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_local26_source
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local26_identity(cmd,res,control) if cmd.get('cohort')==LOCAL26_IDENTITY['cohort'] else original(cmd,res)
+
+
+# Finite LOCAL19 preparation. The data proposal is immutable; execution remains
+# closed until a separately reviewed real owner approval is bound below.
+LOCAL19_RUNNER = 'scripts/catalog/anytour_local19_bridge_apply_v1.php'
+LOCAL19_PROPOSAL = 'scripts/catalog/anytour-local19-bridge-proposal-20261123.json'
+LOCAL19_APPLY = {'mode': 'local19-bridge-apply-v1',
+ 'cohort': 'local19-bridge-manual57-20261123',
+ 'operation_id': 'int-andromeda-local19-bridge-apply-20261123-v1',
+ 'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+ 'execution_admitted': False,
+ 'approval_ref': None,
+ 'approved_proposal_sha256': None,
+ 'proposal_sha256': '02d3df3ecd94d775e58fd3e506cf81032b64179fa3b4db1ff43de9e515ec2192',
+ 'parent_operation_id': 'int-andromeda-match-retained-current-20261123-v1',
+ 'parent_source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+ 'parent_control_sha': 'cba860aaeefab5b6304da1fe8cf9d3b0896f7338',
+ 'parent_canonical_sha256': '7cc56caff2855564754fcb0104837c95611a259ea598aa1f28f3c9baa83a6db6',
+ 'parent_evidence_sha256': '5204754ad39ad2aab13e4a3df28c0663547b531a984c6e1b1454a62033e4426f',
+ 'parent_raw_sha256': '9157a50f472e33ff5a1902fd941d14b18776b35e1558df921cca32d1fcac6925',
+ 'pairs': [[4511, 2490, 'd6f4adf9da5ecf5bb9f5fa9e667e1ea70d7e1088386dc30405149e68a1fb7a5a'],
+           [10334, 22940, '91caa4f92bc4b35bb71f64cdbbc28f8c8110a9ab29b7940efa31d3fcc464ad66'],
+           [8751, 7831, 'a75799ae8d7a24775cf018162f6a32d5365ae544081ca5af3cd0a5109855d5d6'],
+           [7599, 2458, '796ebf5b920ebf2b5705968e9b69f908e677f69c770a40b5e121f08736ed8e0d'],
+           [14932, 113544, 'd628c080b916517d9c4537e1301368e6bd8e9dff56affc4ca337c850655c2580'],
+           [12248, 52337, '7cdd7e9235712506832d5483b91470f3d096dfc08ed8d6e649be9b832cdc9586'],
+           [4609, 2948, '7c4c45d4c6acb4604181fcb4055ba627ad5a77d8e0d0070210d786059c846b3c'],
+           [12520, 57536, '0cd7378495da9ada8cd438b59bdf71e2f9df1f52254ac219dd509e09c20a6084'],
+           [12839, 61241, '1eb16a6e5fb5b9a490e778baf8f7a8ad0d69785867bcdbc06cf9d4c669b8fc5d'],
+           [13686, 73477, 'd5f54e4f44513e560d15665631837a49c546d8f850758f57cd1355d4f2d55824'],
+           [13066, 64648, 'ff67f53c68f7778b960c2c79c519a9df18f5ae1c643c5b5be66a6975b5bb9584'],
+           [4533, 2588, '989035326adf24ec682aba83480be4e25a13bb323f562905596d0a1d883f1a23'],
+           [7619, 2611, '973e560dbad185aa809ff041c0c559f9da221df65426959062ab3e5606f19352'],
+           [9843, 17424, '0a1cc925e268e33c54c6c0d83a5b7f52359192cbaaf79020b74b2831d861748b'],
+           [9842, 17423, 'ee08b3827ba993cece3fcf06ed9050f26f6800f2d7e41f324f330ac791513331'],
+           [10377, 23718, '3261f6486430559d0d9ee19419b00af46f6b58ecb03b003d909bb1c15f125ad4'],
+           [4539, 2612, 'f87104fa4c3b98b8d71fffccebc59d9b0c7f4df17c18d9dec3beba9bc3a71a62'],
+           [4538, 2610, '8bcabe6ef37c8ed51ed494fc30f829397926271637d43ca5ba790a31f84af144'],
+           [4601, 2931, '6673483498f16799e2117ec4afdf9531897b320a2097f80e67b2af81a4cf9abb']],
+ 'excluded_pairs': [[4679, 4283],
+                    [14397, 97001],
+                    [13766, 74509],
+                    [14029, 78669],
+                    [12816, 60788],
+                    [14013, 78456]],
+ 'unchanged_existing_pairs': [[4172, 80008]]}
+LOCAL19_HASHES = {
+    'v2/data/db-v1.php': SOURCE_HASHES['v2/data/db-v1.php'],
+    LOCAL19_RUNNER: '37af31b380e96e9b2afd799559fa665952e446f80c5a930792233d0cb3730f24',
+    LOCAL19_PROPOSAL: LOCAL19_APPLY['proposal_sha256'],
+}
+
+LOCAL19_VALIDATOR = r'''
+def l19_admission(profile):
+    # Preparation is deliberately inert. A subsequent reviewed owner admission
+    # must bind both the exact proposal and its real new approval receipt.
+    ref=profile.get('approval_ref')
+    l11_need(profile.get('execution_admitted') is True
+        and profile.get('approved_proposal_sha256')==profile['proposal_sha256']
+        and isinstance(ref,str) and re.fullmatch(
+            r'https://github\.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-[1-9][0-9]{0,19}',ref)
+        and ref not in (
+            'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7086996252',
+            'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7077944229',
+            'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7088077135'),
+        'local19_owner_approval_required')
+
+def l19_parent(prior):
+    p=LOCAL19_APPLY
+    command={'source_sha':p['parent_source_sha'],'mode':'match-retained-current',
+        'operation_id':p['parent_operation_id'],'cohort':LOCAL26_IDENTITY['cohort'],
+        'target_operation_id':LOCAL26_IDENTITY['parent_operation_id']}
+    l11_need(completed_local26_identity(command,prior,p['parent_control_sha']),'local19_parent_terminal')
+    material=prior['match_retained']
+    l11_need(hashlib.sha256(l11_json(prior)).hexdigest()==p['parent_canonical_sha256']
+        and material['evidence_sha256']==p['parent_evidence_sha256']
+        and material['data']['current_raw_sha256']==p['parent_raw_sha256'],'local19_parent_evidence')
+
+def l19_terminal(value):
+    keys={'schema_version','operation_id','state','completed_at_utc','proposal_sha256','no_replay',
+        'supplier_calls','provider_http_calls','database_writes','mapping_writes','native_updates','manual_field_writes',
+        'canonical_profile_writes','source_writes','new_target_inserts','accepted_native_bindings',
+        'commit_acknowledged','readback_verified','before','after','checks','pairs','error'}
+    p=LOCAL19_APPLY
+    l11_need(isinstance(value,dict) and set(value)==keys,'local19_terminal_shape')
+    l11_need(value['schema_version']=='anytour_local19_bridge_apply_v1'
+        and value['operation_id']==p['operation_id'] and value['proposal_sha256']==p['proposal_sha256']
+        and value['no_replay'] is True,'local19_terminal_identity')
+    l11_time(value['completed_at_utc'])
+    for key in ('supplier_calls','provider_http_calls','canonical_profile_writes','source_writes','new_target_inserts','accepted_native_bindings'):
+        l11_need(type(value[key]) is int and value[key]==0,'local19_forbidden_writes')
+    state=value['state'];committed=state in ('committed_verified','post_commit_readback_unknown')
+    unknown=state in ('commit_unknown','rollback_unknown')
+    l11_need(committed or unknown or state in ('rejected_before_write','rolled_back'),'local19_terminal_state')
+    for key,count in zip(('database_writes','mapping_writes','native_updates','manual_field_writes'),(38,19,19,57)):
+        l11_need(value[key] is None if unknown else type(value[key]) is int and value[key]==(count if committed else 0),
+            'local19_write_counts')
+    l11_need(type(value['commit_acknowledged']) is bool and value['commit_acknowledged']==committed
+        and type(value['readback_verified']) is bool and value['readback_verified']==(state=='committed_verified'),
+        'local19_commit_semantics')
+    for name in ('before','after'):
+        hashes=value[name]
+        l11_need(hashes is None or isinstance(hashes,dict) and set(hashes)=={
+            'canonical_rows_sha256','target_preserved_rows_sha256','excluded_rows_sha256'}
+            and all(l11_hash(v) for v in hashes.values()),'local19_row_digests')
+    checks=value['checks']
+    l11_need(isinstance(checks,dict) and set(checks)=={'fresh_parent_match','canonical_unchanged',
+        'target_preserved','excluded_unchanged','direct_tv_sql','own_to_tv_sql','snapshots_verified'},'local19_checks')
+    for name,v in checks.items():
+        l11_need(type(v) is bool or name in ('canonical_unchanged','target_preserved','excluded_unchanged') and v is None,
+            'local19_checks')
+    pairs=value['pairs']
+    l11_need(isinstance(pairs,list) and len(pairs) in (0,19),'local19_pair_count')
+    for row,expected in zip(pairs,p['pairs']):
+        l11_need(isinstance(row,dict) and set(row)=={'own_id','tv_id','revision_from','revision_to','manual_fields',
+            'manual_sha256','snapshot_sha256','direct_tv_sql','own_to_tv_sql'},'local19_pair_shape')
+        for name,want in zip(('own_id','tv_id','revision_from','revision_to'),(*expected[:2],1,2)):
+            l11_need(type(row[name]) is int and row[name]==want,'local19_pair_identity')
+        l11_need(row['manual_fields']==['description','primaryImage','images'] and row['manual_sha256']==expected[2]
+            and l11_hash(row['snapshot_sha256']) and type(row['direct_tv_sql']) is bool
+            and type(row['own_to_tv_sql']) is bool,'local19_pair_evidence')
+    if state=='committed_verified':
+        l11_need(value['before'] is not None and value['before']==value['after'] and len(pairs)==19
+            and all(v is True for v in checks.values()) and all(r['direct_tv_sql'] and r['own_to_tv_sql'] for r in pairs)
+            and value['error'] is None,'local19_committed_readback')
+    else:
+        error=value['error']
+        l11_need(isinstance(error,dict) and set(error)=={'code','message_sha256'}
+            and isinstance(error['code'],str) and re.fullmatch(r'[a-z0-9_]{1,96}',error['code'])
+            and l11_hash(error['message_sha256']),'local19_failure_evidence')
+    return value
+
+def l19_validate_data(data,command,control):
+    keys={'operation_id','source_sha','control_source_sha','cohort','target_operation_id','approval_ref','proposal_sha256',
+        'parent_receipt_sha256','parent_evidence_sha256','raw_sha256','no_replay','child_exit_code','child_stderr_sha256',
+        'protected_before','protected_after','protected_inputs_unchanged','terminal'}
+    l11_need(isinstance(data,dict) and set(data)==keys,'local19_data_shape')
+    p=LOCAL19_APPLY
+    l19_admission(p)
+    for key,want in {'operation_id':p['operation_id'],'source_sha':p['source_sha'],'cohort':p['cohort'],
+        'target_operation_id':p['parent_operation_id'],'approval_ref':p['approval_ref'],'proposal_sha256':p['proposal_sha256'],
+        'parent_evidence_sha256':p['parent_evidence_sha256'],'control_source_sha':control}.items():
+        l11_need(data[key]==want,'local19_data_binding')
+    l11_need(all(command.get(k)==p[k] for k in ('operation_id','source_sha','cohort','mode'))
+        and command.get('target_operation_id')==p['parent_operation_id']
+        and re.fullmatch(r'[a-f0-9]{40}',str(control)) is not None,'local19_command_binding')
+    l11_need(data['no_replay'] is True and l11_hash(data['parent_receipt_sha256']) and l11_hash(data['raw_sha256'])
+        and (data['child_stderr_sha256'] is None or l11_hash(data['child_stderr_sha256'])),'local19_data_evidence')
+    terminal=l19_terminal(data['terminal'])
+    l11_need(type(data['child_exit_code']) is int and data['child_exit_code']==(0 if terminal['state']=='committed_verified' else 1),
+        'local19_child_exit')
+    before=data['protected_before']
+    l11_need(isinstance(before,dict) and set(before)=={'parent/result.json','parent/reservation.json','config.php','data/db-v1.php'}
+        and all(l11_hash(v) for v in before.values()) and data['protected_after']==before
+        and before['parent/result.json']==data['parent_receipt_sha256']
+        and before['data/db-v1.php']==LOCAL19_HASHES['v2/data/db-v1.php']
+        and data['protected_inputs_unchanged'] is True,'local19_protected_inputs')
+'''
+exec(LOCAL19_VALIDATOR)
+
+def bundle_local19_source(source_root):
+    l19_admission(LOCAL19_APPLY)
+    root=Path(source_root).resolve();control=Path(__file__).resolve().parents[2];out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        for relative,digest in LOCAL19_HASHES.items():
+            path=(root if relative=='v2/data/db-v1.php' else control)/relative
+            need(path.is_file() and not path.is_symlink() and path.resolve()==path and path.stat().st_nlink==1,'local19_source_path')
+            raw=path.read_bytes()
+            need(0<len(raw)<=1048576 and hashlib.sha256(raw).hexdigest()==digest,'local19_source_drift')
+            info=tarfile.TarInfo(relative);info.size=len(raw);info.mode=0o600;info.mtime=0
+            archive.addfile(info,io.BytesIO(raw))
+        raw=l11_json({'schema_version':1,'files':LOCAL19_HASHES})
+        info=tarfile.TarInfo('manifest.json');info.size=len(raw);info.mode=0o600;info.mtime=0
+        archive.addfile(info,io.BytesIO(raw))
+    return out.getvalue(),dict(LOCAL19_HASHES)
+
+LOCAL19_HANDLER = r'''
+def apply_local19_bridge(stage):
+    p=LOCAL19_APPLY
+    l19_admission(p)
+    if (mode!=p['mode'] or operation!=p['operation_id'] or source!=p['source_sha']
+        or payload.get('cohort')!=p['cohort'] or payload.get('target_operation_id')!=p['parent_operation_id']):
+        fail('local19_fixed_write_scope')
+    target=private/p['parent_operation_id']
+    paths={'parent/result.json':target/'result.json','parent/reservation.json':target/'reservation.json',
+        'config.php':project/'config.php','data/db-v1.php':project/'data/db-v1.php'}
+    def guarded_hashes():
+        out={}
+        for name,path in paths.items():
+            if not safe_file(path,1048576) or path.resolve()!=path or path.stat().st_nlink!=1:fail('local19_protected_path')
+            out[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+        return out
+    protected=guarded_hashes()
+    if protected['data/db-v1.php']!=LOCAL19_HASHES['v2/data/db-v1.php']:fail('local19_installed_db_helper_drift')
+    prior=json.loads(paths['parent/result.json'].read_bytes(),object_pairs_hook=l11_unique);l19_parent(prior)
+    reserved=json.loads(paths['parent/reservation.json'].read_bytes(),object_pairs_hook=l11_unique)
+    if (not isinstance(reserved,dict) or set(reserved)!={'operation_id','source_sha','mode','reserved_at'}
+        or reserved.get('operation_id')!=p['parent_operation_id'] or reserved.get('source_sha')!=p['parent_source_sha']
+        or reserved.get('mode')!='match-retained-current' or not l11_int(reserved.get('reserved_at'))):
+        fail('local19_parent_reservation')
+    def write_once(name,raw):
+        fd=os.open(op/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    write_once('local19-child-reservation.json',l11_json({'operation_id':operation,'source_sha':source,
+        'control_source_sha':payload['match_retained_control_sha'],'approval_ref':p['approval_ref'],
+        'proposal_sha256':p['proposal_sha256'],'parent_evidence_sha256':p['parent_evidence_sha256'],'no_replay':True}))
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage),MATCH_LOCAL19_EXECUTION_ADMITTED='1')
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    result['database_writes']=result['mapping_writes']=None
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+            '-d','memory_limit=256M','-d','disable_functions='+disabled,str(stage/LOCAL19_RUNNER)],
+            cwd=project,env=env,capture_output=True,text=False,timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raw=exc.stdout or b''
+        if isinstance(raw,str):raw=raw.encode()
+        write_once('local19-raw.json',raw[:1048576])
+        fail('local19_child_timeout_no_replay')
+    raw=run.stdout
+    write_once('local19-raw.json',raw[:1048576])
+    if len(raw)>1048576:fail('local19_output_bound_no_replay')
+    terminal=l19_terminal(json.loads(raw,object_pairs_hook=l11_unique))
+    result['database_writes']=terminal['database_writes'];result['mapping_writes']=terminal['mapping_writes']
+    after=guarded_hashes()
+    data={'operation_id':operation,'source_sha':source,'control_source_sha':payload['match_retained_control_sha'],
+        'cohort':p['cohort'],'target_operation_id':p['parent_operation_id'],'approval_ref':p['approval_ref'],
+        'proposal_sha256':p['proposal_sha256'],'parent_receipt_sha256':protected['parent/result.json'],
+        'parent_evidence_sha256':p['parent_evidence_sha256'],'raw_sha256':hashlib.sha256(raw).hexdigest(),
+        'no_replay':True,'child_exit_code':run.returncode,
+        'child_stderr_sha256':hashlib.sha256(run.stderr).hexdigest() if run.stderr else None,
+        'protected_before':protected,'protected_after':after,'protected_inputs_unchanged':protected==after,'terminal':terminal}
+    evidence=l11_json(data);write_once('retained-evidence.json',evidence)
+    material={'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+    result['match_retained']=material
+    l19_validate_data(data,payload,payload['match_retained_control_sha'])
+    if run.stderr:fail('local19_child_stderr_no_replay')
+    return material
+'''
+
+LOCAL19_DISPATCH = r'''    if mode==LOCAL19_APPLY['mode']:
+        result['supplier_calls']=result['database_writes']=result['mapping_writes']=0
+        result['match_retained']=apply_local19_bridge(stage)
+        terminal=result['match_retained']['data']['terminal']
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']=('complete' if terminal['state']=='committed_verified' else
+            'rolled_back_no_replay' if terminal['state']=='rolled_back' else
+            'rejected_no_replay' if terminal['state']=='rejected_before_write' else 'unknown_no_replay')
+'''
+
+def completed_local19_apply(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result.get(k)!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        before=result['production_before']
+        if (not isinstance(before,dict) or set(before)!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or before!=result['production_after'] or any(v is not None and not l11_hash(v) for v in before.values())):return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=material['data'];l19_validate_data(data,command,control)
+        if data['terminal']['state']!='committed_verified' or data['child_stderr_sha256'] is not None:return False
+        for name,want in {'supplier_calls':0,'database_writes':38,'mapping_writes':19,'booking_calls':0,'lead_calls':0}.items():
+            if type(result[name]) is not int or result[name]!=want:return False
+        return material['evidence_sha256']==hashlib.sha256(l11_json(data)).hexdigest()
+    except (ValueError,KeyError,TypeError,AttributeError,OverflowError):
+        return False
+
+def activate_local19_apply(core,command):
+    l19_admission(LOCAL19_APPLY)
+    fields=('source_sha','mode','operation_id','cohort','target_operation_id')
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in fields))
+    need(command==expected,'local19_command_shape')
+    control=os.environ.get('GITHUB_SHA','')
+    need(re.fullmatch(r'[a-f0-9]{40}',control) is not None,'local19_control_sha')
+    command['match_retained_control_sha']=control
+    remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'members':'        members=package.getmembers()\n','reservation':'    op.mkdir(mode=0o700)\n',
+        'receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():
+        need(remote.count(anchor)==(2 if key=='collector' else 1),'local19_registration_drift_'+key)
+    handler='\nLOCAL11_IDENTITY='+repr(LOCAL11_IDENTITY)+'\nLOCAL11_HASHES='+repr(LOCAL11_HASHES)+'\n'+LOCAL11_VALIDATOR
+    handler+='\nLOCAL26_IDENTITY='+repr(LOCAL26_IDENTITY)+'\nLOCAL26_HASHES='+repr(LOCAL26_HASHES)+'\n'+LOCAL26_VALIDATOR
+    handler+='\n'+inspect.getsource(completed_local26_identity)
+    handler+='\nLOCAL19_APPLY='+repr(LOCAL19_APPLY)+'\nLOCAL19_HASHES='+repr(LOCAL19_HASHES)+'\nLOCAL19_RUNNER='+repr(LOCAL19_RUNNER)+'\n'
+    handler+=LOCAL19_VALIDATOR+LOCAL19_HANDLER
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],LOCAL19_DISPATCH+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('local19-bridge-apply-v1','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(LOCAL19_HASHES)+": fail('local19_manifest')",1)
+    remote=remote.replace(anchors['members'],anchors['members']+"        if len(members)!=4 or {m.name for m in members}!={*LOCAL19_HASHES,'manifest.json'}: fail('local19_archive_members')\n",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    local19_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('local19_reserved') is True and op.exists():",1)
+    ast.parse(remote)
+    core.REMOTE=remote;core.bundle_source=bundle_local19_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local19_apply(cmd,res,control) if cmd.get('mode')==LOCAL19_APPLY_MODE else original(cmd,res)

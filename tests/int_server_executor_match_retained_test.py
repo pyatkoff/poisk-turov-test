@@ -3655,6 +3655,536 @@ class Local26IdentityNativeTest(unittest.TestCase):
             self.assertNotIn(sentinel,run.stdout)
 
 
+@unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL/PHP CI required')
+class Local19BridgeNativeTest(unittest.TestCase):
+    """The prepared writer must preserve the full26 cohort, including Hilton."""
+
+    def test_cli_without_exact_execution_admission_never_loads_config(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);marker=root/'config-was-loaded'
+            (root/'config.php').write_text('<?php file_put_contents('+json.dumps(str(marker))+',"called");')
+            env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+            env.update(MATCH_RETAINED_DIR=str(root/'operation'),MATCH_RETAINED_SOURCE_ROOT=str(ROOT))
+            for admission in (None,'0','true','01'):
+                current=dict(env)
+                if admission is not None:current['MATCH_LOCAL19_EXECUTION_ADMITTED']=admission
+                run=subprocess.run(['php',str(ROOT/'scripts/catalog/anytour_local19_bridge_apply_v1.php')],
+                                   cwd=root,env=current,capture_output=True,text=True,timeout=20)
+                self.assertEqual(1,run.returncode,run.stderr)
+                terminal=json.loads(run.stdout)
+                self.assertEqual('rejected_before_write',terminal['state'])
+                self.assertEqual(0,terminal['database_writes'])
+                self.assertFalse(terminal['commit_acknowledged'])
+                self.assertNotIn('approval_ref',terminal)
+                self.assertEqual('local19_execution_not_admitted',terminal['error']['code'])
+                self.assertFalse(marker.exists(),'unadmitted CLI loaded project config')
+                self.assertFalse((root/'operation').exists(),'unadmitted CLI created operation state')
+
+    def test_atomic19_preserves_hilton6_and_handles_drift_rollback_unknown_and_real_consumers(self):
+        consumer=Path(os.environ['MATCH_LOCAL9_CONSUMER_ROOT'])/'v2/data'
+        for name,digest in {
+            'local-tv-catalog-v1.php':'abbed95e0343ce402cdcfb11ef7819da0a12e5bafb7e5bf7f22cbb9260167b11',
+            'hotel-details-v1.php':'137bbf53ef87fab50505ecd41a075cb5f571193480da7f0e3face51190c0f77f',
+        }.items():self.assertEqual(digest,hashlib.sha256((consumer/name).read_bytes()).hexdigest())
+        runner=ROOT/'scripts/catalog/anytour_local19_bridge_apply_v1.php'
+        proposal_path=ROOT/'scripts/catalog/anytour-local19-bridge-proposal-20261123.json'
+        self.assertEqual('02d3df3ecd94d775e58fd3e506cf81032b64179fa3b4db1ff43de9e515ec2192',
+                         hashlib.sha256(proposal_path.read_bytes()).hexdigest())
+        lint=subprocess.run(['php','-l',str(runner)],capture_output=True,text=True,timeout=20)
+        self.assertEqual(0,lint.returncode,lint.stderr)
+        code=r'''define('ANYTOUR_LOCAL19_BRIDGE_APPLY_LIBRARY_ONLY',true);require $argv[1];
+        require $argv[3];
+        class Local19FaultPDO extends PDO {
+          public bool $armed=false;public bool $committed=false;
+          public int $updates=0;public int $commits=0;public int $rollbacks=0;public int $begins=0;
+          public string $fault='';
+          public function beginTransaction(): bool {
+            if($this->armed)$this->begins++;
+            return parent::beginTransaction();
+          }
+          public function prepare(string $query,array $options=[]): PDOStatement|false {
+            if($this->armed && $this->committed && $this->fault==='readback'
+                && preg_match('/^\s*SELECT\b/i',$query))throw new RuntimeException('fixture_postcommit_read_failure');
+            return parent::prepare($query,$options);
+          }
+          public function commit(): bool {
+            $ok=parent::commit();
+            if($this->armed){$this->commits++;$this->committed=true;
+              if($this->fault==='commit_ack')throw new RuntimeException('fixture_commit_ack_lost');}
+            return $ok;
+          }
+          public function rollBack(): bool {
+            $ok=parent::rollBack();
+            if($this->armed){$this->rollbacks++;
+              if($this->fault==='rollback_ack')throw new RuntimeException('fixture_rollback_ack_lost');}
+            return $ok;
+          }
+        }
+        class Local19FaultStatement extends PDOStatement {
+          protected function __construct(private Local19FaultPDO $owner) {}
+          public function execute(?array $params=null): bool {
+            if($this->owner->armed && preg_match('/^\s*UPDATE\s+local_tv_hotels\s/i',$this->queryString)){
+              $this->owner->updates++;
+              if(in_array($this->owner->fault,['mid_write','rollback_ack'],true) && $this->owner->updates===10)
+                throw new RuntimeException('fixture_tenth_update_failure');
+            }
+            return parent::execute($params);
+          }
+        }
+        function j19(mixed $v): string {return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+        function need19(bool $v,string $why): void {if(!$v)throw new RuntimeException($why);}
+        function ident19(array $x): array {
+          $out=[];if($x['name']!==null)$out['name']=$x['name'];
+          foreach(['country','region'] as $key){
+            if($x[$key]!==null){$out[$key]=['name'=>$x[$key]];if($x[$key.'_id']!==null)$out[$key]['id']=$x[$key.'_id'];}
+          }
+          return $out;
+        }
+        function hashes19(PDO $db): array {
+          $out=[];
+          foreach(['anytour_hotels'=>'id','anytour_hotel_sources'=>'id','local_tv_hotels'=>'id','local_tv_legacy_links'=>'old_local_id'] as $table=>$key)
+            $out[$table]=hash('sha256',j19($db->query('SELECT * FROM '.$table.' ORDER BY '.$key)->fetchAll(PDO::FETCH_ASSOC)));
+          return $out;
+        }
+        function preserved19(PDO $db): string {
+          $pairs=[...AnyTourLocal19BridgeApplyV1::EXCLUDED_PAIRS,...AnyTourLocal19BridgeApplyV1::UNCHANGED_PAIRS];
+          $own=implode(',',array_column($pairs,0));$tv=implode(',',array_column($pairs,1));$out=[];
+          foreach(['own'=>['anytour_hotels','id',$own,'id'],
+                   'sources'=>['anytour_hotel_sources','anytour_hotel_id',$own,'id'],
+                   'target'=>['local_tv_hotels','id',$tv,'id'],
+                   'bridge'=>['local_tv_legacy_links','old_local_id',$own,'old_local_id']] as $key=>[$table,$column,$ids,$order])
+            $out[$key]=$db->query('SELECT * FROM '.$table.' WHERE '.$column.' IN('.$ids.') ORDER BY '.$order)->fetchAll(PDO::FETCH_ASSOC);
+          return hash('sha256',j19($out));
+        }
+        function seed19(PDO $db,array $proposal,array $manifest): array {
+          $db->exec('CREATE TABLE anytour_hotels(id BIGINT UNSIGNED PRIMARY KEY,profile_json LONGTEXT NOT NULL,profile_sha256 CHAR(64) NOT NULL,revision BIGINT UNSIGNED NOT NULL,is_active TINYINT UNSIGNED NOT NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE anytour_hotel_sources(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,namespace VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,external_key VARBINARY(128) NOT NULL,anytour_hotel_id BIGINT UNSIGNED NOT NULL,acquired_via VARCHAR(64) NOT NULL,source_json LONGTEXT NOT NULL,source_sha256 CHAR(64) NOT NULL,first_seen_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,UNIQUE KEY uq_source(namespace,external_key),KEY ix_owner(anytour_hotel_id),FOREIGN KEY(anytour_hotel_id) REFERENCES anytour_hotels(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_hotels(id INT UNSIGNED PRIMARY KEY,first_seen_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,pending_since DATETIME NOT NULL,state VARCHAR(24) NOT NULL,discovery_json LONGTEXT NOT NULL,content_json LONGTEXT NOT NULL,manual_json LONGTEXT NOT NULL,source_json LONGTEXT NULL,source_sha256 CHAR(64) NULL,source_fetched_at DATETIME NULL,source_absent_json LONGTEXT NOT NULL,revision BIGINT UNSIGNED NOT NULL,next_attempt_at DATETIME NULL,last_error VARCHAR(1000) NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $db->exec('CREATE TABLE local_tv_legacy_links(old_local_id BIGINT UNSIGNED PRIMARY KEY,tv_id INT UNSIGNED NOT NULL,snapshot_json LONGTEXT NOT NULL,snapshot_sha256 CHAR(64) NOT NULL,migration_issues_json LONGTEXT NOT NULL,migrated_at DATETIME NOT NULL,KEY ix_tv(tv_id),FOREIGN KEY(tv_id) REFERENCES local_tv_hotels(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin');
+          $actions=[];foreach($manifest['proposed_actions'] as $action)$actions[$action['anytour_hotel_id']]=$action;
+          $own=$db->prepare("INSERT INTO anytour_hotels VALUES(?,?,?,2,1,'2026-10-01 00:00:00','2026-11-21 12:34:56')");
+          $src=$db->prepare("INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at) VALUES(?,?,?,?,?,?,'2026-10-01 00:00:00','2026-11-21 12:34:56')");
+          $target=$db->prepare('INSERT INTO local_tv_hotels VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+          foreach(['pairs','excluded_pairs','unchanged_existing_pairs'] as $group){
+            foreach($proposal[$group] as &$row){
+              $profile=ident19($row['before']['own']['identity']);
+              foreach($actions[$row['own_id']]['field_changes'] as $change)$profile[$change['field']]=$change['after'];
+              if($row['own_id']===4172){
+                $profile['primaryImage']='https://example.invalid/local19-retained-hilton.jpg';
+                $profile['images']=array_fill(0,44,'https://example.invalid/local19-retained-hilton-gallery.jpg');
+              }
+              $profile['private_fixture_sentinel']='PRIVATE_LOCAL19_PROFILE';
+              $raw=j19($profile);$hash=hash('sha256',$raw);$row['before']['own']['profile_sha256']=$hash;
+              foreach($row['before']['own']['approved_fields'] as $field=>$pin)
+                need19(hash('sha256',j19($profile[$field]))===$pin['sha256'],'fixture_approved_field_'.$field);
+              $own->execute([$row['own_id'],$raw,$hash]);
+              foreach($row['before']['own_sources'] as &$source){
+                $payload=$source['namespace']==='legacy_catalog'?(['id'=>$row['tv_id']]+ident19($source['identity'])):
+                  ['fixtureProvenance'=>$source['namespace'],'privateFixtureValue'=>'PRIVATE_LOCAL19_SOURCE'];
+                $raw=j19($payload);$hash=hash('sha256',$raw);$source['source_sha256']=$hash;
+                $src->execute([$source['namespace'],$source['external_key'],$row['own_id'],$source['acquired_via'],$raw,$hash]);
+              }
+              unset($source);
+              if($group==='excluded_pairs')continue;
+              $pin=&$row['before']['target'];$hilton=$group==='unchanged_existing_pairs';
+              $fields=['discovery'=>$hilton?'[]':j19(ident19($pin['discovery_identity'])),
+                'content'=>$hilton?j19(ident19($pin['content_identity'])+['description'=>'PRIVATE_LOCAL19_HILTON_NATIVE']):'{}',
+                'manual'=>$hilton?'[]':'{}','source_absent'=>$hilton?'["private_fixture_absent_field"]':'[]'];
+              foreach($fields as $field=>$bytes)$pin[$field.'_sha256']=hash('sha256',$bytes);
+              $native=$hilton?j19(['id'=>80008]+ident19($pin['content_identity'])):null;
+              $pin['source_sha256']=$native===null?null:hash('sha256',$native);
+              if(!$hilton)$row['proposed_after']['target']['preserved_discovery_sha256']=$pin['discovery_sha256'];
+              $target->execute([$row['tv_id'],'2026-10-02 00:00:00','2026-11-20 13:24:35','2026-10-02 00:00:00',
+                $hilton?'ready':'pending',$fields['discovery'],$fields['content'],$fields['manual'],$native,$pin['source_sha256'],
+                $hilton?'2026-11-20 01:02:03':null,$fields['source_absent'],$hilton?3:1,'2026-12-01 01:02:03','PRIVATE_LOCAL19_SCHEDULE']);
+              unset($pin);
+              if($hilton){
+                $q=$db->prepare('SELECT id,profile_json,profile_sha256,revision,is_active FROM anytour_hotels WHERE id=?');$q->execute([4172]);
+                $historical=$q->fetch(PDO::FETCH_ASSOC);$historical['revision']=1;
+                $oldProfile=ident19($row['before']['own']['identity'])+['description'=>'PRIVATE_LOCAL19_HISTORICAL_PROFILE'];
+                $historical['profile_json']=j19($oldProfile);$historical['profile_sha256']=hash('sha256',$historical['profile_json']);
+                $q=$db->prepare("SELECT namespace,external_key,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at FROM anytour_hotel_sources WHERE anytour_hotel_id=? AND namespace<>'profile_enrichment:official_review_v1' ORDER BY namespace,external_key");$q->execute([4172]);
+                $sources=$q->fetchAll(PDO::FETCH_ASSOC);need19(count($sources)===2,'fixture_hilton_source_count');
+                $snapshot=j19(['profile'=>$historical,'sources'=>$sources]);$issues=j19(['preservedFields'=>[],'originKnown'=>true]);
+                $bridge=&$row['before']['bridge'];$bridge['snapshot_sha256']=hash('sha256',$snapshot);
+                $bridge['snapshot_profile_sha256']=$historical['profile_sha256'];$bridge['migration_issues_sha256']=hash('sha256',$issues);
+                $q=$db->prepare("INSERT INTO local_tv_legacy_links VALUES(4172,80008,?,?,?,'2026-10-02 01:02:03')");
+                $q->execute([$snapshot,$bridge['snapshot_sha256'],$issues]);unset($bridge);
+              }
+            }
+            unset($row);
+          }
+          need19((int)$db->query('SELECT COUNT(*) FROM anytour_hotels')->fetchColumn()===26,'fixture_26_profiles');
+          need19((int)$db->query('SELECT COUNT(*) FROM anytour_hotel_sources')->fetchColumn()===78,'fixture_78_sources');
+          need19((int)$db->query('SELECT COUNT(*) FROM local_tv_hotels')->fetchColumn()===20,'fixture_20_targets');
+          need19((int)$db->query('SELECT COUNT(*) FROM local_tv_legacy_links')->fetchColumn()===1,'fixture_existing_hilton');
+          return $proposal;
+        }
+        $template=json_decode(file_get_contents($argv[2]),true,64,JSON_THROW_ON_ERROR);
+        $manifest=json_decode(file_get_contents($argv[4]),true,64,JSON_THROW_ON_ERROR);$results=[];
+        $scenarios=['success','mid_write','manual_drift','profile_drift','source_drift','approved_value_drift','foreign_link',
+          'foreign_legacy_owner','missing_target','hilton_manual','hilton_revision','hilton_bridge','hilton_snapshot',
+          'hilton_source','hilton_approved_value','write_trigger','commit_ack','rollback_ack','readback'];
+        foreach($scenarios as $scenario){
+          $db=new Local19FaultPDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false]);
+          $db->setAttribute(PDO::ATTR_STATEMENT_CLASS,[Local19FaultStatement::class,[$db]]);
+          $name='match_local19_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+          try{
+            $proposal=seed19($db,$template,$manifest);
+            if($scenario==='manual_drift')$db->exec("UPDATE local_tv_hotels SET manual_json='{\"description\":\"existing_manual\"}' WHERE id=2490");
+            if($scenario==='profile_drift')$db->exec('UPDATE anytour_hotels SET revision=3 WHERE id=4511');
+            if($scenario==='source_drift')$db->exec("UPDATE anytour_hotel_sources SET source_json='{}' WHERE anytour_hotel_id=4511 AND namespace='anytour_local_id'");
+            if(in_array($scenario,['approved_value_drift','hilton_approved_value'],true)){
+              $id=$scenario==='approved_value_drift'?4511:4172;$group=$id===4511?'pairs':'unchanged_existing_pairs';
+              $q=$db->prepare('SELECT profile_json FROM anytour_hotels WHERE id=?');$q->execute([$id]);$profile=json_decode($q->fetchColumn(),true,64,JSON_THROW_ON_ERROR);
+              $profile['description'].=' PRIVATE_LOCAL19_CHANGED_APPROVED_VALUE';$raw=j19($profile);$hash=hash('sha256',$raw);
+              $q=$db->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=? WHERE id=?');$q->execute([$raw,$hash,$id]);
+              // A valid whole-profile hash must not replace immutable per-field authority.
+              foreach($proposal[$group] as &$row)if($row['own_id']===$id)$row['before']['own']['profile_sha256']=$hash;unset($row);
+            }
+            if($scenario==='foreign_link'){
+              $q=$db->prepare("INSERT INTO local_tv_legacy_links VALUES(999999,2490,?,?,?,'2026-11-21 00:00:00')");$q->execute(['{}',hash('sha256','{}'),'{}']);
+            }
+            if($scenario==='foreign_legacy_owner'){
+              $q=$db->prepare("INSERT INTO anytour_hotels VALUES(999999,?,?,1,1,'2026-10-01 00:00:00','2026-11-21 00:00:00')");$q->execute(['{}',hash('sha256','{}')]);
+              $db->exec("UPDATE anytour_hotel_sources SET anytour_hotel_id=999999 WHERE namespace='legacy_catalog' AND external_key='2490'");
+            }
+            if($scenario==='missing_target')$db->exec("INSERT INTO local_tv_hotels SELECT 4283,first_seen_at,last_seen_at,pending_since,state,discovery_json,content_json,manual_json,source_json,source_sha256,source_fetched_at,source_absent_json,revision,next_attempt_at,last_error FROM local_tv_hotels WHERE id=2490");
+            if($scenario==='hilton_manual')$db->exec("UPDATE local_tv_hotels SET manual_json='{\"description\":\"PRIVATE_LOCAL19_HILTON_MANUAL\"}' WHERE id=80008");
+            if($scenario==='hilton_revision')$db->exec('UPDATE local_tv_hotels SET revision=4 WHERE id=80008');
+            if($scenario==='hilton_bridge')$db->exec('UPDATE local_tv_legacy_links SET tv_id=2490 WHERE old_local_id=4172');
+            if($scenario==='hilton_snapshot'){
+              $q=$db->query('SELECT snapshot_json FROM local_tv_legacy_links WHERE old_local_id=4172');$snapshot=json_decode($q->fetchColumn(),true,64,JSON_THROW_ON_ERROR);
+              $snapshot['profile']['revision']=2;$raw=j19($snapshot);$q=$db->prepare('UPDATE local_tv_legacy_links SET snapshot_json=?,snapshot_sha256=? WHERE old_local_id=4172');$q->execute([$raw,hash('sha256',$raw)]);
+            }
+            if($scenario==='hilton_source'){
+              $raw='{"id":80009}';$q=$db->prepare('UPDATE local_tv_hotels SET source_json=?,source_sha256=? WHERE id=80008');$q->execute([$raw,hash('sha256',$raw)]);
+            }
+            if($scenario==='write_trigger')$db->exec("CREATE TRIGGER local19_fixture_noop BEFORE UPDATE ON local_tv_hotels FOR EACH ROW SET NEW.last_error=OLD.last_error");
+            $before=hashes19($db);$preserved=preserved19($db);$db->fault=$scenario;$db->armed=true;
+            $out=AnyTourLocal19BridgeApplyV1::run($db,$proposal);
+            $expectedStates=['success'=>'committed_verified','mid_write'=>'rolled_back','commit_ack'=>'commit_unknown',
+              'rollback_ack'=>'rollback_unknown','readback'=>'post_commit_readback_unknown'];
+            need19($out['state']===($expectedStates[$scenario]??'rejected_before_write'),
+              'terminal_'.$scenario.'_'.$out['state'].'_'.($out['error']['code']??'none'));
+            $db->armed=false;need19(!$db->inTransaction(),'open_transaction_'.$scenario);$after=hashes19($db);
+            need19($before['anytour_hotels']===$after['anytour_hotels'] && $before['anytour_hotel_sources']===$after['anytour_hotel_sources'],'canonical_changed_'.$scenario);
+            need19($preserved===preserved19($db),'hilton_or_excluded_changed_'.$scenario);
+            $actuallyCommitted=in_array($scenario,['success','commit_ack','readback'],true);
+            if($actuallyCommitted){
+              need19((int)$db->query('SELECT COUNT(*) FROM local_tv_legacy_links')->fetchColumn()===20,'new19_plus_hilton_count');
+              need19((int)$db->query('SELECT COUNT(*) FROM local_tv_hotels WHERE revision=2')->fetchColumn()===19,'updated19_count');
+              need19($db->updates===19 && $db->commits===1,'writer_retried_or_wrong_write_count');
+              foreach($proposal['pairs'] as $pair){
+                $q=$db->prepare('SELECT * FROM local_tv_hotels WHERE id=?');$q->execute([$pair['tv_id']]);$target=$q->fetch(PDO::FETCH_ASSOC);
+                need19($target['manual_json']===$pair['proposed_after']['target']['manual_json_exact_utf8'],'manual_raw_bytes');
+                need19($target['state']==='pending' && $target['source_json']===null && $target['source_sha256']===null && $target['source_fetched_at']===null && $target['content_json']==='{}' && $target['source_absent_json']==='[]','native_state_changed');
+                need19($target['next_attempt_at']==='2026-12-01 01:02:03' && $target['last_error']==='PRIVATE_LOCAL19_SCHEDULE' && $target['last_seen_at']==='2026-11-20 13:24:35','scheduling_changed');
+                $q=$db->prepare('SELECT * FROM local_tv_legacy_links WHERE old_local_id=?');$q->execute([$pair['own_id']]);$link=$q->fetch(PDO::FETCH_ASSOC);
+                need19(hash('sha256',$link['snapshot_json'])===$link['snapshot_sha256'],'snapshot_hash');
+                $snapshot=json_decode($link['snapshot_json'],true,64,JSON_THROW_ON_ERROR);
+                need19(array_keys($snapshot)===['profile','sources'] && count($snapshot['profile'])===5 && count($snapshot['sources'])===3,'snapshot_shape');
+                $q=$db->prepare('SELECT id,profile_json,profile_sha256,revision,is_active FROM anytour_hotels WHERE id=?');$q->execute([$pair['own_id']]);
+                need19($snapshot['profile']===$q->fetch(PDO::FETCH_ASSOC),'snapshot_original_profile');
+                $q=$db->prepare('SELECT namespace,external_key,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at FROM anytour_hotel_sources WHERE anytour_hotel_id=? ORDER BY namespace,external_key');$q->execute([$pair['own_id']]);
+                need19($snapshot['sources']===$q->fetchAll(PDO::FETCH_ASSOC),'snapshot_original_sources');
+              }
+            }else{
+              need19($before===$after,'partial_write_survived_'.$scenario);
+              if($scenario==='rollback_ack'){
+                need19($out['state']==='rollback_unknown' && $db->updates===10 && $db->rollbacks===1,'rollback_unknown_not_exercised');
+                foreach(['database_writes','mapping_writes','native_updates','manual_field_writes'] as $key)need19($out[$key]===null,'rollback_unknown_reported_zero');
+              }else foreach(['database_writes','mapping_writes','native_updates','manual_field_writes'] as $key)need19($out[$key]===0,'failed_nonzero_counts');
+            }
+            if($scenario==='success'){
+              need19($out['state']==='committed_verified' && $out['readback_verified']===true && $out['database_writes']===38,'success_terminal');
+              need19($db->begins===2,'readback_not_separate_transaction');
+              need19($out['mapping_writes']===19 && $out['native_updates']===19 && $out['manual_field_writes']===57,'success_counts');
+              foreach(['supplier_calls','provider_http_calls','canonical_profile_writes','source_writes','new_target_inserts','accepted_native_bindings'] as $key)need19($out[$key]===0,'forbidden_effect_'.$key);
+              $catalog=new LocalTvCatalogV1($db);$direct=$catalog->read(array_column($proposal['pairs'],'tv_id'));
+              $old=$catalog->read(array_column($proposal['pairs'],'own_id'),true);
+              need19(count($direct['items'])===19 && count($old['items'])===19 && count($old['links'])===19 && $direct['missingIds']===[] && $old['missingIds']===[],'real_reader_counts');
+              foreach([$direct,$old] as $read){
+                $items=[];foreach($read['items'] as $item)$items[$item['id']]=$item;
+                foreach($proposal['pairs'] as $pair){
+                  $item=$items[$pair['tv_id']];
+                  foreach(['description','primaryImage','images'] as $field)need19($item[$field]===$pair['proposed_after']['target']['manual_json'][$field],'real_reader_value_'.$field);
+                  need19($item['revision']===2 && $item['detailsAvailable']===false && $item['contentState']==='pending','real_reader_state');
+                  need19($item['manualFields']===['description','primaryImage','images'],'real_reader_manual_fields');
+                }
+              }
+              foreach($old['links'] as $i=>$link)need19($link===['oldLocalId'=>$proposal['pairs'][$i]['own_id'],'tourvisorHotelId'=>$proposal['pairs'][$i]['tv_id']],'real_reader_link');
+              $once=hashes19($db);$replay=AnyTourLocal19BridgeApplyV1::run($db,$proposal);
+              need19($replay['state']==='rejected_before_write' && $replay['database_writes']===0 && $once===hashes19($db),'second_application_not_refused');
+              $out['native_consumer_verified']=true;$out['reapplication_refused']=true;
+            }elseif($scenario==='mid_write'){
+              need19($db->updates===10 && $out['state']==='rolled_back' && $db->rollbacks===1,'rollback_not_exercised');
+            }elseif($scenario==='commit_ack'){
+              need19($out['state']==='commit_unknown' && $out['database_writes']===null && $out['mapping_writes']===null && $out['readback_verified']===false,'commit_unknown_misreported');
+            }elseif($scenario==='readback'){
+              need19($out['state']==='post_commit_readback_unknown' && $out['database_writes']===38 && $out['commit_acknowledged']===true && $out['readback_verified']===false,'postcommit_unknown_misreported');
+            }elseif($scenario!=='rollback_ack')need19($out['state']==='rejected_before_write' && $db->updates===0 && $db->commits===0,'drift_not_rejected_before_writes');
+            need19(!array_key_exists('approval_ref',$out),'fabricated_php_approval');$results[$scenario]=$out;
+          }finally{$db->armed=false;if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}
+        }
+        echo j19($results);'''
+        run=subprocess.run(['php','-r',code,str(runner),str(proposal_path),str(consumer/'local-tv-catalog-v1.php'),
+                            str(ROOT/m.LOCAL26_MANIFEST)],capture_output=True,text=True,timeout=150)
+        self.assertEqual(0,run.returncode,run.stderr)
+        results=json.loads(run.stdout)
+        self.assertEqual({'success','mid_write','manual_drift','profile_drift','source_drift','approved_value_drift','foreign_link',
+                          'foreign_legacy_owner','missing_target','hilton_manual','hilton_revision','hilton_bridge','hilton_snapshot',
+                          'hilton_source','hilton_approved_value','write_trigger','commit_ack','rollback_ack','readback'},set(results))
+        self.assertTrue(results['success'].pop('native_consumer_verified'))
+        self.assertTrue(results['success'].pop('reapplication_refused'))
+        for terminal in results.values():m.l19_terminal(terminal)
+        self.assertEqual(19,len(results['success']['pairs']))
+        for token in ('PRIVATE_LOCAL19_','local19-retained-hilton','private_fixture_absent_field'):
+            self.assertNotIn(token,run.stdout)
+
+
+class Local19ApplyControlTest(unittest.TestCase):
+    """Admission, actual consumed-parent binding and honest write receipts."""
+    # The sanitized actual read receipt is embedded solely as an immutable test
+    # input. Runtime consumes the private parent's original result and reservation.
+    PARENT_ZLIB_BASE64 = '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'
+
+    def setUp(self):
+        # Synthetic approval exists only in this isolated in-memory fixture.
+        # The checked-in production profile is always restored by cleanup.
+        self.prepared_profile=copy.deepcopy(m.LOCAL19_APPLY)
+        patcher=mock.patch.dict(m.LOCAL19_APPLY,{
+            'execution_admitted':True,
+            'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-999999999999999',
+            'approved_proposal_sha256':m.LOCAL19_APPLY['proposal_sha256']})
+        patcher.start();self.addCleanup(patcher.stop)
+    def test_checked_in_preparation_denies_before_bundle_or_remote_mutation(self):
+        c=core();m.register_parser(c);p=self.prepared_profile
+        body=c.PREFIX+' '.join([p['source_sha'],p['mode'],p['operation_id'],p['cohort'],p['parent_operation_id']])
+        command=dict(source_sha=p['source_sha'],mode=p['mode'],operation_id=p['operation_id'],
+                     cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
+        self.assertIs(False,p['execution_admitted']);self.assertIsNone(p['approval_ref'])
+        self.assertIsNone(p['approved_proposal_sha256'])
+        remote=c.REMOTE
+        with mock.patch.dict(m.LOCAL19_APPLY,p,clear=True), \
+                mock.patch.object(Path,'read_bytes',side_effect=AssertionError('no file read before approval')):
+            for action in (lambda:c.parse_command(body),lambda:m.activate(c,dict(command)),
+                           lambda:m.bundle_local19_source(SOURCE)):
+                with self.assertRaisesRegex(ValueError,'local19_owner_approval_required'):action()
+        self.assertEqual(remote,c.REMOTE)
+    def test_partial_approval_or_prior_content_or_local9_approval_does_not_admit(self):
+        _,_,body=self.command()
+        for change in ({'execution_admitted':False},{'approval_ref':None},
+                       {'approval_ref':m.LOCAL9_APPLY['approval_ref']},
+                       {'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7077944229'},
+                       {'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7088077135'},
+                       {'approved_proposal_sha256':m.LOCAL9_APPLY['proposal_sha256']}):
+            c=core();m.register_parser(c)
+            with self.subTest(change=change),mock.patch.dict(m.LOCAL19_APPLY,change), \
+                    self.assertRaisesRegex(ValueError,'local19_owner_approval_required'):
+                c.parse_command(body)
+    def parent(self):
+        import base64,zlib
+        return json.loads(zlib.decompress(base64.b64decode(self.PARENT_ZLIB_BASE64)))
+
+    def command(self):
+        p=m.LOCAL19_APPLY;c=core();m.register_parser(c)
+        body=c.PREFIX+' '.join([p['source_sha'],p['mode'],p['operation_id'],p['cohort'],p['parent_operation_id']])
+        return c,c.parse_command(body),body
+
+    def terminal(self,state='committed_verified'):
+        p=m.LOCAL19_APPLY;committed=state in ('committed_verified','post_commit_readback_unknown')
+        verified=state=='committed_verified';unknown=state in ('commit_unknown','rollback_unknown')
+        hashes={'canonical_rows_sha256':'1'*64,'target_preserved_rows_sha256':'2'*64,'excluded_rows_sha256':'3'*64}
+        counts=dict(zip(('database_writes','mapping_writes','native_updates','manual_field_writes'),
+            [None]*4 if unknown else [38,19,19,57] if committed else [0]*4))
+        return {'schema_version':'anytour_local19_bridge_apply_v1','operation_id':p['operation_id'],
+            'state':state,'completed_at_utc':'2026-11-23T00:00:00+00:00','proposal_sha256':p['proposal_sha256'],
+            'no_replay':True,'supplier_calls':0,'provider_http_calls':0,**counts,
+            'canonical_profile_writes':0,'source_writes':0,'new_target_inserts':0,'accepted_native_bindings':0,
+            'commit_acknowledged':committed,'readback_verified':verified,'before':hashes,
+            'after':copy.deepcopy(hashes) if verified else None,
+            'checks':{'fresh_parent_match':True,'canonical_unchanged':True if verified else None,
+                'target_preserved':True if verified else None,'excluded_unchanged':True if verified else None,
+                'direct_tv_sql':verified,'own_to_tv_sql':verified,'snapshots_verified':verified},
+            'pairs':[{'own_id':own,'tv_id':tv,'revision_from':1,'revision_to':2,
+                'manual_fields':['description','primaryImage','images'],'manual_sha256':manual,
+                'snapshot_sha256':hashlib.sha256(str(own).encode()).hexdigest(),
+                'direct_tv_sql':verified,'own_to_tv_sql':verified} for own,tv,manual in p['pairs']] if verified else [],
+            'error':None if verified else {'code':'local19_fixture_failure','message_sha256':'e'*64}}
+
+    def fixture(self,root,terminal=None):
+        p=m.LOCAL19_APPLY;c,command,body=self.command()
+        private=root/'private';target=private/p['parent_operation_id'];target.mkdir(parents=True)
+        op=private/p['operation_id'];op.mkdir();stage=op/'source';stage.mkdir()
+        project=root/'project';(project/'data').mkdir(parents=True)
+        (project/'config.php').write_text('PRIVATE_CONFIGURATION_SENTINEL')
+        (project/'data/db-v1.php').write_bytes((SOURCE/'v2/data/db-v1.php').read_bytes())
+        (target/'result.json').write_bytes(m.l11_json(self.parent()))
+        (target/'reservation.json').write_text(json.dumps({'operation_id':p['parent_operation_id'],
+            'source_sha':p['parent_source_sha'],'mode':'match-retained-current','reserved_at':1795344304}))
+        def fail(reason):raise ValueError(reason)
+        space={'LOCAL19_APPLY':p,'LOCAL19_HASHES':m.LOCAL19_HASHES,'LOCAL19_RUNNER':m.LOCAL19_RUNNER,
+            'LOCAL11_IDENTITY':m.LOCAL11_IDENTITY,'LOCAL11_HASHES':m.LOCAL11_HASHES,
+            'LOCAL26_IDENTITY':m.LOCAL26_IDENTITY,'LOCAL26_HASHES':m.LOCAL26_HASHES,
+            'completed_local26_identity':m.completed_local26_identity,'private':private,'op':op,'project':project,
+            'source':p['source_sha'],'operation':p['operation_id'],'payload':dict(command,match_retained_control_sha=CONTROL),
+            'mode':p['mode'],'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),'subprocess':subprocess,'fail':fail,
+            'result':{'supplier_calls':0,'database_writes':0,'mapping_writes':0},
+            'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=bound}
+        exec(m.LOCAL11_VALIDATOR+m.LOCAL26_VALIDATOR+m.LOCAL19_VALIDATOR+m.LOCAL19_HANDLER,space)
+        terminal=terminal or self.terminal()
+        def child(args,**kwargs):
+            self.assertEqual(str(stage/m.LOCAL19_RUNNER),args[-1]);self.assertEqual(project,kwargs['cwd'])
+            self.assertIn('allow_url_fopen=0',args)
+            self.assertIn('disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen',args)
+            self.assertLessEqual(set(kwargs['env']),{'HOME','PATH','LANG','LC_ALL','MATCH_RETAINED_DIR','MATCH_RETAINED_SOURCE_ROOT','MATCH_LOCAL19_EXECUTION_ADMITTED'})
+            self.assertEqual('1',kwargs['env']['MATCH_LOCAL19_EXECUTION_ADMITTED'])
+            self.assertEqual(120,kwargs['timeout']);self.assertIs(False,kwargs['text'])
+            reservation=json.loads((op/'local19-child-reservation.json').read_text())
+            self.assertEqual(p['approval_ref'],reservation['approval_ref']);self.assertTrue(reservation['no_replay'])
+            return subprocess.CompletedProcess(args,0 if terminal['state']=='committed_verified' else 1,m.l11_json(terminal),b'')
+        return command,space,child,target,op,stage
+
+    def result(self,command,evidence):
+        before={k:'a'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        terminal=evidence['data']['terminal']
+        return {'schema_version':1,**{k:command[k] for k in ('operation_id','source_sha','mode')},
+            'status':'complete','production_unchanged':True,'supplier_calls':0,
+            'database_writes':terminal['database_writes'],'mapping_writes':terminal['mapping_writes'],
+            'booking_calls':0,'lead_calls':0,'production_before':before,'production_after':copy.deepcopy(before),
+            'match_retained':evidence}
+
+    def rehash(self,result):
+        result['match_retained']['evidence_sha256']=hashlib.sha256(m.l11_json(result['match_retained']['data'])).hexdigest()
+
+    def test_dedicated_exact_write_command_and_frozen_current_read_command(self):
+        import base64,zlib
+        c,command,body=self.command();p=m.LOCAL19_APPLY
+        for bad in (body+' extra',body.replace(p['source_sha'],SHA),body.replace(p['mode'],'match-retained-current'),
+            body.replace(p['operation_id'],p['operation_id']+'-replay'),body.replace(p['cohort'],'common4-retained'),
+            body.replace(p['parent_operation_id'],m.LOCAL11_IDENTITY['parent_operation_id'])):
+            with self.subTest(command=bad),self.assertRaises(ValueError):c.parse_command(bad)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE)
+        self.assertIn('def apply_local19_bridge(stage):',c.REMOTE);self.assertNotIn('def run_match_retained(stage):',c.REMOTE)
+        self.assertIn("result['database_writes']=result['mapping_writes']=None",c.REMOTE)
+        self.assertEqual(2,c.REMOTE.count("if mode not in ('local19-bridge-apply-v1','reconcile',"))
+        self.assertIn("globals().get('local19_reserved') is True",c.REMOTE)
+        self.assertIn('len(members)!=4',c.REMOTE)
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        self.assertLessEqual(len(("python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'").encode()),65536)
+        old,read_command=Local11IdentityTest().command()
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(old,read_command)
+        self.assertEqual('b9bdbe96297307e3a9919c6c075beff720509f4099e26b89bf2a241e6dcaa1ab',hashlib.sha256(old.REMOTE.encode()).hexdigest())
+
+    def test_bundle_uses_main_writer_and_immutable_proposal_not_feature_copies(self):
+        with tempfile.TemporaryDirectory() as td:
+            source=Path(td)/'source';control=Path(td)/'control'
+            for rel in m.LOCAL19_HASHES:
+                path=source/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_bytes((SOURCE/rel).read_bytes() if rel=='v2/data/db-v1.php' else b'FEATURE CANNOT SELECT THE WRITER OR PROPOSAL')
+                if rel!='v2/data/db-v1.php':
+                    path=control/rel;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes((ROOT/rel).read_bytes())
+            bundle,hashes=m.bundle_local19_source(source)
+            with tarfile.open(fileobj=io.BytesIO(bundle),mode='r:gz') as archive:
+                self.assertEqual({*m.LOCAL19_HASHES,'manifest.json'},set(archive.getnames()))
+                self.assertEqual((ROOT/m.LOCAL19_PROPOSAL).read_bytes(),archive.extractfile(m.LOCAL19_PROPOSAL).read())
+                self.assertTrue(all(item.mode==0o600 for item in archive.getmembers()))
+            self.assertEqual(m.LOCAL19_HASHES,hashes)
+            (control/m.LOCAL19_PROPOSAL).write_bytes((control/m.LOCAL19_PROPOSAL).read_bytes()+b'\n')
+            with mock.patch.object(m,'__file__',str(control/'scripts/deploy/controller.py')):
+                with self.assertRaisesRegex(ValueError,'local19_source_drift'):m.bundle_local19_source(source)
+
+    def test_actual_parent_receipt_pin_rejects_even_rehashed_substitution(self):
+        prior=self.parent();m.l19_parent(prior)
+        self.assertEqual(m.LOCAL19_APPLY['parent_evidence_sha256'],prior['match_retained']['evidence_sha256'])
+        for mutate in (lambda d:d.update(control_source_sha=CONTROL),lambda d:d.update(current_raw_sha256='9'*64),
+            lambda d:d['rows'][0]['own'].update(profile_sha256='e'*64)):
+            changed=copy.deepcopy(prior);mutate(changed['match_retained']['data']);self.rehash(changed)
+            with self.assertRaises(ValueError):m.l19_parent(changed)
+
+    @unittest.skipUnless(__import__('shutil').which('php'),'native PHP required')
+    def test_cli_rejects_reencoded_or_repinned_proposal_before_loading_private_configuration(self):
+        proposal=json.loads((ROOT/m.LOCAL19_PROPOSAL).read_bytes())
+        proposals=[json.dumps(proposal,ensure_ascii=False).encode()]
+        changed=copy.deepcopy(proposal);changed['pairs'][0]['before']['own']['profile_sha256']='1'*64
+        proposals.append(json.dumps(changed,ensure_ascii=False).encode())
+        for raw in proposals:
+            with self.subTest(raw_sha256=hashlib.sha256(raw).hexdigest()),tempfile.TemporaryDirectory() as td:
+                home=Path(td);project=home/'www/anytoour.ru';project.mkdir(parents=True)
+                op=home/'.anytoour-int-executor'/m.LOCAL19_APPLY['operation_id'];stage=op/'source'
+                for rel in m.LOCAL19_HASHES:
+                    path=stage/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                    path.write_bytes((SOURCE/rel).read_bytes() if rel=='v2/data/db-v1.php' else (ROOT/rel).read_bytes())
+                (stage/m.LOCAL19_PROPOSAL).write_bytes(raw)
+                marker=home/'configuration_loaded'
+                (project/'config.php').write_text('<?php file_put_contents('+json.dumps(str(marker))+',"unexpected");')
+                env={k:os.environ[k] for k in ('PATH','LANG','LC_ALL') if k in os.environ}
+                env.update(HOME=str(home),MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage),MATCH_LOCAL19_EXECUTION_ADMITTED='1')
+                call=subprocess.run(['php',str(stage/m.LOCAL19_RUNNER)],cwd=project,env=env,capture_output=True,text=True,timeout=20)
+                self.assertEqual(1,call.returncode,call.stderr);self.assertEqual('',call.stderr)
+                terminal=json.loads(call.stdout);m.l19_terminal(terminal)
+                self.assertEqual('rejected_before_write',terminal['state'])
+                self.assertEqual('local19_proposal_hash',terminal['error']['code'])
+                self.assertEqual(0,terminal['database_writes']);self.assertFalse(marker.exists())
+
+    def test_success_preserves_actual_parent_and_is_not_replayable(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            before={path.name:path.read_bytes() for path in target.iterdir()}
+            with mock.patch.object(subprocess,'run',side_effect=child) as call:
+                evidence=space['apply_local19_bridge'](stage)
+                with self.assertRaises(FileExistsError):space['apply_local19_bridge'](stage)
+            self.assertEqual(1,call.call_count);self.assertEqual(before,{path.name:path.read_bytes() for path in target.iterdir()})
+            self.assertEqual((38,19),(space['result']['database_writes'],space['result']['mapping_writes']))
+            result=self.result(command,evidence);self.assertTrue(m.completed_result(command,result,CONTROL))
+            self.assertNotIn('PRIVATE_CONFIGURATION_SENTINEL',json.dumps(result))
+            self.assertEqual(evidence['data']['raw_sha256'],hashlib.sha256((op/'local19-raw.json').read_bytes()).hexdigest())
+            for mutate in (lambda d:d['terminal'].update(database_writes=True),
+                lambda d:d['terminal'].update(provider_http_calls=1),lambda d:d['terminal'].update(accepted_native_bindings=9),
+                lambda d:d['terminal']['pairs'][0].update(manual_sha256='f'*64),
+                lambda d:d['terminal']['pairs'][0].update(own_id=4516),
+                lambda d:d['terminal']['after'].update(excluded_rows_sha256='f'*64),
+                lambda d:d.update(approval_ref='https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7063885208')):
+                changed=copy.deepcopy(result);mutate(changed['match_retained']['data']);self.rehash(changed)
+                self.assertFalse(m.completed_result(command,changed,CONTROL))
+
+    def test_failed_child_receipts_and_unknown_commit_counts_are_preserved(self):
+        for state in ('rejected_before_write','rolled_back','commit_unknown','rollback_unknown','post_commit_readback_unknown'):
+            with self.subTest(state=state),tempfile.TemporaryDirectory() as td:
+                terminal=self.terminal(state);command,space,child,target,op,stage=self.fixture(Path(td),terminal)
+                with mock.patch.object(subprocess,'run',side_effect=child):evidence=space['apply_local19_bridge'](stage)
+                self.assertEqual(terminal,evidence['data']['terminal'])
+                self.assertEqual(terminal['database_writes'],space['result']['database_writes'])
+                self.assertEqual(terminal['mapping_writes'],space['result']['mapping_writes'])
+                self.assertEqual(1,evidence['data']['child_exit_code'])
+                self.assertFalse(m.completed_result(command,self.result(command,evidence),CONTROL))
+                self.assertEqual(terminal,json.loads((op/'local19-raw.json').read_bytes()))
+                if state in ('commit_unknown','rollback_unknown'):
+                    bad=copy.deepcopy(terminal);bad.update(database_writes=0,mapping_writes=0,native_updates=0,manual_field_writes=0)
+                    with self.assertRaisesRegex(ValueError,'local19_write_counts'):m.l19_terminal(bad)
+
+    def test_timeout_and_postwrite_guard_failure_cannot_be_reported_as_zero(self):
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            timeout=subprocess.TimeoutExpired('php',120,output=b'{"partial":')
+            with mock.patch.object(subprocess,'run',side_effect=timeout),self.assertRaisesRegex(ValueError,'timeout_no_replay'):
+                space['apply_local19_bridge'](stage)
+            self.assertIsNone(space['result']['database_writes']);self.assertIsNone(space['result']['mapping_writes'])
+            self.assertEqual(b'{"partial":',(op/'local19-raw.json').read_bytes())
+        with tempfile.TemporaryDirectory() as td:
+            command,space,child,target,op,stage=self.fixture(Path(td))
+            def drift(*args,**kwargs):
+                response=child(*args,**kwargs);(target/'reservation.json').write_text('{}');return response
+            with mock.patch.object(subprocess,'run',side_effect=drift),self.assertRaisesRegex(ValueError,'local19_protected_inputs'):
+                space['apply_local19_bridge'](stage)
+            self.assertEqual(38,space['result']['database_writes']);self.assertEqual(19,space['result']['mapping_writes'])
+            self.assertEqual('committed_verified',space['result']['match_retained']['data']['terminal']['state'])
+            self.assertFalse(space['result']['match_retained']['data']['protected_inputs_unchanged'])
+
+
 if __name__=='__main__':unittest.main()
 
 
