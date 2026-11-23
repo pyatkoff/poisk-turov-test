@@ -14,7 +14,7 @@ class InspectContracts(unittest.TestCase):
             'repository': {'full_name': inspect.REPO, 'id': 1345518271},
             'sender': {'login': 'pyatkoff', 'id': inspect.OWNER_ID},
             'action': 'created',
-            'issue': {'number': inspect.COORDINATION_ISSUE},
+            'issue': {'number': 4709},
             'comment': {
                 'id': 123,
                 'user': {'id': inspect.OWNER_ID},
@@ -37,7 +37,7 @@ class InspectContracts(unittest.TestCase):
         self.assertEqual(inspect.checked_request(self.event, self.env), {'run': 456})
 
     def test_old_or_pr_coordination_denied(self):
-        for issue in (3419, 2530, 996):
+        for issue in (4217, 3419, 2530, 996):
             event = copy.deepcopy(self.event)
             event['issue']['number'] = issue
             with self.subTest(issue=issue), self.assertRaises(ValueError):
