@@ -4201,6 +4201,359 @@ class Local19ApplyControlTest(unittest.TestCase):
             self.assertFalse(space['result']['match_retained']['data']['protected_inputs_unchanged'])
 
 
+class Local7RegistrationReadbackTest(unittest.TestCase):
+    """Saved registration witnesses are scoped evidence, never write authority."""
+    PAIRS=[(8689,7458),(4679,4283),(14397,97001),(13766,74509),
+           (14029,78669),(12816,60788),(14013,78456)]
+
+    def row(self,n=1,tv=7458,**values):
+        row=dict(id=n,hotel_id=tv,search_id=123456,source='user_search',
+                 first_seen_at='2026-10-19 12:38:21',last_seen_at='2026-10-20 00:43:30',
+                 operator_link=None,native_id_value=None,country_id=None)
+        row.update(values)
+        return row
+
+    def capture(self,rows=(),extra=(),header_change=None):
+        header={'kind':'scope','cohort':'common4-retained','catalog_id_namespace':'tourvisor_hotel',
+                'target_scope':'observed_and_legacy_ids','database_snapshot':'repeatable-read-read-only',
+                'captured_at_utc':'2026-10-20T00:45:30Z',
+                'schema_columns':{'tour_operator_identity_observations':[
+                    'id','hotel_id','search_id','source','first_seen_at','last_seen_at',
+                    'operator_link','native_id_value','country_id']}}
+        if header_change:header_change(header)
+        records=[header]+[{'kind':'observation','row':row} for row in rows]+list(extra)
+        return b''.join(m.canonical(record)+b'\n' for record in records)
+
+    def profile(self,raw):
+        profile=copy.deepcopy(m.LOCAL7_REGISTRATION)
+        profile.update(capture_raw_sha256=hashlib.sha256(raw).hexdigest(),capture_raw_bytes=len(raw))
+        return profile
+
+    def project(self,rows=(),extra=(),header_change=None):
+        raw=self.capture(rows,extra,header_change)
+        return m.l7_project(raw,self.profile(raw))
+
+    def command(self):
+        profile=m.LOCAL7_REGISTRATION
+        return dict(source_sha=profile['source_sha'],mode='match-retained-readback',
+                    operation_id=profile['operation_id'],cohort=profile['cohort'],
+                    target_operation_id=profile['parent_operation_id'])
+
+    def fixture(self,root,rows=(),stock=False):
+        raw=self.capture(rows);profile=self.profile(raw)
+        home=root/'home';private=home/'.anytoour-int-executor' if stock else root/'private'
+        target=private/profile['parent_operation_id'];target.mkdir(parents=True)
+        op=private/profile['operation_id']
+        if not stock:op.mkdir()
+        source='c'*40
+        capture=dict(state='captured_read_only',cohort='common4-retained',raw_sha256=profile['capture_raw_sha256'],
+                     raw_bytes=len(raw),supplier_calls=0,database_writes=0,mapping_writes=0)
+        data=dict(operation_id=target.name,source_sha=source,cohort='common4-retained',
+                  state='captured_and_projected_read_only',supplier_calls=0,database_writes=0,mapping_writes=0,capture=capture)
+        production={name:'a'*64 for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        parent=dict(schema_version=1,status='complete',mode='match-retained-intake',operation_id=target.name,
+                    source_sha=source,booking_calls=0,lead_calls=0,supplier_calls=0,database_writes=0,mapping_writes=0,
+                    production_unchanged=True,production_before=production,production_after=copy.deepcopy(production),
+                    match_retained={'data':data,'evidence_sha256':hashlib.sha256(m.canonical(data)).hexdigest()})
+        parent_raw=m.canonical(parent);profile['parent_receipt_sha256']=hashlib.sha256(parent_raw).hexdigest()
+        (target/'result.json').write_bytes(parent_raw);(target/'retained-raw.ndjson').write_bytes(raw)
+        (target/'reservation.json').write_bytes(m.canonical(dict(operation_id=target.name,source_sha=source,
+                                                               mode='match-retained-intake',reserved_at=1792400000)))
+        ledgers=home/'.anytoour-match';(ledgers/'provider-quotas').mkdir(parents=True)
+        for rel in ('retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-20.json'):
+            (ledgers/rel).write_text('{"PRIVATE_LOCAL7_LEDGER":true}')
+        project=home/'www/anytoour.ru' if stock else root/'project'
+        project.mkdir(parents=True);(project/'config.php').write_text('PRIVATE_LOCAL7_CONFIGURATION')
+        space={'LOCAL7_REGISTRATION':profile,'private':private,'op':op,'project':project,
+               'payload':dict(self.command(),match_retained_control_sha=CONTROL),
+               'operation':op.name,'source':profile['source_sha'],'mode':'match-retained-readback',
+               'json':json,'hashlib':hashlib,'os':os,'pathlib':__import__('pathlib'),'re':__import__('re'),
+               'subprocess':subprocess,'fail':lambda reason:(_ for _ in ()).throw(ValueError(reason))}
+        exec(m.LOCAL7_VALIDATOR+m.LOCAL7_HANDLER,space)
+        return profile,space,home,root/'unused-stage',target,op
+
+    def result(self,evidence):
+        production={name:'a'*64 for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        command=self.command()
+        return dict({key:command[key] for key in ('operation_id','source_sha','mode')},
+                    schema_version=1,status='complete',production_unchanged=True,
+                    production_before=production,production_after=copy.deepcopy(production),supplier_calls=0,
+                    database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,match_retained=evidence)
+
+    def rehash(self,result,rows=True):
+        data=result['match_retained']['data']
+        if rows:data['rows_sha256']=hashlib.sha256(m.canonical(data['rows'])).hexdigest()
+        result['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(data)).hexdigest()
+
+    def test_profile_and_parser_bind_exact_seven_pairs_and_original_capture(self):
+        profile=m.LOCAL7_REGISTRATION
+        self.assertEqual('3207266e17ed4e8244aaf28d05b962747fd4cd3c',profile['source_sha'])
+        self.assertEqual('int-andromeda-match-retained-readback-20261123-v1',profile['operation_id'])
+        self.assertEqual('local7-registration-evidence-20261123',profile['cohort'])
+        self.assertEqual('int-andromeda-match-retained-20261020-v3',profile['parent_operation_id'])
+        self.assertEqual('b610629916e80d706edb493da1fc02eb0bf38a00de64243a1973bb80155485d6',profile['parent_receipt_sha256'])
+        self.assertEqual('00c992ec930b0f0c8c9a8167bea93a1efebd8d34e1c19f1a01bf16e3ef77d834',profile['capture_raw_sha256'])
+        self.assertEqual(62108585,profile['capture_raw_bytes'])
+        self.assertEqual(self.PAIRS,[tuple(pair) for pair in profile['pairs']])
+        c=core();m.register_parser(c);command=self.command()
+        body=c.PREFIX+' '.join(command.values())
+        self.assertEqual(command,c.parse_command(body))
+        for key,value in [('source_sha',SHA),('mode','match-retained-current'),
+                          ('operation_id',command['operation_id']+'-replay'),('cohort','common4-retained'),
+                          ('target_operation_id','int-andromeda-match-retained-20261020-v4')]:
+            changed=dict(command);changed[key]=value
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                c.parse_command(c.PREFIX+' '.join(changed.values()))
+        with self.assertRaises(ValueError):c.parse_command(body+' extra')
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):
+            c.parse_command(body)
+
+    def test_native_absence_does_not_hide_real_registration_witnesses(self):
+        observations=[self.row(1,source='user_search'),
+                      self.row('2',tv='7458',search_id='2468',source='scheduled_monitor'),
+                      self.row(3,search_id='13579',source='hot_tours')]
+        raw=self.capture(observations);projection=m.l7_project(raw,self.profile(raw))
+        self.assertEqual(self.PAIRS,[(row['own_id'],row['tv_id']) for row in projection['rows']])
+        row=projection['rows'][0]
+        self.assertEqual(('witness_present',3,3,'IN_THIS_CAPTURE'),
+                         (row['state'],row['matched_observations'],row['qualifying_observations'],row['scope']))
+        self.assertEqual({},row['rejection_reasons'])
+        self.assertEqual([1,2,3],[w['observation_id'] for w in row['witnesses']])
+        self.assertEqual([123456,2468,13579],[w['search_id'] for w in row['witnesses']])
+        self.assertEqual(['user_search','scheduled_monitor','hot_tours'],[w['source'] for w in row['witnesses']])
+        self.assertTrue(all(w['hotel_id']==7458 for w in row['witnesses']))
+        lines=raw.splitlines(keepends=True)
+        self.assertEqual([hashlib.sha256(line).hexdigest() for line in lines[1:]],
+                         [w['line_sha256'] for w in row['witnesses']])
+        self.assertTrue(all(r['state']=='no_observation' and not r['witnesses'] for r in projection['rows'][1:]))
+
+    def test_invalid_search_source_and_utc_fields_are_scoped_non_witnesses(self):
+        variants=[('missing_search',{},'search_id_not_positive'),
+                  ('null_search',{'search_id':None},'search_id_not_positive'),
+                  ('zero_search',{'search_id':0},'search_id_not_positive'),
+                  ('boolean_search',{'search_id':True},'search_id_not_positive'),
+                  ('zero_string',{'search_id':'0'},'search_id_not_positive'),
+                  ('legacy_source',{'source':'legacy_catalog'},'source_not_allowed'),
+                  ('invalid_first_day',{'first_seen_at':'2026-02-30 12:00:00'},'first_seen_at_invalid'),
+                  ('invalid_last_hour',{'last_seen_at':'2026-10-20 25:43:30'},'last_seen_at_invalid')]
+        for name,change,reason in variants:
+            observation=self.row(**change)
+            if name=='missing_search':observation.pop('search_id')
+            with self.subTest(variant=name):
+                if name=='missing_search':
+                    with self.assertRaises(ValueError):self.project([observation])
+                    continue
+                row=self.project([observation])['rows'][0]
+                self.assertEqual(('no_qualifying_observation',1,0,'IN_THIS_CAPTURE'),
+                                 (row['state'],row['matched_observations'],row['qualifying_observations'],row['scope']))
+                self.assertEqual([],row['witnesses']);self.assertEqual({reason:1},row['rejection_reasons'])
+
+    def test_unrelated_and_legacy_rows_are_not_witnesses_or_global_absence(self):
+        extras=[{'kind':kind,'row':self.row(11)} for kind in ('legacy_source','identity','target')]
+        for projection in (self.project(),self.project([self.row(10,tv=999999)],extras)):
+            self.assertEqual(7,len(projection['rows']))
+            for row in projection['rows']:
+                self.assertEqual(('no_observation',0,0,'IN_THIS_CAPTURE'),
+                                 (row['state'],row['matched_observations'],row['qualifying_observations'],row['scope']))
+                self.assertEqual([],row['witnesses']);self.assertEqual({},row['rejection_reasons'])
+
+    def test_namespace_snapshot_schema_and_duplicate_json_fail_closed(self):
+        changes=[lambda h:h.update(catalog_id_namespace='samo_hotel'),
+                 lambda h:h.pop('catalog_id_namespace'),
+                 lambda h:h.update(database_snapshot='read-write'),
+                 lambda h:h.pop('schema_columns'),
+                 lambda h:h['schema_columns']['tour_operator_identity_observations'].remove('search_id')]
+        for index,change in enumerate(changes):
+            with self.subTest(header=index),self.assertRaises(ValueError):self.project([self.row()],header_change=change)
+        raw=self.capture([self.row()]).replace(b'"search_id":123456',b'"search_id":123456,"search_id":789')
+        self.assertIn(b'"search_id":123456,"search_id":789',raw)
+        with self.assertRaises(ValueError):m.l7_project(raw,self.profile(raw))
+        raw=self.capture(extra=[{'kind':'unexpected','row':self.row()}])
+        with self.assertRaises(ValueError):m.l7_project(raw,self.profile(raw))
+
+    def test_observation_bound_and_boolean_row_identity_cannot_be_bypassed(self):
+        bound=m.LOCAL7_REGISTRATION['max_observations_per_tv']
+        self.assertEqual(128,bound)
+        observations=[self.row(n+1) for n in range(bound)]
+        row=self.project(observations)['rows'][0]
+        self.assertEqual(bound,row['qualifying_observations'])
+        self.assertEqual(bound,len(row['witnesses']))
+        with self.assertRaises(ValueError):self.project(observations+[self.row(bound+1)])
+        with self.assertRaises(ValueError):self.project([self.row(True)])
+        with self.assertRaises(ValueError):self.project([self.row(tv=True)])
+        raw=self.capture([self.row(private_padding='x'*4194304)])
+        with self.assertRaises(ValueError):m.l7_project(raw,self.profile(raw))
+
+    def test_activation_keeps_existing_profiles_and_stock_command_bound(self):
+        import base64,zlib
+        originals={name:copy.deepcopy(getattr(m,name)) for name in
+                   ('PROOF_SOURCE_INSPECTION','SOURCE_HASHES','LOCAL9_APPLY','LOCAL19_APPLY','LOCAL26_IDENTITY')}
+        c=core();m.register_parser(c);command=self.command()
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+        ast.parse(c.REMOTE)
+        self.assertIn('retained_local7_registration',c.REMOTE)
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+        self.assertEqual(originals,{name:getattr(m,name) for name in originals})
+        prior=m.PROOF_SOURCE_INSPECTION
+        original=c.PREFIX+' '.join([SHA,'match-retained-readback',prior['operation_id'],prior['cohort'],prior['target_operation_id']])
+        self.assertEqual(prior['operation_id'],c.parse_command(original)['operation_id'])
+
+    def test_saved_capture_and_scoped_zero_complete_without_external_io_or_sidewrites(self):
+        for rows in ([],[self.row(private_token='PRIVATE_LOCAL7_TOKEN')]):
+            with self.subTest(witness=bool(rows)),tempfile.TemporaryDirectory() as td:
+                root=Path(td);profile,space,home,stage,target,op=self.fixture(root,rows)
+                before={path:path.read_bytes() for path in root.rglob('*') if path.is_file()}
+                with mock.patch.object(Path,'home',return_value=home),mock.patch.dict(os.environ,{'HOME':str(home)}), \
+                        mock.patch.object(subprocess,'run',side_effect=AssertionError('no PHP or DB child')), \
+                        mock.patch('urllib.request.urlopen',side_effect=AssertionError('no HTTP')), \
+                        mock.patch('urllib.request.build_opener',side_effect=AssertionError('no HTTP')), \
+                        mock.patch('socket.create_connection',side_effect=AssertionError('no network')):
+                    evidence=space['retained_local7_registration'](stage)
+                self.assertEqual(before,{path:path.read_bytes() for path in before})
+                new_files={path for path in root.rglob('*') if path.is_file()}-set(before)
+                self.assertTrue(new_files)
+                self.assertTrue(all(path.is_relative_to(op) and path.stat().st_mode&0o777==0o600 for path in new_files))
+                data=evidence['data'];self.assertEqual('retained_registration_evidence_read_only',data['state'])
+                self.assertEqual('witness_present' if rows else 'no_observation',data['rows'][0]['state'])
+                self.assertTrue(data['capture_only']);self.assertTrue(data['no_replay'])
+                self.assertTrue(data['protected_inputs_unchanged']);self.assertEqual(data['protected_before'],data['protected_after'])
+                self.assertEqual(3,len(data['protected_before']))
+                for key in ('supplier_calls','provider_http_calls','database_writes','mapping_writes','booking_calls',
+                            'lead_calls','new_database_reads','new_target_inserts','accepted_native_bindings'):
+                    self.assertIs(type(data[key]),int);self.assertEqual(0,data[key])
+                for key in ('native_authority','target_creation_authority','ai_authority'):self.assertIs(False,data[key])
+                self.assertNotIn('PRIVATE_LOCAL7_',json.dumps(evidence))
+                with mock.patch.dict(m.LOCAL7_REGISTRATION,profile,clear=True):
+                    self.assertTrue(m.completed_result(self.command(),self.result(evidence),CONTROL))
+
+    def test_full_activated_stock_remote_reserves_verifies_bundle_and_refuses_replay(self):
+        for rows in ([],[self.row()]):
+            with self.subTest(witness=bool(rows)),tempfile.TemporaryDirectory() as td:
+                root=Path(td);profile,space,home,stage,target,op=self.fixture(root,rows,stock=True)
+                project=home/'www/anytoour.ru'
+                (project/'_preview/search3-anex-candidate').mkdir(parents=True)
+                for rel in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+                    path=project/rel;path.parent.mkdir(parents=True,exist_ok=True)
+                    path.write_text('UNCHANGED_PRODUCTION_'+rel)
+                with mock.patch.dict(m.LOCAL7_REGISTRATION,profile,clear=True):
+                    c=core();m.register_parser(c)
+                    command=c.parse_command(c.PREFIX+' '.join(self.command().values()))
+                    with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,command)
+                    bundle,manifest=c.bundle_source(SOURCE)
+                    self.assertEqual(m.SOURCE_HASHES,manifest)
+                    archive=root/'source.tar.gz';archive.write_bytes(bundle)
+                    payload=dict(command,archive=str(archive),manifest_sha256=hashlib.sha256(m.canonical(manifest)).hexdigest())
+                    before={path:path.read_bytes() for path in root.rglob('*') if path.is_file()}
+                    def execute():
+                        output=io.StringIO()
+                        with mock.patch.object(Path,'home',return_value=home),mock.patch.dict(os.environ,{'HOME':str(home)}), \
+                                mock.patch.object(sys,'stdin',io.StringIO(json.dumps(payload))),mock.patch.object(sys,'stdout',output), \
+                                mock.patch.object(subprocess,'run',side_effect=AssertionError('stock must not call PHP/DB/collector')), \
+                                mock.patch('urllib.request.urlopen',side_effect=AssertionError('no HTTP')), \
+                                mock.patch('urllib.request.build_opener',side_effect=AssertionError('no HTTP')), \
+                                mock.patch('socket.create_connection',side_effect=AssertionError('no network')):
+                            exec(compile(c.REMOTE,'<local7-stock-remote>','exec'),{})
+                        return json.loads(output.getvalue())
+                    result=execute()
+                    self.assertEqual('complete',result['status'],result.get('reason'))
+                    self.assertTrue(c.completed_result(command,result))
+                    self.assertTrue(m.completed_result(command,result,CONTROL))
+                    self.assertEqual('witness_present' if rows else 'no_observation',result['match_retained']['data']['rows'][0]['state'])
+                    self.assertEqual(before,{path:path.read_bytes() for path in before})
+                    new_files={path for path in root.rglob('*') if path.is_file()}-set(before)
+                    self.assertTrue(all(path.is_relative_to(op) for path in new_files))
+                    reserved=json.loads((op/'reservation.json').read_bytes())
+                    self.assertEqual({key:command[key] for key in ('operation_id','source_sha','mode')},
+                                     {key:reserved[key] for key in ('operation_id','source_sha','mode')})
+                    self.assertIs(type(reserved['reserved_at']),int)
+                    self.assertEqual(manifest,json.loads((op/'installed-source.json').read_bytes())['files'])
+                    self.assertEqual(result,json.loads((op/'result.json').read_bytes()))
+                    completed_files={path:path.read_bytes() for path in root.rglob('*') if path.is_file()}
+                    replay=execute()
+                    self.assertEqual('blocked',replay['status'])
+                    self.assertEqual('operation_exists_no_replay',replay['reason'])
+                    self.assertFalse(c.completed_result(command,replay))
+                    self.assertEqual(completed_files,{path:path.read_bytes() for path in completed_files})
+
+    def test_changed_linked_or_duplicate_inputs_fail_before_evidence(self):
+        for variant in ('parent_changed','raw_changed','reservation_changed','raw_symlink','raw_hardlink',
+                        'duplicate_parent_json','wrong_raw_size','missing_raw'):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+                profile,space,home,stage,target,op=self.fixture(Path(td),[self.row()])
+                raw=target/'retained-raw.ndjson';parent=target/'result.json'
+                if variant=='parent_changed':parent.write_bytes(parent.read_bytes()+b'\n')
+                elif variant=='raw_changed':raw.write_bytes(raw.read_bytes()+b'\n')
+                elif variant=='reservation_changed':
+                    reservation=json.loads((target/'reservation.json').read_bytes());reservation['source_sha']='d'*40
+                    (target/'reservation.json').write_bytes(m.canonical(reservation))
+                elif variant=='raw_symlink':
+                    raw.rename(target/'alias.ndjson');raw.symlink_to(target/'alias.ndjson')
+                elif variant=='raw_hardlink':os.link(raw,target/'alias.ndjson')
+                elif variant=='duplicate_parent_json':
+                    body=parent.read_bytes().replace(b'"status":"complete"',b'"status":"complete","status":"complete"')
+                    self.assertIn(b'"status":"complete","status":"complete"',body)
+                    parent.write_bytes(body);profile['parent_receipt_sha256']=hashlib.sha256(body).hexdigest()
+                elif variant=='wrong_raw_size':profile['capture_raw_bytes']+=1
+                else:raw.unlink()
+                with mock.patch.object(Path,'home',return_value=home),self.assertRaises((ValueError,OSError)):
+                    space['retained_local7_registration'](stage)
+                self.assertEqual([],list(op.iterdir()))
+
+    def test_protected_parent_change_during_projection_is_detected(self):
+        with tempfile.TemporaryDirectory() as td:
+            profile,space,home,stage,target,op=self.fixture(Path(td),[self.row()])
+            project=space['l7_project']
+            def changed(raw,p):
+                projection=project(raw,p)
+                reservation=target/'reservation.json';reservation.write_bytes(reservation.read_bytes()+b'\n')
+                return projection
+            space['l7_project']=changed
+            with mock.patch.object(Path,'home',return_value=home),self.assertRaises(ValueError):
+                space['retained_local7_registration'](stage)
+            self.assertEqual([],list(op.iterdir()))
+
+    def test_completion_rejects_rehashed_forged_witness_counts_roster_and_authority(self):
+        with tempfile.TemporaryDirectory() as td:
+            profile,space,home,stage,target,op=self.fixture(Path(td),[self.row()])
+            with mock.patch.object(Path,'home',return_value=home):evidence=space['retained_local7_registration'](stage)
+            result=self.result(evidence)
+            changes=[('count_bool',lambda d:d['rows'][0].update(qualifying_observations=True)),
+                     ('inner_count_bool',lambda d:d.update(database_writes=False)),
+                     ('missing_witness',lambda d:d['rows'][0].update(witnesses=[])),
+                     ('wrong_roster',lambda d:d['rows'][-1].update(tv_id=999999)),
+                     ('extra_row',lambda d:d['rows'].append(copy.deepcopy(d['rows'][0]))),
+                     ('search_bool',lambda d:d['rows'][0]['witnesses'][0].update(search_id=True)),
+                     ('wrong_source',lambda d:d['rows'][0]['witnesses'][0].update(source='legacy_catalog')),
+                     ('invalid_utc',lambda d:d['rows'][0]['witnesses'][0].update(last_seen_at='2026-02-30 12:00:00')),
+                     ('wrong_line_digest',lambda d:d['rows'][0]['witnesses'][0].update(line_sha256='not-a-digest')),
+                     ('global_scope',lambda d:d['rows'][0].update(scope='ALL_TIME')),
+                     ('capture_pin',lambda d:d.update(capture_raw_sha256='0'*64)),
+                     ('protected_input',lambda d:d['protected_after']['result.json'].update(sha256='0'*64)),
+                     ('protected_float',lambda d:d['protected_after']['result.json'].update(bytes=float(d['protected_after']['result.json']['bytes']))),
+                     ('control_pin',lambda d:d.update(control_source_sha='d'*40))]
+            changes += [(key,lambda d,key=key:d.update({key:True})) for key in
+                        ('native_authority','target_creation_authority','ai_authority')]
+            changes += [(key,lambda d,key=key:d.update({key:1})) for key in
+                        ('supplier_calls','provider_http_calls','database_writes','mapping_writes','new_database_reads',
+                         'new_target_inserts','accepted_native_bindings')]
+            with mock.patch.dict(m.LOCAL7_REGISTRATION,profile,clear=True):
+                self.assertTrue(m.completed_result(self.command(),result,CONTROL))
+                for name,change in changes:
+                    bad=copy.deepcopy(result);change(bad['match_retained']['data']);self.rehash(bad)
+                    with self.subTest(mutation=name):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
+                for name in ('evidence_digest','rows_digest','production_flag','production_after','outer_write','outer_bool'):
+                    bad=copy.deepcopy(result)
+                    if name=='evidence_digest':bad['match_retained']['evidence_sha256']='0'*64
+                    elif name=='rows_digest':bad['match_retained']['data']['rows_sha256']='0'*64;self.rehash(bad,rows=False)
+                    elif name=='production_flag':bad['production_unchanged']=False
+                    elif name=='production_after':bad['production_after']['index.php']='0'*64
+                    elif name=='outer_write':bad['mapping_writes']=1
+                    else:bad['supplier_calls']=False
+                    with self.subTest(mutation=name):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
+
+
 if __name__=='__main__':unittest.main()
 
 
