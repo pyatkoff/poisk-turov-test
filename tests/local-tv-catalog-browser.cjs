@@ -109,6 +109,83 @@ async function lookupBeforeOffersAcceptance(configScript){
  }
  console.log('PASS LOCAL lookup before offers',JSON.stringify(receipts));
 }
+async function contentMetadataAcceptance(configScript){
+ const dom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+base+'visual-search/',runScripts:'outside-only'}),w=dom.window;
+ Object.assign(w,{structuredClone,TextEncoder,AbortController,Response});
+ Object.defineProperty(w.document,'currentScript',{configurable:true,value:configScript});
+ w.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
+ Object.defineProperty(w.document,'currentScript',{configurable:true,value:null});
+ w.fetch=async()=>{throw new Error('Unexpected transport before metadata setup');};
+ for(const file of ['runtime-v3.js','search3-canonical-profiles-v1.js','prototype-search/data.js'])w.eval(fs.readFileSync(path.join(sourceRoot,file),'utf8'));
+ const data=w.AnyTourPrototypeData,raw={...structuredClone(profile),anytourHotelId:501,canonicalLegacyIds:['101'],tours:[structuredClone(tour)]};
+ const rawBefore=JSON.stringify(raw),offerBefore=JSON.stringify(data.project([raw],trip)[0].offers),plain=value=>JSON.parse(JSON.stringify(value));
+ let reply=structuredClone(original),gate=null,release,calls=0;
+ const pending=reply.items[0];pending.contentState='pending';pending.detailsAvailable=false;pending.detailsFetchedAt=null;
+ pending.manualFields=['description','primaryImage','images'];pending.sourceAbsent=['hotelInformation.services','coordinates'];
+ const baseline=structuredClone(reply),revision=pending.revision,manualFields=['description','images','primaryImage'];
+ const shown=()=>data.project([raw],trip)[0],meta=()=>plain(shown().raw.localContentMeta);
+ w.fetch=async(url,options={})=>{
+  const u=new URL(url,w.location.href);assert.equal(u.pathname,reader);assert.deepEqual(u.searchParams.getAll('oldLocalHotelIds[]'),['501']);
+  assert(!options.method||options.method==='GET');assert.equal(options.cache,'no-store');calls++;
+  if(gate)await gate;return {ok:true,json:async()=>reply};
+ };
+ try{
+  const inherited={...raw,localContentMeta:{source:'anytour-local-tv-catalog-v1',anytourHotelId:501,tourvisorHotelId:101,revision,manualFields:['description']}};
+  assert.equal(data.hotelPresentation(inherited,trip).raw.localContentMeta,undefined,'canonical input cannot supply LOCAL overlay provenance');
+  assert(inherited.localContentMeta,'stripping unaccepted provenance does not mutate the canonical input');
+  assert.equal(await data.refreshHotelContent([501]),true);
+  assert.deepEqual(meta(),{source:'anytour-local-tv-catalog-v1',anytourHotelId:501,tourvisorHotelId:101,revision,
+   contentState:'pending',detailsAvailable:false,detailsFetchedAt:null,manualFields,sourceAbsent:['coordinates','hotelInformation.services']});
+  assert.notStrictEqual(shown().raw.localContentMeta.manualFields,pending.manualFields);
+  assert.notStrictEqual(shown().raw.localContentMeta.sourceAbsent,pending.sourceAbsent);
+  pending.manualFields.push('name');pending.sourceAbsent.length=0;
+  assert.deepEqual(meta().manualFields,manualFields,'response-array mutation cannot alter the accepted provenance');
+  assert.deepEqual(meta().sourceAbsent,['coordinates','hotelInformation.services']);
+  assert.equal(shown().raw.detailsAvailable,raw.detailsAvailable,'LOCAL metadata does not rewrite the old canonical status');
+  assert.equal(shown().id,501);assert.equal(shown().raw.localHotelId,101);assert.equal(shown().raw.localContentRevision,revision);
+  assert.deepEqual(Array.from(shown().legacyIds),['101']);assert.equal(JSON.stringify(shown().offers),offerBefore);assert.equal(JSON.stringify(raw),rawBefore);
+  const contentBefore=JSON.stringify({name:shown().name,note:shown().note,photos:shown().photos});
+  reply=structuredClone(baseline);Object.assign(reply.items[0],{contentState:'ready',detailsAvailable:true,detailsFetchedAt:'2026-11-23 09:38:00'});
+  assert.equal(await data.refreshHotelContent([501]),true);assert.deepEqual(meta().manualFields,manualFields,'ready content retains its manual fields');
+  assert.equal(meta().detailsAvailable,true);
+  Object.assign(reply.items[0],{contentState:'retry',detailsAvailable:false,detailsFetchedAt:null});
+  assert.equal(await data.refreshHotelContent([501]),true,'retry status can change without a content revision');
+  assert.equal(meta().contentState,'retry');assert.equal(meta().detailsAvailable,false);assert.equal(meta().detailsFetchedAt,null);
+  assert.equal(JSON.stringify({name:shown().name,note:shown().note,photos:shown().photos}),contentBefore);
+  Object.assign(reply.items[0],{contentState:'ready',detailsAvailable:true,detailsFetchedAt:'2026-11-23 09:39:00'});
+  assert.equal(await data.refreshHotelContent([501]),true);
+  reply.items[0].detailsFetchedAt='2026-11-23 09:40:00';assert.equal(await data.refreshHotelContent([501]),true,'unchanged-source fetch time can advance on the same revision');
+  assert.equal(meta().detailsFetchedAt,'2026-11-23 09:40:00');
+  const acceptedMeta=meta();reply.items[0].description+=' Conflicting text';
+  assert.equal(await data.refreshHotelContent([501]),false,'same-revision content conflict is still rejected');assert.deepEqual(meta(),acceptedMeta);
+  reply=structuredClone(baseline);reply.items[0].revision=revision+1;
+  for(const key of ['contentState','detailsAvailable','detailsFetchedAt','manualFields','sourceAbsent'])delete reply.items[0][key];
+  assert.equal(await data.refreshHotelContent([501]),true);
+  assert.deepEqual(meta(),{source:'anytour-local-tv-catalog-v1',anytourHotelId:501,tourvisorHotelId:101,revision:revision+1,
+   contentState:null,detailsAvailable:null,detailsFetchedAt:null,manualFields:null,sourceAbsent:null},'unknown metadata is not an empty or verified fact');
+  Object.assign(reply.items[0],{contentState:'approved',detailsAvailable:'false',detailsFetchedAt:{value:'2026-11-23'},manualFields:'description',sourceAbsent:{}});
+  assert.equal(await data.refreshHotelContent([501]),true);assert.equal(meta().contentState,null);assert.equal(meta().detailsAvailable,null);
+  assert.equal(meta().detailsFetchedAt,null);assert.equal(meta().manualFields,null);assert.equal(meta().sourceAbsent,null);
+  for(const fields of [Array(257).fill('description'),['description.'+'a'.repeat(193)],['description','providerSecret'],[null]]){
+   reply.items[0].manualFields=fields;reply.items[0].sourceAbsent=fields;
+   assert.equal(await data.refreshHotelContent([501]),true);assert.equal(meta().manualFields,null);assert.equal(meta().sourceAbsent,null,'invalid field lists are not partially trusted or truncated');
+  }
+  reply.items[0].manualFields=['description','images.0','hotelInformation.services.free'];reply.items[0].sourceAbsent=[];
+  assert.equal(await data.refreshHotelContent([501]),true);
+  assert.deepEqual(meta().manualFields,['description','hotelInformation.services.free','images.0'],'nested field paths stay exact');assert.deepEqual(meta().sourceAbsent,[]);
+  reply.items[0].manualFields=['primaryImage'];delete reply.items[0].primaryImage;reply.items[0].revision=revision+2;
+  assert.equal(await data.refreshHotelContent([501]),true);assert.equal(meta().manualFields,null,'a missing overlay field cannot label inherited canonical content');
+  reply=structuredClone(baseline);reply.items[0].revision=revision+3;reply.items[0].description='';
+  reply.items[0].manualFields=['description',...Array.from({length:256},(_,i)=>'hotelInformation.services.manual'+i)];
+  assert.equal(await data.refreshHotelContent([501]),true);assert.equal(meta().manualFields,null,'oversized metadata remains unknown');
+  assert.equal(shown().raw.description,'');assert.equal(shown().note,'','metadata bounds do not resurrect a deliberately cleared description');
+  const beforeStale=meta();reply=structuredClone(baseline);reply.items[0].revision=revision+4;
+  gate=new Promise(resolve=>release=resolve);const stale=data.refreshHotelContent([501]);data.stop();release();assert.equal(await stale,false);gate=null;
+  assert.deepEqual(meta(),beforeStale,'stale response cannot replace accepted provenance');
+  assert.equal(JSON.stringify(shown().offers),offerBefore);assert.equal(JSON.stringify(raw),rawBefore);assert.equal(data.searchId,0);
+  console.log('PASS LOCAL content provenance: pending/manual and ready/manual, same-revision retry/fetch time, conflicting content, unknown/bounded/copied fields, exact own/TV IDs, unchanged offers and stale generation; read-only GETs '+calls+'; supplier HTTP0');
+ }finally{release?.();data.stop();dom.window.close();}
+}
 async function adapterAcceptance(){
  for(const pathname of ['/','/prototype-search/','/_preview/search3-site-candidate/visual-search/','/_preview/search3-local-candidate/visual-search/','/_preview/search3-next-candidate/visual-search/']){
   const configDom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+pathname,runScripts:'outside-only'});
@@ -128,7 +205,7 @@ async function adapterAcceptance(){
  const entry=new JSDOM(served),configScript=entry.window.document.querySelector('script[src*="prototype-search/config.js"]');assert.equal(configScript?.dataset.localTvCatalog,'enabled','actual live PHP entry opts in');
  Object.defineProperty(w.document,'currentScript',{configurable:true,value:configScript});
  w.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
- Object.defineProperty(w.document,'currentScript',{configurable:true,value:null});await lookupBeforeOffersAcceptance(configScript);entry.window.close();
+ Object.defineProperty(w.document,'currentScript',{configurable:true,value:null});await lookupBeforeOffersAcceptance(configScript);await contentMetadataAcceptance(configScript);entry.window.close();
  for(const file of ['runtime-v3.js','search3-canonical-profiles-v1.js','prototype-search/data.js'])w.eval(fs.readFileSync(path.join(sourceRoot,file),'utf8'));
  const data=w.AnyTourPrototypeData,raw={...structuredClone(profile),anytourHotelId:501,tours:[structuredClone(tour)]};
  const before=data.project([raw],trip)[0],rawBefore=JSON.stringify(raw),offerBefore=JSON.stringify(before.offers),calls=[];
@@ -271,6 +348,7 @@ async function browserAcceptance(){
     const readChoices=()=>page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent})));
     const originalRead=profileResponse();
     await openHotel();await page.locator('#hotel-room-count').waitFor({timeout:10000});assert.equal((await originalRead).status(),200);await waitForDescription(original.items[0].description);
+    assert.equal(await page.locator('.hotel-content-attribution').textContent(),'Описание: материалы AnyTour','only the actual manual description is attributed; the fixture gallery is not manual');
     assert((await page.locator('#modal-body').textContent()).includes('Два тестовых бассейна'));assert((await page.locator('#modal-body').textContent()).includes('Wi-Fi в общественных местах'));
     const choices=await readChoices();assert(choices.length>0);
     await close();current=updated;gate=new Promise(resolve=>release=resolve);
@@ -278,6 +356,7 @@ async function browserAcceptance(){
     await openHotel();await page.locator('#hotel-room-count').waitFor();
     assert.deepEqual(await readChoices(),choices,'the existing tariffs are usable while the new LOCAL revision is held');
     release();gate=null;assert.equal((await updatedRead).status(),200);await waitForDescription(updated.items[0].description);
+    assert.equal(await page.locator('.hotel-content-attribution').textContent(),'Описание: материалы AnyTour','a new accepted revision retains field-specific attribution');
     assert((await card.textContent()).includes(updated.items[0].name));assert.match(await card.locator('.photo-count').textContent(),/126/);
     assert.equal(await card.locator('.starting-price strong').textContent(),price);assert.deepEqual(await readChoices(),choices);
     const geometry=await page.locator('#modal-body').evaluate(el=>({modalOverflow:el.scrollWidth>el.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth+1}));assert.deepEqual(geometry,{modalOverflow:false,documentOverflow:false});

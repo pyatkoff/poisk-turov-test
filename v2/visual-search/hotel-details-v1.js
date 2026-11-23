@@ -53,6 +53,24 @@ function hotelAmenitiesHTML(h){
  for(const amenity of h.amenities||[]){if(!amenity.label)continue;const group=amenity.group||'Удобства';if(!groups.has(group))groups.set(group,new Set());groups.get(group).add(amenity.label);}
  return [...groups].map(([group,labels])=>hotelFactHTML(group,[...labels].join(' · '),labels.size>2?`<ul class="hotel-service-list">${[...labels].map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`:null)).join('');
 }
+function hotelContentAttributionHTML(h){
+ const raw=h.raw||{},meta=raw.localContentMeta;
+ if(meta?.source!=='anytour-local-tv-catalog-v1'||!Number.isSafeInteger(meta.revision)||meta.revision<1||meta.anytourHotelId!==h.id
+   ||meta.tourvisorHotelId!==raw.localHotelId||meta.revision!==raw.localContentRevision
+   ||!Array.isArray(meta.manualFields))return '';
+ const fields=new Set(meta.manualFields),parts=[];
+ if(fields.has('description')&&plainHotelText(raw.description))parts.push('Описание');
+ // The reader normalizes URLs and can substitute images[0] for a cleared
+ // primaryImage. That fallback alone does not establish manual authorship.
+ const photoURL=value=>{if(typeof value!=='string')return '';try{return new window.URL(value).href;}catch{return '';}};
+ const gallery=(Array.isArray(raw.images)?raw.images:[]).map(photoURL).filter(Boolean);
+ const manualPhotos=new Set(fields.has('images')?gallery:[]),primary=photoURL(raw.primaryImage);
+ if(fields.has('primaryImage')&&primary&&(fields.has('images')||!gallery.includes(primary)))manualPhotos.add(primary);
+ const shown=[...new Set(h.photos)],manualCount=shown.filter(url=>manualPhotos.has(url)).length;
+ if(manualCount)parts.push(manualCount===shown.length?'фото':'часть фото');
+ if(!parts.length)return '';
+ const label=parts.join(' и ');return `<p class="hotel-detail-copy hotel-content-attribution"><small>${label[0].toUpperCase()+label.slice(1)}: материалы AnyTour</small></p>`;
+}
 let mountedProfile='';
 function hotelProfileHTML(h){
  const description=plainHotelText(h.raw?.description||h.note||''),amenities=[...new Set((h.amenities||[]).map(a=>a.label).filter(Boolean))];
@@ -60,7 +78,7 @@ function hotelProfileHTML(h){
  const visiblePhotos=h.photos.slice(0,3);
  const photos=h.photos.length?`<section class="hotel-photo-section" aria-label="Фотографии"><h3 id="hotel-photos-heading" class="sr-only hotel-section-anchor" tabindex="-1">Фотографии отеля</h3><div class="hotel-detail-photos photo-count-${visiblePhotos.length}">${visiblePhotos.map((p,i)=>`<button data-action="hotel-gallery" data-id="${h.id}" data-value="${i}" aria-label="Открыть фото ${i+1} отеля ${esc(h.name)}"><img src="${esc(p)}" alt="Фото отеля" loading="lazy"></button>`).join('')}</div><button class="secondary hotel-all-photos" data-action="hotel-gallery" data-id="${h.id}" data-value="0">${icon('image')} Все фотографии · ${h.photos.length}</button></section>`:'<p class="tour-missing">Фотографии отеля пока не предоставлены.</p>';
  const rating=ratingValue(h),hasOverview=Boolean(h.photos.length||description||amenities.length||facts);
- const overview=hasOverview?`${photos}<div class="hotel-detail-heading"><h3 id="hotel-about-heading" class="hotel-section-anchor" tabindex="-1">Об отеле</h3>${ratingValue(h)!==null?`<span class="detail-rating">${ratingText(h)} / 5</span>`:''}</div>
+ const overview=hasOverview?`${photos}${hotelContentAttributionHTML(h)}<div class="hotel-detail-heading"><h3 id="hotel-about-heading" class="hotel-section-anchor" tabindex="-1">Об отеле</h3>${ratingValue(h)!==null?`<span class="detail-rating">${ratingText(h)} / 5</span>`:''}</div>
  ${amenities.length?`<ul class="hotel-key-facts">${amenities.slice(0,8).map(label=>`<li>${icon('check')}${esc(label)}</li>`).join('')}</ul>`:''}
  ${hotelDescriptionHTML(description)||(!amenities.length&&!facts?'<p class="tour-missing">Подробное описание пока не предоставлено.</p>':'')}`:`<div class="hotel-data-note"><span>Фото и описание отеля пока не предоставлены. Ниже — доступные туры с исходными условиями.</span>${rating!==null?`<strong>Оценка гостей ${ratingText(h)} / 5</strong>`:''}</div>`;
  const sections=[...(h.photos.length?[['hotel-photos-heading','Фото']]:[]),...(hasOverview?[['hotel-about-heading','Об отеле']]:[]),...(facts?[['hotel-services-heading','Услуги']]:[]),['hotel-rooms-heading','Номера и цены']];
