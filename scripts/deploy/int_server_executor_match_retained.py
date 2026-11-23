@@ -3507,17 +3507,17 @@ def activate_local26_identity(core,command):
     core.completed_result=lambda cmd,res:completed_local26_identity(cmd,res,control) if cmd.get('cohort')==LOCAL26_IDENTITY['cohort'] else original(cmd,res)
 
 
-# Finite LOCAL19 preparation. The data proposal is immutable; execution remains
-# closed until a separately reviewed real owner approval is bound below.
+# Finite LOCAL19 owner-approved apply. The immutable data proposal and actual
+# approval receipt bind the sole operation; all drift and no-replay guards remain.
 LOCAL19_RUNNER = 'scripts/catalog/anytour_local19_bridge_apply_v1.php'
 LOCAL19_PROPOSAL = 'scripts/catalog/anytour-local19-bridge-proposal-20261123.json'
 LOCAL19_APPLY = {'mode': 'local19-bridge-apply-v1',
  'cohort': 'local19-bridge-manual57-20261123',
  'operation_id': 'int-andromeda-local19-bridge-apply-20261123-v1',
  'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
- 'execution_admitted': False,
- 'approval_ref': None,
- 'approved_proposal_sha256': None,
+ 'execution_admitted': True,
+ 'approval_ref': 'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7088365340',
+ 'approved_proposal_sha256': '02d3df3ecd94d775e58fd3e506cf81032b64179fa3b4db1ff43de9e515ec2192',
  'proposal_sha256': '02d3df3ecd94d775e58fd3e506cf81032b64179fa3b4db1ff43de9e515ec2192',
  'parent_operation_id': 'int-andromeda-match-retained-current-20261123-v1',
  'parent_source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
@@ -3559,8 +3559,8 @@ LOCAL19_HASHES = {
 
 LOCAL19_VALIDATOR = r'''
 def l19_admission(profile):
-    # Preparation is deliberately inert. A subsequent reviewed owner admission
-    # must bind both the exact proposal and its real new approval receipt.
+    # Admission requires both the exact proposal and its real owner receipt.
+    # Missing, partial or previously consumed approval remains closed.
     ref=profile.get('approval_ref')
     l11_need(profile.get('execution_admitted') is True
         and profile.get('approved_proposal_sha256')==profile['proposal_sha256']

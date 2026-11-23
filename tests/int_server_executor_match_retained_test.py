@@ -3952,14 +3952,30 @@ class Local19ApplyControlTest(unittest.TestCase):
     def setUp(self):
         # Synthetic approval exists only in this isolated in-memory fixture.
         # The checked-in production profile is always restored by cleanup.
-        self.prepared_profile=copy.deepcopy(m.LOCAL19_APPLY)
+        self.checked_in_profile=copy.deepcopy(m.LOCAL19_APPLY)
         patcher=mock.patch.dict(m.LOCAL19_APPLY,{
             'execution_admitted':True,
             'approval_ref':'https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-999999999999999',
             'approved_proposal_sha256':m.LOCAL19_APPLY['proposal_sha256']})
         patcher.start();self.addCleanup(patcher.stop)
-    def test_checked_in_preparation_denies_before_bundle_or_remote_mutation(self):
-        c=core();m.register_parser(c);p=self.prepared_profile
+    def test_checked_in_admission_binds_exact_owner_approval_and_proposal(self):
+        p=self.checked_in_profile
+        approved_sha='02d3df3ecd94d775e58fd3e506cf81032b64179fa3b4db1ff43de9e515ec2192'
+        self.assertIs(True,p['execution_admitted'])
+        self.assertEqual('https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-7088365340',p['approval_ref'])
+        self.assertEqual(approved_sha,p['proposal_sha256'])
+        self.assertEqual(approved_sha,p['approved_proposal_sha256'])
+        self.assertEqual(approved_sha,hashlib.sha256((ROOT/m.LOCAL19_PROPOSAL).read_bytes()).hexdigest())
+        self.assertEqual(19,len(p['pairs']))
+        with mock.patch.dict(m.LOCAL19_APPLY,p,clear=True):
+            m.l19_admission(m.LOCAL19_APPLY)
+            _,command,_=self.command()
+        self.assertEqual('local19-bridge-apply-v1',command['mode'])
+        self.assertEqual('int-andromeda-local19-bridge-apply-20261123-v1',command['operation_id'])
+
+    def test_preparation_fixture_denies_before_bundle_or_remote_mutation(self):
+        c=core();m.register_parser(c);p=copy.deepcopy(self.checked_in_profile)
+        p.update(execution_admitted=False,approval_ref=None,approved_proposal_sha256=None)
         body=c.PREFIX+' '.join([p['source_sha'],p['mode'],p['operation_id'],p['cohort'],p['parent_operation_id']])
         command=dict(source_sha=p['source_sha'],mode=p['mode'],operation_id=p['operation_id'],
                      cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
