@@ -17,7 +17,8 @@ import tempfile
 import zipfile
 
 from search3_local_preview import derive, render_checks, live_checks, REPO, RELEASE
-from search3_local_preview_update_remote import inventory, json_bytes, need
+from search3_local_preview_update_remote import (inventory, json_bytes, need,
+    COMPOSITION, catalog_request, catalog_predecessor, composition_record)
 
 PREFIX = '/update-search3-local-preview '
 NEXT_PREFIX = '/update-search3-next-preview '
@@ -28,6 +29,13 @@ def target_functions(q):
         return target.derive, target.render_checks, target.live_checks
     return derive, render_checks, live_checks
 
+
+def derive_update(source, output, q, zip_hash, api):
+    if 'composition' in q:
+        from search3_local_preview_catalog_patch import derive as compose
+        return compose(source, output, q, zip_hash, api)
+    derive_target, _, _ = target_functions(q)
+    return derive_target(source, output, q, zip_hash)
 
 
 def checked_request(event, env):
@@ -46,12 +54,20 @@ def checked_request(event, env):
          and 'pull_request' not in issue, 'coordination_only')
     need(isinstance(body, str) and body.startswith(prefix) and '\n' not in body and '\r' not in body, 'command_syntax')
     parts = body[len(prefix):].split(' ')
+    composition = len(parts) == 6
+    if composition:
+        need(prefix == PREFIX and parts[-1] == COMPOSITION, 'catalog_composition_local_only')
+        parts = parts[:-1]
     need(len(parts) == 5 and all(re.fullmatch('[0-9a-f]{40}', x) for x in (parts[0], parts[1], parts[4]))
          and all(re.fullmatch('[1-9][0-9]{0,14}', x) for x in parts[2:4]), 'exact_pins')
     need(parts[0] != parts[4], 'same_source_no_update')
-    return {**({'preview_target':'next'} if prefix==NEXT_PREFIX else {}), 'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
+    q = {**({'preview_target':'next'} if prefix==NEXT_PREFIX else {}), 'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
             'artifact_id': int(parts[3]), 'previous_source_sha': parts[4],
             'deploy_run': int(env['GITHUB_RUN_ID']), 'attempt': 1, 'operation': 'update'}
+    if composition:
+        q['composition'] = COMPOSITION
+        catalog_request(q, complete=False)
+    return q
 
 
 def authorized():
@@ -71,7 +87,7 @@ def prepare():
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-local-update-prepare'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    ready, archive = derive_target(original / 'release', work / 'derived', q, zip_hash)
+    ready, archive = derive_update(original / 'release', work / 'derived', q, zip_hash, api)
     ready['previous_source_sha'] = q['previous_source_sha']; ready['operation'] = 'update'
     render_target(work / 'derived')
     retained = work / 'retained'; retained.mkdir()
@@ -112,7 +128,7 @@ def publish():
     work = Path(os.environ['RUNNER_TEMP']) / 'search3-local-update-publish'; work.mkdir(mode=0o700)
     original = work / 'original'
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, original)
-    expected_q, archive = derive_target(original / 'release', work / 'expected', q, zip_hash)
+    expected_q, archive = derive_update(original / 'release', work / 'expected', q, zip_hash, api)
     expected_q['previous_source_sha'] = q['previous_source_sha']; expected_q['operation'] = 'update'
 
     artifact_id = os.environ['READY_ARTIFACT_ID']
@@ -136,6 +152,10 @@ def publish():
                 'previous_source_sha': q['previous_source_sha'], 'release_sha': q['release_sha'],
                 'source_artifact': q['artifact_id'], 'derived_artifact': int(artifact_id),
                 'status': 'checked_update_not_published'}
+    if 'composition' in q:
+        evidence.update(composition=composition_record(),
+                        changed_payload_files=[composition_record()['delta']['path']],
+                        staged_payload_files=q['file_count'])
     host = os.environ['PREVIEW_HOST']; user = os.environ['PREVIEW_USER']
     need(re.fullmatch('[A-Za-z0-9][A-Za-z0-9.-]*', host) and re.fullmatch('[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'SSH_identity')
     key = work / 'key'; known = work / 'known_hosts'
@@ -169,6 +189,7 @@ def publish():
         need(isinstance(owner, dict) and owner.get('status') == 'published'
              and owner.get('source') == q['previous_source_sha'] and owner.get('digest') == before.get('target'),
              'published_predecessor_mismatch')
+        catalog_predecessor(q, before)
         need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed_before_activation')
         need(api.get('/git/ref/heads/main')['object']['sha'] == os.environ['GITHUB_SHA'], 'main_changed_before_activation')
         q['archive'] = remote('upload', {})['archive']

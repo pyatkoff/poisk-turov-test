@@ -19,6 +19,73 @@ REQUIRED=('index.php','search-page-v2.php','poisk-turov/index.php','assets.php',
 OPTIONAL=('robots.txt','sitemap.xml','.htaccess','seo-config.php','seo-launch-slice-v1.php','_preview/search3-anex-candidate/api-andromeda-search3-preview.php','_preview/search3-anex-candidate/app/integrations/andromeda-selected-offer.php')
 INVARIANTS={'production_lead_delivery':False,'preview_metrika_counter':0,'production_document_root_bootstrap':False,'external_consultant_widget':False,'production_metrika_changes':False,'production_api_path':'/api-v2.php','preview_lead_path':ROUTE+'preview-lead-disabled.php'}
 
+# One reviewed composition, never a general patch path. The full archive is
+# reconstructed on the runner; the existing server transaction stays unchanged.
+COMPOSITION='catalog-schema-cache-v1'
+CATALOG_TRANSFORM='local-catalog-schema-cache-v1'
+HELPER_PATH='data/anytour-destination-catalog-v1.php'
+BASE_SOURCE_SHA='63c3447f76b19dae1c33647da86c5188e20c0d87'
+BASE_SOURCE_TREE='c21a62226d4d2553e76d40716067ede7bbe33a69'
+BASE_DEPLOY_RUN=36565525012
+BASE_INVENTORY_SHA256='1a4cb0431f06762e8375592488713f79343f6d49c3df426642122122413ff606'
+BASE_LOCAL_ARCHIVE_SHA256='c03a09c1de143b79a393b61cc677aa8bfcead90593966021b8799c10d9d92669'
+DONOR_SOURCE_SHA='7d473741b16901eef719ad5184e4371a35e4efd2'
+DONOR_SOURCE_TREE='245a4f9d12a6fb1007a95300ca0d5019a3f6d26d'
+DONOR_BUILD_RUN=45169836909
+DONOR_ARTIFACT_ID=14815848800
+DONOR_ZIP_SHA256='4e762e2fa6fedbbb5f658f95c6f9ef8c1aea892b04420ec7cf7216b84727c84c'
+DONOR_FILE_COUNT=862
+DONOR_MANIFEST_SHA256='e7aff954348a025a8db645fba2d98c64da861d252b1bf36ad0bf7907b4b23aac'
+DONOR_CHECKSUMS_SHA256='a4665a97333a1b02ae5f971f7d070b1502e3bf947f2ea24ee0e8ae56ca311eb2'
+DONOR_ARCHIVE_SHA256='3acda62770320939ce1f686ae8ea2415537d00ce33dad1c1e1ae8bb20994dfdd'
+BEFORE_HELPER_SHA256='34f8c351d1ffeb4f45a8b4ad83c38f9d4eb5e539cb660dd338b3ad0497276253'
+BEFORE_HELPER_SIZE=9057
+AFTER_HELPER_SHA256='734b94c2962a89ec8b28977013e836b0ede5b804cf648090a98e11fcc1d7fd82'
+AFTER_HELPER_SIZE=9157
+CANDIDATE_INVENTORY_SHA256='4d47f0464b28026e3d8f7d2294d4302a3871db7c621f5c2d075d8c0d70e57366'
+
+def donor_artifact_controls():
+    return {'manifest_sha256':DONOR_MANIFEST_SHA256,'payload_sha256':DONOR_CHECKSUMS_SHA256,
+            'archive_sha256':DONOR_ARCHIVE_SHA256,'file_count':DONOR_FILE_COUNT}
+
+def composition_record():
+    return {'mode':COMPOSITION,
+            'predecessor':{'source_sha':BASE_SOURCE_SHA,'source_tree_sha':BASE_SOURCE_TREE,
+                           'deploy_run':BASE_DEPLOY_RUN,'inventory_sha256':BASE_INVENTORY_SHA256,
+                           'archive_sha256':BASE_LOCAL_ARCHIVE_SHA256},
+            'delta':{'path':HELPER_PATH,'before_sha256':BEFORE_HELPER_SHA256,
+                     'before_size':BEFORE_HELPER_SIZE,'after_sha256':AFTER_HELPER_SHA256,
+                     'after_size':AFTER_HELPER_SIZE}}
+
+def catalog_request(q,complete=True):
+    need(q.get('composition')==COMPOSITION and q.get('preview_target','local')=='local',
+         'catalog_composition_local_only')
+    need(q.get('source_sha')==DONOR_SOURCE_SHA and q.get('previous_source_sha')==BASE_SOURCE_SHA
+         and q.get('build_run')==DONOR_BUILD_RUN and q.get('artifact_id')==DONOR_ARTIFACT_ID,
+         'catalog_composition_pins')
+    if complete:
+        need(q.get('source_tree')==DONOR_SOURCE_TREE and q.get('source_ZIP_sha256')==DONOR_ZIP_SHA256
+             and q.get('file_count')==833,'catalog_composition_payload_pins')
+        need(q.get('donor_artifact_controls')==donor_artifact_controls(),
+             'catalog_composition_donor_controls')
+
+def catalog_predecessor(q,before):
+    if 'composition' not in q: return
+    catalog_request(q)
+    owner=before.get('owner')
+    need(isinstance(owner,dict) and owner.get('status')=='published'
+         and owner.get('source')==BASE_SOURCE_SHA and type(owner.get('run')) is int
+         and owner.get('run')==BASE_DEPLOY_RUN
+         and before.get('target')==owner.get('digest')==BASE_INVENTORY_SHA256,
+         'catalog_exact_predecessor')
+
+def expected_owner(q,files):
+    owner={'run':q['deploy_run'],'source':q['source_sha'],
+           'digest':digest(json_bytes(files)),'status':'activated'}
+    if 'composition' in q:
+        owner.update(transform=CATALOG_TRANSFORM,composition=composition_record())
+    return owner
+
 def select_target(target='local'):
     # Two reviewed fixed destinations only; caller cannot supply a filesystem path.
     global TARGET, NAME, ROUTE, NAMESPACE, INVARIANTS, TRANSFORM
@@ -65,14 +132,30 @@ def validate(q):
     for k in ('artifact_id','build_run','deploy_run'): need(type(q.get(k)) is int and 0<q[k]<10**15,'invalid_'+k)
     for k in ('archive_sha256','manifest_sha256','payload_sha256','source_ZIP_sha256'): need(isinstance(q.get(k),str) and re.fullmatch('[0-9a-f]{64}',q[k]),'invalid_'+k)
     need(q.get('attempt')==1,'no_replay'); need(q.get('operation')=='update','update_operation_required'); need(q['source_sha']!=q['previous_source_sha'],'same_source_no_update'); need(type(q.get('file_count')) is int and 0<q['file_count']<10000,'invalid_file_count')
+    if 'composition' in q: catalog_request(q)
 def verify(root,q):
     validate(q); mb=(root/'control/manifest.json').read_bytes(); cb=(root/'control/payload.sha256').read_bytes(); need(digest(mb)==q['manifest_sha256'] and digest(cb)==q['payload_sha256'],'control_hash'); m=json.loads(mb)
     need(m.get('schema_version')==1 and m.get('target')==NAMESPACE+'-preview' and m.get('route')==ROUTE and m.get('source_sha')==q['source_sha'] and m.get('source_tree_sha')==q['source_tree'],'manifest_identity'); need(m.get('invariants')==INVARIANTS,'manifest_invariants')
-    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':route_transform(f['path'] for f in m['files'])},'derivation_identity')
+    composite='composition' in q
+    need(m.get('composition')==composition_record() if composite else 'composition' not in m,
+         'composition_identity')
+    if composite:
+        need(m.get('donor_artifact_controls')==donor_artifact_controls(),
+             'composition_donor_controls')
+    transform=CATALOG_TRANSFORM if composite else route_transform(f['path'] for f in m['files'])
+    need(m.get('derived_from')=={'artifact_id':q['artifact_id'],'build_run':q['build_run'],'ZIP_sha256':q['source_ZIP_sha256'],'transform':transform},'derivation_identity')
     expected={}
     for f in m['files']:
         name=str(safe_name(f['path'])); need(name not in expected and re.fullmatch('[0-9a-f]{64}',f['sha256']),'duplicate_or_bad_hash'); need((root/'payload'/name).stat().st_size==f['size'],'file_size'); expected[name]=f['sha256']
     need(len(expected)==m['file_count']==q['file_count'],'file_count'); need(inventory(root/'payload')==expected,'payload_hashes'); need(cb==''.join(f'{expected[n]}  ./{n}\n' for n in sorted(expected)).encode(),'checksums_inventory')
+    if composite:
+        need(expected.get(HELPER_PATH)==AFTER_HELPER_SHA256
+             and (root/'payload'/HELPER_PATH).stat().st_size==AFTER_HELPER_SIZE,
+             'catalog_helper_after')
+        predecessor={**expected,HELPER_PATH:BEFORE_HELPER_SHA256}
+        need(digest(json_bytes(predecessor))==BASE_INVENTORY_SHA256
+             and digest(json_bytes(expected))==CANDIDATE_INVENTORY_SHA256,
+             'catalog_complement_changed')
     need(all(p not in expected for p in ('config.php','api.php','api-v2.php','lead-adapter.php','lead-adapter-v2.php','lead-bridge-v1.php','lead-receiver-v1.php')),'protected_payload_endpoint')
     need(all(p in expected for p in ('.htaccess','preview-lead-disabled.php','search-page-v2.php','data/hotel-details-read-v1.php','data/hotel-presentation-read-v1.php','poisk-turov/index.php')),'missing_guard_or_catalog')
     need('metrikaCounter=0' in (root/'payload/search-page-v2.php').read_text(),'counter_not_zero'); need('#^(/_preview/'+NAME+')(?:/|$)#' in (root/'payload/site-path-v1.php').read_text(),'wrong_route_helper'); return expected
@@ -116,13 +199,13 @@ class Site:
         return {'status':'removed' if remove else 'bound'}
     def receipt(self,q): return self.parent/('.'+NAMESPACE+'-update-receipt-'+str(q['deploy_run']))
     def predecessor(self,q,before=None):
-        before=before or self.snapshot(); owner=before.get('owner'); need(isinstance(before.get('target'),str) and re.fullmatch('[0-9a-f]{64}',before['target']),'missing_predecessor_target'); need(isinstance(owner,dict) and owner.get('status')=='published' and owner.get('source')==q['previous_source_sha'] and type(owner.get('run')) is int and owner['run']>0 and owner.get('digest')==before['target'],'not_known_published_predecessor'); return before
+        before=before or self.snapshot(); owner=before.get('owner'); need(isinstance(before.get('target'),str) and re.fullmatch('[0-9a-f]{64}',before['target']),'missing_predecessor_target'); need(isinstance(owner,dict) and owner.get('status')=='published' and owner.get('source')==q['previous_source_sha'] and type(owner.get('run')) is int and owner['run']>0 and owner.get('digest')==before['target'],'not_known_published_predecessor'); catalog_predecessor(q,before); return before
     def activate_update(self,q):
         validate(q); archive=Path(q['archive']); need(re.fullmatch(r'/tmp/'+NAMESPACE+r'-update\.[A-Za-z0-9_-]+\.tar\.gz',str(archive)),'upload_path'); need(archive.is_file() and not archive.is_symlink() and digest(archive.read_bytes())==q['archive_sha256'],'upload_digest'); stage=self.parent/('.'+NAMESPACE+'-update-stage-'+str(q['deploy_run'])); receipt=self.receipt(q)
         with self.lock():
             before=self.predecessor(q,q['before']); need(self.snapshot()==before,'predecessor_changed'); need(not receipt.exists() and not receipt.is_symlink(),'previous_outcome_unknown'); receipt.mkdir(mode=0o700); atomic_bytes(receipt/'request.json',json_bytes(q)); atomic_bytes(receipt/'previous-owner.json',json_bytes(before['owner']))
             try:
-                safe_extract(archive,stage); files=verify(stage,q); expected={'run':q['deploy_run'],'source':q['source_sha'],'digest':digest(json_bytes(files)),'status':'activated'}; atomic_bytes(receipt/'expected-owner.json',json_bytes(expected)); atomic_bytes(receipt/'manifest.json',(stage/'control/manifest.json').read_bytes()); need(self.snapshot()==before,'predecessor_changed')
+                safe_extract(archive,stage); files=verify(stage,q); expected=expected_owner(q,files); atomic_bytes(receipt/'expected-owner.json',json_bytes(expected)); atomic_bytes(receipt/'manifest.json',(stage/'control/manifest.json').read_bytes()); need(self.snapshot()==before,'predecessor_changed')
                 self.target.rename(receipt/'previous-payload'); (stage/'payload').rename(self.target); atomic_bytes(self.owner,json_bytes(expected)); need(inventory(self.target)==files and self.protected()==before['protected'],'activation_readback'); return {'status':'activated','files':len(files),'predecessor_retained':True}
             finally:
                 if stage.exists() and not stage.is_symlink(): shutil.rmtree(stage)
@@ -132,6 +215,10 @@ class Site:
         with self.lock():
             need(receipt.is_dir() and not receipt.is_symlink(),'missing_update_receipt'); need(json.loads((receipt/'request.json').read_bytes())==q,'request_changed'); before=self.predecessor(q,q['before']); need(self.protected()==before['protected'],'production_or_existing_preview_drift'); prev_owner=(receipt/'previous-owner.json').read_bytes(); need(json.loads(prev_owner)==before['owner'],'predecessor_metadata_changed'); backup=receipt/'previous-payload'; need(backup.is_dir() and not backup.is_symlink() and digest(json_bytes(inventory(backup)))==before['target'],'modified_backup'); expected=json.loads((receipt/'expected-owner.json').read_bytes()); need(expected.get('run')==q['deploy_run'] and expected.get('source')==q['source_sha'] and expected.get('status')=='activated','wrong_activation_identity'); manifest=json.loads((receipt/'manifest.json').read_bytes()); files={f['path']:f['sha256'] for f in manifest['files']}; need(expected.get('digest')==digest(json_bytes(files)),'activation_digest_changed')
             current=self.snapshot()
+            need(expected==expected_owner(q,files),'activation_composition_changed')
+            if 'composition' in q:
+                need(digest((receipt/'manifest.json').read_bytes())==q['manifest_sha256'],
+                     'retained_composition_manifest_changed')
             if rollback:
                 need(not self.target.is_symlink(),'target_link')
                 if self.target.exists():
