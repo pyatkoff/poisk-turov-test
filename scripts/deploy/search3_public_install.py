@@ -6988,6 +6988,734 @@ def home_inspect():
     print(json.dumps(evidence,sort_keys=True));need(complete,'home_inspection_not_verified')
 
 
+# A separately reviewed child of the retained HOME refusal and finite inspection.
+# The original HOME/SITE policies, entry points and receipts remain immutable.
+HOME_CHILD_PREFIX = '/continue-site-home-navigation'
+HOME_CHILD_OPERATION = 'site-home-after-45078958662-20261123-v1'
+HOME_CHILD_ROLLBACK_PREFIX = '/rollback-site-home-continuation'
+HOME_CHILD_ROLLBACK_OPERATION = 'site-home-after-45078958662-rollback-20261123-v1'
+HOME_CHILD_INSPECTION = {
+    'operation_id': HOME_INSPECT_OPERATION,
+    'control_source_sha': '4d5c1fabad2eac5cd7c2019291f006b2e3711247',
+    'run_id': '45083269171', 'command_comment_id': 7087575127, 'job_id': 137396005183,
+    'artifact_id': 14778199068,
+    'artifact_sha256': 'c58906571eccc6ff7af50145db31c5f04afc086e97eaaf257f0e09d9e73d0fbf',
+    'receipt_sha256': '5604b5727c082aee44035597e2e88ae6090ecfb32397a830a7daf1e76a935f30',
+    'terminal_comment_id': 7087746947,
+}
+HOME_CHILD_PUBLIC_DRIFT = {
+    'data/db-v1.php': {'state':'present','mode':'0644','size':3282,
+        'sha256':'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'},
+    'data/price-confidence-v1.php': {'state':'present','mode':'0644','size':681,
+        'sha256':'c8f607ab65f99d2991732dd539b00c4c34ec8cd7e9ac36077232335908e47759'},
+    'data/price-intelligence-v1.php': {'state':'present','mode':'0644','size':5997,
+        'sha256':'b49f7acf88b06bf3d204b845580f1b93a29e1ec70f4b27d0e1416551d1f3a174'},
+    'data/price-segment-v1.php': {'state':'present','mode':'0644','size':1932,
+        'sha256':'6db65d0a8259d447c2fc1f3acf2f8cf9b5a758a660ca4ee3fd41db6420133b6f'},
+}
+HOME_CHILD_REPAIR_PATHS = (
+    '.github/workflows/collect-anytour-tours.yml',
+    '.github/workflows/collect-hotel-details.yml',
+    '.github/workflows/sync-anytour-catalog.yml',
+    '.github/workflows/build-anytour-hot.yml',
+    '.github/workflows/rollup-anytour-prices.yml',
+    'tests/local_tv_capture_workflow_test.py',
+    'tests/monitor_price_hook_workflow_test.py',
+) + tuple('v2/'+p for p in HOME_CHILD_PUBLIC_DRIFT)
+HOME_CHILD_REPAIR_WORKFLOWS = tuple('.github/workflows/'+p+'.yml' for p in (
+    'security-guard','collect-anytour-tours','collect-hotel-details','sync-anytour-catalog',
+    'build-anytour-hot','rollup-anytour-prices','int-server-executor','collect-seo-seasonal-live-evidence'))
+HOME_CHILD_WRITER_WORKFLOWS = HOME_CHILD_REPAIR_PATHS[:5] + (
+    '.github/workflows/bootstrap-anytour-data.yml',
+    '.github/workflows/sync-top500-priority-hotels.yml',
+    '.github/workflows/deploy-anytoour.yml',
+)
+# Exact original native CI and normal MAIN merge of the independently reviewed
+# repair. Missing or malformed pins fail closed; no runtime argument supplies them.
+HOME_CHILD_REPAIR = {'base_sha': 'cba860aaeefab5b6304da1fe8cf9d3b0896f7338',
+ 'blobs': {'.github/workflows/build-anytour-hot.yml': 'c5efaf7e334bfcd54d1ece0d02fd1de2ec32b1ca',
+           '.github/workflows/collect-anytour-tours.yml': '170966037d30c40062bc17b622aa297dcd93e459',
+           '.github/workflows/collect-hotel-details.yml': 'abb0f66c0655b899f143eaad8cde797cc76a6001',
+           '.github/workflows/rollup-anytour-prices.yml': '0ab30a4345273e2c035298490ed4edaad3b29e19',
+           '.github/workflows/sync-anytour-catalog.yml': 'f615211c6d35287c8414a452dd22a1a973d7d2eb',
+           'tests/local_tv_capture_workflow_test.py': 'a346df7d48ae2db69e924605d8a43e81b772785f',
+           'tests/monitor_price_hook_workflow_test.py': 'ad67c4a0006e02d1c478f307a5e2a03ad9c443c5',
+           'v2/data/db-v1.php': '4ac8258ee4933c74ac20c2c9b771dfc88ab7537c',
+           'v2/data/price-confidence-v1.php': '06f8eaacaaf21b3f99506548bd10ae3c30a42313',
+           'v2/data/price-intelligence-v1.php': 'd15caf413a9f532fae026a0dcd54a07a17bb947e',
+           'v2/data/price-segment-v1.php': '778c75808a302fcb9af7f25ab5b1bceebb604f74'},
+ 'checks': [{'job_id': 137407653749,
+             'name': 'validate',
+             'run_id': 45086952860,
+             'workflow': '.github/workflows/build-anytour-hot.yml'},
+            {'job_id': 137407653877,
+             'name': 'validate',
+             'run_id': 45086952901,
+             'workflow': '.github/workflows/collect-anytour-tours.yml'},
+            {'job_id': 137407653892,
+             'name': 'validate',
+             'run_id': 45086952898,
+             'workflow': '.github/workflows/collect-hotel-details.yml'},
+            {'job_id': 137407653315,
+             'name': 'contract',
+             'run_id': 45086952802,
+             'workflow': '.github/workflows/collect-seo-seasonal-live-evidence.yml'},
+            {'job_id': 137407653885,
+             'name': 'contract',
+             'run_id': 45086952851,
+             'workflow': '.github/workflows/int-server-executor.yml'},
+            {'job_id': 137407654555,
+             'name': 'validate',
+             'run_id': 45086953173,
+             'workflow': '.github/workflows/rollup-anytour-prices.yml'},
+            {'job_id': 137407653596,
+             'name': 'guard',
+             'run_id': 45086952798,
+             'workflow': '.github/workflows/security-guard.yml'},
+            {'job_id': 137407653735,
+             'name': 'validate',
+             'run_id': 45086952829,
+             'workflow': '.github/workflows/sync-anytour-catalog.yml'}],
+ 'merge_sha': '2f1e50daec0b6f9249bc76c2ec368ca52b92d21e',
+ 'pr': 5161,
+ 'source_sha': 'b9173dfb763e20a4ea3dcc6f16d460eae797c69d',
+ 'tree_sha': '4feaac9449c89b5605d7e54c7e4664603b68ee56'}
+HOME_CHILD_REASONS = HOME_REASONS + (
+    'home_child_scope','home_child_namespace','home_child_reconciliation',
+    'home_child_projection','home_child_private_identity','home_child_reconciliation_changed',
+    'home_child_reconciliation_record','home_child_reconciliation_missing',
+)
+
+
+def home_child_pending_pins():
+    value=HOME_CHILD_REPAIR
+    need(isinstance(value,dict) and set(value)=={'pr','base_sha','source_sha','merge_sha','tree_sha','blobs','checks'},
+         'home_child_repair_not_pinned')
+    need(type(value['pr']) is int and value['pr']>0
+         and all(isinstance(value[k],str) and re.fullmatch('[a-f0-9]{40}',value[k]) for k in
+                 ('base_sha','source_sha','merge_sha','tree_sha')),'home_child_repair_pins')
+    need(isinstance(value['blobs'],dict) and set(value['blobs'])==set(HOME_CHILD_REPAIR_PATHS)
+         and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{40}',v) for v in value['blobs'].values()),
+         'home_child_repair_blobs')
+    checks=value['checks']
+    need(isinstance(checks,list) and len(checks)==len(HOME_CHILD_REPAIR_WORKFLOWS)
+         and all(isinstance(c,dict) and isinstance(c.get('workflow'),str) for c in checks)
+         and {c['workflow'] for c in checks}==set(HOME_CHILD_REPAIR_WORKFLOWS),
+         'home_child_repair_checks')
+    need(all(isinstance(c,dict) and set(c)=={'workflow','run_id','job_id','name'}
+             and type(c['run_id']) is int and c['run_id']>0 and type(c['job_id']) is int and c['job_id']>0
+             and isinstance(c['name'],str) and 0<len(c['name'])<=120 for c in checks)
+         and len({c['run_id'] for c in checks})==len(checks)
+         and len({c['job_id'] for c in checks})==len(checks),'home_child_repair_checks')
+
+
+def home_child_provenance():
+    home_child_pending_pins()
+    return {'failed':dict(HOME_INSPECT_FAILED),'inspection':dict(HOME_CHILD_INSPECTION),
+            'repair':json.loads(json.dumps(HOME_CHILD_REPAIR)),
+            'original_home_policy_sha256':home_policy()['manifest'],
+            'public_drift':dict(HOME_CHILD_PUBLIC_DRIFT),
+            'public_allowed_stat_fields':['st_mtime_ns','st_ctime_ns'],
+            'private_checks':{'public_config':{'allowed_stat_fields':['st_ctime_ns']}}}
+
+
+def home_child_policy():
+    original=home_policy()
+    value={k:v for k,v in original.items() if k!='manifest'}
+    value.update(operation=HOME_CHILD_OPERATION,continuation=home_child_provenance())
+    return value|{'manifest':sha(json.dumps(value,sort_keys=True,separators=(',',':')).encode())}
+
+
+def home_child_inspection_value(value):
+    pin=HOME_CHILD_INSPECTION
+    need(isinstance(value,dict) and sha((json.dumps(value,sort_keys=True)+'\n').encode())==pin['receipt_sha256'],
+         'home_child_inspection_digest')
+    identity={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    fixed={**identity,'status':'inspection_mismatch','operation_id':HOME_INSPECT_OPERATION,
+           'source_sha':HOME_SOURCE,'manifest_sha256':home_policy()['manifest'],'read_only':True,
+           'phase':'complete','ssh_started':True,'failed_attempt':HOME_INSPECT_FAILED}
+    need(set(value)==set(fixed)|{'failed_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'home_child_inspection')
+    parent=home_inspect_failed_value(value['failed_evidence'])
+    result=value['remote'];need(valid_home_inspection_result(identity,result),'home_child_inspection')
+    expected=[{'path':p,'expected':row,'observed':row,'changed_row_fields':[],
+               'changed_stat_fields':['st_mtime_ns','st_ctime_ns']} for p,row in HOME_CHILD_PUBLIC_DRIFT.items()]
+    private={label:{'readable':True,'present':label in ('anex_private_config','public_config'),
+                    'expected_present':label in ('anex_private_config','public_config'),
+                    'matches_row':True,'matches_identity':label!='public_config'}
+             for label in ('anex_private_config','public_config','site_config','local_config','next_config')}
+    need(result['public_mismatches']==expected and result['private_checks']==private
+         and all(all(row.values()) for row in result['ancestor_checks'].values()),'home_child_inspection_scope')
+    return parent
+
+
+def home_child_inspection_evidence(raw):
+    pin=HOME_CHILD_INSPECTION
+    need(sha(raw)==pin['artifact_sha256'],'home_child_inspection_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_child_inspection_artifact')
+        data=archive.read('evidence.json');need(sha(data)==pin['receipt_sha256'],'home_child_inspection_digest')
+    value=_tv_json(data);home_child_inspection_value(value);return value
+
+
+def home_child_event_identity(event,env,rollback=False):
+    need(type(rollback) is bool,'mode');control=env.get('GITHUB_SHA','')
+    body=event.get('comment',{}).get('body','');synthetic=json.loads(json.dumps(event))
+    if rollback:
+        match=re.fullmatch(re.escape(HOME_CHILD_ROLLBACK_PREFIX+' '+control+' ')
+                           +r'([1-9][0-9]{0,19}) '+re.escape(HOME_CHILD_ROLLBACK_OPERATION),body)
+        need(match is not None,'command');original_run=match[1]
+        synthetic['comment']['body']=f'{HOME_ROLLBACK_PREFIX} {control} {original_run} {HOME_ROLLBACK_OPERATION}'
+        identity,original_run=home_event_identity(synthetic,env,True)
+        need(original_run not in (HOME_INSPECT_FAILED['run_id'],HOME_CHILD_INSPECTION['run_id']),
+             'home_child_original_identity')
+    else:
+        need(body==f'{HOME_CHILD_PREFIX} {control} {HOME_CHILD_OPERATION}','command')
+        synthetic['comment']['body']=f'{HOME_PREFIX} {control} {HOME_OPERATION}'
+        identity=home_event_identity(synthetic,env)
+    need(identity['run_id'] not in (HOME_INSPECT_FAILED['run_id'],HOME_CHILD_INSPECTION['run_id']),
+         'home_child_identity')
+    return (identity,original_run) if rollback else identity
+
+
+def home_child_fixed_proof(pin,command,conclusion,mode):
+    need(pin in (HOME_INSPECT_FAILED,HOME_CHILD_INSPECTION),'home_child_fixed_pin')
+    run=api('/actions/runs/'+pin['run_id']);created=_tv_time(command.get('created_at'))
+    need(type(run.get('id')) is int and run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')==conclusion
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and created<=_tv_time(run.get('created_at'))<=created+300,'home_child_fixed_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and type(jobs[0].get('id')) is int and jobs[0].get('id')==pin['job_id']
+         and type(jobs[0].get('run_id')) is int and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')==conclusion,'home_child_fixed_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py '+mode
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')==conclusion
+         and created<=_tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))<=_tv_time(run.get('updated_at')),
+         'home_child_fixed_step')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(type(artifact.get('id')) is int and artifact.get('id')==pin['artifact_id']
+         and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('expired') is False and artifact.get('digest')=='sha256:'+pin['artifact_sha256']
+         and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('workflow_run',{}).get('head_sha')==pin['control_source_sha'],'home_child_fixed_artifact')
+    reviewed_control(pin['control_source_sha'])
+
+
+def home_child_writer_quiescence():
+    # This finite read does not acquire a new lock or poll until work completes.
+    # Existing writer groups differ: any active original writer is a blocker.
+    seen=set()
+    for status in ('queued','in_progress','waiting','requested','pending'):
+        runs=pages('/actions/runs?status='+status,'workflow_runs')
+        need(len(runs)<=1000,'home_child_writer_history_limit')
+        for run in runs:
+            if run.get('path') not in HOME_CHILD_WRITER_WORKFLOWS:continue
+            need(type(run.get('id')) is int and run['id']>0,'home_child_writer_run')
+            seen.add(run['id'])
+    need(not seen,'home_child_writer_active')
+
+
+def home_child_repair_admission(identity):
+    home_child_pending_pins();pin=HOME_CHILD_REPAIR
+    pr=api('/pulls/'+str(pin['pr']))
+    need(pr.get('state')=='closed' and pr.get('merged') is True and pr.get('merge_commit_sha')==pin['merge_sha']
+         and pr.get('head',{}).get('sha')==pin['source_sha'] and pr.get('base',{}).get('ref')=='main'
+         and pr.get('head',{}).get('repo',{}).get('full_name')==pr.get('base',{}).get('repo',{}).get('full_name')==REPO,
+         'home_child_repair_pr')
+    source=api('/git/commits/'+pin['source_sha']);merged=api('/git/commits/'+pin['merge_sha'])
+    need(source.get('tree',{}).get('sha')==merged.get('tree',{}).get('sha')==pin['tree_sha']
+         and [p.get('sha') for p in merged.get('parents',[])]==[pin['base_sha'],pin['source_sha']],
+         'home_child_repair_tree')
+    relation=api('/compare/'+pin['merge_sha']+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==pin['merge_sha'],'home_child_repair_ancestry')
+    for commit in (pin['source_sha'],identity['control_source_sha']):
+        for path,blob in pin['blobs'].items():
+            row=api('/contents/'+path+'?ref='+commit)
+            need(row.get('type')=='file' and row.get('sha')==blob,'home_child_repair_blob')
+            if path.startswith('v2/data/'):
+                need(row.get('encoding')=='base64','home_child_repair_helper')
+                raw=base64.b64decode(row.get('content','').replace('\n',''),validate=True)
+                expected=HOME_CHILD_PUBLIC_DRIFT[path[3:]]
+                need(len(raw)==expected['size'] and sha(raw)==expected['sha256'],'home_child_repair_helper')
+    for check in pin['checks']:
+        run=api('/actions/runs/'+str(check['run_id']))
+        need(type(run.get('id')) is int and run.get('id')==check['run_id'] and run.get('head_sha')==pin['source_sha']
+             and run.get('path')==check['workflow'] and run.get('event')=='pull_request'
+             and type(run.get('run_attempt')) is int and run['run_attempt']==1
+             and run.get('status')=='completed' and run.get('conclusion')=='success'
+             and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+             and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,
+             'home_child_repair_run')
+        jobs=pages('/actions/runs/'+str(check['run_id'])+'/attempts/1/jobs','jobs')
+        matches=[j for j in jobs if j.get('id')==check['job_id'] and j.get('name')==check['name']]
+        need(len(matches)==1 and type(matches[0].get('id')) is int and type(matches[0].get('run_id')) is int
+             and matches[0].get('run_id')==check['run_id']
+             and matches[0].get('status')=='completed' and matches[0].get('conclusion')=='success',
+             'home_child_repair_job')
+    home_child_writer_quiescence()
+
+
+def home_child_admission(identity):
+    home_child_pending_pins();home_inspect_heads(identity);reviewed_control(identity['control_source_sha'])
+    home_child_repair_admission(identity)
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+HOME_SOURCE+'/check-runs','check_runs')
+    for name in HOME_CHECKS:
+        latest=max((c for c in checks if c.get('name')==name and c.get('head_sha')==HOME_SOURCE),
+                   key=lambda c:c['id'],default={})
+        need(green(latest),'home_source_ci')
+    run=api('/actions/runs/'+str(HOME_BUILD_RUN));artifact=api('/actions/artifacts/'+str(HOME_ARTIFACT))
+    need(run.get('id')==HOME_BUILD_RUN and run.get('head_sha')==HOME_SOURCE and run.get('head_branch')==HOME_SOURCE_BRANCH
+         and run.get('path')=='.github/workflows/search3-visual-migration.yml' and run.get('event')=='pull_request'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1 and run.get('status')=='completed'
+         and run.get('conclusion')=='success' and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,'home_build')
+    need(artifact.get('id')==HOME_ARTIFACT and artifact.get('name')=='search3-public-live-'+HOME_SOURCE
+         and artifact.get('expired') is False and artifact.get('digest')=='sha256:'+HOME_ARTIFACT_SHA
+         and artifact.get('workflow_run',{}).get('id')==HOME_BUILD_RUN
+         and artifact.get('workflow_run',{}).get('head_sha')==HOME_SOURCE,'home_artifact')
+    home_parent_admission();comments=pages('/issues/4709/comments')
+    for pin,prefix,operation,conclusion,mode,status in (
+        (HOME_INSPECT_FAILED,HOME_PREFIX,HOME_OPERATION,'failure','home','blocked_no_replay'),
+        (HOME_CHILD_INSPECTION,HOME_INSPECT_PREFIX,HOME_INSPECT_OPERATION,'success','home-inspect','inspection_mismatch')):
+        old={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+        _unique_update_command(comments,prefix,operation,old)
+        command=next(c for c in comments if c['id']==old['command_comment_id'])
+        terminal=next((c for c in comments if c['id']==pin['terminal_comment_id']),{})
+        required=[str(pin[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id',
+                                      'artifact_id','artifact_sha256','receipt_sha256')]+[status,'NO REPLAY']
+        need(command.get('created_at')==command.get('updated_at')
+             and terminal.get('created_at')==terminal.get('updated_at')
+             and terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+             and all(t in terminal.get('body','') for t in required)
+             and _tv_time(command.get('created_at'))<=_tv_time(terminal.get('created_at')),'home_child_fixed_terminal')
+        home_child_fixed_proof(pin,command,conclusion,mode)
+    _unique_update_command(comments,HOME_CHILD_PREFIX,HOME_CHILD_OPERATION,identity)
+    command=next(c for c in comments if c['id']==identity['command_comment_id'])
+    need(command.get('created_at')==command.get('updated_at')
+         and _tv_time(command.get('created_at'))>=max(_tv_time(c['created_at']) for c in comments
+               if c['id'] in (HOME_INSPECT_FAILED['terminal_comment_id'],HOME_CHILD_INSPECTION['terminal_comment_id'])),
+         'home_child_command_time')
+    need(not any(c.get('body','').strip().split()[:1] in ([HOME_ROLLBACK_PREFIX],[HOME_CHILD_ROLLBACK_PREFIX])
+                 and any(op in c.get('body','').split()[1:] for op in (HOME_ROLLBACK_OPERATION,HOME_CHILD_ROLLBACK_OPERATION))
+                 for c in comments),'home_child_rollback_present')
+    inspection=home_child_inspection_evidence(download(HOME_CHILD_INSPECTION['artifact_id'],HOME_CHILD_INSPECTION['artifact_sha256']))
+    failed=home_inspect_failed_evidence(download(HOME_INSPECT_FAILED['artifact_id'],HOME_INSPECT_FAILED['artifact_sha256']))
+    need(inspection['failed_evidence']==failed,'home_child_failure_changed')
+    home_inspect_heads(identity)
+    return inspection
+
+
+HOME_CHILD_COMMON_REMOTE = r'''
+# These bindings exist only in this child's generated program. Historical
+# entry points continue to execute their byte-identical original definitions.
+_home_child_parent_impl=home_handoff_parent
+_home_child_original_impl=home_original_records
+_home_child_ancestor_impl=home_check_ancestors
+_home_child_strict_guard=refactor_guard_from_snapshot
+_home_child_parent_context=False
+_home_child_binding=None
+_home_child_record_store=None
+_home_child_record_bound=None
+HOME_PREPARED_PATHS=HOME_PREPARED_PATHS+('reconciliation.json',)
+
+def home_child_namespaces():
+ for operation in (CHILD_ORIGINAL_OPERATION,CHILD_ORIGINAL_ROLLBACK,CHILD_INSPECTION_OPERATION):
+  with base.parent(operation) as (fd,name):
+   try:os.stat(name,dir_fd=fd,follow_symlinks=False)
+   except FileNotFoundError:continue
+   raise RuntimeError('home_child_namespace')
+ if not CHILD_ROLLBACK:handoff_absent(HOME_ROLLBACK_OPERATION)
+
+def home_child_origin():
+ rows=site_read_records(handed,('snapshot/manifest.json',))
+ raw=rows['snapshot/manifest.json'][2]
+ require(digest(raw)==HOME_POLICY['parent']['snapshot_manifest_sha256'],'home_child_reconciliation')
+ snapshot=json.loads(raw)
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+         and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+         and snapshot['parent_refactor']==REFACTOR_ORIGINAL,'home_child_reconciliation')
+ private={label:path for path,label in private_labels().items()}
+ require(set(CHILD_PUBLIC_DRIFT)<=set(snapshot['guarded']) and 'public_config' in private
+         and private['public_config'] in snapshot['guarded'],'home_child_scope')
+ paths=tuple(CHILD_PUBLIC_DRIFT)+(private['public_config'],)
+ require(len(set(paths))==5 and not set(paths)&set(HOME_POLICY['order']),'home_child_scope')
+ return {p:snapshot['guarded'][p] for p in paths},private['public_config']
+
+def home_child_validate_binding(value,accepted_scope=None):
+ origin,private_path=home_child_origin()
+ require(isinstance(value,dict) and set(value)=={'schema_version','policy_sha256','parent_snapshot_manifest_sha256',
+         'provenance','original','accepted'} and type(value['schema_version']) is int and value['schema_version']==1
+         and value['policy_sha256']==HOME_POLICY['manifest'] and value['provenance']==CHILD_PROVENANCE
+         and value['parent_snapshot_manifest_sha256']==HOME_POLICY['parent']['snapshot_manifest_sha256']
+         and value['original']==origin and isinstance(value['accepted'],dict)
+         and set(value['accepted'])==set(origin),'home_child_reconciliation')
+ for path,old in origin.items():
+  current=value['accepted'][path]
+  require(isinstance(old,list) and len(old)==2 and isinstance(old[0],dict) and old[0].get('state')=='present'
+          and isinstance(current,list) and len(current)==2 and current[0]==old[0],'home_child_projection')
+  prior=checked_stamp(old[1],old[0]);now=checked_stamp(current[1],current[0])
+  allowed=(8,) if path==private_path else (5,8)
+  require(all(prior[i]==now[i] for i in range(9) if i not in allowed),
+          'home_child_private_identity' if path==private_path else 'home_child_projection')
+  if path!=private_path:
+   require(old[0]==CHILD_PUBLIC_DRIFT[path] and all(prior[i]!=now[i] for i in allowed),'home_child_projection')
+  if accepted_scope is not None:
+   require(path in accepted_scope and accepted_scope[path]==current,'home_child_reconciliation_record')
+ return private_path
+
+def home_child_bind(saved):
+ global _home_child_binding
+ origin,private_path=home_child_origin()
+ require(all(saved.get(p)==row for p,row in origin.items()),'home_child_projection')
+ if _home_child_binding is None:
+  require(not CHILD_ROLLBACK,'home_child_reconciliation_missing')
+  observed={p:public.read(p)[:2] for p in origin}
+  binding={'schema_version':1,'policy_sha256':HOME_POLICY['manifest'],
+           'parent_snapshot_manifest_sha256':HOME_POLICY['parent']['snapshot_manifest_sha256'],
+           'provenance':CHILD_PROVENANCE,'original':origin,'accepted':refactor_stamp_rows(observed)}
+  home_child_validate_binding(binding)
+  _home_child_binding=binding
+ else:home_child_validate_binding(_home_child_binding)
+ result['reconciliation_sha256']=digest(canonical(_home_child_binding))
+ result['reconciliation_verified']=True
+ result['private_checks']={'public_config':True}
+ projected=dict(saved)
+ projected.update(_home_child_binding['accepted'])
+ return projected
+
+def refactor_guard_from_snapshot(saved):
+ # No repeated acceptance of newer metadata: only the first preflight can bind
+ # the five finite transitions. Every subsequent call uses that saved tuple.
+ projected=home_child_bind(saved) if _home_child_parent_context else saved
+ return _home_child_strict_guard(projected)
+
+def home_child_assert_record():
+ if _home_child_record_store is not None:
+  require(site_read_records(_home_child_record_store,('reconciliation.json',))['reconciliation.json']==_home_child_record_bound,
+          'home_child_reconciliation_changed')
+
+def home_handoff_parent():
+ global _home_child_parent_context
+ home_child_namespaces();_home_child_parent_context=True
+ try:value=_home_child_parent_impl()
+ finally:_home_child_parent_context=False
+ home_child_assert_record()
+ return value
+
+def home_check_ancestors():
+ home_child_namespaces();home_child_assert_record()
+ _home_child_ancestor_impl()
+ home_child_assert_record()
+
+def home_child_persist_reconciliation(store):
+ global _home_child_record_store,_home_child_record_bound
+ require(_home_child_binding is not None and result['reconciliation_verified'],'home_child_reconciliation_missing')
+ home_check_ancestors();home_child_validate_binding(_home_child_binding)
+ raw=canonical(_home_child_binding)
+ store.create('reconciliation.json',raw)
+ bound=site_read_records(store,('reconciliation.json',))['reconciliation.json']
+ require(bound[2]==raw and digest(raw)==result['reconciliation_sha256'],'home_child_reconciliation_record')
+ _home_child_record_store=store;_home_child_record_bound=bound
+ result['lineage_persisted']=True
+
+def home_original_records():
+ global _home_child_binding,_home_child_record_store,_home_child_record_bound
+ records=site_read_records(homed,('reconciliation.json','snapshot/manifest.json'))
+ raw=records['reconciliation.json'][2];value=json.loads(raw)
+ snapshot_raw=records['snapshot/manifest.json'][2];snapshot=json.loads(snapshot_raw)
+ require(raw==canonical(value) and digest(raw)==HOME_ACCEPTED['reconciliation_sha256']
+         and digest(snapshot_raw)==HOME_ACCEPTED['snapshot_manifest_sha256'],'home_child_reconciliation_record')
+ home_child_validate_binding(value,snapshot.get('guarded'))
+ _home_child_binding=value;_home_child_record_store=homed
+ _home_child_record_bound=records['reconciliation.json']
+ result.update(reconciliation_sha256=digest(raw),reconciliation_verified=True,lineage_persisted=True,
+               private_checks={'public_config':True})
+ # The unchanged original reader compares every current protected stamp to the
+ # child's already sealed snapshot. It never applies a new projection here.
+ checked=_home_child_original_impl();home_child_assert_record()
+ return checked
+'''
+
+
+def home_child_runtime_identity(identity):
+    update_runtime_identity(identity)
+    need(identity['run_id'] not in (HOME_INSPECT_FAILED['run_id'],HOME_CHILD_INSPECTION['run_id'])
+         and identity['command_comment_id'] not in (HOME_INSPECT_FAILED['command_comment_id'],HOME_CHILD_INSPECTION['command_comment_id']),
+         'home_child_identity')
+
+
+def _home_child_program_prefix(policy,identity,parent_value,inspection_value,tv_successor,rollback=False):
+    need(policy==home_child_policy(),'home_child_policy');home_child_runtime_identity(identity)
+    need(parent_value==home_child_inspection_value(inspection_value),'home_child_parent_evidence')
+    prefix=_home_program_prefix(home_policy(),identity,parent_value,tv_successor)
+    return (prefix+'\nHOME_POLICY='+repr(policy)+'\nHOME_ROLLBACK_OPERATION='+repr(HOME_CHILD_ROLLBACK_OPERATION)
+        +'\nCHILD_PROVENANCE='+repr(home_child_provenance())+'\nCHILD_PUBLIC_DRIFT='+repr(HOME_CHILD_PUBLIC_DRIFT)
+        +'\nCHILD_ORIGINAL_OPERATION='+repr(HOME_OPERATION)+'\nCHILD_ORIGINAL_ROLLBACK='+repr(HOME_ROLLBACK_OPERATION)
+        +'\nCHILD_INSPECTION_OPERATION='+repr(HOME_INSPECT_OPERATION)+'\nCHILD_ROLLBACK='+repr(rollback)
+        +'\ndef re_safe(value): return value in '+repr(HOME_CHILD_REASONS)+'\n'+HOME_CHILD_COMMON_REMOTE)
+
+
+def _home_child_remote_body(rollback=False):
+    # Count-checked fixed custody hooks in the unchanged, exhaustively exercised
+    # HOME transaction. No expression, path or replacement comes from a caller.
+    need(type(rollback) is bool,'mode')
+    body=HOME_ROLLBACK_REMOTE if rollback else HOME_REMOTE
+    anchor=('public=base=original=updated=published=refactored=handed=homed=private=None;reserved=False' if rollback else
+            'public=base=original=updated=published=refactored=handed=private=None;reserved=False;switched=[];owned={};prior={};prepared=None;reservation=None')
+    need(body.count(anchor)==1,'home_child_template')
+    initial="result.update(continuation=CHILD_PROVENANCE,reconciliation_sha256=None,reconciliation_verified=False,lineage_persisted=False,private_checks={'public_config':False})\n"
+    body=body.replace(anchor,initial+anchor,1)
+    if not rollback:
+        anchor=" private.create('reservation.json',canonical(reservation));result['phase']='snapshot'\n"
+        need(body.count(anchor)==1,'home_child_template')
+        body=body.replace(anchor,anchor+' home_child_persist_reconciliation(private)\n',1)
+    ast.parse(body);return body
+
+
+def home_child_remote_program(policy,files,identity,parent_value,inspection_value,*,tv_successor=None):
+    prefix=_home_child_program_prefix(policy,identity,parent_value,inspection_value,tv_successor)
+    need(isinstance(files,dict) and set(files)==set(HOME_ORDER),'home_payload')
+    for path in HOME_ORDER:
+        raw=base64.b64decode(files[path],validate=True)
+        need(0<len(raw)<=MAX_BYTES and HOME_TARGETS[path]['after']==
+             {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'home_payload_bytes')
+    program=prefix+'\nPAYLOAD='+repr(files)+'\n'+_home_child_remote_body()
+    ast.parse(program);return program
+
+
+def home_child_rollback_remote_program(policy,identity,original,accepted,parent_value,inspection_value,*,tv_successor=None):
+    prefix=_home_child_program_prefix(policy,identity,parent_value,inspection_value,tv_successor,True)
+    home_child_runtime_identity(original)
+    need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+         and valid_home_child_result(original,accepted),'home_child_rollback_evidence')
+    program=(prefix+'\nHOME_ORIGINAL='+repr(original)+'\nHOME_ACCEPTED='+repr(accepted)
+             +'\n'+_home_child_remote_body(True))
+    ast.parse(program);return program
+
+
+def _home_child_base_result(value,rollback=False):
+    extra={'continuation','reconciliation_sha256','reconciliation_verified','lineage_persisted','private_checks'}
+    result={k:v for k,v in value.items() if k not in extra}
+    result.update(operation_id=HOME_ROLLBACK_OPERATION if rollback else HOME_OPERATION,
+                  manifest_sha256=home_policy()['manifest'])
+    if result.get('reason') in HOME_CHILD_REASONS and result.get('reason') not in HOME_REASONS:
+        result['reason']='operation_failed'
+    return result
+
+
+def valid_home_child_result(identity,result,original=None,accepted=None):
+    home_child_runtime_identity(identity);rollback=original is not None
+    policy=home_child_policy()
+    need(isinstance(result,dict) and result.get('operation_id')==
+         (HOME_CHILD_ROLLBACK_OPERATION if rollback else HOME_CHILD_OPERATION)
+         and result.get('manifest_sha256')==policy['manifest']
+         and result.get('continuation')==home_child_provenance(),'home_child_receipt_identity')
+    additions={'continuation','reconciliation_sha256','reconciliation_verified','lineage_persisted','private_checks'}
+    need(additions<=set(result) and type(result['reconciliation_verified']) is bool
+         and type(result['lineage_persisted']) is bool
+         and isinstance(result['private_checks'],dict) and set(result['private_checks'])=={'public_config'}
+         and type(result['private_checks']['public_config']) is bool,'home_child_receipt_shape')
+    digest=result['reconciliation_sha256'];verified=result['reconciliation_verified']
+    need((isinstance(digest,str) and re.fullmatch('[a-f0-9]{64}',digest) if verified else digest is None)
+         and result['private_checks']['public_config']==verified
+         and (not result['lineage_persisted'] or verified),'home_child_receipt_reconciliation')
+    need('reason' not in result or result['reason'] in HOME_CHILD_REASONS,'home_child_receipt_reason')
+    if rollback:
+        home_child_runtime_identity(original)
+        need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+             and valid_home_child_result(original,accepted),'home_child_rollback_evidence')
+    base=_home_child_base_result(result,rollback)
+    complete=valid_home_result(identity,base,original,_home_child_base_result(accepted) if rollback else None)
+    if complete or result['written_files']:
+        need(verified and result['lineage_persisted'],'home_child_receipt_incomplete')
+    if rollback and verified:
+        need(digest==accepted['reconciliation_sha256'],'home_child_receipt_reconciliation')
+    need(len(json.dumps(result,sort_keys=True).encode())<=32768,'receipt_limit')
+    return complete
+
+
+def _home_child_source_value(value,original,*,recovery=False,rollback_original=None,accepted=None):
+    home_child_runtime_identity(original);rollback=rollback_original is not None
+    status=('home_navigation_rolled_back_verified' if rollback else
+            'rolled_back_no_replay' if recovery else 'home_navigation_updated_verified')
+    fixed={**original,'operation_id':HOME_CHILD_ROLLBACK_OPERATION if rollback else HOME_CHILD_OPERATION,
+           'source_sha':HOME_SOURCE,'manifest_sha256':home_child_policy()['manifest'],
+           'read_only':False,'phase':'complete','ssh_started':True,'status':status,
+           'parent_handoff':home_parent_identity(),'continuation':home_child_provenance()}
+    if rollback:fixed.update(original_home=rollback_original,original_home_run_id=rollback_original['run_id'])
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','inspection_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'home_child_source_evidence')
+    parent=home_child_inspection_value(value['inspection_evidence'])
+    need(parent==value['parent_evidence'],'home_child_parent_evidence');home_parent_value(parent)
+    success=valid_home_child_result(original,value['remote'],rollback_original,accepted)
+    need(success or recovery and value['remote']['status']=='rolled_back_no_replay','home_child_source_evidence')
+    return home_child_policy(),value['remote'],parent,value['inspection_evidence']
+
+
+def home_child_source_evidence(raw,original):
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_child_source_artifact')
+        data=archive.read('evidence.json');need(len(data)<=262144,'home_child_source_artifact')
+        value=_tv_json(data)
+    return _home_child_source_value(value,original)
+
+
+def home_child_commands(comments):
+    result={}
+    for name,prefix,operation in (('install',HOME_CHILD_PREFIX,HOME_CHILD_OPERATION),
+                                   ('rollback',HOME_CHILD_ROLLBACK_PREFIX,HOME_CHILD_ROLLBACK_OPERATION)):
+        rows=[c for c in comments if c.get('body','').strip().split()[:1]==[prefix]
+              and operation in c.get('body','').split()[1:]]
+        need(len(rows)<=1,'home_child_duplicate_command')
+        if not rows:continue
+        row=rows[0]
+        expression=re.escape(prefix)+r' ([a-f0-9]{40}) '+(r'([1-9][0-9]{0,19}) ' if name=='rollback' else '')+re.escape(operation)
+        need(re.fullmatch(expression,row.get('body','')) is not None and row.get('user',{}).get('id')==226193297
+             and row.get('author_association')=='OWNER' and type(row.get('id')) is int and row['id']>0
+             and row.get('created_at')==row.get('updated_at'),'home_child_command')
+        _tv_time(row.get('created_at'));result[name]=row
+    need('rollback' not in result or 'install' in result,'home_child_original_missing')
+    return result
+
+
+def _home_child_native_proof(command,run,value,artifact):
+    control=command['body'].split()[1];created=_tv_time(command['created_at'])
+    identity={'control_source_sha':control,'run_id':str(run.get('id')),'command_comment_id':command['id']}
+    _home_child_source_value(value,identity)
+    need(type(run.get('id')) is int and run['id']>0
+         and run.get('head_sha')==control and run.get('head_branch')=='main' and run.get('path')==WORKFLOW
+         and run.get('event')=='issue_comment' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and created<=_tv_time(run.get('created_at'))<=created+300
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff',
+         'home_child_native_run')
+    reviewed_control(control)
+    jobs=[j for j in pages('/actions/runs/'+identity['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and type(jobs[0].get('id')) is int and jobs[0]['id']>0
+         and type(jobs[0].get('run_id')) is int and jobs[0].get('run_id')==run['id'] and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')=='success','home_child_native_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py home-continue'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='success'
+         and created<=_tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))<=_tv_time(run.get('updated_at')),
+         'home_child_native_step')
+    need(type(artifact.get('id')) is int and artifact['id']>0
+         and type(artifact.get('workflow_run',{}).get('id')) is int
+         and artifact.get('name')=='search3-public-install-'+identity['run_id']+'-1' and artifact.get('expired') is False
+         and artifact.get('workflow_run',{}).get('id')==run['id'] and artifact.get('workflow_run',{}).get('head_sha')==control
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifact.get('digest','')),'home_child_native_artifact')
+    return identity
+
+
+def home_child_rollback_admission(identity,original_run):
+    home_child_pending_pins();rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run)
+         and original_run not in (identity['run_id'],HOME_INSPECT_FAILED['run_id'],HOME_CHILD_INSPECTION['run_id']),
+         'home_child_original_identity')
+    comments=pages('/issues/4709/comments');commands=home_child_commands(comments)
+    need(set(commands)=={'install','rollback'},'home_child_original_missing')
+    _unique_update_command(comments,HOME_CHILD_ROLLBACK_PREFIX,HOME_CHILD_ROLLBACK_OPERATION,identity,original_run)
+    command=commands['install'];original={'control_source_sha':command['body'].split()[1],
+                                        'run_id':original_run,'command_comment_id':command['id']}
+    home_child_runtime_identity(original)
+    need(_tv_time(commands['rollback']['created_at'])>=_tv_time(command['created_at']),'home_child_command_time')
+    run=api('/actions/runs/'+original_run)
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts')
+               if a.get('name')=='search3-public-install-'+original_run+'-1']
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'home_child_source_artifact')
+    artifact=artifacts[0]
+    with zip_files(download(artifact['id'],artifact['digest'].removeprefix('sha256:'))) as archive:
+        need(archive.namelist()==['evidence.json'],'home_child_source_artifact')
+        raw=archive.read('evidence.json');need(len(raw)<=262144,'home_child_source_artifact');value=_tv_json(raw)
+    need(_home_child_native_proof(command,run,value,artifact)==original,'home_child_original_identity')
+    # Recovery uses this child's self-contained accepted proof. It does not
+    # reopen the expired failed/inspection artifacts or current SOURCE gates.
+    home_child_writer_quiescence();rollback_main(identity)
+    return original,artifact
+
+
+def home_child(rollback=False):
+    need(type(rollback) is bool,'mode');home_child_pending_pins()
+    operation=HOME_CHILD_ROLLBACK_OPERATION if rollback else HOME_CHILD_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':HOME_SOURCE,
+              'manifest_sha256':home_child_policy()['manifest'],'read_only':False,'phase':'identity','ssh_started':False,
+              'continuation':home_child_provenance()}
+    complete=False
+    try:
+        event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        if rollback:
+            identity,original_run=home_child_event_identity(event,os.environ,True)
+            evidence.update(identity,original_home_run_id=original_run,phase='admission')
+            original,artifact=home_child_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            policy,accepted,parent_value,inspection=home_child_source_evidence(
+                download(artifact['id'],artifact['digest'].removeprefix('sha256:')),original)
+            dependency=tv_successor_evidence()
+            program=home_child_rollback_remote_program(policy,identity,original,accepted,parent_value,inspection,
+                                                       tv_successor=dependency)
+            evidence['original_home']=original
+        else:
+            identity=home_child_event_identity(event,os.environ);evidence.update(identity,phase='admission')
+            inspection=home_child_admission(identity);evidence['phase']='artifact'
+            parent_value=home_child_inspection_value(inspection)
+            previous,files=home_package(download(HOME_ARTIFACT,HOME_ARTIFACT_SHA),parent_value)
+            need(previous==home_policy(),'home_child_payload_policy');policy=home_child_policy()
+            dependency=tv_successor_evidence()
+            program=home_child_remote_program(policy,files,identity,parent_value,inspection,tv_successor=dependency)
+        evidence.update(parent_handoff=home_parent_identity(),parent_evidence=parent_value,inspection_evidence=inspection)
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
+                 '-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:
+            checked,latest=home_child_rollback_admission(identity,original_run)
+            need(checked==original and latest==artifact,'home_child_rollback_changed')
+        else:need(home_child_admission(identity)==inspection,'home_child_inspection_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=32768,'receipt_limit');result=_tv_json(response)
+        complete=valid_home_child_result(identity,result,original,accepted) if rollback else valid_home_child_result(identity,result)
+        evidence['remote']=result
+        if rollback:rollback_main(identity)
+        else:home_inspect_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HomeChildError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'home_child_rollback_not_verified' if rollback else 'home_child_not_verified')
+
+
+# Exact early dispatch leaves the original command parser and original main
+# dispatch AST unchanged. No other argument list can enter the child modes.
+if __name__ == '__main__':
+    import sys as _home_child_sys
+    if _home_child_sys.argv[1:] in (['home-continue'],['home-continue-rollback']):
+        home_child(_home_child_sys.argv[1:]==['home-continue-rollback'])
+        raise SystemExit(0)
+
+
 def command_mode(arguments):
     if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'
