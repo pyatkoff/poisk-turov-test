@@ -8306,6 +8306,473 @@ if __name__ == '__main__':
         raise SystemExit(0)
 
 
+HOME_FINISH_PREFIX = '/finish-site-home-navigation'
+HOME_FINISH_OPERATION = 'site-home-after-45089823646-20261123-v1'
+HOME_FINISH_OBSERVATION = {
+    'control_source_sha': '8ea0642e647f95bf63a53621e21537a16028c3e2',
+    'run_id': '45095031856',
+    'command_comment_id': 7089204570,
+    'job_id': 137432849414,
+    'artifact_id': 14783780758,
+    'artifact_sha256': 'b6021c233687375b977652409e36b97253cccdd7293406b201b846fc0fe0bbba',
+    'receipt_sha256': '3728040f8c42d7e1ba777eb09a3ad08183854235bf47d93ac871bc2dde926b5f',
+    'terminal_comment_id': 7089458075,
+}
+HOME_FINISH_RECEIPT_LIMIT = 32768
+HOME_FINISH_CLOSED_PATH = 'closed.json'
+HOME_FINISH_CUSTODY_PATH = 'closure-custody.json'
+HOME_FINISH_CLOSURE_FLAGS = ('namespace_created','record_write_attempted','record_verified','durable_verified',
+    'guards_rechecked','custody_persisted','protected_unchanged')
+HOME_FINISH_REASONS = HOME_CHILD_REASONS + ('home_finish_predecessor_exists','home_finish_namespace',
+    'home_finish_closure_incomplete','home_finish_closed_record','home_finish_closed_changed',
+    'home_finish_closed_custody','home_finish_scope')
+
+
+def home_finish_provenance():
+    return {'predecessor':dict(HOME_CHILD_INSPECT_ORIGINAL),'observation':dict(HOME_FINISH_OBSERVATION),
+        'predecessor_operation':HOME_CHILD_OPERATION,'predecessor_policy_sha256':home_child_policy()['manifest'],
+        'accepted_home_continuation':home_child_provenance()}
+
+
+def home_finish_policy():
+    old=home_child_policy();value={k:v for k,v in old.items() if k!='manifest'}
+    value.update(operation=HOME_FINISH_OPERATION,continuation=home_finish_provenance())
+    return value|{'manifest':sha(json.dumps(value,sort_keys=True,separators=(',',':')).encode())}
+
+
+def home_finish_runtime_identity(identity):
+    home_child_runtime_identity(identity)
+    need(identity['run_id'] not in (HOME_CHILD_INSPECT_ORIGINAL['run_id'],HOME_FINISH_OBSERVATION['run_id'])
+         and identity['command_comment_id'] not in (HOME_CHILD_INSPECT_ORIGINAL['command_comment_id'],
+                                                  HOME_FINISH_OBSERVATION['command_comment_id']),
+         'home_finish_identity')
+
+
+def home_finish_event_identity(event,env):
+    control=env.get('GITHUB_SHA','')
+    need(event.get('comment',{}).get('body')==f'{HOME_FINISH_PREFIX} {control} {HOME_FINISH_OPERATION}','command')
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{HOME_CHILD_PREFIX} {control} {HOME_CHILD_OPERATION}'
+    identity=home_child_event_identity(synthetic,env);home_finish_runtime_identity(identity)
+    return identity
+
+
+def home_finish_observation_value(value):
+    pin=HOME_FINISH_OBSERVATION
+    need(sha((json.dumps(value,sort_keys=True)+'\n').encode())==pin['receipt_sha256'],'home_finish_observation_digest')
+    identity={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    fixed={**identity,'operation_id':HOME_CHILD_INSPECT_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_child_policy()['manifest'],'read_only':True,'phase':'complete','ssh_started':True,
+        'status':'inspection_complete','original_cancelled':HOME_CHILD_INSPECT_ORIGINAL,
+        'original_process_liveness':'unknown','historical_zero_write_proven':False,'future_writer_authorized':False}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'inspection_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),'home_finish_observation')
+    remote=value['remote'];need(valid_home_child_inspect_result(identity,remote),'home_finish_observation')
+    need(remote['classification']=='current_before_namespace_absent' and not any(remote['custody'].values())
+         and all(row['matches_before'] for row in remote['target_checks'])
+         and remote['protected_reference']=='parent' and all(all(row.values()) for row in remote['ancestor_checks'].values()),
+         'home_finish_observation')
+    # These three paths have no COUNTRY guarded tuple. They are still checked
+    # by the unchanged HANDOFF intents and pinned HOME dependency in preflight;
+    # this comparison set does not extend the five-row reconciliation scope.
+    comparisons=set(HOME_CHILD_PUBLIC_DRIFT)|set(HANDOFF_ORDER)|set(HOME_DEPENDENCIES)
+    need({r['path'] for r in remote['protected_mismatches']}==comparisons
+         and all(r=={'path':r['path'],'readable':True,'matches_row':True,'matches_identity':False}
+                 for r in remote['protected_mismatches'])
+         and all(r=={'readable':True,'matches_row':True,'matches_identity':label!='public_config'}
+                 for label,r in remote['private_checks'].items()),'home_finish_observation_scope')
+    inspection=value['inspection_evidence'];parent=home_child_inspection_value(inspection)
+    return parent,inspection
+
+
+def home_finish_observation_evidence(raw):
+    pin=HOME_FINISH_OBSERVATION;need(sha(raw)==pin['artifact_sha256'],'home_finish_observation_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'home_finish_observation_artifact')
+        data=archive.read('evidence.json')
+        need(len(data)<=262144 and sha(data)==pin['receipt_sha256'],'home_finish_observation_digest')
+    value=_tv_json(data);home_finish_observation_value(value);return value
+
+
+def home_finish_heads(identity):
+    home_child_inspect_heads(identity)
+    relation=api('/compare/'+HOME_FINISH_OBSERVATION['control_source_sha']+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==HOME_FINISH_OBSERVATION['control_source_sha'],
+         'home_finish_control_ancestry')
+
+
+def _home_finish_native_proof(pin,command,conclusion,mode):
+    need(pin in (HOME_CHILD_INSPECT_ORIGINAL,HOME_FINISH_OBSERVATION),'home_finish_fixed_pin')
+    run=api('/actions/runs/'+pin['run_id']);created=_tv_time(command.get('created_at'))
+    need(type(run.get('id')) is int and run['id']==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')==conclusion
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO
+         and created<=_tv_time(run.get('created_at'))<=created+300,'home_finish_fixed_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and type(jobs[0].get('id')) is int and jobs[0]['id']==pin['job_id']
+         and type(jobs[0].get('run_id')) is int and jobs[0]['run_id']==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')==conclusion,'home_finish_fixed_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py '+mode
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')==conclusion
+         and created<=_tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))<=_tv_time(run.get('updated_at')),
+         'home_finish_fixed_step')
+    artifacts=pages('/actions/runs/'+pin['run_id']+'/artifacts','artifacts')
+    if pin==HOME_CHILD_INSPECT_ORIGINAL:
+        need(conclusion=='cancelled' and mode=='home-continue' and not artifacts,'home_finish_cancelled_artifacts')
+    else:
+        need(conclusion=='success' and mode=='home-continue-inspect' and len(artifacts)==1,'home_finish_reader_artifact')
+        artifact=artifacts[0]
+        need(type(artifact.get('id')) is int and artifact['id']==pin['artifact_id']
+             and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+             and artifact.get('expired') is False and artifact.get('digest')=='sha256:'+pin['artifact_sha256']
+             and type(artifact.get('workflow_run',{}).get('id')) is int
+             and artifact['workflow_run']['id']==int(pin['run_id'])
+             and artifact['workflow_run'].get('head_sha')==pin['control_source_sha'],
+             'home_finish_reader_artifact')
+    reviewed_control(pin['control_source_sha'])
+    return run
+
+
+def home_finish_admission(identity):
+    home_finish_runtime_identity(identity);home_finish_heads(identity);reviewed_control(identity['control_source_sha'])
+    home_child_repair_admission(identity)
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+HOME_SOURCE+'/check-runs','check_runs')
+    for name in HOME_CHECKS:
+        latest=max((c for c in checks if c.get('name')==name and c.get('head_sha')==HOME_SOURCE),
+                   key=lambda c:c['id'],default={})
+        need(green(latest),'home_source_ci')
+    run=api('/actions/runs/'+str(HOME_BUILD_RUN));artifact=api('/actions/artifacts/'+str(HOME_ARTIFACT))
+    need(type(run.get('id')) is int and run['id']==HOME_BUILD_RUN and run.get('head_sha')==HOME_SOURCE
+         and run.get('head_branch')==HOME_SOURCE_BRANCH and run.get('path')=='.github/workflows/search3-visual-migration.yml'
+         and run.get('event')=='pull_request' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,'home_build')
+    need(type(artifact.get('id')) is int and artifact['id']==HOME_ARTIFACT
+         and artifact.get('name')=='search3-public-live-'+HOME_SOURCE and artifact.get('expired') is False
+         and artifact.get('digest')=='sha256:'+HOME_ARTIFACT_SHA
+         and type(artifact.get('workflow_run',{}).get('id')) is int and artifact['workflow_run']['id']==HOME_BUILD_RUN
+         and artifact['workflow_run'].get('head_sha')==HOME_SOURCE,'home_artifact')
+    home_parent_admission();comments=pages('/issues/4709/comments');terminal_times=[]
+    for pin,prefix,operation,conclusion,mode,tokens in (
+        (HOME_INSPECT_FAILED,HOME_PREFIX,HOME_OPERATION,'failure','home',['blocked_no_replay','NO REPLAY']),
+        (HOME_CHILD_INSPECTION,HOME_INSPECT_PREFIX,HOME_INSPECT_OPERATION,'success','home-inspect',['inspection_mismatch','NO REPLAY']),
+        (HOME_CHILD_INSPECT_ORIGINAL,HOME_CHILD_PREFIX,HOME_CHILD_OPERATION,'cancelled','home-continue',['CANCELLED','UNKNOWN','CONSUMED','NO REPLAY']),
+        (HOME_FINISH_OBSERVATION,HOME_CHILD_INSPECT_PREFIX,HOME_CHILD_INSPECT_OPERATION,'success','home-continue-inspect',
+            ['inspection_complete','current_before_namespace_absent','CONSUMED','NO REPLAY'])):
+        prior={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+        _unique_update_command(comments,prefix,operation,prior)
+        command=next(c for c in comments if c['id']==prior['command_comment_id'])
+        terminal=next((c for c in comments if c['id']==pin['terminal_comment_id']),{})
+        required=[str(pin[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id')]
+        if 'artifact_id' in pin:required += [str(pin[k]) for k in ('artifact_id','artifact_sha256','receipt_sha256')]
+        need(command.get('created_at')==command.get('updated_at')
+             and terminal.get('created_at')==terminal.get('updated_at')
+             and terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+             and all(t in terminal.get('body','') for t in required+tokens)
+             and _tv_time(command.get('created_at'))<=_tv_time(terminal.get('created_at')),
+             'home_finish_fixed_terminal')
+        if pin in (HOME_INSPECT_FAILED,HOME_CHILD_INSPECTION):home_child_fixed_proof(pin,command,conclusion,mode)
+        else:
+            native=_home_finish_native_proof(pin,command,conclusion,mode)
+            need(_tv_time(native.get('updated_at'))<=_tv_time(terminal['created_at']),'home_finish_terminal_time')
+        terminal_times.append(_tv_time(terminal['created_at']))
+    _unique_update_command(comments,HOME_FINISH_PREFIX,HOME_FINISH_OPERATION,identity)
+    command=next(c for c in comments if c['id']==identity['command_comment_id'])
+    need(command.get('created_at')==command.get('updated_at') and _tv_time(command['created_at'])>=max(terminal_times),
+         'home_finish_command_time')
+    need(not any(c.get('body','').strip().split()[:1] in ([HOME_ROLLBACK_PREFIX],[HOME_CHILD_ROLLBACK_PREFIX])
+                 and any(op in c.get('body','').split()[1:] for op in (HOME_ROLLBACK_OPERATION,HOME_CHILD_ROLLBACK_OPERATION))
+                 for c in comments),'home_finish_rollback_present')
+    observation=home_finish_observation_evidence(download(HOME_FINISH_OBSERVATION['artifact_id'],
+                                                         HOME_FINISH_OBSERVATION['artifact_sha256']))
+    home_finish_heads(identity);return observation
+
+
+def home_finish_closed_record(identity):
+    home_finish_runtime_identity(identity)
+    return {'schema_version':1,'record_kind':'home_predecessor_closed_before_successor_reservation',
+        'predecessor_operation':HOME_CHILD_OPERATION,'predecessor':dict(HOME_CHILD_INSPECT_ORIGINAL),
+        'observation':dict(HOME_FINISH_OBSERVATION),'successor':{'operation_id':HOME_FINISH_OPERATION,
+            'source_sha':HOME_SOURCE,'manifest_sha256':home_finish_policy()['manifest'],**identity},
+        'predecessor_policy_sha256':home_child_policy()['manifest']}
+
+
+HOME_FINISH_REMOTE = r'''
+_finish_parent_impl=home_handoff_parent
+_finish_ancestor_impl=home_check_ancestors
+_finish_persist_impl=home_child_persist_reconciliation
+_finish_store=None
+_finish_directory=None
+_finish_record=None
+_finish_custody_store=None
+_finish_custody_record=None
+HOME_PREPARED_PATHS=HOME_PREPARED_PATHS+(FINISH_CUSTODY_PATH,)
+def home_finish_namespace_absent(operation):
+ with base.parent(operation) as (fd,name):
+  try:os.stat(name,dir_fd=fd,follow_symlinks=False)
+  except FileNotFoundError:return
+  raise RuntimeError('home_finish_namespace')
+def home_finish_assert_closure():
+ closure=result['closure']
+ if not closure['namespace_created']:
+  home_finish_namespace_absent(FINISH_PREDECESSOR_OPERATION)
+  home_finish_namespace_absent(HOME_POLICY['operation'])
+  return
+ try:
+  require(_finish_store is not None and _finish_record is not None and _finish_directory is not None
+          and closure['record_verified'] and closure['durable_verified'],'home_finish_closure_incomplete')
+  _finish_store.verify(_finish_store.links)
+  require(stamp(os.fstat(_finish_store.fd))==_finish_directory,'home_finish_closed_changed')
+  with base.parent(FINISH_PREDECESSOR_OPERATION) as (fd,name):
+   require(stamp(os.stat(name,dir_fd=fd,follow_symlinks=False))==_finish_directory,'home_finish_closed_changed')
+  require(site_read_records(_finish_store,(FINISH_CLOSED_PATH,))[FINISH_CLOSED_PATH]==_finish_record,
+          'home_finish_closed_changed')
+  if _finish_custody_store is not None:
+   require(site_read_records(_finish_custody_store,(FINISH_CUSTODY_PATH,))[FINISH_CUSTODY_PATH]==_finish_custody_record,
+           'home_finish_closed_custody')
+  closure['protected_unchanged']=True
+ except Exception:
+  closure['protected_unchanged']=False
+  raise
+def home_handoff_parent():
+ home_finish_assert_closure()
+ value=_finish_parent_impl()
+ home_finish_assert_closure()
+ return value
+def home_check_ancestors():
+ home_finish_assert_closure()
+ _finish_ancestor_impl()
+ home_finish_assert_closure()
+def home_finish_close_predecessor(before):
+ global _finish_store,_finish_directory,_finish_record
+ closure=result['closure']
+ require(not closure['namespace_created'] and _finish_store is None,'home_finish_scope')
+ home_finish_assert_closure()
+ # The old program's first mutating gate uses this exact name. A loser never
+ # opens or writes another process's namespace, even if it appears empty.
+ try:os.mkdir(FINISH_PREDECESSOR_OPERATION,0o700,dir_fd=base.fd)
+ except FileExistsError:raise RuntimeError('home_finish_predecessor_exists') from None
+ closure['namespace_created']=True
+ sync(base.fd)
+ with base.parent(FINISH_PREDECESSOR_OPERATION) as (fd,name):
+  info=os.stat(name,dir_fd=fd,follow_symlinks=False)
+  require(stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode)==0o700 and info.st_uid==os.getuid(),
+          'home_finish_closed_record')
+  created=directory(info)
+ _finish_store=Files(os.environ['HOME']+'/.anytoour-search3-root-gateway/'+FINISH_PREDECESSOR_OPERATION)
+ private_root(_finish_store)
+ require(directory(os.fstat(_finish_store.fd))==created,'home_finish_closed_record')
+ raw=canonical(FINISH_CLOSED_RECORD);closure['record_write_attempted']=True
+ _finish_store.create(FINISH_CLOSED_PATH,raw)
+ retained=site_read_records(_finish_store,(FINISH_CLOSED_PATH,))[FINISH_CLOSED_PATH]
+ require(retained[2]==raw and retained[0]['sha256']==FINISH_CLOSED_SHA,'home_finish_closed_record')
+ closure.update(record_verified=True,record_sha256=FINISH_CLOSED_SHA)
+ sync(_finish_store.fd);sync(base.fd)
+ _finish_store.verify(_finish_store.links)
+ _finish_directory=stamp(os.fstat(_finish_store.fd));_finish_record=retained
+ closure['durable_verified']=True
+ home_finish_assert_closure()
+ # Never recapture protected values after the closure. Compare to the exact
+ # validated tuples from this invocation's original finite preflight.
+ home_check_ancestors();home_check_targets(before);home_finish_assert_closure()
+ closure['guards_rechecked']=True
+def home_child_persist_reconciliation(store):
+ global _finish_custody_store,_finish_custody_record
+ require(result['closure']['guards_rechecked'],'home_finish_closure_incomplete')
+ home_finish_assert_closure();_finish_persist_impl(store);home_finish_assert_closure()
+ custody={'schema_version':1,'operation_id':HOME_POLICY['operation'],'manifest_sha256':HOME_POLICY['manifest'],
+          **IDENTITY,'predecessor_operation':FINISH_PREDECESSOR_OPERATION,'closed_record':FINISH_CLOSED_RECORD,
+          'closed_sha256':FINISH_CLOSED_SHA,'directory_identity':list(_finish_directory),
+          'record_identity':[dict(_finish_record[0]),list(_finish_record[1])]}
+ raw=canonical(custody);store.create(FINISH_CUSTODY_PATH,raw)
+ retained=site_read_records(store,(FINISH_CUSTODY_PATH,))[FINISH_CUSTODY_PATH]
+ require(retained[2]==raw,'home_finish_closed_custody')
+ _finish_custody_store=store;_finish_custody_record=retained
+ result['closure'].update(custody_persisted=True,custody_sha256=digest(raw))
+ home_finish_assert_closure()
+'''
+
+
+def _home_finish_remote_body():
+    body=_home_child_remote_body(False)
+    initial="public=base=original=updated=published=refactored=handed=private=None;reserved=False;switched=[];owned={};prior={};prepared=None;reservation=None"
+    need(body.count(initial)==1,'home_finish_template')
+    closure={'predecessor_operation':HOME_CHILD_OPERATION,**{k:False for k in HOME_FINISH_CLOSURE_FLAGS},
+             'record_sha256':None,'custody_sha256':None,'retained_on_failure':True}
+    body=body.replace(initial,"result.update(closure="+repr(closure)+",predecessor_liveness='unknown',historical_predecessor_zero_writes_proven=False)\n"+initial,1)
+    anchor=" home_check_ancestors();home_check_targets(before)\n try:os.mkdir(HOME_POLICY['operation'],0o700,dir_fd=base.fd)"
+    need(body.count(anchor)==1,'home_finish_template')
+    body=body.replace(anchor," home_check_ancestors();home_check_targets(before)\n home_finish_close_predecessor(before)\n try:os.mkdir(HOME_POLICY['operation'],0o700,dir_fd=base.fd)",1)
+    anchor="except Exception as error:\n result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'\n if reserved:"
+    need(body.count(anchor)==1,'home_finish_template')
+    body=body.replace(anchor,"except Exception as error:\n result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'\n if result['closure']['namespace_created']:result['status']='unknown_no_replay'\n if reserved:",1)
+    anchor=" for store in (private,handed,refactored,published,updated,original,base,public):"
+    need(body.count(anchor)==1,'home_finish_template')
+    body=body.replace(anchor," for store in (_finish_store,private,handed,refactored,published,updated,original,base,public):",1)
+    ast.parse(body);return body
+
+
+def home_finish_remote_program(policy,files,identity,observation_value,*,tv_successor=None):
+    need(policy==home_finish_policy(),'home_finish_policy');home_finish_runtime_identity(identity)
+    parent,inspection=home_finish_observation_value(observation_value)
+    need(isinstance(files,dict) and set(files)==set(HOME_ORDER),'home_payload')
+    for path in HOME_ORDER:
+        raw=base64.b64decode(files[path],validate=True)
+        need(0<len(raw)<=MAX_BYTES and HOME_TARGETS[path]['after']==
+             {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'home_payload_bytes')
+    closed=home_finish_closed_record(identity)
+    prefix=_home_child_program_prefix(home_child_policy(),identity,parent,inspection,tv_successor)
+    program=(prefix+'\nHOME_POLICY='+repr(policy)+'\nCHILD_PROVENANCE='+repr(home_finish_provenance())
+        +'\nFINISH_PREDECESSOR_OPERATION='+repr(HOME_CHILD_OPERATION)+'\nFINISH_CLOSED_PATH='+repr(HOME_FINISH_CLOSED_PATH)
+        +'\nFINISH_CUSTODY_PATH='+repr(HOME_FINISH_CUSTODY_PATH)+'\nFINISH_CLOSED_RECORD='+repr(closed)
+        +'\nFINISH_CLOSED_SHA='+repr(sha(json.dumps(closed,sort_keys=True,separators=(',',':')).encode()))
+        +'\ndef re_safe(value): return value in '+repr(HOME_FINISH_REASONS)+'\n'+HOME_FINISH_REMOTE
+        +'\nPAYLOAD='+repr(files)+'\n'+_home_finish_remote_body())
+    ast.parse(program);return program
+
+
+def valid_home_finish_result(identity,result):
+    home_finish_runtime_identity(identity);policy=home_finish_policy()
+    need(isinstance(result,dict) and result.get('operation_id')==HOME_FINISH_OPERATION
+         and result.get('manifest_sha256')==policy['manifest']
+         and result.get('continuation')==home_finish_provenance()
+         and result.get('predecessor_liveness')=='unknown'
+         and type(result.get('historical_predecessor_zero_writes_proven')) is bool
+         and result['historical_predecessor_zero_writes_proven'] is False,'home_finish_receipt_identity')
+    closure=result.get('closure');keys=set(HOME_FINISH_CLOSURE_FLAGS)|{
+        'predecessor_operation','record_sha256','custody_sha256','retained_on_failure'}
+    need(isinstance(closure,dict) and set(closure)==keys
+         and closure['predecessor_operation']==HOME_CHILD_OPERATION and closure['retained_on_failure'] is True
+         and all(type(closure[k]) is bool for k in HOME_FINISH_CLOSURE_FLAGS),'home_finish_receipt_closure')
+    created=closure['namespace_created'];verified=closure['record_verified'];custody=closure['custody_persisted']
+    expected=sha(json.dumps(home_finish_closed_record(identity),sort_keys=True,separators=(',',':')).encode())
+    need((closure['record_sha256']==expected if verified else closure['record_sha256'] is None)
+         and ((isinstance(closure['custody_sha256'],str) and re.fullmatch('[a-f0-9]{64}',closure['custody_sha256']))
+              if custody else closure['custody_sha256'] is None),'home_finish_receipt_digest')
+    need((created or not any(closure[k] for k in HOME_FINISH_CLOSURE_FLAGS))
+         and (not closure['record_write_attempted'] or created)
+         and (not verified or closure['record_write_attempted'])
+         and (not closure['durable_verified'] or verified)
+         and (not closure['guards_rechecked'] or closure['durable_verified'])
+         and (not custody or closure['guards_rechecked'] and result.get('reservation_created') is True
+              and result.get('lineage_persisted') is True)
+         and (not closure['protected_unchanged'] or closure['durable_verified']),
+         'home_finish_receipt_closure')
+    need('reason' not in result or result['reason'] in HOME_FINISH_REASONS,'home_finish_receipt_reason')
+    base={k:v for k,v in result.items() if k not in ('closure','predecessor_liveness','historical_predecessor_zero_writes_proven')}
+    base.update(operation_id=HOME_CHILD_OPERATION,manifest_sha256=home_child_policy()['manifest'],continuation=home_child_provenance())
+    if base.get('reason') in HOME_FINISH_REASONS and base.get('reason') not in HOME_CHILD_REASONS:base['reason']='operation_failed'
+    complete=valid_home_child_result(identity,base)
+    if not created:
+        need(result['status']=='blocked_no_replay' and not result['reservation_created']
+             and not result['written_files'] and not result['rollback_files'],'home_finish_receipt_incomplete')
+    elif not result['reservation_created']:
+        need(result['status']=='unknown_no_replay' and result['phase']=='preflight'
+             and not result['written_files'] and not result['rollback_files'],'home_finish_receipt_incomplete')
+    else:
+        need(closure['guards_rechecked'] and closure['durable_verified'],'home_finish_receipt_incomplete')
+    if complete or result['written_files']:
+        need(custody and closure['record_sha256']==expected,'home_finish_receipt_incomplete')
+    if complete or result['status']=='rolled_back_no_replay':
+        need(created and closure['protected_unchanged'] and closure['durable_verified'],'home_finish_receipt_incomplete')
+    if complete:need(all(closure[k] for k in HOME_FINISH_CLOSURE_FLAGS),'home_finish_receipt_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode())<=HOME_FINISH_RECEIPT_LIMIT,'home_finish_receipt_limit')
+    return complete
+
+
+def home_finish_checkpoint(work,evidence):
+    # This is runner-local custody, never a server write. A cancellation leaves
+    # the previous complete JSON rather than a partial replacement. Checkpoints
+    # contain no SSH program/key and never stand in for a remote receipt.
+    raw=(json.dumps(evidence,sort_keys=True)+'\n').encode()
+    need(len(raw)<=524288,'home_finish_checkpoint_limit')
+    pending=work/'evidence.pending';created=None;handle=None
+    try:
+        handle=os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        created=os.fstat(handle)
+        with os.fdopen(handle,'wb') as stream:
+            handle=None;stream.write(raw);stream.flush();os.fsync(stream.fileno())
+        now=pending.lstat()
+        need((now.st_dev,now.st_ino)==(created.st_dev,created.st_ino)
+             and stat.S_ISREG(now.st_mode) and now.st_nlink==1,'home_finish_checkpoint_changed')
+        os.replace(pending,work/'evidence.json')
+        directory_fd=os.open(work,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:os.fsync(directory_fd)
+        finally:os.close(directory_fd)
+    finally:
+        if handle is not None:os.close(handle)
+        if created is not None:
+            try:
+                now=pending.lstat()
+                if (now.st_dev,now.st_ino)==(created.st_dev,created.st_ino):pending.unlink()
+            except FileNotFoundError:pass
+
+
+def home_finish():
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':HOME_FINISH_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_finish_policy()['manifest'],'read_only':False,'phase':'identity',
+        'ssh_requested':False,'ssh_started':'unknown','remote_outcome':'unknown',
+        'continuation':home_finish_provenance(),'predecessor_liveness':'unknown',
+        'historical_predecessor_zero_writes_proven':False}
+    complete=False
+    try:
+        identity=home_finish_event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+        evidence.update(identity,phase='admission');home_finish_checkpoint(work,evidence)
+        observation=home_finish_admission(identity);evidence['phase']='artifact'
+        parent,_=home_finish_observation_value(observation)
+        previous,files=home_package(download(HOME_ARTIFACT,HOME_ARTIFACT_SHA),parent)
+        need(previous==home_policy(),'home_finish_payload_policy')
+        dependency=tv_successor_evidence()
+        program=home_finish_remote_program(home_finish_policy(),files,identity,observation,tv_successor=dependency)
+        evidence.update(parent_handoff=home_parent_identity(),observation_evidence=observation,phase='connection_preparation')
+        home_finish_checkpoint(work,evidence)
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
+                 '-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        need(home_finish_admission(identity)==observation,'home_finish_observation_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote_requested',ssh_requested=True)
+        home_finish_checkpoint(work,evidence)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=HOME_FINISH_RECEIPT_LIMIT,'home_finish_receipt_limit')
+        result=_tv_json(response);complete=valid_home_finish_result(identity,result)
+        evidence.update(remote=result,ssh_started=True,remote_outcome=result['status'])
+        home_finish_heads(identity);evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        if evidence['ssh_requested']:evidence['status']='unknown_no_replay'
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HomeFinishError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        home_finish_checkpoint(work,evidence)
+    print(json.dumps(evidence,sort_keys=True));need(complete,'home_finish_not_verified')
+
+
+if __name__ == '__main__':
+    import sys as _home_finish_sys
+    if _home_finish_sys.argv[1:]==['home-finish']:
+        home_finish()
+        raise SystemExit(0)
+
+
 def command_mode(arguments):
     if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'
