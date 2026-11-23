@@ -155,7 +155,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: eda8b6c55f83d3b4dc259d726ea880800d2856ba
+          ref: 26e97816947a25098e6de34d92dca92090bde970
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -221,7 +221,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 453bc1578bfd4eb874406110ebe6c5319b34e3ab9e8ed1499aef8a444977a108
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 71f96343bc06f7d71cc23271da88bf55ad11819ffe659847ed42359de0a264ff
           python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
@@ -246,7 +246,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: eda8b6c55f83d3b4dc259d726ea880800d2856ba
+          ref: 26e97816947a25098e6de34d92dca92090bde970
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -255,7 +255,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 453bc1578bfd4eb874406110ebe6c5319b34e3ab9e8ed1499aef8a444977a108
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 71f96343bc06f7d71cc23271da88bf55ad11819ffe659847ed42359de0a264ff
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
