@@ -290,6 +290,16 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if ((len(parts) >= 3 and parts[2] == LOCAL7_REGISTRATION['operation_id'])
+                or (len(parts) >= 4 and parts[3] == LOCAL7_REGISTRATION['cohort'])):
+            profile = LOCAL7_REGISTRATION
+            need(len(parts) == 5 and parts[1] == profile['mode']
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local7_fixed_read_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
         if parts[1] == LOCAL19_APPLY_MODE or (len(parts) >= 3 and parts[2] == LOCAL19_APPLY['operation_id']) or (len(parts) >= 4 and parts[3] == LOCAL19_APPLY['cohort']):
@@ -2205,6 +2215,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
+        return completed_local7_registration(command, result, control_sha)
     if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
         return completed_local19_apply(command, result, control_sha)
     if command.get('cohort') == LOCAL26_IDENTITY['cohort'] or command.get('operation_id') == LOCAL26_IDENTITY['operation_id']:
@@ -2316,6 +2328,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
+        return activate_local7_registration(core, command)
     if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
         return activate_local19_apply(core, command)
     if command.get('cohort') == LOCAL26_IDENTITY['cohort']:
@@ -3809,3 +3823,339 @@ def activate_local19_apply(core,command):
     core.REMOTE=remote;core.bundle_source=bundle_local19_source
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local19_apply(cmd,res,control) if cmd.get('mode')==LOCAL19_APPLY_MODE else original(cmd,res)
+
+
+# One saved capture, seven fixed IDs. This profile neither registers targets nor
+# revisits the historical native-binding projection or its supplier contexts.
+LOCAL7_REGISTRATION = {
+    'mode': 'match-retained-readback',
+    'operation_id': 'int-andromeda-match-retained-readback-20261123-v1',
+    'cohort': 'local7-registration-evidence-20261123',
+    'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'parent_operation_id': 'int-andromeda-match-retained-20261020-v3',
+    'parent_receipt_sha256': 'b610629916e80d706edb493da1fc02eb0bf38a00de64243a1973bb80155485d6',
+    'capture_raw_sha256': '00c992ec930b0f0c8c9a8167bea93a1efebd8d34e1c19f1a01bf16e3ef77d834',
+    'capture_raw_bytes': 62108585,
+    'pairs': [[8689,7458],[4679,4283],[14397,97001],[13766,74509],
+              [14029,78669],[12816,60788],[14013,78456]],
+    'max_observations_per_tv': 128,
+    'max_line_bytes': 4194304,
+}
+
+LOCAL7_VALIDATOR = r'''
+import datetime as l7_datetime
+import io as l7_io
+
+L7_COLUMNS = ['id','hotel_id','search_id','source','first_seen_at','last_seen_at']
+L7_SOURCES = ('user_search','scheduled_monitor','hot_tours')
+L7_REASONS = ('search_id_not_positive','source_not_allowed','first_seen_at_invalid','last_seen_at_invalid')
+L7_ZERO = ('supplier_calls','provider_http_calls','database_writes','mapping_writes',
+           'booking_calls','lead_calls','new_database_reads','new_target_inserts','accepted_native_bindings')
+L7_FALSE = ('native_authority','target_creation_authority','ai_authority')
+L7_COMMAND = ('source_sha','mode','operation_id','cohort','target_operation_id')
+L7_PROJECTION = {'captured_at_utc','catalog_id_namespace','database_snapshot','scope_line_sha256',
+                 'required_observation_columns','rows','rows_sha256'}
+
+def l7_need(value, reason):
+    if not value: raise ValueError('local7_'+reason)
+
+def l7_json(value):
+    return json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
+
+def l7_unique(pairs):
+    value={}
+    for key,item in pairs:
+        l7_need(key not in value,'duplicate_json_key');value[key]=item
+    return value
+
+def l7_parse(raw):
+    def invalid(value): raise ValueError('local7_nonfinite_json')
+    try: return json.loads(raw,object_pairs_hook=l7_unique,parse_constant=invalid)
+    except (UnicodeError,ValueError) as error:
+        if str(error).startswith('local7_'): raise
+        raise ValueError('local7_invalid_json') from None
+
+def l7_hash(value):
+    return isinstance(value,str) and re.fullmatch(r'[a-f0-9]{64}',value) is not None
+
+def l7_sha(value):
+    return isinstance(value,str) and re.fullmatch(r'[a-f0-9]{40}',value) is not None
+
+def l7_positive(value):
+    if isinstance(value,str) and re.fullmatch(r'[1-9][0-9]{0,19}',value): value=int(value)
+    return value if type(value) is int and 0<value<=18446744073709551615 else None
+
+def l7_time(value):
+    if not isinstance(value,str) or re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}',value) is None: return False
+    try: l7_datetime.datetime.strptime(value,'%Y-%m-%d %H:%M:%S');return True
+    except ValueError: return False
+
+def l7_capture_time(value):
+    if not isinstance(value,str) or re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|\+00:00)',value) is None:return False
+    return l7_time(value[:10]+' '+value[11:19])
+
+def l7_command(command,control,p):
+    wanted={'source_sha':p['source_sha'],'mode':p['mode'],'operation_id':p['operation_id'],
+            'cohort':p['cohort'],'target_operation_id':p['parent_operation_id']}
+    l7_need(isinstance(command,dict) and set(command) in (set(wanted),set(wanted)|{'match_retained_control_sha'})
+        and all(command.get(k)==v for k,v in wanted.items()) and l7_sha(control)
+        and command.get('match_retained_control_sha',control)==control,'command_binding')
+
+def l7_validate_projection(value,p):
+    l7_need(isinstance(value,dict) and set(value)==L7_PROJECTION,'projection_shape')
+    l7_need(l7_capture_time(value['captured_at_utc']) and value['catalog_id_namespace']=='tourvisor_hotel'
+        and value['database_snapshot']=='repeatable-read-read-only' and l7_hash(value['scope_line_sha256'])
+        and value['required_observation_columns']==L7_COLUMNS,'capture_scope')
+    rows=value['rows'];l7_need(isinstance(rows,list) and len(rows)==7,'row_count')
+    seen=set()
+    for row,pair in zip(rows,p['pairs']):
+        l7_need(isinstance(row,dict) and set(row)=={'own_id','tv_id','matched_observations','qualifying_observations',
+            'state','scope','witnesses','rejection_reasons'},'row_shape')
+        l7_need(type(row['own_id']) is int and type(row['tv_id']) is int
+            and [row['own_id'],row['tv_id']]==list(pair) and row['scope']=='IN_THIS_CAPTURE','row_identity')
+        matched=row['matched_observations'];qualifying=row['qualifying_observations']
+        l7_need(type(matched) is int and type(qualifying) is int
+            and 0<=qualifying<=matched<=p['max_observations_per_tv'],'row_counts')
+        state='no_observation' if matched==0 else 'no_qualifying_observation' if qualifying==0 else 'witness_present'
+        l7_need(row['state']==state,'row_state')
+        reasons=row['rejection_reasons'];rejected=matched-qualifying
+        l7_need(isinstance(reasons,dict) and set(reasons)<=set(L7_REASONS)
+            and all(type(n) is int and 0<n<=rejected for n in reasons.values())
+            and rejected<=sum(reasons.values())<=len(L7_REASONS)*rejected,'rejection_counts')
+        witnesses=row['witnesses'];l7_need(isinstance(witnesses,list) and len(witnesses)==qualifying,'witness_count')
+        for witness in witnesses:
+            l7_need(isinstance(witness,dict) and set(witness)=={'observation_id','hotel_id','search_id',
+                'source','first_seen_at','last_seen_at','line_sha256'},'witness_shape')
+            l7_need(all(type(witness[k]) is int and l7_positive(witness[k]) is not None
+                    for k in ('observation_id','hotel_id','search_id'))
+                and witness['hotel_id']==pair[1] and witness['observation_id'] not in seen,'witness_identity')
+            seen.add(witness['observation_id'])
+            l7_need(witness['source'] in L7_SOURCES and l7_time(witness['first_seen_at'])
+                and l7_time(witness['last_seen_at']) and l7_hash(witness['line_sha256']),'witness_predicates')
+    l7_need(value['rows_sha256']==hashlib.sha256(l7_json(rows)).hexdigest(),'rows_digest')
+    return value
+
+def l7_project(raw,profile):
+    p=profile
+    l7_need(isinstance(raw,bytes) and len(raw)==p['capture_raw_bytes']
+        and hashlib.sha256(raw).hexdigest()==p['capture_raw_sha256'],'raw_binding')
+    rows=[{'own_id':own,'tv_id':tv,'matched_observations':0,'qualifying_observations':0,
+           'state':'no_observation','scope':'IN_THIS_CAPTURE','witnesses':[],'rejection_reasons':{}}
+          for own,tv in p['pairs']]
+    by_tv={row['tv_id']:row for row in rows};scope=None;scope_hash=None;seen=set()
+    for number,line in enumerate(l7_io.BytesIO(raw),1):
+        l7_need(len(line)<=p['max_line_bytes'],'raw_line_bound')
+        record=l7_parse(line)
+        l7_need(isinstance(record,dict) and record.get('kind') in ('scope','observation','legacy_source','identity','target'),'raw_record_kind')
+        if record['kind']=='scope':
+            l7_need(number==1 and scope is None,'scope_position')
+            l7_need(set(record)=={'kind','cohort','captured_at_utc','database_snapshot','catalog_id_namespace','target_scope','schema_columns'}
+                and record['cohort']=='common4-retained' and record['catalog_id_namespace']=='tourvisor_hotel'
+                and record['database_snapshot']=='repeatable-read-read-only' and record['target_scope']=='observed_and_legacy_ids'
+                and l7_capture_time(record['captured_at_utc']),'scope_header')
+            columns=record['schema_columns']
+            l7_need(isinstance(columns,dict) and isinstance(columns.get('tour_operator_identity_observations'),list),'scope_schema')
+            columns=columns['tour_operator_identity_observations']
+            l7_need(all(isinstance(k,str) for k in columns) and len(columns)==len(set(columns))
+                and set(L7_COLUMNS)<=set(columns),'scope_schema')
+            scope=record;scope_hash=hashlib.sha256(line).hexdigest();continue
+        l7_need(scope is not None,'scope_missing')
+        if record['kind']!='observation':continue
+        row=record.get('row');l7_need(isinstance(row,dict) and 'hotel_id' in row,'observation_shape')
+        # A NULL/nonpositive DB ID cannot select a requested hotel. Malformed
+        # encodings must not silently become a negative finding for the capture.
+        hotel_value=row['hotel_id']
+        l7_need(hotel_value is None or type(hotel_value) is int or
+            isinstance(hotel_value,str) and re.fullmatch(r'-?(?:0|[1-9][0-9]{0,19})',hotel_value) is not None,
+            'hotel_id_encoding')
+        hotel=l7_positive(row['hotel_id'])
+        if hotel not in by_tv:continue
+        l7_need(set(L7_COLUMNS)<=set(row),'observation_columns')
+        observation=l7_positive(row['id'])
+        l7_need(observation is not None and observation not in seen,'observation_id');seen.add(observation)
+        out=by_tv[hotel];out['matched_observations']+=1
+        l7_need(out['matched_observations']<=p['max_observations_per_tv'],'observation_bound')
+        search=l7_positive(row['search_id']);reasons=[]
+        if search is None:reasons.append('search_id_not_positive')
+        if row['source'] not in L7_SOURCES:reasons.append('source_not_allowed')
+        if not l7_time(row['first_seen_at']):reasons.append('first_seen_at_invalid')
+        if not l7_time(row['last_seen_at']):reasons.append('last_seen_at_invalid')
+        if reasons:
+            for reason in reasons:out['rejection_reasons'][reason]=out['rejection_reasons'].get(reason,0)+1
+        else:
+            out['qualifying_observations']+=1
+            out['witnesses'].append({'observation_id':observation,'hotel_id':hotel,'search_id':search,
+                'source':row['source'],'first_seen_at':row['first_seen_at'],'last_seen_at':row['last_seen_at'],
+                'line_sha256':hashlib.sha256(line).hexdigest()})
+    l7_need(scope is not None,'scope_missing')
+    for row in rows:
+        row['state']='no_observation' if row['matched_observations']==0 else 'no_qualifying_observation' if row['qualifying_observations']==0 else 'witness_present'
+    value={'captured_at_utc':scope['captured_at_utc'],'catalog_id_namespace':'tourvisor_hotel',
+        'database_snapshot':'repeatable-read-read-only','scope_line_sha256':scope_hash,
+        'required_observation_columns':list(L7_COLUMNS),'rows':rows,'rows_sha256':hashlib.sha256(l7_json(rows)).hexdigest()}
+    return l7_validate_projection(value,p)
+
+def l7_production(value):
+    return (isinstance(value,dict) and set(value)=={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            and all(v is None or l7_hash(v) for v in value.values()))
+
+def l7_parent(prior,reserved,p):
+    l7_need(isinstance(prior,dict) and type(prior.get('schema_version')) is int and prior['schema_version']==1
+        and prior.get('status')=='complete' and prior.get('mode')=='match-retained-intake'
+        and prior.get('operation_id')==p['parent_operation_id'] and l7_sha(prior.get('source_sha')),'parent_identity')
+    l7_need(isinstance(reserved,dict) and set(reserved)=={'operation_id','source_sha','mode','reserved_at'}
+        and all(reserved[k]==prior[k] for k in ('operation_id','source_sha','mode'))
+        and type(reserved['reserved_at']) is int and reserved['reserved_at']>0,'parent_reservation')
+    l7_need(all(type(prior.get(k)) is int and prior[k]==0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls'))
+        and prior.get('production_unchanged') is True and l7_production(prior.get('production_before'))
+        and prior.get('production_before')==prior.get('production_after'),'parent_read_only')
+    material=prior.get('match_retained');l7_need(isinstance(material,dict) and set(material)=={'evidence_sha256','data'},'parent_material')
+    data=material['data'];l7_need(isinstance(data,dict) and material['evidence_sha256']==hashlib.sha256(l7_json(data)).hexdigest(),'parent_evidence_digest')
+    l7_need(data.get('state')=='captured_and_projected_read_only' and data.get('cohort')=='common4-retained'
+        and data.get('operation_id')==prior['operation_id'] and data.get('source_sha')==prior['source_sha']
+        and all(type(data.get(k)) is int and data[k]==0 for k in ('supplier_calls','database_writes','mapping_writes')),'parent_capture_identity')
+    capture=data.get('capture')
+    l7_need(isinstance(capture,dict) and capture.get('state')=='captured_read_only' and capture.get('cohort')=='common4-retained'
+        and capture.get('raw_sha256')==p['capture_raw_sha256'] and type(capture.get('raw_bytes')) is int
+        and capture['raw_bytes']==p['capture_raw_bytes']
+        and all(type(capture.get(k)) is int and capture[k]==0 for k in ('supplier_calls','database_writes','mapping_writes')),'parent_capture_binding')
+    return prior['source_sha']
+
+def l7_validate_data(data,command,control,profile=None):
+    p=LOCAL7_REGISTRATION if profile is None else profile
+    l7_command(command,control,p)
+    keys=L7_PROJECTION|set(L7_ZERO)|set(L7_FALSE)|{'schema_version','state','operation_id','source_sha',
+        'control_source_sha','cohort','target_operation_id','parent_source_sha','parent_receipt_sha256',
+        'parent_reservation_sha256','capture_raw_sha256','capture_raw_bytes','max_observations_per_tv',
+        'protected_before','protected_after','protected_inputs_unchanged','capture_only','no_replay'}
+    l7_need(isinstance(data,dict) and set(data)==keys,'data_shape')
+    fixed={'schema_version':'local7_registration_evidence_v1','state':'retained_registration_evidence_read_only',
+        'operation_id':p['operation_id'],'source_sha':p['source_sha'],'control_source_sha':control,
+        'cohort':p['cohort'],'target_operation_id':p['parent_operation_id'],
+        'parent_receipt_sha256':p['parent_receipt_sha256'],'capture_raw_sha256':p['capture_raw_sha256']}
+    l7_need(all(data[k]==v for k,v in fixed.items()) and l7_sha(data['parent_source_sha']),'data_binding')
+    l7_need(type(data['capture_raw_bytes']) is int and data['capture_raw_bytes']==p['capture_raw_bytes']
+        and type(data['max_observations_per_tv']) is int and data['max_observations_per_tv']==p['max_observations_per_tv'],'data_bounds')
+    l7_need(all(type(data[k]) is int and data[k]==0 for k in L7_ZERO)
+        and all(data[k] is False for k in L7_FALSE)
+        and all(data[k] is True for k in ('no_replay','capture_only','protected_inputs_unchanged')),'data_authority')
+    before=data['protected_before'];bounds={'result.json':32*1024*1024,'reservation.json':65536,'retained-raw.ndjson':134217728}
+    l7_need(isinstance(before,dict) and set(before)==set(bounds) and data['protected_after']==before,'protected_inputs')
+    for pins in (before,data['protected_after']):
+        for name,bound in bounds.items():
+            pin=pins[name]
+            l7_need(isinstance(pin,dict) and set(pin)=={'bytes','sha256'} and type(pin['bytes']) is int
+                and 0<pin['bytes']<=bound and l7_hash(pin['sha256']),'protected_input_shape')
+    l7_need(before['result.json']['sha256']==p['parent_receipt_sha256']
+        and before['retained-raw.ndjson']=={'bytes':p['capture_raw_bytes'],'sha256':p['capture_raw_sha256']}
+        and before['reservation.json']['sha256']==data['parent_reservation_sha256'],'protected_input_binding')
+    l7_validate_projection({k:data[k] for k in L7_PROJECTION},p)
+    l7_need(len(l7_json(data))<=1048576,'result_bound')
+    return data
+'''
+exec(LOCAL7_VALIDATOR)
+
+LOCAL7_HANDLER = r'''
+def retained_local7_registration(stage):
+    import stat as l7_stat
+    p=LOCAL7_REGISTRATION;control=payload.get('match_retained_control_sha')
+    command={k:payload.get(k) for k in L7_COMMAND}
+    l7_command(command,control,p)
+    l7_need(mode==p['mode'] and operation==p['operation_id'] and source==p['source_sha'],'remote_identity')
+    target=private/p['parent_operation_id']
+    l7_need(private.is_dir() and not private.is_symlink() and private.resolve()==private
+        and target.is_dir() and not target.is_symlink() and target.resolve()==target,'parent_directory')
+    bounds={'result.json':32*1024*1024,'reservation.json':65536,'retained-raw.ndjson':134217728}
+    signatures={};protected={}
+    def signature(st):
+        return (st.st_dev,st.st_ino,st.st_mode,st.st_nlink,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+    def read(name,remember):
+        path=target/name;bound=bounds[name];before=path.lstat()
+        l7_need(l7_stat.S_ISREG(before.st_mode) and before.st_nlink==1 and path.resolve()==path
+            and 0<before.st_size<=bound,'protected_path')
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        with os.fdopen(fd,'rb') as handle:
+            opened=os.fstat(handle.fileno())
+            l7_need(signature(opened)==signature(before),'protected_open_drift')
+            raw=handle.read(bound+1);after=os.fstat(handle.fileno())
+        named=path.lstat()
+        l7_need(signature(before)==signature(after)==signature(named) and len(raw)==named.st_size
+            and path.resolve()==path,'protected_read_drift')
+        value={'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+        if remember:signatures[name]=signature(named);protected[name]=value
+        else:l7_need(signatures[name]==signature(named) and protected[name]==value,'protected_input_drift')
+        return raw,value
+    parent_raw,_=read('result.json',True)
+    l7_need(protected['result.json']['sha256']==p['parent_receipt_sha256'],'parent_receipt_pin')
+    reservation_raw,_=read('reservation.json',True)
+    parent_source=l7_parent(l7_parse(parent_raw),l7_parse(reservation_raw),p)
+    raw,_=read('retained-raw.ndjson',True)
+    projection=l7_project(raw,p)
+    after={}
+    for name in bounds:_,after[name]=read(name,False)
+    l7_need(target.is_dir() and not target.is_symlink() and target.resolve()==target,'parent_directory_drift')
+    data=dict(projection)
+    data.update(schema_version='local7_registration_evidence_v1',state='retained_registration_evidence_read_only',
+        operation_id=operation,source_sha=source,control_source_sha=control,cohort=p['cohort'],
+        target_operation_id=p['parent_operation_id'],parent_source_sha=parent_source,
+        parent_receipt_sha256=p['parent_receipt_sha256'],parent_reservation_sha256=protected['reservation.json']['sha256'],
+        capture_raw_sha256=p['capture_raw_sha256'],capture_raw_bytes=p['capture_raw_bytes'],
+        max_observations_per_tv=p['max_observations_per_tv'],protected_before=protected,protected_after=after,
+        protected_inputs_unchanged=True,capture_only=True,no_replay=True)
+    data.update({k:0 for k in L7_ZERO});data.update({k:False for k in L7_FALSE})
+    l7_validate_data(data,command,control,p)
+    evidence=l7_json(data)
+    fd=os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(evidence);handle.flush();os.fsync(handle.fileno())
+    return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+'''
+
+LOCAL7_DISPATCH = r'''    if mode=='match-retained-readback':
+        result['supplier_calls']=result['database_writes']=result['mapping_writes']=0
+        result['match_retained']=retained_local7_registration(stage)
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+'''
+
+def completed_local7_registration(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result[k]!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        if any(type(result[k]) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        if not l7_production(result['production_before']) or result['production_before']!=result['production_after']:return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!= {'evidence_sha256','data'}:return False
+        data=l7_validate_data(material['data'],command,control)
+        return material['evidence_sha256']==hashlib.sha256(l7_json(data)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError,OverflowError):
+        return False
+
+def activate_local7_registration(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in L7_COMMAND))
+    need(command==expected,'local7_command_shape')
+    control=os.environ.get('GITHUB_SHA','');l7_command(command,control,LOCAL7_REGISTRATION)
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','retained_first_attempt_only')
+    command['match_retained_control_sha']=control
+    remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'reservation':'    op.mkdir(mode=0o700)\n','receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():
+        need(remote.count(anchor)==(2 if key=='collector' else 1),'local7_registration_drift_'+key)
+    handler='\nLOCAL7_REGISTRATION='+repr(LOCAL7_REGISTRATION)+'\n'+LOCAL7_VALIDATOR+LOCAL7_HANDLER
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],LOCAL7_DISPATCH+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-readback','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    retained_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('retained_reserved') is True and op.exists():",1)
+    ast.parse(remote)
+    core.REMOTE=remote;core.bundle_source=bundle_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local7_registration(cmd,res,control) if (
+        cmd.get('operation_id')==LOCAL7_REGISTRATION['operation_id'] or cmd.get('cohort')==LOCAL7_REGISTRATION['cohort']) else original(cmd,res)
