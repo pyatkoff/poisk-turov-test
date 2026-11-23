@@ -99,12 +99,20 @@ function unmappedAnexMealCatalogue(){
  return {source:'anytour-search-meal-v1',provider:'anex',scopeKey:'global',available:false,revision:hash('unmapped-anex-catalogue-fixture'),
   plans:definitions.map(([code,nameRu],index)=>({id:index+1,code,nameRu,nativeIds:[]}))};
 }
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,departures,destinations,mealCatalogue,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
- const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,departures,destinations,mealCatalogue,localContent,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
+ const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],localContentCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
   if(departures&&target.pathname==='/data/departures-v1.php'){
    return {ok:true,json:async()=>({ok:true,items:await departures()})};
+  }
+  if(target.pathname==='/_preview/search3-local-candidate/data/local-tv-catalog-read-v1.php'){
+   assert.ok(localContent,'unexpected LOCAL content request');
+   assert.equal(options.credentials,'same-origin');assert.equal(options.cache,'no-store');assert.equal(options.headers.Accept,'application/json');
+   const ids=target.searchParams.getAll('oldLocalHotelIds[]').map(Number);
+   localContentCalls.push({ids,signal:options.signal});
+   const reply=await localContent(ids,options.signal,localContentCalls);
+   return reply?.response||{ok:true,json:async()=>reply};
   }
   if(target.pathname==='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'){
    assert.ok(andromedaQuote,'unexpected Andromeda quote request');
@@ -181,7 +189,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
   throw Error('unexpected API '+action);
  }};
  const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:browserCrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
- if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
+ if(native||anex||andromedaQuote||localContent){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';if(localContent)win.V2_CONFIG.localTvCatalogEnabled=true;}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  win.CustomEvent=class extends Event{constructor(type,{detail}){super(type);this.detail=detail;}};
  win.console={warn:message=>message.startsWith('[AnyTour search] ')?searchLogs.push(message):quoteWarnings.push(message),info:message=>searchLogs.push(message)};
@@ -195,9 +203,99 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  const poll=async()=>{const entry=[...timers].find(([,value])=>value.delay<=2500);assert.ok(entry,'pending poll required');timers.delete(entry[0]);await entry[1].fn();await flush();};
  const latest=()=>events.filter(e=>e.type==='results').at(-1)?.hotels||[];
  const providers=()=>[...new Set(latest().flatMap(h=>h.offers.map(o=>o.provider)))].sort();
- return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
+ return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,localContentCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+function localContentPayload(ids,{missing=[],revision=1,name='LOCAL'}={}){
+ const present=ids.filter(id=>!missing.includes(id));
+ return {ok:true,source:'anytour-local-tv-catalog-v1',catalog:'local-tv',requestedIds:[...ids],
+  items:present.map(id=>({catalog:'local-tv',id:id+1000,revision,name:name+' '+id,primaryImage:'https://fixture.invalid/hotel-'+id+'.jpg'})),
+  links:present.map(id=>({oldLocalId:id,tourvisorHotelId:id+1000})),missingIds:[...missing]};
+}
+const contentReadIds=h=>h.localContentCalls.map(call=>[...call.ids]);
+const contentHotel=(h,id)=>h.data.hotelPresentation({id,name:'BEFORE '+id,tours:[]},trip);
+test('pending LOCAL content batches share overlapping IDs and preserve each caller result',async()=>{
+ const gate=defer();let settled=false;
+ const h=harness({localContent:ids=>settled?localContentPayload(ids):gate.promise});
+ const whole=h.data.refreshHotelContent([101,102]),missing=h.data.refreshHotelContent([102]),reordered=h.data.refreshHotelContent([102,101,102]);
+ await flush();
+ assert.deepEqual(contentReadIds(h),[[101,102]],'subsets and reordered requests join the existing batch');
+ gate.resolve(localContentPayload([101,102],{missing:[102]}));
+ assert.deepEqual(await Promise.all([whole,missing,reordered]),[true,false,true],'a missing subset cannot inherit another hotel update');
+ assert.equal(contentHotel(h,101).name,'LOCAL 101');assert.equal(contentHotel(h,102).name,'BEFORE 102');
+ settled=true;assert.equal(await h.data.refreshHotelContent([102]),true);assert.deepEqual(contentReadIds(h),[[101,102],[102]],'a missing ID is not negatively cached');
+ assert.equal(h.timers.size,0);assert.equal(h.calls.length,0);
+});
+test('partial LOCAL content overlap starts only new IDs and releases each settled batch independently',async()=>{
+ const gates=[],h=harness({localContent:()=>{const gate=defer();gates.push(gate);return gate.promise;}});
+ const first=h.data.refreshHotelContent([101,102]);let joinedSettled=false;
+ const joined=h.data.refreshHotelContent([102,103]).then(changed=>{joinedSettled=true;return changed;});
+ await flush();assert.deepEqual(contentReadIds(h),[[101,102],[103]],'new103 starts without waiting for pending102');
+ gates[1].resolve(localContentPayload([103]));await flush();assert.equal(joinedSettled,false,'the caller still waits for its overlapping pending ID');
+ const fresh=h.data.refreshHotelContent([103]);await flush();
+ assert.deepEqual(contentReadIds(h),[[101,102],[103],[103]],'settled103 permits a fresh explicit read while102 is still pending');
+ gates[2].resolve(localContentPayload([103],{revision:2,name:'FRESH'}));assert.equal(await fresh,true);
+ gates[0].resolve(localContentPayload([101,102]));assert.deepEqual(await Promise.all([first,joined]),[true,true]);
+ assert.equal(contentHotel(h,103).name,'FRESH 103');assert.equal(h.timers.size,0);
+});
+for(const invalidBatch of [0,1])test('partial LOCAL content overlap validates '+(invalidBatch?'new':'shared')+' response independently before committing',async()=>{
+ const gates=[],h=harness({localContent:()=>{const gate=defer();gates.push(gate);return gate.promise;}});
+ const first=h.data.refreshHotelContent([101,102]),joined=h.data.refreshHotelContent([102,103]);
+ await flush();assert.deepEqual(contentReadIds(h),[[101,102],[103]]);
+ const replies=[localContentPayload([101,102]),localContentPayload([103])];replies[invalidBatch].requestedIds=[999];
+ gates.forEach((gate,index)=>gate.resolve(replies[index]));
+ assert.deepEqual(await Promise.all([first,joined]),[invalidBatch===1,true],'a caller reports only actual updates within its IDs');
+ assert.equal(contentHotel(h,101).name,invalidBatch?'LOCAL 101':'BEFORE 101');
+ assert.equal(contentHotel(h,102).name,invalidBatch?'LOCAL 102':'BEFORE 102');
+ assert.equal(contentHotel(h,103).name,invalidBatch?'BEFORE 103':'LOCAL 103');
+ assert.equal(h.timers.size,0);assert.equal(h.calls.length,0);
+});
+test('LOCAL content requests keep unique valid input order and the100ID cap',async()=>{
+ const h=harness({localContent:ids=>localContentPayload(ids)}),input=[103,101,103,0,-1,1.5,'101',null,NaN,...Array.from({length:105},(_,i)=>i+1)];
+ const expected=[...new Set(input)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,100);
+ assert.equal(await h.data.refreshHotelContent(input),true);assert.deepEqual(contentReadIds(h),[expected]);assert.equal(expected.length,100);
+ assert.equal(await h.data.refreshHotelContent([0,-1,'101',null,NaN]),false);assert.equal(h.localContentCalls.length,1);
+ assert.equal(h.timers.size,0);assert.equal(h.calls.length,0);
+});
+for(const failure of ['HTTP','network','aborted','wrong echo','incomplete'])test('LOCAL content '+failure+' releases shared IDs for a fresh explicit retry',async()=>{
+ const gate=defer();let retry=false;
+ const h=harness({localContent:ids=>retry?localContentPayload(ids):gate.promise});
+ const first=h.data.refreshHotelContent([101,102]),subset=h.data.refreshHotelContent([101]);
+ await flush();assert.deepEqual(contentReadIds(h),[[101,102]]);
+ if(failure==='network')gate.reject(Error('Fictional transport failure'));
+ else if(failure==='HTTP')gate.resolve({response:{ok:false}});
+ else if(failure==='aborted'){const timeout=[...h.timers.values()].find(timer=>timer.delay===15000);assert.ok(timeout);timeout.fn();assert.equal(h.localContentCalls[0].signal.aborted,true);gate.resolve(localContentPayload([101,102]));}
+ else {const payload=localContentPayload([101,102]);if(failure==='wrong echo')payload.requestedIds.reverse();else payload.links.pop();gate.resolve(payload);}
+ assert.deepEqual(await Promise.all([first,subset]),[false,false]);assert.equal(contentHotel(h,101).name,'BEFORE 101');
+ retry=true;assert.equal(await h.data.refreshHotelContent([101]),true);assert.deepEqual(contentReadIds(h),[[101,102],[101]]);
+ assert.equal(contentHotel(h,101).name,'LOCAL 101');assert.equal(h.timers.size,0);assert.equal(h.calls.length,0);
+});
+test('a conflicting LOCAL content revision rejects the complete new batch without partial updates',async()=>{
+ let conflict=false;
+ const h=harness({localContent:ids=>localContentPayload(ids,{name:conflict?'CONFLICT':'LOCAL'})});
+ assert.equal(await h.data.refreshHotelContent([102]),true);conflict=true;
+ assert.equal(await h.data.refreshHotelContent([101,102]),false);
+ assert.equal(contentHotel(h,101).name,'BEFORE 101');assert.equal(contentHotel(h,102).name,'LOCAL 102');
+ conflict=false;assert.equal(await h.data.refreshHotelContent([101]),true);assert.equal(contentHotel(h,101).name,'LOCAL 101');
+ assert.equal(h.timers.size,0);
+});
+test('old LOCAL content completion cannot mutate a new generation or release its same-ID read',async()=>{
+ const gates=[],h=harness({localContent:()=>{const gate=defer();gates.push(gate);return gate.promise;}});
+ const old=h.data.refreshHotelContent([101]);h.data.stop();const current=h.data.refreshHotelContent([101]);
+ await flush();assert.deepEqual(contentReadIds(h),[[101],[101]]);
+ gates[0].resolve(localContentPayload([101],{name:'OLD'}));assert.equal(await old,false);assert.equal(contentHotel(h,101).name,'BEFORE 101');
+ const same=h.data.refreshHotelContent([101]);await flush();assert.equal(h.localContentCalls.length,2,'old finally leaves the new reservation intact');
+ gates[1].resolve(localContentPayload([101],{revision:2,name:'CURRENT'}));assert.deepEqual(await Promise.all([current,same]),[true,true]);
+ assert.equal(contentHotel(h,101).name,'CURRENT 101');assert.equal(h.timers.size,0);assert.equal(h.calls.length,0);
+});
+test('automatic result content enrichment and explicit hotel refresh share the pending batch',async()=>{
+ const gate=defer(),h=harness({api:action=>action==='search_results'?live(2):undefined,localContent:()=>gate.promise});
+ await h.start();await h.poll();assert.deepEqual(contentReadIds(h),[[501,502]]);
+ const explicit=h.data.refreshHotelContent([501]);await flush();assert.equal(h.localContentCalls.length,1);
+ gate.resolve(localContentPayload([501,502]));assert.equal(await explicit,true);await flush();
+ assert.equal(h.localContentCalls.length,1);assert.equal(h.latest().find(hotel=>hotel.id===501).name,'LOCAL 501');
+ assert.equal(h.calls.filter(call=>call.action==='search_start').length,1,'content refresh never starts another search');
+});
 for(const provider of ['anex','andromeda']){
  const source=provider==='anex'?directAnex:directAndromeda;
  const ref=id=>(provider==='anex'?'anex_online:':'offer_')+id.toString(16).padStart(64,'0');

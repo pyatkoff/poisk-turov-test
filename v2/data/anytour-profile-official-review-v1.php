@@ -6,10 +6,12 @@ require_once __DIR__ . '/anytour-canonical-catalog-v1.php';
 trait AnyTourProfileOfficialReviewV1
 {
     public const OFFICIAL_POLICY = 'official_review_missing_only_v1';
+    public const OFFICIAL26_POLICY = 'official_review_missing_only_v2';
     public const OFFICIAL_NAMESPACE = 'profile_enrichment:official_review_v1';
     public const OFFICIAL_ACQUIRED_VIA = 'profile_fill_official_v1';
     private const OFFICIAL_FIELDS = ['description','images','primaryImage'];
     private const OFFICIAL_BATCH = 11;
+    private const OFFICIAL26_BATCH = 26;
 
     private static function officialSha(mixed $value): bool
     {
@@ -26,14 +28,16 @@ trait AnyTourProfileOfficialReviewV1
     }
 
     /** Pins and approval are supplied by the separately admitted, finite carrier. */
-    private static function officialApproved(array $approved): array
+    private static function officialApproved(array $approved, bool $mixed26 = false): array
     {
+        $batch = $mixed26 ? self::OFFICIAL26_BATCH : self::OFFICIAL_BATCH;
+        $policy = $mixed26 ? self::OFFICIAL26_POLICY : self::OFFICIAL_POLICY;
         if (!self::exactKeys($approved, ['manifestJson','manifestSha256','actionsSha256','anytourHotelIds','approvalRef'])
             || !is_string($approved['manifestJson']) || strlen($approved['manifestJson']) > 131072
             || !self::officialSha($approved['manifestSha256']) || !self::officialSha($approved['actionsSha256'])
             || !hash_equals($approved['manifestSha256'], hash('sha256', $approved['manifestJson']))
             || !is_array($approved['anytourHotelIds']) || !array_is_list($approved['anytourHotelIds'])
-            || count($approved['anytourHotelIds']) !== self::OFFICIAL_BATCH
+            || count($approved['anytourHotelIds']) !== $batch
             || !is_string($approved['approvalRef'])
             || preg_match('~\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*\#issuecomment-[1-9][0-9]*\z~D', $approved['approvalRef']) !== 1) {
             throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_ENVELOPE');
@@ -49,18 +53,22 @@ trait AnyTourProfileOfficialReviewV1
         if (!is_array($manifest) || !self::exactKeys($manifest, [
                 'schema_version','source_policy','original_package_sha256','approval_ref',
                 'proposed_actions','proposed_actions_sha256','targets',
-            ]) || $manifest['schema_version'] !== 1 || $manifest['source_policy'] !== self::OFFICIAL_POLICY
+            ]) || $manifest['schema_version'] !== ($mixed26 ? 2 : 1) || $manifest['source_policy'] !== $policy
             || !self::officialSha($manifest['original_package_sha256']) || $manifest['approval_ref'] !== $approved['approvalRef']
             || $manifest['proposed_actions_sha256'] !== $approved['actionsSha256']
             || !is_array($manifest['proposed_actions']) || !array_is_list($manifest['proposed_actions'])
-            || count($manifest['proposed_actions']) !== self::OFFICIAL_BATCH
+            || count($manifest['proposed_actions']) !== $batch
             || !hash_equals($approved['actionsSha256'], hash('sha256', self::json($manifest['proposed_actions'])))
             || !is_array($manifest['targets']) || !array_is_list($manifest['targets'])
-            || count($manifest['targets']) !== self::OFFICIAL_BATCH) {
+            || count($manifest['targets']) !== $batch) {
             throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_MANIFEST');
         }
         $actions = [];
+        $fieldCounts = array_fill_keys(self::OFFICIAL_FIELDS, 0);
         foreach ($manifest['proposed_actions'] as $action) {
+            // Hash the owner's original review actions above; normalize only inside this owner.
+            $review26 = $mixed26 ? self::official26Action($action) : null;
+            if ($review26 !== null) $action = $review26['action'];
             if (!is_array($action) || !self::exactKeys($action, [
                     'anytourHotelId','workId','observedRevision','mutation','fields','guards_required_before_apply','runtime_admission',
                 ]) || !is_int($action['anytourHotelId']) || !isset($ids[$action['anytourHotelId']])
@@ -69,7 +77,8 @@ trait AnyTourProfileOfficialReviewV1
                 || $action['mutation'] !== 'fill_only_if_stored_field_still_missing' || $action['runtime_admission'] !== null
                 || !is_array($action['guards_required_before_apply']) || !array_is_list($action['guards_required_before_apply'])
                 || $action['guards_required_before_apply'] === []
-                || !is_array($action['fields']) || !array_is_list($action['fields']) || count($action['fields']) !== 3) {
+                || !is_array($action['fields']) || !array_is_list($action['fields'])
+                || !in_array(count($action['fields']), $mixed26 ? [1,3] : [3], true)) {
                 throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_ACTION');
             }
             foreach ($action['guards_required_before_apply'] as $guard) {
@@ -86,18 +95,26 @@ trait AnyTourProfileOfficialReviewV1
                 $values[$field['field']] = $field['proposed_value'];
             }
             if (!is_string($values['description']) || trim($values['description']) === '' || strlen($values['description']) > 12000
-                || strip_tags($values['description']) !== $values['description'] || !self::officialUrl($values['primaryImage'])
+                || strip_tags($values['description']) !== $values['description']) {
+                throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_VALUES');
+            }
+            if (count($values) === 3 && (!self::officialUrl($values['primaryImage'])
                 || !is_array($values['images']) || !array_is_list($values['images'])
                 || count($values['images']) < 1 || count($values['images']) > 10
-                || $values['primaryImage'] !== $values['images'][0]) {
+                || $values['primaryImage'] !== $values['images'][0])) {
                 throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_VALUES');
             }
             $seen = [];
-            foreach ($values['images'] as $url) {
+            foreach ($values['images'] ?? [] as $url) {
                 if (!self::officialUrl($url) || isset($seen[$url])) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_IMAGES');
                 $seen[$url] = true;
             }
             $actions[$action['anytourHotelId']] = ['workId'=>$action['workId'],'values'=>$values];
+            if ($review26 !== null) $actions[$action['anytourHotelId']] += $review26['guards'];
+            foreach (array_keys($values) as $field) ++$fieldCounts[$field];
+        }
+        if ($mixed26 && $fieldCounts !== ['description'=>26,'images'=>25,'primaryImage'=>25]) {
+            throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_FIELD_COUNTS');
         }
         $targets = [];
         foreach ($manifest['targets'] as $target) {
@@ -113,10 +130,13 @@ trait AnyTourProfileOfficialReviewV1
             }
             $sourceUrls = [];
             foreach ($target['sources'] as $source) {
-                if (!is_array($source) || !self::exactKeys($source, ['url','checked_at_utc','content_sha256'])
+                if (!is_array($source) || !self::exactKeys($source, $mixed26
+                        ? ['url','checked_at_utc','content_sha256','capture_format'] : ['url','checked_at_utc','content_sha256'])
                     || !self::officialUrl($source['url']) || isset($sourceUrls[$source['url']])
                     || !is_string($source['checked_at_utc'])
-                    || ($source['content_sha256'] !== null && !self::officialSha($source['content_sha256']))) {
+                    || ($source['content_sha256'] !== null && !self::officialSha($source['content_sha256']))
+                    || ($mixed26 && (!self::officialSha($source['content_sha256'])
+                        || !in_array($source['capture_format'], ['raw_html','retrieved_web_text_not_origin_html'], true)))) {
                     throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_SOURCE');
                 }
                 // Retain actual capture precision; UTC may be written as Z or +00:00.
@@ -139,7 +159,10 @@ trait AnyTourProfileOfficialReviewV1
                 $photoUrls[] = $photo['url'];
             }
             $id = $target['anytourHotelId'];
-            if ($photoUrls !== $actions[$id]['values']['images']) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_PHOTO_COVERAGE');
+            if ($photoUrls !== ($actions[$id]['values']['images'] ?? [])) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_PHOTO_COVERAGE');
+            if ($mixed26 && $target['expectedIdentity']['name'] !== $actions[$id]['canonicalName']) {
+                throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_IDENTITY');
+            }
             $targets[$id] = $target + $actions[$id];
         }
         ksort($targets, SORT_NUMERIC);
@@ -147,6 +170,52 @@ trait AnyTourProfileOfficialReviewV1
         return [
             'manifestSha256'=>$approved['manifestSha256'],'actionsSha256'=>$approved['actionsSha256'],
             'originalPackageSha256'=>$manifest['original_package_sha256'],'approvalRef'=>$approved['approvalRef'],'targets'=>$targets,
+            'sourcePolicy'=>$policy,'strictPublicBefore'=>$mixed26,
+        ];
+    }
+
+    /** Exact schema of the reviewed 26-hotel actions; no broader arbitrary patch admission. */
+    private static function official26Action(mixed $action): array
+    {
+        $preconditions = ['fresh_profile_required','revision_and_before_match_required',
+            'raw_source_and_manual_override_guards_required','atomic_existing_owner_write_required','zero_automatic_replay_on_unknown'];
+        if (!is_array($action) || !self::exactKeys($action, ['work_id','anytour_hotel_id','canonical_name',
+                'observed_revision','observed_public_profile_sha256','field_changes','unchanged_profile_fields','preconditions'])
+            || !is_string($action['canonical_name']) || trim($action['canonical_name']) === ''
+            || !self::officialSha($action['observed_public_profile_sha256'])
+            || !is_array($action['field_changes']) || !array_is_list($action['field_changes'])
+            || !in_array(count($action['field_changes']), [1,3], true)
+            || !is_array($action['unchanged_profile_fields']) || !array_is_list($action['unchanged_profile_fields'])
+            || $action['unchanged_profile_fields'] === []
+            || !is_array($action['preconditions']) || !self::exactKeys($action['preconditions'], $preconditions)) {
+            throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_ACTION');
+        }
+        foreach ($preconditions as $guard) {
+            if ($action['preconditions'][$guard] !== true) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_GUARD');
+        }
+        $fields = []; $names = [];
+        foreach ($action['field_changes'] as $field) {
+            if (!is_array($field) || !self::exactKeys($field, ['field','before','after'])
+                || !is_string($field['field']) || !in_array($field['field'], self::OFFICIAL_FIELDS, true)
+                || isset($names[$field['field']])) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_FIELD');
+            $names[$field['field']] = true;
+            $fields[] = ['field'=>$field['field'],'before_public_projection'=>$field['before'],
+                'proposed_value'=>$field['after'],'decision'=>'proposed_not_applied'];
+        }
+        if (count($fields) === 1 && !isset($names['description'])) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_PARTIAL');
+        $preserved = [];
+        foreach ($action['unchanged_profile_fields'] as $field) {
+            if (!is_string($field) || $field === '' || isset($preserved[$field]) || isset($names[$field])) {
+                throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL26_PRESERVED');
+            }
+            $preserved[$field] = true;
+        }
+        return [
+            'action'=>['anytourHotelId'=>$action['anytour_hotel_id'],'workId'=>$action['work_id'],
+                'observedRevision'=>$action['observed_revision'],'mutation'=>'fill_only_if_stored_field_still_missing',
+                'fields'=>$fields,'guards_required_before_apply'=>$preconditions,'runtime_admission'=>null],
+            'guards'=>['canonicalName'=>$action['canonical_name'],'expectedPublicProfileSha256'=>$action['observed_public_profile_sha256'],
+                'unchangedProfileFields'=>array_keys($preserved)],
         ];
     }
 
@@ -204,6 +273,16 @@ trait AnyTourProfileOfficialReviewV1
             if (self::stable($identity) !== self::stable($target['expectedIdentity'])) {
                 throw new DomainException('ANYTOUR_PROFILE_OFFICIAL_IDENTITY');
             }
+            if ($approval['strictPublicBefore']) {
+                $public = array_merge(AnyTourCanonicalCatalog::publicProfile($profile), ['id'=>$id,'catalog'=>'anytour','revision'=>1]);
+                if (!hash_equals($target['expectedPublicProfileSha256'], hash('sha256', self::json($public)))) {
+                    throw new DomainException('ANYTOUR_PROFILE_OFFICIAL26_PUBLIC_BEFORE');
+                }
+                $unchanged = array_values(array_diff(array_keys($public), array_keys($target['values'])));
+                $expectedUnchanged = $target['unchangedProfileFields'];
+                sort($unchanged, SORT_STRING); sort($expectedUnchanged, SORT_STRING);
+                if ($unchanged !== $expectedUnchanged) throw new DomainException('ANYTOUR_PROFILE_OFFICIAL26_PRESERVED_FIELDS');
+            }
             $sources = $this->officialSources($id, $lock);
             foreach ($sources as $source) {
                 // These existing content operations cannot be reconciled with the approved revision 1 baseline.
@@ -213,7 +292,9 @@ trait AnyTourProfileOfficialReviewV1
             }
             $patch = []; $preserved = [];
             foreach (self::OFFICIAL_FIELDS as $field) {
+                if (!array_key_exists($field, $target['values'])) { $preserved[] = $field; continue; }
                 if (self::missing(self::ownValue($profile, $field))) $patch[$field] = $target['values'][$field];
+                elseif ($approval['strictPublicBefore']) throw new DomainException('ANYTOUR_PROFILE_OFFICIAL26_RAW_NOT_MISSING');
                 else $preserved[] = $field;
             }
             $selected[] = [
@@ -224,7 +305,7 @@ trait AnyTourProfileOfficialReviewV1
             ];
         }
         $core = [
-            'schemaVersion'=>1,'sourcePolicy'=>self::OFFICIAL_POLICY,
+            'schemaVersion'=>1,'sourcePolicy'=>$approval['sourcePolicy'],
             'manifestSha256'=>$approval['manifestSha256'],'actionsSha256'=>$approval['actionsSha256'],
             'originalPackageSha256'=>$approval['originalPackageSha256'],'approvalRef'=>$approval['approvalRef'],
             'selected'=>$selected,'roomMealFieldsExcluded'=>true,'traitsExcluded'=>true,
@@ -260,7 +341,7 @@ trait AnyTourProfileOfficialReviewV1
             }
         }
         $consumer = (new AnyTourCanonicalCatalog($this->pdo))->read(array_keys($expected));
-        if ($consumer['missingIds'] !== [] || count($consumer['items']) !== self::OFFICIAL_BATCH) {
+        if ($consumer['missingIds'] !== [] || count($consumer['items']) !== count($expected)) {
             throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_POSTCOMMIT_CONSUMER');
         }
         $readback = [];

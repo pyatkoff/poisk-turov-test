@@ -61,6 +61,8 @@ let linkedAmenityLabels=new Map();
 const countriesTo={};
 const operators=[];
 const data=window.AnyTourPrototypeData;
+const homeFormOnly=window.AnyTourPublicConfigV1?.valid===true&&window.V2_CONFIG?.search3FormOnly===true;
+let homeNavigationPending=false;
 const visualResource=name=>window.AnyTourPublicConfigV1?.valid?window.AnyTourPublicConfigV1.asset(name):'./'+name;
 const popularity=window.AnyTourHotelPopularityV1;
 const flightLabel=o=>o?.flight==='regular'?'Регулярный':o?.flight==='charter'?'Чартер':'';
@@ -169,8 +171,7 @@ const partyLabel=s=>s.ages.length?`${s.adults} взр. · ${s.ages.length} ре�
 const appliedPartyLabel=s=>s.ages.length?`${partyLabel(s)} (${childAgesText(s.ages)})`:partyLabel(s);
 function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
-function updateURL(){
- if(searchEditSession||!urlStateHydrated)return;
+function searchURLParameters(searched=state.hasSearched){
  const p=new URLSearchParams(),f=state.filters,current=new URLSearchParams(location.search);
  // Before the first search, keep the confirmed family through reloads without
  // changing the applied search identity or treating an open guest picker as saved.
@@ -180,7 +181,7 @@ function updateURL(){
  p.set('scenario',data.scenario);
  for(const [k,v] of Object.entries(search))p.set(k,Array.isArray(v)?v.join(','):v);
  if(state.selectedDate)p.set('date',state.selectedDate);
- if(state.hasSearched)p.set('searched','1');
+ if(searched)p.set('searched','1');
  if(state.onlyFavorites)p.set('favorites','1');
  for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));
  const labels=f.amenities.map(key=>[key,amenityLabel(key)]).filter(([,label])=>label);
@@ -192,7 +193,11 @@ function updateURL(){
  if(f.min)p.set('min',f.min);
  if(f.max!==null)p.set('max',f.max);
  if(state.sort!=='recommended')p.set('sort',state.sort);
- const query='?'+p.toString();
+ return p;
+}
+function updateURL(){
+ if(searchEditSession||!urlStateHydrated)return;
+ const query='?'+searchURLParameters(state.hasSearched&&!homeFormOnly).toString();
  if(location.search!==query||location.hash)history.replaceState(history.state,'',query);
 }
 const generatedRootBindings=new WeakMap();
@@ -363,7 +368,7 @@ function updateSearchUI(){
  $('#budget-label').textContent=budget;
  const regionsMissing=catalogReady&&needsResortCatalog(place);
  if(regionsMissing&&!resortLoads.has(place.country))loadResorts(place.country);
- $('.search-submit').disabled=!catalogReady||regionsMissing||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
+ $('.search-submit').disabled=homeNavigationPending||!catalogReady||regionsMissing||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  renderCatalogError(regionsMissing);
 }
 function renderCatalogError(regionsMissing){
@@ -1334,6 +1339,7 @@ function renderMoreResultCards(){
  const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
 }
 function renderResults(options={}){
+ if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultFilters(options);refreshResultPickerPreviews();return;}
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
  if(searchEditSession){
@@ -1768,12 +1774,12 @@ function refreshCalendarPriceCache(){
  const prices=calendarPriceInventory([...hotels,...calendarHotels],calendarObservations,dateContext);datePrices.clear();for(const [day,price]of prices)datePrices.set(day,price);
  if(!calendarHotels.length&&!calendarObservations.length){calendarPriceContext=dateContext;calendarBasePrices=new Map(prices);calendarMonthPrices=new Map();}
 }
-function calendarPrice(day){return datePrices.get(day)??null;}
+function calendarPrice(day){return homeFormOnly?null:datePrices.get(day)??null;}
 function monthFrame(month){
  const date=dateObj(month),first=(date.getUTCDay()+6)%7,count=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate(),heading=formatDate(monthFormatter,date);
  const prices=Array.from({length:count},(_,i)=>{const d=month.slice(0,8)+String(i+1).padStart(2,'0');return d>=startDay&&d<=endDay?calendarPrice(d):null}),cheapest=minimumKnownPrice(prices);
  let days='<span></span>'.repeat(first);
- for(let n=1;n<=count;n++){const day=month.slice(0,8)+String(n).padStart(2,'0'),valid=day>=startDay&&day<=endDay,price=prices[n-1];days+=`<button class="month-day ${price!==null&&price===cheapest?'is-cheap':''}" data-action="day-pick" data-date="${day}" ${!valid?'disabled':''} aria-label="${dateLong(day)}${price!==null?', от '+money(price):valid?', цена пока неизвестна':''}"><span>${n}</span><small>${price!==null?shortAmount(price,true):valid?'—':''}</small></button>`;}
+ for(let n=1;n<=count;n++){const day=month.slice(0,8)+String(n).padStart(2,'0'),valid=day>=startDay&&day<=endDay,price=prices[n-1];days+=`<button class="month-day ${price!==null&&price===cheapest?'is-cheap':''}" data-action="day-pick" data-date="${day}" ${!valid?'disabled':''} aria-label="${dateLong(day)}${price!==null?', от '+money(price):valid&&!homeFormOnly?', цена пока неизвестна':''}"><span>${n}</span><small>${price!==null?shortAmount(price,true):valid&&!homeFormOnly?'—':''}</small></button>`;}
  return `<section class="calendar-month" data-month="${month}"><h3>${heading.charAt(0).toUpperCase()+heading.slice(1)}</h3><div class="month-grid">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span class="weekday">${d}</span>`).join('')}${days}</div></section>`;
 }
 function renderDateCalendar(){
@@ -1801,6 +1807,7 @@ function calendarSelectionPhase(){
  return phases.has('loading')?'loading':phases.has('error')?'error':phases.has('idle')?'idle':'complete';
 }
 function dateSelectionPriceModel(){
+ if(homeFormOnly){const error=dateRangeError(dateDraft);return {values:[],phase:error?'invalid':'complete',note:error||'Можно выбрать одну дату или диапазон вылетов.'};}
  const from=dateDraft.from,to=dateDraft.to,values=[];
  if(from&&to&&from<=to&&(dateObj(to)-dateObj(from))/86400000<=21){for(let day=from;day<=to;day=addDays(day,1)){const p=calendarPrice(day);if(Number.isFinite(p)&&p>0)values.push({day,price:p});}}
  const phase=calendarSelectionPhase();
@@ -3193,6 +3200,7 @@ function renderSearchStatus(items,total){
 }
 
 function prepareSearchRun(options={}){
+ if(homeFormOnly)return null;
  if(urlPartyIssues.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  if(needsResortCatalog(appliedDestination())){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  if(!data.preview&&destinationIds(state.filters).some(id=>!destinationHotel(id)?.legacyIds.length)){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
@@ -3227,7 +3235,7 @@ function commitSearchDraft(){
  }
  searchEditSession=null;
  const selectedDay=draftSelectedDate();
- draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=true;
+ draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=!homeFormOnly;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.hotelIds=[];state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.hotelIds=destinationIds(draftDestination);state.filters.q='';draftDestination=null;}
  rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();
@@ -3257,7 +3265,16 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  afterFailure(error,response){renderResults();window.AnyTourPublicAnalyticsV1?.failure(error,response,{searchId:data.searchId,resultsCount:hotels.length});},
  commit(event){
   if(event?.submitter?.matches('.search-submit')&&$('#search-form').hidden)return false;
-  return commitSearchDraft();
+  if(homeNavigationPending)return false;
+  const committed=commitSearchDraft();
+  if(committed===false||!homeFormOnly)return committed;
+  // Persist this document's confirmed conditions without authorizing a search.
+  // Only the canonical destination receives searched=1 and owns supplier starts.
+  const target=new URL(window.V2_CONFIG.search3PublicBase,location.origin);
+  target.search=searchURLParameters(true).toString();
+  homeNavigationPending=true;updateSearchUI();
+  try{location.assign(target.href);}catch(error){homeNavigationPending=false;updateSearchUI();toast('Не удалось открыть поиск. Попробуйте ещё раз.');}
+  return false;
  },
  afterSubmit:started=>{if(started)requestAnimationFrame(()=>{updateCompactSearch();$('#results').scrollIntoView({behavior:'instant',block:'start'});$('#results').focus({preventScroll:true});});}
 });
@@ -3489,13 +3506,14 @@ function refreshCalendarPrices(){
 function renderCalendarPrices(){
  $$('#date-calendar .calendar-month').forEach(month=>{
   const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=minimumKnownPrice(prices);
-  cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':shortAmount(price,true);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
+  cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?(homeFormOnly?'':'—'):shortAmount(price,true);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?(homeFormOnly?'':', цена пока неизвестна'):', от '+money(price)));});
  });
  renderDateSelectionPrice();
 }
 function loadCalendarPrices(){
  calendarRequest?.abort();calendarObserver?.disconnect();calendarRequest=new AbortController();const controller=calendarRequest,ctx=dateContext,loads=new Map();calendarLoads=loads;
  calendarHotels=[];calendarObservations=[];if(calendarPriceContext!==ctx)prepareCalendarBasePrices(ctx);else{calendarMonthPrices=new Map();applyCalendarPriceInventories();}renderCalendarPrices();revealCalendarMonth(true,true);
+ if(homeFormOnly){$('.date-choice-tools').setAttribute('aria-busy','false');$('[data-calendar-load-status]').textContent='Выберите удобные даты вылета';$('.calendar-legend').hidden=true;return;}
  if(!catalogReady){$('.date-choice-tools').setAttribute('aria-busy',String(!catalogError));$('[data-calendar-load-status]').hidden=false;$('[data-calendar-load-status]').textContent=catalogError?'Не удалось загрузить цены.':'Загружаем направления…';revealCalendarMonth(true,true);return;}
  const legend=()=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;const phases=[...loads.values()],node=$('.calendar-legend'),loading=phases.includes('loading');$('.date-choice-tools').setAttribute('aria-busy',String(loading));$('[data-calendar-load-status]').textContent=loading?'Открываем цены…':'Весь тур · тыс. ₽';node.hidden=!phases.includes('error');node.querySelector('span').textContent=phases.includes('error')?'Не все цены загрузились.':'';renderDateSelectionPrice();revealCalendarMonth(true,true);if(!loading)calendarOpeningAnchor=null;};
  const read=async month=>{
@@ -3575,9 +3593,10 @@ async function bootRealData(){
   }
   if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');renderCalendarScope();loadCalendarPrices();}
   await restoreURLHotel();
-  if(!data.live)await restoreSavedHotels();
+  if(!data.live&&!homeFormOnly)await restoreSavedHotels();
   if(run!==catalogLoadGeneration)return;
   updateFixtureDescription();
+  if(homeFormOnly){state.hasSearched=false;renderFilters();renderResults();updateSearchUI();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
    const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();
@@ -3604,8 +3623,9 @@ document.addEventListener('click',event=>{if(event.target.closest('[data-action=
 const initialUIRoute=history.state?.[uiHistoryKey];
 hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults();bootRealData();
 if(initialUIRoute)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
+if(homeFormOnly)addEventListener('pageshow',()=>{homeNavigationPending=false;state.hasSearched=false;updateSearchUI();});
 // The trip bar follows this document's viewport, including in the responsive preview.
-function updateCompactSearch(){compactSearchFrame=0;const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession,mobileBottom=$('.mobile-bottom'),mobileBottomClearance=(mobileBottom?.offsetHeight||68)+12;document.body.classList.toggle('mobile-results',mobileResults);document.body.classList.toggle('mobile-bottom-suspended',mobileResults&&innerWidth<=400&&scrollY<mobileBottomClearance);const bar=$('#compact-search');bar.hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;if(bar.hidden)document.documentElement.style.removeProperty('--compact-search-clearance');else document.documentElement.style.setProperty('--compact-search-clearance',(bar.offsetHeight+8)+'px');}
+function updateCompactSearch(){compactSearchFrame=0;if(homeFormOnly){$('#compact-search').hidden=true;document.documentElement.style.removeProperty('--compact-search-clearance');return;}const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession,mobileBottom=$('.mobile-bottom'),mobileBottomClearance=(mobileBottom?.offsetHeight||68)+12;document.body.classList.toggle('mobile-results',mobileResults);document.body.classList.toggle('mobile-bottom-suspended',mobileResults&&innerWidth<=400&&scrollY<mobileBottomClearance);const bar=$('#compact-search');bar.hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;if(bar.hidden)document.documentElement.style.removeProperty('--compact-search-clearance');else document.documentElement.style.setProperty('--compact-search-clearance',(bar.offsetHeight+8)+'px');}
 function scheduleCompactSearch(){if(!compactSearchFrame)compactSearchFrame=requestAnimationFrame(updateCompactSearch);}
 addEventListener('scroll',scheduleCompactSearch,{passive:true});
 addEventListener('resize',scheduleCompactSearch);
