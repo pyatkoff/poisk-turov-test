@@ -45,11 +45,11 @@ class NextUpdateContracts(local_tests.UpdateContracts):
         self.assertEqual(pub.target_functions(q)[0],target.derive)
         local = copy.deepcopy(self.event)
         local['comment']['body'] = local['comment']['body'].replace(pub.NEXT_PREFIX,pub.PREFIX)
-        local['issue']['number'] = 4217
+        local['issue']['number'] = 4709
         self.assertNotIn('preview_target',pub.checked_request(local,self.env))
 
-    def test_journal_cutover_is_only_for_next_updates(self):
-        for prefix, accepted in ((pub.NEXT_PREFIX, 4709), (pub.PREFIX, 4217)):
+    def test_current_journal_is_required_for_next_and_local_updates(self):
+        for prefix, accepted in ((pub.NEXT_PREFIX, 4709), (pub.PREFIX, 4709)):
             for number in (4709, 4217, 4708, 3419, 2530, 996, 1646):
                 event = copy.deepcopy(self.event)
                 event['comment']['body'] = event['comment']['body'].replace(pub.NEXT_PREFIX, prefix)
@@ -84,7 +84,7 @@ class NextUpdateContracts(local_tests.UpdateContracts):
 
     def test_workflow_keeps_next_and_local_journals_bound_to_their_commands(self):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/update-search3-local-preview.yml').read_text()
-        for issue, prefix in ((4217, pub.PREFIX), (4709, pub.NEXT_PREFIX)):
+        for issue, prefix in ((4709, pub.PREFIX), (4709, pub.NEXT_PREFIX)):
             self.assertRegex(workflow, r'\(github\.event\.issue\.number == ' + str(issue)
                              + r" && startsWith\(github\.event\.comment\.body, '" + re.escape(prefix) + r"'\)\)")
 
