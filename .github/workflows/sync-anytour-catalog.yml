@@ -154,7 +154,52 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru\"
-            chmod 600 \"\$root/config.php\"
+                      python3 - <<'PY'
+          import os, pathlib, stat
+          fields = ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_size',
+                    'st_mtime_ns', 'st_ctime_ns', 'st_uid', 'st_gid')
+          def stamp(value):
+              return tuple(getattr(value, key) for key in fields)
+          def require(ok):
+              if not ok:
+                  raise RuntimeError('private_config_metadata')
+          directory = file_fd = None
+          try:
+              root = pathlib.Path.home() / 'www/anytoour.ru'
+              require(root.resolve() == root)
+              directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+              parent = os.fstat(directory)
+              require(parent.st_uid == os.geteuid() and not (stat.S_IMODE(parent.st_mode) & 0o022))
+              file_fd = os.open('config.php', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+              before = os.fstat(file_fd)
+              mode = stat.S_IMODE(before.st_mode)
+              require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
+                  and before.st_uid == os.geteuid() and before.st_size > 0
+                  and (mode & 0o400) != 0 and (mode & ~0o644) == 0)
+              require(stamp(os.stat('config.php', dir_fd=directory, follow_symlinks=False)) == stamp(before))
+              if mode != 0o600:
+                  os.fchmod(file_fd, 0o600)
+              after = os.fstat(file_fd)
+              require(stat.S_IMODE(after.st_mode) == 0o600
+                      and stamp(os.stat('config.php', dir_fd=directory, follow_symlinks=False)) == stamp(after))
+              if mode == 0o600:
+                  require(stamp(after) == stamp(before))
+              else:
+                  require(all(getattr(after, key) == getattr(before, key)
+                              for key in fields if key not in ('st_mode', 'st_ctime_ns')))
+              current_parent = os.fstat(directory)
+              require(all(getattr(current_parent, key) == getattr(parent, key)
+                          for key in ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid')))
+              require(root.resolve() == root and os.stat(root, follow_symlinks=False) == current_parent)
+              print('ANYTOUR_PRIVATE_CONFIG_MODE_OK')
+          except Exception:
+              raise SystemExit('ANYTOUR_PRIVATE_CONFIG_MODE_REJECTED')
+          finally:
+              if file_fd is not None:
+                  os.close(file_fd)
+              if directory is not None:
+                  os.close(directory)
+          PY
             php -l \"\$root/data/catalog-hotel-sync-plan-v1.php\" >/dev/null
             php \"\$root/data/migrate-departures-v1.php\"
             php \"\$root/data/migrate-departure-countries-v1.php\"
