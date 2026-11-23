@@ -155,7 +155,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf
+          ref: 5ab86b95874a625f1629cb1fe504fceee5e03713
           path: hotel-price-publisher
           persist-credentials: false
       - name: Validate daily freshness and full-month TOP500 coverage
@@ -221,7 +221,7 @@ jobs:
           php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-expansion32.php
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 7245b007e8b7fe2d0c3e0fe7b60a9cdff108d0d8d7a6a7b9ef74d69d191baf3e
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = f805437cfa3b0470991959af114b1fe6cac951b888bc89cc954736decbd5deb7
           python3 tests/monitor_price_hook_workflow_test.py
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
@@ -246,7 +246,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           repository: pyatkoff/max-search-bot
-          ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf
+          ref: 5ab86b95874a625f1629cb1fe504fceee5e03713
           path: hotel-price-publisher
           persist-credentials: false
       - name: Bundle the reviewed existing publisher callback
@@ -255,7 +255,7 @@ jobs:
           set -euo pipefail
           python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
           php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 7245b007e8b7fe2d0c3e0fe7b60a9cdff108d0d8d7a6a7b9ef74d69d191baf3e
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = f805437cfa3b0470991959af114b1fe6cac951b888bc89cc954736decbd5deb7
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -627,7 +627,9 @@ jobs:
                 completed_partial=1
                 echo \"TOP500_MONTHLY_COMPLETED_PARTIAL collector_status=2\"
               fi
-              if [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
+              if grep -Fxq TOP500_MONTHLY_BUSY \"\$collector_log\"; then
+                echo PRICE_DEFERRED_COLLECTOR_BUSY
+              elif [ \"\$collector_status\" -eq 0 ] || [ \"\$completed_partial\" -eq 1 ]; then
                 hook_status=0
                 ANYTOUR_MONITOR_COLLECTION_STARTED_AT=\"\$collection_started_at\" ANYTOUR_MONITOR_COLLECTOR_RUN_ID='${{ github.run_id }}' php \"\$root/monitor-price-hook.php\" --nightly || hook_status=\$?
                 if [ \"\$hook_status\" -ne 0 ]; then

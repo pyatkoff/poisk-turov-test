@@ -68,8 +68,8 @@ class ExistingCollectorHook(unittest.TestCase):
 
     def test_price27316_compatible_bundle_is_checked_before_production_copy(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
-        expected = '7245b007e8b7fe2d0c3e0fe7b60a9cdff108d0d8d7a6a7b9ef74d69d191baf3e'
-        self.assertEqual(source.count('ref: dc84691743def1d0e6e1390c9f90999b6ccbbbdf'), 2)
+        expected = 'f805437cfa3b0470991959af114b1fe6cac951b888bc89cc954736decbd5deb7'
+        self.assertEqual(source.count('ref: 5ab86b95874a625f1629cb1fe504fceee5e03713'), 2)
         guard = 'test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' + "' '" + ' -f1)" = ' + expected
         self.assertEqual(source.count(guard), 2)
         self.assertIn('php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php', source)
@@ -270,6 +270,16 @@ if name=='monitor-price-hook.php':
         collect=next(a for a in calls if Path(a[0]).name=='top500-daily-collector-v1.php')
         self.assertIn('--budget=64',collect);self.assertIn('--months=12',collect)
         self.assertNotIn('scheduled-collector-v1.php',names)
+
+    def test_busy_collector_defers_both_price_publishers(self):
+        result, names, _ = self.run_pass(collector_stdout='TOP500_MONTHLY_BUSY\n',
+                                         promoted_installed=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('PRICE_DEFERRED_COLLECTOR_BUSY', result.stdout)
+        self.assertNotIn('monitor-price-hook.php', names)
+        self.assertNotIn('apply_promoted_hotel_prices.php', names)
+        self.assertIn('build-seo-offer-snapshots-v1.php', names)
+        self.assertIsNone(self.hook_context)
 
     def test_failed_search_does_not_start_post_edits(self):
         result,names,_=self.run_pass(collector=2)
