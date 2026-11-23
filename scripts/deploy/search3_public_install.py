@@ -7716,6 +7716,596 @@ if __name__ == '__main__':
         raise SystemExit(0)
 
 
+HOME_CHILD_INSPECT_PREFIX = '/inspect-site-home-continuation'
+HOME_CHILD_INSPECT_OPERATION = 'site-home-inspect-45089823646-v1'
+HOME_CHILD_INSPECT_ORIGINAL = {
+    'control_source_sha': 'bd851620fa4a0d932bcdbea1b9ebeff527bb1020',
+    'run_id': '45089823646',
+    'command_comment_id': 7088495946,
+    'job_id': 137416621468,
+    'terminal_comment_id': 7088724592,
+}
+HOME_CHILD_INSPECT_RECEIPT_LIMIT = 32768
+HOME_CHILD_INSPECT_CLASSIFICATIONS = ('current_before_namespace_absent','installed_sealed_current',
+    'rolled_back_sealed_current','partial_unknown','unknown')
+HOME_CHILD_INSPECT_CUSTODY = ('namespace_present','reservation_present','reservation_valid',
+    'reconciliation_present','reconciliation_valid','snapshot_present','snapshot_valid',
+    'receipt_present','receipt_valid','intents_complete','backups_complete','stages_consistent',
+    'rollback_captures_consistent')
+HOME_CHILD_INSPECT_FLAGS = ('parent_records_verified','records_stable','inventory_stable',
+    'namespaces_stable','failed_namespace_absent','protected_matches','ancestors_match')
+HOME_CHILD_INSPECT_REASONS = HOME_CHILD_REASONS + ('home_child_inspect_namespace','home_child_inspect_parent',
+    'home_child_inspect_custody','home_child_inspect_receipt','home_child_inspect_snapshot',
+    'home_child_inspect_intent','home_child_inspect_stage','home_child_inspect_restored',
+    'home_child_inspect_race','home_child_inspect_unreadable')
+
+
+def home_child_inspect_scope():
+    public,private=home_inspect_scope()
+    guarded=(set(public)|set(private)|set(HANDOFF_ORDER)|set(HOME_DEPENDENCIES))-set(HOME_ORDER)
+    need(set(private)<=guarded and len(guarded)<=512,'home_child_inspect_scope')
+    return tuple(sorted(guarded-set(private))),private
+
+
+def home_child_inspect_event_identity(event,env):
+    control=env.get('GITHUB_SHA','')
+    need(event.get('comment',{}).get('body')==
+         f'{HOME_CHILD_INSPECT_PREFIX} {control} {HOME_CHILD_INSPECT_OPERATION}','command')
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{HOME_CHILD_PREFIX} {control} {HOME_CHILD_OPERATION}'
+    identity=home_child_event_identity(synthetic,env)
+    need(identity['run_id']!=HOME_CHILD_INSPECT_ORIGINAL['run_id']
+         and identity['command_comment_id']!=HOME_CHILD_INSPECT_ORIGINAL['command_comment_id'],
+         'home_child_inspect_identity')
+    return identity
+
+
+def home_child_inspect_heads(identity):
+    home_inspect_heads(identity)
+    relation=api('/compare/'+HOME_CHILD_INSPECT_ORIGINAL['control_source_sha']+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==HOME_CHILD_INSPECT_ORIGINAL['control_source_sha'],
+         'home_child_inspect_ancestry')
+
+
+def home_child_inspect_admission(identity):
+    home_child_inspect_heads(identity);reviewed_control(identity['control_source_sha'])
+    pin=HOME_CHILD_INSPECT_ORIGINAL
+    original={k:pin[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    comments=pages('/issues/4709/comments')
+    for fixed,prefix,operation in ((HOME_INSPECT_FAILED,HOME_PREFIX,HOME_OPERATION),
+            (HOME_CHILD_INSPECTION,HOME_INSPECT_PREFIX,HOME_INSPECT_OPERATION),
+            (pin,HOME_CHILD_PREFIX,HOME_CHILD_OPERATION)):
+        _unique_update_command(comments,prefix,operation,
+            {k:fixed[k] for k in ('control_source_sha','run_id','command_comment_id')})
+    _unique_update_command(comments,HOME_CHILD_INSPECT_PREFIX,HOME_CHILD_INSPECT_OPERATION,identity)
+    need(not any(c.get('body','').strip().split()[:1] in ([HOME_ROLLBACK_PREFIX],[HOME_CHILD_ROLLBACK_PREFIX])
+                 and any(op in c.get('body','').split()[1:] for op in (HOME_ROLLBACK_OPERATION,HOME_CHILD_ROLLBACK_OPERATION))
+                 for c in comments),'home_child_inspect_rollback_present')
+    command=next(c for c in comments if c['id']==original['command_comment_id'])
+    current=next(c for c in comments if c['id']==identity['command_comment_id'])
+    terminal=next((c for c in comments if c['id']==pin['terminal_comment_id']),{})
+    for value in (command,current,terminal):
+        need(value.get('created_at')==value.get('updated_at'),'home_child_inspect_edited_command')
+        _tv_time(value.get('created_at'))
+    tokens=[str(pin[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id')]
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and all(t in terminal.get('body','') for t in tokens+['CANCELLED','UNKNOWN','CONSUMED','NO REPLAY'])
+         and _tv_time(command['created_at'])<=_tv_time(terminal['created_at'])<=_tv_time(current['created_at']),
+         'home_child_inspect_terminal')
+    run=api('/actions/runs/'+pin['run_id'])
+    need(type(run.get('id')) is int and run['id']==int(pin['run_id'])
+         and run.get('head_sha')==pin['control_source_sha'] and run.get('head_branch')=='main'
+         and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='cancelled'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO
+         and _tv_time(command['created_at'])<=_tv_time(run.get('created_at'))<=_tv_time(command['created_at'])+300,
+         'home_child_inspect_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and type(jobs[0].get('id')) is int and jobs[0]['id']==pin['job_id']
+         and type(jobs[0].get('run_id')) is int and jobs[0]['run_id']==int(pin['run_id'])
+         and jobs[0].get('status')=='completed' and jobs[0].get('conclusion')=='cancelled','home_child_inspect_job')
+    steps=[s for s in jobs[0].get('steps',[]) if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]
+    need(len(steps)==1 and steps[0].get('name')=='Run python3 scripts/deploy/search3_public_install.py home-continue'
+         and steps[0].get('status')=='completed' and steps[0].get('conclusion')=='cancelled'
+         and _tv_time(run.get('created_at'))<=_tv_time(run.get('run_started_at'))
+         <=_tv_time(steps[0].get('started_at'))<=_tv_time(steps[0].get('completed_at'))
+         <=_tv_time(run.get('updated_at'))<=_tv_time(terminal['created_at']),'home_child_inspect_step')
+    need(not pages('/actions/runs/'+pin['run_id']+'/artifacts','artifacts'),'home_child_inspect_artifact_present')
+    home_child_writer_quiescence()
+    # The previous reader's immutable artifact supplies the already accepted
+    # COUNTRY lineage. It is read, never rerun; this cancelled child has no artifact.
+    inspection=home_child_inspection_evidence(download(HOME_CHILD_INSPECTION['artifact_id'],HOME_CHILD_INSPECTION['artifact_sha256']))
+    home_child_inspect_heads(identity)
+    return inspection
+
+
+HOME_CHILD_INSPECT_REMOTE = r'''
+def home_child_inspect_json(raw):
+ value=json.loads(raw)
+ require(raw==canonical(value),'home_child_inspect_custody')
+ return value
+def home_child_inspect_namespaces():
+ site_continuation_namespace_absent()
+ absent=(REFACTOR_ROLLBACK_OPERATION,HANDOFF_ROLLBACK_OPERATION,OBSERVE_OLD_HOME,OBSERVE_OLD_ROLLBACK,
+         OBSERVE_OLD_READER,HOME_ROLLBACK_OPERATION,OBSERVE_OPERATION)
+ state={}
+ for operation in absent+(HOME_POLICY['operation'],):
+  with base.parent(operation) as (fd,name):
+   try:s=os.stat(name,dir_fd=fd,follow_symlinks=False)
+   except FileNotFoundError:state[operation]=None;continue
+   require(operation==HOME_POLICY['operation'] and stat.S_ISDIR(s.st_mode)
+           and stat.S_IMODE(s.st_mode)==0o700 and s.st_uid==os.getuid(),'home_child_inspect_namespace')
+   state[operation]=stamp(s)
+ return state
+def home_child_inspect_parent():
+ records=site_read_records(handed,HANDOFF_PREPARED_PATHS+('result.json',))
+ value=lambda p:home_child_inspect_json(records[p][2])
+ require(value('reservation.json')=={'operation':HANDOFF_POLICY['operation'],**HANDOFF_ORIGINAL,
+         'source':HANDOFF_POLICY['source'],'manifest':HANDOFF_POLICY['manifest'],'parent_refactor':REFACTOR_ORIGINAL}
+         and value('result.json')==HANDOFF_ACCEPTED,'home_child_inspect_parent')
+ snapshot=value('snapshot/manifest.json')
+ scope=((set(POLICY['expected'])|set(checked_protected_paths())|set(SITE_POLICY['dependencies'])
+         |set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order']))-set(HANDOFF_POLICY['order']))
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_refactor','before','guarded','ancestors'}
+         and snapshot['source']==HANDOFF_POLICY['source'] and snapshot['manifest']==HANDOFF_POLICY['manifest']
+         and snapshot['parent_refactor']==REFACTOR_ORIGINAL and set(snapshot['before'])==set(HANDOFF_POLICY['order'])
+         and set(snapshot['guarded'])==scope and set(snapshot['ancestors'])==set(OBSERVE_ANCESTORS[:7])
+         and digest(records['snapshot/manifest.json'][2])==HOME_POLICY['parent']['snapshot_manifest_sha256'],
+         'home_child_inspect_parent')
+ return records,snapshot
+def home_child_inspect_records():
+ if homed is None:return {}
+ rows={}
+ for path in OBSERVE_RECORD_PATHS:
+  content=path in ('reservation.json','reconciliation.json','snapshot/manifest.json','result.json') or path.startswith('intent-')
+  value=homed.read(path,content);row,identity,_=value
+  mode='0600' if content else '0644'
+  require(row=={'state':'absent'} or row.get('mode')==mode and identity[6]==os.getuid(),'home_child_inspect_custody')
+  rows[path]=value
+ return rows
+def home_child_inspect_pass():
+ namespaces=home_child_inspect_namespaces()
+ records,parent=home_child_inspect_parent()
+ refactor_expected({p:r[0] for p,r in parent['guarded'].items()})
+ custody=home_child_inspect_records()
+ scope=tuple(sorted(set(OBSERVE_PUBLIC)|set(private_labels())|set(HOME_POLICY['order'])))
+ observed=continuation_inventory(public,scope)
+ ancestors=home_ancestor_inventory()
+ require(set(ancestors)==set(OBSERVE_ANCESTORS),'home_child_inspect_parent')
+ tv_successor_stable()
+ return {'namespaces':namespaces,'parent_records':records,'parent':parent,'custody':custody,
+         'observed':observed,'ancestors':ancestors}
+def home_child_inspect_receipt(value):
+ fixed={'schema_version':1,'operation_id':HOME_POLICY['operation'],'source_sha':HOME_POLICY['source'],
+        'manifest_sha256':HOME_POLICY['manifest'],**OBSERVE_IDENTITY,'parent_handoff':HANDOFF_ORIGINAL,
+        'parent_receipt_sha256':HOME_POLICY['parent']['receipt_sha256'],'continuation':CHILD_PROVENANCE}
+ counters=('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+ flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+        'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent',
+        'reconciliation_verified','lineage_persisted')
+ required=set(fixed)|set(counters)|set(flags)|{'status','phase','written_files','rollback_files',
+          'snapshot_manifest_sha256','restored_guard','reconciliation_sha256','private_checks'}
+ require(isinstance(value,dict) and required<=set(value)<=required|{'reason'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items())
+         and all(type(value[k]) is int and value[k]==0 for k in counters)
+         and all(type(value[k]) is bool for k in flags),'home_child_inspect_receipt')
+ require(value['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','home_navigation_updated_verified')
+         and value['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in value or value['reason'] in OBSERVE_CHILD_REASONS),'home_child_inspect_receipt')
+ written=value['written_files'];restored=value['rollback_files'];order=HOME_POLICY['order']
+ require(isinstance(written,list) and written in [list(order[:i]) for i in range(len(order)+1)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored)
+         and len(restored)==len(set(restored)) and all(p in written for p in restored)
+         and restored==[p for p in reversed(written) if p in restored],'home_child_inspect_receipt')
+ for key in ('snapshot_manifest_sha256','reconciliation_sha256'):
+  v=value[key];require(v is None or isinstance(v,str) and len(v)==64 and all(c in '0123456789abcdef' for c in v),
+                      'home_child_inspect_receipt')
+ verified=value['reconciliation_verified']
+ require(isinstance(value['private_checks'],dict) and set(value['private_checks'])=={'public_config'}
+         and type(value['private_checks']['public_config']) is bool and value['private_checks']['public_config']==verified
+         and verified==(value['reconciliation_sha256'] is not None)
+         and (not value['lineage_persisted'] or verified),'home_child_inspect_receipt')
+ if value['status']=='blocked_no_replay':
+  require(not value['reservation_created'] and value['phase']=='preflight' and not written and not restored,'home_child_inspect_receipt')
+ if value['status'] in ('home_navigation_updated_verified','rolled_back_no_replay'):
+  require(value['phase']=='complete' and all(value[k] for k in ('reservation_created','protected_unchanged',
+          'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','failed_namespace_absent')),
+          'home_child_inspect_receipt')
+ if written or value['status']=='home_navigation_updated_verified':
+  require(verified and value['lineage_persisted'],'home_child_inspect_receipt')
+ if value['status']=='home_navigation_updated_verified':
+  require(all(value[k] for k in flags) and value['snapshot_manifest_sha256'] is not None and 'reason' not in value
+          and written==list(order) and not restored and value['restored_guard'] is None,'home_child_inspect_receipt')
+ elif value['status']=='rolled_back_no_replay':
+  require(restored==list(reversed(written)) and isinstance(value['restored_guard'],dict)
+          and set(value['restored_guard'])==set(order),'home_child_inspect_receipt')
+  for path,row in value['restored_guard'].items():
+   require(isinstance(row,list) and len(row)==2 and row[0]==HOME_POLICY['targets'][path]['before'],'home_child_inspect_receipt')
+   home_before_identity(row[1],row[0])
+ elif value['status']!='unknown_no_replay':require(value['restored_guard'] is None,'home_child_inspect_receipt')
+ return value
+def home_child_inspect_custody(view):
+ rows=view['custody'];flags=result['custody'];flags['namespace_present']=bool(rows)
+ for key,path in (('reservation','reservation.json'),('reconciliation','reconciliation.json'),
+                  ('snapshot','snapshot/manifest.json'),('receipt','result.json')):
+  flags[key+'_present']=bool(rows) and rows[path][0]!={'state':'absent'}
+ if not rows:return None,None
+ decoded={}
+ for key,path in (('reservation','reservation.json'),('reconciliation','reconciliation.json'),
+                  ('snapshot','snapshot/manifest.json'),('receipt','result.json')):
+  if flags[key+'_present']:decoded[key]=home_child_inspect_json(rows[path][2])
+ if 'reservation' in decoded:
+  require(decoded['reservation']=={'operation':HOME_POLICY['operation'],**OBSERVE_IDENTITY,
+          'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL},
+          'home_child_inspect_custody');flags['reservation_valid']=True
+ if 'receipt' in decoded:
+  receipt=home_child_inspect_receipt(decoded['receipt']);flags['receipt_valid']=True
+  result.update(retained_status=receipt['status'],retained_written_files=receipt['written_files'],
+                retained_rollback_files=receipt['rollback_files'],retained_result_sha256=digest(rows['result.json'][2]))
+ else:receipt=None
+ if 'reconciliation' in decoded:
+  home_child_validate_binding(decoded['reconciliation']);flags['reconciliation_valid']=True
+  result['reconciliation_sha256']=digest(rows['reconciliation.json'][2])
+ if 'snapshot' not in decoded:return None,receipt
+ snapshot=decoded['snapshot'];order=HOME_POLICY['order'];targets=HOME_POLICY['targets']
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_handoff','before','guarded','ancestors'}
+         and snapshot['source']==HOME_POLICY['source'] and snapshot['manifest']==HOME_POLICY['manifest']
+         and snapshot['parent_handoff']==HANDOFF_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==set(OBSERVE_PUBLIC)|set(private_labels())
+         and set(snapshot['ancestors'])==set(OBSERVE_ANCESTORS),'home_child_inspect_snapshot')
+ require(flags['reconciliation_valid'],'home_child_inspect_snapshot')
+ home_child_validate_binding(decoded['reconciliation'],snapshot['guarded'])
+ # An internally rehashed record must still descend from the independently
+ # pinned COUNTRY snapshot. Only the already persisted five-row transition
+ # and the separately authenticated TV successor may differ from that origin.
+ accepted=decoded['reconciliation']['accepted'];parent=view['parent']
+ for path,old in parent['guarded'].items():
+  if path in order:
+   require(snapshot['before'][path]==old,'home_child_inspect_snapshot');continue
+  expected=accepted.get(path,old)
+  if TV_SUCCESSOR_PROOF is not None and path==TV_SUCCESSOR['path']:
+   expected=[_tv_successor_bound['target'][0],list(_tv_successor_bound['target'][1])]
+  require(snapshot['guarded'].get(path)==expected,'home_child_inspect_snapshot')
+ require(all(snapshot['ancestors'][g]==parent['ancestors'][g] for g in OBSERVE_ANCESTORS[:7])
+         and snapshot['ancestors']['handoff']==refactor_stamp_rows(view['parent_records']),
+         'home_child_inspect_snapshot')
+ for index,path in enumerate(HANDOFF_POLICY['order']):
+  target=HANDOFF_POLICY['targets'][path];before=parent['before'][path]
+  intent=home_child_inspect_json(view['parent_records']['intent-'+str(index)][2])
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==target['before'] and intent['after']==target['after']
+          and intent['previous_identity']==before[1],'home_child_inspect_snapshot')
+  newer=checked_stamp(intent['new_identity'],target['after']);prior=snapshot['ancestors']['handoff_stage'].get(path)
+  guarded=snapshot['guarded'].get(path)
+  require(isinstance(prior,list) and len(prior)==2 and prior[0]==before[0]
+          and prior[1] is not None and prior[1][:-1]==before[1][:-1]
+          and isinstance(guarded,list) and len(guarded)==2 and guarded[0]==target['after']
+          and checked_stamp(guarded[1],guarded[0])[:-1]==newer[:-1],'home_child_inspect_snapshot')
+ for path,row in HOME_POLICY['dependencies'].items():
+  require(path in snapshot['guarded'] and snapshot['guarded'][path][0]==row,'home_child_inspect_snapshot')
+ for path,before in snapshot['before'].items():
+  require(isinstance(before,list) and len(before)==2 and before[0]==targets[path]['before'],'home_child_inspect_snapshot')
+  home_before_identity(before[1],before[0])
+ flags['snapshot_valid']=True;result['snapshot_manifest_sha256']=digest(rows['snapshot/manifest.json'][2])
+ if receipt is not None:
+  require(receipt['snapshot_manifest_sha256']==result['snapshot_manifest_sha256']
+          and receipt['reconciliation_sha256']==result['reconciliation_sha256']
+          and receipt['lineage_persisted'] and flags['reservation_valid'],'home_child_inspect_custody')
+ intents={};flags['backups_complete']=True
+ for index,path in enumerate(order):
+  flags['backups_complete'] &= all(rows[p+str(index)][0]==home_backup_row(path) for p in ('snapshot/','drill/'))
+  raw=rows['intent-'+str(index)]
+  if raw[0]=={'state':'absent'}:continue
+  intent=home_child_inspect_json(raw[2])
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==targets[path]['before'] and intent['after']==targets[path]['after']
+          and intent['previous_identity']==snapshot['before'][path][1],'home_child_inspect_intent')
+  checked_stamp(intent['new_identity'],targets[path]['after']);intents[path]=intent
+ flags['intents_complete']=len(intents)==len(order)
+ if receipt is None or receipt['status'] not in ('home_navigation_updated_verified','rolled_back_no_replay'):
+  return snapshot,receipt
+ # A sealed classification requires complete preparation. An early recovered
+ # attempt with incomplete records remains partial_unknown, without inventing custody.
+ if not flags['backups_complete'] or not flags['intents_complete']:return snapshot,receipt
+ rolled=receipt['status']=='rolled_back_no_replay';written=receipt['written_files']
+ flags['stages_consistent']=True;flags['rollback_captures_consistent']=True
+ for index,path in enumerate(order):
+  target=targets[path];before=snapshot['before'][path];old=home_before_identity(before[1],before[0])
+  new=checked_stamp(intents[path]['new_identity'],target['after']);current=view['observed'][path]
+  stage=rows['stage/'+str(index)][:2];capture=rows['rollback/'+str(index)][:2]
+  require(rows['rollback/conflict-'+str(index)][0]=={'state':'absent'},'home_child_inspect_stage')
+  if not rolled:
+   flags['stages_consistent'] &= (current[0]==target['after'] and current[1] is not None
+        and current[1][:-1]==new[:-1] and home_same_original(stage,(before[0],old)))
+   flags['rollback_captures_consistent'] &= capture==({'state':'absent'},None)
+  else:
+   restored=receipt['restored_guard'][path]
+   require(current==(restored[0],tuple(restored[1]) if restored[1] is not None else None)
+           and home_same_original(current,(before[0],old)),'home_child_inspect_restored')
+   if path in written:
+    flags['stages_consistent'] &= stage==({'state':'absent'},None)
+    flags['rollback_captures_consistent'] &= (capture[0]==target['after'] and capture[1] is not None and capture[1][:-1]==new[:-1])
+   else:
+    flags['stages_consistent'] &= (stage[0]==target['after'] and stage[1] is not None and stage[1][:-1]==new[:-1]
+                                  and restored==before)
+    flags['rollback_captures_consistent'] &= capture==({'state':'absent'},None)
+ return snapshot,receipt
+def home_child_inspect_compare(view,snapshot):
+ labels=private_labels();observed=view['observed'];parent=view['parent']
+ if snapshot is None:
+  saved={p:r for p,r in parent['guarded'].items() if p not in HOME_POLICY['order']}
+  result['protected_reference']='parent'
+ else:saved=snapshot['guarded'];result['protected_reference']='child_snapshot'
+ expected=refactor_expected({p:r[0] for p,r in saved.items()})
+ for path in tuple(OBSERVE_PUBLIC)+tuple(labels):
+  current=observed[path];row=current[0];readable=row.get('state')!='unreadable'
+  wanted=expected.get(path,HOME_POLICY['dependencies'].get(path,HANDOFF_POLICY['targets'].get(path,{}).get('after')))
+  previous=saved.get(path)
+  if TV_SUCCESSOR_PROOF is not None and path==TV_SUCCESSOR['path']:previous=_tv_successor_bound['target']
+  same=previous is not None and current==(previous[0],tuple(previous[1]) if previous[1] is not None else None)
+  check={'readable':readable,'matches_row':readable and row==wanted,'matches_identity':bool(same)}
+  if path in labels:result['private_checks'][labels[path]]=check
+  elif not all(check.values()):result['protected_mismatches'].append({'path':path,**check})
+ result['protected_matches']=not result['protected_mismatches'] and all(all(r.values()) for r in result['private_checks'].values())
+ for group in OBSERVE_ANCESTORS:
+  if snapshot is not None:matches=view['ancestors'][group]==snapshot['ancestors'][group]
+  elif group in parent['ancestors']:matches=view['ancestors'][group]==parent['ancestors'][group]
+  elif group=='handoff':matches=view['ancestors'][group]==refactor_stamp_rows(view['parent_records'])
+  else:
+   matches=True
+   for index,path in enumerate(HANDOFF_POLICY['order']):
+    prior=view['ancestors'][group].get(path);before=parent['before'][path]
+    matches &= (isinstance(prior,list) and len(prior)==2 and prior[0]==before[0]
+                and prior[1] is not None and prior[1][:-1]==before[1][:-1])
+  result['ancestor_checks'][group]={'matches':bool(matches),'stable':False}
+ result['ancestors_match']=all(r['matches'] for r in result['ancestor_checks'].values())
+result={'schema_version':1,'operation_id':OBSERVE_OPERATION,'source_sha':HOME_POLICY['source'],
+        'manifest_sha256':HOME_POLICY['manifest'],**IDENTITY,'original_cancelled':OBSERVE_ORIGINAL,
+        'parent_handoff':HANDOFF_ORIGINAL,'parent_receipt_sha256':HOME_POLICY['parent']['receipt_sha256'],
+        'read_only':True,'counter_scope':'observer_only','original_process_liveness':'unknown',
+        'historical_zero_write_proven':False,'future_writer_authorized':False,
+        'server_writes':0,'supplier_calls':0,'database_reads':0,'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
+        'status':'inspection_blocked','phase':'preflight','classification':'unknown',
+        **{k:False for k in OBSERVE_FLAGS},'custody':{k:False for k in OBSERVE_CUSTODY},'custody_reason':None,
+        'target_checks':[],'checked_public_paths':[],'protected_reference':'parent','protected_mismatches':[],
+        'private_checks':{},'ancestor_checks':{},'retained_status':None,'retained_written_files':[],
+        'retained_rollback_files':[],'retained_result_sha256':None,'snapshot_manifest_sha256':None,'reconciliation_sha256':None}
+public=base=original=updated=published=refactored=handed=homed=None
+try:
+ home=os.environ.get('HOME','');public=Files(home+'/www/anytoour.ru')
+ base=Files(home+'/.anytoour-search3-root-gateway');private_root(base)
+ original=Files(home+'/.anytoour-search3-root-gateway/'+POLICY['operation']);private_root(original)
+ updated=Files(home+'/.anytoour-search3-root-gateway/'+UPDATE_POLICY['operation']);private_root(updated)
+ published=Files(home+'/.anytoour-search3-root-gateway/'+SITE_POLICY['operation']);private_root(published)
+ refactored=Files(home+'/.anytoour-search3-root-gateway/'+REFACTOR_POLICY['operation']);private_root(refactored)
+ handed=Files(home+'/.anytoour-search3-root-gateway/'+HANDOFF_POLICY['operation']);private_root(handed)
+ initial_namespaces=home_child_inspect_namespaces()
+ if initial_namespaces[HOME_POLICY['operation']] is not None:
+  homed=Files(home+'/.anytoour-search3-root-gateway/'+HOME_POLICY['operation']);private_root(homed)
+ first=home_child_inspect_pass()
+ result['parent_records_verified']=True
+ require(all(r[0].get('state')!='unreadable' for r in first['observed'].values()),'home_child_inspect_unreadable')
+ for path in HOME_POLICY['order']:
+  row=first['observed'][path][0];target=HOME_POLICY['targets'][path]
+  result['target_checks'].append({'path':path,'observed':row,'matches_before':row==target['before'],'matches_after':row==target['after']})
+ result['checked_public_paths']=list(OBSERVE_PUBLIC)
+ snapshot=receipt=None
+ try:snapshot,receipt=home_child_inspect_custody(first)
+ except Exception as error:
+  result['custody_reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'home_child_inspect_custody'
+ home_child_inspect_compare(first,snapshot)
+ # Finish semantic validation before the confirming pass. No first observation
+ # becomes authority if any record, namespace, target or protected stamp moved.
+ second=home_child_inspect_pass()
+ result['records_stable']=(first['parent_records']==second['parent_records'] and first['custody']==second['custody']
+                           and first['ancestors']==second['ancestors'])
+ result['inventory_stable']=first['observed']==second['observed']
+ result['namespaces_stable']=initial_namespaces==first['namespaces']==second['namespaces']
+ for group,row in result['ancestor_checks'].items():row['stable']=first['ancestors'][group]==second['ancestors'][group]
+ require(result['records_stable'] and result['inventory_stable'] and result['namespaces_stable'],'home_child_inspect_race')
+ if not result['custody']['namespace_present']:
+  if all(r['matches_before'] for r in result['target_checks']):result['classification']='current_before_namespace_absent'
+ else:
+  result['classification']='partial_unknown'
+  sealed=(result['custody_reason'] is None and all(result['custody'].values()) and result['protected_matches']
+          and result['ancestors_match'] and receipt is not None)
+  if sealed and receipt['status']=='home_navigation_updated_verified':result['classification']='installed_sealed_current'
+  elif sealed and receipt['status']=='rolled_back_no_replay':result['classification']='rolled_back_sealed_current'
+ tv_successor_stable()
+ result.update(status='inspection_complete',phase='complete')
+except Exception as error:
+ result['status']='inspection_unknown' if result['parent_records_verified'] else 'inspection_blocked'
+ result['classification']='unknown'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ for store in (homed,handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+def home_child_inspect_remote_program(identity,inspection_value,*,tv_successor=None):
+    home_child_runtime_identity(identity)
+    need(identity['run_id']!=HOME_CHILD_INSPECT_ORIGINAL['run_id']
+         and identity['command_comment_id']!=HOME_CHILD_INSPECT_ORIGINAL['command_comment_id'],'home_child_inspect_identity')
+    parent=home_child_inspection_value(inspection_value)
+    public,_=home_child_inspect_scope()
+    original={k:HOME_CHILD_INSPECT_ORIGINAL[k] for k in ('control_source_sha','run_id','command_comment_id')}
+    # Only these two existing functions read an already persisted reconciliation.
+    # The first-time binder and all child install/recovery bodies are excluded.
+    selected={'home_child_origin','home_child_validate_binding'}
+    nodes=[n for n in ast.parse(HOME_CHILD_COMMON_REMOTE).body if isinstance(n,ast.FunctionDef) and n.name in selected]
+    need({n.name for n in nodes}==selected,'home_child_inspect_template')
+    binding='\n'.join(ast.get_source_segment(HOME_CHILD_COMMON_REMOTE,n) for n in nodes)
+    paths=('reservation.json','reconciliation.json','snapshot/manifest.json','result.json')+tuple(
+        prefix+str(i) for i in range(len(HOME_ORDER)) for prefix in ('snapshot/','drill/','intent-','stage/','rollback/','rollback/conflict-'))
+    program=(_home_program_prefix(home_policy(),identity,parent,tv_successor)
+        +'\nHOME_POLICY='+repr(home_child_policy())+'\nHOME_ROLLBACK_OPERATION='+repr(HOME_CHILD_ROLLBACK_OPERATION)
+        +'\nCHILD_PROVENANCE='+repr(home_child_provenance())+'\nCHILD_PUBLIC_DRIFT='+repr(HOME_CHILD_PUBLIC_DRIFT)
+        +'\nOBSERVE_ORIGINAL='+repr(HOME_CHILD_INSPECT_ORIGINAL)+'\nOBSERVE_IDENTITY='+repr(original)
+        +'\nOBSERVE_OPERATION='+repr(HOME_CHILD_INSPECT_OPERATION)+'\nOBSERVE_PUBLIC='+repr(public)
+        +'\nOBSERVE_ANCESTORS='+repr(HOME_INSPECT_ANCESTORS+('handoff','handoff_stage'))
+        +'\nOBSERVE_RECORD_PATHS='+repr(paths)+'\nOBSERVE_FLAGS='+repr(HOME_CHILD_INSPECT_FLAGS)
+        +'\nOBSERVE_CUSTODY='+repr(HOME_CHILD_INSPECT_CUSTODY)+'\nOBSERVE_CHILD_REASONS='+repr(HOME_CHILD_REASONS)
+        +'\nOBSERVE_OLD_HOME='+repr(HOME_OPERATION)+'\nOBSERVE_OLD_ROLLBACK='+repr(HOME_ROLLBACK_OPERATION)
+        +'\nOBSERVE_OLD_READER='+repr(HOME_INSPECT_OPERATION)
+        +'\ndef re_safe(value): return value in '+repr(HOME_CHILD_INSPECT_REASONS)+'\n'+binding+'\n'+HOME_CHILD_INSPECT_REMOTE)
+    ast.parse(program);return program
+
+
+def valid_home_child_inspect_result(identity,result):
+    home_child_runtime_identity(identity)
+    need(identity['run_id']!=HOME_CHILD_INSPECT_ORIGINAL['run_id']
+         and identity['command_comment_id']!=HOME_CHILD_INSPECT_ORIGINAL['command_comment_id'],'home_child_inspect_identity')
+    fixed={'schema_version':1,'operation_id':HOME_CHILD_INSPECT_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_child_policy()['manifest'],**identity,'original_cancelled':HOME_CHILD_INSPECT_ORIGINAL,
+        'parent_handoff':home_parent_identity(),'parent_receipt_sha256':HOME_PARENT['receipt_sha256'],
+        'read_only':True,'counter_scope':'observer_only','original_process_liveness':'unknown',
+        'historical_zero_write_proven':False,'future_writer_authorized':False}
+    counters=('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    fields={'status','phase','classification','custody','custody_reason','target_checks','checked_public_paths',
+        'protected_reference','protected_mismatches','private_checks','ancestor_checks','retained_status',
+        'retained_written_files','retained_rollback_files','retained_result_sha256','snapshot_manifest_sha256','reconciliation_sha256'}
+    required=set(fixed)|set(counters)|set(HOME_CHILD_INSPECT_FLAGS)|fields
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'home_child_inspect_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and result[k]==v for k,v in fixed.items()),'home_child_inspect_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters),'home_child_inspect_receipt_counters')
+    need(all(type(result[k]) is bool for k in HOME_CHILD_INSPECT_FLAGS),'home_child_inspect_receipt_flags')
+    need(result['status'] in ('inspection_complete','inspection_blocked','inspection_unknown')
+         and result['phase'] in ('preflight','complete') and result['classification'] in HOME_CHILD_INSPECT_CLASSIFICATIONS
+         and result['protected_reference'] in ('parent','child_snapshot')
+         and ('reason' not in result or result['reason'] in HOME_CHILD_INSPECT_REASONS)
+         and (result['custody_reason'] is None or result['custody_reason'] in HOME_CHILD_INSPECT_REASONS),
+         'home_child_inspect_receipt_status')
+    def booleans(value,keys):
+        need(isinstance(value,dict) and set(value)==set(keys) and all(type(value[k]) is bool for k in keys),
+             'home_child_inspect_boolean_fields')
+    booleans(result['custody'],HOME_CHILD_INSPECT_CUSTODY);custody=result['custody']
+    for name in ('reservation','reconciliation','snapshot','receipt'):
+        need(not custody[name+'_valid'] or custody[name+'_present'],'home_child_inspect_custody')
+    need(custody['namespace_present'] or not any(custody.values()),'home_child_inspect_custody')
+    public,private=home_child_inspect_scope();ancestors=HOME_INSPECT_ANCESTORS+('handoff','handoff_stage')
+    need(result['checked_public_paths'] in ([],list(public)),'home_child_inspect_scope')
+    targets=result['target_checks'];need(isinstance(targets,list) and len(targets) in (0,len(HOME_ORDER)),'home_child_inspect_targets')
+    for index,row in enumerate(targets):
+        need(isinstance(row,dict) and set(row)=={'path','observed','matches_before','matches_after'}
+             and row['path']==HOME_ORDER[index] and type(row['matches_before']) is bool and type(row['matches_after']) is bool,
+             'home_child_inspect_targets')
+        observed=row['observed'];need(isinstance(observed,dict),'home_child_inspect_targets')
+        if observed!={'state':'absent'}:
+            need(set(observed)=={'state','sha256','size','mode'} and observed['state']=='present'
+                 and isinstance(observed['sha256'],str) and re.fullmatch('[a-f0-9]{64}',observed['sha256'])
+                 and type(observed['size']) is int and 0<=observed['size']<=MAX_BYTES
+                 and isinstance(observed['mode'],str) and re.fullmatch('[0-7]{4}',observed['mode']),'home_child_inspect_targets')
+        need(row['matches_before']==(observed==HOME_TARGETS[row['path']]['before'])
+             and row['matches_after']==(observed==HOME_TARGETS[row['path']]['after']),'home_child_inspect_targets')
+    checks=('readable','matches_row','matches_identity');seen=set()
+    need(isinstance(result['protected_mismatches'],list) and len(result['protected_mismatches'])<=len(public),
+         'home_child_inspect_public_scope')
+    for value in result['protected_mismatches']:
+        need(isinstance(value,dict) and set(value)=={'path',*checks} and value['path'] in public and value['path'] not in seen,
+             'home_child_inspect_public_scope');seen.add(value['path'])
+        booleans({k:value[k] for k in checks},checks)
+        need(not all(value[k] for k in checks),'home_child_inspect_comparison')
+    need(isinstance(result['private_checks'],dict) and set(result['private_checks'])<=set(private.values())
+         and isinstance(result['ancestor_checks'],dict) and set(result['ancestor_checks'])<=set(ancestors),
+         'home_child_inspect_comparison_scope')
+    for value in result['private_checks'].values():booleans(value,checks)
+    for value in result['ancestor_checks'].values():booleans(value,('matches','stable'))
+    for key,flag in (('retained_result_sha256','receipt_valid'),('snapshot_manifest_sha256','snapshot_valid'),
+                     ('reconciliation_sha256','reconciliation_valid')):
+        value=result[key]
+        need((isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value)) if custody[flag] else value is None,
+             'home_child_inspect_digest')
+    written=result['retained_written_files'];restored=result['retained_rollback_files']
+    need(isinstance(written,list) and written in [list(HOME_ORDER[:i]) for i in range(len(HOME_ORDER)+1)]
+         and isinstance(restored,list) and all(isinstance(p,str) for p in restored)
+         and len(restored)==len(set(restored)) and all(p in written for p in restored)
+         and restored==[p for p in reversed(written) if p in restored],'home_child_inspect_retained_paths')
+    need(result['retained_status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','home_navigation_updated_verified')
+         if custody['receipt_valid'] else result['retained_status'] is None and not written and not restored,
+         'home_child_inspect_retained_status')
+    complete=result['status']=='inspection_complete';classification=result['classification']
+    if complete:
+        need(result['phase']=='complete' and 'reason' not in result and len(targets)==len(HOME_ORDER)
+             and result['checked_public_paths']==list(public) and set(result['private_checks'])==set(private.values())
+             and set(result['ancestor_checks'])==set(ancestors)
+             and all(result[k] for k in ('parent_records_verified','records_stable','inventory_stable','namespaces_stable','failed_namespace_absent'))
+             and all(r['readable'] for r in result['private_checks'].values())
+             and all(r['readable'] for r in result['protected_mismatches'])
+             and all(r['stable'] for r in result['ancestor_checks'].values()),'home_child_inspect_incomplete')
+        need(result['protected_matches']==(not result['protected_mismatches'] and all(all(r.values()) for r in result['private_checks'].values()))
+             and result['ancestors_match']==all(r['matches'] for r in result['ancestor_checks'].values()),'home_child_inspect_comparison')
+        if classification in ('installed_sealed_current','rolled_back_sealed_current'):
+            rolled=classification=='rolled_back_sealed_current'
+            need(all(custody.values()) and result['custody_reason'] is None and result['protected_reference']=='child_snapshot'
+                 and result['protected_matches'] and result['ancestors_match']
+                 and result['retained_status']==('rolled_back_no_replay' if rolled else 'home_navigation_updated_verified')
+                 and all(r['matches_before' if rolled else 'matches_after'] for r in targets)
+                 and (restored==list(reversed(written)) if rolled else written==list(HOME_ORDER) and not restored),
+                 'home_child_inspect_sealed')
+        elif classification=='partial_unknown':need(custody['namespace_present'],'home_child_inspect_classification')
+        else:
+            need(not custody['namespace_present'] and classification==
+                 ('current_before_namespace_absent' if all(r['matches_before'] for r in targets) else 'unknown'),
+                 'home_child_inspect_classification')
+    else:
+        need(result['phase']=='preflight' and classification=='unknown' and 'reason' in result
+             and result['parent_records_verified']==(result['status']=='inspection_unknown'),'home_child_inspect_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode())<=HOME_CHILD_INSPECT_RECEIPT_LIMIT,'home_child_inspect_receipt_limit')
+    return complete
+
+
+def home_child_inspect():
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'inspection_blocked','operation_id':HOME_CHILD_INSPECT_OPERATION,'source_sha':HOME_SOURCE,
+        'manifest_sha256':home_child_policy()['manifest'],'read_only':True,'phase':'identity','ssh_started':False,
+        'original_cancelled':HOME_CHILD_INSPECT_ORIGINAL,'original_process_liveness':'unknown',
+        'historical_zero_write_proven':False,'future_writer_authorized':False}
+    complete=False
+    try:
+        identity=home_child_inspect_event_identity(json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+        evidence.update(identity,phase='admission');inspection=home_child_inspect_admission(identity);evidence['phase']='artifact'
+        dependency=tv_successor_evidence()
+        program=home_child_inspect_remote_program(identity,inspection,tv_successor=dependency)
+        evidence['inspection_evidence']=inspection
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
+                 '-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        need(home_child_inspect_admission(identity)==inspection,'home_child_inspect_evidence_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='inspection_unknown',phase='remote',ssh_started=True)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=HOME_CHILD_INSPECT_RECEIPT_LIMIT,'home_child_inspect_receipt_limit')
+        result=_tv_json(response);complete=valid_home_child_inspect_result(identity,result);evidence['remote']=result
+        home_child_inspect_heads(identity);evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'HomeChildInspectionError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+        (work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    print(json.dumps(evidence,sort_keys=True));need(complete,'home_child_inspection_not_complete')
+
+
+# A separate exact dispatcher preserves every consumed controller node.
+if __name__ == '__main__':
+    import sys as _home_child_inspect_sys
+    if _home_child_inspect_sys.argv[1:]==['home-continue-inspect']:
+        home_child_inspect()
+        raise SystemExit(0)
+
+
 def command_mode(arguments):
     if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'
