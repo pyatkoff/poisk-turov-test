@@ -4671,7 +4671,7 @@ class Local7CurrentRegistrationTest(unittest.TestCase):
                 safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound,
                 fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)))
             exec(m.LOCAL7_VALIDATOR+m.LOCAL7_CURRENT_VALIDATOR+m.LOCAL7_CURRENT_HANDLER,space)
-            raw=m.l7_json(self.filled());calls=[]
+            raw=b' '*1100000+m.l7_json(self.filled());calls=[]
             def child(args,**kwargs):
                 calls.append(args);self.assertEqual(project,kwargs['cwd']);self.assertEqual(60,kwargs['timeout'])
                 self.assertIn('allow_url_fopen=0',args);self.assertIn('SET TRANSACTION READ ONLY',args[-1])

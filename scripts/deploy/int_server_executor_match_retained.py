@@ -4409,8 +4409,9 @@ def current_local7_registration(stage):
             '-d','memory_limit=128M','-d','disable_functions='+disabled,'-r',script],
             cwd=project,env=env,capture_output=True,text=False,timeout=60)
     except subprocess.TimeoutExpired:fail('local7_current_timeout_no_replay')
-    raw=run.stdout;write_once('local7-current-raw.json',raw[:1048576])
-    l7_need(len(raw)<=1048576 and run.returncode==0 and not run.stderr,'current_child_failed_no_replay')
+    raw=run.stdout;l7_need(len(raw)<=8*1048576,'current_output_bound')
+    write_once('local7-current-raw.json',raw)
+    l7_need(run.returncode==0 and not run.stderr,'current_child_failed_no_replay')
     projection=l7c_project(l7_parse(raw),p);after=protected(False)
     l7_need(before==after,'current_protected_drift')
     data=dict(projection,schema_version='local7_current_registration_v1',state='current_registration_evidence_read_only',
