@@ -42,7 +42,7 @@ def checked_request(event, env):
     need(c.get('user', {}).get('id') == 226193297 and c.get('author_association') == 'OWNER', 'comment_owner')
     body = c.get('body', '')
     prefix = NEXT_PREFIX if isinstance(body,str) and body.startswith(NEXT_PREFIX) else PREFIX
-    need(issue.get('number') == (4709 if prefix == NEXT_PREFIX else 4217)
+    need(issue.get('number') == (4709 if prefix == NEXT_PREFIX else 4709)
          and 'pull_request' not in issue, 'coordination_only')
     need(isinstance(body, str) and body.startswith(prefix) and '\n' not in body and '\r' not in body, 'command_syntax')
     parts = body[len(prefix):].split(' ')

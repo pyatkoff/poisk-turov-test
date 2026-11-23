@@ -119,7 +119,7 @@ class Authorization(unittest.TestCase):
         for name in ('create-search3-local-preview.yml', 'inspect-search3-local-preview.yml'):
             with self.subTest(workflow=name):
                 guards = re.findall(r'github\.event\.issue\.number == (\d+)', (root / name).read_text())
-                self.assertEqual(guards, ['4217'])
+                self.assertEqual(guards, ['4709'] if name == 'inspect-search3-local-preview.yml' else ['4217'])
         create = (root / 'create-search3-v17-preview.yml').read_text()
         self.assertEqual(re.findall(r'github\.event\.issue\.number == (\d+)', create), ['4217', '4709'])
         for issue, prefix in [(4217, 'next'), (4709, 'early-intent')]:
@@ -127,7 +127,7 @@ class Authorization(unittest.TestCase):
                           f"startsWith(github.event.comment.body, '/create-search3-{prefix}-preview ')", create)
         update_guards = re.findall(r'github\.event\.issue\.number == (\d+)',
                                   (root / 'update-search3-local-preview.yml').read_text())
-        self.assertEqual(update_guards, ['4217', '4709'])
+        self.assertEqual(update_guards, ['4709', '4709'])
         self.assertEqual(publish.COORDINATION_ISSUE, 4709)
 
     def test_manual(self):

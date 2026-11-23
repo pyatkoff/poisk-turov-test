@@ -44,7 +44,7 @@ jobs:
       github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      ((github.event.issue.number == 4217 && startsWith(github.event.comment.body, '/update-search3-local-preview ')) ||
+      ((github.event.issue.number == 4709 && startsWith(github.event.comment.body, '/update-search3-local-preview ')) ||
       (github.event.issue.number == 4709 && startsWith(github.event.comment.body, '/update-search3-next-preview ')))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
