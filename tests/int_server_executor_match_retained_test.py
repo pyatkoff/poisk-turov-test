@@ -5551,9 +5551,10 @@ class Local46IdentityTest(unittest.TestCase):
           $columns=array_keys($row);$q=$db->prepare('INSERT INTO '.$table.' (`'.implode('`,`',$columns).'`) VALUES ('.implode(',',array_fill(0,count($columns),'?')).')');
           $q->execute(array_values($row));
         }
-        function refused46($db,$label){
-          $caught=false;try{MatchLocal46IdentityV1::run($db);}catch(RuntimeException $e){$caught=true;}
+        function refused46($db,$label,$expectedReason=null){
+          $caught=false;$reason=null;try{MatchLocal46IdentityV1::run($db);}catch(RuntimeException $e){$caught=true;$reason=$e->getMessage();}
           need46($caught&&!$db->inTransaction(),'unsafe_snapshot_not_rejected_or_rolled_back:'.$label);
+          need46($expectedReason===null||$reason===$expectedReason,'unsafe_snapshot_wrong_reason:'.$label);
         }
         $input=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);$fixture=$input['raw'];
         $db=new Local46ProbePDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),
@@ -5589,7 +5590,12 @@ class Local46IdentityTest(unittest.TestCase):
           $db->exec('ALTER TABLE local_tv_legacy_links ADD KEY ix_local_tv_old_reference(tv_id), ADD CONSTRAINT fk_local_tv_link FOREIGN KEY(tv_id) REFERENCES local_tv_hotels(id) ON DELETE RESTRICT ON UPDATE RESTRICT');
           $db->exec('ALTER TABLE anytour_hotels CHANGE updated_at hidden_updated_at DATETIME NOT NULL');refused46($db,'missing_column');
           $db->exec('ALTER TABLE anytour_hotels CHANGE hidden_updated_at updated_at DATETIME NOT NULL');
-          $db->exec('ALTER TABLE catalog_hotels ENGINE=MyISAM');refused46($db,'nontransactional_engine');$db->exec('ALTER TABLE catalog_hotels ENGINE=InnoDB');
+          // MyISAM's 1000-byte B-tree key cap excludes these three optional utf8mb4 indexes.
+          // Keep all columns and required keys, then restore the exact original indexes.
+          $db->exec('ALTER TABLE catalog_hotels DROP INDEX uq_catalog_hotels_slug, DROP INDEX idx_catalog_hotels_country_name, DROP INDEX idx_catalog_hotels_region_name');
+          $db->exec('ALTER TABLE catalog_hotels ENGINE=MyISAM');refused46($db,'nontransactional_engine','local46_engine');
+          $db->exec('ALTER TABLE catalog_hotels ENGINE=InnoDB');
+          $db->exec('ALTER TABLE catalog_hotels ADD UNIQUE KEY uq_catalog_hotels_slug(slug), ADD KEY idx_catalog_hotels_country_name(country_id,normalized_name), ADD KEY idx_catalog_hotels_region_name(region_id,normalized_name)');
           $db->exec('RENAME TABLE catalog_hotels TO catalog_hotels_hidden');refused46($db,'missing_table');$db->exec('RENAME TABLE catalog_hotels_hidden TO catalog_hotels');
           $db->exec('DELETE FROM local_tv_legacy_links');$beforeEmpty=hashes46($db);
           $db->probe=true;$db->denied=false;$db->targetQueries=0;$empty=MatchLocal46IdentityV1::run($db);
