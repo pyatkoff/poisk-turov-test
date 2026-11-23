@@ -4181,7 +4181,8 @@ LOCAL7_CURRENT_REGISTRATION = {
     'cohort':'local7-current-registration-20261123',
     'source_sha':'3207266e17ed4e8244aaf28d05b962747fd4cd3c',
     'parent_operation_id':'int-andromeda-match-retained-readback-20261123-v1',
-    'parent_receipt_sha256':'a6e43d3f5e430d50624e5f2a1eeb5db497b298154711980002d96e37c1050fb6',
+    # Server result.json is compact; the artifact is pretty-printed (5799B/a6e43d3f...).
+    'parent_receipt_sha256':'7631e19d35d6d482ea5f0e42d71e2bed2c33ef849abd7c04a94344e5fbf4a3fb',
     'contract_sha256':'abbed95e0343ce402cdcfb11ef7819da0a12e5bafb7e5bf7f22cbb9260167b11',
     'pairs':[[8689,7458],[4679,4283],[14397,97001],[13766,74509],
              [14029,78669],[12816,60788],[14013,78456]],
