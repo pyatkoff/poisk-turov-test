@@ -6,6 +6,7 @@ final class AnyTourDestinationCatalogV1
     public const LIMIT=1000;
     private const PROVIDERS=['tourvisor'=>true,'anex'=>true,'samo'=>true,'andromeda'=>true];
     private const KINDS=['country'=>true,'region'=>true,'subregion'=>true];
+    private bool $schemaReady=false;
     public function __construct(private PDO $pdo) {}
     private static function id(mixed $v): int {
         if((!is_int($v)&&!is_string($v))||preg_match('/^[1-9][0-9]*$/D',(string)$v)!==1||filter_var($v,FILTER_VALIDATE_INT)===false||(int)$v>9007199254740991)throw new InvalidArgumentException('DESTINATION_ID');
@@ -18,8 +19,9 @@ final class AnyTourDestinationCatalogV1
         return$v;
     }
     public function readable(): bool {
+        if($this->schemaReady)return true;
         $s=$this->pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('anytour_destinations_v1','anytour_destination_sources_v1')");
-        return(int)$s->fetchColumn()===2;
+        return $this->schemaReady=(int)$s->fetchColumn()===2;
     }
     private static function dto(array $r): array {
         return['id'=>self::id($r['id']),'kind'=>self::kind((string)$r['kind']),'parentId'=>$r['parent_id']===null?null:self::id($r['parent_id']),'nameRu'=>(string)$r['name_ru'],'slug'=>(string)$r['slug'],'revision'=>self::id($r['revision'])];

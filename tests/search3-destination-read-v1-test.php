@@ -8,10 +8,17 @@ function s3d_error(callable $fn,string $message):void{
     try{$fn();throw new RuntimeException('expected '.$message);}
     catch(Throwable $e){if($e->getMessage()!==$message)throw $e;}
 }
+final class DestinationReadCountingPDO extends PDO {
+    public int $destinationSchemaReads=0;
+    public function query(string $query,?int $fetchMode=null,mixed ...$fetchModeArgs):PDOStatement|false {
+        if(str_contains($query,'information_schema.TABLES'))$this->destinationSchemaReads++;
+        return parent::query($query,$fetchMode,...$fetchModeArgs);
+    }
+}
 
 $dsn=(string)getenv('SEARCH3_DESTINATION_READ_TEST_DSN');
 if($dsn===''){echo "SEARCH3_DESTINATION_READ_PURE_OK\n";exit(0);}
-$db=new PDO($dsn,'root',(string)getenv('ANYTOUR_DESTINATION_TEST_PASSWORD'),[
+$db=new DestinationReadCountingPDO($dsn,'root',(string)getenv('ANYTOUR_DESTINATION_TEST_PASSWORD'),[
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_EMULATE_PREPARES=>false,
     PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
@@ -40,12 +47,14 @@ foreach([
 }
 
 $countries=search3_destination_read($db,'countries',['departureId'=>'1']);
+s3d($db->destinationSchemaReads===1,'two countries check schema once');
 s3d($countries['ok']===true&&$countries['source']==='anytour-destination-identities-v1','country source');
 s3d(array_column($countries['items'],'id')===[$egypt,$turkey]||array_column($countries['items'],'id')===[$turkey,$egypt],'local country ids');
 $turkeyRow=array_values(array_filter($countries['items'],fn($row)=>$row['id']===$turkey))[0]??null;
 s3d(is_array($turkeyRow)&&$turkeyRow['tourvisorIds']===['4'],'country native bridge');
 
 $regions=search3_destination_read($db,'regions',['countryId'=>(string)$turkey]);
+s3d($db->destinationSchemaReads===2,'new reader catalog checks same PDO again');
 s3d(array_column($regions['items'],'id')===[$belek,$kemer],'local region ids');
 s3d($regions['items'][0]['parentId']===$turkey,'region parent local');
 s3d($regions['items'][0]['tourvisorIds']===['21'],'region native bridge');

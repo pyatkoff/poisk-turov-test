@@ -3,6 +3,33 @@ declare(strict_types=1);
 require_once __DIR__.'/../v2/data/anytour-destination-catalog-v1.php';
 function dc(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
 function err(callable $f,string $m):void{try{$f();throw new RuntimeException('expected '.$m);}catch(Throwable $e){if($e->getMessage()!==$m)throw$e;}}
+final class DestinationReadinessStatement extends PDOStatement {
+ public function __construct(private mixed $value) {}
+ public function fetchColumn(int $column=0):mixed{return $this->value;}
+}
+final class DestinationReadinessPDO extends PDO {
+ public int $schemaReads=0;
+ public function __construct(private array $results) {}
+ public function query(string $query,?int $fetchMode=null,mixed ...$fetchModeArgs):PDOStatement|false {
+  dc(str_contains($query,'information_schema.TABLES'),'readiness query only');
+  dc($this->results!==[],'unexpected readiness query');
+  $this->schemaReads++;$result=array_shift($this->results);
+  if($result instanceof Throwable)throw $result;
+  return new DestinationReadinessStatement($result);
+ }
+}
+$readyDb=new DestinationReadinessPDO(['2','2']);$readyCatalog=new AnyTourDestinationCatalogV1($readyDb);
+dc($readyCatalog->readable()&&$readyCatalog->readable()&&$readyDb->schemaReads===1,'positive readiness reused');
+$nextCatalog=new AnyTourDestinationCatalogV1($readyDb);
+dc($nextCatalog->readable()&&$readyDb->schemaReads===2,'new catalog checks same PDO again');
+$recoveringDb=new DestinationReadinessPDO(['0','1','2']);$recoveringCatalog=new AnyTourDestinationCatalogV1($recoveringDb);
+dc(!$recoveringCatalog->readable(),'missing schema stays unavailable');
+dc(!$recoveringCatalog->readable(),'partial schema stays unavailable');
+dc($recoveringCatalog->readable()&&$recoveringCatalog->readable()&&$recoveringDb->schemaReads===3,'negative readiness can recover');
+$retryDb=new DestinationReadinessPDO([new RuntimeException('schema probe failed'),'2']);$retryCatalog=new AnyTourDestinationCatalogV1($retryDb);
+err(fn()=>$retryCatalog->readable(),'schema probe failed');
+dc($retryCatalog->readable()&&$retryCatalog->readable()&&$retryDb->schemaReads===2,'schema query failure can recover');
+echo "DESTINATION_READINESS_PURE_OK positive_reuse=1 instance_scope=1 negative_recovery=1 exception_recovery=1\n";
 $dsn=(string)getenv('ANYTOUR_DESTINATION_TEST_DSN');if($dsn===''){echo "DESTINATION_PURE_LOAD_OK\n";exit;}
 $db=new PDO($dsn,'root',(string)getenv('ANYTOUR_DESTINATION_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 $sql=preg_replace('/^\s*--.*$/m','',file_get_contents(__DIR__.'/../v2/data/migrations/20260921-anytour-destination-identities-v1.sql'));
