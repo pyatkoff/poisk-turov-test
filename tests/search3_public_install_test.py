@@ -6399,7 +6399,7 @@ class HomeInspectionAdmission(unittest.TestCase):
             "github.event_name == 'issue_comment'", "github.event.action == 'created'",'github.event.issue.number == 4709',
             '!github.event.issue.pull_request','github.event.comment.user.id == 226193297',
             "github.event.comment.author_association == 'OWNER'",'group: deploy-anytoour-production',
-            'cancel-in-progress: false','timeout-minutes: 10',
+            'cancel-in-progress: false',"timeout-minutes: ${{ (startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10 }}",
             'permissions: {contents: read, issues: read, checks: read, actions: read}',
             'python3 tests/search3_public_install_test.py','python3 tests/anytoour_production_deploy_guard_test.py'):
             self.assertIn(token,section)
@@ -6786,6 +6786,662 @@ class HomeInspectionClient(unittest.TestCase):
                 self.assertEqual(self.server_snapshot(f),before)
                 self.assertFalse((runner/'search3-public-install/key').exists())
                 self.assertFalse((runner/'search3-public-install/known').exists())
+
+
+HOME_CHILD_IDENTITY={'control_source_sha':CONTROL,'run_id':'990123','command_comment_id':9018}
+HOME_CHILD_ROLLBACK_IDENTITY={'control_source_sha':'d'*40,'run_id':'991234','command_comment_id':9019}
+
+
+def home_child_test_pins():
+    """Complete synthetic provenance, never a runtime override of live pins."""
+    return {'pr':9991,'base_sha':'1'*40,'source_sha':'2'*40,'merge_sha':'3'*40,'tree_sha':'4'*40,
+        'blobs':{path:'5'*40 for path in m.HOME_CHILD_REPAIR_PATHS},
+        'checks':[{'workflow':path,'run_id':100000+i,'job_id':200000+i,'name':'fixture-native-'+str(i)}
+                  for i,path in enumerate(m.HOME_CHILD_REPAIR_WORKFLOWS)]}
+
+
+def home_child_test_event(rollback=False):
+    value=event();identity=HOME_CHILD_ROLLBACK_IDENTITY if rollback else HOME_CHILD_IDENTITY
+    body=(f'{m.HOME_CHILD_ROLLBACK_PREFIX} {identity["control_source_sha"]} {HOME_CHILD_IDENTITY["run_id"]} '
+          f'{m.HOME_CHILD_ROLLBACK_OPERATION}' if rollback else
+          f'{m.HOME_CHILD_PREFIX} {identity["control_source_sha"]} {m.HOME_CHILD_OPERATION}')
+    value['comment'].update(id=identity['command_comment_id'],body=body)
+    return value
+
+
+class HomeChildTransaction(unittest.TestCase):
+    fields=('st_dev','st_ino','st_mode','st_nlink','st_size','st_mtime_ns','st_uid','st_gid','st_ctime_ns')
+    archive=staticmethod(HandoffTransaction.archive)
+
+    @staticmethod
+    def identity(path):
+        value=path.lstat()
+        return tuple(getattr(value,k) for k in HomeChildTransaction.fields)
+
+    @contextlib.contextmanager
+    def inspected(self):
+        reader=HomeInspectionTransaction()
+        with reader.failed_attempt(True) as f,contextlib.ExitStack() as stack:
+            drift={}
+            f.child_origin={}
+            for path in m.HOME_CHILD_PUBLIC_DRIFT:
+                target=f.root/path;raw=target.read_bytes();before=target.stat()
+                row={'state':'present','mode':'0644','size':len(raw),'sha256':m.sha(raw)}
+                drift[path]=row;f.child_origin[path]=[row,list(self.identity(target))]
+                target.write_bytes(raw)
+                os.utime(target,ns=(before.st_atime_ns,before.st_mtime_ns+1000000))
+                self.assertEqual(self.identity(target)[:5],tuple(f.child_origin[path][1][:5]))
+                self.assertNotEqual(target.stat().st_mtime_ns,before.st_mtime_ns)
+                self.assertNotEqual(target.stat().st_ctime_ns,before.st_ctime_ns)
+            private=f.root/'config.php';raw=private.read_bytes();before=private.stat()
+            f.child_origin['config.php']=[{'state':'present','mode':'0600','size':len(raw),'sha256':m.sha(raw)},list(self.identity(private))]
+            private.chmod(0o600)
+            self.assertEqual(self.identity(private)[:8],tuple(f.child_origin['config.php'][1][:8]))
+            self.assertNotEqual(private.stat().st_ctime_ns,before.st_ctime_ns)
+            stack.enter_context(patch.object(m,'HOME_CHILD_PUBLIC_DRIFT',drift))
+            result=reader.execute(f)
+            self.assertEqual(result['status'],'inspection_mismatch',result)
+            value={**HOME_INSPECTION_IDENTITY,'operation_id':m.HOME_INSPECT_OPERATION,
+                'source_sha':m.HOME_SOURCE,'manifest_sha256':f.home_policy['manifest'],
+                'read_only':True,'phase':'complete','ssh_started':True,'status':'inspection_mismatch',
+                'failed_attempt':copy.deepcopy(m.HOME_INSPECT_FAILED),'failed_evidence':f.home_inspection_failed,'remote':result}
+            data,raw=self.archive(value)
+            pin=m.HOME_CHILD_INSPECTION|HOME_INSPECTION_IDENTITY|{'artifact_sha256':m.sha(raw),'receipt_sha256':m.sha(data)}
+            stack.enter_context(patch.object(m,'HOME_CHILD_INSPECTION',pin))
+            stack.enter_context(patch.object(m,'HOME_CHILD_REPAIR',home_child_test_pins()))
+            f.child_inspection=value;f.child_inspection_raw=raw;f.child_policy=m.home_child_policy()
+            f.child_private=f.private.parent/m.HOME_CHILD_OPERATION
+            f.child_rollback_private=f.private.parent/m.HOME_CHILD_ROLLBACK_OPERATION
+            f.child_accepted_rows={p:[row[0],list(self.identity(f.root/p))] for p,row in f.child_origin.items()}
+            self.assertEqual(m.home_child_inspection_value(value),f.home_parent)
+            yield f
+
+    def execute(self,f,change=None):
+        program=m.home_child_remote_program(f.child_policy,f.home_files,HOME_CHILD_IDENTITY,
+            f.home_parent,f.child_inspection,tv_successor=copy.deepcopy(f.tv_evidence))
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_home_child_result(HOME_CHILD_IDENTITY,value)
+        return value
+
+    def rollback(self,f,change=None):
+        program=m.home_child_rollback_remote_program(f.child_policy,HOME_CHILD_ROLLBACK_IDENTITY,
+            HOME_CHILD_IDENTITY,f.child_accepted,f.home_parent,f.child_inspection,tv_successor=copy.deepcopy(f.tv_evidence))
+        value=UpdateTransaction().run_program(f,program,change)
+        m.valid_home_child_result(HOME_CHILD_ROLLBACK_IDENTITY,value,HOME_CHILD_IDENTITY,f.child_accepted)
+        return value
+
+    def evidence(self,f,result,rollback=False):
+        identity=HOME_CHILD_ROLLBACK_IDENTITY if rollback else HOME_CHILD_IDENTITY
+        value={**identity,'operation_id':m.HOME_CHILD_ROLLBACK_OPERATION if rollback else m.HOME_CHILD_OPERATION,
+            'source_sha':m.HOME_SOURCE,'manifest_sha256':f.child_policy['manifest'],'read_only':False,
+            'phase':'complete','ssh_started':True,'status':result['status'],
+            'parent_handoff':m.home_parent_identity(),'parent_evidence':f.home_parent,
+            'inspection_evidence':f.child_inspection,'continuation':m.home_child_provenance(),'remote':result}
+        if rollback:value.update(original_home=HOME_CHILD_IDENTITY,original_home_run_id=HOME_CHILD_IDENTITY['run_id'])
+        return value
+
+    def protected(self,f):
+        public,private=m.home_inspect_scope()
+        paths=(set(public)|set(private))-set(m.HOME_ORDER)
+        self.assertTrue((set(m.HOME_CHILD_PUBLIC_DRIFT)|{'config.php'})<=paths)
+        return {p:(self.identity(f.root/p),(f.root/p).read_bytes()) if (f.root/p).exists() else None for p in paths}
+
+    def assert_blocked(self,f,value,before):
+        self.assertEqual(value['status'],'blocked_no_replay',value)
+        self.assertFalse(value['reservation_created']);self.assertEqual(value['written_files'],[])
+        self.assertEqual(value['rollback_files'],[]);self.assertEqual(f.filesystem_snapshot(),before)
+        self.assertFalse(f.child_private.exists());self.assertFalse(f.child_rollback_private.exists())
+
+    def test_exact_projection_and_private_custody_roundtrip_preserve_ancestors_and_original_refusal(self):
+        with self.inspected() as f:
+            before=HomeTransaction().public_files(f);protected=self.protected(f)
+            ancestors=HomeTransaction().ancestor_records(f)
+            f.child_accepted=self.execute(f)
+            self.assertEqual(f.child_accepted['status'],'home_navigation_updated_verified',f.child_accepted)
+            self.assertEqual(f.child_accepted['written_files'],list(m.HOME_ORDER))
+            self.assertEqual(self.protected(f),protected)
+            self.assertEqual(HomeTransaction().ancestor_records(f),ancestors)
+            record=f.child_private/'reconciliation.json';raw=record.read_bytes();custody=json.loads(raw)
+            self.assertEqual(stat.S_IMODE(record.stat().st_mode),0o600)
+            self.assertEqual(set(custody),{'schema_version','policy_sha256','parent_snapshot_manifest_sha256','provenance','original','accepted'})
+            self.assertEqual(custody['original'],f.child_origin)
+            self.assertEqual(custody['accepted'],f.child_accepted_rows)
+            self.assertEqual(custody['policy_sha256'],f.child_policy['manifest'])
+            self.assertEqual(custody['parent_snapshot_manifest_sha256'],m.HOME_PARENT['snapshot_manifest_sha256'])
+            self.assertEqual(m.sha(raw),f.child_accepted['reconciliation_sha256'])
+            self.assertTrue(f.child_accepted['reconciliation_verified']);self.assertTrue(f.child_accepted['lineage_persisted'])
+            self.assertEqual(f.child_accepted['private_checks'],{'public_config':True})
+            # Across invocations, the accepted receipt authenticates the exact
+            # custody bytes/mode; it does not export this private record's inode.
+            replacement=record.with_name('same-custody');replacement.write_bytes(raw)
+            replacement.chmod(0o600);replacement.replace(record)
+            restored=self.rollback(f)
+            self.assertEqual(restored['status'],'home_navigation_rolled_back_verified',restored)
+            self.assertEqual(restored['rollback_files'],list(reversed(m.HOME_ORDER)))
+            self.assertEqual(HomeTransaction().public_files(f),before)
+            self.assertEqual(self.protected(f),protected);self.assertEqual(HomeTransaction().ancestor_records(f),ancestors)
+            snapshot=f.filesystem_snapshot();old=HomeTransaction().execute(f)
+            self.assertEqual(old['status'],'blocked_no_replay');self.assertFalse(old['reservation_created'])
+            self.assertEqual(f.filesystem_snapshot(),snapshot)
+            again=self.execute(f)
+            self.assertEqual(again['status'],'blocked_no_replay');self.assertFalse(again['reservation_created'])
+            self.assertEqual(f.filesystem_snapshot(),snapshot)
+            self.assertFalse(f.home_private.exists());self.assertFalse(f.home_rollback_private.exists())
+
+    def test_every_nonallowed_public_and_private_stat_field_is_rejected_before_reservation(self):
+        with self.inspected() as f:
+            before=f.filesystem_snapshot()
+            for path in f.child_origin:
+                allowed=(8,) if path=='config.php' else (5,8)
+                for index in range(9):
+                    if index in allowed:continue
+                    with self.subTest(path='public_config' if path=='config.php' else path,field=self.fields[index]):
+                        def change(program):
+                            anchor='  home_child_validate_binding(binding)\n'
+                            self.assertEqual(program.count(anchor),1)
+                            mutation=f"  binding['accepted'][{path!r}][1][{index}]+=1\n"
+                            return program.replace(anchor,mutation+anchor,1)
+                        self.assert_blocked(f,self.execute(f,change),before)
+
+    def test_changed_bytes_mode_missing_or_other_protected_drift_is_not_a_permitted_projection(self):
+        cases=('public-bytes','private-bytes','private-mtime','public-mode','public-inode','other-private-ctime')
+        for case in cases:
+            with self.subTest(case=case),self.inspected() as f:
+                target=f.root/('data/db-v1.php' if case.startswith('public') else m.PRIVATE_CONFIG if case=='other-private-ctime' else 'config.php')
+                prior=target.stat()
+                if case.endswith('bytes'):target.write_bytes(b'foreign synthetic replacement')
+                elif case=='private-mtime':os.utime(target,ns=(prior.st_atime_ns,prior.st_mtime_ns+1000000))
+                elif case=='public-mode':target.chmod(0o600)
+                elif case=='public-inode':
+                    other=target.with_name(target.name+'.foreign');other.write_bytes(target.read_bytes());other.chmod(0o644);other.replace(target)
+                else:target.chmod(stat.S_IMODE(prior.st_mode))
+                before=f.filesystem_snapshot();self.assert_blocked(f,self.execute(f),before)
+
+    def test_projection_is_once_and_later_allowed_timestamp_changes_are_strict_races(self):
+        for target_name in ('data/db-v1.php','config.php'):
+            with self.subTest(target='public_config' if target_name=='config.php' else target_name),self.inspected() as f:
+                target=f.root/target_name
+                def change(program):
+                    anchor=' home_check_ancestors();home_check_targets(before)\n'
+                    self.assertEqual(program.count(anchor),1)
+                    mutation=(f" _child_race={str(target)!r}\n _child_stat=os.stat(_child_race)\n"
+                              " os.chmod(_child_race,stat.S_IMODE(_child_stat.st_mode))\n")
+                    return program.replace(anchor,mutation+anchor,1)
+                before=f.filesystem_snapshot();value=self.execute(f,change);after=f.filesystem_snapshot()
+                self.assertEqual(value['status'],'blocked_no_replay',value)
+                self.assertFalse(value['reservation_created']);self.assertEqual(value['written_files'],[])
+                self.assertEqual({p for p in set(before)|set(after) if before.get(p)!=after.get(p)},
+                                 {str(target.relative_to(f.base))})
+                self.assertFalse(f.child_private.exists())
+
+    def test_each_of_sixteen_write_interruptions_restores_owned_targets_and_seals_child_replay(self):
+        for index in range(len(m.HOME_ORDER)):
+            with self.subTest(index=index),self.inspected() as f:
+                before=HomeTransaction().public_files(f);protected=self.protected(f)
+                ancestors=HomeTransaction().ancestor_records(f)
+                def fail(program):
+                    anchor="   switched.append(path);result['written_files'].append(path);sync(src);sync(dst)"
+                    self.assertEqual(program.count(anchor),1)
+                    return program.replace(anchor,anchor+f"\n   if index=={index}:raise RuntimeError('operation_failed')",1)
+                value=self.execute(f,fail)
+                self.assertEqual(value['status'],'rolled_back_no_replay',value)
+                self.assertEqual(value['written_files'],list(m.HOME_ORDER[:index+1]))
+                self.assertEqual(value['rollback_files'],list(reversed(m.HOME_ORDER[:index+1])))
+                self.assertTrue(value['lineage_persisted']);self.assertTrue(value['reconciliation_verified'])
+                self.assertEqual(HomeTransaction().public_files(f),before)
+                self.assertEqual(self.protected(f),protected);self.assertEqual(HomeTransaction().ancestor_records(f),ancestors)
+                if index in (0,len(m.HOME_ORDER)-1):
+                    snapshot=f.filesystem_snapshot();again=self.execute(f)
+                    self.assertEqual(again['status'],'blocked_no_replay');self.assertFalse(again['reservation_created'])
+                    self.assertEqual(f.filesystem_snapshot(),snapshot)
+
+    def test_custody_tamper_before_activation_prevents_any_public_write_and_verified_recovery(self):
+        for kind in ('content','same-bytes-inode'):
+            with self.subTest(kind=kind),self.inspected() as f:
+                before=HomeTransaction().public_files(f);protected=self.protected(f)
+                def change(program):
+                    anchor=' home_child_persist_reconciliation(private)\n'
+                    self.assertEqual(program.count(anchor),1)
+                    path=f.child_private/'reconciliation.json'
+                    if kind=='content':
+                        mutation=f" with open({str(path)!r},'wb') as _child_out:_child_out.write(b'foreign custody')\n"
+                    else:mutation=TvSuccessorTransaction().replace_same_bytes(path,indent=' ')
+                    return program.replace(anchor,anchor+mutation,1)
+                value=self.execute(f,change)
+                self.assertEqual(value['status'],'unknown_no_replay',value)
+                self.assertEqual(value['written_files'],[]);self.assertEqual(value['rollback_files'],[])
+                self.assertEqual(HomeTransaction().public_files(f),before);self.assertEqual(self.protected(f),protected)
+                self.assertTrue(f.child_private.exists())
+
+    def test_recovery_requires_retained_custody_and_current_full_nine_field_protected_stamps(self):
+        for kind in ('custody-content','custody-inode','public-ctime','private-ctime'):
+            with self.subTest(kind=kind),self.inspected() as f:
+                f.child_accepted=self.execute(f)
+                self.assertEqual(f.child_accepted['status'],'home_navigation_updated_verified')
+                target=(f.child_private/'reconciliation.json' if kind.startswith('custody') else
+                        f.root/('config.php' if kind=='private-ctime' else 'data/db-v1.php'))
+                if kind=='custody-content':target.write_bytes(b'foreign custody')
+                elif kind=='custody-inode':pass
+                else:target.chmod(stat.S_IMODE(target.stat().st_mode))
+                def change(program):
+                    anchor=" _home_child_record_bound=records['reconciliation.json']\n"
+                    self.assertEqual(program.count(anchor),1)
+                    return program.replace(anchor,anchor+TvSuccessorTransaction().replace_same_bytes(target,indent=' '),1)
+                before=f.filesystem_snapshot();value=self.rollback(f,change if kind=='custody-inode' else None)
+                self.assertEqual(value['status'],'blocked_no_replay',value)
+                self.assertFalse(value['reservation_created']);self.assertEqual(value['written_files'],[])
+                self.assertEqual(value['rollback_files'],[])
+                after=f.filesystem_snapshot()
+                if kind=='custody-inode':
+                    changed={p for p in set(before)|set(after) if before.get(p)!=after.get(p)}
+                    self.assertEqual(changed,{str(target.relative_to(f.base)),str(target.parent.relative_to(f.base))})
+                else:self.assertEqual(after,before)
+                self.assertFalse(f.child_rollback_private.exists())
+
+    def test_public_receipt_has_only_opaque_private_boolean_and_never_exports_custody(self):
+        with self.inspected() as f:
+            value=self.execute(f)
+            self.assertEqual(value['status'],'home_navigation_updated_verified')
+            encoded=json.dumps(value,sort_keys=True)
+            self.assertEqual(value['private_checks'],{'public_config':True})
+            for forbidden in (f.secret.decode(),m.sha(f.secret),str(f.home),'"config.php"','"accepted"','"original"'):
+                self.assertNotIn(forbidden,encoded)
+            for secret_field in ('path','sha256','size','content','identity','changed_stat_fields'):
+                bad=copy.deepcopy(value);bad['private_checks']={'public_config':{secret_field:'private'}}
+                with self.subTest(field=secret_field),self.assertRaises(RuntimeError):
+                    m.valid_home_child_result(HOME_CHILD_IDENTITY,bad)
+            for mutate in (lambda x:x.update(reconciliation_sha256=None),lambda x:x.update(lineage_persisted=False),
+                lambda x:x.update(reconciliation_verified=False),lambda x:x.update(private_checks={'public_config':False}),
+                lambda x:x.update(supplier_calls=1),lambda x:x.update(database_reads=1),
+                lambda x:x.update(reconciliation={'private':'forbidden'})):
+                bad=copy.deepcopy(value);mutate(bad)
+                with self.assertRaises(RuntimeError):m.valid_home_child_result(HOME_CHILD_IDENTITY,bad)
+
+
+class HomeChildAdmission(unittest.TestCase):
+    def test_exact_early_dispatch_and_child_only_timeout_preserve_all_historical_modes(self):
+        tree=m.ast.parse((ROOT/'scripts/deploy/search3_public_install.py').read_text())
+        nodes=[node for node in tree.body if isinstance(node,m.ast.If)
+               and any(isinstance(call,m.ast.Call) and isinstance(call.func,m.ast.Name) and call.func.id=='home_child'
+                       for call in m.ast.walk(node))]
+        self.assertEqual(len(nodes),1)
+        for arguments,expected in ((['home-continue'],[False]),(['home-continue-rollback'],[True]),
+            ([],[]),(['home'],[]),(['home-inspect'],[]),(['home-rollback'],[]),
+            (['home-continue','extra'],[]),(['home-continue-rollback','123'],[])):
+            called=[]
+            with self.subTest(arguments=arguments),patch.object(sys,'argv',['controller.py',*arguments]):
+                try:exec(compile(m.ast.Module(body=nodes,type_ignores=[]),'<actual-child-dispatch>','exec'),
+                         {'__name__':'__main__','home_child':lambda rollback=False:called.append(rollback)})
+                except SystemExit as stop:self.assertEqual(stop.code,0)
+            self.assertEqual(called,expected)
+        for mode in ('home','home-rollback','home-inspect'):
+            self.assertEqual(m.command_mode([mode]),mode)
+        for mode in ('home-continue','home-continue-rollback'):
+            with self.assertRaises(RuntimeError):m.command_mode([mode])
+        section=(ROOT/m.WORKFLOW).read_text().split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
+        line=next(row.strip() for row in section.splitlines() if row.strip().startswith('timeout-minutes:'))
+        expected="timeout-minutes: ${{ (startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10 }}"
+        self.assertEqual(line,expected)
+        prefixes=m.re.findall(r"startsWith\(github\.event\.comment\.body, '([^']+)'\)",line)
+        self.assertEqual(prefixes,[m.HOME_CHILD_PREFIX+' ',m.HOME_CHILD_ROLLBACK_PREFIX+' '])
+        for body,minutes in ((home_child_test_event()['comment']['body'],15),
+            (home_child_test_event(True)['comment']['body'],15),(home_test_event()['comment']['body'],10),
+            (home_inspection_event()['comment']['body'],10),(home_test_event(True)['comment']['body'],10),
+            ('unrelated '+m.HOME_CHILD_PREFIX+' ',10),(m.HOME_CHILD_PREFIX,10)):
+            self.assertEqual(15 if any(body.startswith(prefix) for prefix in prefixes) else 10,minutes)
+
+    def test_fixed_created_owner_carrier_attempt_and_distinct_original_identity(self):
+        for rollback,identity in ((False,HOME_CHILD_IDENTITY),(True,HOME_CHILD_ROLLBACK_IDENTITY)):
+            env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+            expected=(identity,HOME_CHILD_IDENTITY['run_id']) if rollback else identity
+            self.assertEqual(m.home_child_event_identity(home_child_test_event(rollback),env,rollback),expected)
+            for key,value in (('GITHUB_ACTOR','other'),('GITHUB_TRIGGERING_ACTOR','other'),
+                ('GITHUB_REF','refs/heads/topic'),('GITHUB_RUN_ATTEMPT','2'),('GITHUB_EVENT_NAME','workflow_dispatch'),
+                ('GITHUB_WORKFLOW_REF',m.REPO+'/other.yml@refs/heads/main'),('GITHUB_REPOSITORY','other/repo'),
+                ('GITHUB_RUN_ID',m.HOME_INSPECT_FAILED['run_id']),('GITHUB_RUN_ID',m.HOME_CHILD_INSPECTION['run_id'])):
+                with self.subTest(rollback=rollback,key=key),self.assertRaises(RuntimeError):
+                    m.home_child_event_identity(home_child_test_event(rollback),env|{key:value},rollback)
+            for mutate in (lambda e:e.update(action='edited'),lambda e:e['issue'].update(number=1719),
+                lambda e:e['issue'].update(pull_request={}),lambda e:e['comment']['user'].update(id=1),
+                lambda e:e['comment'].update(author_association='MEMBER'),lambda e:e['comment'].update(body=e['comment']['body']+' extra')):
+                bad=home_child_test_event(rollback);mutate(bad)
+                with self.assertRaises(RuntimeError):m.home_child_event_identity(bad,env,rollback)
+        env=environment()|{'GITHUB_SHA':HOME_CHILD_ROLLBACK_IDENTITY['control_source_sha'],'GITHUB_RUN_ID':HOME_CHILD_ROLLBACK_IDENTITY['run_id']}
+        for old in (m.HOME_INSPECT_FAILED['run_id'],m.HOME_CHILD_INSPECTION['run_id']):
+            value=home_child_test_event(True);value['comment']['body']=value['comment']['body'].replace(HOME_CHILD_IDENTITY['run_id'],old)
+            with self.assertRaises(RuntimeError):m.home_child_event_identity(value,env,True)
+
+    def test_missing_or_incomplete_repair_provenance_never_builds_a_child_policy(self):
+        original=m.home_policy()
+        with patch.object(m,'HOME_CHILD_REPAIR',None),self.assertRaises(RuntimeError):m.home_child_policy()
+        with patch.object(m,'HOME_CHILD_REPAIR',home_child_test_pins()):
+            policy=m.home_child_policy()
+            self.assertEqual({k:v for k,v in policy.items() if k not in ('operation','manifest','continuation')},
+                             {k:v for k,v in original.items() if k not in ('operation','manifest')})
+            self.assertEqual(m.home_policy(),original)
+            self.assertEqual(policy['continuation']['public_allowed_stat_fields'],['st_mtime_ns','st_ctime_ns'])
+            self.assertEqual(policy['continuation']['private_checks'],{'public_config':{'allowed_stat_fields':['st_ctime_ns']}})
+        for mutate in (lambda p:p.pop('checks'),lambda p:p.update(pr=True),lambda p:p.update(source_sha='wrong'),
+            lambda p:p['blobs'].pop(m.HOME_CHILD_REPAIR_PATHS[0]),lambda p:p['blobs'].update(extra='5'*40),
+            lambda p:p['checks'].pop(),lambda p:p['checks'][0].update(run_id=True),
+            lambda p:p['checks'][0].update(job_id=p['checks'][1]['job_id']),
+            lambda p:p['checks'][0].update(workflow='other.yml')):
+            pin=home_child_test_pins();mutate(pin)
+            with self.subTest(pin=pin),patch.object(m,'HOME_CHILD_REPAIR',pin),self.assertRaises(RuntimeError):m.home_child_policy()
+
+    def repair_metadata(self,f,path):
+        pin=m.HOME_CHILD_REPAIR
+        if path=='/pulls/'+str(pin['pr']):
+            return {'state':'closed','merged':True,'merge_commit_sha':pin['merge_sha'],
+                'head':{'sha':pin['source_sha'],'repo':{'full_name':m.REPO}},
+                'base':{'ref':'main','repo':{'full_name':m.REPO}}}
+        if path=='/git/commits/'+pin['source_sha']:return {'tree':{'sha':pin['tree_sha']}}
+        if path=='/git/commits/'+pin['merge_sha']:
+            return {'tree':{'sha':pin['tree_sha']},'parents':[{'sha':pin['base_sha']},{'sha':pin['source_sha']}]}
+        if path=='/compare/'+pin['merge_sha']+'...'+HOME_CHILD_IDENTITY['control_source_sha']:
+            return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':pin['merge_sha']}}
+        if path.startswith('/contents/'):
+            name=path.removeprefix('/contents/').split('?ref=')[0]
+            if name in pin['blobs']:
+                row={'type':'file','sha':pin['blobs'][name]}
+                if name.startswith('v2/data/'):
+                    row.update(encoding='base64',content=base64.b64encode((f.root/name[3:]).read_bytes()).decode())
+                return row
+        for check in pin['checks']:
+            if path=='/actions/runs/'+str(check['run_id']):
+                return {'id':check['run_id'],'head_sha':pin['source_sha'],'path':check['workflow'],
+                    'event':'pull_request','run_attempt':1,'status':'completed','conclusion':'success',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                    'repository':{'full_name':m.REPO},'head_repository':{'full_name':m.REPO}}
+            if path.startswith('/actions/runs/'+str(check['run_id'])+'/attempts/1/jobs?'):
+                return {'total_count':1,'jobs':[{'id':check['job_id'],'run_id':check['run_id'],
+                    'name':check['name'],'status':'completed','conclusion':'success'}]}
+        if path.startswith('/actions/runs?status='):return {'total_count':0,'workflow_runs':[]}
+        raise AssertionError('unexpected child repair request: '+path)
+
+    def test_exact_merged_repair_all_eight_original_checks_and_quiet_writers_are_mandatory(self):
+        with HomeChildTransaction().inspected() as f:
+            seen=[]
+            def api(path):seen.append(path);return self.repair_metadata(f,path)
+            with patch.object(m,'api',side_effect=api):m.home_child_repair_admission(HOME_CHILD_IDENTITY)
+            self.assertEqual(sum('/attempts/1/jobs?' in p for p in seen),8)
+            self.assertEqual(sum(p.startswith('/contents/') for p in seen),2*len(m.HOME_CHILD_REPAIR_PATHS))
+            pin=m.HOME_CHILD_REPAIR;run='/actions/runs/'+str(pin['checks'][0]['run_id'])
+            cases=(('/pulls/',lambda x:x.update(merged=False)),('/pulls/',lambda x:x['head'].update(sha='0'*40)),
+                ('/git/commits/'+pin['merge_sha'],lambda x:x.update(parents=[])),
+                ('/compare/',lambda x:x.update(behind_by=1)),('/contents/',lambda x:x.update(sha='0'*40)),
+                ('/contents/v2/data/',lambda x:x.update(content=base64.b64encode(b'foreign helper').decode())),
+                (run,lambda x:x.update(head_sha='0'*40)),(run,lambda x:x.update(run_attempt=2)),
+                (run,lambda x:x.update(conclusion='failure')),(run,lambda x:x['triggering_actor'].update(login='other')),
+                ('/attempts/1/jobs?',lambda x:x['jobs'][0].update(conclusion='failure')),
+                ('/actions/runs?status=in_progress',lambda x:x.update(workflow_runs=[{'id':7,'path':m.HOME_CHILD_WRITER_WORKFLOWS[0]}])))
+            for match,mutate in cases:
+                def changed(path):
+                    value=self.repair_metadata(f,path)
+                    if match in path:mutate(value)
+                    return value
+                with self.subTest(match=match),patch.object(m,'api',side_effect=changed),self.assertRaises(RuntimeError):
+                    m.home_child_repair_admission(HOME_CHILD_IDENTITY)
+
+    def metadata(self,f,path):
+        pin=m.HOME_CHILD_INSPECTION
+        owner={'user':{'id':226193297},'author_association':'OWNER'}
+        current=HOME_CHILD_IDENTITY['control_source_sha']
+        if path=='/git/ref/heads/main':return {'object':{'sha':current}}
+        for ancestor in (m.HOME_MAIN_BASE,m.HOME_INSPECT_FAILED['control_source_sha']):
+            if path=='/compare/'+ancestor+'...'+current:
+                return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':ancestor}}
+        if path=='/actions/runs/'+pin['run_id']:
+            return {'id':int(pin['run_id']),'head_sha':pin['control_source_sha'],'head_branch':'main',
+                'path':m.WORKFLOW,'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                'created_at':'2026-11-22T05:03:01Z','run_started_at':'2026-11-22T05:03:02Z','updated_at':'2026-11-22T05:04:01Z'}
+        if path.startswith('/actions/runs/'+pin['run_id']+'/attempts/1/jobs?'):
+            return {'total_count':1,'jobs':[{'id':pin['job_id'],'run_id':int(pin['run_id']),
+                'name':'public-install','status':'completed','conclusion':'success','steps':[
+                    {'name':'Run python3 scripts/deploy/search3_public_install.py home-inspect','status':'completed',
+                     'conclusion':'success','started_at':'2026-11-22T05:03:03Z','completed_at':'2026-11-22T05:04:00Z'}]}]}
+        if path=='/actions/artifacts/'+str(pin['artifact_id']):
+            return {'id':pin['artifact_id'],'name':'search3-public-install-'+pin['run_id']+'-1',
+                'expired':False,'digest':'sha256:'+pin['artifact_sha256'],
+                'workflow_run':{'id':int(pin['run_id']),'head_sha':pin['control_source_sha']}}
+        if path.startswith('/issues/4709/comments?'):
+            comments=HomeInspectionAdmission().metadata(path)
+            comments+=HomeAdmission().metadata(path)[1:]
+            comments.append(owner|{'id':pin['terminal_comment_id'],'created_at':'2026-11-22T05:05:00Z','updated_at':'2026-11-22T05:05:00Z',
+                'body':' '.join(str(pin[k]) for k in ('run_id','control_source_sha','command_comment_id','job_id','artifact_id',
+                    'artifact_sha256','receipt_sha256'))+' inspection_mismatch NO REPLAY'})
+            comments.append(home_child_test_event()['comment']|{'created_at':'2026-11-22T05:06:00Z','updated_at':'2026-11-22T05:06:00Z'})
+            return comments
+        try:return self.repair_metadata(f,path)
+        except AssertionError:return HomeInspectionAdmission().metadata(path)
+
+    def admit(self,f,change=None):
+        seen=[]
+        def api(path):
+            seen.append(path);value=self.metadata(f,path)
+            return change(path,value) if change else value
+        def download(identifier,digest):
+            if identifier==m.HOME_CHILD_INSPECTION['artifact_id']:
+                self.assertEqual(digest,m.HOME_CHILD_INSPECTION['artifact_sha256']);return f.child_inspection_raw
+            self.assertEqual(identifier,m.HOME_INSPECT_FAILED['artifact_id'])
+            self.assertEqual(digest,m.HOME_INSPECT_FAILED['artifact_sha256']);return f.home_inspection_raw
+        with patch.object(m,'api',side_effect=api),patch.object(m,'download',side_effect=download), \
+             patch.object(m,'reviewed_control'),patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'guarded publisher')), \
+             patch.object(m.carrier,'run',side_effect=AssertionError('transport during child admission')):
+            value=m.home_child_admission(HOME_CHILD_IDENTITY)
+            self.assertEqual(value,f.child_inspection)
+        return seen
+
+    def test_original_failed_and_inspection_run_metadata_and_immutable_terminals_are_required(self):
+        with HomeChildTransaction().inspected() as f:
+            self.admit(f)
+            cases=(('/actions/runs/'+m.HOME_INSPECT_FAILED['run_id'],lambda x:x.update(run_attempt=2)),
+                ('/actions/runs/'+m.HOME_CHILD_INSPECTION['run_id'],lambda x:x.update(conclusion='failure')),
+                ('/actions/artifacts/'+str(m.HOME_CHILD_INSPECTION['artifact_id']),lambda x:x.update(expired=True)),
+                ('/actions/runs/'+m.HOME_INSPECT_FAILED['run_id']+'/attempts/1/jobs?',lambda x:x['jobs'][0].update(id=1)),
+                ('/actions/runs/'+m.HOME_CHILD_INSPECTION['run_id']+'/attempts/1/jobs?',lambda x:x['jobs'][0].update(id=1)),
+                ('/issues/4709/comments?',lambda x:next(c for c in x if c['id']==m.HOME_INSPECT_FAILED['terminal_comment_id']).update(body='missing proof')),
+                ('/issues/4709/comments?',lambda x:next(c for c in x if c['id']==m.HOME_CHILD_INSPECTION['terminal_comment_id']).update(updated_at='2026-11-22T05:05:01Z')))
+            for match,mutate in cases:
+                def change(path,value):
+                    if match in path:mutate(value)
+                    return value
+                with self.subTest(match=match),self.assertRaises(RuntimeError):self.admit(f,change)
+
+    def test_all_command_pages_and_final_head_recheck_block_replay_and_movement(self):
+        with HomeChildTransaction().inspected() as f:
+            pages=[]
+            def late_duplicate(path,value):
+                if path.startswith('/issues/4709/comments?'):
+                    pages.append(path)
+                    if 'page=2' in path:
+                        return [home_child_test_event()['comment']|{'id':99999,'created_at':'2026-11-22T05:07:00Z','updated_at':'2026-11-22T05:07:00Z'}]
+                    return value+[{'id':30000+i,'body':'unrelated history'} for i in range(100-len(value))]
+                return value
+            with self.assertRaises(RuntimeError):self.admit(f,late_duplicate)
+            self.assertTrue(any('page=2' in path for path in pages))
+            calls=0
+            def moved(path,value):
+                nonlocal calls
+                if path=='/git/ref/heads/main':
+                    calls+=1
+                    if calls==2:value['object']['sha']='0'*40
+                return value
+            with self.assertRaises(RuntimeError):self.admit(f,moved)
+            self.assertEqual(calls,2)
+
+    def test_inspection_archive_is_exact_and_rehashed_semantic_tampering_is_still_rejected(self):
+        with HomeChildTransaction().inspected() as f:
+            self.assertEqual(m.home_child_inspection_evidence(f.child_inspection_raw),f.child_inspection)
+            with self.assertRaises(RuntimeError):m.home_child_inspection_evidence(f.child_inspection_raw+b'changed')
+            for mutate in (lambda x:x.update(status='inspection_match'),lambda x:x.update(read_only=False),
+                lambda x:x['remote']['public_mismatches'][0].update(changed_stat_fields=['st_ctime_ns']),
+                lambda x:x['remote']['public_mismatches'].pop(),
+                lambda x:x['remote']['private_checks']['public_config'].update(matches_identity=True),
+                lambda x:x['remote'].update(server_writes=1),lambda x:x['failed_evidence']['remote'].update(reservation_created=True)):
+                value=copy.deepcopy(f.child_inspection);mutate(value)
+                pin=m.HOME_CHILD_INSPECTION|{'receipt_sha256':m.sha((json.dumps(value,sort_keys=True)+'\n').encode())}
+                with patch.object(m,'HOME_CHILD_INSPECTION',pin),self.assertRaises(RuntimeError):m.home_child_inspection_value(value)
+
+    def recover_admit(self,f,raw,change=None):
+        original=HOME_CHILD_IDENTITY;identity=HOME_CHILD_ROLLBACK_IDENTITY
+        artifact={'id':987401,'name':'search3-public-install-'+original['run_id']+'-1','expired':False,
+            'digest':'sha256:'+m.sha(raw),'workflow_run':{'id':int(original['run_id']),'head_sha':original['control_source_sha']}}
+        seen=[]
+        def api(path):
+            seen.append(path)
+            if path=='/git/ref/heads/main':value={'object':{'sha':identity['control_source_sha']}}
+            elif path.startswith('/issues/4709/comments?'):
+                value=[home_child_test_event()['comment']|{'created_at':'2026-11-22T05:06:00Z','updated_at':'2026-11-22T05:06:00Z'},
+                       home_child_test_event(True)['comment']|{'created_at':'2026-11-22T05:08:00Z','updated_at':'2026-11-22T05:08:00Z'}]
+            elif path=='/actions/runs/'+original['run_id']:
+                value={'id':int(original['run_id']),'head_sha':original['control_source_sha'],'head_branch':'main',
+                    'path':m.WORKFLOW,'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'success',
+                    'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                    'created_at':'2026-11-22T05:06:01Z','run_started_at':'2026-11-22T05:06:02Z','updated_at':'2026-11-22T05:07:01Z'}
+            elif path.startswith('/actions/runs/'+original['run_id']+'/artifacts?'):
+                value={'total_count':1,'artifacts':[copy.deepcopy(artifact)]}
+            elif path.startswith('/actions/runs/'+original['run_id']+'/attempts/1/jobs?'):
+                value={'total_count':1,'jobs':[{'id':876543,'run_id':int(original['run_id']),
+                    'name':'public-install','status':'completed','conclusion':'success','steps':[
+                        {'name':'Run python3 scripts/deploy/search3_public_install.py home-continue','status':'completed',
+                         'conclusion':'success','started_at':'2026-11-22T05:06:03Z','completed_at':'2026-11-22T05:07:00Z'}]}]}
+            elif path.startswith('/actions/runs?status='):value={'total_count':0,'workflow_runs':[]}
+            else:raise AssertionError('recovery unexpectedly requires historical source or proof: '+path)
+            return change(path,value) if change else value
+        def download(identifier,digest):
+            # URL transport accepts either textual representation; the actual
+            # native-proof validator, not this double, must reject string IDs.
+            self.assertEqual((str(identifier),digest),(str(artifact['id']),m.sha(raw)))
+            return raw
+        with patch.object(m,'api',side_effect=api),patch.object(m,'reviewed_control'), \
+             patch.object(m,'download',side_effect=download) as downloaded, \
+             patch.object(m.carrier,'run',side_effect=AssertionError('transport during recovery admission')):
+            self.assertEqual(m.home_child_rollback_admission(identity,original['run_id']),(original,artifact))
+            downloaded.assert_called_once_with(artifact['id'],m.sha(raw))
+        return seen
+
+
+class HomeChildClient(unittest.TestCase):
+    def env(self,f,name,rollback=False):
+        directory=f.base/name;directory.mkdir();event_path=directory/'event.json'
+        event_path.write_text(json.dumps(home_child_test_event(rollback)))
+        identity=HOME_CHILD_ROLLBACK_IDENTITY if rollback else HOME_CHILD_IDENTITY
+        return directory,environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id'],
+            'RUNNER_TEMP':str(directory),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+            'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY synthetic child'}
+
+    def test_client_retains_self_contained_evidence_and_recovery_uses_only_its_own_archive(self):
+        helper=HomeChildTransaction()
+        with helper.inspected() as f:
+            f.child_accepted=helper.execute(f);installed=helper.evidence(f,f.child_accepted)
+            data,raw=helper.archive(installed)
+            self.assertLessEqual(len(data),262144)
+            self.assertEqual(m.home_child_source_evidence(raw,HOME_CHILD_IDENTITY),
+                             (f.child_policy,f.child_accepted,f.home_parent,f.child_inspection))
+            admission=HomeChildAdmission();admission.recover_admit(f,raw)
+            for match,mutate in (('/actions/runs/'+HOME_CHILD_IDENTITY['run_id'],lambda x:x.update(run_attempt=2)),
+                ('/attempts/1/jobs?',lambda x:x['jobs'][0]['steps'][0].update(name='Run python3 scripts/deploy/search3_public_install.py home')),
+                ('/artifacts?',lambda x:x['artifacts'][0].update(expired=True)),
+                ('/issues/4709/comments?',lambda x:x.append(x[0]|{'id':99999})),
+                ('/issues/4709/comments?',lambda x:x[0]['user'].update(id=1))):
+                def change(path,value):
+                    if match in path:mutate(value)
+                    return value
+                with self.subTest(recovery_gate=match),self.assertRaises(RuntimeError):admission.recover_admit(f,raw,change)
+            for shape,reason in (('coherent-string-run','home_child_native_run'),
+                                 ('string-job','pagination_duplicate'),('string-artifact','pagination_duplicate')):
+                def string_ids(path,value):
+                    if shape=='coherent-string-run':
+                        if path=='/actions/runs/'+HOME_CHILD_IDENTITY['run_id']:value['id']=str(value['id'])
+                        elif '/attempts/1/jobs?' in path:value['jobs'][0]['run_id']=str(value['jobs'][0]['run_id'])
+                        elif '/artifacts?' in path:
+                            value['artifacts'][0]['workflow_run']['id']=str(value['artifacts'][0]['workflow_run']['id'])
+                    elif shape=='string-job' and '/attempts/1/jobs?' in path:
+                        value['jobs'][0]['id']=str(value['jobs'][0]['id'])
+                    elif shape=='string-artifact' and '/artifacts?' in path:
+                        value['artifacts'][0]['id']=str(value['artifacts'][0]['id'])
+                    return value
+                with self.subTest(id_shape=shape),self.assertRaisesRegex(RuntimeError,reason):
+                    admission.recover_admit(f,raw,string_ids)
+            for identity in (HOME_IDENTITY,HOME_INSPECTION_IDENTITY,HOME_CHILD_IDENTITY|{'run_id':'1'}):
+                with self.assertRaises(RuntimeError):m.home_child_source_evidence(raw,identity)
+            for mutate in (lambda v:v.pop('inspection_evidence'),lambda v:v.update(operation_id=m.HOME_OPERATION),
+                lambda v:v['remote'].update(reconciliation_sha256='0'*64),
+                lambda v:v['inspection_evidence']['remote']['private_checks']['public_config'].update(matches_identity=True)):
+                value=copy.deepcopy(installed);mutate(value);_,bad=helper.archive(value)
+                # A changed but syntactically valid reconciliation digest is
+                # constrained by the native recovery's private record read.
+                if value.get('remote',{}).get('reconciliation_sha256')=='0'*64:
+                    self.assertEqual(m.home_child_source_evidence(bad,HOME_CHILD_IDENTITY)[1]['reconciliation_sha256'],'0'*64)
+                    original=f.child_accepted;f.child_accepted=value['remote']
+                    before=f.filesystem_snapshot();refused=helper.rollback(f)
+                    self.assertEqual(refused['status'],'blocked_no_replay');self.assertFalse(refused['reservation_created'])
+                    self.assertEqual(f.filesystem_snapshot(),before);f.child_accepted=original
+                    continue
+                with self.assertRaises(RuntimeError):m.home_child_source_evidence(bad,HOME_CHILD_IDENTITY)
+            restored=helper.rollback(f)
+            self.assertEqual(restored['status'],'home_navigation_rolled_back_verified')
+            server_before=HomeInspectionClient().server_snapshot(f)
+            artifact={'id':987401,'digest':'sha256:'+m.sha(raw)}
+            for rollback,result in ((False,f.child_accepted),(True,restored)):
+                runner,env=self.env(f,'child-client-'+str(rollback),rollback)
+                with contextlib.ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    install_admission=stack.enter_context(patch.object(m,'home_child_admission',return_value=f.child_inspection))
+                    recovery_admission=stack.enter_context(patch.object(m,'home_child_rollback_admission',return_value=(HOME_CHILD_IDENTITY,artifact)))
+                    downloader=stack.enter_context(patch.object(m,'download',return_value=raw if rollback else b'original HOME candidate'))
+                    package=stack.enter_context(patch.object(m,'home_package',return_value=(f.home_policy,f.home_files)))
+                    dependency=stack.enter_context(patch.object(m,'tv_successor_evidence',return_value=copy.deepcopy(f.tv_evidence)))
+                    heads=stack.enter_context(patch.object(m,'home_inspect_heads'))
+                    rollback_head=stack.enter_context(patch.object(m,'rollback_main'))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',side_effect=[b'fixture known host',json.dumps(result).encode()]))
+                    m.home_child(rollback)
+                    self.assertEqual(dependency.call_count,2)
+                    self.assertEqual([c.args[0][0] for c in remote.call_args_list],['ssh-keyscan','ssh'])
+                    self.assertEqual(remote.call_args.args[0][-1],'python3 -I -S -B -')
+                    self.assertEqual(remote.call_args.kwargs['timeout'],180)
+                    if rollback:
+                        install_admission.assert_not_called();package.assert_not_called();heads.assert_not_called()
+                        self.assertEqual(recovery_admission.call_count,2)
+                        downloader.assert_called_once_with(artifact['id'],m.sha(raw));rollback_head.assert_called_once_with(HOME_CHILD_ROLLBACK_IDENTITY)
+                    else:
+                        recovery_admission.assert_not_called();rollback_head.assert_not_called()
+                        self.assertEqual(install_admission.call_count,2)
+                        downloader.assert_called_once_with(m.HOME_ARTIFACT,m.HOME_ARTIFACT_SHA);heads.assert_called_once_with(HOME_CHILD_IDENTITY)
+                value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                self.assertEqual(value,helper.evidence(f,result,rollback))
+                self.assertFalse((runner/'search3-public-install/key').exists());self.assertFalse((runner/'search3-public-install/known').exists())
+                self.assertEqual(HomeInspectionClient().server_snapshot(f),server_before)
+
+    def test_initial_and_final_admission_or_dependency_failures_never_start_remote_execution(self):
+        helper=HomeChildTransaction()
+        with helper.inspected() as f:
+            for case in ('admission-initial','admission-final','inspection-changed','tv-initial','tv-final','tv-changed'):
+                runner,env=self.env(f,'child-blocked-'+case)
+                admissions=[f.child_inspection,f.child_inspection]
+                dependencies=[copy.deepcopy(f.tv_evidence),copy.deepcopy(f.tv_evidence)]
+                if case=='admission-initial':admissions=[RuntimeError('synthetic gate')]
+                elif case=='admission-final':admissions[1]=RuntimeError('synthetic gate moved')
+                elif case=='inspection-changed':admissions[1]=f.child_inspection|{'run_id':'1'}
+                elif case=='tv-initial':dependencies=[RuntimeError('synthetic unresolved dependency')]
+                elif case=='tv-final':dependencies[1]=RuntimeError('synthetic changed dependency')
+                else:dependencies[1]=dependencies[1]|{'artifact_sha256':'0'*64}
+                with self.subTest(case=case),contextlib.ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    stack.enter_context(patch.object(m,'home_child_admission',side_effect=admissions))
+                    stack.enter_context(patch.object(m,'home_package',return_value=(f.home_policy,f.home_files)))
+                    stack.enter_context(patch.object(m,'download',return_value=b'original HOME candidate'))
+                    stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=dependencies))
+                    remote=stack.enter_context(patch.object(m.carrier,'run',return_value=b'fixture known host'))
+                    with self.assertRaises(RuntimeError):m.home_child()
+                    self.assertEqual([c.args[0][0] for c in remote.call_args_list],
+                                     [] if case in ('admission-initial','tv-initial') else ['ssh-keyscan'])
+                value=json.loads((runner/'search3-public-install/evidence.json').read_text())
+                self.assertEqual(value['status'],'blocked_no_replay');self.assertFalse(value['ssh_started'])
+                self.assertNotIn('remote',value)
+                self.assertFalse((runner/'search3-public-install/key').exists());self.assertFalse((runner/'search3-public-install/known').exists())
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)
