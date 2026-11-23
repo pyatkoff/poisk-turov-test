@@ -10021,6 +10021,575 @@ if __name__ == '__main__':
         raise SystemExit(0)
 
 
+# A new one-file operation bound to the original completed finite observation.
+# The consumed installer/observer and every historical policy remain unchanged.
+CONTENT_SPEED_BOUND_PREFIX = '/update-search3-content-bound'
+CONTENT_SPEED_BOUND_ROLLBACK_PREFIX = '/rollback-search3-content-bound'
+CONTENT_SPEED_BOUND_OPERATION = 'search3-content-bound-45156272451-20261123-v1'
+CONTENT_SPEED_BOUND_ROLLBACK_OPERATION = 'search3-content-bound-rollback-45156272451-20261123-v1'
+CONTENT_SPEED_BOUND_OBSERVATION = {
+    'operation_id':CONTENT_SPEED_INSPECT_OPERATION,
+    'control_source_sha':'8dd5bbd787d81175daf7dc32c748c3664f22e15e',
+    'run_id':'45156272451','attempt':1,'job_id':137629879306,'command_comment_id':7097991385,
+    'command_created_at':'2026-11-23T10:27:22Z',
+    'artifact_id':14810220575,'artifact_bytes':4273,
+    'artifact_sha256':'363329313ac3d175723fdf9abe703cc9e85873cba26c17f5208b7d0edb688441',
+    'receipt_bytes':19683,'receipt_sha256':'6855aea434d2ad146c6436e85a48c5d6105558602db1f444689c91a0781ef949',
+    'observation_sha256':'f8d2af8a4c1b18e10730a7067d9928cffc41ae78642b5e872efa6650bdcfc7aa',
+    'terminal_comment_id':7098344552,'terminal_created_at':'2026-11-23T10:41:51Z',
+    'terminal_body_sha256':'df4d3451331390060015e56c25748ae532964a125a0c51a8be791447fdb2d8d4',
+}
+CONTENT_SPEED_BOUND_DRIFT = {
+    'path':'data/price-segment-v1.php',
+    'row':{'state':'present','mode':'0644','size':1932,
+           'sha256':'6db65d0a8259d447c2fc1f3acf2f8cf9b5a758a660ca4ee3fd41db6420133b6f'},
+    'stat_fields':['st_mtime_ns','st_ctime_ns'],
+}
+CONTENT_SPEED_BOUND_REASONS = CONTENT_SPEED_INSPECT_REASONS + (
+    'content_speed_bound_scope','content_speed_bound_observation','content_speed_bound_race',
+    'content_speed_bound_snapshot','content_speed_bound_target','content_speed_bound_installed',
+)
+
+
+def content_speed_bound_observation_identity():
+    return {k:CONTENT_SPEED_BOUND_OBSERVATION[k] for k in ('control_source_sha','run_id','command_comment_id')}
+
+
+def content_speed_bound_policy():
+    value={k:v for k,v in content_speed_policy().items() if k!='manifest'}
+    value.update(operation=CONTENT_SPEED_BOUND_OPERATION,candidate_manifest=CONTENT_SPEED_MANIFEST_SHA,
+                 observation=CONTENT_SPEED_BOUND_OBSERVATION,drift=CONTENT_SPEED_BOUND_DRIFT)
+    return value|{'manifest':sha(json.dumps(value,sort_keys=True,separators=(',',':')).encode())}
+
+
+def content_speed_bound_runtime_identity(identity):
+    content_speed_inspect_runtime_identity(identity);pin=CONTENT_SPEED_BOUND_OBSERVATION
+    need(identity['run_id']!=pin['run_id'] and identity['command_comment_id']!=pin['command_comment_id'],
+         'content_speed_bound_identity')
+
+
+def content_speed_bound_event_identity(event,env,rollback=False):
+    need(type(rollback) is bool,'mode');control=env.get('GITHUB_SHA','');comment=event.get('comment',{})
+    prefix,operation=(CONTENT_SPEED_BOUND_ROLLBACK_PREFIX,CONTENT_SPEED_BOUND_ROLLBACK_OPERATION) if rollback else (CONTENT_SPEED_BOUND_PREFIX,CONTENT_SPEED_BOUND_OPERATION)
+    original_run=None
+    if rollback:
+        match=re.fullmatch(re.escape(prefix+' '+control+' ')+r'([1-9][0-9]{0,19}) '+re.escape(operation),comment.get('body',''))
+        need(match is not None,'command');original_run=match[1]
+    else:need(comment.get('body')==f'{prefix} {control} {operation}','command')
+    need(isinstance(comment.get('created_at'),str) and comment.get('updated_at')==comment['created_at'],'content_speed_edited_command')
+    _tv_time(comment['created_at']);synthetic=json.loads(json.dumps(event))
+    synthetic['comment']['body']=f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity=update_event_identity(synthetic,env);content_speed_bound_runtime_identity(identity)
+    if rollback:
+        need(original_run!=identity['run_id'],'command');content_speed_bound_runtime_identity({**identity,'run_id':original_run})
+    return (identity,original_run) if rollback else identity
+
+
+def content_speed_bound_observation_value(value):
+    pin=CONTENT_SPEED_BOUND_OBSERVATION;identity=content_speed_bound_observation_identity()
+    need(sha((json.dumps(value,sort_keys=True)+'\n').encode())==pin['receipt_sha256'],'content_speed_bound_observation_digest')
+    fixed={**identity,'operation_id':CONTENT_SPEED_INSPECT_OPERATION,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,'read_only':True,'phase':'complete','ssh_requested':True,
+        'ssh_started':True,'remote_outcome':'inspection_mismatch','status':'inspection_mismatch',
+        'failed_attempt':CONTENT_SPEED_INSPECT_FAILED,'parent_home':content_speed_parent_identity(),
+        'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'remote'}
+         and all(type(value.get(k)) is type(v) and json.dumps(value[k],sort_keys=True)==json.dumps(v,sort_keys=True)
+                 for k,v in fixed.items()),'content_speed_bound_observation_evidence')
+    result=value['remote'];need(valid_content_speed_inspect_result(identity,result),'content_speed_bound_observation_evidence')
+    drift=CONTENT_SPEED_BOUND_DRIFT
+    expected=[{'path':drift['path'],'expected':drift['row'],'observed':drift['row'],
+               'changed_row_fields':[],'changed_stat_fields':drift['stat_fields']}]
+    need(result['status']=='inspection_mismatch' and result['observation_sha256']==pin['observation_sha256']
+         and result['public_mismatches']==expected and result['home_mismatches']==[]
+         and result['guard_matches'] is False and result['home_parent_verified'] is False
+         and result['home_targets_verified'] is True and result['ancestor_records_match'] is True
+         and all(r['readable'] and r['matches_row'] and r['matches_identity']
+                 and not r['changed_row_fields'] and not r['changed_stat_fields'] for r in result['private_checks'].values()),
+         'content_speed_bound_observation_scope')
+    return result
+
+
+def content_speed_bound_observation_evidence(raw):
+    pin=CONTENT_SPEED_BOUND_OBSERVATION
+    need(len(raw)==pin['artifact_bytes'] and sha(raw)==pin['artifact_sha256'],'content_speed_bound_observation_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'content_speed_bound_observation_artifact');data=archive.read('evidence.json')
+        need(len(data)==pin['receipt_bytes'] and sha(data)==pin['receipt_sha256'],'content_speed_bound_observation_digest')
+    value=_tv_json(data);content_speed_bound_observation_value(value);return value
+
+
+def content_speed_bound_native_proof(identity,command,mode,job_id=None):
+    _content_speed_native_proof(identity,command,mode,job_id)
+    run=api('/actions/runs/'+identity['run_id'])
+    jobs=[j for j in pages('/actions/runs/'+identity['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('head_sha')==identity['control_source_sha'],'content_speed_bound_native_job')
+    job=jobs[0];names=('Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+        'Run python3 tests/search3_public_install_test.py','Run python3 scripts/deploy/search3_public_install.py '+mode,
+        'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02')
+    times=[_tv_time(command['created_at']),_tv_time(run.get('created_at')),_tv_time(run.get('run_started_at')),
+           _tv_time(job.get('started_at'))]
+    for name in names:
+        rows=[s for s in job.get('steps',[]) if s.get('name')==name]
+        need(len(rows)==1 and rows[0].get('status')=='completed' and rows[0].get('conclusion')=='success',
+             'content_speed_bound_native_step')
+        times.extend((_tv_time(rows[0].get('started_at')),_tv_time(rows[0].get('completed_at'))))
+    times.extend((_tv_time(job.get('completed_at')),_tv_time(run.get('updated_at'))))
+    need(times==sorted(times),'content_speed_bound_native_time');return run
+
+
+def content_speed_bound_artifact(pin):
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('size_in_bytes')==pin['artifact_bytes'] and artifact.get('expired') is False
+         and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('workflow_run',{}).get('head_sha')==pin['control_source_sha']
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'],'content_speed_bound_artifact')
+
+
+def content_speed_bound_terminal(comments,pin,earliest,latest):
+    terminal=next((c for c in comments if c.get('id')==pin['terminal_comment_id']),{})
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and terminal.get('created_at')==terminal.get('updated_at')==pin['terminal_created_at']
+         and isinstance(terminal.get('body'),str) and sha(terminal['body'].encode())==pin['terminal_body_sha256']
+         and earliest<=_tv_time(terminal['created_at'])<=latest,'content_speed_bound_terminal')
+
+
+def content_speed_bound_heads(identity):
+    content_speed_bound_runtime_identity(identity);content_speed_final_heads(identity)
+    base=CONTENT_SPEED_BOUND_OBSERVATION['control_source_sha'];relation=api('/compare/'+base+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==base,'content_speed_bound_control_ancestry')
+
+
+def content_speed_bound_admission(identity):
+    content_speed_bound_heads(identity);reviewed_control(identity['control_source_sha'])
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+CONTENT_SPEED_SOURCE+'/check-runs','check_runs')
+    need(len(checks)==len(CONTENT_SPEED_CHECKS) and {c.get('name') for c in checks}==set(CONTENT_SPEED_CHECKS)
+         and all(c.get('head_sha')==CONTENT_SPEED_SOURCE and green(c) for c in checks),'content_speed_source_ci')
+    run=api('/actions/runs/'+str(CONTENT_SPEED_BUILD_RUN))
+    need(run.get('id')==CONTENT_SPEED_BUILD_RUN and run.get('head_sha')==CONTENT_SPEED_SOURCE
+         and run.get('head_branch')==CONTENT_SPEED_SOURCE_BRANCH and run.get('path')=='.github/workflows/search3-visual-migration.yml'
+         and run.get('event')=='pull_request' and type(run.get('run_attempt')) is int and run['run_attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='success'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and run.get('repository',{}).get('full_name')==run.get('head_repository',{}).get('full_name')==REPO,'content_speed_build')
+    artifact=api('/actions/artifacts/'+str(CONTENT_SPEED_ARTIFACT))
+    need(artifact.get('id')==CONTENT_SPEED_ARTIFACT and artifact.get('name')=='search3-public-live-'+CONTENT_SPEED_SOURCE
+         and artifact.get('expired') is False and artifact.get('size_in_bytes')==CONTENT_SPEED_ARTIFACT_BYTES
+         and artifact.get('digest')=='sha256:'+CONTENT_SPEED_ARTIFACT_SHA
+         and artifact.get('workflow_run',{}).get('id')==CONTENT_SPEED_BUILD_RUN
+         and artifact.get('workflow_run',{}).get('head_sha')==CONTENT_SPEED_SOURCE,'content_speed_artifact')
+    comments=pages('/issues/4709/comments')
+    current=content_speed_created_command(comments,CONTENT_SPEED_BOUND_PREFIX,CONTENT_SPEED_BOUND_OPERATION,identity)
+    pin=CONTENT_SPEED_BOUND_OBSERVATION;observed=content_speed_bound_observation_identity()
+    command=content_speed_created_command(comments,CONTENT_SPEED_INSPECT_PREFIX,CONTENT_SPEED_INSPECT_OPERATION,observed)
+    need(command['created_at']==pin['command_created_at'],'content_speed_bound_observer_command')
+    observed_run=content_speed_bound_native_proof(observed,command,'content-speed-inspect',pin['job_id'])
+    content_speed_bound_terminal(comments,pin,_tv_time(observed_run['updated_at']),_tv_time(current['created_at']))
+    failed=CONTENT_SPEED_INSPECT_FAILED;original=content_speed_inspect_failed_identity()
+    failed_command=content_speed_created_command(comments,CONTENT_SPEED_PREFIX,CONTENT_SPEED_OPERATION,original)
+    failed_run=content_speed_inspect_failed_proof(original,failed_command)
+    content_speed_bound_terminal(comments,failed,_tv_time(failed_run['updated_at']),_tv_time(command['created_at']))
+    for prefix,operation in ((CONTENT_SPEED_ROLLBACK_PREFIX,CONTENT_SPEED_ROLLBACK_OPERATION),
+                             (CONTENT_SPEED_BOUND_ROLLBACK_PREFIX,CONTENT_SPEED_BOUND_ROLLBACK_OPERATION)):
+        need(not any(c.get('body','').strip().split()[:1]==[prefix] and operation in c.get('body','').split()[1:]
+                     for c in comments),'content_speed_bound_original_changed')
+    content_speed_bound_artifact(failed)
+    content_speed_inspect_failed_evidence(download(failed['artifact_id'],failed['artifact_sha256']))
+    content_speed_bound_artifact(pin)
+    value=content_speed_bound_observation_evidence(download(pin['artifact_id'],pin['artifact_sha256']))
+    content_speed_parent_admission();content_speed_bound_heads(identity);return value
+
+
+CONTENT_SPEED_BOUND_COMMON_REMOTE = r'''
+_content_speed_bound_reference=None
+_content_speed_bound_ancestor_namespaces=content_speed_namespaces
+def content_speed_bound_namespaces():
+ for key in ('failed_namespace_absent','rollback_namespace_absent','inspection_namespace_absent'):result[key]=False
+ try:_content_speed_bound_ancestor_namespaces()
+ finally:result['failed_namespace_absent']=False
+ for key,operation in (('failed_namespace_absent',FAILED['operation_id']),
+                       ('rollback_namespace_absent',BOUND_CONSUMED_ROLLBACK),
+                       ('inspection_namespace_absent',INSPECTION_OPERATION)):
+  result[key]=False
+  with base.parent(operation) as (fd,name):
+   try:os.stat(name,dir_fd=fd,follow_symlinks=False)
+   except FileNotFoundError:result[key]=True
+  require(result[key],'content_speed_inspection_namespace')
+content_speed_namespaces=content_speed_bound_namespaces
+content_speed_inspect_namespaces=content_speed_bound_namespaces
+def content_speed_bound_view(measured):
+ return {'rows':refactor_stamp_rows(measured['rows']),'records':refactor_stamp_rows(measured['records']),
+         'ancestors':measured['ancestors'],'stages':refactor_stamp_rows(measured['stages']),'closure':measured['closure']}
+def content_speed_bound_read(snapshot):
+ first=content_speed_inspect_read(snapshot);second=content_speed_inspect_read(snapshot)
+ require(first==second and all(r[0].get('state')!='unreadable' for r in first['rows'].values()),'content_speed_bound_race')
+ content_speed_bound_namespaces();tv_successor_stable();return first,content_speed_bound_view(first)
+def content_speed_bound_home(snapshot,records,measured,retained=None):
+ require(measured['records']==records and measured['ancestors']==snapshot['ancestors'],'content_speed_parent_changed')
+ for index,path in enumerate(HOME_POLICY['order']):
+  before=snapshot['before'][path];target=HOME_POLICY['targets'][path];intent=json.loads(records['intent-'+str(index)][2])
+  observed=retained if path==CONTENT_SPEED_PATH and retained is not None else measured['rows'][path]
+  require(records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==home_backup_row(path)
+          and observed[0]==target['after'] and observed[1] is not None
+          and observed[1][:-1]==tuple(intent['new_identity'])[:-1]
+          and home_same_original(measured['stages'][path],(before[0],home_before_identity(before[1],before[0]))),
+          'home_snapshot_conflict')
+def content_speed_bound_own_snapshot(store,original,expected_sha,accepted=None):
+ paths=CONTENT_SPEED_PREPARED_PATHS+(('result.json',) if accepted is not None else ())
+ records=site_read_records(store,paths);record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':CONTENT_SPEED_POLICY['operation'],**original,
+         'source':CONTENT_SPEED_POLICY['source'],'manifest':CONTENT_SPEED_POLICY['manifest'],'parent_home':HOME_ORIGINAL}
+         and (accepted is None or record('result.json')==accepted),'content_speed_original_identity')
+ snapshot=record('snapshot/manifest.json');path=CONTENT_SPEED_PATH;target=CONTENT_SPEED_POLICY['targets'][path]
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_home','before','guarded','ancestors'}
+         and snapshot['source']==CONTENT_SPEED_POLICY['source'] and snapshot['manifest']==CONTENT_SPEED_POLICY['manifest']
+         and snapshot['parent_home']==HOME_ORIGINAL and set(snapshot['before'])=={path}
+         and set(snapshot['guarded'])==(set(INSPECTION_PUBLIC_PATHS)|set(private_labels())|set(HOME_POLICY['order']))-{path}
+         and set(snapshot['ancestors'])==set(INSPECTION_ANCESTORS)|{'home','home_stage','home_closed'}
+         and records['snapshot/manifest.json'][2]==canonical(snapshot)
+         and digest(records['snapshot/manifest.json'][2])==expected_sha,'content_speed_bound_snapshot')
+ before=snapshot['before'][path];require(isinstance(before,list) and len(before)==2 and before[0]==target['before'],'content_speed_bound_snapshot')
+ old=checked_stamp(before[1],target['before']);intent=record('intent-0')
+ require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+         and intent['path']==path and intent['before']==target['before'] and intent['after']==target['after']
+         and intent['previous_identity']==before[1]
+         and records['snapshot/0'][0]==records['drill/0'][0]==target['before'],'content_speed_bound_snapshot')
+ new=checked_stamp(intent['new_identity'],target['after']);anc=snapshot['ancestors']
+ reference={'rows':snapshot['guarded']|snapshot['before'],'records':anc['home'],
+            'ancestors':{k:anc[k] for k in INSPECTION_ANCESTORS},'stages':anc['home_stage'],'closure':anc['home_closed']}
+ require(digest(canonical(reference))==BOUND_OBSERVATION['observation_sha256'],'content_speed_bound_observation')
+ return reference,(before[0],old),new
+def content_speed_bound_reference_check(view,reference):
+ # Only the transaction target is normalized, after its own inode proof.
+ normalized=dict(view,rows=dict(view['rows'],**{CONTENT_SPEED_PATH:reference['rows'][CONTENT_SPEED_PATH]}))
+ require(normalized==reference and digest(canonical(normalized))==BOUND_OBSERVATION['observation_sha256'],
+         'content_speed_bound_observation')
+def content_speed_bound_parent_state(retained_target=None):
+ global _content_speed_bound_reference
+ records,snapshot=content_speed_inspect_parent_proof()
+ expected=refactor_expected({p:r[0] for p,r in snapshot['guarded'].items()})
+ measured,view=content_speed_bound_read(snapshot);path=CONTENT_SPEED_PATH
+ store=globals().get('contented') or (private if reserved else None)
+ if store is None:
+  require(retained_target is None and _content_speed_bound_reference is None,'content_speed_bound_scope')
+  for protected,before in snapshot['guarded'].items():
+   row,identity=measured['rows'][protected];previous=before[1]
+   if TV_SUCCESSOR_PROOF is not None and protected==TV_SUCCESSOR['path']:previous=_tv_successor_bound['target'][1]
+   changes=content_speed_inspect_stat_changes(previous,identity)
+   allowed=BOUND_DRIFT['stat_fields'] if protected==BOUND_DRIFT['path'] else []
+   require(row==expected[protected] and changes==allowed,'content_speed_bound_observation')
+   if allowed:require(row==BOUND_DRIFT['row'],'content_speed_bound_observation')
+  content_speed_bound_home(snapshot,records,measured)
+  require(digest(canonical(view))==BOUND_OBSERVATION['observation_sha256'],'content_speed_bound_observation')
+  _content_speed_bound_reference=view
+ else:
+  inverse=globals().get('contented') is not None
+  accepted=CONTENT_SPEED_ACCEPTED if inverse else None;original=CONTENT_SPEED_ORIGINAL if inverse else IDENTITY
+  reference,before,new=content_speed_bound_own_snapshot(store,original,
+      accepted['snapshot_manifest_sha256'] if inverse else result['snapshot_manifest_sha256'],accepted)
+  require(_content_speed_bound_reference is None or _content_speed_bound_reference==reference,'content_speed_bound_snapshot')
+  current=measured['rows'][path]
+  if retained_target is not None:
+   require(inverse and not result['rollback_files'] and store.read('stage/0')[:2]==retained_target
+           and home_same_original(retained_target,before) and current[0]==CONTENT_SPEED_POLICY['targets'][path]['after']
+           and current[1] is not None and current[1][:-1]==new[:-1]
+           and digest(canonical(view))==accepted['installed_observation_sha256'],'content_speed_bound_installed')
+   result.update(installed_state_verified=True,installed_observation_sha256=accepted['installed_observation_sha256'])
+  else:
+   renamed=(inverse and result['rollback_files']==[path] or
+            not inverse and result['written_files']==[path] and result['rollback_files']==[path])
+   require(home_same_original(current,before) if renamed else
+           not inverse and not result['written_files'] and not result['rollback_files'] and current==before,
+           'content_speed_bound_target')
+  content_speed_bound_home(snapshot,records,measured,retained_target)
+  content_speed_bound_reference_check(view,reference);_content_speed_bound_reference=reference
+ result.update(observation_bound=True,observed_parent_verified=True)
+ ancestors={**measured['ancestors'],'home':view['records'],'home_stage':view['stages'],'home_closed':view['closure']}
+ return {p:r for p,r in measured['rows'].items() if p!=path},{path:measured['rows'][path]},ancestors
+def content_speed_bound_seal(current,restored=False):
+ records,snapshot=content_speed_inspect_parent_proof();measured,view=content_speed_bound_read(snapshot)
+ inverse=globals().get('contented') is not None;store=contented if inverse else private
+ accepted=CONTENT_SPEED_ACCEPTED if inverse else None;original=CONTENT_SPEED_ORIGINAL if inverse else IDENTITY
+ reference,before,new=content_speed_bound_own_snapshot(store,original,
+     accepted['snapshot_manifest_sha256'] if inverse else result['snapshot_manifest_sha256'],accepted)
+ path=CONTENT_SPEED_PATH;observed=measured['rows'][path]
+ require(observed==current[path] and reference==_content_speed_bound_reference,'content_speed_bound_target')
+ if restored:
+  renamed=(inverse and result['rollback_files']==[path] or
+           not inverse and result['written_files']==[path] and result['rollback_files']==[path])
+  require(home_same_original(observed,before) if renamed else
+          not inverse and not result['written_files'] and not result['rollback_files'] and observed==before,
+          'content_speed_bound_target');retained=None
+ else:
+  retained=store.read('stage/0')[:2]
+  require(observed[0]==CONTENT_SPEED_POLICY['targets'][path]['after'] and observed[1] is not None
+          and observed[1][:-1]==new[:-1] and home_same_original(retained,before),'content_speed_bound_target')
+ content_speed_bound_home(snapshot,records,measured,retained);content_speed_bound_reference_check(view,reference)
+ digest_value=digest(canonical(view))
+ if restored:result.update(restored_state_verified=True,restored_observation_sha256=digest_value)
+ else:result.update(installed_state_verified=True,installed_observation_sha256=digest_value)
+def content_speed_bound_initial_result(rollback=False):
+ value=content_speed_initial_result(rollback)
+ value.update(candidate_manifest_sha256=BOUND_CANDIDATE_MANIFEST,observer=BOUND_OBSERVATION,
+              observation_sha256=BOUND_OBSERVATION['observation_sha256'],guard_reference='bound_observation',
+              observation_bound=False,observed_parent_verified=False,parent_records_verified=False,
+              snapshot_binding_verified=False,reconciliation_binding_verified=False,rollback_namespace_absent=False,
+              inspection_namespace_absent=False,installed_state_verified=False,restored_state_verified=False,
+              installed_observation_sha256=None,restored_observation_sha256=None)
+ return value
+'''
+
+
+def _content_speed_bound_prefix(policy,identity,parent_value,observer_value,tv_successor=None):
+    need(policy==content_speed_bound_policy(),'content_speed_bound_policy');content_speed_bound_runtime_identity(identity)
+    content_speed_bound_observation_value(observer_value);public,_=content_speed_inspect_scope()
+    need(CONTENT_SPEED_BOUND_DRIFT['path'] in public and CONTENT_SPEED_BOUND_DRIFT['path'] not in HOME_ORDER
+         and CONTENT_SPEED_BOUND_DRIFT['stat_fields']==['st_mtime_ns','st_ctime_ns'],'content_speed_bound_scope')
+    prefix=_content_speed_program_prefix(content_speed_policy(),identity,parent_value,tv_successor)
+    observer_common=CONTENT_SPEED_INSPECT_REMOTE.split('\nresult={',1)[0]
+    need('def content_speed_inspect_read(' in observer_common and 'print(' not in observer_common,'content_speed_bound_composition')
+    return (prefix+'\nCONTENT_SPEED_POLICY='+repr(policy)+'\nBOUND_OBSERVATION='+repr(CONTENT_SPEED_BOUND_OBSERVATION)
+        +'\nBOUND_DRIFT='+repr(CONTENT_SPEED_BOUND_DRIFT)+'\nBOUND_CANDIDATE_MANIFEST='+repr(CONTENT_SPEED_MANIFEST_SHA)
+        +'\nBOUND_CONSUMED_ROLLBACK='+repr(CONTENT_SPEED_ROLLBACK_OPERATION)
+        +'\nCONTENT_SPEED_ROLLBACK_OPERATION='+repr(CONTENT_SPEED_BOUND_ROLLBACK_OPERATION)
+        +'\nCONTENT_SPEED_ABSENT_OPERATIONS=CONTENT_SPEED_ABSENT_OPERATIONS+'+repr((CONTENT_SPEED_OPERATION,CONTENT_SPEED_ROLLBACK_OPERATION,CONTENT_SPEED_INSPECT_OPERATION))
+        +'\nFAILED='+repr(CONTENT_SPEED_INSPECT_FAILED)+'\nINSPECTION_OPERATION='+repr(CONTENT_SPEED_INSPECT_OPERATION)
+        +'\nINSPECTION_PUBLIC_PATHS='+repr(public)+'\nINSPECTION_ANCESTORS='+repr(CONTENT_SPEED_INSPECT_ANCESTORS)
+        +'\nINSPECTION_ROW_FIELDS='+repr(HOME_INSPECT_ROW_FIELDS)+'\nINSPECTION_STAT_FIELDS='+repr(HOME_INSPECT_STAT_FIELDS)
+        +'\n'+observer_common+'\ndef re_safe(value): return value in '+repr(CONTENT_SPEED_BOUND_REASONS)
+        +'\n'+CONTENT_SPEED_BOUND_COMMON_REMOTE)
+
+
+def _content_speed_bound_body(rollback=False):
+    # Fixed call-site routing keeps the proven EXCHANGE/collision/own-inverse
+    # bodies intact. It does not override inventory or the historical guard.
+    body=CONTENT_SPEED_ROLLBACK_REMOTE if rollback else CONTENT_SPEED_REMOTE
+    need(body.count('content_speed_initial_result(')==1 and body.count('content_speed_home_state(')==2,
+         'content_speed_bound_composition')
+    body=body.replace('content_speed_initial_result(','content_speed_bound_initial_result(')
+    body=body.replace('content_speed_home_state(','content_speed_bound_parent_state(')
+    if rollback:
+        marker=" result.update(status='content_reads_rolled_back_verified'"
+        need(body.count(marker)==1,'content_speed_bound_composition')
+        body=body.replace(marker," content_speed_bound_seal(current,True)\n result.update(status='content_reads_bound_rolled_back_verified'")
+    else:
+        for marker,replacement in (
+            (" result.update(status='content_reads_updated_verified'"," content_speed_bound_seal(current)\n result.update(status='content_reads_bound_verified'"),
+            ("   result.update(status='rolled_back_no_replay'","   content_speed_bound_seal(restored,True)\n   result.update(status='rolled_back_no_replay'"),
+            ("except Exception as error:\n", "except Exception as error:\n result.update(installed_state_verified=False,installed_observation_sha256=None)\n")):
+            need(body.count(marker)==1,'content_speed_bound_composition');body=body.replace(marker,replacement)
+    return body
+
+
+def content_speed_bound_remote_program(policy,files,identity,parent_value,observer_value,*,tv_successor=None):
+    prefix=_content_speed_bound_prefix(policy,identity,parent_value,observer_value,tv_successor)
+    need(isinstance(files,dict) and set(files)==set(CONTENT_SPEED_ORDER),'content_speed_payload')
+    raw=base64.b64decode(files[CONTENT_SPEED_PATH],validate=True)
+    need(0<len(raw)<=MAX_BYTES and CONTENT_SPEED_TARGETS[CONTENT_SPEED_PATH]['after']==
+         {'state':'present','mode':'0644','size':len(raw),'sha256':sha(raw)},'content_speed_payload_bytes')
+    program=prefix+'\nPAYLOAD='+repr(files)+'\n'+_content_speed_bound_body();ast.parse(program);return program
+
+
+def content_speed_bound_rollback_remote_program(policy,identity,original,accepted,parent_value,observer_value,*,tv_successor=None):
+    prefix=_content_speed_bound_prefix(policy,identity,parent_value,observer_value,tv_successor)
+    content_speed_bound_runtime_identity(original)
+    need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+         and valid_content_speed_bound_result(original,accepted),'content_speed_bound_rollback_evidence')
+    program=(prefix+'\nCONTENT_SPEED_ORIGINAL='+repr(original)+'\nCONTENT_SPEED_ACCEPTED='+repr(accepted)
+             +'\n'+_content_speed_bound_body(True));ast.parse(program);return program
+
+
+def valid_content_speed_bound_result(identity,result,original=None,accepted=None):
+    content_speed_bound_runtime_identity(identity);rollback=original is not None;pin=CONTENT_SPEED_PARENT;policy=content_speed_bound_policy()
+    fixed={'schema_version':1,'operation_id':CONTENT_SPEED_BOUND_ROLLBACK_OPERATION if rollback else CONTENT_SPEED_BOUND_OPERATION,
+        'source_sha':CONTENT_SPEED_SOURCE,'manifest_sha256':policy['manifest'],'candidate_manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,
+        **identity,'parent_home':content_speed_parent_identity(),'parent_receipt_sha256':pin['receipt_sha256'],
+        'parent_snapshot_manifest_sha256':pin['snapshot_manifest_sha256'],'parent_reconciliation_sha256':pin['reconciliation_sha256'],
+        'closed_record_sha256':pin['closed_record_sha256'],'closure_custody_sha256':pin['closure_custody_sha256'],
+        'observer':CONTENT_SPEED_BOUND_OBSERVATION,'observation_sha256':CONTENT_SPEED_BOUND_OBSERVATION['observation_sha256'],
+        'guard_reference':'bound_observation','home_parent_verified':False,
+        'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    if rollback:
+        content_speed_bound_runtime_identity(original)
+        need(identity['run_id']!=original['run_id'] and identity['command_comment_id']!=original['command_comment_id']
+             and isinstance(accepted,dict) and valid_content_speed_bound_result(original,accepted),'content_speed_bound_rollback_evidence')
+        fixed.update(original_content_speed=original,snapshot_manifest_sha256=accepted['snapshot_manifest_sha256'])
+    counters=('supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged','unchanged_files_verified',
+        'parent_records_unchanged','original_inodes_verified','failed_namespace_absent','closure_verified',
+        'observation_bound','observed_parent_verified','parent_records_verified','snapshot_binding_verified',
+        'reconciliation_binding_verified','rollback_namespace_absent','inspection_namespace_absent',
+        'installed_state_verified','restored_state_verified')
+    fields=('status','phase','written_files','rollback_files','snapshot_manifest_sha256',
+            'installed_observation_sha256','restored_observation_sha256')
+    required=set(fixed)|set(counters)|set(flags)|set(fields)
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'content_speed_bound_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and json.dumps(result[k],sort_keys=True)==json.dumps(v,sort_keys=True)
+             for k,v in fixed.items()),'content_speed_bound_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters) and all(type(result[k]) is bool for k in flags),
+         'content_speed_bound_receipt_counters')
+    success='content_reads_bound_rolled_back_verified' if rollback else 'content_reads_bound_verified'
+    states=('blocked_no_replay','unknown_no_replay',success) if rollback else ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay',success)
+    need(result['status'] in states and result['phase'] in ('preflight','snapshot','assets','complete')
+         and ('reason' not in result or result['reason'] in CONTENT_SPEED_BOUND_REASONS),'content_speed_bound_receipt_status')
+    paths=list(CONTENT_SPEED_ORDER);written=result['written_files'];restored=result['rollback_files']
+    need(isinstance(written,list) and written in ([],paths) and isinstance(restored,list) and restored in ([],paths)
+         and (not written if rollback else not restored or restored==written),'content_speed_bound_receipt_paths')
+    for key in ('snapshot_manifest_sha256','installed_observation_sha256','restored_observation_sha256'):
+        value=result[key];need(value is None or isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value),'content_speed_bound_receipt_digest')
+    for flag,key in (('installed_state_verified','installed_observation_sha256'),('restored_state_verified','restored_observation_sha256')):
+        need(result[flag]==(result[key] is not None),'content_speed_bound_receipt_digest')
+    need(result['parent_records_verified']==result['snapshot_binding_verified']==result['reconciliation_binding_verified']
+         and (not result['parent_records_verified'] or result['closure_verified'])
+         and result['observation_bound']==result['observed_parent_verified'],'content_speed_bound_receipt_bindings')
+    if rollback and result['installed_state_verified']:
+        need(result['installed_observation_sha256']==accepted['installed_observation_sha256'],'content_speed_bound_receipt_installed')
+    if result['status']=='blocked_no_replay':
+        need(not result['reservation_created'] and result['phase']=='preflight' and not written and not restored
+             and result['snapshot_manifest_sha256'] is None if not rollback else
+             not result['reservation_created'] and result['phase']=='preflight' and not written and not restored,
+             'content_speed_bound_receipt_incomplete')
+    if written or restored:
+        need(all(result[k] for k in ('reservation_created','snapshot_verified','restore_drill_verified','observed_parent_verified','closure_verified'))
+             and result['snapshot_manifest_sha256'] is not None,'content_speed_bound_receipt_incomplete')
+    if result['status'] in (success,'rolled_back_no_replay'):
+        needed=[k for k in flags if k not in ('installed_state_verified','restored_state_verified')]
+        need(result['phase']=='complete' and all(result[k] for k in needed)
+             and result['snapshot_manifest_sha256'] is not None,'content_speed_bound_receipt_incomplete')
+    if result['status']=='rolled_back_no_replay':
+        need(restored==written and result['restored_state_verified'] and not result['installed_state_verified'],
+             'content_speed_bound_receipt_incomplete')
+        if not written:
+            need(result['restored_observation_sha256']==CONTENT_SPEED_BOUND_OBSERVATION['observation_sha256'],
+                 'content_speed_bound_receipt_unwritten')
+    if result['status']==success:
+        need('reason' not in result and (restored==paths and result['installed_state_verified'] and result['restored_state_verified']
+             if rollback else written==paths and not restored and result['installed_state_verified'] and not result['restored_state_verified']),
+             'content_speed_bound_receipt_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode())<=HOME_FINISH_RECEIPT_LIMIT,'content_speed_bound_receipt_limit')
+    return result['status']==success
+
+
+def content_speed_bound_rollback_commands(identity,original_run,expected_original=None):
+    need(isinstance(original_run,str) and re.fullmatch('[1-9][0-9]{0,19}',original_run) and original_run!=identity['run_id'],
+         'content_speed_bound_rollback_run')
+    comments=pages('/issues/4709/comments')
+    content_speed_created_command(comments,CONTENT_SPEED_BOUND_ROLLBACK_PREFIX,CONTENT_SPEED_BOUND_ROLLBACK_OPERATION,identity,original_run)
+    rows=[c for c in comments if c.get('body','').strip().split()[:1]==[CONTENT_SPEED_BOUND_PREFIX]
+          and CONTENT_SPEED_BOUND_OPERATION in c.get('body','').split()[1:]]
+    need(len(rows)==1,'content_speed_bound_rollback_command')
+    match=re.fullmatch(re.escape(CONTENT_SPEED_BOUND_PREFIX)+r' ([a-f0-9]{40}) '+re.escape(CONTENT_SPEED_BOUND_OPERATION),rows[0].get('body',''))
+    need(match is not None,'content_speed_bound_rollback_command')
+    original={'control_source_sha':match[1],'run_id':original_run,'command_comment_id':rows[0]['id']}
+    content_speed_bound_runtime_identity(original)
+    need(expected_original is None or original==expected_original,'content_speed_bound_rollback_command')
+    command=content_speed_created_command(comments,CONTENT_SPEED_BOUND_PREFIX,CONTENT_SPEED_BOUND_OPERATION,original)
+    return original,command
+
+
+def content_speed_bound_rollback_admission(identity,original_run):
+    content_speed_bound_runtime_identity(identity);rollback_main(identity);reviewed_control(identity['control_source_sha'])
+    original,command=content_speed_bound_rollback_commands(identity,original_run)
+    content_speed_bound_native_proof(original,command,'content-speed-bound')
+    artifacts=[a for a in pages('/actions/runs/'+original_run+'/artifacts','artifacts')
+               if a.get('name')=='search3-public-install-'+original_run+'-1']
+    need(len(artifacts)==1 and artifacts[0].get('expired') is False
+         and artifacts[0].get('workflow_run',{}).get('id')==int(original_run)
+         and artifacts[0].get('workflow_run',{}).get('head_sha')==original['control_source_sha']
+         and type(artifacts[0].get('id')) is int and artifacts[0]['id']>0
+         and type(artifacts[0].get('size_in_bytes')) is int and 0<artifacts[0]['size_in_bytes']<=MAX_ZIP
+         and re.fullmatch(r'sha256:[a-f0-9]{64}',artifacts[0].get('digest','')),'content_speed_bound_rollback_artifact')
+    rollback_main(identity);return original,artifacts[0]
+
+
+def content_speed_bound_source_evidence(raw,original):
+    content_speed_bound_runtime_identity(original)
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'content_speed_bound_rollback_artifact');data=archive.read('evidence.json')
+        need(len(data)<=524288,'content_speed_bound_rollback_artifact');value=_tv_json(data)
+    fixed={**original,'operation_id':CONTENT_SPEED_BOUND_OPERATION,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':content_speed_bound_policy()['manifest'],'candidate_manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,
+        'read_only':False,'phase':'complete','ssh_requested':True,'ssh_started':True,
+        'remote_outcome':'content_reads_bound_verified','status':'content_reads_bound_verified',
+        'parent_home':content_speed_parent_identity(),'observer':CONTENT_SPEED_BOUND_OBSERVATION,
+        'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','observation_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and json.dumps(value[k],sort_keys=True)==json.dumps(v,sort_keys=True)
+                 for k,v in fixed.items()),'content_speed_bound_rollback_evidence')
+    content_speed_parent_value(value['parent_evidence']);content_speed_bound_observation_value(value['observation_evidence'])
+    need(valid_content_speed_bound_result(original,value['remote']),'content_speed_bound_rollback_evidence')
+    return content_speed_bound_policy(),value['remote'],value['parent_evidence'],value['observation_evidence']
+
+
+def content_speed_bound(rollback=False):
+    need(type(rollback) is bool,'mode');operation=CONTENT_SPEED_BOUND_ROLLBACK_OPERATION if rollback else CONTENT_SPEED_BOUND_OPERATION
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700);key,known=work/'key',work/'known'
+    evidence={'status':'blocked_no_replay','operation_id':operation,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':content_speed_bound_policy()['manifest'],'candidate_manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,
+        'read_only':False,'phase':'identity','ssh_requested':False,'ssh_started':'unknown','remote_outcome':'unknown',
+        'parent_home':content_speed_parent_identity(),'observer':CONTENT_SPEED_BOUND_OBSERVATION,
+        'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    complete=False
+    try:
+        event=_tv_json(Path(os.environ['GITHUB_EVENT_PATH']).read_bytes())
+        if rollback:
+            identity,original_run=content_speed_bound_event_identity(event,os.environ,True)
+            evidence.update(identity,original_content_speed_run_id=original_run,phase='admission');home_finish_checkpoint(work,evidence)
+            original,artifact=content_speed_bound_rollback_admission(identity,original_run);evidence['phase']='artifact'
+            raw=download(artifact['id'],artifact['digest'].removeprefix('sha256:'))
+            need(len(raw)==artifact['size_in_bytes'],'content_speed_bound_rollback_artifact')
+            policy,accepted,parent,observation=content_speed_bound_source_evidence(raw,original);dependency=tv_successor_evidence()
+            program=content_speed_bound_rollback_remote_program(policy,identity,original,accepted,parent,observation,tv_successor=dependency)
+            evidence['original_content_speed']=original
+        else:
+            identity=content_speed_bound_event_identity(event,os.environ);evidence.update(identity,phase='admission')
+            home_finish_checkpoint(work,evidence);observation=content_speed_bound_admission(identity);evidence['phase']='artifact'
+            parent=content_speed_parent_evidence(download(CONTENT_SPEED_PARENT['artifact_id'],CONTENT_SPEED_PARENT['artifact_sha256']))
+            _,files=content_speed_package(download(CONTENT_SPEED_ARTIFACT,CONTENT_SPEED_ARTIFACT_SHA),parent)
+            policy=content_speed_bound_policy();dependency=tv_successor_evidence()
+            program=content_speed_bound_remote_program(policy,files,identity,parent,observation,tv_successor=dependency)
+        evidence.update(parent_evidence=parent,observation_evidence=observation,phase='connection_preparation');home_finish_checkpoint(work,evidence)
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600);scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
+                 '-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        if rollback:need(content_speed_bound_rollback_admission(identity,original_run)==(original,artifact),'content_speed_bound_rollback_changed')
+        else:need(content_speed_bound_admission(identity)==observation,'content_speed_bound_observation_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='unknown_no_replay',phase='remote_requested',ssh_requested=True);home_finish_checkpoint(work,evidence)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=HOME_FINISH_RECEIPT_LIMIT,'content_speed_bound_receipt_limit');result=_tv_json(response)
+        complete=valid_content_speed_bound_result(identity,result,original,accepted) if rollback else valid_content_speed_bound_result(identity,result)
+        evidence.update(remote=result,ssh_started=True,remote_outcome=result['status']);home_finish_checkpoint(work,evidence)
+        if rollback:rollback_main(identity)
+        else:content_speed_bound_heads(identity)
+        evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        if evidence['ssh_requested']:evidence['status']='unknown_no_replay'
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'ContentSpeedBoundError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True);home_finish_checkpoint(work,evidence)
+    print(json.dumps(evidence,sort_keys=True));need(complete,'content_speed_bound_rollback_not_verified' if rollback else 'content_speed_bound_not_verified')
+
+
+if __name__ == '__main__':
+    import sys as _content_speed_bound_sys
+    if _content_speed_bound_sys.argv[1:] in (['content-speed-bound'],['content-speed-bound-rollback']):
+        content_speed_bound(_content_speed_bound_sys.argv[1:]==['content-speed-bound-rollback'])
+        raise SystemExit(0)
+
+
 def command_mode(arguments):
     if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'
