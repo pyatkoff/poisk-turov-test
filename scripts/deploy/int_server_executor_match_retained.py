@@ -290,6 +290,16 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if ((len(parts) >= 3 and parts[2] == LOCAL46_IDENTITY['operation_id'])
+                or (len(parts) >= 4 and parts[3] == LOCAL46_IDENTITY['cohort'])):
+            profile = LOCAL46_IDENTITY
+            need(len(parts) == 5 and parts[1] == profile['mode']
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local46_fixed_read_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if ((len(parts) >= 3 and parts[2] == LOCAL7_CURRENT_INPUTS['operation_id'])
                 or (len(parts) >= 4 and parts[3] == LOCAL7_CURRENT_INPUTS['cohort'])):
             profile = LOCAL7_CURRENT_INPUTS
@@ -2235,6 +2245,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('operation_id') == LOCAL46_IDENTITY['operation_id'] or command.get('cohort') == LOCAL46_IDENTITY['cohort']:
+        return completed_local46_identity(command, result, control_sha)
     if command.get('operation_id') == LOCAL7_CURRENT_INPUTS['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_INPUTS['cohort']:
         return completed_local7_current_inputs(command, result, control_sha)
     if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
@@ -2352,6 +2364,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('operation_id') == LOCAL46_IDENTITY['operation_id'] or command.get('cohort') == LOCAL46_IDENTITY['cohort']:
+        return activate_local46_identity(core, command)
     if command.get('operation_id') == LOCAL7_CURRENT_INPUTS['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_INPUTS['cohort']:
         return activate_local7_current_inputs(core, command)
     if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
@@ -4732,3 +4746,675 @@ def activate_local7_current_inputs(core,command):
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local7_current_inputs(cmd,res,control) if (
         cmd.get('operation_id')==LOCAL7_CURRENT_INPUTS['operation_id'] or cmd.get('cohort')==LOCAL7_CURRENT_INPUTS['cohort']) else original(cmd,res)
+
+
+# Fixed LOCAL46 identity observation; legacy candidates never supply TV IDs.
+LOCAL46_IDENTITY = {'mode': 'match-retained-current', 'operation_id': 'int-andromeda-match-retained-current-local46-20261123-v1', 'cohort': 'local46-current-identity-20261123', 'source_sha': '3207266e17ed4e8244aaf28d05b962747fd4cd3c', 'parent_operation_id': 'int-andromeda-match-retained-current-20261123-v1', 'parent_receipt_sha256': '7cc56caff2855564754fcb0104837c95611a259ea598aa1f28f3c9baa83a6db6', 'parent_receipt_bytes': 91042, 'parent_evidence_sha256': '5204754ad39ad2aab13e4a3df28c0663547b531a984c6e1b1454a62033e4426f', 'roster_sha256': '958fa8d0090b6d99e71fc204b932289e8eea26a5dec3ee6d39eea91fee302788', 'aggregate_sha256': 'bb5abac43a3e6181e15decc7adcea88092cbff3591840600463c1bdafda745db', 'pairs': [[64, 218], [979, 2417], [980, 2418], [992, 2436], [999, 2444], [1000, 2445], [1003, 2451], [1008, 2460], [1012, 2466], [1014, 2468], [1016, 2470], [1021, 2479], [1029, 2489], [1030, 2491], [1031, 2493], [1148, 2947], [1662, 12124], [1665, 12127], [1964, 24743], [1995, 27481], [2370, 43569], [2375, 43675], [2376, 43676], [2461, 48263], [2485, 50262], [2551, 53617], [2774, 60232], [2847, 63191], [2850, 63208], [2934, 64954], [2940, 65108], [2985, 65938], [3016, 66547], [3230, 72939], [3322, 76011], [3338, 76318], [3381, 78002], [3383, 78033], [3559, 82790], [3591, 85417], [3639, 99713], [3704, 108165], [3869, 123308], [6572, 23289], [7368, 548], [7902, 4032]]}
+L46_TABLE_COLUMNS = {'catalog_hotels': ['id', 'name', 'country_id', 'country_name', 'region_id', 'region_name', 'subregion_id', 'subregion_name', 'latitude', 'longitude', 'is_active', 'first_seen_at', 'last_seen_at', 'synced_at'], 'anytour_hotels': ['id', 'profile_json', 'profile_sha256', 'revision', 'is_active', 'created_at', 'updated_at'], 'anytour_hotel_sources': ['id', 'anytour_hotel_id', 'namespace', 'external_key', 'acquired_via', 'source_json', 'source_sha256', 'first_seen_at', 'last_seen_at'], 'local_tv_legacy_links': ['old_local_id', 'tv_id', 'snapshot_json', 'snapshot_sha256', 'migration_issues_json', 'migrated_at'], 'local_tv_hotels': ['id', 'state', 'revision', 'first_seen_at', 'last_seen_at', 'source_fetched_at', 'discovery_json', 'content_json', 'manual_json', 'source_json', 'source_sha256', 'source_absent_json']}
+L46_LIMITS = {'legacy_rows':46,'own_rows':46,'source_rows':512,'link_rows':128,'target_rows':46}
+L46_COLUMN_TYPES = {'catalog_hotels': {'id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': False, 'collation': None}, 'name': {'data_type': 'varchar', 'column_type': 'varchar(255)', 'nullable': False, 'collation': 'utf8mb4_unicode_ci'}, 'country_id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': False, 'collation': None}, 'country_name': {'data_type': 'varchar', 'column_type': 'varchar(160)', 'nullable': False, 'collation': 'utf8mb4_unicode_ci'}, 'region_id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': True, 'collation': None}, 'region_name': {'data_type': 'varchar', 'column_type': 'varchar(180)', 'nullable': True, 'collation': 'utf8mb4_unicode_ci'}, 'subregion_id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': True, 'collation': None}, 'subregion_name': {'data_type': 'varchar', 'column_type': 'varchar(180)', 'nullable': True, 'collation': 'utf8mb4_unicode_ci'}, 'latitude': {'data_type': 'decimal', 'column_type': 'decimal(10,7)', 'nullable': True, 'collation': None}, 'longitude': {'data_type': 'decimal', 'column_type': 'decimal(10,7)', 'nullable': True, 'collation': None}, 'is_active': {'data_type': 'tinyint', 'column_type': 'tinyint', 'nullable': False, 'collation': None}, 'first_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'last_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'synced_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}}, 'anytour_hotels': {'id': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'profile_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'profile_sha256': {'data_type': 'char', 'column_type': 'char(64)', 'nullable': False, 'collation': 'ascii_bin'}, 'revision': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'is_active': {'data_type': 'tinyint', 'column_type': 'tinyint unsigned', 'nullable': False, 'collation': None}, 'created_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'updated_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}}, 'anytour_hotel_sources': {'id': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'anytour_hotel_id': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'namespace': {'data_type': 'varchar', 'column_type': 'varchar(64)', 'nullable': False, 'collation': 'ascii_bin'}, 'external_key': {'data_type': 'varbinary', 'column_type': 'varbinary(128)', 'nullable': False, 'collation': None}, 'acquired_via': {'data_type': 'varchar', 'column_type': 'varchar(64)', 'nullable': False, 'collation': 'ascii_bin'}, 'source_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'source_sha256': {'data_type': 'char', 'column_type': 'char(64)', 'nullable': False, 'collation': 'ascii_bin'}, 'first_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'last_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}}, 'local_tv_legacy_links': {'old_local_id': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'tv_id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': False, 'collation': None}, 'snapshot_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'snapshot_sha256': {'data_type': 'char', 'column_type': 'char(64)', 'nullable': False, 'collation': 'ascii_bin'}, 'migration_issues_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'migrated_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}}, 'local_tv_hotels': {'id': {'data_type': 'int', 'column_type': 'int unsigned', 'nullable': False, 'collation': None}, 'state': {'data_type': 'varchar', 'column_type': 'varchar(24)', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'revision': {'data_type': 'bigint', 'column_type': 'bigint unsigned', 'nullable': False, 'collation': None}, 'first_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'last_seen_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': False, 'collation': None}, 'source_fetched_at': {'data_type': 'datetime', 'column_type': 'datetime', 'nullable': True, 'collation': None}, 'discovery_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'content_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'manual_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}, 'source_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': True, 'collation': 'utf8mb4_bin'}, 'source_sha256': {'data_type': 'char', 'column_type': 'char(64)', 'nullable': True, 'collation': 'ascii_bin'}, 'source_absent_json': {'data_type': 'longtext', 'column_type': 'longtext', 'nullable': False, 'collation': 'utf8mb4_bin'}}}
+LOCAL46_PHP = r'''final class MatchLocal46IdentityV1 {
+ public const PAIRS=[[64,218],[979,2417],[980,2418],[992,2436],[999,2444],[1000,2445],[1003,2451],[1008,2460],[1012,2466],[1014,2468],[1016,2470],[1021,2479],[1029,2489],[1030,2491],[1031,2493],[1148,2947],[1662,12124],[1665,12127],[1964,24743],[1995,27481],[2370,43569],[2375,43675],[2376,43676],[2461,48263],[2485,50262],[2551,53617],[2774,60232],[2847,63191],[2850,63208],[2934,64954],[2940,65108],[2985,65938],[3016,66547],[3230,72939],[3322,76011],[3338,76318],[3381,78002],[3383,78033],[3559,82790],[3591,85417],[3639,99713],[3704,108165],[3869,123308],[6572,23289],[7368,548],[7902,4032]];
+ public const COLUMNS=["catalog_hotels"=>["id","name","country_id","country_name","region_id","region_name","subregion_id","subregion_name","latitude","longitude","is_active","first_seen_at","last_seen_at","synced_at"],"anytour_hotels"=>["id","profile_json","profile_sha256","revision","is_active","created_at","updated_at"],"anytour_hotel_sources"=>["id","anytour_hotel_id","namespace","external_key","acquired_via","source_json","source_sha256","first_seen_at","last_seen_at"],"local_tv_legacy_links"=>["old_local_id","tv_id","snapshot_json","snapshot_sha256","migration_issues_json","migrated_at"],"local_tv_hotels"=>["id","state","revision","first_seen_at","last_seen_at","source_fetched_at","discovery_json","content_json","manual_json","source_json","source_sha256","source_absent_json"]];
+ public const TYPES=["catalog_hotels"=>["id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>false,"collation"=>null],"name"=>["data_type"=>"varchar","column_type"=>"varchar(255)","nullable"=>false,"collation"=>"utf8mb4_unicode_ci"],"country_id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>false,"collation"=>null],"country_name"=>["data_type"=>"varchar","column_type"=>"varchar(160)","nullable"=>false,"collation"=>"utf8mb4_unicode_ci"],"region_id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>true,"collation"=>null],"region_name"=>["data_type"=>"varchar","column_type"=>"varchar(180)","nullable"=>true,"collation"=>"utf8mb4_unicode_ci"],"subregion_id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>true,"collation"=>null],"subregion_name"=>["data_type"=>"varchar","column_type"=>"varchar(180)","nullable"=>true,"collation"=>"utf8mb4_unicode_ci"],"latitude"=>["data_type"=>"decimal","column_type"=>"decimal(10,7)","nullable"=>true,"collation"=>null],"longitude"=>["data_type"=>"decimal","column_type"=>"decimal(10,7)","nullable"=>true,"collation"=>null],"is_active"=>["data_type"=>"tinyint","column_type"=>"tinyint","nullable"=>false,"collation"=>null],"first_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"last_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"synced_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null]],"anytour_hotels"=>["id"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"profile_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"profile_sha256"=>["data_type"=>"char","column_type"=>"char(64)","nullable"=>false,"collation"=>"ascii_bin"],"revision"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"is_active"=>["data_type"=>"tinyint","column_type"=>"tinyint unsigned","nullable"=>false,"collation"=>null],"created_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"updated_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null]],"anytour_hotel_sources"=>["id"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"anytour_hotel_id"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"namespace"=>["data_type"=>"varchar","column_type"=>"varchar(64)","nullable"=>false,"collation"=>"ascii_bin"],"external_key"=>["data_type"=>"varbinary","column_type"=>"varbinary(128)","nullable"=>false,"collation"=>null],"acquired_via"=>["data_type"=>"varchar","column_type"=>"varchar(64)","nullable"=>false,"collation"=>"ascii_bin"],"source_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"source_sha256"=>["data_type"=>"char","column_type"=>"char(64)","nullable"=>false,"collation"=>"ascii_bin"],"first_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"last_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null]],"local_tv_legacy_links"=>["old_local_id"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"tv_id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>false,"collation"=>null],"snapshot_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"snapshot_sha256"=>["data_type"=>"char","column_type"=>"char(64)","nullable"=>false,"collation"=>"ascii_bin"],"migration_issues_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"migrated_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null]],"local_tv_hotels"=>["id"=>["data_type"=>"int","column_type"=>"int unsigned","nullable"=>false,"collation"=>null],"state"=>["data_type"=>"varchar","column_type"=>"varchar(24)","nullable"=>false,"collation"=>"utf8mb4_bin"],"revision"=>["data_type"=>"bigint","column_type"=>"bigint unsigned","nullable"=>false,"collation"=>null],"first_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"last_seen_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>false,"collation"=>null],"source_fetched_at"=>["data_type"=>"datetime","column_type"=>"datetime","nullable"=>true,"collation"=>null],"discovery_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"content_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"manual_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"],"source_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>true,"collation"=>"utf8mb4_bin"],"source_sha256"=>["data_type"=>"char","column_type"=>"char(64)","nullable"=>true,"collation"=>"ascii_bin"],"source_absent_json"=>["data_type"=>"longtext","column_type"=>"longtext","nullable"=>false,"collation"=>"utf8mb4_bin"]]];
+ private static function query(PDO $db,string $sql,array $args,int $cap,int &$bytes):array {
+  $q=$db->prepare($sql.' LIMIT '.($cap+1));$q->execute($args);$rows=[];
+  while($row=$q->fetch(PDO::FETCH_ASSOC)) {
+   if(count($rows)>=$cap)throw new RuntimeException('local46_row_bound');
+   foreach($row as $value) {
+    if($value!==null && !is_scalar($value))throw new RuntimeException('local46_scalar');
+    $size=$value===null?0:strlen((string)$value);
+    if($size>1048576)throw new RuntimeException('local46_field_bound');
+    $bytes+=$size;if($bytes>16777216)throw new RuntimeException('local46_raw_bound');
+   }
+   $rows[]=$row;
+  }
+  return $rows;
+ }
+ private static function id(mixed $v):int {
+  if((!is_int($v)&&!is_string($v))||!preg_match('/^[1-9][0-9]{0,14}$/D',(string)$v))throw new RuntimeException('local46_id');
+  return (int)$v;
+ }
+ public static function run(PDO $db):array {
+  if($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql'||$db->inTransaction())throw new RuntimeException('local46_transaction');
+  if(!$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION)||!$db->setAttribute(PDO::ATTR_EMULATE_PREPARES,false))throw new RuntimeException('local46_db_attributes');
+  $version=(string)$db->query('SELECT VERSION()')->fetchColumn();
+  foreach([stripos($version,'MariaDB')!==false?'SET SESSION max_statement_time=1':'SET SESSION max_execution_time=1000',
+   'SET SESSION innodb_lock_wait_timeout=1','SET SESSION lock_wait_timeout=1',
+   'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ','SET TRANSACTION READ ONLY'] as $setting)
+   if($db->exec($setting)===false)throw new RuntimeException('local46_transaction_setup');
+  if(!$db->beginTransaction()||!$db->inTransaction())throw new RuntimeException('local46_transaction_start');
+  try {
+   $bytes=0;$own=array_column(self::PAIRS,0);$legacy=array_column(self::PAIRS,1);$marks=implode(',',array_fill(0,46,'?'));
+   $select=static fn(string $table):string=>'SELECT '.implode(',',self::COLUMNS[$table]).' FROM '.$table;
+   $legacyRows=self::query($db,$select('catalog_hotels')." WHERE id IN ($marks) ORDER BY id",$legacy,46,$bytes);
+   $ownRows=self::query($db,$select('anytour_hotels')." WHERE id IN ($marks) ORDER BY id",$own,46,$bytes);
+   $sources=self::query($db,$select('anytour_hotel_sources')." WHERE anytour_hotel_id IN ($marks) OR (BINARY namespace='legacy_catalog' AND BINARY external_key IN ($marks)) ORDER BY namespace,external_key,id",[...$own,...array_map('strval',$legacy)],512,$bytes);
+   $ownLinks=self::query($db,$select('local_tv_legacy_links')." WHERE old_local_id IN ($marks) ORDER BY old_local_id",$own,46,$bytes);
+   $targetIds=[];foreach($ownLinks as $link)$targetIds[]=self::id($link['tv_id']);
+   $targetIds=array_values(array_unique($targetIds));sort($targetIds,SORT_NUMERIC);
+   if(count($targetIds)>46)throw new RuntimeException('local46_target_bound');
+   $links=$ownLinks;$targets=[];
+   if($targetIds!==[]) {
+    $tm=implode(',',array_fill(0,count($targetIds),'?'));
+    $links=self::query($db,$select('local_tv_legacy_links')." WHERE old_local_id IN ($marks) OR tv_id IN ($tm) ORDER BY old_local_id",[...$own,...$targetIds],128,$bytes);
+    $targets=self::query($db,$select('local_tv_hotels')." WHERE id IN ($tm) ORDER BY id",$targetIds,46,$bytes);
+   } else {
+    // Zero rows: hold this table's metadata lock without measuring any target.
+    self::query($db,'SELECT id FROM local_tv_hotels WHERE 1=0',[],0,$bytes);
+   }
+   // Required data SELECTs hold metadata locks before accepting an InnoDB snapshot.
+   $names=array_keys(self::COLUMNS);$m=implode(',',array_fill(0,5,'?'));
+   $tables=self::query($db,"SELECT TABLE_NAME,ENGINE,TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ($m) ORDER BY TABLE_NAME",$names,5,$bytes);
+   $columns=self::query($db,"SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE,COLUMN_TYPE,IS_NULLABLE,COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ($m) ORDER BY TABLE_NAME,ORDINAL_POSITION",$names,512,$bytes);
+   $indexes=self::query($db,"SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,COLUMN_NAME,SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ($m) ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX",$names,512,$bytes);
+   $fks=self::query($db,"SELECT k.TABLE_NAME,k.CONSTRAINT_NAME,k.COLUMN_NAME,k.REFERENCED_TABLE_NAME,k.REFERENCED_COLUMN_NAME,(k.REFERENCED_TABLE_SCHEMA=k.TABLE_SCHEMA) AS SAME_SCHEMA,r.UPDATE_RULE,r.DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME WHERE k.TABLE_SCHEMA=DATABASE() AND k.TABLE_NAME IN ($m) AND k.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY k.TABLE_NAME,k.CONSTRAINT_NAME,k.ORDINAL_POSITION",$names,512,$bytes);
+   if(count($tables)!==5)throw new RuntimeException('local46_schema');$schema=[];
+   foreach($tables as $row) {
+    if($row['ENGINE']!=='InnoDB'||$row['TABLE_TYPE']!=='BASE TABLE')throw new RuntimeException('local46_engine');
+    $schema[$row['TABLE_NAME']]=['engine'=>$row['ENGINE'],'table_type'=>$row['TABLE_TYPE'],'columns'=>[],'column_types'=>[],'indexes'=>[],'foreign_keys'=>[]];
+   }
+   foreach($columns as $row) {
+    $t=$row['TABLE_NAME'];$c=$row['COLUMN_NAME'];$schema[$t]['columns'][]=$c;
+    $schema[$t]['column_types'][$c]=['data_type'=>$row['DATA_TYPE'],'column_type'=>$row['COLUMN_TYPE'],'nullable'=>$row['IS_NULLABLE']==='YES','collation'=>$row['COLLATION_NAME']];
+   }
+   foreach($indexes as $row) {
+    $t=$row['TABLE_NAME'];$key=$row['INDEX_NAME'];
+    if(!isset($schema[$t]['indexes'][$key]))$schema[$t]['indexes'][$key]=['unique'=>(string)$row['NON_UNIQUE']==='0','columns'=>[],'sub_parts'=>[]];
+    $schema[$t]['indexes'][$key]['columns'][]=$row['COLUMN_NAME'];
+    $schema[$t]['indexes'][$key]['sub_parts'][]=$row['SUB_PART']===null?null:self::id($row['SUB_PART']);
+   }
+   foreach($fks as $row) {
+    $t=$row['TABLE_NAME'];$key=$row['CONSTRAINT_NAME'];
+    if(!isset($schema[$t]['foreign_keys'][$key]))$schema[$t]['foreign_keys'][$key]=['columns'=>[],'referenced_table'=>$row['REFERENCED_TABLE_NAME'],'referenced_columns'=>[],'update_rule'=>$row['UPDATE_RULE'],'delete_rule'=>$row['DELETE_RULE'],'same_schema'=>(string)$row['SAME_SCHEMA']==='1'];
+    $schema[$t]['foreign_keys'][$key]['columns'][]=$row['COLUMN_NAME'];
+    $schema[$t]['foreign_keys'][$key]['referenced_columns'][]=$row['REFERENCED_COLUMN_NAME'];
+   }
+   foreach(self::COLUMNS as $table=>$required) {
+    $s=$schema[$table];$pk=$table==='local_tv_legacy_links'?'old_local_id':'id';
+    if(array_diff($required,$s['columns'])!==[]||($s['indexes']['PRIMARY']??null)!==['unique'=>true,'columns'=>[$pk],'sub_parts'=>[null]])throw new RuntimeException('local46_schema_keys');
+    foreach(self::TYPES[$table] as $column=>$expected) {
+     $actual=$s['column_types'][$column];
+     $actual['column_type']=preg_replace('/^(tinyint|smallint|mediumint|int|bigint)\([0-9]+\)/','$1',$actual['column_type']);
+     if($actual!==$expected)throw new RuntimeException('local46_column_contract');
+    }
+    if($table==='anytour_hotel_sources') {
+     $found=false;foreach($s['indexes'] as $index)if($index===['unique'=>true,'columns'=>['namespace','external_key'],'sub_parts'=>[null,null]])$found=true;
+     if(!$found)throw new RuntimeException('local46_source_unique');
+    }
+    if(in_array($table,['anytour_hotel_sources','local_tv_legacy_links'],true)) {
+     $ownSource=$table==='anytour_hotel_sources';
+     $expected=['columns'=>[$ownSource?'anytour_hotel_id':'tv_id'],'referenced_table'=>$ownSource?'anytour_hotels':'local_tv_hotels','referenced_columns'=>['id'],'update_rule'=>'RESTRICT','delete_rule'=>'RESTRICT','same_schema'=>true];
+     if(!in_array($expected,$s['foreign_keys'],true))throw new RuntimeException('local46_foreign_key');
+    }
+   }
+   foreach($schema as &$entry)if($entry['foreign_keys']===[])$entry['foreign_keys']=(object)[];unset($entry);
+   $out=['schema_version'=>1,'state'=>'local46_identity_snapshot','captured_at_utc'=>gmdate('Y-m-d\TH:i:s\Z'),
+    'database_snapshot'=>'repeatable-read-read-only','scope_sha256'=>hash('sha256',json_encode(self::PAIRS,JSON_THROW_ON_ERROR)),
+    'legacy_rows'=>$legacyRows,'own_rows'=>$ownRows,'source_rows'=>$sources,'link_rows'=>$links,'target_rows'=>$targets,'schema_evidence'=>$schema];
+   if(strlen(json_encode($out,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR))>16777216)throw new RuntimeException('local46_raw_bound');
+   if(!$db->rollBack()||$db->inTransaction())throw new RuntimeException('local46_close');return $out;
+  } finally {if($db->inTransaction())$db->rollBack();}
+ }
+}
+'''
+LOCAL46_VALIDATOR = r'''
+L46_FALSE=L7_FALSE+('publication_admission','safe_to_write_now')
+L46_OBS_LIMITS={'legacy':46,'own':46,'sources':512,'links':128,'targets':46}
+
+def l46_id(v):
+    value=l7_positive(v);l7_need(value is not None,'l46_id');return value
+
+def l46_text(v,bound=1024):
+    l7_need(v is None or isinstance(v,str) and len(v.encode())<=bound,'l46_text')
+    return v
+
+def l46_bool(v):
+    l7_need(type(v) is int and v in (0,1) or isinstance(v,str) and v in ('0','1'),'l46_boolean')
+    return str(v)=='1'
+
+def l46_object(v,empty_list=False):
+    if not isinstance(v,str):return None
+    l7_need(len(v.encode())<=1048576,'l46_json_bound')
+    try:
+        value=l7_parse(v);return value if isinstance(value,dict) else {} if empty_list and value==[] else None
+    except (TypeError,ValueError):return None
+
+def l46_digest(v):
+    return hashlib.sha256(v.encode()).hexdigest() if isinstance(v,str) else None
+
+def l46_array_json(v):
+    if not isinstance(v,str):return False
+    l7_need(len(v.encode())<=1048576,'l46_json_bound')
+    try:return isinstance(l7_parse(v),(list,dict))
+    except (TypeError,ValueError):return False
+
+def l46_payload(v):
+    if not isinstance(v,dict):return {}
+    if 'id' in v:return v
+    for x in (v.get('hotel'),v.get('data',{}).get('hotel') if isinstance(v.get('data'),dict) else None,v.get('data')):
+        if isinstance(x,dict) and 'id' in x:return x
+    return v
+
+def l46_native(v):
+    if v is None:return None,{},'absent',0
+    if not isinstance(v,str):return None,{},'invalid_json_or_shape',0
+    l7_need(len(v.encode())<=1048576,'l46_json_bound')
+    try:value=l7_parse(v)
+    except (TypeError,ValueError,RecursionError):return None,{},'invalid_json_or_shape',0
+    if not isinstance(value,(dict,list)):return None,{},'invalid_json_or_shape',0
+    pending=[(value,0)];seen=0
+    while pending:
+        node,depth=pending.pop();seen+=1
+        if seen>8192 or depth>32:return value,{},'shape_bound_exceeded',None
+        if isinstance(node,dict):pending.extend((x,depth+1) for x in node.values())
+        elif isinstance(node,list):pending.extend((x,depth+1) for x in node)
+    if isinstance(value,dict):
+        if 'id' in value:return value,value,'object',1 if l7_positive(value['id']) is not None else 0
+        return value,l46_payload(value),'unsupported_wrapper',0
+    if len(value)>128:return value,{},'shape_bound_exceeded',None
+    hotels=[x for x in value if isinstance(x,dict) and l7_positive(x.get('id')) is not None]
+    if len(hotels)!=1:return value,{},'ambiguous_hotel_list' if hotels else 'empty_hotel_list',len(hotels)
+    return value,hotels[0],'single_hotel_list',1
+
+def l46_generic_name(name):
+    if not isinstance(name,str):return False
+    normalized=''.join(c if c.isalnum() else ' ' for c in name.strip()[:255].lower()).split()
+    return bool(normalized) and normalized[0] in ('fortuna','roulette','фортуна','рулетка')
+
+def l46_identity(v):
+    v={} if not isinstance(v,dict) else dict(v)
+    for place in ('country','region'):
+        for field in ('id','name'):
+            if place+'.'+field in v:
+                v[place]=dict(v[place]) if isinstance(v.get(place),dict) else {}
+                v[place][field]=v[place+'.'+field]
+    country=v.get('country');region=v.get('region')
+    return {'name':l46_text(v.get('name')),
+        'country':l46_text(country.get('name') if isinstance(country,dict) else country),
+        'region':l46_text(region.get('name') if isinstance(region,dict) else region),
+        'country_id':l7_positive(country.get('id')) if isinstance(country,dict) else None,
+        'region_id':l7_positive(region.get('id')) if isinstance(region,dict) else None}
+
+def l46_source(r,current=True):
+    value=l46_object(r.get('source_json'));payload=l46_payload(value);actual=l46_digest(r.get('source_json'))
+    out={'namespace':l46_text(r.get('namespace'),64),'external_key':l46_text(r.get('external_key'),128),
+        'acquired_via':l46_text(r.get('acquired_via'),64),'stored_sha256':l46_text(r.get('source_sha256'),128),
+        'bytes_sha256':actual,'source_integrity':actual is not None and actual==r.get('source_sha256') and value is not None,
+        'source_identity_id':l7_positive(payload.get('id')),'identity':l46_identity(payload),
+        'first_seen_at':l46_text(r.get('first_seen_at'),40),'last_seen_at':l46_text(r.get('last_seen_at'),40)}
+    if current:out.update(source_id=l46_id(r['id']),own_id=l46_id(r['anytour_hotel_id']),row_sha256=hashlib.sha256(l7_json(r)).hexdigest())
+    return out
+
+def l46_schema(s):
+    l7_need(isinstance(s,dict) and set(s)==set(L46_TABLE_COLUMNS),'l46_schema_scope')
+    for table,required in L46_TABLE_COLUMNS.items():
+        entry=s[table];l7_need(isinstance(entry,dict) and set(entry)=={'engine','table_type','columns','column_types','indexes','foreign_keys'}
+            and entry['engine']=='InnoDB' and entry['table_type']=='BASE TABLE','l46_schema_engine')
+        cols=entry['columns'];indexes=entry['indexes']
+        l7_need(isinstance(cols,list) and len(cols)<=128 and all(isinstance(c,str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}',c) for c in cols)
+            and len(cols)==len(set(cols)) and set(required)<=set(cols),'l46_schema_columns')
+        types=entry['column_types'];l7_need(isinstance(types,dict) and set(types)==set(cols),'l46_schema_types')
+        for name,typ in types.items():
+            l7_need(isinstance(typ,dict) and set(typ)=={'data_type','column_type','nullable','collation'}
+                and type(typ['nullable']) is bool and isinstance(typ['data_type'],str) and isinstance(typ['column_type'],str)
+                and len(typ['data_type'])<=32 and len(typ['column_type'])<=256
+                and (typ['collation'] is None or isinstance(typ['collation'],str) and len(typ['collation'])<=64),'l46_column_type')
+        for name,expected in L46_COLUMN_TYPES[table].items():
+            actual=dict(types[name]);actual['column_type']=re.sub(r'^(tinyint|smallint|mediumint|int|bigint)\([0-9]+\)',r'\1',actual['column_type'])
+            l7_need(actual==expected,'l46_column_contract')
+        l7_need(isinstance(indexes,dict) and 0<len(indexes)<=64,'l46_schema_indexes')
+        for name,index in indexes.items():
+            l7_need(isinstance(name,str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}',name)
+                and isinstance(index,dict) and set(index)=={'unique','columns','sub_parts'} and type(index['unique']) is bool
+                and isinstance(index['columns'],list) and 0<len(index['columns'])<=32
+                and all(isinstance(c,str) and c in cols for c in index['columns'])
+                and isinstance(index['sub_parts'],list) and len(index['sub_parts'])==len(index['columns'])
+                and all(v is None or type(v) is int and v>0 for v in index['sub_parts']),'l46_schema_index')
+        l7_need(indexes.get('PRIMARY')=={'unique':True,'columns':['old_local_id' if table=='local_tv_legacy_links' else 'id'],'sub_parts':[None]},'l46_schema_primary')
+        if table=='anytour_hotel_sources':l7_need({'unique':True,'columns':['namespace','external_key'],'sub_parts':[None,None]} in indexes.values(),'l46_schema_source_unique')
+        fks=entry['foreign_keys'];l7_need(isinstance(fks,dict) and len(fks)<=64,'l46_foreign_keys')
+        for name,fk in fks.items():
+            l7_need(isinstance(name,str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}',name)
+                and isinstance(fk,dict) and set(fk)=={'columns','referenced_table','referenced_columns','update_rule','delete_rule','same_schema'}
+                and isinstance(fk['columns'],list) and 0<len(fk['columns'])<=32
+                and all(isinstance(c,str) and c in cols for c in fk['columns'])
+                and isinstance(fk['referenced_columns'],list) and len(fk['referenced_columns'])==len(fk['columns'])
+                and all(isinstance(c,str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}',c) for c in fk['referenced_columns'])
+                and isinstance(fk['referenced_table'],str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}',fk['referenced_table'])
+                and type(fk['same_schema']) is bool and fk['update_rule'] in ('RESTRICT','NO ACTION','CASCADE','SET NULL','SET DEFAULT')
+                and fk['delete_rule'] in ('RESTRICT','NO ACTION','CASCADE','SET NULL','SET DEFAULT'),'l46_foreign_key_shape')
+        if table in ('anytour_hotel_sources','local_tv_legacy_links'):
+            own_source=table=='anytour_hotel_sources'
+            expected={'columns':['anytour_hotel_id' if own_source else 'tv_id'],
+                'referenced_table':'anytour_hotels' if own_source else 'local_tv_hotels','referenced_columns':['id'],
+                'update_rule':'RESTRICT','delete_rule':'RESTRICT','same_schema':True}
+            l7_need(expected in fks.values(),'l46_required_foreign_key')
+
+def l46_normalize(raw):
+    obs={k:[] for k in L46_OBS_LIMITS}
+    for r in raw['legacy_rows']:
+        obs['legacy'].append({'legacy_id':l46_id(r['id']),'active':l46_bool(r['is_active']),
+            'identity':{'name':l46_text(r['name']),'country':l46_text(r['country_name']),'region':l46_text(r['region_name']),
+                'country_id':l7_positive(r['country_id']),'region_id':l7_positive(r['region_id'])},
+            'row_sha256':hashlib.sha256(l7_json(r)).hexdigest()})
+    for r in raw['own_rows']:
+        profile=l46_object(r['profile_json']);actual=l46_digest(r['profile_json'])
+        obs['own'].append({'own_id':l46_id(r['id']),'revision':l46_id(r['revision']),'active':l46_bool(r['is_active']),
+            'identity':l46_identity(profile),'profile_sha256':l46_text(r['profile_sha256'],128),'profile_bytes_sha256':actual,
+            'profile_integrity':profile is not None and actual==r['profile_sha256'],'row_sha256':hashlib.sha256(l7_json(r)).hexdigest()})
+    obs['sources']=[l46_source(r) for r in raw['source_rows']]
+    for r in raw['link_rows']:
+        snap=l46_object(r['snapshot_json']);snap={} if snap is None else snap
+        profile=snap.get('profile');profile={} if not isinstance(profile,dict) else profile
+        old=l46_object(profile.get('profile_json'));old_hash=l46_digest(profile.get('profile_json'))
+        profile_shape=set(profile)=={'id','profile_json','profile_sha256','revision','is_active'}
+        active=profile.get('is_active');active=l46_bool(active) if type(active) is int and active in (0,1) or isinstance(active,str) and active in ('0','1') else None
+        sources=snap.get('sources');valid=isinstance(sources,list) and 0<len(sources)<=64
+        if isinstance(sources,list):l7_need(len(sources)<=64,'l46_snapshot_sources_bound')
+        source_obs=[]
+        if valid:
+            for s in sources:
+                if not isinstance(s,dict) or set(s)!={'namespace','external_key','acquired_via','source_json','source_sha256','first_seen_at','last_seen_at'}:
+                    valid=False;continue
+                source_obs.append(l46_source(s,False))
+            valid=valid and all(s['source_integrity'] for s in source_obs)
+        issues=l46_object(r['migration_issues_json']);fields=sorted(issues) if issues is not None else []
+        l7_need(len(fields)<=128 and all(isinstance(k,str) and len(k)<=96 for k in fields),'l46_issue_fields')
+        preserved=issues.get('preservedFields',[]) if issues is not None else []
+        issue_ok=isinstance(preserved,list) and len(preserved)<=128 and all(isinstance(k,str) and len(k)<=96 for k in preserved)
+        obs['links'].append({'own_id':l46_id(r['old_local_id']),'tv_id':l46_id(r['tv_id']),
+            'snapshot_sha256':l46_text(r['snapshot_sha256'],128),'snapshot_bytes_sha256':l46_digest(r['snapshot_json']),
+            'snapshot_integrity':set(snap)=={'profile','sources'} and l46_digest(r['snapshot_json'])==r['snapshot_sha256'],
+            'snapshot_own_id':l7_positive(profile.get('id')),'snapshot_revision':l7_positive(profile.get('revision')),
+            'snapshot_identity':l46_identity(old),'snapshot_profile_sha256':l46_text(profile.get('profile_sha256'),128),
+            'snapshot_profile_bytes_sha256':old_hash,'snapshot_active':active,
+            'snapshot_profile_integrity':profile_shape and active is not None and old is not None and old_hash==profile.get('profile_sha256'),
+            'snapshot_sources':source_obs,'snapshot_sources_integrity':valid,
+            'migration_issue_fields':fields,'preserved_fields':preserved if issue_ok else [],
+            'migration_issues_valid':issues is not None and issue_ok,'origin_known':issues.get('originKnown') if issues is not None and type(issues.get('originKnown')) is bool else None,
+            'migration_issues_sha256':l46_digest(r['migration_issues_json']),'migrated_at':l46_text(r['migrated_at'],40),
+            'row_sha256':hashlib.sha256(l7_json(r)).hexdigest()})
+    for r in raw['target_rows']:
+        discovery=l46_object(r['discovery_json'],True);content=l46_object(r['content_json'],True);manual=l46_object(r['manual_json'],True)
+        source,native,payload_status,payload_count=l46_native(r['source_json']);actual=l46_digest(r['source_json'])
+        fields=sorted(manual) if manual is not None else [];l7_need(len(fields)<=128 and all(isinstance(k,str) and len(k)<=96 for k in fields),'l46_manual_fields')
+        obs['targets'].append({'tv_id':l46_id(r['id']),'state':l46_text(r['state'],24),'revision':l46_id(r['revision']),
+            'discovery_identity':l46_identity(discovery),'content_identity':l46_identity(content),'manual_identity':l46_identity(manual),
+            'native_identity':l46_identity(native),'native_identity_id':l7_positive(native.get('id')),
+            'native_payload_status':payload_status,'native_payload_count':payload_count,
+            'discovery_sha256':l46_digest(r['discovery_json']),'content_sha256':l46_digest(r['content_json']),
+            'manual_sha256':l46_digest(r['manual_json']),'source_absent_sha256':l46_digest(r['source_absent_json']),
+            'json_integrity':all(x is not None for x in (discovery,content,manual)) and l46_array_json(r['source_absent_json']),
+            'manual_fields':fields,'source_present':r['source_json'] is not None,'source_sha256':l46_text(r['source_sha256'],128),
+            'source_bytes_sha256':actual,'source_integrity':source is not None and actual==r['source_sha256'],
+            'source_fetched_at':l46_text(r['source_fetched_at'],40),'row_sha256':hashlib.sha256(l7_json(r)).hexdigest()})
+    return obs
+'''
+LOCAL46_VALIDATOR += r'''
+L46_IDENTITY_KEYS={'name','country','region','country_id','region_id'}
+L46_SOURCE_KEYS={'namespace','external_key','acquired_via','stored_sha256','bytes_sha256','source_integrity','source_identity_id','identity','first_seen_at','last_seen_at'}
+L46_KEYS={
+ 'legacy':{'legacy_id','active','identity','row_sha256'},
+ 'own':{'own_id','revision','active','identity','profile_sha256','profile_bytes_sha256','profile_integrity','row_sha256'},
+ 'sources':L46_SOURCE_KEYS|{'source_id','own_id','row_sha256'},
+ 'links':{'own_id','tv_id','snapshot_sha256','snapshot_bytes_sha256','snapshot_integrity','snapshot_own_id','snapshot_revision','snapshot_identity','snapshot_profile_sha256','snapshot_profile_bytes_sha256','snapshot_active','snapshot_profile_integrity','snapshot_sources','snapshot_sources_integrity','migration_issue_fields','preserved_fields','migration_issues_valid','origin_known','migration_issues_sha256','migrated_at','row_sha256'},
+ 'targets':{'tv_id','state','revision','discovery_identity','content_identity','manual_identity','native_identity','native_identity_id','native_payload_status','native_payload_count','discovery_sha256','content_sha256','manual_sha256','source_absent_sha256','json_integrity','manual_fields','source_present','source_sha256','source_bytes_sha256','source_integrity','source_fetched_at','row_sha256'},
+}
+
+def l46_fact(value,kind):
+    keys=L46_SOURCE_KEYS if kind=='snapshot_source' else L46_KEYS[kind]
+    l7_need(isinstance(value,dict) and set(value)==keys,'l46_fact_shape')
+    ids={'legacy_id','own_id','tv_id','source_id','revision'}
+    optional_ids={'source_identity_id','snapshot_own_id','snapshot_revision','native_identity_id'}
+    flags={'active','profile_integrity','source_integrity','snapshot_integrity','snapshot_profile_integrity','snapshot_sources_integrity','migration_issues_valid','json_integrity','source_present'}
+    digest_keys={'row_sha256','profile_bytes_sha256','snapshot_bytes_sha256','migration_issues_sha256','discovery_sha256','content_sha256','manual_sha256','source_absent_sha256'}
+    for key,v in value.items():
+        if key in ids:l7_need(type(v) is int and l7_positive(v) is not None,'l46_fact_id')
+        elif key in optional_ids:l7_need(v is None or type(v) is int and l7_positive(v) is not None,'l46_optional_id')
+        elif key in flags:l7_need(type(v) is bool,'l46_fact_flag')
+        elif key in digest_keys:l7_need(l7_hash(v),'l46_fact_digest')
+        elif key in ('bytes_sha256','source_bytes_sha256','snapshot_profile_bytes_sha256'):l7_need(v is None or l7_hash(v),'l46_optional_digest')
+        elif key in ('origin_known','snapshot_active'):l7_need(v is None or type(v) is bool,'l46_optional_flag')
+        elif key=='native_payload_count':l7_need(v is None or type(v) is int and 0<=v<=128,'l46_native_payload_count')
+        elif key=='native_payload_status':l7_need(v in ('absent','invalid_json_or_shape','shape_bound_exceeded','object','unsupported_wrapper','ambiguous_hotel_list','empty_hotel_list','single_hotel_list'),'l46_native_payload_status')
+        elif key.endswith('identity'):
+            l7_need(isinstance(v,dict) and set(v)==L46_IDENTITY_KEYS,'l46_identity_shape')
+            for n,x in v.items():
+                if n.endswith('_id'):l7_need(x is None or type(x) is int and l7_positive(x) is not None,'l46_identity_id')
+                else:l46_text(x)
+        elif key=='snapshot_sources':
+            l7_need(isinstance(v,list) and len(v)<=64,'l46_snapshot_source_count')
+            for s in v:l46_fact(s,'snapshot_source')
+        elif key in ('migration_issue_fields','preserved_fields','manual_fields'):
+            l7_need(isinstance(v,list) and len(v)<=128 and all(isinstance(x,str) and len(x)<=96 for x in v),'l46_field_names')
+            if key!='preserved_fields':l7_need(v==sorted(set(v)),'l46_field_names_unique')
+        else:l46_text(v,1024)
+    if kind in ('sources','snapshot_source'):
+        l7_need(not value['source_integrity'] or l7_hash(value['bytes_sha256']) and l7_hash(value['stored_sha256'])
+            and value['bytes_sha256']==value['stored_sha256'],'l46_source_integrity_claim')
+    if kind=='own':l7_need(not value['profile_integrity'] or value['profile_bytes_sha256']==value['profile_sha256'],'l46_profile_integrity_claim')
+    if kind=='targets':
+        l7_need(not value['source_integrity'] or value['source_present'] and l7_hash(value['source_bytes_sha256'])
+            and l7_hash(value['source_sha256']) and value['source_bytes_sha256']==value['source_sha256'],'l46_native_integrity_claim')
+        status=value['native_payload_status'];count=value['native_payload_count']
+        l7_need((status=='shape_bound_exceeded')==(count is None)
+            and (status!='single_hotel_list' or count==1 and value['native_identity_id'] is not None)
+            and (status!='ambiguous_hotel_list' or count is not None and count>1)
+            and (status!='empty_hotel_list' or count==0)
+            and (status!='object' or count in (0,1))
+            and (status!='absent' or not value['source_present'] and count==0),'l46_native_payload_claim')
+    if kind=='links':
+        l7_need(not value['snapshot_integrity'] or value['snapshot_bytes_sha256']==value['snapshot_sha256'],'l46_snapshot_integrity_claim')
+        l7_need(not value['snapshot_profile_integrity'] or type(value['snapshot_active']) is bool
+            and l7_hash(value['snapshot_profile_bytes_sha256']) and value['snapshot_profile_bytes_sha256']==value['snapshot_profile_sha256'],'l46_snapshot_profile_claim')
+        l7_need(not value['snapshot_sources_integrity'] or value['snapshot_sources'] and all(s['source_integrity'] for s in value['snapshot_sources']),'l46_snapshot_sources_claim')
+
+def l46_observations(obs,p):
+    l7_need(isinstance(obs,dict) and set(obs)==set(L46_OBS_LIMITS),'l46_observation_scope')
+    own_ids={a for a,b in p['pairs']};legacy_ids={b for a,b in p['pairs']}
+    for kind,cap in L46_OBS_LIMITS.items():
+        rows=obs[kind];l7_need(isinstance(rows,list) and len(rows)<=cap,'l46_observation_bound')
+        for r in rows:l46_fact(r,kind)
+    key={'legacy':'legacy_id','own':'own_id','sources':'source_id','links':'own_id','targets':'tv_id'}
+    for kind,name in key.items():l7_need(len({r[name] for r in obs[kind]})==len(obs[kind]),'l46_duplicate_row')
+    l7_need({r['legacy_id'] for r in obs['legacy']}<=legacy_ids and {r['own_id'] for r in obs['own']}<=own_ids,'l46_fixed_scope')
+    sources=obs['sources'];l7_need(len({(r['namespace'],r['external_key']) for r in sources})==len(sources),'l46_duplicate_source_key')
+    l7_need(all(r['own_id'] in own_ids or r['namespace']=='legacy_catalog' and r['external_key'] in {str(x) for x in legacy_ids} for r in sources),'l46_source_scope')
+    target_ids={r['tv_id'] for r in obs['links'] if r['own_id'] in own_ids}
+    l7_need(len(target_ids)<=46 and all(r['own_id'] in own_ids or r['tv_id'] in target_ids for r in obs['links'])
+        and {r['tv_id'] for r in obs['targets']}<=target_ids,'l46_derived_target_scope')
+
+def l46_row_facts(pair,obs):
+    own_id,legacy_id=pair;why=[]
+    def conflicts(left,right):
+        return any(left[k] is not None and right[k] is not None and left[k]!=right[k]
+            for k in L46_IDENTITY_KEYS)
+    def manual_identity(fields):
+        return any(f.split('.',1)[0] in ('name','country','region','subRegion') for f in fields)
+    a=next((x for x in obs['own'] if x['own_id']==own_id),None)
+    legacy=next((x for x in obs['legacy'] if x['legacy_id']==legacy_id),None)
+    b=next((x for x in obs['links'] if x['own_id']==own_id),None)
+    tv=None if b is None else b['tv_id'];t=next((x for x in obs['targets'] if x['tv_id']==tv),None)
+    sources=[s for s in obs['sources'] if s['own_id']==own_id]
+    ls=[s for s in sources if s['namespace']=='legacy_catalog']
+    owners=sorted({s['own_id'] for s in obs['sources'] if s['namespace']=='legacy_catalog' and s['external_key']==str(legacy_id)})
+    target_owners=sorted({x['own_id'] for x in obs['links'] if tv is not None and x['tv_id']==tv})
+    if a is None:why.append('own_missing')
+    else:
+        if not a['active']:why.append('own_inactive')
+        if not a['profile_integrity']:why.append('own_profile_integrity_failed')
+    if legacy is None:why.append('legacy_row_missing')
+    elif not legacy['active']:why.append('legacy_inactive')
+    if any(not s['source_integrity'] for s in sources):why.append('own_source_integrity_failed')
+    if any(not l7_time(s['first_seen_at']) or not l7_time(s['last_seen_at']) or s['last_seen_at']<s['first_seen_at'] for s in sources):why.append('own_source_time_unverified')
+    if len(ls)!=1:why.append('legacy_source_absent_or_ambiguous')
+    elif ls[0]['external_key']!=str(legacy_id) or ls[0]['source_identity_id']!=legacy_id or ls[0]['acquired_via']!='saved_catalog' or not ls[0]['source_integrity']:
+        why.append('legacy_source_unverified_or_changed')
+    if owners!=[own_id]:why.append('legacy_owner_conflict_or_missing')
+    relation='no_bridge'
+    if b is None:why.append('reverse_bridge_absent_target_not_measured')
+    else:
+        if target_owners!=[own_id]:why.append('target_owner_conflict')
+        if b['snapshot_active'] is not True:why.append('snapshot_inactive_or_unknown')
+        if not l7_time(b['migrated_at']):why.append('bridge_time_unverified')
+        intact=b['snapshot_integrity'] and b['snapshot_profile_integrity'] and b['snapshot_sources_integrity']
+        if not intact:relation='invalid';why.append('bridge_snapshot_integrity_failed')
+        elif b['snapshot_own_id']!=own_id:relation='identity_mismatch';why.append('snapshot_own_identity_mismatch')
+        elif a is None:relation='invalid'
+        elif b['snapshot_revision']==a['revision'] and b['snapshot_profile_sha256']==a['profile_sha256']:relation='same_profile'
+        elif b['snapshot_revision'] is not None and b['snapshot_revision']<a['revision']:
+            relation='historical_profile'
+            if any(b['snapshot_identity'][k]!=a['identity'][k] for k in ('name','country','region')):
+                relation='identity_mismatch';why.append('snapshot_current_identity_mismatch')
+        else:relation='revision_conflict';why.append('snapshot_revision_conflict')
+        sl=[s for s in b['snapshot_sources'] if s['namespace']=='legacy_catalog']
+        if len(sl)!=1 or sl[0]['external_key']!=str(legacy_id) or sl[0]['source_identity_id']!=legacy_id or sl[0]['acquired_via']!='saved_catalog' or not sl[0]['source_integrity']:
+            why.append('snapshot_legacy_edge_unverified')
+        if len(sl)==1:
+            if conflicts(sl[0]['identity'],b['snapshot_identity']) or legacy is not None and conflicts(sl[0]['identity'],legacy['identity']) or len(ls)==1 and conflicts(sl[0]['identity'],ls[0]['identity']):
+                why.append('snapshot_source_identity_review_required')
+            if not l7_time(sl[0]['first_seen_at']) or not l7_time(sl[0]['last_seen_at']) or sl[0]['last_seen_at']<sl[0]['first_seen_at']:
+                why.append('snapshot_source_time_unverified')
+        if not b['migration_issues_valid'] or b['origin_known'] is not True or set(b['migration_issue_fields'])!={'preservedFields','originKnown'}:
+            why.append('migration_issue_review_required')
+        if manual_identity(b['preserved_fields']):why.append('preserved_manual_identity_review_required')
+        if t is None:why.append('linked_target_missing')
+    if t is not None:
+        if t['state']!='ready':why.append('target_'+str(t['state']))
+        if not t['json_integrity']:why.append('target_json_integrity_failed')
+        if not t['source_present']:why.append('native_source_absent')
+        elif not t['source_integrity']:why.append('native_source_integrity_failed')
+        if t['native_payload_status'] not in ('object','single_hotel_list'):why.append('native_payload_'+t['native_payload_status'])
+        if not l7_time(t['source_fetched_at']):why.append('native_source_time_unverified')
+        if t['native_identity_id']!=tv:why.append('native_identity_unconfirmed')
+        if manual_identity(t['manual_fields']):why.append('manual_identity_review_required')
+        ni=t['native_identity']
+        if not ni['name'] or not ni['name'].strip() or ni['country_id'] is None:why.append('native_typed_identity_incomplete')
+        if l46_generic_name(ni['name']):why.append('native_generic_accommodation_product')
+        if legacy is not None and ni['country_id'] is not None and legacy['identity']['country_id']!=ni['country_id']:
+            why.append('native_legacy_country_mismatch')
+        if a is not None and ni['name'] is not None and a['identity']['name']!=ni['name']:why.append('native_own_name_review_required')
+        if a is not None and conflicts(ni,a['identity']):why.append('native_own_identity_review_required')
+        if legacy is not None and conflicts(ni,legacy['identity']):why.append('native_legacy_identity_review_required')
+        if len(ls)==1 and conflicts(ni,ls[0]['identity']):why.append('native_legacy_source_identity_review_required')
+        for identity in (t['discovery_identity'],t['content_identity'],t['manual_identity']):
+            if conflicts(identity,ni):why.append('target_identity_conflict')
+    if a is not None and legacy is not None and a['identity']['name']!=legacy['identity']['name']:why.append('own_legacy_name_review_required')
+    if a is not None and legacy is not None and conflicts(a['identity'],legacy['identity']):why.append('own_legacy_identity_review_required')
+    if len(ls)==1 and legacy is not None and conflicts(ls[0]['identity'],legacy['identity']):why.append('source_legacy_identity_review_required')
+    if len(ls)==1 and a is not None and conflicts(ls[0]['identity'],a['identity']):
+        why.append('source_own_identity_review_required')
+    observed=None;names=[]
+    if t is not None:
+        if t['native_identity']['name']:names=[t['native_identity']['name']]
+        if t['source_integrity'] and t['native_payload_status'] in ('object','single_hotel_list') and t['native_identity_id']==tv and t['native_identity']['country_id'] is not None:
+            observed={'adapter':'tourvisor-snapshot-v1','hotel':str(tv),'country':str(t['native_identity']['country_id'])}
+    why=sorted(set(why))
+    return {'own_id':own_id,'legacy_candidate_id':legacy_id,'actual_tv_id':tv,
+        'own_revision':a['revision'] if a else None,'local_tv_revision':t['revision'] if t else None,
+        'bridge_status':'observed' if b else 'absent','target_status':t['state'] if t else 'not_measured_no_bridge' if b is None else 'missing_linked_target',
+        'classification':'hold' if why else 'existing_chain_review_candidate','reasons':why,
+        'legacy_owners':owners,'target_link_owners':target_owners,'own_source_ids':sorted(s['source_id'] for s in sources),
+        'snapshot_profile_relation':relation,'observed_source_identity':observed,'observed_source_names':names}
+
+def l46_summary(rows):
+    return {'requested_pairs':46,'own_present':sum(r['own_revision'] is not None for r in rows),
+        'existing_bridges':sum(r['actual_tv_id'] is not None for r in rows),
+        'linked_targets_present':sum(r['local_tv_revision'] is not None for r in rows),
+        'existing_chain_review_candidates':sum(r['classification']=='existing_chain_review_candidate' for r in rows),
+        'held':sum(r['classification']=='hold' for r in rows),'accepted_native_bindings':0}
+
+def l46_project(raw,p):
+    keys={'schema_version','state','captured_at_utc','database_snapshot','scope_sha256','schema_evidence'}|set(L46_LIMITS)
+    l7_need(isinstance(raw,dict) and set(raw)==keys and type(raw['schema_version']) is int and raw['schema_version']==1
+        and raw['state']=='local46_identity_snapshot' and l7_capture_time(raw['captured_at_utc'])
+        and raw['database_snapshot']=='repeatable-read-read-only'
+        and raw['scope_sha256']==hashlib.sha256(l7_json(p['pairs'])).hexdigest(),'l46_raw_scope')
+    tables=['catalog_hotels','anytour_hotels','anytour_hotel_sources','local_tv_legacy_links','local_tv_hotels']
+    for (key,cap),table in zip(L46_LIMITS.items(),tables):
+        l7_need(isinstance(raw[key],list) and len(raw[key])<=cap,'l46_raw_count')
+        for r in raw[key]:
+            l7_need(isinstance(r,dict) and set(r)==set(L46_TABLE_COLUMNS[table]),'l46_raw_columns')
+            l7_need(all(v is None or type(v) in (str,int,float) for v in r.values()),'l46_raw_scalar')
+            l7_need(all(not isinstance(v,str) or len(v.encode())<=1048576 for v in r.values()),'l46_raw_field_bound')
+    l46_schema(raw['schema_evidence']);obs=l46_normalize(raw);l46_observations(obs,p)
+    rows=[l46_row_facts(pair,obs) for pair in p['pairs']]
+    return {'captured_at_utc':raw['captured_at_utc'],'database_snapshot':raw['database_snapshot'],'scope_sha256':raw['scope_sha256'],
+        'schema_evidence':raw['schema_evidence'],'observations':obs,'rows':rows,'summary':l46_summary(rows)}
+
+def l46_validate_data(data,command,control):
+    p=LOCAL46_IDENTITY;l7_command(command,control,p)
+    keys={'schema_version','state','operation_id','source_sha','control_source_sha','cohort','target_operation_id',
+        'captured_at_utc','database_snapshot','scope_sha256','schema_evidence','observations','rows','summary','rows_sha256',
+        'roster_sha256','aggregate_sha256','parent_receipt_sha256','parent_evidence_sha256','current_raw_sha256',
+        'protected_before','protected_after','protected_inputs_unchanged','no_replay'}|set(L7_ZERO)|set(L46_FALSE)
+    l7_need(isinstance(data,dict) and set(data)==keys,'l46_data_shape')
+    fixed={'schema_version':'local46_current_identity_v1','state':'current_identity_observation_only',
+        'operation_id':p['operation_id'],'source_sha':p['source_sha'],'control_source_sha':control,
+        'cohort':p['cohort'],'target_operation_id':p['parent_operation_id'],'roster_sha256':p['roster_sha256'],
+        'aggregate_sha256':p['aggregate_sha256'],'parent_receipt_sha256':p['parent_receipt_sha256'],
+        'parent_evidence_sha256':p['parent_evidence_sha256'],'scope_sha256':hashlib.sha256(l7_json(p['pairs'])).hexdigest(),'database_snapshot':'repeatable-read-read-only'}
+    l7_need(all(data[k]==v for k,v in fixed.items()) and l7_capture_time(data['captured_at_utc']),'l46_data_binding')
+    l7_need(all(type(data[k]) is int and data[k]==(1 if k=='new_database_reads' else 0) for k in L7_ZERO)
+        and all(data[k] is False for k in L46_FALSE) and data['no_replay'] is True
+        and data['protected_inputs_unchanged'] is True,'l46_authority')
+    pins=data['protected_before'];l7_need(isinstance(pins,dict) and set(pins)=={'parent/result.json','parent/reservation.json','config.php','staged/v2/data/db-v1.php'}
+        and all(l7_hash(v) for v in pins.values()) and data['protected_after']==pins
+        and pins['parent/result.json']==p['parent_receipt_sha256']
+        and pins['staged/v2/data/db-v1.php']==SOURCE_HASHES['v2/data/db-v1.php'],'l46_protected_inputs')
+    l7_need(l7_hash(data['parent_evidence_sha256']) and l7_hash(data['current_raw_sha256']),'l46_provenance_hash')
+    l46_schema(data['schema_evidence']);l46_observations(data['observations'],p)
+    rows=[l46_row_facts(pair,data['observations']) for pair in p['pairs']]
+    l7_need(l7_json(data['rows'])==l7_json(rows) and data['rows_sha256']==hashlib.sha256(l7_json(rows)).hexdigest(),'l46_derived_rows')
+    summary=l46_summary(rows);l7_need(isinstance(data['summary'],dict) and set(data['summary'])==set(summary)
+        and all(type(data['summary'][k]) is int and data['summary'][k]==v for k,v in summary.items()),'l46_summary')
+    l7_need(len(l7_json(data))<=1048576,'l46_projection_bound');return data
+'''
+exec(LOCAL46_VALIDATOR)
+
+L46_PHP_FAILURES = ('local46_close', 'local46_column_contract', 'local46_db_attributes', 'local46_engine', 'local46_field_bound', 'local46_foreign_key', 'local46_id', 'local46_php_database_error', 'local46_php_unclassified_error', 'local46_raw_bound', 'local46_row_bound', 'local46_scalar', 'local46_schema', 'local46_schema_keys', 'local46_source_unique', 'local46_target_bound', 'local46_transaction', 'local46_transaction_setup', 'local46_transaction_start')
+
+LOCAL46_HANDLER = r"""
+def current_local46_identity(stage):
+    import stat
+    p=LOCAL46_IDENTITY;control=payload.get('match_retained_control_sha')
+    command={k:payload.get(k) for k in L7_COMMAND};l7_command(command,control,p)
+    l7_need(operation==p['operation_id'] and mode==p['mode'] and source==p['source_sha'],'l46_remote_scope')
+    target=private/p['parent_operation_id']
+    l7_need(private.is_dir() and not private.is_symlink() and private.resolve()==private
+        and target.is_dir() and not target.is_symlink() and target.resolve()==target,'l46_parent_path')
+    paths={'parent/result.json':target/'result.json','parent/reservation.json':target/'reservation.json',
+        'config.php':project/'config.php','staged/v2/data/db-v1.php':stage/'v2/data/db-v1.php'}
+    signatures={};inputs={}
+    def protected(remember):
+        pins={}
+        for name,path in paths.items():
+            l7_need(safe_file(path,1048576) and path.resolve()==path and path.stat().st_nlink==1,'l46_protected_path')
+            a=path.lstat()
+            l7_need(stat.S_ISREG(a.st_mode) and a.st_nlink==1 and 0<=a.st_size<=1048576,'l46_protected_metadata')
+            signature=lambda st:(st.st_dev,st.st_ino,st.st_mode,st.st_nlink,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+            fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+            with os.fdopen(fd,'rb') as handle:
+                opened=os.fstat(handle.fileno());raw=handle.read(1048577);closed=os.fstat(handle.fileno())
+            b=path.lstat()
+            l7_need(signature(a)==signature(opened)==signature(closed)==signature(b)
+                and len(raw)==b.st_size and path.resolve()==path,'l46_protected_race')
+            if remember:
+                signatures[name]=signature(a)
+                if name.startswith('parent/'):inputs[name]=raw
+            else:l7_need(signatures[name]==signature(b),'l46_protected_drift')
+            if name=='staged/v2/data/db-v1.php':l7_need(len(raw)==3282,'l46_helper_size')
+            pins[name]=hashlib.sha256(raw).hexdigest()
+        return pins
+    before=protected(True)
+    l7_need(len(inputs['parent/result.json'])==p['parent_receipt_bytes']
+        and before['parent/result.json']==p['parent_receipt_sha256']
+        and before['staged/v2/data/db-v1.php']==SOURCE_HASHES['v2/data/db-v1.php'],'l46_input_pins')
+    reservation=l7_parse(inputs['parent/reservation.json'])
+    l7_need(isinstance(reservation,dict) and set(reservation)=={'operation_id','source_sha','mode','reserved_at'}
+        and reservation['operation_id']==p['parent_operation_id'] and reservation['source_sha']==p['source_sha']
+        and reservation['mode']=='match-retained-current' and type(reservation['reserved_at']) is int
+        and reservation['reserved_at']>0,'l46_parent_reservation')
+    # Parent pins prove operational lineage only; no LOCAL26 content approval is inherited.
+    parent=l7_parse(inputs['parent/result.json'])
+    parent_keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+        'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+    l7_need(isinstance(parent,dict) and set(parent)==parent_keys and type(parent['schema_version']) is int
+        and parent['schema_version']==1 and parent['operation_id']==p['parent_operation_id']
+        and parent['source_sha']==p['source_sha'] and parent['mode']=='match-retained-current'
+        and parent['status']=='complete' and parent['production_unchanged'] is True
+        and l7_production(parent['production_before']) and parent['production_before']==parent['production_after']
+        and all(type(parent[k]) is int and parent[k]==0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')),'l46_parent_receipt')
+    material=parent['match_retained'];l7_need(isinstance(material,dict) and set(material)=={'evidence_sha256','data'},'l46_parent_material')
+    pd=material['data'];l7_need(isinstance(pd,dict) and material['evidence_sha256']==hashlib.sha256(l7_json(pd)).hexdigest()
+        and material['evidence_sha256']==p['parent_evidence_sha256']
+        and pd.get('operation_id')==p['parent_operation_id'] and pd.get('source_sha')==p['source_sha']
+        and pd.get('cohort')=='local26-identity-20261123' and pd.get('state')=='local26_identity_inspected_read_only'
+        and pd.get('no_replay') is True and pd.get('protected_inputs_unchanged') is True
+        and type(pd.get('new_database_reads')) is int and pd['new_database_reads']==1
+        and all(type(pd.get(k)) is int and pd[k]==0 for k in ('database_writes','mapping_writes','supplier_calls','provider_http_calls','accepted_native_bindings'))
+        and pd.get('publication_admission') is False and pd.get('safe_to_write_now') is False,'l46_parent_lineage')
+    def write_once(name,raw):
+        fd=os.open(op/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    script=LOCAL46_PHP+'\n$local46SafeFailures='+json.dumps(list(L46_PHP_FAILURES),separators=(',',':'))+';'+r'''
+    try {
+     $_SERVER['DOCUMENT_ROOT']=getcwd();require getcwd().'/config.php';
+     require getenv('MATCH_RETAINED_SOURCE_ROOT').'/v2/data/db-v1.php';
+     echo json_encode(MatchLocal46IdentityV1::run(v2_data_db()),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+    } catch(Throwable $error) {
+     $reason=in_array($error->getMessage(),$local46SafeFailures,true)?$error->getMessage():($error instanceof PDOException?'local46_php_database_error':'local46_php_unclassified_error');
+     echo json_encode(['schema_version'=>1,'state'=>'local46_current_failed','reason'=>$reason],JSON_THROW_ON_ERROR);exit(1);
+    }'''
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env['MATCH_RETAINED_SOURCE_ROOT']=str(stage)
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+            '-d','memory_limit=256M','-d','disable_functions='+disabled,'-r',script],
+            cwd=project,env=env,capture_output=True,text=False,timeout=60)
+    except subprocess.TimeoutExpired:fail('local46_current_timeout_no_replay')
+    raw=run.stdout;l7_need(len(raw)<=16*1048576,'l46_output_bound')
+    write_once('local46-current-raw.json',raw)
+    if run.returncode!=0 or run.stderr:
+        error=None
+        if len(raw)<=4096:
+            try:error=l7_parse(raw)
+            except (TypeError,ValueError,RecursionError):pass
+        if isinstance(error,dict) and set(error)=={'schema_version','state','reason'} and type(error['schema_version']) is int and error['schema_version']==1 and error['state']=='local46_current_failed' and error['reason'] in L46_PHP_FAILURES:
+            fail(error['reason']+'_no_replay')
+        fail('local46_child_failed_no_replay')
+    projection=l46_project(l7_parse(raw),p);after=protected(False)
+    l7_need(before==after,'l46_protected_drift')
+    data=dict(projection,schema_version='local46_current_identity_v1',state='current_identity_observation_only',
+        operation_id=operation,source_sha=source,control_source_sha=control,cohort=p['cohort'],target_operation_id=p['parent_operation_id'],
+        roster_sha256=p['roster_sha256'],aggregate_sha256=p['aggregate_sha256'],parent_receipt_sha256=p['parent_receipt_sha256'],
+        parent_evidence_sha256=material['evidence_sha256'],rows_sha256=hashlib.sha256(l7_json(projection['rows'])).hexdigest(),
+        current_raw_sha256=hashlib.sha256(raw).hexdigest(),protected_before=before,protected_after=after,
+        protected_inputs_unchanged=True,no_replay=True)
+    data.update({k:0 for k in L7_ZERO});data['new_database_reads']=1;data.update({k:False for k in L46_FALSE})
+    l46_validate_data(data,command,control);evidence=l7_json(data);write_once('retained-evidence.json',evidence)
+    return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+"""
+
+def completed_local46_identity(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result[k]!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        if any(type(result[k]) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        if not l7_production(result['production_before']) or result['production_before']!=result['production_after']:return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=l46_validate_data(material['data'],command,control)
+        return material['evidence_sha256']==hashlib.sha256(l7_json(data)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError,OverflowError,RecursionError):return False
+
+def activate_local46_identity(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in L7_COMMAND))
+    need(command==expected,'local46_command_shape')
+    control=os.environ.get('GITHUB_SHA','');l7_command(command,control,LOCAL46_IDENTITY)
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','retained_first_attempt_only')
+    command['match_retained_control_sha']=control;remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'reservation':'    op.mkdir(mode=0o700)\n','receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():need(remote.count(anchor)==(2 if key=='collector' else 1),'local46_registration_drift_'+key)
+    handler='\nLOCAL46_IDENTITY='+repr(LOCAL46_IDENTITY)+'\nSOURCE_HASHES='+repr(SOURCE_HASHES)+'\n'
+    handler+='L46_TABLE_COLUMNS='+repr(L46_TABLE_COLUMNS)+'\nL46_COLUMN_TYPES='+repr(L46_COLUMN_TYPES)+'\nL46_LIMITS='+repr(L46_LIMITS)+'\n'
+    handler+='L46_PHP_FAILURES='+repr(L46_PHP_FAILURES)+'\nLOCAL46_PHP='+repr(LOCAL46_PHP)+'\n'+LOCAL7_VALIDATOR+LOCAL46_VALIDATOR+LOCAL46_HANDLER
+    dispatch=LOCAL7_DISPATCH.replace("mode=='match-retained-readback'","mode=='match-retained-current'").replace('retained_local7_registration(stage)','current_local46_identity(stage)')
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],dispatch+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-current','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    retained_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('retained_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local46_identity(cmd,res,control) if (
+        cmd.get('operation_id')==LOCAL46_IDENTITY['operation_id'] or cmd.get('cohort')==LOCAL46_IDENTITY['cohort']) else original(cmd,res)
