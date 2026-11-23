@@ -290,6 +290,16 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if ((len(parts) >= 3 and parts[2] == LOCAL7_CURRENT_INPUTS['operation_id'])
+                or (len(parts) >= 4 and parts[3] == LOCAL7_CURRENT_INPUTS['cohort'])):
+            profile = LOCAL7_CURRENT_INPUTS
+            need(len(parts) == 5 and parts[1] == profile['mode']
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local7_current_inputs_fixed_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if ((len(parts) >= 3 and parts[2] == LOCAL7_CURRENT_REGISTRATION['operation_id'])
                 or (len(parts) >= 4 and parts[3] == LOCAL7_CURRENT_REGISTRATION['cohort'])):
             profile = LOCAL7_CURRENT_REGISTRATION
@@ -2225,6 +2235,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('operation_id') == LOCAL7_CURRENT_INPUTS['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_INPUTS['cohort']:
+        return completed_local7_current_inputs(command, result, control_sha)
     if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
         return completed_local7_current_registration(command, result, control_sha)
     if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
@@ -2340,6 +2352,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('operation_id') == LOCAL7_CURRENT_INPUTS['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_INPUTS['cohort']:
+        return activate_local7_current_inputs(core, command)
     if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
         return activate_local7_current_registration(core, command)
     if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
@@ -4466,3 +4480,255 @@ def activate_local7_current_registration(core,command):
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local7_current_registration(cmd,res,control) if (
         cmd.get('operation_id')==LOCAL7_CURRENT_REGISTRATION['operation_id'] or cmd.get('cohort')==LOCAL7_CURRENT_REGISTRATION['cohort']) else original(cmd,res)
+
+# Reconcile only filesystem inputs after the consumed CURRENT-v2 guard failure.
+# These expected hashes are the executed profile's pins, not replacement pins.
+LOCAL7_CURRENT_INPUTS = {
+    'mode':'match-retained-readback',
+    'operation_id':'int-andromeda-match-retained-readback-20261123-v2',
+    'cohort':'local7-current-input-pin-reconcile-20261123',
+    'source_sha':'3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'parent_operation_id':'int-andromeda-match-retained-current-20261123-v2',
+    'hash_parent_operation_id':'int-andromeda-match-retained-readback-20261123-v1',
+    'failed_result_sha256':'c9ee334340a7b1347da5d1ee3f8fcfa384f9ea7e9608e3b7a7adc5f59543941e',
+    'failed_result_bytes':503,
+    'failed_control_source_sha':'54b59dba8e2721245ae00aaac80ebb9ccf04d3e3',
+    'failed_run_id':45263061479,'failed_job_id':138002643172,'failed_run_attempt':1,
+    'expected_hashes':{
+        'parent/result.json':'7631e19d35d6d482ea5f0e42d71e2bed2c33ef849abd7c04a94344e5fbf4a3fb',
+        'data/db-v1.php':'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13',
+        'data/local-tv-catalog-v1.php':'abbed95e0343ce402cdcfb11ef7819da0a12e5bafb7e5bf7f22cbb9260167b11',
+    },
+}
+L7I_FILES = {
+    'failed/result.json':65536,'failed/reservation.json':65536,
+    'parent/result.json':1048576,'data/db-v1.php':1048576,
+    'data/local-tv-catalog-v1.php':1048576,
+}
+
+LOCAL7_CURRENT_INPUTS_VALIDATOR = r'''
+import errno as l7i_errno
+import stat as l7i_stat
+
+L7I_STATES=('observed','missing','unsafe','unreadable','oversized','unstable')
+L7I_FALSE=L7_FALSE+('publication_admission','pin_update_authority','runtime_resume_authority','original_execution_replayed')
+
+def l7i_failed(prior,reservation,p):
+    keys={'schema_version','operation_id','source_sha','mode','status','reason','production_before',
+          'supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls'}
+    l7_need(isinstance(prior,dict) and set(prior)==keys,'inputs_failed_shape')
+    l7_need(type(prior['schema_version']) is int and prior['schema_version']==1
+        and prior['operation_id']==p['parent_operation_id'] and prior['source_sha']==p['source_sha']
+        and prior['mode']=='match-retained-current' and prior['status']=='unknown_no_replay'
+        and prior['reason']=='local7_current_input_pins' and l7_production(prior['production_before']),
+        'inputs_failed_identity')
+    l7_need(all(type(prior[k]) is int and prior[k]==0
+        for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')),
+        'inputs_failed_counters')
+    raw=l7_json(prior)
+    l7_need(len(raw)==p['failed_result_bytes'] and hashlib.sha256(raw).hexdigest()==p['failed_result_sha256'],
+        'inputs_failed_digest')
+    l7_need(isinstance(reservation,dict) and set(reservation)=={'operation_id','source_sha','mode','reserved_at'}
+        and all(reservation[k]==prior[k] for k in ('operation_id','source_sha','mode'))
+        and type(reservation['reserved_at']) is int and reservation['reserved_at']>0,
+        'inputs_failed_reservation')
+
+def l7i_file_cell(cell,bound):
+    l7_need(isinstance(cell,dict) and set(cell)=={'before','after','stable'},'inputs_file_shape')
+    for observation in (cell['before'],cell['after']):
+        l7_need(isinstance(observation,dict) and set(observation)=={'status','bytes','sha256'}
+            and observation['status'] in L7I_STATES,'inputs_observation_shape')
+        if observation['status']=='observed':
+            l7_need(type(observation['bytes']) is int and 0<=observation['bytes']<=bound
+                and l7_hash(observation['sha256']),'inputs_observation_digest')
+        else:l7_need(observation['bytes'] is None and observation['sha256'] is None,'inputs_unmeasured_digest')
+    stable=cell['before']['status']=='observed' and cell['before']==cell['after']
+    l7_need(cell['stable'] is stable,'inputs_file_stability')
+
+def l7i_projection(files,p):
+    targets={};mismatches=[];incomplete=[]
+    for name,expected in p['expected_hashes'].items():
+        cell=files[name];observed=cell['after']['sha256'] if cell['stable'] else None
+        status='incomplete' if observed is None else 'match' if observed==expected else 'mismatch'
+        targets[name]={'expected_sha256':expected,'observed_sha256':observed,'status':status}
+        if status=='mismatch':mismatches.append(name)
+        if status=='incomplete':incomplete.append(name)
+    outcome='incomplete_observation' if incomplete else 'observed_mismatch' if mismatches else 'no_current_mismatch_observed'
+    return targets,mismatches,incomplete,outcome
+
+def l7i_validate_data(data,command,control):
+    p=LOCAL7_CURRENT_INPUTS;l7_command(command,control,p)
+    keys={'schema_version','state','operation_id','source_sha','control_source_sha','cohort','target_operation_id',
+        'captured_at_utc','original_execution','failed_receipt','failed_reservation','failed_receipt_sha256',
+        'files','hash_targets','mismatches','incomplete','outcome','protected_inputs_unchanged',
+        'historical_unknown_preserved','no_replay'}|set(L7_ZERO)|set(L7I_FALSE)
+    l7_need(isinstance(data,dict) and set(data)==keys,'inputs_data_shape')
+    fixed={'schema_version':'local7_current_input_reconciliation_v1','state':'filesystem_input_pin_reconciliation',
+        'operation_id':p['operation_id'],'source_sha':p['source_sha'],'control_source_sha':control,
+        'cohort':p['cohort'],'target_operation_id':p['parent_operation_id'],
+        'failed_receipt_sha256':p['failed_result_sha256']}
+    l7_need(all(data[k]==v for k,v in fixed.items()) and l7_capture_time(data['captured_at_utc']),
+        'inputs_data_binding')
+    origin=data['original_execution']
+    l7_need(isinstance(origin,dict) and set(origin)=={'run_id','job_id','attempt','control_source_sha'}
+        and all(type(origin[k]) is int for k in ('run_id','job_id','attempt'))
+        and origin=={'run_id':p['failed_run_id'],'job_id':p['failed_job_id'],
+            'attempt':p['failed_run_attempt'],'control_source_sha':p['failed_control_source_sha']},
+        'inputs_original_execution')
+    l7_need(all(type(data[k]) is int and data[k]==0 for k in L7_ZERO)
+        and all(data[k] is False for k in L7I_FALSE)
+        and data['historical_unknown_preserved'] is True and data['no_replay'] is True,'inputs_authority')
+    l7i_failed(data['failed_receipt'],data['failed_reservation'],p)
+    files=data['files'];l7_need(isinstance(files,dict) and set(files)==set(L7I_FILES),'inputs_file_scope')
+    for name,bound in L7I_FILES.items():l7i_file_cell(files[name],bound)
+    for name,raw in (
+        ('failed/result.json',l7_json(data['failed_receipt'])),
+        ('failed/reservation.json',json.dumps(data['failed_reservation'],sort_keys=True).encode()),
+    ):
+        cell=files[name]
+        l7_need(cell['stable'] is True and cell['before']=={
+            'status':'observed','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()},
+            'inputs_failed_files_binding')
+    targets,mismatches,incomplete,outcome=l7i_projection(files,p)
+    l7_need(data['hash_targets']==targets and data['mismatches']==mismatches
+        and data['incomplete']==incomplete and data['outcome']==outcome,'inputs_recomputed_outcome')
+    l7_need(data['protected_inputs_unchanged'] is all(cell['stable'] for cell in files.values()),
+        'inputs_protected_claim')
+    l7_need(len(l7_json(data))<=65536,'inputs_evidence_bound')
+    return data
+'''
+exec(LOCAL7_CURRENT_INPUTS_VALIDATOR)
+
+LOCAL7_CURRENT_INPUTS_HANDLER = r'''
+def current_local7_input_reconciliation(stage):
+    p=LOCAL7_CURRENT_INPUTS;control=payload.get('match_retained_control_sha')
+    command={k:payload.get(k) for k in L7_COMMAND};l7_command(command,control,p)
+    l7_need(operation==p['operation_id'] and mode==p['mode'] and source==p['source_sha'],
+        'inputs_remote_scope')
+    failed=private/p['parent_operation_id'];parent=private/p['hash_parent_operation_id']
+    paths={'failed/result.json':failed/'result.json','failed/reservation.json':failed/'reservation.json',
+        'parent/result.json':parent/'result.json','data/db-v1.php':project/'data/db-v1.php',
+        'data/local-tv-catalog-v1.php':project/'data/local-tv-catalog-v1.php'}
+    def unavailable(status):return {'status':status,'bytes':None,'sha256':None},None,None
+    def signature(st):
+        return (st.st_dev,st.st_ino,st.st_mode,st.st_nlink,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+    def directory_identity(st):return (st.st_dev,st.st_ino,st.st_mode)
+    def observe(name,keep_raw=False):
+        # Walk fixed ancestors through directory descriptors. Neither a leaf nor
+        # an ancestor symlink is followed, even while names are being replaced.
+        path=paths[name];fds=[];links=[]
+        try:
+            if not path.is_absolute() or '..' in path.parts:return unavailable('unsafe')
+            flags=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_NONBLOCK
+            parent_fd=os.open(path.anchor,flags);fds.append(parent_fd)
+            for part in path.parts[1:-1]:
+                entry=os.stat(part,dir_fd=parent_fd,follow_symlinks=False)
+                if not l7i_stat.S_ISDIR(entry.st_mode):return unavailable('unsafe')
+                child=os.open(part,flags,dir_fd=parent_fd);fds.append(child)
+                identity=directory_identity(entry)
+                if directory_identity(os.fstat(child))!=identity:return unavailable('unstable')
+                links.append((parent_fd,part,child,identity));parent_fd=child
+            initial=os.stat(path.name,dir_fd=parent_fd,follow_symlinks=False)
+            if not l7i_stat.S_ISREG(initial.st_mode) or initial.st_nlink!=1:return unavailable('unsafe')
+            if initial.st_size>L7I_FILES[name]:return unavailable('oversized')
+            fd=os.open(path.name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=parent_fd)
+            with os.fdopen(fd,'rb') as handle:
+                opened=os.fstat(handle.fileno())
+                if signature(opened)!=signature(initial):return unavailable('unstable')
+                raw=handle.read(L7I_FILES[name]+1)
+                closed=os.fstat(handle.fileno())
+            final=os.stat(path.name,dir_fd=parent_fd,follow_symlinks=False)
+            sig=signature(initial)
+            if not (sig==signature(opened)==signature(closed)==signature(final)
+                    and len(raw)==initial.st_size and len(raw)<=L7I_FILES[name]):
+                return unavailable('unstable')
+            for ancestor,part,child,identity in links:
+                if (directory_identity(os.stat(part,dir_fd=ancestor,follow_symlinks=False))!=identity
+                        or directory_identity(os.fstat(child))!=identity):
+                    return unavailable('unstable')
+            return {'status':'observed','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()},raw if keep_raw else None,sig
+        except FileNotFoundError:return unavailable('missing')
+        except OSError as error:
+            return unavailable('unsafe' if error.errno in (l7i_errno.ELOOP,l7i_errno.ENOTDIR) else 'unreadable')
+        finally:
+            for fd in reversed(fds):os.close(fd)
+
+    before={};signatures={};failed_raw={}
+    # Failed receipt and reservation are prerequisites, not optional targets.
+    for name in ('failed/result.json','failed/reservation.json'):
+        before[name],failed_raw[name],signatures[name]=observe(name,True)
+        l7_need(before[name]['status']=='observed','inputs_failed_unreadable')
+    l7_need(before['failed/result.json']['bytes']==p['failed_result_bytes']
+        and before['failed/result.json']['sha256']==p['failed_result_sha256'],'inputs_failed_digest')
+    prior=l7_parse(failed_raw['failed/result.json']);reservation=l7_parse(failed_raw['failed/reservation.json'])
+    l7i_failed(prior,reservation,p)
+    for name in p['expected_hashes']:
+        before[name],_,signatures[name]=observe(name)
+    files={}
+    for name in L7I_FILES:
+        after,_,sig=observe(name)
+        if before[name]['status']=='observed' and after['status']=='observed' and sig!=signatures[name]:
+            after=unavailable('unstable')[0]
+        stable=before[name]['status']=='observed' and before[name]==after
+        files[name]={'before':before[name],'after':after,'stable':stable}
+    l7_need(all(files[name]['stable'] for name in ('failed/result.json','failed/reservation.json')),
+        'inputs_failed_changed')
+    targets,mismatches,incomplete,outcome=l7i_projection(files,p)
+    data={
+        'schema_version':'local7_current_input_reconciliation_v1','state':'filesystem_input_pin_reconciliation',
+        'operation_id':operation,'source_sha':source,'control_source_sha':control,'cohort':p['cohort'],
+        'target_operation_id':p['parent_operation_id'],
+        'captured_at_utc':l7_datetime.datetime.now(l7_datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'original_execution':{'run_id':p['failed_run_id'],'job_id':p['failed_job_id'],
+            'attempt':p['failed_run_attempt'],'control_source_sha':p['failed_control_source_sha']},
+        'failed_receipt':prior,'failed_reservation':reservation,'failed_receipt_sha256':p['failed_result_sha256'],
+        'files':files,'hash_targets':targets,'mismatches':mismatches,'incomplete':incomplete,'outcome':outcome,
+        'protected_inputs_unchanged':all(cell['stable'] for cell in files.values()),
+        'historical_unknown_preserved':True,'no_replay':True,
+    }
+    data.update({k:0 for k in L7_ZERO});data.update({k:False for k in L7I_FALSE})
+    l7i_validate_data(data,command,control);raw=l7_json(data)
+    fd=os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    return {'evidence_sha256':hashlib.sha256(raw).hexdigest(),'data':data}
+'''
+
+def completed_local7_current_inputs(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result[k]!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        if any(type(result[k]) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        if not l7_production(result['production_before']) or result['production_before']!=result['production_after']:return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=l7i_validate_data(material['data'],command,control)
+        return material['evidence_sha256']==hashlib.sha256(l7_json(data)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError,OverflowError):return False
+
+def activate_local7_current_inputs(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in L7_COMMAND))
+    need(command==expected,'local7_current_inputs_command_shape')
+    control=os.environ.get('GITHUB_SHA','');l7_command(command,control,LOCAL7_CURRENT_INPUTS)
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','retained_first_attempt_only')
+    command['match_retained_control_sha']=control;remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'reservation':'    op.mkdir(mode=0o700)\n','receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():need(remote.count(anchor)==(2 if key=='collector' else 1),'local7_current_inputs_drift_'+key)
+    handler='\nLOCAL7_CURRENT_INPUTS='+repr(LOCAL7_CURRENT_INPUTS)+'\nL7I_FILES='+repr(L7I_FILES)+'\n'
+    handler+=LOCAL7_VALIDATOR+LOCAL7_CURRENT_INPUTS_VALIDATOR+LOCAL7_CURRENT_INPUTS_HANDLER
+    dispatch=LOCAL7_DISPATCH.replace('retained_local7_registration(stage)','current_local7_input_reconciliation(stage)')
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],dispatch+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-readback','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    retained_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('retained_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local7_current_inputs(cmd,res,control) if (
+        cmd.get('operation_id')==LOCAL7_CURRENT_INPUTS['operation_id'] or cmd.get('cohort')==LOCAL7_CURRENT_INPUTS['cohort']) else original(cmd,res)
