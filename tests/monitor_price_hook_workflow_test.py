@@ -96,6 +96,14 @@ class ExistingCollectorHook(unittest.TestCase):
         self.assertEqual(production.count('            local-tv-source/v2/data/price-observer-v1.php \\\n'), 1)
         self.assertIn('            local-tv-source/v2/data/local-tv-catalog-v1.php \\\n', production)
         self.assertIn('            v2/data/db-v1.php \\\n', production)
+        # MAIN still owns DB/price helpers, but blanket SCP must not rewrite
+        # their metadata on every successful scheduled delivery.
+        helpers = production.split('          deliver_shared_helpers \\\n', 1)[1].split('          ssh ', 1)[0]
+        self.assertEqual(re.findall(r'v2/data/([a-z0-9-]+\.php)', helpers),
+                         ['db-v1.php', 'price-segment-v1.php', 'price-confidence-v1.php', 'price-intelligence-v1.php'])
+        copied = production.split('          scp "${opts[@]}" \\\n', 1)[1].split('          ssh ', 1)[0]
+        for name in ('db-v1.php', 'price-segment-v1.php', 'price-confidence-v1.php', 'price-intelligence-v1.php'):
+            self.assertNotIn('v2/data/'+name, copied)
         self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", production)
 
     def test_production_keeps_its_event_and_successful_validation_gate(self):
@@ -108,11 +116,15 @@ class ExistingCollectorHook(unittest.TestCase):
 
     def run_pass(self, event='schedule', attempt=1, collector=0, hook=0, exact_rollup=0,
                  collector_stdout='', collector_stderr='', tee=0, scp=0, scp_fail_at=1,
-                 promoted_installed=False, promoted_status=0, tamper=''):
+                 promoted_installed=False, promoted_status=0, tamper='', helper_failure=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binary = root / 'bin'; binary.mkdir(); log = root / 'calls.jsonl'
-            installed = root / 'installed'; (installed / 'data').mkdir(parents=True)
+            fixture_home = root / 'home'
+            installed = fixture_home / 'www/anytoour.ru'; (installed / 'data').mkdir(parents=True)
             for path, origin in [('v2/data/db-v1.php', ROOT),
+                                 ('v2/data/price-segment-v1.php', ROOT),
+                                 ('v2/data/price-confidence-v1.php', ROOT),
+                                 ('v2/data/price-intelligence-v1.php', ROOT),
                                  ('local-tv-source/v2/data/price-observer-v1.php', LOCAL_SOURCE)]:
                 destination = root / path; destination.parent.mkdir(parents=True, exist_ok=True)
                 source = origin / path.removeprefix('local-tv-source/')
@@ -136,7 +148,19 @@ if status==0:
             if target.name==os.environ['COPY_TAMPER']:target.write_text('synthetic corrupted copy')
 raise SystemExit(status)
 ''',
-                'ssh': "#!/usr/bin/env python3\nimport os,subprocess,sys\ncommand=sys.argv[-1].replace('$HOME/www/anytoour.ru',os.environ['COLLECTOR_FIXTURE_ROOT'])\nraise SystemExit(subprocess.run(['bash','-c',command]).returncode)\n",
+                'ssh': '''#!/usr/bin/env python3
+import os,subprocess,sys
+from pathlib import Path
+command=sys.argv[-1]
+if command=='python3 -' and int(os.environ['HELPER_STATUS']):
+    sys.stdin.buffer.read()
+    raise SystemExit(int(os.environ['HELPER_STATUS']))
+result=subprocess.run(['bash','-c',command],input=sys.stdin.buffer.read())
+# Preserve the original readback regression at the actual post-delivery seam.
+if command=='python3 -' and result.returncode==0 and os.environ['COPY_TAMPER']=='db-v1.php':
+    (Path(os.environ['COLLECTOR_FIXTURE_ROOT'])/'data/db-v1.php').write_text('synthetic corrupted copy')
+raise SystemExit(result.returncode)
+''',
                 'tee': '''#!/usr/bin/env python3
 import os,sys
 from pathlib import Path
@@ -168,14 +192,15 @@ if name=='monitor-price-hook.php':
 '''}
             for name, script in scripts.items():
                 f=binary/name; f.write_text(script); f.chmod(0o755)
-            env=dict(os.environ, PATH=str(binary)+os.pathsep+os.environ['PATH'], RUNNER_TEMP=str(root),
+            env=dict(os.environ, HOME=str(fixture_home), PATH=str(binary)+os.pathsep+os.environ['PATH'], RUNNER_TEMP=str(root),
                      HOST_VALUE='fixture.invalid', USER_VALUE='fixture', BUDGET_VALUE='2', MATRIX_BUDGET_VALUE='9',
                      MATRIX_MONTHS_VALUE='12', MONTHLY_BUDGET_VALUE='64', TARGET_MONTH_VALUE='', TARGET_COUNTRY_VALUE='0',
                      HOOK_TEST_LOG=str(log), HOOK_CONTEXT_LOG=str(root/'hook-context.json'), COLLECTOR_STATUS=str(collector), HOOK_STATUS=str(hook), EXACT_ROLLUP_STATUS=str(exact_rollup),
                      COLLECTOR_STDOUT=collector_stdout, COLLECTOR_STDERR=collector_stderr,
                      TEE_STATUS=str(tee), REAL_PHP=REAL_PHP or '',
                      SCP_TEST_LOG=str(root/'scp-calls.jsonl'), SCP_STATUS=str(scp), SCP_FAIL_AT=str(scp_fail_at),
-                     PROMOTED_STATUS=str(promoted_status), COLLECTOR_FIXTURE_ROOT=str(installed), COPY_TAMPER=tamper)
+                     PROMOTED_STATUS=str(promoted_status), COLLECTOR_FIXTURE_ROOT=str(installed), COPY_TAMPER=tamper,
+                     HELPER_STATUS=str(helper_failure))
             script = actual_shell(event,attempt).replace(
                 r'\$HOME/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php', str(promoted))
             result=subprocess.run(['bash','-c',script],env=env,cwd=root,capture_output=True,text=True,timeout=10)
@@ -212,6 +237,13 @@ if name=='monitor-price-hook.php':
                     self.assertIn('v2/data/hotel-monitor-prices-v1.php',self.scp_calls[-1])
                 self.assertEqual(names,[], 'failed copy must not reach collection, callback or aggregates')
                 self.assertIsNone(self.hook_context)
+
+    def test_failed_shared_delivery_stops_before_scp_or_any_production_php(self):
+        result,names,_=self.run_pass(helper_failure=73)
+        self.assertEqual(result.returncode,73,result.stderr)
+        self.assertEqual(self.scp_calls,[])
+        self.assertEqual(names,[])
+        self.assertIsNone(self.hook_context)
 
     def test_mismatched_installed_file_stops_before_any_production_php(self):
         for filename in ('db-v1.php', 'price-observer-v1.php'):
