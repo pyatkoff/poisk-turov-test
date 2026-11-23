@@ -84,6 +84,68 @@ if (is_string($actualPath) && $actualPath !== '') {
     echo "ANYTOUR_PROFILE_OFFICIAL_ACTUAL_MANIFEST_OK\n";
 }
 echo "ANYTOUR_PROFILE_OFFICIAL_PURE_OK cases=16\n";
+
+// Schema 2 keeps the reviewed actions byte-for-byte while admitting exactly 25 full
+// missing-field profiles and one description-only profile with an existing gallery.
+$profiles26 = []; $manifest26 = $manifest;
+$manifest26['schema_version'] = 2;
+$manifest26['source_policy'] = AnyTourProfileEnrichmentV1::OFFICIAL26_POLICY;
+$manifest26['proposed_actions'] = []; $manifest26['targets'] = [];
+foreach (range(9001,9026) as $index=>$id) {
+    $partial = $id === 9026;
+    $page = "https://official.example/hotel/$id";
+    $images = ["https://official.example/images/$id-main.jpg","https://official.example/images/$id-room.jpg"];
+    $existingImages = array_map(static fn(int $n): string => "https://own.example/existing/$n.jpg", range(1,44));
+    $profile = ['name'=>"Hotel $id",'country'=>['name'=>'Страна'],'region'=>['name'=>'Регион'],
+        'description'=>null,'primaryImage'=>$partial ? $existingImages[0] : null,'images'=>$partial ? $existingImages : [],
+        'detailsAvailable'=>false,'rating'=>4.2,'traits'=>['own-trait'],
+        'hotelInformation'=>['meals'=>['OWN MEAL'],'roomTypes'=>'OWN ROOM']];
+    $profiles26[$id] = $profile;
+    $public = array_merge(AnyTourCanonicalCatalog::publicProfile($profile), ['id'=>$id,'catalog'=>'anytour','revision'=>1]);
+    $fields = ['description'];
+    $values = ['description'=>"Проверенное новое описание отеля $id."];
+    if (!$partial) { $fields = ['description','primaryImage','images']; $values += ['primaryImage'=>$images[0],'images'=>$images]; }
+    $changes = [];
+    foreach ($fields as $field) $changes[] = ['field'=>$field,'before'=>$profile[$field],'after'=>$values[$field]];
+    $manifest26['proposed_actions'][] = ['work_id'=>sprintf('EXP%03d',$index + 1),'anytour_hotel_id'=>$id,
+        'canonical_name'=>$profile['name'],'observed_revision'=>1,
+        'observed_public_profile_sha256'=>hash('sha256',AnyTourProfileEnrichmentV1::json($public)),
+        'field_changes'=>$changes,'unchanged_profile_fields'=>array_values(array_diff(array_keys($public),$fields)),
+        'preconditions'=>['fresh_profile_required'=>true,'revision_and_before_match_required'=>true,
+            'raw_source_and_manual_override_guards_required'=>true,'atomic_existing_owner_write_required'=>true,
+            'zero_automatic_replay_on_unknown'=>true]];
+    $manifest26['targets'][] = ['anytourHotelId'=>$id,'expectedIdentity'=>['name'=>$profile['name'],'country'=>'Страна','region'=>'Регион'],
+        'sources'=>[['url'=>$page,'checked_at_utc'=>'2026-11-22T10:00:00.123456+00:00',
+            'content_sha256'=>hash('sha256',"captured source $id"),'capture_format'=>$id === 9001 ? 'retrieved_web_text_not_origin_html' : 'raw_html']],
+        'photos'=>$partial ? [] : array_map(static fn(string $url): array => ['url'=>$url,'source_page_url'=>$page,'sha256'=>hash('sha256',$url)],$images)];
+}
+$approved26 = official_envelope($manifest26);
+$valid26 = $validate->invoke(null,$approved26,true);
+official_need(count($valid26['targets']) === 26 && $valid26['strictPublicBefore']
+    && $valid26['sourcePolicy'] === AnyTourProfileEnrichmentV1::OFFICIAL26_POLICY, 'explicit-twenty-six-policy');
+official_need(array_keys($valid26['targets'][9026]['values']) === ['description'] && $valid26['targets'][9026]['photos'] === [], 'partial-gallery-not-admitted');
+official_need($valid26['targets'][9001]['sources'][0]['capture_format'] === 'retrieved_web_text_not_origin_html', 'web-text-capture-not-claimed-as-origin-html');
+official_expect(fn()=> $validate->invoke(null,$approved26), 'ENVELOPE', 'eleven-does-not-admit-twenty-six');
+official_expect(fn()=> $validate->invoke(null,$approved,true), 'ENVELOPE', 'twenty-six-does-not-admit-eleven');
+$mutations26 = [
+    'arbitrary-fourth-field'=>static function(array &$m): void { $m['proposed_actions'][0]['field_changes'][] = ['field'=>'rating','before'=>4.2,'after'=>5]; },
+    'second-partial-profile'=>static function(array &$m): void { $m['proposed_actions'][0]['field_changes'] = [$m['proposed_actions'][0]['field_changes'][0]]; },
+    'primary-only-partial'=>static function(array &$m): void { $m['proposed_actions'][0]['field_changes'] = [$m['proposed_actions'][0]['field_changes'][1]]; },
+    'nonempty-before'=>static function(array &$m): void { $m['proposed_actions'][0]['field_changes'][0]['before'] = 'Old content'; },
+    'invalid-public-before-sha'=>static function(array &$m): void { $m['proposed_actions'][0]['observed_public_profile_sha256'] = null; },
+    'disabled-guard'=>static function(array &$m): void { $m['proposed_actions'][0]['preconditions']['zero_automatic_replay_on_unknown'] = false; },
+    'changed-field-labelled-preserved'=>static function(array &$m): void { $m['proposed_actions'][0]['unchanged_profile_fields'][] = 'description'; },
+    'partial-with-new-photo'=>static function(array &$m): void { $m['targets'][25]['photos'] = $m['targets'][0]['photos']; },
+    'source-capture-unspecified'=>static function(array &$m): void { unset($m['targets'][0]['sources'][0]['capture_format']); },
+    'source-capture-fabricated'=>static function(array &$m): void { $m['targets'][0]['sources'][0]['capture_format'] = 'assumed_html'; },
+    'missing-captured-source-hash'=>static function(array &$m): void { $m['targets'][0]['sources'][0]['content_sha256'] = null; },
+    'identity-disagrees-with-review'=>static function(array &$m): void { $m['targets'][0]['expectedIdentity']['name'] = 'Different hotel'; },
+];
+foreach ($mutations26 as $label=>$mutate) {
+    $changed = $manifest26; $mutate($changed);
+    official_expect(fn()=> $validate->invoke(null,official_envelope($changed),true), 'ANYTOUR_PROFILE_OFFICIAL', $label);
+}
+echo "ANYTOUR_PROFILE_OFFICIAL26_PURE_OK exact_profiles=26 exact_fields=76 gallery_preserved=44\n";
 if (in_array('--self-test', $argv, true)) exit(0);
 
 // Reuse the existing disposable fixture and its native legacy regression, then remove all legacy tables.
@@ -230,3 +292,82 @@ foreach (['after','before','tamper'] as $fault) {
     official_need($revisions === ($fault === 'before' ? array_fill(0,11,1) : ($fault === 'tamper' ? [...array_fill(0,10,2),3] : array_fill(0,11,2))), 'never-automatically-replayed:' . $fault);
 }
 echo "ANYTOUR_PROFILE_OFFICIAL_MYSQL_OK selected=11 filled=33 aliases=0 legacy_tables=0 atomic_rollback=1 raw_and_public_readback=1 commit_ambiguity_no_replay=1\n";
+
+$reset26 = static function(array $overrides = []) use ($db,$profiles26): void {
+    $db->exec('DELETE FROM anytour_hotel_sources'); $db->exec('DELETE FROM anytour_hotels');
+    $insert = $db->prepare('INSERT INTO anytour_hotels(id,profile_json,profile_sha256,revision,is_active,created_at,updated_at)
+        VALUES(?,?,?,1,1,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
+    $source = $db->prepare('INSERT INTO anytour_hotel_sources(namespace,external_key,anytour_hotel_id,acquired_via,source_json,source_sha256,first_seen_at,last_seen_at)
+        VALUES(?,?,?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())');
+    foreach ($profiles26 as $id=>$profile) {
+        $profile = array_replace($profile,$overrides[$id] ?? []); $json = AnyTourProfileEnrichmentV1::json($profile);
+        $insert->execute([$id,$json,hash('sha256',$json)]);
+        $sourceJson = AnyTourProfileEnrichmentV1::json(['canonical_hotel_id'=>$id,'seed'=>'fixture26']);
+        $source->execute(['canonical_fixture',(string)$id,$id,'fixture_seed',$sourceJson,hash('sha256',$sourceJson)]);
+    }
+};
+$reset26(); $rowsBefore = $allRows(); $sourcesBefore = $allSources();
+$plan26 = $owner->planOfficial26($approved26);
+official_need($plan26['writes'] === 0 && count($plan26['selected']) === 26
+    && $rowsBefore === $allRows() && $sourcesBefore === $allSources(), 'mixed-plan-read-only');
+official_need(array_keys($plan26['selected'][25]['patch']) === ['description']
+    && $plan26['selected'][25]['preservedFields'] === ['images','primaryImage'], 'only-reviewed-partial-field-patched');
+$result26 = $owner->applyOfficial26('fixture-official26',$approved26,$plan26['planSha256']);
+official_need($result26['status'] === 'committed_verified' && $result26['profilesSelected'] === 26
+    && $result26['profilesUpdated'] === 26 && $result26['fieldsFilled'] === 76
+    && $result26['fieldCounts'] === ['description'=>26,'images'=>25,'primaryImage'=>25]
+    && $result26['profileWrites'] === 26 && $result26['provenanceWrites'] === 26
+    && $result26['readbackVerified'] && $result26['consumerReadbackVerified'], 'exact-mixed-batch-and-readback');
+foreach ($allRows() as $row) {
+    $id = (int)$row['id']; $profile = json_decode($row['profile_json'],true,512,JSON_THROW_ON_ERROR);
+    $expected = $profiles26[$id];
+    foreach ($valid26['targets'][$id]['values'] as $field=>$value) $expected[$field] = $value;
+    official_need(AnyTourProfileEnrichmentV1::json($profile) === AnyTourProfileEnrichmentV1::json($expected), 'all-target-and-untargeted-fields-exact');
+    official_need((int)$row['revision'] === 2 && $row['profile_sha256'] === hash('sha256',$row['profile_json']), 'mixed-revision-and-integrity');
+    if ($id === 9026) official_need($profile['images'] === $profiles26[$id]['images'] && count($profile['images']) === 44
+        && $profile['primaryImage'] === $profiles26[$id]['primaryImage'], 'existing-forty-four-gallery-entries-exact');
+}
+$new26Sources = $allSources();
+official_need(array_values(array_filter($new26Sources,static fn(array $r): bool => $r['namespace'] === 'canonical_fixture')) === $sourcesBefore,
+    'mixed-existing-source-rows-preserved');
+$new26Provenance = array_values(array_filter($new26Sources,static fn(array $r): bool => $r['namespace'] === AnyTourProfileEnrichmentV1::OFFICIAL_NAMESPACE));
+$partialProvenance = json_decode($new26Provenance[25]['source_json'],true,512,JSON_THROW_ON_ERROR);
+official_need($partialProvenance['fields_filled'] === ['description'] && $partialProvenance['verified_photos'] === []
+    && $partialProvenance['content_policy'] === AnyTourProfileEnrichmentV1::OFFICIAL26_POLICY, 'partial-provenance-exact');
+official_expect(fn()=> $owner->planOfficial26($approved26), 'PROFILE_STATE', 'mixed-batch-not-replayed');
+
+// Publicly hidden regional placeholders remain nonempty raw fields and cannot be overwritten.
+$reset26([9001=>['primaryImage'=>$placeholder,'images'=>[$placeholder]]]);
+$rowsBefore = $allRows(); $sourcesBefore = $allSources();
+official_expect(fn()=> $owner->planOfficial26($approved26), 'RAW_NOT_MISSING', 'mixed-hidden-raw-value-protected');
+official_need($rowsBefore === $allRows() && $sourcesBefore === $allSources(), 'mixed-raw-hold-no-writes');
+$reset26([9026=>['images'=>array_reverse($profiles26[9026]['images'])]]);
+official_expect(fn()=> $owner->planOfficial26($approved26), 'PUBLIC_BEFORE', 'unchanged-gallery-order-still-bound-to-approval');
+$changed = $manifest26; array_pop($changed['proposed_actions'][0]['unchanged_profile_fields']);
+$reset26();
+official_expect(fn()=> $owner->planOfficial26(official_envelope($changed)), 'PRESERVED_FIELDS', 'preservation-list-is-complete');
+
+$mixedDrifts = [
+    'manual-profile-edit'=>[static fn()=> $writeProfile(9026,static function(array &$p): void { $p['description'] = 'Manual edit'; }), 'PUBLIC_BEFORE'],
+    'source-row-change'=>[static fn()=> $db->exec("UPDATE anytour_hotel_sources SET acquired_via='manual_review' WHERE anytour_hotel_id=9026"), 'PLAN_DRIFT'],
+    'provenance-conflict'=>[static fn()=> $db->exec("UPDATE anytour_hotel_sources SET namespace='profile_enrichment:official_review_v1' WHERE anytour_hotel_id=9026"), 'PRIOR_CONTENT_OPERATION'],
+];
+foreach ($mixedDrifts as $label=>[$mutate,$error]) {
+    $reset26(); $plan26 = $owner->planOfficial26($approved26); $mutate();
+    $rowsBefore = $allRows(); $sourcesBefore = $allSources();
+    official_expect(fn()=> $owner->applyOfficial26('fixture-mixed-drift',$approved26,$plan26['planSha256']),$error,$label);
+    official_need($rowsBefore === $allRows() && $sourcesBefore === $allSources() && !$db->inTransaction(), 'mixed-whole-command-hold:'.$label);
+}
+$reset26(); $plan26 = $owner->planOfficial26($approved26); $rowsBefore = $allRows(); $sourcesBefore = $allSources();
+$db->exec("CREATE TRIGGER official_fixture_reject26 BEFORE INSERT ON anytour_hotel_sources FOR EACH ROW
+    BEGIN IF NEW.namespace='profile_enrichment:official_review_v1' AND NEW.anytour_hotel_id=9026 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture mixed late provenance rejection'; END IF; END");
+try {
+    official_expect(fn()=> $owner->applyOfficial26('fixture-mixed-rollback',$approved26,$plan26['planSha256']),
+        'fixture mixed late provenance rejection','last-mixed-profile-write-failure');
+    official_need($rowsBefore === $allRows() && $sourcesBefore === $allSources(), 'all-twenty-six-writes-rolled-back');
+} finally { $db->exec('DROP TRIGGER official_fixture_reject26'); }
+$reset26(); $plan26 = $owner->planOfficial26($approved26); $db->commitFault = 'after';
+$result26 = $owner->applyOfficial26('fixture-mixed-commit-ack',$approved26,$plan26['planSha256']);
+official_need($result26['consumerReadbackVerified'] && $result26['fieldsFilled'] === 76, 'mixed-lost-ack-readback-no-replay');
+echo "ANYTOUR_PROFILE_OFFICIAL26_MYSQL_OK selected=26 filled=76 preserved_gallery=44 atomic_rollback=1 raw_and_public_readback=1 commit_ambiguity_no_replay=1\n";

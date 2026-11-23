@@ -71,10 +71,11 @@ function v2_visual_search_public_build(string $path): array
     return $build;
 }
 
-function v2_visual_search_public_config(array $build, string $prefix): array
+function v2_visual_search_public_config(array $build, string $prefix, string $entry = 'search'): array
 {
     if (!in_array($prefix, ['', '/_preview/search3-site-candidate'], true)
-        || ($prefix !== '' && $build['profile'] !== 'review')) {
+        || ($prefix !== '' && $build['profile'] !== 'review')
+        || !in_array($entry, ['search', 'home'], true)) {
         throw new RuntimeException('Public Search3 route/profile mismatch.');
     }
     $live = $build['profile'] === 'live';
@@ -85,13 +86,52 @@ function v2_visual_search_public_config(array $build, string $prefix): array
         require_once $analytics;
         $counter = v2_metrika_counter_id();
     }
-    return [
+    $config = [
         'schemaVersion' => 1, 'profile' => $build['profile'], 'scenario' => $build['scenario'],
         'publicBase' => $prefix . '/poisk-turov/', 'resourceBase' => $prefix . '/visual-search/',
         'api' => '/api-v2.php',
         'leadApi' => '/_preview/search3-next-candidate/preview-lead-disabled.php',
         'anexApi' => $live ? '/_preview/search3-anex-candidate/api-anex-search3-preview.php' : null,
         'metrikaCounter' => $counter,
+    ];
+    if ($entry === 'home') $config['entry'] = 'home';
+    return $config;
+}
+
+/** Reuse the exact Search3 form, dialogs and script graph inside the home shell. */
+function v2_visual_search_home_parts(array $config, array $siteParams = []): array
+{
+    $prefix = substr((string)($config['publicBase'] ?? ''), 0, -strlen('/poisk-turov/'));
+    $script = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    if (($config['entry'] ?? null) !== 'home'
+        || !in_array($prefix, ['', '/_preview/search3-site-candidate'], true)
+        || !in_array($script, [$prefix . '/', $prefix . '/index.php'], true)) {
+        throw new RuntimeException('Search3 home form requires its exact home route.');
+    }
+    $html = v2_visual_search_render('public-' . $config['profile'], $config, $siteParams);
+    if (!preg_match('/<head\b[^>]*>(.*?)<\/head>/s', $html, $head)
+        || !preg_match('/<body\b[^>]*>(.*?)<main>(.*?)<\/main>(.*?)<\/body>/s', $html, $body)) {
+        throw new RuntimeException('Search3 home composition source drift.');
+    }
+    $boundary = strpos($body[2], '<section class="results-section');
+    if ($boundary === false) throw new RuntimeException('Search3 results boundary is unavailable.');
+    $form = substr($body[2], 0, $boundary);
+    $form = v2_visual_search_replace($form, '<h1 id="page-title">Подберём ваш отдых</h1>',
+        '<h2 id="page-title">Найти тур</h2>');
+    $form = preg_replace('/(<button\b[^>]*\bid="quick-budget"[^>]*>.*?<\/button>)/s',
+        '<details class="home-search-more"><summary>Дополнительные параметры</summary>$1</details>', $form, 1, $count);
+    if ($form === null || $count !== 1) throw new RuntimeException('Search3 budget control source drift.');
+    // Price observations belong to the result page. Home supplies search conditions only.
+    $form = preg_replace('/<details class="demo-note preview-disclosure">.*?<\/details>/s', '', $form);
+    if ($form === null) throw new RuntimeException('Search3 home disclosure source drift.');
+    preg_match_all('/<link\b[^>]*rel="stylesheet"[^>]*>|<script\b[^>]*src="[^"]+"[^>]*><\/script>/', $head[1], $assets);
+    $before = preg_replace('/<a\b[^>]*class="skip"[^>]*>.*?<\/a>|<header\b.*?<\/header>/s', '', $body[1]);
+    $after = preg_replace('/<footer\b.*?<\/footer>/s', '', $body[3]);
+    if (!$assets[0] || $before === null || $after === null) throw new RuntimeException('Search3 home support source drift.');
+    return [
+        'head' => implode("\n", $assets[0]),
+        'form' => $form,
+        'support' => '<div hidden inert data-home-search-support>' . $before . substr($body[2], $boundary) . '</div>' . $after,
     ];
 }
 

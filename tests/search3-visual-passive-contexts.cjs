@@ -33,7 +33,7 @@ function observe(source,s){
  const view={type:s.viewType||s.type,offer,pending:!!s.pending,error:s.error?'error':'',result:{state:s.verified?'quote_verified':'estimate'},choice:'old'};
  const oldPrices=new Map([['old',5]]),oldLoads=new Map([['old','complete']]);
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:'2026-10-16',adults:2,ages:s.noAges?[]:[0,17],minNights:7,maxNights:10};
- ctx={requestAnimationFrame:()=>0,departureRangeText:(a,b)=>a+'–'+b,partyLabel:()=>'2 взрослых',Math,Number,String,Array,Set,Map,JSON,Date,structuredClone,esc,$:node,$$:selector=>{const n=node(selector);n.value='choice';return [n];},
+ ctx={window:{},requestAnimationFrame:()=>0,departureRangeText:(a,b)=>a+'–'+b,partyLabel:()=>'2 взрослых',Math,Number,String,Array,Set,Map,JSON,Date,structuredClone,esc,$:node,$$:selector=>{const n=node(selector);n.value='choice';return [n];},
   modalType:s.type||'offer',selectedOffer:s.noSelection?null:{key:'previous',raw:{}},savedSelection:null,
   hotels:[{id:7,photos:['p1']}],providerViews:new Map(s.noView?[]:[['o1',{...view,offer:s.rawMismatch?{...offer,raw:{identity:'old'}}:offer}]]),
   offerFromKey:call('offerFromKey',()=>s.noOffer?null:s.currentMismatch?{...offer,raw:{identity:'other'}}:offer),
@@ -56,7 +56,8 @@ function observe(source,s){
  for(const month of ['2026-10-01','2026-11-01','2026-12-01'])ctx.calendarLoads.set(month,s.phase||'complete');
  ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
  ctx.dateContext.filters=structuredClone(ctx.state.filters);ctx.dateText=day=>String(day);
- vm.createContext(ctx);vm.runInContext(owner(source,s.kind),ctx);let result;
+ const homeMode=source.match(/^const homeFormOnly=[^\n]+/m)?.[0]||'';
+ vm.createContext(ctx);vm.runInContext(homeMode+'\n'+owner(source,s.kind),ctx);let result;
  if(s.kind==='capture')result=ctx.uiRoute();
  else if(s.kind==='restore')result=ctx.reopenUIRoute({type:s.type,key:'o1',id:7,outbound:'choice',inbound:'choice',choice:'choice',scroll:s.invalidScroll?-1:83});
  else if(s.kind==='scope')ctx.renderCalendarScope();

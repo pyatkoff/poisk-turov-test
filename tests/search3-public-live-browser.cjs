@@ -22,9 +22,10 @@ for(const [file,metadata] of files){
 }
 const resourcePath=ref=>new URL(ref,'http://artifact.invalid/visual-search/index.html').pathname;
 const initial=manifest.graph.initial.map(resourcePath),lazy=Object.values(manifest.graph.on_demand).map(resourcePath);
+const homeStylePaths=new Set(['/design-system-v2.css','/home-v1.css','/site-footer-v1.css']);
 const staticPaths=new Set([...initial,...lazy,...manifest.graph.styles.map(resourcePath),
  ...[...files.keys()].filter(file=>file.startsWith('/visual-search/assets/')),
- ...(manifest.shared_ui?.enabled?['/images/logo.svg']:[])]);
+ ...(manifest.shared_ui?.enabled?['/images/logo.svg',...homeStylePaths,'/home-hero-v1.jpg']:[])]);
 if(manifest.shared_ui?.enabled)assert.equal(files.get('/images/logo.svg')?.sha256,
  '3c033c7697dbb8879f6a867f659a7964efc180518f92655391c289b74ce2e049','verified immutable canonical logo');
 assert.equal(initial.length,22);assert.equal(lazy.length,3);
@@ -48,16 +49,48 @@ for(const name of ['config.php','site_conf.php','data/hotel-popularity-v1.php'])
 assert(!fs.existsSync(path.join(artifact,'overlay/data')),'no PHP/DB expansion');
 assert(!fs.existsSync(path.join(site,'visual-search/fixture-data.js')),'no family adapter in LIVE');
 const output=path.resolve('visual-live-evidence/public-live');fs.mkdirSync(output,{recursive:true});
-const failures=[],served=new Set(),publicRoutes=new Set(['/poisk-turov/','/poisk-turov/index.php']);
+const failures=[],served=new Set(),homeRoutes=new Set(['/','/index.php']),publicRoutes=new Set([...homeRoutes,'/poisk-turov/','/poisk-turov/index.php']);
+// Installed root ICO/PNG files are outside the v2 artifact. These two explicit
+// offline responses use its inventoried 64px artwork, never an invented 404
+// exemption or an expansion of the static/data allowlists.
+const faviconSource='/visual-search/assets/favicon.png',faviconVersionSource='/favicon.svg';
+assert(files.has(faviconSource)&&files.has(faviconVersionSource),'favicon fixture inputs are inventoried');
+const faviconPNG=fs.readFileSync(path.join(site,faviconSource));
+assert.equal(sha(faviconPNG),files.get(faviconSource).sha256);
+assert(faviconPNG.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')));
+assert.equal(faviconPNG.readUInt32BE(16),64);assert.equal(faviconPNG.readUInt32BE(20),64);
+const iconHeader=Buffer.alloc(22);iconHeader.writeUInt16LE(1,2);iconHeader.writeUInt16LE(1,4);
+iconHeader[6]=64;iconHeader[7]=64;iconHeader.writeUInt16LE(1,10);iconHeader.writeUInt16LE(32,12);
+iconHeader.writeUInt32LE(faviconPNG.length,14);iconHeader.writeUInt32LE(22,18);
+const faviconResponses=new Map([
+ ['/favicon.png',{contentType:'image/png',body:faviconPNG}],
+ ['/favicon.ico',{contentType:'image/x-icon',body:Buffer.concat([iconHeader,faviconPNG])}]
+]);
+const faviconReceipt={scope:'offline GET-only root icon fixtures; installed root ICO/PNG bytes are not part of this artifact',
+ manifestSHA256:sha(manifestBytes),source:{path:faviconSource,sha256:files.get(faviconSource).sha256},
+ versionSource:{path:faviconVersionSource,sha256:files.get(faviconVersionSource).sha256},
+ responses:[...faviconResponses].map(([file,response])=>({path:file,contentType:response.contentType,bytes:response.body.length,sha256:sha(response.body)})),requests:[]};
+const saveFavicons=()=>fs.writeFileSync(path.join(output,'root-favicon-fixture.json'),JSON.stringify(faviconReceipt,null,2)+'\n');saveFavicons();
+function faviconResponse(url,method){
+ const response=faviconResponses.get(url.pathname);if(!response)return null;
+ assert.equal(method,'GET','only GET may receive a root favicon fixture');
+ assert(!url.hash&&!url.username&&!url.password,'plain root icon URL');
+ assert(!url.search||[...url.searchParams.keys()].length===1&&url.searchParams.get('v')===files.get(faviconVersionSource).sha256.slice(0,16),'only the owner favicon version is admitted');
+ faviconReceipt.requests.push({path:url.pathname,query:url.search});saveFavicons();return response;
+}
 function render(route,query=''){
  const php='$_SERVER["SCRIPT_NAME"]=$argv[2];$_SERVER["HTTP_HOST"]="anytoour.ru";$_SERVER["DOCUMENT_ROOT"]=$argv[3];$_SERVER["REQUEST_URI"]=$argv[2].($argv[4]!==""?"?".$argv[4]:"");parse_str($argv[4],$_GET);ob_start();register_shutdown_function(function(){echo json_encode(["status"=>http_response_code()?:200,"body"=>ob_get_clean()],JSON_THROW_ON_ERROR);});require $argv[1];';
  return JSON.parse(execFileSync('php',['-n','-d','allow_url_fopen=0','-d','allow_url_include=0','-d','display_errors=stderr',
-  '-r',php,path.join(site,'poisk-turov/index.php'),route,site,query],{encoding:'utf8',timeout:10000}));
+  '-r',php,path.join(site,homeRoutes.has(route)?'index.php':'poisk-turov/index.php'),route,site,query],{encoding:'utf8',timeout:10000}));
 }
 const html=render('/poisk-turov/','profile=review&scenario=family');
 assert.equal(html.status,200);assert(!html.body.includes('fixture-data.js'));
 fs.writeFileSync(path.join(output,'entry-root.html'),html.body);
 assert.equal(render('/_preview/search3-site-candidate/poisk-turov/').status,403,'LIVE cannot replace the isolated site review');
+const homeHTML=render('/','profile=review&scenario=family&searched=1');
+assert.equal(homeHTML.status,200);assert(!homeHTML.body.includes('fixture-data.js'));
+assert(homeHTML.body.includes('id="search-form"'),'the actual main root alias renders the HOME form');
+fs.writeFileSync(path.join(output,'entry-home.html'),homeHTML.body);
 const server=http.createServer((req,res)=>{
  try{
   const url=new URL(req.url,'http://fixture');
@@ -66,10 +99,12 @@ const server=http.createServer((req,res)=>{
    const result=render(url.pathname,url.search.slice(1));assert.equal(result.status,200);
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(result.body);return;
   }
+  const favicon=faviconResponse(url,req.method);
+  if(favicon){res.writeHead(200,{'Content-Type':favicon.contentType}).end(favicon.body);return;}
   assert(staticPaths.has(url.pathname),'only exact graph/static manifest paths may reach the server: '+url.pathname);
   const bytes=fs.readFileSync(path.join(site,url.pathname)),metadata=files.get(url.pathname),extension=path.extname(url.pathname);
   assert.equal(sha(bytes),metadata.sha256,'served bytes changed: '+url.pathname);
-  if(extension==='.js'||extension==='.css')assert.equal(url.searchParams.get('v'),metadata.sha256.slice(0,12),'PHP binds served asset hash');
+  if(extension==='.js'||extension==='.css')assert.equal(url.searchParams.get('v'),metadata.sha256.slice(0,homeStylePaths.has(url.pathname)?16:12),'PHP binds served asset hash');
   const types={'.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2'};
   assert(types[extension],'no executable dependency is served as a static asset');served.add(url.pathname);
   res.writeHead(200,{'Content-Type':types[extension]}).end(bytes);
@@ -77,6 +112,7 @@ const server=http.createServer((req,res)=>{
 });
 
 (async()=>{
+ execFileSync(process.execPath,[path.join(__dirname,'search3-home-catalog-paths.cjs')],{stdio:'inherit'});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
  try{
   browser=await chromium.launch({headless:true});
@@ -171,6 +207,7 @@ const server=http.createServer((req,res)=>{
      const request=route.request(),url=new URL(request.url());
      try{
       assert.equal(url.origin,origin,'external supplier/bot/analytics requests are forbidden');
+      const favicon=faviconResponse(url,request.method());if(favicon){await route.fulfill(favicon);return;}
       if(request.method()==='GET'&&(publicRoutes.has(url.pathname)||staticPaths.has(url.pathname))){await route.continue();return;}
       if(url.pathname==='/test-photo.svg'&&request.method()==='GET'){
        await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;
@@ -355,6 +392,8 @@ const server=http.createServer((req,res)=>{
    }catch(error){receipt.status='failed';receipt.error=error.message;receipt.errors=errors;receipt.forbidden=forbidden;save();await page.screenshot({path:path.join(output,'failure-'+width+'.png')});throw error;}
    finally{await context.close();}
   }
+  await require('./search3-public-home-browser.cjs')({browser,origin,manifest,manifestSHA256:sha(manifestBytes),files,staticPaths,publicRoutes,output,failures,faviconResponse,
+   launchHistoryBrowser:()=>chromium.launch({headless:true,timeout:20000,ignoreDefaultArgs:['--disable-back-forward-cache']})});
   console.log('PASS compiled public LIVE 430/1280: actual PHP, retained main owners, complete initial/lazy graph, first contact flight load and exact family Apply/Cancel/Back/resume, unknown status/return; no phone; fictional transports only; supplier/bot/lead HTTP0');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

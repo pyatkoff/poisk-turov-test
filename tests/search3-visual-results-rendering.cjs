@@ -86,8 +86,9 @@ const appliedPartyLabel=vm.runInNewContext(
  section(app,'const childAgeText =','const childAgesLabel =')+section(app,'const partyLabel=','function finishFilterPicker()')+'\nappliedPartyLabel'
 );
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
+function homeModeOwner(source){return (source.match(/^const homeFormOnly=[^\n]+/m)?.[0]||'')+'\n';}
 function owner(source,kind){
- if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
+ if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return homeModeOwner(source)+generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
  if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('function confirmTour(){',start);return end<0?source.slice(start):source.slice(start,end);
@@ -115,7 +116,7 @@ function observe(source,s){
    selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
    draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
-  CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
+  CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo'),...(s.home?{AnyTourPublicConfigV1:{valid:!s.invalidHomeConfig},V2_CONFIG:{search3FormOnly:true}}:{})},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
   appliedDestination:call('appliedDestination',()=>source.slice(source.indexOf('function renderResultHeadings('),source.indexOf('function paintResultCards(')).includes('destinationIds')?{kind:'resort',id:9,country:'4',resorts:[],hotelIds:[]}:{kind:'resort',id:9}),destinationIds:()=>[],destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
   dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),departureScopeValue:call('departureScopeValue',()=>s.selected?ctx.dateText('2026-10-15'):ctx.rangeText(search.from,search.to)),
@@ -295,6 +296,11 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace('!offerView.departure||o.day===offerView.departure', 'true||o.day===offerView.departure')),'list departure scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+const homeResults=observe(source,{kind:'results',home:true,pristine:true});
+assert.equal(homeResults.dom.find(([key])=>key==='#results')[1].hidden,true,'validated Home form mode hides result presentation');
+assert(!homeResults.trace.some(([name])=>['results','cardHTML','renderSearchStatus','loadResultCalendar'].includes(name)),'Home form mode never enters result inventory or its presentation owners');
+assert.equal(homeResults.trace.filter(([name])=>name==='updateURL').length,1,'Home retains the shared URL boundary');
+assert.equal(observe(source,{kind:'results',home:true,invalidHomeConfig:true}).trace.filter(([name])=>name==='results').length,1,'an unvalidated Home flag cannot enable form-only mode');
 observe(source,{kind:'results',count:2,progressive:true});
 console.log('PASS progressive result presentation: one initial scope, immediate new inventory, retained status counts, edits, continuation and terminal states');
 
@@ -418,7 +424,7 @@ const {JSDOM}=require('jsdom');
  });
  function selectionDOM(code){
   const {context:ctx}=cardRatingOwner(code),dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards'),work={cards:0,templates:0};
-  Object.assign(ctx,{document,$:s=>document.querySelector(s),$$:s=>[...document.querySelectorAll(s)],data:{scenario:'fixture'},roomLabel:requestLabels.roomLabel,displayMealLabel:requestLabels.displayMealLabel,flightDateText:String,savedFlightLegs:o=>o.fixtureLegs||[],savedFlightTextPlain:()=> 'Рейс через менеджера',selectedPriceStatus:()=> 'Проверенные условия',needsRefresh:o=>!!o.stale});
+  Object.assign(ctx,{document,window:dom.window,$:s=>document.querySelector(s),$$:s=>[...document.querySelectorAll(s)],data:{scenario:'fixture'},roomLabel:requestLabels.roomLabel,displayMealLabel:requestLabels.displayMealLabel,flightDateText:String,savedFlightLegs:o=>o.fixtureLegs||[],savedFlightTextPlain:()=> 'Рейс через менеджера',selectedPriceStatus:()=> 'Проверенные условия',needsRefresh:o=>!!o.stale});
   Object.assign(ctx.state,{search,filters:{},selectedDate:null,sort:'price',onlyFavorites:false});
   vm.runInContext(code.match(/^const searchKey=[^\n]+/m)[0]+'\n'+code.match(/^function sameSelectedTourConditions[^\n]+/m)[0]+'\n'+owner(code,'results'),ctx);
   const renderCard=ctx.cardHTML;ctx.cardHTML=row=>{work.cards++;return renderCard(row);};

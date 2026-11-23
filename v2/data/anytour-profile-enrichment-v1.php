@@ -3,8 +3,8 @@
  * LOCAL-owned first-party hotel profile enrichment.
  *
  * The original mode reads already-saved/sanitized local presentation and demand.
- * The explicit official11 mode admits an immutable, owner-approved official-source
- * manifest for eleven own IDs and three presentation fields. Neither mode fetches
+ * The explicit official11/official26 modes admit immutable, owner-approved official-source
+ * manifests for their exact finite scopes and missing presentation fields. Neither mode fetches
  * suppliers or official websites. Missing-only modes never overwrite an
  * existing non-empty AnyTour value. Room/meal concepts and traits are intentionally
  * outside this contract: those are hotel-scoped product dictionaries handled by a
@@ -451,7 +451,17 @@ final class AnyTourProfileEnrichmentV1
 
     public function planOfficial11(array $approved): array
     {
-        $approval = self::officialApproved($approved);
+        return $this->planOfficial($approved, false);
+    }
+
+    public function planOfficial26(array $approved): array
+    {
+        return $this->planOfficial($approved, true);
+    }
+
+    private function planOfficial(array $approved, bool $mixed26): array
+    {
+        $approval = self::officialApproved($approved, $mixed26);
         $this->officialSchema();
         if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_CALLER_TRANSACTION');
         $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
@@ -470,8 +480,18 @@ final class AnyTourProfileEnrichmentV1
     /** Existing canonical owner, one transaction; only the three approved missing fields. */
     public function applyOfficial11(string $operation, array $approved, string $expectedPlanSha): array
     {
+        return $this->applyOfficial($operation, $approved, $expectedPlanSha, false);
+    }
+
+    public function applyOfficial26(string $operation, array $approved, string $expectedPlanSha): array
+    {
+        return $this->applyOfficial($operation, $approved, $expectedPlanSha, true);
+    }
+
+    private function applyOfficial(string $operation, array $approved, string $expectedPlanSha, bool $mixed26): array
+    {
         $operation = self::operation($operation);
-        $approval = self::officialApproved($approved);
+        $approval = self::officialApproved($approved, $mixed26);
         if (!self::officialSha($expectedPlanSha)) throw new InvalidArgumentException('ANYTOUR_PROFILE_OFFICIAL_PLAN_SHA');
         $this->officialSchema();
         if ($this->pdo->inTransaction()) throw new RuntimeException('ANYTOUR_PROFILE_OFFICIAL_CALLER_TRANSACTION');
@@ -482,7 +502,7 @@ final class AnyTourProfileEnrichmentV1
         $profilesUpdated = 0; $fieldsFilled = 0;
         $fieldCounts = array_fill_keys(self::OFFICIAL_FIELDS, 0);
         try {
-            // All eleven profiles and their source rows are locked, in own-ID order, before the first write.
+            // Every admitted profile and source row is locked, in own-ID order, before the first write.
             $snapshot = $this->officialSnapshot($approval, true);
             if (!hash_equals($expectedPlanSha, $snapshot['planSha256'])) throw new DomainException('ANYTOUR_PROFILE_OFFICIAL_PLAN_DRIFT');
             $update = $this->pdo->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=?,revision=?,updated_at=UTC_TIMESTAMP()
@@ -507,7 +527,7 @@ final class AnyTourProfileEnrichmentV1
                     $target = $approval['targets'][$id];
                     $provenance = [
                         'schema_version'=>1,'operation'=>$operation,'canonical_hotel_id'=>$id,'work_id'=>$target['workId'],
-                        'content_policy'=>self::OFFICIAL_POLICY,'source_kind'=>'owner_reviewed_official_web',
+                        'content_policy'=>$approval['sourcePolicy'],'source_kind'=>'owner_reviewed_official_web',
                         'approval_ref'=>$approval['approvalRef'],'manifest_sha256'=>$approval['manifestSha256'],
                         'proposed_actions_sha256'=>$approval['actionsSha256'],'original_package_sha256'=>$approval['originalPackageSha256'],
                         'previous_profile_sha256'=>$item['expectedProfileSha256'],'result_profile_sha256'=>$want['profileSha256'],
@@ -545,7 +565,7 @@ final class AnyTourProfileEnrichmentV1
         return [
             'status'=>'committed_verified','operation'=>$operation,'planSha256'=>$expectedPlanSha,
             'manifestSha256'=>$approval['manifestSha256'],'actionsSha256'=>$approval['actionsSha256'],
-            'originalPackageSha256'=>$approval['originalPackageSha256'],'profilesSelected'=>self::OFFICIAL_BATCH,
+            'originalPackageSha256'=>$approval['originalPackageSha256'],'profilesSelected'=>count($approval['targets']),
             'profilesUpdated'=>$profilesUpdated,'fieldsFilled'=>$fieldsFilled,'fieldCounts'=>$fieldCounts,
             'profileWrites'=>$profilesUpdated,'provenanceWrites'=>$profilesUpdated,'legacyWrites'=>0,'mappingWrites'=>0,'supplierCalls'=>0,
         ] + $readback;
