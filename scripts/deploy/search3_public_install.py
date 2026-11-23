@@ -9543,6 +9543,484 @@ if __name__ == '__main__':
         raise SystemExit(0)
 
 
+# Finite, read-only observation of the consumed PR5151 preflight refusal. This
+# profile neither resumes that operation nor supplies a new drift authority.
+CONTENT_SPEED_INSPECT_PREFIX = '/inspect-search3-content-guard'
+CONTENT_SPEED_INSPECT_OPERATION = 'search3-content-guard-inspect-45144587023-v1'
+CONTENT_SPEED_INSPECT_RECEIPT_LIMIT = 262144
+CONTENT_SPEED_INSPECT_FAILED = {
+    'operation_id':CONTENT_SPEED_OPERATION,
+    'control_source_sha':'18ad673f33ffa755e710eddd39ee3d8e3fe415c1',
+    'run_id':'45144587023','attempt':1,'job_id':137590617527,'command_comment_id':7096298383,
+    'command_created_at':'2026-11-23T09:09:58Z',
+    'artifact_id':14803869888,'artifact_bytes':21947,
+    'artifact_sha256':'3c54cc83a526d874f6adda98a401c6d734c190888c207312a761cef14c738cef',
+    'receipt_bytes':112962,'receipt_sha256':'601e27b755f6744079b54448e992bc67caf79c36f68ea27ed15f0061b47f7500',
+    'terminal_comment_id':7096933761,'terminal_created_at':'2026-11-23T09:39:33Z',
+    'terminal_body_sha256':'9de533fceb945d831ab51e87dbad30888f3df9525bfeb83c23e06a8a2399c4db',
+}
+CONTENT_SPEED_INSPECT_ANCESTORS = HOME_INSPECT_ANCESTORS + ('handoff','handoff_stage')
+CONTENT_SPEED_INSPECT_REASONS = CONTENT_SPEED_REASONS + (
+    'content_speed_inspection_namespace','content_speed_inspection_scope','content_speed_inspection_snapshot',
+    'content_speed_inspection_race','content_speed_inspection_unreadable',
+)
+
+
+def content_speed_inspect_failed_identity():
+    return {k:CONTENT_SPEED_INSPECT_FAILED[k] for k in ('control_source_sha','run_id','command_comment_id')}
+
+
+def content_speed_inspect_scope():
+    _,private=home_inspect_scope()
+    guarded=(set(ADDITIONS)|{ENTRY}|set(CONTINUATION_PROTECTED)|set(OPAQUE_SETTINGS)|set(ABSENT_DEPENDENCIES)
+             |set(SITE_DEPENDENCIES)|set(SITE_OPTIONAL_DEPENDENCIES)|set(SITE_ORDER)|set(HOME_DEPENDENCIES))-set(HOME_ORDER)
+    need(set(private)<=guarded and len(private)==5 and len(guarded)<=512
+         and not guarded&set(HOME_ORDER),'content_speed_inspection_scope')
+    return tuple(sorted(guarded-set(private))),private
+
+
+def content_speed_inspect_runtime_identity(identity):
+    content_speed_runtime_identity(identity)
+    pin=CONTENT_SPEED_INSPECT_FAILED
+    need(identity['run_id']!=pin['run_id'] and identity['command_comment_id']!=pin['command_comment_id'],
+         'content_speed_inspection_identity')
+
+
+def content_speed_inspect_event_identity(event,env):
+    control=env.get('GITHUB_SHA','');comment=event.get('comment',{})
+    need(comment.get('body')==f'{CONTENT_SPEED_INSPECT_PREFIX} {control} {CONTENT_SPEED_INSPECT_OPERATION}', 'command')
+    need(isinstance(comment.get('created_at'),str) and comment.get('updated_at')==comment['created_at'],
+         'content_speed_edited_command')
+    _tv_time(comment['created_at'])
+    synthetic=json.loads(json.dumps(event));synthetic['comment']['body']=f'{UPDATE_PREFIX} {control} {UPDATE_OPERATION}'
+    identity=update_event_identity(synthetic,env);content_speed_inspect_runtime_identity(identity);return identity
+
+
+def content_speed_inspect_failed_value(value):
+    pin=CONTENT_SPEED_INSPECT_FAILED;original=content_speed_inspect_failed_identity()
+    need(sha((json.dumps(value,sort_keys=True)+'\n').encode())==pin['receipt_sha256'],'content_speed_inspection_failed_digest')
+    fixed={**original,'operation_id':CONTENT_SPEED_OPERATION,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,'read_only':False,'phase':'complete','ssh_requested':True,
+        'ssh_started':True,'remote_outcome':'blocked_no_replay','status':'blocked_no_replay',
+        'parent_home':content_speed_parent_identity(),'predecessor_liveness':'unknown',
+        'historical_predecessor_zero_writes_proven':False}
+    need(isinstance(value,dict) and set(value)==set(fixed)|{'parent_evidence','remote'}
+         and all(type(value.get(k)) is type(v) and value[k]==v for k,v in fixed.items()),
+         'content_speed_inspection_failed_evidence')
+    content_speed_parent_value(value['parent_evidence']);remote=value['remote']
+    need(valid_content_speed_result(original,remote) is False,'content_speed_inspection_failed_evidence')
+    flags=('reservation_created','snapshot_verified','restore_drill_verified','protected_unchanged',
+           'unchanged_files_verified','parent_records_unchanged','original_inodes_verified','home_parent_verified')
+    need(remote['status']=='blocked_no_replay' and remote['phase']=='preflight' and remote.get('reason')=='protected_changed'
+         and remote['snapshot_manifest_sha256'] is None and not remote['written_files'] and not remote['rollback_files']
+         and remote['failed_namespace_absent'] is True and remote['closure_verified'] is True
+         and all(remote[k] is False for k in flags),'content_speed_inspection_failed_evidence')
+    return value['parent_evidence']
+
+
+def content_speed_inspect_failed_evidence(raw):
+    pin=CONTENT_SPEED_INSPECT_FAILED
+    need(len(raw)==pin['artifact_bytes'] and sha(raw)==pin['artifact_sha256'],'content_speed_inspection_failed_artifact')
+    with zip_files(raw) as archive:
+        need(archive.namelist()==['evidence.json'],'content_speed_inspection_failed_artifact')
+        data=archive.read('evidence.json')
+        need(len(data)==pin['receipt_bytes'] and sha(data)==pin['receipt_sha256'],'content_speed_inspection_failed_digest')
+    value=_tv_json(data);content_speed_inspect_failed_value(value);return value
+
+
+def content_speed_inspect_failed_proof(identity,command):
+    # The successful-install proof is deliberately unchanged. This is exactly
+    # one failed original attempt, with successful checkout, tests and upload.
+    pin=CONTENT_SPEED_INSPECT_FAILED
+    need(identity==content_speed_inspect_failed_identity() and command.get('id')==pin['command_comment_id']
+         and command.get('body')==f'{CONTENT_SPEED_PREFIX} {pin["control_source_sha"]} {CONTENT_SPEED_OPERATION}'
+         and command.get('user',{}).get('id')==226193297 and command.get('author_association')=='OWNER'
+         and command.get('created_at')==command.get('updated_at')==pin['command_created_at'],
+         'content_speed_inspection_failed_command')
+    created=_tv_time(command['created_at']);run=api('/actions/runs/'+pin['run_id'])
+    need(run.get('id')==int(pin['run_id']) and run.get('head_sha')==pin['control_source_sha']
+         and run.get('head_branch')=='main' and run.get('path')==WORKFLOW and run.get('event')=='issue_comment'
+         and type(run.get('run_attempt')) is int and run['run_attempt']==pin['attempt']==1
+         and run.get('status')=='completed' and run.get('conclusion')=='failure'
+         and run.get('actor',{}).get('login')==run.get('triggering_actor',{}).get('login')=='pyatkoff'
+         and created<=_tv_time(run.get('created_at'))<=created+300,'content_speed_inspection_failed_run')
+    jobs=[j for j in pages('/actions/runs/'+pin['run_id']+'/attempts/1/jobs','jobs') if j.get('name')=='public-install']
+    need(len(jobs)==1 and jobs[0].get('id')==pin['job_id'] and jobs[0].get('run_id')==int(pin['run_id'])
+         and jobs[0].get('head_sha')==pin['control_source_sha'] and jobs[0].get('status')=='completed'
+         and jobs[0].get('conclusion')=='failure','content_speed_inspection_failed_job')
+    job=jobs[0];steps=job.get('steps',[])
+    names=('Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+           'Run python3 tests/search3_public_install_test.py',
+           'Run python3 scripts/deploy/search3_public_install.py content-speed',
+           'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02')
+    selected=[]
+    for name,conclusion in zip(names,('success','success','failure','success')):
+        matches=[s for s in steps if s.get('name')==name]
+        need(len(matches)==1 and matches[0].get('status')=='completed' and matches[0].get('conclusion')==conclusion,
+             'content_speed_inspection_failed_step');selected.append(matches[0])
+    need([s for s in steps if s.get('name','').startswith('Run python3 scripts/deploy/search3_public_install.py')]==[selected[2]],
+         'content_speed_inspection_failed_step')
+    times=[created,_tv_time(run.get('created_at')),_tv_time(run.get('run_started_at')),_tv_time(job.get('started_at'))]
+    for step in selected:times.extend((_tv_time(step.get('started_at')),_tv_time(step.get('completed_at'))))
+    times.extend((_tv_time(job.get('completed_at')),_tv_time(run.get('updated_at'))))
+    need(times==sorted(times),'content_speed_inspection_failed_time')
+    return run
+
+
+def content_speed_inspect_heads(identity):
+    content_speed_inspect_runtime_identity(identity);content_speed_final_heads(identity)
+    relation=api('/compare/'+CONTENT_SPEED_INSPECT_FAILED['control_source_sha']+'...'+identity['control_source_sha'])
+    need(relation.get('status') in ('identical','ahead') and relation.get('behind_by')==0
+         and relation.get('merge_base_commit',{}).get('sha')==CONTENT_SPEED_INSPECT_FAILED['control_source_sha'],
+         'content_speed_inspection_control_ancestry')
+
+
+def content_speed_inspect_admission(identity):
+    content_speed_inspect_heads(identity);reviewed_control(identity['control_source_sha'])
+    gate=api('/contents/.github/workflows/deploy-anytoour.yml?ref='+identity['control_source_sha'])
+    need(gate.get('type')=='file' and gate.get('encoding')=='base64'
+         and sha(base64.b64decode(gate['content']))==SITE_PUBLISHER_GUARD_SHA,'publisher_guard')
+    checks=pages('/commits/'+CONTENT_SPEED_SOURCE+'/check-runs','check_runs')
+    need(len(checks)==len(CONTENT_SPEED_CHECKS) and {c.get('name') for c in checks}==set(CONTENT_SPEED_CHECKS)
+         and all(c.get('head_sha')==CONTENT_SPEED_SOURCE and green(c) for c in checks),'content_speed_source_ci')
+    comments=pages('/issues/4709/comments');pin=CONTENT_SPEED_INSPECT_FAILED;original=content_speed_inspect_failed_identity()
+    command=content_speed_created_command(comments,CONTENT_SPEED_PREFIX,CONTENT_SPEED_OPERATION,original)
+    current=content_speed_created_command(comments,CONTENT_SPEED_INSPECT_PREFIX,CONTENT_SPEED_INSPECT_OPERATION,identity)
+    need(not any(c.get('body','').strip().split()[:1]==[CONTENT_SPEED_ROLLBACK_PREFIX]
+                 and CONTENT_SPEED_ROLLBACK_OPERATION in c.get('body','').split()[1:] for c in comments),
+         'content_speed_inspection_original_changed')
+    run=content_speed_inspect_failed_proof(original,command)
+    terminal=next((c for c in comments if c.get('id')==pin['terminal_comment_id']),{})
+    need(terminal.get('user',{}).get('id')==226193297 and terminal.get('author_association')=='OWNER'
+         and terminal.get('created_at')==terminal.get('updated_at')==pin['terminal_created_at']
+         and isinstance(terminal.get('body'),str) and sha(terminal['body'].encode())==pin['terminal_body_sha256']
+         and _tv_time(run['updated_at'])<=_tv_time(terminal['created_at'])<=_tv_time(current['created_at']),
+         'content_speed_inspection_failed_terminal')
+    artifact=api('/actions/artifacts/'+str(pin['artifact_id']))
+    need(artifact.get('id')==pin['artifact_id'] and artifact.get('name')=='search3-public-install-'+pin['run_id']+'-1'
+         and artifact.get('size_in_bytes')==pin['artifact_bytes'] and artifact.get('expired') is False
+         and artifact.get('workflow_run',{}).get('id')==int(pin['run_id'])
+         and artifact.get('workflow_run',{}).get('head_sha')==pin['control_source_sha']
+         and artifact.get('digest')=='sha256:'+pin['artifact_sha256'],'content_speed_inspection_failed_artifact')
+    value=content_speed_inspect_failed_evidence(download(pin['artifact_id'],pin['artifact_sha256']))
+    content_speed_parent_admission();content_speed_inspect_heads(identity);return value
+
+
+CONTENT_SPEED_INSPECT_REMOTE = r'''
+CONTENT_SPEED_ROLLING_BACK=False
+def content_speed_inspect_namespaces():
+ for key in ('failed_namespace_absent','rollback_namespace_absent','inspection_namespace_absent'):result[key]=False
+ # The inherited SITE helper also uses failed_namespace_absent for its own
+ # historical predecessor. It must not certify this observer's failed child.
+ try:content_speed_namespaces()
+ finally:result['failed_namespace_absent']=False
+ for key,operation in (('failed_namespace_absent',FAILED['operation_id']),
+                       ('rollback_namespace_absent',CONTENT_SPEED_ROLLBACK_OPERATION),
+                       ('inspection_namespace_absent',INSPECTION_OPERATION)):
+  result[key]=False
+  with base.parent(operation) as (fd,name):
+   try:os.stat(name,dir_fd=fd,follow_symlinks=False)
+   except FileNotFoundError:result[key]=True
+  require(result[key],'content_speed_inspection_namespace')
+def content_speed_inspect_parent_proof():
+ content_speed_inspect_namespaces();content_speed_closure()
+ records=site_read_records(homed,HOME_PREPARED_PATHS+('result.json',));record=lambda p:json.loads(records[p][2])
+ require(record('reservation.json')=={'operation':HOME_POLICY['operation'],**HOME_ORIGINAL,
+         'source':HOME_POLICY['source'],'manifest':HOME_POLICY['manifest'],'parent_handoff':HANDOFF_ORIGINAL}
+         and record('result.json')==HOME_ACCEPTED,'content_speed_parent')
+ snapshot=record('snapshot/manifest.json');order=HOME_POLICY['order']
+ require(isinstance(snapshot,dict) and set(snapshot)=={'source','manifest','parent_handoff','before','guarded','ancestors'}
+         and snapshot['source']==HOME_POLICY['source'] and snapshot['manifest']==HOME_POLICY['manifest']
+         and snapshot['parent_handoff']==HANDOFF_ORIGINAL and set(snapshot['before'])==set(order)
+         and set(snapshot['guarded'])==((set(POLICY['expected'])|set(checked_protected_paths())
+             |set(SITE_POLICY['dependencies'])|set(SITE_POLICY['optional_dependencies'])|set(SITE_POLICY['order'])
+             |set(HOME_POLICY['dependencies']))-set(order))
+         and set(snapshot['guarded'])==set(INSPECTION_PUBLIC_PATHS)|set(private_labels())
+         and set(snapshot['ancestors'])==set(INSPECTION_ANCESTORS)
+         and digest(records['snapshot/manifest.json'][2])==CONTENT_SPEED_POLICY['parent']['snapshot_manifest_sha256'],
+         'content_speed_inspection_snapshot')
+ reconciliation=record('reconciliation.json')
+ require(records['reconciliation.json'][2]==canonical(reconciliation)
+         and digest(records['reconciliation.json'][2])==CONTENT_SPEED_POLICY['parent']['reconciliation_sha256'],
+         'home_child_reconciliation_record')
+ home_child_validate_binding(reconciliation,snapshot['guarded'])
+ for path,before in snapshot['guarded'].items():
+  require(isinstance(before,list) and len(before)==2 and isinstance(before[0],dict),'content_speed_inspection_snapshot')
+  row,identity=before
+  if row=={'state':'absent'}:require(identity is None,'content_speed_inspection_snapshot');continue
+  # A sealed protected tuple is not an owned transaction inode. In particular,
+  # its saved uid/gid must be compared, not required to equal this process uid.
+  require(set(row)=={'state','sha256','size','mode'} and row['state']=='present'
+          and isinstance(row['sha256'],str) and len(row['sha256'])==64 and all(c in '0123456789abcdef' for c in row['sha256'])
+          and type(row['size']) is int and 0<=row['size']<=MAX_BYTES
+          and isinstance(row['mode'],str) and len(row['mode'])==4 and all(c in '01234567' for c in row['mode'])
+          and isinstance(identity,list) and len(identity)==9 and all(type(v) is int for v in identity)
+          and identity[0]>=0 and identity[1]>0 and identity[2]==(stat.S_IFREG|int(row['mode'],8))
+          and identity[3]==1 and identity[4]==row['size'],'content_speed_inspection_snapshot')
+ for index,path in enumerate(order):
+  target=HOME_POLICY['targets'][path];before=snapshot['before'][path];intent=record('intent-'+str(index))
+  require(isinstance(before,list) and len(before)==2 and before[0]==target['before'],'content_speed_inspection_snapshot')
+  home_before_identity(before[1],before[0])
+  require(isinstance(intent,dict) and set(intent)=={'path','before','after','previous_identity','new_identity'}
+          and intent['path']==path and intent['before']==target['before'] and intent['after']==target['after']
+          and intent['previous_identity']==before[1],'home_original_identity')
+  checked_stamp(intent['new_identity'],target['after'])
+ result.update(parent_records_verified=True,snapshot_binding_verified=True,reconciliation_binding_verified=True)
+ return records,snapshot
+def content_speed_inspect_stat_changes(expected,current,exclude_ctime=False):
+ fields=INSPECTION_STAT_FIELDS[:-1] if exclude_ctime else INSPECTION_STAT_FIELDS
+ if expected is None or current is None:return [] if expected is None and current is None else list(fields)
+ require(isinstance(expected,(list,tuple)) and isinstance(current,(list,tuple)) and len(expected)==len(current)==9,
+         'content_speed_inspection_snapshot')
+ return [name for i,name in enumerate(fields) if expected[i]!=current[i]]
+def content_speed_inspect_comparison(path,expected,previous,current,exclude_ctime=False):
+ row,identity=current
+ return {'path':path,'expected':expected,'observed':row,
+         'changed_row_fields':[name for name in INSPECTION_ROW_FIELDS if expected.get(name)!=row.get(name)],
+         'changed_stat_fields':content_speed_inspect_stat_changes(previous,identity,exclude_ctime)}
+def content_speed_inspect_read(snapshot):
+ tv_successor_stable()
+ value={'rows':continuation_inventory(public,tuple(sorted(snapshot['guarded']))+tuple(HOME_POLICY['order'])),
+        'records':site_read_records(homed,HOME_PREPARED_PATHS+('result.json',)),
+        'ancestors':home_ancestor_inventory(),
+        'stages':{p:homed.read('stage/'+str(i))[:2] for i,p in enumerate(HOME_POLICY['order'])},
+        'closure':content_speed_closure()}
+ tv_successor_stable();return value
+result={'schema_version':1,'operation_id':INSPECTION_OPERATION,'source_sha':CONTENT_SPEED_POLICY['source'],
+        'manifest_sha256':CONTENT_SPEED_POLICY['manifest'],**IDENTITY,'failed_attempt':FAILED,
+        'parent_home':HOME_ORIGINAL,'parent_receipt_sha256':CONTENT_SPEED_POLICY['parent']['receipt_sha256'],
+        'parent_snapshot_manifest_sha256':CONTENT_SPEED_POLICY['parent']['snapshot_manifest_sha256'],
+        'parent_reconciliation_sha256':CONTENT_SPEED_POLICY['parent']['reconciliation_sha256'],
+        'closed_record_sha256':CONTENT_SPEED_POLICY['parent']['closed_record_sha256'],
+        'closure_custody_sha256':CONTENT_SPEED_POLICY['parent']['closure_custody_sha256'],
+        'read_only':True,'server_writes':0,'supplier_calls':0,'database_reads':0,'database_writes':0,
+        'lead_calls':0,'booking_calls':0,'application_calls':0,'status':'inspection_blocked','phase':'preflight',
+        'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False,
+        'parent_records_verified':False,'snapshot_binding_verified':False,'reconciliation_binding_verified':False,
+        'parent_records_stable':False,'inventory_stable':False,'failed_namespace_absent':False,
+        'rollback_namespace_absent':False,'inspection_namespace_absent':False,'closure_verified':False,
+        'guard_matches':False,'home_targets_verified':False,'ancestor_records_match':False,'home_parent_verified':False,
+        'checked_public_paths':[],'public_mismatches':[],'private_checks':{},'home_checks':{},'home_mismatches':[],
+        'ancestor_checks':{},'observation_sha256':None}
+public=base=original=updated=published=refactored=handed=homed=closed_store=None
+try:
+ content_speed_open_stores();records,snapshot=content_speed_inspect_parent_proof()
+ saved=snapshot['guarded'];expected=refactor_expected({p:r[0] for p,r in saved.items()})
+ measured=content_speed_inspect_read(snapshot);require(measured['records']==records,'content_speed_inspection_race')
+ labels=private_labels()
+ for path in sorted(saved):
+  previous=saved[path][1]
+  if TV_SUCCESSOR_PROOF is not None and path==TV_SUCCESSOR['path']:previous=_tv_successor_bound['target'][1]
+  comparison=content_speed_inspect_comparison(path,expected[path],previous,measured['rows'][path])
+  if path in labels:
+   row=measured['rows'][path][0]
+   result['private_checks'][labels[path]]={'readable':row.get('state')!='unreadable','present':row.get('state')=='present',
+       'expected_present':expected[path].get('state')=='present','matches_row':row==expected[path],
+       'matches_identity':not comparison['changed_stat_fields'],
+       'changed_row_fields':comparison['changed_row_fields'],'changed_stat_fields':comparison['changed_stat_fields']}
+  elif comparison['changed_row_fields'] or comparison['changed_stat_fields']:result['public_mismatches'].append(comparison)
+ for index,path in enumerate(HOME_POLICY['order']):
+  target=HOME_POLICY['targets'][path];before=snapshot['before'][path]
+  intent=json.loads(records['intent-'+str(index)][2])
+  comparison=content_speed_inspect_comparison(path,target['after'],intent['new_identity'],measured['rows'][path],True)
+  result['home_checks'][path]={'matches_row':not comparison['changed_row_fields'],
+      'matches_identity':not comparison['changed_stat_fields'],
+      'snapshot_matches':records['snapshot/'+str(index)][0]==records['drill/'+str(index)][0]==home_backup_row(path),
+      'stage_matches':home_same_original(measured['stages'][path],(before[0],home_before_identity(before[1],before[0])))}
+  if comparison['changed_row_fields'] or comparison['changed_stat_fields']:result['home_mismatches'].append(comparison)
+ result['checked_public_paths']=list(INSPECTION_PUBLIC_PATHS)
+ confirmed=content_speed_inspect_read(snapshot)
+ result['inventory_stable']=confirmed['rows']==measured['rows']
+ result['parent_records_stable']=all(confirmed[k]==measured[k] for k in ('records','ancestors','stages','closure'))
+ for group in INSPECTION_ANCESTORS:
+  previous=snapshot['ancestors'][group];current=measured['ancestors'][group];same_scope=set(previous)==set(current)
+  result['ancestor_checks'][group]={'matches_scope':same_scope,
+      'matches_rows':same_scope and all(previous[p][0]==current[p][0] for p in previous),
+      'matches_identity':same_scope and all(previous[p][1]==current[p][1] for p in previous),
+      'stable':current==confirmed['ancestors'][group]}
+ content_speed_inspect_namespaces();tv_successor_stable()
+ require(result['inventory_stable'] and result['parent_records_stable'],'content_speed_inspection_race')
+ require(all(r[0].get('state')!='unreadable' for r in measured['rows'].values()),'content_speed_inspection_unreadable')
+ # Export one aggregate commitment, never the private per-file hashes, stamps
+ # or record contents. This binds a measurement, not permission to change it.
+ result['observation_sha256']=digest(canonical({'rows':refactor_stamp_rows(measured['rows']),
+     'records':refactor_stamp_rows(measured['records']),'ancestors':measured['ancestors'],
+     'stages':refactor_stamp_rows(measured['stages']),'closure':measured['closure']}))
+ result['guard_matches']=not result['public_mismatches'] and all(r['matches_row'] and r['matches_identity'] for r in result['private_checks'].values())
+ result['home_targets_verified']=all(all(r.values()) for r in result['home_checks'].values())
+ result['ancestor_records_match']=all(r['matches_scope'] and r['matches_rows'] and r['matches_identity'] for r in result['ancestor_checks'].values())
+ result['home_parent_verified']=result['guard_matches'] and result['home_targets_verified'] and result['ancestor_records_match']
+ result.update(status='inspection_match' if result['home_parent_verified'] else 'inspection_mismatch',phase='complete')
+except Exception as error:
+ result['status']='inspection_unknown' if result['parent_records_verified'] else 'inspection_blocked'
+ result['reason']=str(error) if type(error) is RuntimeError and re_safe(str(error)) else 'operation_failed'
+finally:
+ for store in (closed_store,homed,handed,refactored,published,updated,original,base,public):
+  if store is not None:store.close()
+print(json.dumps(result,sort_keys=True))
+'''
+
+
+def content_speed_inspect_remote_program(policy,identity,parent_value,*,tv_successor=None):
+    content_speed_inspect_runtime_identity(identity);public,_=content_speed_inspect_scope()
+    program=(_content_speed_program_prefix(policy,identity,parent_value,tv_successor)
+        +'\nFAILED='+repr(CONTENT_SPEED_INSPECT_FAILED)+'\nINSPECTION_OPERATION='+repr(CONTENT_SPEED_INSPECT_OPERATION)
+        +'\nINSPECTION_PUBLIC_PATHS='+repr(public)+'\nINSPECTION_ANCESTORS='+repr(CONTENT_SPEED_INSPECT_ANCESTORS)
+        +'\nINSPECTION_ROW_FIELDS='+repr(HOME_INSPECT_ROW_FIELDS)+'\nINSPECTION_STAT_FIELDS='+repr(HOME_INSPECT_STAT_FIELDS)
+        +'\ndef re_safe(value): return value in '+repr(CONTENT_SPEED_INSPECT_REASONS)+'\n'+CONTENT_SPEED_INSPECT_REMOTE)
+    ast.parse(program);return program
+
+
+def valid_content_speed_inspect_result(identity,result):
+    content_speed_inspect_runtime_identity(identity);pin=CONTENT_SPEED_PARENT
+    fixed={'schema_version':1,'operation_id':CONTENT_SPEED_INSPECT_OPERATION,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,**identity,'failed_attempt':CONTENT_SPEED_INSPECT_FAILED,
+        'parent_home':content_speed_parent_identity(),'parent_receipt_sha256':pin['receipt_sha256'],
+        'parent_snapshot_manifest_sha256':pin['snapshot_manifest_sha256'],'parent_reconciliation_sha256':pin['reconciliation_sha256'],
+        'closed_record_sha256':pin['closed_record_sha256'],'closure_custody_sha256':pin['closure_custody_sha256'],
+        'read_only':True,'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    counters=('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls')
+    stable_flags=('parent_records_verified','snapshot_binding_verified','reconciliation_binding_verified',
+        'parent_records_stable','inventory_stable','failed_namespace_absent','rollback_namespace_absent',
+        'inspection_namespace_absent','closure_verified')
+    match_flags=('guard_matches','home_targets_verified','ancestor_records_match','home_parent_verified')
+    fields=('status','phase','checked_public_paths','public_mismatches','private_checks','home_checks','home_mismatches',
+            'ancestor_checks','observation_sha256')
+    required=set(fixed)|set(counters)|set(stable_flags)|set(match_flags)|set(fields)
+    need(isinstance(result,dict) and required<=set(result)<=required|{'reason'},'content_speed_inspection_receipt_shape')
+    need(all(type(result.get(k)) is type(v) and json.dumps(result[k],sort_keys=True)==json.dumps(v,sort_keys=True)
+             for k,v in fixed.items()),'content_speed_inspection_receipt_identity')
+    need(all(type(result[k]) is int and result[k]==0 for k in counters)
+         and all(type(result[k]) is bool for k in stable_flags+match_flags),'content_speed_inspection_receipt_counters')
+    need(result['parent_records_verified']==result['snapshot_binding_verified']==result['reconciliation_binding_verified']
+         and (not result['parent_records_verified'] or result['closure_verified']),
+         'content_speed_inspection_receipt_bindings')
+    need(result['status'] in ('inspection_match','inspection_mismatch','inspection_blocked','inspection_unknown')
+         and result['phase'] in ('preflight','complete')
+         and ('reason' not in result or result['reason'] in CONTENT_SPEED_INSPECT_REASONS),'content_speed_inspection_receipt_status')
+    public,private=content_speed_inspect_scope();home=HOME_ORDER
+    need(result['checked_public_paths'] in ([],list(public)),'content_speed_inspection_checked_scope')
+    def observed(row,unreadable=False):
+        need(isinstance(row,dict),'content_speed_inspection_observed')
+        if row.get('state')=='present':
+            need(set(row)=={'state','sha256','size','mode'} and isinstance(row['sha256'],str)
+                 and re.fullmatch('[a-f0-9]{64}',row['sha256']) and type(row['size']) is int and 0<=row['size']<=MAX_BYTES
+                 and isinstance(row['mode'],str) and re.fullmatch('[0-7]{4}',row['mode']),'content_speed_inspection_observed')
+        else:need(row=={'state':'absent'} or unreadable and set(row)=={'state','reason'}
+                  and row['state']=='unreadable' and row['reason'] in CONTENT_SPEED_INSPECT_REASONS,'content_speed_inspection_observed')
+    def changes(value,allowed):
+        need(isinstance(value,list) and all(isinstance(v,str) for v in value)
+             and value==[v for v in allowed if v in value],'content_speed_inspection_comparison')
+    def boolean_fields(row,fields,extra=()):
+        need(isinstance(row,dict) and set(row)==set(fields)|set(extra)
+             and all(type(row[k]) is bool for k in fields),'content_speed_inspection_boolean_fields')
+    for key,scope,stat_fields in (('public_mismatches',public,HOME_INSPECT_STAT_FIELDS),
+                                 ('home_mismatches',home,HOME_INSPECT_STAT_FIELDS[:-1])):
+        rows=result[key];seen=set();need(isinstance(rows,list) and len(rows)<=len(scope),'content_speed_inspection_mismatch_scope')
+        for row in rows:
+            need(isinstance(row,dict) and set(row)=={'path','expected','observed','changed_row_fields','changed_stat_fields'}
+                 and isinstance(row['path'],str) and row['path'] in scope and row['path'] not in seen,
+                 'content_speed_inspection_mismatch_scope')
+            seen.add(row['path']);observed(row['expected']);observed(row['observed'],True)
+            need(row['changed_row_fields']==[k for k in HOME_INSPECT_ROW_FIELDS if row['expected'].get(k)!=row['observed'].get(k)],
+                 'content_speed_inspection_comparison')
+            changes(row['changed_stat_fields'],stat_fields)
+            need(row['changed_row_fields'] or row['changed_stat_fields'],'content_speed_inspection_comparison')
+            if key=='home_mismatches':need(row['expected']==HOME_TARGETS[row['path']]['after'],'content_speed_inspection_comparison')
+    private_checks=result['private_checks'];home_checks=result['home_checks'];ancestors=result['ancestor_checks']
+    need(isinstance(private_checks,dict) and set(private_checks)<=set(private.values())
+         and isinstance(home_checks,dict) and set(home_checks)<=set(home)
+         and isinstance(ancestors,dict) and set(ancestors)<=set(CONTENT_SPEED_INSPECT_ANCESTORS),
+         'content_speed_inspection_comparison_scope')
+    for row in private_checks.values():
+        boolean_fields(row,('readable','present','expected_present','matches_row','matches_identity'),
+                       ('changed_row_fields','changed_stat_fields'))
+        changes(row['changed_row_fields'],HOME_INSPECT_ROW_FIELDS);changes(row['changed_stat_fields'],HOME_INSPECT_STAT_FIELDS)
+        need(row['matches_row']==(not row['changed_row_fields']) and row['matches_identity']==(not row['changed_stat_fields'])
+             and (not row['matches_row'] or row['readable'] and row['present']==row['expected_present']),
+             'content_speed_inspection_private_comparison')
+    home_mismatches={r['path']:r for r in result['home_mismatches']}
+    for path,row in home_checks.items():
+        boolean_fields(row,('matches_row','matches_identity','snapshot_matches','stage_matches'))
+        difference=home_mismatches.get(path)
+        need(row['matches_row']==(not difference or not difference['changed_row_fields'])
+             and row['matches_identity']==(not difference or not difference['changed_stat_fields']),
+             'content_speed_inspection_home_comparison')
+    for row in ancestors.values():
+        boolean_fields(row,('matches_scope','matches_rows','matches_identity','stable'))
+        need(row['matches_scope'] or not(row['matches_rows'] or row['matches_identity']),'content_speed_inspection_ancestor_comparison')
+    complete=result['status'] in ('inspection_match','inspection_mismatch')
+    if complete:
+        need(result['phase']=='complete' and 'reason' not in result and result['checked_public_paths']==list(public)
+             and set(private_checks)==set(private.values()) and set(home_checks)==set(home)
+             and set(ancestors)==set(CONTENT_SPEED_INSPECT_ANCESTORS) and all(result[k] for k in stable_flags)
+             and isinstance(result['observation_sha256'],str) and re.fullmatch('[a-f0-9]{64}',result['observation_sha256'])
+             and all(r['readable'] for r in private_checks.values()) and all(r['stable'] for r in ancestors.values())
+             and all(r['observed'].get('state')!='unreadable' for k in ('public_mismatches','home_mismatches') for r in result[k]),
+             'content_speed_inspection_receipt_incomplete')
+        guard=not result['public_mismatches'] and all(r['matches_row'] and r['matches_identity'] for r in private_checks.values())
+        targets=all(all(r.values()) for r in home_checks.values())
+        prior=all(r['matches_scope'] and r['matches_rows'] and r['matches_identity'] for r in ancestors.values())
+        need(result['guard_matches']==guard and result['home_targets_verified']==targets and result['ancestor_records_match']==prior
+             and result['home_parent_verified']==(guard and targets and prior)
+             and (result['status']=='inspection_match')==result['home_parent_verified'],'content_speed_inspection_receipt_incomplete')
+    else:
+        need(result['phase']=='preflight' and 'reason' in result and result['observation_sha256'] is None
+             and not any(result[k] for k in match_flags)
+             and result['parent_records_verified']==(result['status']=='inspection_unknown'),'content_speed_inspection_receipt_incomplete')
+    need(len(json.dumps(result,sort_keys=True).encode())<=CONTENT_SPEED_INSPECT_RECEIPT_LIMIT,'content_speed_inspection_receipt_limit')
+    return complete
+
+
+def content_speed_inspect():
+    work=Path(os.environ['RUNNER_TEMP'])/'search3-public-install';work.mkdir(mode=0o700)
+    key,known=work/'key',work/'known'
+    evidence={'status':'inspection_blocked','operation_id':CONTENT_SPEED_INSPECT_OPERATION,'source_sha':CONTENT_SPEED_SOURCE,
+        'manifest_sha256':CONTENT_SPEED_MANIFEST_SHA,'read_only':True,'phase':'identity','ssh_requested':False,
+        'ssh_started':'unknown','remote_outcome':'unknown','failed_attempt':CONTENT_SPEED_INSPECT_FAILED,
+        'parent_home':content_speed_parent_identity(),'predecessor_liveness':'unknown','historical_predecessor_zero_writes_proven':False}
+    complete=False
+    try:
+        event=_tv_json(Path(os.environ['GITHUB_EVENT_PATH']).read_bytes())
+        identity=content_speed_inspect_event_identity(event,os.environ);evidence.update(identity,phase='admission')
+        home_finish_checkpoint(work,evidence);failed=content_speed_inspect_admission(identity)
+        parent=content_speed_inspect_failed_value(failed);dependency=tv_successor_evidence()
+        program=content_speed_inspect_remote_program(content_speed_policy(),identity,parent,tv_successor=dependency)
+        evidence.update(phase='connection_preparation');home_finish_checkpoint(work,evidence)
+        host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+        need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+        raw=os.environ['PREVIEW_KEY'].replace('\r','');need(0<len(raw)<=32768,'ssh_key')
+        if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+        with key.open('x') as stream:stream.write(raw.rstrip()+'\n')
+        key.chmod(0o600)
+        scan=carrier.run(['ssh-keyscan','-T','15','-t','ed25519',host]);need(0<len(scan)<=8192,'host_key')
+        known.write_bytes(scan);known.chmod(0o600)
+        options=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),
+                 '-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeout=15']
+        need(content_speed_inspect_admission(identity)==failed,'content_speed_inspection_original_changed')
+        need(tv_successor_evidence()==dependency,'tv_successor_changed')
+        evidence.update(status='inspection_unknown',phase='remote_requested',ssh_requested=True);home_finish_checkpoint(work,evidence)
+        response=carrier.run(['ssh',*options,user+'@'+host,'python3 -I -S -B -'],input=program.encode(),timeout=180)
+        need(len(response)<=CONTENT_SPEED_INSPECT_RECEIPT_LIMIT,'content_speed_inspection_receipt_limit');result=_tv_json(response)
+        complete=valid_content_speed_inspect_result(identity,result)
+        evidence.update(remote=result,ssh_started=True,remote_outcome=result['status']);home_finish_checkpoint(work,evidence)
+        content_speed_inspect_heads(identity);evidence.update(status=result['status'],phase='complete')
+    except Exception as error:
+        complete=False
+        if evidence['ssh_requested']:evidence['status']='inspection_unknown'
+        evidence['error_type']=type(error).__name__ if type(error) in (RuntimeError,ValueError,KeyError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) else 'ContentSpeedInspectionError'
+    finally:
+        key.unlink(missing_ok=True);known.unlink(missing_ok=True);home_finish_checkpoint(work,evidence)
+    print(json.dumps(evidence,sort_keys=True));need(complete,'content_speed_inspection_not_verified')
+
+
+if __name__ == '__main__':
+    import sys as _content_speed_inspect_sys
+    if _content_speed_inspect_sys.argv[1:]==['content-speed-inspect']:
+        content_speed_inspect()
+        raise SystemExit(0)
+
+
 def command_mode(arguments):
     if arguments == ['home-inspect']: return 'home-inspect'
     if arguments == ['home']: return 'home'

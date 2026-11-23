@@ -6399,7 +6399,7 @@ class HomeInspectionAdmission(unittest.TestCase):
             "github.event_name == 'issue_comment'", "github.event.action == 'created'",'github.event.issue.number == 4709',
             '!github.event.issue.pull_request','github.event.comment.user.id == 226193297',
             "github.event.comment.author_association == 'OWNER'",'group: deploy-anytoour-production',
-            'cancel-in-progress: false',"timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1'))) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}",
+            'cancel-in-progress: false',"timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1')) || github.event.comment.body == format('/inspect-search3-content-guard {0} search3-content-guard-inspect-45144587023-v1', github.sha)) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}",
             'permissions: {contents: read, issues: read, checks: read, actions: read}',
             'python3 tests/search3_public_install_test.py','python3 tests/anytoour_production_deploy_guard_test.py'):
             self.assertIn(token,section)
@@ -7080,7 +7080,7 @@ class HomeChildAdmission(unittest.TestCase):
             with self.assertRaises(RuntimeError):m.command_mode([mode])
         section=(ROOT/m.WORKFLOW).read_text().split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
         line=next(row.strip() for row in section.splitlines() if row.strip().startswith('timeout-minutes:'))
-        expected="timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1'))) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}"
+        expected="timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1')) || github.event.comment.body == format('/inspect-search3-content-guard {0} search3-content-guard-inspect-45144587023-v1', github.sha)) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}"
         self.assertEqual(line,expected)
         prefixes=m.re.findall(r"startsWith\(github\.event\.comment\.body, '([^']+)'\)",line)
         self.assertEqual(prefixes,[m.HOME_CHILD_PREFIX+' ',m.HOME_CHILD_ROLLBACK_PREFIX+' '])
@@ -7665,7 +7665,7 @@ class HomeChildObservationAdmission(unittest.TestCase):
         self.assertIn(gate+" && 'home-continue-inspect'",section)
         self.assertNotIn("startsWith(github.event.comment.body, '/inspect-site-home-continuation",section)
         line=next(row.strip() for row in section.splitlines() if row.strip().startswith('timeout-minutes:'))
-        expected="timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1'))) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}"
+        expected="timeout-minutes: ${{ (github.event.comment.body == format('/finish-site-home-navigation {0} site-home-after-45089823646-20261123-v1', github.sha) || github.event.comment.body == format('/inspect-site-home-continuation {0} site-home-inspect-45089823646-v1', github.sha) || github.event.comment.body == format('/update-search3-content-reads {0} search3-content-read-coalesce-20261123-v1', github.sha) || (startsWith(github.event.comment.body, format('/rollback-search3-content-reads {0} ', github.sha)) && endsWith(github.event.comment.body, ' search3-content-read-coalesce-rollback-20261123-v1')) || github.event.comment.body == format('/inspect-search3-content-guard {0} search3-content-guard-inspect-45144587023-v1', github.sha)) && 30 || ((startsWith(github.event.comment.body, '/continue-site-home-navigation ') || startsWith(github.event.comment.body, '/rollback-site-home-continuation ')) && 15 || 10) }}"
         self.assertEqual(line,expected)
         exact=home_child_observation_event()['comment']['body']
         for body,minutes in ((exact,30),(exact+' extra',10),(exact.replace(identity['control_source_sha'],'0'*40),10),
@@ -8177,7 +8177,8 @@ class HomeFinishAdmission(unittest.TestCase):
         exact_commands=m.re.findall(r"github\.event\.comment\.body == format\('([^']+)', github.sha\)",line)
         self.assertEqual(exact_commands,[m.HOME_FINISH_PREFIX+' {0} '+m.HOME_FINISH_OPERATION,
             m.HOME_CHILD_INSPECT_PREFIX+' {0} '+m.HOME_CHILD_INSPECT_OPERATION,
-            m.CONTENT_SPEED_PREFIX+' {0} '+m.CONTENT_SPEED_OPERATION])
+            m.CONTENT_SPEED_PREFIX+' {0} '+m.CONTENT_SPEED_OPERATION,
+            m.CONTENT_SPEED_INSPECT_PREFIX+' {0} '+m.CONTENT_SPEED_INSPECT_OPERATION])
         thirty=[command.format(identity['control_source_sha']) for command in exact_commands]
         for body,minutes in ((thirty[0],30),(thirty[1],30),(thirty[0]+' extra',10),
             (thirty[0].replace(identity['control_source_sha'],'0'*40),10),(m.HOME_FINISH_PREFIX,10),
@@ -8909,6 +8910,452 @@ class ContentSpeedContract(unittest.TestCase):
                 self.assertFalse(result['reservation_created']);self.assertFalse(f.speed_rollback.exists())
                 self.assertEqual((HomeChildTransaction.identity(path),path.read_bytes()),observed)
                 self.assertEqual(self.retained(f),retained)
+
+
+CONTENT_SPEED_INSPECT_IDENTITY={'control_source_sha':'5'*40,'run_id':'996456','command_comment_id':9024}
+
+
+def content_speed_inspect_test_event():
+    value=event();identity=CONTENT_SPEED_INSPECT_IDENTITY
+    value['comment'].update(id=identity['command_comment_id'],
+        body=m.CONTENT_SPEED_INSPECT_PREFIX+' '+identity['control_source_sha']+' '+m.CONTENT_SPEED_INSPECT_OPERATION,
+        created_at='2026-11-23T12:00:00Z',updated_at='2026-11-23T12:00:00Z')
+    return value
+
+
+class ContentSpeedInspectionContract(unittest.TestCase):
+    @contextlib.contextmanager
+    def fixture(self):
+        with ContentSpeedContract().fixture() as f:
+            yield f
+
+    def program(self,f):
+        return m.content_speed_inspect_remote_program(f.speed_policy,CONTENT_SPEED_INSPECT_IDENTITY,
+            f.speed_parent,tv_successor=copy.deepcopy(f.tv_evidence))
+
+    def execute(self,f,change=None):
+        result=UpdateTransaction().run_program(f,self.program(f),change)
+        m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,result)
+        return result
+
+    def snapshot(self,f):
+        return HomeFinishTransaction().server_snapshot(f)
+
+    @contextlib.contextmanager
+    def failed(self,f):
+        original=m.content_speed_inspect_failed_identity();parent=m.CONTENT_SPEED_PARENT
+        remote={'schema_version':1,'operation_id':m.CONTENT_SPEED_OPERATION,'source_sha':m.CONTENT_SPEED_SOURCE,
+            'manifest_sha256':m.CONTENT_SPEED_MANIFEST_SHA,**original,'parent_home':m.content_speed_parent_identity(),
+            'parent_receipt_sha256':parent['receipt_sha256'],'parent_snapshot_manifest_sha256':parent['snapshot_manifest_sha256'],
+            'parent_reconciliation_sha256':parent['reconciliation_sha256'],'closed_record_sha256':parent['closed_record_sha256'],
+            'closure_custody_sha256':parent['closure_custody_sha256'],'predecessor_liveness':'unknown',
+            'historical_predecessor_zero_writes_proven':False,'status':'blocked_no_replay','phase':'preflight',
+            'supplier_calls':0,'database_reads':0,'database_writes':0,'lead_calls':0,'booking_calls':0,'application_calls':0,
+            'written_files':[],'rollback_files':[],'reservation_created':False,'snapshot_verified':False,
+            'restore_drill_verified':False,'protected_unchanged':False,'unchanged_files_verified':False,
+            'parent_records_unchanged':False,'original_inodes_verified':False,'failed_namespace_absent':True,
+            'home_parent_verified':False,'closure_verified':True,'snapshot_manifest_sha256':None,'reason':'protected_changed'}
+        self.assertFalse(m.valid_content_speed_result(original,remote))
+        value={**original,'operation_id':m.CONTENT_SPEED_OPERATION,'source_sha':m.CONTENT_SPEED_SOURCE,
+            'manifest_sha256':m.CONTENT_SPEED_MANIFEST_SHA,'read_only':False,'phase':'complete','ssh_requested':True,
+            'ssh_started':True,'remote_outcome':'blocked_no_replay','status':'blocked_no_replay',
+            'parent_home':m.content_speed_parent_identity(),'predecessor_liveness':'unknown',
+            'historical_predecessor_zero_writes_proven':False,'parent_evidence':f.speed_parent,'remote':remote}
+        data,raw=HomeChildTransaction.archive(value)
+        terminal='synthetic retained original blocked_no_replay protected_changed; no new transaction'
+        pin=m.CONTENT_SPEED_INSPECT_FAILED|{'artifact_bytes':len(raw),'artifact_sha256':m.sha(raw),
+            'receipt_bytes':len(data),'receipt_sha256':m.sha(data),'terminal_body_sha256':m.sha(terminal.encode())}
+        with patch.object(m,'CONTENT_SPEED_INSPECT_FAILED',pin):
+            self.assertEqual(m.content_speed_inspect_failed_evidence(raw),value)
+            yield value,raw,terminal
+
+    def prohibit_writers(self,stack):
+        for name in ('content_speed','content_speed_admission','content_speed_remote_program',
+            'content_speed_rollback_remote_program','home_finish','home_child','home','handoff','site_update','update','install','rollback'):
+            stack.enter_context(patch.object(m,name,side_effect=AssertionError('writer reached from finite observer: '+name)))
+
+    def metadata(self,path,terminal):
+        identity=CONTENT_SPEED_INSPECT_IDENTITY;failed=m.CONTENT_SPEED_INSPECT_FAILED
+        owner={'user':{'id':226193297},'author_association':'OWNER'};run='/actions/runs/'+failed['run_id']
+        if path=='/git/ref/heads/main':return {'object':{'sha':identity['control_source_sha']}}
+        if path=='/compare/'+failed['control_source_sha']+'...'+identity['control_source_sha']:
+            return {'status':'ahead','behind_by':0,'merge_base_commit':{'sha':failed['control_source_sha']}}
+        if path==run:
+            return {'id':int(failed['run_id']),'head_sha':failed['control_source_sha'],'head_branch':'main','path':m.WORKFLOW,
+                'event':'issue_comment','run_attempt':1,'status':'completed','conclusion':'failure',
+                'actor':{'login':'pyatkoff'},'triggering_actor':{'login':'pyatkoff'},
+                'created_at':'2026-11-23T09:09:59Z','run_started_at':'2026-11-23T09:10:00Z','updated_at':'2026-11-23T09:31:09Z'}
+        if path.startswith(run+'/attempts/1/jobs?'):
+            steps=[{'name':name,'status':'completed','conclusion':conclusion,'started_at':start,'completed_at':end}
+                for name,conclusion,start,end in (
+                    ('Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803','success','2026-11-23T09:10:08Z','2026-11-23T09:10:10Z'),
+                    ('Run python3 tests/search3_public_install_test.py','success','2026-11-23T09:10:11Z','2026-11-23T09:27:32Z'),
+                    ('Run python3 scripts/deploy/search3_public_install.py content-speed','failure','2026-11-23T09:27:32Z','2026-11-23T09:31:04Z'),
+                    ('Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02','success','2026-11-23T09:31:04Z','2026-11-23T09:31:06Z'))]
+            return {'total_count':1,'jobs':[{'id':failed['job_id'],'run_id':int(failed['run_id']),
+                'head_sha':failed['control_source_sha'],'name':'public-install','status':'completed','conclusion':'failure',
+                'started_at':'2026-11-23T09:10:07Z','completed_at':'2026-11-23T09:31:08Z','steps':steps}]}
+        if path=='/actions/artifacts/'+str(failed['artifact_id']):
+            return {'id':failed['artifact_id'],'name':'search3-public-install-'+failed['run_id']+'-1','expired':False,
+                'size_in_bytes':failed['artifact_bytes'],'digest':'sha256:'+failed['artifact_sha256'],
+                'workflow_run':{'id':int(failed['run_id']),'head_sha':failed['control_source_sha']}}
+        mapped=path.replace(identity['control_source_sha'],CONTENT_SPEED_IDENTITY['control_source_sha'])
+        value=ContentSpeedContract().metadata(mapped)
+        if path=='/issues/4709/comments?per_page=100&page=2':
+            return value[:2]+[owner|{'id':failed['command_comment_id'],
+                'body':m.CONTENT_SPEED_PREFIX+' '+failed['control_source_sha']+' '+m.CONTENT_SPEED_OPERATION,
+                'created_at':failed['command_created_at'],'updated_at':failed['command_created_at']},
+                owner|{'id':failed['terminal_comment_id'],'body':terminal,
+                    'created_at':failed['terminal_created_at'],'updated_at':failed['terminal_created_at']},
+                content_speed_inspect_test_event()['comment']]
+        return value
+
+    def admit(self,f,failed,raw,terminal,change=None):
+        seen=[]
+        def api(path):
+            seen.append(path);value=self.metadata(path,terminal)
+            return change(path,value) if change else value
+        def download(artifact,digest):
+            self.assertEqual((artifact,digest),(m.CONTENT_SPEED_INSPECT_FAILED['artifact_id'],m.CONTENT_SPEED_INSPECT_FAILED['artifact_sha256']))
+            return raw
+        with contextlib.ExitStack() as stack:
+            self.prohibit_writers(stack)
+            stack.enter_context(patch.object(m,'api',side_effect=api))
+            reviewed=stack.enter_context(patch.object(m,'reviewed_control'))
+            stack.enter_context(patch.object(m,'SITE_PUBLISHER_GUARD_SHA',m.sha(b'guarded publisher')))
+            stack.enter_context(patch.object(m,'download',side_effect=download))
+            stack.enter_context(patch.object(m,'home_finish_admission',side_effect=AssertionError('do not readmit historical HOME')))
+            stack.enter_context(patch.object(m.carrier,'run',side_effect=AssertionError('admission may not connect')))
+            self.assertEqual(m.content_speed_inspect_admission(CONTENT_SPEED_INSPECT_IDENTITY),failed)
+            reviewed.assert_called_once_with(CONTENT_SPEED_INSPECT_IDENTITY['control_source_sha'])
+        return seen
+
+    def test_exact_readonly_identity_original_failure_pins_dispatch_and_timeout_preserve_writer_routes(self):
+        failed=m.CONTENT_SPEED_INSPECT_FAILED
+        self.assertEqual(failed['control_source_sha'],'18ad673f33ffa755e710eddd39ee3d8e3fe415c1')
+        self.assertEqual(failed['run_id'],'45144587023');self.assertEqual(failed['job_id'],137590617527)
+        self.assertEqual(failed['command_comment_id'],7096298383);self.assertEqual(failed['artifact_id'],14803869888)
+        self.assertEqual(failed['artifact_sha256'],'3c54cc83a526d874f6adda98a401c6d734c190888c207312a761cef14c738cef')
+        identity=CONTENT_SPEED_INSPECT_IDENTITY
+        env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id']}
+        self.assertEqual(m.content_speed_inspect_event_identity(content_speed_inspect_test_event(),env),identity)
+        for key,value in (('GITHUB_ACTOR','other'),('GITHUB_TRIGGERING_ACTOR','other'),('GITHUB_RUN_ATTEMPT','2'),
+            ('GITHUB_REF','refs/heads/topic'),('GITHUB_EVENT_NAME','workflow_dispatch'),
+            ('GITHUB_RUN_ID',failed['run_id']),('GITHUB_RUN_ID',m.CONTENT_SPEED_PARENT['run_id'])):
+            with self.subTest(environment=key,value=value),self.assertRaises(RuntimeError):
+                m.content_speed_inspect_event_identity(content_speed_inspect_test_event(),env|{key:value})
+        for mutate in (lambda e:e.update(action='edited'),lambda e:e['issue'].update(number=1719),
+            lambda e:e['issue'].update(pull_request={}),lambda e:e['comment']['user'].update(id=1),
+            lambda e:e['comment'].update(author_association='MEMBER'),
+            lambda e:e['comment'].update(id=failed['command_comment_id']),
+            lambda e:e['comment'].update(updated_at='2026-11-23T12:00:01Z'),
+            lambda e:e['comment'].update(body=e['comment']['body']+' extra'),
+            lambda e:e['comment'].update(body=e['comment']['body'].replace(identity['control_source_sha'],'0'*40))):
+            value=content_speed_inspect_test_event();mutate(value)
+            with self.subTest(event=mutate),self.assertRaises(RuntimeError):m.content_speed_inspect_event_identity(value,env)
+        tree=m.ast.parse((ROOT/'scripts/deploy/search3_public_install.py').read_text())
+        nodes=[node for node in tree.body if isinstance(node,m.ast.If) and any(isinstance(call,m.ast.Call)
+            and isinstance(call.func,m.ast.Name) and call.func.id=='content_speed_inspect' for call in m.ast.walk(node))]
+        self.assertEqual(len(nodes),1)
+        for arguments,expected in ((['content-speed-inspect'],1),([],0),(['content-speed'],0),
+            (['content-speed-rollback'],0),(['home-finish'],0),(['content-speed-inspect','extra'],0)):
+            called=[]
+            with self.subTest(arguments=arguments),patch.object(sys,'argv',['controller.py',*arguments]):
+                try:exec(compile(m.ast.Module(body=nodes,type_ignores=[]),'<actual-content-inspection-dispatch>','exec'),
+                    {'__name__':'__main__','content_speed_inspect':lambda:called.append(True)})
+                except SystemExit as stop:self.assertEqual(stop.code,0)
+            self.assertEqual(len(called),expected)
+        section=(ROOT/m.WORKFLOW).read_text().split('  public-install:\n',1)[1].split('  production-readiness-contracts:',1)[0]
+        exact="github.event.comment.body == format('/inspect-search3-content-guard {0} search3-content-guard-inspect-45144587023-v1', github.sha)"
+        self.assertEqual(section.count(exact),3);self.assertIn(exact+" && 'content-speed-inspect'",section)
+        self.assertNotIn("startsWith(github.event.comment.body, '/inspect-search3-content-guard",section)
+        timeout=next(row.strip().split(': ',1)[1] for row in section.splitlines() if row.strip().startswith('timeout-minutes:'))
+        expression=timeout.removeprefix('${{ ').removesuffix(' }}').replace('github.event.comment.body','body').replace(
+            'github.sha','control').replace('&&','and').replace('||','or')
+        command=content_speed_inspect_test_event()['comment']['body']
+        for body,minutes in ((command,30),(command+' extra',10),(command.replace(identity['control_source_sha'],'0'*40),10)):
+            observed=eval(expression,{'__builtins__':{}},{'body':body,'control':identity['control_source_sha'],
+                'format':lambda template,*args:template.format(*args),'startsWith':lambda a,b:a.startswith(b),
+                'endsWith':lambda a,b:a.endswith(b)})
+            self.assertEqual(observed,minutes)
+
+    def test_stable_real_filesystem_match_is_readonly_and_receipt_cannot_authorize_a_writer(self):
+        with self.fixture() as f:
+            before=self.snapshot(f)
+            with contextlib.ExitStack() as stack:
+                self.prohibit_writers(stack)
+                result=self.execute(f)
+            self.assertEqual(result['status'],'inspection_match');self.assertEqual(result['phase'],'complete')
+            self.assertTrue(m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,result))
+            self.assertRegex(result['observation_sha256'],r'^[a-f0-9]{64}$')
+            self.assertEqual(self.execute(f)['observation_sha256'],result['observation_sha256'])
+            self.assertEqual(self.snapshot(f),before)
+            public,private=m.content_speed_inspect_scope()
+            self.assertEqual(result['checked_public_paths'],list(public));self.assertEqual(len(private),5)
+            self.assertEqual(set(result['private_checks']),set(private.values()))
+            self.assertEqual(set(result['home_checks']),set(m.HOME_ORDER));self.assertEqual(len(m.HOME_ORDER),16)
+            self.assertEqual(set(result['ancestor_checks']),set(m.CONTENT_SPEED_INSPECT_ANCESTORS))
+            self.assertEqual(result['public_mismatches'],[]);self.assertEqual(result['home_mismatches'],[])
+            self.assertTrue(all(result[k] for k in ('parent_records_verified','snapshot_binding_verified',
+                'reconciliation_binding_verified','parent_records_stable','inventory_stable','failed_namespace_absent',
+                'rollback_namespace_absent','inspection_namespace_absent','closure_verified','guard_matches',
+                'home_targets_verified','ancestor_records_match','home_parent_verified')))
+            for key in ('server_writes','supplier_calls','database_reads','database_writes','lead_calls','booking_calls','application_calls'):
+                self.assertIs(type(result[key]),int);self.assertEqual(result[key],0)
+            self.assertFalse(f.speed_private.exists());self.assertFalse(f.speed_rollback.exists())
+            self.assertFalse((f.private.parent/m.CONTENT_SPEED_INSPECT_OPERATION).exists())
+            self.assertEqual(result['predecessor_liveness'],'unknown');self.assertFalse(result['historical_predecessor_zero_writes_proven'])
+            with self.assertRaises(RuntimeError):m.valid_content_speed_result(CONTENT_SPEED_INSPECT_IDENTITY,result)
+            mutations=(lambda v:v.update(server_writes=True),lambda v:v.update(database_reads=1),
+                lambda v:v.update(read_only=False),lambda v:v['failed_attempt'].update(attempt=True),
+                lambda v:v['parent_home'].update(run_id='123456'),lambda v:v.update(closure_custody_sha256='0'*64),
+                lambda v:v.update(parent_records_verified=False),lambda v:v.update(snapshot_binding_verified=False),
+                lambda v:v.update(failed_namespace_absent=False),lambda v:v.update(inventory_stable=False),
+                lambda v:v.update(home_parent_verified=False),lambda v:v.update(status='inspection_mismatch'),
+                lambda v:v.pop('observation_sha256'),lambda v:v.update(observation_sha256=None),
+                lambda v:v.update(observation_sha256='z'*64),lambda v:v.update(observation_sha256=True),
+                lambda v:v['checked_public_paths'].pop(),lambda v:v['home_checks'].pop(m.CONTENT_SPEED_PATH),
+                lambda v:v['private_checks']['public_config'].update(sha256='0'*64),
+                lambda v:v.update(reason='content_speed_inspection_race'),lambda v:v.update(unreviewed=True))
+            for mutate in mutations:
+                value=copy.deepcopy(result);mutate(value)
+                with self.subTest(receipt=mutate),self.assertRaises(RuntimeError):
+                    m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,value)
+
+    def test_stable_public_bytes_stat_inode_home_and_private_drift_are_distinguished_without_leaking_secrets(self):
+        with self.fixture() as f:
+            baseline_digest=self.execute(f)['observation_sha256']
+            stat_path='data/db-v1.php';bytes_path='data/price-confidence-v1.php';inode_path='data/price-intelligence-v1.php'
+            path=f.root/stat_path;stamp=path.stat();original_bytes=path.read_bytes()
+            os.utime(path,ns=(stamp.st_atime_ns,stamp.st_mtime_ns+1000000))
+            self.assertEqual(path.read_bytes(),original_bytes)
+            (f.root/bytes_path).write_bytes(b'public helper drift with changed bytes\n')
+            path=f.root/inode_path;stamp=path.stat();original_bytes=path.read_bytes()
+            displaced=path.with_name('synthetic-foreign-helper.php');displaced.write_bytes(original_bytes)
+            displaced.chmod(stat.S_IMODE(stamp.st_mode));os.utime(displaced,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+            os.replace(displaced,path);self.assertNotEqual(path.stat().st_ino,stamp.st_ino)
+            home=f.root/m.CONTENT_SPEED_PATH;home.write_bytes(home.read_bytes()+b'\nforeign HOME target bytes\n')
+            secret=b'synthetic-private-guard-secret-never-emit';private=f.root/'config.php'
+            private.write_bytes(secret);private_digest=m.sha(secret);before=self.snapshot(f)
+            result=self.execute(f);self.assertEqual(result['status'],'inspection_mismatch')
+            self.assertTrue(m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,result))
+            self.assertRegex(result['observation_sha256'],r'^[a-f0-9]{64}$')
+            self.assertNotEqual(result['observation_sha256'],baseline_digest)
+            self.assertEqual(self.snapshot(f),before);self.assertTrue(result['inventory_stable'])
+            self.assertTrue(result['parent_records_stable']);self.assertFalse(result['guard_matches'])
+            self.assertFalse(result['home_targets_verified']);self.assertFalse(result['home_parent_verified'])
+            self.assertTrue(result['ancestor_records_match'])
+            rows={row['path']:row for row in result['public_mismatches']}
+            self.assertEqual(set(rows),{stat_path,bytes_path,inode_path})
+            self.assertEqual(rows[stat_path]['changed_row_fields'],[])
+            self.assertEqual(rows[stat_path]['expected'],rows[stat_path]['observed'])
+            self.assertIn('st_mtime_ns',rows[stat_path]['changed_stat_fields'])
+            self.assertNotIn('st_ino',rows[stat_path]['changed_stat_fields'])
+            self.assertIn('sha256',rows[bytes_path]['changed_row_fields']);self.assertIn('size',rows[bytes_path]['changed_row_fields'])
+            self.assertEqual(rows[inode_path]['changed_row_fields'],[])
+            self.assertIn('st_ino',rows[inode_path]['changed_stat_fields'])
+            self.assertNotIn('st_mtime_ns',rows[inode_path]['changed_stat_fields'])
+            self.assertEqual([row['path'] for row in result['home_mismatches']],[m.CONTENT_SPEED_PATH])
+            self.assertIn('sha256',result['home_mismatches'][0]['changed_row_fields'])
+            self.assertNotIn('st_ctime_ns',result['home_mismatches'][0]['changed_stat_fields'])
+            self.assertFalse(result['home_checks'][m.CONTENT_SPEED_PATH]['matches_row'])
+            self.assertTrue(result['home_checks'][m.CONTENT_SPEED_PATH]['snapshot_matches'])
+            self.assertTrue(result['home_checks'][m.CONTENT_SPEED_PATH]['stage_matches'])
+            secret_row=result['private_checks']['public_config']
+            self.assertEqual(set(secret_row),{'readable','present','expected_present','matches_row','matches_identity',
+                'changed_row_fields','changed_stat_fields'})
+            self.assertTrue(secret_row['readable']);self.assertFalse(secret_row['matches_row'])
+            self.assertIn('sha256',secret_row['changed_row_fields']);encoded=json.dumps(result,sort_keys=True)
+            for prohibited in (secret.decode(),private_digest,str(f.home),f.secret.decode(),m.sha(f.secret),'"config.php"'):
+                self.assertNotIn(prohibited,encoded)
+            self.assertFalse(f.speed_private.exists());self.assertFalse(f.speed_rollback.exists())
+            self.assertFalse((f.private.parent/m.CONTENT_SPEED_INSPECT_OPERATION).exists())
+            for mutate in (lambda v:v.update(status='inspection_match'),lambda v:v.update(guard_matches=True),
+                lambda v:v['public_mismatches'].append(copy.deepcopy(v['public_mismatches'][0])),
+                lambda v:v['public_mismatches'][0].update(path='config.php'),
+                lambda v:v['public_mismatches'][0].update(changed_row_fields=['sha256']),
+                lambda v:v['private_checks']['public_config'].update(matches_row=True),
+                lambda v:v['home_checks'][m.CONTENT_SPEED_PATH].update(matches_row=True)):
+                changed=copy.deepcopy(result);mutate(changed)
+                with self.subTest(receipt=mutate),self.assertRaises(RuntimeError):
+                    m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,changed)
+
+    def test_second_read_races_and_existing_or_appearing_namespaces_never_become_verified_or_create_records(self):
+        for kind in ('public-stat','private-bytes','home-inode','parent-record','closed','new-inspection-namespace'):
+            with self.subTest(race=kind),self.fixture() as f:
+                paths={'public-stat':f.root/'data/db-v1.php','private-bytes':f.root/'config.php',
+                    'home-inode':f.root/m.CONTENT_SPEED_PATH,'parent-record':f.finish_private/'result.json',
+                    'closed':f.child_private/m.HOME_FINISH_CLOSED_PATH,
+                    'new-inspection-namespace':f.private.parent/m.CONTENT_SPEED_INSPECT_OPERATION}
+                path=paths[kind];before=self.snapshot(f)
+                if kind=='new-inspection-namespace':code=f' os.mkdir({str(path)!r},0o700)\n'
+                elif kind=='private-bytes':code=f" with open({str(path)!r},'wb') as _race:_race.write(b'private injected race secret')\n"
+                elif kind=='home-inode':
+                    code=(f" _race_path={str(path)+'.foreign'!r}\n with open(_race_path,'xb') as _race:_race.write(open({str(path)!r},'rb').read())\n"
+                          f" os.chmod(_race_path,0o644);os.replace(_race_path,{str(path)!r})\n")
+                else:code=f" _race=os.stat({str(path)!r});os.utime({str(path)!r},ns=(_race.st_atime_ns,_race.st_mtime_ns+1000000))\n"
+                result=self.execute(f,change=lambda program:ContentSpeedContract().replace_anchor(program,
+                    ' confirmed=content_speed_inspect_read(snapshot)\n',code))
+                self.assertEqual(result['status'],'inspection_unknown');self.assertEqual(result['phase'],'preflight')
+                self.assertIsNone(result['observation_sha256'])
+                self.assertFalse(m.valid_content_speed_inspect_result(CONTENT_SPEED_INSPECT_IDENTITY,result))
+                self.assertFalse(any(result[k] for k in ('guard_matches','home_targets_verified','ancestor_records_match','home_parent_verified')))
+                self.assertEqual(result['server_writes'],0);self.assertTrue(result['parent_records_verified'])
+                self.assertFalse(f.speed_private.exists());self.assertFalse(f.speed_rollback.exists())
+                namespace=f.private.parent/m.CONTENT_SPEED_INSPECT_OPERATION
+                self.assertEqual(namespace.exists(),kind=='new-inspection-namespace')
+                if namespace.exists():self.assertEqual(list(namespace.iterdir()),[])
+                after=self.snapshot(f)
+                changed={name for name in set(before)|set(after) if before.get(name)!=after.get(name)}
+                relative='home/'+str(path.relative_to(f.home))
+                # The injected filesystem mutation is the only possible change; directory
+                # metadata can also change when the fixture injects a new inode or namespace.
+                allowed={relative,'home/'+str(path.parent.relative_to(f.home))}
+                self.assertTrue(changed);self.assertLessEqual(changed,allowed)
+                self.assertNotIn('private injected race secret',json.dumps(result))
+        for operation,flag in ((m.CONTENT_SPEED_OPERATION,'failed_namespace_absent'),
+            (m.CONTENT_SPEED_ROLLBACK_OPERATION,'rollback_namespace_absent'),
+            (m.CONTENT_SPEED_INSPECT_OPERATION,'inspection_namespace_absent')):
+            with self.subTest(existing=operation),self.fixture() as f:
+                namespace=f.private.parent/operation;namespace.mkdir(mode=0o700);before=self.snapshot(f)
+                result=self.execute(f)
+                self.assertEqual(result['status'],'inspection_blocked');self.assertFalse(result[flag])
+                self.assertIsNone(result['observation_sha256'])
+                self.assertFalse(result['parent_records_verified']);self.assertEqual(result['server_writes'],0)
+                self.assertEqual(self.snapshot(f),before);self.assertEqual(list(namespace.iterdir()),[])
+
+    def test_only_original_native_failed_attempt_full_history_and_exact_retained_artifact_admit_the_observer(self):
+        with self.fixture() as f,self.failed(f) as (failed,raw,terminal):
+            before=self.snapshot(f);seen=self.admit(f,failed,raw,terminal)
+            self.assertIn('/issues/4709/comments?per_page=100&page=2',seen)
+            pin=m.CONTENT_SPEED_INSPECT_FAILED;run='/actions/runs/'+pin['run_id'];jobs=run+'/attempts/1/jobs?'
+            self.assertIn(run,seen);self.assertIn('/actions/artifacts/'+str(pin['artifact_id']),seen)
+            self.assertIn('/actions/runs/'+m.CONTENT_SPEED_PARENT['run_id'],seen)
+            self.assertEqual(m.content_speed_inspect_failed_value(failed),f.speed_parent)
+            comments='/issues/4709/comments?per_page=100&page=2'
+            cases=((run,lambda v:v.update(run_attempt=2)),(run,lambda v:v.update(run_attempt=True)),
+                (run,lambda v:v.update(conclusion='cancelled')),(run,lambda v:v.update(conclusion='success')),
+                (run,lambda v:v.update(head_sha='0'*40)),(run,lambda v:v.update(event='workflow_dispatch')),
+                (run,lambda v:v['triggering_actor'].update(login='other')),
+                (jobs,lambda v:v['jobs'][0].update(id=1)),(jobs,lambda v:v['jobs'][0].update(head_sha='0'*40)),
+                (jobs,lambda v:v['jobs'][0]['steps'][1].update(conclusion='skipped')),
+                (jobs,lambda v:v['jobs'][0]['steps'][2].update(conclusion='success')),
+                (jobs,lambda v:v['jobs'][0]['steps'][3].update(conclusion='failure')),
+                (jobs,lambda v:v['jobs'][0]['steps'][2].update(name='Run python3 scripts/deploy/search3_public_install.py content-speed-inspect')),
+                (jobs,lambda v:v['jobs'][0]['steps'].append(copy.deepcopy(v['jobs'][0]['steps'][2]))),
+                (jobs,lambda v:v['jobs'][0]['steps'][2].update(started_at='2026-11-23T09:10:00Z')),
+                ('/actions/artifacts/'+str(pin['artifact_id']),lambda v:v.update(expired=True)),
+                ('/actions/artifacts/'+str(pin['artifact_id']),lambda v:v.update(digest='sha256:'+'0'*64)),
+                ('/actions/artifacts/'+str(pin['artifact_id']),lambda v:v['workflow_run'].update(head_sha='0'*40)),
+                ('/git/ref/heads/main',lambda v:v['object'].update(sha='0'*40)),
+                ('/compare/'+pin['control_source_sha']+'...'+CONTENT_SPEED_INSPECT_IDENTITY['control_source_sha'],
+                    lambda v:v.update(behind_by=1)),
+                ('/commits/'+m.CONTENT_SPEED_SOURCE+'/check-runs?',lambda v:v['check_runs'][0].update(conclusion='failure')),
+                (comments,lambda v:next(c for c in v if c['id']==pin['command_comment_id']).update(updated_at='2026-11-23T09:10:00Z')),
+                (comments,lambda v:next(c for c in v if c['id']==pin['command_comment_id']).update(author_association='MEMBER')),
+                (comments,lambda v:next(c for c in v if c['id']==pin['terminal_comment_id']).update(body=terminal+' edited')),
+                (comments,lambda v:next(c for c in v if c['id']==CONTENT_SPEED_INSPECT_IDENTITY['command_comment_id']).update(updated_at='2026-11-23T12:00:01Z')),
+                (comments,lambda v:v.append(content_speed_inspect_test_event()['comment']|{'id':100999})),
+                (comments,lambda v:v.append({'id':100998,'body':m.CONTENT_SPEED_ROLLBACK_PREFIX+' '+'0'*40+' '+pin['run_id']+' '+m.CONTENT_SPEED_ROLLBACK_OPERATION})),
+                (comments,lambda v:v.append({'id':100000,'body':'duplicate preceding history page'})))
+            for fragment,mutate in cases:
+                def change(path,value):
+                    if path==fragment or fragment.endswith('?') and path.startswith(fragment):mutate(value)
+                    return value
+                with self.subTest(admission=fragment,mutation=mutate),self.assertRaises(RuntimeError):
+                    self.admit(f,failed,raw,terminal,change)
+            with self.assertRaises(RuntimeError):m.content_speed_inspect_failed_evidence(raw+b'foreign')
+            for mutate in (lambda v:v.update(status='unknown_no_replay'),lambda v:v.update(ssh_started='unknown'),
+                lambda v:v['remote'].update(reservation_created=True),lambda v:v['remote'].update(written_files=[m.CONTENT_SPEED_PATH]),
+                lambda v:v['remote'].update(reason='operation_failed'),lambda v:v['remote'].update(closure_verified=False),
+                lambda v:v['remote'].update(supplier_calls=False),lambda v:v['parent_evidence'].update(status='blocked_no_replay')):
+                value=copy.deepcopy(failed);mutate(value);data,packet=HomeChildTransaction.archive(value)
+                changed=pin|{'artifact_bytes':len(packet),'artifact_sha256':m.sha(packet),'receipt_bytes':len(data),'receipt_sha256':m.sha(data)}
+                with self.subTest(evidence=mutate),patch.object(m,'CONTENT_SPEED_INSPECT_FAILED',changed),self.assertRaises(RuntimeError):
+                    m.content_speed_inspect_failed_evidence(packet)
+            self.assertEqual(self.snapshot(f),before)
+
+    def test_client_checkpoints_unknown_before_transport_and_accepts_only_strict_stable_reader_results(self):
+        with self.fixture() as f,self.failed(f) as (failed,raw,terminal):
+            matched=self.execute(f);self.assertEqual(matched['status'],'inspection_match')
+            path=f.root/'data/db-v1.php';stamp=path.stat();os.utime(path,ns=(stamp.st_atime_ns,stamp.st_mtime_ns+1000000))
+            mismatched=self.execute(f);self.assertEqual(mismatched['status'],'inspection_mismatch');server=self.snapshot(f)
+            cases=('match','mismatch','admission-initial','admission-recheck','original-changed','dependency-recheck',
+                'checkpoint-failure','transport-timeout','invalid-json','bool-counter','over-limit','final-head')
+            for case in cases:
+                runner=f.base/('guard-observer-client-'+case);runner.mkdir();event_path=runner/'event.json'
+                event_path.write_text(json.dumps(content_speed_inspect_test_event()));identity=CONTENT_SPEED_INSPECT_IDENTITY
+                env=environment()|{'GITHUB_SHA':identity['control_source_sha'],'GITHUB_RUN_ID':identity['run_id'],
+                    'RUNNER_TEMP':str(runner),'GITHUB_EVENT_PATH':str(event_path),'PREVIEW_HOST':'example.invalid',
+                    'PREVIEW_USER':'fixture','PREVIEW_KEY':'PRIVATE KEY synthetic readonly guard observer'}
+                accepted=mismatched if case=='mismatch' else matched;response=json.dumps(accepted).encode()
+                calls=[];admissions=[];checkpoint_failed=False
+                if case=='invalid-json':response=response[:-1]
+                elif case=='bool-counter':response=json.dumps(accepted|{'server_writes':False}).encode()
+                elif case=='over-limit':response=b' '*(m.CONTENT_SPEED_INSPECT_RECEIPT_LIMIT+1)
+                def admission(current):
+                    self.assertEqual(current,identity)
+                    durable=json.loads((runner/'search3-public-install/evidence.json').read_bytes());admissions.append(durable)
+                    self.assertFalse(durable['ssh_requested']);self.assertNotIn('remote',durable)
+                    self.assertTrue(durable['read_only'])
+                    self.assertEqual(durable['phase'],'admission' if len(admissions)==1 else 'connection_preparation')
+                    if case=='admission-initial' and len(admissions)==1 or case=='admission-recheck' and len(admissions)==2:
+                        raise RuntimeError('synthetic observer admission failure')
+                    value=copy.deepcopy(failed)
+                    if case=='original-changed' and len(admissions)==2:value['remote']['closure_verified']=False
+                    return value
+                checkpoint=m.home_finish_checkpoint
+                def checkpoint_call(work,evidence):
+                    nonlocal checkpoint_failed
+                    if case=='checkpoint-failure' and evidence['phase']=='remote_requested' and not checkpoint_failed:
+                        checkpoint_failed=True;raise OSError('synthetic observer checkpoint failure')
+                    checkpoint(work,evidence)
+                def transport(arguments,**kwargs):
+                    calls.append(arguments[0])
+                    if arguments[0]=='ssh-keyscan':return b'fixture known host'
+                    self.assertEqual(arguments[0],'ssh');self.assertEqual(arguments[-1],'python3 -I -S -B -')
+                    self.assertEqual(kwargs['timeout'],180);self.assertIn(b'INSPECTION_OPERATION=',kwargs['input'])
+                    path=runner/'search3-public-install/evidence.json';durable=json.loads(path.read_bytes())
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode),0o600)
+                    self.assertEqual(durable['status'],'inspection_unknown');self.assertEqual(durable['phase'],'remote_requested')
+                    self.assertTrue(durable['ssh_requested']);self.assertEqual(durable['ssh_started'],'unknown')
+                    self.assertEqual(durable['remote_outcome'],'unknown');self.assertNotIn('remote',durable)
+                    self.assertNotIn('server_writes',durable);self.assertNotIn('supplier_calls',durable)
+                    self.assertNotIn('parent_evidence',durable);self.assertEqual(durable['failed_attempt'],m.CONTENT_SPEED_INSPECT_FAILED)
+                    if case=='transport-timeout':raise subprocess.TimeoutExpired(arguments,180)
+                    return response
+                dependency=[copy.deepcopy(f.tv_evidence),copy.deepcopy(f.tv_evidence)]
+                if case=='dependency-recheck':dependency[1]['artifact_sha256']='0'*64
+                with self.subTest(client=case),contextlib.ExitStack() as stack:
+                    self.prohibit_writers(stack)
+                    stack.enter_context(patch.dict(os.environ,env));stack.enter_context(patch('builtins.print'))
+                    stack.enter_context(patch.object(m,'content_speed_inspect_admission',side_effect=admission))
+                    stack.enter_context(patch.object(m,'tv_successor_evidence',side_effect=dependency))
+                    heads=stack.enter_context(patch.object(m,'content_speed_inspect_heads',side_effect=
+                        RuntimeError('synthetic observer final head moved') if case=='final-head' else None))
+                    stack.enter_context(patch.object(m,'home_finish_checkpoint',side_effect=checkpoint_call))
+                    stack.enter_context(patch.object(m.carrier,'run',side_effect=transport))
+                    if case in ('match','mismatch'):m.content_speed_inspect()
+                    else:
+                        with self.assertRaises(RuntimeError):m.content_speed_inspect()
+                expected=[] if case=='admission-initial' else ['ssh-keyscan'] if case in (
+                    'admission-recheck','original-changed','dependency-recheck','checkpoint-failure') else ['ssh-keyscan','ssh']
+                self.assertEqual(calls,expected)
+                value=json.loads((runner/'search3-public-install/evidence.json').read_bytes())
+                requested=case not in ('admission-initial','admission-recheck','original-changed','dependency-recheck')
+                self.assertEqual(value['status'],accepted['status'] if case in ('match','mismatch') else
+                    'inspection_unknown' if requested else 'inspection_blocked')
+                self.assertEqual(value['ssh_requested'],requested);self.assertTrue(value['read_only'])
+                self.assertEqual(value['predecessor_liveness'],'unknown');self.assertFalse(value['historical_predecessor_zero_writes_proven'])
+                if case in ('match','mismatch','final-head'):
+                    self.assertEqual(value['remote'],accepted);heads.assert_called_once_with(identity)
+                    self.assertIs(value['ssh_started'],True);self.assertEqual(value['remote_outcome'],accepted['status'])
+                else:
+                    self.assertNotIn('remote',value);heads.assert_not_called()
+                    self.assertEqual(value['ssh_started'],'unknown');self.assertEqual(value['remote_outcome'],'unknown')
+                for secret in (f.secret.decode(),str(f.home),env['PREVIEW_KEY']):self.assertNotIn(secret,json.dumps(value))
+                self.assertTrue(all(not (runner/'search3-public-install'/name).exists() for name in ('key','known','evidence.pending')))
+                self.assertEqual(self.snapshot(f),server)
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)
