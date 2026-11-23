@@ -4735,6 +4735,298 @@ class Local7CurrentRegistrationTest(unittest.TestCase):
         self.assertEqual('incomplete_sources',m.l7c_project(result['overflow'],m.LOCAL7_CURRENT_REGISTRATION)['rows'][6]['state'])
 
 
+class Local7CurrentInputsTest(unittest.TestCase):
+    def failed_raw(self):
+        # Exact failed stock receipt, not the pretty GitHub artifact.
+        value=dict(schema_version=1,operation_id='int-andromeda-match-retained-current-20261123-v2',
+            source_sha='3207266e17ed4e8244aaf28d05b962747fd4cd3c',mode='match-retained-current',
+            status='unknown_no_replay',reason='local7_current_input_pins',supplier_calls=0,
+            database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,
+            production_before={'index.php':'bef590b35ec45d2ac21a5c41c1d6d49bd36da25798e720aa2d23dca152d3688c',
+                'v2/api-v2.php':None,'v2/index.php':None,'v2/lead-adapter-v2.php':None})
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+        self.assertEqual(503,len(raw))
+        self.assertEqual('c9ee334340a7b1347da5d1ee3f8fcfa384f9ea7e9608e3b7a7adc5f59543941e',hashlib.sha256(raw).hexdigest())
+        return raw
+
+    def command(self):
+        c=core();m.register_parser(c);p=m.LOCAL7_CURRENT_INPUTS
+        body=c.PREFIX+' '.join(p[k] for k in ('source_sha','mode','operation_id','cohort','parent_operation_id'))
+        return c,c.parse_command(body),body
+
+    def fixture(self,root,stock=False,mismatch=False):
+        profile=copy.deepcopy(m.LOCAL7_CURRENT_INPUTS);home=root/'home'
+        private=home/'.anytoour-int-executor';private.mkdir(parents=True)
+        project=home/'www/anytoour.ru';(project/'data').mkdir(parents=True)
+        failed=private/profile['parent_operation_id'];failed.mkdir()
+        parent=private/profile['hash_parent_operation_id'];parent.mkdir()
+        op=private/profile['operation_id']
+        if not stock:op.mkdir()
+        paths={'failed/result.json':failed/'result.json','failed/reservation.json':failed/'reservation.json',
+               'parent/result.json':parent/'result.json','data/db-v1.php':project/'data/db-v1.php',
+               'data/local-tv-catalog-v1.php':project/'data/local-tv-catalog-v1.php'}
+        paths['failed/result.json'].write_bytes(self.failed_raw())
+        paths['failed/reservation.json'].write_bytes(json.dumps(dict(operation_id=profile['parent_operation_id'],
+            source_sha=profile['source_sha'],mode='match-retained-current',reserved_at=1795466999),sort_keys=True).encode())
+        # Hash-only files are deliberately invalid JSON/PHP and contain private sentinels.
+        for i,name in enumerate(profile['expected_hashes']):
+            paths[name].write_bytes(b'\xff\x00PRIVATE_HASH_ONLY_DO_NOT_PARSE_'+str(i).encode())
+        profile['expected_hashes']={name:hashlib.sha256(paths[name].read_bytes()).hexdigest()
+                                   for name in profile['expected_hashes']}
+        if mismatch:paths['parent/result.json'].write_bytes(b'PRIVATE_CHANGED_PARENT_NOW')
+        for path in (project/'config.php',parent/'retained-raw.ndjson',failed/'local7-current-raw.json'):
+            path.write_bytes(b'PRIVATE_FORBIDDEN_INPUT')
+        ledgers=home/'.anytoour-match';ledgers.mkdir()
+        (ledgers/'retained-selection-claims.json').write_bytes(b'PRIVATE_FORBIDDEN_LEDGER')
+        _,command,_=self.command()
+        space=dict(LOCAL7_REGISTRATION=m.LOCAL7_REGISTRATION,LOCAL7_CURRENT_INPUTS=profile,L7I_FILES=m.L7I_FILES,
+            private=private,op=op,project=project,home=home,payload=dict(command,match_retained_control_sha=CONTROL),
+            operation=op.name,source=profile['source_sha'],mode=profile['mode'],json=json,hashlib=hashlib,os=os,
+            pathlib=__import__('pathlib'),re=__import__('re'),subprocess=subprocess,time=__import__('time'),
+            safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound,
+            fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)))
+        exec(m.LOCAL7_VALIDATOR+m.LOCAL7_CURRENT_INPUTS_VALIDATOR+m.LOCAL7_CURRENT_INPUTS_HANDLER,space)
+        return profile,space,home,root/'unused-stage',failed,op,paths
+
+    def forbidden_io(self,home):
+        from contextlib import ExitStack
+        stack=ExitStack()
+        for obj,name in ((subprocess,'run'),(subprocess,'Popen')):
+            stack.enter_context(mock.patch.object(obj,name,side_effect=AssertionError('no PHP/SQL/collector child')))
+        for name in ('urllib.request.urlopen','urllib.request.build_opener','socket.create_connection','socket.socket'):
+            stack.enter_context(mock.patch(name,side_effect=AssertionError('no HTTP/network')))
+        blocked={home/'www/anytoour.ru/config.php',
+            home/'.anytoour-int-executor'/m.LOCAL7_CURRENT_INPUTS['hash_parent_operation_id']/'retained-raw.ndjson',
+            home/'.anytoour-int-executor'/m.LOCAL7_CURRENT_INPUTS['parent_operation_id']/'local7-current-raw.json',
+            home/'.anytoour-match/retained-selection-claims.json'}
+        original_open=os.open;original_io=io.open;original_builtin=__import__('builtins').open
+        def check(path,dir_fd=None):
+            if isinstance(path,(str,bytes,os.PathLike)):
+                full=Path(os.fsdecode(path))
+                if not full.is_absolute() and dir_fd is not None:full=Path(os.readlink('/proc/self/fd/'+str(dir_fd)))/full
+                if full in blocked:raise AssertionError('forbidden file read: '+str(full))
+        def checked_os(path,flags,*args,**kwargs):
+            check(path,kwargs.get('dir_fd'));return original_open(path,flags,*args,**kwargs)
+        def checked_io(path,*args,**kwargs):check(path);return original_io(path,*args,**kwargs)
+        def checked_builtin(path,*args,**kwargs):check(path);return original_builtin(path,*args,**kwargs)
+        stack.enter_context(mock.patch.object(os,'open',side_effect=checked_os))
+        stack.enter_context(mock.patch.object(io,'open',side_effect=checked_io))
+        stack.enter_context(mock.patch('builtins.open',side_effect=checked_builtin))
+        return stack
+
+    def result(self,evidence):
+        _,command,_=self.command()
+        production={name:'a'*64 for name in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        return dict({key:command[key] for key in ('operation_id','source_sha','mode')},schema_version=1,
+            status='complete',supplier_calls=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,
+            production_before=production,production_after=copy.deepcopy(production),production_unchanged=True,
+            match_retained=evidence)
+
+    def rehash(self,result):
+        evidence=result['match_retained'];evidence['evidence_sha256']=hashlib.sha256(m.canonical(evidence['data'])).hexdigest()
+
+    def test_exact_admission_original_failure_pin_and_prior_routes_preserved(self):
+        p=m.LOCAL7_CURRENT_INPUTS;self.failed_raw()
+        self.assertEqual('int-andromeda-match-retained-readback-20261123-v2',p['operation_id'])
+        self.assertEqual('local7-current-input-pin-reconcile-20261123',p['cohort'])
+        self.assertEqual('int-andromeda-match-retained-current-20261123-v2',p['parent_operation_id'])
+        self.assertEqual('3207266e17ed4e8244aaf28d05b962747fd4cd3c',p['source_sha'])
+        self.assertEqual('match-retained-readback',p['mode'])
+        c,command,body=self.command()
+        for index in range(5):
+            fields=body[len(c.PREFIX):].split();fields[index]='wrong'
+            with self.subTest(field=index),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(fields))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        for old in (m.LOCAL7_REGISTRATION,m.LOCAL7_CURRENT_REGISTRATION):
+            text=c.PREFIX+' '.join(old[k] for k in ('source_sha','mode','operation_id','cohort','parent_operation_id'))
+            self.assertEqual(old['operation_id'],c.parse_command(text)['operation_id'])
+        originals={key:copy.deepcopy(getattr(m,key)) for key in
+            ('SOURCE_HASHES','LOCAL7_REGISTRATION','LOCAL7_CURRENT_REGISTRATION','LOCAL9_APPLY','LOCAL19_APPLY')}
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,command)
+        ast.parse(c.REMOTE)
+        self.assertEqual(originals,{key:getattr(m,key) for key in originals})
+        self.assertEqual(m.bundle_source,c.bundle_source)
+        import base64,zlib
+        encoded=base64.b64encode(zlib.compress(c.REMOTE.encode(),9)).decode()
+        transport="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(transport.encode()),65536)
+
+
+    def test_hash_only_mismatch_and_all_match_now_preserve_historical_unknown(self):
+        for mismatch in (False,True):
+            with self.subTest(mismatch=mismatch),tempfile.TemporaryDirectory() as td:
+                root=Path(td);profile,space,home,stage,failed,op,paths=self.fixture(root,mismatch=mismatch)
+                before={p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                with self.forbidden_io(home):evidence=space['current_local7_input_reconciliation'](stage)
+                data=evidence['data']
+                self.assertEqual('filesystem_input_pin_reconciliation',data['state'])
+                self.assertEqual('observed_mismatch' if mismatch else 'no_current_mismatch_observed',data['outcome'])
+                self.assertEqual(['parent/result.json'] if mismatch else [],data['mismatches'])
+                self.assertEqual([],data['incomplete'])
+                self.assertEqual(set(paths),set(data['files']))
+                self.assertEqual('unknown_no_replay',data['failed_receipt']['status'])
+                self.assertIs(True,data['historical_unknown_preserved']);self.assertIs(False,data['original_execution_replayed'])
+                self.assertIs(True,data['no_replay']);self.assertIs(True,data['protected_inputs_unchanged'])
+                for key in m.L7_ZERO:self.assertIs(type(data[key]),int);self.assertEqual(0,data[key])
+                for key in m.L7_FALSE+('publication_admission','pin_update_authority','runtime_resume_authority'):
+                    self.assertIs(False,data[key])
+                self.assertNotIn('PRIVATE_',json.dumps(evidence))
+                self.assertEqual(before,{p:p.read_bytes() for p in before})
+                new_files={p for p in root.rglob('*') if p.is_file()}-set(before)
+                self.assertTrue(new_files)
+                self.assertTrue(all(p.is_relative_to(op) and p.stat().st_mode&0o777==0o600 for p in new_files))
+                _,command,_=self.command()
+                with mock.patch.dict(m.LOCAL7_CURRENT_INPUTS,profile,clear=True):
+                    self.assertTrue(m.completed_local7_current_inputs(command,self.result(evidence),CONTROL))
+                    self.assertTrue(m.completed_result(command,self.result(evidence),CONTROL))
+
+    def test_full_activated_stock_remote_bundle_serialization_reservation_and_no_replay(self):
+        for mismatch in (False,True):
+            with self.subTest(mismatch=mismatch),tempfile.TemporaryDirectory() as td:
+                root=Path(td);profile,space,home,stage,failed,op,paths=self.fixture(root,stock=True,mismatch=mismatch)
+                project=home/'www/anytoour.ru';(project/'_preview/search3-anex-candidate').mkdir(parents=True)
+                for rel in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+                    path=project/rel;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('UNCHANGED_'+rel)
+                with mock.patch.dict(m.LOCAL7_CURRENT_INPUTS,profile,clear=True):
+                    c,command,body=self.command()
+                    with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,command)
+                    bundle,manifest=c.bundle_source(SOURCE);self.assertEqual(m.SOURCE_HASHES,manifest)
+                    archive=root/'source.tar.gz';archive.write_bytes(bundle)
+                    payload=dict(command,archive=str(archive),manifest_sha256=hashlib.sha256(m.canonical(manifest)).hexdigest())
+                    before={p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                    def execute():
+                        output=io.StringIO()
+                        with mock.patch.object(Path,'home',return_value=home),self.forbidden_io(home), \
+                                mock.patch.object(sys,'stdin',io.StringIO(json.dumps(payload))),mock.patch.object(sys,'stdout',output):
+                            exec(compile(c.REMOTE,'<local7-inputs-stock-remote>','exec'),{})
+                        return json.loads(output.getvalue())
+                    result=execute();self.assertEqual('complete',result['status'],result.get('reason'))
+                    self.assertTrue(c.completed_result(command,result))
+                    self.assertTrue(m.completed_result(command,result,CONTROL))
+                    self.assertTrue(m.completed_local7_current_inputs(command,result,CONTROL))
+                    self.assertEqual('observed_mismatch' if mismatch else 'no_current_mismatch_observed',result['match_retained']['data']['outcome'])
+                    self.assertEqual(before,{p:p.read_bytes() for p in before})
+                    self.assertEqual(result['production_before'],result['production_after'])
+                    self.assertIs(True,result['production_unchanged'])
+                    reserved=json.loads((op/'reservation.json').read_bytes())
+                    self.assertEqual({k:command[k] for k in ('operation_id','source_sha','mode')},
+                                     {k:reserved[k] for k in ('operation_id','source_sha','mode')})
+                    self.assertIs(type(reserved['reserved_at']),int)
+                    self.assertEqual(manifest,json.loads((op/'installed-source.json').read_bytes())['files'])
+                    # This is the actual stock finally serializer, not an invented representation.
+                    self.assertEqual(m.canonical(result),(op/'result.json').read_bytes())
+                    self.assertEqual(self.failed_raw(),paths['failed/result.json'].read_bytes())
+                    new_files={p for p in root.rglob('*') if p.is_file()}-set(before)
+                    self.assertTrue(all(p.is_relative_to(op) for p in new_files))
+                    completed={p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                    replay=execute();self.assertEqual('blocked',replay['status'])
+                    self.assertEqual('operation_exists_no_replay',replay['reason'])
+                    self.assertFalse(c.completed_result(command,replay))
+                    self.assertEqual(completed,{p:p.read_bytes() for p in completed})
+
+    def test_missing_unsafe_oversized_and_unstable_hash_inputs_are_incomplete(self):
+        for variant in ('missing','symlink','hardlink','oversized','unstable'):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+                profile,space,home,stage,failed,op,paths=self.fixture(Path(td),mismatch=True)
+                name='data/db-v1.php';path=paths[name]
+                if variant=='missing':path.unlink()
+                elif variant=='symlink':path.rename(path.with_name('linked.php'));path.symlink_to(path.with_name('linked.php'))
+                elif variant=='hardlink':os.link(path,path.with_name('linked.php'))
+                elif variant=='oversized':path.write_bytes(b'x'*(1048576+1))
+                original_open=os.open;opened=[]
+                def change_on_second_open(name,flags,*args,**kwargs):
+                    full=Path(os.fsdecode(name))
+                    if not full.is_absolute() and kwargs.get('dir_fd') is not None:
+                        full=Path(os.readlink('/proc/self/fd/'+str(kwargs['dir_fd'])))/full
+                    if full==path:
+                        opened.append(full)
+                        if variant=='unstable' and len(opened)==2:path.write_bytes(b'changed between protected snapshots')
+                    return original_open(name,flags,*args,**kwargs)
+                with mock.patch.object(os,'open',side_effect=change_on_second_open),self.forbidden_io(home):
+                    evidence=space['current_local7_input_reconciliation'](stage)
+                data=evidence['data'];self.assertEqual('incomplete_observation',data['outcome'])
+                self.assertEqual([name],data['incomplete']);self.assertEqual(['parent/result.json'],data['mismatches'])
+                target=data['hash_targets'][name]
+                self.assertEqual('incomplete',target['status']);self.assertIsNone(target['observed_sha256'])
+                if variant=='unstable':
+                    self.assertGreaterEqual(len(opened),2);self.assertEqual('unstable',data['files'][name]['after']['status'])
+                else:self.assertEqual({'missing':'missing','symlink':'unsafe','hardlink':'unsafe','oversized':'oversized'}[variant],data['files'][name]['before']['status'])
+                self.assertIs(False,data['protected_inputs_unchanged'])
+                _,command,_=self.command()
+                with mock.patch.dict(m.LOCAL7_CURRENT_INPUTS,profile,clear=True):
+                    self.assertTrue(m.completed_result(command,self.result(evidence),CONTROL))
+
+    def test_failed_receipt_pin_identity_and_reservation_are_strict_prerequisites(self):
+        variants=('pin_changed','complete_parent','wrong_operation','wrong_source','wrong_reason','duplicate_json',
+                  'reservation_mode','reservation_source','reservation_boolean_time','failed_symlink')
+        for variant in variants:
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+                profile,space,home,stage,failed,op,paths=self.fixture(Path(td))
+                path=paths['failed/result.json'];raw=path.read_bytes()
+                if variant=='pin_changed':path.write_bytes(raw+b'\n')
+                elif variant=='failed_symlink':path.rename(failed/'alias.json');path.symlink_to(failed/'alias.json')
+                elif variant.startswith('reservation_'):
+                    value=json.loads(paths['failed/reservation.json'].read_bytes())
+                    if variant=='reservation_mode':value['mode']='match-retained-readback'
+                    elif variant=='reservation_source':value['source_sha']='d'*40
+                    else:value['reserved_at']=True
+                    paths['failed/reservation.json'].write_bytes(json.dumps(value,sort_keys=True).encode())
+                else:
+                    value=json.loads(raw)
+                    if variant=='complete_parent':value['status']='complete'
+                    elif variant=='wrong_operation':value['operation_id']=m.LOCAL7_REGISTRATION['operation_id']
+                    elif variant=='wrong_source':value['source_sha']='d'*40
+                    elif variant=='wrong_reason':value['reason']='different_failure'
+                    encoded=m.canonical(value)
+                    if variant=='duplicate_json':encoded=encoded.replace(b'"status":"unknown_no_replay"',b'"status":"unknown_no_replay","status":"unknown_no_replay"')
+                    path.write_bytes(encoded)
+                    # Reach the semantic guard with a test-local pin; production pin is never relaxed.
+                    profile['failed_result_sha256']=hashlib.sha256(encoded).hexdigest();profile['failed_result_bytes']=len(encoded)
+                with self.forbidden_io(home),self.assertRaises((ValueError,OSError)):
+                    space['current_local7_input_reconciliation'](stage)
+                self.assertEqual([],list(op.iterdir()))
+
+    def test_strict_receiver_rejects_forged_rehashed_hash_proofs_and_authority(self):
+        with tempfile.TemporaryDirectory() as td:
+            profile,space,home,stage,failed,op,paths=self.fixture(Path(td),mismatch=True)
+            with self.forbidden_io(home):evidence=space['current_local7_input_reconciliation'](stage)
+            result=self.result(evidence);_,command,_=self.command()
+            changes=[
+                ('history',lambda d:d['failed_receipt'].update(status='complete')),
+                ('empty_mismatches',lambda d:d.update(mismatches=[])),
+                ('false_all_match',lambda d:d.update(outcome='no_current_mismatch_observed')),
+                ('false_match',lambda d:d['hash_targets']['parent/result.json'].update(status='match')),
+                ('wrong_observed',lambda d:d['hash_targets']['parent/result.json'].update(observed_sha256='0'*64)),
+                ('wrong_expected',lambda d:d['hash_targets']['parent/result.json'].update(expected_sha256='0'*64)),
+                ('file_boolean_bytes',lambda d:d['files']['parent/result.json']['before'].update(bytes=True)),
+                ('file_false_hash',lambda d:d['files']['parent/result.json']['after'].update(sha256='0'*64)),
+                ('extra_file',lambda d:d['files'].update({'config.php':copy.deepcopy(d['files']['parent/result.json'])})),
+                ('missing_file',lambda d:d['files'].pop('data/db-v1.php')),
+                ('control',lambda d:d.update(control_source_sha='d'*40)),
+                ('no_replay',lambda d:d.update(no_replay=False)),
+                ('historical_unknown',lambda d:d.update(historical_unknown_preserved=False)),
+                ('replayed',lambda d:d.update(original_execution_replayed=True)),
+            ]
+            changes += [(key,lambda d,key=key:d.update({key:True})) for key in
+                m.L7_FALSE+('publication_admission','pin_update_authority','runtime_resume_authority')]
+            changes += [(key,lambda d,key=key:d.update({key:1})) for key in m.L7_ZERO]
+            changes += [('boolean_zero',lambda d:d.update(new_database_reads=False))]
+            with mock.patch.dict(m.LOCAL7_CURRENT_INPUTS,profile,clear=True):
+                self.assertTrue(m.completed_result(command,result,CONTROL))
+                for name,change in changes:
+                    bad=copy.deepcopy(result);change(bad['match_retained']['data']);self.rehash(bad)
+                    with self.subTest(mutation=name):
+                        self.assertFalse(m.completed_local7_current_inputs(command,bad,CONTROL))
+                        self.assertFalse(m.completed_result(command,bad,CONTROL))
+                for key in ('production_unchanged','production_after','mapping_writes','evidence_sha256'):
+                    bad=copy.deepcopy(result)
+                    if key=='production_unchanged':bad[key]=False
+                    elif key=='production_after':bad[key]['index.php']='0'*64
+                    elif key=='mapping_writes':bad[key]=1
+                    else:bad['match_retained'][key]='0'*64
+                    with self.subTest(outer=key):self.assertFalse(m.completed_result(command,bad,CONTROL))
+
+
 if __name__=='__main__':unittest.main()
 
 
