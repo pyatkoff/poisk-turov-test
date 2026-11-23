@@ -34,6 +34,7 @@ class UpdateContracts(unittest.TestCase):
         fd,name=tempfile.mkstemp(prefix='search3-local-update.',suffix='.tar.gz',dir='/tmp'); os.close(fd); self.upload=Path(name); self.upload.write_bytes(self.archive); return {**self.q,'archive':name,'before':self.site.snapshot()}
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env); self.assertEqual(q['previous_source_sha'],PREVIOUS); self.assertEqual(q['operation'],'update')
+        self.assertNotIn('composition',q)
     def test_old_coordination_journals_cannot_authorize_updates(self):
         for number in (4217, 3419, 2530, 996):
             event=copy.deepcopy(self.event); event['issue']['number']=number
@@ -69,6 +70,12 @@ class UpdateContracts(unittest.TestCase):
         q=self.staged(); self.site.activate_update(q); (self.site.target/'foreign').write_text('drift')
         with self.assertRaisesRegex(ValueError,'modified_target'): self.site.finish_update(q)
         with self.assertRaisesRegex(ValueError,'modified_target'): self.site.finish_update(q,True)
+    def test_expected_owner_provenance_tamper_blocks_completion_and_rollback(self):
+        q=self.staged(); self.site.activate_update(q)
+        p=self.site.receipt(q)/'expected-owner.json'; owner=json.loads(p.read_bytes())
+        owner['composition']={'mode':'forged'}; p.write_bytes(remote.json_bytes(owner))
+        with self.assertRaisesRegex(ValueError,'activation_composition_changed'): self.site.finish_update(q)
+        with self.assertRaisesRegex(ValueError,'activation_composition_changed'): self.site.finish_update(q,True)
     def test_protected_or_neighbor_preview_drift_blocks_completion(self):
         q=self.staged(); self.site.activate_update(q); (self.site.parent/'search3-site-candidate/keep').write_text('drift')
         with self.assertRaisesRegex(ValueError,'production_or_existing_preview_drift'): self.site.finish_update(q)
@@ -81,5 +88,80 @@ class UpdateContracts(unittest.TestCase):
     def test_validate_no_path_or_replay(self):
         for k,v in [('attempt',2),('operation','create'),('source_sha',PREVIOUS),('previous_source_sha','main'),('file_count',0),('artifact_id',True)]:
             with self.subTest(k=k),self.assertRaises(ValueError): remote.validate({**self.q,k:v})
+
+class CatalogCompositionContracts(unittest.TestCase):
+    def setUp(self):
+        remote.select_target("local")
+        UpdateContracts.setUp(self)
+    tearDown=UpdateContracts.tearDown
+    staged=UpdateContracts.staged
+    def catalog_command(self):
+        return (pub.PREFIX+remote.DONOR_SOURCE_SHA+' '+'b'*40+' '+str(remote.DONOR_BUILD_RUN)
+                +' '+str(remote.DONOR_ARTIFACT_ID)+' '+remote.BASE_SOURCE_SHA+' '+remote.COMPOSITION)
+    def catalog_request(self):
+        return {**self.q,'source_sha':remote.DONOR_SOURCE_SHA,'source_tree':remote.DONOR_SOURCE_TREE,
+                'build_run':remote.DONOR_BUILD_RUN,'artifact_id':remote.DONOR_ARTIFACT_ID,
+                'source_ZIP_sha256':remote.DONOR_ZIP_SHA256,'previous_source_sha':remote.BASE_SOURCE_SHA,
+                'file_count':833,'composition':remote.COMPOSITION,
+                'donor_artifact_controls':remote.donor_artifact_controls()}
+    def catalog_snapshot(self):
+        return {'target':remote.BASE_INVENTORY_SHA256,
+                'owner':{'run':remote.BASE_DEPLOY_RUN,'source':remote.BASE_SOURCE_SHA,
+                         'digest':remote.BASE_INVENTORY_SHA256,'status':'published'}}
+    def test_catalog_command_requires_explicit_fixed_mode_and_pins(self):
+        event=copy.deepcopy(self.event); event['comment']['body']=self.catalog_command()
+        q=pub.checked_request(event,self.env)
+        self.assertEqual(q['composition'],remote.COMPOSITION)
+        self.assertEqual(q['previous_source_sha'],remote.BASE_SOURCE_SHA)
+        for before,after in [(remote.DONOR_SOURCE_SHA,'a'*40),
+                             (remote.BASE_SOURCE_SHA,PREVIOUS),
+                             (str(remote.DONOR_BUILD_RUN),'456'),
+                             (str(remote.DONOR_ARTIFACT_ID),'123'),
+                             (remote.COMPOSITION,'arbitrary-patch'),
+                             (pub.PREFIX,pub.NEXT_PREFIX)]:
+            event['comment']['body']=self.catalog_command().replace(before,after,1)
+            with self.subTest(before=before),self.assertRaises(ValueError):
+                pub.checked_request(event,self.env)
+    def test_catalog_remote_rejects_wrong_tree_zip_count_target_or_mode(self):
+        q=self.catalog_request(); remote.validate(q)
+        for k,v in [('source_tree','c'*40),('source_ZIP_sha256','d'*64),('file_count',862),
+                    ('preview_target','next'),('composition','local-route-v1'),
+                    ('composition',None),('previous_source_sha',PREVIOUS),
+                    ('source_sha','a'*40),('build_run',456),('artifact_id',123),
+                    ('donor_artifact_controls',{}),
+                    ('donor_artifact_controls',{**remote.donor_artifact_controls(),'file_count':833})]:
+            with self.subTest(k=k,v=v),self.assertRaises(ValueError):
+                remote.validate({**q,k:v})
+    def test_catalog_exact_predecessor_binds_run_and_whole_inventory(self):
+        q=self.catalog_request(); before=self.catalog_snapshot()
+        remote.catalog_predecessor(q,before)
+        for field,value in [('run',remote.BASE_DEPLOY_RUN+1),('run',float(remote.BASE_DEPLOY_RUN)),('source',PREVIOUS),
+                            ('status','activated'),('digest','f'*64)]:
+            changed=copy.deepcopy(before); changed['owner'][field]=value
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'catalog_exact_predecessor'):
+                remote.catalog_predecessor(q,changed)
+        changed=copy.deepcopy(before)
+        changed['target']=changed['owner']['digest']='f'*64
+        with self.assertRaisesRegex(ValueError,'catalog_exact_predecessor'):
+            remote.catalog_predecessor(q,changed)
+    def test_catalog_server_rejects_a_self_consistent_wrong_predecessor_before_receipt(self):
+        q={**self.catalog_request(),'archive':self.staged()['archive']}
+        owner=json.loads(self.site.owner.read_bytes())
+        owner.update(run=remote.BASE_DEPLOY_RUN,source=remote.BASE_SOURCE_SHA)
+        self.site.owner.write_bytes(remote.json_bytes(owner)); q['before']=self.site.snapshot()
+        with self.assertRaisesRegex(ValueError,'catalog_exact_predecessor'):
+            self.site.activate_update(q)
+        self.assertFalse(self.site.receipt(q).exists())
+        self.assertEqual((self.site.target/'old.txt').read_text(),'published predecessor')
+    def test_catalog_owner_records_both_origins_without_changing_normal_owner(self):
+        files={'file':'a'*64}; q=self.catalog_request()
+        composite=remote.expected_owner(q,files)
+        self.assertEqual(composite['source'],remote.DONOR_SOURCE_SHA)
+        self.assertEqual(composite['transform'],remote.CATALOG_TRANSFORM)
+        self.assertEqual(composite['composition'],remote.composition_record())
+        self.assertEqual(composite['composition']['predecessor']['deploy_run'],remote.BASE_DEPLOY_RUN)
+        self.assertEqual(set(remote.expected_owner(self.q,files)),{'run','source','digest','status'})
+        composite['composition']['delta']['path']='foreign.php'
+        self.assertEqual(remote.composition_record()['delta']['path'],remote.HELPER_PATH)
 
 if __name__=='__main__': unittest.main()

@@ -7,7 +7,9 @@ on:
       - '.github/workflows/update-search3-local-preview.yml'
       - 'scripts/deploy/search3_local_preview_update.py'
       - 'scripts/deploy/search3_local_preview_update_remote.py'
+      - 'scripts/deploy/search3_local_preview_catalog_patch.py'
       - 'tests/search3_local_preview_update_test.py'
+      - 'tests/search3_local_preview_catalog_patch_test.py'
       - 'scripts/deploy/search3_v17_preview.py'
       - 'tests/search3_next_preview_update_test.py'
       - 'tests/search3_v17_preview_test.py'
@@ -20,21 +22,33 @@ permissions:
 jobs:
   update-local-preview-contracts:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Verify the same pinned PHP capability as prepare
+        run: |
+          set -euo pipefail
+          php -r 'if (PHP_VERSION_ID < 80300 || PHP_VERSION_ID >= 80400) { fwrite(STDERR, "PHP_83_REQUIRED\n"); exit(1); } if (!extension_loaded("mbstring")) { fwrite(STDERR, "MBSTRING_REQUIRED\n"); exit(1); } echo "PHP_RUNNER_OK ".PHP_VERSION." mbstring\n";'
       - name: Verify update and existing create-only publisher contracts
         run: |
-          python3 -m py_compile scripts/deploy/search3_local_preview_update.py scripts/deploy/search3_local_preview_update_remote.py
+          python3 -m py_compile scripts/deploy/search3_local_preview_update.py scripts/deploy/search3_local_preview_update_remote.py scripts/deploy/search3_local_preview_catalog_patch.py
+          python3 tests/search3_local_preview_catalog_patch_test.py -v
           python3 tests/search3_next_preview_update_test.py
           python3 tests/search3_v17_preview_test.py
           python3 tests/search3_local_preview_update_test.py -v
           python3 tests/search3_local_preview_test.py -v
           python3 tests/search3_preview_publish_test.py -v
+      - name: Reconstruct and render the exact 833-file LOCAL composition without SSH
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tests/search3_local_preview_catalog_patch_test.py --native-artifact
 
   prepare-local-preview-update:
     if: >-
@@ -66,6 +80,7 @@ jobs:
           php -r 'if (PHP_VERSION_ID < 80300 || PHP_VERSION_ID >= 80400) { fwrite(STDERR, "PHP_83_REQUIRED\n"); exit(1); } if (!extension_loaded("mbstring")) { fwrite(STDERR, "MBSTRING_REQUIRED\n"); exit(1); } echo "PHP_RUNNER_OK ".PHP_VERSION." mbstring\n";'
       - name: Offline authorization and transaction tests
         run: |
+          python3 tests/search3_local_preview_catalog_patch_test.py
           python3 tests/search3_next_preview_update_test.py
           python3 tests/search3_v17_preview_test.py
           python3 tests/search3_local_preview_update_test.py
@@ -106,6 +121,7 @@ jobs:
           persist-credentials: false
       - name: Recheck update transaction
         run: |
+          python3 tests/search3_local_preview_catalog_patch_test.py
           python3 tests/search3_next_preview_update_test.py
           python3 tests/search3_v17_preview_test.py
           python3 tests/search3_local_preview_update_test.py
