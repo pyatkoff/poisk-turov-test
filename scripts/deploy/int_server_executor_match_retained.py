@@ -290,6 +290,16 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
+        if ((len(parts) >= 3 and parts[2] == LOCAL7_CURRENT_REGISTRATION['operation_id'])
+                or (len(parts) >= 4 and parts[3] == LOCAL7_CURRENT_REGISTRATION['cohort'])):
+            profile = LOCAL7_CURRENT_REGISTRATION
+            need(len(parts) == 5 and parts[1] == profile['mode']
+                 and parts[0] == profile['source_sha'] and parts[2] == profile['operation_id']
+                 and parts[3] == profile['cohort'] and parts[4] == profile['parent_operation_id'],
+                 'local7_current_fixed_read_scope')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if ((len(parts) >= 3 and parts[2] == LOCAL7_REGISTRATION['operation_id'])
                 or (len(parts) >= 4 and parts[3] == LOCAL7_REGISTRATION['cohort'])):
             profile = LOCAL7_REGISTRATION
@@ -2215,6 +2225,8 @@ def completed_owner_top500_current(command, data):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
+        return completed_local7_current_registration(command, result, control_sha)
     if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
         return completed_local7_registration(command, result, control_sha)
     if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
@@ -2328,6 +2340,8 @@ def completed_result(command, result, control_sha):
 
 
 def activate(core, command):
+    if command.get('operation_id') == LOCAL7_CURRENT_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_CURRENT_REGISTRATION['cohort']:
+        return activate_local7_current_registration(core, command)
     if command.get('operation_id') == LOCAL7_REGISTRATION['operation_id'] or command.get('cohort') == LOCAL7_REGISTRATION['cohort']:
         return activate_local7_registration(core, command)
     if command.get('mode') == LOCAL19_APPLY_MODE or command.get('operation_id') == LOCAL19_APPLY['operation_id'] or command.get('cohort') == LOCAL19_APPLY['cohort']:
@@ -4159,3 +4173,296 @@ def activate_local7_registration(core,command):
     original=core.completed_result
     core.completed_result=lambda cmd,res:completed_local7_registration(cmd,res,control) if (
         cmd.get('operation_id')==LOCAL7_REGISTRATION['operation_id'] or cmd.get('cohort')==LOCAL7_REGISTRATION['cohort']) else original(cmd,res)
+
+# Four current registration stores, deliberately separate from consumed LOCAL7.
+LOCAL7_CURRENT_REGISTRATION = {
+    'mode':'match-retained-current',
+    'operation_id':'int-andromeda-match-retained-current-20261123-v2',
+    'cohort':'local7-current-registration-20261123',
+    'source_sha':'3207266e17ed4e8244aaf28d05b962747fd4cd3c',
+    'parent_operation_id':'int-andromeda-match-retained-readback-20261123-v1',
+    # Server result.json is compact; the artifact is pretty-printed (5799B/a6e43d3f...).
+    'parent_receipt_sha256':'7631e19d35d6d482ea5f0e42d71e2bed2c33ef849abd7c04a94344e5fbf4a3fb',
+    'contract_sha256':'abbed95e0343ce402cdcfb11ef7819da0a12e5bafb7e5bf7f22cbb9260167b11',
+    'pairs':[[8689,7458],[4679,4283],[14397,97001],[13766,74509],
+             [14029,78669],[12816,60788],[14013,78456]],
+    'max_rows_per_source_tv':128,
+}
+
+# Only these narrow columns leave SQL; no tour refs, payloads, prices or URLs.
+L7C_STORES = {
+    'tour_price_observations':['id','hotel_id','search_id','source','observed_at'],
+    'hot_tours_current':['snapshot_key','hotel_id','fetched_at'],
+    'anytour_offers':['id','legacy_hotel_id','provider','observed_at','last_seen_at'],
+    'anytour_offer_price_observations':['id','provider_local_hotel_id','provider','observed_at'],
+}
+L7C_UNAVAILABLE = ('table_absent','schema_unavailable','non_transactional','row_limit_exceeded')
+
+LOCAL7_CURRENT_PHP = r'''final class MatchLocal7CurrentRegistrationV1 {
+ public const IDS=[7458,4283,97001,74509,78669,60788,78456];
+ public const STORES=[
+  'tour_price_observations'=>['id','hotel_id','search_id','source','observed_at'],
+  'hot_tours_current'=>['snapshot_key','hotel_id','fetched_at'],
+  'anytour_offers'=>['id','legacy_hotel_id','provider','observed_at','last_seen_at'],
+  'anytour_offer_price_observations'=>['id','provider_local_hotel_id','provider','observed_at']];
+ public static function run(PDO $db): array {
+  if ($db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql' || $db->inTransaction()) throw new RuntimeException('l7c_db');
+  $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+  $db->setAttribute(PDO::ATTR_EMULATE_PREPARES,false);
+  $version=(string)$db->query('SELECT VERSION()')->fetchColumn();
+  $db->exec(stripos($version,'MariaDB')!==false?'SET SESSION max_statement_time=1':'SET SESSION max_execution_time=1000');
+  $db->exec('SET SESSION innodb_lock_wait_timeout=1');
+  $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+  $db->exec('SET TRANSACTION READ ONLY');
+  $db->beginTransaction();
+  try {
+   $out=['schema_version'=>1,'captured_at_utc'=>gmdate('Y-m-d\TH:i:s\Z'),
+     'database_snapshot'=>'repeatable-read-read-only','stores'=>[]];
+   foreach(self::STORES as $table=>$columns) {
+    $q=$db->prepare('SELECT engine FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?');
+    $q->execute([$table]);$engine=$q->fetchColumn();
+    $status=$engine===false?'table_absent':(strtolower((string)$engine)!=='innodb'?'non_transactional':'complete');
+    if ($status==='complete') {
+     $q=$db->prepare('SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?');
+     $q->execute([$table]);$present=$q->fetchAll(PDO::FETCH_COLUMN);
+     $q=$db->prepare("SELECT column_name FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name=? AND index_name='PRIMARY' ORDER BY seq_in_index");
+     $q->execute([$table]);$pk=$q->fetchAll(PDO::FETCH_COLUMN);
+     if (array_diff($columns,$present)!==[] || $pk!==[$columns[0]]) $status='schema_unavailable';
+    }
+    $cells=[];
+    foreach(self::IDS as $tv) {
+     $rows=[];$cellStatus=$status;
+     if ($status==='complete') {
+      $key=$columns[1];$sql='SELECT '.implode(',',$columns).' FROM '.$table.' WHERE '.$key.'=?';
+      if (in_array('provider',$columns,true)) $sql.=" AND provider='tourvisor'";
+      $sql.=' ORDER BY '.$columns[0].' LIMIT 129';
+      $q=$db->prepare($sql);$q->execute([$tv]);$rows=$q->fetchAll(PDO::FETCH_ASSOC);
+      if (count($rows)>128) $cellStatus='row_limit_exceeded';
+      foreach($rows as $row) foreach($row as $value)
+       if ($value!==null && (!is_scalar($value) || strlen((string)$value)>256)) throw new RuntimeException('l7c_value_bound');
+     }
+     $cells[]=['tv_id'=>$tv,'status'=>$cellStatus,'rows'=>$rows];
+    }
+    $out['stores'][$table]=$cells;
+   }
+   $db->rollBack();return $out;
+  } catch(Throwable $e) {if($db->inTransaction())$db->rollBack();throw $e;}
+ }
+}
+'''
+
+LOCAL7_CURRENT_VALIDATOR = r'''
+def l7c_project(raw,p):
+    l7_need(isinstance(raw,dict) and set(raw)=={'schema_version','captured_at_utc','database_snapshot','stores'}
+        and type(raw['schema_version']) is int and raw['schema_version']==1
+        and l7_capture_time(raw['captured_at_utc']) and raw['database_snapshot']=='repeatable-read-read-only','current_snapshot')
+    stores=raw['stores'];l7_need(isinstance(stores,dict) and set(stores)==set(L7C_STORES),'current_stores')
+    rows=[{'own_id':a,'tv_id':b,'scope':'IN_THIS_CURRENT_SNAPSHOT','sources':{},'witnesses':[]}
+          for a,b in p['pairs']]
+    seen=set()
+    for table,columns in L7C_STORES.items():
+        cells=stores[table];l7_need(isinstance(cells,list) and len(cells)==7,'current_cells')
+        for cell,out in zip(cells,rows):
+            l7_need(isinstance(cell,dict) and set(cell)=={'tv_id','status','rows'}
+                and type(cell['tv_id']) is int and cell['tv_id']==out['tv_id'],'current_cell_identity')
+            status=cell['status'];records=cell['rows']
+            l7_need(status in ('complete',)+L7C_UNAVAILABLE and isinstance(records,list)
+                and len(records)<=p['max_rows_per_source_tv']+1,'current_cell_bound')
+            if status in ('table_absent','schema_unavailable','non_transactional'):
+                l7_need(records==[],'current_unavailable_rows')
+            l7_need((status=='row_limit_exceeded')==(len(records)>p['max_rows_per_source_tv']),'current_overflow')
+            rejected=0;witnesses=[]
+            for record in records:
+                l7_need(isinstance(record,dict) and set(record)==set(columns),'current_record_columns')
+                rid=record[columns[0]]
+                if table=='hot_tours_current':l7_need(l7_hash(rid),'current_snapshot_key')
+                else:rid=l7_positive(rid);l7_need(rid is not None,'current_record_id')
+                identity=(table,str(rid));l7_need(identity not in seen,'current_duplicate_record');seen.add(identity)
+                hotel=l7_positive(record[columns[1]]);l7_need(hotel==out['tv_id'],'current_record_hotel')
+                provider=record.get('provider');l7_need(provider is None or provider=='tourvisor','current_provider')
+                source=record.get('source');search=l7_positive(record.get('search_id'))
+                times=[record['fetched_at']] if table=='hot_tours_current' else [record['observed_at']]
+                if table=='anytour_offers':times.append(record['last_seen_at'])
+                eligible=all(l7_time(t) for t in times)
+                if table=='tour_price_observations':eligible=eligible and search is not None and source in L7_SOURCES
+                if not eligible:rejected+=1;continue
+                witnesses.append({'table':table,'record_id':rid,'hotel_id':hotel,'search_id':search,
+                    'source':source,'provider':provider,'seen_at':times,
+                    'record_sha256':hashlib.sha256(l7_json(record)).hexdigest()})
+            # Overflow is incomplete. Retain raw privately but emit no partial witnesses.
+            if status!='complete':witnesses=[]
+            out['sources'][table]={'status':status,'matched_rows':len(records) if status=='complete' else None,
+                'qualifying_rows':len(witnesses) if status=='complete' else None,
+                'rejected_rows':rejected if status=='complete' else None}
+            out['witnesses'].extend(witnesses)
+    for row in rows:
+        complete=all(s['status']=='complete' for s in row['sources'].values())
+        row['state']='witness_present' if row['witnesses'] else 'no_qualifying_observation' if complete else 'incomplete_sources'
+        row['all_sources_complete']=complete
+    return {'captured_at_utc':raw['captured_at_utc'],'database_snapshot':raw['database_snapshot'],'rows':rows}
+
+def l7c_validate_data(data,command,control):
+    p=LOCAL7_CURRENT_REGISTRATION;l7_command(command,control,p)
+    expected={'schema_version','state','operation_id','source_sha','control_source_sha','cohort','target_operation_id',
+        'captured_at_utc','database_snapshot','rows','rows_sha256','current_raw_sha256','contract_sha256',
+        'protected_before','protected_after','protected_inputs_unchanged','no_replay','new_database_reads',
+        'supplier_calls','provider_http_calls','database_writes','mapping_writes','booking_calls','lead_calls',
+        'accepted_native_bindings','new_target_inserts','native_authority','target_creation_authority','ai_authority','publication_admission'}
+    l7_need(isinstance(data,dict) and set(data)==expected,'current_data_shape')
+    fixed={'schema_version':'local7_current_registration_v1','state':'current_registration_evidence_read_only',
+        'operation_id':p['operation_id'],'source_sha':p['source_sha'],'control_source_sha':control,'cohort':p['cohort'],
+        'target_operation_id':p['parent_operation_id'],'contract_sha256':p['contract_sha256']}
+    l7_need(all(data[k]==v for k,v in fixed.items()) and l7_capture_time(data['captured_at_utc'])
+        and data['database_snapshot']=='repeatable-read-read-only','current_data_binding')
+    l7_need(type(data['new_database_reads']) is int and data['new_database_reads']==1
+        and all(type(data[k]) is int and data[k]==0 for k in L7_ZERO if k!='new_database_reads')
+        and all(data[k] is False for k in L7_FALSE+('publication_admission',))
+        and data['no_replay'] is True and data['protected_inputs_unchanged'] is True,'current_authority')
+    pins=data['protected_before']
+    l7_need(isinstance(pins,dict) and set(pins)=={'parent/result.json','parent/reservation.json','config.php','data/db-v1.php','data/local-tv-catalog-v1.php'}
+        and all(l7_hash(v) for v in pins.values()) and data['protected_after']==pins
+        and pins['parent/result.json']==p['parent_receipt_sha256'] and pins['data/local-tv-catalog-v1.php']==p['contract_sha256']
+        and pins['data/db-v1.php']==SOURCE_HASHES['v2/data/db-v1.php'],'current_protected')
+    l7_need(l7_hash(data['current_raw_sha256']) and data['rows_sha256']==hashlib.sha256(l7_json(data['rows'])).hexdigest(),'current_digest')
+    rows=data['rows'];l7_need(isinstance(rows,list) and len(rows)==7,'current_row_count')
+    seen=set()
+    for row,pair in zip(rows,p['pairs']):
+        l7_need(isinstance(row,dict) and set(row)=={'own_id','tv_id','scope','sources','witnesses','state','all_sources_complete'}
+            and type(row['own_id']) is int and type(row['tv_id']) is int and [row['own_id'],row['tv_id']]==pair
+            and row['scope']=='IN_THIS_CURRENT_SNAPSHOT','current_row_identity')
+        sources=row['sources'];witnesses=row['witnesses']
+        l7_need(isinstance(sources,dict) and set(sources)==set(L7C_STORES) and isinstance(witnesses,list),'current_row_sources')
+        for table,s in sources.items():
+            l7_need(isinstance(s,dict) and set(s)=={'status','matched_rows','qualifying_rows','rejected_rows'}
+                and s['status'] in ('complete',)+L7C_UNAVAILABLE,'current_source_shape')
+            if s['status']=='complete':
+                l7_need(all(type(s[k]) is int and 0<=s[k]<=p['max_rows_per_source_tv'] for k in ('matched_rows','qualifying_rows','rejected_rows'))
+                    and s['qualifying_rows']+s['rejected_rows']==s['matched_rows'],'current_source_counts')
+            else:l7_need(all(s[k] is None for k in ('matched_rows','qualifying_rows','rejected_rows')),'current_source_unknown')
+            l7_need(sum(w.get('table')==table for w in witnesses)==(s['qualifying_rows'] or 0),'current_witness_count')
+        for w in witnesses:
+            l7_need(isinstance(w,dict) and set(w)=={'table','record_id','hotel_id','search_id','source','provider','seen_at','record_sha256'}
+                and w['table'] in L7C_STORES and type(w['hotel_id']) is int and w['hotel_id']==pair[1],'current_witness_shape')
+            table=w['table'];rid=w['record_id'];key=(table,str(rid))
+            l7_need(key not in seen and (l7_hash(rid) if table=='hot_tours_current' else type(rid) is int and l7_positive(rid) is not None),'current_witness_id');seen.add(key)
+            l7_need(isinstance(w['seen_at'],list) and len(w['seen_at'])==(2 if table=='anytour_offers' else 1)
+                and all(l7_time(t) for t in w['seen_at']) and l7_hash(w['record_sha256']),'current_witness_time')
+            if table=='tour_price_observations':
+                l7_need(type(w['search_id']) is int and l7_positive(w['search_id']) is not None and w['source'] in L7_SOURCES and w['provider'] is None,'current_witness_origin')
+            else:l7_need(w['search_id'] is None and w['source'] is None and w['provider']==(None if table=='hot_tours_current' else 'tourvisor'),'current_witness_origin')
+        complete=all(s['status']=='complete' for s in sources.values())
+        l7_need(row['all_sources_complete'] is complete and row['state']==('witness_present' if witnesses else 'no_qualifying_observation' if complete else 'incomplete_sources'),'current_row_state')
+    l7_need(len(l7_json(data))<=1048576,'current_evidence_bound')
+    return data
+'''
+exec(LOCAL7_CURRENT_VALIDATOR)
+
+LOCAL7_CURRENT_HANDLER = r"""
+def current_local7_registration(stage):
+    p=LOCAL7_CURRENT_REGISTRATION;control=payload.get('match_retained_control_sha')
+    command={k:payload.get(k) for k in L7_COMMAND};l7_command(command,control,p)
+    l7_need(operation==p['operation_id'] and mode==p['mode'] and source==p['source_sha'],'current_remote_scope')
+    target=private/p['parent_operation_id']
+    l7_need(private.is_dir() and not private.is_symlink() and private.resolve()==private
+        and target.is_dir() and not target.is_symlink() and target.resolve()==target,'current_parent_path')
+    paths={'parent/result.json':target/'result.json','parent/reservation.json':target/'reservation.json',
+        'config.php':project/'config.php','data/db-v1.php':project/'data/db-v1.php',
+        'data/local-tv-catalog-v1.php':project/'data/local-tv-catalog-v1.php'}
+    signatures={}
+    def protected(remember):
+        pins={}
+        for name,path in paths.items():
+            l7_need(safe_file(path,1048576) and path.resolve()==path and path.stat().st_nlink==1,'current_protected_path')
+            a=path.lstat()
+            signature=lambda st:(st.st_dev,st.st_ino,st.st_mode,st.st_nlink,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+            fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+            with os.fdopen(fd,'rb') as handle:
+                opened=os.fstat(handle.fileno());raw=handle.read(1048577);closed=os.fstat(handle.fileno())
+            b=path.lstat()
+            l7_need(signature(a)==signature(opened)==signature(closed)==signature(b)
+                and len(raw)==b.st_size and path.resolve()==path,'current_protected_race')
+            if remember:signatures[name]=signature(a)
+            else:l7_need(signatures[name]==signature(b),'current_protected_drift')
+            pins[name]=hashlib.sha256(raw).hexdigest()
+        return pins
+    before=protected(True)
+    l7_need(before['parent/result.json']==p['parent_receipt_sha256']
+        and before['data/local-tv-catalog-v1.php']==p['contract_sha256']
+        and before['data/db-v1.php']==SOURCE_HASHES['v2/data/db-v1.php'],'current_input_pins')
+    reservation=l7_parse(paths['parent/reservation.json'].read_bytes())
+    l7_need(isinstance(reservation,dict) and set(reservation)=={'operation_id','source_sha','mode','reserved_at'}
+        and reservation['operation_id']==p['parent_operation_id'] and reservation['source_sha']==p['source_sha']
+        and reservation['mode']=='match-retained-readback' and type(reservation['reserved_at']) is int
+        and reservation['reserved_at']>0,'current_parent_reservation')
+    def write_once(name,raw):
+        fd=os.open(op/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    # Fixed PHP text, never command-provided SQL/IDs/paths. It loads only the pinned DB helper.
+    script=LOCAL7_CURRENT_PHP+r'''
+    $_SERVER['DOCUMENT_ROOT']=getcwd();require getcwd().'/config.php';
+    require getenv('MATCH_RETAINED_SOURCE_ROOT').'/v2/data/db-v1.php';
+    echo json_encode(MatchLocal7CurrentRegistrationV1::run(v2_data_db()),JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);'''
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env['MATCH_RETAINED_SOURCE_ROOT']=str(stage)
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    try:
+        run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+            '-d','memory_limit=128M','-d','disable_functions='+disabled,'-r',script],
+            cwd=project,env=env,capture_output=True,text=False,timeout=60)
+    except subprocess.TimeoutExpired:fail('local7_current_timeout_no_replay')
+    raw=run.stdout;l7_need(len(raw)<=8*1048576,'current_output_bound')
+    write_once('local7-current-raw.json',raw)
+    l7_need(run.returncode==0 and not run.stderr,'current_child_failed_no_replay')
+    projection=l7c_project(l7_parse(raw),p);after=protected(False)
+    l7_need(before==after,'current_protected_drift')
+    data=dict(projection,schema_version='local7_current_registration_v1',state='current_registration_evidence_read_only',
+        operation_id=operation,source_sha=source,control_source_sha=control,cohort=p['cohort'],
+        target_operation_id=p['parent_operation_id'],contract_sha256=p['contract_sha256'],
+        rows_sha256=hashlib.sha256(l7_json(projection['rows'])).hexdigest(),current_raw_sha256=hashlib.sha256(raw).hexdigest(),
+        protected_before=before,protected_after=after,protected_inputs_unchanged=True,no_replay=True)
+    data.update({k:0 for k in L7_ZERO});data['new_database_reads']=1
+    data.update({k:False for k in L7_FALSE+('publication_admission',)})
+    l7c_validate_data(data,command,control);evidence=l7_json(data);write_once('retained-evidence.json',evidence)
+    return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
+"""
+
+def completed_local7_current_registration(command,result,control):
+    try:
+        keys={'schema_version','operation_id','source_sha','mode','status','supplier_calls','database_writes',
+            'booking_calls','lead_calls','production_before','production_after','production_unchanged','mapping_writes','match_retained'}
+        if not isinstance(result,dict) or set(result)!=keys or type(result['schema_version']) is not int or result['schema_version']!=1:return False
+        if result['status']!='complete' or result['production_unchanged'] is not True:return False
+        if any(result[k]!=command.get(k) for k in ('operation_id','source_sha','mode')):return False
+        if any(type(result[k]) is not int or result[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')):return False
+        if not l7_production(result['production_before']) or result['production_before']!=result['production_after']:return False
+        material=result['match_retained']
+        if not isinstance(material,dict) or set(material)!={'evidence_sha256','data'}:return False
+        data=l7c_validate_data(material['data'],command,control)
+        return material['evidence_sha256']==hashlib.sha256(l7_json(data)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError,OverflowError):return False
+
+def activate_local7_current_registration(core,command):
+    expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in L7_COMMAND))
+    need(command==expected,'local7_current_command_shape')
+    control=os.environ.get('GITHUB_SHA','');l7_command(command,control,LOCAL7_CURRENT_REGISTRATION)
+    need(os.environ.get('GITHUB_RUN_ATTEMPT','1')=='1','retained_first_attempt_only')
+    command['match_retained_control_sha']=control;remote=core.REMOTE
+    anchors={'definition':'def run_match942(stage, mode, offset, limit):\n',
+        'dispatch':"    if mode=='match-tv942-write':\n",'collector':"    if mode not in ('reconcile',",
+        'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')",
+        'reservation':'    op.mkdir(mode=0o700)\n','receipt':"if 'op' in globals() and op.exists():"}
+    for key,anchor in anchors.items():need(remote.count(anchor)==(2 if key=='collector' else 1),'local7_current_registration_drift_'+key)
+    handler='\nLOCAL7_REGISTRATION='+repr(LOCAL7_REGISTRATION)+'\nLOCAL7_CURRENT_REGISTRATION='+repr(LOCAL7_CURRENT_REGISTRATION)+'\n'
+    handler+='SOURCE_HASHES='+repr(SOURCE_HASHES)+'\nL7C_STORES='+repr(L7C_STORES)+'\nL7C_UNAVAILABLE='+repr(L7C_UNAVAILABLE)+'\n'
+    handler+='LOCAL7_CURRENT_PHP='+repr(LOCAL7_CURRENT_PHP)+'\n'+LOCAL7_VALIDATOR+LOCAL7_CURRENT_VALIDATOR+LOCAL7_CURRENT_HANDLER
+    dispatch=LOCAL7_DISPATCH.replace("mode=='match-retained-readback'","mode=='match-retained-current'").replace('retained_local7_registration(stage)','current_local7_registration(stage)')
+    remote=remote.replace(anchors['definition'],handler+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['dispatch'],dispatch+anchors['dispatch'],1)
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-current','reconcile',")
+    remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
+    remote=remote.replace(anchors['reservation'],anchors['reservation']+'    retained_reserved=True\n',1)
+    remote=remote.replace(anchors['receipt'],"if globals().get('retained_reserved') is True and op.exists():",1)
+    ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_source
+    original=core.completed_result
+    core.completed_result=lambda cmd,res:completed_local7_current_registration(cmd,res,control) if (
+        cmd.get('operation_id')==LOCAL7_CURRENT_REGISTRATION['operation_id'] or cmd.get('cohort')==LOCAL7_CURRENT_REGISTRATION['cohort']) else original(cmd,res)

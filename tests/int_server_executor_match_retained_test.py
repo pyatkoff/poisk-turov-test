@@ -4554,6 +4554,187 @@ class Local7RegistrationReadbackTest(unittest.TestCase):
                     with self.subTest(mutation=name):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
 
 
+class Local7CurrentRegistrationTest(unittest.TestCase):
+    def snapshot(self):
+        return {'schema_version':1,'captured_at_utc':'2026-11-23T10:30:00Z',
+            'database_snapshot':'repeatable-read-read-only','stores':{
+                table:[{'tv_id':tv,'status':'complete','rows':[]} for _,tv in m.LOCAL7_CURRENT_REGISTRATION['pairs']]
+                for table in m.L7C_STORES}}
+
+    def filled(self):
+        value=self.snapshot();stores=value['stores'];stamp='2026-11-23 10:29:00'
+        stores['tour_price_observations'][0]['rows']=[dict(id=1,hotel_id=7458,search_id=123,source='user_search',observed_at=stamp)]
+        stores['hot_tours_current'][1]['rows']=[dict(snapshot_key='a'*64,hotel_id=4283,fetched_at=stamp)]
+        stores['anytour_offers'][2]['rows']=[dict(id=1,legacy_hotel_id=97001,provider='tourvisor',observed_at=stamp,last_seen_at=stamp)]
+        stores['anytour_offer_price_observations'][3]['rows']=[dict(id=1,provider_local_hotel_id=74509,provider='tourvisor',observed_at=stamp)]
+        return value
+
+    def command(self):
+        c=core();m.register_parser(c);p=m.LOCAL7_CURRENT_REGISTRATION
+        body=c.PREFIX+' '.join(p[k] for k in ('source_sha','mode','operation_id','cohort','parent_operation_id'))
+        return c,c.parse_command(body),body
+
+    def result(self,raw=None):
+        p=m.LOCAL7_CURRENT_REGISTRATION;c,command,_=self.command()
+        projection=m.l7c_project(self.filled() if raw is None else raw,p)
+        pins={k:'a'*64 for k in ('parent/result.json','parent/reservation.json','config.php','data/db-v1.php','data/local-tv-catalog-v1.php')}
+        pins.update({'parent/result.json':p['parent_receipt_sha256'],'data/db-v1.php':m.SOURCE_HASHES['v2/data/db-v1.php'],
+                     'data/local-tv-catalog-v1.php':p['contract_sha256']})
+        data=dict(projection,schema_version='local7_current_registration_v1',state='current_registration_evidence_read_only',
+            operation_id=p['operation_id'],source_sha=p['source_sha'],control_source_sha=CONTROL,cohort=p['cohort'],
+            target_operation_id=p['parent_operation_id'],contract_sha256=p['contract_sha256'],
+            rows_sha256=hashlib.sha256(m.l7_json(projection['rows'])).hexdigest(),current_raw_sha256='c'*64,
+            protected_before=pins,protected_after=copy.deepcopy(pins),protected_inputs_unchanged=True,no_replay=True)
+        data.update({k:0 for k in m.L7_ZERO});data['new_database_reads']=1
+        data.update({k:False for k in m.L7_FALSE+('publication_admission',)})
+        result=dict(schema_version=1,operation_id=p['operation_id'],source_sha=p['source_sha'],mode=p['mode'],status='complete',
+            supplier_calls=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,production_unchanged=True,
+            production_before={k:'d'*64 for k in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')})
+        result['production_after']=copy.deepcopy(result['production_before'])
+        result['match_retained']={'data':data,'evidence_sha256':hashlib.sha256(m.l7_json(data)).hexdigest()}
+        return command,result
+
+    def test_new_fixed_scope_and_original_local7_route_preserved(self):
+        c,command,body=self.command();self.assertEqual('match-retained-current',command['mode'])
+        for index in range(5):
+            fields=body[len(c.PREFIX):].split();fields[index]='wrong'
+            with self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(fields))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        old=m.LOCAL7_REGISTRATION
+        self.assertEqual(old['cohort'],c.parse_command(c.PREFIX+' '.join(old[k] for k in ('source_sha','mode','operation_id','cohort','parent_operation_id')))['cohort'])
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL,'GITHUB_RUN_ATTEMPT':'1'}):m.activate(c,command)
+        ast.parse(c.REMOTE);self.assertIn('def current_local7_registration(stage):',c.REMOTE)
+        self.assertIn("mode not in ('match-retained-current','reconcile',",c.REMOTE)
+        self.assertEqual(m.bundle_source,c.bundle_source)
+
+    def test_four_independent_namespaces_and_rejected_catalog_rows(self):
+        raw=self.filled();project=m.l7c_project(raw,m.LOCAL7_CURRENT_REGISTRATION)
+        self.assertEqual([1,1,1,1,0,0,0],[len(r['witnesses']) for r in project['rows']])
+        row=raw['stores']['tour_price_observations'][0]['rows'][0]
+        for changes in ({'source':'saved_catalog'},{'search_id':0},{'observed_at':'2026-02-30 10:29:00'}):
+            value=self.filled();value['stores']['tour_price_observations'][0]['rows'][0].update(changes)
+            out=m.l7c_project(value,m.LOCAL7_CURRENT_REGISTRATION)['rows'][0]
+            self.assertEqual('no_qualifying_observation',out['state']);self.assertEqual([],out['witnesses'])
+        row['hotel_id']=8689
+        with self.assertRaises(ValueError):m.l7c_project(raw,m.LOCAL7_CURRENT_REGISTRATION)
+        raw=self.filled();raw['stores']['anytour_offers'][2]['rows'][0]['provider']='anex'
+        with self.assertRaises(ValueError):m.l7c_project(raw,m.LOCAL7_CURRENT_REGISTRATION)
+
+    def test_unknown_sources_and_overflow_never_become_absence_or_partial_proof(self):
+        for status in ('table_absent','schema_unavailable','non_transactional'):
+            raw=self.snapshot();raw['stores']['hot_tours_current'][0]['status']=status
+            out=m.l7c_project(raw,m.LOCAL7_CURRENT_REGISTRATION)['rows'][0]
+            self.assertEqual('incomplete_sources',out['state']);self.assertIsNone(out['sources']['hot_tours_current']['matched_rows'])
+        raw=self.filled();cell=raw['stores']['tour_price_observations'][0]
+        cell['rows']=[dict(cell['rows'][0],id=i) for i in range(1,130)];cell['status']='row_limit_exceeded'
+        out=m.l7c_project(raw,m.LOCAL7_CURRENT_REGISTRATION)['rows'][0]
+        self.assertEqual([],out['witnesses']);self.assertEqual('incomplete_sources',out['state'])
+        command,result=self.result(raw);self.assertTrue(m.completed_result(command,result,CONTROL))
+
+    def test_strict_receiver_recomputes_counts_authority_and_provenance(self):
+        command,result=self.result();self.assertTrue(m.completed_result(command,result,CONTROL))
+        def digest(value):
+            d=value['match_retained']['data'];d['rows_sha256']=hashlib.sha256(m.l7_json(d['rows'])).hexdigest()
+            value['match_retained']['evidence_sha256']=hashlib.sha256(m.l7_json(d)).hexdigest()
+        for mutate in (
+            lambda d:d.update(new_database_reads=0),lambda d:d.update(target_creation_authority=True),
+            lambda d:d.update(ai_authority=True),lambda d:d.update(database_writes=1),
+            lambda d:d.update(cohort=m.LOCAL7_REGISTRATION['cohort']),lambda d:d.update(no_replay=False),
+            lambda d:d['rows'][0]['witnesses'][0].update(source='saved_catalog'),
+            lambda d:d['rows'][0]['witnesses'][0].update(hotel_id=8689),
+            lambda d:d['rows'][0]['witnesses'][0].update(seen_at=['2026-02-30 01:00:00']),
+            lambda d:d['rows'][0]['sources']['tour_price_observations'].update(qualifying_rows=0),
+            lambda d:d['protected_after'].update({'config.php':'f'*64}),
+        ):
+            changed=copy.deepcopy(result);mutate(changed['match_retained']['data']);digest(changed)
+            self.assertFalse(m.completed_result(command,changed,CONTROL))
+
+    def test_remote_retains_raw_before_projection_and_denies_protected_drift(self):
+        p=m.LOCAL7_CURRENT_REGISTRATION
+        with tempfile.TemporaryDirectory() as td:
+            base=Path(td);private=base/'private';private.mkdir();project=base/'project';project.mkdir()
+            target=private/p['parent_operation_id'];target.mkdir();op=private/'new';op.mkdir();stage=op/'source';stage.mkdir()
+            (project/'data').mkdir();(project/'config.php').write_bytes(b'PRIVATE_CONFIG_SENTINEL')
+            (project/'data/db-v1.php').write_bytes(b'db');(project/'data/local-tv-catalog-v1.php').write_bytes(b'contract')
+            (target/'result.json').write_bytes(b'parent')
+            (target/'reservation.json').write_text(json.dumps(dict(operation_id=p['parent_operation_id'],source_sha=p['source_sha'],mode='match-retained-readback',reserved_at=1)))
+            # Test pins bind these finite local files, never relax production constants.
+            profile=copy.deepcopy(p);profile['parent_receipt_sha256']=hashlib.sha256(b'parent').hexdigest()
+            profile['contract_sha256']=hashlib.sha256(b'contract').hexdigest()
+            hashes=copy.deepcopy(m.SOURCE_HASHES);hashes['v2/data/db-v1.php']=hashlib.sha256(b'db').hexdigest()
+            _,command,_=self.command();command['match_retained_control_sha']=CONTROL
+            space=dict(json=json,hashlib=hashlib,re=__import__('re'),os=os,subprocess=subprocess,
+                LOCAL7_REGISTRATION=m.LOCAL7_REGISTRATION,LOCAL7_CURRENT_REGISTRATION=profile,
+                SOURCE_HASHES=hashes,L7C_STORES=m.L7C_STORES,L7C_UNAVAILABLE=m.L7C_UNAVAILABLE,
+                LOCAL7_CURRENT_PHP=m.LOCAL7_CURRENT_PHP,payload=command,private=private,project=project,op=op,
+                operation=profile['operation_id'],mode=profile['mode'],source=profile['source_sha'],
+                safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound,
+                fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)))
+            exec(m.LOCAL7_VALIDATOR+m.LOCAL7_CURRENT_VALIDATOR+m.LOCAL7_CURRENT_HANDLER,space)
+            raw=b' '*1100000+m.l7_json(self.filled());calls=[]
+            def child(args,**kwargs):
+                calls.append(args);self.assertEqual(project,kwargs['cwd']);self.assertEqual(60,kwargs['timeout'])
+                self.assertIn('allow_url_fopen=0',args);self.assertIn('SET TRANSACTION READ ONLY',args[-1])
+                return subprocess.CompletedProcess(args,0,raw,b'')
+            with mock.patch.object(subprocess,'run',side_effect=child):evidence=space['current_local7_registration'](stage)
+            self.assertEqual(raw,(op/'local7-current-raw.json').read_bytes())
+            self.assertNotIn('PRIVATE_CONFIG_SENTINEL',m.l7_json(evidence).decode())
+            self.assertEqual(evidence['data']['protected_before'],evidence['data']['protected_after'])
+            self.assertEqual(1,len(calls));self.assertEqual(0o600,(op/'local7-current-raw.json').stat().st_mode&0o777)
+            (project/'data/local-tv-catalog-v1.php').write_bytes(b'drift')
+            with mock.patch.object(subprocess,'run') as call,self.assertRaisesRegex(ValueError,'current_input_pins'):
+                space['current_local7_registration'](stage)
+            call.assert_not_called()
+
+    def test_php_native_current_registration_contract(self):
+        if not os.environ.get('MATCH_RETAINED_TEST_DSN'):
+            if os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1':self.fail('native MySQL is mandatory')
+            self.skipTest('native MySQL acceptance runs in required original CI')
+        code=m.LOCAL7_CURRENT_PHP+r'''
+        class Local7CurrentProbePDO extends PDO {
+          public bool $writeDenied=false;
+          public function beginTransaction():bool {
+            $ok=parent::beginTransaction();$this->writeDenied=false;
+            try{$this->exec("UPDATE tour_price_observations SET source='MUST_NOT_WRITE' WHERE id=1");}
+            catch(PDOException $e){$this->writeDenied=true;}
+            if(!$this->writeDenied)throw new RuntimeException('read-only not enforced');
+            return $ok;
+          }
+        }
+        $db=new Local7CurrentProbePDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+        $name='match_l7c_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+        function need7c($v){if(!$v)throw new RuntimeException('native contract failed');}
+        function rows7c($db){$out=[];foreach(MatchLocal7CurrentRegistrationV1::STORES as $table=>$columns)
+            $out[$table]=$db->query('SELECT * FROM '.$table.' ORDER BY '.$columns[0])->fetchAll(PDO::FETCH_ASSOC);return $out;}
+        try {
+          $db->exec('CREATE TABLE tour_price_observations(id BIGINT PRIMARY KEY,hotel_id INT,search_id BIGINT,source VARCHAR(32),observed_at DATETIME,KEY(hotel_id)) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE hot_tours_current(snapshot_key CHAR(64) PRIMARY KEY,hotel_id INT,fetched_at DATETIME,KEY(hotel_id)) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anytour_offers(id BIGINT PRIMARY KEY,legacy_hotel_id INT,provider VARCHAR(16),observed_at DATETIME,last_seen_at DATETIME) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anytour_offer_price_observations(id BIGINT PRIMARY KEY,provider_local_hotel_id INT,provider VARCHAR(16),observed_at DATETIME) ENGINE=InnoDB');
+          $db->exec("INSERT INTO tour_price_observations VALUES(1,7458,9,'user_search','2026-11-23 10:00:00'),(2,7458,9,'saved_catalog','2026-11-23 10:00:00'),(3,7458,0,'user_search','2026-11-23 10:00:00'),(4,999,9,'user_search','2026-11-23 10:00:00')");
+          $db->exec("INSERT INTO hot_tours_current VALUES('".str_repeat('a',64)."',4283,'2026-11-23 10:00:00')");
+          $db->exec("INSERT INTO anytour_offers VALUES(1,97001,'tourvisor','2026-11-22 10:00:00','2026-11-23 10:00:00'),(2,7458,'anex','2026-11-22 10:00:00','2026-11-23 10:00:00')");
+          $db->exec("INSERT INTO anytour_offer_price_observations VALUES(1,74509,'tourvisor','2026-11-23 10:00:00'),(2,7458,'andromeda','2026-11-23 10:00:00')");
+          $before=rows7c($db);$raw=MatchLocal7CurrentRegistrationV1::run($db);need7c($db->writeDenied && !$db->inTransaction() && $before===rows7c($db));
+          $db->exec('ALTER TABLE hot_tours_current ENGINE=MyISAM');
+          $non=MatchLocal7CurrentRegistrationV1::run($db);need7c($non['stores']['hot_tours_current'][0]['status']==='non_transactional');
+          $db->exec('DROP TABLE hot_tours_current');$absent=MatchLocal7CurrentRegistrationV1::run($db);
+          need7c($absent['stores']['hot_tours_current'][0]['status']==='table_absent');
+          $db->exec('ALTER TABLE anytour_offers DROP COLUMN last_seen_at');$bad=MatchLocal7CurrentRegistrationV1::run($db);
+          need7c($bad['stores']['anytour_offers'][0]['status']==='schema_unavailable');
+          for($i=10;$i<139;$i++)$db->exec("INSERT INTO tour_price_observations VALUES($i,78456,9,'user_search','2026-11-23 10:00:00')");
+          $over=MatchLocal7CurrentRegistrationV1::run($db);need7c($over['stores']['tour_price_observations'][6]['status']==='row_limit_exceeded');
+          echo json_encode(['raw'=>$raw,'overflow'=>$over],JSON_THROW_ON_ERROR);
+        } finally {if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}
+        '''
+        call=subprocess.run(['php','-r',code],capture_output=True,text=True,timeout=60)
+        self.assertEqual(0,call.returncode,call.stderr);result=json.loads(call.stdout)
+        projected=m.l7c_project(result['raw'],m.LOCAL7_CURRENT_REGISTRATION)
+        self.assertEqual([1,1,1,1,0,0,0],[len(r['witnesses']) for r in projected['rows']])
+        self.assertEqual(2,projected['rows'][0]['sources']['tour_price_observations']['rejected_rows'])
+        self.assertEqual('incomplete_sources',m.l7c_project(result['overflow'],m.LOCAL7_CURRENT_REGISTRATION)['rows'][6]['state'])
+
+
 if __name__=='__main__':unittest.main()
 
 
