@@ -207,6 +207,11 @@ async function startFirefox() {
       await execute('document.querySelector(arguments[0]).scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});', selector);
       await command('POST', await elementPath(selector) + '/click', {});
     }
+    async function selectOption(selector, value) {
+      await wait(selector);
+      const option = selector + ' option[value=' + JSON.stringify(String(value)) + ']';
+      await command('POST', await elementPath(option) + '/click', {});
+    }
     async function fill(selector, text) {
       await wait(selector);
       const element = await elementPath(selector);
@@ -238,7 +243,7 @@ async function startFirefox() {
     return {
       capabilities, go: url => command('POST', '/url', {url}),
       reload:()=>command('POST','/refresh',{}),
-      evaluate, enableResponsiveMode, wait, click, fill, quit,
+      evaluate, enableResponsiveMode, wait, click, selectOption, fill, quit,
       text: async selector => command('GET', await elementPath(selector) + '/text'),
       value: async selector => command('GET', await elementPath(selector) + '/property/value'),
       count: selector => execute('return document.querySelectorAll(arguments[0]).length;', selector),

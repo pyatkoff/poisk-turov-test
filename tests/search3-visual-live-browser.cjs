@@ -898,7 +898,18 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
    };
    const focused=()=>page.evaluate(()=>document.activeElement.dataset.action||document.activeElement.id||document.activeElement.tagName);
-   const close=async(action)=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   const close=async action=>{
+    const inline=action==='guests';
+    const button=page.locator(inline?'#inline-search-guests [data-action="cancel-inline-search-picker"]':'#modal [data-action="close-modal"]');
+    await target(button,'picker close');
+    if(inline)await button.focus();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&document.querySelector('#inline-search-guests').hidden&&history.scrollRestoration==='auto');
+    assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');
+    assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');
+    assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');
+    assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');
+   };
    // The departure search is the existing canonical picker; emulate only the
    // visible viewport. Chromium layout/hitpoints are real, physical Safari is not.
    const departureViewport=async(height,offsetTop=0,event='resize')=>page.evaluate(({height,offsetTop,event})=>{Object.assign(window.__departureViewport,{height,offsetTop});window.__departureViewport.dispatchEvent(new Event(event));},{height,offsetTop,event});
