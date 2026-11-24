@@ -1288,7 +1288,7 @@ function refreshResultFilters(options,ratingCounts){
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
 }
 function refreshResultPickerPreviews(){
- if(filterDraft)updateDrawerPreview();updateBudgetPreview();if(modalType==='meals')updateMealPicker(updateMealCounts());
+ if(filterDraft)updateDrawerPreview();if(modalType==='budget'||!modalType&&inlineSearchPicker?.type==='budget')updateBudgetPreview();if(modalType==='meals')updateMealPicker(updateMealCounts());
 }
 function renderResultHeadings(items,total,pristine){
  $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);
