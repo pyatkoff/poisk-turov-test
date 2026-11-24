@@ -39,7 +39,7 @@ const server=http.createServer((req,res)=>{
    },{state,zoom});
    assert.equal(record.overflow,false,state+' text'+zoom+' fits the document');
    if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
-   else{assert(record.values.every(value=>value.fullText),'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
+   else{const clipped=record.values.filter(value=>!value.fullText);assert.deepEqual(clipped,[],'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
    density.push(record);return record;
   };
   const reachable=async(control,label)=>{

@@ -1832,11 +1832,13 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  #search-form.search-form-next :is(#quick-meal, #quick-budget) strong {
   display: block;
   grid-area: 2 / 1;
+  min-width: 0;
   min-height: 0;
   padding: 0;
   border: 0;
   background: transparent;
   font-size: .9375rem;
+  line-height: 1.4;
   font-weight: 650;
   text-align: left;
  }

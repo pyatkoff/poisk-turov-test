@@ -114,7 +114,7 @@ function observe(source,s){
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
  ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
    selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
-   draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
+   draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',inlineSearchPicker:null,data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo'),...(s.home?{AnyTourPublicConfigV1:{valid:!s.invalidHomeConfig},V2_CONFIG:{search3FormOnly:true}}:{})},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
@@ -522,7 +522,7 @@ function summaryDOM({full=false,code=source}={}){
   $:selector=>document.querySelector(selector),icon:name=>`<i data-icon="${name}"></i>`,
   state:{search:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},filters:{stars:[],meals:[],min:0,max:null}},
   destinationIds:()=>[],hotelCountText:n=>n+' отелей',countryNames:{'4':'Турция','1':'Египет','9':'Направление'},appliedDestination:()=>section(code,'function renderSummary(){','function editSearch(){').includes('destinationIds')?{country:ctx.state.search.country,resorts:[],hotelIds:[]}:ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
-  updateCompactSearch:()=>{},departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
+  updateCompactSearch:()=>{},closeInlineSearchPicker:()=>{},departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
   durationText:()=>ctx.state.search.minNights+'–'+ctx.state.search.maxNights+' ночей',guestsText:()=>ctx.state.search.adults+' взрослых · '+ctx.state.search.ages.join('/'),
   budgetLabel:f=>f.min+'–'+(f.max??'любой'),filterCount:()=>ctx.state.filters.stars.length+ctx.state.filters.meals.length+(ctx.state.filters.min?1:0)+(ctx.state.filters.max===null?0:1)};
  if(full)ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
