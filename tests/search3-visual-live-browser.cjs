@@ -889,6 +889,10 @@ async function formPickerActionJourney(browser,origin,base,evidence){
    const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
    const target=async(locator,label)=>{
     await locator.scrollIntoViewIfNeeded();
+    await locator.evaluate(el=>{
+     const rect=el.getBoundingClientRect();
+     if(rect.top<0||rect.bottom>innerHeight||rect.left<0||rect.right>innerWidth)el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+    });
     const box=await locator.evaluate(el=>{
      const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);
      const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),text=[...range.getClientRects()].filter(b=>b.width&&b.height);
@@ -1050,10 +1054,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     assert.equal(await age(0).inputValue(),'0');
     assert.equal(await age(1).inputValue(),'13');
     const restored=await panelGeometry();
-    const confirmParty=guests.locator('[data-action="apply-guests"]');
-    await confirmParty.evaluate(button=>button.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
-    await frames();
-    await target(confirmParty,'restored party Apply');
+    await target(guests.locator('[data-action="apply-guests"]'),'restored party Apply');
     await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
     await cancelFamily();await closeFamily();await assertUnapplied(baseline);
 
