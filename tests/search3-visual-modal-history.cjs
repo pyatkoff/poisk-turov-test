@@ -30,7 +30,7 @@ function observe(source,s){
  };nodes.set(key,n);return n;}
  const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
-  renderedResultItems:[],hotelDetailsView:null,hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
+  renderedResultItems:[],hotelDetailsView:null,hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},closeInlineSearchPicker:()=>{},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
   hotels:[{id:7}],hotelOffers:()=>[{meal:'AI'}],
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},

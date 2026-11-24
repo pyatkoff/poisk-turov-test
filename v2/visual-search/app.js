@@ -62,7 +62,7 @@ const countriesTo={};
 const operators=[];
 const data=window.AnyTourPrototypeData;
 const homeFormOnly=window.AnyTourPublicConfigV1?.valid===true&&window.V2_CONFIG?.search3FormOnly===true;
-const nextSearchForm=/^\/_preview\/search3-next-candidate\/visual-search\/(?:index\.(?:php|html))?$/.test(location.pathname)?$('#search-form'):null;
+const nextSearchForm=$('#search-form[data-next-inline-pickers]');
 let inlineSearchPicker=null;
 let homeNavigationPending=false;
 const visualResource=name=>window.AnyTourPublicConfigV1?.valid?window.AnyTourPublicConfigV1.asset(name):'./'+name;
@@ -1427,6 +1427,8 @@ function restorePageReturn(){
 function providerHistoryRoute(type){return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop,...(type==='andromeda-flights'?{outbound:$('[name="andromeda-outbound"]:checked')?.value,inbound:$('[name="andromeda-return"]:checked')?.value}:{}),...(type==='anex-quote'?{choice:$('[name="anex-package-choice"]:checked')?.value}:{})};}
 function uiRoute(){
  if($('#filter-panel').classList.contains('open')){const budget=currentFilterBudgetEdit(filterDraft?.filters);return {type:'filters',draft:filterHistorySnapshot(filterDraft),budget:budget?{minText:budget.minText,maxText:budget.maxText}:null,sections:[...expandedFilterSections],scroll:$('#filter-panel').scrollTop,overviewScroll:Number($('#filter-panel').dataset.overviewScroll)||0};}
+ if(inlineSearchPicker?.type==='guests')return {type:'inline-guests',draft:restoredGuestDraft(guestDraft)};
+ if(inlineSearchPicker?.type==='budget')return {type:'inline-budget',minText:$('#budget-min').value,maxText:$('#budget-max').value};
  const type=modalType;
  if(['andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-quote','anex-application'].includes(type))return providerHistoryRoute(type);
  if(type==='departure')return {type,choice:departureChoice,query:$('#departure-query')?.value||''};
@@ -1489,6 +1491,13 @@ function reopenUIRoute(route){
  case 'dates':openDates(route.source==='results'?'results':'form',route);if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
  case 'meals':openMeals(route);break;
  case 'budget':openBudget(route);break;
+ case 'inline-guests':
+ case 'inline-budget':{
+  if(!nextSearchForm||nextSearchForm.hidden)return false;
+  const type=route.type.slice('inline-'.length);
+  openInlineSearchPicker(type,nextSearchForm.querySelector('[data-action="'+type+'"]'),route);
+  break;
+ }
  case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-quote':case 'anex-application':{
   if(!restoreProviderHistoryRoute(route))return false;
   break;
@@ -1540,6 +1549,7 @@ addEventListener('popstate',e=>{
   if($('#modal').open&&modalHistory.length){handlingUIBack=true;modalBack();handlingUIBack=false;history.pushState({...history.state,[uiHistoryKey]:uiRoute()},'',location.href);}
   else if($('#filter-panel').classList.contains('filter-detail-open')){handlingUIBack=true;setFilterSectionOpen($('.filter-operator-group'),false);handlingUIBack=false;history.pushState({...history.state,[uiHistoryKey]:uiRoute()},'',location.href);}
   else if($('#modal').open)closeModal({fromHistory:true});
+  else if(inlineSearchPicker)closeInlineSearchPicker({focus:true,fromHistory:true});
   else closeFilters({fromHistory:true});
   updateURL();return;
  }
@@ -1579,7 +1589,7 @@ function restoreModalStepFocus(previous){
  if(Number.isFinite(previous.focus?.top)&&modalBody.contains(document.activeElement)){const top=document.activeElement.getBoundingClientRect().top-modalBody.getBoundingClientRect().top;modalBody.scrollTop+=top-previous.focus.top;}
 }
 function showModal(type,title,kicker,body,wide=false){
- closeInlineSearchPicker();
+ closeInlineSearchPicker({handoff:true});
  if(type!=='hotel-details')cancelHotelOfferCheck();
  hotelRoomObserver?.disconnect();hotelRoomObserver=null;const m=$('#modal'),newStep=!m.open||modalType!==type;
  if(!m.open){modalHistory.length=0;enterUIHistory();}
@@ -1847,14 +1857,16 @@ function restoredGuestDraft(value){
  if(!Number.isInteger(adults)||adults<1||adults>6||ages.length>3||ages.some(age=>age!==null&&(!Number.isInteger(age)||age<0||age>17)))return fallback;
  return {adults,ages:[...ages]};
 }
-function closeInlineSearchPicker(restoreFocus=false){
+function closeInlineSearchPicker({focus=false,handoff=false,fromHistory=false}={}){
  if(!inlineSearchPicker)return;
  const {panel,trigger}=inlineSearchPicker;
+ if(!handoff)leaveUIHistory(fromHistory);
  inlineSearchPicker=null;
  trigger.setAttribute('aria-expanded','false');
  panel.hidden=true;
  panel.replaceChildren();
- if(restoreFocus)trigger.focus({preventScroll:true});
+ if(focus)trigger.focus({preventScroll:true});
+ if(!handoff)restorePageReturn();
 }
 function guestOptions(start,end,selected,label=String){
  return Array.from({length:end-start+1},(_,i)=>{
@@ -1871,16 +1883,17 @@ function updateInlineGuestValidity(){
  $('[data-action="apply-guests"]').disabled=missingAge;
  $('#guest-error').textContent=missingAge?'Укажите возраст каждого ребёнка.':'';
 }
-function openInlineSearchPicker(type,trigger){
+function openInlineSearchPicker(type,trigger,restore){
  if(inlineSearchPicker?.type===type)return;
- closeInlineSearchPicker();
+ closeInlineSearchPicker({handoff:true});
+ enterUIHistory();
  const panel=document.getElementById(trigger.getAttribute('aria-controls'));
  inlineSearchPicker={type,trigger,panel};
  trigger.setAttribute('aria-expanded','true');
  panel.hidden=false;
  const budget=type==='budget',title=budget?'Бюджет за весь тур':'Состав туристов';
- if(!budget)guestDraft=restoredGuestDraft();
- const fields=budget?budgetPickerFields():
+ if(!budget)guestDraft=restoredGuestDraft(restore?.draft);
+ const fields=budget?budgetPickerFields(restore):
   `<div class="inline-search-fields">
     <label>Взрослые<select id="inline-adults">${guestOptions(1,6,guestDraft.adults)}</select></label>
     <label>Дети<select id="inline-children">${guestOptions(0,3,guestDraft.ages.length)}</select></label>
@@ -1895,9 +1908,10 @@ function openInlineSearchPicker(type,trigger){
   </div>`;
  if(budget)updateBudgetPreview();
  else{renderInlineGuestAges();updateInlineGuestValidity();}
+ rememberUIRoute();
 }
 function toggleInlineSearchPicker(type,trigger){
- if(inlineSearchPicker?.type===type)closeInlineSearchPicker(true);
+ if(inlineSearchPicker?.type===type)closeInlineSearchPicker({focus:true});
  else openInlineSearchPicker(type,trigger);
 }
 function initInlineSearchPickers(){
@@ -1915,7 +1929,7 @@ function initInlineSearchPickers(){
  }
  nextSearchForm.addEventListener('keydown',event=>{
   if(!inlineSearchPicker?.panel.contains(event.target))return;
-  if(event.key==='Escape'){event.preventDefault();closeInlineSearchPicker(true);}
+  if(event.key==='Escape'){event.preventDefault();closeInlineSearchPicker({focus:true});}
   if(event.key==='Enter'&&event.target.matches('#budget-min,#budget-max')){
    event.preventDefault();
    inlineSearchPicker.panel.querySelector('[data-action="apply-budget"]').click();
@@ -3401,6 +3415,7 @@ function handlePartyMealChange(t){
   }
   if(t.hasAttribute('data-inline-child-age'))guestDraft.ages[Number(t.dataset.inlineChildAge)]=t.value===''?null:Number(t.value);
   updateInlineGuestValidity();
+  rememberUIRoute();
   return;
  }
  if(t.dataset.childAge!==undefined){guestDraft.ages[+t.dataset.childAge]=t.value===''?null:+t.value;if(t.value!==''){t.removeAttribute('aria-invalid');t.removeAttribute('aria-describedby');}if(guestDraft.ages.every(a=>a!==null))$('#guest-error').textContent='';updateGuestSelection();rememberUIRoute();}
@@ -3451,7 +3466,7 @@ function handleSearchParameterAction(action,b,id){
  case 'apply-age':if(ageChoice.value!==null){guestDraft.ages[ageChoice.index]=ageChoice.value;modalBack();}break;
  case 'dates':openDates();break;case 'meals':openMeals();break;
  case 'budget':if(b.id==='quick-budget'&&nextSearchForm)toggleInlineSearchPicker('budget',b);else openBudget();break;
- case 'cancel-inline-search-picker':closeInlineSearchPicker(true);break;
+ case 'cancel-inline-search-picker':closeInlineSearchPicker({focus:true});break;
  case 'clear-meal-query':$('#meal-query').value='';updateMealPicker();$('#meal-query').focus();break;
  case 'budget-preset':$('#budget-min').value=0;$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();break;
  case 'budget-adjust-max':
@@ -3464,7 +3479,7 @@ function handleSearchParameterAction(action,b,id){
   const budget=readBudget();
   if(!budget.valid){updateBudgetPreview();$(budget.invalidMin?'#budget-min':'#budget-max').focus();return true}
   filterBudgetEdit=null;pickerFilters().min=budget.min;pickerFilters().max=budget.max;
-   if(inlineSearchPicker?.type==='budget')closeInlineSearchPicker(!showMatches);
+   if(inlineSearchPicker?.type==='budget')closeInlineSearchPicker({focus:!showMatches});
   if(showMatches){searchEditSession=null;draftDestination=null;collapseSearch();}
   finishFilterPicker();break;
  }
@@ -3484,7 +3499,7 @@ function handleSearchParameterAction(action,b,id){
  case 'apply-guests':{
   if(guestDraft.ages.includes(null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}
   draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;urlPartyIssues=[];
-  if(inlineSearchPicker?.type==='guests')closeInlineSearchPicker(true);
+  if(inlineSearchPicker?.type==='guests')closeInlineSearchPicker({focus:true});
   else closeModal();
   updateSearchUI();if(!state.hasSearched)updateURL();break;
  }

@@ -11,4 +11,8 @@ define('V2_VISUAL_ENTRY_ALLOWED', true);
 require __DIR__ . '/entry-v1.php';
 $scenario = is_string($_GET['scenario'] ?? null) ? $_GET['scenario'] : '';
 $offline = in_array($scenario, ['snapshot', 'journey', 'flights', 'mixed', 'family', 'incomplete', 'price-change', 'unavailable', 'expired', 'flight-error', 'empty', 'recorded'], true);
-echo v2_visual_search_render($offline ? 'preview-offline' : 'preview-live');
+echo v2_visual_search_replace(
+    v2_visual_search_render($offline ? 'preview-offline' : 'preview-live'),
+    '<form id="search-form" class="search-box">',
+    '<form id="search-form" class="search-box" data-next-inline-pickers>'
+);
