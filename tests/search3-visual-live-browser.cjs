@@ -895,7 +895,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
      return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,hit:!!hit&&(hit===el||el.contains(hit)),textInside:text.every(b=>b.x>=r.x-1&&b.right<=r.right+1),viewportWidth:innerWidth,viewportHeight:innerHeight};
     });
     assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
-    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
+    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport '+JSON.stringify(box));assert(box.textInside,label+' keeps its whole label');return box;
    };
    const focused=()=>page.evaluate(()=>document.activeElement.dataset.action||document.activeElement.id||document.activeElement.tagName);
    const close=async action=>{
@@ -1050,7 +1050,10 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     assert.equal(await age(0).inputValue(),'0');
     assert.equal(await age(1).inputValue(),'13');
     const restored=await panelGeometry();
-    await target(guests.locator('[data-action="apply-guests"]'),'restored party Apply');
+    const confirmParty=guests.locator('[data-action="apply-guests"]');
+    await confirmParty.evaluate(button=>button.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+    await frames();
+    await target(confirmParty,'restored party Apply');
     await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
     await cancelFamily();await closeFamily();await assertUnapplied(baseline);
 

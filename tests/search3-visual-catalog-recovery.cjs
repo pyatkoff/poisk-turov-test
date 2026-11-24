@@ -29,7 +29,7 @@ module.exports=async function({browser,origin,base,evidence}){
    assert.equal(await page.locator('#search-form .search-submit').isDisabled(),disabled,'catalogue gate on search submit');
   };
   const assertVisibleTrip=async(stage)=>{
-   const expected={'#dates-label':expectedDates,'#nights-label':'6–9 ночей','#guests-label':'3 взр. · 2 реб.','#guests-detail':'До 1 года и 12 лет'};
+   const expected={'#dates-label':expectedDates,'#nights-label':'6–9 ночей','#guests-label':'3 взрослых и 2 ребёнка','#guests-detail':'До 1 года · 12 лет'};
    for(const [selector,text] of Object.entries(expected)){
     const field=page.locator('#search-form '+selector);
     assert.equal(await field.isVisible(),true,stage+' exposes requested '+selector+' at '+label);
