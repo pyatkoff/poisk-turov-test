@@ -68,8 +68,8 @@ class ExistingCollectorHook(unittest.TestCase):
 
     def test_price27316_compatible_bundle_is_checked_before_production_copy(self):
         source = (ROOT / '.github/workflows/collect-anytour-tours.yml').read_text()
-        expected = 'e2d0bb7566bd2ca005385ffeaa31b308e64087c0cb86af796aa608c53775f828'
-        self.assertEqual(source.count('ref: df86469bc937a8e0ff0251406b58afbdccb22bdb'), 2)
+        expected = '7d0c94ca55d3d4b6a59f4a96310fb394de56397f5d26707630ff1e230a8b9ec4'
+        self.assertEqual(source.count('ref: 8386cbaf47aed961119fada03f75cf934b29c6fd'), 2)
         guard = 'test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' + "' '" + ' -f1)" = ' + expected
         self.assertEqual(source.count(guard), 2)
         self.assertIn('php hotel-price-publisher/tools/direct_demand/operations/test-monitor-price-27316-cycle.php', source)
