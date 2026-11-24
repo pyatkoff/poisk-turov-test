@@ -1721,6 +1721,128 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  body.form-visible .demo-note{margin-top:26px;background:transparent;color:var(--muted)}
 }
 
+#search-form.search-form-next .inline-search-picker {
+ grid-column: 1 / -1;
+ min-width: 0;
+ padding: 14px;
+ border: 1px solid var(--line);
+ border-radius: 12px;
+ background: #f8faff;
+ text-align: left;
+}
+#search-form.search-form-next .inline-search-picker[hidden] { display: none; }
+#search-form.search-form-next .inline-search-picker h3 {
+ margin: 0 0 10px;
+ font-size: 1rem;
+}
+#search-form.search-form-next .inline-search-fields,
+#search-form.search-form-next .inline-search-picker .form-row {
+ display: grid;
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+ gap: 8px;
+}
+#search-form.search-form-next .inline-search-fields:not(:empty) + .inline-search-fields:not(:empty) { margin-top: 8px; }
+#search-form.search-form-next .inline-search-picker label {
+ display: grid;
+ align-content: start;
+ gap: 4px;
+ min-width: 0;
+ color: var(--ink);
+ font-size: .875rem;
+}
+#search-form.search-form-next .inline-search-picker :is(input, select) {
+ width: 100%;
+ max-width: none;
+ min-height: 44px;
+ padding: 7px 9px;
+ border: 1px solid var(--line);
+ border-radius: 8px;
+ background: #fff;
+ color: var(--ink);
+ font-size: 1rem;
+}
+#search-form.search-form-next .inline-search-actions {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 8px;
+ margin-top: 10px;
+}
+#search-form.search-form-next .inline-search-picker button { min-height: 44px; }
+#search-form.search-form-next .inline-search-picker .error-text:empty { display: none; }
+#search-form.search-form-next :is([data-action="guests"], #quick-budget)[aria-expanded="true"] { border-color: var(--brand); }
+#search-form.search-form-next :is([data-action="guests"], #quick-budget)[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+#search-form.search-form-next #guests-label { font-weight: 650; }
+#search-form.search-form-next #budget-label { color: var(--brand); }
+
+@media (min-width: 1101px) {
+ #search-form.search-form-next .search-primary { grid-template-columns: minmax(0, .95fr) minmax(0, 1.2fr) minmax(0, 1.18fr) minmax(0, .76fr) minmax(0, 1.42fr); }
+ #search-form.search-form-next #inline-search-guests { grid-column: 3 / -1; }
+ #search-form.search-form-next #inline-search-budget { grid-column: 2 / -1; grid-row: 3; }
+ #search-form.search-form-next:has(#inline-search-budget:not([hidden])) :is(#search-return, .form-price-note:not([id])) { grid-row: 4; }
+}
+
+@media (max-width: 760px) {
+ #search-form.search-form-next .search-primary { align-items: stretch; }
+ #search-form.search-form-next .search-primary > .search-field {
+  align-content: center;
+  align-items: start;
+  gap: 3px;
+  min-height: 58px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+ }
+ #search-form.search-form-next .search-primary > .search-field:nth-child(-n+4) { grid-column: span 1; }
+ #search-form.search-form-next .search-primary > .search-field:nth-child(5) { grid-template-columns: minmax(0, 1fr); }
+ #search-form.search-form-next .search-field .field-label { padding: 0; color: var(--muted); font-size: .8125rem; line-height: 1.3; }
+ #search-form.search-form-next .search-field .field-control {
+  justify-content: space-between;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+ }
+ #search-form.search-form-next .search-field .field-value { text-align: left; }
+ #search-form.search-form-next .search-secondary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+ #search-form.search-form-next .search-secondary :is(#quick-meal, #quick-budget) {
+  position: static;
+  display: grid;
+  grid-column: span 1;
+  grid-template: auto auto / minmax(0, 1fr) auto;
+  align-items: center;
+  align-content: center;
+  gap: 3px 6px;
+  min-height: 60px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+ }
+ #search-form.search-form-next :is(#quick-meal, #quick-budget) > span:first-child {
+  grid-area: 1 / 1;
+  padding: 0;
+  color: var(--muted);
+  font-size: .8125rem;
+  line-height: 1.3;
+  white-space: normal;
+ }
+ #search-form.search-form-next :is(#quick-meal, #quick-budget) strong {
+  display: block;
+  grid-area: 2 / 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: .9375rem;
+  font-weight: 650;
+  text-align: left;
+ }
+ #search-form.search-form-next :is(#quick-meal, #quick-budget) .chevron { position: static; grid-area: 1 / 2 / 3; }
+}
+
 /* The approved pickers share the existing dialog, draft and history owners. */
 .form-picker .modal-header .icon-button,.form-picker .calendar-navigation .icon-button,.form-picker .text-button{min-width:44px;min-height:44px}
 .form-picker .picker-caption{font-size:12px;line-height:1.5;color:var(--muted);margin:8px 0}
