@@ -45,11 +45,16 @@ if (array_key_exists('catalog', $_GET) || $canonicalInputs !== []) {
         hotel_details_read_out(['ok' => false, 'error' => 'Invalid canonical hotel IDs'], 400);
     }
     try {
-        $catalogue = new AnyTourCanonicalCatalog(v2_data_db());
+        require_once __DIR__ . '/anytour-canonical-provenance-v1.php';
+        $pdo = v2_data_db();
+        $catalogue = new AnyTourCanonicalCatalog($pdo);
         if ($input === 'legacyHotelIds') {
-            hotel_details_read_out(['ok' => true] + $catalogue->readLegacyProfiles($canonicalIds));
+            $result = $catalogue->readLegacyProfiles($canonicalIds);
+            $result['items'] = anytour_canonical_provenance_attach($pdo, $result['items'], $result['links']);
+            hotel_details_read_out(['ok' => true] + $result);
         }
         $result = $catalogue->read($canonicalIds);
+        $result['items'] = anytour_canonical_provenance_attach($pdo, $result['items']);
         if ($input === 'anytourHotelId') {
             if ($result['items'] === []) hotel_details_read_out(['ok' => false, 'error' => 'Hotel not found'], 404);
             hotel_details_read_out(['ok' => true, 'catalog' => 'anytour',
