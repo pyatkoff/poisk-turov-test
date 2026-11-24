@@ -1865,8 +1865,8 @@ function closeInlineSearchPicker({focus=false,handoff=false,fromHistory=false}={
  trigger.setAttribute('aria-expanded','false');
  panel.hidden=true;
  panel.replaceChildren();
- if(focus)trigger.focus({preventScroll:true});
  if(!handoff)restorePageReturn();
+ if(focus)trigger.focus({preventScroll:true});
 }
 function guestOptions(start,end,selected,label=String){
  return Array.from({length:end-start+1},(_,i)=>{
