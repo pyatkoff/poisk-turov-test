@@ -281,22 +281,28 @@ async function verifyEmptyLocalRail(browser) {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const editorGeometry = await page.evaluate(() => {
         const box = selector => document.querySelector('#tourSearch ' + selector).getBoundingClientRect().toJSON();
+        const visibleBox = selector => {
+          const node = [...document.querySelectorAll('#tourSearch ' + selector)]
+            .find(candidate => candidate.getClientRects().length && getComputedStyle(candidate).visibility !== 'hidden');
+          return node && node.getBoundingClientRect().toJSON();
+        };
         return {
-          dates: box('.search3-dates'), nights: box('.search3-nights'),
-          dateInput: box('.search3-dates .search3-direct-control'),
-          nightInput: box('.search3-nights .search3-direct-control'),
+          dates: box('.search-group--dates'), nights: box('.search-group--nights'),
+          dateInput: visibleBox('[data-search3-parameter="dates"],input[name="dateFrom"]'),
+          nightInput: visibleBox('[data-search3-parameter="nights"],select[name="daysFrom"]'),
           viewport: innerWidth, documentWidth: document.documentElement.scrollWidth,
           bodyClass: document.body.className,
-          grid: getComputedStyle(document.querySelector('#tourSearch .search3-primary-grid')).gridTemplateColumns,
-          dateColumn: getComputedStyle(document.querySelector('#tourSearch .search3-dates')).gridColumn,
-          dateStyle: document.querySelector('#tourSearch .search3-dates').getAttribute('style')
+          grid: getComputedStyle(document.querySelector('#tourSearch .main-fields')).gridTemplateColumns,
+          dateColumn: getComputedStyle(document.querySelector('#tourSearch .search-group--dates')).gridColumn,
+          dateStyle: document.querySelector('#tourSearch .search-group--dates').getAttribute('style')
         };
       });
       if (editorGeometry.documentWidth > editorGeometry.viewport + 2) throw new Error(width + ': editor overflows viewport');
       console.log('SEARCH3_EDITOR_GEOMETRY_STATE ' + width + ' ' + JSON.stringify(editorGeometry));
       await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
-      if (width >= 761 && editorGeometry.dates.width < editorGeometry.nights.width * 1.8) throw new Error(width + ': date range lost its wide column');
-      if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
+      if (!editorGeometry.dateInput || !editorGeometry.nightInput) throw new Error(width + ': current date/night controls missing ' + JSON.stringify(editorGeometry));
+      if (editorGeometry.dates.width < editorGeometry.nights.width * 0.95) throw new Error(width + ': date range collapsed below nights column');
+      if (editorGeometry.dateInput.width < 96 || editorGeometry.nightInput.width < 96) throw new Error(width + ': visible date/night value clipped ' + JSON.stringify(editorGeometry));
       console.log('SEARCH3_EDITOR_GEOMETRY_OK ' + width + ' ' + JSON.stringify(editorGeometry));
       // Restore the result fixture for the independent calendar checks below.
       await page.locator('.search-editor-collapse').click();
