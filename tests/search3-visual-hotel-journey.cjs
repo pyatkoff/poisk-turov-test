@@ -92,7 +92,7 @@ function verifyResultCardEntry(){
  const hotel={id:7,offers:[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]};
  const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},selectedOffer:null,hotels:[hotel],modalType:'hotel-details',
   $:selector=>selector==='#modal'?{open:true}:null,$$:selector=>selector==='.room-offer-choice'?[{dataset:{offerKey:'first'},closest:()=>other},row]:[],
-  hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
+  hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),captureOfferInventory:(hotel,offers)=>({hotel,offers}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
  vm.createContext(c);vm.runInContext(slice('function openHotelDetails(id,','function positionHotelRooms('),c);c.renderHotelDetails();
  assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
  // Opening the list anchors the clicked offer without marking an unverified room as chosen.
@@ -133,7 +133,7 @@ async function verifyChoiceComposition(){
  assert.equal(button.dataset.action,'clear-hotel-room-meal');assert.equal(button.disabled,false);assert.match(status.textContent,/с другим питанием/);
  assert.equal(nodes['#hotel-detail-min'].textContent,'Нет предложений','an alternative meal cannot supply a price for the missing choice');
  const control=nodes['#hotel-room-meal'];control.dataset={id:'1'};let focused=false;control.focus=()=>{focused=true;};
- c.renderHotelRooms=(id,meal='')=>{assert.equal(id,1);control.value=meal;c.syncHotelOfferSelection(id);};
+ c.refineHotelRoomMeal=(id,meal='')=>{assert.equal(id,1);control.value=meal;c.syncHotelOfferSelection(id);};
  const recovery=app.match(/^ case 'clear-hotel-room-meal':[^\n]+/m)[0];
  vm.runInContext(`switch('clear-hotel-room-meal'){${recovery}}`,c);
  assert.equal(control.value,'');assert(focused);assert.equal(button.dataset.action,'hotel-section');assert.equal(calls.quote+calls.expand+calls.flights,0);

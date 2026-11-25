@@ -3,11 +3,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 function owner(source){
  const first=source.indexOf(source.includes('const amountFormatter=')?'const amountFormatter=':'const money =');
- const last=source.indexOf('const flightDateText',first);
+ const last=source.indexOf('const nightsText',first);
  assert(first>=0&&last>first,'actual presentation helpers');
  const rating=source.match(/^const rating(?:Value|Text)=[^\n]+/gm);
  assert.equal(rating.length,2);
- return source.slice(first,last)+rating.join('\n')+'\nglobalThis.api={money,shortMoney,dateText,dateLong,ratingText};';
+ return source.slice(first,last)+rating.join('\n')+'\nglobalThis.api={money,shortMoney,dateText,dateLong,departureRangeText,ratingText};';
 }
 const numbers=[0,-0,1,-1,999.994,999.995,12345.67,133500.5,125500.555,Number.MAX_SAFE_INTEGER,NaN,Infinity,-Infinity,'187700.50','',null,undefined];
 const dates=[];
@@ -29,9 +29,19 @@ const expected=observations(native),actual=observations(api);assert.deepEqual(ac
 const before=constructions;
 for(let i=0;i<20;i++)assert.deepEqual(observations(api),expected);
 assert.equal(constructions,before,'no per-cell/per-card formatter construction');
-assert.equal(before,7,'bounded formatter instances per app');
+assert.equal(before,9,'bounded formatter instances per app');
 assert.equal(api.money(133500.5),'133 500,5 ₽');assert.equal(api.dateText('2027-01-01'),'1 янв');assert.equal(api.dateLong('invalid'),'Invalid Date');
 assert(source.includes('heading=formatDate(monthFormatter,date)'), 'month heading uses the retained formatter');
+assert(source.includes('monthName=day=>formatDate(calendarMonthFormatter,dateObj(day))'),'range heading uses one formatter');
+const rangeLabels=[
+ ['2026-09-14','2026-09-14','14 сентября'],
+ ['2026-09-14','2026-09-22','14–22 сентября'],
+ ['2026-09-28','2026-10-03','28 сент — 3 окт'],
+ ['2026-12-28','2027-01-03','28 дек 2026 — 3 янв 2027'],
+ ['invalid','invalid','Invalid Date']
+];
+for(const [from,to,label] of rangeLabels)assert.equal(api.departureRangeText(from,to),label);
+assert.equal(constructions,before,'range labels do not initialize new formatters');
 assert.equal((source.match(/shortAmount\(price,true\)/g)||[]).length,3,'tape plus both initial and updated calendar cells reuse the short amount formatter');
 const compare=process.argv.indexOf('--compare');
 function calendarObservations(source){
@@ -60,4 +70,4 @@ if(process.argv.includes('--benchmark')){
  const originalMs=measure(native),candidateMs=measure(api);
  console.log(JSON.stringify({workload:'1047 display rows × four formatters, seven warm runs, median',originalMs,candidateMs,speedup:originalMs/candidateMs,wholePageTiming:false}));
 }
-console.log(`PASS formatting: ${actual.length} outputs × 21 passes; seven formatter instances; no per-output construction; supplier/lead HTTP 0`);
+console.log(`PASS formatting: ${actual.length} outputs × 21 passes; ${before} formatter instances; no per-output construction; supplier/lead HTTP 0`);

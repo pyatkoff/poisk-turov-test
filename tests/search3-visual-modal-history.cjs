@@ -16,8 +16,8 @@ function owner(source){
  // Load the actual guard with a read-only empty view for these original cases.
  return source.slice(source.indexOf('function hotelOfferCheckActive('),source.indexOf('function renderOfferProgress('))+'\nconst terminalOfferQuote=(()=>{const retainedProviderView=()=>null;'+source.slice(guard,guardEnd)+'return terminalOfferQuote;})();\n'+source.slice(a,b);
 }
-function observe(source,s){
- const trace=[],tasks=[],expiry=[],nodes=new Map(),savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx;
+function observe(source,s,{requiresInventory=true}={}){
+ const trace=[],tasks=[],expiry=[],nodes=new Map(),inventory=[{meal:'AI'}],savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx,inventoryReads=0,inventoryRenders=0;
  const checkpoint=()=>({type:ctx.modalType,restoring:ctx.restoringModal,history:ctx.modalHistory.map(x=>x.type),selected:ctx.selectedOffer?.key,open:node('#modal').open,footer:node('#modal-footer').innerHTML});
  const record=(name,...args)=>trace.push([name,...args,checkpoint()]);
  function node(key){if(nodes.has(key))return nodes.get(key);const n={key,id:key,value:'AI',dataset:{hotelId:'7',room:'standard'},textContent:'old '+key,innerHTML:'<old>'+key+'</old>',hidden:false,scrollTop:37,className:'wide-dialog',open:key==='#modal'?!!s.open:false,top:key==='#modal-body'?100:150,
@@ -28,11 +28,11 @@ function observe(source,s){
   showModal:()=>{n.open=true;record('showModal');},close:()=>{n.open=false;record('close');},
   classList:{contains:()=>!!s.filterOpen,toggle:()=>{}},style:{overflow:'initial'}
  };nodes.set(key,n);return n;}
- const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
+ const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
   renderedResultItems:[],hotelDetailsView:null,hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},closeInlineSearchPicker:()=>{},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
-  hotels:[{id:7}],hotelOffers:()=>[{meal:'AI'}],
+  hotels:[{id:7}],hotelOffers:hotel=>{assert.equal(hotel,ctx.hotels[0]);inventoryReads++;return inventory;},
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},
   focusReference:(element,root)=>{record('focusReference',element.key,root.key);return {element,selector:'#offer-button',top:18};},
   restoreFocus:(reference,fallback,root)=>{record('restoreFocus',reference?.selector||null,fallback.key,root.key);ctx.document.activeElement=reference?.element||fallback;},
@@ -41,6 +41,15 @@ function observe(source,s){
   window:{AnyTourPrototypeLead:{bind:offer=>record('bindLead',offer.key)}}
  };
  collaborators.forEach(name=>ctx[name]=(...args)=>{record(name,...args.map(x=>x&&typeof x==='object'?x.key||clone(x):x));return true;});
+ ctx.renderHotelRooms=(id,meal,rooms,offers)=>{
+  if(requiresInventory){
+   assert.equal(offers,inventory,'Back reuses the exact offer inventory');
+   assert.equal(inventoryReads,inventoryRenders+1,'read the hotel inventory once for each room restoration');
+  }
+  inventoryRenders++;
+  record('renderHotelRooms',id,meal,clone(rooms));
+  return true;
+ };
  ctx.retainedProviderView=offer=>{record('retainedProviderView',offer?.key);return s.stale?.includes(offer?.key)?null:{type:offer?.viewType||s.previous};};
  function step(type,index=0){const offer={...savedOffer,key:'step-'+index,viewType:type};return {type,title:'title '+type,kicker:'kicker',body:'<section>'+type+'</section>',footer:'footer '+type,footerHidden:!!s.footerHidden,className:type==='gallery'?'gallery-dialog':s.className||'wide-dialog',scroll:83,gallery:{id:7,index:3},offer,focus:{element:node('focus-target'),selector:'#offer-button',top:s.noFocusTop?undefined:18}};}
  if(s.kind==='back'){ctx.modalHistory=[step(s.previous)];if(s.staleAbove)ctx.modalHistory.push(step('andromeda-flights',1),step('anex-current',2));if(s.empty)ctx.modalHistory=[];if(s.onlyStale)ctx.modalHistory=[step('anex-current',2)];}
@@ -51,6 +60,7 @@ function observe(source,s){
  if(s.kind==='show')ctx.showModal(s.next,'new title','new kicker','<new>body</new>',!!s.wide);
  else if(s.kind==='close')ctx.closeModal({fromHistory:!!s.fromHistory});
  else ctx.modalBack();
+ if(requiresInventory)assert.equal(inventoryReads,inventoryRenders,'no unused inventory calculation during restoration');
  // Snapshot identity is part of the contract, not just equal serialized values.
  const last=ctx.modalHistory.at(-1),identities={snapshotOfferIsCurrent:last?.offer===savedOffer,snapshotGalleryIsOriginal:last?.gallery===savedGallery,selectedIsOriginal:ctx.selectedOffer===savedOffer};
  tasks.forEach(fn=>fn());
@@ -82,7 +92,7 @@ for(const open of [false,true])for(const filterOpen of [false,true])for(const fr
 // The retired My tour painter and empty verification cancellation had no active
 // DOM effect. Ignore only their intercepted callbacks, retaining every active
 // modal observation and original before/after comparison.
-function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
+function records(source,options){return scenarios.map(s=>{const result=observe(source,s,options);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
 // Only the three explicit viewport-sync call sites may differ from the retained pin.
 // Prove their exact position/count and preserve every original observation.
 let retainedSource=source;
@@ -112,7 +122,7 @@ for(let index=0;index<actual.length;index++){
 }
 assert.deepEqual(projected,retained,'all original modal observations remain unchanged after only the explicit viewport synchronization');
 const digest=crypto.createHash('sha256').update(JSON.stringify(projected)).digest('hex'),i=process.argv.indexOf('--compare');
-if(i>=0)assert.deepEqual(projected,records(fs.readFileSync(process.argv[i+1],'utf8')),'retained modal before/after observable traces');
+if(i>=0)assert.deepEqual(projected,records(fs.readFileSync(process.argv[i+1],'utf8'),{requiresInventory:false}),'retained modal before/after observable traces');
 assert.equal(actual.length,68,'retained 67 modal cases plus applied-pair hotel Back regression');
 if(!process.argv.includes('--capture'))assert.equal(digest,'b63e1cb92a5126b1fcd7d1507c2eb49108fd3b69eafad6d868a7c6be80ca0e3f','retained modal observations plus intentional passive hotel-room restoration fix');
 const result=name=>actual.find(r=>r.name===name).result;

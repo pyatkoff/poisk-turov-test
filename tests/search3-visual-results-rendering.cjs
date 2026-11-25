@@ -89,7 +89,7 @@ function generatedRootOwner(source){return source.includes('const generatedRootB
 function homeModeOwner(source){return (source.match(/^const homeFormOnly=[^\n]+/m)?.[0]||'')+'\n';}
 function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return homeModeOwner(source)+generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
- if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
+ if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(','function renderActive(');
  const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('function confirmTour(){',start);return end<0?source.slice(start):source.slice(start,end);
 }
@@ -117,7 +117,7 @@ function observe(source,s){
    draft:{...search,ages:s.draftAges??search.ages},appliedPartyLabel,searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',inlineSearchPicker:null,data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo'),...(s.home?{AnyTourPublicConfigV1:{valid:!s.invalidHomeConfig},V2_CONFIG:{search3FormOnly:true}}:{})},
-  __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
+  __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),sortResultItems:()=>items,resultInventory:()=>{record('results');if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};},
   appliedDestination:call('appliedDestination',()=>source.slice(source.indexOf('function renderResultHeadings('),source.indexOf('function paintResultCards(')).includes('destinationIds')?{kind:'resort',id:9,country:'4',resorts:[],hotelIds:[]}:{kind:'resort',id:9}),destinationIds:()=>[],destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
   dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),departureScopeValue:call('departureScopeValue',()=>s.selected?ctx.dateText('2026-10-15'):ctx.rangeText(search.from,search.to)),
   responseFor:call('responseFor',()=>({phase:s.phase||'complete'})),hotelCountText:call('hotelCountText',n=>n+' отелей'),
@@ -133,6 +133,9 @@ function observe(source,s){
  };
  for(const name of ['renderFilters','updateFacetCounts','syncFilterResetState','updateDrawerPreview','updateBudgetPreview','updateMealCounts','updateMealPicker','renderCalendarStrip','renderActive','updateNav','renderSummary','updateURL','renderSearchStatus','loadResultCalendar','refreshEmptyCalendarContext','renderOfferRefinements','renderTourComparison','rememberUIRoute'])ctx[name]=call(name);
  ctx.renderActive=()=>record('renderActive');
+ ctx.updateDrawerPreview=count=>count===undefined?record('updateDrawerPreview'):record('updateDrawerPreview',count);
+ ctx.syncResultSortControls=call('syncResultSortControls');
+ ctx.renderCalendarStrip=inventory=>{if(inventory)assert.strictEqual(inventory,items,'calendar can reuse the exact current result inventory');record('renderCalendarStrip');};
  const offers=s.empty?[]:Array.from({length:8},(_,i)=>({key:'o'+i,day:i%2?'2026-10-15':'2026-10-14',returnDay:i%2?'2026-10-22':'2026-10-21',nights:i%2?7:8,total:i%3?100000+i:100000,room:i%2?'r2':'r1',meal:i%3?'AI':'BB',flight:i%2?'regular':'charter',operator:'Operator<&'}));
  ctx.hotelOffers=call('hotelOffers',()=>offers);
  ctx.offerGroupKey=call('offerGroupKey',o=>o.room+'-'+o.meal);
@@ -155,11 +158,85 @@ function observe(source,s){
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
- vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
+ vm.createContext(ctx);vm.runInContext(section(app,'const dayFormatter=','const money =')+'\n'+app.match(/^const formatDate=[^\n]+/m)[0]+'\n'+app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
+  if(s.reorder){
+   const count=name=>trace.filter(entry=>entry[0]===name).length;
+   const sort=()=>{trace.length=0;ctx.renderResults({keepFilters:true,reorderOnly:true});};
+   ctx.state.sort='rating';sort();
+   for(const name of ['results','renderCalendarStrip','updateFacetCounts','renderSearchStatus'])assert.equal(count(name),0,name+' is independent of display order');
+   assert.equal(count('syncResultSortControls'),1);
+   assert.equal(count('updateURL'),1);
+   assert(count('cardHTML')>0,'the sort paints the current cards');
+   ctx.hotels=[...ctx.hotels];ctx.state.sort='price';sort();
+   assert.equal(count('results'),1,'new source inventory is collected before sorting');
+   assert.equal(count('renderCalendarStrip'),1);
+   ctx.filterDraft={};ctx.state.sort='rating';sort();
+   assert.equal(count('results'),1,'an open draft keeps its full refresh path');
+   assert.equal(count('updateDrawerPreview'),1);
+  }
+  if(s.emptyProgressive){
+   Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery')});
+   ctx.emptyResultsHTML=call('emptyResultsHTML',()=>ctx.searchResponse.pending?'<empty loading>':'<empty complete>');
+   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure')+'})',ctx);
+   const event=type=>handlers.afterEvent({type},ctx.searchResponse);
+   const count=name=>trace.filter(entry=>entry[0]===name).length;
+   ctx.hotels=[];ctx.searchResponse={key:'current',pending:true,phase:'loading'};trace.length=0;
+   event('loading');assert.equal(count('results'),1);
+   ctx.hotels=[];event('results');
+   assert.equal(count('results'),1,'a pending empty snapshot keeps the current inventory');
+   assert.equal(count('renderCalendarStrip'),1);
+   assert(ctx.searchResponse.currentInventory);
+   ctx.searchResponse.pending=false;ctx.searchResponse.phase='complete';
+   event('complete');
+   assert.equal(count('results'),1,'terminal empty delivery does not repeat inventory/layout work');
+   assert.equal(node('#cards').innerHTML,'<empty complete>','terminal empty delivery paints recovery');
+   items.push({hotel:{id:3},offers:[{key:'first'}]});ctx.hotels=[items[0].hotel];event('results');
+   assert.equal(count('results'),2,'a late canonical profile paints its first card immediately');
+   assert.equal(node('#cards').innerHTML,'<card id="3">1</card>');
+   items.length=0;ctx.hotels=[];ctx.searchResponse.pending=true;event('results');
+   assert.equal(count('results'),3,'an empty snapshot clears a previously populated inventory');
+   ctx.inlineSearchPicker={type:'budget'};ctx.hotels=[];event('results');
+   assert.equal(count('results'),4,'an open picker retains its existing update path');
+  }
+  if(s.collapsedResults){
+   Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),updateCompactSearch:call('updateCompactSearch'),
+    refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery'),
+    catalogReady:true,urlStateHydrated:true,catalogError:'',publicUrlFailure:null});
+   ctx.data.live=true;node('#search-form').hidden=true;
+   const wrapper=node('#messenger-return button[form="search-form"]'),lookup=ctx.$;
+   let retainedSubmit=false;
+   ctx.$=selector=>selector===wrapper.id&&!retainedSubmit?null:lookup(selector);
+   const handlers=vm.runInContext('({'+section(source,' afterEvent(event,response){',' afterFailure')+'})',ctx);
+   const receive=(type='results')=>{
+    trace.length=0;
+    handlers.afterEvent({type},ctx.searchResponse);
+    return trace.map(row=>row[0]);
+   };
+   const simple=receive();
+   for(const name of ['results','renderCalendarStrip','renderFilters','updateCompactSearch'])assert(simple.includes(name),name+' is still refreshed');
+   assert(!simple.includes('updateSearchUI'),'ordinary live inventory does not rewrite a hidden draft');
+   for(const [name,open,close] of [
+    ['open form',()=>{node('#search-form').hidden=false;},()=>{node('#search-form').hidden=true;}],
+    ['edited form',()=>{ctx.searchEditSession={};},()=>{ctx.searchEditSession=null;}],
+    ['filter drawer',()=>{ctx.filterDraft={};},()=>{ctx.filterDraft=null;}],
+    ['date modal',()=>{ctx.modalType='dates';},()=>{ctx.modalType='';}],
+    ['inline picker',()=>{ctx.inlineSearchPicker={type:'budget'};},()=>{ctx.inlineSearchPicker=null;}],
+    ['selected tariff',()=>{ctx.selectedOffer={key:'selected'};},()=>{ctx.selectedOffer=null;}],
+    ['exact refresh',()=>{ctx.searchResponse.exactRefresh=true;},()=>{ctx.searchResponse.exactRefresh=false;}],
+    ['catalog hydration',()=>{ctx.urlStateHydrated=false;},()=>{ctx.urlStateHydrated=true;}],
+    ['catalog failure',()=>{ctx.catalogError='fixture';},()=>{ctx.catalogError='';}],
+    ['messenger return',()=>{retainedSubmit=true;},()=>{retainedSubmit=false;}],
+    ['review mode',()=>{ctx.data.live=false;},()=>{ctx.data.live=true;}]
+   ]){
+    open();const updated=receive();assert(updated.includes('updateSearchUI'),name+' preserves the form owner');
+    assert(!updated.includes('updateCompactSearch'),name+' uses the full form owner');close();
+   }
+   assert(receive('loading').includes('updateSearchUI'),'search start still refreshes the form');
+  }
   if(s.progressive){
    Object.assign(ctx,{updateSearchUI:call('updateSearchUI'),refreshCalendarPrices:call('refreshCalendarPrices'),renderGallery:call('renderGallery')});
    // Both retained arrow and current method syntax share this named owner boundary.
@@ -180,6 +257,13 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   Object.assign(ctx.searchResponse,{pending:false,phase:'complete',currentInventory:true});
+   const visibleResultStatus=count('renderSearchStatus');event('complete');
+   assert.equal(count('results'),7,'completion of a populated search reuses the rendered inventory');
+   assert.equal(count('renderSearchStatus'),visibleResultStatus+1,'completion still paints source status and continuation');
+   ctx.searchResponse.exactRefresh=true;event('complete');assert.equal(count('results'),8,'exact refresh keeps full presentation');
+   ctx.searchResponse.exactRefresh=false;ctx.selectedOffer={key:'checked'};event('complete');assert.equal(count('results'),9,'a selected tour keeps the existing refresh path');
+   ctx.selectedOffer=null;ctx.filterDraft=true;event('complete');assert.equal(count('results'),10,'an open filter draft keeps its preview refresh');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
@@ -251,7 +335,7 @@ const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').
 // all data, state, inventory, pagination and other DOM observations stay pinned.
 const historicalHeading="function renderResultHeadings(items,total,pristine){\n $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);\n $('#compact-route').textContent=`${state.search.origin} → ${destinationLabel(appliedDestination())}`;\n $('#compact-details').textContent=`Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}`;\n\n $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;\n $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':`Отели и туры · ${countryNames[state.search.country]||'Выберите направление'}`;\n const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';\n $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;\n const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;\n}";
 const historicalCalendar="function renderCalendarStrip(){\n const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;\n loadResultCalendar();\n if(refreshBase)prepareResultCalendarBase();\n const model=resultCalendarModel(),{s,source,scope}=model;\n $('#calendar-units').textContent=`От, тыс. ₽ · весь тур за ${partyLabel(s)}`;\n const monthName=day=>dateObj(day).toLocaleDateString('ru-RU',{month:'long',timeZone:'UTC'}),fromYear=s.from.slice(0,4),toYear=s.to.slice(0,4);\n const monthRange=s.from.slice(0,7)===s.to.slice(0,7)?`${monthName(s.from)} ${fromYear}`:fromYear===toYear?`${monthName(s.from)} — ${monthName(s.to)} ${toYear}`:`${monthName(s.from)} ${fromYear} — ${monthName(s.to)} ${toYear}`;\n $('#calendar-month-label').textContent=monthRange.charAt(0).toLocaleUpperCase('ru-RU')+monthRange.slice(1);\n $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;\n const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));\n paintCalendarStrip(strip,calendarStripEntries(model));\n const minimumDay=model.days[model.prices.indexOf(model.min)];\n $('#calendar-minimum-legend').textContent=Number.isFinite(model.min)?`Минимум: ${dateText(minimumDay)} · ${money(model.min)}`:'';\n $('#calendar-minimum-legend').hidden=!Number.isFinite(model.min);\n $('#calendar-selected-date').textContent=state.selectedDate?`Вылет ${dateLong(state.selectedDate)}`:'';\n $('#calendar-selected-date').parentElement.hidden=!state.selectedDate;\n $('#clear-date').hidden=!state.selectedDate;\n refreshEmptyCalendarContext();\n}";
-const historicalSource=source.replace(section(source,'function renderResultHeadings(','function paintResultCards('),()=>historicalHeading+'\n').replace(section(source,'function renderCalendarStrip(){','function renderActive('),()=>historicalCalendar+'\n');
+const historicalSource=source.replace(section(source,'function renderResultHeadings(','function paintResultCards('),()=>historicalHeading+'\n').replace(section(source,'function renderCalendarStrip(','function renderActive('),()=>historicalCalendar+'\n');
 const baseline=visibleRecords(records(historicalSource.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','unchanged historical result/calendar/list oracle');
@@ -302,7 +386,11 @@ assert(!homeResults.trace.some(([name])=>['results','cardHTML','renderSearchStat
 assert.equal(homeResults.trace.filter(([name])=>name==='updateURL').length,1,'Home retains the shared URL boundary');
 assert.equal(observe(source,{kind:'results',home:true,invalidHomeConfig:true}).trace.filter(([name])=>name==='results').length,1,'an unvalidated Home flag cannot enable form-only mode');
 observe(source,{kind:'results',count:2,progressive:true});
+observe(source,{kind:'results',count:2,collapsedResults:true});
+observe(source,{kind:'results',count:0,emptyProgressive:true});
 console.log('PASS progressive result presentation: one initial scope, immediate new inventory, retained status counts, edits, continuation and terminal states');
+observe(source,{kind:'results',count:3,reorder:true});
+console.log('PASS sort-only render retains current inventory, refreshes new rows, and keeps the full draft path');
 
 // Loading another card page used to repeat the entire result inventory and
 // page-level rendering cascade. Compare the actual fast path against that
@@ -558,8 +646,8 @@ const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record
  try{
   ctx.document.body.insertAdjacentHTML('beforeend','<div id="compact-search"><strong id="compact-route"></strong><span id="compact-details"></span><button class="secondary" data-action="top"></button></div><div id="results"><span id="route-label"></span><h2 id="results-title"></h2><p id="results-summary"></p><span class="sort-label"></span><span class="mobile-sort"></span></div>');
   Object.assign(ctx,{destinationIds:d=>d.hotelIds,destinationHotel:id=>id===501?{name:hotel,country:'4',resort:'Белек'}:null,
-   hotelRestorePending:true,hotelCountText:n=>n===1?'1 отель':n+' отеля',catalogReady:true,departureScopeValue:()=> '12–18 октября',departureScopeText:()=> 'Вылет 12–18 октября'});
-  vm.runInContext(section(app,'function destinationLabel(','function recentDestinations(')+section(app,'function renderResultHeadings(','function paintResultCards('),ctx);
+   hotelRestorePending:true,hotelCountText:n=>n===1?'1 отель':n+' отеля',responseFor:()=>({phase:'complete'}),catalogReady:true,departureScopeValue:()=> '12–18 октября',departureScopeText:()=> 'Вылет 12–18 октября'});
+  vm.runInContext(section(app,'function destinationLabel(','function recentDestinations(')+section(app,'function renderResultSummary(','function paintResultCards('),ctx);
   const cases=[
    {hotelIds:[501],resorts:[],name:hotel,route:'Турция'},
    {hotelIds:[],resorts:['Кемер'],name:'Кемер',route:'Турция'},
@@ -648,18 +736,18 @@ const historicalSummarySource=source.replace(section(source,'function renderSumm
 // invalidate the generated-markup binding and are repaired on the next pass.
 function calendarDOM(code=source){
  const dom=new JSDOM('<section id="price-calendar"><button class="result-calendar-disclosure"></button><span id="result-calendar-range"></span><div class="result-date-heading"><p id="calendar-units"></p><p id="calendar-month-label"></p></div><div id="calendar-preview"><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button></div></section>'),document=dom.window.document,strip=document.querySelector('#price-strip');
- let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
+ let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0,formattedDates=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
  const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,innerWidth:1280,
-  state:{search:{from:'2026-10-01',to:'2026-10-21',ages:[]},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
+  state:{search:{from:'2026-10-01',to:'2026-10-21',ages:[]},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],remotePrices:[],observationPrices:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
-  calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
+  calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>{formattedDates++;return 'long:'+day;},dateText:day=>'date:'+day,money:value=>value+' ₽',
   dateObj:day=>new Date(day+'T12:00:00Z'),rangeText:(from,to)=>from+' — '+to,loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
- vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(owner(code,'calendar'),ctx);
+ vm.createContext(ctx);vm.runInContext(section(app,'const dayFormatter=','const money =')+'\n'+app.match(/^const formatDate=[^\n]+/m)[0]+'\n'+app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(owner(code,'calendar'),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(strip,{childList:true});
- return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
+ return {dom,ctx,strip,render:(...args)=>{ctx.renderCalendarStrip(...args);return observer.takeRecords();},parsed:()=>parsed,formattedDates:()=>formattedDates,
   setPrice:(index,value)=>{prices[index]=value;},setPrices:value=>{prices=value.slice();},markup:()=>vm.runInContext('calendarStripHTML(resultCalendarModel())',ctx),
   close:()=>{observer.disconnect();dom.window.close();}};
 }
@@ -675,11 +763,43 @@ function calendarDOM(code=source){
   }
  }finally{family.close();}
 }
+{
+ const calendar=calendarDOM();
+ try{
+  const {ctx,strip}=calendar,items=[{offers:[{day:'2026-10-01',total:97000},{day:'2026-10-02',total:88000}]}];
+  vm.runInContext(section(source,'function resultCalendarDays(','function resultCalendarSnapshot(')+section(source,'function positivePriceMinimum2(','function calendarMinimums('),ctx);
+  let calls=0;
+  const calculate=ctx.prepareResultCalendarBase;
+  ctx.prepareResultCalendarBase=(inventory)=>{calls++;return calculate(inventory);};
+  const prices=()=>Array.from(strip.querySelectorAll('strong'),node=>node.textContent);
+  calendar.render(items);
+  const initial=prices();
+  ctx.state.selectedDate='2026-10-01';
+  calendar.render(items.slice(0,1),true);
+  assert.equal(strip.firstElementChild.getAttribute('aria-pressed'),'true');
+  assert.deepEqual(prices(),initial,'selecting one date keeps prices across the full range');
+  ctx.state.selectedDate=null;
+  calendar.render(items,true);
+  assert.equal(strip.firstElementChild.getAttribute('aria-pressed'),'false');
+  assert.deepEqual(prices(),initial,'clearing selection keeps prices across the full range');
+  assert.equal(calls,1,'date-only renders reuse the prepared base');
+  calendar.render([{offers:[{day:'2026-10-01',total:76000}]}]);
+  assert.equal(calls,2,'a regular render refreshes the base from current offers');
+  assert.equal(prices()[0],'76000');
+  ctx.state.selectedDate='2026-10-01';
+  ctx.loadResultCalendar=()=>{ctx.resultCalendar={basePrices:[],remotePrices:[],observationPrices:[],phase:'loading'};};
+  calendar.setPrice(0,71000);
+  calendar.render(items,true);
+  assert.equal(calls,3,'date-only renders prepare the base if the calendar request changed');
+  assert.equal(prices()[0],'71000');
+ }finally{calendar.close();}
+}
 const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].filter(node=>node.matches?.('.date-price')).length,0);
 {
  const current=calendarDOM(),legacy=calendarDOM(source.replace('paintCalendarStrip(strip,calendarStripEntries(model));','strip.innerHTML=calendarStripHTML(model);'));
  try{
   current.render();legacy.render();let removed=0,inserted=0,legacyRemoved=0,legacyInserted=0;
+  const initialFormats=current.formattedDates();assert.equal(initialFormats,21,'each initial date has a label');
   const original=[...current.strip.children],focused=original[5];focused.focus();
   for(let i=0;i<10;i++){
    const records=current.render(),legacyRecords=legacy.render();
@@ -687,10 +807,15 @@ const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[k
   }
   assert.equal(legacyRemoved,210,'legacy ten-refresh baseline removes every date root');assert.equal(legacyInserted,210,'legacy ten-refresh baseline inserts every date root');
   assert.equal(removed,0,'ten unchanged refreshes remove no date roots');assert.equal(inserted,0,'ten unchanged refreshes insert no date roots');assert.equal(current.parsed(),0,'unchanged refreshes parse no date roots');
+  assert.equal(current.formattedDates(),initialFormats,'ten unchanged refreshes reuse every date label');
   original.forEach((node,index)=>assert.strictEqual(current.strip.children[index],node));assert.strictEqual(current.ctx.document.activeElement,focused,'unchanged focused date survives');
   current.setPrice(10,110500);legacy.setPrice(10,110500);const changed=current.render();legacy.render();
   assert.equal(calendarRoots(changed,'removedNodes'),1,'one non-extreme price change removes one date');assert.equal(calendarRoots(changed,'addedNodes'),1,'one non-extreme price change inserts one date');assert.equal(current.parsed(),1,'one non-extreme price change parses one date');
   assert.equal(current.strip.innerHTML,legacy.strip.innerHTML,'changed-price markup matches a full render');
+  assert.equal(current.formattedDates(),initialFormats,'a new price still reuses the day label');
+  current.setPrice(11,91000);legacy.setPrice(11,91000);current.render();legacy.render();
+  assert.equal(current.strip.querySelector('.best').dataset.date,'2026-10-12','a new minimum also clears the old highlight');
+  assert.equal(current.strip.querySelectorAll('.best').length,1);
   current.ctx.state.selectedDate='2026-10-06';legacy.ctx.state.selectedDate='2026-10-06';current.render();legacy.render();
   assert.equal(current.strip.innerHTML,legacy.strip.innerHTML,'selected date markup/aria matches a full render');assert.equal(current.strip.querySelector('[data-date="2026-10-06"]').getAttribute('aria-pressed'),'true');
   current.strip.querySelector('[data-date="2026-10-12"] strong').textContent='stale';current.render();

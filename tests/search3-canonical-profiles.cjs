@@ -21,6 +21,7 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
  for(const route of ['/poisk-turov/','/_preview/search3-site-candidate/','/_preview/search3-local-candidate-evil/','/nested/_preview/search3-local-candidate/']){const ctx=setup(route);check(ctx.owner===null&&!ctx.calls.length&&!Object.keys(ctx.events).length,'Off-route has no reader or listener');}
  let ctx=setup();const hotels=[h(102),h(106,'anex'),h(108,'andromeda')],before=JSON.stringify(hotels);
  check(ctx.owner.read(hotels,{}).length===0,'Withhold until own profiles resolve');await tick();
+ check(plain(ctx.owner.availability()).loading,'Queued/active search profiles are still pending');
  check(ctx.calls.length===1,'One batch');check(new URL(ctx.calls[0].url,'https://fixture.invalid').searchParams.getAll('legacyHotelIds[]').join(',')==='102,106,108','Exact legacy input');
  check(ctx.calls[0].options.cache==='no-store'&&ctx.calls[0].options.credentials==='same-origin','Read isolation');
  await reply(ctx,0,response([102,106,108],{102:1,106:1,108:1}));const cards=ctx.owner.read(hotels,{});
@@ -31,8 +32,25 @@ async function reply(ctx,index,value,status=200){ctx.calls[index].resolve({ok:st
  check(ctx.owner.details(cards[0]).services[0]==='Kids club','Own descriptive data projected');
  check(ctx.owner.read(hotels.slice().reverse(),{})[0].id===102,'Stable anchor after source order change');
  check(ctx.owner.read([hotels[1]],{})[0].tours[0]===hotels[1].tours[0],'Removed source does not leave stale offers');
+ assert.deepEqual(plain(ctx.owner.availability()),{loading:false,error:false,excluded:false});
  check(ctx.calls.length===1,'Renders do not refetch');ctx.owner.reset();
  check(ctx.owner.source().length===0&&ctx.owner.details(cards[0])===null,'Reset clears profiles and source');
+ ctx=setup();
+ ctx.owner.read([h(210),h(212)],{});await tick();
+ await reply(ctx,0,response([210,212],{210:21},[212]));
+ assert.deepEqual(plain(ctx.owner.availability()),{loading:false,error:false,excluded:true},'Missing profiles do not keep a spinner');
+ assert.equal(ctx.owner.read([h(210),h(212)],{}).length,1,'Missing profiles do not hide the valid result');
+ ctx.owner.reset();
+ assert.deepEqual(plain(ctx.owner.availability()),{loading:false,error:false,excluded:false},'Reset clears prior profile state');
+ let abortProfile;
+ const stalled=setup('/_preview/search3-local-candidate/poisk-turov/',{setTimeout:callback=>{abortProfile=callback;return 1;},clearTimeout(){}});
+ stalled.owner.read([h(212)],{});await tick();
+ assert.equal(stalled.owner.availability().loading,true);
+ abortProfile();assert.equal(stalled.calls[0].options.signal.aborted,true);
+ stalled.calls[0].reject(new Error('Fixture aborted read'));await tick();
+ assert.deepEqual(plain(stalled.owner.availability()),{loading:false,error:true,excluded:false},'Timeout leaves recoverable unavailable state');
+ assert.equal(stalled.calls.length,1,'Timeout does not start another request');
+ stalled.owner.reset();
  const bad=[{...h(1),mappingStatus:'pending'}, {...h(2,'andromeda'),mappingStatus:'conflict'}, {...h(3,'anex'),mappingStatus:undefined}, {...h(4),id:'04'}, {...h(5),id:0}, {...h(6),id:Number.MAX_SAFE_INTEGER+1}, {...h(7),provider:'unknown'}];
  check(ctx.owner.read(bad,{}).length===0,'Unconfirmed identities withheld');await tick();check(ctx.calls.length===1,'No requests for unresolved supplier IDs');
  ctx=setup();ctx.owner.read([h(102)],{});await tick();ctx.events['v2:search-reset']();ctx.owner.read([h(106)],{});await tick();

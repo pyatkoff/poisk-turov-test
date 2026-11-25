@@ -265,7 +265,7 @@ console.log('PASS facet DOM callers: batch zero/checked availability, batched am
  Object.assign(c,{hotels:[],state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values,selection)=>{observed++;selection.count=7;return new Map(values.map(value=>[value,7]));},countMatchingHotels:()=>{throw Error('selected-count scalar fallback')},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
  context(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);assert.equal(c.updateFacetCounts(),7);assert.equal(observed,1);
  let forwarded=null;Object.assign(c,{filterDraft:model,updateFacetCounts:()=>7,updateDrawerPreview:value=>{forwarded=value;},rememberUIRoute:()=>{},renderFilters:()=>{},syncFilters:()=>{},renderResults:()=>{},updateSearchUI:()=>{}});
- vm.runInContext(functions(source,['filterEdited']),c);c.filterEdited();assert.equal(forwarded,7,'drawer preview receives batched selected count');c.dom.window.close();
+ vm.runInContext(functions(source,['filterEdited']),c);c.filterEdited();assert.equal(forwarded,7,'drawer preview receives batched selected count');c.renderFilters=()=>0;c.filterEdited(true);assert.equal(forwarded,0,'rebuild forwards zero as the actual count');c.dom.window.close();
 }
 console.log('PASS drawer selected-count reuse: one existing facet observation forwarded; scalar fallback not called');
 
@@ -352,6 +352,21 @@ for(const selector of ['#hotel-query','[data-facet-search="operators"]','#min-pr
  assert.equal(e.host.querySelector('[data-facet-search="operators"]'),active,'progressive mobile draft wrapper replacement retains the editor');assert.equal(e.c.document.activeElement,active,'progressive mobile draft wrapper replacement retains focus');assert.deepEqual([active.selectionStart,active.selectionEnd],[2,5],'progressive mobile draft wrapper replacement retains the caret');
  e.c.filterDraft=null;e.paint(markup,{});assert.notEqual(e.host.querySelector('[data-facet-search="operators"]'),active,'closing the drawer discards the previous draft editor');assert.equal(e.host.querySelector('[data-facet-search="operators"]').value,'','closing the drawer restores applied filter markup');e.c.dom.window.close();
 }
+{
+ const e=filterPainter(source),markup=filterEditorMarkup(),prototype=e.c.dom.window.Element.prototype,inner=Object.getOwnPropertyDescriptor(prototype,'innerHTML');
+ let parses=0;
+ Object.defineProperty(prototype,'innerHTML',{...inner,set(value){if(this.tagName==='TEMPLATE')parses++;return inner.set.call(this,value);}});
+ e.paint(markup);
+ const root=e.host.firstElementChild,editor=e.host.querySelector('#hotel-query');
+ e.paint(markup);assert.equal(parses,1,'equal generated markup reuses its detached template');assert.equal(e.host.firstElementChild,root);
+ editor.focus();editor.value='Рик';editor.setSelectionRange(1,2);e.paint(markup);
+ assert.equal(parses,1);assert.equal(e.host.querySelector('#hotel-query'),editor);assert.equal(editor.value,'Рик');assert.equal(editor.selectionStart,1);
+ assert(!e.c.filterRootBindings.get(e.host).template.content.contains(editor),'the retained template remains detached from editors');
+ editor.blur();e.host.querySelector('h4').textContent='Нарушено';e.paint(markup);
+ assert.equal(parses,1,'repair reuses the same generated template');assert.equal(e.host.querySelector('h4').textContent,'Название');
+ e.paint(markup.replace('<small>1</small>','<small>2</small>'));assert.equal(parses,2,'a changed count parses exactly once');
+ assert.equal(e.host.querySelector('small').textContent,'2');e.c.dom.window.close();
+}
 console.log('PASS filter root reconciliation: unchanged roots/descendants retained; changed, disturbed and extra roots repaired; active query/facet/budget focus, value and caret restored; supplier/lead HTTP0');
 
 // Exercise the real factory, including its listeners and host input boundary.
@@ -362,9 +377,10 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
  Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:2}],filterDraft:null,innerWidth:390,
   editingFilterModel:()=>c.filterDraft||{filters},currentFilterBudgetEdit:()=>null,readBudgetFields:()=>({valid:true}),budgetLabel:()=> 'Без лимита',countMatchingHotels:()=>1,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>100000,mealNames:{},ratingValue:()=>null,hotelPlaces:()=>[],operators:Array.from({length:8},(_,i)=>'Оператор '+i),syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{}});
  context(c);vm.runInContext(panelSource,c);const panel=c.window.AnyTourFilterPanelV1.create(c);
- panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5']);
+ c.countFacetOptions=(model,group,values,selection)=>{if(selection)selection.count=model.filters.q?0:1;return new Map(values.map(value=>[value,1]));};
+ assert.equal(panel.renderFilters(),undefined,'desktop render does not calculate a draft count');assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5']);
  c.hotels=[{country:'4',stars:5}];panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5'],'replacement hotel inventory is read by the retained owner');
- c.filterDraft={filters:{...filters,q:'Новый запрос',stars:[5]}};panel.renderFilters();assert.equal(c.$('#hotel-query').value,'Новый запрос','replacement draft reaches presentation');
+ c.filterDraft={filters:{...filters,q:'Новый запрос',stars:[5]}};assert.equal(panel.renderFilters(),0,'the rendered draft returns the selected count from the grouped canonical pass');assert.equal(c.$('#hotel-query').value,'Новый запрос','replacement draft reaches presentation');
  const input=c.$('[data-facet-search="operators"]');input.value='Оператор 7';input.dispatchEvent(new c.dom.window.Event('input',{bubbles:true}));assert.equal(panel.facetQueries.get('operators'),'Оператор 7','real owner input listener records the query');
  assert.equal(c.$$('.facet-options .check-row:not([hidden])').length,1,'real owner input listener updates visible rows');
  assert(c.$('.star-options').closest('.filter-group').classList.contains('core-filter-group'),'approved core stars stay open');const heading=c.$('.filter-operator-group').querySelector('h4');panel.jumpToFilterSection(heading.id);assert(panel.expandedFilterSections.has('Туроператор'),'current narrow viewport expands the jumped group');
@@ -428,13 +444,27 @@ console.log('PASS explicit mobile recovery: real retained filter owner/action sy
  Object.assign(c,{state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},data:{preview:false},filterDraft:model,searchEditSession:null,emptySuggestions:[],drawerSuggestions:[],generatedRootBindings:new WeakMap(),countryNames:{4:'Турция'},responseFor:()=>response,appliedFilterModel:()=>model,filterChipData:()=>[],countMatchingHotels:()=>0,syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых',recoverySuggestions:()=>{recoveryCalls++;return [];},emptyCalendarContext:()=>'<strong>Сохранённая цена 93 562 ₽</strong>',readBudgetFields:()=>({min:0,max:null}),showFilterBudgetValidity:()=>{}});
  c.MutationObserver=c.dom.window.MutationObserver;
  context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryIntro','recoveryHTML','searchDeliveryIncomplete','emptyResultsHTML','updateDrawerPreview']),c);
+ const scalarCount=c.countMatchingHotels;
+ c.countMatchingHotels=()=>{throw Error('shared zero must not run a second count');};
  for(const providers of [{tourvisor:'error',anex:'error'},{tourvisor:'complete',anex:'error'},{tourvisor:'complete',anex:'partial'},{tourvisor:'complete',anex:'unknown'}]){
   response={phase:'complete',pending:false,providers,sources:{}};
   const html=c.emptyResultsHTML();assert.doesNotMatch(html,/Попробуйте другие даты|Выбрать другие даты|Подходящих предложений пока нет|93 562/,'incomplete delivery never claims unavailable tours or advertises date recovery/calendar prices');
   assert.match(html,/Отсутствие результатов пока не означает/);assert.match(html,/Даты, туристы и фильтры сохранены/);
-  c.updateDrawerPreview();assert.doesNotMatch(c.$('#filter-preview-count').textContent,/туров нет/);assert.equal(c.$('#drawer-recovery .recovery-choice'),null);assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
+  c.updateDrawerPreview(0);assert.doesNotMatch(c.$('#filter-preview-count').textContent,/туров нет/);assert.equal(c.$('#drawer-recovery .recovery-choice'),null);assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
  }
  assert.equal(recoveryCalls,0,'failed/partial/unknown source data cannot justify changing correct conditions');
+ for(const hotelProfiles of ['loading','unavailable']){
+  response={phase:'complete',pending:false,providers:{tourvisor:'complete'},hotelProfiles};
+  const html=c.emptyResultsHTML();
+  assert.match(html,hotelProfiles==='loading'?/Загружаем данные отелей/:/Данные части отелей недоступны/);
+  assert.doesNotMatch(html,/Подходящих предложений пока нет|Выбрать другие даты|Сбросить фильтры|93 562/);
+  c.updateDrawerPreview(0);
+  assert.equal(c.$('#filter-preview-count').textContent,hotelProfiles==='loading'?'Загружаем данные отелей':'Результат поиска пока не подтверждён');
+  assert.equal(c.$('#drawer-recovery .recovery-choice'),null);
+  assert.equal(c.$('#apply-filters').textContent,'Сохранить условия');
+ }
+ assert.equal(recoveryCalls,0,'Pending/unavailable profiles cannot justify modifying the applied filters');
+ c.countMatchingHotels=scalarCount;
  response={phase:'complete',pending:false,providers:{tourvisor:'error',anex:'error'},sources:{},canContinue:true,retryRead:true};
  const retained=c.emptyResultsHTML();assert.match(retained,/data-action="continue-search"/);assert.match(retained,/Проверить результат/);assert.doesNotMatch(retained,/data-action="retry-search"/,'retained read must not turn into a fresh supplier start');
  response={phase:'complete',pending:false,providers:{tourvisor:'complete',anex:'complete'},sources:{}};

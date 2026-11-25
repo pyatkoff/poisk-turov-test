@@ -153,9 +153,16 @@ function create(refresh){
    if(!read.started){read.started=true;fetchProfile(key).then(read.resolve,read.reject);}
   }
  }
+ function availability(){
+  const ids=wantedLegacyIds();
+  return {
+   loading:ids.some(key=>!links.has(key)&&!missing.has(key)&&!failed.has(key)),
+   error:ids.some(key=>failed.has(key)),
+   excluded:ids.length>0&&(raw.some(h=>!legacyId(h)||missing.has(legacyId(h)))||ids.some(key=>missing.has(key)))
+  };
+ }
  function status(results){
-  const ids=wantedLegacyIds();if(!ids.length)return;
-  const loading=ids.some(key=>!links.has(key)&&!missing.has(key)&&!failed.has(key)),error=ids.some(key=>failed.has(key)),excluded=raw.some(h=>!legacyId(h)||missing.has(legacyId(h)))||ids.some(key=>missing.has(key));
+  const {loading,error,excluded}=availability();
   if(!loading&&!error&&!excluded)return;
   const node=document.createElement('div');node.className='canonical-catalog-status search-progress-error';node.setAttribute('role',error?'alert':'status');
   const text=document.createElement('span');text.textContent=error?'Не удалось загрузить описания некоторых отелей.':loading?'Загружаем описания и фотографии отелей…':'Часть предложений пока недоступна.';node.appendChild(text);
@@ -174,7 +181,7 @@ function create(refresh){
   lifecycleGeneration=generation;reset();
  }
  root.addEventListener('v2:search-started',resetForSearch);root.addEventListener('v2:search-reset',resetForSearch);
- const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},readProfile,source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
+ const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},readProfile,source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,availability,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
 }
 root.Search3CanonicalProfilesV1=Object.freeze({create,current:()=>activeOwner});
 })(window);

@@ -41,7 +41,8 @@ async function verifyToolbarBoundary(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#tourSearch');
+    // The blocked catalogue can still replace the selects after DOMContentLoaded.
+    await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource === 'partial');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch');
       for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
