@@ -1357,6 +1357,7 @@ function renderMoreResultCards(){
  const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
 }
 function renderResults(options={}){
+ if(options.inventoryChanged&&renderedSearchStatus)renderedSearchStatus.providerCounts=null;
  if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultFilters(options);refreshResultPickerPreviews();return;}
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
@@ -3168,8 +3169,7 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
    if(!isCurrentOfferRequest(run,o.key))return;
    const keys=new Set(expanded.offers.map(item=>item.key));
    h.offers=[...h.offers.filter(item=>item.key!==o.key&&!keys.has(item.key)),...expanded.offers];
-   if(renderedSearchStatus)renderedSearchStatus.providerCounts=null;
-   selectedOffer={...o,loading:false};renderResults({keepFilters:true});
+   selectedOffer={...o,loading:false};renderResults({keepFilters:true,inventoryChanged:true});
    if(inline){view.checkKey=null;hotelOfferDraft=null;refreshOpenHotelRooms();if(view.roomEntryPending){view.roomEntryPending=false;positionHotelRooms();}}
    else if(expanded.offers.length===1&&expanded.offers[0].raw?.anexKind==='concrete')openOffer(expanded.offers[0].key);
    else openAllOffers(id,{flight:'',room:'',meal:'',sort:'price'});

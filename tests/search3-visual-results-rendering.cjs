@@ -197,7 +197,7 @@ function observe(source,s){
     ctx.searchResponse[flag]=true;event('complete');assert.equal(reads.at(-1),null,flag);ctx.searchResponse[flag]=false;
    }
    event('results');ctx.hotels=[...ctx.hotels];event('complete');assert.equal(reads.at(-1),null,'inventory reference change refreshes counts');
-   event('results');vm.runInContext('renderedSearchStatus.providerCounts=null;',ctx);event('complete');
+   event('results');ctx.searchEditSession=true;ctx.renderResults({inventoryChanged:true});ctx.searchEditSession=false;event('complete');
    assert.equal(reads.at(-1),null,'concrete-offer expansion invalidates accepted inventory counts');
    event('results');ctx.searchResponse={...ctx.searchResponse};event('complete');assert.equal(reads.at(-1),null,'different generation refreshes counts');
   }
