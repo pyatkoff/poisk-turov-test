@@ -1,0 +1,113 @@
+name: MATCH SAMO business-live30 wave5 current v16
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php'
+      - 'tests/hotel_match_samo_business_live30_common4_wave5_current_v16_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-common4-wave5-current-v16.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-business-live30-common4-wave5-current-1971-20260925-v16c
+  SOURCE_OP: hotel-match-samo-business-live30-common4-wave5-recovery-acquire-1971-20260925-v15
+  SOURCE_RESULT_SHA: 7ae12f03d9b6d5cb6efc308d051c184a92f61d42ffb22b226b39a6e43104f799
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5829638147'
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave5-current-v16-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php
+      - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php --self-test
+      - run: php tests/hotel_match_samo_business_live30_common4_wave5_current_v16_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave5-current-v16-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-business-live30-common4-wave5-current-v16.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php tests/hotel_match_samo_business_live30_common4_wave5_current_v16_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],os.environ['SOURCE_RESULT_SHA'],'508 captured_single_native','REPEATABLE READ / READ ONLY']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Audit sealed wave4 terminal candidates against CURRENT
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP";sealed=".anytoour-match/operations/$SOURCE_OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','source_operation':os.environ['SOURCE_OP'],'source_result_sha256':os.environ['SOURCE_RESULT_SHA'],'provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -f \"\$HOME/$sealed/result.json\";test -f \"\$HOME/$sealed/receipt.json\";test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\";cp \"\$HOME/$sealed/result.json\" \"\$HOME/$op/payload/source-result.json\";cp \"\$HOME/$sealed/receipt.json\" \"\$HOME/$op/payload/source-receipt.json\""
+          scp "${opts[@]}" reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php "$remote:$op/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "OP='$OP' SOURCE_OP='$SOURCE_OP' SOURCE_SHA='$SOURCE_RESULT_SHA' D=\"\$HOME/$op\" python3 - <<'PY'
+          import json,hashlib,os,pathlib
+          d=pathlib.Path(os.environ['D']);r=d/'payload/source-result.json';q=d/'payload/source-receipt.json'
+          h=hashlib.sha256(r.read_bytes()).hexdigest()
+          assert h==os.environ['SOURCE_SHA']
+          rr=json.loads(r.read_text());qq=json.loads(q.read_text())
+          assert qq['result_sha256']==h
+          assert rr['operation']==os.environ['SOURCE_OP'] and rr['state']=='completed_read_only'
+          assert rr['group_start']==401 and rr['group_end']==502 and rr['planned_batch_count']==rr['completed_batch_count']==102
+          assert rr['queried_edge_count']==1217 and rr['batch_error_count']==0 and rr['samo_http_calls']==103
+          assert rr['edge_state_counts']=={'captured_single_native':508,'not_returned_in_context':709}
+          assert rr['single_native_source_unique_count']==508 and rr['single_native_source_collision_count']==0
+          assert rr['database_writes']==rr['mapping_writes']==0
+          PY"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_RESULT=\"\$HOME/$op/payload/source-result.json\" MATCH_SOURCE_RESULT_SHA='$SOURCE_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_current_v16.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state']=='completed_read_only_samo_business_common4_current'
+          assert r['captured_single_native_edge_count']==508
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          print(json.dumps({k:r[k] for k in ['state','captured_single_native_edge_count','unique_input_identity_count','deduped_same_identity_edges','status_counts','writer_ready_counts','writer_ready_total']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-business-live30-wave5-current-v16-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
