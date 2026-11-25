@@ -3342,7 +3342,8 @@ function terminalizeSearchForVerification(reason='verification'){
 function stopSearch(){clearSearchTimers();terminalizeSearchForVerification('user');renderResults({keepFilters:true});}
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
- const details=node.querySelector('details'),opened=details?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
+ const active=document.activeElement,details=node.querySelector('details'),opened=details?.open===true;
+ const summaryFocused=node.querySelector('summary')===active,focusedAction=node.contains(active)?active?.dataset.action:null,continueFocused=more.contains(active)&&active?.dataset.action==='continue-search';
  const providerCounts=data.live?(r.currentInventory?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
  const sourceRows=[['tourvisor','Tourvisor'],['anex','ANEX'],['andromeda','SAMO']].flatMap(([key,name])=>{
   const source=r.sources?.[key],status=r.providers?.[key]||source?.status;if(!status||status==='skipped')return [];
@@ -3353,8 +3354,12 @@ function renderSearchStatus(items,total){
  const providerStates=Object.values(r.providers||{}),providerPending=providerStates.includes('loading'),providerFailure=providerStates.includes('error')||sourceRows.some(source=>source.failed),partialDelivery=providerStates.includes('partial'),unconfirmed=sourceRows.some(source=>!['loading','error','partial','complete','ready','cancelled'].includes(source.status)),partialError=providerFailure||r.databaseError,hasNotice=partialError||partialDelivery||unconfirmed;
  const failedSources=sourceRows.filter(source=>source.failed).map(source=>source.name).join(', '),delivery=sourceRows.length?`<div class="search-provider-status" aria-label="Источники поиска">${sourceRows.map(source=>`<span data-search-source="${source.key}"><strong>${source.name}</strong><small>${source.label}${source.count!==null?` · Вариантов до фильтров: ${source.count}`:''}</small></span>`).join('')}</div>`:'';
  more.hidden=!state.hasSearched||r.pending||!r.canContinue;
- more.innerHTML=more.hidden?'':`<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div><div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`;
- if(continueFocused)more.querySelector('[data-action="continue-search"]')?.focus({preventScroll:true});
+ if(more.hidden){if(more.firstChild)more.replaceChildren();}
+ else paintSearchStatus(more,[
+  `<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div>`,
+  `<div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`
+ ]);
+ if(continueFocused&&document.activeElement!==active)more.querySelector('[data-action="continue-search"]')?.focus({preventScroll:true});
  node.hidden=!state.hasSearched||r.phase==='complete'&&!noCurrent&&!providerPending&&!hasNotice;
  const searching=r.pending||providerPending,progressive=searching&&items.length>0&&r.currentInventory===true&&!r.coverageGap&&!r.exactRefresh&&!partialError&&!unconfirmed;
  node.classList.toggle('search-status-compact',progressive||!searching&&items.length>0&&!noCurrent);
@@ -3368,20 +3373,41 @@ function renderSearchStatus(items,total){
  if(node.classList.contains('search-status-compact')){
   const keepOpen=opened||!details&&!!focusedAction;
   const action=progressive?'<button class="text-button" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="text-button" data-action="retry-search">Повторить поиск</button>';
-  node.innerHTML=`<details${keepOpen?' open':''}><summary>${icon('info')}<strong>${progressive?'Туры найдены, поиск продолжается':esc(title)}</strong><span>Подробнее</span></summary><p>${esc(message)}</p>${delivery}<div class="search-status-actions">${action}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></details>`;
-  if(summaryFocused)node.querySelector('summary').focus({preventScroll:true});
-  else if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction)){
-   const target=node.querySelector(`[data-action="${focusedAction}"]`)||(progressive?node.querySelector('[data-action="stop-search"]'):node.querySelector('summary'));target.focus({preventScroll:true});
+  // Native expansion lives on the shell while its generated children are reconciled.
+  let panel=details;
+  if(panel?.parentNode!==node||node.childNodes.length!==1||panel.attributes.length!==Number(opened)){
+   panel=document.createElement('details');node.replaceChildren(panel);
+  }
+  if(panel.open!==keepOpen)panel.open=keepOpen;
+  paintSearchStatus(panel,[
+   `<summary>${icon('info')}<strong>${progressive?'Туры найдены, поиск продолжается':esc(title)}</strong><span>Подробнее</span></summary>`,
+   `<p>${esc(message)}</p>`,delivery,`<div class="search-status-actions">${action}<button class="text-button" data-action="edit-search">Изменить поиск</button></div>`
+  ]);
+  if(document.activeElement!==active){
+   if(summaryFocused)panel.querySelector('summary').focus({preventScroll:true});
+   else if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction)){
+    const target=panel.querySelector(`[data-action="${focusedAction}"]`)||(progressive?panel.querySelector('[data-action="stop-search"]'):panel.querySelector('summary'));
+    target.focus({preventScroll:true});
+   }
   }
   return;
  }
- node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>${delivery}<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
- if(summaryFocused)node.querySelector('.search-status-actions button')?.focus({preventScroll:true});
- if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))(node.querySelector(`[data-action="${focusedAction}"]`)||(focusedAction==='continue-search'?node.querySelector('[data-action="stop-search"]'):null))?.focus({preventScroll:true});
+ paintSearchStatus(node,[
+  `<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>`,
+  delivery,`<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`
+ ]);
+ if(document.activeElement!==active){
+  if(summaryFocused)node.querySelector('.search-status-actions button')?.focus({preventScroll:true});
+  if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))(node.querySelector(`[data-action="${focusedAction}"]`)||(focusedAction==='continue-search'?node.querySelector('[data-action="stop-search"]'):null))?.focus({preventScroll:true});
+ }
  if(!items.length&&r.pending){
   const cards=$('#cards');
   if(!cards.firstElementChild?.classList.contains('search-skeleton'))cards.innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
  }
+}
+
+function paintSearchStatus(container,parts){
+ paintGeneratedRoots(container,parts.filter(Boolean).map(markup=>({id:'',markup})));
 }
 
 function prepareSearchRun(options={}){

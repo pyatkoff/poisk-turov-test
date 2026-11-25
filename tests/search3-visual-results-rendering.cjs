@@ -13,21 +13,38 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
 // terminal/raw-source receipt. Execute the real presentation owner without HTTP.
 {
  const {JSDOM}=require('jsdom'),dom=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div>'),d=dom.window.document;
- const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
+ const context={document:d,$:selector=>d.querySelector(selector),MutationObserver:dom.window.MutationObserver,state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
   searchResponse:{phase:'complete',pending:false,canContinue:true,currentInventory:true,providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{offers:99},anex:{offers:88}},union:{offersByProvider:{tourvisor:7,anex:6}}},
   sameSelectedTourConditions:()=>false,needsRefresh:()=>false,icon:()=>'',esc,
   clearSearchTimers(){this.stops=(this.stops||0)+1;},searchLifecycle:{invalidate(){}},renderResults(){}};
- vm.createContext(context);vm.runInContext(section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
+ vm.createContext(context);vm.runInContext(generatedRootOwner(app)+section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
  const render=(items=[{}])=>context.renderSearchStatus(items,3),notice=()=>d.querySelector('#search-status');
  render();
  assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 1$/);
  assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 2$/);
  assert.ok(notice().querySelector('[data-action="continue-search"]'),'partial notice offers the action its message names');
  assert.equal(notice().querySelector('[data-action="retry-search"]'),null,'available continuation is not presented as restart');
- notice().querySelector('details').open=true;notice().querySelector('[data-action="continue-search"]').focus();
+ const details=notice().querySelector('details'),summary=details.querySelector('summary');
+ details.open=true;
+ const continueNotice=details.querySelector('[data-action="continue-search"]'),continuePage=d.querySelector('#search-more [data-action="continue-search"]');
+ continueNotice.focus();
+ for(let i=0;i<3;i++){
+  render();
+  assert.strictEqual(notice().querySelector('details'),details,'native details stays mounted after an unchanged status');
+  assert.strictEqual(details.querySelector('summary'),summary);
+  assert.strictEqual(d.activeElement,continueNotice,'same action retains the focused element itself');
+  assert.strictEqual(d.querySelector('#search-more [data-action="continue-search"]'),continuePage);
+ }
  context.hotels[0].offers.push({provider:'tourvisor'});render();
  assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'later published offers replace the stale receipt count');
  assert.equal(notice().querySelector('details').open,true);assert.equal(d.activeElement.dataset.action,'continue-search','progressive repaint preserves the active continuation');
+ assert.strictEqual(d.activeElement,continueNotice,'provider count updates leave unrelated actions mounted');
+ continueNotice.textContent='Corrupted action';render();
+ assert.notStrictEqual(d.activeElement,continueNotice,'dirty action is restored by the existing painter');
+ assert.equal(d.activeElement.textContent,'Продолжить поиск');assert.equal(details.open,true);
+ details.setAttribute('data-corrupted','true');render();
+ assert.equal(notice().querySelector('details').hasAttribute('data-corrupted'),false,'mutated shell is restored');
+ assert.equal(notice().querySelector('details').open,true);assert.equal(d.activeElement.dataset.action,'continue-search');
  context.hotels[0].offers.splice(1,1,{provider:'anex'},{provider:'anex'});render();
  assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 3$/,'concrete replacement is counted from current exact offers');
  context.searchResponse.retryRead=true;render();assert.equal(notice().querySelector('[data-action="continue-search"]').textContent,'Проверить результат','uncertain operation retains read-only recovery label');
