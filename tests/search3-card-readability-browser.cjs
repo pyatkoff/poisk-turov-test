@@ -364,14 +364,8 @@ async function verifyEmptyLocalRail(browser) {
       if (JSON.stringify(preservedBefore) !== JSON.stringify(preservedAfter)) throw new Error(width + ': calendar changed other search parameters ' + JSON.stringify({ before: preservedBefore, after: preservedAfter }));
       const resultCountBeforeTour = await page.locator('#results .hotel-card').count();
       const searchValuesBeforeTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
-      await page.evaluate(() => {
-        const selected = document.getElementById('selectedTour');
-        selected.innerHTML = '<div class="selected-loading">Загружаем тур…</div>';
-        selected.hidden = false;
-      });
-      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'true');
-      // Let the canonical selected-tour observer derive the shell state. A body
-      // class alone races its next sync because an empty/hidden tour is closed.
+      // The current selected-tour owner publishes an explicit lifecycle event;
+      // the retired DOM observer no longer derives shell state or aria-busy.
       await page.evaluate(() => {
         const selected = document.getElementById('selectedTour');
         selected.innerHTML = '<div class="selected-head"><h2>Проверочный выбранный тур</h2></div>';
@@ -379,7 +373,6 @@ async function verifyEmptyLocalRail(browser) {
         window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
       });
       await page.waitForSelector('#selectedTour');
-      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'false');
       await page.waitForFunction(() => document.body.classList.contains('search3-selected-open'));
       if (await calendar.isVisible()) throw new Error(width + ': results calendar leaks into selected tour');
       for (const selector of ['.results-layout', '#resultsSearchSummary', '#resultsTools']) {
