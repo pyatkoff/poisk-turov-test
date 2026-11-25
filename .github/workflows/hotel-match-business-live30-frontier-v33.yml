@@ -1,0 +1,96 @@
+name: MATCH business-live30 frontier v33
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_business_live30_frontier_v33.php'
+      - 'tests/hotel_match_business_live30_frontier_v33_test.php'
+      - '.github/workflows/hotel-match-business-live30-frontier-v33.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-business-live30-frontier-v33, cancel-in-progress: false}
+env:
+  OP: hotel-match-business-live30-frontier-plan-1971-20260925-v33
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5835535470'
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/business-live30-frontier-plan-v33-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_business_live30_frontier_v33.php
+      - run: php scripts/diagnostics/hotel_match_business_live30_frontier_v33.php --self-test
+      - run: php tests/hotel_match_business_live30_frontier_v33_test.php
+      - run: "! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\\(' scripts/diagnostics/hotel_match_business_live30_frontier_v33.php"
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/business-live30-frontier-plan-v33-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-business-live30-frontier-v33.yml scripts/diagnostics/hotel_match_business_live30_frontier_v33.php tests/hotel_match_business_live30_frontier_v33_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'1737','tv_samo_missing_anex','tv_anex_missing_samo','tv_only_missing_both','REPEATABLE READ / READ ONLY']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Build fresh TV-live30 non-triple frontier
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          odir=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$odir\";mkdir -p \"\$HOME/$odir/payload/scripts/diagnostics\" \"\$HOME/$odir/payload/app/integrations\""
+          scp "${opts[@]}" reservation.json "$remote:$odir/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_business_live30_frontier_v33.php "$remote:$odir/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$odir/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/anex-search-mapping-registry.php "$remote:$odir/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$odir\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$odir/payload/scripts/diagnostics/hotel_match_business_live30_frontier_v33.php\" --execute" >terminal/stdout 2>terminal/stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$odir/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$odir/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-business-live30-frontier-plan-1971-20260925-v33' and r['state']=='completed_read_only_business_live30_frontier_plan'
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0 and q['readback_verified'] is True
+          assert r['non_full_triple_total']==sum(r['bucket_counts'].values()) and len(r['rows'])==r['non_full_triple_total']
+          print(json.dumps({k:r[k] for k in ['tv_live30_total','full_triple_total','non_full_triple_total','bucket_counts','target_set_sha256']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-business-live30-frontier-v33-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
