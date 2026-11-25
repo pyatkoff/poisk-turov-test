@@ -1,4 +1,4 @@
-name: Read native MAX state for pending PRICE TV64957
+name: Independently verify the written PRICE TV64957
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   issues: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '71270d38104fd9f12ccb9db9ced0d6515489a219'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e5ba6ee3b40317c0849cb71552fbe8a06c64405b'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Validate read-only inspector
-        run: php -l tools/price-pending-inspect/inspect.php && python3 -m py_compile tools/price-pending-inspect/*.py
+      - name: Validate read-only external verifier
+        run: php -l tools/price-pending-recovery/verify-target.php
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -46,19 +46,13 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Read original pending receipt without retry or writes
+      - name: Read the completed original journal, both posts and all three XML files
         env:
-          GH_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 tools/price-pending-inspect/run.py
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
-        with:
-          name: price-pending-inspect-${{ github.run_id }}
-          path: ${{ runner.temp }}/price-result/
-          retention-days: 7
-          if-no-files-found: error
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'php -d display_errors=0 -d log_errors=0' < tools/price-pending-recovery/verify-target.php
       - name: Cleanup original connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
