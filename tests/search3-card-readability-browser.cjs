@@ -94,7 +94,8 @@ async function verifyEmptyLocalRail(browser) {
         results.hidden = false;
         results.innerHTML = items.length ? html : '';
         document.getElementById('resultsTools').hidden = !items.length;
-        document.getElementById('resultsSearchSummary').hidden = !items.length;
+        const summary = document.getElementById('resultsSearchSummary');
+        if (summary) summary.hidden = !items.length;
         window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items } }));
       };
       window.V2Results.render([{ id: 'readability-fixture', name: 'Empty-filter fixture', price: 148500, tours: [] }]);
