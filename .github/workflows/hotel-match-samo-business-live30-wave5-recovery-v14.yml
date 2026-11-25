@@ -1,0 +1,95 @@
+name: MATCH SAMO business-live30 wave5 recovery v14
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py'
+      - 'tests/hotel_match_samo_business_live30_common4_wave5_recovery_v14_test.py'
+      - '.github/workflows/hotel-match-samo-business-live30-wave5-recovery-v14.yml'
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OP: hotel-match-samo-business-live30-common4-wave5-recovery-1971-20260925-v14
+  BASE: 46115bd49dbd141054db308a54c1a12d89c37743
+  CLAIM: '5823843737'
+  PLAN_ARTIFACT: '10798255813'
+  PLAN_ARCHIVE_SHA: 1adf8a92bba3e447fec566c6b3a89a557d1446d5ca49dd5492b08b5b8625d87a
+  PLAN_RESULT_SHA: 174cdd0bd45f48929fbda2e7c07383fbf81afccd18acccca990aee3ee94e6b23
+  POST_ARTIFACT: '10838795676'
+  POST_ARCHIVE_SHA: e85c438d6f0859257e8d98229bc31b2a7a32065ba94f645d9a9ee7545357cf55
+  POST_RESULT_SHA: 887d4178abc7921176f28ff5e7758fe8df44148faa3260e626dedd1540a4cd1f
+  FAILED_ARTIFACT: '10837779686'
+  FAILED_ARCHIVE_SHA: 683ed272b076279f91202bb409c65de31f1df8c2611df40a377296b092155716
+  FAILED_RESULT_SHA: f0932896d51d3291f992585d2e51bd6d5168d65de97d5947084b75741583b93a
+  MANIFEST_SHA: 5542a3dc0ba8924f19f108ff7826e1628f66128e328bac0cdfc6f595f7329bc4
+jobs:
+  recovery:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-wave5-recovery-v14-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact claim and source scope
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-business-live30-wave5-recovery-v14.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py tests/hotel_match_samo_business_live30_common4_wave5_recovery_v14_test.py "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >claim.json
+          python3 - <<'PY'
+          import json, os
+          c=json.load(open('claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'], os.environ['MANIFEST_SHA'], 'provider/SAMO/Andromeda/Tourvisor/ANEX HTTP0', 'SSH0', 'DB/mapping writes0']:
+              assert x in b, x
+          PY
+      - name: Self-test recovery logic
+        run: |
+          python3 scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py --self-test
+          python3 tests/hotel_match_samo_business_live30_common4_wave5_recovery_v14_test.py
+          ! grep -E 'import requests|from requests|import urllib|from urllib|subprocess|socket\\.|paramiko|pymysql|mysql\\.|PDO|INSERT INTO|UPDATE .* SET|DELETE FROM' scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py
+      - name: Download exact source artifacts
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p input/plan input/post input/failed terminal
+          for spec in             "$PLAN_ARTIFACT:$PLAN_ARCHIVE_SHA:input/plan.zip:input/plan"             "$POST_ARTIFACT:$POST_ARCHIVE_SHA:input/post.zip:input/post"             "$FAILED_ARTIFACT:$FAILED_ARCHIVE_SHA:input/failed.zip:input/failed"
+          do
+            IFS=: read -r id sha zip dir <<<"$spec"
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" -o "$zip"
+            test "$(sha256sum "$zip"|awk '{print $1}')" = "$sha"
+            unzip -q "$zip" -d "$dir"
+          done
+          plan="$(find input/plan -type f -name result.json -print -quit)"
+          post="$(find input/post -type f -name result.json -print -quit)"
+          failed="$(find input/failed -type f -name result.json -print -quit)"
+          test "$(sha256sum "$plan"|awk '{print $1}')" = "$PLAN_RESULT_SHA"
+          test "$(sha256sum "$post"|awk '{print $1}')" = "$POST_RESULT_SHA"
+          test "$(sha256sum "$failed"|awk '{print $1}')" = "$FAILED_RESULT_SHA"
+          cp "$plan" input/plan-result.json
+          cp "$post" input/post-result.json
+          cp "$failed" input/failed-result.json
+      - name: Build deterministic recovery manifest
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_samo_business_live30_common4_wave5_recovery_v14.py             --plan input/plan-result.json             --post input/post-result.json             --failed input/failed-result.json             --output terminal/recovery-manifest.json | tee terminal/summary.json
+          test "$(sha256sum terminal/recovery-manifest.json|awk '{print $1}')" = "$MANIFEST_SHA"
+          python3 - <<'PY'
+          import json, os
+          r=json.load(open('terminal/recovery-manifest.json'))
+          assert r['wave5_planned_group_count']==102
+          assert r['wave5_planned_edge_count']==1217
+          assert r['current_missing_edge_count']==1217
+          assert r['current_missing_edges_by_operator']=={'315':44,'342':1173}
+          assert r['already_filled_edge_count']==0 and r['ambiguous_edge_count']==0
+          assert r['unique_operator_local_targets']==1185
+          assert r['catalog_alias_duplicate_edge_count']==32
+          assert r['representative_only_hypothetical_group_count']==100
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-samo-business-live30-wave5-recovery-v14-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
