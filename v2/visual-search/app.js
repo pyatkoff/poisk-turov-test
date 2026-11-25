@@ -1295,6 +1295,7 @@ function positionHotelRooms(row=null){
 
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 let renderedSearchStatus=null;
+let cardCatalogRevision=0;
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -1319,7 +1320,22 @@ function renderResultHeadings(items,total,pristine){
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
 function paintResultCards(cards,entries,sameScope){paintGeneratedRoots(cards,entries,sameScope);}
-function renderResultCards(items,{selectionOnly=false}={}){
+function resultCardMarkupIsCurrent(cards,items,previousItems){
+ const binding=generatedRootBindings.get(cards);
+ if(!binding||items.length!==previousItems.length)return false;
+ const shown=Math.min(items.length,renderedCardLimit),hasMore=items.length>shown;
+ if(cards.childNodes.length!==shown+Number(hasMore))return false;
+ binding.mark(binding.observer.takeRecords());
+ const isClean=node=>node&&binding.markup.has(node)&&!binding.dirty.has(node);
+ for(let i=0;i<shown;i++){
+  const node=cards.children[i],item=items[i],previous=previousItems[i];
+  if(node?.id!==`hotel-${item.hotel.id}`||!isClean(node)||item.hotel!==previous.hotel||item.rating!==previous.rating
+   ||item.offers.length!==previous.offers.length||item.offers.some((offer,index)=>offer!==previous.offers[index]))return false;
+ }
+ const more=cards.lastElementChild;
+ return !hasMore||(!more?.id&&more?.dataset.action==='more-cards'&&isClean(more));
+}
+function renderResultCards(items,{selectionOnly=false,previousItems=null}={}){
  // Share selection markup with the full card renderer, retaining cards, controls and focus.
  // Closing a tour is a passive presentation update, never a new search.
  if(selectionOnly){
@@ -1334,6 +1350,7 @@ function renderResultCards(items,{selectionOnly=false}={}){
  }
 
  const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
+ if(previousItems&&sameCardScope&&resultCardMarkupIsCurrent(cards,items,previousItems))return;
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
  const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
  if(!sameCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
@@ -1365,12 +1382,13 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
+ const previousItems=options.reuseResultCards&&renderedSearchStatus?.hotels===hotels&&renderedSearchStatus.catalogRevision===cardCatalogRevision&&!selectedOffer?renderedResultItems:null;
  const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;renderedResultItems=items;
  renderResultHeadings(items,total,pristine);
- renderResultCards(items);
+ renderResultCards(items,{previousItems});
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
- renderedSearchStatus={response:searchResponse,total};
+ renderedSearchStatus={response:searchResponse,total,hotels,catalogRevision:cardCatalogRevision};
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){
@@ -3446,7 +3464,10 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
    renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
   }else{
    if(event?.type==='results')response.currentInventory=true;
-   renderResults();updateSearchUI();
+   // Completion may update source, continuation and calendar state without changing the cards.
+   const reuseResultCards=event?.type==='complete'&&!response.pending&&response.phase==='complete'&&response.currentInventory===true
+    &&!response.exactRefresh&&!response.cachedResume&&!searchEditSession&&!modalType&&renderedSearchStatus?.response===response&&renderedResultItems.length>0;
+   renderResults({reuseResultCards});updateSearchUI();
   }
   window.AnyTourPublicAnalyticsV1?.event(event,response,{searchId:data.searchId,resultsCount:hotels.length});
   if(modalType==='dates')refreshCalendarPrices();
@@ -3744,6 +3765,7 @@ function loadCalendarPrices(){
 
 function applyCatalog(c){
  if(!c)return;Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
+ cardCatalogRevision++;
  resortLoads.clear();
  $('#origin').innerHTML=c.departures.map(x=>`<option value="${esc(data.text(x))}">${esc(data.text(x))}</option>`).join('');
  if(data.live){Object.keys(mealNames).forEach(key=>delete mealNames[key]);data.catalog.mealPlans.filter(plan=>plan.nativeIds?.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});}

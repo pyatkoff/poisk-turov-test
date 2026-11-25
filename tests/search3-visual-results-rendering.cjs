@@ -108,6 +108,7 @@ function observe(source,s){
    setAttribute:(k,v)=>record('attribute',key,k,v),
    classList:{toggle:(k,v)=>{record('classToggle',key,k,v);v?classes.add(k):classes.delete(k);},contains:k=>classes.has(k)}
   };
+  if(s.progressive&&key==='#cards')Object.defineProperty(target,'childNodes',{value:[]});
   const n=new Proxy(target,{set:(t,k,v)=>{record('write',key,k,v);t[k]=v;return true;}});nodes.set(key,n);return n;
  }
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:s.ages??[0,17]};
@@ -180,6 +181,16 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   const options=[];const render=ctx.renderResults;ctx.renderResults=value=>{options.push(value?.reuseResultCards);render(value);};
+   event('results');Object.assign(ctx.searchResponse,{phase:'complete',pending:false});event('complete');
+   assert.equal(options.at(-1),true,'a clean terminal event attempts reuse after current-generation results');
+   assert.deepEqual(trace.slice(-3).map(entry=>entry[0]),['renderFilters','renderSearchStatus','updateSearchUI'],'completion still publishes current filters, status and form');
+   for(const [flag,value] of [['phase','coverage_gap'],['cachedResume',true],['exactRefresh',true],['currentInventory',false]]){
+    const previous=ctx.searchResponse[flag];ctx.searchResponse[flag]=value;event('complete');assert.equal(options.at(-1),false,flag);ctx.searchResponse[flag]=previous;
+   }
+   const active=ctx.searchResponse;ctx.searchResponse={...active};event('complete');assert.equal(options.at(-1),false,'new generation uses the full path');
+   ctx.modalType='dates';event('complete');assert.equal(options.at(-1),false,'an open date picker uses the full path');assert.equal(trace.at(-1)[0],'refreshCalendarPrices');ctx.modalType='';
+   ctx.searchEditSession=true;event('complete');assert.equal(options.at(-1),false,'editing uses the draft path');ctx.searchEditSession=false;
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
@@ -726,7 +737,7 @@ function cardDOM(code=source){
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(owner(code,'results')+'\n'+section(code,'function focusReference(','function capturePageReturn('),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(cards,{childList:true});
- return {dom,ctx,cards,render:items=>{ctx.renderResultCards(items);return observer.takeRecords();},parsed:()=>parsed,
+ return {dom,ctx,cards,render:(items,previousItems)=>{ctx.renderResultCards(items,{previousItems});return observer.takeRecords();},parsed:()=>parsed,
   cardCalls:()=>cardCalls,more:()=>vm.runInContext('renderedCardLimit+=24;',ctx),paginate:items=>{ctx.__items=items;vm.runInContext('renderedResultItems=__items;renderMoreResultCards();',ctx);return observer.takeRecords();},close:()=>{observer.disconnect();dom.window.close();}};
 }
 const entry=(id,total=100000+id)=>({hotel:{id,name:'Hotel <& '+id,photo:id%3},offers:[{key:'tour-'+id,total}]});
@@ -750,6 +761,32 @@ const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].f
   h.render([]);assert.equal(h.cards.innerHTML,h.ctx.emptyResultsHTML());h.render(items.slice(0,1));assert.equal(h.cards.querySelectorAll('.hotel-card').length,1);assert.equal(h.cards.querySelector('[data-action="more-cards"]'),null);
   assert.equal(JSON.stringify(items),before,'render preserves raw hotel/offer inputs');
   console.log('PASS progressive cards: 10 unchanged 24-card updates parse 250→0 roots and remove 240→0 articles; one price update parses/replaces 1; photo/focus/order/load-more/filter reset retained; no wall-clock or whole-page timing claim');
+ }finally{h.close();}
+}
+{
+ const h=cardDOM(),items=Array.from({length:55},(_,i)=>entry(i+1)),next=items.map(item=>({...item,offers:[...item.offers]}));
+ try{
+  h.render(items);const original=[...h.cards.children],control=original[3].querySelector('button');control.focus();
+  const calls=h.cardCalls(),html=h.cards.innerHTML;
+  assert.equal(h.render(next,items).length,0,'clean completion keeps all card and pagination nodes in place');
+  assert.equal(h.cardCalls(),calls,'clean completion skips all redundant formatting');
+  assert.equal(h.cards.innerHTML,html);assert.equal(h.ctx.document.activeElement,control);
+  original.forEach((node,i)=>assert.equal(h.cards.children[i],node));
+  const changed=next.map((item,i)=>i===3?{...item,offers:[{...item.offers[0],total:133500.5}]}:item);
+  assert.equal(removedArticles(h.render(changed,next)),1);assert.equal(h.cards.querySelector('#hotel-4 strong').textContent,'133500.5');
+  assert.equal(h.ctx.document.activeElement.dataset.key,'tour-4','changed offer restores focus through the normal renderer');
+  h.cards.querySelector('#hotel-5 strong').textContent='Stale';
+  assert.equal(removedArticles(h.render(changed,changed)),1,'a dirty card still uses the normal repair path');
+  assert.equal(h.cards.querySelector('#hotel-5 strong').textContent,'100005');
+  h.cards.prepend(h.cards.children[5]);h.render(changed,changed);
+  assert.equal(h.cards.firstElementChild.id,'hotel-1','reordered roots are repaired');
+  h.cards.lastElementChild.remove();h.render(changed,changed);
+  assert.match(h.cards.lastElementChild.textContent,/Показано 24 из 55/,'missing pagination is restored');
+  h.paginate(changed);const expandedCalls=h.cardCalls();h.render(changed,changed);
+  assert.equal(h.cardCalls(),expandedCalls);assert.match(h.cards.lastElementChild.textContent,/Показано 48 из 55/);
+  h.ctx.state.sort='rating';const oldCalls=h.cardCalls();h.render(changed,changed);
+  assert.equal(h.cardCalls()-oldCalls,24,'filter and sort changes retain the normal card renderer');
+  console.log('PASS search completion cards: unchanged markup and focus, with fallback for a changed offer, dirty card, reordering, missing pagination and changed scope');
  }finally{h.close();}
 }
 {
