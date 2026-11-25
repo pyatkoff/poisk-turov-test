@@ -114,6 +114,12 @@ def derive(source, output, request, zip_digest, preview=Preview.NEXT, *, origina
     return q, archive
 
 
+def render_robots_marker(route):
+    if route == 'poisk-turov/':
+        return '<meta name="robots" content="noindex, nofollow, noarchive"'
+    return '<meta name="robots" content="noindex,follow,max-image-preview:large'
+
+
 def render_checks(root, preview=Preview.NEXT):
     # Build job only, before SSH secrets. The source is already isolated.
     php = "$_SERVER['DOCUMENT_ROOT']=$argv[1]; $_SERVER['HTTP_HOST']='anytoour.ru'; $_SERVER['SCRIPT_NAME']=$argv[2]; include $argv[3];"
@@ -123,7 +129,7 @@ def render_checks(root, preview=Preview.NEXT):
         r = subprocess.run(['php', '-d', 'display_errors=1', '-r', php, str(empty), preview.route + route + 'index.php', str(path)],
                            capture_output=True, text=True, timeout=30)
         need(r.returncode == 0 and 'Fatal error' not in r.stdout, 'local_render:' + route)
-        need('<meta name="robots" content="noindex,follow,max-image-preview:large' in r.stdout, 'local_noindex:' + route)
+        need(render_robots_marker(route) in r.stdout, 'local_noindex:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
             for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + preview.route + 'preview-lead-disabled.php"'):
                 need(marker in r.stdout, 'local_search_guard')
