@@ -1,0 +1,71 @@
+name: MATCH SAMO37 CURRENT audit
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - .github/workflows/hotel-match-samo37-current-audit.yml
+permissions:
+  contents: read
+concurrency:
+  group: match-samo37-current-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 4014 && github.event.pull_request.head.ref == 'match/dual-live30-full-union-20260927'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate package
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_samo37_current_audit_v1.php
+          python3 - <<'PY'
+          import json
+          p=json.load(open('reports/hotel-match-samo37-current-audit-rows-20260927.json'))
+          assert p['schema']=='match_samo37_current_audit_manifest_v1'
+          assert len(p['rows'])==37
+          assert len({int(x['tv_hotel_id']) for x in p['rows']})==37
+          assert len({str(x['catalog_id']) for x in p['rows']})==37
+          assert all(int(x['tv_hotel_id'])!=1772 for x in p['rows'])
+          PY
+      - name: Execute read-only CURRENT audit
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; op="hotel-match-samo37-current-audit-1971-20260927-v1"; rel=".anytoour-match/operations/$op"
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo37_current_audit_v1.php "$remote:$rel/audit.php"
+          scp "${opts[@]}" reports/hotel-match-samo37-current-audit-rows-20260927.json "$remote:$rel/manifest.json"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_MANIFEST=\"\$HOME/$rel/manifest.json\" php \"\$HOME/$rel/audit.php\" --execute"
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" > "$out/result.json"
+          python3 - <<'PY'
+          import json,os
+          p=os.environ['RUNNER_TEMP']+'/out/result.json'
+          r=json.load(open(p))
+          assert r['state']=='completed_read_only_current_audit'
+          assert r['input_count']==37 and len(r['rows'])==37
+          assert r['provider_http_calls']==r['database_writes']==r['mapping_writes']==0
+          print(json.dumps(r['status_counts'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-samo37-current-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/out/result.json
+          retention-days: 90
+          if-no-files-found: error

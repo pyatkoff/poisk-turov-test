@@ -1,0 +1,45 @@
+{
+  "schema": "match_current948_retained_extraction_v1",
+  "date": "2026-09-27",
+  "authority": {
+    "current_remaining": 1674,
+    "missing_samo_only": 220,
+    "missing_anex_only": 728,
+    "missing_both": 726,
+    "full_queue_artifact": 10917671953
+  },
+  "missing_samo_only": {
+    "total": 220,
+    "present_in_v65_dossiers": 161,
+    "status_counts": {
+      "strict_multi_lane_candidate": 38,
+      "review_no_strict_candidate": 56,
+      "hold_insufficient_or_partial": 60,
+      "hold_multiple_strict": 7
+    },
+    "strict_candidates": 38,
+    "stronger_retained_corroboration": 29,
+    "exact_variant": 19,
+    "target_collision": {
+      "catalog_id": "37255",
+      "locals": [
+        1772,
+        1773
+      ],
+      "prehold_local": 1772
+    },
+    "not_in_v65_active_dossiers": 59
+  },
+  "historical_negative_evidence": {
+    "saved_secondary_v2": "no usable saved native across op18/25/43 historical234",
+    "anex_staging_v34": "0 strict identity candidates over historical777",
+    "registry_consensus_v38": "strict_cross_source_2plus_current_missing_count=0 at historical instant"
+  },
+  "execution": {
+    "provider_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "server_current": false
+  },
+  "boundary": "38 are retained strict candidates, not accepted/writer-ready. Fresh CURRENT audit required."
+}
