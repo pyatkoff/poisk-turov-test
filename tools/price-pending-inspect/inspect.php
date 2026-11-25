@@ -173,6 +173,74 @@ try {
     $status=read_git(['status','--porcelain','--untracked-files=no']);
     need(read_git(['rev-parse','HEAD'])===$head,'runtime_head_changed');
     $out['runtime']=['head'=>$head,'tracked_clean'=>$status==='','git_checked'=>true];
+    need($head==='58f15d1a147353a4b807f122525d75e1f4f35c1c'&&$status==='','runtime_head_changed');
+    need(($pending['tourvisor_hotel_id']??null)===64957&&($pending['phase']??null)==='post_started'
+        &&($out['child_journal']['sha256']??null)==='de5089dd4cdb3563342c7eb3a349b77e7334442e6f66b3713520eb826f823dc5','original_scope_changed');
+    $entry=reset($record['posts']);$plan=$entry['plan'];
+    need(count($record['posts'])===1&&$entry['state']==='text_edit_returned'&&$plan['platform']==='max','original_stage_changed');
+    $hook=file_get_contents('/var/www/anytoour/data/www/anytoour.ru/data/monitor-price-hook.php');
+    need(is_string($hook)&&hash('sha256',$hook)==='1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5','hook_changed');
+    need(preg_match('/const HOOK_ROSTER_GZIP_B64="([^"]+)"/',$hook,$m)===1,'hook_roster_missing');
+    $roster=json_decode(gzdecode(base64_decode($m[1],true)),true,64,JSON_THROW_ON_ERROR);
+    $rows=array_values(array_filter($roster['rows'],static fn($x)=>$x['tourvisor_hotel_id']===64957));
+    need(count($rows)===1,'original_hotel_missing');$row=$rows[0];
+    need($row['posts']===['max'=>'https://max.ru/channel_anytour/AaHo8tYWbs0','telegram'=>'https://t.me/any_toour/676'],'original_post_urls_changed');
+    ob_start();require $app.'/config.php';require_once $app.'/services/ChannelPostRuntime.php';require_once $app.'/services/ChannelPostEntryService.php';ob_end_clean();
+    $registry=new ChannelPostRegistryService(ConversationDb::connection());
+    $quote=$plan['monitor_price'];
+    $current=[
+        'intent_price'=>$quote['price'],'intent_observed_at'=>$quote['observed_at'],
+        'intent_date'=>$quote['offer']['departureDate'],'max_edit_response_returned'=>$entry['provider_edit_returned']??null,
+        'telegram_event_in_original'=>count($record['posts'])>1,'registry'=>[],
+    ];
+    foreach(['max','telegram'] as $platform){
+        $file=$root.'/'.$row['original_publication_operation'].'/'.$platform.'-'.$row['logical_id'].'-approved.json';
+        $original=snapshot($file,2000000,$handles);
+        $approval=json_decode($original['raw'],true,64,JSON_THROW_ON_ERROR);
+        $p=$registry->publication((int)$approval['receipt']['publication_id']);
+        need(is_array($p)&&($p['snapshot']['post_url']??null)===$row['posts'][$platform]&&$p['platform']===$platform,'registry_post_changed');
+        $current['registry'][$platform]=[
+            'publication_id'=>$p['publication_id'],'version_id'=>$p['version_id'],'state'=>$p['state'],
+            'message_id'=>$p['external_message_id'],'text_sha256'=>hash('sha256',$p['snapshot']['text']),
+            'observed_record'=>($p['snapshot']['metadata']['monitor_price_record_id']??null),
+            'expected_button'=>ChannelPostIncomingAdapter::containsOnlyButton($p['snapshot'],ChannelPostButtonTransport::buttonUrl($p),(string)$p['channel']['button_text']),
+        ];
+        if($platform!=='max')continue;
+        $mid=(string)$p['external_message_id'];
+        need($mid===$plan['message_id']&&(int)$p['publication_id']===$plan['publication_id']&&preg_match('/A[A-Za-z0-9_.-]{1,191}z/D',$mid)===1,'max_plan_identity_changed');
+        $r=ChannelPostApiTransport::buttonRequest('max','GET','/messages/'.$mid,[],null);
+        $current['max_native']=['http'=>$r['http']??null,'transport_error'=>$r['transport_error']??null];
+        if(($r['http']??null)===200&&is_array($r['data']??null)){
+            $native=ChannelPostIncomingAdapter::maxSnapshot($r['data']);
+            if(is_array($native)){
+                $image=$native['attachments'][0]??[];
+                $signature=($image['provider']??'').':'.($image['photo_id']??$image['file_unique_id']??'');
+                $current['max_native']+=[
+                    'intended_caption'=>($native['text']??null)===$plan['text'],
+                    'retained_registry_caption'=>($native['text']??null)===$p['snapshot']['text'],
+                    'same_post'=>($native['post_url']??null)===$plan['post_url'],
+                    'same_photo'=>count($native['attachments']??[])===1&&$signature===$plan['photo_signature'],
+                    'same_button'=>ChannelPostIncomingAdapter::containsOnlyButton($native,ChannelPostButtonTransport::buttonUrl($p),(string)$p['channel']['button_text']),
+                ];
+            }
+        }
+    }
+
+    $tg=curl_init('https://t.me/any_toour/676?embed=1');
+    curl_setopt_array($tg,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>5,
+        CURLOPT_TIMEOUT=>12,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2]);
+    $public=curl_exec($tg);$http=(int)curl_getinfo($tg,CURLINFO_HTTP_CODE);curl_close($tg);
+    $current['telegram_public']=['http'=>$http,'exact_message'=>false];
+    if(is_string($public)&&$http===200&&str_contains($public,'data-post="any_toour/676"')
+        &&preg_match('/<div[^>]+tgme_widget_message_text[^>]*>(.*?)<\/div>/s',$public,$text)===1){
+        $caption=html_entity_decode(strip_tags($text[1]),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        preg_match('/От\s*([\d\s]+)\s*₽/u',$caption,$amount);
+        preg_match('/Цена найдена мониторингом\s+(\d{2}\.\d{2}\.\d{4},?\s+\d{2}:\d{2}\s+МСК)/u',$caption,$observed);
+        $current['telegram_public']=['http'=>$http,'exact_message'=>true,'price'=>isset($amount[1])?(int)preg_replace('/\D/u','',$amount[1]):null,
+            'observed'=>$observed[1]??null,'photo_present'=>str_contains($public,'tgme_widget_message_photo_wrap')];
+    }
+    $out['target']=$current;
+
     $out['ok'] = true;
 } catch (Throwable $e) {
     $out['error'] = preg_match('/\A[a-z_]+\z/D',$e->getMessage()) === 1 ? $e->getMessage() : 'read_failed';

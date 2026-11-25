@@ -1,4 +1,4 @@
-name: Read original PRICE receipt 45720745186
+name: Read native MAX state for pending PRICE TV64957
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   issues: read
 jobs:
   inspect:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '492ed802f0927c120953616113af4b162bc600d5'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c53834425030dd2909bfce521dca1bb954e853a5'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
