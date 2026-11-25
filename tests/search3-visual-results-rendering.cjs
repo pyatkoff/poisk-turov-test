@@ -180,6 +180,37 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   const accept=()=>{ctx.searchResponse={key:'current',phase:'loading',pending:true};event('results');};
+   const finish=()=>{Object.assign(ctx.searchResponse,{phase:'complete',pending:false});event('complete');};
+   const expectFresh=(change,label)=>{
+    accept();change();const scans=count('results');finish();assert.equal(count('results'),scans+1,label);
+   };
+   accept();const scans=count('results'),statusPaints=count('renderSearchStatus'),calendars=count('renderCalendarStrip'),filterPaints=count('renderFilters');
+   const accepted=vm.runInContext('renderedResultItems',ctx);event('progress');finish();
+   assert.equal(count('results'),scans,'same-generation completion reuses the accepted filtered inventory');
+   assert.strictEqual(vm.runInContext('renderedResultItems',ctx),accepted,'completion retains the same ranked rows and offers');
+   assert.equal(count('renderSearchStatus'),statusPaints+2);assert.equal(count('renderCalendarStrip'),calendars+1);assert.equal(count('renderFilters'),filterPaints+1);
+   finish();assert.equal(count('results'),scans+1,'the accepted snapshot is consumed by one completion only');
+   expectFresh(()=>{ctx.hotels=[...ctx.hotels];},'changed input rows are recomputed');
+   expectFresh(()=>{ctx.searchResponse={...ctx.searchResponse};},'same-key replacement generation is recomputed');
+   expectFresh(()=>{ctx.state.filters.max=50000;},'changed filter is recomputed');
+   expectFresh(()=>{ctx.state.sort='recommended';},'changed sorter is recomputed');
+   expectFresh(()=>{ctx.state.selectedDate='2026-10-15';},'changed departure date is recomputed');
+   ctx.state.onlyFavorites=true;ctx.state.favorites=[1];
+   expectFresh(()=>{ctx.state.favorites.push(2);},'changed favorites in favorite mode are recomputed');
+   ctx.data.live=true;ctx.state.filters.meals=['AI'];ctx.mealNames.AI=1;
+   expectFresh(()=>{ctx.mealNames.AI=2;},'changed canonical meal mapping is recomputed');
+   ctx.data.live=false;ctx.data.catalog={meals:[]};ctx.data.text=row=>row.name;ctx.resortLoads=new Map();
+   vm.runInContext(section(source,'function applyCatalog(c)','async function loadCountries('),ctx);
+   expectFresh(()=>ctx.applyCatalog({countries:[{id:4,name:'Турция'}],departures:[],origin:'Москва'}),'catalogue replacement invalidates even an unchanged filter model');
+   expectFresh(()=>ctx.renderResults({keepFilters:true}),'new presentation of mutated offers or hotel content invalidates the snapshot');
+   expectFresh(()=>{ctx.searchEditSession=true;ctx.renderResults();ctx.searchEditSession=false;},'an intervening draft invalidates the snapshot');
+   for(const flags of [{cachedResume:true},{exactRefresh:true},{coverageGap:true},{databaseError:true},{providers:{anex:'error'}},{sources:{anex:{status:'partial',continuationFailed:true}}}]){
+    expectFresh(()=>Object.assign(ctx.searchResponse,flags),'recovery or failure is recomputed '+JSON.stringify(flags));
+   }
+   accept();const errorScans=count('results');Object.assign(ctx.searchResponse,{phase:'error',pending:false});event('error');
+   assert.equal(count('results'),errorScans+1,'failed search follows the fresh path');
+   items.length=0;expectFresh(()=>{},'empty accepted inventory is recomputed');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
