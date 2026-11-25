@@ -1609,13 +1609,18 @@
   let catalogGeneration=0,catalogBootstrap=null;
   function init(origin='Москва',options={}) {
     if(!catalogBootstrap){
+      const publicEntry=root.AnyTourPublicConfigV1;
+      const homeFormOnly=publicEntry?.valid===true&&publicEntry.entry==='home'&&root.V2_CONFIG?.search3FormOnly===true;
       const departures=loadDepartures();
-      const plans=Promise.all([readMealPlans('tourvisor'),readMealPlans('anex')]);
+      const plans=Promise.all([readMealPlans('tourvisor'),homeFormOnly?null:readMealPlans('anex')]);
       const meals=departures.then(async()=>{
-        try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+        // HOME only displays canonical meal names. The receiver loads offer mappings.
+        if(!homeFormOnly){
+          try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+        }
         const [tourvisor,anex]=await plans;
         if(!installMealPlans(tourvisor)){catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
-        if(!installMealPlans(anex,'anex'))providerMealPlans.delete('anex');
+        if(!homeFormOnly&&!installMealPlans(anex,'anex'))providerMealPlans.delete('anex');
       });
       catalogBootstrap={departures,meals};
     }

@@ -21,8 +21,9 @@ function box(settings=config(),pathname=settings.publicBase,query=''){
  const load=file=>vm.runInContext(read(file),context,{filename:file});
  load('visual-search/public-config-v1.js');return {context,calls,events,load};
 }
-function catalogBox(query){
- const h=box(config(),'/poisk-turov/',query),w=h.context;
+function catalogBox(query,{home=false,mealPlans=false}={}){
+ const settings=home?{...config(),entry:'home'}:config();
+ const h=box(settings,home?'/':'/poisk-turov/',query),w=h.context;
  // Synthetic catalog identities intentionally differ; only the actual crosswalk may map them.
  const departures=[{id:1,name:'Москва'},{id:33,russianName:'Калининград'}];
  w.fetch=async(input,options={})=>{
@@ -30,7 +31,10 @@ function catalogBox(query){
   let value;
   if(url.pathname==='/data/departures-v1.php')value={ok:true,items:departures};
   else if(url.pathname==='/_preview/search3-local-candidate/data/search3-local-results-read-v1.php'){
-   assert.equal(JSON.parse(options.body).action,'meal_catalog');value={ok:false};
+   const request=JSON.parse(options.body);
+   assert.equal(request.action,'meal_catalog');
+   value=mealPlans?{ok:true,data:{source:'anytour-search-meal-v1',provider:request.provider,scopeKey:'global',available:true,revision:'a'.repeat(64),
+    plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:[request.provider==='anex'?'AI':'7']}]}}:{ok:false};
   }else if(url.pathname==='/_preview/search3-local-candidate/data/search3-destination-read-v1.php'){
    assert.equal(url.searchParams.get('action'),'countries');
    value={ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',items:[{id:'501',name:'Египет',tourvisorIds:['1']}]};
@@ -40,6 +44,32 @@ function catalogBox(query){
  w.V2Runtime={setSearchId(){},api:async action=>{h.calls.push({api:action});assert.equal(action,'meals','no supplier API operation');return [];}};
  for(const file of ['search3-canonical-profiles-v1.js','prototype-search/data.js','visual-search/public-url-v1.js','visual-search/public-bootstrap-v1.js'])h.load(file);
  return h;
+}
+async function homeCatalogRegressions(){
+ const query=new URLSearchParams({origin:'Калининград',country:'501',from:'2026-12-20',to:'2026-12-24',meals:'Всё включено',searched:'1'}).toString();
+ const bounds={query,origin:'Москва',startDay:'2026-11-21',endDay:'2027-05-20'};
+ const home=catalogBox(query,{home:true,mealPlans:true}),receiver=catalogBox(query,{mealPlans:true});
+ const prepare=h=>h.context.AnyTourPublicBootstrapV1.prepare(h.context.AnyTourPrototypeData,bounds);
+ const [form,search]=await Promise.all([prepare(home),prepare(receiver)]);
+ assert.equal(home.context.AnyTourPublicConfigV1.entry,'home');
+ assert.equal(home.context.V2_CONFIG.search3FormOnly,true);
+ assert.equal(form.catalog.origin,search.catalog.origin);
+ assert.equal(new URLSearchParams(form.query).get('meals'),'Всё включено');
+ assert.equal(form.autoSearch,false);
+ assert.equal(search.autoSearch,true);
+ const providers=h=>h.calls.filter(c=>c.body).map(c=>JSON.parse(c.body).provider);
+ const mealReads=h=>h.calls.filter(c=>c.api==='meals').length;
+ assert.deepEqual(providers(home),['tourvisor']);
+ assert.deepEqual(providers(receiver),['tourvisor','anex']);
+ assert.equal(mealReads(home),0);
+ assert.equal(mealReads(receiver),1);
+ assert.deepEqual(plain(home.context.AnyTourPrototypeData.catalog.mealPlans),plain(receiver.context.AnyTourPrototypeData.catalog.mealPlans));
+ assert.equal(home.context.AnyTourPrototypeData.catalog.mealPlans[0].nameRu,'Всё включено');
+ const unavailable=catalogBox(query,{home:true});
+ const restored=await prepare(unavailable);
+ assert.equal(unavailable.context.AnyTourPrototypeData.catalog.mealPlanAvailable,false);
+ assert.equal(new URLSearchParams(restored.query).get('meals'),'Всё включено','saved meal is retained when the canonical catalog is unavailable');
+ console.log('PASS HOME catalog: canonical meal labels, two fewer reads, same city and restored filters; receiver still loads all offer mappings');
 }
 function restore(query,catalog,data){
  const begin=app.indexOf('function parseURLParty('),end=app.indexOf('let compactSearchFrame=',begin);assert(begin>0&&end>begin);
@@ -177,4 +207,4 @@ async function analyticsRegressions(){
  const review=box(config('review'));review.load('analytics-v4.js');review.load('visual-search/public-analytics-v1.js');review.context.AnyTourPublicAnalyticsV1.hotel({legacyIds:[777]});assert.equal(review.context.dataLayer.length,0);
  console.log('PASS public analytics: actual lifecycle + unchanged analytics owner, original/namespaced identities, receipt price unchanged, no canonical reset/duplicate run/false lead conversion; zero transport');
 }
-(async()=>{await publicURLRegressions();await reviewRegressions();await contactReviewRegressions();await analyticsRegressions();})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{await homeCatalogRegressions();await publicURLRegressions();await reviewRegressions();await contactReviewRegressions();await analyticsRegressions();})().catch(error=>{console.error(error);process.exitCode=1;});
