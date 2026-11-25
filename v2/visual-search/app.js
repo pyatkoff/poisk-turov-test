@@ -45,7 +45,16 @@ const iso = d=>d.toISOString().slice(0,10);
 const localDay = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const addDays = (s,n)=>iso(new Date(dateObj(s).getTime()+n*86400000));
 const formatDate=(formatter,date)=>Number.isNaN(date.getTime())?'Invalid Date':formatter.format(date);
-const dateText = s=>formatDate(dayFormatter,dateObj(s)).replace('.','');
+const shortDateLabels=new Map();
+const dateText=s=>{
+ if(typeof s!=='string'||s.length!==10)return formatDate(dayFormatter,dateObj(s)).replace('.','');
+ const cached=shortDateLabels.get(s);
+ if(cached!==undefined)return cached;
+ const label=formatDate(dayFormatter,dateObj(s)).replace('.','');
+ if(shortDateLabels.size===256)shortDateLabels.delete(shortDateLabels.keys().next().value);
+ shortDateLabels.set(s,label);
+ return label;
+};
 const dateLong = s=>formatDate(fullDayFormatter,dateObj(s));
 const flightDateText = s=>{const raw=String(s||'');const iso=/^\d{8}$/.test(raw)?`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`:raw;return /^\d{4}-\d{2}-\d{2}$/.test(iso)&&!Number.isNaN(dateObj(iso).getTime())?dateText(iso):raw||'Дата уточняется';};
 const rangeText = (a,b)=>a===b?dateText(a):a.slice(0,4)!==b.slice(0,4)?`${dateText(a)} ${a.slice(0,4)} — ${dateText(b)} ${b.slice(0,4)}`:`${dateText(a)} — ${dateText(b)}`;
@@ -1026,7 +1035,8 @@ function hotelMatchFactsHTML(h,f){
  return `<div class="hotel-facts hotel-match-facts"><div class="hotel-match-line"><strong>По вашим условиям</strong><ul aria-label="Совпадения с фильтрами">${[...facts].slice(0,3).map(fact=>`<li>${esc(fact)}</li>`).join('')}</ul></div></div>`;
 }
 function currentCardSelectionHTML(h,offers){
- const listing=h.offers.find(row=>row.key===selectedOffer?.key);
+ if(!selectedOffer)return '';
+ const listing=h.offers.find(row=>row.key===selectedOffer.key);
  const current=listing&&listing.raw===selectedOffer?.raw&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||listing.total)===listing.total?selectedOffer:null;
  const currentVisible=current&&offers.some(row=>row.key===current.key),currentNeedsCheck=current&&(['anex','andromeda'].includes(current.provider)||current.loading||current.flightsLoading||current.pricePending||current.quoteError||needsRefresh(current));
  const currentLegs=current?savedFlightLegs(current):[],currentFlight=currentLegs.length?currentLegs.map((leg,i)=>(i?'Обратно':'Туда')+' '+flightDateText(leg.departureDate)+' '+leg.times).join(' · '):current?savedFlightTextPlain(current):'';

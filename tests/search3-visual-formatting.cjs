@@ -21,8 +21,16 @@ const native={
  dateLong:s=>new Date(s+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}),
  ratingText:h=>Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating.toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}):'—'
 };
-let constructions=0;
-const context={Intl:{NumberFormat:class extends Intl.NumberFormat{constructor(...args){super(...args);constructions++;}},DateTimeFormat:class extends Intl.DateTimeFormat{constructor(...args){super(...args);constructions++;}}}};
+let constructions=0,shortDayFormats=0;
+class DateTimeFormat extends Intl.DateTimeFormat{
+ constructor(locale,options){super(locale,options);constructions++;this.shortDay=options?.month==='short';}
+ get format(){
+  const format=super.format;
+  if(!this.shortDay)return format;
+  return date=>{shortDayFormats++;return format(date);};
+ }
+}
+const context={Intl:{NumberFormat:class extends Intl.NumberFormat{constructor(...args){super(...args);constructions++;}},DateTimeFormat}};
 vm.createContext(context);vm.runInContext(owner(source),context);const api=context.api;
 function observations(api){return [...numbers.flatMap(n=>[api.money(n),api.shortMoney(n)]),...dates.flatMap(s=>[api.dateText(s),api.dateLong(s)]),...ratings.map(rating=>api.ratingText({rating}))];}
 const expected=observations(native),actual=observations(api);assert.deepEqual(actual,expected,'same date/amount/rating text, including invalid and non-finite inputs');
@@ -31,6 +39,13 @@ for(let i=0;i<20;i++)assert.deepEqual(observations(api),expected);
 assert.equal(constructions,before,'no per-cell/per-card formatter construction');
 assert.equal(before,7,'bounded formatter instances per app');
 assert.equal(api.money(133500.5),'133 500,5 ₽');assert.equal(api.dateText('2027-01-01'),'1 янв');assert.equal(api.dateLong('invalid'),'Invalid Date');
+const repeatedDay='2030-06-01',beforeRepeated=shortDayFormats;
+for(let i=0;i<32;i++)assert.equal(api.dateText(repeatedDay),native.dateText(repeatedDay));
+assert.equal(shortDayFormats-beforeRepeated,1,'repeated cards share one short date format');
+for(let i=0;i<256;i++)api.dateText(new Date(Date.UTC(2032,0,1+i)).toISOString().slice(0,10));
+const beforeEviction=shortDayFormats;
+assert.equal(api.dateText(repeatedDay),native.dateText(repeatedDay));
+assert.equal(shortDayFormats-beforeEviction,1,'the oldest day is evicted when the bounded cache fills');
 assert(source.includes('heading=formatDate(monthFormatter,date)'), 'month heading uses the retained formatter');
 assert.equal((source.match(/shortAmount\(price,true\)/g)||[]).length,3,'tape plus both initial and updated calendar cells reuse the short amount formatter');
 const compare=process.argv.indexOf('--compare');
