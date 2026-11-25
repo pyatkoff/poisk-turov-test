@@ -168,7 +168,7 @@ class Contracts(unittest.TestCase):
 
     def test_public_search_uses_encoded_config_without_weakening_legacy(self):
         self.assertEqual(pub.render_search_markers('poisk-turov/'), (
-            'id="tourSearch"',
+            'id="search-form"',
             '&quot;metrikaCounter&quot;:0',
             '&quot;leadApi&quot;:&quot;' + remote.ROUTE + 'preview-lead-disabled.php&quot;',
         ))

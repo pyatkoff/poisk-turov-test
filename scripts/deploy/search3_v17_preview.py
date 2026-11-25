@@ -123,7 +123,7 @@ def render_robots_marker(route):
 def render_search_markers(route, preview=Preview.NEXT):
     if route == 'poisk-turov/':
         return (
-            'id="tourSearch"',
+            'id="search-form"',
             '&quot;metrikaCounter&quot;:0',
             '&quot;leadApi&quot;:&quot;' + preview.route + 'preview-lead-disabled.php&quot;',
         )
