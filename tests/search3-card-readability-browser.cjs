@@ -315,10 +315,10 @@ async function verifyEmptyLocalRail(browser) {
         window.V2SearchLifecycle.submit = () => {
           window.__calendarSubmissions.push([...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
         };
-        window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [
+        window.V2CurrentPriceCalendar.render([
           { tours: [{ date: '10.09.2026', price: 1350000 }, { date: '2026-09-11', price: 1234567 }] },
           { tours: [{ date: '10.09.2026', price: 1290000 }, { date: '2026-09-12', price: 0 }] }
-        ] } }));
+        ]);
       });
       await page.waitForSelector('#currentPriceCalendar .current-price-calendar__days');
       const calendar = page.locator('#currentPriceCalendar');
