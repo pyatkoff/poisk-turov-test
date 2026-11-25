@@ -4,6 +4,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const {privateTVFixture}=require('./search3-visual-messenger-browser.cjs');
+const catalogueTiming=require('./search3-public-home-catalog-timing.cjs');
 const intPath='/_preview/search3-anex-candidate/api-anex-search3-preview.php';
 const dataPaths=new Set(['/api-v2.php','/data/departures-v1.php','/data/hotel-search-v1.php',
  '/_preview/search3-local-candidate/data/search3-destination-read-v1.php',
@@ -114,15 +115,18 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   servedHashes:Object.fromEntries(assetNames.map(name=>{assert(files.has(name),name+' is inventoried');return [name,files.get(name).sha256];})),
   supplierHTTP:0,botHTTP:0,realLeads:0,installed:false,physicalDevice:false,cases:[],status:'running'};
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
- async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
+ async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh',benchmark=null}){
   const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
-  const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
+  const contextName=benchmark?benchmark.name:platform?platform+variant:historyCache?'history-cache':'form';
+  const id=contextName+'-'+viewport.width+'x'+viewport.height;
   const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
+  const catalogueCalls=[];
   const checkApplication=Boolean(platform)||!historyCache&&[430,1280].includes(viewport.width);
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen,returning=false;
   const context=await owner.newContext({viewport,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);
+  if(benchmark)await context.addInitScript(catalogueTiming.observeReadyHome);
   await context.addInitScript(({retained})=>{
    window.dataLayer=[];window.__homeDocumentId=Date.now()+'-'+Math.random();window.__homePageShows=[];
    addEventListener('pageshow',event=>window.__homePageShows.push({persisted:event.persisted}));
@@ -147,7 +151,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname,
    document:request.isNavigationRequest()&&request.frame()===page.mainFrame()}));
   const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
-  receipt.cases.push(row);save();
+  if(!benchmark){receipt.cases.push(row);save();}
   const privateRequests=()=>network.filter(request=>request.path===intPath).length;
   const capture=async(name,home=false)=>{
    const value=await geometry(page,viewport,home),file=id+'-'+name+'.png';
@@ -180,6 +184,9 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      }
      assert.equal(url.origin,origin,'external supplier, bot and analytics traffic is forbidden');
      const favicon=faviconResponse(url,request.method());if(favicon){await route.fulfill(favicon);return;}
+     if(benchmark&&request.method()==='GET'&&url.pathname===catalogueTiming.dataURL){
+      await catalogueTiming.servePinnedAsset(route,benchmark.variant,receipt.servedHashes[catalogueTiming.dataURL]);return;
+     }
      if(request.method()==='GET'&&(publicRoutes.has(url.pathname)||staticPaths.has(url.pathname))){await route.continue();return;}
      if(url.pathname==='/test-photo.svg'&&request.method()==='GET'){
       await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;
@@ -207,6 +214,14 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
       if(value===undefined)value=await transport.json(request.url(),{body:request.postData()});
      }else{
       assert(dataPaths.has(url.pathname),'unlisted data/lead route '+url.pathname);
+      const catalogue=catalogueTiming.catalogueRequest(url.pathname,action,body.provider);
+      if(catalogue){
+       catalogueCalls.push(catalogue);
+       if(benchmark?.controlled)await new Promise(resolve=>setTimeout(resolve,catalogueTiming.delays[catalogue]));
+       if(benchmark?.unavailable&&catalogue==='tourvisor'){
+        await route.fulfill({json:{ok:false,error:'Fictional canonical meal catalogue unavailable'}});return;
+       }
+      }
       if(url.pathname==='/api-v2.php'){
         assert.equal(action,'meals','no root supplier fallback');
         // A fresh document can see pageshow while the catalog is still loading.
@@ -218,6 +233,24 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     }catch(error){forbidden.push(error.message);await route.abort().catch(()=>{});}
    });
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
+   if(benchmark){
+    initial.set('meals','AI|Всё включено');initial.set('max','240000');
+    await page.goto(origin+'/?'+initial);await readyHome(page);
+    await page.waitForFunction(()=>window.__homeCatalogueReady);
+    const timing=await page.evaluate(()=>window.__homeCatalogueReady);
+    assert(timing.ready>=timing.navigationResponse);
+    assert.deepEqual(catalogueCalls.slice().sort(),benchmark.variant.name==='before'?catalogueTiming.catalogueNames:['countries','departures','tourvisor']);
+    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0);
+    assert.equal(await page.locator('#meal-label').textContent(),'Всё включено');
+    assert.match(await page.locator('#budget-label').textContent(),/240\s*000/);
+    checkGeometry(await geometry(page,viewport,true),id,true);
+    await page.locator('#quick-meal').click();
+    const options=await page.locator('[data-meal-choice]').evaluateAll(nodes=>nodes.map(node=>[node.value,node.checked]));
+    const expected=benchmark.unavailable?[['',false],['Всё включено',true]]:[['',false],['Всё включено',true],['Завтраки',false]];
+    assert.deepEqual(options,expected,id+' preserves the saved choice and the available canonical options');
+    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
+    return {...timing,requests:catalogueCalls,options};
+   }
    await page.goto(origin+'/?'+initial);await readyHome(page);
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
    await capture('initial',true);await chooseFamily(page);
@@ -225,10 +258,13 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
    assert.equal(privateRequests(),0,'editing HOME controls starts no private supplier preparation');await capture('family',true);
    const initialDocument=(await backState(page)).documentId;
+   const homeCatalogues=catalogueCalls.length;
    await submit(7,1);await page.locator('.hotel-card').first().waitFor();
+   const receiverCatalogues=catalogueCalls.slice(homeCatalogues).sort();
+   assert.deepEqual(receiverCatalogues,catalogueTiming.catalogueNames,'only HOME can omit the offer mappings');
    const params=tv.calls.find(call=>call.action==='tv_search').body.params;
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
-   row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
+   row.firstSearch={url:page.url(),counts:counts(transport,tv),params,catalogues:receiverCatalogues};await capture('receiver');
    let observed=null,searchDocument='';
    if(checkApplication){
     if(selectedPair)await page.locator('.hotel-card .hotel-price [data-key="tourvisor%3Avisual-tv-101"]').click();
@@ -336,6 +372,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    row.status='passed';save();
   }catch(error){
    row.status='failed';row.error=error.stack||error.message;
+   if(benchmark){row.catalogueCalls=catalogueCalls;receipt.failedCatalogueSample=row;}
    row.generationCounts=counts(transport,tv);
    row.supplierActions={tv:tv.calls.map(call=>call.action),anex:transport.calls.filter(call=>call.url===intPath).map(call=>call.action)};save();
    await page.screenshot({path:path.join(directory,id+'-failure.png')}).catch(()=>{});
@@ -344,6 +381,30 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  }
  let historyBrowser;
  try{
+  const variants=await catalogueTiming.prepareCataloguePair(receipt.servedHashes[catalogueTiming.dataURL]);
+  if(variants){
+   const report={baseline:catalogueTiming.baseline,variants:variants.map(({code,...pin})=>pin),delaysMs:catalogueTiming.delays,
+    boundary:'navigation start to the visible and enabled Find button at its first animation frame',warmups:1,pairsPerScreen:7,measurements:[],unavailable:[]};
+   receipt.catalogueTiming=report;save();
+   for(const viewport of viewports.filter(viewport=>[430,1280].includes(viewport.width))){
+    for(const controlled of [false,true]){
+     for(let pair=0;pair<=report.pairsPerScreen;pair++){
+      const order=pair%2?variants.slice().reverse():variants;
+      const sample={viewport,controlled,pair,warmup:pair===0,order:order.map(variant=>variant.name)};
+      for(const variant of order){
+       const name='catalogue-'+(controlled?'controlled':'normal')+'-'+pair+'-'+variant.name;
+       sample[variant.name]=await runCase(browser,{viewport,benchmark:{name,variant,controlled}});
+      }
+      report.measurements.push(sample);save();
+     }
+    }
+    for(const variant of variants){
+     const result=await runCase(browser,{viewport,benchmark:{name:'catalogue-unavailable-'+variant.name,variant,unavailable:true}});
+     report.unavailable.push({viewport,variant:variant.name,...result});save();
+    }
+   }
+   console.log('PASS paired HOME catalogue timing: exact compiled assets; saved meals, options and catalogue failure');
+  }
   for(const viewport of viewports)await runCase(browser,{viewport});
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
   await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});

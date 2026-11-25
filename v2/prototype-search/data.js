@@ -1610,9 +1610,14 @@
   function init(origin='Москва',options={}) {
     if(!catalogBootstrap){
       const departures=loadDepartures();
-      const plans=Promise.all([readMealPlans('tourvisor'),readMealPlans('anex')]);
-      const meals=departures.then(async()=>{
-        try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+      // The public HOME form reads canonical names. Offer normalization and
+      // the other meal mappings belong to the document that receives its search.
+      const homeForm=root.AnyTourPublicConfigV1?.valid===true&&root.AnyTourPublicConfigV1.entry==='home'&&root.V2_CONFIG?.search3FormOnly===true;
+      const plans=Promise.all([readMealPlans('tourvisor'),homeForm?null:readMealPlans('anex')]);
+      const meals=(homeForm?Promise.resolve():departures).then(async()=>{
+        if(!homeForm){
+          try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
+        }
         const [tourvisor,anex]=await plans;
         if(!installMealPlans(tourvisor)){catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
         if(!installMealPlans(anex,'anex'))providerMealPlans.delete('anex');
