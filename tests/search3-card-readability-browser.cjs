@@ -86,38 +86,48 @@ async function verifyEmptyLocalRail(browser) {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.V2Results && window.Search3LocalHotelFilter &&
       document.getElementById('tourSearch').dataset.catalogSource === 'partial');
-    // Reuse the existing deterministic card fixture and execute all real Search3
-    // presentation subscribers. The adapter never invokes external search/lead.
+    // Reuse deterministic card markup for two hotels and execute the current
+    // local-filter subscriber without supplier, lead or analytics traffic.
     await page.evaluate(html => {
       window.V2Results.render = items => {
         const results = document.getElementById('results');
         results.hidden = false;
-        results.innerHTML = items.length ? html : '';
+        results.innerHTML = items.map(item => html
+          .replace('data-hotel-id="readability-fixture"', 'data-hotel-id="' + item.id + '"')
+          .replace('LONG BEACH RESORT HOTEL WITH A LONG NAME', item.name)).join('');
         document.getElementById('resultsTools').hidden = !items.length;
         const summary = document.getElementById('resultsSearchSummary');
         if (summary) summary.hidden = !items.length;
         window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items } }));
       };
-      window.V2Results.render([{ id: 'readability-fixture', name: 'Empty-filter fixture', price: 148500, tours: [] }]);
+      window.V2Results.render([
+        { id: 'readability-fixture-a', name: 'Alpha fixture hotel', price: 148500, tours: [] },
+        { id: 'readability-fixture-b', name: 'Beta fixture hotel', price: 168500, tours: [] }
+      ]);
     }, cardHtml);
-    const slider = page.locator('[data-s3-price]');
-    await slider.waitFor({ state: 'visible' });
-    await slider.press('Home');
-    await page.waitForFunction(() => !document.querySelector('#results .hotel-card'));
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    if (!await slider.isVisible() || !await page.locator('.results-filter-rail').isVisible()) throw new Error('EMPTY_LOCAL_RAIL_HIDDEN');
-    if (await page.locator('[data-s3-count]').textContent() !== '0') throw new Error('EMPTY_LOCAL_COUNT');
-    for (const width of [1000,1440]) {
+    const filter = page.locator('.search3-hotel-filter input');
+    await filter.waitFor({ state: 'visible' });
+    await filter.fill('Нет такого отеля');
+    await page.waitForFunction(() => [...document.querySelectorAll('#results .hotel-card')].every(card => card.hidden));
+    if (!await page.locator('.results-filter-rail').isVisible()) throw new Error('EMPTY_LOCAL_RAIL_HIDDEN');
+    if (await page.locator('[data-search3-filter-count]').textContent() !== '0') throw new Error('EMPTY_LOCAL_COUNT');
+    for (const width of [1000,1024,1025,1440]) {
       await page.setViewportSize({ width, height: 900 });
-      if (!await slider.isVisible()) throw new Error('EMPTY_LOCAL_RESIZE_HIDDEN ' + width);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const railVisible = await page.locator('.results-filter-rail').isVisible();
+      const mobileVisible = await page.locator('.search3-mobile-filter-panel').isVisible();
+      if (width >= 1025 ? (!railVisible || mobileVisible) : (railVisible || !mobileVisible)) {
+        throw new Error('EMPTY_LOCAL_OWNER_BREAKPOINT ' + width + ' ' + JSON.stringify({ railVisible, mobileVisible }));
+      }
+      if (width === 1000 || width === 1440) await page.screenshot({ path: 'standalone-content-artifacts/empty-local-filter-' + width + '.png', fullPage: true });
     }
-    await page.screenshot({ path: 'standalone-content-artifacts/empty-local-filter-1440.png', fullPage: true });
-    await slider.press('End');
-    await page.waitForSelector('#results .hotel-card');
-    if (await page.locator('[data-s3-count]').textContent() !== '1') throw new Error('EMPTY_LOCAL_RESTORE_COUNT');
-    await page.evaluate(() => { document.getElementById('results').innerHTML = ''; window.dispatchEvent(new CustomEvent('v2:search-reset')); });
-    if (await page.locator('.results-filter-rail').getAttribute('data-s3-empty-results') !== '') throw new Error('EMPTY_LOCAL_RESET_MARKER');
-    console.log('SEARCH3_EMPTY_LOCAL_RAIL_OK 1348/1000/1440 zero matches, resize, restore, reset');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await filter.fill('');
+    await page.waitForFunction(() => [...document.querySelectorAll('#results .hotel-card')].filter(card => !card.hidden).length === 2);
+    if (await page.locator('[data-search3-filter-count]').textContent() !== '2') throw new Error('EMPTY_LOCAL_RESTORE_COUNT');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset')));
+    if (await filter.inputValue() !== '' || await page.locator('#results .hotel-card:visible').count() !== 2) throw new Error('EMPTY_LOCAL_RESET_STATE');
+    console.log('SEARCH3_EMPTY_LOCAL_RAIL_OK 1000/1024/1025/1440 zero matches, owner breakpoint, restore, reset');
   } finally { await page.close(); }
 }
 
