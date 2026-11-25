@@ -60,6 +60,7 @@ jobs:
             curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg -o v2/images/logo.svg
             grep -qi '<svg' v2/images/logo.svg
             printf '%s\n' '{"schemaVersion":1,"profile":"review","scenario":"family"}' > v2/visual-search/public-build.json
+            printf '%s\n' '<?php $_SERVER["HTTP_HOST"]="anytoour.ru"; $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; $_SERVER["REQUEST_URI"]="/poisk-turov/"; require __DIR__."/poisk-turov/index.php";' > v2/ci-search3.php
             cat > v2/ci-home-router.php <<'PHP'
           <?php
           $path = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
