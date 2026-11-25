@@ -35,9 +35,15 @@ async function chooseFamily(page){
  await page.locator('#quick-stars [data-value="4"]').click();await page.locator('#quick-stars [data-value="5"]').click();
  await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value="Всё включено"]').check();
  await page.locator('[data-action="apply-meals"]').click();await idleModal(page);
+ const disclosureState=()=>page.locator('#quick-budget').evaluate(el=>({open:el.closest('details.home-search-more').open,
+  visible:el.checkVisibility()&&getComputedStyle(el).visibility==='visible'}));
+ await page.locator('.home-search-more > summary').click();const opened=await disclosureState();
+ assert(opened.open&&opened.visible,'opening additional parameters exposes the budget control');
  await page.locator('#quick-budget').click();
  await page.locator('#budget-max').fill('240000');await page.locator('[data-action="apply-budget"]').click();await idleModal(page);
  assert.match(await page.locator('#budget-label').textContent(),/240\s*000/,'the chosen whole-tour budget stays visible');
+ await page.locator('.home-search-more > summary').click();const closed=await disclosureState();
+ assert(!closed.open&&!closed.visible,'closing additional parameters hides the budget control');
 }
 async function geometry(page,viewport,home){
  await page.evaluate(()=>document.fonts.ready);
@@ -55,9 +61,12 @@ async function geometry(page,viewport,home){
   }
   if(home){
    result.formsInHero=document.querySelectorAll('.home-hero form').length;
+   result.budgetDisclosed=!!document.querySelector('#quick-budget')?.closest('details.home-search-more');
+   result.budgetOpen=document.querySelector('#quick-budget')?.closest('details.home-search-more')?.open??null;
+   result.budgetHidden=!visible(document.querySelector('#quick-budget'));
    const selectors=['#search-form [data-action="departure"]','#search-form [data-action="destination"]',
     '#search-form [data-action="dates"]','#search-form [data-action="nights"]','#search-form [data-action="guests"]',
-    '#quick-stars','#quick-meal','#quick-budget','#search-form .search-submit'];
+    '#quick-stars','#quick-meal','.home-search-more > summary','#search-form .search-submit'];
    result.controls=Object.fromEntries(selectors.map(selector=>{
     const el=document.querySelector(selector),rect=el?box(el):null,hit=rect?document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2):null;
     return [selector,{count:document.querySelectorAll(selector).length,visible:visible(el),rect,hit:!!el&&(hit===el||el.contains(hit))}];
@@ -76,13 +85,11 @@ function checkGeometry(value,label,home){
  }
  if(!home)return;
  assert.equal(value.formsInHero,1,label+' has one actual form in the hero');
+ assert(value.budgetDisclosed&&value.budgetOpen===false&&value.budgetHidden,label+' keeps budget inside closed additional parameters');
  for(const [selector,control]of Object.entries(value.controls)){
   assert.equal(control.count,1,label+' has one '+selector);assert(control.visible,label+' shows '+selector);
   assert(control.rect.width>0&&control.rect.height>0&&control.rect.x>=-1&&control.rect.right<=width+1,label+' fits '+selector);
  }
- const meal=value.controls['#quick-meal'].rect,budget=value.controls['#quick-budget'].rect;
- assert(Math.abs(meal.y-budget.y)<=1&&budget.x>=meal.right-1,label+' keeps the visible budget beside meals');
- assert(meal.height>=44&&budget.height>=44,label+' keeps both controls tappable');
  const submit=value.controls['#search-form .search-submit'];
  assert(submit.rect.height>=44&&submit.rect.y>=0&&submit.rect.bottom<=height+1&&submit.hit,label+' keeps an unobstructed Find action in the first viewport');
 }
