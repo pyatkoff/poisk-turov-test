@@ -12,5 +12,5 @@ def main():
  (out/'original-pending.json').write_bytes(p.stdout);(out/'status.json').write_text(json.dumps({'returncode':p.returncode,'stderr_bytes':len(p.stderr)})+'\n')
  assert p.returncode==0,'read_failed_no_retry'
  r=json.loads(p.stdout);assert r['ok'] is True
- print(json.dumps({'ok':r['ok'],'pending':r['pending'],'child_journal_sha256':r.get('child_journal',{}).get('sha256'),'server_writes':r['server_writes']}))
+ print('PENDING_ORIGINAL',json.dumps({k:r[k] for k in ('ok','pending','child_journal','pending_feed_files','runtime','server_writes','completed_hotels') if k in r},separators=(',',':')),flush=True)
 if __name__=='__main__':main()
