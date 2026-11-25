@@ -1,4 +1,4 @@
-name: Apply all 33 saved hotel prices after Seagull editor return
+name: PRICE existing posts and XML after release 1726
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3c1eaec0e4e5cb56476d97bb00c40a1cd4fefcf8'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9ce5f023e021d3d429f0e366823a2e0e01a300d7'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -67,6 +67,8 @@ jobs:
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
           import base64, datetime, gzip, hashlib, json, os, pathlib, re, subprocess, sys, time
           import xml.etree.ElementTree as ET
+          from urllib.request import urlopen
+          from zoneinfo import ZoneInfo
           os.umask(0o077)
           root=pathlib.Path('/var/www/anytoour/data')
           app=root/'www/app.anytoour.ru'
@@ -83,13 +85,24 @@ jobs:
           def check(condition, message):
               if not condition: raise RuntimeError(message)
           def pins():
-              for name,sha in [('monitor-price-hook.php','605f8e628f5ad8bb07ab7e12f0e8a33c51a773defad43711d46908db0cb1caa4'),('published-hotels-monitor-v1.php','3607f62a700988fc5e8a9b22595a7a96b0de9086c268272426ef34f84befd34c'),('top500-daily-collector-v1.php','940e4f66a5f62223026050ceedb0d443126faa6e37106fbdc3977b995b47b816')]:
+              for name,sha in [('monitor-price-hook.php','0aec7cabb8859449f7d4e1a8746d4f8b4b987a98cf14f9412a9b230121b106a7'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='eb7ab9472e6b556812dc3d209a155d291c2077b6','runtime_changed')
-          def feeds():
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='251331bb4cb4984e34e3c24e82fb8c2e7fdb29fe','runtime_changed')
+          def window_open():
+              base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
+              def comment(comment_id):
+                  with urlopen(base+str(comment_id),timeout=15) as response:
+                      return json.load(response)
+              release=comment(6928374515)
+              permit=comment(7029866773)
+              return (release['user']['login']=='pyatkoff'
+                      and release['updated_at']=='2026-11-25T18:50:20Z'
+                      and release['body']=='PR1726: установлено, выпуск свободен'
+                      and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
+          def feeds(updates=()):
               info={}
-              for key,size in [('telegram',1000),('max',1000),('all',2000)]:
+              for key,size in [('telegram',1055),('max',1055),('all',2110)]:
                   name='hotel-posts-'+key+'.xml'
                   p=app/'feed'/name
                   data=p.read_bytes()
@@ -97,6 +110,17 @@ jobs:
                   check(public==data,'public_price_feed_mismatch_'+key)
                   rows=ET.fromstring(data).findall('.//offer')
                   check(len(rows)==len({o.get('id') for o in rows})==size,'feed_size_or_duplicate')
+                  by_id={entry.get('id'):entry for entry in rows}
+                  for update in updates:
+                      hotel=update['tourvisor_hotel_id']
+                      observed=update['posts'][0]['monitor_price']['observed_at']
+                      local=datetime.datetime.fromisoformat(observed).astimezone(ZoneInfo('Europe/Moscow'))
+                      stamp=local.strftime('%d.%m.%Y, %H:%M МСК')
+                      prefixes={'max':('max',),'telegram':('tg',),'all':('max','tg')}[key]
+                      for prefix in prefixes:
+                          entry=by_id[f'{prefix}_{hotel}']
+                          check(entry.findtext('price')==str(update['price']),'published_price_mismatch')
+                          check(stamp in entry.findtext('description',''),'published_observation_mismatch')
                   info[key]=hashlib.sha256(data).hexdigest()
               return info
           def native_run(stage, inspect=False):
@@ -107,8 +131,9 @@ jobs:
               v=json.loads(rows[0])
               print('NATIVE',stage,json.dumps({k:v.get(k) for k in ('ok','error','roster_pairs','updated_pairs','eligible_pairs','held_pairs','scanned_pairs','remaining_unscanned_pairs','deferred_counts')}),flush=True)
               return proc.returncode,v
-          def report():
-              print('HANDOFF',json.dumps({'journal':digest(journal),'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds()}),flush=True)
+          def report(updates=()):
+              print('HANDOFF',json.dumps({'journal':digest(journal),'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
+          check(window_open(),'price_editor_window_closed')
           pins()
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
@@ -121,6 +146,9 @@ jobs:
           seen=set()
           for batch in range(1,26):
               if time.monotonic()-start>3000: break
+              if not window_open():
+                  print('WINDOW_HANDOFF_CHANGED',batch,flush=True)
+                  break
               pins()
               code,r=native_run('pass-'+str(batch))
               for update in r.get('updates',[]):
@@ -130,7 +158,8 @@ jobs:
                   seen.add(update['operation'])
               check(r['updated_pairs']==len(r['updates']),'update_count_mismatch')
               print('PAIR_IDS',batch,[u['tourvisor_hotel_id'] for u in r['updates']], 'verified_operations',len(seen),flush=True)
-              report()
+              report(r.get('updates',[]))
+              print('PAIR_PRICES',batch,json.dumps([[u['tourvisor_hotel_id'],u['price'],u['posts'][0]['monitor_price']['observed_at']] for u in r.get('updates',[])]),flush=True)
               check(code==0 and r.get('ok') and r.get('roster_pairs')==1000 and all(r.get(k)==0 for k in ('supplier_calls','new_posts','site_writes')),'native_terminal_stop')
               if r.get('scanned_pairs')==1000 or not r.get('updated_pairs'): break
           print('WINDOW_TERMINAL',len(seen),flush=True)
