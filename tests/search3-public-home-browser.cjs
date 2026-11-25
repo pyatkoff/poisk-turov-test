@@ -103,6 +103,84 @@ async function backState(page){
  });
 }
 
+function observeJourneyTiming(){
+ const home=location.pathname==='/',receiver=location.pathname==='/poisk-turov/';
+ if(!home&&!receiver)return;
+ const storageKey='search3-browser-journey-sample',now=()=>performance.timeOrigin+performance.now();
+ const sample=window.__search3JourneySample=receiver?JSON.parse(sessionStorage.getItem(storageKey)||'{}'):{};
+ const resources=(start,end)=>performance.getEntriesByType('resource')
+  .filter(entry=>['fetch','xmlhttprequest'].includes(entry.initiatorType)&&performance.timeOrigin+entry.startTime>=start&&performance.timeOrigin+entry.responseEnd<=end)
+  .map(entry=>({path:new URL(entry.name).pathname,startMs:performance.timeOrigin+entry.startTime-start,endMs:performance.timeOrigin+entry.responseEnd-start,durationMs:entry.duration}));
+ const visible=element=>Boolean(element?.checkVisibility({checkVisibilityCSS:true})&&element.getClientRects().length);
+ const inViewport=element=>{
+  if(!visible(element))return false;
+  const {left,top,right,bottom,width,height}=element.getBoundingClientRect();
+  const hit=document.elementFromPoint(left+width/2,top+height/2);
+  return left>=0&&top>=0&&right<=innerWidth&&bottom<=innerHeight&&(hit===element||element.contains(hit));
+ };
+ const ready=element=>visible(element)&&!element.disabled&&element.getAttribute('aria-disabled')!=='true';
+ const record=start=>{
+  const end=now();
+  return {ms:end-start,resources:resources(start,end)};
+ };
+ let frame=0;
+ const observer=new MutationObserver(schedule);
+ function paint(){
+  frame=0;
+  if(home){
+   const button=document.querySelector('.home-hero #search-form .search-submit');
+   if(!ready(button)||!inViewport(button))return;
+   sample.form=record(performance.timeOrigin);
+   observer.disconnect();
+   return;
+  }
+  if(!sample.submitAt)return;
+  if(!sample.firstInViewport&&!sample.initialResultsMeasured){
+   const card=document.querySelector('#cards .hotel-card');
+   const action=card?.querySelector('[data-card-entry]');
+   const price=card?.querySelector('.starting-price strong');
+   if(ready(action)&&visible(price)&&/\d/.test(price.textContent)){
+    sample.results??={...record(sample.submitAt),amount:price.textContent.trim(),action:action.textContent.trim()};
+    if(inViewport(action)&&inViewport(price))sample.firstInViewport=record(sample.submitAt);
+   }
+  }
+  if(!sample.tariffAt||sample.application)return;
+  const actions=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];
+  const total=document.querySelector('#modal-footer .footer-total>strong');
+  if(actions.length!==2||!actions.every(ready)||!visible(total)||!/\d/.test(total.textContent))return;
+  sample.application={...record(sample.tariffAt),amount:total.textContent.trim()};
+  observer.disconnect();
+ }
+ function schedule(){
+  if(!frame)frame=requestAnimationFrame(paint);
+ }
+ observer.observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
+ addEventListener('scroll',schedule,{passive:true});
+ document.addEventListener('click',event=>{
+  if(!event.isTrusted)return;
+  if(home&&event.target.closest('#search-form .search-submit')){
+   sample.submitAt=now();
+   sessionStorage.setItem(storageKey,JSON.stringify(sample));
+  }
+  if(receiver&&event.target.closest('.room-offer-choice [data-action="select-hotel-offer"]')){
+   sample.tariffAt=now();
+   schedule();
+  }
+ },true);
+ schedule();
+}
+
+function timingOverview(samples){
+ const summary=values=>{
+  const ordered=values.filter(Number.isFinite).sort((a,b)=>a-b);
+  if(!ordered.length)return {count:0};
+  const middle=Math.floor(ordered.length/2);
+  const medianMs=ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2;
+  return {count:ordered.length,minMs:ordered[0],medianMs,maxMs:ordered.at(-1)};
+ };
+ return Object.fromEntries(['form','results','firstInViewport','application'].map(stage=>[stage,summary(samples.map(row=>row[stage]?.ms))]));
+}
+
 module.exports=async function publicHomeJourney({browser,origin,manifest,manifestSHA256,files,staticPaths,publicRoutes,output,failures,faviconResponse,launchHistoryBrowser}){
  assert.equal(manifest.shared_ui?.enabled,true,'HOME uses the admitted shared entry graph');
  assert.equal(Object.values(manifest.files).flat().find(row=>row.path==='index.php')?.source_path,'v2/home-entry-v1.php','serve the actual main root alias');
@@ -114,7 +192,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   servedHashes:Object.fromEntries(assetNames.map(name=>{assert(files.has(name),name+' is inventoried');return [name,files.get(name).sha256];})),
   supplierHTTP:0,botHTTP:0,realLeads:0,installed:false,physicalDevice:false,cases:[],status:'running'};
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
- async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
+ async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh',benchmark=false}){
   const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
   const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
   const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
@@ -122,7 +200,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen,returning=false;
-  const context=await owner.newContext({viewport,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);
+  const mobile=benchmark&&viewport.width===430?{isMobile:true,hasTouch:true,deviceScaleFactor:3}:{};
+  const context=await owner.newContext({viewport,serviceWorkers:'block',...mobile}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.addInitScript(({retained})=>{
    window.dataLayer=[];window.__homeDocumentId=Date.now()+'-'+Math.random();window.__homePageShows=[];
    addEventListener('pageshow',event=>window.__homePageShows.push({persisted:event.persisted}));
@@ -138,6 +217,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     return replaceState.call(this,state,...args);
    };
   },{retained});
+  if(benchmark)await context.addInitScript(observeJourneyTiming);
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations.push(frame.url());});
@@ -147,9 +227,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname,
    document:request.isNavigationRequest()&&request.frame()===page.mainFrame()}));
   const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
-  receipt.cases.push(row);save();
+  if(!benchmark){receipt.cases.push(row);save();}
   const privateRequests=()=>network.filter(request=>request.path===intPath).length;
   const capture=async(name,home=false)=>{
+   if(benchmark)return;
    const value=await geometry(page,viewport,home),file=id+'-'+name+'.png';
    row.stages.push({name,file,...value});save();
    await page.screenshot({path:path.join(directory,file)});checkGeometry(value,id+' '+name,home);
@@ -162,7 +243,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     const request=result.request();if(new URL(request.url()).pathname!==intPath||request.method()!=='POST')return false;
     return JSON.parse(request.postData()||'{}').action===action;
    });
-   await Promise.all([page.waitForURL(url=>url.pathname==='/poisk-turov/'),response('tv_search'),response('search'),doubleSubmit(page)]);
+   const activate=()=>benchmark
+    ?page.locator('#search-form .search-submit')[mobile.hasTouch?'tap':'click']()
+    :doubleSubmit(page);
+   await Promise.all([page.waitForURL(url=>url.pathname==='/poisk-turov/'),response('tv_search'),response('search'),activate()]);
    await page.waitForFunction(()=>Number(window.AnyTourPrototypeData?.searchId)>0&&window.dataLayer?.some(row=>row.v2_event==='search_complete'));
    checkTrip(page.url(),nights,true);
    assert.equal(documentCommits.filter(url=>new URL(url).pathname==='/poisk-turov/').length-beforeNavigation,1,'double submit commits one receiver document');
@@ -226,6 +310,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    assert.equal(privateRequests(),0,'editing HOME controls starts no private supplier preparation');await capture('family',true);
    const initialDocument=(await backState(page)).documentId;
    await submit(7,1);await page.locator('.hotel-card').first().waitFor();
+   if(benchmark){
+    await page.waitForFunction(()=>Boolean(window.__search3JourneySample?.results));
+    await page.evaluate(()=>{window.__search3JourneySample.initialResultsMeasured=true;});
+   }
    const params=tv.calls.find(call=>call.action==='tv_search').body.params;
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
    row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
@@ -239,7 +327,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      await offer.locator('[data-action="hotel-flights"]').click();
      await offer.locator('[name="flight-pair"][value="1"]').click();
      await page.locator('#hotel-detail-offers').click();
-    }else await offer.locator('[data-action="select-hotel-offer"]').click();
+    }else await offer.locator('[data-action="select-hotel-offer"]')[mobile.hasTouch?'tap':'click']();
     await page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];return buttons.length===2&&buttons.every(button=>!button.disabled);});
     assert(frozen);assert.equal(frozen.observation.trip.adults,3);assert.deepEqual(frozen.observation.trip.childAges,[0,12]);
     assert.equal(frozen.observation.trip.nights,7);assert.equal(frozen.observation.stay.room,'STANDARD SEA VIEW');
@@ -249,6 +337,15 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(observed.flights.state,selectedPair?'selected':'manager-deferred');
     const shownTotal=await page.locator('#modal-footer .footer-total>strong').innerText();
     assert.equal(Number(shownTotal.replace(/[^\d,]/g,'').replace(',','.')),Number(observed.price.amount),'the exact whole-family total is checked before navigation');
+    if(benchmark){
+     await page.waitForFunction(()=>Boolean(window.__search3JourneySample?.application));
+     const sample=await page.evaluate(()=>window.__search3JourneySample);
+     assert([sample.form,sample.results,sample.application].every(stage=>stage?.ms>0),'the trusted journey produced three timing intervals');
+     assert.equal(sample.application.amount,shownTotal.trim());
+     assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);
+     assert.deepEqual(failures,[]);assert.deepEqual(externalNavigations,[]);
+     return sample;
+    }
     searchDocument=(await backState(page)).documentId;
     await capture('contact');
     if(!platform){
@@ -336,6 +433,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    row.status='passed';save();
   }catch(error){
    row.status='failed';row.error=error.stack||error.message;
+   if(benchmark)receipt.benchmarkFailure={viewport,error:row.error};
    row.generationCounts=counts(transport,tv);
    row.supplierActions={tv:tv.calls.map(call=>call.action),anex:transport.calls.filter(call=>call.url===intPath).map(call=>call.action)};save();
    await page.screenshot({path:path.join(directory,id+'-failure.png')}).catch(()=>{});
@@ -345,6 +443,19 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  let historyBrowser;
  try{
   for(const viewport of viewports)await runCase(browser,{viewport});
+  const trials=viewports.filter(viewport=>[430,1280].includes(viewport.width)).map(viewport=>({viewport,samples:[]}));
+  for(let index=0;index<8;index++){
+   // Give each viewport the same priority as the runner and browser warm up.
+   const order=index%2?trials.slice().reverse():trials;
+   for(const trial of order){
+    const sample=await runCase(browser,{viewport:trial.viewport,benchmark:true});
+    if(index>0)trial.samples.push(sample);
+   }
+  }
+  const result=trials.map(({viewport,samples})=>({viewport,summary:timingOverview(samples),samples}));
+  receipt.timing={clock:'browser performance clock in a painted frame',mode:'one warm-up and seven fresh browser contexts per viewport; no HTTP cache sharing',
+   supplierHTTP:0,realLeads:0,results:result};
+  save();
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
   await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
   for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});
