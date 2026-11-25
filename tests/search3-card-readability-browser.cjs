@@ -206,21 +206,57 @@ async function verifyEmptyLocalRail(browser) {
       }
       console.log('SEARCH3_CARD_READABILITY_OK ' + width + ' ' + JSON.stringify(state));
 
-      // Label recovery belongs to result mutations, including enabling a button.
+      // The current tour controller owns both the loading label and its recovery.
+      // Exercise that real owner with an isolated promise; no supplier request runs.
       await page.evaluate(() => {
         const button = document.createElement('button');
         button.id = 'label-recovery-fixture';
         button.hidden = true;
-        button.dataset.search3ProductionLabel = 'Проверить тур';
-        button.textContent = 'Проверяем…';
-        button.disabled = true;
+        button.type = 'button';
+        button.className = 'direct-tour';
+        button.dataset.tid = 'label-recovery-fixture';
+        button.textContent = 'Проверить тур';
         document.getElementById('results').appendChild(button);
+        const originalApi = window.V2Runtime.api;
+        let resolveTour;
+        window.V2Runtime.api = (action, params) => {
+          if (action === 'tour' && params?.tourId === 'label-recovery-fixture') {
+            return new Promise(resolve => { resolveTour = resolve; });
+          }
+          if (action === 'flights' && params?.tourId === 'label-recovery-fixture') return Promise.resolve([]);
+          return originalApi(action, params);
+        };
+        document.body.classList.remove('search3-candidate');
+        window.__resolveLabelRecoveryTour = () => resolveTour({
+          id: 'label-recovery-fixture', name: 'Fixture tour', price: 148500,
+          hotel: { name: 'Fixture hotel' }, departure: { name: 'Москва' },
+          date: '2026-09-12', nights: 9, adults: 2, childs: 0,
+          meal: { name: 'AI' }, roomType: 'STANDARD', placement: 'DBL',
+          operator: { name: 'Fixture operator' }, isCharter: true, fuelCharge: null
+        });
+        window.__restoreLabelRecoveryFixture = () => {
+          window.V2Runtime.api = originalApi;
+          document.body.classList.add('search3-candidate');
+          const selected = document.getElementById('selectedTour');
+          selected.hidden = true;
+          selected.setAttribute('aria-hidden', 'true');
+          selected.innerHTML = '';
+          button.remove();
+          delete window.__resolveLabelRecoveryTour;
+          delete window.__restoreLabelRecoveryFixture;
+        };
+        window.V2TourController.selectTour(button.dataset.tid, button);
       });
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
-      if (await page.locator('#label-recovery-fixture').textContent() !== 'Проверяем…') throw new Error(width + ': disabled loading label overwritten');
-      await page.locator('#label-recovery-fixture').evaluate(button => { button.disabled = false; });
-      await page.waitForFunction(() => document.getElementById('label-recovery-fixture').textContent === 'Проверить тур');
-      await page.locator('#label-recovery-fixture').evaluate(button => button.remove());
+      await page.waitForFunction(() => {
+        const button = document.getElementById('label-recovery-fixture');
+        return button?.disabled && button.textContent === 'Загружаем…';
+      });
+      await page.evaluate(() => window.__resolveLabelRecoveryTour());
+      await page.waitForFunction(() => {
+        const button = document.getElementById('label-recovery-fixture');
+        return button && !button.disabled && button.textContent === 'Проверить тур';
+      });
+      await page.evaluate(() => window.__restoreLabelRecoveryFixture());
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
       // A real viewport resize must retain an explicitly opened search editor.

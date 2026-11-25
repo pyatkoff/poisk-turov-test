@@ -229,6 +229,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    const params=tv.calls.find(call=>call.action==='tv_search').body.params;
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
    row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
+   let observed=null,searchDocument='';
    if(checkApplication){
     if(selectedPair)await page.locator('.hotel-card .hotel-price [data-key="tourvisor%3Avisual-tv-101"]').click();
     else await page.locator('.hotel-card h3 [data-action="hotel-details"]').first().click();
@@ -244,11 +245,11 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(frozen.observation.trip.nights,7);assert.equal(frozen.observation.stay.room,'STANDARD SEA VIEW');
     assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,0,'opening contacts never creates a request');
     assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [data-action="messenger-phone"]').count(),0);
-    const observed=frozen.observation;
+    observed=frozen.observation;
     assert.equal(observed.flights.state,selectedPair?'selected':'manager-deferred');
     const shownTotal=await page.locator('#modal-footer .footer-total>strong').innerText();
     assert.equal(Number(shownTotal.replace(/[^\d,]/g,'').replace(',','.')),Number(observed.price.amount),'the exact whole-family total is checked before navigation');
-    const searchDocument=(await backState(page)).documentId;
+    searchDocument=(await backState(page)).documentId;
     await capture('contact');
     if(!platform){
      await page.locator('#modal .modal-header [data-action="close-modal"]').click();
