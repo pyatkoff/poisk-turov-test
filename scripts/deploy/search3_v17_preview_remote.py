@@ -38,7 +38,7 @@ ROUTE = Preview.NEXT.route
 NAME = Preview.NEXT.name_on_site
 NEXT_PUBLIC_ROUTE_COUNTS = {
     'visual-search/public-entry-v1.php': 3,
-    'visual-search/entry-v1.php': 1,
+    'visual-search/entry-v1.php': 2,
     'visual-search/public-config-v1.js': 2,
 }
 EARLY_INTENT_PINS = {
