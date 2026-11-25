@@ -44,6 +44,21 @@ function profileFixture(warm=true){
  const h=fixture();h.ctx.openHotelDetails(1,{meal:'BB',rooms:['Standard'],more:['Standard'],scroll:713});h.ctx.renderHotelRooms(1,'BB');assert.equal(h.renders.length,0,'room refresh waits for mounted DOM');h.ctx.window.AnyTourHotelDetails=h.owner;h.scripts[0].onload();await flush();assert.deepEqual(h.renders,[['mount',1],['rooms',1,'BB',['Standard']]]);assert.equal(h.inventories(),1,'history restore hands one exact owner inventory to validation and room rendering');assert.strictEqual(h.roomInputs[0],h.offerRows,'history room restoration receives the exact mounted offer array');assert.equal(h.more.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1);
  const c=fixture();c.ctx.openHotelDetails(1);c.modal.open=false;const pending=c.load.innerHTML;c.scripts[0].onerror();await flush();assert.equal(c.load.innerHTML,pending);
  for(const warm of [false,true]){
+  const f=profileFixture(warm);
+  f.offerRows[0]={key:'card-offer',meal:'BB',provider:'tourvisor'};
+  f.ctx.openHotelDetails(1,{entryOfferKey:'card-offer'});
+  if(!warm){
+   f.ctx.window.AnyTourHotelDetails=f.owner;
+   f.scripts[0].onload();
+   await flush();
+  }
+  assert.deepEqual(f.renders,[['mount',1]],'opening a card without saved room filters uses the first room paint');
+  assert.equal(f.inventories(),1);
+  assert.equal(f.pending.length,1);
+  f.pending[0].resolve(false);
+  await flush();
+ }
+ for(const warm of [false,true]){
   const f=profileFixture(warm);f.offerRows[0]={key:'selected-group',meal:'BB',provider:'anex',raw:{anexKind:'group_minimum'}};
   f.ctx.openHotelDetails(1,{entryOfferKey:'selected-group',meal:'BB',scroll:123});
   if(!warm){f.ctx.window.AnyTourHotelDetails=f.owner;f.scripts[0].onload();await flush();}
