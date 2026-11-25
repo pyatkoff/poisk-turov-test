@@ -41,7 +41,7 @@ function catalogBox(query,{home=false,mealPlans=false}={}){
   }else throw Error('Forbidden transport '+url.pathname);
   return {ok:true,json:async()=>value};
  };
- w.V2Runtime={setSearchId(){},api:async action=>{h.calls.push({api:action});assert.equal(action,'meals','no supplier API operation');return [];}};
+ w.V2Runtime={setSearchId(){},api:async action=>{h.calls.push({api:action});assert.equal(action,'meals','no supplier API operation');return [{id:3,name:'Fixture breakfast plus',fullName:'Завтраки'}];}};
  for(const file of ['search3-canonical-profiles-v1.js','prototype-search/data.js','visual-search/public-url-v1.js','visual-search/public-bootstrap-v1.js'])h.load(file);
  return h;
 }
@@ -49,7 +49,7 @@ async function homeCatalogRegressions(){
  const query=new URLSearchParams({origin:'Калининград',country:'501',from:'2026-12-20',to:'2026-12-24',meals:'Всё включено',searched:'1'}).toString();
  const bounds={query,origin:'Москва',startDay:'2026-11-21',endDay:'2027-05-20'};
  const home=catalogBox(query,{home:true,mealPlans:true}),receiver=catalogBox(query,{mealPlans:true});
- const prepare=h=>h.context.AnyTourPublicBootstrapV1.prepare(h.context.AnyTourPrototypeData,bounds);
+ const prepare=(h,query=bounds.query)=>h.context.AnyTourPublicBootstrapV1.prepare(h.context.AnyTourPrototypeData,{...bounds,query});
  const [form,search]=await Promise.all([prepare(home),prepare(receiver)]);
  assert.equal(home.context.AnyTourPublicConfigV1.entry,'home');
  assert.equal(home.context.V2_CONFIG.search3FormOnly,true);
@@ -69,6 +69,12 @@ async function homeCatalogRegressions(){
  const restored=await prepare(unavailable);
  assert.equal(unavailable.context.AnyTourPrototypeData.catalog.mealPlanAvailable,false);
  assert.equal(new URLSearchParams(restored.query).get('meals'),'Всё включено','saved meal is retained when the canonical catalog is unavailable');
+ const oldQuery=new URLSearchParams(query);oldQuery.set('meals','Fixture breakfast plus');
+ const oldLink=catalogBox(oldQuery,{home:true,mealPlans:true});
+ const restoredOld=await prepare(oldLink,oldQuery.toString());
+ assert.deepEqual(providers(oldLink),['tourvisor']);
+ assert.equal(mealReads(oldLink),1,'a link with an unrecognized label still loads the legacy dictionary');
+ assert.equal(oldLink.context.AnyTourPrototypeData.meal(new URLSearchParams(restoredOld.query).get('meals')),'Завтраки');
  console.log('PASS HOME catalog: canonical meal labels, two fewer reads, same city and restored filters; receiver still loads all offer mappings');
 }
 function restore(query,catalog,data){

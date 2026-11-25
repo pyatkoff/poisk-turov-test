@@ -11,7 +11,7 @@ const baseline = {
   sourceHash: '91fabf12b53747de35e9ffa7850928aa4ac2e1f2ed07949868272a128113d5d3',
   servedHash: '49eb63a39382ecf987edbac6ebb7a8482758113e61f739e3bde5685dcc2cbe5f'
 };
-const candidateSourceHash = '388813716435743c58f7d466b6d513566c5798d537137476f586061d250e3619';
+const candidateSourceHash = 'cc53bf6e0d3d8fa3963848d97e54bbf2ddabaded7552188735178c44a8523354';
 const dataURL = '/prototype-search/data.js';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const delays = { departures: 20, countries: 30, tourvisor: 35, anex: 90, legacy: 120 };

@@ -416,6 +416,12 @@
     'AI-WITHOUT ALCOHOL':'Всё включено без алкоголя','AI WITHOUT ALCOHOL':'Всё включено без алкоголя',
     'ВСЕ ВКЛЮЧЕНО БЕЗ АЛКОГОЛЯ':'Всё включено без алкоголя','ВСЁ ВКЛЮЧЕНО БЕЗ АЛКОГОЛЯ':'Всё включено без алкоголя'
   });
+  function mealAlias(candidate){
+    const normalized=candidate.toUpperCase().replace(/\s+/g,' ');
+    if(mealAliases[normalized])return mealAliases[normalized];
+    const coded=normalized.match(/^(RO|BB|HB|FB|AI|UAI|ALL)\s*(?:[-—:]\s*|\s+).+$/);
+    return coded?mealAliases[coded[1]]:null;
+  }
   function mealIndexes(){
     const mealById=new Map(),mealByLabel=new Map(),nativeIdsByLabel=new Map();let mealFindInvalidAt=Infinity;
     for(let index=0,length=catalog.meals.length;index<length;index++){
@@ -453,12 +459,7 @@
     if(value?.id&&indexes.mealFindInvalidAt<(record?.index??Infinity))throw new TypeError('Invalid supplier meal catalogue row');
     const candidates=[label,text(value?.fullName),text(value?.russianName),...(record?.fields||[])]
       .map(value=>value.trim()).filter(Boolean);
-    for(const candidate of candidates){
-      const normalized=candidate.toUpperCase().replace(/\s+/g,' ');
-      if(mealAliases[normalized])return mealAliases[normalized];
-      const coded=normalized.match(/^(RO|BB|HB|FB|AI|UAI|ALL)\s*(?:[-—:]\s*|\s+).+$/);
-      if(coded&&mealAliases[coded[1]])return mealAliases[coded[1]];
-    }
+    for(const candidate of candidates){const alias=mealAlias(candidate);if(alias)return alias;}
     return candidates.find(candidate=>!(/^[A-Z]{1,7}\+?$/).test(candidate))||candidates[0]||'';
   }
   function meal(value){return indexedMeal(value,mealIndexes());}
@@ -1613,9 +1614,12 @@
       // The public HOME form reads canonical names. Offer normalization and
       // the other meal mappings belong to the document that receives its search.
       const homeForm=root.AnyTourPublicConfigV1?.valid===true&&root.AnyTourPublicConfigV1.entry==='home'&&root.V2_CONFIG?.search3FormOnly===true;
+      // Older links can name meals by a supplier label absent from the built-in aliases.
+      const savedMeals=homeForm?new URLSearchParams(root.location.search).get('meals'):null;
+      const needsLegacy=!homeForm||savedMeals?.split('|').some(value=>value.trim()&&!mealAlias(value.trim()));
       const plans=Promise.all([readMealPlans('tourvisor'),homeForm?null:readMealPlans('anex')]);
-      const meals=(homeForm?Promise.resolve():departures).then(async()=>{
-        if(!homeForm){
+      const meals=(needsLegacy?departures:Promise.resolve()).then(async()=>{
+        if(needsLegacy){
           try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
         }
         const [tourvisor,anex]=await plans;
