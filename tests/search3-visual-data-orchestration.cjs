@@ -405,7 +405,9 @@ async function selectedHotelRestoration(){
  calls.length=0;cache.delete(2002);context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);throw Error('fixture partial failure');};
  await context.restoreURLHotel();assert.deepEqual(calls,[[2002,'4']],'retry does not reread verified selections');
  assert.deepEqual(selected.hotelIds,[2001,2002],'partial failure never drops an exact selected ID');
- const rhs=app.match(/\$\('\.search-submit'\)\.disabled=([^;]+);\n renderCatalogError/)[1];
+ const submitDisabledRules=[...app.matchAll(/^\s*\$\('\.search-submit'\)\.disabled=([^;]+);$/gm)];
+ assert.equal(submitDisabledRules.length,1,'one current Search3 submit readiness assignment');
+ const rhs=submitDisabledRules[0][1];
  const disabled=(regionsMissing=false,homeNavigationPending=false)=>vm.runInNewContext(rhs,{...context,place:selected,catalogReady:true,regionsMissing,homeNavigationPending,data:{preview:false}});
  assert.equal(disabled(),true,'one unresolved selected hotel blocks broad or partial supplier search');
  context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);return {id,country,legacyIds:[String(id+5000)]};};
