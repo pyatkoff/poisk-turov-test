@@ -180,6 +180,33 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   const candidates=[],calendarPort=ctx.renderCalendarStrip;
+   ctx.resultCalendar.basePrices=[130000,140000,150000];
+   ctx.renderCalendarStrip=(base)=>{candidates.push(base);calendarPort();};
+   const accept=()=>{ctx.searchResponse={key:'current',phase:'loading',pending:true};event('results');};
+   const finish=()=>{Object.assign(ctx.searchResponse,{phase:'complete',pending:false});event('complete');};
+   const expectRefresh=(change,label)=>{accept();change();finish();assert.equal(candidates.at(-1),undefined,label);};
+   accept();event('progress');finish();
+   assert.strictEqual(candidates.at(-1)?.request,ctx.resultCalendar,'clean completion passes its accepted calendar request');
+   assert.strictEqual(candidates.at(-1)?.prices,ctx.resultCalendar.basePrices);
+   finish();assert.equal(candidates.at(-1),undefined,'calendar snapshot is consumed once');
+   expectRefresh(()=>{ctx.searchResponse={...ctx.searchResponse};},'other generation must compute');
+   expectRefresh(()=>{ctx.hotels=[...ctx.hotels];},'new hotel inventory must compute');
+   expectRefresh(()=>{ctx.state.selectedDate='2026-10-15';},'selected day change must compute');
+   expectRefresh(()=>{ctx.state.search.to='2026-10-19';},'date range change must compute');
+   expectRefresh(()=>{ctx.state.filters.max=50000;},'filter change must compute');
+   ctx.data.live=true;ctx.state.filters.meals=['AI'];ctx.mealNames.AI=1;
+   expectRefresh(()=>{ctx.mealNames.AI=2;},'canonical meal mapping change must compute');
+   ctx.data.live=false;ctx.data.catalog={meals:[]};ctx.data.text=row=>row.name;ctx.resortLoads=new Map();
+   vm.runInContext(section(source,'function applyCatalog(c)','async function loadCountries('),ctx);
+   expectRefresh(()=>ctx.applyCatalog({countries:[{id:4,name:'Турция'}],departures:[],origin:'Москва'}),'catalogue replacement must compute');
+   expectRefresh(()=>ctx.renderResults({keepFilters:true}),'real rendering of mutated inventory invalidates the calendar snapshot');
+   expectRefresh(()=>{ctx.searchEditSession=true;ctx.renderResults();ctx.searchEditSession=false;},'intervening editing invalidates the calendar snapshot');
+   for(const flags of [{databaseError:true},{coverageGap:true},{exactRefresh:true},{cachedResume:true},{providers:{anex:'error'}},{sources:{anex:{status:'partial',continuationFailed:true}}}]){
+    expectRefresh(()=>Object.assign(ctx.searchResponse,flags),'recovery or failure must compute '+JSON.stringify(flags));
+   }
+   ctx.resultCalendar.basePrices=[];expectRefresh(()=>{},'missing computed base must be refreshed');
+   ctx.resultCalendar.basePrices=[130000];items.length=0;expectRefresh(()=>{},'empty inventory keeps the fresh path');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
@@ -251,7 +278,7 @@ const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').
 // all data, state, inventory, pagination and other DOM observations stay pinned.
 const historicalHeading="function renderResultHeadings(items,total,pristine){\n $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);\n $('#compact-route').textContent=`${state.search.origin} → ${destinationLabel(appliedDestination())}`;\n $('#compact-details').textContent=`Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}`;\n\n $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;\n $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':`Отели и туры · ${countryNames[state.search.country]||'Выберите направление'}`;\n const failed=!pristine&&!items.length&&responseFor(state.search).phase==='error';\n $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;\n const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;\n}";
 const historicalCalendar="function renderCalendarStrip(){\n const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;\n loadResultCalendar();\n if(refreshBase)prepareResultCalendarBase();\n const model=resultCalendarModel(),{s,source,scope}=model;\n $('#calendar-units').textContent=`От, тыс. ₽ · весь тур за ${partyLabel(s)}`;\n const monthName=day=>dateObj(day).toLocaleDateString('ru-RU',{month:'long',timeZone:'UTC'}),fromYear=s.from.slice(0,4),toYear=s.to.slice(0,4);\n const monthRange=s.from.slice(0,7)===s.to.slice(0,7)?`${monthName(s.from)} ${fromYear}`:fromYear===toYear?`${monthName(s.from)} — ${monthName(s.to)} ${toYear}`:`${monthName(s.from)} ${fromYear} — ${monthName(s.to)} ${toYear}`;\n $('#calendar-month-label').textContent=monthRange.charAt(0).toLocaleUpperCase('ru-RU')+monthRange.slice(1);\n $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;\n const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));\n paintCalendarStrip(strip,calendarStripEntries(model));\n const minimumDay=model.days[model.prices.indexOf(model.min)];\n $('#calendar-minimum-legend').textContent=Number.isFinite(model.min)?`Минимум: ${dateText(minimumDay)} · ${money(model.min)}`:'';\n $('#calendar-minimum-legend').hidden=!Number.isFinite(model.min);\n $('#calendar-selected-date').textContent=state.selectedDate?`Вылет ${dateLong(state.selectedDate)}`:'';\n $('#calendar-selected-date').parentElement.hidden=!state.selectedDate;\n $('#clear-date').hidden=!state.selectedDate;\n refreshEmptyCalendarContext();\n}";
-const historicalSource=source.replace(section(source,'function renderResultHeadings(','function paintResultCards('),()=>historicalHeading+'\n').replace(section(source,'function renderCalendarStrip(){','function renderActive('),()=>historicalCalendar+'\n');
+const historicalSource=source.replace(section(source,'function renderResultHeadings(','function paintResultCards('),()=>historicalHeading+'\n').replace(section(source,'function renderCalendarStrip(','function renderActive('),()=>historicalCalendar+'\n');
 const baseline=visibleRecords(records(historicalSource.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','unchanged historical result/calendar/list oracle');

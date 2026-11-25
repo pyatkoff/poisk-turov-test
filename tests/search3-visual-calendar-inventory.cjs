@@ -40,7 +40,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  for(const key of ['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range'])nodes.set(key,node());
  const state={search:{from:'2026-10-27',to:'2026-11-02',adults:2,ages:[0,8]},selectedDate:null,filters:{meals:['AI']},offers:[{key:'exact-a',total:198600}]},before=JSON.stringify(state);
  const context={innerWidth:390,state,$:key=>{assert(nodes.has(key),key);return nodes.get(key);},departureRangeText:(from,to)=>from+' — '+to,location:{href:'unchanged'},updateURL:()=>assert.fail('disclosure must not write URL'),startSearch:()=>assert.fail('disclosure must not start a supplier search')};
- vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip(){'),context);
+ vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip('),context);
  const button=nodes.get('.result-calendar-disclosure'),preview=nodes.get('#calendar-preview'),heading=nodes.get('#price-calendar .result-date-heading');
  const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);assert(toggle,'existing action dispatcher owns the disclosure');
  const act=()=>vm.runInContext(toggle[1],context);
@@ -419,9 +419,31 @@ if(source.includes('function calendarPriceInventory(')){
  console.log(`PASS month-local calendar inventories: callback visits ${currentCallbackVisits}->${monthCallbackVisits}; full open path 47900->5500; 27 progressive maps, exact replacement minimum, sparse/inherited/initial-length and raw input parity; supplier/lead HTTP 0`);
 }
 
-// The compact result strip has its own progressive owner. Keep the current
-// results inventory stable between remote callbacks, but replace every remote
-// inventory exactly and rebuild the base on every real result render.
+// The base can be retained only after the current request is resolved.
+{
+ const ctx={resultCalendar:{basePrices:[120000,130000],refreshBase:true},loads:0,preparations:0,replacement:null,replacePrices:null};
+ vm.createContext(ctx);
+ vm.runInContext(`
+  function loadResultCalendar(){loads++;if(replacement)resultCalendar=replacement;if(replacePrices)resultCalendar.basePrices=replacePrices;}
+  function prepareResultCalendarBase(){preparations++;resultCalendar.basePrices=[100000,110000];}
+  ${section(source,'function renderCalendarStrip(',' const model=resultCalendarModel()')}
+  }
+ `,ctx);
+ const saved=()=>({request:ctx.resultCalendar,prices:ctx.resultCalendar.basePrices,length:ctx.resultCalendar.basePrices.length});
+ const current=saved();ctx.renderCalendarStrip(current);
+ assert.equal(ctx.loads,1);assert.equal(ctx.preparations,0);assert.strictEqual(ctx.resultCalendar.basePrices,current.prices);
+ ctx.resultCalendar.refreshBase=true;ctx.replacement={basePrices:current.prices};
+ ctx.renderCalendarStrip(current);assert.equal(ctx.preparations,1,'a replacement request refreshes even if it has the old price array');
+ ctx.replacement=null;const sameRequest=saved();ctx.resultCalendar.refreshBase=true;ctx.replacePrices=[];
+ ctx.renderCalendarStrip(sameRequest);assert.equal(ctx.preparations,2,'price array removed inside request resolution refreshes');
+ ctx.replacePrices=null;const resized=saved();resized.prices.length=0;ctx.resultCalendar.refreshBase=true;
+ ctx.renderCalendarStrip(resized);assert.equal(ctx.preparations,3,'incomplete price array refreshes');
+ ctx.resultCalendar.remotePrices=[90000];ctx.renderCalendarStrip();
+ assert.equal(ctx.preparations,3,'remote overlay renders leave an already prepared base alone');
+}
+
+// The compact result strip keeps its current base between remote callbacks and
+// replaces every remote inventory exactly.
 if(source.includes('function resultCalendarSnapshot(')){
  const pricedHotel=(id,date,total)=>{const hotel=fixture()[1],offer={...hotel.offers[2],key:String(id),day:date,total};hotel.id=id;hotel.offers=[offer];return hotel;};
  const base=Array.from({length:1000},(_,id)=>pricedHotel('base-'+id,day(id%7),120000+id)),remote=Array.from({length:100},(_,id)=>pricedHotel('remote-'+id,day(id%7),90000+id));

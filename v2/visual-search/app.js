@@ -963,10 +963,11 @@ function syncResultCalendarDisclosure(){
  const s=state.search,from=state.selectedDate||s.from,to=state.selectedDate||s.to;
  $('#result-calendar-range').textContent=departureRangeText(from,to)+(from.slice(0,4)===to.slice(0,4)?' · '+from.slice(0,4):'');
 }
-function renderCalendarStrip(){
+function renderCalendarStrip(previousBase=null){
  const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;
  loadResultCalendar();
- if(refreshBase)prepareResultCalendarBase();
+ const sameBase=previousBase?.request===resultCalendar&&previousBase.prices===resultCalendar.basePrices&&previousBase.length===resultCalendar.basePrices.length;
+ if(refreshBase&&!sameBase)prepareResultCalendarBase();
  const model=resultCalendarModel(),{s,source,scope}=model;
  $('#calendar-units').textContent=calendarPriceUnits(s);
  const monthName=day=>dateObj(day).toLocaleDateString('ru-RU',{month:'long',timeZone:'UTC'}),fromYear=s.from.slice(0,4),toYear=s.to.slice(0,4);
@@ -1295,6 +1296,12 @@ function positionHotelRooms(row=null){
 
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 let renderedSearchStatus=null;
+let pendingCalendarBase=null;
+function resultInventoryScope(){
+ const {search,filters,selectedDate,sort,onlyFavorites,favorites}=state;
+ const mealIds=data.live?filters.meals?.map(label=>mealNames[label]):null;
+ return JSON.stringify([search,filters,selectedDate,sort,onlyFavorites,onlyFavorites?favorites:null,data.live,data.scenario,mealIds]);
+}
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -1357,6 +1364,8 @@ function renderMoreResultCards(){
  const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
 }
 function renderResults(options={}){
+ const previousBase=options.reuseCalendarBase?pendingCalendarBase:null;
+ pendingCalendarBase=null;
  if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultFilters(options);refreshResultPickerPreviews();return;}
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
@@ -1365,11 +1374,20 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
+ const response=searchResponse,inventoryHotels=hotels,rememberBase=options.rememberCalendarBase&&response.pending&&response.currentInventory===true;
+ const scope=rememberBase||previousBase?resultInventoryScope():null;
+ const reuseBase=previousBase?.response===response&&previousBase.hotels===inventoryHotels&&previousBase.scope===scope;
  const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;renderedResultItems=items;
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
- resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
+ resultCalendar.refreshBase=true;
+ if(reuseBase)renderCalendarStrip(previousBase);else renderCalendarStrip();
+ const prices=resultCalendar.basePrices;
+ if(rememberBase&&items.length&&Array.isArray(prices)&&prices.length){
+  pendingCalendarBase={response,hotels:inventoryHotels,scope,request:resultCalendar,prices,length:prices.length};
+ }
+ renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
  renderedSearchStatus={response:searchResponse,total};
 }
 function syncFilters(){renderResults();updateSearchUI();}
@@ -3445,8 +3463,13 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
   if(!searchEditSession&&response.pending&&renderedSearchStatus?.response===response&&(event?.type==='provider'||event?.type==='progress')){
    renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
   }else{
-   if(event?.type==='results')response.currentInventory=true;
-   renderResults();updateSearchUI();
+   const rememberCalendarBase=event?.type==='results';
+   if(rememberCalendarBase)response.currentInventory=true;
+   const reuseCalendarBase=event?.type==='complete'&&response.phase==='complete'&&!response.pending&&response.currentInventory===true
+    &&!response.databaseError&&!response.coverageGap&&!response.exactRefresh&&!response.cachedResume
+    &&!Object.values(response.providers||{}).includes('error')
+    &&!Object.values(response.sources||{}).some(source=>source?.status==='error'||source?.continuationFailed||source?.destinationBranchFailed);
+   renderResults({rememberCalendarBase,reuseCalendarBase});updateSearchUI();
   }
   window.AnyTourPublicAnalyticsV1?.event(event,response,{searchId:data.searchId,resultsCount:hotels.length});
   if(modalType==='dates')refreshCalendarPrices();
@@ -3743,7 +3766,9 @@ function loadCalendarPrices(){
 }
 
 function applyCatalog(c){
- if(!c)return;Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
+ if(!c)return;
+ pendingCalendarBase=null;
+ Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
  resortLoads.clear();
  $('#origin').innerHTML=c.departures.map(x=>`<option value="${esc(data.text(x))}">${esc(data.text(x))}</option>`).join('');
  if(data.live){Object.keys(mealNames).forEach(key=>delete mealNames[key]);data.catalog.mealPlans.filter(plan=>plan.nativeIds?.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});}
