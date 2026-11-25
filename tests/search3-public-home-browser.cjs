@@ -4,6 +4,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const {privateTVFixture}=require('./search3-visual-messenger-browser.cjs');
+const {resultsOnly,serveStartupResource,observeHomeAssets}=require('./search3-public-home-assets.cjs');
 const intPath='/_preview/search3-anex-candidate/api-anex-search3-preview.php';
 const dataPaths=new Set(['/api-v2.php','/data/departures-v1.php','/data/hotel-search-v1.php',
  '/_preview/search3-local-candidate/data/search3-destination-read-v1.php',
@@ -114,7 +115,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   servedHashes:Object.fromEntries(assetNames.map(name=>{assert(files.has(name),name+' is inventoried');return [name,files.get(name).sha256];})),
   supplierHTTP:0,botHTTP:0,realLeads:0,installed:false,physicalDevice:false,cases:[],status:'running'};
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
- async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
+ async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh',startup=null}){
   const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
   const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
   const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
@@ -122,7 +123,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen,returning=false;
-  const context=await owner.newContext({viewport,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);
+  const mobile=startup&&viewport.width===430?{isMobile:true,hasTouch:true,deviceScaleFactor:3}:{};
+  const context=await owner.newContext({viewport,serviceWorkers:'block',...mobile}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.addInitScript(({retained})=>{
    window.dataLayer=[];window.__homeDocumentId=Date.now()+'-'+Math.random();window.__homePageShows=[];
    addEventListener('pageshow',event=>window.__homePageShows.push({persisted:event.persisted}));
@@ -138,6 +140,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     return replaceState.call(this,state,...args);
    };
   },{retained});
+  if(startup)await context.addInitScript(observeHomeAssets);
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations.push(frame.url());});
@@ -147,7 +150,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname,
    document:request.isNavigationRequest()&&request.frame()===page.mainFrame()}));
   const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
-  receipt.cases.push(row);save();
+  if(!startup){receipt.cases.push(row);save();}
   const privateRequests=()=>network.filter(request=>request.path===intPath).length;
   const capture=async(name,home=false)=>{
    const value=await geometry(page,viewport,home),file=id+'-'+name+'.png';
@@ -180,6 +183,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      }
      assert.equal(url.origin,origin,'external supplier, bot and analytics traffic is forbidden');
      const favicon=faviconResponse(url,request.method());if(favicon){await route.fulfill(favicon);return;}
+     if(startup&&request.method()==='GET'&&await serveStartupResource(route,url,manifest,files,startup))return;
      if(request.method()==='GET'&&(publicRoutes.has(url.pathname)||staticPaths.has(url.pathname))){await route.continue();return;}
      if(url.pathname==='/test-photo.svg'&&request.method()==='GET'){
       await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;
@@ -218,14 +222,28 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     }catch(error){forbidden.push(error.message);await route.abort().catch(()=>{});}
    });
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
+   if(startup){initial.set('meals','Всё включено');initial.set('max','240000');}
    await page.goto(origin+'/?'+initial);await readyHome(page);
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
+   const initialResultsScripts=network.filter(request=>resultsOnly.includes(request.path)).map(request=>request.path).sort();
+   assert.deepEqual(initialResultsScripts,startup?.variant==='before'?resultsOnly.slice().sort():[]);
+   if(startup){
+    await page.waitForFunction(()=>Boolean(window.__homeAssets));
+    const sample=await page.evaluate(()=>window.__homeAssets);
+    checkGeometry(await geometry(page,viewport,true),id+' startup '+startup.variant,true);
+    assert.equal(await page.locator('#meal-label').textContent(),'Всё включено');
+    assert.match(await page.locator('#budget-label').textContent(),/240\s*000/);
+    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
+    return sample;
+   }
    await capture('initial',true);await chooseFamily(page);
    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);
    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
    assert.equal(privateRequests(),0,'editing HOME controls starts no private supplier preparation');await capture('family',true);
    const initialDocument=(await backState(page)).documentId;
    await submit(7,1);await page.locator('.hotel-card').first().waitFor();
+   assert.deepEqual(network.filter(request=>resultsOnly.includes(request.path)).map(request=>request.path).sort(),resultsOnly.slice().sort(),
+    'the separate receiver loads all four owners on its first search');
    const params=tv.calls.find(call=>call.action==='tv_search').body.params;
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
    row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
@@ -336,6 +354,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    row.status='passed';save();
   }catch(error){
    row.status='failed';row.error=error.stack||error.message;
+   if(startup)receipt.homeAssetsFailure={viewport,startup,error:row.error};
    row.generationCounts=counts(transport,tv);
    row.supplierActions={tv:tv.calls.map(call=>call.action),anex:transport.calls.filter(call=>call.url===intPath).map(call=>call.action)};save();
    await page.screenshot({path:path.join(directory,id+'-failure.png')}).catch(()=>{});
@@ -345,6 +364,24 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  let historyBrowser;
  try{
   for(const viewport of viewports)await runCase(browser,{viewport});
+  const timedEntry='7a14eca43a0817d6f0eca45b18ebd33c9ec3d1f1f63a2580dbfe7ed0ff604db7';
+  if(files.get('/visual-search/entry-v1.php').sha256===timedEntry){
+   const rows=[];
+   for(const viewport of viewports.filter(item=>[430,1280].includes(item.width))){
+    for(const delayMs of [0,120]){
+     const samples=[];
+     for(let index=0;index<8;index++){
+      const pair={};
+      const order=index%2?['after','before']:['before','after'];
+      for(const variant of order)pair[variant]=await runCase(browser,{viewport,startup:{variant,delayMs}});
+      if(index>0)samples.push(pair);
+     }
+     rows.push({viewport,delayMs,samples});
+    }
+   }
+   receipt.homeAssets={entry:timedEntry,context:'same Chromium, seven alternating cold pairs per viewport and delay, one warm-up pair per group',rows};
+   save();
+  }
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
   await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
   for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});

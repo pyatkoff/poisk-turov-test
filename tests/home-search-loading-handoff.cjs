@@ -52,6 +52,7 @@ function render({ prefix = '', route = prefix + '/index.php', indexable = false,
 }
 
 const scripts = html => [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/g)].map(row => row[1]);
+const {resultsOnly} = require('./search3-public-home-assets.cjs');
 const form = html => html.match(/<form\b[^>]*\bid="search-form"[^>]*>[\s\S]*?<\/form>/)?.[0];
 function publicConfig(html) {
   const matches = [...html.matchAll(/data-search3-public-config="([^"]+)"/g)];
@@ -128,7 +129,10 @@ try {
       assert.equal(config.metrikaCounter, buildProfile === 'live' ? 1234567 : 0);
       assert.equal(config.leadApi, '/_preview/search3-next-candidate/preview-lead-disabled.php');
       const graph = scripts(html);
-      assert.deepEqual(graph, scripts(receiving.html), 'home reuses the complete ordered Search3 script graph');
+      const receivingGraph = scripts(receiving.html);
+      if (buildProfile === 'live') assert.equal(receivingGraph.filter(src => resultsOnly.includes(src.split('?')[0])).length, resultsOnly.length);
+      assert.deepEqual(graph, buildProfile === 'live' ? receivingGraph.filter(src => !resultsOnly.includes(src.split('?')[0])) : receivingGraph,
+        'the live home keeps the ordered form owners and the receiver keeps the results owners');
       assert.equal(new Set(graph).size, graph.length, 'no second script owner');
       assert.ok(graph[0].startsWith(prefix + '/visual-search/public-config-v1.js?v='));
       assert.ok(graph.at(-1).startsWith(prefix + '/visual-search/app.js?v='));
