@@ -162,6 +162,9 @@ async function verifyEmptyLocalRail(browser) {
         results.innerHTML = html;
         const tools = document.getElementById('resultsTools');
         if (tools) tools.hidden = false;
+        window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items: [
+          { id: 'readability-fixture', name: 'Readability fixture', price: 148500, tours: [] }
+        ] } }));
       }, cardHtml);
       await page.waitForTimeout(100);
       const state = await page.evaluate(() => {
