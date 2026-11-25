@@ -114,10 +114,25 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   servedHashes:Object.fromEntries(assetNames.map(name=>{assert(files.has(name),name+' is inventoried');return [name,files.get(name).sha256];})),
   supplierHTTP:0,botHTTP:0,realLeads:0,installed:false,physicalDevice:false,cases:[],status:'running'};
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
- async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
+ async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh',budgetRecovery=false}){
   const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
-  const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
+  const scenario=budgetRecovery?'budget-recovery':platform?platform+variant:historyCache?'history-cache':'form';
+  const id=scenario+'-'+viewport.width+'x'+viewport.height;
   const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
+  if(budgetRecovery){
+   let ceiling=Infinity;
+   const send=transport.json;
+   transport.json=async(address,options={})=>{
+    const url=new URL(address),body=options.body?JSON.parse(options.body):{},action=url.searchParams.get('action')||body.action;
+    const result=await send(address,options);
+    if(url.pathname==='/api-v2.php'&&action==='search_start')ceiling=Number(url.searchParams.get('priceTo')||Infinity);
+    if(url.pathname==='/api-v2.php'&&action==='search_results'&&ceiling<120000)return [];
+    if(url.pathname===intPath&&action==='search'){
+     return {...result,data:{...result.data,hotels:[],continuation:{state:'exhausted',pages_read:1,next_page:null}}};
+    }
+    return result;
+   };
+  }
   const checkApplication=Boolean(platform)||!historyCache&&[430,1280].includes(viewport.width);
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
@@ -217,6 +232,37 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
     }catch(error){forbidden.push(error.message);await route.abort().catch(()=>{});}
    });
+   if(budgetRecovery){
+    const initial=new URLSearchParams({...trip,adults:3,ages:'0,12',stars:'4|5',meals:'Всё включено',max:'100000',searched:'1'});
+    await page.goto(origin+'/poisk-turov/?'+initial);
+    const edit=page.locator('#cards .recovery-empty [data-action="edit-empty-budget"]');
+    await edit.waitFor();
+    assert.equal(await page.locator('.hotel-card').count(),0);
+    assert.deepEqual(counts(transport,tv),{tv:1,anex:1});
+    await capture('empty');
+    await edit.click();
+    const max=page.locator('#budget-max');
+    assert.equal(await max.inputValue(),'100000');
+    await capture('budget');
+    await max.fill('150000');
+    await page.locator('[data-action="apply-budget"]').click();
+    assert.deepEqual(counts(transport,tv),{tv:1,anex:1},'applying the draft spends no search');
+    assert.equal(new URL(page.url()).searchParams.get('max'),'100000');
+    assert.match(await page.locator('#budget-label').textContent(),/150\s*000/);
+    await page.locator('#search-form .search-submit').click();
+    await page.locator('.hotel-card').first().waitFor();
+    const searches=tv.calls.filter(call=>call.action==='tv_search').map(call=>call.body.params);
+    assert.deepEqual(searches.map(params=>String(params.priceTo)),['100000','150000']);
+    for(const key of ['departureId','countryId','dateFrom','dateTo','adults','childs','meal','nightsFrom','nightsTo'])assert.deepEqual(searches[1][key],searches[0][key],key);
+    const next=new URL(page.url()).searchParams;
+    for(const key of ['origin','country','from','to','minNights','maxNights','adults','ages','meals','stars'])assert.equal(next.get(key),initial.get(key),key);
+    assert.equal(next.get('max'),'150000');
+    await capture('recovered');
+    assert.deepEqual(counts(transport,tv),{tv:2,anex:2},'one explicit Find started one more search per provider');
+    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(handoffs,[]);assert.deepEqual(failures,[]);
+    row.budgetRecovery={from:100000,to:150000,searches,counts:counts(transport,tv)};
+    row.status='passed';save();return;
+   }
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
    await page.goto(origin+'/?'+initial);await readyHome(page);
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
@@ -345,6 +391,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  let historyBrowser;
  try{
   for(const viewport of viewports)await runCase(browser,{viewport});
+  for(const viewport of viewports.filter(viewport=>[430,1280].includes(viewport.width)))await runCase(browser,{viewport,budgetRecovery:true});
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
   await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
   for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});

@@ -831,9 +831,11 @@ function emptyResultsHTML(){
  const model=appliedFilterModel(),chips=filterChipData(model),response=responseFor(state.search);if(response.phase==='error')return '';
  if(searchDeliveryIncomplete(response)){emptySuggestions=[];return `<div class="empty recovery-empty" role="status">${icon('search')}<h3>${response.pending?'Подбираем туры по вашим условиям':'Поиск пока не завершён'}</h3><p>${response.pending?'Предложения появятся здесь по мере загрузки.':'Отсутствие результатов пока не означает, что подходящих туров нет.'}</p><p class="empty-preserved">Даты, туристы и фильтры сохранены.</p>${response.pending?'':response.canContinue?`<button class="secondary" data-action="continue-search">${response.retryRead?'Проверить результат':'Продолжить поиск'}</button>`:'<button class="secondary" data-action="retry-search">Повторить поиск</button>'}</div>`;}
  emptySuggestions=recoverySuggestions(model);
- const intro=emptySuggestions.length?recoveryIntro(emptySuggestions):'<p>Попробуйте другие даты или направление.</p>';
+ const hasBudget=model.filters.min>0||model.filters.max!=null;
+ const editBudget=hasBudget&&!emptySuggestions.some(choice=>choice.key==='budget'||choice.key==='minimum');
+ const intro=emptySuggestions.length?recoveryIntro(emptySuggestions):editBudget?'<p>Измените бюджет и запустите поиск. Остальные условия сохранятся.</p>':'<p>Попробуйте другие даты или направление.</p>';
  const calendarContext=emptyCalendarContext();
- return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3>${intro}<div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество отелей рассчитано по уже загруженным предложениям.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions"><button class="primary" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
+ return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3>${intro}<div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество отелей рассчитано по уже загруженным предложениям.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions">${editBudget?'<button class="primary" data-action="edit-empty-budget">Изменить бюджет</button>':''}<button class="${editBudget?'secondary':'primary'}" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
 function updateDrawerPreview(knownCount){
  if(!filterDraft)return;
  const count=knownCount??countMatchingHotels(filterDraft),chips=filterChipData(filterDraft),pristine=!state.hasSearched&&!state.onlyFavorites,response=responseFor(state.search),incomplete=!pristine&&searchDeliveryIncomplete(response);
@@ -3572,6 +3574,16 @@ function handleSearchParameterAction(action,b,id){
  case 'guests':if(nextSearchForm?.contains(b))toggleInlineSearchPicker('guests',b);else openGuests();break;
  case 'calendar':openCalendar();break;
  case 'top':case 'edit-search':b.closest('.at-global-header__mobile')?.removeAttribute('open');editSearch();break;
+ case 'edit-empty-budget':{
+  editSearch();
+  if(nextSearchForm){
+   const trigger=$('#quick-budget');
+   openInlineSearchPicker('budget',trigger);
+   trigger.scrollIntoView({behavior:'instant',block:'nearest'});
+   trigger.focus({preventScroll:true});
+  }else openBudget();
+  break;
+ }
  case 'cancel-search-edit':cancelSearchEdit();break;
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();revealCalendarMonth();loadCalendarPrices();rememberUIRoute();break}
  case 'day-pick':{const day=b.dataset.date;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1}else{const range={from:day<dateDraft.from?day:dateDraft.from,to:day<dateDraft.from?dateDraft.from:day};if(dateRangeError(range)){$('#date-error').textContent='Период может включать не больше 22 дат. Осталась выбрана первая дата.';break;}dateDraft.from=range.from;dateDraft.to=range.to;dateDraft.phase=0}updateDateSelection();rememberUIRoute();break}
