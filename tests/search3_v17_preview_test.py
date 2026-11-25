@@ -158,6 +158,14 @@ class Contracts(unittest.TestCase):
         self.assertEqual(after.count(remote.ROUTE.rstrip('/')), 3)
         self.assertNotIn(pub.OLD_ROUTE.rstrip('/'), after)
 
+    def test_public_search_uses_review_robots_without_weakening_other_routes(self):
+        self.assertEqual(pub.render_robots_marker('poisk-turov/'),
+            '<meta name="robots" content="noindex, nofollow, noarchive"')
+        for route in ('', 'poisk-turov-old/', 'country/', 'contacts/'):
+            with self.subTest(route=route):
+                self.assertEqual(pub.render_robots_marker(route),
+                    '<meta name="robots" content="noindex,follow,max-image-preview:large')
+
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env)
         self.assertEqual(remote.ROUTE,'/_preview/search3-next-candidate/');
