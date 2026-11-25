@@ -145,8 +145,8 @@ def render_checks(root, preview=Preview.NEXT):
         need(r.returncode == 0 and 'Fatal error' not in r.stdout, 'local_render:' + route)
         need(render_robots_marker(route) in r.stdout, 'local_noindex:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
-            for marker in render_search_markers(route, preview):
-                need(marker in r.stdout, 'local_search_guard')
+            for name, marker in zip(('form', 'metrika', 'lead'), render_search_markers(route, preview)):
+                need(marker in r.stdout, 'local_search_guard:' + route + name)
             need('web-consultant/widget.js' not in r.stdout and OLD_ROUTE not in r.stdout, 'local_wrong_preview')
     path = root / 'payload/visual-search/index.php'
     if preview is Preview.EARLY_INTENT:
