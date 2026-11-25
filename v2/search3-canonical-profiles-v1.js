@@ -5,10 +5,44 @@ let activeOwner=null;
 function id(value){const s=String(value??'');return (typeof value==='string'||typeof value==='number')&&/^[1-9][0-9]*$/.test(s)&&Number.isSafeInteger(Number(s))?s:'';}
 function legacyId(h){const key=id(h&&h.id),provider=String(h&&h.provider||'tourvisor').toLowerCase();if(!key||!['tourvisor','anex','andromeda'].includes(provider))return'';if(h.mappingStatus!==undefined&&h.mappingStatus!=='resolved')return'';return provider==='tourvisor'||h.mappingStatus==='resolved'?key:'';}
 function offerIdentity(t){const provider=String(t&&t.provider||'').toLowerCase(),token=String(t&&(t.offerIdentityDigest||t.offerRef||t.id)||'');return provider&&token?provider+':'+token:'';}
+// Display-only evidence; never replaces the canonical profile or offer identity.
+function localContentRoute(){return String(root.location?.pathname||'').startsWith(path);}
+function contentMeta(raw){
+ const m=raw.localContentMeta;
+ if(!m||m.source!=='anytour-local-tv-catalog-v1'||m.anytourHotelId!==Number(raw.id)||m.canonicalRevision!==raw.revision
+  ||!Number.isSafeInteger(m.tourvisorHotelId)||m.tourvisorHotelId<1||!Number.isSafeInteger(m.revision)||m.revision<1
+  ||!['pending','ready','retry'].includes(m.contentState)||typeof m.detailsAvailable!=='boolean'
+  ||!Array.isArray(m.manualFields)||!m.manualFields.length||m.manualFields.length>3
+  ||m.manualFields.some(field=>!['description','images','primaryImage'].includes(field)||!Object.hasOwn(raw,field)))return null;
+ const absent=Array.isArray(m.sourceAbsent)&&m.sourceAbsent.length<=256&&m.sourceAbsent.every(field=>typeof field==='string'&&field.length<=192&&/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*$/.test(field))?Object.freeze([...m.sourceAbsent]):null;
+ const fetched=m.contentState==='ready'&&typeof m.detailsFetchedAt==='string'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(m.detailsFetchedAt)?m.detailsFetchedAt:null;
+ return Object.freeze({source:m.source,anytourHotelId:m.anytourHotelId,tourvisorHotelId:m.tourvisorHotelId,canonicalRevision:m.canonicalRevision,
+  revision:m.revision,manualFields:Object.freeze([...new Set(m.manualFields)].sort()),sourceAbsent:absent,contentState:m.contentState,
+  detailsAvailable:m.contentState==='ready'&&m.detailsAvailable,detailsFetchedAt:fetched});
+}
+function withoutContentMeta(p){const {localContentMeta,...content}=p;return content;}
+function manualFields(d){return new Set(localContentRoute()&&d?contentMeta(d)?.manualFields||[]:[]);}
+function manualDetails(d){return manualFields(d).has('description')?{description:d.description}:null;}
+function attribution(d,shownImages,plainText){
+ const fields=manualFields(d),parts=[];
+ if(fields.has('description')&&plainText(d.description))parts.push('Описание');
+ const shown=shownImages.slice(0,5),manual=new Set();
+ const add=url=>{if(typeof url==='string'&&/^https:\/\//i.test(url.trim()))manual.add(url.trim());};
+ if(fields.has('images')&&Array.isArray(d.images))d.images.forEach(add);
+ if(fields.has('primaryImage'))add(d.primaryImage);
+ const count=shown.filter(url=>manual.has(url)).length;
+ if(count)parts.push(count===shown.length?'фото':'часть фото');
+ if(!parts.length)return '';
+ const label=parts.join(' и ');
+ // Fixed labels only; no user or catalogue text is interpolated into HTML.
+ return '<p class="hotel-content-attribution"><small>'+label[0].toUpperCase()+label.slice(1)+': материалы AnyTour</small></p>';
+}
 function profile(raw){
  if(!raw||raw.catalog!=='anytour'||!id(raw.id)||!Number.isSafeInteger(raw.revision)||raw.revision<1||typeof raw.name!=='string'||!raw.name.trim())throw new Error('Invalid own profile');
  const info=raw.hotelInformation&&typeof raw.hotelInformation==='object'?raw.hotelInformation:{};
- return Object.assign({},raw,{infrastructure:info.infrastructure||[],services:info.services||[],meals:info.meals||[],roomTypes:info.roomTypes||null});
+ const p=Object.assign({},raw,{infrastructure:info.infrastructure||[],services:info.services||[],meals:info.meals||[],roomTypes:info.roomTypes||null});
+ if(localContentRoute()){const meta=contentMeta(raw);delete p.localContentMeta;if(meta)p.localContentMeta=meta;}
+ return p;
 }
 function batch(payload,ids){
  if(!payload||payload.ok!==true||payload.source!=='anytour-canonical-catalog'||payload.catalog!=='anytour'||!Array.isArray(payload.requestedLegacyIds)||payload.requestedLegacyIds.map(id).join(',')!==ids.join(',')||!Array.isArray(payload.items)||!Array.isArray(payload.links)||!Array.isArray(payload.missingLegacyIds))throw new Error('Invalid catalogue response');
@@ -30,7 +64,16 @@ function create(refresh){
  let lifecycleGeneration=0;
  let epoch=0,raw=[],options={},links=new Map(),profiles=new Map(),anchors=new Map(),storedOffers=new Map(),legacyOffers=new Map(),legacyStates=new Map(),missing=new Set(),failed=new Set(),pending=new Set(),workers=new Set(),profileReads=new Map(),retryBatches=[],splitBudget=32;
  function reset(){epoch++;workers.forEach(task=>task.controller.abort());profileReads.forEach(read=>{if(!read.started)read.resolve(null);});workers=new Set();profileReads=new Map();pending=new Set();links=new Map();profiles=new Map();anchors=new Map();storedOffers=new Map();legacyOffers=new Map();legacyStates=new Map();missing=new Set();failed=new Set();retryBatches=[];splitBudget=32;raw=[];options={};}
- function checkedProfile(rawProfile){const p=profile(rawProfile),previous=profiles.get(id(p.id));if(previous&&p.revision===previous.revision&&JSON.stringify(p)!==JSON.stringify(previous))throw new Error('Conflicting profile revision');return previous&&p.revision<previous.revision?previous:p;}
+ function checkedProfile(rawProfile){
+  const p=profile(rawProfile),previous=profiles.get(id(p.id));
+  if(previous&&p.revision===previous.revision){
+   const local=localContentRoute();
+   if(JSON.stringify(local?withoutContentMeta(p):p)!==JSON.stringify(local?withoutContentMeta(previous):previous))throw new Error('Conflicting profile revision');
+   const before=previous.localContentMeta,after=p.localContentMeta;
+   if(local&&before&&after&&before.tourvisorHotelId===after.tourvisorHotelId&&after.revision<before.revision)p.localContentMeta=before;
+  }
+  return previous&&p.revision<previous.revision?previous:p;
+ }
  function putProfile(rawProfile){const p=checkedProfile(rawProfile);profiles.set(id(p.id),p);return p;}
  async function readProfile(anytourHotelId){
   const key=id(anytourHotelId);if(!key)throw new TypeError('Invalid own hotel ID');
@@ -174,7 +217,7 @@ function create(refresh){
   lifecycleGeneration=generation;reset();
  }
  root.addEventListener('v2:search-started',resetForSearch);root.addEventListener('v2:search-reset',resetForSearch);
- const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},readProfile,source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
+ const api={read(list,opts){raw=list.slice();options=Object.assign({},opts);pump();return project();},readProfile,source:()=>raw,options:()=>options,details:h=>profiles.get(id(h&&h.anytourHotelId))||null,status,reset,manualDetails,attribution,upsertHotel:putProfile,upsertOffer,upsertLegacyOffer,setLegacyHotelState,clearOffers,refresh:requestRefresh};activeOwner=api;return api;
 }
 root.Search3CanonicalProfilesV1=Object.freeze({create,current:()=>activeOwner});
 })(window);

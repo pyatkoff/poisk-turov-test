@@ -65,6 +65,7 @@ final class CanonicalReadFakeStatement extends PDOStatement
 }
 if (defined('ANYTOUR_CANONICAL_TEST_LIBRARY')) return;
 require_once __DIR__ . '/../v2/data/anytour-canonical-catalog-v1.php';
+require_once __DIR__ . '/../v2/data/anytour-canonical-provenance-v1.php';
 
 $checks=0;
 function cr_check(bool $ok,string $message): void {
@@ -112,7 +113,7 @@ function cr_remove(string $path): void {
 /** Real HTTP process, with either strict PDO doubles or disposable real MySQL. */
 function cr_http(string $dsn=''): void {
     $root=sys_get_temp_dir().'/anytour-read-'.bin2hex(random_bytes(8));mkdir($root,0700);
-    $files=['hotel-details-read-v1.php','hotel-presentation-read-v1.php','hotel-details-v1.php','anytour-canonical-catalog-v1.php'];
+    $files=['hotel-details-read-v1.php','hotel-presentation-read-v1.php','hotel-details-v1.php','anytour-canonical-catalog-v1.php','anytour-canonical-provenance-v1.php'];
     $routes=['/data','/_preview/search3-site-candidate/data','/_preview/search3-local-candidate/data'];
     foreach ($routes as $route) {
         mkdir($root.$route,0700,true);
@@ -185,6 +186,9 @@ function cr_http(string $dsn=''): void {
     } finally {proc_terminate($process);proc_close($process);cr_remove($root);}
 }
 cr_http();
+// Optional provenance is fail-closed without local tables, matching the installed reader.
+$items=(new AnyTourCanonicalCatalog(new CanonicalReadFakePDO()))->read([102])['items'];
+cr_check(anytour_canonical_provenance_attach(new CanonicalReadFakePDO(),$items)===$items,'missing optional evidence leaves profile unchanged');
 $localChecks=$checks;
 if (in_array('--unit-only',$argv,true)) {
     echo "ANYTOUR_CANONICAL_READ_LOCAL_OK checks=$checks SQL_NOT_RUN=1 HTTP_PDO_DOUBLE=1\n";exit;
@@ -267,4 +271,37 @@ $r=(new AnyTourCanonicalCatalog($probe))->readLegacyProfiles([102]);
 cr_check($r['links'][0]['anytourHotelId']===1 && $r['items'][0]['name']==='Own 1','real coherent two-query snapshot during concurrent change');
 $r=$catalogue->readLegacyProfiles([102]);
 cr_check($r['links'][0]['anytourHotelId']===2 && $r['items'][0]['name']==='Own 2','next read sees current link, not retained old cache');
+// Run against the actual existing LOCAL schema in the same disposable MySQL.
+$schema=file_get_contents(__DIR__.'/../v2/data/migrations/20261010-local-tv-catalog.sql');
+foreach (explode(';',preg_replace('/^--.*$/m','',$schema)) as $sql) if(trim($sql)!=='')$pdo->exec($sql);
+$manual=['description'=>'Own manual description','primaryImage'=>'https://fixture.test/manual-a.jpg','images'=>['https://fixture.test/manual-a.jpg','https://fixture.test/manual-b.jpg']];
+$json=AnyTourCanonicalCatalog::json(['name'=>'Manual test hotel','detailsAvailable'=>false]+$manual);
+$insert->execute([5001,$json,hash('sha256',$json),2,1]);
+$bridge->execute(['legacy_catalog','601',5001,hash('sha256','{}')]);
+$pdo->prepare("INSERT INTO local_tv_hotels(id,first_seen_at,last_seen_at,pending_since,state,discovery_json,content_json,manual_json,source_absent_json,revision)
+ VALUES(601,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'pending','{}','{}',?,'[]',3)")->execute([AnyTourCanonicalCatalog::json($manual)]);
+$pdo->prepare("INSERT INTO local_tv_legacy_links(old_local_id,tv_id,snapshot_json,snapshot_sha256,migration_issues_json,migrated_at)
+ VALUES(5001,601,'{}',?,'[]',UTC_TIMESTAMP())")->execute([hash('sha256','{}')]);
+$digestLocal=static fn()=>hash('sha256',AnyTourCanonicalCatalog::json([$pdo->query('SELECT * FROM local_tv_hotels ORDER BY id')->fetchAll(),$pdo->query('SELECT * FROM local_tv_legacy_links ORDER BY old_local_id')->fetchAll()]));
+$before=cr_digest($pdo);$localBefore=$digestLocal();
+$raw=(new AnyTourCanonicalCatalog($pdo))->readLegacyProfiles([601]);
+$enriched=anytour_canonical_provenance_attach($pdo,$raw['items'],$raw['links']);
+$meta=$enriched[0]['localContentMeta']??null;
+cr_check($meta!==null && $meta['manualFields']===['description','images','primaryImage'],'actual SQL returns attested manual fields');
+cr_check($meta['anytourHotelId']===5001 && $meta['tourvisorHotelId']===601 && $meta['canonicalRevision']===2 && $meta['revision']===3,'actual SQL preserves typed identity and both revisions');
+cr_check($meta['contentState']==='pending' && $meta['detailsAvailable']===false && $meta['detailsFetchedAt']===null,'manual data does not confirm supplier availability');
+unset($enriched[0]['localContentMeta']);
+cr_check($enriched===$raw['items'],'only metadata added by real SQL');
+cr_check(anytour_canonical_provenance_attach($pdo,$raw['items'],[['legacyHotelId'=>602,'anytourHotelId'=>5001]])===$raw['items'],'foreign batch link fails closed');
+$changed=$raw['items'];$changed[0]['revision']++;
+cr_check(anytour_canonical_provenance_attach($pdo,$changed)===$changed,'different canonical revision does not attest');
+$changed=$raw['items'];$changed[0]['description']='Other content';
+cr_check(anytour_canonical_provenance_attach($pdo,$changed)[0]['localContentMeta']['manualFields']===['images','primaryImage'],'changed content never mislabeled');
+cr_check(cr_digest($pdo)===$before && $digestLocal()===$localBefore,'provenance read leaves all tables unchanged');
+// Ambiguity and missing native bridge must not create attribution.
+$bridge->execute(['legacy_catalog','602',5001,hash('sha256','{}')]);
+cr_check(anytour_canonical_provenance_attach($pdo,$raw['items'])===$raw['items'],'multiple legacy sources are ambiguous');
+$pdo->exec("DELETE FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND external_key='602'");
+$pdo->exec('DELETE FROM local_tv_legacy_links WHERE old_local_id=5001');
+cr_check(anytour_canonical_provenance_attach($pdo,$raw['items'])===$raw['items'],'missing typed bridge never inferred');
 echo "ANYTOUR_CANONICAL_READ_OK checks=$checks local=$localChecks sql=REAL_MYSQL http=REAL_HTTP\n";

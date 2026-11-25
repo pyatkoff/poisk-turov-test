@@ -421,6 +421,38 @@ with sync_playwright() as p:
             check(page.locator('#sortResults option[value="rating"]').count()==1,f'isolation: legacy rating sort remains available {path} original={original}')
             out.append(page.locator('#results').inner_html());c.close()
         check(out[0]==out[1],f'isolation: byte-identical legacy DOM {path}')
+    # Actual LOCAL renderer with a bounded fictional provenance DTO, no supplier/DB.
+    for width in [430,1280]:
+        c,page,errors=boot(browser,width=width)
+        item=profile(5001)
+        item.update(detailsAvailable=False,primaryImage='https://fixture.example/manual-a.jpg',
+                    images=['https://fixture.example/manual-a.jpg','https://fixture.example/manual-b.jpg'])
+        metadata={'source':'anytour-local-tv-catalog-v1','anytourHotelId':5001,'tourvisorHotelId':601,
+                  'canonicalRevision':1,'revision':3,'manualFields':['description','images','primaryImage'],
+                  'sourceAbsent':[],'contentState':'pending','detailsAvailable':False,'detailsFetchedAt':None}
+        render(page,[hotel(601)])
+        resolve(page,0,{601:5001},profiles=[item])
+        check(page.locator('.hotel-content-attribution').count()==0,'missing evidence has no attribution')
+        check(page.locator('.hotel-description-summary').count()==0,'pending unverified description remains hidden')
+        before=page.locator('.hotel-tours').inner_html()
+        imgs=page.locator('.hotel-gallery img').evaluate_all('(nodes)=>nodes.map(n=>n.getAttribute("src"))')
+        def change(meta):
+            page.evaluate('([p,m])=>{const o=Search3CanonicalProfilesV1.current();o.upsertHotel({...p,localContentMeta:m});V2Results.rerender();}',[item,meta])
+        change(metadata)
+        check(page.locator('.hotel-content-attribution').inner_text()=='Описание и фото: материалы AnyTour',f'{width}: exact caption')
+        check(page.locator('.hotel-description-summary').inner_text()==item['description'],f'{width}: pending manual description')
+        check(page.locator('.hotel-tours').inner_html()==before,f'{width}: unchanged offer HTML')
+        check(page.locator('.hotel-gallery img').evaluate_all('(nodes)=>nodes.map(n=>n.getAttribute("src"))')==imgs,f'{width}: unchanged images')
+        check(page.evaluate('JSON.stringify(__source)===__before && __requests.length===1'),f'{width}: no extra requests or offer mutation')
+        check(page.evaluate('document.documentElement.scrollWidth<=innerWidth'),f'{width}: no overflow')
+        page.screenshot(path=str(OUT/f'canonical-manual-provenance-{width}.png'),full_page=True)
+        change(dict(metadata,manualFields=['description','primaryImage']))
+        check(page.locator('.hotel-content-attribution').inner_text()=='Описание и часть фото: материалы AnyTour','mixed gallery caption')
+        change(dict(metadata,anytourHotelId=5002))
+        check(page.locator('.hotel-content-attribution').count()==0,'foreign metadata removed')
+        check(page.locator('.hotel-description-summary').count()==0,'foreign metadata cannot reveal pending text')
+        check(not errors,f'{width}: no page errors')
+        c.close()
     browser.close()
 result={'status':'offline_component_verified','checks':len(RESULTS),'passed':sum(x['pass'] for x in RESULTS),'checks_detail':RESULTS,
         'baseline_source_sha':'7482c62f2e6b6cb3d7f202441281868d500652d9','tested_source_sha':os.environ.get('GITHUB_SHA','local-uncommitted'),'browser':'Chromium about:blank; location dependency is a fixture','widths':[375,430,768,1440],'css_files':CSS_FILES,'css_scope':'actual search3 bundle scope and presentation order','filter_integration':'component tests use spy; integrated cases use actual filter/controller/lifecycle with fixture transport' ,'operator_logos':'unaltered artifact files, embedded offline',
