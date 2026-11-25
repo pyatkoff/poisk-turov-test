@@ -128,8 +128,11 @@ async function family250(driver,engine,size,root,html,output,summaryFirst=false)
     await choose(selected+' [name="flight-pair"][value="1"]');
     await choose('#hotel-detail-offers');
     await wait(ready);
-    const amounts=await read("Array.from(document.querySelectorAll('.application-price-breakdown dd'),e=>Number(e.textContent.replace(/\\D/g,'')))");
+    const parts=await read(`Object.fromEntries([...document.querySelectorAll('.application-price-breakdown [data-price-part]')]
+      .map(row=>[row.dataset.pricePart,row.querySelector('dd').textContent]))`);
+    const amounts=[parts.tour,parts.flight,parts.total].map(price);
     assert.deepEqual(amounts,[basePrice,supplement,basePrice+supplement]);
+    assert.equal(parts.fuel,'Без доплаты по сбору');
     assert.equal(price(await text(totalSelector)),basePrice+supplement);
     const layout=await read('('+firstScreen.toString()+')()');
     assert.equal(layout.title,'Связь по выбранному туру');
