@@ -241,6 +241,7 @@ async function verifyEmptyLocalRail(browser) {
           selected.hidden = true;
           selected.setAttribute('aria-hidden', 'true');
           selected.innerHTML = '';
+          window.dispatchEvent(new CustomEvent('v2:tour-returned', { detail: { source: button } }));
           button.remove();
           delete window.__resolveLabelRecoveryTour;
           delete window.__restoreLabelRecoveryFixture;
