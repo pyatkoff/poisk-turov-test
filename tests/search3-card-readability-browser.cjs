@@ -320,12 +320,12 @@ async function verifyEmptyLocalRail(browser) {
           { tours: [{ date: '10.09.2026', price: 1290000 }, { date: '2026-09-12', price: 0 }] }
         ] } }));
       });
-      await page.waitForSelector('#currentPriceCalendar .search3-price-calendar');
+      await page.waitForSelector('#currentPriceCalendar .current-price-calendar__days');
       const calendar = page.locator('#currentPriceCalendar');
       if (!await calendar.isVisible()) throw new Error(width + ': Search3 hides the production price calendar');
-      const expanded = await calendar.locator('details').getAttribute('open');
-      if ((expanded !== null) === mobile) throw new Error(width + ': wrong responsive calendar default');
-      if (mobile) await calendar.locator('summary').click();
+      if (await calendar.locator('details').count() !== 1 || await calendar.locator('details').getAttribute('open') === null) {
+        throw new Error(width + ': current Search3 calendar did not open its compact date strip');
+      }
       const dates = await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate));
       if (JSON.stringify(dates) !== '["2026-09-10","2026-09-11"]') throw new Error(width + ': unpriced date is offered');
       const minimum = await calendar.locator('.is-best strong').innerText();
@@ -354,6 +354,8 @@ async function verifyEmptyLocalRail(browser) {
       };
       const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await calendar.locator('[data-calendar-date="2026-09-11"]').click();
+      if (await calendar.locator('[data-calendar-date="2026-09-11"]').getAttribute('aria-pressed') !== 'true') throw new Error(width + ': calendar date selection not retained');
+      await calendar.locator('[data-calendar-apply]').click();
       const submissions = await page.evaluate(() => window.__calendarSubmissions);
       if (submissions.length !== 1) throw new Error(width + ': calendar must submit exactly once');
       const submitted = Object.fromEntries(submissions[0]);
