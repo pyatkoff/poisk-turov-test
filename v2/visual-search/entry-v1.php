@@ -118,6 +118,9 @@ function v2_visual_search_home_parts(array $config, array $siteParams = []): arr
     $form = substr($body[2], 0, $boundary);
     $form = v2_visual_search_replace($form, '<h1 id="page-title">Подберём ваш отдых</h1>',
         '<h2 id="page-title">Найти тур</h2>');
+    $form = preg_replace('/(<button\b[^>]*\bid="quick-budget"[^>]*>.*?<\/button>)/s',
+        '<details class="home-search-more"><summary>Дополнительные параметры</summary>$1</details>', $form, 1, $count);
+    if ($form === null || $count !== 1) throw new RuntimeException('Search3 budget control source drift.');
     // Price observations belong to the result page. Home supplies search conditions only.
     $form = preg_replace('/<details class="demo-note preview-disclosure">.*?<\/details>/s', '', $form);
     if ($form === null) throw new RuntimeException('Search3 home disclosure source drift.');
