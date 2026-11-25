@@ -760,13 +760,20 @@
     if(!original||original!==fact(after)||label!==(kind==='room'?text(after):meal(after)))return label;
     return localStayName(o.raw,{id:o.hotelId},kind)||label;
   }
-  function offer(t, h, s, index, indexes=mealIndexes()) {
+  function offerTerms(t) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
-    const provider=String(t.provider||'tourvisor').toLowerCase(),plan=mealPlan(t,provider,indexes);
+    const provider=String(t.provider||'tourvisor').toLowerCase();
+    const key=encodeURIComponent(`${provider}:${String(t.id)}`),returnDay=plus(day,nights);
+    return {key,price,day,nights,provider,returnDay};
+  }
+  function offer(t, h, s, index, indexes=mealIndexes()) {
+    const terms=offerTerms(t);
+    if(!terms)return null;
+    const {key,price,day,nights,provider,returnDay}=terms,plan=mealPlan(t,provider,indexes);
     const rawMeal=[text(t.meal),text(t.meal?.fullName),text(t.meal?.russianName)].map(value=>value.trim()).find(Boolean)||'';
     const displayMeal=indexedMeal(t.meal,indexes)||rawMeal,localMeal=localStayName(t,h,'meal'),localRoom=localStayName(t,h,'room');
-    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
+    return {key,hotelId:h.id,day,nights,variant:index,total:price,returnDay,room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
       mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:localMeal||plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
       operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
@@ -784,14 +791,25 @@
   }
   function canonicalUnion(){
     if(!owner||!context)return {hotels:0,offers:0,hotelsByProvider:{},offersByProvider:{},providerSets:{}};
-    const rows=project(owner.read(raw,{}),context),hotelsByProvider={},offersByProvider={},providerSets={};let offers=0;
-    for(const row of rows){
-      const providers=[...new Set(row.offers.map(o=>o.provider).filter(Boolean))].sort();
-      if(providers.length)providerSets[providers.join('+')]=(providerSets[providers.join('+')]||0)+1;
+    const rows=owner.read(raw,{}),hotelsByProvider={},offersByProvider={},providerSets={};
+    let hotels=0,offers=0;
+    rows.forEach(row=>{
+      const seenProviders=new Set(),offersBeforeHotel=offers;
+      (row.tours||[]).forEach(t=>{
+        const terms=offerTerms(t);
+        if(!terms)return;
+        const {provider}=terms;
+        if(provider)seenProviders.add(provider);
+        offers++;
+        offersByProvider[provider]=(offersByProvider[provider]||0)+1;
+      });
+      if(offers===offersBeforeHotel)return;
+      hotels++;
+      const providers=[...seenProviders].sort(),combination=providers.join('+');
+      if(providers.length)providerSets[combination]=(providerSets[combination]||0)+1;
       for(const provider of providers)hotelsByProvider[provider]=(hotelsByProvider[provider]||0)+1;
-      for(const rowOffer of row.offers){offers++;offersByProvider[rowOffer.provider]=(offersByProvider[rowOffer.provider]||0)+1;}
-    }
-    return {hotels:rows.length,offers,hotelsByProvider,offersByProvider,providerSets};
+    });
+    return {hotels,offers,hotelsByProvider,offersByProvider,providerSets};
   }
   function publish() {if(owner&&context&&activeSearch&&current(activeSearch)){const rows=project(owner.read(raw,{}),context);notify({type:'results',hotels:rows});queueHotelContent(rows);}}
   function current(run){return activeSearch===run&&run.generation===generation;}
