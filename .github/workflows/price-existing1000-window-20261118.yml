@@ -1,4 +1,4 @@
-name: PRICE existing posts and XML after release 1726
+name: PRICE existing posts and XML after release 1729
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9ce5f023e021d3d429f0e366823a2e0e01a300d7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '01e4d2f21a4c123eff19067d49fb5addfd8919c9'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -88,17 +88,21 @@ jobs:
               for name,sha in [('monitor-price-hook.php','0aec7cabb8859449f7d4e1a8746d4f8b4b987a98cf14f9412a9b230121b106a7'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='251331bb4cb4984e34e3c24e82fb8c2e7fdb29fe','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='fe28a6383d16139691300821dd4ce768a9c2d096','runtime_changed')
           def window_open():
               base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
               def comment(comment_id):
                   with urlopen(base+str(comment_id),timeout=15) as response:
                       return json.load(response)
               release=comment(6928374515)
+              content_release=comment(6818332618)
               permit=comment(7029866773)
               return (release['user']['login']=='pyatkoff'
                       and release['updated_at']=='2026-11-25T18:50:20Z'
                       and release['body']=='PR1726: установлено, выпуск свободен'
+                      and content_release['user']['login']=='pyatkoff'
+                      and content_release['updated_at']=='2026-11-25T21:27:18Z'
+                      and content_release['body']=='PR1729: установлено, выпуск свободен'
                       and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
           def feeds(updates=()):
               info={}
@@ -124,6 +128,7 @@ jobs:
                   info[key]=hashlib.sha256(data).hexdigest()
               return info
           def native_run(stage, inspect=False):
+              print('NATIVE_START',stage,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               with (art/(stage+'.raw')).open('xb') as f:
                   proc=subprocess.run(['php',str(hook)]+(['--inspect'] if inspect else []),stdout=f)
               rows=[x.split('=',1)[1] for x in (art/(stage+'.raw')).read_text().splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')]
