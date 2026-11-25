@@ -89,7 +89,9 @@ def public_bridge_fixture(root):
             + "/poisk-turov/index.php']; $prefix='" + prefix + "'; http_response_code(403);\n",
         'visual-search/entry-v1.php':
             "<?php if (!in_array($prefix, ['', '" + prefix
-            + "'], true)) throw new RuntimeException('Public Search3 route/profile mismatch.');\n",
+            + "'], true)) throw new RuntimeException('Public Search3 route/profile mismatch.'); "
+            + "if (!in_array($prefix, ['', '" + prefix
+            + "'], true)) throw new RuntimeException('Public Search3 entry route/profile mismatch.');\n",
         'visual-search/public-config-v1.js':
             "const routes=[['/poisk-turov/','/visual-search/'],['" + prefix
             + "/poisk-turov/','" + prefix + "/visual-search/']];const api='/api-v2.php';\n",
@@ -132,6 +134,16 @@ class Contracts(unittest.TestCase):
         import os
         os.close(fd); self.upload=Path(name); self.upload.write_bytes(self.archive)
         return {**self.q,'archive':name,'before':self.site.snapshot()}
+
+    def test_current_public_entry_rewrites_both_route_guards(self):
+        public_bridge_fixture(self.source)
+        before = (self.source/'payload/visual-search/entry-v1.php').read_text()
+        self.assertEqual(before.count(pub.OLD_ROUTE.rstrip('/')), 2)
+        output = self.root/'current-entry-derived'
+        pub.derive(self.source, output, request(), 'd'*64)
+        after = (output/'payload/visual-search/entry-v1.php').read_text()
+        self.assertEqual(after.count(remote.ROUTE.rstrip('/')), 2)
+        self.assertNotIn(pub.OLD_ROUTE.rstrip('/'), after)
 
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env)
