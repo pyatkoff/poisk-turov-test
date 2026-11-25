@@ -3442,7 +3442,11 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
  afterEvent(event,response){
-  if(!searchEditSession&&response.pending&&renderedSearchStatus?.response===response&&(event?.type==='provider'||event?.type==='progress')){
+  const pendingStatus=response.pending&&(event?.type==='provider'||event?.type==='progress');
+  // A normal completion changes delivery status. The already displayed offers still own the cards and filters.
+  const finishedVisibleResults=event?.type==='complete'&&response.phase==='complete'&&response.currentInventory===true
+   &&renderedResultItems.length>0&&!response.exactRefresh&&!selectedOffer&&!filterDraft&&!modalType;
+  if(!searchEditSession&&renderedSearchStatus?.response===response&&(pendingStatus||finishedVisibleResults)){
    renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
   }else{
    if(event?.type==='results')response.currentInventory=true;

@@ -180,6 +180,13 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   Object.assign(ctx.searchResponse,{pending:false,phase:'complete',currentInventory:true});
+   const visibleResultStatus=count('renderSearchStatus');event('complete');
+   assert.equal(count('results'),7,'completion of a populated search reuses the rendered inventory');
+   assert.equal(count('renderSearchStatus'),visibleResultStatus+1,'completion still paints source status and continuation');
+   ctx.searchResponse.exactRefresh=true;event('complete');assert.equal(count('results'),8,'exact refresh keeps full presentation');
+   ctx.searchResponse.exactRefresh=false;ctx.selectedOffer={key:'checked'};event('complete');assert.equal(count('results'),9,'a selected tour keeps the existing refresh path');
+   ctx.selectedOffer=null;ctx.filterDraft=true;event('complete');assert.equal(count('results'),10,'an open filter draft keeps its preview refresh');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
