@@ -704,18 +704,24 @@ async function runCanonicalHome(browser, viewport) {
   const gate = new Promise(resolve => { releaseFixture = resolve; });
   const { canonicalLogoFixture } = require('./search3-visual-live-fixture.cjs');
   await context.addInitScript(() => {
-    // Observe the real offline fixture owner's search, without replacing its result.
+    // Count starts at the lifecycle boundary. Data owners compose in layers
+    // (recorded -> fixture); wrapping each assignment would count one logical
+    // start once per delegated layer instead of once per submitted search.
     window.__homeReviewSearches = [];
-    let owner;
-    Object.defineProperty(window, 'AnyTourPrototypeData', {
-      configurable: true, get: () => owner, set(value) {
-        const descriptors = Object.getOwnPropertyDescriptors(value);
-        const search = descriptors.search.value;
-        descriptors.search = { ...descriptors.search, value: function (...args) {
-          window.__homeReviewSearches.push({ trip: structuredClone(args[0]), filters: structuredClone(args[3] || {}) });
-          return Reflect.apply(search, value, args);
+    let lifecycleOwner;
+    Object.defineProperty(window, 'AnyTourPrototypeSearchLifecycleV1', {
+      configurable: true, get: () => lifecycleOwner, set(value) {
+        const descriptors = Object.getOwnPropertyDescriptors(value), create = descriptors.create.value;
+        descriptors.create = { ...descriptors.create, value: function (options) {
+          const data = options.data, dataDescriptors = Object.getOwnPropertyDescriptors(data), search = dataDescriptors.search.value;
+          dataDescriptors.search = { ...dataDescriptors.search, value: function (...args) {
+            window.__homeReviewSearches.push({ trip: structuredClone(args[0]), filters: structuredClone(args[3] || {}) });
+            return Reflect.apply(search, data, args);
+          }};
+          const observed = Object.freeze(Object.create(Object.getPrototypeOf(data), dataDescriptors));
+          return Reflect.apply(create, value, [{ ...options, data: observed }]);
         }};
-        owner = Object.freeze(Object.create(Object.getPrototypeOf(value), descriptors));
+        lifecycleOwner = Object.freeze(Object.create(Object.getPrototypeOf(value), descriptors));
       }
     });
   });
