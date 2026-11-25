@@ -111,5 +111,5 @@ console.log('PASS result offer total inventory: 1000 exact offer totals; retaine
  ctx.filterDraft=null;ctx.refreshResultFilters({keepFilters:true});assert.deepEqual(calls.splice(0),[['updateFacetCounts',[]],['sync']],'standalone refresh recalculates');
 }
 assert(source.includes('const inventory=resultInventory(),items=inventory.items'),'render uses one results/rating inventory');
-assert(source.includes('renderActive(inventory.ratingCounts)')&&source.includes('refreshResultFilters(options,inventory.ratingCounts)'),'one render shares exact ephemeral counts');
+assert(source.includes('renderActive(inventory.ratingCounts)')&&/refreshResultFilters\(options,inventory\.ratingCounts(?:,facets)?\)/.test(source),'one render shares exact ephemeral counts');
 console.log('PASS results/rating render inventory: rating-off visits '+off.previous.hotelVisits+'->'+off.current.hotelVisits+', predicates '+off.previous.predicates+'->'+off.current.predicates+', offer checks '+off.previous.offerChecks+'->'+off.current.offerChecks+'; rating-on visits '+on.previous.hotelVisits+'->'+on.current.hotelVisits+', predicates '+on.previous.predicates+'->'+on.current.predicates+', offer checks '+on.previous.offerChecks+'->'+on.current.offerChecks+'; exact rows/counts/raw identity/order/sparse/inherited/initial-length/draft divergence preserved; supplier/lead HTTP 0');

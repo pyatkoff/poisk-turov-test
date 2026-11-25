@@ -360,8 +360,10 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
  const c=environment('<aside id="filter-panel"><div class="filter-top"><h3>Фильтры</h3><button id="filter-detail-back"></button></div><select id="filter-section-jump"></select><div id="filters"></div></aside><span id="beach-chip"></span><span id="family-chip"></span>');
  const filters={q:'',min:0,max:null,stars:[],meals:[],resorts:[],operators:[],amenities:[],rating:false};
  Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:2}],filterDraft:null,innerWidth:390,
-  editingFilterModel:()=>c.filterDraft||{filters},currentFilterBudgetEdit:()=>null,readBudgetFields:()=>({valid:true}),budgetLabel:()=> 'Без лимита',countMatchingHotels:()=>1,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>100000,mealNames:{},ratingValue:()=>null,hotelPlaces:()=>[],operators:Array.from({length:8},(_,i)=>'Оператор '+i),syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{}});
- context(c);vm.runInContext(panelSource,c);const panel=c.window.AnyTourFilterPanelV1.create(c);
+  editingFilterModel:()=>c.filterDraft||{filters},currentFilterBudgetEdit:()=>c.budgetEdit||null,readBudgetFields:()=>({valid:true}),budgetLabel:()=> 'Без лимита',countMatchingHotels:()=>1,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>100000,mealNames:{},ratingValue:()=>null,hotelPlaces:()=>[],operators:Array.from({length:8},(_,i)=>'Оператор '+i),syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{}});
+ context(c);
+ const groups=c.countFacetOptionGroups;let scans=0;c.countFacetOptionGroups=(...args)=>{scans++;return groups(...args);};
+ vm.runInContext(panelSource,c);const panel=c.window.AnyTourFilterPanelV1.create(c);
  panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5']);
  c.hotels=[{country:'4',stars:5}];panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5'],'replacement hotel inventory is read by the retained owner');
  c.filterDraft={filters:{...filters,q:'Новый запрос',stars:[5]}};panel.renderFilters();assert.equal(c.$('#hotel-query').value,'Новый запрос','replacement draft reaches presentation');
@@ -369,7 +371,23 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
  assert.equal(c.$$('.facet-options .check-row:not([hidden])').length,1,'real owner input listener updates visible rows');
  assert(c.$('.star-options').closest('.filter-group').classList.contains('core-filter-group'),'approved core stars stay open');const heading=c.$('.filter-operator-group').querySelector('h4');panel.jumpToFilterSection(heading.id);assert(panel.expandedFilterSections.has('Туроператор'),'current narrow viewport expands the jumped group');
  panel.setFilterSectionOpen(heading.closest('.filter-group'),false);c.innerWidth=1280;panel.jumpToFilterSection(heading.id);assert(!panel.expandedFilterSections.has('Туроператор'),'replacement wide viewport is read at navigation time');
- c.filterDraft=null;panel.renderFilters();assert.equal(c.$('#hotel-query').value,'','closing the draft restores the applied model');c.dom.window.close();
+ c.filterDraft=null;panel.renderFilters();assert.equal(c.$('#hotel-query').value,'','closing the draft restores the applied model');
+ filters.amenities=['retained'];c.amenityNames.set('retained',{key:'retained',label:'Сохранённое удобство',groupId:1,group:'Удобства'});c.mealNames['Всё включено']=1;
+ const snapshot=panel.renderFilters(1,{remember:true}),budget=c.$('#max-price');
+ assert(snapshot?.inventory.amenities.has('retained'));
+ panel.setFilterSectionOpen(c.$('.filter-operator-group'),true);
+ c.budgetEdit={minText:'',maxText:'123 '};budget.value=c.budgetEdit.maxText;budget.focus();budget.setSelectionRange(1,2);
+ const before=scans;panel.renderFilters(1,{previous:snapshot});
+ assert.equal(scans,before,'accepted snapshot skips matching and discovery');
+ assert.equal(c.$('#max-price'),budget);assert.equal(c.document.activeElement,budget);
+ assert.equal(budget.value,'123 ');assert.deepEqual([budget.selectionStart,budget.selectionEnd],[1,2]);
+ assert(panel.expandedFilterSections.has('Туроператор'),'ordinary disclosure remains open');
+ assert.equal(c.$('[data-facet-search="operators"]').value,'Оператор 7','facet query survives the paint');
+ c.mealNames['Всё включено']=2;panel.renderFilters(1,{previous:snapshot});assert.equal(scans,before+1,'canonical meal remapping recomputes');
+ c.mealNames['Всё включено']=1;c.operators.push('Другой оператор');panel.renderFilters(1,{previous:snapshot});assert.equal(scans,before+2,'operator change recomputes');c.operators.pop();
+ c.amenityNames.get('retained').label='Уточнённое удобство';panel.renderFilters(1,{previous:snapshot});
+ assert.equal(scans,before+3,'in-place amenity metadata changes recompute');assert.match(c.$('#filters').textContent,/Уточнённое удобство/);
+ c.dom.window.close();
  assert(!appSource.includes('function paintFilters(')&&!appSource.includes('function renderFilters('),'presentation has one owner');
  console.log('PASS real filter factory: replacement hotel/draft/viewport inputs, delegated facet query and applied-model restore; supplier/lead HTTP0');
 }

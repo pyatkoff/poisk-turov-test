@@ -180,6 +180,29 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   const calls=[],renderFilterPort=ctx.renderFilters,snapshot={key:'fixture',inventory:{}};
+   ctx.renderFilters=(ratingCount,facets)=>{calls.push(facets);renderFilterPort(ratingCount);return facets?.remember?snapshot:null;};
+   const accept=()=>{ctx.searchResponse={key:'current',phase:'loading',pending:true};event('results');};
+   const finish=()=>{Object.assign(ctx.searchResponse,{phase:'complete',pending:false});event('complete');};
+   const fresh=(change,label)=>{accept();change();finish();assert.equal(calls.at(-1),undefined,label);};
+   accept();assert.equal(calls.at(-1)?.remember,true);event('progress');finish();
+   assert.strictEqual(calls.at(-1)?.previous,snapshot,'clean completion passes the accepted model to the panel');
+   finish();assert.equal(calls.at(-1),undefined,'accepted model is consumed once');
+   fresh(()=>{ctx.searchResponse={...ctx.searchResponse};},'different search generation');
+   fresh(()=>{ctx.hotels=[...ctx.hotels];},'different hotel inventory');
+   fresh(()=>{ctx.state.filters.max=50000;},'different applied filter');
+   fresh(()=>{ctx.state.selectedDate='2026-10-15';},'different day');
+   ctx.state.onlyFavorites=true;ctx.state.favorites=[1];
+   fresh(()=>{ctx.state.favorites.push(2);},'different favorites');
+   fresh(()=>{ctx.filterDraft={filters:{...ctx.state.filters}};},'open filter draft');ctx.filterDraft=null;
+   fresh(()=>ctx.renderResults({keepFilters:true}),'intervening hotel or results render invalidates snapshot');
+   ctx.data.live=false;ctx.data.catalog={meals:[]};ctx.data.text=row=>row.name;ctx.resortLoads=new Map();
+   vm.runInContext(section(source,'function applyCatalog(c)','async function loadCountries('),ctx);
+   fresh(()=>ctx.applyCatalog({countries:[{id:4,name:'Турция'}],departures:[],origin:'Москва'}),'catalogue replacement');
+   for(const flags of [{databaseError:true},{coverageGap:true},{exactRefresh:true},{cachedResume:true},{providers:{anex:'error'}},{sources:{anex:{status:'partial',continuationFailed:true}}}]){
+    fresh(()=>Object.assign(ctx.searchResponse,flags),'recovery or failure '+JSON.stringify(flags));
+   }
+   items.length=0;fresh(()=>{},'empty inventory');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;

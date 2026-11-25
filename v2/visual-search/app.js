@@ -1295,8 +1295,15 @@ function positionHotelRooms(row=null){
 
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 let renderedSearchStatus=null;
-function refreshResultFilters(options,ratingCounts){
+let pendingFacetPresentation=null;
+function resultInventoryScope(){
+ const {search,filters,selectedDate,sort,onlyFavorites,favorites}=state;
+ const mealIds=data.live?filters.meals?.map(label=>mealNames[label]):null;
+ return JSON.stringify([search,filters,selectedDate,sort,onlyFavorites,onlyFavorites?favorites:null,data.live,data.scenario,mealIds]);
+}
+function refreshResultFilters(options,ratingCounts,facets=null){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
+ if(facets&&!options.keepFilters&&!filterDraft)return renderFilters(ratingCount,facets);
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
 }
 function refreshResultPickerPreviews(){
@@ -1357,6 +1364,8 @@ function renderMoreResultCards(){
  const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
 }
 function renderResults(options={}){
+ const previousFacets=options.reuseFacetPresentation?pendingFacetPresentation:null;
+ pendingFacetPresentation=null;
  if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultFilters(options);refreshResultPickerPreviews();return;}
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
@@ -1365,11 +1374,18 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
+ const response=searchResponse,inventoryHotels=hotels,rememberFacets=options.rememberFacetPresentation&&response.pending&&response.currentInventory===true&&!filterDraft;
+ const scope=rememberFacets||previousFacets?resultInventoryScope():null;
+ const reuseFacets=previousFacets?.response===response&&previousFacets.hotels===inventoryHotels&&previousFacets.scope===scope;
  const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;renderedResultItems=items;
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
- resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
+ resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();
+ const remember=rememberFacets&&items.length>0,facets=remember||reuseFacets?{remember,previous:reuseFacets?previousFacets.snapshot:null}:null;
+ const snapshot=refreshResultFilters(options,inventory.ratingCounts,facets);
+ if(remember&&snapshot)pendingFacetPresentation={response,hotels:inventoryHotels,scope,snapshot};
+ renderSearchStatus(items,total);refreshResultPickerPreviews();
  renderedSearchStatus={response:searchResponse,total};
 }
 function syncFilters(){renderResults();updateSearchUI();}
@@ -3445,8 +3461,13 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
   if(!searchEditSession&&response.pending&&renderedSearchStatus?.response===response&&(event?.type==='provider'||event?.type==='progress')){
    renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
   }else{
-   if(event?.type==='results')response.currentInventory=true;
-   renderResults();updateSearchUI();
+   const rememberFacetPresentation=event?.type==='results';
+   if(rememberFacetPresentation)response.currentInventory=true;
+   const reuseFacetPresentation=event?.type==='complete'&&response.phase==='complete'&&!response.pending&&response.currentInventory===true
+    &&!response.databaseError&&!response.coverageGap&&!response.exactRefresh&&!response.cachedResume
+    &&!Object.values(response.providers||{}).includes('error')
+    &&!Object.values(response.sources||{}).some(source=>source?.status==='error'||source?.continuationFailed||source?.destinationBranchFailed);
+   renderResults({rememberFacetPresentation,reuseFacetPresentation});updateSearchUI();
   }
   window.AnyTourPublicAnalyticsV1?.event(event,response,{searchId:data.searchId,resultsCount:hotels.length});
   if(modalType==='dates')refreshCalendarPrices();
@@ -3743,7 +3764,9 @@ function loadCalendarPrices(){
 }
 
 function applyCatalog(c){
- if(!c)return;Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
+ if(!c)return;
+ pendingFacetPresentation=null;
+ Object.keys(countryNames).forEach(k=>delete countryNames[k]);c.countries.forEach(x=>countryNames[String(x.id)]=data.text(x));
  resortLoads.clear();
  $('#origin').innerHTML=c.departures.map(x=>`<option value="${esc(data.text(x))}">${esc(data.text(x))}</option>`).join('');
  if(data.live){Object.keys(mealNames).forEach(key=>delete mealNames[key]);data.catalog.mealPlans.filter(plan=>plan.nativeIds?.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});}
