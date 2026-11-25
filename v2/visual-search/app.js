@@ -3810,11 +3810,11 @@ async function bootRealData(){
   if(!data.live&&!homeFormOnly)await restoreSavedHotels();
   if(run!==catalogLoadGeneration)return;
   updateFixtureDescription();
-  if(homeFormOnly){state.hasSearched=false;renderFilters();renderResults();updateSearchUI();return;}
+  if(homeFormOnly){state.hasSearched=false;renderResults();updateSearchUI();return;}
   if(messengerReturn){showMessengerReturn();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
-   const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();
+   const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderResults();updateSearchUI();if(requestedSearch)runSearch();
   }else{state.hasSearched=true;runSearch();}
  }
  catch(error){if(run!==catalogLoadGeneration)return;publicUrlFailure=error.publicSearchURL===true?error:null;catalogError=error.message;updateSearchUI();$('#cards').innerHTML=publicUrlFailure?`<div class="empty"><h3>Не удалось открыть условия ссылки</h3><p>${publicUrlFailureHTML()}</p></div>`:`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
