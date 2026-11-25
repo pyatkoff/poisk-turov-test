@@ -113,6 +113,7 @@ function mountOfferList({h,all}){
 }
  return {renderOfferList:(reset,precomputed)=>{const inventory=offerListInventory(precomputed);if(!$('#offer-count'))mountOfferList(inventory);renderOfferList(reset,inventory);
   $('#offer-price-note').textContent=currentCommonNote||(inventory.all.every(needsRefresh)?'Цены и наличие требуют проверки':'Сборы уточняются при выборе');
+  return {hotel:inventory.h,offers:inventory.all};
  },renderMoreGroup,renderOfferGroup};
 }
 window.AnyTourOfferList={create};

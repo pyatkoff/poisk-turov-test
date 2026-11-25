@@ -146,6 +146,13 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
     $html = file_get_contents(__DIR__ . '/index.html');
     if ($html === false) throw new RuntimeException('Search3 HTML is unavailable.');
     $graph = v2_visual_search_graph($mode, $html);
+    if ($mode === 'public-live' && ($config['entry'] ?? null) === 'home') {
+        // These owners are used after the handoff to the separate results document.
+        $graph = array_values(array_diff($graph, [
+            '../prototype-search/hotel-popularity-v1.js', './flight-picker-v18.js',
+            '../prototype-search/messenger-context-v1.js', '../prototype-search/messenger-flow-v1.js',
+        ]));
+    }
     $public = str_starts_with($mode, 'public-');
     $live = str_ends_with($mode, '-live');
     if ($public && ($config['profile'] ?? null) !== ($live ? 'live' : 'review')) {

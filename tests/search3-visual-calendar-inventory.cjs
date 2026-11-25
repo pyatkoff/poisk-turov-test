@@ -40,7 +40,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  for(const key of ['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range'])nodes.set(key,node());
  const state={search:{from:'2026-10-27',to:'2026-11-02',adults:2,ages:[0,8]},selectedDate:null,filters:{meals:['AI']},offers:[{key:'exact-a',total:198600}]},before=JSON.stringify(state);
  const context={innerWidth:390,state,$:key=>{assert(nodes.has(key),key);return nodes.get(key);},departureRangeText:(from,to)=>from+' — '+to,location:{href:'unchanged'},updateURL:()=>assert.fail('disclosure must not write URL'),startSearch:()=>assert.fail('disclosure must not start a supplier search')};
- vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip(){'),context);
+ vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip('),context);
  const button=nodes.get('.result-calendar-disclosure'),preview=nodes.get('#calendar-preview'),heading=nodes.get('#price-calendar .result-date-heading');
  const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);assert(toggle,'existing action dispatcher owns the disclosure');
  const act=()=>vm.runInContext(toggle[1],context);
@@ -217,26 +217,26 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
 // full, later scalar hotel counts cannot affect markup, order or recovery models.
 {
  const active=()=>({filters:{...defaultFilters(),max:100000,min:50000,q:'Hotel',meals:['AI'],stars:[5],flight:['regular'],operators:['A'],beach:true,rating:true,family:true,spa:true,resorts:['Кемер'],hotelId:1,amenities:Array.from({length:20},(_,i)=>'amenity:'+i)},onlyFavorites:true,selectedDate:day(2)});
- const run=(candidate,model,outcomes,verifyUntouched=true)=>{
+ const run=(candidate,model,outcomes,verifyUntouched=true,matchBudget=false)=>{
   let calls=0,hotelVisits=0,minimumScans=0;const amenityReads=[],inventory=Array.from({length:100},(_,id)=>({id}));
-  const context={destinationIds:f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[],setDestinationIds:(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;},structuredClone,countMatchingHotels:()=>{const result=outcomes[calls++]??0;for(const hotel of inventory){assert(hotel);hotelVisits++;}return result;},countMatchingHotelGroups:models=>{const start=calls;calls+=models.length;for(const hotel of inventory){assert(hotel);hotelVisits++;}return models.map((_,i)=>outcomes[start+i]??0);},hotels:inventory,hotelOffers:()=>{minimumScans++;return {total:200000}},money:value=>value+' ₽',amenityNames:{get:key=>{amenityReads.push(key);return {label:String(key)}}},rangeText:()=>'',state:{search:{from:day(0),to:day(6)}},defaultFilters};
+  const context={destinationIds:f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[],setDestinationIds:(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;},structuredClone,countMatchingHotels:()=>{const result=outcomes[calls++]??0;for(const hotel of inventory){assert(hotel);hotelVisits++;}return result;},countMatchingHotelGroups:models=>{const start=calls;calls+=models.length;for(const hotel of inventory){assert(hotel);hotelVisits++;}return models.map((_,i)=>outcomes[start+i]??0);},hotels:inventory,hotelOffers:hotel=>{minimumScans++;return matchBudget&&hotel.id===0?{total:200000}:null},money:value=>value+' ₽',amenityNames:{get:key=>{amenityReads.push(key);return {label:String(key)}}},rangeText:()=>'',state:{search:{from:day(0),to:day(6)}},defaultFilters};
   const recovery=new Function(...Object.keys(context),section(candidate,candidate.includes('function minimumHotelOfferTotal(')?'function minimumHotelOfferTotal(':'function recoverySuggestions(','function recoveryHTML')+';return recoverySuggestions;')(...Object.values(context));
   const before=verifyUntouched?structuredClone(model):null,rows=recovery(model);if(verifyUntouched)assert.deepEqual(model,before,'recovery keeps the caller model untouched');
   return {rows,calls,hotelVisits,minimumScans,amenityReads};
  };
- const saturated=run(source,active(),Array(40).fill(1));
+ const saturated=run(source,active(),Array(40).fill(1),true,true);
  assert.deepEqual(saturated.rows.map(row=>row.key),['budget','minimum','q']);assert.deepEqual(saturated.rows.map(row=>row.count),[1,1,1]);
- assert.equal(saturated.calls,3);assert.equal(saturated.hotelVisits,100);assert.equal(saturated.minimumScans,100,'budget minimum keeps its separate exact scan');
+ assert.equal(saturated.calls,2,'budget with a known count does not repeat its membership pass');assert.equal(saturated.hotelVisits,100);assert.equal(saturated.minimumScans,100,'budget minimum keeps its separate exact scan');
  assert.equal(saturated.rows[0].model.filters.max,200000);assert.equal(saturated.rows[1].model.filters.min,0);assert.equal(saturated.rows[2].model.filters.q,'');
 
- const partialOutcomes=Array(35).fill(0);partialOutcomes[1]=2;partialOutcomes[5]=4;
+ const partialOutcomes=Array(35).fill(0);partialOutcomes[0]=2;partialOutcomes[4]=4;
  const partial=run(source,active(),partialOutcomes);
  assert.deepEqual(partial.rows.map(row=>[row.key,row.count]),[['minimum',2],['flight',4]]);
- assert.equal(partial.calls,35,'fewer than three positive candidates still inspect every applicable recovery');assert.equal(partial.hotelVisits,1300,'thirteen priority chunks replace 35 full source traversals');
- const laterThird=[...partialOutcomes];laterThird[8]=6;laterThird[12]=8;
+ assert.equal(partial.calls,34,'fewer than three positive candidates still inspect every applicable recovery');assert.equal(partial.hotelVisits,1300,'thirteen priority chunks replace 35 full source traversals');
+ const laterThird=[...partialOutcomes];laterThird[7]=6;laterThird[11]=8;
  const bounded=run(source,active(),laterThird);
  assert.deepEqual(bounded.rows.map(row=>[row.key,row.count]),[['minimum',2],['flight',4],['rating',6]]);
- assert.equal(bounded.calls,9,'the first three positive candidates retain priority and stop later scalar counts');assert.equal(bounded.hotelVisits,300,'three priority chunks replace nine full source traversals');assert.equal(bounded.rows[1].model.filters.flight.length,0);assert.equal(bounded.rows[2].model.filters.rating,false);
+ assert.equal(bounded.calls,8,'the first three positive candidates retain priority and stop later scalar counts');assert.equal(bounded.hotelVisits,300,'three priority chunks replace nine full source traversals');assert.equal(bounded.rows[1].model.filters.flight.length,0);assert.equal(bounded.rows[2].model.filters.rating,false);
 
  const reset=run(source,{filters:defaultFilters(),onlyFavorites:false,selectedDate:null},[7]);
  assert.deepEqual(reset.rows.map(row=>row.key),['reset']);assert.equal(reset.calls,1);assert.deepEqual(reset.rows[0].model.filters,defaultFilters());
@@ -281,7 +281,7 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
 // sorting every matching offer. Keep native filter length/hole/inheritance facts.
 {
  assert.equal((source.match(/minimumOnly:'raw'/g)||[]).length,1,'both budget-recovery consumers share one raw-minimum inventory');
- assert.equal((source.match(/minimumHotelOfferTotal\(model\)/g)||[]).length,3,'one owner serves recovery suggestions and budget preview');
+ assert.equal((source.match(/minimumHotelOfferTotal\(model(?:,hotelMinimums)?\)/g)||[]).length,2,'one owner serves recovery suggestions and budget preview');
  let seed=7,reads=0;const random=()=>((seed=seed*48271%2147483647)/2147483647),hs=[];
  for(let hotel=0;hotel<10;hotel++){
   const h=fixture()[1],base=h.offers[2];h.id=hotel+1;h.offers=Array.from({length:100},(_,index)=>{const row={...base,key:hotel+':'+index},total=Math.floor(random()*100000)+index,date=day(index%7);Object.defineProperty(row,'total',{enumerable:true,get(){reads++;return total}});Object.defineProperty(row,'day',{enumerable:true,get(){reads++;return date}});return row;});hs.push(h);
@@ -299,6 +299,39 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  assert.equal(minimumTotal,100000,'offer totals remain observed after the full hotel scan');assert.equal(inventoryScans,3,'sparse/inherited membership retained and appended hotel waits for the next call');assert.equal(inventory.length,4);
  const thousand=Array.from({length:1000},(_,index)=>({offer:{total:200000+index}}));let thousandScans=0;assert.equal(inventoryOwner(source)(thousand,hotel=>{thousandScans++;return hotel.offer})({filters:{max:1}}),200000);assert.equal(thousandScans,1000);
  console.log(`PASS offer minimum inventory: 10x100 predicate reads ${predicateReads}->${predicateReads}; comparator keys ${sortedKeyReads}->${minimumKeyReads}; recovery prepass arrays 1003->1 at 1000 hotels with visits 1000->${thousandScans}; tie/sparse/inherited/initial-length/delayed-edit guards; raw identity/order retained`);
+}
+
+// Budget count must equal applying the proposed ceiling with all other conditions intact.
+{
+ const base=fixture()[1].offers[2],prices=[[146201,147001],[147000,149000],[147001,147002],[148000,149001]],rows=prices.map(([one,two],i)=>({
+  ...fixture()[1],id:i+1,offers:[
+   {...base,meal:'AI',day:day(0),total:one},
+   {...base,meal:'AI',day:day(0),total:two},
+   {...base,meal:'AI',day:day(1),total:151500+i*400},
+   {...base,meal:'BB',day:day(0),total:120000+i*1300}
+  ]
+ }));
+ const ctx=make(source,rows);
+ Object.assign(ctx,{structuredClone,defaultFilters,money:value=>value+' ₽',rangeText:()=>'',amenityNames:new Map()});
+ vm.runInContext(matchingCountSection(source)+section(source,'function minimumHotelOfferTotal(','function recoveryHTML')+'\nglobalThis.countAfterApply=countMatchingHotels;',ctx);
+ const budgets=[];
+ for(const selectedDate of [null,day(0),day(1),day(2)])for(const meals of [[],['AI'],['BB']])for(const min of [0,145000,147001])for(const max of [1,146000,147000,160000]){
+  const model={filters:{...defaultFilters(),min,max,meals},selectedDate,onlyFavorites:false},initial=JSON.stringify(model);
+  const matches=rows.flatMap(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,max:null}}));
+  const minimum=Math.min(...matches.map(o=>o.total)),ceiling=Math.ceil(minimum/1000)*1000;
+  const expected=matches.length&&minimum>max?{ceiling,count:ctx.countAfterApply({...model,filters:{...model.filters,max:ceiling}})}:null;
+  const selected=ctx.recoverySuggestions(model).find(choice=>choice.key==='budget');
+  assert.equal(!!selected,!!expected);
+  if(expected){
+   assert.equal(selected.model.filters.max,expected.ceiling);
+   assert.equal(selected.count,expected.count);
+   assert.equal(selected.title,'Бюджет до '+expected.ceiling+' ₽');
+   assert.deepEqual(JSON.parse(JSON.stringify(selected.model)),{...model,filters:{...model.filters,max:expected.ceiling}});
+  }
+  assert.equal(JSON.stringify(model),initial);budgets.push(selected?.count??0);
+ }
+ assert.equal(budgets.length,144);
+ console.log('PASS rounded budget recovery: 144 date, meals and bounds combinations match actual applied membership; multiple offers count once');
 }
 
 // Exercise hotel membership with the actual query normalizer, not only prices.
@@ -441,6 +474,19 @@ if(source.includes('function resultCalendarSnapshot(')){
  const calendarFirst=run([{hotels:remote,observations:[]},{hotels:remote,observations},{hotels:remote,observations}]);
  assert.deepEqual([observationsFirst.maps.length,observationsFirst.visits,calendarFirst.maps.length,calendarFirst.visits],[4,1200,4,1300]);
  const cheap=pricedHotel('cheap',day(2),50000),expensive=pricedHotel('expensive',day(2),90000);reset();model(true);owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:[cheap,expensive],observations:[]});assert.equal(model().prices[2],50000);owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:[expensive],observations:[]});assert.equal(model().prices[2],90000,'full remote replacement can raise the minimum');
+ owner.state.selectedDate=null;owner.state.onlyFavorites=false;
+ const workBefore=owner.scans;
+ const filtered=owner.hotels.map(hotel=>({offers:owner.hotelOffers(hotel)})),workAfterFilter=owner.scans;
+ assert.equal(workAfterFilter-workBefore,1000);
+ reset();owner.prepareResultCalendarBase(filtered);
+ assert.deepEqual(Array.from(model().prices),expected({hotels:[],observations:[]}),'calendar reuses offers with exactly the full date/scope');
+ assert.equal(owner.scans,workAfterFilter,'reusing the current view performs no second hotel scan');
+ owner.state.selectedDate=day(3);owner.prepareResultCalendarBase(filtered.slice(0,1));
+ assert.deepEqual(Array.from(model().prices),expected({hotels:[],observations:[]}),'selected date does not narrow the result-calendar base');
+ assert.equal(owner.scans,workAfterFilter+1000);delete owner.state.selectedDate;
+ owner.state.onlyFavorites=true;owner.prepareResultCalendarBase([]);
+ assert.deepEqual(Array.from(model().prices),expected({hotels:[],observations:[]}),'favorites do not narrow the result-calendar base');
+ assert.equal(owner.scans,workAfterFilter+2000);owner.state.onlyFavorites=false;
  const priorBase=model().prices;owner.hotels=[pricedHotel('generation',day(3),40000)];assert.deepEqual(model().prices,priorBase,'progressive callback does not rescan the stable base');assert.equal(model(true).prices[3],40000,'real result render rebuilds the base generation');
  reset();assert(model().prices.every(price=>price===null),'new request starts without an inherited inventory');assert.equal(model(true).prices[3],40000,'new request rebuilds only the current result generation');
  const inherited=pricedHotel('inherited',day(4),30000),sparse=new Array(1);Object.setPrototypeOf(sparse,Object.assign(Object.create(Array.prototype),{0:inherited}));owner.scans=0;owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:sparse,observations:[]});assert.equal(model().prices[4],30000);assert.equal(owner.scans,1,'remote inventory keeps sparse/inherited source membership');
@@ -537,6 +583,19 @@ function facetCountRecords(candidate,checkReference=true){
  sourceReads=0;const dynamicSelected={count:null},dynamic=grouped.facetGroups(groupedModel,discoveredGroups(),dynamicSelected,discover),dynamicReads=sourceReads;
  for(const [group,counts] of dynamic){const options=[...counts.keys()],reference=grouped.facetCounts(groupedModel,group,options);assert.deepEqual(options.map(value=>counts.get(value)),options.map(value=>reference.get(value)),'dynamic discovery/count parity: '+group);}
  assert.equal(dynamicSelected.count,standaloneSelected.count,'dynamic discovery preserves selected-model count');assert.deepEqual([separateDiscoveryReads,dynamicReads],[2000,1000],'presentation discovery and grouped counts share one source traversal');
+ const roomGroups=new Map([['stars',[2,3,4,5]],['resorts',['Кемер','Анталья']]]);
+ for(const stars of [[],[3]])for(const resorts of [[],['Кемер']]){
+  const scope={...groupedModel,filters:{...groupedModel.filters,stars,resorts,meals:['AI'],max:130000}};
+  grouped.scans=0;
+  const selectedTogether={count:null},both=grouped.facetGroups(scope,roomGroups,selectedTogether);
+  assert.equal(grouped.scans,stars.length||resorts.length?2000:1000,'share eligibility only when neither facet narrows the search');
+  const selectedSeparately={count:null};
+  for(const [group,options] of roomGroups){
+   const counts=grouped.facetCounts(scope,group,options,group==='stars'?selectedSeparately:null);
+   assert.deepEqual([...both.get(group)],[...counts],'shared eligibility preserves independent '+group+' counts with meal and budget');
+  }
+  assert.equal(selectedTogether.count,selectedSeparately.count,'draft preview keeps the selected hotel count');
+ }
  const beforeGrouped=JSON.stringify(groupedRows),freshModel={...groupedModel,filters:defaultFilters()};groupedRows[0].offers.push({...groupedRows[0].offers[2],key:'fresh',operator:'NEW'});requests.set('operators',['A','B','NEW']);assert.equal(grouped.facetGroups(freshModel,requests).get('operators').get('NEW'),1,'later refresh observes newly appended offer');assert.notEqual(JSON.stringify(groupedRows),beforeGrouped,'fixture mutation is external to the inventory');
  const inheritedHotel={...fixture()[1],id:9999},sparseHotels=new Array(2),hotelPrototype=Object.create(Array.prototype);hotelPrototype[1]=inheritedHotel;Object.setPrototypeOf(sparseHotels,hotelPrototype);const sparseContext=make(source,sparseHotels);vm.runInContext(facetSection(source)+'\nglobalThis.facetCounts=countFacetOptions;globalThis.facetGroups=countFacetOptionGroups;',sparseContext);const sparseRequests=new Map([['operators',['A']],['stars',[inheritedHotel.stars]]]);for(const [group,options] of sparseRequests)assert.deepEqual(options.map(value=>sparseContext.facetGroups(groupedModel,sparseRequests).get(group).get(value)),options.map(value=>sparseContext.facetCounts(groupedModel,group,options).get(value)),'sparse/inherited source parity: '+group);
  console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication/selected-count guards; operator ages ${before}->${after}, redundant selected-count ${redundant}->0; amenity visits ${scalarWork.hotelVisits}->${inventoryWork.hotelVisits}, offer checks ${scalarWork.offerChecks}->${inventoryWork.offerChecks}, age canonicalizations ${scalarWork.ageCalls}->${inventoryWork.ageCalls}; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);

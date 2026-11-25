@@ -320,6 +320,7 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  syncHotelOfferSelection(id,allOffers,{meal,comparison});
  queueMicrotask(()=>{observeHotelRoomChoices();syncHotelSectionNavigation();});
  rememberUIRoute();
+ return {hotel:h,offers:allOffers};
 }
 function openHotelDetails(id){
  const h=hotels.find(h=>h.id===id);if(!h)return;

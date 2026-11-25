@@ -93,7 +93,7 @@ const filterRootBindings=new WeakMap();
 function filterRootBinding(host){
  let binding=filterRootBindings.get(host);
  if(binding)return binding;
- binding={markup:new WeakMap(),dirty:new WeakSet(),structureDirty:false};
+ binding={markup:new WeakMap(),dirty:new WeakSet(),structureDirty:false,template:null,templateMarkup:null};
  const mark=records=>{for(const record of records){if(record.target===host){binding.structureDirty=true;continue;}let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==host)root=root.parentElement;if(root&&root.parentNode===host)binding.dirty.add(root);}};
  binding.observer=new MutationObserver(mark);binding.mark=mark;binding.observer.observe(host,{subtree:true,childList:true,attributes:true,characterData:true});filterRootBindings.set(host,binding);return binding;
 }
@@ -123,19 +123,24 @@ function paintFilters(markup,filters){
  const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
  const sameScope=renderedFilterContext?.scope===scope,sameModel=renderedFilterContext?.filters===filters;
  if(renderedFilterContext&&(!sameScope||!sameModel&&!getFilterDraft()))binding.structureDirty=true;
- const template=document.createElement('template');template.innerHTML=markup;
+ // Keep the generated template detached. Live DOM repairs still use the current root binding.
+ if(binding.templateMarkup!==markup){
+  const template=document.createElement('template');template.innerHTML=markup;
+  binding.template=template;binding.templateMarkup=markup;
+ }
+ const fragment=binding.template.content;
  let preserved=null;
  // A mobile draft wrapper may be refreshed while a progressive provider result
  // is folded into the same search. Once the drawer closes, object identity again
  // prevents a cancelled draft from leaking into the applied filter model.
  if(group&&sameScope&&(sameModel||getFilterDraft())){
-  const replacement=template.content.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
-  if(replacement&&replacement.parentNode===template.content){
-   const replacementEditor=replacement.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`),expected=filterRootMarkup(replacement);
-   if(replacementEditor){replacementEditor.replaceWith(active);preserved={node:replacement,index:[...template.content.childNodes].indexOf(replacement),markup:expected,transferred:true};}
+  const replacement=fragment.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
+  if(replacement&&replacement.parentNode===fragment){
+   const copy=replacement.cloneNode(true),replacementEditor=copy.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`),expected=filterRootMarkup(replacement);
+   if(replacementEditor){replacementEditor.replaceWith(active);preserved={node:copy,index:[...fragment.childNodes].indexOf(replacement),markup:expected,transferred:true};}
   }
  }
- reconcileFilterRoots(host,template.content,binding,preserved);
+ reconcileFilterRoots(host,fragment,binding,preserved);
  renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
  if(preserved&&group&&(preserved.transferred||leased||!host.contains(active))){
   const restored=host.contains(active)?active:host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
@@ -159,11 +164,11 @@ function jumpToFilterSection(id){
  $('#filter-section-jump').value='';
 }
 function filterStarOptions(model){const f=model.filters,hs=getHotels().filter(h=>h.country===state.search.country);return [...new Set([...hs.map(h=>h.stars).filter(n=>Number.isInteger(n)&&n>=1&&n<=5),...f.stars])].sort((a,b)=>a-b);}
-function filterPresentationInventory(model,mealOptions,operatorOptions){
+function filterPresentationInventory(model,mealOptions,operatorOptions,selectedInventory=null){
  const f=model.filters;
  const stars=new Set(),resorts=new Set(f.resorts),amenities=new Map();let hasRating=!!f.rating;
  const groups=new Map([['stars',[...f.stars]],['meals',mealOptions],['resorts',[...f.resorts]],['operators',operatorOptions],['amenities',[...f.amenities]]]);
- const counts=countFacetOptionGroups(model,groups,null,(h,add)=>{
+ const counts=countFacetOptionGroups(model,groups,selectedInventory,(h,add)=>{
   if(!h||h.country!==state.search.country)return;
   const star=h.stars;if(Number.isInteger(star)&&star>=1&&star<=5){stars.add(star);add('stars',star);}
   if(!hasRating&&ratingValue(h)!==null)hasRating=true;
@@ -177,7 +182,7 @@ function filterPresentationInventory(model,mealOptions,operatorOptions){
 }
 function filterStarButtons(model,counts=null,options=null){const f=model.filters,starOptions=[3,4,5,...f.stars.filter(n=>n<3)];counts??=countFacetOptions(model,'stars',starOptions);return `<button type="button" data-action="star" data-value="0" aria-pressed="${!f.stars.length}" class="${f.stars.length?'':'active'}">Любая</button>`+starOptions.map(n=>{const count=counts.get(n)??0,selected=f.stars.includes(n);return `<button type="button" data-action="star" data-value="${n}" aria-label="${n} ${n===1?'звезда':n<5?'звезды':'звёзд'} — ${hotelCountText(count)}" aria-pressed="${selected}" class="${selected?'active':''}"><span>${n} ★</span><small aria-hidden="true">${count}</small></button>`}).join('');}
 function updateFilterStars(counts=null){const host=$('#filters .star-options');if(!host)return;const focused=document.activeElement,active=host.contains(focused)?focused.dataset.value:null,html=filterStarButtons(editingFilterModel(),counts);if(host.innerHTML!==html){host.innerHTML=html;if(active)host.querySelector(`[data-value="${active}"]`)?.focus({preventScroll:true});}host.closest('.filter-group').hidden=!html;}
-function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(state.search),data.scenario]);if(queryScope!==facetQueryScope){facetQueries.clear();facetQueryScope=queryScope;}const model=editingFilterModel(),f=model.filters,scale=budgetScale(f),budgetEdit=currentFilterBudgetEdit(f),mealOptions=[...new Set([...Object.keys(mealNames),...f.meals])],operatorOptions=[...new Set([...f.operators,...operators])],inventory=filterPresentationInventory(model,mealOptions,operatorOptions),resortOptions=inventory.resorts,counts=inventory.counts,starButtons=filterStarButtons(model,counts.get('stars'),inventory.stars);paintFilters(`
+function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(state.search),data.scenario]);if(queryScope!==facetQueryScope){facetQueries.clear();facetQueryScope=queryScope;}const model=editingFilterModel(),f=model.filters,scale=budgetScale(f),budgetEdit=currentFilterBudgetEdit(f),mealOptions=[...new Set([...Object.keys(mealNames),...f.meals])],operatorOptions=[...new Set([...f.operators,...operators])],selectedInventory=getFilterDraft()?{count:null}:null,inventory=filterPresentationInventory(model,mealOptions,operatorOptions,selectedInventory),resortOptions=inventory.resorts,counts=inventory.counts,starButtons=filterStarButtons(model,counts.get('stars'),inventory.stars);paintFilters(`
  <div class="filter-group filter-destination-legacy"><h4>Название отеля или курорт</h4><div class="filter-search"><input class="input" id="hotel-query" type="search" value="${esc(f.q)}" placeholder="Отель или курорт" aria-label="Название отеля или курорт">${icon('search')}<button type="button" class="icon-button clear-hotel-query" data-action="clear-hotel-query" aria-label="Очистить название отеля или курорт" ${f.q?'':'hidden'}>${icon('x')}</button></div></div>
  <div class="filter-group core-filter-group filter-budget"><h4>Бюджет за всех туристов</h4><div class="price-inputs"><label>От, ₽<input type="text" inputmode="numeric" id="min-price" value="${esc(budgetEdit?.minText??(f.min||''))}" placeholder="Не задан" aria-describedby="filter-budget-error"></label><label>До, ₽<input type="text" inputmode="numeric" id="max-price" value="${esc(budgetEdit?.maxText??f.max??'')}" placeholder="Не задан" aria-describedby="filter-budget-error"></label></div><input class="range" type="range" id="price-range" aria-label="Максимальная цена" aria-valuetext="${esc(budgetLabel(f))}" min="${f.min}" max="${scale}" step="1000" value="${f.max??scale}"><p class="error-text filter-budget-error" id="filter-budget-error" role="alert" hidden></p></div>
  <div class="filter-group core-filter-group filter-category"><h4>Категория отеля</h4><div class="star-options">${starButtons}</div>${inventory.hasRating?(()=>{const count=ratingCount??countMatchingHotels({...model,filters:{...f,rating:true}});return `<label class="check-row filter-rating" data-available="${count>0||f.rating}"><input type="checkbox" data-filter-bool="rating" ${f.rating?'checked':''}><span>Оценка гостей от 4,5 из 5</span><small aria-label="${hotelCountText(count)}">${count}</small></label>`})():''}</div>
@@ -188,6 +193,7 @@ function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(s
  ${amenityFilterGroups(inventory.amenities,f,counts.get('amenities'))}
  <p class="filter-destination-note">Курорты и отели — в поле «Куда» формы поиска.</p><div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`,f);
  renderFilterNavigation();syncFilterResetState(model);showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));$('#beach-chip').hidden=true;$('#family-chip').hidden=true;settleFilterRoots($('#filters'));
+ return selectedInventory?.count;
 }
 return Object.freeze({facetQueries,expandedFilterSections,compareMealLabels,syncFilterSections,setFilterSectionOpen,applyFacetSearch,updateFacetCounts,settleFilterRoots,renderFilterNavigation,jumpToFilterSection,renderFilters});
 }

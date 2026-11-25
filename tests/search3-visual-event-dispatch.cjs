@@ -83,9 +83,11 @@ function characterize(source, scenario) {
   // External collaborators are observable boundaries; the actual handlers and
   // extracted helpers execute unchanged. No collaborator issues an HTTP request.
   const keywords = new Set(['if','switch','for','while','catch','function','Number','String','Math','Date','Set','Map','Event','structuredClone']);
-  for (const [,name] of [...code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g),['','applyQuickFilters']]) {
+  for (const [,name] of [...code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g),['','applyQuickFilters'],['','renderHotelRooms']]) {
     if (!keywords.has(name) && !(name in ctx)) ctx[name]=(...args)=>{trace.push([name,...args.map(x=>x&&typeof x==='object'?(x.focus?'DOM:'+x.id:copy(x)):x)]);checkpoints.push({name,state:copy(state),model:copy(model),draft:copy(ctx.draft),dateDraft:copy(ctx.dateDraft),guestDraft:copy(ctx.guestDraft)});};
   }
+  ctx.renderRefinedOfferList=()=>ctx.renderOfferList(true);
+  ctx.refineHotelRoomMeal=(...args)=>ctx.renderHotelRooms(...args);
   ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
  ctx.agesNeedReview=false;ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
  ctx.pickerFilters=()=>ctx.state.filters;ctx.finishFilterPicker=ctx.applyQuickFilters;
@@ -209,6 +211,18 @@ function records(source){return scenarios.map(s=>{const result=characterize(sour
   assert.deepEqual({...result.checkpoints[2],name:'updateSearchUI'},result.checkpoints[1],'initial URL persistence leaves the exact confirmed draft and applied state unchanged');
   result.trace.splice(3,1);result.checkpoints.splice(2,1);
  }
+ // Clearing the date can reuse the prepared full-range calendar prices.
+ // All historical state, collaborator order and UI effects still compare.
+ if(s.name==='click:clear-date'&&source.includes('options.reuseCalendarBase')){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['renderResults',{keepFilters:true,reuseCalendarBase:true}],['updateSearchUI']],'clear date reuses the full-range price base while rendering fresh cards');
+  delete result.trace[1][1].reuseCalendarBase;
+ }
+ // Scope the reuse hint to the two explicit sorting controls.
+ if(['change:sort','change:mobile-sort'].includes(s.name)&&source.includes('options.reorderOnly')){
+  const paint=result.trace.find(call=>call[0]==='renderResults');
+  assert.deepEqual(paint,['renderResults',{keepFilters:true,reorderOnly:true}],'sorting keeps filter state and requests only a changed order');
+  delete paint[1].reorderOnly;
+ }
  delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');
 assert(source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;"),'explicit recovery synchronizes retained controls before Apply');
@@ -279,7 +293,7 @@ for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEq
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
 // Keep the optional analytics observation intact while reversing the actual state/render order.
-const sortStep=source.match(/state\.sort=t\.value;(?:window\.AnyTourPublicAnalyticsV1\?\.sort\(t\.value\);)?renderResults\(\{keepFilters:true\}\)/)?.[0];
+const sortStep=source.match(/state\.sort=t\.value;(?:window\.AnyTourPublicAnalyticsV1\?\.sort\(t\.value\);)?renderResults\(\{keepFilters:true(?:,reorderOnly:true)?\}\)/)?.[0];
 assert(sortStep,'actual sort state/render mutation boundary');
 const sortMutation=source.replace(sortStep,sortStep.replace('state.sort=t.value;','')+';state.sort=t.value');
 assert.notEqual(sortMutation,source,'sort ordering mutation is applied');
