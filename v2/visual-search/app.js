@@ -302,14 +302,18 @@ function hotelOfferPredicate(s,f,from,to){
 function hotelOffers(h,options={}){
  const rawMinimum=options.minimumOnly==='raw';
  if(!h)return rawMinimum?null:[];
- const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
- const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
+ const s=options.search||state.search,f=options.filters||state.filters;
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return rawMinimum?null:[];
- const matches=hotelOfferPredicate(s,f,from,to),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
+ const matches=options.offerMatches||hotelOfferPredicateForDates(s,f,options),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
  if(options.minimumOnly){let offer=null;const rows=h.offers||[];for(let index=0,length=rows.length;index<length;index++){if(!(index in rows))continue;const row=rows[index];if(matches(row)&&(!offer||compare(row,offer)<0))offer=row;}return rawMinimum?offer:offer?[offer]:[];}
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
  const offers=(h.offers||[]).filter(matches);
  return options.sort===false?offers:offers.sort(compare);
+}
+function hotelOfferPredicateForDates(search,filters,options={}){
+ const selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
+ const day=options.day||(!options.ignoreDate&&selected);
+ return hotelOfferPredicate(search,filters,day||search.from,day||search.to);
 }
 function recommendedHotelScore(h,rating=ratingValue(h)){return (rating??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
@@ -328,9 +332,11 @@ function sortResultItems(items){
  return ranked.map(item=>item.row);
 }
 function resultInventory(){
- const rating=!!state.filters?.rating,options=rating?{filters:{...state.filters,rating:false}}:null;
+ const rating=!!state.filters?.rating,filters=rating?{...state.filters,rating:false}:state.filters;
+ const options={filters,offerMatches:hotelOfferPredicateForDates(state.search,filters)};
+ const firstOnly={...options,firstOnly:true};
  const inventory=hotels.reduce((value,h)=>{
-  const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
+  const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=hotelOffers(h,rating&&!rated?firstOnly:options);
   const offerCount=offers.length;if(!offerCount)return value;
   value.ratingCounts.total++;if(rated)value.ratingCounts.rating++;
   if(!rating||rated){value.items.push({hotel:h,offers,rating:hotelRating});value.total+=offerCount;}

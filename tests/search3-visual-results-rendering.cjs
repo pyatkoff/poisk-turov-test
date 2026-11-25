@@ -791,7 +791,8 @@ const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].f
 const popularityCode=fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/hotel-popularity-v1.js'),'utf8');
 function rankingOwner(code=source){
  const work={score:0,rank:0,offers:0,rating:0};
- const ctx={window:{AnyTourTopHotelLegacyIds:[5,2,9,5,0,'bad',7]},hotels:[],state:{sort:'recommended'},work,
+ const ctx={window:{AnyTourTopHotelLegacyIds:[5,2,9,5,0,'bad',7]},hotels:[],state:{sort:'recommended',search:{},filters:{}},work,
+  hotelOfferPredicateForDates:()=>()=>true,
   hotelOffers:h=>{work.offers++;return h.offers||[];}};
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(popularityCode,ctx);ctx.popularity=ctx.window.AnyTourHotelPopularityV1;

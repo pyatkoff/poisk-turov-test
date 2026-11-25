@@ -5,7 +5,7 @@ const acorn=require('../scripts/build/search3-js/node_modules/acorn');
 const source=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8');
 function functions(code,names){const nodes=acorn.parse(code,{ecmaVersion:'latest'}).body[1].expression.callee.body.body;return nodes.filter(node=>node.type==='FunctionDeclaration'&&names.includes(node.id.name)).map(node=>code.slice(node.start,node.end)).join('\n');}
 const line=(code,name)=>{const match=code.match(new RegExp('^const '+name+'=[^\\n]+','m'));assert(match,name+' owner');return match[0];};
-const owner=code=>line(code,'ratingValue')+'\n'+line(code,'touristAgesFallback')+'\n'+line(code,'validIds')+'\n'+line(code,'destinationIds')+'\n'+functions(code,['hotelPlaces','hotelMatch','touristAgesKey','hotelOfferPredicate','hotelOffers','recommendedHotelScore','recommendedHotelRank','sortResultItems','resultInventory','results'])+'\nconst actualHotelOffers=hotelOffers;hotelOffers=function(...args){work.hotelVisits++;const offers=actualHotelOffers(...args);return new Proxy(offers,{get(target,key,receiver){if(key===\'length\')work.lengthReads++;return Reflect.get(target,key,receiver)}})};const actualPredicate=hotelOfferPredicate;hotelOfferPredicate=function(...args){work.predicates++;const predicate=actualPredicate(...args);return offer=>{work.offerChecks++;return predicate(offer)}};globalThis.offerOwner=hotelOffers;globalThis.sortOwner=sortResultItems;globalThis.inventoryOwner=resultInventory;globalThis.resultsOwner=results;';
+const owner=code=>line(code,'ratingValue')+'\n'+line(code,'touristAgesFallback')+'\n'+line(code,'validIds')+'\n'+line(code,'destinationIds')+'\n'+functions(code,['hotelPlaces','hotelMatch','touristAgesKey','hotelOfferPredicate','hotelOffers','hotelOfferPredicateForDates','recommendedHotelScore','recommendedHotelRank','sortResultItems','resultInventory','results'])+'\nconst actualHotelOffers=hotelOffers;hotelOffers=function(...args){work.hotelVisits++;const offers=actualHotelOffers(...args);return new Proxy(offers,{get(target,key,receiver){if(key===\'length\')work.lengthReads++;return Reflect.get(target,key,receiver)}})};const actualPredicate=hotelOfferPredicate;hotelOfferPredicate=function(...args){work.predicates++;const predicate=actualPredicate(...args);return offer=>{work.offerChecks++;return predicate(offer)}};globalThis.offerOwner=hotelOffers;globalThis.sortOwner=sortResultItems;globalThis.inventoryOwner=resultInventory;globalThis.resultsOwner=results;';
 const search={origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]};
 const plain=value=>JSON.parse(JSON.stringify(value));
 const filters=rating=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating,beach:false,family:false,spa:false});
@@ -34,14 +34,32 @@ function measured(code=source,rating=false,validIndex=49,verify=true){
  return {counts:plain(current.ratingCounts),previous:previous.work,current:work,items:current.items.length};
 }
 const off=measured(source,false),on=measured(source,true);
-assert.deepEqual(off,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:200,offerChecks:10000,lengthReads:300},current:{hotelVisits:100,predicates:100,offerChecks:5000,lengthReads:100},items:100});
-assert.deepEqual(on,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:150,offerChecks:7500,lengthReads:250},current:{hotelVisits:100,predicates:100,offerChecks:5000,lengthReads:100},items:50});
+assert.deepEqual(off,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:200,offerChecks:10000,lengthReads:300},current:{hotelVisits:100,predicates:1,offerChecks:5000,lengthReads:100},items:100});
+assert.deepEqual(on,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:150,offerChecks:7500,lengthReads:250},current:{hotelVisits:100,predicates:1,offerChecks:5000,lengthReads:100},items:50});
 assert.notDeepEqual(measured(source.replace('const hotelRating=ratingValue(h),rated=hotelRating>=4.5','const hotelRating=ratingValue(h),rated=hotelRating>4.5'),true,49,false).counts,on.counts,'4.5 threshold mutation detected');
-assert.notDeepEqual(measured(source.replace('{filters:{...state.filters,rating:false}}','{filters:state.filters}'),true,49,false).counts,on.counts,'base-rating reset mutation detected');
+assert.notDeepEqual(measured(source.replace('filters=rating?{...state.filters,rating:false}:state.filters','filters=state.filters'),true,49,false).counts,on.counts,'base-rating reset mutation detected');
 const early=measured(source,true,0);
 assert.equal(early.current.offerChecks,2550,'unrated hotels stop at their first eligible offer');
 const unbounded=measured(source.replace('{...options,firstOnly:true}','{...options,firstOnly:false}'),true,0);
 assert.equal(unbounded.current.offerChecks,5000,'first-only mutation performs full scans');
+
+// The short-lived matcher follows the current applied date, family and budget.
+{
+ const older={...offer(true,0),ages:[0,12],total:120000};
+ const later={...offer(true,1),day:'2026-10-15',ages:[12,0],total:130000};
+ const otherParty={...offer(true,2),day:later.day,ages:[1,12]};
+ const ctx=environment(source,[{...makeHotel(1,4.8),offers:[older,later,otherParty]}]);
+ ctx.state.search={...search,ages:[12,0]};
+ ctx.state.selectedDate=later.day;
+ assert.strictEqual(ctx.inventoryOwner().items[0].offers[0],later);
+ ctx.state.filters.max=125000;
+ assert.equal(ctx.inventoryOwner().total,0);
+ ctx.state.selectedDate=older.day;
+ assert.strictEqual(ctx.inventoryOwner().items[0].offers[0],older);
+ ctx.state.search={...search,ages:[1,12]};
+ ctx.state.selectedDate=later.day;
+ assert.strictEqual(ctx.inventoryOwner().items[0].offers[0],otherParty);
+}
 
 // Native reduce visits inherited slots, skips holes and snapshots initial length.
 {
