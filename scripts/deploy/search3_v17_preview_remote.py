@@ -75,6 +75,7 @@ def need(value, reason):
 def route_transform(files, preview=Preview.NEXT):
     if preview is not Preview.NEXT:
         return preview.value + '-route-v1'
+    files = set(files)
     bridge = set(NEXT_PUBLIC_BRIDGE_FILES)
     present = bridge.intersection(files)
     need(not present or present == bridge, 'partial_next_public_bridge')
