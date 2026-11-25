@@ -262,12 +262,15 @@ async function verifyEmptyLocalRail(browser) {
 
       // A real viewport resize must retain an explicitly opened search editor.
       await page.locator('#resultsSearchEdit').click();
-      await page.waitForFunction(() => document.body.classList.contains('search3-editing-search'));
+      await page.waitForFunction(() => {
+        const form = document.getElementById('tourSearch');
+        return form?.dataset.search3View === 'editor' && form.getClientRects().length > 0;
+      });
       // Decorators may reparent fields; compare named values, keeping repeated-name order.
       const editingFields = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await page.setViewportSize({ width: width + 1, height: 860 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      if (!await page.evaluate(() => document.body.classList.contains('search3-editing-search'))) throw new Error(width + ': resize closed search editor');
+      if (!await page.evaluate(() => document.getElementById('tourSearch')?.dataset.search3View === 'editor')) throw new Error(width + ': resize closed search editor');
       if (!await page.locator('#tourSearch').isVisible()) throw new Error(width + ': editor hidden after resize');
       const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters ' + JSON.stringify({ before: editingFields, after: afterResize }));
@@ -293,8 +296,8 @@ async function verifyEmptyLocalRail(browser) {
       if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
       console.log('SEARCH3_EDITOR_GEOMETRY_OK ' + width + ' ' + JSON.stringify(editorGeometry));
       // Restore the result fixture for the independent calendar checks below.
-      await page.evaluate(() => document.body.classList.remove('search3-editing-search'));
-      await page.waitForFunction(() => !document.body.classList.contains('search3-editing-search'));
+      await page.locator('.search-editor-collapse').click();
+      await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3View === 'summary');
 
       // Exercise the production calendar module inside the actual Search3 shell.
       // Capture submissions locally: no Tourvisor search or lead is sent by this fixture.
