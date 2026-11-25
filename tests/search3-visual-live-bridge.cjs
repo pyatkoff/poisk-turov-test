@@ -806,7 +806,10 @@ async function pickerRetainedDraftRegressions(){
  // A completed older regions load must not unlock a newer pending departure.
  click('#applied-search [data-action="edit-search"]');let releaseRegions,releaseCountries;
  transport.state.regionsGate=new Promise(resolve=>releaseRegions=resolve);const regionReads=()=>transport.calls.filter(c=>c.action==='regions').length,beforeRegions=regionReads();
- changeOrigin('Казань');await wait(()=>regionReads()>beforeRegions);
+ changeOrigin('Казань');await wait(()=>!q('.search-submit').disabled);
+ assert.equal(regionReads(),beforeRegions,'whole-country search does not need resorts after changing departure');
+ click('[data-action="destination"]');await wait(()=>regionReads()>beforeRegions);
+ click('[data-action="close-modal"]');await settle();
  transport.state.regionsGate=null;transport.state.countryGates['3']=new Promise(resolve=>releaseCountries=resolve);changeOrigin('Екатеринбург');releaseRegions();await settle();
  assert(q('.search-submit').disabled,'late regions response cannot unlock a different pending departure');
  const beforeCalendar=transport.calls.filter(c=>c.action==='price_calendar').length;
