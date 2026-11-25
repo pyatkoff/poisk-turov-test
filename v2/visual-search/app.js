@@ -421,10 +421,9 @@ function updateSearchUI(){
 
  const regionsMissing=catalogReady&&needsResortCatalog(place);
  if(regionsMissing&&!resortLoads.has(place.country))loadResorts(place.country);
- const submit=$('.search-submit');
- setDisabled(submit,homeNavigationPending||!catalogReady||regionsMissing||!data.preview&&ids.some(id=>!destinationHotel(id)?.legacyIds.length));
+ $('.search-submit').disabled=homeNavigationPending||!catalogReady||regionsMissing||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  const returnSubmit=$('#messenger-return button[form="search-form"]');
- if(returnSubmit)setDisabled(returnSubmit,submit.disabled);
+ if(returnSubmit)setDisabled(returnSubmit,$('.search-submit').disabled);
  renderCatalogError(regionsMissing);
 }
 function renderCatalogError(regionsMissing){
