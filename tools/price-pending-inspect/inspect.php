@@ -207,7 +207,7 @@ try {
         ];
         if($platform!=='max')continue;
         $mid=(string)$p['external_message_id'];
-        need($mid===$plan['message_id']&&(int)$p['publication_id']===$plan['publication_id']&&preg_match('/A[A-Za-z0-9_.-]{1,191}z/D',$mid)===1,'max_plan_identity_changed');
+        need($mid===$plan['message_id']&&(int)$p['publication_id']===$plan['publication_id']&&preg_match('/\A[A-Za-z0-9_.-]{1,191}\z/D',$mid)===1,'max_plan_identity_changed');
         $r=ChannelPostApiTransport::buttonRequest('max','GET','/messages/'.$mid,[],null);
         $current['max_native']=['http'=>$r['http']??null,'transport_error'=>$r['transport_error']??null];
         if(($r['http']??null)===200&&is_array($r['data']??null)){

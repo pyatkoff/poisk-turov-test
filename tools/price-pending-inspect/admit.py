@@ -13,14 +13,14 @@ def main():
     event = json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     assert os.environ["GITHUB_REPOSITORY"] == f"pyatkoff/{repo}"
     assert os.environ["GITHUB_ACTOR"] == "pyatkoff" and os.environ["GITHUB_RUN_ATTEMPT"] == "1"
-    assert os.environ["GITHUB_EVENT_NAME"] == "push" and event["before"] == "c53834425030dd2909bfce521dca1bb954e853a5"
+    assert os.environ["GITHUB_EVENT_NAME"] == "push" and event["before"] == "71270d38104fd9f12ccb9db9ced0d6515489a219"
     assert api(repo, f"git/ref/heads/{branch}")["object"]["sha"] == os.environ["GITHUB_SHA"]
     original = api(repo, "actions/runs/45720745186")
     assert (original["head_sha"], original["run_attempt"], original["status"], original["conclusion"]) == ("492ed802f0927c120953616113af4b162bc600d5", 1, "completed", "failure")
     job = api(repo, "actions/jobs/139578143630")
     assert job["run_id"] == 45720745186 and job["conclusion"] == "failure"
     for name, digest in {
-        "inspect.php": "cdd8d5916e3cdd4701442986e703a3690e1cf60ad1eb5d90788c7bc1f3d32d29",
+        "inspect.php": "3846f0514a044a881a8862512bd7231c753916dcbad179618c76d24179533764",
         "run.py": "7440bc88ea1f21df40bcdb16590c0d16a9231018b8a11f9b564f9bae97859fc0"
     }.items():
         assert hashlib.sha256((BASE / name).read_bytes()).hexdigest() == digest
