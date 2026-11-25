@@ -1240,7 +1240,10 @@ function renderHotelDetails(){
   mountedOwner=hotelDetailsOwner();
   const initialOffers=mountedOwner.openHotelDetails(view.id);
   const restored=view.restored;view.restored=null;
-  if(restored){renderHotelRooms(view.id,initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'',Array.isArray(restored.rooms)?restored.rooms:null,initialOffers);
+  if(restored){
+   const meal=restored.meal&&initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'';
+   const rooms=Array.isArray(restored.rooms)?restored.rooms:null;
+   if(meal||rooms?.length)renderHotelRooms(view.id,meal,rooms,initialOffers);
    for(const room of $$('.hotel-room-card[data-room]'))if(Array.isArray(restored.more)&&restored.more.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
    if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;
   }

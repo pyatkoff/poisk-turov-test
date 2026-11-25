@@ -89,12 +89,17 @@ function verifyResultCardEntry(){
  }
  const room={open:false},other={open:false},more={setAttribute:(name,value)=>{more[name]=value;}},key='clicked-second';
  const row={dataset:{offerKey:key},closest:selector=>selector==='.room-overview'?room:selector==='.hotel-room-more'?more:null};
- const hotel={id:7,offers:[{key:'first',provider:'tourvisor'},{key,provider:'tourvisor'}]};
+ const roomRepaints=[],hotel={id:7,offers:[{key:'first',provider:'tourvisor',meal:'AI'},{key,provider:'tourvisor',meal:'BB'}]};
  const c={window:{V2_CONFIG:{},AnyTourHotelDetails:{create(){}}},data:{},hotelDetailsRequest:0,hotelDetailsView:{id:7,restored:{entryOfferKey:key}},selectedOffer:null,hotels:[hotel],modalType:'hotel-details',
   $:selector=>selector==='#modal'?{open:true}:null,$$:selector=>selector==='.room-offer-choice'?[{dataset:{offerKey:'first'},closest:()=>other},row]:[],
-  hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),renderHotelRooms(){},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
+  hotelDetailsOwner:()=>({openHotelDetails:()=>hotel.offers}),renderHotelRooms(...args){roomRepaints.push(args);},rememberUIRoute(){},positionHotelRooms:anchor=>assert.strictEqual(anchor,row,'scroll to the same offer that was opened')};
  vm.createContext(c);vm.runInContext(slice('function openHotelDetails(id,','function positionHotelRooms('),c);c.renderHotelDetails();
  assert.equal(room.open,true,'the clicked room is expanded after the lazy hotel owner renders');assert.equal(other.open,false,'other rooms are not expanded');assert.equal(more.open,'','clicked tail offer is not hidden in More');
+ assert.equal(roomRepaints.length,0,'a plain entry keeps the initial room list instead of painting it twice');
+ c.hotelDetailsView={id:7,restored:{entryOfferKey:key,meal:'BB',rooms:['Family']}};c.renderHotelDetails();
+ assert.equal(roomRepaints.length,1,'explicit history view still applies its meal and expanded rooms');
+ assert.deepEqual(Array.from(roomRepaints[0].slice(0,3)),[7,'BB',['Family']]);
+ assert.strictEqual(roomRepaints[0][3],hotel.offers,'history restoration reuses the current exact offers');
  // Opening the list anchors the clicked offer without marking an unverified room as chosen.
  hotel.offers[1]={key,provider:'anex',raw:{anexKind:'concrete'}};
  c.hotelOfferDraft={hotelId:7,key:'first'};c.selectionGeneration=4;c.cancelHotelOfferCheck=()=>{};
