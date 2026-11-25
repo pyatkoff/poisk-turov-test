@@ -252,6 +252,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(Number(shownTotal.replace(/[^\d,]/g,'').replace(',','.')),Number(observed.price.amount),'the exact whole-family total is checked before navigation');
     const components=page.locator('.application-recap .application-price-breakdown');
     await components.waitFor({state:'visible'});
+    if(viewport.width>=430){
+     const box=await components.boundingBox(),footer=await page.locator('#modal-footer').boundingBox();
+     assert(box&&footer&&box.y>=0&&box.y+box.height<=Math.min(footer.y+1,viewport.height),'the price breakdown fits above the pinned total');
+    }
     const parts=await components.locator('[data-price-part]').evaluateAll(rows=>Object.fromEntries(rows.map(row=>[
      row.dataset.pricePart,{label:row.querySelector('dt').textContent,amount:row.querySelector('dd').textContent}
     ])));
@@ -364,7 +368,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  try{
   for(const viewport of viewports)await runCase(browser,{viewport});
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
-  await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
+  for(const viewport of viewports.filter(viewport=>[430,1280].includes(viewport.width)))await runCase(browser,{viewport,platform:'max',selectedPair:true});
   for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});
   // Default Playwright disables BFCache. Only this bounded extra launch omits
   // that flag; actual pageshow and Navigation Timing explain the observed Back.
