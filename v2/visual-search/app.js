@@ -3676,10 +3676,15 @@ async function loadCountries(origin){
  if(modalType==='destination')renderDestination();
  try{
   const c=await data.countries(origin);if(!c||run!==catalogLoadGeneration||draft.origin!==origin)return;
-  applyCatalog(c);await loadResorts(draft.country);
+  applyCatalog(c);
+  if(!data.live||needsResortCatalog(currentDraftDestination()))await loadResorts(draft.country);
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
   catalogReady=true;catalogDeparture='';updateSearchUI();
-  if(modalType==='destination'){destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}
+  if(modalType==='destination'){
+   destinationChoice=structuredClone(currentDraftDestination());
+   if(!resortLoads.has(destinationChoice.country))loadResorts(destinationChoice.country);
+   lookupDestination();
+  }
   if(modalType==='dates'){dateContext=createDateContext(dateContext.source);renderCalendarScope();loadCalendarPrices();}
  }catch(error){
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;

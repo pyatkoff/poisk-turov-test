@@ -2343,7 +2343,17 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   await page.screenshot({path:path.join(evidence,`departure-error-${width}.png`)});
   await page.locator('[data-action="destination"]').click();assert(await page.locator('[data-action="apply-destination"]').isDisabled());await page.locator('[data-action="close-modal"]').click();
   transport.state.countriesFailure='';await page.locator('#catalog-error [data-action="retry-countries"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
-  await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Екатеринбург"]').click();await page.locator('[data-action="apply-departure"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  const regionReads=()=>transport.calls.filter(call=>call.action==='regions').length,regionsBeforeCity=regionReads();
+  let releaseCityRegions;transport.state.regionsGate=new Promise(resolve=>releaseCityRegions=resolve);
+  try{
+   await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Екатеринбург"]').click();await page.locator('[data-action="apply-departure"]').click();
+   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+   assert.equal(await page.locator('#origin').inputValue(),'Екатеринбург','the latest departure is available when its countries are ready');
+   assert.equal(regionReads(),regionsBeforeCity,'whole-country search is available before reading any resorts');
+  }finally{
+   releaseCityRegions();
+   transport.state.regionsGate=null;
+  }
   await page.locator('#search-form [data-action="dates"]').click();assert.match(await page.locator('.calendar-context').textContent(),/Екатеринбург/);
   await page.waitForFunction(()=>document.querySelector('#date-calendar').textContent.includes('97,5'));
   await page.screenshot({path:path.join(evidence,`departure-calendar-${width}.png`)});
