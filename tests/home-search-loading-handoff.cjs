@@ -101,10 +101,8 @@ try {
       const nextSection = main.indexOf('<section class="home-section');
       assert.ok(heroStart >= 0 && nextSection > heroStart && main.indexOf('<form') < nextSection,
         'the shared form is composed into the hero');
-      assert.equal(form(html).replace(/<details class="home-search-more"><summary>Дополнительные параметры<\/summary>([\s\S]*?)<\/details>/, '$1'),
-        form(receiving.html), 'all form controls come from the canonical Search3 renderer');
-      assert.match(form(html), /<details class="home-search-more"><summary>Дополнительные параметры<\/summary><button\b[^>]*id="quick-budget"/);
-      for (const id of ['quick-stars', 'quick-meal']) assert.ok(form(html).includes(`id="${id}"`));
+      assert.equal(form(html), form(receiving.html), 'all form controls come from the canonical Search3 renderer');
+      for (const id of ['quick-stars', 'quick-meal', 'quick-budget']) assert.ok(form(html).includes(`id="${id}"`));
       assert.ok(html.includes('<div hidden inert data-home-search-support>'), 'result support is hidden and inert');
       assert.equal((html.match(/<dialog\b[^>]*id="modal"/g) || []).length, 1, 'one shared picker dialog');
       assert.doesNotMatch(main, /data-home-(?:departures|countries|children)|<iframe\b/,

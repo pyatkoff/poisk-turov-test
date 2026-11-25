@@ -35,15 +35,9 @@ async function chooseFamily(page){
  await page.locator('#quick-stars [data-value="4"]').click();await page.locator('#quick-stars [data-value="5"]').click();
  await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value="Всё включено"]').check();
  await page.locator('[data-action="apply-meals"]').click();await idleModal(page);
- const disclosureState=()=>page.locator('#quick-budget').evaluate(el=>({open:el.closest('details.home-search-more').open,
-  visible:el.checkVisibility()&&getComputedStyle(el).visibility==='visible'}));
- await page.locator('.home-search-more > summary').click();const opened=await disclosureState();
- assert(opened.open&&opened.visible,'opening additional parameters exposes the budget control');
  await page.locator('#quick-budget').click();
  await page.locator('#budget-max').fill('240000');await page.locator('[data-action="apply-budget"]').click();await idleModal(page);
- await page.locator('.home-search-more > summary').click();const closed=await disclosureState();
- assert(!closed.open&&!closed.visible,'closing additional parameters hides the budget control');
- return {opened,closed};
+ assert.match(await page.locator('#budget-label').textContent(),/240\s*000/,'the chosen whole-tour budget stays visible');
 }
 async function geometry(page,viewport,home){
  await page.evaluate(()=>document.fonts.ready);
@@ -61,12 +55,9 @@ async function geometry(page,viewport,home){
   }
   if(home){
    result.formsInHero=document.querySelectorAll('.home-hero form').length;
-   result.budgetDisclosed=!!document.querySelector('#quick-budget')?.closest('details.home-search-more');
-   result.budgetOpen=document.querySelector('#quick-budget')?.closest('details.home-search-more')?.open??null;
-   result.budgetHidden=!visible(document.querySelector('#quick-budget'));
    const selectors=['#search-form [data-action="departure"]','#search-form [data-action="destination"]',
     '#search-form [data-action="dates"]','#search-form [data-action="nights"]','#search-form [data-action="guests"]',
-    '#quick-stars','#quick-meal','.home-search-more > summary','#search-form .search-submit'];
+    '#quick-stars','#quick-meal','#quick-budget','#search-form .search-submit'];
    result.controls=Object.fromEntries(selectors.map(selector=>{
     const el=document.querySelector(selector),rect=el?box(el):null,hit=rect?document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2):null;
     return [selector,{count:document.querySelectorAll(selector).length,visible:visible(el),rect,hit:!!el&&(hit===el||el.contains(hit))}];
@@ -85,11 +76,13 @@ function checkGeometry(value,label,home){
  }
  if(!home)return;
  assert.equal(value.formsInHero,1,label+' has one actual form in the hero');
- assert(value.budgetDisclosed&&value.budgetOpen===false&&value.budgetHidden,label+' keeps budget inside closed additional parameters');
  for(const [selector,control]of Object.entries(value.controls)){
   assert.equal(control.count,1,label+' has one '+selector);assert(control.visible,label+' shows '+selector);
   assert(control.rect.width>0&&control.rect.height>0&&control.rect.x>=-1&&control.rect.right<=width+1,label+' fits '+selector);
  }
+ const meal=value.controls['#quick-meal'].rect,budget=value.controls['#quick-budget'].rect;
+ assert(Math.abs(meal.y-budget.y)<=1&&budget.x>=meal.right-1,label+' keeps the visible budget beside meals');
+ assert(meal.height>=44&&budget.height>=44,label+' keeps both controls tappable');
  const submit=value.controls['#search-form .search-submit'];
  assert(submit.rect.height>=44&&submit.rect.y>=0&&submit.rect.bottom<=height+1&&submit.hit,label+' keeps an unobstructed Find action in the first viewport');
 }
@@ -124,6 +117,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  async function runCase(owner,{viewport,platform=null,historyCache=false}){
   const id=(platform|| (historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
   const transport=fixture(),tv=privateTVFixture(transport,origin),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
+  const checkApplication=Boolean(platform)||!historyCache&&[430,1280].includes(viewport.width);
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen;
@@ -182,7 +176,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      if(url.pathname===intPath){
       value=await tv.handle(action,body,request.method());
       if(value===undefined&&String(action).startsWith('handoff_')){
-       assert(platform,'the ordinary HOME form case admits no contact preparation');handoffs.push({action,body});
+       assert(checkApplication,'contact preparation is allowed only in the expected walkthrough');handoffs.push({action,body});
        if(action==='handoff_token'){assert.equal(request.method(),'GET');value={ok:true,csrf};}
        else{
         assert.equal(request.method(),'POST');assert.equal(body.csrf,csrf);
@@ -190,6 +184,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
          const {action:_,csrf:__,...pins}=body;const result=tv.freeze(pins);
          if(frozen)assert.equal(result.operation_id,frozen.operation_id,'one retained selection');frozen=result;value={ok:true,data:result};
         }else{
+         assert(platform,'the contact-only walkthrough never sends the application');
          assert.equal(action,'handoff_create');assert(frozen);assert.equal(body.operation_id,frozen.operation_id);
          assert.deepEqual(Object.keys(body).sort(),['action','csrf','operation_id']);
          assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,1,'only one mock CREATE');
@@ -209,7 +204,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
    await page.goto(origin+'/?'+initial);await readyHome(page);
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
-   await capture('initial',true);row.budgetDisclosure=await chooseFamily(page);
+   await capture('initial',true);await chooseFamily(page);
    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);
    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
    assert.equal(privateRequests(),0,'editing HOME controls starts no private supplier preparation');await capture('family',true);
@@ -218,9 +213,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    const params=tv.calls.find(call=>call.action==='tv_search').body.params;
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
    row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
-   if(platform){
+   if(checkApplication){
     await page.locator('.hotel-card h3 [data-action="hotel-details"]').first().click();
     const offer=page.locator('.room-offer-choice[data-offer-key="tourvisor%3Avisual-tv-101"]');await offer.waitFor();
+    await capture('hotel-offer');
     await offer.locator('[data-action="select-hotel-offer"]').click();
     await page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];return buttons.length===2&&buttons.every(button=>!button.disabled);});
     assert(frozen);assert.equal(frozen.observation.trip.adults,3);assert.deepEqual(frozen.observation.trip.childAges,[0,12]);
@@ -228,6 +224,13 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,0,'opening contacts never creates a request');
     assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [data-action="messenger-phone"]').count(),0);
     await capture('contact');
+    if(!platform){
+     await page.locator('#modal .modal-header [data-action="close-modal"]').click();
+     await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+     assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,0,'the walkthrough stops before sending');
+    }
+   }
+   if(platform){
     await Promise.all([page.waitForURL(links[platform]),page.locator('[data-action="messenger-open"][data-platform="'+platform+'"]').click()]);
     assert.deepEqual(externalNavigations,[links[platform]]);assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,1);
     assert.deepEqual(counts(transport,tv),{tv:1,anex:1});row.frozenObservation=frozen.observation;await capture('intercepted-navigation');

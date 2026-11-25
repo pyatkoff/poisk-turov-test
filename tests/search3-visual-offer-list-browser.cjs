@@ -86,13 +86,18 @@ const server=http.createServer((req,res)=>{
    assert(await page.locator('#search-edit-note').isVisible());assert.doesNotMatch(editSearchNotice,/Условия изменены/,'opening the unchanged applied search does not assert a change');assert.match(editSearchNotice,/Найти туры/,'the explicit search action is explained');
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
+   const findPosition=()=>page.locator('#search-form .search-submit').evaluate(el=>{
+    const rect=el.getBoundingClientRect();return {x:rect.x+scrollX,y:rect.y+scrollY};
+   });
    for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
+    const findBefore=width>1100&&name==='guests'?await findPosition():null;
     await page.locator(`#search-form [data-action="${name}"]`).click();
     if(name==='guests'||name==='budget'){
      const panel=page.locator('#inline-search-'+name);
      await panel.waitFor({state:'visible'});
      assert.equal(await page.locator('#modal').isVisible(),false);
      if(name==='guests'){
+      if(findBefore)assert.deepEqual(await findPosition(),findBefore,'opening desktop guests keeps Find in place');
       await panel.locator('#inline-children').selectOption('1');
       assert(await panel.locator('[data-action="apply-guests"]').isDisabled(),'a new child requires an explicit age');
       await panel.locator('[data-inline-child-age="0"]').selectOption('0');
@@ -107,6 +112,7 @@ const server=http.createServer((req,res)=>{
      await shot(name);
      await panel.locator('[data-action="cancel-inline-search-picker"]').click();
      await panel.waitFor({state:'hidden'});
+     if(findBefore)assert.deepEqual(await findPosition(),findBefore,'closing desktop guests keeps Find in place');
      continue;
     }
     await page.locator('#modal').waitFor({state:'visible'});await shot(name);

@@ -1925,7 +1925,8 @@ function initInlineSearchPickers(){
   panel.setAttribute('aria-label',type==='guests'?'Состав туристов':'Бюджет за весь тур');
   trigger.setAttribute('aria-controls',panel.id);
   trigger.setAttribute('aria-expanded','false');
-  trigger.after(panel);
+  const anchor=type==='guests'?trigger.closest('.search-primary'):trigger;
+  anchor.after(panel);
  }
  nextSearchForm.addEventListener('keydown',event=>{
   if(!inlineSearchPicker?.panel.contains(event.target))return;
