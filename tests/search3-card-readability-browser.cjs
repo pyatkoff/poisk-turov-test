@@ -24,7 +24,7 @@ const cardHtml = `
   </article>`;
 
 async function verifyToolbarBoundary(browser) {
-  const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 430, height: 900 } });
   // This fixture never talks to production search, lead delivery or analytics.
   await page.route('**/*', route => {
     const url = route.request().url();
@@ -33,10 +33,7 @@ async function verifyToolbarBoundary(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.V2MobileResultsFiltersV1);
-    // Aborted catalogue requests finish asynchronously and clear loading options.
-    // Wait for that fixture-only failure before capturing parameters for resize.
-    await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
+    await page.waitForSelector('#tourSearch');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch');
       for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
@@ -54,30 +51,22 @@ async function verifyToolbarBoundary(browser) {
         { id: 'readability-fixture', name: 'Toolbar fixture', price: 148500, tours: [] }
       ] } }));
     }, cardHtml);
-    await page.waitForSelector('.mrf-bar', { state: 'attached' });
-    await page.evaluate(() => { window.__mobileFilterBoundaryNode = document.querySelector('.mrf-bar'); });
+    await page.waitForSelector('#sortResults', { state: 'visible' });
+    await page.evaluate(() => { window.__legacySortBoundaryNode = document.getElementById('sortResults'); });
     const formValues = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a,b) => a[0].localeCompare(b[0])));
     const before = JSON.stringify(await formValues());
-    for (const width of [760,761,1000,1348,1440,760,430]) {
+    for (const width of [430,760,761,999,1000,1348,1440,430]) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const bar = page.locator('.mrf-bar');
-      const geometry = await bar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__mobileFilterBoundaryNode }));
-      if (!geometry.sameNode || await bar.count() !== 1) throw new Error('MOBILE_FILTER_OWNER_REPLACED ' + width);
+      const sort = page.locator('#sortResults');
+      const geometry = await sort.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__legacySortBoundaryNode }));
+      if (!geometry.sameNode || await sort.count() !== 1) throw new Error('LEGACY_SORT_OWNER_REPLACED ' + width);
+      if (!await sort.isVisible() || geometry.height < 40) throw new Error('LEGACY_NATIVE_SORT_HIDDEN ' + width + ' ' + JSON.stringify(geometry));
       if (await page.locator('.search3-mobile-toolbar,.search3-mobile-sort').count()) throw new Error('RETIRED_MOBILE_TOOLBAR_OWNER_RETURNED ' + width);
-      if (width > 760) {
-        if (geometry.display !== 'none' || geometry.height !== 0) throw new Error('MOBILE_FILTER_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
-      } else {
-        if (!await bar.isVisible() || !await page.locator('.mrf-open').isVisible()) throw new Error('MOBILE_FILTER_COMPACT_MISSING ' + width);
-        await page.locator('.mrf-open').click();
-        await page.waitForFunction(() => document.querySelector('.mrf-sheet').classList.contains('is-open'));
-        await page.keyboard.press('Escape');
-        await page.waitForFunction(() => !document.querySelector('.mrf-sheet').classList.contains('is-open'));
-      }
-      if (!await page.locator('#sortResults').isVisible()) throw new Error('NATIVE_SORT_HIDDEN ' + width);
-      if (JSON.stringify(await formValues()) !== before) throw new Error('MOBILE_FILTER_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
-      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/mobile-filter-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
-      console.log('SEARCH3_MOBILE_FILTER_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
+      if (await page.locator('#results .hotel-card').count() !== 1) throw new Error('LEGACY_RESULT_CARD_LOST ' + width);
+      if (JSON.stringify(await formValues()) !== before) throw new Error('LEGACY_RESULTS_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
+      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/legacy-results-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
+      console.log('SEARCH3_LEGACY_RESULTS_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
     }
   } finally { await page.close(); }
 }
