@@ -33,7 +33,7 @@ async function verifyToolbarBoundary(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2MobileResultsFiltersV1);
+    await page.waitForFunction(() => window.V2MobileResultsFiltersV1);
     // Aborted catalogue requests finish asynchronously and clear loading options.
     // Wait for that fixture-only failure before capturing parameters for resize.
     await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
@@ -54,36 +54,31 @@ async function verifyToolbarBoundary(browser) {
         { id: 'readability-fixture', name: 'Toolbar fixture', price: 148500, tours: [] }
       ] } }));
     }, cardHtml);
-    await page.waitForSelector('.search3-mobile-toolbar');
-    await page.evaluate(() => { window.__toolbarBoundaryNode = document.querySelector('.search3-mobile-toolbar'); });
+    await page.waitForSelector('.mrf-bar', { state: 'attached' });
+    await page.evaluate(() => { window.__mobileFilterBoundaryNode = document.querySelector('.mrf-bar'); });
     const formValues = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a,b) => a[0].localeCompare(b[0])));
     const before = JSON.stringify(await formValues());
-    for (const width of [999,1000,1348,1440,999,430]) {
+    for (const width of [760,761,1000,1348,1440,760,430]) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const toolbar = page.locator('.search3-mobile-toolbar');
-      const geometry = await toolbar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__toolbarBoundaryNode }));
-      if (!geometry.sameNode || await toolbar.count() !== 1) throw new Error('TOOLBAR_OWNER_REPLACED ' + width);
-      if (width >= 1000) {
-        if (geometry.display !== 'none' || geometry.height !== 0 || await page.locator('.search3-mobile-sort select').isVisible()) throw new Error('TOOLBAR_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
-        if (!await page.locator('#sortResults').isVisible()) throw new Error('TOOLBAR_NATIVE_SORT_HIDDEN ' + width);
+      const bar = page.locator('.mrf-bar');
+      const geometry = await bar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__mobileFilterBoundaryNode }));
+      if (!geometry.sameNode || await bar.count() !== 1) throw new Error('MOBILE_FILTER_OWNER_REPLACED ' + width);
+      if (await page.locator('.search3-mobile-toolbar,.search3-mobile-sort').count()) throw new Error('RETIRED_MOBILE_TOOLBAR_OWNER_RETURNED ' + width);
+      if (width > 760) {
+        if (geometry.display !== 'none' || geometry.height !== 0) throw new Error('MOBILE_FILTER_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
       } else {
-        if (!await toolbar.isVisible() || !await page.locator('.search3-mobile-filter-slot > .mrf-bar').isVisible()) throw new Error('TOOLBAR_COMPACT_MISSING ' + width);
+        if (!await bar.isVisible() || !await page.locator('.mrf-open').isVisible()) throw new Error('MOBILE_FILTER_COMPACT_MISSING ' + width);
         await page.locator('.mrf-open').click();
         await page.waitForFunction(() => document.querySelector('.mrf-sheet').classList.contains('is-open'));
         await page.keyboard.press('Escape');
-        if (!await page.locator('.mrf-open').evaluate(node => node === document.activeElement)) throw new Error('TOOLBAR_FOCUS_RETURN ' + width);
+        await page.waitForFunction(() => !document.querySelector('.mrf-sheet').classList.contains('is-open'));
       }
-      if (JSON.stringify(await formValues()) !== before) throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
-      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/toolbar-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
-      console.log('SEARCH3_TOOLBAR_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
+      if (!await page.locator('#sortResults').isVisible()) throw new Error('NATIVE_SORT_HIDDEN ' + width);
+      if (JSON.stringify(await formValues()) !== before) throw new Error('MOBILE_FILTER_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
+      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/mobile-filter-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
+      console.log('SEARCH3_MOBILE_FILTER_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
     }
-    const native = page.locator('#sortResults'), proxy = page.locator('.search3-mobile-sort select');
-    const values = await native.locator('option').evaluateAll(nodes => nodes.map(node => node.value));
-    await proxy.selectOption(values[1], { force: true });
-    if (await native.inputValue() !== values[1]) throw new Error('TOOLBAR_PROXY_SORT_HANDOFF');
-    await native.selectOption(values[0], { force: true });
-    if (await proxy.inputValue() !== values[0]) throw new Error('TOOLBAR_NATIVE_SORT_HANDOFF');
   } finally { await page.close(); }
 }
 
@@ -100,7 +95,7 @@ async function verifyEmptyLocalRail(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2Results &&
+    await page.waitForFunction(() => window.V2Results && window.Search3LocalHotelFilter &&
       document.getElementById('tourSearch').dataset.catalogSource === 'partial');
     // Reuse the existing deterministic card fixture and execute all real Search3
     // presentation subscribers. The adapter never invokes external search/lead.

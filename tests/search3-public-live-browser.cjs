@@ -101,6 +101,13 @@ const server=http.createServer((req,res)=>{
   }
   const favicon=faviconResponse(url,req.method);
   if(favicon){res.writeHead(200,{'Content-Type':favicon.contentType}).end(favicon.body);return;}
+  // The fictional hotel image is an explicit browser fixture, not part of the
+  // compiled LIVE graph. A cold history restoration can request it after the
+  // page route lifecycle, so the bounded server owns the same exact response.
+  if(url.pathname==='/test-photo.svg'){
+   assert.equal(url.search,'','the fixed photo fixture has no query variants');
+   res.writeHead(200,{'Content-Type':'image/svg+xml'}).end('<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>');return;
+  }
   assert(staticPaths.has(url.pathname),'only exact graph/static manifest paths may reach the server: '+url.pathname);
   const bytes=fs.readFileSync(path.join(site,url.pathname)),metadata=files.get(url.pathname),extension=path.extname(url.pathname);
   assert.equal(sha(bytes),metadata.sha256,'served bytes changed: '+url.pathname);
