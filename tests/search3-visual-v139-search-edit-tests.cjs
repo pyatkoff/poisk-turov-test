@@ -122,9 +122,13 @@ const homeModeOwner=source=>{const declaration=source.match(/^const homeFormOnly
  const automatic={urlPartyIssues:['invalid-adults'],state:{hasSearched:true},editSearch:()=>calls.push('edit'),renderResults:()=>calls.push('render'),updateSearchUI:()=>calls.push('ui')};
  automatic.window={};vm.createContext(automatic);vm.runInContext(homeModeOwner(source)+extract('prepareSearchRun'),automatic);
  assert.equal(vm.runInContext('prepareSearchRun()',automatic),null);assert.equal(automatic.state.hasSearched,false);assert.deepEqual(calls,['edit','render','ui'],'automatic search returns before any data or supplier owner');
- const submitted={urlPartyIssues:['too-many-children'],openGuests:()=>calls.push('guests')};
+ const submitted={urlPartyIssues:['too-many-children'],nextSearchForm:null,openGuests:()=>calls.push('guests')};
  submitted.window={};vm.createContext(submitted);vm.runInContext(homeModeOwner(source)+extract('commitSearchDraft'),submitted);
  assert.equal(vm.runInContext('commitSearchDraft()',submitted),false);assert.equal(calls.at(-1),'guests','explicit submit routes the user to the existing party editor');
+ const trigger={id:'fixture-party-trigger'};
+ submitted.nextSearchForm={querySelector:selector=>{assert.equal(selector,'[data-action="guests"]');return trigger;}};
+ submitted.openInlineSearchPicker=(type,target)=>{assert.equal(type,'guests');assert.equal(target,trigger);calls.push('inline-guests');};
+ assert.equal(vm.runInContext('commitSearchDraft()',submitted),false);assert.equal(calls.at(-1),'inline-guests','NEXT offers the inline correction before starting a search');
  console.log('PASS unresolved URL party: automatic and explicit search blocked until guest ages are complete');
 }
 

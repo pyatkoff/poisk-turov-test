@@ -143,10 +143,8 @@ async function checkFamilyResultRecap(driver, url, width, capture) {
  assert.equal(await floatingFlightNotice(), false, 'editing search conditions has no previous flight confirmation');
  assert.equal(await text('#meal-label'), 'Всё включено');
  await driver.click('#search-form [data-action="guests"]');
- await driver.click('[data-action="child-age"][data-index="0"]');
- await driver.click('[data-action="age-pick"][data-value="10"]');
- await driver.click('[data-action="apply-age"]');
- await driver.click('[data-action="apply-guests"]');
+ await driver.selectOption('#inline-search-guests [data-inline-child-age="0"]', '10');
+ await driver.click('#inline-search-guests [data-action="apply-guests"]');
  assert.match(await text('#guests-detail'), /10 лет/);
  assert.equal(await driver.evaluate('new URL(location.href).searchParams.get("ages")'), '7');
  await driver.evaluate('scrollTo({top:0, behavior:"instant"})');
@@ -445,6 +443,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
     await checkFamilyResultRecap({
      go:url=>page.goto(url), click:selector=>page.locator(selector).click(), fill:(selector,value)=>page.locator(selector).fill(value),
      wait:selector=>page.locator(selector).waitFor(), text:selector=>page.locator(selector).innerText(),
+     selectOption:(selector,value)=>page.locator(selector).selectOption(value),
      count:selector=>page.locator(selector).count(), evaluate:script=>page.evaluate(script)
     },origin+base+'visual-search/?scenario=journey',width,(stage,label)=>
      frame(label,familyFrames,['family-contact','family-return'].includes(stage) ? stage+'-'+width+'.png' : undefined));

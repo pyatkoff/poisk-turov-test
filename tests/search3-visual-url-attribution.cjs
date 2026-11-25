@@ -27,11 +27,11 @@ function setup(href,{home=false}={}){
   destinationIds:f=>f.hotelIds,amenityLabel:()=>'',searchResponse:{pending:false},innerWidth:430,scrollY:37,actionTrigger:null,draft:structuredClone(state.search),draftDestination:null,
   $:node,focusReference:()=>({id:'fixture-focus'}),scrollBehavior:()=> 'instant',requestAnimationFrame:fn=>fn(),
   agesNeedReview:false,filterBudgetEdit:null,urlPartyIssues:[],currentFilterBudgetEdit:()=>false,draftSelectedDate:()=>state.selectedDate,
-  uiHistoryOpen:false,uiHistoryClosing:false,pendingPageReturn:null,uiHistoryKey:'search3-ui',modalHistory:[],handlingUIBack:false,restoringUIHistory:false,
+  uiHistoryOpen:false,uiHistoryClosing:false,pendingPageReturn:null,uiHistoryKey:'search3-ui',modalHistory:[],handlingUIBack:false,restoringUIHistory:false,inlineSearchPicker:null,
   reopenUIRoute:()=>true,uiRoute:()=>({type:'selected-tour'}),addEventListener:(type,fn)=>listeners.set(type,fn),fetch:blocked,
   document:{cookie:'_ym_uid=fixture-client',activeElement:null,querySelector:()=>null,body:{classList:{add:noop}}},
   window:{AnyTourPublicConfigV1:{valid:true},V2Runtime:{state:{}},V2_CONFIG:{leadApi:'/lead-adapter-v2.php',search3FormOnly:home},fetch:blocked,scrollTo:noop}};
- for(const name of ['stopSearch','closeFilters','updateSearchUI','collapseSearch','renderFilters','loadCountries','restoreFocus','rememberDestination','finishPageReturn','modalBack','setFilterSectionOpen','closeModal'])context[name]=noop;
+ for(const name of ['stopSearch','closeFilters','updateSearchUI','collapseSearch','renderFilters','loadCountries','restoreFocus','rememberDestination','finishPageReturn','modalBack','setFilterSectionOpen','closeModal','closeInlineSearchPicker'])context[name]=noop;
  vm.createContext(context);vm.runInContext(code+'\n'+lead,context,{filename:appPath});
  const session=context.window.V2TourController.createProviderLeadSession({provider:'anex',offerRef:'offline-only',current:noop,payload:()=>({provider:'anex',providerOfferRef:'offline-only'})});
  const payload=()=>plain(session.payload({get:()=>null}));

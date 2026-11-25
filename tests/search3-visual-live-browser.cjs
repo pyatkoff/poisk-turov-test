@@ -670,8 +670,8 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
     const [meal,budget]=boxes.fields;
     const stars=await page.locator('#quick-stars').boundingBox();
     const submit=await page.locator('#search-form .search-submit').boundingBox();
-    assert(meal.button.y>=stars.y+stars.height-1&&budget.button.y>=meal.button.bottom-1&&submit.y>=budget.button.bottom-1,'mobile order is stars, meal, secondary budget, then Find');
-    assert(Math.abs(meal.button.x-budget.button.x)<=1&&Math.abs(meal.button.width-budget.button.width)<=1,'secondary budget stays within the form width at '+viewportWidth);
+    assert(meal.button.y>=stars.y+stars.height-1&&submit.y>=Math.max(meal.button.bottom,budget.button.bottom)-1,'mobile order is stars, meal and budget together, then Find');
+    assert(Math.abs(meal.button.y-budget.button.y)<=1&&budget.button.x>=meal.button.right-1,'whole-party budget is beside meal at '+viewportWidth);
     assert.equal(await page.locator('.search-primary #quick-budget').count(),0,'budget does not join the primary trip controls');
    }
    formValueStates.push({label,width:viewportWidth,...boxes});await page.screenshot({path:path.join(evidence,`form-values-${label}-${viewportWidth}.png`)});
@@ -701,13 +701,13 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
   assert.equal(boxes.length,2);assert(boxes.every(b=>b.x>=0&&b.right<=360),'meal and total budget fit360px');
   await page.screenshot({path:path.join(evidence,'approved-form-360.png')});await page.setViewportSize({width,height:900});
  }
- await page.locator('#quick-budget').click();await page.locator('#budget-max').fill('999999');await page.locator('[data-action="close-modal"]').click();
+ await page.locator('#quick-budget').click();await page.locator('#budget-max').fill('999999');await page.locator('#inline-search-budget [data-action="cancel-inline-search-picker"]').click();
  assert.match(await page.locator('#budget-label').textContent(),/200\s*000/,'cancelled budget does not replace the applied value');
  await formValues('cancelled');
  if(width===390){
   await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('1234567');await page.locator('#budget-max').fill('9999999');await page.locator('[data-action="apply-budget"]').click();
   assert.match((await page.locator('#budget-label').textContent()).replace(/\s/g,''),/1234567.*9999999/,'complete long applied range is retained');await formValues('long-range');
-  await page.locator('#quick-budget').click();assert.equal(await page.locator('#budget-min').inputValue(),'1234567');assert.equal(await page.locator('#budget-max').inputValue(),'9999999');await page.locator('[data-action="close-modal"]').click();
+  await page.locator('#quick-budget').click();assert.equal(await page.locator('#budget-min').inputValue(),'1234567');assert.equal(await page.locator('#budget-max').inputValue(),'9999999');await page.locator('#inline-search-budget [data-action="cancel-inline-search-picker"]').click();
  }
  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');await page.locator('[data-action="apply-budget"]').click();
  await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value=""]').check();await page.locator('[data-action="apply-meals"]').click();
@@ -757,8 +757,8 @@ const mobileQuickFieldLayout=async(page,width)=>{
    const range=document.createRange();range.selectNodeContents(value);const textBox=range.getBoundingClientRect();
    return{field:rect(field),value:rect(value),label:rect(label),arrow:rect(arrow),textRight:textBox.right,text:value.textContent};
   });
-  assert(boxes.field.x>=0&&boxes.field.right<=360&&boxes.field.height>=44&&boxes.field.height<=56,'secondary budget is a compact, tappable mobile row');
-  assert(boxes.value.x>=boxes.label.right-1,'the budget label and value share a horizontal row');
+  assert(boxes.field.x>=0&&boxes.field.right<=360&&boxes.field.height>=44,'budget is a tappable mobile field');
+  assert(boxes.value.y>=boxes.label.bottom-1,'the budget value appears below its label');
   assert(boxes.arrow.x>=boxes.textRight-1,'chevron stays beside the approved value text without overlap');
   assert(boxes.value.x>=boxes.field.x&&boxes.value.right<=boxes.field.right&&boxes.value.bottom<=boxes.field.bottom,'whole budget value stays inside its field');
  }finally{await page.setViewportSize({width,height:900});}
@@ -889,16 +889,31 @@ async function formPickerActionJourney(browser,origin,base,evidence){
    const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
    const target=async(locator,label)=>{
     await locator.scrollIntoViewIfNeeded();
+    await locator.evaluate(el=>{
+     const rect=el.getBoundingClientRect();
+     if(rect.top<0||rect.bottom>innerHeight||rect.left<0||rect.right>innerWidth)el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+    });
     const box=await locator.evaluate(el=>{
      const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);
      const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),text=[...range.getClientRects()].filter(b=>b.width&&b.height);
      return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,hit:!!hit&&(hit===el||el.contains(hit)),textInside:text.every(b=>b.x>=r.x-1&&b.right<=r.right+1),viewportWidth:innerWidth,viewportHeight:innerHeight};
     });
     assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
-    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
+    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport '+JSON.stringify(box));assert(box.textInside,label+' keeps its whole label');return box;
    };
    const focused=()=>page.evaluate(()=>document.activeElement.dataset.action||document.activeElement.id||document.activeElement.tagName);
-   const close=async(action)=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   const close=async action=>{
+    const inline=action==='guests';
+    const button=page.locator(inline?'#inline-search-guests [data-action="cancel-inline-search-picker"]':'#modal [data-action="close-modal"]');
+    await target(button,'picker close');
+    if(inline)await button.focus();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&document.querySelector('#inline-search-guests').hidden&&history.scrollRestoration==='auto');
+    assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');
+    assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');
+    assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');
+    assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');
+   };
    // The departure search is the existing canonical picker; emulate only the
    // visible viewport. Chromium layout/hitpoints are real, physical Safari is not.
    const departureViewport=async(height,offsetTop=0,event='resize')=>page.evaluate(({height,offsetTop,event})=>{Object.assign(window.__departureViewport,{height,offsetTop});window.__departureViewport.dispatchEvent(new Event(event));},{height,offsetTop,event});
@@ -1013,52 +1028,74 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     return{url:page.url(),fields:await familyFields()};
    };
    const assertUnapplied=async baseline=>{assert.equal(page.url(),baseline.url,'picker edits never mutate the applied URL');assert.deepEqual(await familyFields(),baseline.fields,'Cancel preserves the entire family and exact-hotel form');};
+   const guests=page.locator('#inline-search-guests');
+   const familyTrigger=page.locator('#search-form [data-action="guests"]');
+   const age=index=>guests.locator('[data-inline-child-age="'+index+'"]');
+   const cancelFamily=()=>guests.locator('[data-action="cancel-inline-search-picker"]').click();
+   const closeFamily=()=>page.waitForFunction(()=>document.querySelector('#inline-search-guests').hidden&&history.scrollRestoration==='auto');
+   const panelGeometry=async()=>{
+    const result=await guests.evaluate(el=>({overflow:el.scrollWidth>el.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth}));
+    assert.deepEqual(result,{overflow:false,documentOverflow:false});
+    return result;
+   };
    for(const zoom of [100,200]){
-    const baseline=await loadFamily();await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
-    await page.locator('#search-form [data-action="guests"]').click();
-    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
+    const baseline=await loadFamily();
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await familyTrigger.click();
+    await age(1).selectOption('13');
+    await frames();
     const route=await page.evaluate(key=>history.state[key],historyKey);
-    assert.deepEqual(route,{type:'child-age',guest:{adults:3,ages:[0,12]},choice:{index:1,value:13}},'capture the actual native second-child route, not a constructed replacement');
-    await page.locator('[data-action="apply-age"]').press('Enter');assert.equal(await page.locator('#modal-title').textContent(),'Туристы');
-    assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false},'ordinary second-child Apply returns to the exact indexed row');
-    assert.match(await page.locator('[data-action="child-age"][data-index="0"]').textContent(),/До 1 года/);assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);
-    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="12"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');
-    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
-    assert.deepEqual(await page.evaluate(key=>history.state[key],historyKey),route);
-    await page.reload();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
-    assert(await page.locator('#modal-back').isVisible(),'a full reload retains the parent guests step');assert.equal(await page.locator('[data-action="age-pick"][data-value="13"]').getAttribute('aria-pressed'),'true');
-    const restored=await geometry('restored child-age');await target(page.locator('[data-action="apply-age"]'),'restored age Apply');await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
-    await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);await page.screenshot({path:path.join(evidence,'picker-family-return-'+width+'-'+zoom+'.png')});
-    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
-    // Restore a genuine child route again; Back must retain the original age.
-    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.reload();
-    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
-    await page.locator('#modal-back').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/12 лет/);
-    for(let n=3;n<6;n++)await page.locator('[data-action="adults-plus"]').press('Enter');
-    assert(await page.locator('[data-action="adults-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-minus',index:null,disabled:false},'upper adult boundary retains the usable opposite counter');
-    for(let n=6;n>1;n--)await page.locator('[data-action="adults-minus"]').press('Enter');
-    assert(await page.locator('[data-action="adults-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-plus',index:null,disabled:false},'lower adult boundary retains a usable counter');
-    await page.locator('[data-action="children-plus"]').press('Enter');assert(await page.locator('[data-action="children-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-minus',index:null,disabled:false});assert(await page.locator('[data-action="apply-guests"]').isDisabled(),'missing third-child age still blocks Apply');
-    const boundary=await geometry('family counter boundary');await target(page.locator('[data-action="children-minus"]'),'boundary child counter');await page.screenshot({path:path.join(evidence,'picker-family-boundary-'+width+'-'+zoom+'.png')});
-    await page.locator('[data-action="child-age"][data-index="2"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="17"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'2',disabled:false});
-    await page.locator('[data-action="remove-child"][data-index="1"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/17 лет/,'removing the middle child never aliases the surviving third child');
-    await page.locator('[data-action="children-minus"]').press('Enter');await page.locator('[data-action="children-minus"]').press('Enter');assert(await page.locator('[data-action="children-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-plus',index:null,disabled:false});
-    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
-    // Whole-party Apply persists the initial family for reload; it starts no search.
-    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');await page.locator('[data-action="apply-guests"]').press('Enter');await closed();
-    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 13 лет');
+    assert.deepEqual(route,{type:'inline-guests',draft:{adults:3,ages:[0,13]}},'capture the actual unconfirmed family draft');
+    await assertUnapplied(baseline);
+    await page.reload();
+    await guests.waitFor({state:'visible'});
+    await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    assert.equal(await age(0).inputValue(),'0');
+    assert.equal(await age(1).inputValue(),'13');
+    const restored=await panelGeometry();
+    await target(guests.locator('[data-action="apply-guests"]'),'restored party Apply');
+    await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
+    await cancelFamily();await closeFamily();await assertUnapplied(baseline);
+
+    await familyTrigger.click();
+    const adults=guests.locator('#inline-adults'),children=guests.locator('#inline-children');
+    assert.deepEqual(await adults.locator('option').evaluateAll(options=>options.map(option=>option.value)),['1','2','3','4','5','6']);
+    assert.deepEqual(await children.locator('option').evaluateAll(options=>options.map(option=>option.value)),['0','1','2','3']);
+    await adults.selectOption('6');await children.selectOption('3');
+    assert.equal(await age(0).inputValue(),'0');
+    assert(await guests.locator('[data-action="apply-guests"]').isDisabled(),'a missing third age blocks Apply');
+    await age(2).selectOption('17');
+    assert(await guests.locator('[data-action="apply-guests"]').isEnabled());
+    await page.screenshot({path:path.join(evidence,'picker-family-boundary-'+width+'-'+zoom+'.png')});
+    await children.selectOption('2');
+    assert.equal(await age(2).count(),0,'reducing the count removes the unused age');
+    assert.equal(await age(1).inputValue(),'12','retained ages keep the correct order');
+    await cancelFamily();await closeFamily();await assertUnapplied(baseline);
+
+    await familyTrigger.click();await age(1).selectOption('13');
+    await guests.locator('[data-action="apply-guests"]').click();await closeFamily();
+    assert.equal(await page.locator('#guests-label').textContent(),'3 взрослых и 2 ребёнка');
+    assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года · 13 лет');
     const confirmedPartyURL=page.url(),expectedPartyURL=new URL(baseline.url);expectedPartyURL.searchParams.set('ages','0,13');
-    assert.equal(confirmedPartyURL,expectedPartyURL.href,'whole-party Apply changes only the confirmed initial family in the URL');
+    assert.equal(confirmedPartyURL,expectedPartyURL.href,'Apply changes only the confirmed initial family in the URL');
     assert.equal(new URL(confirmedPartyURL).searchParams.has('searched'),false,'initial family persistence cannot request an automatic search');
-    await page.reload();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!document.querySelector('.search-submit').disabled&&document.querySelector('#guests-detail').textContent==='До 1 года и 13 лет');
-    assert.equal(page.url(),confirmedPartyURL,'reload preserves the confirmed initial family');
-    assert.equal(transport.calls.filter(call=>call.action==='search_start'||['search','quote','quote_calculate','lead'].includes(call.action)).length,0,'confirmed family Apply and reload never start suppliers or a lead');
-    await page.locator('#search-form [data-action="guests"]').click();assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await page.keyboard.press('Escape');await closed();
-    // Corrupted index is an explicitly labelled history fixture; it must recover
-    // to the existing guests owner, not create a dead-end child dialog.
-    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.evaluate(({key})=>{const route=structuredClone(history.state[key]);route.choice.index=3;history.replaceState({...history.state,[key]:route},'',location.href);},{key:historyKey});await page.reload();
-    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Туристы'&&!document.querySelector('.search-submit').disabled);assert.equal(await page.locator('[data-action="apply-guests"]').count(),1);await page.keyboard.press('Escape');await closed();assert.equal(page.url(),confirmedPartyURL);
-    familyReceipts.push({width,zoom,capturedNativeRoute:route,full_reload:true,indexed_return_focus:true,age0_and17_retained:true,all_four_counter_boundaries:true,missing_age_blocks_apply:true,explicit_party_apply:true,confirmed_party_survives_reload:true,initial_search_submits:0,invalid_history_index_recovers:true,cancel_preserves_applied_URL:true,restored,boundary,physicalSafari:false});
+    await page.reload();
+    await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled&&document.querySelector('#guests-detail').textContent==='До 1 года · 13 лет');
+    assert.equal(page.url(),confirmedPartyURL);
+    assert.equal(transport.calls.filter(call=>call.action==='search_start'||['search','quote','quote_calculate','lead'].includes(call.action)).length,0,'family Apply and reload never start suppliers or a lead');
+
+    await familyTrigger.click();
+    assert.equal(await age(1).inputValue(),'13');
+    await page.evaluate(key=>{
+     const route=structuredClone(history.state[key]);route.draft.ages[1]=99;
+     history.replaceState({...history.state,[key]:route},'',location.href);
+    },historyKey);
+    await page.reload();await guests.waitFor({state:'visible'});
+    assert.equal(await age(1).inputValue(),'13','invalid draft age falls back to the confirmed party');
+    await cancelFamily();await closeFamily();
+    assert.equal(page.url(),confirmedPartyURL);
+    familyReceipts.push({width,zoom,capturedNativeRoute:route,full_reload:true,age0_and17_retained:true,missing_age_blocks_apply:true,explicit_party_apply:true,confirmed_party_survives_reload:true,initial_search_submits:0,invalid_history_draft_recovers:true,cancel_preserves_applied_URL:true,restored,physicalSafari:false});
    }
    const baseline=await loadFamily();await page.evaluate(()=>document.documentElement.style.fontSize='');
    const openDestination=async()=>{await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2001,2002]);};
@@ -2234,7 +2271,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
   await page.locator('#quick-budget').click();await page.locator('#budget-max').fill('abc');assert.equal(await page.locator('#budget-max').getAttribute('aria-invalid'),'true');
   assert(await page.locator('[data-action="apply-budget"]').isDisabled(),'invalid budget cannot be committed');
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0,'invalid budget starts no search');
-  await page.locator('[data-action="close-modal"]').click();const initialInvalidBudgetBlocked=true;
+  await page.locator('#inline-search-budget [data-action="cancel-inline-search-picker"]').click();const initialInvalidBudgetBlocked=true;
   await page.locator('#search-form [data-action="destination"]').click();
   assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),0,'approved direction begins with the current country and resorts');
   await page.screenshot({path:path.join(evidence,`destination-compact-${width}.png`)});

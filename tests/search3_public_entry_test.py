@@ -131,6 +131,7 @@ class PublicEntryTest(unittest.TestCase):
                 self.profile(profile)
                 html, status = self.render(route=prefix + "/poisk-turov/")
                 self.assertEqual(status["status"], 200)
+                self.assertNotIn("data-next-inline-pickers", html)
                 page = Page(html)
                 headers = [attrs for tag, attrs in page.nodes if tag == "header"]
                 self.assertEqual([attrs.get("class") for attrs in headers], ["at-global-header header"])
@@ -216,7 +217,7 @@ v2_render_site_header('8 (800) 100-61-50', '+78001006150', $argv[3]);
         self.assertEqual(status["status"], 503)
         self.assertNotIn("<script", html)
 
-    def test_preview_body_and_graph_match_retained_php_outside_shared_header(self):
+    def test_preview_retains_body_and_graph_with_shared_header_and_next_form_hook(self):
         self.assertEqual(hashlib.sha256(BASELINE.read_bytes()).hexdigest(), "159060195fa7a41e6a95f5e8e0fb302f04c6c94c9e49b5c1845eee9210626454",
                          "retained entry fixture is exact 189d1eac source, not a reimplementation")
         baseline = Path(self.tmp.name) / "baseline"
@@ -229,7 +230,12 @@ v2_render_site_header('8 (800) 100-61-50', '+78001006150', $argv[3]);
             normalized, count = re.subn(r'<header class="at-global-header header">.*?</header>',
                                         '<header class="header" data-site-header-slot></header>', after, count=1, flags=re.S)
             self.assertEqual(count, 1)
-            self.assertEqual(normalized, before, "preview changed outside its approved shared header for " + query)
+            form = '<form id="search-form" class="search-box">'
+            next_form = '<form id="search-form" class="search-box" data-next-inline-pickers>'
+            self.assertEqual(before.count(form), 1)
+            self.assertEqual(after.count(next_form), 1)
+            expected = before.replace(form, next_form, 1)
+            self.assertEqual(normalized, expected, "unexpected preview markup change for " + query)
 
 
 if __name__ == "__main__":

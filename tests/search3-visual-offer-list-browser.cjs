@@ -39,7 +39,7 @@ const server=http.createServer((req,res)=>{
    },{state,zoom});
    assert.equal(record.overflow,false,state+' text'+zoom+' fits the document');
    if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
-   else{assert(record.values.every(value=>value.fullText),'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
+   else{const clipped=record.values.filter(value=>!value.fullText);assert.deepEqual(clipped,[],'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
    density.push(record);return record;
   };
   const reachable=async(control,label)=>{
@@ -86,8 +86,36 @@ const server=http.createServer((req,res)=>{
    assert(await page.locator('#search-edit-note').isVisible());assert.doesNotMatch(editSearchNotice,/Условия изменены/,'opening the unchanged applied search does not assert a change');assert.match(editSearchNotice,/Найти туры/,'the explicit search action is explained');
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
+   const findPosition=()=>page.locator('#search-form .search-submit').evaluate(el=>{
+    const rect=el.getBoundingClientRect();return {x:rect.x+scrollX,y:rect.y+scrollY};
+   });
    for(const name of ['departure','destination','dates','nights','guests','meals','budget']){
-    await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
+    const findBefore=width>1100&&name==='guests'?await findPosition():null;
+    await page.locator(`#search-form [data-action="${name}"]`).click();
+    if(name==='guests'||name==='budget'){
+     const panel=page.locator('#inline-search-'+name);
+     await panel.waitFor({state:'visible'});
+     assert.equal(await page.locator('#modal').isVisible(),false);
+     if(name==='guests'){
+      if(findBefore)assert.deepEqual(await findPosition(),findBefore,'opening desktop guests keeps Find in place');
+      await panel.locator('#inline-children').selectOption('1');
+      assert(await panel.locator('[data-action="apply-guests"]').isDisabled(),'a new child requires an explicit age');
+      await panel.locator('[data-inline-child-age="0"]').selectOption('0');
+      assert(await panel.locator('[data-action="apply-guests"]').isEnabled(),'infants use a valid age of zero');
+     }else{
+      await panel.locator('#budget-min').fill('200 000');
+      await panel.locator('#budget-max').fill('150 000');
+      assert(await panel.locator('[data-action="apply-budget"]').isDisabled(),'reversed bounds cannot be applied');
+      await panel.locator('[data-action="budget-preset"][data-value="200000"]').click();
+      assert(await panel.locator('[data-action="apply-budget"]').isEnabled(),'preset replaces the invalid draft');
+     }
+     await shot(name);
+     await panel.locator('[data-action="cancel-inline-search-picker"]').click();
+     await panel.waitFor({state:'hidden'});
+     if(findBefore)assert.deepEqual(await findPosition(),findBefore,'closing desktop guests keeps Find in place');
+     continue;
+    }
+    await page.locator('#modal').waitFor({state:'visible'});await shot(name);
     if(name==='dates'){
      const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});
      if(width===430||width===768){
@@ -110,9 +138,6 @@ const server=http.createServer((req,res)=>{
       const apply=await reachable(page.locator('#modal [data-action="apply-dates"]'),'calendar Apply text'+zoom);calendarContext.push({zoom,...scope,apply});await shot('dates-context-text'+zoom);
      }
      await page.evaluate(()=>{document.documentElement.style.fontSize='';window.__compactCalendarFocus?.focus({preventScroll:true});delete window.__compactCalendarFocus;});await body.evaluate((el,scroll)=>el.scrollTop=scroll,initialScroll);
-    }
-    if(name==='guests'){
-     await page.locator('[data-action="children-plus"]').click();await page.locator('[data-action="child-age"]').first().click();await shot('child-age');await page.locator('#modal-back').click();
     }
     await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
    }
@@ -202,12 +227,11 @@ const server=http.createServer((req,res)=>{
      await page.locator('#hotel-900001').waitFor();
      await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
      await page.locator('#search-form [data-action="guests"]').click();
-     await page.locator('[data-action="adults-plus"]').click();
-     await page.locator('[data-action="child-age"][data-index="1"]').click();
-     await page.locator('[data-action="age-pick"][data-value="12"]').click();await page.locator('[data-action="apply-age"]').click();
-     assert.match(await page.locator('#guest-count-summary').textContent(),/3 взр\..*2 реб\./);
+     await page.locator('#inline-adults').selectOption('3');
+     assert.equal(await page.locator('[data-inline-child-age="0"]').inputValue(),'0');
+     await page.locator('[data-inline-child-age="1"]').selectOption('12');
      await reachable(page.locator('[data-action="apply-guests"]'),'family Apply tourists');await page.locator('[data-action="apply-guests"]').click();
-     assert.equal(await page.locator('#guests-label').textContent(),'3 взр. · 2 реб.');assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
+     assert.equal(await page.locator('#guests-label').textContent(),'3 взрослых и 2 ребёнка');assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года · 12 лет');
      await page.locator('#search-form').scrollIntoViewIfNeeded();await capture('form');
      await reachable(page.locator('#search-form .search-submit'),'family offline Find');await page.locator('#search-form .search-submit').click();
      await page.waitForFunction(()=>document.querySelector('#hotel-900001 .starting-price')?.textContent.includes('3 взр.'));
@@ -263,7 +287,13 @@ const server=http.createServer((req,res)=>{
     await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=journey`);
     const meal=page.locator('#quick-meal'),budget=page.locator('#quick-budget');
     await page.locator('.search-submit:not(:disabled)').waitFor();
-    if(width===430){assert(await budget.isVisible(),'budget is directly available as a secondary action');await reachable(budget,'secondary budget');}
+    await reachable(budget,'direct budget');
+    const mealBox=await meal.boundingBox(),budgetBox=await budget.boundingBox();
+    assert(Math.abs(mealBox.y-budgetBox.y)<=1 && mealBox.x+mealBox.width<=budgetBox.x+1,'meal and budget are side by side');
+    await budget.click();
+    await page.locator('#inline-search-budget [data-action="budget-preset"][data-value="200000"]').click();
+    await page.locator('#inline-search-budget [data-action="apply-budget"]').click();
+    assert.match(await budget.innerText(),/200\s*000/);
     await meal.click();
     await page.locator('[data-meal-choice][value="Всё включено"]').check();
     await page.locator('[data-action="apply-meals"]').click();
@@ -273,7 +303,7 @@ const server=http.createServer((req,res)=>{
     assert.equal((await card.locator('.starting-price strong').innerText()).replace(/\D/g,''),'161600');
     assert.equal(new URL(page.url()).searchParams.get('meals'),'Всё включено');
     await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
-    if(width===430)assert(await budget.isVisible(),'secondary budget remains directly available after reopening the search');
+    assert.match(await budget.innerText(),/200\s*000/,'confirmed budget remains visible after reopening the search');
     assert.equal(await meal.locator('strong').innerText(),'Всё включено');
     await meal.click();
     assert(await page.locator('[data-meal-choice][value="Всё включено"]').isChecked());

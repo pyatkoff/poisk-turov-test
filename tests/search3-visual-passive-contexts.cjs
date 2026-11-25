@@ -34,7 +34,7 @@ function observe(source,s){
  const oldPrices=new Map([['old',5]]),oldLoads=new Map([['old','complete']]);
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:'2026-10-16',adults:2,ages:s.noAges?[]:[0,17],minNights:7,maxNights:10};
  ctx={window:{},requestAnimationFrame:()=>0,departureRangeText:(a,b)=>a+'–'+b,partyLabel:()=>'2 взрослых',Math,Number,String,Array,Set,Map,JSON,Date,structuredClone,esc,$:node,$$:selector=>{const n=node(selector);n.value='choice';return [n];},
-  modalType:s.type||'offer',selectedOffer:s.noSelection?null:{key:'previous',raw:{}},savedSelection:null,
+  modalType:s.type||'offer',selectedOffer:s.noSelection?null:{key:'previous',raw:{}},savedSelection:null,inlineSearchPicker:null,
   hotels:[{id:7,photos:['p1']}],providerViews:new Map(s.noView?[]:[['o1',{...view,offer:s.rawMismatch?{...offer,raw:{identity:'old'}}:offer}]]),
   offerFromKey:call('offerFromKey',()=>s.noOffer?null:s.currentMismatch?{...offer,raw:{identity:'other'}}:offer),
   innerWidth:s.mobile?390:1280,state:{search,selectedDate:s.selected?'2026-10-15':null,filters:{hotelId:7,resorts:[9],q:'old',meals:['AI'],stars:[5],min:50000,max:200000}},
