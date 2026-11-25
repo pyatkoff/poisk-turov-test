@@ -105,9 +105,28 @@ function make(source,hotels){
  vm.runInContext(source.match(/^const matchesMeal=[^\n]+/m)[0]+'\n'+section(source,'const hotelPlaces=','function recommendedHotelScore('),context);
  if(source.includes('function calendarMinimums('))vm.runInContext(section(source,source.includes('function positivePriceMinimum2(')?'function positivePriceMinimum2(':'function calendarMinimums(','function filterCount('),context);
  else vm.runInContext(section(source,'function minimumForDay(','function filterCount('),context);
- vm.runInContext('const originalHotelOffers=hotelOffers;hotelOffers=function(...args){globalThis.scans++;return originalHotelOffers(...args);};',context);
- context.scans=0;
- context.run=(days,options,observations)=>{context.scans=0;return Array.from(context.calendarMinimums?context.calendarMinimums(days,options,observations):days.map(d=>context.calendarMinimum(d,options,observations)));};
+ vm.runInContext(`
+  const originalHotelOffers=hotelOffers,originalHotelMatch=hotelMatch;
+  let scanningHotelOffers=false;
+  hotelOffers=function(...args){
+   globalThis.scans++;
+   scanningHotelOffers=true;
+   try{return originalHotelOffers(...args);}finally{scanningHotelOffers=false;}
+  };
+  hotelMatch=function(...args){
+   if(!scanningHotelOffers)globalThis.scans++;
+   return originalHotelMatch(...args);
+  };
+  if(typeof hotelOfferPredicate==='function'){
+   const originalOfferPredicate=hotelOfferPredicate;
+   hotelOfferPredicate=function(...args){
+    globalThis.offerPredicates++;
+    return originalOfferPredicate(...args);
+   };
+  }
+ `,context);
+ context.scans=0;context.offerPredicates=0;
+ context.run=(days,options,observations)=>{context.scans=0;context.offerPredicates=0;return Array.from(context.calendarMinimums?context.calendarMinimums(days,options,observations):days.map(d=>context.calendarMinimum(d,options,observations)));};
  return context;
 }
 // Original per-day algorithm remains the independent reference for focused CI.
@@ -142,8 +161,29 @@ if(compare>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compa
 assert.equal(digest,'53766c9a1cd0fd38f3ee6f9a203889169462400fb9738c3f2ee697e3b2a6fad1','pinned original price sequences');
 const changed=mutated=>JSON.stringify(records(mutated,false))!==JSON.stringify(actual);
 assert(changed(source.replace('if(!saved.has(point.date))','if(true)')),'first duplicate saved observation matters');
-assert(changed(source.replace('ignoreDate:true,onlyFavorites:false','ignoreDate:true,onlyFavorites:true')),'calendar ignores shortlist');
+assert(changed(source.replace('hotelMatch(hotel,f,s,false)','hotelMatch(hotel,f,s,true)')),'calendar ignores shortlist');
 assert(changed(source.replace('if(destinationIds(f).length<2&&data.observationScopeSupported(s,f))','if(true)')),'unsupported saved scope remains excluded');
+
+// Saved observations require no offer matcher. Current offers share one
+// matcher, including inherited offer slots and holes skipped by native filter.
+{
+ const hotels=fixture(),ctx=make(source,hotels),days=[day(1),day(2)];
+ const sourceOffers=hotels[0].offers;
+ const inherited=Object.assign(Object.create(Array.prototype),{1:sourceOffers[0]});
+ const offers=new Array(4);
+ Object.setPrototypeOf(offers,inherited);
+ offers[3]=sourceOffers[1];
+ hotels[0].offers=offers;
+ const prices=ctx.run(days,{},[]);
+ assert.equal(ctx.offerPredicates,1);
+ assert.equal(ctx.scans,hotels.length);
+ assert.deepEqual(prices,reference(ctx,days,{},[]),'sparse/inherited offer slots retain price minima');
+ assert.deepEqual(ctx.run(days,{calendarHotels:new Set(hotels)},[]),prices,'iterable hotel rows retain price minima');
+ const saved=[{date:days[0],price:85000}];
+ assert.deepEqual(ctx.run(days,{calendarHotels:[]},saved),[85000,null]);
+ assert.equal(ctx.offerPredicates,0);
+ assert.equal(ctx.scans,0);
+}
 
 // The two fixed-arity merge owners replace only ephemeral candidate/filter
 // arrays. Keep the native validation order and every positive finite result.

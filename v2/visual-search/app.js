@@ -354,9 +354,14 @@ function minimumKnownPrice(prices){return prices.reduce((minimum,price)=>price!=
 function calendarMinimums(days,options={},observations=[]){
  if(!days.length)return[];
  const s=options.search||state.search,f=options.filters||state.filters,span=[...days].sort(),requested=new Set(days),minimums=new Map(),saved=new Map();
- const search={...s,from:span[0],to:span.at(-1)};
- for(const h of options.calendarHotels||hotels)for(const o of hotelOffers(h,{...options,search,day:'',selectedDate:null,ignoreDate:true,onlyFavorites:false,sort:false})){
-  if(requested.has(o.day))minimums.set(o.day,Math.min(minimums.get(o.day)??Infinity,o.total));
+ let matches;
+ const collect=offer=>{
+  if(matches(offer)&&requested.has(offer.day))minimums.set(offer.day,Math.min(minimums.get(offer.day)??Infinity,offer.total));
+ };
+ for(const hotel of options.calendarHotels||hotels){
+  if(!hotel||!hotelMatch(hotel,f,s,false))continue;
+  matches??=hotelOfferPredicate(s,f,span[0],span.at(-1));
+  (hotel.offers||[]).forEach(collect);
  }
  // Keep the first saved observation for a date, just as the old find() did.
  if(destinationIds(f).length<2&&data.observationScopeSupported(s,f))for(const point of observations)if(!saved.has(point.date))saved.set(point.date,point.price);
