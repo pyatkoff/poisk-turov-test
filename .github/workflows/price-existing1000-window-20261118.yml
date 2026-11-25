@@ -1,62 +1,31 @@
-name: PRICE existing posts and XML restore compatible editor and publish saved prices
+name: PRICE finish original TV64957 pair and XML
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
     paths: ['.github/workflows/price-existing1000-window-20261118.yml']
 permissions:
   contents: read
-  issues: read
   actions: read
+  issues: read
 jobs:
-  apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ae3bb2cf29fbbf24ab4abe75ce5e3ac29dd6c67b'
+  inspect:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '955f87fcd707670603b2607ed1177e260285a559'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 85
+    timeout-minutes: 12
     steps:
-      - name: Check current PRICE admission and original carrier
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
-          gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
-          python3 - <<'PY'
-          import hashlib,json,os,pathlib
-          handoff=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'price-handoff.json').read_text())
-          body=handoff['body']
-          assert handoff['user']['login']=='pyatkoff'
-          assert handoff['issue_url'].endswith('/max-search-bot/issues/1566')
-          assert len(body)>100
-          assert 'общий редактор возвращён PRICE' in body
-          assert 'writer пилота завершён' in body and 'Повторных запусков нет' in body
-          PY
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Obtain the validated, immutable PRICE sources
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          repository: pyatkoff/max-search-bot
-          ref: dfc6a7cd8241e1d691ac823cdb3c3defdfa4eec3
-          path: hotel-price-publisher
-          persist-credentials: false
-      - name: Verify the accepted bundle and code-only installer
+      - name: Validate original recovery adapter
+        run: php -l tools/price-pending-recovery/finish.php && python3 -m py_compile tools/price-pending-recovery/*.py
+      - name: Verify original run and shared publisher admission
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/pulls/5218 --jq 'select(.merged and .merge_commit_sha == "1f1be395195d06ea08c0b28e1e6a04efad0071e0") | .merge_commit_sha' | grep -Fxq 1f1be395195d06ea08c0b28e1e6a04efad0071e0
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45717315726 --jq 'select(.head_sha == "76ae06e507a751eb535724221997faed23549c1f" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45717315814 --jq 'select(.head_sha == "76ae06e507a751eb535724221997faed23549c1f" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45712137845 --jq 'select(.head_sha == "58f15d1a147353a4b807f122525d75e1f4f35c1c" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5
-          php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          php -l tools/price-hook-reviewed-pass/install.php
-          php tools/price-hook-reviewed-pass/install.php --self-test
+          CHECK_ONLY: '1'
+        run: python3 tools/price-pending-recovery/run.py
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -82,141 +51,12 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Install accepted code under the existing PRICE journal lock
+      - name: Complete only the original pending pair
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          check_window() {
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq 'select(.updated_at == "2026-11-25T22:45:48Z" and .body == "PR1732: установлено, выпуск свободен") | .id' | grep -Fxq 7077907800
-            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq 'select(.updated_at == "2026-11-25T21:27:18Z" and .body == "PR1729: установлено, выпуск свободен") | .id' | grep -Fxq 6818332618
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
-          }
-          check_window
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30)
-          remote="$DEPLOY_USER@$DEPLOY_HOST"
-          stage="$(ssh "${opts[@]}" "$remote" 'umask 077 && mktemp -d /var/www/anytoour/data/channel-post-operations/price-hook-1732-staged.XXXXXXXX')"
-          [[ "$stage" =~ ^/var/www/anytoour/data/channel-post-operations/price-hook-1732-staged[.][A-Za-z0-9]{8}$ ]]
-          scp "${opts[@]}" tools/price-hook-reviewed-pass/install.php "$RUNNER_TEMP/monitor-price-hook.php" "$remote:$stage/"
-          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-old $stage/monitor-price-hook.php" > "$RUNNER_TEMP/price-install-admission.json"
-          cat "$RUNNER_TEMP/price-install-admission.json"
-          scp "${opts[@]}" "$RUNNER_TEMP/price-install-admission.json" "$remote:$stage/"
-          check_window
-          ssh "${opts[@]}" "$remote" "php $stage/install.php install $stage/monitor-price-hook.php $stage/price-install-admission.json"
-          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-new $stage/monitor-price-hook.php"
-      - name: Inspect live roster then publish saved minima until a full scan or window end
-        env:
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
-          import base64, datetime, gzip, hashlib, json, os, pathlib, re, subprocess, sys, time
-          import xml.etree.ElementTree as ET
-          from urllib.request import urlopen
-          from zoneinfo import ZoneInfo
-          os.umask(0o077)
-          root=pathlib.Path('/var/www/anytoour/data')
-          app=root/'www/app.anytoour.ru'
-          native=root/'www/anytoour.ru/data'
-          hook=native/'monitor-price-hook.php'
-          journal=root/'channel-post-operations/monitor-price-after-collection-v1.jsonl'
-          art=root/'channel-post-operations'/('priority1000-'+sys.argv[1])
-          art.mkdir(exist_ok=False)
-          def digest(p):
-              with p.open('rb') as f:
-                  h=hashlib.sha256()
-                  for block in iter(lambda:f.read(1048576),b''): h.update(block)
-              return h.hexdigest()
-          def check(condition, message):
-              if not condition: raise RuntimeError(message)
-          def pins():
-              for name,sha in [('monitor-price-hook.php','1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
-                  p=native/name
-                  check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='58f15d1a147353a4b807f122525d75e1f4f35c1c','runtime_changed')
-          def window_open():
-              base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
-              def comment(comment_id):
-                  with urlopen(base+str(comment_id),timeout=15) as response:
-                      return json.load(response)
-              release=comment(7077907800)
-              content_release=comment(6818332618)
-              permit=comment(7029866773)
-              return (release['user']['login']=='pyatkoff'
-                      and release['updated_at']=='2026-11-25T22:45:48Z'
-                      and release['body']=='PR1732: установлено, выпуск свободен'
-                      and content_release['user']['login']=='pyatkoff'
-                      and content_release['updated_at']=='2026-11-25T21:27:18Z'
-                      and content_release['body']=='PR1729: установлено, выпуск свободен'
-                      and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
-          def feeds(updates=()):
-              info={}
-              for key,size in [('telegram',1055),('max',1055),('all',2110)]:
-                  name='hotel-posts-'+key+'.xml'
-                  p=app/'feed'/name
-                  data=p.read_bytes()
-                  public=subprocess.check_output(['curl','-fsS','--max-time','40','https://app.anytoour.ru/feed/'+name])
-                  check(public==data,'public_price_feed_mismatch_'+key)
-                  rows=ET.fromstring(data).findall('.//offer')
-                  check(len(rows)==len({o.get('id') for o in rows})==size,'feed_size_or_duplicate')
-                  by_id={entry.get('id'):entry for entry in rows}
-                  for update in updates:
-                      hotel=update['tourvisor_hotel_id']
-                      observed=update['posts'][0]['monitor_price']['observed_at']
-                      local=datetime.datetime.fromisoformat(observed).astimezone(ZoneInfo('Europe/Moscow'))
-                      stamp=local.strftime('%d.%m.%Y, %H:%M МСК')
-                      prefixes={'max':('max',),'telegram':('tg',),'all':('max','tg')}[key]
-                      for prefix in prefixes:
-                          entry=by_id[f'{prefix}_{hotel}']
-                          check(entry.findtext('price')==str(update['price']),'published_price_mismatch')
-                          check(stamp in entry.findtext('description',''),'published_observation_mismatch')
-                  info[key]=hashlib.sha256(data).hexdigest()
-              return info
-          def native_run(stage, inspect=False):
-              print('NATIVE_START',stage,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
-              with (art/(stage+'.raw')).open('xb') as f:
-                  proc=subprocess.run(['php',str(hook)]+(['--inspect'] if inspect else []),stdout=f)
-              rows=[x.split('=',1)[1] for x in (art/(stage+'.raw')).read_text().splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')]
-              check(len(rows)==1,'native_receipt_missing')
-              v=json.loads(rows[0])
-              print('NATIVE',stage,json.dumps({k:v.get(k) for k in ('ok','error','roster_pairs','updated_pairs','eligible_pairs','held_pairs','scanned_pairs','remaining_unscanned_pairs','deferred_counts')}),flush=True)
-              return proc.returncode,v
-          def report(updates=()):
-              print('HANDOFF',json.dumps({'journal':digest(journal),'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
-          check(window_open(),'price_editor_window_closed')
-          pins()
-          print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
-          report()
-          baseline=feeds()
-          pin=digest(journal)
-          code,ad=native_run('inspect',True)
-          check(code==0 and ad.get('ok') and ad.get('roster_pairs')==ad.get('scanned_pairs')==len(set(ad.get('verified_ids',[])))==1000 and ad.get('updated_pairs')==0,'initial_admission_failed')
-          check(feeds()==baseline and digest(journal)==pin,'preimages_changed_during_inspection')
-          start=time.monotonic()
-          seen=set()
-          for batch in range(1,26):
-              if time.monotonic()-start>3000: break
-              if not window_open():
-                  print('WINDOW_HANDOFF_CHANGED',batch,flush=True)
-                  break
-              pins()
-              code,r=native_run('pass-'+str(batch))
-              for update in r.get('updates',[]):
-                  posts=update['posts']
-                  check(len(posts)==2 and {p.get('platform') for p in posts}=={'telegram','max'} and all(all(p.get(k) is True for k in ('body_photo_button_verified','existing_message_reused','price_link_verified','content_updated')) for p in posts),'pair_receipts_unconfirmed')
-                  check(update['operation'] not in seen,'duplicate_operation')
-                  seen.add(update['operation'])
-              check(r['updated_pairs']==len(r['updates']),'update_count_mismatch')
-              print('PAIR_IDS',batch,[u['tourvisor_hotel_id'] for u in r['updates']], 'verified_operations',len(seen),flush=True)
-              report(r.get('updates',[]))
-              print('PAIR_PRICES',batch,json.dumps([[u['tourvisor_hotel_id'],u['price'],u['posts'][0]['monitor_price']['observed_at']] for u in r.get('updates',[])]),flush=True)
-              check(code==0 and r.get('ok') and r.get('roster_pairs')==1000 and all(r.get(k)==0 for k in ('supplier_calls','new_posts','site_writes')),'native_terminal_stop')
-              if r.get('scanned_pairs')==1000 or not r.get('updated_pairs'): break
-          print('WINDOW_TERMINAL',len(seen),flush=True)
-          PY
-      - name: Cleanup connection material
+        run: python3 tools/price-pending-recovery/run.py
+      - name: Cleanup original connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
