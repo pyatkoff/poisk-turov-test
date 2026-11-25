@@ -36,7 +36,13 @@ class Preview(Enum):
 
 ROUTE = Preview.NEXT.route
 NAME = Preview.NEXT.name_on_site
+NEXT_PUBLIC_BRIDGE_FILES = frozenset({
+    'visual-search/public-entry-v1.php',
+    'visual-search/entry-v1.php',
+    'visual-search/public-config-v1.js',
+})
 NEXT_PUBLIC_ROUTE_COUNTS = {
+    'poisk-turov/index.php': 3,
     'visual-search/public-entry-v1.php': 3,
     'visual-search/entry-v1.php': 2,
     'visual-search/public-config-v1.js': 2,
@@ -69,9 +75,12 @@ def need(value, reason):
 def route_transform(files, preview=Preview.NEXT):
     if preview is not Preview.NEXT:
         return preview.value + '-route-v1'
-    required = set(NEXT_PUBLIC_ROUTE_COUNTS)
-    present = required.intersection(files)
-    need(not present or present == required, 'partial_next_public_bridge')
+    files = set(files)
+    bridge = set(NEXT_PUBLIC_BRIDGE_FILES)
+    present = bridge.intersection(files)
+    need(not present or present == bridge, 'partial_next_public_bridge')
+    if present:
+        need(set(NEXT_PUBLIC_ROUTE_COUNTS).issubset(files), 'partial_next_public_bridge')
     return 'next-route-v2' if present else 'next-route-v1'
 
 
