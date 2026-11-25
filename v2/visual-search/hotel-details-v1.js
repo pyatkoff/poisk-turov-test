@@ -165,7 +165,9 @@ async function loadRoomLayouts(section,button){
  }
 }
 function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceInfo=roomOfferPrice(o),layoutId=null}={}){
- const selected=context.hotelOfferDraft?.hotelId===o.hotelId&&context.hotelOfferDraft?.key===o.key;
+ const draft=context.hotelOfferDraft;
+ const hasSelection=!!draft&&draft.hotelId===o.hotelId;
+ const selected=hasSelection&&draft.key===o.key;
  const meal=esc(displayMealLabel(o)),key=esc(o.key),price=priceInfo.pending?'Цена уточняется':money(priceInfo.total);
  const description=esc(roomOfferDescription(o,price));
  const note=priceInfo.note;
@@ -181,7 +183,7 @@ function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceIn
   </div>
   <div class="hotel-room-price" ${selected?'hidden':''}>
    <strong>${price}</strong>${common.party?'':`<small class="room-offer-party">${esc(guestsText(o))}</small>`}
-   <button type="button" class="${selected?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${key}" aria-pressed="${selected}" aria-label="Проверить цену: ${description}">${selected?'✓ Ваш выбранный тур':'Проверить цену'}</button>
+   <button type="button" class="${hasSelection?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${key}" aria-pressed="${selected}" aria-label="Проверить цену: ${description}">${selected?'✓ Ваш выбранный тур':'Проверить цену'}</button>
    ${roomPriceDifferenceHTML(priceInfo.total,minimum)}
    ${note&&note!==sharedDemoNote?`<small class="room-offer-price-status">${esc(note)}</small>`:''}
   </div></div>`;
@@ -235,21 +237,31 @@ function updatePriceNote(parent,className,text,before=null){
   note.className=className;note.textContent=text;parent.insertBefore(note,before);
  }
 }
-function syncRoomPriceComparison(cards,offers,comparison=roomPriceComparison(offers)){
- const {prices,minimum,sharedDemoNote}=comparison;
+function syncRoomRowPrice(row,price,{minimum,sharedDemoNote}){
+ const panel=row.querySelector('.hotel-room-price'),amount=panel.querySelector('strong');
+ const copy=price.pending?'Цена уточняется':money(price.total);
+ if(amount.textContent!==copy)amount.textContent=copy;
+ const description=roomOfferDescription(price.offer,copy),details=row.querySelector('[data-action="offer"]'),choose=row.querySelector('[data-action="select-hotel-offer"]');
+ if(details.getAttribute('aria-label')!=='Подробности тура: '+description)details.setAttribute('aria-label','Подробности тура: '+description);
+ if(choose.getAttribute('aria-label')!=='Проверить цену: '+description)choose.setAttribute('aria-label','Проверить цену: '+description);
+ updatePriceNote(panel,'room-offer-price-status',price.note===sharedDemoNote?'':price.note);
+ updatePriceNote(panel,'room-price-difference',roomPriceDifference(price.total,minimum),panel.querySelector('.room-offer-price-status'));
+}
+function syncRoomPriceComparison(cards,offers,comparison=roomPriceComparison(offers),freshRows=null){
+ const {prices,minimum}=comparison;
+ if(freshRows){
+  for(const row of freshRows){
+   const price=prices.get(row.dataset.offerKey);
+   if(price)syncRoomRowPrice(row,price,comparison);
+  }
+  return comparison;
+ }
  for(const card of cards.querySelectorAll('.hotel-room-card')){
   let groupMinimum=Infinity;
   for(const row of card.querySelectorAll('.room-offer-choice')){
    const price=prices.get(row.dataset.offerKey);if(!price)continue;
    groupMinimum=Math.min(groupMinimum,price.pending?NaN:price.total);
-   const panel=row.querySelector('.hotel-room-price'),amount=panel.querySelector('strong');
-   const copy=price.pending?'Цена уточняется':money(price.total);
-   if(amount.textContent!==copy)amount.textContent=copy;
-   const description=roomOfferDescription(price.offer,copy),details=row.querySelector('[data-action="offer"]'),choose=row.querySelector('[data-action="select-hotel-offer"]');
-   if(details.getAttribute('aria-label')!=='Подробности тура: '+description)details.setAttribute('aria-label','Подробности тура: '+description);
-   if(choose.getAttribute('aria-label')!=='Проверить цену: '+description)choose.setAttribute('aria-label','Проверить цену: '+description);
-   updatePriceNote(panel,'room-offer-price-status',price.note===sharedDemoNote?'':price.note);
-   updatePriceNote(panel,'room-price-difference',roomPriceDifference(price.total,minimum),panel.querySelector('.room-offer-price-status'));
+   syncRoomRowPrice(row,price,comparison);
   }
   const group=card.querySelector('.room-overview-bottom');
   if(group){

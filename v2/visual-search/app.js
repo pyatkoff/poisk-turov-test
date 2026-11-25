@@ -1108,7 +1108,11 @@ function syncHotelOfferSelection(id,inventory=hotelOffers(hotels.find(h=>h.id===
  let selected=offers.find(o=>hotelOfferDraft?.hotelId===id&&hotelOfferDraft.key===o.key)||null;
  let priceStatus=selected?cardPriceNote(selected):'';
  if(selected&&selected.raw===selectedOffer?.raw&&searchKey(selectedOffer?.search||{})===searchKey(state.search)&&!selectedOffer?.pricePending&&!['anex','andromeda'].includes(selectedOffer?.provider)&&selectedOffer?.key===selected.key&&sameSelectedTourConditions(selected,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===selected.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError){selected=selectedOffer;priceStatus=selectedPriceStatus(selected);}
- $$('.room-offer-choice').forEach(row=>{
+ // Fresh markup already has current prices and controls. Attach live state to its selected or entry tour.
+ const initialKey=comparison&&(selected?.key||hotelDetailsView?.entryKey);
+ const roomRows=!comparison||initialKey?$$('.room-offer-choice'):[];
+ const rows=comparison?roomRows.filter(row=>row.dataset.offerKey===initialKey):roomRows;
+ rows.forEach(row=>{
   const active=row.dataset.offerKey===selected?.key;row.classList.toggle('selected',active);
   if(active)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
   const label=row.querySelector('.room-choice-selected'),panel=row.querySelector('.hotel-room-price');
@@ -1123,7 +1127,7 @@ function syncHotelOfferSelection(id,inventory=hotelOffers(hotels.find(h=>h.id===
   syncHotelFlightSelection(row,active?selected:entry,preserveFlights);
  });
  const cards=$('.hotel-room-cards');
- if(cards)comparison=hotelDetailsOwner().syncRoomPriceComparison(cards,offers,comparison);
+ if(cards&&(!comparison||rows.length))comparison=hotelDetailsOwner().syncRoomPriceComparison(cards,offers,comparison,comparison?rows:null);
  const total=$('#hotel-detail-min'),status=$('#hotel-detail-price-status'),button=$('#hotel-detail-offers');if(!total||!status||!button)return;
  const caption=total.previousElementSibling;if(caption)caption.textContent=selected?[roomLabel(selected),displayMealLabel(selected),guestsText(selected)].join(' · '):'Весь тур · '+guestsText();
  if(selected){
