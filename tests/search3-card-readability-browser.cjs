@@ -11,20 +11,28 @@ const cardHtml = `
         <div class="search3-hotel-heading"><h3 class="hotel-title">LONG BEACH RESORT HOTEL WITH A LONG NAME</h3><span class="search3-hotel-category">5★</span></div>
         <p class="hotel-place">Турция · Анталья · Сиде</p>
         <div class="hotel-decision-line"><span class="hotel-decision-rating">★ 4,7/5</span><span class="hotel-decision-sea">До моря 350 м</span></div>
-        <div class="hotel-bottom"><div class="hotel-best-offer"><small>За весь тур</small><strong class="hotel-price">от 148 500 ₽</strong><small class="hotel-price-context"><span>2 взрослых</span></small></div></div>
-        <div class="search3-hotel-facts">
-          <span><small>Вылет</small><b>12 сент. 2026</b></span>
-          <span><small>Ночей</small><b>9</b></span>
-          <span><small>Питание</small><b>Всё включено</b></span>
-          <span><small>Рейс</small><b>Чартер</b></span>
+      </div>
+    </div>
+    <div class="hotel-tours">
+      <div class="tour-row">
+        <div class="tour-meta">
+          <small>Дата вылета · 9 ноч.</small><strong>12 сент. 2026</strong>
+          <div class="tour-facts">
+            <span class="tour-fact"><small>Питание</small><b>Всё включено</b></span>
+            <span class="tour-fact"><small>Номер</small><b>Standard</b></span>
+          </div>
+          <div class="tour-secondary-facts">
+            <span class="tour-fact"><small>Оператор</small><b>Демо-оператор</b></span>
+            <span class="tour-fact"><small>Рейс</small><b>Чартер</b></span>
+          </div>
         </div>
-        <div class="search3-hotel-action"><button class="search3-show-tours" type="button" data-search3-show-label="Показать 16 туров">Показать 16 туров</button></div>
+        <div class="tour-action"><small>Итого за тур</small><b class="hotel-price">148 500 ₽</b><button class="direct-tour" type="button">Выбрать</button></div>
       </div>
     </div>
   </article>`;
 
 async function verifyToolbarBoundary(browser) {
-  const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 430, height: 900 } });
   // This fixture never talks to production search, lead delivery or analytics.
   await page.route('**/*', route => {
     const url = route.request().url();
@@ -33,10 +41,7 @@ async function verifyToolbarBoundary(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2MobileResultsFiltersV1);
-    // Aborted catalogue requests finish asynchronously and clear loading options.
-    // Wait for that fixture-only failure before capturing parameters for resize.
-    await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
+    await page.waitForSelector('#tourSearch');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch');
       for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
@@ -54,36 +59,23 @@ async function verifyToolbarBoundary(browser) {
         { id: 'readability-fixture', name: 'Toolbar fixture', price: 148500, tours: [] }
       ] } }));
     }, cardHtml);
-    await page.waitForSelector('.search3-mobile-toolbar');
-    await page.evaluate(() => { window.__toolbarBoundaryNode = document.querySelector('.search3-mobile-toolbar'); });
+    await page.waitForSelector('#sortResults', { state: 'visible' });
+    await page.evaluate(() => { window.__legacySortBoundaryNode = document.getElementById('sortResults'); });
     const formValues = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a,b) => a[0].localeCompare(b[0])));
     const before = JSON.stringify(await formValues());
-    for (const width of [999,1000,1348,1440,999,430]) {
+    for (const width of [430,760,761,999,1000,1348,1440,430]) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const toolbar = page.locator('.search3-mobile-toolbar');
-      const geometry = await toolbar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__toolbarBoundaryNode }));
-      if (!geometry.sameNode || await toolbar.count() !== 1) throw new Error('TOOLBAR_OWNER_REPLACED ' + width);
-      if (width >= 1000) {
-        if (geometry.display !== 'none' || geometry.height !== 0 || await page.locator('.search3-mobile-sort select').isVisible()) throw new Error('TOOLBAR_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
-        if (!await page.locator('#sortResults').isVisible()) throw new Error('TOOLBAR_NATIVE_SORT_HIDDEN ' + width);
-      } else {
-        if (!await toolbar.isVisible() || !await page.locator('.search3-mobile-filter-slot > .mrf-bar').isVisible()) throw new Error('TOOLBAR_COMPACT_MISSING ' + width);
-        await page.locator('.mrf-open').click();
-        await page.waitForFunction(() => document.querySelector('.mrf-sheet').classList.contains('is-open'));
-        await page.keyboard.press('Escape');
-        if (!await page.locator('.mrf-open').evaluate(node => node === document.activeElement)) throw new Error('TOOLBAR_FOCUS_RETURN ' + width);
-      }
-      if (JSON.stringify(await formValues()) !== before) throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
-      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/toolbar-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
-      console.log('SEARCH3_TOOLBAR_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
+      const sort = page.locator('#sortResults');
+      const geometry = await sort.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__legacySortBoundaryNode }));
+      if (!geometry.sameNode || await sort.count() !== 1) throw new Error('LEGACY_SORT_OWNER_REPLACED ' + width);
+      if (!await sort.isVisible() || geometry.height < 40) throw new Error('LEGACY_NATIVE_SORT_HIDDEN ' + width + ' ' + JSON.stringify(geometry));
+      if (await page.locator('.search3-mobile-toolbar,.search3-mobile-sort').count()) throw new Error('RETIRED_MOBILE_TOOLBAR_OWNER_RETURNED ' + width);
+      if (await page.locator('#results .hotel-card').count() !== 1) throw new Error('LEGACY_RESULT_CARD_LOST ' + width);
+      if (JSON.stringify(await formValues()) !== before) throw new Error('LEGACY_RESULTS_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
+      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/legacy-results-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
+      console.log('SEARCH3_LEGACY_RESULTS_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
     }
-    const native = page.locator('#sortResults'), proxy = page.locator('.search3-mobile-sort select');
-    const values = await native.locator('option').evaluateAll(nodes => nodes.map(node => node.value));
-    await proxy.selectOption(values[1], { force: true });
-    if (await native.inputValue() !== values[1]) throw new Error('TOOLBAR_PROXY_SORT_HANDOFF');
-    await native.selectOption(values[0], { force: true });
-    if (await proxy.inputValue() !== values[0]) throw new Error('TOOLBAR_NATIVE_SORT_HANDOFF');
   } finally { await page.close(); }
 }
 
@@ -100,39 +92,50 @@ async function verifyEmptyLocalRail(browser) {
   });
   try {
     await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2Results &&
+    await page.waitForFunction(() => window.V2Results && window.Search3LocalHotelFilter &&
       document.getElementById('tourSearch').dataset.catalogSource === 'partial');
-    // Reuse the existing deterministic card fixture and execute all real Search3
-    // presentation subscribers. The adapter never invokes external search/lead.
+    // Reuse deterministic card markup for two hotels and execute the current
+    // local-filter subscriber without supplier, lead or analytics traffic.
     await page.evaluate(html => {
       window.V2Results.render = items => {
         const results = document.getElementById('results');
         results.hidden = false;
-        results.innerHTML = items.length ? html : '';
+        results.innerHTML = items.map(item => html
+          .replace('data-hotel-id="readability-fixture"', 'data-hotel-id="' + item.id + '"')
+          .replace('LONG BEACH RESORT HOTEL WITH A LONG NAME', item.name)).join('');
         document.getElementById('resultsTools').hidden = !items.length;
-        document.getElementById('resultsSearchSummary').hidden = !items.length;
+        const summary = document.getElementById('resultsSearchSummary');
+        if (summary) summary.hidden = !items.length;
         window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items } }));
       };
-      window.V2Results.render([{ id: 'readability-fixture', name: 'Empty-filter fixture', price: 148500, tours: [] }]);
+      window.V2Results.render([
+        { id: 'readability-fixture-a', name: 'Alpha fixture hotel', price: 148500, tours: [] },
+        { id: 'readability-fixture-b', name: 'Beta fixture hotel', price: 168500, tours: [] }
+      ]);
     }, cardHtml);
-    const slider = page.locator('[data-s3-price]');
-    await slider.waitFor({ state: 'visible' });
-    await slider.press('Home');
-    await page.waitForFunction(() => !document.querySelector('#results .hotel-card'));
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    if (!await slider.isVisible() || !await page.locator('.results-filter-rail').isVisible()) throw new Error('EMPTY_LOCAL_RAIL_HIDDEN');
-    if (await page.locator('[data-s3-count]').textContent() !== '0') throw new Error('EMPTY_LOCAL_COUNT');
-    for (const width of [1000,1440]) {
+    const filter = page.locator('.search3-hotel-filter input');
+    await filter.waitFor({ state: 'visible' });
+    await filter.fill('Нет такого отеля');
+    await page.waitForFunction(() => [...document.querySelectorAll('#results .hotel-card')].every(card => card.hidden));
+    if (!await page.locator('.results-filter-rail').isVisible()) throw new Error('EMPTY_LOCAL_RAIL_HIDDEN');
+    if (await page.locator('[data-search3-filter-count]').textContent() !== '0') throw new Error('EMPTY_LOCAL_COUNT');
+    for (const width of [1000,1024,1025,1440]) {
       await page.setViewportSize({ width, height: 900 });
-      if (!await slider.isVisible()) throw new Error('EMPTY_LOCAL_RESIZE_HIDDEN ' + width);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const railVisible = await page.locator('.results-filter-rail').isVisible();
+      const mobileVisible = await page.locator('.search3-mobile-filter-panel').isVisible();
+      if (width >= 1025 ? (!railVisible || mobileVisible) : (railVisible || !mobileVisible)) {
+        throw new Error('EMPTY_LOCAL_OWNER_BREAKPOINT ' + width + ' ' + JSON.stringify({ railVisible, mobileVisible }));
+      }
+      if (width === 1000 || width === 1440) await page.screenshot({ path: 'standalone-content-artifacts/empty-local-filter-' + width + '.png', fullPage: true });
     }
-    await page.screenshot({ path: 'standalone-content-artifacts/empty-local-filter-1440.png', fullPage: true });
-    await slider.press('End');
-    await page.waitForSelector('#results .hotel-card');
-    if (await page.locator('[data-s3-count]').textContent() !== '1') throw new Error('EMPTY_LOCAL_RESTORE_COUNT');
-    await page.evaluate(() => { document.getElementById('results').innerHTML = ''; window.dispatchEvent(new CustomEvent('v2:search-reset')); });
-    if (await page.locator('.results-filter-rail').getAttribute('data-s3-empty-results') !== '') throw new Error('EMPTY_LOCAL_RESET_MARKER');
-    console.log('SEARCH3_EMPTY_LOCAL_RAIL_OK 1348/1000/1440 zero matches, resize, restore, reset');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await filter.fill('');
+    await page.waitForFunction(() => [...document.querySelectorAll('#results .hotel-card')].filter(card => !card.hidden).length === 2);
+    if (await page.locator('[data-search3-filter-count]').textContent() !== '2') throw new Error('EMPTY_LOCAL_RESTORE_COUNT');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset')));
+    if (await filter.inputValue() !== '' || await page.locator('#results .hotel-card:visible').count() !== 2) throw new Error('EMPTY_LOCAL_RESET_STATE');
+    console.log('SEARCH3_EMPTY_LOCAL_RAIL_OK 1000/1024/1025/1440 zero matches, owner breakpoint, restore, reset');
   } finally { await page.close(); }
 }
 
@@ -162,6 +165,9 @@ async function verifyEmptyLocalRail(browser) {
         results.innerHTML = html;
         const tools = document.getElementById('resultsTools');
         if (tools) tools.hidden = false;
+        window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items: [
+          { id: 'readability-fixture', name: 'Readability fixture', price: 148500, tours: [] }
+        ] } }));
       }, cardHtml);
       await page.waitForTimeout(100);
       const state = await page.evaluate(() => {
@@ -180,12 +186,12 @@ async function verifyEmptyLocalRail(browser) {
           photo: box('.hotel-photo'),
           placeFont: font('.hotel-place'),
           badgeFont: font('.hotel-decision-line>span'),
-          factLabelFont: font('.search3-hotel-facts small'),
-          factValueFont: font('.search3-hotel-facts b'),
-          priceContextFont: font('.hotel-price-context'),
-          actionFont: font('.search3-show-tours'),
-          priceContext: q('.hotel-price-context').textContent.replace(/\s+/g, ' ').trim(),
-          factLabels: [...document.querySelectorAll('.search3-hotel-facts small')].map(node => node.textContent.trim())
+          factLabelFont: font('.tour-fact small'),
+          factValueFont: font('.tour-fact b'),
+          priceContextFont: font('.tour-action>small'),
+          actionFont: font('.direct-tour'),
+          priceContext: q('.tour-action>small').textContent.replace(/\s+/g, ' ').trim(),
+          factLabels: [...document.querySelectorAll('.tour-fact small')].map(node => node.textContent.trim())
         };
       });
       await page.screenshot({ path: `standalone-content-artifacts/readability-${width}.png`, fullPage: true, animations: 'disabled' });
@@ -194,7 +200,7 @@ async function verifyEmptyLocalRail(browser) {
       if (state.documentWidth > state.viewport + 2 || state.card.right > state.viewport + 2) {
         throw new Error(width + ': card overflows viewport ' + JSON.stringify(state));
       }
-      if (state.priceContext !== '2 взрослых') throw new Error(width + ': duplicate price context ' + state.priceContext);
+      if (state.priceContext !== 'Итого за тур') throw new Error(width + ': current total-price label ' + state.priceContext);
       if (new Set(state.factLabels).size !== 4) throw new Error(width + ': duplicated facts ' + JSON.stringify(state.factLabels));
       const mobile = width <= 760;
       if (mobile && (state.photo.height < 180 || state.photo.height > 241)) throw new Error(width + ': mobile photo height ' + state.photo.height);
@@ -206,31 +212,71 @@ async function verifyEmptyLocalRail(browser) {
       }
       console.log('SEARCH3_CARD_READABILITY_OK ' + width + ' ' + JSON.stringify(state));
 
-      // Label recovery belongs to result mutations, including enabling a button.
+      // The current tour controller owns both the loading label and its recovery.
+      // Exercise that real owner with an isolated promise; no supplier request runs.
       await page.evaluate(() => {
         const button = document.createElement('button');
         button.id = 'label-recovery-fixture';
         button.hidden = true;
-        button.dataset.search3ProductionLabel = 'Проверить тур';
-        button.textContent = 'Проверяем…';
-        button.disabled = true;
+        button.type = 'button';
+        button.className = 'direct-tour';
+        button.dataset.tid = 'label-recovery-fixture';
+        button.textContent = 'Проверить тур';
         document.getElementById('results').appendChild(button);
+        const originalApi = window.V2Runtime.api;
+        let resolveTour;
+        window.V2Runtime.api = (action, params) => {
+          if (action === 'tour' && params?.tourId === 'label-recovery-fixture') {
+            return new Promise(resolve => { resolveTour = resolve; });
+          }
+          if (action === 'flights' && params?.tourId === 'label-recovery-fixture') return Promise.resolve([]);
+          return originalApi(action, params);
+        };
+        document.body.classList.remove('search3-candidate');
+        window.__resolveLabelRecoveryTour = () => resolveTour({
+          id: 'label-recovery-fixture', name: 'Fixture tour', price: 148500,
+          hotel: { name: 'Fixture hotel' }, departure: { name: 'Москва' },
+          date: '2026-09-12', nights: 9, adults: 2, childs: 0,
+          meal: { name: 'AI' }, roomType: 'STANDARD', placement: 'DBL',
+          operator: { name: 'Fixture operator' }, isCharter: true, fuelCharge: null
+        });
+        window.__restoreLabelRecoveryFixture = () => {
+          window.V2Runtime.api = originalApi;
+          document.body.classList.add('search3-candidate');
+          const selected = document.getElementById('selectedTour');
+          selected.hidden = true;
+          selected.setAttribute('aria-hidden', 'true');
+          selected.innerHTML = '';
+          window.dispatchEvent(new CustomEvent('v2:tour-returned', { detail: { source: button } }));
+          button.remove();
+          delete window.__resolveLabelRecoveryTour;
+          delete window.__restoreLabelRecoveryFixture;
+        };
+        window.V2TourController.selectTour(button.dataset.tid, button);
       });
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
-      if (await page.locator('#label-recovery-fixture').textContent() !== 'Проверяем…') throw new Error(width + ': disabled loading label overwritten');
-      await page.locator('#label-recovery-fixture').evaluate(button => { button.disabled = false; });
-      await page.waitForFunction(() => document.getElementById('label-recovery-fixture').textContent === 'Проверить тур');
-      await page.locator('#label-recovery-fixture').evaluate(button => button.remove());
+      await page.waitForFunction(() => {
+        const button = document.getElementById('label-recovery-fixture');
+        return button?.disabled && button.textContent === 'Загружаем…';
+      });
+      await page.evaluate(() => window.__resolveLabelRecoveryTour());
+      await page.waitForFunction(() => {
+        const button = document.getElementById('label-recovery-fixture');
+        return button && !button.disabled && button.textContent === 'Проверить тур';
+      });
+      await page.evaluate(() => window.__restoreLabelRecoveryFixture());
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
       // A real viewport resize must retain an explicitly opened search editor.
       await page.locator('#resultsSearchEdit').click();
-      await page.waitForFunction(() => document.body.classList.contains('search3-editing-search'));
+      await page.waitForFunction(() => {
+        const form = document.getElementById('tourSearch');
+        return form?.dataset.search3View === 'editor' && form.getClientRects().length > 0;
+      });
       // Decorators may reparent fields; compare named values, keeping repeated-name order.
       const editingFields = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await page.setViewportSize({ width: width + 1, height: 860 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      if (!await page.evaluate(() => document.body.classList.contains('search3-editing-search'))) throw new Error(width + ': resize closed search editor');
+      if (!await page.evaluate(() => document.getElementById('tourSearch')?.dataset.search3View === 'editor')) throw new Error(width + ': resize closed search editor');
       if (!await page.locator('#tourSearch').isVisible()) throw new Error(width + ': editor hidden after resize');
       const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters ' + JSON.stringify({ before: editingFields, after: afterResize }));
@@ -238,26 +284,32 @@ async function verifyEmptyLocalRail(browser) {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const editorGeometry = await page.evaluate(() => {
         const box = selector => document.querySelector('#tourSearch ' + selector).getBoundingClientRect().toJSON();
+        const visibleBox = selector => {
+          const node = [...document.querySelectorAll('#tourSearch ' + selector)]
+            .find(candidate => candidate.getClientRects().length && getComputedStyle(candidate).visibility !== 'hidden');
+          return node && node.getBoundingClientRect().toJSON();
+        };
         return {
-          dates: box('.search3-dates'), nights: box('.search3-nights'),
-          dateInput: box('.search3-dates .search3-direct-control'),
-          nightInput: box('.search3-nights .search3-direct-control'),
+          dates: box('.search-group--dates'), nights: box('.search-group--nights'),
+          dateInput: visibleBox('[data-search3-parameter="dates"],input[name="dateFrom"]'),
+          nightInput: visibleBox('[data-search3-parameter="nights"],select[name="daysFrom"]'),
           viewport: innerWidth, documentWidth: document.documentElement.scrollWidth,
           bodyClass: document.body.className,
-          grid: getComputedStyle(document.querySelector('#tourSearch .search3-primary-grid')).gridTemplateColumns,
-          dateColumn: getComputedStyle(document.querySelector('#tourSearch .search3-dates')).gridColumn,
-          dateStyle: document.querySelector('#tourSearch .search3-dates').getAttribute('style')
+          grid: getComputedStyle(document.querySelector('#tourSearch .main-fields')).gridTemplateColumns,
+          dateColumn: getComputedStyle(document.querySelector('#tourSearch .search-group--dates')).gridColumn,
+          dateStyle: document.querySelector('#tourSearch .search-group--dates').getAttribute('style')
         };
       });
       if (editorGeometry.documentWidth > editorGeometry.viewport + 2) throw new Error(width + ': editor overflows viewport');
       console.log('SEARCH3_EDITOR_GEOMETRY_STATE ' + width + ' ' + JSON.stringify(editorGeometry));
       await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
-      if (width >= 761 && editorGeometry.dates.width < editorGeometry.nights.width * 1.8) throw new Error(width + ': date range lost its wide column');
-      if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
+      if (!editorGeometry.dateInput || !editorGeometry.nightInput) throw new Error(width + ': current date/night controls missing ' + JSON.stringify(editorGeometry));
+      if (editorGeometry.dates.width < editorGeometry.nights.width * 0.95) throw new Error(width + ': date range collapsed below nights column');
+      if (editorGeometry.dateInput.width < 96 || editorGeometry.nightInput.width < 96) throw new Error(width + ': visible date/night value clipped ' + JSON.stringify(editorGeometry));
       console.log('SEARCH3_EDITOR_GEOMETRY_OK ' + width + ' ' + JSON.stringify(editorGeometry));
       // Restore the result fixture for the independent calendar checks below.
-      await page.evaluate(() => document.body.classList.remove('search3-editing-search'));
-      await page.waitForFunction(() => !document.body.classList.contains('search3-editing-search'));
+      await page.locator('.search-editor-collapse').click();
+      await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3View === 'summary');
 
       // Exercise the production calendar module inside the actual Search3 shell.
       // Capture submissions locally: no Tourvisor search or lead is sent by this fixture.
@@ -266,17 +318,17 @@ async function verifyEmptyLocalRail(browser) {
         window.V2SearchLifecycle.submit = () => {
           window.__calendarSubmissions.push([...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
         };
-        window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [
+        window.V2CurrentPriceCalendar.render([
           { tours: [{ date: '10.09.2026', price: 1350000 }, { date: '2026-09-11', price: 1234567 }] },
           { tours: [{ date: '10.09.2026', price: 1290000 }, { date: '2026-09-12', price: 0 }] }
-        ] } }));
+        ]);
       });
-      await page.waitForSelector('#currentPriceCalendar .search3-price-calendar');
+      await page.waitForSelector('#currentPriceCalendar .current-price-calendar__days');
       const calendar = page.locator('#currentPriceCalendar');
       if (!await calendar.isVisible()) throw new Error(width + ': Search3 hides the production price calendar');
-      const expanded = await calendar.locator('details').getAttribute('open');
-      if ((expanded !== null) === mobile) throw new Error(width + ': wrong responsive calendar default');
-      if (mobile) await calendar.locator('summary').click();
+      if (await calendar.locator('details').count() !== 1 || await calendar.locator('details').getAttribute('open') === null) {
+        throw new Error(width + ': current Search3 calendar did not open its compact date strip');
+      }
       const dates = await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate));
       if (JSON.stringify(dates) !== '["2026-09-10","2026-09-11"]') throw new Error(width + ': unpriced date is offered');
       const minimum = await calendar.locator('.is-best strong').innerText();
@@ -305,6 +357,8 @@ async function verifyEmptyLocalRail(browser) {
       };
       const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await calendar.locator('[data-calendar-date="2026-09-11"]').click();
+      if (await calendar.locator('[data-calendar-date="2026-09-11"]').getAttribute('aria-pressed') !== 'true') throw new Error(width + ': calendar date selection not retained');
+      await calendar.locator('[data-calendar-apply]').click();
       const submissions = await page.evaluate(() => window.__calendarSubmissions);
       if (submissions.length !== 1) throw new Error(width + ': calendar must submit exactly once');
       const submitted = Object.fromEntries(submissions[0]);
@@ -313,14 +367,8 @@ async function verifyEmptyLocalRail(browser) {
       if (JSON.stringify(preservedBefore) !== JSON.stringify(preservedAfter)) throw new Error(width + ': calendar changed other search parameters ' + JSON.stringify({ before: preservedBefore, after: preservedAfter }));
       const resultCountBeforeTour = await page.locator('#results .hotel-card').count();
       const searchValuesBeforeTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
-      await page.evaluate(() => {
-        const selected = document.getElementById('selectedTour');
-        selected.innerHTML = '<div class="selected-loading">Загружаем тур…</div>';
-        selected.hidden = false;
-      });
-      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'true');
-      // Let the canonical selected-tour observer derive the shell state. A body
-      // class alone races its next sync because an empty/hidden tour is closed.
+      // The current selected-tour owner publishes an explicit lifecycle event;
+      // the retired DOM observer no longer derives shell state or aria-busy.
       await page.evaluate(() => {
         const selected = document.getElementById('selectedTour');
         selected.innerHTML = '<div class="selected-head"><h2>Проверочный выбранный тур</h2></div>';
@@ -328,7 +376,6 @@ async function verifyEmptyLocalRail(browser) {
         window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
       });
       await page.waitForSelector('#selectedTour');
-      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'false');
       await page.waitForFunction(() => document.body.classList.contains('search3-selected-open'));
       if (await calendar.isVisible()) throw new Error(width + ': results calendar leaks into selected tour');
       for (const selector of ['.results-layout', '#resultsSearchSummary', '#resultsTools']) {

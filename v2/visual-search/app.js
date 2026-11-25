@@ -302,14 +302,18 @@ function hotelOfferPredicate(s,f,from,to){
 function hotelOffers(h,options={}){
  const rawMinimum=options.minimumOnly==='raw';
  if(!h)return rawMinimum?null:[];
- const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
- const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
+ const s=options.search||state.search,f=options.filters||state.filters;
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return rawMinimum?null:[];
- const matches=hotelOfferPredicate(s,f,from,to),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
+ const matches=options.offerMatches||hotelOfferPredicateForDates(s,f,options),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
  if(options.minimumOnly){let offer=null;const rows=h.offers||[];for(let index=0,length=rows.length;index<length;index++){if(!(index in rows))continue;const row=rows[index];if(matches(row)&&(!offer||compare(row,offer)<0))offer=row;}return rawMinimum?offer:offer?[offer]:[];}
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
  const offers=(h.offers||[]).filter(matches);
  return options.sort===false?offers:offers.sort(compare);
+}
+function hotelOfferPredicateForDates(search,filters,options={}){
+ const selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
+ const day=options.day||(!options.ignoreDate&&selected);
+ return hotelOfferPredicate(search,filters,day||search.from,day||search.to);
 }
 function recommendedHotelScore(h,rating=ratingValue(h)){return (rating??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
@@ -328,9 +332,11 @@ function sortResultItems(items){
  return ranked.map(item=>item.row);
 }
 function resultInventory(){
- const rating=!!state.filters?.rating,options=rating?{filters:{...state.filters,rating:false}}:null;
+ const rating=!!state.filters?.rating,filters=rating?{...state.filters,rating:false}:state.filters;
+ const options={filters,offerMatches:hotelOfferPredicateForDates(state.search,filters)};
+ const firstOnly={...options,firstOnly:true};
  const inventory=hotels.reduce((value,h)=>{
-  const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
+  const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=hotelOffers(h,rating&&!rated?firstOnly:options);
   const offerCount=offers.length;if(!offerCount)return value;
   value.ratingCounts.total++;if(rated)value.ratingCounts.rating++;
   if(!rating||rated){value.items.push({hotel:h,offers,rating:hotelRating});value.total+=offerCount;}
@@ -379,6 +385,8 @@ function updateSearchUI(){
  const regionsMissing=catalogReady&&needsResortCatalog(place);
  if(regionsMissing&&!resortLoads.has(place.country))loadResorts(place.country);
  $('.search-submit').disabled=homeNavigationPending||!catalogReady||regionsMissing||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
+ const returnSubmit=$('#messenger-return button[form="search-form"]');
+ if(returnSubmit)returnSubmit.disabled=$('.search-submit').disabled;
  renderCatalogError(regionsMissing);
 }
 function renderCatalogError(regionsMissing){
@@ -1377,6 +1385,74 @@ function applyQuickFilters(){
 // it altogether. Forward only reuses current-search outcomes held in memory;
 // reload/history never authorizes a request or price. Keep search parameters canonical.
 const uiHistoryKey='anytour.prototype.v18.ui.v1';
+const messengerReturnTTL=30*60*1000;
+const messengerReturnRoutes=['selected-tour','anex-application'];
+let messengerReturn=null;
+function publicMessengerReturn(){
+ const config=window.AnyTourPublicConfigV1;
+ return config?.valid===true&&config.profile==='live'&&config.entry==='search';
+}
+function messengerReturnScope(){
+ // The return stays bound to this URL's applied search. Never copy attribution,
+ // arbitrary search text, supplier context or the bot URL into the history DTO.
+ const query=new URLSearchParams(location.search);
+ return JSON.stringify(['origin','country','from','to','date','minNights','maxNights','adults','ages',
+  'hotel','hotels','stars','meals','resorts','operators','flight','amenities','min','max','sort','rating','beach','family','spa'].map(key=>query.get(key)));
+}
+function messengerReturnSummary(value){
+ const label=(v,max=160)=>typeof v==='string'&&v.trim()&&v.length<=max?v:null;
+ const hotel=label(value?.hotel,300),origin=label(value?.origin),day=value?.day,nights=value?.nights,adults=value?.adults,ages=value?.ages;
+ if(!hotel||!origin||typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day)
+  ||!Number.isInteger(nights)||nights<1||nights>28||!Number.isInteger(adults)||adults<1||adults>6
+  ||!Array.isArray(ages)||ages.length>3||!ages.every(age=>Number.isInteger(age)&&age>=0&&age<=17))return null;
+ const date=Date.parse(day+'T12:00:00Z');if(!Number.isFinite(date)||new Date(date).toISOString().slice(0,10)!==day)return null;
+ const legs=arr=>Array.isArray(arr)&&arr.length>0&&arr.length<=16&&arr.every(leg=>label(leg,1000))?arr:null;
+ const flight=value.flight,selected=flight==='selected',outward=legs(value.outward),inward=legs(value.inward);
+ if(selected&&(!outward||!inward)||!selected&&flight!=='manager-deferred')return null;
+ return {hotel,origin,day,nights,adults,ages,room:label(value.room,500),meal:label(value.meal,300),placement:label(value.placement,500),
+  flight,outward:selected?outward:[],inward:selected?inward:[]};
+}
+function rememberMessengerDeparture(observation){
+ if(!publicMessengerReturn()||!state.hasSearched||!uiHistoryOpen)return;
+ const route=history.state?.[uiHistoryKey];
+ if(!messengerReturnRoutes.includes(route?.type)||route.type!==modalType||!route.key||route.key!==selectedOffer?.key)return;
+ const flightLabels=legs=>Array.isArray(legs)?legs.map(leg=>leg?.label):null;
+ const tour=messengerReturnSummary({hotel:observation.hotel?.name,origin:observation.trip?.origin,day:observation.trip?.departure,
+  nights:observation.trip?.nights,adults:observation.trip?.adults,ages:observation.trip?.childAges,room:observation.stay?.room,
+  meal:observation.stay?.meal,placement:observation.stay?.placement,flight:observation.flights?.state,
+  outward:flightLabels(observation.flights?.outward),inward:flightLabels(observation.flights?.inward)});
+ const record={version:1,at:Date.now(),scope:messengerReturnScope(),tour};
+ history.replaceState({...history.state,[uiHistoryKey]:{...route,messengerExit:true,messengerReturn:record}},'',location.href);
+}
+function readMessengerReturn(route){
+ if(!publicMessengerReturn()||performance.getEntriesByType?.('navigation')?.[0]?.type!=='back_forward'
+  ||!messengerReturnRoutes.includes(route?.type)||!route.key||route.messengerExit!==true)return null;
+ const record=route.messengerReturn,age=Date.now()-record?.at;
+ const fresh=record?.version===1&&Number.isSafeInteger(record.at)&&age>=0&&age<=messengerReturnTTL&&record.scope===messengerReturnScope();
+ // A recognized return without a usable summary is still passive.
+ return {tour:fresh?messengerReturnSummary(record.tour):null};
+}
+function messengerReturnHTML(){
+ const tour=messengerReturn.tour;
+ const trip=tour?`<p>${esc(tour.origin)} · ${esc(dateText(tour.day))} · ${esc(nightsText(tour.nights))} · ${esc(appliedPartyLabel(tour))}</p>`:'';
+ const stay=tour?[tour.room,tour.meal&&data.meal(tour.meal),tour.placement].filter(Boolean).map(esc).join(' · '):'';
+ const flights=tour?.flight==='selected'?`<p>Туда: ${tour.outward.map(esc).join(' / ')}</p><p>Обратно: ${tour.inward.map(esc).join(' / ')}</p>`
+  :tour?'<p>Перелёт оставлен на потом.</p>':'';
+ return `<section id="messenger-return" class="empty pristine-empty" aria-labelledby="messenger-return-title">${icon('suitcase')}<h3 id="messenger-return-title">${tour?'Выбранный тур: '+esc(tour.hotel):'Условия поиска сохранены'}</h3>${trip}${stay?'<p>'+stay+'</p>':''}${flights}<p>${tour?'Это условия ранее выбранного тура. Цена и наличие требуют новой проверки.':'Не удалось восстановить выбранный тур. Можно найти актуальные варианты по сохранённым условиям.'}</p><button class="primary" type="submit" form="search-form"${$('.search-submit').disabled?' disabled':''}>Найти актуальные туры</button></section>`;
+}
+function showMessengerReturn(){
+ if($('#messenger-return'))return;
+ $('#search-form').insertAdjacentHTML('beforebegin',messengerReturnHTML());
+ const reveal=()=>requestAnimationFrame(()=>$('#messenger-return')?.scrollIntoView({behavior:'instant',block:'nearest'}));
+ if(document.readyState==='complete')reveal();else addEventListener('pageshow',reveal,{once:true});
+}
+function clearMessengerReturn(){
+ if(!messengerReturn)return;
+ messengerReturn=null;$('#messenger-return')?.remove();
+ if(history.state?.[uiHistoryKey]?.messengerExit===true){
+  const next={...history.state};delete next[uiHistoryKey];try{history.replaceState(next,'',location.href);}catch{}
+ }
+}
 let uiHistoryOpen=false,uiHistoryClosing=false,restoringUIHistory=false,handlingUIBack=false,actionTrigger=null,pageReturn=null,pendingPageReturn=null;
 function focusReference(element,root=document){
  if(!element||element===document.body||element===document.documentElement||!root.contains(element))return null;
@@ -2853,7 +2929,10 @@ async function messengerOpen(platform){
   if(!result.links)result=await messengerOwners.flow.create(ui.snapshot);
   if(!messengerActive(ui)||ui.mode!=='bots'||ui.intent!==intent)return;
   const link=messengerOwners.flow.link(ui.snapshot,platform);
-  if(link&&sameMessengerReview(result.observation,ui.snapshot))window.location.assign(link);
+  if(link&&sameMessengerReview(result.observation,ui.snapshot)){
+   try{rememberMessengerDeparture(result.observation);}catch{}
+   window.location.assign(link);
+  }
  }finally{ui.busy=false;renderMessenger(ui,messengerOwners.flow.view(ui.snapshot));}
 }
 async function messengerCheck(){
@@ -3310,6 +3389,7 @@ function prepareSearchRun(options={}){
  if(urlPartyIssues.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  if(needsResortCatalog(appliedDestination())){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  if(!data.preview&&destinationIds(state.filters).some(id=>!destinationHotel(id)?.legacyIds.length)){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
+ clearMessengerReturn();
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
  selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
@@ -3731,6 +3811,7 @@ async function bootRealData(){
   if(run!==catalogLoadGeneration)return;
   updateFixtureDescription();
   if(homeFormOnly){state.hasSearched=false;renderFilters();renderResults();updateSearchUI();return;}
+  if(messengerReturn){showMessengerReturn();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
    const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();
@@ -3755,9 +3836,10 @@ if(fixtureScenario){fixtureScenario.value=data.scenario;fixtureScenario.addEvent
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="more-cards"]')){const next=renderMoreResultCards();$('#cards').children[next]?.querySelector('button')?.focus({preventScroll:true});}});
 
 const initialUIRoute=history.state?.[uiHistoryKey];
+messengerReturn=readMessengerReturn(initialUIRoute);
 initInlineSearchPickers();
 hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults();bootRealData();
-if(initialUIRoute)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
+if(initialUIRoute&&!messengerReturn)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 if(homeFormOnly)addEventListener('pageshow',()=>{homeNavigationPending=false;state.hasSearched=false;updateSearchUI();});
 // The trip bar follows this document's viewport, including in the responsive preview.
 function updateCompactSearch(){compactSearchFrame=0;if(homeFormOnly){$('#compact-search').hidden=true;document.documentElement.style.removeProperty('--compact-search-clearance');return;}const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession,mobileBottom=$('.mobile-bottom'),mobileBottomClearance=(mobileBottom?.offsetHeight||68)+12;document.body.classList.toggle('mobile-results',mobileResults);document.body.classList.toggle('mobile-bottom-suspended',mobileResults&&innerWidth<=400&&scrollY<mobileBottomClearance);const bar=$('#compact-search');bar.hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;if(bar.hidden)document.documentElement.style.removeProperty('--compact-search-clearance');else document.documentElement.style.setProperty('--compact-search-clearance',(bar.offsetHeight+8)+'px');}

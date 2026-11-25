@@ -403,6 +403,16 @@ jobs:
           target="$docroot$PREVIEW_BASE"
           test ! -e "$docroot"
           cp -a "$RUNNER_TEMP/search3-site-docroot" "$docroot"
+          # The retired HOME range owner is preserved only in this test copy.
+          # Exact historical PHP includes its original controller; restore its CSS too.
+          legacy_home=63c3447f76b19dae1c33647da86c5188e20c0d87
+          git show "$legacy_home:v2/home-v1.php" > "$target/home-v1.php"
+          git show "$legacy_home:v2/home-v1.css" > "$target/home-v1.css"
+          test "$(git hash-object "$target/home-v1.php")" = bad2d485ea20b92f49c59346748e643b97876011
+          test "$(git hash-object "$target/home-v1.css")" = 8cee98c9df9027dc1ce7660adb44c4acfa520e65
+          php -l "$target/home-v1.php"
+          cmp "$RUNNER_TEMP/search3-site-docroot$PREVIEW_BASE/home-v1.php" "$RUNNER_TEMP/search3-site-release/payload/home-v1.php"
+          cmp "$RUNNER_TEMP/search3-site-docroot$PREVIEW_BASE/home-v1.css" "$RUNNER_TEMP/search3-site-release/payload/home-v1.css"
           cp v2/poisk-turov/index.php "$target/poisk-turov/index.php"
           cmp v2/poisk-turov/index.php "$target/poisk-turov/index.php"
           php -S 127.0.0.1:8098 -t "$docroot" >"$RUNNER_TEMP/search3-site-legacy-php.log" 2>&1 &
@@ -418,6 +428,11 @@ jobs:
           if grep -Fq 'web-consultant/widget.js' "$page"; then exit 1; fi
           if grep -Fq 'data-search3-public-config=' "$page"; then exit 1; fi
           cmp "$RUNNER_TEMP/search3-site-release/payload/visual-search/public-entry-v1.php" "$RUNNER_TEMP/search3-site-release/payload/poisk-turov/index.php"
+          home="$RUNNER_TEMP/site-legacy-test-home.html"
+          curl -fsS -H 'Host: anytoour.ru' "http://127.0.0.1:8098$PREVIEW_BASE/" -o "$home"
+          grep -Fq 'data-home-search data-countries-busy="true"' "$home"
+          grep -Fq 'data-home-range-feedback' "$home"
+          if grep -Fq 'id="search-form"' "$home"; then exit 1; fi
           echo SEARCH3_LEGACY_TEST_FIXTURE_OK
 
       - name: Detect prototype inventory changes
@@ -549,8 +564,7 @@ jobs:
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Install browser geometry tooling
-        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true' || steps.jaz-hotel-page.outputs.required == 'true'
+      - name: Install browser geometry tooling (canonical HOME is mandatory)
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
@@ -558,6 +572,30 @@ jobs:
           if [ "${{ steps.results-geometry.outputs.native-date }}" = "true" ] || [ "${{ steps.results-geometry.outputs.hotel-tabs }}" = "true" ]; then
             "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps webkit
           fi
+
+      - name: Verify compiled canonical HOME readiness and actual Search3 handoff
+        shell: bash
+        env:
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-canonical-home
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" >"$RUNNER_TEMP/search3-canonical-home-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-entry-owner-browser.cjs --canonical-home
+
+      - name: Retain canonical HOME browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-canonical-home-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-canonical-home/
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Verify JAZ hotel page and legacy source search handoff
         if: steps.jaz-hotel-page.outputs.required == 'true'

@@ -90,6 +90,10 @@
   }
 }
 
+/* Keep the public review note from consuming the desktop route-summary column. */
+.search-section.search-collapsed>.wrap>.form-price-note{grid-column:1/-1;margin:0;text-align:right;max-width:none}
+.search-collapsed .applied-route strong{overflow-wrap:break-word;word-break:normal}
+
 /* Keep the full destination catalogue reachable without pushing resorts below dozens of country rows. */
 @media (max-width:760px) {
   .destination-countries {
@@ -554,7 +558,7 @@ html:not(.quality-text-200) #results:not(.results-pristine) .results-heading:has
  .date-price strong{font-size:.9375rem;font-weight:400;margin:2px 0 0;line-height:1.35}
  .date-price.best strong{font-weight:650;color:#276B3B}
  .date-price.selected.best strong{padding:0 3px;border-radius:4px;background:#fff}
- body.mobile-results>.header,body.mobile-results #search{display:none}
+ body.mobile-results>.header:not(.at-global-header),body.mobile-results #search{display:none}
  @media(max-width:374px){body.mobile-results #results{padding-inline:9px}
 .price-strip{gap:2px}
 
