@@ -166,6 +166,18 @@ class Contracts(unittest.TestCase):
                 self.assertEqual(pub.render_robots_marker(route),
                     '<meta name="robots" content="noindex,follow,max-image-preview:large')
 
+    def test_public_search_uses_encoded_config_without_weakening_legacy(self):
+        self.assertEqual(pub.render_search_markers('poisk-turov/'), (
+            'id="tourSearch"',
+            '&quot;metrikaCounter&quot;:0',
+            '&quot;leadApi&quot;:&quot;' + remote.ROUTE + 'preview-lead-disabled.php&quot;',
+        ))
+        self.assertEqual(pub.render_search_markers('poisk-turov-old/'), (
+            'id="tourSearch"',
+            'metrikaCounter:0',
+            'leadApi:"' + remote.ROUTE + 'preview-lead-disabled.php"',
+        ))
+
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env)
         self.assertEqual(remote.ROUTE,'/_preview/search3-next-candidate/');
