@@ -3429,7 +3429,8 @@ function commitSearchDraft(){
  draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=!homeFormOnly;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.hotelIds=[];state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.hotelIds=destinationIds(draftDestination);state.filters.q='';draftDestination=null;}
- rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();
+ rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();
+ if(!homeFormOnly)renderFilters();
  return {};
 }
 const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
@@ -3799,7 +3800,17 @@ async function bootRealData(){
   // A whole-country search binds only the country ID. Restored resorts need their native IDs before search.
   if(!data.live||state.filters.resorts.length){updateSearchUI();await loadResorts(state.search.country);}
   if(run!==catalogLoadGeneration)return;
-  catalogReady=true;updateSearchUI();renderResults();
+  catalogReady=true;
+  // A fresh handoff only needs the lifecycle's loading render. Painting a
+  // pristine results page here also rewrites the receiver's searched URL.
+  if(!homeFormOnly&&data.live&&prepared?.autoSearch&&prepared.namespace!=='legacy'
+   &&!messengerReturn&&!history.state?.[uiHistoryKey]&&!searchEditSession&&!modalType
+   &&!urlPartyIssues.length&&!state.onlyFavorites&&!state.filters.resorts.length&&!destinationIds(state.filters).length){
+   updateFixtureDescription();
+   runSearch();
+   return;
+  }
+  updateSearchUI();renderResults();
   if(modalType==='destination'){
    if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());
    if(!resortLoads.has(destinationChoice.country))loadResorts(destinationChoice.country);
