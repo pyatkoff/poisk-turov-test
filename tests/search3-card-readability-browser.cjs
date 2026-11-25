@@ -11,14 +11,22 @@ const cardHtml = `
         <div class="search3-hotel-heading"><h3 class="hotel-title">LONG BEACH RESORT HOTEL WITH A LONG NAME</h3><span class="search3-hotel-category">5★</span></div>
         <p class="hotel-place">Турция · Анталья · Сиде</p>
         <div class="hotel-decision-line"><span class="hotel-decision-rating">★ 4,7/5</span><span class="hotel-decision-sea">До моря 350 м</span></div>
-        <div class="hotel-bottom"><div class="hotel-best-offer"><small>За весь тур</small><strong class="hotel-price">от 148 500 ₽</strong><small class="hotel-price-context"><span>2 взрослых</span></small></div></div>
-        <div class="search3-hotel-facts">
-          <span><small>Вылет</small><b>12 сент. 2026</b></span>
-          <span><small>Ночей</small><b>9</b></span>
-          <span><small>Питание</small><b>Всё включено</b></span>
-          <span><small>Рейс</small><b>Чартер</b></span>
+      </div>
+    </div>
+    <div class="hotel-tours">
+      <div class="tour-row">
+        <div class="tour-meta">
+          <small>Дата вылета · 9 ноч.</small><strong>12 сент. 2026</strong>
+          <div class="tour-facts">
+            <span class="tour-fact"><small>Питание</small><b>Всё включено</b></span>
+            <span class="tour-fact"><small>Номер</small><b>Standard</b></span>
+          </div>
+          <div class="tour-secondary-facts">
+            <span class="tour-fact"><small>Оператор</small><b>Демо-оператор</b></span>
+            <span class="tour-fact"><small>Рейс</small><b>Чартер</b></span>
+          </div>
         </div>
-        <div class="search3-hotel-action"><button class="search3-show-tours" type="button" data-search3-show-label="Показать 16 туров">Показать 16 туров</button></div>
+        <div class="tour-action"><small>Итого за тур</small><b class="hotel-price">148 500 ₽</b><button class="direct-tour" type="button">Выбрать</button></div>
       </div>
     </div>
   </article>`;
@@ -178,12 +186,12 @@ async function verifyEmptyLocalRail(browser) {
           photo: box('.hotel-photo'),
           placeFont: font('.hotel-place'),
           badgeFont: font('.hotel-decision-line>span'),
-          factLabelFont: font('.search3-hotel-facts small'),
-          factValueFont: font('.search3-hotel-facts b'),
-          priceContextFont: font('.hotel-price-context'),
-          actionFont: font('.search3-show-tours'),
-          priceContext: q('.hotel-price-context').textContent.replace(/\s+/g, ' ').trim(),
-          factLabels: [...document.querySelectorAll('.search3-hotel-facts small')].map(node => node.textContent.trim())
+          factLabelFont: font('.tour-fact small'),
+          factValueFont: font('.tour-fact b'),
+          priceContextFont: font('.tour-action>small'),
+          actionFont: font('.direct-tour'),
+          priceContext: q('.tour-action>small').textContent.replace(/\s+/g, ' ').trim(),
+          factLabels: [...document.querySelectorAll('.tour-fact small')].map(node => node.textContent.trim())
         };
       });
       await page.screenshot({ path: `standalone-content-artifacts/readability-${width}.png`, fullPage: true, animations: 'disabled' });
@@ -192,7 +200,7 @@ async function verifyEmptyLocalRail(browser) {
       if (state.documentWidth > state.viewport + 2 || state.card.right > state.viewport + 2) {
         throw new Error(width + ': card overflows viewport ' + JSON.stringify(state));
       }
-      if (state.priceContext !== '2 взрослых') throw new Error(width + ': duplicate price context ' + state.priceContext);
+      if (state.priceContext !== 'Итого за тур') throw new Error(width + ': current total-price label ' + state.priceContext);
       if (new Set(state.factLabels).size !== 4) throw new Error(width + ': duplicated facts ' + JSON.stringify(state.factLabels));
       const mobile = width <= 760;
       if (mobile && (state.photo.height < 180 || state.photo.height > 241)) throw new Error(width + ': mobile photo height ' + state.photo.height);
