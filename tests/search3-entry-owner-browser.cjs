@@ -625,6 +625,8 @@ async function runHomeRanges(browser, width) {
   const initial = base + '/?from=1&country=4&dateFrom=2099-09-10&dateTo=2099-09-20&daysFrom=7&daysTill=10&count_people=3&child_age%5B%5D=8&child_age%5B%5D=6';
   try {
     assert.equal((await page.goto(initial, { waitUntil: 'domcontentloaded' })).status(), 200);
+    assert.equal(await page.locator('[data-home-search]').count(), 1, 'legacy range test requires the pinned legacy HOME fixture');
+    assert.equal(await page.locator('#search-form').count(), 0, 'canonical HOME must not enter the legacy range test');
     await page.waitForFunction(() => document.querySelector('[data-home-search]')?.dataset.countriesBusy === 'false');
     const form = page.locator('[data-home-search]'), feedback = form.locator('[data-home-range-feedback]');
     const dateFrom = form.locator('[name=dateFrom]'), dateTo = form.locator('[name=dateTo]');
@@ -687,9 +689,141 @@ async function runHomeRanges(browser, width) {
     fs.writeFileSync(path.join(output, `home-range-${width}.json`), JSON.stringify({ width, catalogs, handoffs, unexpected, errors, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
   } finally { await page.close(); }
 }
+// Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
+async function runCanonicalHome(browser, viewport) {
+  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  const prefix = new URL(base).pathname, origin = new URL(base).origin;
+  const home = prefix + '/', target = prefix + '/poisk-turov/';
+  const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
+  const id = viewport.width + 'x' + viewport.height;
+  const errors = [], unexpected = [], documents = [], evidence = { viewport, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
+  const save = () => fs.writeFileSync(path.join(output, 'canonical-home-' + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
+  let releaseFixture, held = false;
+  const gate = new Promise(resolve => { releaseFixture = resolve; });
+  const { canonicalLogoFixture } = require('./search3-visual-live-fixture.cjs');
+  await context.addInitScript(() => {
+    // Observe the real offline fixture owner's search, without replacing its result.
+    window.__homeReviewSearches = [];
+    let owner;
+    Object.defineProperty(window, 'AnyTourPrototypeData', {
+      configurable: true, get: () => owner, set(value) {
+        const descriptors = Object.getOwnPropertyDescriptors(value);
+        const search = descriptors.search.value;
+        descriptors.search = { ...descriptors.search, value: function (...args) {
+          window.__homeReviewSearches.push({ trip: structuredClone(args[0]), filters: structuredClone(args[3] || {}) });
+          return Reflect.apply(search, value, args);
+        }};
+        owner = Object.freeze(Object.create(Object.getPrototypeOf(value), descriptors));
+      }
+    });
+  });
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('request', request => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(new URL(request.url()).pathname);
+  });
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== origin || request.method() !== 'GET') { unexpected.push(request.method() + ' ' + url.origin + url.pathname); return route.abort(); }
+    const logo = canonicalLogoFixture(request, origin);
+    if (logo) return route.fulfill(logo);
+    if (/^\/favicon\.(?:svg|ico|png)$/.test(url.pathname)) {
+      const file = path.join(__dirname, '../v2', url.pathname.slice(1));
+      if (fs.existsSync(file)) return route.fulfill({ path: file });
+    }
+    if (!url.pathname.startsWith(prefix + '/') || /\/(?:api[^/]*|lead[^/]*|preview-lead-disabled|.*read-v1)\.php$/.test(url.pathname)) {
+      unexpected.push(url.pathname); return route.abort();
+    }
+    if (request.isNavigationRequest() && ![home, target].includes(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
+    if (url.pathname === fixture && !held) { held = true; await gate; }
+    return route.continue();
+  });
+  const initial = { scenario: 'family', origin: 'Москва', country: '4', from: '2026-10-01', to: '2026-10-07',
+    minNights: '7', maxNights: '7', adults: '3', ages: '0,12', stars: '4|5', meals: 'Всё включено', max: '240000',
+    yclid: 'offline-home-review', utm_source: 'ci-fixture' };
+  const search = () => page.evaluate(() => window.__homeReviewSearches);
+  const submitTwice = () => page.evaluate(() => {
+    const form = document.querySelector('#search-form'); form.requestSubmit(); form.requestSubmit();
+  });
+  const checkURL = searched => {
+    const params = new URL(page.url()).searchParams;
+    for (const [key, value] of Object.entries(initial)) assert.equal(params.get(key), value, 'retained ' + key);
+    assert.equal(params.get('searched'), searched ? '1' : null);
+  };
+  const ready = async () => {
+    const form = page.locator('.home-hero #search-form');
+    await form.locator('.search-submit:not(:disabled)').waitFor();
+    assert.equal(await page.locator('form').count(), 1);
+    assert.equal(await page.locator('[data-home-search],#tourSearch').count(), 0);
+    assert.equal(await form.getAttribute('aria-busy'), 'false');
+    assert.deepEqual(await page.evaluate(() => {
+      const c = window.AnyTourPublicConfigV1, v = window.V2_CONFIG;
+      return { valid: c.valid, entry: c.entry, profile: c.profile, formOnly: v.search3FormOnly, api: v.api, anexApi: v.anexApi, counter: v.metrikaCounter };
+    }), { valid: true, entry: 'home', profile: 'review', formOnly: true, api: null, anexApi: null, counter: 0 });
+    assert.deepEqual(await search(), [], 'HOME never starts a search');
+    assert.equal(await form.locator('#quick-stars').isVisible(), true);
+    assert.equal(await form.locator('#quick-meal').isVisible(), true);
+    assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    const submit = await form.locator('.search-submit').boundingBox();
+    assert.ok(submit && submit.height >= 44 && submit.y >= 0 && submit.y + submit.height <= viewport.height + 1, 'Find fits the first viewport');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+  };
+  try {
+    const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
+    assert.equal((await page.goto(origin + home + '?' + new URLSearchParams({ ...initial, searched: '1' }), { waitUntil: 'domcontentloaded' })).status(), 200);
+    await requested;
+    assert.equal(await page.locator('#search-form .search-submit').isDisabled(), true, 'catalog pending blocks Find');
+    await submitTwice();
+    assert.deepEqual(documents, [home], 'early double submit cannot navigate');
+    assert.deepEqual(await search(), []);
+    releaseFixture();
+    await ready(); checkURL(false);
+    assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
+    await page.screenshot({ path: path.join(output, 'canonical-home-ready-' + id + '.png') });
+    await Promise.all([page.waitForURL(url => url.pathname === target), submitTwice()]);
+    await page.locator('.hotel-card').first().waitFor();
+    checkURL(true);
+    assert.deepEqual(documents, [home, target], 'one real document handoff');
+    assert.deepEqual(await page.evaluate(() => ({ valid: AnyTourPublicConfigV1.valid, entry: AnyTourPublicConfigV1.entry, profile: AnyTourPublicConfigV1.profile, formOnly: V2_CONFIG.search3FormOnly === true })), { valid: true, entry: 'search', profile: 'review', formOnly: false });
+    const calls = await search();
+    assert.equal(calls.length, 1, 'receiver starts exactly one real fixture search');
+    assert.deepEqual(calls[0].trip, { origin: 'Москва', country: '4', from: initial.from, to: initial.to, minNights: 7, maxNights: 7, adults: 3, ages: [0, 12] });
+    assert.deepEqual(calls[0].filters.stars, [4, 5]);
+    assert.deepEqual(calls[0].filters.meals, ['Всё включено']);
+    assert.equal(calls[0].filters.max, 240000);
+    evidence.receiver = calls[0];
+    await page.screenshot({ path: path.join(output, 'canonical-home-receiver-' + id + '.png') });
+    await page.goBack(); await ready(); checkURL(false);
+    await page.reload(); await ready(); checkURL(false);
+    assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
+    await page.goto(origin + home + '?' + new URLSearchParams({ ...initial, ages: '0,' }), { waitUntil: 'domcontentloaded' });
+    await ready();
+    const count = documents.length;
+    await submitTwice();
+    await page.locator('#modal[open] [data-action="apply-guests"]').waitFor();
+    assert.equal(await page.locator('[data-action="apply-guests"]').isDisabled(), true, 'missing age blocks handoff');
+    assert.equal(documents.length, count);
+    assert.equal(new URL(page.url()).pathname, home);
+    assert.deepEqual(await search(), []);
+    assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
+    evidence.status = 'passed'; evidence.supplierRequests = 0; evidence.leadSent = 0;
+    save();
+  } catch (error) {
+    evidence.status = 'failed'; evidence.error = error.stack || String(error); save();
+    await page.screenshot({ path: path.join(output, 'canonical-home-failure-' + id + '.png') }).catch(() => {});
+    throw error;
+  } finally { releaseFixture(); await context.close(); }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    if (process.argv.includes('--canonical-home')) {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
+      console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
+      return;
+    }
     for (const width of [375, 430, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
     for (const width of [320, 700, 1363]) await run(browser, width, true);
     for (const width of [375, 768, 1440]) await runHomeRanges(browser, width);

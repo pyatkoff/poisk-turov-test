@@ -114,18 +114,30 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   servedHashes:Object.fromEntries(assetNames.map(name=>{assert(files.has(name),name+' is inventoried');return [name,files.get(name).sha256];})),
   supplierHTTP:0,botHTTP:0,realLeads:0,installed:false,physicalDevice:false,cases:[],status:'running'};
  const save=()=>fs.writeFileSync(path.join(directory,'receipt-home.json'),JSON.stringify(receipt,null,2)+'\n');save();
- async function runCase(owner,{viewport,platform=null,historyCache=false}){
-  const id=(platform|| (historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
-  const transport=fixture(),tv=privateTVFixture(transport,origin),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
+ async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
+  const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
+  const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
+  const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
   const checkApplication=Boolean(platform)||!historyCache&&[430,1280].includes(viewport.width);
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
-  let frozen;
+  let frozen,returning=false;
   const context=await owner.newContext({viewport,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);
-  await context.addInitScript(()=>{
+  await context.addInitScript(({retained})=>{
    window.dataLayer=[];window.__homeDocumentId=Date.now()+'-'+Math.random();window.__homePageShows=[];
    addEventListener('pageshow',event=>window.__homePageShows.push({persisted:event.persisted}));
-  });
+   if(retained==='fresh')return;
+   const key='anytour.prototype.v18.ui.v1',replaceState=history.replaceState;
+   history.replaceState=function(state,...args){
+    const entry=state?.[key];
+    if(entry?.messengerExit===true&&entry.messengerReturn){
+     if(retained==='missing')delete entry.messengerReturn;
+     if(retained==='expired')entry.messengerReturn.at=0;
+     if(retained==='mismatch')entry.messengerReturn.scope+='different-conditions';
+    }
+    return replaceState.call(this,state,...args);
+   };
+  },{retained});
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
   page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations.push(frame.url());});
@@ -163,7 +175,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     const request=route.request(),url=new URL(request.url());
     try{
      if(platform&&url.href===links[platform]&&request.isNavigationRequest()){
-      assert.equal(request.method(),'GET');externalNavigations.push(url.href);
+      assert.equal(request.method(),'GET');externalNavigations.push(url.href);returning=true;
       await route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fictional HOME handoff</title><h1>Navigation intercepted; no message was sent.</h1>'});return;
      }
      assert.equal(url.origin,origin,'external supplier, bot and analytics traffic is forbidden');
@@ -195,7 +207,11 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
       if(value===undefined)value=await transport.json(request.url(),{body:request.postData()});
      }else{
       assert(dataPaths.has(url.pathname),'unlisted data/lead route '+url.pathname);
-      if(url.pathname==='/api-v2.php')assert.equal(action,'meals','no root supplier fallback');
+      if(url.pathname==='/api-v2.php'){
+        assert.equal(action,'meals','no root supplier fallback');
+        // A fresh document can see pageshow while the catalog is still loading.
+        if(returning)await new Promise(resolve=>setTimeout(resolve,300));
+       }
       value=await transport.json(request.url(),{body:request.postData()});
      }
      await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
@@ -214,15 +230,25 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    assert.equal(params.adults,3);assert.deepEqual(params.childs,[0,12]);assert.equal(String(params.priceTo),'240000');assert.equal(String(params.countryId),'4');
    row.firstSearch={url:page.url(),counts:counts(transport,tv),params};await capture('receiver');
    if(checkApplication){
-    await page.locator('.hotel-card h3 [data-action="hotel-details"]').first().click();
+    if(selectedPair)await page.locator('.hotel-card .hotel-price [data-key="tourvisor%3Avisual-tv-101"]').click();
+    else await page.locator('.hotel-card h3 [data-action="hotel-details"]').first().click();
     const offer=page.locator('.room-offer-choice[data-offer-key="tourvisor%3Avisual-tv-101"]');await offer.waitFor();
     await capture('hotel-offer');
-    await offer.locator('[data-action="select-hotel-offer"]').click();
+    if(selectedPair){
+     await offer.locator('[data-action="hotel-flights"]').click();
+     await offer.locator('[name="flight-pair"][value="1"]').click();
+     await page.locator('#hotel-detail-offers').click();
+    }else await offer.locator('[data-action="select-hotel-offer"]').click();
     await page.waitForFunction(()=>{const buttons=[...document.querySelectorAll('#messenger-entry [data-action="messenger-open"]')];return buttons.length===2&&buttons.every(button=>!button.disabled);});
     assert(frozen);assert.equal(frozen.observation.trip.adults,3);assert.deepEqual(frozen.observation.trip.childAges,[0,12]);
     assert.equal(frozen.observation.trip.nights,7);assert.equal(frozen.observation.stay.room,'STANDARD SEA VIEW');
     assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,0,'opening contacts never creates a request');
     assert.equal(await page.locator('#modal form,#modal [name="phone"],#modal input[type="tel"],#modal [data-action="messenger-phone"]').count(),0);
+    const observed=frozen.observation;
+    assert.equal(observed.flights.state,selectedPair?'selected':'manager-deferred');
+    const shownTotal=await page.locator('#modal-footer .footer-total>strong').innerText();
+    assert.equal(Number(shownTotal.replace(/[^\d,]/g,'').replace(',','.')),Number(observed.price.amount),'the exact whole-family total is checked before navigation');
+    const searchDocument=(await backState(page)).documentId;
     await capture('contact');
     if(!platform){
      await page.locator('#modal .modal-header [data-action="close-modal"]').click();
@@ -233,7 +259,53 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    if(platform){
     await Promise.all([page.waitForURL(links[platform]),page.locator('[data-action="messenger-open"][data-platform="'+platform+'"]').click()]);
     assert.deepEqual(externalNavigations,[links[platform]]);assert.equal(handoffs.filter(call=>call.action==='handoff_create').length,1);
-    assert.deepEqual(counts(transport,tv),{tv:1,anex:1});row.frozenObservation=frozen.observation;await capture('intercepted-navigation');
+    assert.deepEqual(counts(transport,tv),{tv:1,anex:1});row.frozenObservation=observed;await capture('intercepted-navigation');
+    const before=privateRequests(),contactCalls=handoffs.length;
+    await page.goBack();await page.waitForURL(url=>url.pathname==='/poisk-turov/');
+    row.messengerBack=await backState(page);
+    const warm=row.messengerBack.pageshow.at(-1).persisted;
+    if(warm){
+     assert(historyCache,'the default test browser must exercise cold Back');
+     assert.equal(row.messengerBack.documentId,searchDocument);
+     await page.locator('#messenger-entry [data-action="messenger-open"]').first().waitFor();
+     assert.deepEqual(counts(transport,tv),{tv:1,anex:1});
+    }else{
+     assert.equal(row.messengerBack.navigationType,'back_forward');
+     assert.notEqual(row.messengerBack.documentId,searchDocument);
+     const restored=page.locator('#messenger-return');
+     const find=restored.locator('button[form="search-form"]:not(:disabled)');
+     await find.waitFor();
+     checkTrip(page.url(),7,false);
+     const display=await restored.innerText();
+     if(retained==='fresh'){
+      for(const label of [observed.hotel.name,observed.stay.room,'Всё включено','3 взр.','до года','12 лет'])assert(display.includes(label),'keeps '+label);
+      if(selectedPair)for(const label of [...observed.flights.outward,...observed.flights.inward])assert(display.includes(label.label),'keeps exact saved flight '+label.label);
+      else assert.match(display,/Перелёт оставлен на потом/);
+     }else{
+      assert.match(display,/Условия поиска сохранены/);
+      assert(!display.includes(observed.hotel.name),'stale or missing selection is not displayed');
+     }
+     assert(!/[₽€$]|\bRUB\b/.test(display),'the former price is not an active quote');
+     assert.equal(await page.locator('#modal[open],#messenger-entry').count(),0);
+     const retainedState=await page.evaluate(()=>history.state?.['anytour.prototype.v18.ui.v1']?.messengerReturn??null);
+     if(retainedState?.tour){
+      assert.deepEqual(Object.keys(retainedState.tour).sort(),['hotel','origin','day','nights','adults','ages','room','meal','placement','flight','outward','inward'].sort());
+      assert(!/utm_|yclid|https?:|home_fixture_only|operation_id|search_ref|csrf/.test(JSON.stringify(retainedState)));
+     }
+     await restored.scrollIntoViewIfNeeded();await capture('messenger-back');
+     assert.equal(await page.evaluate(()=>dataLayer.some(event=>event.v2_event==='search_complete')),false,'Back sends no search completion');
+     assert.deepEqual(counts(transport,tv),{tv:1,anex:1});
+    }
+    assert.equal(privateRequests(),before,'Back does not call supplier, quote or handoff endpoints');
+    assert.equal(handoffs.length,contactCalls);
+    row.returnCounts={...counts(transport,tv),create:handoffs.filter(call=>call.action==='handoff_create').length};
+    if(!warm&&retained==='fresh'){
+     await page.locator('#messenger-return button[form="search-form"]').click();
+     await page.waitForFunction(()=>window.dataLayer?.some(event=>event.v2_event==='search_complete'));
+     checkTrip(page.url(),7,true);assert.deepEqual(counts(transport,tv),{tv:2,anex:2},'a deliberate Find starts one new generation');
+     assert.equal(handoffs.length,contactCalls,'a new Find does not create another handoff');
+     assert.equal(await page.locator('#messenger-return').count(),0);
+    }
    }else{
     const beforeBack=privateRequests();await page.goBack();await readyHome(page);checkTrip(page.url(),7,false);
     row.back=await backState(page);row.actualBFCacheRestored=row.back.pageshow.some(event=>event.persisted===true);
@@ -273,13 +345,16 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  try{
   for(const viewport of viewports)await runCase(browser,{viewport});
   for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
+  await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
+  for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});
   // Default Playwright disables BFCache. Only this bounded extra launch omits
   // that flag; actual pageshow and Navigation Timing explain the observed Back.
   // No synthetic pageshow, response-header changes, or CDP cache intervention.
   historyBrowser=await launchHistoryBrowser();assert.equal(historyBrowser.version(),browser.version());
   await runCase(historyBrowser,{viewport:{width:430,height:932},historyCache:true});
+  await runCase(historyBrowser,{viewport:{width:430,height:932},platform:'telegram',historyCache:true});
   assert.deepEqual(failures,[]);receipt.status='passed';save();
-  console.log('PASS native compiled HOME 390/430/1280 + 390x740: actual root form, first-viewport Find, family0/12, one handoff/search, Back/cold reload, Telegram/MAX mocked end-to-end; BFCache observation retained');
+  console.log('PASS native compiled HOME 390/430/1280 + 390x740: actual root form, first-viewport Find, family0/12, one handoff/search, Back/cold reload, Telegram/MAX mocked end-to-end; return retains selection without another search; BFCache observation retained');
  }catch(error){receipt.status='failed';receipt.error=error.message;save();throw error;}
  finally{if(historyBrowser)await historyBrowser.close();}
 };
