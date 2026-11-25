@@ -13,18 +13,23 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
 // terminal/raw-source receipt. Execute the real presentation owner without HTTP.
 {
  const {JSDOM}=require('jsdom'),dom=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div>'),d=dom.window.document;
- const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
+ let providerReads=0;
+ const offer=provider=>({get provider(){providerReads++;return provider;}});
+ const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[offer('tourvisor'),offer('anex'),offer('anex')]}],
   searchResponse:{phase:'complete',pending:false,canContinue:true,currentInventory:true,providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{offers:99},anex:{offers:88}},union:{offersByProvider:{tourvisor:7,anex:6}}},
   sameSelectedTourConditions:()=>false,needsRefresh:()=>false,icon:()=>'',esc,
   clearSearchTimers(){this.stops=(this.stops||0)+1;},searchLifecycle:{invalidate(){}},renderResults(){}};
  vm.createContext(context);vm.runInContext(section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
- const render=(items=[{}])=>context.renderSearchStatus(items,3),notice=()=>d.querySelector('#search-status');
- render();
+ const render=(items=[{}],knownCounts)=>context.renderSearchStatus(items,3,knownCounts),notice=()=>d.querySelector('#search-status');
+ const known=render();
+ assert.deepEqual(copy(known),{tourvisor:1,anex:2});assert.equal(providerReads,3,'one provider read per accepted offer');
  assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 1$/);
  assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 2$/);
  assert.ok(notice().querySelector('[data-action="continue-search"]'),'partial notice offers the action its message names');
  assert.equal(notice().querySelector('[data-action="retry-search"]'),null,'available continuation is not presented as restart');
  notice().querySelector('details').open=true;notice().querySelector('[data-action="continue-search"]').focus();
+ const previous=notice().innerHTML;assert.strictEqual(render([{}],known),known);assert.equal(providerReads,3,'same-inventory status uses the supplied counts');
+ assert.equal(notice().innerHTML,previous);assert.equal(d.activeElement.dataset.action,'continue-search');
  context.hotels[0].offers.push({provider:'tourvisor'});render();
  assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'later published offers replace the stale receipt count');
  assert.equal(notice().querySelector('details').open,true);assert.equal(d.activeElement.dataset.action,'continue-search','progressive repaint preserves the active continuation');
@@ -40,7 +45,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
  assert.doesNotMatch(notice().textContent,/Вариантов до фильтров/,'retained previous-run offers cannot become current source counts before this generation receives results');context.searchResponse.currentInventory=true;render([]);assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'accepted progressive inventory supplies counts during loading');context.hotels=[];
  const cardAction=d.createElement('button');d.body.append(cardAction);cardAction.focus();
- context.searchResponse.currentInventory=false;render();assert.equal(notice().querySelector('details'),null,'previous-run cards leave the initial source status expanded');
+ context.searchResponse.currentInventory=false;assert.equal(render([{}],known),null);assert.equal(notice().querySelector('details'),null,'previous-run cards leave the initial source status expanded');
  context.searchResponse.currentInventory=true;render();
  assert.equal(notice().querySelector('details').open,false);assert.match(notice().querySelector('summary').textContent,/Туры найдены, поиск продолжается/);
  assert.strictEqual(d.activeElement,cardAction);assert(notice().querySelector('[data-action="stop-search"]'));assert(notice().querySelector('[data-action="edit-search"]'));assert.equal(notice().querySelector('[data-action="retry-search"]'),null);
@@ -133,6 +138,7 @@ function observe(source,s){
  };
  for(const name of ['renderFilters','updateFacetCounts','syncFilterResetState','updateDrawerPreview','updateBudgetPreview','updateMealCounts','updateMealPicker','renderCalendarStrip','renderActive','updateNav','renderSummary','updateURL','renderSearchStatus','loadResultCalendar','refreshEmptyCalendarContext','renderOfferRefinements','renderTourComparison','rememberUIRoute'])ctx[name]=call(name);
  ctx.renderActive=()=>record('renderActive');
+ ctx.renderSearchStatus=(renderItems,total)=>record('renderSearchStatus',renderItems,total);
  const offers=s.empty?[]:Array.from({length:8},(_,i)=>({key:'o'+i,day:i%2?'2026-10-15':'2026-10-14',returnDay:i%2?'2026-10-22':'2026-10-21',nights:i%2?7:8,total:i%3?100000+i:100000,room:i%2?'r2':'r1',meal:i%3?'AI':'BB',flight:i%2?'regular':'charter',operator:'Operator<&'}));
  ctx.hotelOffers=call('hotelOffers',()=>offers);
  ctx.offerGroupKey=call('offerGroupKey',o=>o.room+'-'+o.meal);
@@ -180,6 +186,20 @@ function observe(source,s){
    for(const type of ['complete','error','coverage-gap','loading']){ctx.searchResponse.pending=type==='loading';event(type);}
    assert.equal(count('results'),6,'terminal messages, coverage changes and renewed loading keep their full presentation');
    ctx.searchResponse={key:'current',pending:true};handlers.afterStart(ctx.searchResponse);assert.equal(count('results'),7,'a caller that has not synchronously emitted loading gets its initial layout');
+   const reads=[],currentCounts={tourvisor:2,anex:1};
+   ctx.renderSearchStatus=(_items,_total,knownCounts)=>{reads.push(knownCounts??null);return ctx.searchResponse.currentInventory?knownCounts??currentCounts:null;};
+   event('results');assert.equal(reads.at(-1),null,'new results count their own raw inventory');
+   event('provider');assert.strictEqual(reads.at(-1),currentCounts);
+   event('progress');assert.strictEqual(reads.at(-1),currentCounts);
+   Object.assign(ctx.searchResponse,{pending:false,phase:'complete'});event('complete');
+   assert.strictEqual(reads.at(-1),currentCounts,'successful completion shares counts only for its accepted inventory');
+   for(const flag of ['databaseError','coverageGap','exactRefresh','cachedResume']){
+    ctx.searchResponse[flag]=true;event('complete');assert.equal(reads.at(-1),null,flag);ctx.searchResponse[flag]=false;
+   }
+   event('results');ctx.hotels=[...ctx.hotels];event('complete');assert.equal(reads.at(-1),null,'inventory reference change refreshes counts');
+   event('results');vm.runInContext('renderedSearchStatus.providerCounts=null;',ctx);event('complete');
+   assert.equal(reads.at(-1),null,'concrete-offer expansion invalidates accepted inventory counts');
+   event('results');ctx.searchResponse={...ctx.searchResponse};event('complete');assert.equal(reads.at(-1),null,'different generation refreshes counts');
   }
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;

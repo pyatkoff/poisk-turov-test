@@ -1369,8 +1369,10 @@ function renderResults(options={}){
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
- resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
- renderedSearchStatus={response:searchResponse,total};
+ resultCalendar.refreshBase=true;renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);
+ const providerCounts=renderSearchStatus(items,total,options.providerCounts);
+ refreshResultPickerPreviews();
+ renderedSearchStatus={response:searchResponse,total,hotels,providerCounts};
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){
@@ -3166,6 +3168,7 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
    if(!isCurrentOfferRequest(run,o.key))return;
    const keys=new Set(expanded.offers.map(item=>item.key));
    h.offers=[...h.offers.filter(item=>item.key!==o.key&&!keys.has(item.key)),...expanded.offers];
+   if(renderedSearchStatus)renderedSearchStatus.providerCounts=null;
    selectedOffer={...o,loading:false};renderResults({keepFilters:true});
    if(inline){view.checkKey=null;hotelOfferDraft=null;refreshOpenHotelRooms();if(view.roomEntryPending){view.roomEntryPending=false;positionHotelRooms();}}
    else if(expanded.offers.length===1&&expanded.offers[0].raw?.anexKind==='concrete')openOffer(expanded.offers[0].key);
@@ -3340,10 +3343,14 @@ function terminalizeSearchForVerification(reason='verification'){
  searchResponse.pending=false;searchResponse.canContinue=false;searchResponse.retryRead=false;searchResponse.phase='cancelled';searchResponse.stopReason=reason;
 }
 function stopSearch(){clearSearchTimers();terminalizeSearchForVerification('user');renderResults({keepFilters:true});}
-function renderSearchStatus(items,total){
+function renderSearchStatus(items,total,knownCounts=null){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
  const details=node.querySelector('details'),opened=details?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
- const providerCounts=data.live?(r.currentInventory?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
+ const inventoryCounts=data.live&&r.currentInventory?(knownCounts??hotels.reduce((counts,hotel)=>{
+  for(const offer of hotel.offers){const provider=offer.provider;counts[provider]=(counts[provider]||0)+1;}
+  return counts;
+ },{})):null;
+ const providerCounts=data.live?(inventoryCounts??{}):null;
  const sourceRows=[['tourvisor','Tourvisor'],['anex','ANEX'],['andromeda','SAMO']].flatMap(([key,name])=>{
   const source=r.sources?.[key],status=r.providers?.[key]||source?.status;if(!status||status==='skipped')return [];
   const failed=status==='error'||status==='partial'&&(source?.continuationFailed===true||source?.destinationBranchFailed===true),count=providerCounts?(Object.hasOwn(providerCounts,key)?providerCounts[key]:status==='complete'||status==='ready'?0:null):r.union?.offersByProvider?.[key]??source?.offers;
@@ -3358,7 +3365,7 @@ function renderSearchStatus(items,total){
  node.hidden=!state.hasSearched||r.phase==='complete'&&!noCurrent&&!providerPending&&!hasNotice;
  const searching=r.pending||providerPending,progressive=searching&&items.length>0&&r.currentInventory===true&&!r.coverageGap&&!r.exactRefresh&&!partialError&&!unconfirmed;
  node.classList.toggle('search-status-compact',progressive||!searching&&items.length>0&&!noCurrent);
- if(node.hidden)return;
+ if(node.hidden)return inventoryCounts;
  const failed=!items.length&&!r.pending&&!providerPending&&(r.phase==='error'||r.phase==='complete'&&providerFailure),fallback=r.databaseError&&items.length>0;
  node.dataset.state=failed||providerFailure?'error':hasNotice?'partial':'loading';
  const retained=r.phase==='cancelled'&&r.stopReason==='verification',continueAction=!r.pending&&!providerPending&&r.canContinue?`<button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button>`:'';
@@ -3373,7 +3380,7 @@ function renderSearchStatus(items,total){
   else if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction)){
    const target=node.querySelector(`[data-action="${focusedAction}"]`)||(progressive?node.querySelector('[data-action="stop-search"]'):node.querySelector('summary'));target.focus({preventScroll:true});
   }
-  return;
+  return inventoryCounts;
  }
  node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>${delivery}<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
  if(summaryFocused)node.querySelector('.search-status-actions button')?.focus({preventScroll:true});
@@ -3382,6 +3389,7 @@ function renderSearchStatus(items,total){
   const cards=$('#cards');
   if(!cards.firstElementChild?.classList.contains('search-skeleton'))cards.innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
  }
+ return inventoryCounts;
 }
 
 function prepareSearchRun(options={}){
@@ -3442,11 +3450,15 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
  afterEvent(event,response){
+  // Count accepted offers once for status-only events in this inventory and generation.
+  const sameStatusInventory=renderedSearchStatus?.response===response&&renderedSearchStatus.hotels===hotels;
+  const providerCounts=sameStatusInventory&&!response.coverageGap&&!response.databaseError&&!response.exactRefresh&&!response.cachedResume
+   ?renderedSearchStatus.providerCounts:null;
   if(!searchEditSession&&response.pending&&renderedSearchStatus?.response===response&&(event?.type==='provider'||event?.type==='progress')){
-   renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
+   renderSearchStatus(renderedResultItems,renderedSearchStatus.total,providerCounts);
   }else{
    if(event?.type==='results')response.currentInventory=true;
-   renderResults();updateSearchUI();
+   renderResults(event?.type==='complete'&&response.phase==='complete'&&providerCounts?{providerCounts}:undefined);updateSearchUI();
   }
   window.AnyTourPublicAnalyticsV1?.event(event,response,{searchId:data.searchId,resultsCount:hotels.length});
   if(modalType==='dates')refreshCalendarPrices();

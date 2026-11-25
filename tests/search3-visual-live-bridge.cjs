@@ -128,7 +128,7 @@ function approvedPriceOriginRegressions(){
 approvedPriceOriginRegressions();
 modalViewportRegressions();
 function searchDeliveryPresentationRegressions(){
- const app=source('visual-search/app.js'),start=app.indexOf('function renderSearchStatus(items,total){'),end=app.indexOf('\nfunction prepareSearchRun(',start);
+ const app=source('visual-search/app.js'),start=app.indexOf('function renderSearchStatus('),end=app.indexOf('\nfunction prepareSearchRun(',start);
  assert(start>0&&end>start,'one current search status owner');
  const local=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div><button id="outside">Outside</button>',{runScripts:'outside-only'}),win=local.window,doc=win.document,get=s=>doc.querySelector(s);
  // These retained receipt/missing/zero cases use the saved-data presentation.
