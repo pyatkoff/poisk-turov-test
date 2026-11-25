@@ -120,6 +120,20 @@ def render_robots_marker(route):
     return '<meta name="robots" content="noindex,follow,max-image-preview:large'
 
 
+def render_search_markers(route, preview=Preview.NEXT):
+    if route == 'poisk-turov/':
+        return (
+            'id="tourSearch"',
+            '&quot;metrikaCounter&quot;:0',
+            '&quot;leadApi&quot;:&quot;' + preview.route + 'preview-lead-disabled.php&quot;',
+        )
+    return (
+        'id="tourSearch"',
+        'metrikaCounter:0',
+        'leadApi:"' + preview.route + 'preview-lead-disabled.php"',
+    )
+
+
 def render_checks(root, preview=Preview.NEXT):
     # Build job only, before SSH secrets. The source is already isolated.
     php = "$_SERVER['DOCUMENT_ROOT']=$argv[1]; $_SERVER['HTTP_HOST']='anytoour.ru'; $_SERVER['SCRIPT_NAME']=$argv[2]; include $argv[3];"
@@ -131,7 +145,7 @@ def render_checks(root, preview=Preview.NEXT):
         need(r.returncode == 0 and 'Fatal error' not in r.stdout, 'local_render:' + route)
         need(render_robots_marker(route) in r.stdout, 'local_noindex:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
-            for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + preview.route + 'preview-lead-disabled.php"'):
+            for marker in render_search_markers(route, preview):
                 need(marker in r.stdout, 'local_search_guard')
             need('web-consultant/widget.js' not in r.stdout and OLD_ROUTE not in r.stdout, 'local_wrong_preview')
     path = root / 'payload/visual-search/index.php'
