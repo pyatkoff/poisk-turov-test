@@ -37,6 +37,7 @@ class Preview(Enum):
 ROUTE = Preview.NEXT.route
 NAME = Preview.NEXT.name_on_site
 NEXT_PUBLIC_ROUTE_COUNTS = {
+    'poisk-turov/index.php': 3,
     'visual-search/public-entry-v1.php': 3,
     'visual-search/entry-v1.php': 2,
     'visual-search/public-config-v1.js': 2,
