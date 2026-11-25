@@ -84,6 +84,9 @@ def public_bridge_fixture(root):
     # Route-bearing fragments from the public bridge in the checked stock build.
     prefix = '/_preview/search3-site-candidate'
     files = {
+        'poisk-turov/index.php':
+            "<?php $reviewRoutes=['" + prefix + "/poisk-turov/','" + prefix
+            + "/poisk-turov/index.php']; $prefix='" + prefix + "'; http_response_code(403);\n",
         'visual-search/public-entry-v1.php':
             "<?php $reviewRoutes=['" + prefix + "/poisk-turov/','" + prefix
             + "/poisk-turov/index.php']; $prefix='" + prefix + "'; http_response_code(403);\n",
@@ -143,6 +146,16 @@ class Contracts(unittest.TestCase):
         pub.derive(self.source, output, request(), 'd'*64)
         after = (output/'payload/visual-search/entry-v1.php').read_text()
         self.assertEqual(after.count(remote.ROUTE.rstrip('/')), 2)
+        self.assertNotIn(pub.OLD_ROUTE.rstrip('/'), after)
+
+    def test_current_public_search_route_rewrites_all_review_literals(self):
+        public_bridge_fixture(self.source)
+        before = (self.source/'payload/poisk-turov/index.php').read_text()
+        self.assertEqual(before.count(pub.OLD_ROUTE.rstrip('/')), 3)
+        output = self.root/'current-public-search-derived'
+        pub.derive(self.source, output, request(), 'd'*64)
+        after = (output/'payload/poisk-turov/index.php').read_text()
+        self.assertEqual(after.count(remote.ROUTE.rstrip('/')), 3)
         self.assertNotIn(pub.OLD_ROUTE.rstrip('/'), after)
 
     def test_owner_command(self):
@@ -281,7 +294,7 @@ class Contracts(unittest.TestCase):
         self.assertEqual(json.loads((self.root/'derived/control/manifest.json').read_bytes())
                          ['derived_from']['transform'], 'next-route-v1')
 
-    def test_public_bridge_derivation_changes_only_four_route_owners(self):
+    def test_public_bridge_derivation_changes_only_five_route_owners(self):
         bridge = public_bridge_fixture(self.source)
         before = remote.inventory(self.source / 'payload')
         output = self.root / 'public-derived'
@@ -300,7 +313,7 @@ class Contracts(unittest.TestCase):
         q2, archive2 = pub.derive(self.source, self.root / 'public-again', request(), 'd'*64)
         self.assertEqual((q2, archive2), (q, archive))
 
-    def test_public_bridge_requires_all_three_owners_and_exact_route_counts(self):
+    def test_public_bridge_requires_all_four_owners_and_exact_route_counts(self):
         bridge = public_bridge_fixture(self.source)
         for index, name in enumerate(bridge):
             for fault in ('missing', 'extra-route'):
