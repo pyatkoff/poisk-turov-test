@@ -225,6 +225,70 @@ function verifyRoomPriceStatus(appSource,hotelSource){
 verifyRoomPriceStatus(fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),source);
 console.log('PASS room price status: listing/minimum/selected/current pair/pending/foreign identity/escaping; amounts unchanged');
 
+async function verifyDeferredRoomOffers(){
+ const dom=new JSDOM('<dialog id="modal" open><div id="modal-body"></div><div id="modal-footer"></div></dialog>');
+ const win=dom.window,doc=win.document,$=s=>doc.querySelector(s),$$=s=>[...doc.querySelectorAll(s)];
+ let offers=Array.from({length:100},(_,index)=>({
+  key:'tariff-'+index,hotelId:1,provider:'tourvisor',room:index<50?'Standard':'Family',
+  total:110000+index*100,day:'2026-12-08',returnDay:'2026-12-15',nights:7,meal:'AI',
+  adults:2,ages:[],flight:'regular',operator:'Учебный оператор',raw:{roomId:index<50?501:502}
+ }));
+ const asks=[],syncs=[];
+ const context={window:win,document:doc,queueMicrotask,$,$$,hotelOfferDraft:null,selectedOffer:null,modalType:'hotel-details',
+  hotels:[{id:1,name:'Учебный отель',photos:[],amenities:[],raw:{}}],hotelOffers:()=>offers,
+  data:{readRoomLayouts:async ids=>{asks.push([...ids]);return [];}},
+  plainHotelText:value=>String(value??''),esc:String,mealLabel:o=>o.meal,roomLabel:o=>o.room,
+  dateText:value=>value,nightsText:String,flightLabel:o=>o.flight,guestsText:()=> '2 взрослых',
+  money:value=>value+' ₽',icon:()=>'',offerCountText:value=>value+' туров',cardPriceNote:()=> 'Цена предложения',
+  ratingValue:()=>null,departureScopeText:()=> '8 декабря',durationText:()=> '7 ночей',needsRefresh:()=>false,
+  operatorBadge:String,rememberUIRoute(){},observeHotelRoomChoices(){},syncHotelSectionNavigation(){},
+  syncHotelOfferSelection(_id,inventory=offers,options){
+   syncs.push(options);
+   owner.syncRoomPriceComparison($('.hotel-room-cards'),inventory,options.comparison);
+  }
+ };
+ const row=key=>$$('.room-offer-choice').find(item=>item.dataset.offerKey===key);
+ const room=name=>$(`.hotel-room-card[data-room="${name}"]`);
+ const reveal=more=>{more.open=true;more.dispatchEvent(new win.Event('toggle'));};
+ const owner=vm.runInNewContext(source+'\nwindow.AnyTourHotelDetails',context).create(context);
+ try{
+  owner.openHotelDetails(1);
+  assert.match($('#hotel-room-count').textContent,/Туры: 100/);
+  assert.equal($$('.room-offer-choice').length,4,'only two initial offers per room are mounted');
+  assert.equal(asks.length,0,'opening rooms does not read plans');
+  offers=offers.map(o=>o.key==='tariff-49'?{...o,total:90000}:o);
+  owner.syncRoomPriceComparison($('.hotel-room-cards'),offers);
+  assert.equal(room('Standard').querySelector('.room-overview-price').textContent,'от 90000 ₽','hidden tariffs still set the minimum');
+  const more=room('Standard').querySelector('.hotel-room-more');
+  room('Standard').open=true;
+  reveal(more);
+  assert.equal(more.querySelectorAll('.room-offer-choice').length,48);
+  assert.equal(row('tariff-49').querySelector('.hotel-room-price strong').textContent,'90000 ₽','expanded offers receive current prices');
+  assert.equal(syncs.at(-1).preserveFlights,true);
+  const syncCount=syncs.length;
+  more.open=false;reveal(more);
+  assert.equal(more.querySelectorAll('.room-offer-choice').length,48);
+  assert.equal(syncs.length,syncCount,'an already loaded list is reused');
+  const abandoned=room('Family').querySelector('.hotel-room-more');
+  $('#modal').open=false;
+  reveal(abandoned);
+  assert.equal(abandoned.querySelectorAll('.room-offer-choice').length,0,'queued disclosure cannot mount after closing the dialog');
+  $('#modal').open=true;
+  owner.openHotelDetails(1,'tariff-95');
+  assert(row('tariff-95'),'direct entry can address a tariff under More before the native toggle');
+  owner.renderHotelRooms(1,'',['Family'],null,{expandedMore:['Family']});
+  assert.equal(room('Family').querySelectorAll('.room-offer-choice').length,50,'a restored disclosure is ready before scroll and focus restoration');
+  offers=offers.map(o=>o.key==='tariff-95'?{...o,raw:{roomId:599}}:o);
+  owner.openHotelDetails(1);
+  assert(row('tariff-95').querySelector('[data-room-layout-id="599"]'),'individual plan IDs still exist in closed groups');
+  $('.room-layout-controls button').click();
+  await Promise.resolve();
+  assert.deepEqual(asks,[[501,502,599]],'explicit layout loading still covers the original room IDs');
+ }finally{win.close();}
+ console.log('PASS large room details: defer closed extras, retain minimum, direct entry, return, one disclosure mount and complete layout IDs');
+}
+verifyDeferredRoomOffers().catch(error=>{console.error(error);process.exitCode=1;});
+
 async function verifyInfantInlineQuoteTransition(appSource){
  const owner=(start,end)=>{const a=appSource.indexOf(start),b=appSource.indexOf(end,a);assert(a>=0&&b>a);return appSource.slice(a,b);};
  const code=appSource.match(/^const unknownInfantCharge=.*$/m)[0]+'\n'
