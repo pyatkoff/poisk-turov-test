@@ -3799,7 +3799,8 @@ async function bootRealData(){
   // A whole-country search binds only the country ID. Restored resorts need their native IDs before search.
   if(!data.live||state.filters.resorts.length){updateSearchUI();await loadResorts(state.search.country);}
   if(run!==catalogLoadGeneration)return;
-  catalogReady=true;updateSearchUI();renderResults();
+  catalogReady=true;updateSearchUI();
+  if(!homeFormOnly)renderResults();
   if(modalType==='destination'){
    if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());
    if(!resortLoads.has(destinationChoice.country))loadResorts(destinationChoice.country);
@@ -3810,7 +3811,7 @@ async function bootRealData(){
   if(!data.live&&!homeFormOnly)await restoreSavedHotels();
   if(run!==catalogLoadGeneration)return;
   updateFixtureDescription();
-  if(homeFormOnly){state.hasSearched=false;renderFilters();renderResults();updateSearchUI();return;}
+  if(homeFormOnly){state.hasSearched=false;renderResults();updateSearchUI();return;}
   if(messengerReturn){showMessengerReturn();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
@@ -3838,7 +3839,11 @@ document.addEventListener('click',event=>{if(event.target.closest('[data-action=
 const initialUIRoute=history.state?.[uiHistoryKey];
 messengerReturn=readMessengerReturn(initialUIRoute);
 initInlineSearchPickers();
-hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults();bootRealData();
+hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);
+// The main page has its own form controls. Build the hidden filter panel once
+// the catalogue and the URL conditions have been restored.
+if(homeFormOnly){$('#results').hidden=true;updateNav();}else renderResults();
+bootRealData();
 if(initialUIRoute&&!messengerReturn)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 if(homeFormOnly)addEventListener('pageshow',()=>{homeNavigationPending=false;state.hasSearched=false;updateSearchUI();});
 // The trip bar follows this document's viewport, including in the responsive preview.
