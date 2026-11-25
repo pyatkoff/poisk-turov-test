@@ -1,0 +1,216 @@
+name: MATCH targeted ANEX identity acquisition v41b
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+      - tests/hotel_match_live_samo_missing_anex_operator13_acquire_v41_test.py
+      - .github/workflows/hotel-match-live-samo-missing-anex-operator13-acquire-v41.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-live-samo-missing-anex-operator13-acquire-v41b
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-live-samo-missing-anex-operator13-acquire-1971-20260925-v41b
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5836930493'
+  AMEND: '5837002941'
+  LANE_AMEND: '5837028527'
+  SUCCESSOR: '5837088557'
+  ROUTER_ARTIFACT: '10878842741'
+  ROUTER_ARTIFACT_SHA: d91ea08b0e6d30e883a7575d1b43afc81440ce26e1d75dd6f4f5aafd8aa72433
+  ROUTER_HEAD: 06941bfc38ef71abdb1d77b0cb3e5077bf7cc544
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-acquire-v41-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: python3 -m py_compile scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+      - run: python3 scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py --self-test
+      - run: python3 tests/hotel_match_live_samo_missing_anex_operator13_acquire_v41_test.py
+      - name: Guard boundaries
+        run: |
+          set -euo pipefail
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+          grep -Fq "ACCOUNT='TOURVISOR_ANEX_JWT'" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+          grep -Fq "operatorIds':[13]" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+          grep -Fq "ACCOUNT_LEDGER='tourvisor-anex'" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+          grep -Fq "CALL_CAP=500" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+          grep -Fq "MAX_BATCHES=50" scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py
+
+  acquire:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/live-samo-missing-anex-operator13-acquire-v41-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+
+      - name: Validate authority, router and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input/router reservation terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-live-samo-missing-anex-operator13-acquire-v41.yml scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py tests/hotel_match_live-samo-missing-anex-operator13-acquire-v41_test.py "
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          # exact paths, with the actual test basename
+          test "$actual" = ".github/workflows/hotel-match-live-samo-missing-anex-operator13-acquire-v41.yml scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py tests/hotel_match_live_samo_missing_anex_operator13_acquire_v41_test.py "
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$AMEND" >input/amend.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$SUCCESSOR" >input/successor.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));a=json.load(open('input/amend.json'));s=json.load(open('input/successor.json'));b=c['body'];ab=a['body'];sb=s['body']
+          for x in (c,a,s): assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['issue_url'].endswith('/issues/3419')
+          for x in ['659','261','operatorIds=[13]','<=500','max50']:
+              assert x in b,x
+          assert 'TOURVISOR_ANEX_JWT' in ab
+          for x in [os.environ['OP'],'tourvisor-anex','tariff_search_units','physical HTTP0']:
+              assert x in sb,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ROUTER_ARTIFACT/zip" -o input/router.zip
+          test "$(sha256sum input/router.zip|awk '{print $1}')" = "$ROUTER_ARTIFACT_SHA"
+          python3 - <<'PY'
+          import zipfile,json,hashlib,pathlib,os
+          zp=pathlib.Path('input/router.zip');hits=[]
+          with zipfile.ZipFile(zp) as z:
+              for i in z.infolist():
+                  if i.is_dir() or i.file_size>64_000_000 or not i.filename.endswith('result.json'): continue
+                  raw=z.read(i)
+                  try:r=json.loads(raw)
+                  except Exception:continue
+                  if r.get('operation_id')=='hotel-match-live-samo-missing-direct-anex-router-1971-20260925-v35':
+                      hits.append((raw,r))
+          assert len(hits)==1,len(hits)
+          raw,r=hits[0]
+          assert r['state']=='completed_read_only' and r['source_sha']==os.environ['ROUTER_HEAD']
+          assert r['input_count']==777 and r['routed_future_context_count']==659 and r['no_future_context_count']==118 and r['context_group_count']==261 and r['batch_count']==261
+          assert r['supplier_calls']==r['database_writes']==r['mapping_writes']==0
+          pathlib.Path('input/router-result.json').write_bytes(raw)
+          print('ROUTER_RESULT_SHA256='+hashlib.sha256(raw).hexdigest())
+          PY
+
+          python3 - <<'PY'
+          import json,os,pathlib,datetime,hashlib
+          p=pathlib.Path('input/router-result.json')
+          r={'operation':os.environ['OP'],'state':'reserved_before_provider_access','source_sha':os.environ['HEAD'],
+             'router_artifact':int(os.environ['ROUTER_ARTIFACT']),'router_result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+             'tourvisor_account':'TOURVISOR_ANEX_JWT','daily_limit':3000,'operation_call_cap':500,'max_batches':50,
+             'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'database_writes':0,'mapping_writes':0}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+
+      - name: Require clear supplier lane
+        env: {GH_TOKEN: '${{ github.token }}', RUN_ID: '${{ github.run_id }}'}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$LANE_AMEND" >input/lane-amend.json
+          python3 - <<'PY'
+          import json,os,urllib.request,datetime
+          claim=json.load(open('input/lane-amend.json'));body=claim['body']
+          assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
+          assert 'within the last 2 hours' in body and 'in_progress' in body
+          now=datetime.datetime.now(datetime.timezone.utc)
+          bad=[];stale=[]
+          for status in ('in_progress','queued'):
+              u=f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs?status={status}&per_page=100"
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:rows=json.load(f)['workflow_runs']
+              for r in rows:
+                  if str(r['id'])==os.environ['RUN_ID']:continue
+                  n=(r.get('name') or '').lower()
+                  if not any(k in n for k in ('match','int server','andromeda','anex','tourvisor')):continue
+                  if status=='queued':
+                      created=datetime.datetime.fromisoformat(r['created_at'].replace('Z','+00:00'))
+                      age=(now-created).total_seconds()
+                      if age>7200:
+                          stale.append((r['id'],r.get('name'),r.get('created_at')))
+                          continue
+                  bad.append((r['id'],r.get('name'),r.get('status'),r.get('created_at')))
+          print(json.dumps({'stale_queued_ignored':stale,'blocking':bad},ensure_ascii=False))
+          assert not bad,bad
+          print('SUPPLIER_LANE_CLEAR')
+          PY
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'match-v41b-reservation-${{ github.run_id }}'
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Execute targeted operator13 tranche
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$rel\";mkdir -p \"\$HOME/$rel/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/router-result.json scripts/diagnostics/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py "$remote:$rel/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$rel/payload/reservation.json\" \"\$HOME/$rel/reservation.json\""
+
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_ROUTER_RESULT=\"\$HOME/$rel/payload/router-result.json\" MATCH_SOURCE_SHA='$HEAD' python3 \"\$HOME/$rel/payload/hotel_match_live_samo_missing_anex_operator13_acquire_v41.py\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/receipt.json\"" >terminal/receipt.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$rel/current-scope.json\"" >terminal/current-scope.json
+
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP']
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state'] in ('completed_read_only','terminal_quota_stop_no_replay','terminal_day_changed_no_replay','nothing_current_missing')
+          assert r['tourvisor_account']=='TOURVISOR_ANEX_JWT'
+          assert r['provider_calls']<=500 and r['selected_batch_count']<=50
+          assert 0<=r.get('operation_tariff_units',0)<=r['selected_batch_count'] and (r.get('daily_tariff_units_after_local_ledger') is None or r['daily_tariff_units_after_local_ledger']<=3000)
+          assert r['continue_calls']==r['dates_calls']==r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False
+          assert r['provider_calls']==sum(r.get('call_counts',{}).values())
+          print(json.dumps({k:r.get(k) for k in ['state','reason','selected_batch_count','selected_hotel_count','completed_batches','returned_edge_count','captured_single_native_count','provider_calls','daily_tariff_units_after_local_ledger','operation_tariff_units','call_counts','edge_state_counts','link_state_counts','skipped_current_anex_count','skipped_current_samo_count','skipped_inactive_count','tourvisor_account']},ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'match-live-samo-missing-anex-operator13-v41b-${{ github.run_id }}'
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
