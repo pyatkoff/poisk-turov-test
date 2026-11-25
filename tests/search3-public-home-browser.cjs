@@ -117,7 +117,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  async function runCase(owner,{viewport,platform=null,historyCache=false,selectedPair=false,retained='fresh'}){
   const variant=historyCache?'-warm':selectedPair?'-pair':retained==='fresh'?'':'-'+retained;
   const id=(platform?platform+variant:(historyCache?'history-cache':'form'))+'-'+viewport.width+'x'+viewport.height;
-  const transport=fixture(),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
+  const contactFuel=selectedPair?1250:(!platform&&!historyCache&&viewport.width===430?null:0);
+  const transport=fixture({tvFuel:contactFuel}),tv=privateTVFixture(transport,origin,{minimum:selectedPair}),errors=[],consoleErrors=[],forbidden=[],network=[],navigations=[],documentCommits=[],handoffs=[],externalNavigations=[];
   const checkApplication=Boolean(platform)||!historyCache&&[430,1280].includes(viewport.width);
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
@@ -249,6 +250,23 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(observed.flights.state,selectedPair?'selected':'manager-deferred');
     const shownTotal=await page.locator('#modal-footer .footer-total>strong').innerText();
     assert.equal(Number(shownTotal.replace(/[^\d,]/g,'').replace(',','.')),Number(observed.price.amount),'the exact whole-family total is checked before navigation');
+    const components=page.locator('.application-recap .application-price-breakdown');
+    await components.waitFor({state:'visible'});
+    const parts=await components.locator('[data-price-part]').evaluateAll(rows=>Object.fromEntries(rows.map(row=>[
+     row.dataset.pricePart,{label:row.querySelector('dt').textContent,amount:row.querySelector('dd').textContent}
+    ])));
+    assert.equal(parts.fuel.label,'Топливный сбор');
+    if(selectedPair){
+     assert.equal(parts.total.amount,shownTotal);
+     assert.equal(parts.flight.label,'Выбранный перелёт');
+     assert.match(parts.fuel.amount,/1\s*250 ₽ · включён в цену/);
+    }else{
+     assert.deepEqual(parts.tour,{label:'Цена предложения за всех',amount:shownTotal});
+     assert.deepEqual(parts.flight,{label:'Рейсы',amount:'Уточняются'});
+     assert.equal(parts.fuel.amount,contactFuel===null?'Сбор уточняется':'Без доплаты по сбору');
+     assert.equal(parts.total,undefined,'the price before choosing flights is shown as the offer amount');
+    }
+    row.contactPriceParts=parts;
     searchDocument=(await backState(page)).documentId;
     await capture('contact');
     if(!platform){

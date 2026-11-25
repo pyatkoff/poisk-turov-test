@@ -2406,13 +2406,16 @@ function applicationPriceBreakdownHTML(o){
  if(pair?data.amount(pair.price)!==total:quote!==total)return '';
  const difference=(a,b)=>Math.round((a-b)*100)/100;
  const operatorChange=difference(quote,listing),flightChange=difference(total,quote);
- if(!pair&&!operatorChange)return '';
+ const liveTourvisor=data.live&&o.provider==='tourvisor',showHistory=pair||operatorChange;
+ if(!showHistory&&!liveTourvisor)return '';
  const signedMoney=value=>(value>0?'+':'−')+money(Math.abs(value));
- const rows=[['tour','Тур в поиске',money(listing)]];
+ const rows=[['tour',showHistory?'Тур в поиске':'Цена предложения за всех',money(listing)]];
  if(operatorChange)rows.push(['operator','Изменение цены тура',signedMoney(operatorChange)]);
  if(pair)rows.push(['flight','Выбранный перелёт',flightChange?signedMoney(flightChange):'Без доплаты']);
- rows.push(['total','Итого за всех',money(total)]);
- const title=pair?'Цена с выбранным перелётом':'Цена изменилась после проверки';
+ else if(liveTourvisor)rows.push(['flight','Рейсы','Уточняются']);
+ if(liveTourvisor)rows.push(['fuel','Топливный сбор',esc(fuelText(o))]);
+ if(showHistory)rows.push(['total',!pair&&liveTourvisor?'Цена предложения за всех':'Итого за всех',money(total)]);
+ const title=pair?'Цена с выбранным перелётом':operatorChange?'Цена изменилась после проверки':'Состав цены предложения';
  return applicationCostHTML(title,rows);
 }
 function anexEstimateBreakdownHTML(receipt,view){
