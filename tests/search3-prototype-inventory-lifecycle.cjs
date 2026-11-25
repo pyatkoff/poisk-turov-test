@@ -10,6 +10,41 @@ assert.doesNotMatch(prototypeDataSource,/\b(?:rehydrateCached|cachedRehydration|
 assert.doesNotMatch(prototypeAppSource,/rehydrated-offer|rehydrationDraft|data\.rehydrateCached/,
  'LOCAL cached-offer rehydration UI must stay retired');
 const trip={origin:'Москва',country:'4',from:'2026-09-29',to:'2026-10-05',minNights:7,maxNights:7,adults:2,ages:[]};
+{
+ const start=prototypeDataSource.indexOf('  function createReturnDateLookup()'),end=prototypeDataSource.indexOf('  function tourvisorInventory()',start);
+ const helpers=['text','amount','date','plus'].map(name=>prototypeDataSource.split('\n').find(line=>line.startsWith('  const '+name+' =')));
+ assert(start>=0&&end>start&&helpers.every(Boolean),'load the active date and offer projection');
+ let additions=0;
+ const ctx=vm.createContext({countDateAddition:()=>additions++,hotel:h=>({id:h.id}),
+  mealIndexes:()=>({}),mealPlan:()=>null,indexedMeal:()=>'',localStayName:()=>'',operator:value=>value,structuredClone});
+ vm.runInContext(helpers.join('\n').replace('const plus =','const calculateReturnDate =')+
+  '\nconst plus=(day,nights)=>{countDateAddition();return calculateReturnDate(day,nights);};\n'+prototypeDataSource.slice(start,end),ctx);
+ const tariff={id:'one',price:120000,date:'29.12.2026',nights:'5',operator:'Fixture',meal:'AI',roomType:'Standard'};
+ const rows=[{id:1,tours:[tariff,{...tariff,id:'two',provider:'ANEX',date:'2026-12-29'},
+  {...tariff,id:'three',date:'2027-01-03',nights:7},{...tariff,id:'excluded',price:0}]}];
+ const [first]=ctx.project(rows,{...trip,ages:[8]});
+ const [firstOffer,secondOffer,thirdOffer]=first.offers;
+ assert.equal(first.offers.length,3);
+ assert.equal(firstOffer.returnDay,'2027-01-03');
+ assert.equal(secondOffer.returnDay,'2027-01-03');
+ assert.equal(thirdOffer.returnDay,'2027-01-10');
+ assert.equal(secondOffer.key,'anex%3Atwo');
+ assert.equal(secondOffer.total,120000);
+ assert.notStrictEqual(firstOffer.search,secondOffer.search);
+ assert.notStrictEqual(firstOffer.search.ages,secondOffer.search.ages);
+ assert.equal(additions,2,'each distinct stay date is calculated once within a projection');
+ const [later]=ctx.project(rows,{...trip,ages:[12]});
+ assert.equal(additions,4,'a new projection owns its own lookup');
+ assert.deepEqual(Array.from(later.offers[0].search.ages),[12]);
+ assert.strictEqual(later.offers[0].raw,tariff);
+ assert.throws(()=>ctx.project([{id:1,tours:[{...tariff,date:'2026-13-01'}]}],trip),{name:'RangeError'});
+ const lookup=ctx.createReturnDateLookup();
+ for(let nights=1;nights<=257;nights++)lookup('2026-12-29',nights);
+ const filledAt=additions;
+ lookup('2026-12-29',1);
+ lookup('2026-12-29',257);
+ assert.equal(additions,filledAt+1,'a full lookup still returns valid dates without growing');
+}
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const profile=id=>({id:Number(id)+400,catalog:'anytour',revision:1,name:'FICTIONAL HOTEL '+id,category:5,country:{id:4,name:'Турция'},images:[]});
 function snapshot(params,providers=['tourvisor']){
