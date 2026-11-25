@@ -201,10 +201,10 @@ def live_checks(files, preview=Preview.NEXT):
     base = preview.route
     for route in ('', 'poisk-turov/', 'poisk-turov-old/', 'country/', 'country/turkey/', 'hot/', 'contacts/', 'rb/', 'how-to-buy/'):
         status, html = http(base + route)
-        need(status == 200 and '<meta name="robots" content="noindex,follow,max-image-preview:large' in html, 'live_route:' + route)
+        need(status == 200 and render_robots_marker(route) in html, 'live_route:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
-            for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + base + 'preview-lead-disabled.php"'):
-                need(marker in html, 'live_search_guard')
+            for name, marker in zip(('form', 'metrika', 'lead'), render_search_markers(route, preview)):
+                need(marker in html, 'live_search_guard:' + route + name)
             need(OLD_ROUTE not in html and 'web-consultant/widget.js' not in html, 'live_wrong_preview')
     status, text = http(base + 'preview-lead-disabled.php', b'{"synthetic":true}')
     need(status == 403 and 'PREVIEW_LEAD_DISABLED' in text, 'lead_not_disabled')

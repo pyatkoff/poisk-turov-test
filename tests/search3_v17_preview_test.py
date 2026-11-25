@@ -21,8 +21,13 @@ class LiveReadback(unittest.TestCase):
         assets.update({'visual-search/asset-' + str(i) + '.js': b'visual asset' for i in range(29)})
         assets['prototype-search/data.js'] = b'canonical data owner'
         files = {name: remote.digest(body) for name, body in assets.items()}
-        html = ('<meta name="robots" content="noindex,follow,max-image-preview:large' +
-            ' id="tourSearch" metrikaCounter:0 leadApi:"' + pub.ROUTE + 'preview-lead-disabled.php"')
+        html = '<meta name="robots" content="noindex,follow,max-image-preview:large'
+        current_search_html = (
+            '<meta name="robots" content="noindex, nofollow, noarchive"'
+            ' id="search-form" &quot;metrikaCounter&quot;:0'
+            ' &quot;leadApi&quot;:&quot;' + pub.ROUTE + 'preview-lead-disabled.php&quot;')
+        legacy_search_html = (html + ' id="tourSearch" metrikaCounter:0 leadApi:"'
+            + pub.ROUTE + 'preview-lead-disabled.php"')
         canonical = pub.ROUTE + 'data/hotel-details-read-v1.php?catalog=anytour&anytourHotelId=1'
         responses = {
             pub.ROUTE + 'visual-search/': (200, '<meta name="robots" content="noindex, nofollow, noarchive" Живой поиск ещё не подключён app.js?v=0123456789ab'),
@@ -34,6 +39,8 @@ class LiveReadback(unittest.TestCase):
         }
         def http(path, data=None, binary=False):
             if path in responses: return responses[path]
+            if path == pub.ROUTE + 'poisk-turov/': return 200, current_search_html
+            if path == pub.ROUTE + 'poisk-turov-old/': return 200, legacy_search_html
             for name, body in assets.items():
                 if path == pub.ROUTE + name + '?sha=' + files[name]: return 200, body
             if path.endswith('.php'): return 403, 'denied'
