@@ -40,7 +40,17 @@ function observe(source,s){
   queueMicrotask:fn=>{if(fn===ctx.refreshProviderQuoteExpiry){expiry.push('schedule');return;}record('queueMicrotask');tasks.push(fn);},
   window:{AnyTourPrototypeLead:{bind:offer=>record('bindLead',offer.key)}}
  };
- collaborators.forEach(name=>ctx[name]=(...args)=>{record(name,...args.map(x=>x&&typeof x==='object'?x.key||clone(x):x));return true;});
+ collaborators.forEach(name=>ctx[name]=(...args)=>{
+  if(name==='renderHotelRooms'&&(args.length>3||s.focusedRoomOfferKey)){
+   assert.equal(args.length,5,'Back supplies the room restoration hints');
+   assert.equal(args[3],null,'Back still reads the current inventory');
+   assert.deepEqual(clone(args[4].expandedMore),['standard','standard'],'Back passes the expanded disclosures before restoring focus');
+   assert.equal(args[4].preferredOfferKey,s.focusedRoomOfferKey,'Back identifies the exact tariff even if it has moved under More');
+   // Keep the existing snapshot of visible modal behavior. The new hints are asserted above.
+   args=args.slice(0,3);
+  }
+  record(name,...args.map(x=>x&&typeof x==='object'?x.key||clone(x):x));return true;
+ });
  ctx.retainedProviderView=offer=>{record('retainedProviderView',offer?.key);return s.stale?.includes(offer?.key)?null:{type:offer?.viewType||s.previous};};
  function step(type,index=0){const offer={...savedOffer,key:'step-'+index,viewType:type};return {type,title:'title '+type,kicker:'kicker',body:'<section>'+type+'</section>',footer:'footer '+type,footerHidden:!!s.footerHidden,className:type==='gallery'?'gallery-dialog':s.className||'wide-dialog',scroll:83,gallery:{id:7,index:3},offer,focus:{element:node('focus-target'),selector:'#offer-button',top:s.noFocusTop?undefined:18}};}
  if(s.kind==='back'){ctx.modalHistory=[step(s.previous)];if(s.staleAbove)ctx.modalHistory.push(step('andromeda-flights',1),step('anex-current',2));if(s.empty)ctx.modalHistory=[];if(s.onlyStale)ctx.modalHistory=[step('anex-current',2)];}
@@ -115,6 +125,8 @@ const digest=crypto.createHash('sha256').update(JSON.stringify(projected)).diges
 if(i>=0)assert.deepEqual(projected,records(fs.readFileSync(process.argv[i+1],'utf8')),'retained modal before/after observable traces');
 assert.equal(actual.length,68,'retained 67 modal cases plus applied-pair hotel Back regression');
 if(!process.argv.includes('--capture'))assert.equal(digest,'b63e1cb92a5126b1fcd7d1507c2eb49108fd3b69eafad6d868a7c6be80ca0e3f','retained modal observations plus intentional passive hotel-room restoration fix');
+observe(source,{kind:'back',open:true,previous:'hotel-details',focusedRoomOfferKey:'moved-tariff',
+ setup:(_context,node)=>{node('focus-target').dataset.key='moved-tariff';}});
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);
