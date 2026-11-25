@@ -1,6 +1,17 @@
 (function(){'use strict';
 if(window.V2Runtime&&Number(window.V2Runtime.version||0)>=3)return;
 const listeners=new Map(),state={searchId:0},baseFetch=window.fetch.bind(window),DEFAULT_TIMEOUT=48000;
+let pageRef = null;
+try {
+  pageRef = window.crypto?.randomUUID?.() ?? null;
+} catch {
+  // A browser without this capability can still use the search normally.
+}
+
+function pageObservation() {
+  if (pageRef === null) return null;
+  return { pageRef, offsetMs: Math.floor(performance.now()) };
+}
 const ACTION_TIMEOUTS={search_start:50000,search_continue:50000,flights:50000,search_status:48000,search_results:48000,tour:48000,hotel_details:48000,rooms:48000,departures:48000,countries:48000,arrivals:48000,regions:48000,subregions:48000,meals:48000,operators:48000,hotel_types:48000,hotel_services:48000,hotels:48000,dates:48000};
 function actionFrom(input){try{const raw=typeof input==='string'?input:(input&&input.url)||'';if(!raw)return'';return new URL(raw,location.href).searchParams.get('action')||'';}catch(e){return'';}}
 function timeoutFor(action,override){if(override!==undefined&&override!==null&&override!==''){const n=Number(override);return Number.isFinite(n)&&n>=0?n:(ACTION_TIMEOUTS[action]||DEFAULT_TIMEOUT);}return ACTION_TIMEOUTS[action]||DEFAULT_TIMEOUT;}
@@ -13,6 +24,6 @@ async function requestOnce(action,url,baseOptions,timeout){const opts=Object.ass
 async function api(action,params,options){const opts=Object.assign({credentials:'same-origin'},options||{}),timeout=timeoutFor(action,opts.timeout),url=build(action,params);delete opts.timeout;let attempt=0;while(true){try{return await requestOnce(action,url,opts,timeout);}catch(e){const policy=retryPolicy();if(!policy||!policy.shouldRetry(action,e,attempt))throw e;const delay=typeof policy.delayFor==='function'?policy.delayFor(attempt):500;attempt++;await wait(delay);}}}
 function on(action,fn){if(!listeners.has(action))listeners.set(action,new Set());listeners.get(action).add(fn);return()=>{const set=listeners.get(action);if(set)set.delete(fn);};}
 function setSearchId(id){state.searchId=Number(id||0);}
-const runtime={api,on,state,setSearchId,build,fetch:observedFetch,timeoutFor,retryPolicy,actionTimeouts:Object.assign({},ACTION_TIMEOUTS),version:3,defaultTimeout:DEFAULT_TIMEOUT};
+const runtime={api,on,state,setSearchId,build,fetch:observedFetch,timeoutFor,retryPolicy,pageObservation,actionTimeouts:Object.assign({},ACTION_TIMEOUTS),version:3,defaultTimeout:DEFAULT_TIMEOUT};
 window.V2Runtime=runtime;window.V2RuntimeV3=runtime;
 })();
