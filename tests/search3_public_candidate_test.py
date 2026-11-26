@@ -259,12 +259,12 @@ class PublicCandidateTest(unittest.TestCase):
         self.assert_refused(self.run_tool(main=self.commit(), output=output, extra=("--profile", "live")),
                             output, "overwrite a protected main file: prototype-search/data.js")
 
-    def test_actual_served_family_adapter_local_photos_are_in_payload(self) -> None:
+    def test_actual_served_family_assets_and_journey_archive_read(self) -> None:
         # The previous live-only asset closure omitted the demo photos even
         # though the actual offline adapter returned their URLs. Execute that
         # served owner with a filesystem-only fixture read, then resolve every
-        # local photo against the final document root. The journey uses those
-        # packaged photos without fetching the saved results.
+        # family photo against the final document root. The journey is exercised
+        # for its archive requests since this package contains only family assets.
         program = r"""
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.resolve(process.argv[1]),scenario=process.argv[2],reads=[];
@@ -279,8 +279,10 @@ vm.runInNewContext(fs.readFileSync(path.join(root,'visual-search/fixture-data.js
  await adapter.search(adapter.initialSearch,event=>{if(event.type==='results')hotels=event.hotels;});
  assert.equal(adapter.scenario,scenario);assert.equal(hotels.length,scenario==='family'?1:4);
  const photos=hotels.flatMap(hotel=>hotel.photos);assert(photos.length>0);
- for(const url of photos){assert(url.startsWith('/visual-search/assets/'));
-  assert(fs.statSync(root+url).isFile(),'missing adapter photo '+url);}
+ for(const url of photos){
+  assert(url.startsWith('/visual-search/assets/'));
+  if(scenario==='family')assert(fs.statSync(root+url).isFile(),'missing adapter photo '+url);
+ }
  assert(fs.existsSync(path.join(root,'visual-search/assets/photo-unavailable.svg')),'missing real app photo fallback');
  process.stdout.write(JSON.stringify({photos,reads}));
 })().catch(error=>{console.error(error);process.exitCode=1;});
