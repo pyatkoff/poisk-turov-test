@@ -1119,7 +1119,7 @@ function refreshOpenHotelRooms(){
  const expandedMore=[...body.querySelectorAll('.hotel-room-more[open]')].map(more=>more.closest('[data-room]').dataset.room);
  const summaryRoom=focused?.matches('summary')?focused.closest('[data-room]')?.dataset.room:null;
  const summaryMore=focused?.parentElement?.classList.contains('hotel-room-more');
- renderHotelRooms(id,$('#hotel-room-meal')?.value||'',openRooms);
+ renderHotelRooms(id,$('#hotel-room-meal')?.value||'',openRooms,null,{expandedMore,preferredOfferKey:focused?.dataset?.key||hotelDetailsView?.entryKey});
  for(const room of body.querySelectorAll('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
  body.querySelector('.room-offer-choice[aria-current="true"]')?.closest('.hotel-room-more')?.setAttribute('open','');
  if(summaryRoom!==null&&summaryRoom!==undefined){const room=[...body.querySelectorAll('.hotel-room-card[data-room]')].find(room=>room.dataset.room===summaryRoom);room?.querySelector(summaryMore?'.hotel-room-more>summary':':scope>summary')?.focus({preventScroll:true});}
@@ -1283,9 +1283,9 @@ function retainedOfferRows(inventory){
  return inventory.offers;
 }
 function hotelDetailsOwner(){return window.AnyTourHotelDetails.create({get hotelOfferDraft(){return hotelOfferDraft;},set hotelOfferDraft(value){hotelOfferDraft=value;},get selectedOffer(){return selectedOffer&&searchKey(selectedOffer.search||{})===searchKey(state.search)?selectedOffer:null;},sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel,roomLabel,dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText});}
-function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
+function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null,roomState){
  if(!window.AnyTourHotelDetails?.create||modalType!=='hotel-details'||!$('#hotel-room-count')||Number($('.hotel-section-nav')?.dataset.hotelId)!==id)return;
- const rendered=hotelDetailsOwner().renderHotelRooms(id,meal,restoredRooms,initialOffers);
+ const rendered=hotelDetailsOwner().renderHotelRooms(id,meal,restoredRooms,initialOffers,roomState);
  if(rendered&&hotelDetailsView?.id===id)hotelDetailsView.roomInventory=captureOfferInventory(rendered.hotel,rendered.offers);
 }
 function refineHotelRoomMeal(id,meal=''){
@@ -1313,13 +1313,15 @@ function renderHotelDetails(){
   if(!current())return;
   const hotel=hotels.find(h=>h.id===view.id);if(!hotel)return;
   mountedOwner=hotelDetailsOwner();
-  const initialOffers=mountedOwner.openHotelDetails(view.id);
+  const restored=view.restored;
+  const roomState={expandedMore:Array.isArray(restored?.more)?restored.more:[],preferredOfferKey:restored?.entryOfferKey};
+  const initialOffers=mountedOwner.openHotelDetails(view.id,roomState);
   view.roomInventory=captureOfferInventory(hotel,initialOffers);
-  const restored=view.restored;view.restored=null;
+  view.restored=null;
   if(restored){
    const meal=restored.meal&&initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'';
    const rooms=Array.isArray(restored.rooms)?restored.rooms:null;
-   if(meal||rooms?.length)renderHotelRooms(view.id,meal,rooms,initialOffers);
+   if(meal||rooms?.length)renderHotelRooms(view.id,meal,rooms,initialOffers,roomState);
    for(const room of $$('.hotel-room-card[data-room]'))if(Array.isArray(restored.more)&&restored.more.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
    if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;
   }
@@ -1768,7 +1770,7 @@ function restoreHotelDetailStep(previous){
   const inventory=hotelOffers(h),meal=$('#hotel-room-meal')?.value||'';
   const openRooms=previous.roomDisclosure?.openRooms??$$('.room-overview[open],article.hotel-room-card').map(room=>room.dataset.room);
   const expandedMore=previous.roomDisclosure?.expandedMore??$$('.hotel-room-more[open]').map(more=>more.closest('[data-room]').dataset.room);
-  renderHotelRooms(id,meal&&inventory.some(o=>o.meal===meal)?meal:'',openRooms,inventory);
+  renderHotelRooms(id,meal&&inventory.some(o=>o.meal===meal)?meal:'',openRooms,inventory,{expandedMore,preferredOfferKey:previous.focus?.element?.dataset?.key});
   for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
   const returningOffer=previous.focus?.selector?$('#modal-body').querySelector(previous.focus.selector):null;
   if(returningOffer?.matches('[data-action="offer"],[data-action="select-hotel-offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
