@@ -80,6 +80,7 @@ const server=http.createServer((req,res)=>{
     const status=entry.locator('#messenger-status'),text=(await status.textContent()).trim();assert.match(text,/^Демонстрация:/);
     assert.match(text,unavailable?/переход в Telegram и MAX сейчас недоступен/:/готов к показу перехода/);
     assert.match(text,unavailable?/Заявка не отправлялась/:/Заявки не отправляются/);
+    assert.equal(((await entry.innerText()).match(/заявк(?:а|и) не отправля(?:лась|ются)/gi)||[]).length,1,'the visible contact notice appears once');
     assert.equal(await status.getAttribute('role'),'status');assert.equal(await status.getAttribute('aria-live'),'polite');
     assert.doesNotMatch(await entry.innerHTML(),/(?:csrf|operation_id|search_ref|offer_ref|choice_ref|record_id|anex_quote:|anex_online:|tourvisor_pair:|https?:\/\/|href\s*=)/i,'demo has no real selectors, operation, token or bot link');
     const geometry=await entry.evaluate(el=>{

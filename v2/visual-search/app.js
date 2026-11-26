@@ -2969,7 +2969,7 @@ function messengerInput(){
 function messengerContactHTML(receipt){
  const only=messengerContactOnly(),review=messengerReviewFixture(),available=messengerAvailable(receipt);
  if(!available&&!only)return window.AnyTourPrototypeLead.markup();
- const intro=review?'Проверочный просмотр: кнопки показывают пример, заявки не отправляются.':'Передадим выбранный тур в диалог. Номер телефона для этого не нужен.';
+ const intro=review?'Выберите мессенджер, чтобы посмотреть пример перехода.':'Передадим выбранный тур в диалог. Номер телефона для этого не нужен.';
  const status=review?review.ready:only&&!available?messengerUnavailableText():'Подготавливаем переход…';
  const checkAction='<button id="messenger-check" class="text-button" data-action="messenger-check" hidden>Проверить переход</button>';
  const recoveryActions=only?`<div class="messenger-recovery-actions">${checkAction}<button class="text-button" data-action="modal-back">Вернуться к туру</button></div>`:checkAction;
