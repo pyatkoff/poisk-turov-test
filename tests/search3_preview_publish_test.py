@@ -195,6 +195,41 @@ class LiveChecks(unittest.TestCase):
                 self.assertEqual(publish.preview_robots_marker(route), publish.LEGACY_ROBOTS)
         self.assertNotEqual(publish.REVIEW_ROBOTS, publish.LEGACY_ROBOTS)
 
+    def test_search3_review_and_legacy_search_guards_stay_exact_and_distinct(self):
+        self.assertEqual(publish.preview_search_guards('poisk-turov/'), publish.REVIEW_SEARCH_GUARDS)
+        self.assertEqual(publish.preview_search_guards('poisk-turov-old/'), publish.LEGACY_SEARCH_GUARDS)
+        self.assertIn('id="search-form"', publish.REVIEW_SEARCH_GUARDS)
+        self.assertIn('&quot;metrikaCounter&quot;:0', publish.REVIEW_SEARCH_GUARDS)
+        self.assertIn('id="tourSearch"', publish.LEGACY_SEARCH_GUARDS)
+        self.assertIn('metrikaCounter:0', publish.LEGACY_SEARCH_GUARDS)
+        self.assertTrue(set(publish.REVIEW_SEARCH_GUARDS).isdisjoint(publish.LEGACY_SEARCH_GUARDS))
+
+    def test_live_checks_apply_review_guards_only_to_search3_route(self):
+        def response(path, data=None, binary=False):
+            if path.startswith(remote.ROUTE):
+                route = path[len(remote.ROUTE):]
+                if route == 'preview-lead-disabled.php':
+                    return 403, 'PREVIEW_LEAD_DISABLED'
+                if route in ('assets.php', 'search-page-v2.php', 'seo-config.php',
+                             'data/db-v1.php', 'offer-freshness-v1.php'):
+                    return 403, ''
+                if route == 'config.php':
+                    return 404, ''
+                if route == 'poisk-turov/':
+                    return 200, publish.REVIEW_ROBOTS + ''.join(publish.REVIEW_SEARCH_GUARDS)
+                if route == 'poisk-turov-old/':
+                    return 200, publish.LEGACY_ROBOTS + ''.join(publish.LEGACY_SEARCH_GUARDS)
+                return 200, publish.LEGACY_ROBOTS
+            if path == '/api-v2.php?action=health':
+                return 200, 'tourvisor-direct'
+            if path == '/lead-adapter-v2.php':
+                return 200, 'v2-hmac-bridge-bitrix-lead'
+            return 200, ''
+        with patch.object(publish, 'http', side_effect=response):
+            result = publish.live_checks({})
+        self.assertTrue(result['noindex'])
+        self.assertEqual(result['routes_200'], 9)
+
 
 class Transaction(unittest.TestCase):
     def setUp(self):
