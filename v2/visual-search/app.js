@@ -3866,10 +3866,12 @@ function refreshCalendarPrices(){
  renderCalendarPrices();
 }
 function renderCalendarPrices(){
- $$('#date-calendar .calendar-month').forEach(month=>{
-  const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=minimumKnownPrice(prices);
-  cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?(homeFormOnly?'':'—'):shortAmount(price,true);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?(homeFormOnly?'':', цена пока неизвестна'):', от '+money(price)));});
- });
+ if(!homeFormOnly){
+  $$('#date-calendar .calendar-month').forEach(month=>{
+   const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=minimumKnownPrice(prices);
+   cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':shortAmount(price,true);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
+  });
+ }
  renderDateSelectionPrice();
 }
 function loadCalendarPrices(){
@@ -3958,7 +3960,7 @@ async function bootRealData(){
   if(!data.live&&!homeFormOnly)await restoreSavedHotels();
   if(run!==catalogLoadGeneration)return;
   updateFixtureDescription();
-  if(homeFormOnly){state.hasSearched=false;renderFilters();renderResults();updateSearchUI();return;}
+  if(homeFormOnly){state.hasSearched=false;renderResults();updateSearchUI();return;}
   if(messengerReturn){showMessengerReturn();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
