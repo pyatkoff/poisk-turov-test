@@ -85,11 +85,13 @@ const server=http.createServer((req,res)=>{
     assert.doesNotMatch(await entry.innerHTML(),/(?:csrf|operation_id|search_ref|offer_ref|choice_ref|record_id|anex_quote:|anex_online:|tourvisor_pair:|https?:\/\/|href\s*=)/i,'demo has no real selectors, operation, token or bot link');
     const geometry=await entry.evaluate(el=>{
      const box=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,height:r.height};},body=el.closest('#modal-body'),footer=document.querySelector('#modal-footer');
-     return {viewportHeight:innerHeight,body:box(body),footer:box(footer),status:box(el.querySelector('#messenger-status')),buttons:[...el.querySelectorAll('[data-action="messenger-open"]')].map(box)};
+     const summary=el.closest('.application-layout'),recap=box(summary.querySelector('.application-recap')),more=box(summary.querySelector('.application-more'));
+     return {viewportHeight:innerHeight,body:box(body),footer:box(footer),status:box(el.querySelector('#messenger-status')),buttons:[...el.querySelectorAll('[data-action="messenger-open"]')].map(box),leftCardGap:more.y-recap.bottom};
     });
     assert(geometry.footer.bottom<=geometry.viewportHeight+1&&geometry.body.bottom<=geometry.footer.y+1,'messenger footer does not cover the contact content');
     for(const button of geometry.buttons){assert(button.height>=44,'each messenger has a 44px target');assert(button.x>=geometry.body.x-1&&button.right<=geometry.body.right+1);assert(button.y>=geometry.body.y-1&&button.bottom<=geometry.body.bottom+1,'messenger choices are visible without scrolling');}
     assert(geometry.status.y>=geometry.body.y-1&&geometry.status.bottom<=geometry.body.bottom+1,'the complete demo notice is visible');
+    if(width===1280)assert(Math.abs(geometry.leftCardGap)<=1,'the left summary and details share one edge. Gap: '+geometry.leftCardGap+'px');
     if(unavailable)assert(await entry.locator('[data-action="modal-back"]').isVisible(),'failed demo has a return to the same tour');
     await total(186400);await party();assert.match(await page.locator('#modal-footer').textContent(),/Демонстрационная цена/);
    };
