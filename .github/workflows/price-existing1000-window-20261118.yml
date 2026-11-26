@@ -1,4 +1,4 @@
-name: PRICE apply the saved minima from the 07:45 TOP500 collection
+name: PRICE apply the saved minima from the 09:15 TOP500 collection
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c27079d2ef2ad551c47f3c6a6b958855ca6dd761'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7fa3f7a216bf0881ac1123037096b5c331224d50'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,8 +21,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45758390576 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45751775813 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45770868667 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45759316449 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45756160505 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1737: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
@@ -159,8 +159,8 @@ jobs:
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
           baseline=feeds()
-          check(baseline=={'max':'d30970409eb67d8515b410edd7a8095998464c036ebf566ada8d1848c941eaa3','telegram':'bd0d3f8e8b2cd08f1d90574430719512117a0478d9ecbb3f7c28f8e747afa71f','all':'5202995c109e8871f9a9c6128c6d62def1f204aaf6dc7f23396d53d9600b973e'},'independently_verified_preimages_changed')
-          print('ORIGINAL_READ_ADMISSION',45751775813,139681008124, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
+          check(baseline=={'max':'7ab2b7e50dd3117dd2abd9cb94a725b9efa5fd16a845e92c16da37c0ecf2fba5','telegram':'25d99b58868fdcdc2a50bce14e025589c605c9d9cfda68c32a1bb188b6439e36','all':'d14a0fdc4b86734cc6fd8e34ab8250928ac0489ee6edbef01fe62e0c67ead556'},'independently_verified_preimages_changed')
+          print('ORIGINAL_READ_ADMISSION',45759316449,139705308361, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
           start=time.monotonic()
           seen=set()
           for batch in range(1,26):
