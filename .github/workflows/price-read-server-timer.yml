@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1cc4c135a09b6ff12ffe8238a67b164b8a1e6d09'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'bd163495e4ee244961933aaf064c6cc7763763ce'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -50,7 +50,7 @@ jobs:
               require_once 'db-v1.php';
               $pdo = v2_data_db();
               $check = $pdo->prepare('SELECT IS_USED_LOCK(?) IS NOT NULL');
-              $limit = microtime(true);
+              $limit = microtime(true) + 480;
               $previous = null;
               do {
                   $check->execute(['anytour_top500_monthly_v1']);
