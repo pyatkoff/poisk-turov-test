@@ -186,6 +186,9 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  context(c);vm.runInContext(functions(source,['updateMealCounts','updateMealPicker']),c);assert.equal(c.updateMealCounts(),7,'meal inventory exposes selected-model count');
  assert.deepEqual(c.$$('.meal-hotel-count').map(span=>span.textContent),['9','3','0'],'any/known/unavailable meal counts');
  c.updateMealPicker(selectedCount);assert.equal(scalarCalls,1,'same-call picker consumes the selected inventory; only any-meal count stays scalar');assert.equal(c.$('#meal-result-preview').textContent,'7 отелей · по загруженной выдаче');
+ c.updateMealPicker(null,true);
+ assert.equal(scalarCalls,1,'typing a meal name preserves the already calculated inventory');
+ assert.equal(c.$('#meal-result-preview').textContent,'7 отелей · по загруженной выдаче');
  selectedCount=4;c.updateMealPicker();assert.equal(scalarCalls,2,'later picker edit recomputes a fresh selected count');assert.equal(c.$('#meal-result-preview').textContent,'5 отелей · по загруженной выдаче');
  current=null;c.updateMealCounts();assert.equal(c.$$('.meal-hotel-count').length,0,'new draft has no result counts');
  c.dom.window.close();
