@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e2a42e56a0f7a845b514916b4fb081bc9be2f75d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5e362f7cbc834e1cba5146e49f66b5aa3c2078ea'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
