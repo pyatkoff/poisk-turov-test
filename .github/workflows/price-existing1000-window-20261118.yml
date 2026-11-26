@@ -1,4 +1,4 @@
-name: PRICE apply the saved minima from the 10:45 TOP500 collection
+name: PRICE apply the newly verified TV12107 minimum to existing MAX publication 3604
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3862f44790ba65e0798e54ff8672a7f51abea193'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0b9455053a70d519f9437ad7c140b2bb75532f02'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45780716545 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45771026714 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45780967090 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45756160505 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45769734530 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45777003288 --jq .conclusion | grep -Fxq success
@@ -66,7 +66,7 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Continue the verified roster with the installed PRICE writer
+      - name: Complete the verified TV12107 update with the installed PRICE writer
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -145,15 +145,6 @@ jobs:
                           check(stamp in entry.findtext('description',''),'published_observation_mismatch')
                   info[key]=hashlib.sha256(data).hexdigest()
               return info
-          def native_run(stage, inspect=False):
-              print('NATIVE_START',stage,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
-              with (art/(stage+'.raw')).open('xb') as f:
-                  proc=subprocess.run(['php',str(hook)]+(['--inspect'] if inspect else []),stdout=f)
-              rows=[x.split('=',1)[1] for x in (art/(stage+'.raw')).read_text().splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')]
-              check(len(rows)==1,'native_receipt_missing')
-              v=json.loads(rows[0])
-              print('NATIVE',stage,json.dumps({k:v.get(k) for k in ('ok','error','roster_pairs','updated_pairs','eligible_pairs','held_pairs','scanned_pairs','remaining_unscanned_pairs','deferred_counts','child_failure','timings_ms','completed_at')}),flush=True)
-              return proc.returncode,v
           def report(updates=()):
               print('HANDOFF',json.dumps({'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
           def promoted_read(mode, publication, hotel, url, baseline):
@@ -174,11 +165,9 @@ jobs:
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
           baseline=feeds()
-          check(baseline=={'max':'aeb805b1f2935516079271bdd48f23f43ad8953b2dbc411821ed05284da4deff','telegram':'a1981b66356eb7420f15237b7e99b5ec1e93697a49fb67b45d91216d425ae93c','all':'ea1edbdb492bb297469459339e42d23007d51559f9bf7618ae96d753b7848483'},'independently_verified_preimages_changed')
-          print('ORIGINAL_READ_ADMISSION',45771026714,139743425530, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
-          for publication,hotel,slug in [(3604,12107,'AZwjaZt4Kz8'),(3607,12111,'AZ6wa60cTlw'),
-                                       (3611,260,'AZ7UVbXteP8'),(3617,64895,'AZ-OUsaPJjg'),
-                                       (3862,107938,'AZwEq2zVLGY')]:
+          check(baseline=={'max':'69fda1dd31fa5eacbf68776244322395c826e22a150fd6b7def1a128ebefb574','telegram':'fca099123d96f9b9b4411efb228b8e88289efe042d52624964cfa37faa8203bf','all':'6500b735740896c8741cad69ec7e34f41d8dd1d6169c554c8f491f57eb712446'},'independently_verified_preimages_changed')
+          print('ORIGINAL_READ_ADMISSION',45780967090,139776024259, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
+          for publication,hotel,slug in [(3604,12107,'AZwjaZt4Kz8')]:
               if not window_open():
                   print('WINDOW_HANDOFF_CHANGED','promoted_max',publication,flush=True)
                   break
@@ -194,28 +183,7 @@ jobs:
               check(after is not None and after.get('result')=='already_current' and after.get('public_verified') is True,
                     'promoted_public_readback_incomplete')
           check(feeds()==baseline,'feed_changed_during_promoted_edits')
-          start=time.monotonic()
-          seen=set()
-          for batch in range(1,26):
-              if time.monotonic()-start>3000: break
-              if not window_open():
-                  print('WINDOW_HANDOFF_CHANGED',batch,flush=True)
-                  break
-              pins()
-              code,r=native_run('pass-'+str(batch))
-              for update in r.get('updates',[]):
-                  posts=update['posts']
-                  check(len(posts)==2 and {p.get('platform') for p in posts}=={'telegram','max'} and all(all(p.get(k) is True for k in ('body_photo_button_verified','existing_message_reused','price_link_verified','content_updated')) for p in posts),'pair_receipts_unconfirmed')
-                  check(update['operation'] not in seen,'duplicate_operation')
-                  seen.add(update['operation'])
-              check(r['updated_pairs']==len(r['updates']),'update_count_mismatch')
-              print('PAIR_IDS',batch,[u['tourvisor_hotel_id'] for u in r['updates']], 'verified_operations',len(seen),flush=True)
-              report(r.get('updates',[]))
-              print('INDEPENDENT_FEED_READ_AT',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
-              print('PAIR_PRICES',batch,json.dumps([[u['tourvisor_hotel_id'],u['price'],u['posts'][0]['monitor_price']['observed_at']] for u in r.get('updates',[])]),flush=True)
-              check(code==0 and r.get('ok') and r.get('roster_pairs')==1000 and all(r.get(k)==0 for k in ('supplier_calls','new_posts','site_writes')),'native_terminal_stop')
-              if r.get('scanned_pairs')==1000 or not r.get('updated_pairs'): break
-          print('WINDOW_TERMINAL',len(seen),flush=True)
+          print('WINDOW_TERMINAL_TV12107',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
           PY
       - name: Cleanup connection material
         if: always()
