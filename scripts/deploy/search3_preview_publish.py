@@ -32,6 +32,15 @@ BUILD = '.github/workflows/build-search3-whole-site-preview.yml'
 PREFIX = '/publish-search3-preview '
 REVIEW_ROBOTS = '<meta name="robots" content="noindex, nofollow, noarchive">'
 LEGACY_ROBOTS = '<meta name="robots" content="noindex,follow,max-image-preview:large'
+REVIEW_SEARCH_GUARDS = (
+    'id="search-form"', 'data-search3-public-config=',
+    '&quot;metrikaCounter&quot;:0',
+    '&quot;leadApi&quot;:&quot;/_preview/search3-next-candidate/preview-lead-disabled.php&quot;',
+)
+LEGACY_SEARCH_GUARDS = (
+    'id="tourSearch"', 'metrikaCounter:0',
+    'leadApi:"' + ROUTE + 'preview-lead-disabled.php"',
+)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -191,15 +200,19 @@ def preview_robots_marker(route):
     return REVIEW_ROBOTS if route == 'poisk-turov/' else LEGACY_ROBOTS
 
 
+def preview_search_guards(route):
+    return REVIEW_SEARCH_GUARDS if route == 'poisk-turov/' else LEGACY_SEARCH_GUARDS
+
+
 def live_checks(files):
     for route in ('', 'poisk-turov/', 'poisk-turov-old/', 'country/', 'country/turkey/', 'hot/', 'contacts/', 'rb/', 'how-to-buy/'):
         status, html = http(ROUTE + route)
         need(status == 200 and preview_robots_marker(route) in html, 'live_route_noindex:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
-            for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + ROUTE + 'preview-lead-disabled.php"'):
+            for marker in preview_search_guards(route):
                 need(marker in html, 'live_search_guard')
             need('web-consultant/widget.js' not in html, 'live_consultant')
-            need(('<body class="search3-candidate">' in html) == (route == 'poisk-turov/'), 'live_search_identity')
+            need(('data-search3-public-config=' in html) == (route == 'poisk-turov/'), 'live_search_identity')
     status, body = http(ROUTE + 'preview-lead-disabled.php', b'{"synthetic":true}')
     need(status == 403 and 'PREVIEW_LEAD_DISABLED' in body, 'preview_lead_not_disabled')
     for path in ('assets.php', 'search-page-v2.php', 'seo-config.php', 'data/db-v1.php', 'offer-freshness-v1.php'):
