@@ -1434,8 +1434,22 @@ function renderResultCards(items,{selectionOnly=false}={}){
  // Share selection markup with the full card renderer, retaining cards, controls and focus.
  // Closing a tour is a passive presentation update, never a new search.
  if(selectionOnly){
-  for(const card of $$('#cards .hotel-card')){
-   const item=items.find(row=>row.hotel.id===Number(card.dataset.hotelId));if(!item)continue;
+  const cards=$$('#cards .hotel-card');
+  const visibleItems=new Map();
+  for(const card of cards){
+   const id=Number(card.dataset.hotelId);
+   if(!Number.isNaN(id))visibleItems.set(id,null);
+  }
+  let unmatched=visibleItems.size;
+  if(!unmatched)return;
+  for(const item of items){
+   const id=item.hotel.id;
+   if(visibleItems.get(id)!==null)continue;
+   visibleItems.set(id,item);
+   if(!--unmatched)break;
+  }
+  for(const card of cards){
+   const item=visibleItems.get(Number(card.dataset.hotelId));if(!item)continue;
    const markup=currentCardSelectionHTML(item.hotel,item.offers);let next=null;
    if(markup){const template=document.createElement('template');template.innerHTML=markup;next=template.content.querySelector('.current-card-selection');}
    const previous=card.querySelector('.current-card-selection');
