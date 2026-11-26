@@ -1089,19 +1089,20 @@ function cardOpensRooms(offer){
  return ['tourvisor','anex'].includes(offer?.provider)||offer?.provider==='fixture'&&offer.raw?.previewRooms===true;
 }
 function hotelMatchFactsHTML(h,f){
- if(!f)return '';
- const facts=new Set();
+ if(!f||(!f.amenities?.length&&!f.family&&!f.beach&&!f.spa))return '';
+ const maximumFacts=3,facts=new Set();
  if(f.amenities?.length){
   for(const key of f.amenities){
    const fact=h.amenities?.find(a=>a.key===key&&a.filterable&&a.label);
    if(fact)facts.add(fact.label);
+   if(facts.size===maximumFacts)break;
   }
  }
  if(f.family&&h.family===true)facts.add('Детский клуб');
  if(f.beach&&Number.isFinite(h.beach)&&h.beach>0&&h.beach<=150)facts.add(h.beach+' м до пляжа');
  if(f.spa&&h.spa===true)facts.add('Спа-центр');
  if(!facts.size)return '';
- return `<div class="hotel-facts hotel-match-facts"><div class="hotel-match-line"><strong>По вашим условиям</strong><ul aria-label="Совпадения с фильтрами">${[...facts].slice(0,3).map(fact=>`<li>${esc(fact)}</li>`).join('')}</ul></div></div>`;
+ return `<div class="hotel-facts hotel-match-facts"><div class="hotel-match-line"><strong>По вашим условиям</strong><ul aria-label="Совпадения с фильтрами">${[...facts].slice(0,maximumFacts).map(fact=>`<li>${esc(fact)}</li>`).join('')}</ul></div></div>`;
 }
 function currentCardSelectionHTML(h,offers){
  const listing=h.offers.find(row=>row.key===selectedOffer?.key);
