@@ -470,5 +470,8 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');
   } finally { await context.close(); }
  }
+ if (process.env.SEARCH3_VISUAL_ASSET_ROOT) {
+  await require('./search3-visual-desktop-filter-dom.cjs')({browser,origin,base,evidence});
+ }
 };
 module.exports.checkFamilyResultRecap = checkFamilyResultRecap;
