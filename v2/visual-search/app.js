@@ -1077,9 +1077,23 @@ function renderActive(ratingCounts){const f=state.filters,chips=filterChipData()
  const n=filterCount();$('#mobile-count').textContent=n?`(${n})`:'';$('#drawer-filter-count').textContent=n?`(${n})`:'';return ratingCounts;
 }
 function hotelHighlightsHTML(h){
- const priority=[3,1,5,8,2],rank=group=>{const index=priority.indexOf(group);return index<0?priority.length:index;};
- const facts=[...(h.amenities||[])].filter(a=>a.label).sort((a,b)=>rank(a.groupId)-rank(b.groupId));
- if(facts.length)return `<ul class="hotel-highlight-list" aria-label="Удобства отеля">${[...new Set(facts.map(a=>a.label))].slice(0,3).map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`;
+ const priority=[3,1,5,8,2],groups=[],maximumHighlights=3;
+ for(const fact of h.amenities||[]){
+  const {label}=fact;
+  if(!label)continue;
+  const rank=priority.indexOf(fact.groupId);
+  const group=groups[rank<0?priority.length:rank]??=new Set();
+  if(group.size<maximumHighlights)group.add(label);
+ }
+ if(groups.length){
+  const labels=new Set();
+  // The first three unique labels in each group suffice for the first three overall.
+  for(const group of groups){
+   for(const label of group||[])labels.add(label);
+   if(labels.size>=maximumHighlights)break;
+  }
+  return `<ul class="hotel-highlight-list" aria-label="Удобства отеля">${[...labels].slice(0,maximumHighlights).map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`;
+ }
  const place=plainHotelText(h.raw?.description||h.raw?.place),text=place.length>160?place.slice(0,157).replace(/\s+\S*$/,'')+'…':place;
  const capturedFacts=place.split(' · ').map(label=>label.trim()).filter(Boolean);
  if(capturedFacts.length>1&&capturedFacts.every(label=>label.length<=56))return `<ul class="hotel-highlight-list" aria-label="Особенности отеля">${[...new Set(capturedFacts)].slice(0,3).map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`;
@@ -1105,7 +1119,8 @@ function hotelMatchFactsHTML(h,f){
  return `<div class="hotel-facts hotel-match-facts"><div class="hotel-match-line"><strong>По вашим условиям</strong><ul aria-label="Совпадения с фильтрами">${[...facts].slice(0,maximumFacts).map(fact=>`<li>${esc(fact)}</li>`).join('')}</ul></div></div>`;
 }
 function currentCardSelectionHTML(h,offers){
- const listing=h.offers.find(row=>row.key===selectedOffer?.key);
+ if(!selectedOffer)return '';
+ const key=selectedOffer.key,listing=h.offers.find(row=>row.key===key);
  const current=listing&&listing.raw===selectedOffer?.raw&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||listing.total)===listing.total?selectedOffer:null;
  const currentVisible=current&&offers.some(row=>row.key===current.key),currentNeedsCheck=current&&(['anex','andromeda'].includes(current.provider)||current.loading||current.flightsLoading||current.pricePending||current.quoteError||needsRefresh(current));
  const currentLegs=current?savedFlightLegs(current):[],currentFlight=currentLegs.length?currentLegs.map((leg,i)=>(i?'Обратно':'Туда')+' '+flightDateText(leg.departureDate)+' '+leg.times).join(' · '):current?savedFlightTextPlain(current):'';

@@ -608,6 +608,34 @@ const {JSDOM}=require('jsdom');
  assert.equal(extraReads,0,'three distinct visible reasons are sufficient even when more amenities are selected');
 }
 
+{
+ const owner=cardRatingOwner(source),representative={key:'representative',total:120000,nights:7};
+ let otherOfferLookups=0;
+ const hotel={id:500,name:'Отель',resort:'Кемер',country:'4',stars:4,photos:[],offers:[
+  representative,...Array.from({length:120},(_,i)=>({get key(){otherOfferLookups++;return 'unused-'+i;}}))
+ ]};
+ const html=JSDOM.fragment(owner.card({hotel,offers:[representative],rating:null}));
+ assert(!html.querySelector('.current-card-selection'),'no current-tour block before choosing a tour');
+ assert(html.querySelector('.starting-price strong'),'ordinary card price remains available');
+ assert.equal(otherOfferLookups,0,'initial card render skips current-tour inspection when no tour is selected');
+}
+{
+ const ctx=vm.createContext({esc,plainHotelText:value=>value||''});
+ vm.runInContext(section(source,'function hotelHighlightsHTML(','function cardOpensRooms('),ctx);
+ const highlights=hotel=>[...JSDOM.fragment(ctx.hotelHighlightsHTML(hotel)).querySelectorAll('li')].map(li=>li.textContent);
+ const amenities=[
+  {groupId:8,label:'Бассейн'},
+  {groupId:3,label:'Детский клуб <&>'},
+  {groupId:1,label:'Детский клуб <&>'},
+  {groupId:1,label:'Песчаный пляж'},
+  {groupId:1,label:'Первая линия'},
+  {groupId:1,label:'Пляжное кафе'},
+  {groupId:3,label:''},
+ ];
+ assert.deepEqual(highlights({amenities}),['Детский клуб <&>','Песчаный пляж','Первая линия']);
+ assert.deepEqual(highlights({amenities:[],raw:{description:'Пляж рядом · Виды на море · Виды на море'}}),['Пляж рядом','Виды на море']);
+ assert.deepEqual(highlights({amenities:[{groupId:99,label:'Двор'},{groupId:2,label:'Терраса'},{groupId:100,label:'Сад'}]}),['Терраса','Двор','Сад']);
+}
 // Site224 card entry: presentation must retain the representative exact key and
 // the separate list owner, without advertising alternatives after local filtering.
 {
