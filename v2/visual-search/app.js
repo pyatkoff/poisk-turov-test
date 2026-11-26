@@ -261,6 +261,7 @@ function collapseSearch(){closeInlineSearchPicker();renderSummary();$('#search-f
 function editSearch(){
  if(searchResponse.pending||Object.values(searchResponse.providers||{}).includes('loading'))stopSearch();if(innerWidth<=1100)closeFilters();
  $('#results').classList.remove('filters-requested');
+ if(state.hasSearched&&mobileFiltersNeedRefresh){renderFilters();mobileFiltersNeedRefresh=false;}
  if(state.hasSearched&&!searchEditSession){
   searchEditSession={filters:structuredClone(state.filters),selectedDate:state.selectedDate,onlyFavorites:state.onlyFavorites,y:scrollY,focus:focusReference(actionTrigger||document.activeElement)};
   draft=structuredClone(state.search);draftDestination=null;
