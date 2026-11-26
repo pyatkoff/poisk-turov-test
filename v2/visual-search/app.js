@@ -3494,15 +3494,13 @@ function stopSearch(){clearSearchTimers();terminalizeSearchForVerification('user
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!r.hotelProfiles&&!exactMatch;
  const details=node.querySelector('details'),opened=details?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
- const providerCounts=data.live?(r.currentInventory?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
  const sourceRows=[['tourvisor','Tourvisor'],['anex','ANEX'],['andromeda','SAMO']].flatMap(([key,name])=>{
   const source=r.sources?.[key],status=r.providers?.[key]||source?.status;if(!status||status==='skipped')return [];
-  const failed=status==='error'||status==='partial'&&(source?.continuationFailed===true||source?.destinationBranchFailed===true),count=providerCounts?(Object.hasOwn(providerCounts,key)?providerCounts[key]:(status==='complete'||status==='ready')&&!r.hotelProfiles?0:null):r.union?.offersByProvider?.[key]??source?.offers;
+  const failed=status==='error'||status==='partial'&&(source?.continuationFailed===true||source?.destinationBranchFailed===true);
   const label=status==='loading'?'Получаем предложения':status==='error'?'Предложения не загрузились':status==='partial'?(failed?'Часть предложений не загрузилась':'Получена часть предложений'):status==='complete'||status==='ready'?'Порция получена':status==='cancelled'?'Запрос остановлен':'Статус не подтверждён';
-  return [{key,name,status,failed,label,count:Number.isSafeInteger(count)&&count>=0?count:null}];
+  return [{key,name,status,failed,label}];
  });
  const providerStates=Object.values(r.providers||{}),providerPending=providerStates.includes('loading'),providerFailure=providerStates.includes('error')||sourceRows.some(source=>source.failed),partialDelivery=providerStates.includes('partial'),unconfirmed=sourceRows.some(source=>!['loading','error','partial','complete','ready','cancelled'].includes(source.status)),partialError=providerFailure||r.databaseError,profileUnavailable=r.hotelProfiles==='unavailable'&&items.length>0,hasNotice=partialError||partialDelivery||profileUnavailable||unconfirmed;
- const failedSources=sourceRows.filter(source=>source.failed).map(source=>source.name).join(', '),delivery=sourceRows.length?`<div class="search-provider-status" aria-label="Источники поиска">${sourceRows.map(source=>`<span data-search-source="${source.key}"><strong>${source.name}</strong><small>${source.label}${source.count!==null?` · Вариантов до фильтров: ${source.count}`:''}</small></span>`).join('')}</div>`:'';
  more.hidden=!state.hasSearched||r.pending||!r.canContinue;
  more.innerHTML=more.hidden?'':`<div class="search-status-top"><div><h3>Продолжить подбор</h3><p>${r.resultLimitReached?'Получена большая выборка. Уточните условия, чтобы увидеть другие предложения.':'Запросите ещё варианты. Найденные туры и выбранные фильтры сохранятся.'}</p></div></div><div class="search-status-actions"><button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button></div>`;
  if(continueFocused)more.querySelector('[data-action="continue-search"]')?.focus({preventScroll:true});
@@ -3510,6 +3508,13 @@ function renderSearchStatus(items,total){
  const searching=r.pending||providerPending,progressive=searching&&items.length>0&&r.currentInventory===true&&!r.coverageGap&&!r.exactRefresh&&!partialError&&!unconfirmed;
  node.classList.toggle('search-status-compact',progressive||!searching&&items.length>0&&!noCurrent);
  if(node.hidden)return;
+ const failedSources=sourceRows.filter(source=>source.failed).map(source=>source.name).join(', ');
+ const providerCounts=data.live?(r.currentInventory&&sourceRows.length?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
+ const delivery=sourceRows.length?`<div class="search-provider-status" aria-label="Источники поиска">${sourceRows.map(({key,name,status,label})=>{
+  const count=providerCounts?(Object.hasOwn(providerCounts,key)?providerCounts[key]:(status==='complete'||status==='ready')&&!r.hotelProfiles?0:null):r.union?.offersByProvider?.[key]??r.sources?.[key]?.offers;
+  const countLabel=Number.isSafeInteger(count)&&count>=0?` · Вариантов до фильтров: ${count}`:'';
+  return `<span data-search-source="${key}"><strong>${name}</strong><small>${label}${countLabel}</small></span>`;
+ }).join('')}</div>`:'';
  const failed=!items.length&&!r.pending&&!providerPending&&(r.phase==='error'||r.phase==='complete'&&providerFailure),fallback=r.databaseError&&items.length>0;
  node.dataset.state=failed||providerFailure?'error':hasNotice?'partial':'loading';
  const retained=r.phase==='cancelled'&&r.stopReason==='verification',continueAction=!r.pending&&!providerPending&&r.canContinue?`<button class="primary" data-action="continue-search">${r.retryRead?'Проверить результат':'Продолжить поиск'}</button>`:'';
