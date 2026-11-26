@@ -29,6 +29,26 @@ const app=fs.readFileSync(path.join(root,'visual-search/app.js'),'utf8'),start=a
 assert(start>=0&&end>start);
 const vm=require('node:vm'),events=[],context={editSearch(){events.push('edit');}};
 vm.createContext(context);vm.runInContext(app.slice(start,end),context);
+const homeStart=app.indexOf('const homeFormOnly='),homeEnd=app.indexOf('const nextSearchForm=',homeStart);
+assert(homeStart>=0&&homeEnd>homeStart,'HOME placement precedes initialization of the form controls');
+const nextSearch='/_preview/search3-next-candidate/poisk-turov/';
+for(const [valid,formOnly,searchBase,expected] of [
+ [true,true,nextSearch,true],
+ [true,true,'/_preview/search3-site-candidate/poisk-turov/',false],
+ [true,true,'/poisk-turov/',false],
+ [true,false,nextSearch,false],
+ [false,true,nextSearch,false]
+]){
+ let moved=false;
+ const budget={closest(selector){assert.equal(selector,'.home-search-more');return disclosure;}};
+ const disclosure={replaceWith(button){assert.strictEqual(button,budget);moved=true;}};
+ vm.runInNewContext(app.slice(homeStart,homeEnd),{
+  window:{AnyTourPublicConfigV1:{valid},V2_CONFIG:{search3FormOnly:formOnly,search3PublicBase:searchBase}},
+  $(selector){assert.equal(selector,'#quick-budget');return budget;}
+ });
+ assert.equal(moved,expected,'only a valid NEXT HOME puts the budget on the first screen');
+}
+
 for(const action of ['top','edit-search']){
  events.length=0;
  const menu={removeAttribute(name){assert.equal(name,'open');events.push('close');}};
