@@ -2518,7 +2518,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-dialog #prototype-lead-form{display:flex;flex-direction:column}
 
 .application-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"recap contact" "more contact";grid-template-rows:min-content auto;column-gap:28px;align-items:start}
-.application-recap{grid-area:recap}
+.application-recap{grid-area:recap;align-self:stretch}
 .application-contact{grid-area:contact}
 .application-more{grid-area:more}
 html.quality-text-200 .application-layout{grid-template-areas:"recap" "contact" "more";row-gap:14px}
