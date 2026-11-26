@@ -1372,7 +1372,7 @@ function positionHotelRooms(row=null){
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 let renderedSearchStatus=null,renderedResultSource=null;
 function refreshResultFilters(options,ratingCounts){
- if(!homeFormOnly&&!catalogReady&&innerWidth<=1100&&!filterDraft)return;
+ if(options.deferFilterPanel===true)return;
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters)return ratingCount===undefined?renderFilters():renderFilters(ratingCount);
  const selectedCount=ratingCount===undefined?updateFacetCounts():updateFacetCounts(ratingCount);
@@ -3999,7 +3999,7 @@ document.addEventListener('click',event=>{if(event.target.closest('[data-action=
 const initialUIRoute=history.state?.[uiHistoryKey];
 messengerReturn=readMessengerReturn(initialUIRoute);
 initInlineSearchPickers();
-hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults();bootRealData();
+hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults({deferFilterPanel:!homeFormOnly&&innerWidth<=1100});bootRealData();
 if(initialUIRoute&&!messengerReturn)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 if(homeFormOnly)addEventListener('pageshow',()=>{homeNavigationPending=false;state.hasSearched=false;updateSearchUI();});
 // The trip bar follows this document's viewport, including in the responsive preview.
