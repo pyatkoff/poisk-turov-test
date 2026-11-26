@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e2774a3b30f22c3128633ddafc49ae514d08cec3'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7a458c4d313fa6f71b7b2baf5053a0b1ec7ca8c8'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -175,53 +175,143 @@ jobs:
           }
           PHP
 
-      - name: Read original PRICE journal tail and current editor lock
+      - name: Reconcile original promoted-publisher receipts by reading
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'python3 -' <<'PY'
-          import datetime, fcntl, json, os
-          path='/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl'
-          with open(path,'rb') as handle:
-              try:
-                  fcntl.flock(handle,fcntl.LOCK_SH | fcntl.LOCK_NB)
-                  fcntl.flock(handle,fcntl.LOCK_UN)
-                  locked=False
-              except BlockingIOError:
-                  locked=True
-              size=os.fstat(handle.fileno()).st_size
-              handle.seek(max(0,size-2097152))
-              tail=handle.read(min(size,2097152))
-          lines=tail.splitlines()
-          if size>2097152: lines=lines[1:]
-          state=next((json.loads(row) for row in reversed(lines) if row.endswith(b'}') and row.startswith(b'{')), {})
-          pending=state.get('pending') or {}
-          cycle=state.get('nightly_cycle') or {}
-          print('PRICE_EDITOR_OBSERVATION',json.dumps({
-              'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              'locked':locked,
-              'journal_bytes':size,
-              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
-              'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
-          }),flush=True)
-          import subprocess
-          names=('sync-priority-hotels-v1.php','top500-coverage-v1.php','top500-daily-collector-v1.php',
-                 'monitor-price-hook.php','apply_promoted_hotel_prices.php','rollup-price-daily-v1.php',
-                 'rollup-price-daily-exact-v1.php','build-seo-offer-snapshots-v1.php')
-          active=[]
-          table=subprocess.check_output(['ps','-u',str(os.getuid()),'-o','etimes=,comm=,args='],text=True)
-          for row in table.splitlines():
-              fields=row.strip().split(maxsplit=2)
-              if len(fields)<3 or fields[1] not in ('php','php8.1','php8.2','php8.3','php8.4'):continue
-              command=fields[2].split()
-              for token in command[1:3]:
-                  filename=os.path.basename(token)
-                  if filename in names:
-                      active.append({'step':filename,'elapsed_seconds':int(fields[0])})
-          print('PRICE_RELATED_STEPS',json.dumps(active),flush=True)
-          PY
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'php /var/www/anytoour/data/www/app.anytoour.ru/tools/apply_promoted_hotel_prices.php --inspect'
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
+  public-read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7a458c4d313fa6f71b7b2baf5053a0b1ec7ca8c8'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Read exact original public targets and all three XML files
+        run: |
+          python3 - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor
+          from datetime import datetime
+          from hashlib import sha256
+          from html import unescape
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.error import URLError
+          from urllib.request import Request, urlopen
+          from xml.etree import ElementTree as ET
+          from zoneinfo import ZoneInfo
+          import json
+          import re
+          import sys
+          TARGETS=json.loads(r'''[{"hotel":174,"platform":"max","publication":3574,"url":"https://max.ru/anytour/AaHzN34rD6Q","original":"held_before_write"},{"hotel":174,"platform":"telegram","publication":3575,"url":"https://t.me/anytour/1792","original":"provider_verified_public_pending"},{"hotel":12107,"platform":"max","publication":3604,"url":"https://max.ru/anytour/AZwjaZt4Kz8","original":"held_before_write"},{"hotel":132,"platform":"max","publication":3605,"url":"https://max.ru/anytour/AZ5qgiujRlo","original":"held_before_write"},{"hotel":469,"platform":"max","publication":3606,"url":"https://max.ru/anytour/AZ6sX9HGLTk","original":"held_before_write"},{"hotel":12111,"platform":"max","publication":3607,"url":"https://max.ru/anytour/AZ6wa60cTlw","original":"held_before_write"},{"hotel":12111,"platform":"telegram","publication":3623,"url":"https://t.me/anytour/23","original":"provider_verified_public_pending"},{"hotel":70048,"platform":"max","publication":3608,"url":"https://max.ru/anytour/AZ61r6_QcAI","original":"held_before_write"},{"hotel":82606,"platform":"max","publication":3609,"url":"https://max.ru/anytour/AZ7KT8ynMm8","original":"held_before_write"},{"hotel":82606,"platform":"telegram","publication":3625,"url":"https://t.me/anytour/48","original":"provider_verified_public_pending"},{"hotel":1344,"platform":"max","publication":3610,"url":"https://max.ru/anytour/AZ7PcvbibFA","original":"held_before_write"},{"hotel":260,"platform":"max","publication":3611,"url":"https://max.ru/anytour/AZ7UVbXteP8","original":"held_before_write"},{"hotel":415,"platform":"max","publication":23,"url":"https://max.ru/anytour/AaFUVxlGPTg","original":"held_before_write"},{"hotel":415,"platform":"telegram","publication":20,"url":"https://t.me/anytour/1754","original":"provider_verified_public_pending"},{"hotel":2493,"platform":"max","publication":3612,"url":"https://max.ru/anytour/AZ7Z4K9JJNQ","original":"held_before_write"},{"hotel":3452,"platform":"max","publication":3613,"url":"https://max.ru/anytour/AZ7pU2e2Znw","original":"held_before_write"},{"hotel":37668,"platform":"max","publication":3615,"url":"https://max.ru/anytour/AZ8r4R9vT_Q","original":"held_before_write"},{"hotel":37668,"platform":"telegram","publication":3630,"url":"https://t.me/anytour/402","original":"provider_verified_public_pending"},{"hotel":43676,"platform":"max","publication":3616,"url":"https://max.ru/anytour/AZ9k6MvNF94","original":"held_before_write"},{"hotel":64895,"platform":"max","publication":3617,"url":"https://max.ru/anytour/AZ-OUsaPJjg","original":"held_before_write"},{"hotel":64895,"platform":"telegram","publication":3601,"url":"https://t.me/anytour/993","original":"provider_verified_public_pending"},{"hotel":73974,"platform":"max","publication":3618,"url":"https://max.ru/anytour/AZ-tLRx7Jzw","original":"held_before_write"},{"hotel":74503,"platform":"max","publication":3619,"url":"https://max.ru/anytour/AZ_MDV0gO_I","original":"held_before_write"},{"hotel":74503,"platform":"telegram","publication":3633,"url":"https://t.me/anytour/474","original":"provider_verified_public_pending"},{"hotel":99713,"platform":"max","publication":3620,"url":"https://max.ru/anytour/AZ_RB3FVXFc","original":"updated"},{"hotel":253,"platform":"max","publication":3659,"url":"https://max.ru/anytour/AaEB69RdKN4","original":"updated"},{"hotel":218,"platform":"max","publication":3660,"url":"https://max.ru/anytour/AaBXt6whKKM","original":"updated"},{"hotel":218,"platform":"telegram","publication":3673,"url":"https://t.me/anytour/579","original":"provider_verified_public_pending"},{"hotel":547,"platform":"max","publication":3662,"url":"https://max.ru/anytour/AaEgr0FPOvI","original":"updated"},{"hotel":1074,"platform":"max","publication":3663,"url":"https://max.ru/anytour/AaDiVIIIOXI","original":"updated"},{"hotel":1074,"platform":"telegram","publication":3676,"url":"https://t.me/anytour/232","original":"provider_verified_public_pending"},{"hotel":240,"platform":"max","publication":3664,"url":"https://max.ru/anytour/AaDTUJ5SB3I","original":"updated"},{"hotel":240,"platform":"telegram","publication":3683,"url":"https://t.me/anytour/501","original":"provider_verified_public_pending"},{"hotel":325,"platform":"max","publication":3665,"url":"https://max.ru/anytour/AaB25lWLB5Y","original":"updated"},{"hotel":325,"platform":"telegram","publication":3677,"url":"https://t.me/anytour/208","original":"provider_verified_public_pending"},{"hotel":418,"platform":"max","publication":3666,"url":"https://max.ru/anytour/AaCUwZNoDA8","original":"updated"},{"hotel":418,"platform":"telegram","publication":3678,"url":"https://t.me/anytour/300","original":"provider_verified_public_pending"},{"hotel":4079,"platform":"max","publication":3667,"url":"https://max.ru/anytour/AaD8zg3FDHM","original":"updated"},{"hotel":28581,"platform":"max","publication":3668,"url":"https://max.ru/anytour/AaBM5lS5bUc","original":"updated"},{"hotel":28581,"platform":"telegram","publication":3679,"url":"https://t.me/anytour/270","original":"provider_verified_public_pending"},{"hotel":341,"platform":"max","publication":3669,"url":"https://max.ru/anytour/AaCaxLjsVmU","original":"updated"},{"hotel":352,"platform":"max","publication":3670,"url":"https://max.ru/anytour/AaCF4YtORgI","original":"updated"},{"hotel":352,"platform":"telegram","publication":3681,"url":"https://t.me/anytour/540","original":"provider_verified_public_pending"},{"hotel":132016,"platform":"max","publication":3671,"url":"https://max.ru/anytour/AaDtMfpbMO0","original":"updated"},{"hotel":12112,"platform":"telegram","publication":3685,"url":"https://t.me/anytour/1046","original":"provider_verified_public_pending"},{"hotel":70030,"platform":"telegram","publication":3686,"url":"https://t.me/anytour/982","original":"provider_verified_public_pending"},{"hotel":1273,"platform":"telegram","publication":3687,"url":"https://t.me/anytour/1098","original":"provider_verified_public_pending"},{"hotel":73055,"platform":"max","publication":3864,"url":"https://max.ru/anytour/AZxcpmMWNUI","original":"updated"},{"hotel":73055,"platform":"telegram","publication":3690,"url":"https://t.me/anytour/927","original":"provider_verified_public_pending"},{"hotel":1439,"platform":"telegram","publication":3688,"url":"https://t.me/anytour/954","original":"provider_verified_public_pending"},{"hotel":91404,"platform":"telegram","publication":3689,"url":"https://t.me/anytour/913","original":"provider_verified_public_pending"},{"hotel":2588,"platform":"max","publication":3825,"url":"https://max.ru/anytour/AaAkdvyEBXQ","original":"updated"},{"hotel":65877,"platform":"max","publication":3828,"url":"https://max.ru/anytour/AZ-d-XrfADw","original":"updated"},{"hotel":73343,"platform":"max","publication":3832,"url":"https://max.ru/anytour/AaBnNxELfuU","original":"updated"},{"hotel":43689,"platform":"max","publication":3833,"url":"https://max.ru/anytour/AaBxuxe-Jxk","original":"updated"},{"hotel":139,"platform":"max","publication":3834,"url":"https://max.ru/anytour/AaCAxCRDffc","original":"updated"},{"hotel":2470,"platform":"max","publication":3835,"url":"https://max.ru/anytour/AaC42fW_AY0","original":"updated"},{"hotel":56092,"platform":"max","publication":3836,"url":"https://max.ru/anytour/AaDD8UQLQ4U","original":"updated"},{"hotel":59114,"platform":"max","publication":3837,"url":"https://max.ru/anytour/AaDYcRGJKpQ","original":"updated"},{"hotel":63191,"platform":"max","publication":3838,"url":"https://max.ru/anytour/AaELd0cFVAQ","original":"updated"},{"hotel":76588,"platform":"max","publication":3839,"url":"https://max.ru/anytour/AaEba-dgJKk","original":"updated"},{"hotel":77914,"platform":"max","publication":3840,"url":"https://max.ru/anytour/AaEl-MVcT8Q","original":"updated"},{"hotel":106,"platform":"max","publication":3841,"url":"https://max.ru/anytour/AaEwSMavEQU","original":"updated"},{"hotel":111,"platform":"max","publication":3842,"url":"https://max.ru/anytour/AaE0q57XSGk","original":"updated"},{"hotel":114,"platform":"max","publication":3843,"url":"https://max.ru/anytour/AaE6sgknSuc","original":"updated"},{"hotel":63674,"platform":"max","publication":3844,"url":"https://max.ru/anytour/AaAuJeZbQAc","original":"held_before_write"},{"hotel":358,"platform":"max","publication":3846,"url":"https://max.ru/anytour/AZrE5K3jCFs","original":"held_before_write"},{"hotel":107938,"platform":"max","publication":3862,"url":"https://max.ru/anytour/AZwEq2zVLGY","original":"held_before_write"},{"hotel":954,"platform":"max","publication":3863,"url":"https://max.ru/anytour/AZwpDhM0dC0","original":"held_before_write"}]''')
+          
+          base = "https://app.anytoour.ru/feed/hotel-posts-"
+          rows = json.loads(Path(sys.argv[1]).read_text()) if len(sys.argv)>1 else TARGETS
+          quoted = r'"(?:[^"\\]|\\.)*"'
+          max_pattern = re.compile(r'\bmessage:\{id:([0-9]+),link:(' + quoted + r'),createdAt:' + quoted
+                                   + r',updatedAt:(?:' + quoted + r'|null),text:(' + quoted + ')')
+          stamp_pattern = re.compile(r"Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}),?\s+(\d{2}:\d{2}) МСК")
+          price_pattern = re.compile(r"От ([\d \u00a0\u202f]+(?:[.,]\d{2})?) ₽")
+          headers = {"User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache"}
+          
+          def get(url):
+              with urlopen(Request(url, headers=headers), timeout=12) as response:
+                  assert response.status == 200
+                  return response.read().decode()
+          
+          class TelegramPost(HTMLParser):
+              def __init__(self, wanted):
+                  super().__init__()
+                  self.wanted = wanted
+                  self.depth = 0
+                  self.root = None
+                  self.caption_depth = None
+                  self.caption = []
+                  self.seen = 0
+                  self.photo = False
+                  self.button = False
+              def handle_starttag(self, tag, pairs):
+                  attrs = dict(pairs)
+                  classes = set(attrs.get('class', '').split())
+                  void = tag in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
+                  if not void: self.depth += 1
+                  if attrs.get('data-post') == self.wanted and tag == 'div':
+                      self.root = self.depth
+                      self.seen += 1
+                  if self.root is None: return
+                  if 'tgme_widget_message_text' in classes and not void: self.caption_depth = self.depth
+                  if tag == 'br' and self.caption_depth is not None: self.caption.append('\n')
+                  if 'tgme_widget_message_photo_wrap' in classes: self.photo |= 'background-image' in attrs.get('style','')
+                  if 'tgme_widget_message_inline_button' in classes: self.button |= bool(attrs.get('href'))
+              def handle_endtag(self, tag):
+                  if tag in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}: return
+                  if self.depth == self.caption_depth: self.caption_depth = None
+                  if self.depth == self.root: self.root = None
+                  self.depth -= 1
+              def handle_data(self, data):
+                  if self.caption_depth is not None: self.caption.append(data)
+          
+          def offer_rows(xml):
+              items = ET.fromstring(xml).findall('./shop/offers/offer')
+              result = {o.attrib['id']:o for o in items}
+              assert len(result)==len(items)
+              return result
+          
+          with ThreadPoolExecutor(3) as e:
+              snapshots=dict(zip(('max','telegram','all'),e.map(lambda kind:get(base+kind+'.xml'),('max','telegram','all'))))
+          feeds={kind:offer_rows(raw) for kind,raw in snapshots.items()}
+          
+          def normalized_price(s):
+              return re.sub(r"[ \u00a0\u202f]", "", s).replace(",", ".").removesuffix(".00") if s else None
+          
+          def price_text(text):
+              p=price_pattern.search(text)
+              t=stamp_pattern.search(text)
+              return normalized_price(p[1]) if p else None, " ".join(t.groups()) if t else None
+          
+          def read(row):
+              platform,hotel,url=row['platform'],row['hotel'],row['url']
+              pref={'max':'max','telegram':'tg'}[platform]
+              exact=f'{pref}_{hotel}'
+              published=feeds[platform][exact]
+              combined=feeds['all'][exact]
+              expected=price_text(published.findtext('description',''))
+              assert normalized_price(published.findtext('price'))==expected[0]
+              assert price_text(combined.findtext('description',''))==expected
+              attempts=[url] if platform=='max' else [url+'?embed=1',url.replace('t.me/','t.me/s/')]
+              matches=[]
+              results=[]
+              for address in attempts:
+                  try:
+                      document=get(address)
+                      if platform=='max':
+                          selected=[m for m in max_pattern.finditer(document) if json.loads(m[2])==url]
+                          if len(selected)!=1: raise ValueError('caption_identity')
+                          m=selected[0]
+                          tail=document[m.end():].split("},posts:[",1)[0]
+                          value=price_text(unescape(json.loads(m[3])))
+                          media=bool(re.search(r'\bphotoId:\d+',tail))
+                          button='attachmentType:"INLINE_KEYBOARD"' in tail
+                      else:
+                          tg=TelegramPost('anytour/'+url.rsplit('/',1)[1])
+                          tg.feed(document)
+                          if tg.seen!=1 or not tg.caption: raise ValueError('caption_identity')
+                          value=price_text(''.join(tg.caption))
+                          media,button=tg.photo,tg.button
+                      results.append({'view':('embed' if '?embed' in address else ('archive' if platform=='telegram' else 'max')),
+                                      'value':value,'photo':media,'button':button})
+                      matches.append(value==expected and expected[0] is not None and expected[1] is not None and media and button)
+                  except (OSError, URLError, ValueError, AssertionError) as error:
+                      results.append({'error':type(error).__name__,'detail':str(error)[:80]})
+              return {**row,'expected':expected,'public_match':any(matches),'reads':results}
+          
+          with ThreadPoolExecutor(4) as e:
+              result=list(e.map(read,rows))
+          print('INDEPENDENT_PROMOTED_PUBLIC',json.dumps({
+              'at':datetime.now(ZoneInfo('Europe/Moscow')).isoformat(),
+              'all_sha':sha256(snapshots['all'].encode()).hexdigest(),
+              'rows':result},ensure_ascii=False),flush=True)
+          PY
