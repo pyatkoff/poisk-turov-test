@@ -666,7 +666,13 @@ function updateNav(){
 let filterDraft=null,emptySuggestions=[],drawerSuggestions=[],filterBudgetEdit=null;
 const appliedFilterModel=()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate});
 const editingFilterModel=()=>filterDraft||appliedFilterModel();
-function matchingHotelPlan(model){const s=model.search||state.search,f=model.filters||state.filters,selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to),matches=hotelOfferPredicate(s,f,from,to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;return h=>hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined;}
+function matchingHotelPlan(model){
+ const s=model.search||state.search,f=model.filters||state.filters;
+ const selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,day=model.day||(!model.ignoreDate&&selected);
+ const fits=hotelOfferPredicate(s,f,day||s.from,day||s.to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;
+ const matches=model.acceptPrice?offer=>fits(offer)&&model.acceptPrice(offer.total):fits;
+ return h=>hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined;
+}
 const countMatchingHotels=model=>{const matches=matchingHotelPlan(model);return hotels.reduce((count,h)=>count+Number(matches(h)),0);};
 function countMatchingHotelGroups(models){const plans=models.map(matchingHotelPlan);return hotels.reduce((counts,h)=>{for(let i=0;i<plans.length;i++)counts[i]+=Number(plans[i](h));return counts;},models.map(()=>0));}
 // Facet counts are per hotel, so stop after each requested identity is found.
@@ -776,8 +782,21 @@ function rememberMissingAmenityNames(keys){
  }
 }
 function removeModelFilter(model,key,value){const f=model.filters;if(key==='hotelId'||key==='hotelIds')setDestinationIds(f,destinationIds(f).filter(id=>String(id)!==String(value)));else if(key==='date')model.selectedDate=null;else if(key==='favorites')model.onlyFavorites=false;else if(key==='price'){f.min=0;f.max=null}else if(Array.isArray(f[key]))f[key]=f[key].filter(x=>String(x)!==String(value));else f[key]=key==='q'?'':key==='hotelId'?0:false;}
-function minimumHotelOfferTotal(model,hotelMinimums=null){
- const options={...model,filters:{...model.filters,max:null},minimumOnly:'raw'},offers=[];
+function minimumHotelOfferTotal(model,hotelMinimums=null,budgetPreview=null){
+ const filters={...model.filters,max:null};
+ if(budgetPreview){
+  const max=model.filters.max;
+  let minimum=null;
+  // Keep the first in-budget match per hotel. If none fits, this pass has
+  // already seen every higher-priced offer that meets the other conditions.
+  budgetPreview.count=countMatchingHotels({...model,filters,acceptPrice(total){
+   if(total<=max)return true;
+   minimum=minimum===null?total:Math.min(minimum,total);
+   return false;
+  }});
+  return budgetPreview.count?null:minimum;
+ }
+ const options={...model,filters,minimumOnly:'raw'},offers=[];
  for(let index=0,length=hotels.length;index<length;index++){if(!(index in hotels))continue;const offer=hotelOffers(hotels[index],options);if(offer)offers.push(offer);}
  if(!offers.length)return null;
  let minimum=Infinity;
@@ -1908,17 +1927,18 @@ function updateBudgetPreview(){
  if(!valid){preview.textContent='Исправьте сумму, чтобы увидеть варианты.';return;}
  const place=currentDraftDestination(),changed=searchKey(draft)!==searchKey(state.search)||destinationIds(place).join('|')!==destinationIds(state.filters).join('|')||JSON.stringify(place.resorts)!==JSON.stringify(state.filters.resorts);
  if(!state.hasSearched||changed){preview.textContent='Количество отелей появится после поиска с новыми условиями поездки.';return;}
- const model={...appliedFilterModel(),filters:{...pickerFilters(),min,max}},count=countMatchingHotels(model),response=responseFor(state.search),complete=response.phase==='complete'&&!response.hotelProfiles;
+ const model={...appliedFilterModel(),filters:{...pickerFilters(),min,max}};
+ const response=responseFor(state.search),complete=response.phase==='complete'&&!response.hotelProfiles;
+ const canSuggest=max!==null&&(complete||response.currentInventory&&response.phase!=='error')&&response.hotelProfiles!=='loading'&&!$('.search-submit').disabled;
+ const budgetPreview={count:null},minimum=canSuggest?minimumHotelOfferTotal(model,null,budgetPreview):null;
+ const count=budgetPreview.count??countMatchingHotels(model);
  if(!count&&response.hotelProfiles==='loading'){preview.textContent='Загружаем данные отелей. Количество появится по мере загрузки.';return;}
  preview.textContent=count?`${hotelCountText(count)} в этом бюджете · по загруженной выдаче`:complete?'В этом бюджете нет отелей с выбранными условиями.':'В загруженной части выдачи пока нет отелей в этом бюджете.';
  if(count)apply.textContent=`Применить · ${hotelCountText(count)}`;
- if(!count&&max!==null&&(complete||response.currentInventory&&response.phase!=='error')&&!$('.search-submit').disabled){
-  const minimum=minimumHotelOfferTotal(model);
-  if(minimum!==null&&minimum>max){
-   const ceiling=Math.ceil(minimum);
-   preview.textContent='Ближайшая цена среди загруженных туров с вашими условиями — '+money(minimum)+'.';
-   recovery.dataset.value=ceiling;recovery.textContent=`Показать отели до ${money(ceiling)}`;recovery.hidden=false;
-  }
+ if(!count&&minimum!==null&&minimum>max){
+  const ceiling=Math.ceil(minimum);
+  preview.textContent='Ближайшая цена среди загруженных туров с вашими условиями — '+money(minimum)+'.';
+  recovery.dataset.value=ceiling;recovery.textContent=`Показать отели до ${money(ceiling)}`;recovery.hidden=false;
  }
 }
 function openBudget(restore=null){
