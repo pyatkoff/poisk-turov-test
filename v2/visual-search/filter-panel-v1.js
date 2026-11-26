@@ -7,6 +7,15 @@ const expandedFacets=new Set(),facetQueries=new Map();
 let facetQueryScope='';
 const expandedFilterSections=new Set();
 function syncFilterSections(){
+ const panel=$('#filter-panel');
+ if(getViewportWidth()>1100){
+  if(panel.classList.contains('filter-detail-open')){
+   panel.classList.remove('filter-detail-open');
+   panel.querySelector('.filter-top h3').textContent='Фильтры';
+   $('#filter-detail-back').hidden=true;
+  }
+  return;
+ }
  const f=editingFilterModel().filters;
  $$('#filters .filter-group').forEach((group,i)=>{
   if(group.querySelector('#hotel-query')||group.classList.contains('core-filter-group'))return;
@@ -30,7 +39,7 @@ function syncFilterSections(){
   button.querySelector('.filter-section-value').textContent=summary;button.classList.toggle('has-selection',active);
   const open=expandedFilterSections.has(key);button.setAttribute('aria-expanded',String(open));group.classList.toggle('section-open',open);
  });
- const detail=!!getFilterDraft()&&getViewportWidth()<=1100&&expandedFilterSections.has('Туроператор'),panel=$('#filter-panel');
+ const detail=!!getFilterDraft()&&expandedFilterSections.has('Туроператор');
  panel.classList.toggle('filter-detail-open',detail);panel.querySelector('.filter-top h3').textContent=detail?'Туроператор':'Фильтры';$('#filter-detail-back').hidden=!detail;
  const summary=$('.filter-operator-context');if(summary)summary.textContent=f.operators.length?`Выбрано: ${f.operators.length}. Вернитесь в фильтры, чтобы применить все условия.`:'Можно выбрать несколько. Условия применятся вместе с остальными фильтрами.';
 }
