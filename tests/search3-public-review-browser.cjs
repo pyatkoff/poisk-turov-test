@@ -129,8 +129,32 @@ const server=http.createServer((req,res)=>{
     assert.match(await page.locator('#hotel-900001 .hotel-stars').textContent(),/5|★★★★★/);assert.match(await page.locator('#hotel-900001 .starting-price').textContent(),/186[\s\u00a0\u202f]*400/);
     await page.waitForFunction(()=>document.querySelector('#hotel-900001 .hotel-image')?.naturalWidth>0);
     await page.locator('#hotel-900001').scrollIntoViewIfNeeded();await capture('card');
+    const firstPhotoStart=performance.now();
     await page.locator('#hotel-900001 h3 [data-action="hotel-details"]').click();
-    const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();await capture('room');await choose.click();
+    const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');
+    const profilePhotos=page.locator('.hotel-profile-photo');
+    const leadPhoto=profilePhotos.first().locator('img');
+    assert.equal(await leadPhoto.getAttribute('loading'),'eager');
+    await page.waitForFunction(()=>document.querySelector('.hotel-profile-photo')?.dataset.photoState==='ready');
+    receipt.firstProfilePhotoMs=Math.round(performance.now()-firstPhotoStart);
+    assert(await leadPhoto.evaluate(image=>image.naturalWidth>0));
+    await choose.waitFor();
+    await capture('room');
+
+    // Use the same fixture with an isolated failing image URL to exercise native error events.
+    const unavailablePhoto=/\/visual-search\/assets\/photo-[12]\.jpg\?gallery-error=1$/;
+    await page.route(unavailablePhoto,route=>route.abort());
+    const photoSources=await profilePhotos.locator('img').evaluateAll(images=>images.map(image=>image.src));
+    await profilePhotos.locator('img').evaluateAll(images=>images.forEach(image=>{image.src+='?gallery-error=1';}));
+    await page.waitForFunction(()=>document.querySelectorAll('.hotel-profile-photo[data-photo-state="failed"]').length===2);
+    assert.deepEqual(await profilePhotos.locator('.hotel-profile-photo-status span').allTextContents(),['Фото не загрузилось','Фото не загрузилось']);
+    const failedGalleryHeight=await page.locator('.hotel-detail-photos').evaluate(gallery=>gallery.getBoundingClientRect().height);
+    assert(failedGalleryHeight<=96,'Unreasonably tall failed gallery: '+failedGalleryHeight);
+    await capture('room-photos-unavailable');
+    await page.unroute(unavailablePhoto);
+    await profilePhotos.locator('img').evaluateAll((images,sources)=>images.forEach((image,i)=>{image.src=sources[i];}),photoSources);
+    await page.waitForFunction(()=>document.querySelector('.hotel-profile-photo')?.dataset.photoState==='ready');
+    await choose.click();
     await messenger(false);await capture('contact');
     const beforeTelegram=network.length;await page.locator('#messenger-entry [data-platform="telegram"]').click();
     await messenger(true);await capture('messenger-error');assert.equal(network.length,beforeTelegram,'Telegram demo failure performs no request');
