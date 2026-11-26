@@ -332,8 +332,9 @@ function sortResultItems(items){
   return items;
  }
  // Rank only this current inventory, so progressive prices/profiles stay fresh.
- const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel,row.rating),rank:recommendedHotelRank(row.hotel)}));
- ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
+ const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel,row.rating),rank:recommendedHotelRank(row.hotel),price:undefined}));
+ const tiePrice=item=>item.price??=item.row.offers[0].total;
+ ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||tiePrice(a)-tiePrice(b));
  return ranked.map(item=>item.row);
 }
 function resultInventory({sort=true}={}){
