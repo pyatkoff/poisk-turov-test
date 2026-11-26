@@ -1449,7 +1449,7 @@ function renderMoreResultCards(){
  const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
 }
 function renderResults(options={}){
- if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultPickerPreviews(refreshResultFilters(options));return;}
+ if(homeFormOnly){$('#results').hidden=true;updateNav();updateURL();refreshResultPickerPreviews();return;}
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
  if(searchEditSession){
@@ -3560,7 +3560,7 @@ function commitSearchDraft(){
  draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=!homeFormOnly;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.hotelIds=[];state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.hotelIds=destinationIds(draftDestination);state.filters.q='';draftDestination=null;}
- rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();renderFilters();
+ rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();if(!homeFormOnly)renderFilters();
  return {};
 }
 const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({

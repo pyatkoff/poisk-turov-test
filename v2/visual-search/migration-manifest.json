@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "8c9b9377c0e75d091749941f1af3f991ee0b3a49449f65bed68fc5fc71e1a6d1",
+    "app.js": "5e39875839b78f8bd418dc1aec75ac9fc3d2445a95dc9e100d6bca608486b43f",
     "fixture-data.js": "5bd8cf815a927f2ac4f63c6298570485bbf5a089dbae10cbbef246e1dc131ab9",
     "index.html": "96091fb0fed9e6c097fb4f91855e840249b91461e7a4eb791b7efed6111cc996",
     "styles.css": "d50d6f0a3402624199c5fb5642fca4ff636962d2c4ba93dc80eab0002aa6ef03",
@@ -71,7 +71,7 @@
     "lead-runtime-v1.js": "9e0e9e4393b0b019c51616acb4aff20231c911cf7f0426b49a1e9b8624bfc065",
     "search-lifecycle-v1.js": "8fb5d00d59eab7fc320ba1c8a7272b191e08b3b2fe9e08f48f6987be095161f9",
     "recorded-data.js": "ffdcfb03e3cb977d2a3c14656101b01b80765dee85a571b789ab4b88a142cd02",
-    "entry-v1.php": "d6c552de49e30ca28752ecf044e176f55286e6d1764be53190be1d8795346f23",
+    "entry-v1.php": "3eec4e6a887da20c2b9413b56d7aec47e82d2db7c3349d7fd7061d1d6947c53e",
     "public-entry-v1.php": "4df2762bffe464b2e28a4a577f11089c4958e750d6eb63224a18909ed6552616",
     "public-url-v1.js": "9f25085a14e1e766051313001d3a05a8d3fdf347e15b19ed219496445a877572",
     "public-config-v1.js": "3495f1ed45d1472c178ef06aa575ccc2484c45d93658b463daf2d641441496f2",
