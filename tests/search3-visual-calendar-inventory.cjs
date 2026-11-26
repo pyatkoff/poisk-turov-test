@@ -54,6 +54,35 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  state.selectedDate='2026-10-29';context.syncResultCalendarDisclosure();assert.match(nodes.get('#result-calendar-range').textContent,/2026-10-29 — 2026-10-29/,'collapsed context follows the actual applied single date');assert.equal(preview.hidden,true);
  console.log('PASS result calendar disclosure: five ordinary widths, default collapsed/current range, explicit toggle, late rerender, responsive preference, selected-day context; source data/URL/supplier operations unchanged');
 }
+{
+ const nodes=new Map(),node=key=>{
+  if(!nodes.has(key))nodes.set(key,{classList:{toggle(){}},attributes:{},setAttribute(name,value){this.attributes[name]=value;},parentElement:{}});
+  return nodes.get(key);
+ };
+ const search={from:'2026-10-27',to:'2026-10-29'},days=['2026-10-27','2026-10-28','2026-10-29'],painted=[];
+ let prices=[null,180000,null],loads=0,emptyRefreshes=0;
+ const context={innerWidth:430,$:node,state:{search,selectedDate:null},resultCalendar:{phase:'loading'},
+  loadResultCalendar:()=>loads++,resultCalendarModel:()=>({s:search,days,prices,min:Math.min(...prices.filter(Number.isFinite)),source:'Найденные цены',scope:{destination:'Турция',filters:[]}}),
+  calendarPriceUnits:()=>'',formatDate:()=> 'октябрь',calendarMonthFormatter:null,dateObj:String,guestsText:()=>'',durationText:()=>'',dateText:String,dateLong:String,money:String,
+  departureRangeText:(from,to)=>from+' — '+to,calendarStripEntries:model=>model.prices,
+  paintCalendarStrip:(strip,entries)=>{assert.strictEqual(strip,node('#price-strip'));painted.push(entries);},
+  refreshEmptyCalendarContext:()=>emptyRefreshes++,updateURL:()=>assert.fail('calendar disclosure must not write URL')};
+ vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','const mobileDetailFilterKeys'),context);
+ const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);
+ const act=()=>vm.runInContext(toggle[1],context);
+ context.renderCalendarStrip();prices=[170000,180000,null];context.resultCalendar.phase='complete';context.renderCalendarStrip();
+ assert.deepEqual(painted,[],'collapsed mobile range does not paint intermediate calendar prices');
+ assert.equal(node('#price-strip').attributes['aria-busy'],'false');
+ assert.equal(node('#result-calendar-range').textContent,'2026-10-27 — 2026-10-29 · 2026');
+ act();assert.deepEqual(painted,[[170000,180000,null]],'opening paints only the latest prices');
+ context.syncResultCalendarDisclosure();assert.equal(painted.length,1,'repeated disclosure sync does not repaint the same snapshot');
+ prices=[165000,180000,177000];context.renderCalendarStrip();
+ assert.deepEqual(painted.at(-1),prices,'updated prices paint immediately while visible');
+ act();prices=[161000,180000,177000];context.renderCalendarStrip();
+ assert.equal(painted.length,2);
+ context.innerWidth=1280;context.syncResultCalendarDisclosure();assert.deepEqual(painted.at(-1),prices,'resizing to desktop restores current prices');
+ assert.equal(loads,4,'the disclosure and resize do not repeat price requests');assert.equal(emptyRefreshes,4);
+}
 // Keep a flight card visible on a short viewport by moving the existing price
 // into the same inner scroll flow. Other tour modes retain the 200px policy.
 {

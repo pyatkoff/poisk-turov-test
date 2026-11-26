@@ -1029,6 +1029,7 @@ function calendarStripEntries({days,prices,min}){
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
 function paintCalendarStrip(strip,entries){paintGeneratedRoots(strip,entries,true,'day');}
 let resultCalendarExpanded=false;
+let deferredCalendarStrip=null;
 function syncResultCalendarDisclosure(){
  const mobile=innerWidth<=760,expanded=!mobile||resultCalendarExpanded,button=$('.result-calendar-disclosure');
  button.hidden=!mobile;button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',(expanded?'Свернуть':'Развернуть')+' даты и цены');
@@ -1036,6 +1037,10 @@ function syncResultCalendarDisclosure(){
  $('#price-calendar').classList.toggle('calendar-expanded',expanded);
  const s=state.search,from=state.selectedDate||s.from,to=state.selectedDate||s.to;
  $('#result-calendar-range').textContent=departureRangeText(from,to)+(from.slice(0,4)===to.slice(0,4)?' · '+from.slice(0,4):'');
+ if(expanded&&deferredCalendarStrip){
+  paintCalendarStrip($('#price-strip'),calendarStripEntries(deferredCalendarStrip));
+  deferredCalendarStrip=null;
+ }
 }
 function renderCalendarStrip(items=null,reuseBase=false){
  loadResultCalendar();
@@ -1048,7 +1053,11 @@ function renderCalendarStrip(items=null,reuseBase=false){
  $('#calendar-month-label').textContent=monthRange.charAt(0).toLocaleUpperCase('ru-RU')+monthRange.slice(1);
  $('#calendar-caption').textContent=source==='Демонстрационная цена'?'Демо-цены':source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
  const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
- paintCalendarStrip(strip,calendarStripEntries(model));
+ if(innerWidth<=760&&!resultCalendarExpanded)deferredCalendarStrip=model;
+ else{
+  paintCalendarStrip(strip,calendarStripEntries(model));
+  deferredCalendarStrip=null;
+ }
  const minimumDay=model.days[model.prices.indexOf(model.min)];
  $('#calendar-minimum-legend').textContent=Number.isFinite(model.min)?`Минимум: ${dateText(minimumDay)} · ${money(model.min)}`:'';
  $('#calendar-minimum-legend').hidden=!Number.isFinite(model.min);

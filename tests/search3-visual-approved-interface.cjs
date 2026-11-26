@@ -30,8 +30,16 @@ async function run(width,monthRange=null){
  const close=async()=>{action('close-modal');await pause();};
  const lookup=async()=>{for(let i=0;i<35&&$('#destination-query').getAttribute('aria-busy')==='true';i++)await pause();assert.notEqual($('#destination-query').getAttribute('aria-busy'),'true');};
  const isOpen=()=>$('#modal').hasAttribute('open');
+ const showPriceStrip=()=>{
+  if($('#calendar-preview').hidden){
+   assert.equal($('#price-strip').childElementCount,0,'the initially collapsed price strip does not build date controls');
+   action('toggle-result-calendar','#price-calendar');
+  }
+  assert.equal($('#calendar-preview').hidden,false);
+ };
  if(monthRange){
   const [from,to,label]=monthRange;
+  showPriceStrip();
   assert.equal($('#calendar-month-label').textContent,label);
   assert.equal($('#price-strip button').dataset.date,from);assert.equal($('#price-strip button:last-child').dataset.date,to);
   assert.ok([...d.querySelectorAll('#price-strip button')].every(b=>!b.disabled),'Unknown-price dates remain selectable');
@@ -51,6 +59,7 @@ async function run(width,monthRange=null){
  assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');
  const headerRange=$('#compact-details').textContent;
  assert.match(headerRange,/Вылет.*1.*7/);
+ showPriceStrip();
  click('#price-strip [data-date="2026-10-05"]');
  assert.equal($('#compact-details').textContent,'Вылет 5 окт · 7 ночей · 2 взрослых');
  assert.equal(new URL(w.location.href).searchParams.get('date'),'2026-10-05');
@@ -63,7 +72,7 @@ async function run(width,monthRange=null){
  assert.match($('#results-summary').textContent,/974/);
  click('#clear-date');assert.equal($('#compact-details').textContent,headerRange);assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');assert.equal($('#calendar-selected-date').parentElement.hidden,true);
  assert.match($('#results-summary').textContent,/1047/);
- // The price rail is always open; an unknown price never disables its date.
+ // Once opened, the price rail stays visible and unknown prices never disable their dates.
  assert.equal($('#price-calendar').tagName,'SECTION');assert.ok($('#price-strip').children.length>1);
  action('calendar','#price-calendar');await pause();await pause();
  click('[data-action="day-pick"][data-date="2026-10-05"]');
