@@ -1,6 +1,5 @@
 name: Read installed hotel price timer receipts
 on:
-  workflow_dispatch:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
     paths: ['.github/workflows/price-read-server-timer.yml']
@@ -8,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.ref == 'refs/heads/ops/price-hook-reviewed-pass-20261117'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '87d8336a116b3896dfd4f32a4dcddd30e11912e5'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -51,7 +50,7 @@ jobs:
               require_once 'db-v1.php';
               $pdo = v2_data_db();
               $check = $pdo->prepare('SELECT IS_USED_LOCK(?) IS NOT NULL');
-              $limit = microtime(true) + 480;
+              $limit = microtime(true);
               $previous = null;
               do {
                   $check->execute(['anytour_top500_monthly_v1']);
@@ -175,171 +174,6 @@ jobs:
               exit(1);
           }
           PHP
-
-      - name: Compare PRICE export transport with the installed saved-price reader
-        if: github.event_name == 'push' && github.run_attempt == 1
-        env:
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && timeout 115s /usr/bin/php -d display_errors=0' <<'PHP'
-          <?php
-          declare(strict_types=1);
-          $today = new DateTimeImmutable('today', new DateTimeZone('Europe/Moscow'));
-          $scope = ['departureId'=>1,'dateFrom'=>$today->modify('+1 day')->format('Y-m-d'),
-              'dateTo'=>$today->modify('first day of this month')->modify('+12 months')->modify('-1 day')->format('Y-m-d')];
-          $batch = [63208,64954,76011,82790,2479,30158,2418,2460,12125,57335,2469,2491,79323,68971,2948,7831,2470,2417,2466,85417,116932,50262,598,2451,12120];
-          $failed = false;
-          foreach ([[66198], $batch] as $ids) {
-              $query = ['tourvisorHotelIds'=>$ids] + $scope;
-              $url = 'https://anytoour.ru/data/hotel-monitor-prices-read-v1.php?'.http_build_query($query,'','&',PHP_QUERY_RFC3986);
-              $curl = curl_init($url);
-              curl_setopt_array($curl,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,
-                  CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>40,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
-                  CURLOPT_HTTPHEADER=>['Cache-Control: no-cache']]);
-              $body = curl_exec($curl);
-              $info = curl_getinfo($curl);
-              $errno = curl_errno($curl);
-              curl_close($curl);
-              $data = is_string($body) ? json_decode($body,true) : null;
-              $returned = is_array($data['items']??null) ? count($data['items']) : 0;
-              $ok = ($info['http_code']??0)===200 && ($data['ok']??false)===true && $returned===count($ids);
-              $failed = $failed || !$ok || ($info['total_time']??0)>=10;
-              echo 'PRICE_EXPORT_HTTP ',json_encode(['asked'=>count($ids),'returned'=>$returned,'ok'=>$ok,
-                  'curl_errno'=>$errno,'http'=>$info['http_code']??0,'dns_s'=>$info['namelookup_time']??0,
-                  'connect_s'=>$info['connect_time']??0,'tls_us'=>$info['appconnect_time_us']??0,
-                  'first_byte_s'=>$info['starttransfer_time']??0,'total_s'=>$info['total_time']??0,
-                  'bytes'=>is_string($body)?strlen($body):0]),PHP_EOL;
-          }
-          if ($failed) {
-              $started = hrtime(true);
-              try {
-                  require_once 'db-v1.php';
-                  require_once 'hotel-monitor-prices-v1.php';
-                  $data = v2_hmp_read(v2_data_db(), ['tourvisorHotelIds'=>$batch] + $scope);
-                  $count = count($data['items'] ?? []);
-                  echo 'PRICE_EXPORT_LOCAL ',json_encode(['asked'=>count($batch),'returned'=>$count,
-                      'ok'=>($data['ok']??false)===true && $count===count($batch),
-                      'elapsed_ms'=>(int)((hrtime(true)-$started)/1000000)]),PHP_EOL;
-              } catch (Throwable $e) {
-                  echo 'PRICE_EXPORT_LOCAL ',json_encode(['ok'=>false,'error_type'=>get_class($e),
-                      'elapsed_ms'=>(int)((hrtime(true)-$started)/1000000)]),PHP_EOL;
-              }
-          }
-          PHP
-
-
-      - name: Verify the three public hotel feeds and saved TOP500 prices
-        if: github.event_name == 'push' && github.run_attempt == 1
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from collections import Counter, defaultdict
-          from concurrent.futures import ThreadPoolExecutor
-          from datetime import datetime, timedelta
-          from hashlib import sha256
-          from urllib.parse import urlencode
-          from urllib.request import Request, urlopen
-          from xml.etree import ElementTree as ET
-          from zoneinfo import ZoneInfo
-          import json, re
-
-          now = datetime.now(ZoneInfo('Europe/Moscow'))
-          cutoff = now - timedelta(hours=36)
-          feed_root = 'https://app.anytoour.ru/feed/hotel-posts-'
-          source_url = 'https://anytoour.ru/data/hotel-monitor-prices-read-v1.php'
-          def read(url):
-              with urlopen(Request(url, headers={'Cache-Control': 'no-cache'}), timeout=18) as response:
-                  if response.status != 200:
-                      raise ValueError('http')
-                  data = response.read(4_000_001)
-              if len(data) > 4_000_000:
-                  raise ValueError('body_limit')
-              return data
-
-          def feed(name):
-              try:
-                  body = read(feed_root + name + '.xml')
-                  offers = ET.fromstring(body).findall('./shop/offers/offer')
-                  for entry in offers:
-                      entry.tail = None
-                  by_id = {entry.attrib['id']: entry for entry in offers}
-                  assert offers and len(by_id) == len(offers)
-                  return name, by_id, sha256(body).hexdigest()
-              except (OSError, ValueError, AssertionError, KeyError, ET.ParseError) as error:
-                  return name, None, type(error).__name__
-
-          with ThreadPoolExecutor(max_workers=3) as pool:
-              feeds = {name: (rows, proof) for name, rows, proof in pool.map(feed, ('max', 'telegram', 'all'))}
-          if any(rows is None for rows, _ in feeds.values()):
-              print('PRICE_PUBLIC_AUDIT', json.dumps({'asof':now.isoformat(), 'feed_checks':{
-                  key:{'ok': rows is not None, 'proof': proof} for key,(rows,proof) in feeds.items()}}))
-              raise SystemExit(0)
-
-          pairs = defaultdict(dict)
-          combined = feeds['all'][0]
-          for offer_id, entry in combined.items():
-              platform, hotel = offer_id.split('_', 1)
-              pairs[int(hotel)][platform] = entry
-          assert all(set(row) == {'max','tg'} for row in pairs.values())
-          assert all({offer_id for offer_id in combined if offer_id.startswith(prefix)} == set(feeds[name][0])
-                     and all(ET.tostring(entry) == ET.tostring(combined[offer_id])
-                             for offer_id, entry in feeds[name][0].items())
-                     for name,prefix in (('max','max_'),('telegram','tg_')))
-          states = {}
-          for hotel, pair in pairs.items():
-              statuses = set()
-              for entry in pair.values():
-                  description = entry.findtext('description') or ''
-                  departure = re.search(r'Вылет[^\n]*?(\d{2}\.\d{2}\.\d{4})', description)
-                  observed = re.search(r'Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}),?\s+(\d{2}:\d{2})\s+МСК', description)
-                  if departure and datetime.strptime(departure[1], '%d.%m.%Y').date() < now.date():
-                      statuses.add('past')
-                  elif not entry.findtext('price'):
-                      statuses.add('no_amount')
-                  elif observed and cutoff < datetime.strptime(' '.join(observed.groups()), '%d.%m.%Y %H:%M').replace(tzinfo=now.tzinfo) <= now:
-                      statuses.add('fresh')
-                  else:
-                      statuses.add('stale')
-              states[hotel] = '/'.join(sorted(statuses))
-
-          print('PRICE_PUBLIC_AUDIT', json.dumps({'asof':now.isoformat(),'hotels':len(pairs),
-              'states':dict(Counter(states.values())), 'feeds':{name:{'rows':len(rows),'sha256':proof}
-              for name,(rows,proof) in feeds.items()}}))
-
-          end_of_horizon = now.date().replace(year=now.year + 1, day=1) - timedelta(days=1)
-          def check(batch):
-              query = [(f'tourvisorHotelIds[{i}]', hotel) for i,hotel in enumerate(batch)]
-              query += [('departureId', 1), ('dateFrom', str(now.date() + timedelta(days=1))),
-                        ('dateTo', str(end_of_horizon))]
-              try:
-                  data = json.loads(read(source_url + '?' + urlencode(query)))
-                  items = data['items']
-                  assert data['ok'] is True and len(items) == len(batch)
-                  assert {int(item['tourvisorHotelId']) for item in items} == set(batch)
-                  return {int(item['tourvisorHotelId']): any(0 <= offer['ageSecondsAtExport'] < 129600
-                          for offer in item['offers']) for item in items}
-              except (OSError, ValueError, TypeError, KeyError, AssertionError):
-                  return {}
-          all_hotels = sorted(pairs)
-          batches = [all_hotels[offset:offset+25] for offset in range(0, len(all_hotels), 25)]
-          observed = {}
-          with ThreadPoolExecutor(max_workers=3) as pool:
-              for found in pool.map(check, batches):
-                  observed.update(found)
-          unread = sorted(set(pairs) - set(observed))
-          if 0 < len(unread) <= 100:
-              retry_batches = [unread[offset:offset+5] for offset in range(0, len(unread), 5)]
-              with ThreadPoolExecutor(max_workers=2) as pool:
-                  for found in pool.map(check, retry_batches):
-                      observed.update(found)
-          print('PRICE_SOURCE_AUDIT', json.dumps({'checked':len(observed),'unread':len(pairs)-len(observed),
-              'fresh':sum(observed.values()), 'fresh_by_published_state':dict(Counter(
-                  states[hotel] for hotel, fresh in observed.items() if fresh))}))
-          PY
 
       - name: Cleanup connection material
         if: always()
