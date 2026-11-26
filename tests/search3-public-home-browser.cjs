@@ -235,6 +235,16 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
    });
    const initial=new URLSearchParams({...trip,scenario:'live',searched:'1',yclid:'offline-public-home',utm_source:'native-live-fixture',utm_medium:'fixture'});
    await page.goto(origin+'/?'+initial);await readyHome(page);
+   await page.waitForFunction(()=>{
+    const image=document.querySelector('.home-hero-image img');
+    return image?.complete&&image.naturalWidth>0;
+   });
+   const coverSrc=await page.locator('.home-hero-image img').evaluate(image=>image.currentSrc);
+   const coverRequests=network.filter(request=>request.path==='/home-hero-v1.jpg').length;
+   const narrow=viewport.width<=760;
+   assert.equal(coverRequests,narrow?0:1,'download the full-size cover only where the cover is visible');
+   assert.equal(coverSrc.startsWith('data:image/gif;'),narrow,'mobile uses the inline placeholder, desktop keeps the cover');
+   row.coverImage={fullSizeRequestsAtFirstOpen:coverRequests,inlinePlaceholder:narrow};
    assert.deepEqual(counts(transport,tv),{tv:0,anex:0});assert.equal(privateRequests(),0,'HOME searched=1 starts no private supplier preparation');
    await capture('initial',true);await chooseFamily(page);
    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);
