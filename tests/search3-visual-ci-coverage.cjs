@@ -41,7 +41,7 @@ function job(workflow,name){
  return next<0?tail:tail.slice(0,next+1);
 }
 // The pre-split workflow had 46 Node test invocations and 37 distinct commands.
-// Keep every distinct argv once; --browser and --messenger-only are separate cases.
+// Keep every original argv once, plus the extracted performance suite.
 const requiredCommands=[
  'search3-public-entry.cjs','search3-public-bindings.cjs','search3-public-review-browser.cjs','search3-public-live-browser.cjs',
  'local-tv-catalog-browser.cjs','local-tv-catalog-browser.cjs --browser',
@@ -55,6 +55,7 @@ const requiredCommands=[
  'search3-visual-live-bridge.cjs','search3-visual-live-browser.cjs','search3-visual-live-browser.cjs --messenger-only',
  'search3-visual-messenger-entry.cjs','search3-visual-migration.cjs','search3-visual-modal-history.cjs',
  'search3-visual-offer-list-browser.cjs','search3-visual-offer-list-lazy.cjs','search3-visual-offer-rendering.cjs',
+ 'search3-visual-performance-suite.cjs "$RUNNER_TEMP/visual-compiled"',
  'search3-visual-passive-contexts.cjs','search3-visual-result-merge.cjs','search3-visual-results-rendering.cjs',
  'search3-visual-terminal-offer-browser.cjs','search3-visual-v120-recorded-journey-tests.cjs','search3-visual-v139-search-edit-tests.cjs'
 ].map(command=>'tests/'+command).sort();
@@ -64,12 +65,12 @@ function verifyConcurrency(source,prefix){
  assert(source.includes('concurrency:\n  group: '+prefix+'-${{ github.event.pull_request.number }}\n  cancel-in-progress: true'),'PR-scoped obsolete-head cancellation');
 }
 function verifyJoin(join){
- assert(join.includes('    needs: [focused-presentation, integration-contracts, browser-matrix]\n'),'aggregate requires all source lanes');
+ assert(join.includes('    needs: [focused-presentation, integration-contracts, browser-matrix, browser-performance]\n'),'aggregate requires all source lanes');
  assert(join.includes('    if: ${{ always() && !github.event.pull_request.draft }}\n'),'aggregate must inspect failed and skipped lanes');
- for(const [variable,lane] of [['FOCUSED_RESULT','focused-presentation'],['CONTRACTS_RESULT','integration-contracts'],['BROWSER_RESULT','browser-matrix']])assert(join.includes(variable+': ${{ needs.'+lane+'.result }}'),'aggregate binds actual lane result');
+ for(const [variable,lane] of [['FOCUSED_RESULT','focused-presentation'],['CONTRACTS_RESULT','integration-contracts'],['BROWSER_RESULT','browser-matrix'],['PERFORMANCE_RESULT','browser-performance']])assert(join.includes(variable+': ${{ needs.'+lane+'.result }}'),'aggregate binds actual lane result');
  const script=join.match(/        run: \|\n([\s\S]*)/);assert(script,'aggregate shell check');
  const execute=values=>spawnSync('bash',['-c',script[1]],{env:{...process.env,...values},encoding:'utf8'});
- const success={FOCUSED_RESULT:'success',CONTRACTS_RESULT:'success',BROWSER_RESULT:'success'};
+ const success={FOCUSED_RESULT:'success',CONTRACTS_RESULT:'success',BROWSER_RESULT:'success',PERFORMANCE_RESULT:'success'};
  assert.equal(execute(success).status,0,'aggregate accepts all-success source');
  for(const variable of Object.keys(success))for(const status of ['failure','cancelled','skipped'])assert.notEqual(execute({...success,[variable]:status}).status,0,'aggregate rejects '+variable+'='+status);
 }
@@ -78,7 +79,7 @@ function verifyBrowserWorkers(browser){
  assert(workers,'independent browser workers are present');
  assert(workers[1].includes('        shell: bash\n'),'worker subshells inherit errexit and pipefail');
  assert(workers[1].includes('SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled'),'workers use the same compiled graph');
- assert(workers.index<browser.indexOf('      - name: Full transferred UI and isolated live integration\n'),'workers finish before the full matrix and its performance samples');
+ assert(workers.index<browser.indexOf('      - name: Full transferred UI and isolated live integration\n'),'workers finish before the full matrix');
  const script=workers[1].split('        run: |\n')[1];
  const fakeNode='node() { echo "$1"; [[ "$1" != "$FAIL_COMMAND" ]]; }\n';
  for(const fail of ['', 'tests/search3-visual-offer-list-browser.cjs', 'tests/local-tv-catalog-browser.cjs']){
@@ -97,13 +98,13 @@ function verify(workflow,bootstrap,html){
  for(const test of ['tests/search3-visual-event-dispatch.cjs','tests/search3-visual-modal-history.cjs','tests/search3-visual-offer-rendering.cjs','tests/search3-prototype-source-receipt-v1.cjs'])assert(rules.some(rule=>matches(rule,test)),'characterization trigger: '+test);
  assert(workflow.includes('node tests/search3-visual-ci-coverage.cjs'),'closure guard executes in existing gate');
  assert(/types: \[[^\]]*ready_for_review/.test(workflow),'full gate restores on ready_for_review');
- const focused=job(workflow,'focused-presentation'),contracts=job(workflow,'integration-contracts'),full=job(workflow,'browser-matrix'),join=job(workflow,'visual-migration');
+ const focused=job(workflow,'focused-presentation'),contracts=job(workflow,'integration-contracts'),full=job(workflow,'browser-matrix'),performance=job(workflow,'browser-performance'),join=job(workflow,'visual-migration');
  assert(focused.includes('node tests/search3-visual-results-rendering.cjs')&&focused.includes('node tests/search3-visual-ci-coverage.cjs')&&!/^    if:/m.test(focused),'focused checks run on every draft and ready head');
- for(const lane of [contracts,full]){
+ for(const lane of [contracts,full,performance]){
   assert(lane.includes('    if: ${{ !github.event.pull_request.draft }}\n'),'full matrix is deferred only while draft');
   assert(!/^    needs:/m.test(lane),'independent contracts and browser lanes overlap');
  }
- for(const lane of [focused,contracts,full]){
+ for(const lane of [focused,contracts,full,performance]){
   assert.equal((lane.match(/ref: \$\{\{ github.event.pull_request.head.sha \}\}/g)||[]).length,1,'every lane checks exact source head');
   assert(lane.includes("node-version: '22'"),'same Node version in every source lane');
   assert(!lane.includes('continue-on-error'),'source failures cannot be hidden');
@@ -124,6 +125,9 @@ function verify(workflow,bootstrap,html){
  assert(setup.includes('playwright install-deps chromium'),'negative facts retain stock system installation');
  assert(setup.includes('      - name: Install pinned Playwright Chromium\n        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"'),'stock browser installation is unconditional');
  assert(!setup.includes('continue-on-error'),'installation failures must fail the full gate');
+ assert(performance.includes("playwright@1.55.0")&&performance.includes('node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"'),'performance uses the same Chromium and compiled fixture graph');
+ assert(performance.includes('      - name: Verify compiled Chromium and Firefox performance\n        env:\n          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules\n        run: node tests/search3-visual-performance-suite.cjs "$RUNNER_TEMP/visual-compiled"'),'performance suite is mandatory on the independent runner');
+ assert(full.includes('      - name: Full transferred UI and isolated live integration\n        env:\n          SEARCH3_VISUAL_PERFORMANCE_LANE: separate\n'),'full browser matrix delegates only its performance suite');
  return deps;
 }
 const deps=verify(workflow,bootstrap,html);
@@ -140,14 +144,14 @@ assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_br
 assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-browser-dependencies.cjs\n',''),bootstrap,html),/regressions run/,'preflight regression removal detected');
 assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_evidence_retention.cjs'\n",''),bootstrap,html),/evidence owner triggers/,'archive helper cannot fall outside CI scope');
 assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-evidence-retention.cjs\n',''),bootstrap,html),/evidence regressions run/,'archive regression removal detected');
-assert.throws(()=>verify(workflow.replace('      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}','      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready == \'false\' }}'),bootstrap,html),/positive package facts/,'missing output cannot bypass stock installation');
-assert.throws(()=>verify(workflow.replace(' --prefer-ubuntu-mirror',''),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot silently use a different helper mode');
-assert.throws(()=>verify(workflow.replace('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n','      - name: Prefer the existing HTTPS Ubuntu package mirror\n'),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot run when system packages already satisfy the gate');
-assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        if: false\n'),bootstrap,html),/unconditional/,'browser installation cannot be skipped');
-assert.throws(()=>verify(workflow.replace('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        continue-on-error: true\n'),bootstrap,html),/unconditional|failures/,'browser installation cannot hide failures');
+assert.throws(()=>verify(workflow.replaceAll('      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}','      - name: Install missing Chromium system dependencies\n        if: ${{ steps.browser-deps.outputs.ready == \'false\' }}'),bootstrap,html),/positive package facts/,'missing output cannot bypass stock installation');
+assert.throws(()=>verify(workflow.replaceAll(' --prefer-ubuntu-mirror',''),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot silently use a different helper mode');
+assert.throws(()=>verify(workflow.replaceAll('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n','      - name: Prefer the existing HTTPS Ubuntu package mirror\n'),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot run when system packages already satisfy the gate');
+assert.throws(()=>verify(workflow.replaceAll('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        if: false\n'),bootstrap,html),/unconditional/,'browser installation cannot be skipped');
+assert.throws(()=>verify(workflow.replaceAll('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        continue-on-error: true\n'),bootstrap,html),/unconditional|failures/,'browser installation cannot hide failures');
 assert.throws(()=>verify(workflow.replace('focused-presentation, integration-contracts, browser-matrix','focused-presentation, browser-matrix'),bootstrap,html),/aggregate requires/,'missing contract dependency detected');
 assert.throws(()=>verify(workflow.replace('always() && !github.event.pull_request.draft','!github.event.pull_request.draft'),bootstrap,html),/inspect failed/,'skipped failure join detected');
-for(const variable of ['FOCUSED_RESULT','CONTRACTS_RESULT','BROWSER_RESULT'])assert.throws(()=>verify(workflow.replace('          test "$'+variable+'" = success\n',''),bootstrap,html),/aggregate rejects/,'every unsuccessful lane blocks final success');
+for(const variable of ['FOCUSED_RESULT','CONTRACTS_RESULT','BROWSER_RESULT','PERFORMANCE_RESULT'])assert.throws(()=>verify(workflow.replace('          test "$'+variable+'" = success\n',''),bootstrap,html),/aggregate rejects/,'every unsuccessful lane blocks final success');
 for(const command of rawContracts)assert.throws(()=>verify(workflow.replace('          node '+command+'\n',''),bootstrap,html),/raw contracts|original Node commands/,'moved contract cannot disappear: '+command);
 assert.throws(()=>verify(workflow.replace(' --browser\n','\n'),bootstrap,html),/original Node commands/,'actual LOCAL browser variant retained');
 assert.throws(()=>verify(workflow.replace(' --messenger-only\n','\n'),bootstrap,html),/original Node commands/,'dedicated messenger variant retained');
@@ -184,6 +188,6 @@ for(const request of deniedLogoRequests)assert.equal(logoModule.exports.canonica
 assert.equal(logoReads,0,'unrelated requests cannot read or receive the canonical fixture');
 assert.throws(()=>logoModule.exports.canonicalLogoFixture(logoRequest(),logoOrigin),/canonical logo fixture SHA256 mismatch/);
 assert.equal(logoReads,1,'changed artwork fails closed before any response');
-console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; 37 original commands once; parallel exact-source lanes/strict result join; draft restoration/setup/concurrency mutations detected`);
+console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; 37 original commands once plus the delegated performance suite; parallel exact-source lanes/strict result join; draft restoration/setup/concurrency mutations detected`);
 console.log('PASS canonical header logo fixture: exact same-origin GET image, pinned artwork; foreign/path/method/type/digest drift rejected');
 require('./search3-visual-lead-runtime.cjs');

@@ -231,27 +231,14 @@ async function saveJourney(context, frames, width, evidence, options = {}) {
 module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  if (process.platform === 'linux') {
   const root = process.env.SEARCH3_VISUAL_ASSET_ROOT || path.resolve(__dirname, '../v2');
+  if (process.env.SEARCH3_VISUAL_PERFORMANCE_LANE !== 'separate') {
+   require('./search3-visual-performance-suite.cjs')(root);
+  }
   const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'search3-rdm-'));
   const raw = path.join(temp, 'firefox-rdm');
   const retained = path.join(evidence, 'firefox-rdm');
   fs.mkdirSync(retained, {recursive:true});
   try {
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-first-open.cjs'), root, path.join(temp,'first-open'),
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-first-tours.cjs'), root, path.join(temp,'first-tours'),
-   ], {stdio:'inherit', timeout:240000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-room-ready.cjs'), root, path.join(temp,'room-ready'),
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-single-quote.cjs'), root, path.join(temp,'single-quote'), '1',
-   ], {stdio:'inherit', timeout:180000});
    require('node:child_process').execFileSync('xvfb-run', [
     '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
     path.join(__dirname, 'search3-visual-family-250.cjs'), root, path.join(temp,'family-250'), 'summary-first',
