@@ -119,6 +119,40 @@ jobs:
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
           python3 -B tests/search3_public_entry_test.py
+  browser-performance:
+    # Keep latency samples isolated from the functional browser workloads.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save playwright@1.55.0
+      - name: Inspect installed Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu package mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
+      - name: Install missing Chromium system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Playwright Chromium
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"
+      - name: Build the exact compiled visual fixture graph
+        run: |
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          cp -a v2 "$RUNNER_TEMP/visual-compiled"
+          node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Verify compiled Chromium and Firefox performance
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+        run: node tests/search3-visual-performance-suite.cjs "$RUNNER_TEMP/visual-compiled"
   browser-matrix:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
@@ -240,6 +274,8 @@ jobs:
           wait "$hotel_and_catalog" || result=1
           exit "$result"
       - name: Full transferred UI and isolated live integration
+        env:
+          SEARCH3_VISUAL_PERFORMANCE_LANE: separate
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
@@ -364,7 +400,7 @@ jobs:
           if-no-files-found: error
   visual-migration:
     # Preserve the existing required status; every exact-source lane must pass.
-    needs: [focused-presentation, integration-contracts, browser-matrix]
+    needs: [focused-presentation, integration-contracts, browser-matrix, browser-performance]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 1
@@ -374,8 +410,10 @@ jobs:
           FOCUSED_RESULT: ${{ needs.focused-presentation.result }}
           CONTRACTS_RESULT: ${{ needs.integration-contracts.result }}
           BROWSER_RESULT: ${{ needs.browser-matrix.result }}
+          PERFORMANCE_RESULT: ${{ needs.browser-performance.result }}
         run: |
           set -euo pipefail
           test "$FOCUSED_RESULT" = success
           test "$CONTRACTS_RESULT" = success
           test "$BROWSER_RESULT" = success
+          test "$PERFORMANCE_RESULT" = success
