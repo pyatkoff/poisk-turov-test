@@ -23,7 +23,7 @@ function setup(href,{home=false}={}){
  const history={state:{unchanged:'retained'},replaceState(state,title,href){this.state=state;url=new URL(href,url);writes.push(['replace',url.href]);},pushState(state,title,href){this.state=state;url=new URL(href,url);writes.push(['push',url.href]);}};
  const state={search:{origin:'Москва',country:'turkey',from:'2026-12-01',to:'2026-12-07',minNights:7,maxNights:7,adults:2,ages:[0,8]},
   filters:{stars:[4,5],meals:['AI'],resorts:[],operators:[],flight:[],amenities:[],beach:false,rating:false,family:false,spa:false,hotelId:0,hotelIds:[],q:'',min:0,max:null},selectedDate:null,hasSearched:true,onlyFavorites:false,sort:'recommended'};
- const context={URL,URLSearchParams,structuredClone,location,history,state,searchEditSession:null,urlStateHydrated:true,data:{scenario:'live'},
+ const context={URL,URLSearchParams,structuredClone,location,history,state,searchEditSession:null,mobileFiltersNeedRefresh:false,urlStateHydrated:true,data:{scenario:'live'},
   destinationIds:f=>f.hotelIds,amenityLabel:()=>'',searchResponse:{pending:false},innerWidth:430,scrollY:37,actionTrigger:null,draft:structuredClone(state.search),draftDestination:null,
   $:node,focusReference:()=>({id:'fixture-focus'}),scrollBehavior:()=> 'instant',requestAnimationFrame:fn=>fn(),
   agesNeedReview:false,filterBudgetEdit:null,urlPartyIssues:[],currentFilterBudgetEdit:()=>false,draftSelectedDate:()=>state.selectedDate,
