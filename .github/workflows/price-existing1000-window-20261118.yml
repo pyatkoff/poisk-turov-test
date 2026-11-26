@@ -1,4 +1,4 @@
-name: PRICE apply the saved minima from the native 18:45 TOP500 cycle
+name: PRICE apply the fresh saved minimum after the 36-hour cutoff
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1ba20d7618aafe0473200ad0085e1a1729cb652b'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1d402edc89b610d15b55e783c6034d751b4e3d1c'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,12 +21,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45852592465 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45862326092 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45842661290 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45844559751 --jq .status | grep -Fxq completed
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45853793443 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45851165032 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45855128675 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45860439903 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1741: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
@@ -119,7 +119,7 @@ jobs:
               for name,sha in [('monitor-price-hook.php','1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='892f31dde172792fdc73061195cac22ce261737b','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='d38679bb0fbd11b26ad74a20163b400055b63cc8','runtime_changed')
           def feeds(updates=()):
               info={}
               for key,size in [('telegram',1055),('max',1055),('all',2110)]:
@@ -215,8 +215,8 @@ jobs:
               print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               sys.exit(0)
           if batch == 1:
-              check(baseline=={'max':'bdc79d3fab3f97a8781c45fe9b5efa7227f774ed31f338e8233fe2d57911ff03','telegram':'9291675ca3932d5b7095bc76554bb84ec33614193a9bef953abe30779f42df22','all':'691c08ca03fd4ff8d0b2af77119776e2fbe8e744fbb4ec9caf1eab30d53d6065'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45842661290,139988115016, 'prior_pairs_verified=30','timer=45852592465','native_cycle=2026-11-26T15:45:01Z',flush=True)
+              check(baseline=={'max':'79caa2c5426c782d4676c93a04df0298097fbfeb9afd850a1ce7d4f662bbbc40','telegram':'5eddaeea2739d2925aefebcad7eaae494ef36b2f9867b7b6fa6670391e0dc3db','all':'c02f1e0ca872fee4107019e51d8a54dc9df85c7df52228c27fb265e05108cadc'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45855128675,140031380161, 'prior_pairs_verified=33','timer=45862326092','rolled_over_hotel=46670',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
