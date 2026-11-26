@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'a9d5fbffded923c37931e966e076cc9bfb00fb1c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '09b93afb37953da67d607be0a5d70fef398f5311'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -23,6 +23,7 @@ jobs:
           set -euo pipefail
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45800671662 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45792507017 --jq .status | grep -Fxq completed
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45801091446 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45792813666 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1738: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
@@ -72,12 +73,12 @@ jobs:
         run: |
           set -euo pipefail
           window_open() {
-            gh api 'repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5' --jq 'all(.workflow_runs[]; .status == "completed")' | grep -Fxq true &&
-            gh api 'repos/pyatkoff/max-search-bot/actions/runs?status=in_progress&per_page=50' --jq 'all(.workflow_runs[]; ((.head_branch | startswith("ops/anytour-hotel-ranked-plan-")) or (.name | ascii_downcase | test("deploy production|approved hotel|transfer .+ existing anytour|apply .+ hotel"))) | not)' | grep -Fxq true &&
-            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T09:47:46Z\tPR1738: установлено, выпуск свободен' &&
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T01:07:46Z\tPR1735: установлено, выпуск свободен' &&
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE &&
-            test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
+            gh api 'repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5' --jq 'all(.workflow_runs[]; .status == "completed")' | grep -Fxq true || { echo "PRICE_WINDOW_HOLD scheduled_runs"; return 1; }
+            gh api 'repos/pyatkoff/max-search-bot/actions/runs?status=in_progress&per_page=50' --jq 'all(.workflow_runs[]; ((.head_branch | startswith("ops/anytour-hotel-ranked-plan-")) or (.name | ascii_downcase | test("deploy production|approved hotel|transfer .+ existing anytour|apply .+ hotel"))) | not)' | grep -Fxq true || { echo "PRICE_WINDOW_HOLD content_or_deploy"; return 1; }
+            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T09:47:46Z\tPR1738: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD publisher_release"; return 1; }
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T01:07:46Z\tPR1735: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD original_release"; return 1; }
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE || { echo "PRICE_WINDOW_HOLD feed_permit"; return 1; }
+            test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA" || { echo "PRICE_WINDOW_HOLD branch_head"; return 1; }
           }
           for batch in $(seq 1 25); do
             if ! window_open; then
@@ -148,8 +149,8 @@ jobs:
           baseline=feeds()
           checkpoint=art/'public-hashes.json'
           if batch == 1:
-              check(baseline=={'max':'69fda1dd31fa5eacbf68776244322395c826e22a150fd6b7def1a128ebefb574','telegram':'fca099123d96f9b9b4411efb228b8e88289efe042d52624964cfa37faa8203bf','all':'6500b735740896c8741cad69ec7e34f41d8dd1d6169c554c8f491f57eb712446'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45792507017,139815375670, 'native_collection_readback=45800671662','resuming_ready_saved_minima',flush=True)
+              check(baseline=={'max':'eba2b3d45159193c848f77f040c06770ff9739593addde240b4f9536aef873e3','telegram':'c33bc1c31e3eb2d5f66f7b7906efc4dcb466be6038aba09760348605078a9fc1','all':'6c26c5eda56f3662e8bb0c9ca59981ecc6ae79c773936ec8be817ec0f7f45f2f'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45801091446,139844185962, 'previous_pairs_verified=30','resuming_ready_saved_minima',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
