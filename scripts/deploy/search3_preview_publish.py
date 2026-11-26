@@ -30,6 +30,8 @@ API = 'https://api.github.com/repos/' + REPO
 ORIGIN = 'https://anytoour.ru'
 BUILD = '.github/workflows/build-search3-whole-site-preview.yml'
 PREFIX = '/publish-search3-preview '
+REVIEW_ROBOTS = '<meta name="robots" content="noindex, nofollow, noarchive">'
+LEGACY_ROBOTS = '<meta name="robots" content="noindex,follow,max-image-preview:large'
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -185,10 +187,14 @@ def http(path, data=None, binary=False):
         return response.code, content if binary else content.decode(errors='replace')
 
 
+def preview_robots_marker(route):
+    return REVIEW_ROBOTS if route == 'poisk-turov/' else LEGACY_ROBOTS
+
+
 def live_checks(files):
     for route in ('', 'poisk-turov/', 'poisk-turov-old/', 'country/', 'country/turkey/', 'hot/', 'contacts/', 'rb/', 'how-to-buy/'):
         status, html = http(ROUTE + route)
-        need(status == 200 and '<meta name="robots" content="noindex,follow,max-image-preview:large' in html, 'live_route_noindex:' + route)
+        need(status == 200 and preview_robots_marker(route) in html, 'live_route_noindex:' + route)
         if route in ('poisk-turov/', 'poisk-turov-old/'):
             for marker in ('id="tourSearch"', 'metrikaCounter:0', 'leadApi:"' + ROUTE + 'preview-lead-disabled.php"'):
                 need(marker in html, 'live_search_guard')
