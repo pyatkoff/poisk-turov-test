@@ -1,4 +1,4 @@
-name: PRICE finish the exact promoted posts after verifying prior outcomes
+name: PRICE apply remaining saved minima after the 36-hour cutoff
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'b890d927111dd3d203b154b123f6e773040d43b3'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd4670ef9e622688c922d4f88c1b50f5336297d13'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,9 +21,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45824114015 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45832970475 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45792507017 --jq .status | grep -Fxq completed
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45826151339 --jq .status | grep -Fxq completed
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45828480551 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45832364684 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45824145255 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45821449485 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1741: установлено, выпуск свободен'
@@ -81,12 +82,18 @@ jobs:
             gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE || { echo "PRICE_WINDOW_HOLD feed_permit"; return 1; }
             test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA" || { echo "PRICE_WINDOW_HOLD branch_head"; return 1; }
           }
-          for stage in max telegram; do
+          complete=0
+          for batch in $(seq 1 25) promoted; do
+            if [[ "$batch" == promoted && "$complete" != 1 ]]; then
+              echo "PRICE_SEQUENCE_REACHED_PASS_LIMIT"
+              break
+            fi
+            if [[ "$batch" != promoted && "$complete" == 1 ]]; then continue; fi
             if ! window_open; then
-              echo "WINDOW_HANDOFF_CHANGED $stage"
+              echo "WINDOW_HANDOFF_CHANGED $batch"
               exit 0
             fi
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID' '$stage'" <<'PY' | tee "$RUNNER_TEMP/price-stage-$stage.txt"
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID' '$batch'" <<'PY' | tee "$RUNNER_TEMP/price-pass-$batch.txt"
           import base64, datetime, gzip, hashlib, json, os, pathlib, re, subprocess, sys, time
           import xml.etree.ElementTree as ET
           from urllib.request import urlopen
@@ -98,7 +105,8 @@ jobs:
           hook=native/'monitor-price-hook.php'
           journal=root/'channel-post-operations/monitor-price-after-collection-v1.jsonl'
           art=root/'channel-post-operations'/('priority1000-'+sys.argv[1])
-          stage=sys.argv[2]
+          batch=sys.argv[2] if sys.argv[2]=="promoted" else int(sys.argv[2])
+          art.mkdir(exist_ok=batch!=1)
           def digest(p):
               with p.open('rb') as f:
                   h=hashlib.sha256()
@@ -134,6 +142,17 @@ jobs:
                           check(stamp in entry.findtext('description',''),'published_observation_mismatch')
                   info[key]=hashlib.sha256(data).hexdigest()
               return info
+          def native_run(stage, inspect=False):
+              print('NATIVE_START',stage,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+              with (art/(stage+'.raw')).open('xb') as f:
+                  proc=subprocess.run(['php',str(hook)]+(['--inspect'] if inspect else []),stdout=f)
+              rows=[x.split('=',1)[1] for x in (art/(stage+'.raw')).read_text().splitlines() if x.startswith('MONITOR_POST_FEED_RESULT=')]
+              check(len(rows)==1,'native_receipt_missing')
+              v=json.loads(rows[0])
+              print('NATIVE',stage,json.dumps({k:v.get(k) for k in ('ok','error','roster_pairs','updated_pairs','eligible_pairs','held_pairs','scanned_pairs','remaining_unscanned_pairs','deferred_counts','child_failure','timings_ms','completed_at')}),flush=True)
+              return proc.returncode,v
+          def report(updates=()):
+              print('HANDOFF',json.dumps({'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
           def promoted_read(mode, publication, hotel, url, baseline):
               proc=subprocess.run(['php',str(app/'tools/apply_promoted_hotel_prices.php'),mode,str(publication)],
                                   capture_output=True,text=True,timeout=150)
@@ -149,10 +168,21 @@ jobs:
               return rows[0]
           pins()
           baseline=feeds()
-          check(baseline=={'max':'29b83aeafe3722edf0c0922ea388da0d66666a7cb79f9b0a5dfd87ab602973ae','telegram':'86bf865255f583d37c0d6cd20e75ff12ce324476f837b647b046d2dda36aabe9','all':'c22f4e68a324193e79c99e7313af2b94454de7b8cd9f7558deb2fbb3f66e4c25'},'independently_verified_preimages_changed')
-          print('ORIGINAL_READ_ADMISSION',45826151339,139930690250, 'prior_pairs_confirmed=31','eight_max_public_matches=8','resuming_ready_saved_minima',flush=True)
-          if stage=='max':
-              for publication,hotel,url in [[3620, 99713, 'https://max.ru/anytour/AZ_RB3FVXFc'], [3665, 325, 'https://max.ru/anytour/AaB25lWLB5Y'], [3841, 106, 'https://max.ru/anytour/AaEwSMavEQU'], [3843, 114, 'https://max.ru/anytour/AaE6sgknSuc']]:
+          checkpoint=art/'public-hashes.json'
+          if batch == "promoted":
+              check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
+              carry=[]
+              targets=json.loads((app/'config/promoted_hotel_price_targets.json').read_text())
+              target_set={(row['publication_id'],row['hotel_id'],row['url']) for row in targets if row['platform']=='max'}
+              check(all(tuple(row) in target_set for row in carry),'original_promotion_targets_changed')
+              changed=set()
+              for path in art.glob('pass-*.raw'):
+                  record=next(line.split('=',1)[1] for line in path.read_text().splitlines() if line.startswith('MONITOR_POST_FEED_RESULT='))
+                  changed.update(int(row['tourvisor_hotel_id']) for row in json.loads(record).get('updates',[]))
+              selected={p:(p,h,u) for p,h,u in carry}
+              for p,h,u in sorted(target_set):
+                  if h in changed: selected[p]=(p,h,u)
+              for publication,hotel,url in selected.values():
                   before=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
                   if before is None or before.get('result')!='eligible' or before.get('public_verified') is not True: continue
                   applied=promoted_read('--apply-max-publication',publication,hotel,url,baseline)
@@ -165,24 +195,32 @@ jobs:
                       if after is not None and after.get('result')=='already_current' and after.get('public_verified') is True: break
                   else:
                       raise RuntimeError('promoted_public_readback_incomplete')
+              print('PROMOTED_TARGETS_READ',len(selected),flush=True)
+              check(feeds()==baseline,'feed_changed_during_promoted_edits')
+              print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+              sys.exit(0)
+          if batch == 1:
+              check(baseline=={'max':'29b83aeafe3722edf0c0922ea388da0d66666a7cb79f9b0a5dfd87ab602973ae','telegram':'86bf865255f583d37c0d6cd20e75ff12ce324476f837b647b046d2dda36aabe9','all':'c22f4e68a324193e79c99e7313af2b94454de7b8cd9f7558deb2fbb3f66e4c25'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45828480551,139938707925,'prior_pairs_verified=31','timer=45832970475','fresh_saved_minima_after_expiry_hotel_ids=8917,13840',flush=True)
           else:
-              def promoted_all(mode):
-                  proc=subprocess.run(['php',str(app/'tools/apply_promoted_hotel_prices.php'),mode],
-                                      capture_output=True,text=True,timeout=300)
-                  raw=proc.stdout.strip()
-                  print('PROMOTED_PRICE',datetime.datetime.now(datetime.timezone.utc).isoformat(),raw,flush=True)
-                  prefix='PROMOTED_HOTEL_PRICE_RESULT='
-                  check(proc.returncode==0 and raw.startswith(prefix),'promoted_original_receipt_missing')
-                  receipt=json.loads(raw[len(prefix):])
-                  check(receipt.get('feed_sha256')==baseline['all'],'promoted_source_changed')
-                  return receipt['rows']
-              before=promoted_all('--inspect')
-              if any(r.get('platform')=='telegram' and r.get('result')=='eligible' and r.get('public_verified') is True for r in before):
-                  applied=promoted_all('--apply')
-                  check(not any(r.get('result')=='unknown_after_write' for r in applied),'promoted_original_requires_readback')
-          check(feeds()==baseline,'feed_changed_during_promoted_edits')
-          print('PRICE_PROMOTED_STAGE_TERMINAL',stage,datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+              check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
+          code,r=native_run('pass-'+str(batch))
+          for update in r.get('updates',[]):
+              posts=update['posts']
+              check(len(posts)==2 and {p.get('platform') for p in posts}=={'telegram','max'} and all(all(p.get(k) is True for k in ('body_photo_button_verified','existing_message_reused','price_link_verified','content_updated')) for p in posts),'pair_receipts_unconfirmed')
+          check(r['updated_pairs']==len(r['updates']),'update_count_mismatch')
+          print('PAIR_IDS',batch,[u['tourvisor_hotel_id'] for u in r['updates']], 'verified_operations',len(r['updates']),flush=True)
+          report(r.get('updates',[]))
+          print('INDEPENDENT_FEED_READ_AT',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
+          print('PAIR_PRICES',batch,json.dumps([[u['tourvisor_hotel_id'],u['price'],u['posts'][0]['monitor_price']['observed_at']] for u in r.get('updates',[])]),flush=True)
+          check(code==0 and r.get('ok') and r.get('roster_pairs')==1000 and all(r.get(k)==0 for k in ('supplier_calls','new_posts','site_writes')),'native_terminal_stop')
+          checkpoint.write_text(json.dumps(feeds(r.get('updates',[]))))
+          if r.get('scanned_pairs')==1000 or not r.get('updated_pairs'):
+              print('PRICE_SEQUENCE_COMPLETE',batch,flush=True)
           PY
+            if grep -q '^PRICE_SEQUENCE_COMPLETE ' "$RUNNER_TEMP/price-pass-$batch.txt"; then
+              complete=1
+            fi
           done
       - name: Cleanup connection material
         if: always()
