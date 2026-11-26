@@ -1,4 +1,4 @@
-name: PRICE continue confirmed nightly queue after 45727781490
+name: PRICE publish the ready queue from the completed 04:45 TOP500 cycle
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'db1d0eaef0accea9414f73cf9f03cdb074ff421e'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9bcbc803e6ad6fffe157a65ce0f968f42d71f2fa'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,8 +21,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45727781490 --jq .conclusion | grep -Fxq cancelled
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45731344989 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45744978176 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45741787007 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1736: установлено, выпуск свободен'
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7172257427 --jq '.body | split("\n") | first' | grep -Fxq '<!-- HOTEL_TG_CURRENT_20261126_0543 -->'
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
           python3 - <<'PY'
@@ -90,7 +94,7 @@ jobs:
               for name,sha in [('monitor-price-hook.php','1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='53c7a0c0a9162ab31a88325790be52df2c2ecbde','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='c35c354220f7e30cd639672015b52d5f11c767a1','runtime_changed')
           def window_open():
               base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
               def comment(comment_id):
@@ -106,13 +110,13 @@ jobs:
               with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/7172257427',timeout=15) as response:
                   current_content=json.load(response)
               return (not any(r['status']!='completed' for r in schedules)
-                      and current_content['updated_at']=='2026-11-26T01:23:58Z'
+                      and current_content['body'].startswith('<!-- HOTEL_TG_CURRENT_20261126_0543 -->')
                       and coordination['comments']==233 and release['user']['login']=='pyatkoff'
                       and release['updated_at']=='2026-11-26T01:07:46Z'
                       and release['body']=='PR1735: установлено, выпуск свободен'
                       and content_release['user']['login']=='pyatkoff'
-                      and content_release['updated_at']=='2026-11-26T00:36:16Z'
-                      and content_release['body']=='PR1734: установлено, выпуск свободен'
+                      and content_release['updated_at']=='2026-11-26T02:40:13Z'
+                      and content_release['body']=='PR1736: установлено, выпуск свободен'
                       and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
           def feeds(updates=()):
               info={}
@@ -153,7 +157,7 @@ jobs:
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
           baseline=feeds()
-          check(baseline=={'max':'a5b11245ff9c1da2b154a89d586a9e27ed14fc259047054b2e509f58fb870b5d','telegram':'be9eb6576ebca6649ce8225a4af701030a67bc427d671c4a6399deba30257447','all':'0c6399f88289056b7a69729679971722616bc79619b9eed91ba46f03b957028b'},'independently_verified_preimages_changed')
+          check(baseline=={'max':'70a15c8d8d51ce3219dd0609d96b66566b737de3c4ee543f00c353104f2b1942','telegram':'cfa0d1dc8d995e9ffb13159dbe086c8316c3d8e44ebfdd4b2cdbdf42c261488a','all':'50a4dad70e6497312313edd6c5600f6a01126961d07a1be83a65d372dad4acd7'},'independently_verified_preimages_changed')
           pin=tuple(getattr(journal.stat(),field) for field in ('st_ino','st_dev','st_size','st_mtime_ns','st_ctime_ns'))
           code,ad=native_run('inspect',True)
           check(code==0 and ad.get('ok') and ad.get('roster_pairs')==ad.get('scanned_pairs')==len(set(ad.get('verified_ids',[])))==1000 and ad.get('updated_pairs')==0,'initial_admission_failed')
@@ -162,10 +166,6 @@ jobs:
           seen=set()
           for batch in range(1,26):
               if time.monotonic()-start>3000: break
-              local=datetime.datetime.now(ZoneInfo('Europe/Moscow'))
-              if local >= local.replace(hour=4, minute=52, second=0, microsecond=0):
-                  print('WINDOW_YIELD_TO_ORDINARY_TOP500_TIMER',batch,local.isoformat(),flush=True)
-                  break
               if not window_open():
                   print('WINDOW_HANDOFF_CHANGED',batch,flush=True)
                   break
