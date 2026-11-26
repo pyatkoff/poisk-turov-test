@@ -1,6 +1,8 @@
 'use strict';
 (() => {
-const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+// Use the ID index for plain selectors on standards-mode pages.
+const plainIdSelector=/^#[A-Za-z_][A-Za-z0-9_-]*$/;
+const $ = s => typeof s==='string'&&s[0]==='#'&&plainIdSelector.test(s)&&document.compatMode==='CSS1Compat'?document.getElementById(s.slice(1)):document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 // Optional shortlisting is paused by the owner. Keep stored choices intact, but
 // keep every visible route focused on search → hotel → exact tour.
 const optionalShortlistEnabled=false;
