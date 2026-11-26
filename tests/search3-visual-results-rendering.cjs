@@ -491,7 +491,12 @@ const {JSDOM}=require('jsdom');
 {
  const helper=section(source,'function currentCardSelectionHTML(','function cardHTML('),card=section(source,'function cardHTML(','function refreshOpenHotelRooms(');
  const selectedBody=helper.slice(helper.indexOf(' const current='),helper.lastIndexOf('\n}')).replace(' return current?',' const currentHTML=current?');
- const previousCard=card.replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating);",",ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);").replace(' const currentHTML=currentCardSelectionHTML(h,offers);',selectedBody);
+ // The pinned predecessor formatted these labels inline.
+ const labels={hotelName:'esc(h.name)',priceText:'money(o.total)',departureText:'dateText(o.day)',stayText:'nightsText(o.nights)',mealText:'esc(mealLabel(o))'};
+ const expandedCard=card
+  .replace(' const hotelName=esc(h.name),priceText=money(o.total);\n const departureText=dateText(o.day),stayText=nightsText(o.nights),mealText=esc(mealLabel(o));\n','')
+  .replace(/\$\{(hotelName|priceText|departureText|stayText|mealText)\}/g,(_,label)=>'${'+labels[label]+'}');
+ const previousCard=expandedCard.replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating);",",ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);").replace(' const currentHTML=currentCardSelectionHTML(h,offers);',selectedBody);
  assert.equal(crypto.createHash('sha256').update(previousCard).digest('hex'),'af3569cc4e438663810f0dc8804b8b8ebb25c710960d343d34d73ea2b881d0dc','exact predecessor full-card bytes, including selection predicates and markup');
  const previousSelection=` if(selectionOnly){
   for(const card of $$('#cards .hotel-card')){
