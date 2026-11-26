@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '914e9e5aecb047b0b2ef2d8e69c4af22000c7a53'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c4b48de0a171ea3b02d3d156585bffcc415d8931'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -175,7 +175,7 @@ jobs:
           }
           PHP
 
-      - name: Read the original state of four exact Telegram publications
+      - name: Read the original hold on two exact Telegram publications
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -198,7 +198,7 @@ jobs:
               $registry=new ChannelPostRegistryService($db);
               $claims=$db->prepare("SELECT id,state,claimed_at,claim_token IS NOT NULL AS token_present FROM post_versions WHERE publication_id=? AND (state IN ('claimed','write_started','unknown') OR claim_token IS NOT NULL OR claimed_at IS NOT NULL) ORDER BY id");
               $out=[];
-              foreach ([3629=>'204',3634=>'483',3630=>'402',3689=>'913'] as $id=>$mid) {
+              foreach ([3629=>'204',3634=>'483'] as $id=>$mid) {
                   $post=$registry->publication($id);
                   if (!is_array($post) || $post['project_key']!=='anytour' || $post['platform']!=='telegram' || $post['snapshot']['post_url']!=='https://t.me/anytour/'.$mid) {
                       throw new RuntimeException('target_registry_identity_changed');
