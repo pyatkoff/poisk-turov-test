@@ -1045,7 +1045,8 @@ function syncResultSortControls(){
 function renderActive(ratingCounts){const f=state.filters,chips=filterChipData(),activeFilters=$('#active-filters');
  activeFilters.classList.toggle('has-amenity-labels', (f.amenities||[]).some(key=>amenityLabel(key)));
  syncResultSortControls();
- activeFilters.innerHTML=chips.map(c=>`<button class="active-filter${c.key==='hotelIds'?' hotel-filter':''}" data-action="remove-filter" data-key="${c.key}" data-value="${esc(c.value)}" aria-label="Убрать: ${esc(c.label)}"${c.key==='hotelIds'?` title="${esc(c.label)}"`:''}>${c.key==='hotelIds'?`<span class="active-filter-label">${esc(c.label)}</span>`:esc(c.label)}${icon('x')}</button>`).join('');
+ const entries=chips.map(c=>({id:'',markup:`<button class="active-filter${c.key==='hotelIds'?' hotel-filter':''}" data-action="remove-filter" data-key="${c.key}" data-value="${esc(c.value)}" aria-label="Убрать: ${esc(c.label)}"${c.key==='hotelIds'?` title="${esc(c.label)}"`:''}>${c.key==='hotelIds'?`<span class="active-filter-label">${esc(c.label)}</span>`:esc(c.label)}${icon('x')}</button>`}));
+ paintGeneratedRoots(activeFilters,entries);
  for(const key of ['beach','rating','family']){$('#'+key+'-chip').classList.toggle('active',f[key]);$('#'+key+'-chip').setAttribute('aria-pressed',f[key])}
  const ratingTotal=ratingCounts.total,ratingCount=ratingCounts.rating,ratingChip=$('#rating-chip');
  ratingChip.hidden=!f.rating&&(ratingCount===0||ratingCount===ratingTotal);
