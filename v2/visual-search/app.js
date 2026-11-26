@@ -1455,7 +1455,12 @@ function renderResultHeadings(items,total,pristine){
  renderResultSummary(items,total,pristine);
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
-function paintResultCards(cards,entries,sameScope){paintGeneratedRoots(cards,entries,sameScope);}
+function paintResultCards(cards,entries,sameScope){
+ // The loading or empty placeholder cannot be reused as a hotel card. Insert
+ // the first populated set in one parse, then retain keys on later updates.
+ const replacesPlaceholder=sameScope&&entries[0]?.id&&cards.childElementCount>0&&!cards.querySelector('.hotel-card');
+ paintGeneratedRoots(cards,entries,sameScope&&!replacesPlaceholder);
+}
 function renderResultCards(items,{selectionOnly=false}={}){
  // Share selection markup with the full card renderer, retaining cards, controls and focus.
  // Closing a tour is a passive presentation update, never a new search.
