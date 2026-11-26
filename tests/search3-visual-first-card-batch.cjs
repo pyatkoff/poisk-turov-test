@@ -37,14 +37,16 @@ function installCardMeasurement({mode, hotelCount, toursPerHotel}) {
   });
 
   let adapter;
+  const expandedEvents = new WeakSet();
   Object.defineProperty(window,'AnyTourPrototypeData',{
     configurable:true,
     get:() => adapter,
     set(data) {
-      adapter = Object.create(data,{
-        search:{value(search, emit, ...options) {
-          return data.search(search,event => {
-            if (event.type !== 'results' || !event.hotels?.length) return emit(event);
+      const properties = Object.getOwnPropertyDescriptors(data);
+      const searchOwner = properties.search.value;
+      properties.search.value = function(search, emit, ...options) {
+          return searchOwner.call(data,search,event => {
+            if (event.type !== 'results' || !event.hotels?.length || expandedEvents.has(event)) return emit(event);
             measurement.eventCount++;
             const seed = event.hotels.find(h => h.offers?.length);
             if (!seed) return emit(event);
@@ -60,10 +62,12 @@ function installCardMeasurement({mode, hotelCount, toursPerHotel}) {
               measurement.placeholder = hasPlaceholder();
               measurement.emittedAt = performance.now();
             }
-            return emit({...event,hotels:scaled});
+            const expanded = {...event,hotels:scaled};
+            expandedEvents.add(expanded);
+            return emit(expanded);
           },...options);
-        }},
-      });
+      };
+      adapter = Object.create(Object.getPrototypeOf(data),properties);
     },
   });
 
@@ -84,11 +88,11 @@ function installCardMeasurement({mode, hotelCount, toursPerHotel}) {
   observer.observe(document,{subtree:true,childList:true});
 }
 
-async function oneTrial({browser,origin,base,fixture,trip,canonicalLogoFixture,width,height,mode}) {
+async function oneTrial({browser,origin,base,canonicalLogoFixture,width,height,mode}) {
   const context = await browser.newContext({viewport:{width,height},hasTouch:width===430,serviceWorkers:'block'});
   const page = await context.newPage();
-  const transport = fixture();
   const exceptions = [];
+  const blockedRequests = [];
   page.on('pageerror',error=>exceptions.push(error.message));
   try {
     await page.addInitScript(installCardMeasurement,{mode,hotelCount:120,toursPerHotel:24});
@@ -100,17 +104,20 @@ async function oneTrial({browser,origin,base,fixture,trip,canonicalLogoFixture,w
         !url.pathname.includes('/data/') && !url.pathname.endsWith('.php') && request.method() === 'GET';
       if (staticRequest) return route.continue();
       if (request.resourceType()==='image') return route.abort();
-      try {
-        const body = await transport.json(request.url(),{body:request.postData()});
-        return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
-      } catch (error) {
-        exceptions.push(error.message);
-        return route.abort();
-      }
+      blockedRequests.push(url.pathname);
+      return route.abort();
     });
-    const params = new URLSearchParams({...trip,ages:''});
-    await page.goto(origin+base+'visual-search/?'+params,{waitUntil:'domcontentloaded'});
-    await page.locator('.search-submit:not(:disabled)').click();
+    await page.goto(origin+base+'visual-search/?scenario=journey',{waitUntil:'domcontentloaded'});
+    try {
+      await page.locator('.search-submit:not(:disabled)').click({timeout:10000});
+    } catch (error) {
+      const state = await page.evaluate(()=>({
+        scenario:window.AnyTourPrototypeData?.scenario,
+        catalogMessage:document.querySelector('#catalog-error')?.textContent,
+        formHidden:document.querySelector('#search-form')?.hidden,
+      }));
+      throw new Error('Offline journey button did not become ready. '+JSON.stringify({state,exceptions,blockedRequests}),{cause:error});
+    }
     await page.waitForFunction(()=>Number.isFinite(window.firstCardMeasurement?.nextFrameAt),null,{timeout:10000});
     const observation = await page.evaluate(()=>{
       const m = window.firstCardMeasurement;
@@ -119,6 +126,7 @@ async function oneTrial({browser,origin,base,fixture,trip,canonicalLogoFixture,w
     });
     assert.equal(observation.keys.length,24);
     assert.deepEqual(exceptions,[]);
+    assert.deepEqual(blockedRequests,[]);
     return observation;
   } finally {
     await context.close();
