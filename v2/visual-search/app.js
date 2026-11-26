@@ -4004,10 +4004,23 @@ hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderR
 if(initialUIRoute&&!messengerReturn)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 if(homeFormOnly)addEventListener('pageshow',()=>{homeNavigationPending=false;state.hasSearched=false;updateSearchUI();});
 // The trip bar follows this document's viewport, including in the responsive preview.
-function updateCompactSearch(){compactSearchFrame=0;if(homeFormOnly){$('#compact-search').hidden=true;document.documentElement.style.removeProperty('--compact-search-clearance');return;}const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession,mobileBottom=$('.mobile-bottom'),mobileBottomClearance=(mobileBottom?.offsetHeight||68)+12;document.body.classList.toggle('mobile-results',mobileResults);document.body.classList.toggle('mobile-bottom-suspended',mobileResults&&innerWidth<=400&&scrollY<mobileBottomClearance);const bar=$('#compact-search');bar.hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;if(bar.hidden)document.documentElement.style.removeProperty('--compact-search-clearance');else document.documentElement.style.setProperty('--compact-search-clearance',(bar.offsetHeight+8)+'px');}
+function updateCompactSearch(){
+ compactSearchFrame=0;
+ const bar=$('#compact-search'),rootStyle=document.documentElement.style;
+ if(homeFormOnly){bar.hidden=true;rootStyle.removeProperty('--compact-search-clearance');return;}
+ const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession;
+ const suspendBottom=mobileResults&&innerWidth<=400&&scrollY<($('.mobile-bottom')?.offsetHeight||68)+12;
+ document.body.classList.toggle('mobile-results',mobileResults);
+ document.body.classList.toggle('mobile-bottom-suspended',suspendBottom);
+ bar.hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;
+ if(bar.hidden)rootStyle.removeProperty('--compact-search-clearance');
+ else rootStyle.setProperty('--compact-search-clearance',(bar.offsetHeight+8)+'px');
+}
 function scheduleCompactSearch(){if(!compactSearchFrame)compactSearchFrame=requestAnimationFrame(updateCompactSearch);}
+if(!homeFormOnly){
 addEventListener('scroll',scheduleCompactSearch,{passive:true});
 addEventListener('resize',scheduleCompactSearch);
 new IntersectionObserver(scheduleCompactSearch,{threshold:0}).observe($('#search'));
+}
 updateCompactSearch();
 })();
