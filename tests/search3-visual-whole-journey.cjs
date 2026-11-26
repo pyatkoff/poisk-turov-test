@@ -310,7 +310,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  for(const width of [430,1280]){
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
   const page=await context.newPage();
-  const failures=[],external=[],frames=[];
+  const failures=[],external=[],archiveRequests=[],frames=[];
   const frame=async (label,collection=frames,file)=>{
    await page.evaluate(()=>document.fonts.ready.then(()=>true));
    assert.equal(await page.evaluate(()=>{
@@ -322,6 +322,10 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
   };
   const sum=async locator=>(await locator.innerText()).replace(/\s+/g,' ').trim();
   page.on('pageerror',error=>failures.push(error.message));
+  page.on('request',request=>{
+   const url=new URL(request.url());
+   if(url.origin===origin&&url.pathname===base+'visual-search/fixtures/live-search-2026-09-23.json')archiveRequests.push(url.pathname);
+  });
   try{
    await page.route('**/*',async route=>{
     const logo=canonicalLogoFixture(route.request(),origin);if(logo){await route.fulfill(logo);return;}
@@ -334,6 +338,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    const response=await page.goto(origin+base+'visual-search/?scenario=journey');
    assert.equal(response.status(),200);
    await page.locator('.search-submit:not(:disabled)').waitFor();
+   assert.deepEqual(archiveRequests,[],'the public journey enables Find without the saved archive');
    const stars=page.locator('#quick-stars [data-value="4"]');
    await stars.click();
    assert.equal(await stars.getAttribute('aria-pressed'),'true');
@@ -461,6 +466,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
     await saveJourney(context,familyFrames,width,evidence,{filename:'family-edit-journey-1280.webp'});
     assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    }
+   assert.deepEqual(archiveRequests,[],'the public journey and family return stay independent of the saved archive');
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');
   } finally { await context.close(); }
  }
