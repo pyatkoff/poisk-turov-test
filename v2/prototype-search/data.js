@@ -761,7 +761,17 @@
     if(!original||original!==fact(after)||label!==(kind==='room'?text(after):meal(after)))return label;
     return localStayName(o.raw,{id:o.hotelId},kind)||label;
   }
-  function offer(t, h, s, index, indexes=mealIndexes()) {
+  function projectSearchCopier(s) {
+    const clone=()=>structuredClone(s);
+    if(s!==context||Object.prototype.toString.call(s)!=='[object Object]'||!Array.isArray(s.ages))return clone;
+    const ages=s.ages,keys=Object.keys(ages);
+    if(keys.length!==ages.length||!keys.every((key,index)=>key===String(index)&&Number.isInteger(ages[index])))return clone;
+    for(const [key,value] of Object.entries(s)){
+      if(key!=='ages'&&value!=null&&!['string','number','boolean','bigint'].includes(typeof value))return clone;
+    }
+    return ()=>({...s,ages:ages.slice()});
+  }
+  function offer(t, h, s, index, indexes=mealIndexes(), copySearch=()=>structuredClone(s)) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
     const provider=String(t.provider||'tourvisor').toLowerCase(),plan=mealPlan(t,provider,indexes);
@@ -769,13 +779,13 @@
     const displayMeal=indexedMeal(t.meal,indexes)||rawMeal,localMeal=localStayName(t,h,'meal'),localRoom=localStayName(t,h,'room');
     return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
       mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:localMeal||plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
-      operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
+      operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:copySearch(),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) {
-    const result=[],indexes=mealIndexes();
+    const result=[],indexes=mealIndexes(),copySearch=projectSearchCopier(s);
     list.forEach(rawHotel=>{
       const h=hotel(rawHotel,s),offers=[];
-      (rawHotel.tours||[]).forEach((t,i)=>{const item=offer(t,h,s,i,indexes);if(item)offers.push(item);});
+      (rawHotel.tours||[]).forEach((t,i)=>{const item=offer(t,h,s,i,indexes,copySearch);if(item)offers.push(item);});
       h.offers=offers;if(offers.length)result.push(h);
     });
     return result;
