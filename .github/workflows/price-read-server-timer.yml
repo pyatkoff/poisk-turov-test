@@ -1,4 +1,4 @@
-name: Follow the original 01:45 TOP500 timer and retained search
+name: Read the exact native TOP500 cycle active during the completed PRICE
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd309ad86001de2938ca5441387f031991ee43e9e'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '95a89ab40db97f3216b1a566d3982a4a3f9ee4a6'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
