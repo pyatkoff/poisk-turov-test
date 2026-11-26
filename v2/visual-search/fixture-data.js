@@ -100,6 +100,7 @@
   async function snapshotFallback(s, hotelIds = []) {
     await ready;
     if (!snapshotScopeMatches(s, hotelIds)) return null;
+    await loadSnapshot();
     const hotels = rows.map(h => ({
       ...h,
       offers: h.offers
@@ -126,10 +127,16 @@
       : scenario === 'flights' ? '24 вымышленные пары рейсов: прямые, с пересадкой, без цены и с неизвестным багажом.'
       : scenario === 'flight-error' ? 'Демонстрация ошибки рейсов. Условия и цена — примеры.' : 'Демонстрация пустой выдачи.';
   }
-  const ready = fetch(resource('fixtures/live-search-2026-09-23.json')).then(response => {
-    if (!response.ok) throw new Error('Не удалось открыть сохранённый пример. Обновите страницу.');
-    return response.json();
-  }).then(raw => {snapshot = raw; rows = normalize(raw); updateCatalog();});
+  let snapshotRequest;
+  function loadSnapshot() {
+    snapshotRequest ??= fetch(resource('fixtures/live-search-2026-09-23.json')).then(response => {
+      if (!response.ok) throw new Error('Не удалось открыть сохранённый пример. Обновите страницу.');
+      return response.json();
+    }).then(raw => {snapshot = raw; rows = normalize(raw);});
+    return snapshotRequest;
+  }
+  const nextFamily = reviewScenario === 'family' && window.V2_CONFIG.search3PublicBase === '/_preview/search3-next-candidate/poisk-turov/';
+  const ready = (nextFamily ? Promise.resolve() : loadSnapshot()).then(updateCatalog);
   const time = minutes => `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
   function segments(tour, i, back = false) {
     const day = back ? tour.returnDay : tour.day, start = (back ? 420 : 300) + (i % 12) * 65;
