@@ -1,4 +1,4 @@
-name: PRICE apply the saved minima from the native 20:15 TOP500 cycle
+name: PRICE recover the verified Selectum Comfort pair and drain ready stock
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3b7bdb3b906f567d7e2d304f3fa954eb3b12347d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '886e42a164a2143d5b4f7444cde641c238dc11cb'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,9 +21,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45871351566 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45872532692 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863751839 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45871534869 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45860439903 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq .conclusion | grep -Fxq success
@@ -42,6 +42,30 @@ jobs:
           assert 'общий редактор возвращён PRICE' in body
           assert 'writer пилота завершён' in body and 'Повторных запусков нет' in body
           PY
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain the validated, immutable PRICE sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: 07722fa5b6972cab57033cee3afcc686aab72ff0
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Verify the accepted bundle and code-only installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/pulls/5247 --jq 'select(.merged and .merge_commit_sha == "e527e41ffd95d4170e13276fea22b17e021b80a6") | .merge_commit_sha' | grep -Fxq e527e41ffd95d4170e13276fea22b17e021b80a6
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45873045111 --jq 'select(.head_sha == "589a5da716df01530c6c66a1d958d65cc34c27f1" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45873045109 --jq 'select(.head_sha == "589a5da716df01530c6c66a1d958d65cc34c27f1" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq 'select(.head_sha == "d38679bb0fbd11b26ad74a20163b400055b63cc8" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 5eea64a0f8c5830561c7e8b6e9a62f6d96bd898d0127d9f2b9c0236d50494934
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l tools/price-hook-reviewed-pass/install.php
+          php tools/price-hook-reviewed-pass/install.php --self-test
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -67,6 +91,31 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
+      - name: Install accepted code under the existing PRICE journal lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          check_window() {
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq 'select(.updated_at == "2026-11-26T16:39:07Z" and .body == "PR1745: установлено, выпуск свободен") | .id' | grep -Fxq 7077907800
+            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq 'select(.updated_at == "2026-11-26T12:01:20Z" and .body == "PR1741: установлено, выпуск свободен") | .id' | grep -Fxq 6818332618
+            gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
+          }
+          check_window
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          remote="$DEPLOY_USER@$DEPLOY_HOST"
+          stage="$(ssh "${opts[@]}" "$remote" 'umask 077 && mktemp -d /var/www/anytoour/data/channel-post-operations/price-hook-1346-recovery-staged.XXXXXXXX')"
+          [[ "$stage" =~ ^/var/www/anytoour/data/channel-post-operations/price-hook-1346-recovery-staged[.][A-Za-z0-9]{8}$ ]]
+          scp "${opts[@]}" tools/price-hook-reviewed-pass/install.php "$RUNNER_TEMP/monitor-price-hook.php" "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-old $stage/monitor-price-hook.php" > "$RUNNER_TEMP/price-install-admission.json"
+          cat "$RUNNER_TEMP/price-install-admission.json"
+          scp "${opts[@]}" "$RUNNER_TEMP/price-install-admission.json" "$remote:$stage/"
+          check_window
+          ssh "${opts[@]}" "$remote" "php $stage/install.php install $stage/monitor-price-hook.php $stage/price-install-admission.json"
+          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-new $stage/monitor-price-hook.php"
       - name: Continue the verified roster with the installed PRICE writer
         env:
           GH_TOKEN: ${{ github.token }}
@@ -116,7 +165,7 @@ jobs:
           def check(condition, message):
               if not condition: raise RuntimeError(message)
           def pins():
-              for name,sha in [('monitor-price-hook.php','6dd5e20b1d74e5969beba0c89bb76b9b4492083f0226300213582ade5f230190'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
+              for name,sha in [('monitor-price-hook.php','5eea64a0f8c5830561c7e8b6e9a62f6d96bd898d0127d9f2b9c0236d50494934'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
               check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='d38679bb0fbd11b26ad74a20163b400055b63cc8','runtime_changed')
@@ -176,7 +225,7 @@ jobs:
               targets=json.loads((app/'config/promoted_hotel_price_targets.json').read_text())
               target_set={(row['publication_id'],row['hotel_id'],row['url']) for row in targets if row['platform']=='max'}
               check(all(tuple(row) in target_set for row in carry),'original_promotion_targets_changed')
-              changed=set()
+              changed={43676,218}
               for path in art.glob('pass-*.raw'):
                   record=next(line.split('=',1)[1] for line in path.read_text().splitlines() if line.startswith('MONITOR_POST_FEED_RESULT='))
                   changed.update(int(row['tourvisor_hotel_id']) for row in json.loads(record).get('updates',[]))
@@ -215,11 +264,17 @@ jobs:
               print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               sys.exit(0)
           if batch == 1:
-              check(baseline=={'max':'da43f35109baf0565c8c878418712ffd9ad7d9787e069b28effb58cfb80f0a6f','telegram':'8498a73a552808ffd242a46ac49346bf961b09c475b04e33dee49db61916dc77','all':'84e2229da4569e3f7dde27d9f35e18b2a4ee4d470bc3b4fbeafb32673dcb4ef8'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45863751839,140061183023, 'prior_pairs_verified=1','timer=45871351566','native_cycle=2026-11-26T17:15:02Z',flush=True)
+              check(baseline=={'max':'8feb92cdfcc0cd9cfd0c3f8716939a333e231da08f2828ac464db442884143ec','telegram':'f4cf6601363c405e0efa18a81fa5ba1a9ec2581f0efad947df37ccf4c70caa8b','all':'911e55e71d90428f158679f031af7b29ea4a8f07d1500adfe9504f0064ce14d6'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45863751839,140087905487, 'prior_pairs_verified=11','timer=45872532692','native_cycle=2026-11-26T17:15:02Z',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
+          if batch == 1:
+              check(r.get('reconciled_prior_feed') is True,'confirmed_original_feed_not_recovered')
+              recovered={'tourvisor_hotel_id':1346,'price':136670,'posts':[{'monitor_price':{'observed_at':'2026-11-26T17:26:44Z'}}]}
+              # Confirm the exact price minute from the original confirmed pair.
+              report([recovered])
+              print('RECOVERED_PAIR',1346,136670,'confirmed_original_posts_reused',flush=True)
           for update in r.get('updates',[]):
               posts=update['posts']
               check(len(posts)==2 and {p.get('platform') for p in posts}=={'telegram','max'} and all(all(p.get(k) is True for k in ('body_photo_button_verified','existing_message_reused','price_link_verified','content_updated')) for p in posts),'pair_receipts_unconfirmed')
