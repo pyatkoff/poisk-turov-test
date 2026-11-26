@@ -261,6 +261,7 @@ function collapseSearch(){closeInlineSearchPicker();renderSummary();$('#search-f
 function editSearch(){
  if(searchResponse.pending||Object.values(searchResponse.providers||{}).includes('loading'))stopSearch();if(innerWidth<=1100)closeFilters();
  $('#results').classList.remove('filters-requested');
+ if(state.hasSearched&&mobileFiltersNeedRefresh){renderFilters();mobileFiltersNeedRefresh=false;}
  if(state.hasSearched&&!searchEditSession){
   searchEditSession={filters:structuredClone(state.filters),selectedDate:state.selectedDate,onlyFavorites:state.onlyFavorites,y:scrollY,focus:focusReference(actionTrigger||document.activeElement)};
   draft=structuredClone(state.search);draftDestination=null;
@@ -1374,6 +1375,7 @@ function positionHotelRooms(row=null){
 
 let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 let renderedSearchStatus=null,renderedResultSource=null;
+let mobileFiltersNeedRefresh=false;
 function refreshResultFilters(options,ratingCounts){
  if(options.deferFilterPanel===true)return;
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
@@ -1465,6 +1467,7 @@ function renderResults(options={}){
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  renderCalendarStrip(items,options.reuseCalendarBase);renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();
  const drawerCount=refreshResultFilters(options,inventory.ratingCounts);
+ if(!options.keepFilters)mobileFiltersNeedRefresh=options.deferFilterPanel===true;
  renderSearchStatus(items,total);refreshResultPickerPreviews(drawerCount);
  renderedSearchStatus={response:searchResponse,total};
 }
@@ -3444,7 +3447,7 @@ function renderFavorites(){
  $('#modal-body').innerHTML=`${savedContext(true)}<div class="favorite-list">${entries.map(({hotel:h,offer:o,offers,reason})=>`<article class="favorite-item" data-saved-hotel="${h.id}">${savedHotelPhoto(h,'favorite-photo')}<div class="favorite-info"><span class="favorite-stars">${h.stars?h.stars+' ★':'Категория не указана'}${ratingValue(h)!==null?`<span>${ratingText(h)} / 5</span>`:''}</span><h3><button data-action="hotel-details" data-id="${h.id}">${esc(h.name)}</button></h3><p>${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</p></div><button class="icon-button favorite-remove" data-action="favorite" data-id="${h.id}" aria-label="Удалить ${esc(h.name)} из избранного">${icon('x')}</button><div class="favorite-summary">${o?`<div class="favorite-price-line"><strong class="saved-price">${money(o.total)}</strong><button class="primary" data-action="offer" data-key="${esc(o.key)}">Этот тур ${icon('arrow')}</button></div><span class="favorite-party">За ${guestsText(o)}</span><span>${esc(cardPriceNote(o))}</span><p>${dateText(o.day)} → ${dateText(o.returnDay)} · ${nightsText(o.nights)}</p><p>${esc(displayMealLabel(o))} · ${flightLabel(o)}</p><p class="favorite-room"><span>Номер</span> ${esc(roomLabel(o))}</p>`:`<strong class="saved-unavailable">${reason}</strong><p>Отель остаётся в избранном.</p>`}</div><div class="favorite-actions">${o?`${offers.length>1?`<button class="text-button favorite-all-offers" data-action="all-offers" data-id="${h.id}">Все туры отеля (${offers.length})</button>`:''}`:savedRecovery(h)}</div></article>`).join('')}</div>${entries.some(e=>!e.offer)?'<p class="saved-recovery-hint">Новый поиск меняет направление и снимает фильтры. Даты и туристы сохраняются.</p>':''}`;
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="only-favorites">Избранное в выдаче</button>`;
 }
-function openFilters(restore=null){if(innerWidth>1100){$('#results').classList.add('filters-requested');$('#filter-panel').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#hotel-query').focus({preventScroll:true});return}if(filterDraft)return;enterUIHistory();const restored=restoreFilterHistoryModel(restore?.draft);expandedFilterSections.clear();const sections=boundedHistoryStrings(restore?.sections,{max:30});if(restored&&sections)sections.forEach(key=>expandedFilterSections.add(key));filterDraft=restored||structuredClone(appliedFilterModel());const budget=restored&&restore?.budget&&typeof restore.budget==='object'?restore.budget:null;if(budget){filterBudgetEdit={filters:filterDraft.filters,scope:searchKey(state.search),appliedMin:filterDraft.filters.min,appliedMax:filterDraft.filters.max,minText:boundedHistoryText(budget.minText,String(filterDraft.filters.min),32),maxText:boundedHistoryText(budget.maxText,String(filterDraft.filters.max??''),32)}}updateDrawerPreview(renderFilters());$('#filter-panel').classList.add('open');$('#filter-panel').setAttribute('role','dialog');$('#filter-panel').setAttribute('aria-modal','true');$('#filter-backdrop').hidden=false;document.body.style.overflow='hidden';$('main>.search-section').inert=true;$('.header').inert=true;$('.results-heading').inert=true;$('.results-main').inert=true;$('.footer').inert=true;$('.mobile-bottom').inert=true;$('#compact-search').inert=true;$('#filter-panel').scrollTop=restored&&Number.isFinite(restore?.scroll)&&restore.scroll>=0?restore.scroll:0;$('.mobile-close').focus({preventScroll:true});syncDestinationViewport();queueMicrotask(rememberUIRoute);}
+function openFilters(restore=null){if(innerWidth>1100){$('#results').classList.add('filters-requested');$('#filter-panel').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#hotel-query').focus({preventScroll:true});return}if(filterDraft)return;enterUIHistory();const restored=restoreFilterHistoryModel(restore?.draft);expandedFilterSections.clear();const sections=boundedHistoryStrings(restore?.sections,{max:30});if(restored&&sections)sections.forEach(key=>expandedFilterSections.add(key));filterDraft=restored||structuredClone(appliedFilterModel());const budget=restored&&restore?.budget&&typeof restore.budget==='object'?restore.budget:null;if(budget){filterBudgetEdit={filters:filterDraft.filters,scope:searchKey(state.search),appliedMin:filterDraft.filters.min,appliedMax:filterDraft.filters.max,minText:boundedHistoryText(budget.minText,String(filterDraft.filters.min),32),maxText:boundedHistoryText(budget.maxText,String(filterDraft.filters.max??''),32)}}updateDrawerPreview(renderFilters());mobileFiltersNeedRefresh=false;$('#filter-panel').classList.add('open');$('#filter-panel').setAttribute('role','dialog');$('#filter-panel').setAttribute('aria-modal','true');$('#filter-backdrop').hidden=false;document.body.style.overflow='hidden';$('main>.search-section').inert=true;$('.header').inert=true;$('.results-heading').inert=true;$('.results-main').inert=true;$('.footer').inert=true;$('.mobile-bottom').inert=true;$('#compact-search').inert=true;$('#filter-panel').scrollTop=restored&&Number.isFinite(restore?.scroll)&&restore.scroll>=0?restore.scroll:0;$('.mobile-close').focus({preventScroll:true});syncDestinationViewport();queueMicrotask(rememberUIRoute);}
 function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasOpen=$('#filter-panel').classList.contains('open');if(!wasOpen)return;let budget=null;if(apply){budget=editFilterBudget();if(!budget.valid&&!adapt){$(budget.invalidMin?'#min-price':'#max-price').focus();return;}}leaveUIHistory(fromHistory);const next=apply?filterDraft:null;filterDraft=null;drawerSuggestions=[];facetQueries.clear();$('#filter-panel').classList.remove('open');$('#filter-panel').removeAttribute('role');$('#filter-panel').removeAttribute('aria-modal');$('#filter-backdrop').hidden=true;document.body.style.overflow='';$$('[inert]').forEach(e=>e.inert=false);if(next){pageReturn=null;state.filters=next.filters;state.onlyFavorites=next.onlyFavorites;state.selectedDate=next.selectedDate;syncFilters();if(budget&&!budget.valid){$(budget.invalidMin?'#min-price':'#max-price').focus({preventScroll:true})}else{const pristine=!!searchEditSession||!state.hasSearched&&!state.onlyFavorites;$(pristine?'#search':'#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$(pristine?'.search-submit':'#results').focus({preventScroll:true})}}else{renderFilters();restorePageReturn();}syncDestinationViewport();}
 $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=!fromMonth&&state.selectedDate===day?null:day;updateSearchUI();renderResults({keepFilters:true,reuseCalendarBase:!fromMonth});updateURL();if(fromMonth)closeModal();else $(`#price-strip [data-date="${day}"]`)?.focus({preventScroll:true});}
@@ -3584,7 +3587,9 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
    }
    renderSearchStatus(renderedResultItems,renderedSearchStatus.total);
   }else{
-   renderResults();
+   const deferMobileFilters=receivedResults&&ordinaryResults&&catalogReady&&urlStateHydrated&&!catalogError&&!publicUrlFailure&&!searchEditSession
+    &&innerWidth<=1100&&$('#search-form').hidden;
+   renderResults(deferMobileFilters?{deferFilterPanel:true}:undefined);
    // A new inventory updates the results and compact header. The collapsed
    // form still owns the draft, which is refreshed when it opens or changes.
    const collapsedResults=receivedResults&&ordinaryResults&&data.live&&!searchEditSession
@@ -3857,7 +3862,9 @@ $('#modal-body').addEventListener('touchcancel',()=>{touchStart=null;},{passive:
 $('#modal-body').addEventListener('touchend',e=>{const start=touchStart;touchStart=null;if(modalType!=='gallery'||!start||start.id!==gallery.id||!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5)stepGallery(dx<0?1:-1);},{passive:true});
 window.addEventListener('resize',()=>{
  syncResultCalendarDisclosure();
- if(innerWidth>1100&&!homeFormOnly&&!catalogReady&&!$('#filters').childElementCount)renderFilters();
+ if(innerWidth>1100&&!homeFormOnly&&!filterDraft&&(mobileFiltersNeedRefresh||!catalogReady&&!$('#filters').childElementCount)){
+  renderFilters();mobileFiltersNeedRefresh=false;
+ }
  if(innerWidth>1100&&$('#filter-panel').classList.contains('open'))closeFilters({apply:true,adapt:true});
  syncDestinationViewport();
  if(modalType!=='dates')return;
