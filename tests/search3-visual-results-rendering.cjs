@@ -1135,6 +1135,30 @@ assert.deepEqual([oldPrice.total,newPrice.total],[17292,1000],'price total reads
 assert.deepEqual([oldRating.rating,newRating.rating],[11656,0],'rating sort reuses the inventory rating key');
 assert.equal(newPrice.rating,0);assert.equal(newRating.total,0);
 console.log('PASS result price/rating sort keys: 1000 randomized/tie/sparse-number reference sorts; price total reads '+oldPrice.total+' → '+newPrice.total+', rating-sort ratingValue calls '+oldRating.rating+' → '+newRating.rating+'; raw row/array identity and zero/one semantics retained');
+{
+ const exact=resultSortOwner(),previous=resultSortOwner(source.replace(section(source,'function sortResultItems(','function resultInventory('),previousResultSort+'\n'));
+ for(const {ctx} of [exact,previous]){
+  ctx.recommendedHotelScore=hotel=>hotel.score;
+  ctx.recommendedHotelRank=hotel=>hotel.rank;
+ }
+ const dense=(work,n)=>Array.from({length:n},(_,id)=>{
+  const hotel={id,score:4.5,rank:Number.MAX_SAFE_INTEGER},value={total:100000+(id*67)%101};
+  return {hotel,value,offers:[{get total(){work.total++;return value.total;}}]};
+ });
+ const same=owner=>dense(owner.work,150);
+ const before=same(previous),after=same(exact);
+ const ids=value=>Array.from(value.actual,row=>row.hotel.id);
+ const old=previous.run(before,'recommended'),current=exact.run(after,'recommended');
+ assert.deepEqual(ids(current),ids(old),'tie price, stable order and duplicate-price semantics');
+ assert.equal(current.work.total,150,'read each tied representative price once per render');
+ assert(old.work.total>current.work.total);
+ after[149].value.total=97000;before[149].value.total=97000;
+ const updated=ids(exact.run(after,'recommended'));
+ assert.equal(updated[0],149,'a later quote is visible on the next ranking call');
+ assert.deepEqual(updated,ids(previous.run(before,'recommended')));
+ const unique=after.slice(0,30);unique.forEach(({hotel},i)=>hotel.rank=i);
+ assert.equal(exact.run(unique,'recommended').work.total,0,'distinct ranks do not require reading prices');
+}
 
 // Hotel/tour comparison and its comparison-only render-work oracle are retired.
 // Favorite, result, calendar and offer-list inventories remain characterized.
