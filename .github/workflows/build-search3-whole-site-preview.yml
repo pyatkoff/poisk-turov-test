@@ -67,8 +67,8 @@ env:
 
 jobs:
   build-preview-artifact:
-    # Build once on the working PR; release/docs retain that exact source artifact.
-    if: ${{ !github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1' }}
+    # Only an explicit Ready event can produce a publishable artifact for this release branch.
+    if: ${{ (github.base_ref == 'release/search3-production-ready-v1' && github.event.action == 'ready_for_review' && !github.event.pull_request.draft) || (github.base_ref != 'release/search3-production-ready-v1' && (!github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

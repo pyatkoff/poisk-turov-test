@@ -59,19 +59,24 @@ const requiredCommands=[
  'search3-visual-passive-contexts.cjs','search3-visual-result-merge.cjs','search3-visual-results-rendering.cjs',
  'search3-visual-terminal-offer-browser.cjs','search3-visual-v120-recorded-journey-tests.cjs','search3-visual-v139-search-edit-tests.cjs'
 ].map(command=>'tests/'+command).sort();
-const rawContracts=['offer-rendering','migration','live-bridge','anex-flight-continuation','v139-search-edit-tests','v120-recorded-journey-tests'].map(name=>'tests/search3-visual-'+name+'.cjs');
+const rawContracts=['migration','live-bridge','anex-flight-continuation','v139-search-edit-tests','v120-recorded-journey-tests'].map(name=>'tests/search3-visual-'+name+'.cjs');
 const commands=section=>[...section.matchAll(/(?:^|\s)node (tests\/\S+\.cjs[^\n]*)/gm)].map(match=>match[1]);
 function verifyConcurrency(source,prefix){
  assert(source.includes('concurrency:\n  group: '+prefix+'-${{ github.event.pull_request.number }}\n  cancel-in-progress: true'),'PR-scoped obsolete-head cancellation');
 }
+const candidateCondition="github.event.action == 'ready_for_review' && !github.event.pull_request.draft";
 function verifyJoin(join){
- assert(join.includes('    needs: [focused-presentation, integration-contracts, browser-matrix, browser-performance]\n'),'aggregate requires all source lanes');
- assert(join.includes('    if: ${{ always() && !github.event.pull_request.draft }}\n'),'aggregate must inspect failed and skipped lanes');
+ assert(join.includes('    needs: [focused-presentation, browser-smoke, integration-contracts, browser-matrix, browser-performance]\n'),'aggregate requires all source lanes');
+ assert(join.includes('    if: ${{ always() }}\n'),'aggregate must inspect failed and skipped lanes');
  for(const [variable,lane] of [['FOCUSED_RESULT','focused-presentation'],['CONTRACTS_RESULT','integration-contracts'],['BROWSER_RESULT','browser-matrix'],['PERFORMANCE_RESULT','browser-performance']])assert(join.includes(variable+': ${{ needs.'+lane+'.result }}'),'aggregate binds actual lane result');
+ assert(join.includes('RELEASE_CANDIDATE: ${{ '+candidateCondition+' }}'),'aggregate requires an explicit release request for this head');
  const script=join.match(/        run: \|\n([\s\S]*)/);assert(script,'aggregate shell check');
- const execute=values=>spawnSync('bash',['-c',script[1]],{env:{...process.env,...values},encoding:'utf8'});
+ const execute=values=>spawnSync('bash',['-c',script[1]],{env:{...process.env,RELEASE_CANDIDATE:'true',...values},encoding:'utf8'});
  const success={FOCUSED_RESULT:'success',CONTRACTS_RESULT:'success',BROWSER_RESULT:'success',PERFORMANCE_RESULT:'success'};
- assert.equal(execute(success).status,0,'aggregate accepts all-success source');
+ assert.equal(execute(success).status,0,'aggregate accepts an explicit all-success candidate');
+ const ordinary=execute({...success,RELEASE_CANDIDATE:'false'});
+ assert.equal(ordinary.status,1,'even successful quick checks cannot admit a release');
+ assert.match(ordinary.stdout,/Full acceptance pending/);
  for(const variable of Object.keys(success))for(const status of ['failure','cancelled','skipped'])assert.notEqual(execute({...success,[variable]:status}).status,0,'aggregate rejects '+variable+'='+status);
 }
 function verifyBrowserWorkers(browser){
@@ -98,13 +103,17 @@ function verify(workflow,bootstrap,html){
  for(const test of ['tests/search3-visual-event-dispatch.cjs','tests/search3-visual-modal-history.cjs','tests/search3-visual-offer-rendering.cjs','tests/search3-prototype-source-receipt-v1.cjs'])assert(rules.some(rule=>matches(rule,test)),'characterization trigger: '+test);
  assert(workflow.includes('node tests/search3-visual-ci-coverage.cjs'),'closure guard executes in existing gate');
  assert(/types: \[[^\]]*ready_for_review/.test(workflow),'full gate restores on ready_for_review');
- const focused=job(workflow,'focused-presentation'),contracts=job(workflow,'integration-contracts'),full=job(workflow,'browser-matrix'),performance=job(workflow,'browser-performance'),join=job(workflow,'visual-migration');
+ const focused=job(workflow,'focused-presentation'),contracts=job(workflow,'integration-contracts'),smoke=job(workflow,'browser-smoke'),full=job(workflow,'browser-matrix'),performance=job(workflow,'browser-performance'),join=job(workflow,'visual-migration');
  assert(focused.includes('node tests/search3-visual-results-rendering.cjs')&&focused.includes('node tests/search3-visual-ci-coverage.cjs')&&!/^    if:/m.test(focused),'focused checks run on every draft and ready head');
  for(const lane of [contracts,full,performance]){
-  assert(lane.includes('    if: ${{ !github.event.pull_request.draft }}\n'),'full matrix is deferred only while draft');
+  assert(lane.includes('    if: ${{ '+candidateCondition+' }}\n'),'full matrix requires an explicit release request');
   assert(!/^    needs:/m.test(lane),'independent contracts and browser lanes overlap');
  }
- for(const lane of [focused,contracts,full,performance]){
+ assert(smoke.includes("    if: ${{ github.event.action != 'ready_for_review' || github.event.pull_request.draft }}\n"),'smoke runs on quick validation only');
+ assert(!/^    needs:/m.test(smoke),'smoke and focused checks run in parallel');
+ assert.deepEqual(commands(smoke),['tests/search3-visual-terminal-offer-browser.cjs'],'quick CI checks mobile and desktop recovery');
+ assert(smoke.includes("playwright@1.55.0")&&smoke.includes('node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"'),'smoke uses the exact compiled source');
+ for(const lane of [focused,smoke,contracts,full,performance]){
   assert.equal((lane.match(/ref: \$\{\{ github.event.pull_request.head.sha \}\}/g)||[]).length,1,'every lane checks exact source head');
   assert(lane.includes("node-version: '22'"),'same Node version in every source lane');
   assert(!lane.includes('continue-on-error'),'source failures cannot be hidden');
@@ -115,7 +124,8 @@ function verify(workflow,bootstrap,html){
  assert(focused.includes('node tests/search3-visual-browser-dependencies.cjs'),'dependency preflight regressions run in the joined focused lane');
  assert(rules.some(rule=>matches(rule,'scripts/ci/search3_visual_evidence_retention.cjs')),'lossless evidence owner triggers its full gate');
  assert(focused.includes('node tests/search3-visual-evidence-retention.cjs'),'lossless evidence regressions run in the joined focused lane');
- assert.deepEqual(commands(workflow).sort(),requiredCommands,'all distinct original Node commands and argv execute exactly once');
+ assert(focused.includes('node tests/search3-visual-offer-rendering.cjs'),'focused CI checks selected price and pending disclosure');
+ assert.deepEqual(commands(workflow.replace(smoke,'')).sort(),requiredCommands,'all original Node commands and argv execute once on a release candidate');
  verifyJoin(join);verifyConcurrency(workflow,'ci-search3-visual');
  assert(rules.some(rule=>matches(rule,'.github/workflows/build-search3-whole-site-preview.yml')),'build concurrency dependency triggers its guard');
  const setup=full.slice(full.indexOf('      - name: Inspect installed Chromium system dependencies'),full.indexOf('      - name: Build the exact compiled visual fixture graph'));
@@ -139,7 +149,7 @@ for(const file of ['analytics-v4.js','analytics-config.php','seo-config.php'])as
 assert.throws(()=>verify(workflow,bootstrap.replace("'./public-bootstrap-v1.js'","'../future-public-owner.js'"),html),/every entry dependency/,'future public owner cannot escape CI coverage');
 assert.throws(()=>verify(workflow.replace("      - 'tests/search3-prototype-*.cjs'\n",''),bootstrap,html),/characterization trigger/,'test-only change detected');
 assert.throws(()=>verify(workflow.replace('ready_for_review, ',''),bootstrap,html),/restores/,'missing ready restoration detected');
-assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !github.event.pull_request.draft }}\n    # Drafts retain'),bootstrap,html),/every draft/,'disabled draft check detected');
+assert.throws(()=>verify(workflow.replace('  focused-presentation:\n','  focused-presentation:\n    if: ${{ !github.event.pull_request.draft }}\n'),bootstrap,html),/every draft/,'disabled draft check detected');
 assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_browser_dependencies.cjs'\n",''),bootstrap,html),/preflight triggers/,'setup helper cannot fall outside CI scope');
 assert.throws(()=>verify(workflow.replaceAll('          node tests/search3-visual-browser-dependencies.cjs\n',''),bootstrap,html),/regressions run/,'preflight regression removal detected');
 assert.throws(()=>verify(workflow.replace("      - 'scripts/ci/search3_visual_evidence_retention.cjs'\n",''),bootstrap,html),/evidence owner triggers/,'archive helper cannot fall outside CI scope');
@@ -149,14 +159,24 @@ assert.throws(()=>verify(workflow.replaceAll(' --prefer-ubuntu-mirror',''),boots
 assert.throws(()=>verify(workflow.replaceAll('      - name: Prefer the existing HTTPS Ubuntu package mirror\n        if: ${{ steps.browser-deps.outputs.ready != \'true\' }}\n','      - name: Prefer the existing HTTPS Ubuntu package mirror\n'),bootstrap,html),/fixed-file helper mode/,'mirror preference cannot run when system packages already satisfy the gate');
 assert.throws(()=>verify(workflow.replaceAll('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        if: false\n'),bootstrap,html),/unconditional/,'browser installation cannot be skipped');
 assert.throws(()=>verify(workflow.replaceAll('      - name: Install pinned Playwright Chromium\n','      - name: Install pinned Playwright Chromium\n        continue-on-error: true\n'),bootstrap,html),/unconditional|failures/,'browser installation cannot hide failures');
-assert.throws(()=>verify(workflow.replace('focused-presentation, integration-contracts, browser-matrix','focused-presentation, browser-matrix'),bootstrap,html),/aggregate requires/,'missing contract dependency detected');
-assert.throws(()=>verify(workflow.replace('always() && !github.event.pull_request.draft','!github.event.pull_request.draft'),bootstrap,html),/inspect failed/,'skipped failure join detected');
+assert.throws(()=>verify(workflow.replace('focused-presentation, browser-smoke, integration-contracts, browser-matrix','focused-presentation, browser-smoke, browser-matrix'),bootstrap,html),/aggregate requires/,'missing contract dependency detected');
+assert.throws(()=>verify(workflow.replace('    if: ${{ always() }}\n    runs-on: ubuntu-latest','    if: ${{ !github.event.pull_request.draft }}\n    runs-on: ubuntu-latest'),bootstrap,html),/inspect failed/,'skipped failure join detected');
+assert.throws(()=>verify(workflow.replace(candidateCondition,'!github.event.pull_request.draft'),bootstrap,html),/explicit release request/,'a push to a ready PR cannot silently trigger full CI');
+assert.throws(()=>verify(workflow.replace('            exit 1\n','            exit 0\n'),bootstrap,html),/cannot admit a release/,'quick mode cannot report a green release gate');
 for(const variable of ['FOCUSED_RESULT','CONTRACTS_RESULT','BROWSER_RESULT','PERFORMANCE_RESULT'])assert.throws(()=>verify(workflow.replace('          test "$'+variable+'" = success\n',''),bootstrap,html),/aggregate rejects/,'every unsuccessful lane blocks final success');
 for(const command of rawContracts)assert.throws(()=>verify(workflow.replace('          node '+command+'\n',''),bootstrap,html),/raw contracts|original Node commands/,'moved contract cannot disappear: '+command);
 assert.throws(()=>verify(workflow.replace(' --browser\n','\n'),bootstrap,html),/original Node commands/,'actual LOCAL browser variant retained');
 assert.throws(()=>verify(workflow.replace(' --messenger-only\n','\n'),bootstrap,html),/original Node commands/,'dedicated messenger variant retained');
 assert.throws(()=>verify(workflow.replace('cancel-in-progress: true','cancel-in-progress: false'),bootstrap,html),/obsolete-head/,'obsolete visual heads cannot consume the full matrix');
 assert.throws(()=>verify(workflow.replace("      - '.github/workflows/build-search3-whole-site-preview.yml'\n",''),bootstrap,html),/build concurrency dependency/,'build workflow changes retain concurrency validation');
+function verifyPublicationBuild(source){
+ const build=job(source,'build-preview-artifact');
+ const expected="    if: ${{ (github.base_ref == 'release/search3-production-ready-v1' && "+candidateCondition+") || (github.base_ref != 'release/search3-production-ready-v1' && (!github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1')) }}\n";
+ assert(build.includes(expected),'only an explicit release candidate may produce the publication artifact');
+ assert(/types: \[[^\]]*ready_for_review/.test(source),'artifact workflow runs for explicit release requests');
+}
+verifyPublicationBuild(buildWorkflow);
+assert.throws(()=>verifyPublicationBuild(buildWorkflow.replace(candidateCondition,'!github.event.pull_request.draft')),/publication artifact/,'a quick commit must not produce a publication artifact');
 verifyConcurrency(buildWorkflow,'ci-search3-build');
 assert.throws(()=>verifyConcurrency(buildWorkflow.replace('cancel-in-progress: true','cancel-in-progress: false'),'ci-search3-build'),/obsolete-head/,'obsolete build heads are cancelled independently');
 for(const file of leadSources)assert.throws(()=>verify(workflow.replace("      - '"+file+"'\n",''),bootstrap,html),/every entry dependency/,'generated projection retains canonical source coverage: '+file);
@@ -188,6 +208,6 @@ for(const request of deniedLogoRequests)assert.equal(logoModule.exports.canonica
 assert.equal(logoReads,0,'unrelated requests cannot read or receive the canonical fixture');
 assert.throws(()=>logoModule.exports.canonicalLogoFixture(logoRequest(),logoOrigin),/canonical logo fixture SHA256 mismatch/);
 assert.equal(logoReads,1,'changed artwork fails closed before any response');
-console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; 37 original commands once plus the delegated performance suite; parallel exact-source lanes/strict result join; draft restoration/setup/concurrency mutations detected`);
+console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; original release commands retained; quick smoke and price checks; explicit exact-source release admission and strict result join`);
 console.log('PASS canonical header logo fixture: exact same-origin GET image, pinned artwork; foreign/path/method/type/digest drift rejected');
 require('./search3-visual-lead-runtime.cjs');
