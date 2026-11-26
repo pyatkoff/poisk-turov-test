@@ -64,10 +64,6 @@ const countriesTo={};
 const operators=[];
 const data=window.AnyTourPrototypeData;
 const homeFormOnly=window.AnyTourPublicConfigV1?.valid===true&&window.V2_CONFIG?.search3FormOnly===true;
-if(homeFormOnly){
- const budget=$('#quick-budget');
- budget?.closest('.home-search-more')?.replaceWith(budget);
-}
 const nextSearchForm=$('#search-form[data-next-inline-pickers]');
 let inlineSearchPicker=null;
 let homeNavigationPending=false;
