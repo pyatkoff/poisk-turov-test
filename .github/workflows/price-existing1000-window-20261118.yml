@@ -1,4 +1,4 @@
-name: PRICE apply official retained minima for newly expired feed prices
+name: PRICE continue the eligible stored minima after the first completed pass
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e43cca2fd0d9d7fc7cfeae07acfad2a2c91ebd1e'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '269f135b01020a9bc76d2b62f9537e8aae3f68f7'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -24,7 +24,7 @@ jobs:
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45893450714 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45890253068 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45890859279 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45893732122 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45885250607 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45883181416 --jq .conclusion | grep -Fxq success
@@ -216,8 +216,8 @@ jobs:
               print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               sys.exit(0)
           if batch == 1:
-              check(baseline=={'max':'f76a504966d43d3b287edc080aa7d29aa81d226d2681dbe8bfa3a499ce2e3604','telegram':'26a8a4bb98f2a8c6dd4531cf48d2c79fcdb7f3a16628b943c1bc6c24de8b81d1','all':'d4683218bb1794743fb742c0c545e5631f1883f7fc15c01d486ddb0c4da8ce79'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45890859279,140152887995,  'prior_pairs_verified=48', 'previous_price_source=45884856726', 'previous_source_terminal_read=45890253068','timer=45893450714','timer_state=recent', 'original_collection_finished=2026-11-26T19:57:38+00:00',flush=True)
+              check(baseline=={'max':'284f25c626dcd04bff42b3ae768af09e085956de1e7120f77a8b3ffd3445ebce','telegram':'b0877d29102ca3454dec26e57f6a04563cc12c7fac05dbfa17745f91bbd88c62','all':'4a9d0c7e9c80a8e41fc899c012c470e3b310b2450445460231292da63957f522'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45893732122,140162395815,  'prior_pairs_verified=3', 'previous_price_source=45884856726', 'previous_source_terminal_read=45890253068','timer=45893450714','timer_state=recent', 'original_collection_finished=2026-11-26T19:57:38+00:00',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
