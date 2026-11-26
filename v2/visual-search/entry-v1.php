@@ -153,6 +153,9 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
         && ($config['publicBase'] ?? null) === '/_preview/search3-next-candidate/poisk-turov/'
         && ($config['scenario'] ?? null) === 'family') {
         $graph = array_values(array_diff($graph, ['./local-db-parser.js', './recorded-data.js']));
+        if (($config['entry'] ?? null) === 'home') {
+            $graph = array_values(array_diff($graph, ['./flight-picker-v18.js', './preview-lead.js']));
+        }
     }
     if ($mode === 'public-live' && ($config['entry'] ?? null) === 'home') {
         // These owners are used after the handoff to the separate results document.
