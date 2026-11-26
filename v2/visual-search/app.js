@@ -3980,14 +3980,14 @@ function applyCatalog(c){
  if(data.live){Object.keys(mealNames).forEach(key=>delete mealNames[key]);data.catalog.mealPlans.filter(plan=>plan.nativeIds?.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});}
  else data.catalog.meals.forEach(x=>{const label=data.meal(x);if(label)mealNames[label]=label;});
  draft.origin=c.origin;if(!countryNames[draft.country])draft.country=String(c.countries.find(x=>data.text(x)==='Турция')?.id||c.countries[0].id);
- draftDestination=null;updateSearchUI();
+ draftDestination=null;
 }
 async function loadCountries(origin){
  const run=++catalogLoadGeneration;catalogReady=false;catalogError='';catalogDeparture=origin;updateSearchUI();
  if(modalType==='destination')renderDestination();
  try{
   const c=await data.countries(origin);if(!c||run!==catalogLoadGeneration||draft.origin!==origin)return;
-  applyCatalog(c);await loadResorts(draft.country);
+  applyCatalog(c);updateSearchUI();await loadResorts(draft.country);
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
   catalogReady=true;catalogDeparture='';updateSearchUI();
   if(modalType==='destination'){destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}
