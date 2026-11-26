@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '809382e3165f2e6047c09acb29e07b0568c2bac6'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '86f82cf57e23f02a6a7b1eaa1bf316ca012a3965'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -64,7 +64,7 @@ jobs:
               'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'locked':locked,
               'journal_bytes':size,
-              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
+              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','finished_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
               'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
           }),flush=True)
           import subprocess
@@ -83,6 +83,37 @@ jobs:
                       active.append({'step':filename,'elapsed_seconds':int(fields[0])})
           print('PRICE_RELATED_STEPS',json.dumps(active),flush=True)
           PY
+      - name: Read the exact collection interval from the existing attempts table
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          try {
+              require_once 'db-v1.php';
+              $db=v2_data_db();
+              $db->exec('START TRANSACTION READ ONLY');
+              $bounds=[strtotime('2026-11-26T19:38:06Z'),strtotime('2026-11-26T19:57:44Z')];
+              $sql="SELECT COUNT(*) AS attempts, COUNT(DISTINCT CASE WHEN search_id>0 THEN search_id END) AS distinct_search_ids,
+                SUM(COALESCE(observations_written,0)) AS observations, SUM(COALESCE(rows_received,0)) AS source_rows,
+                MIN(UNIX_TIMESTAMP(started_at)) AS first, MAX(UNIX_TIMESTAMP(finished_at)) AS last,
+                SUM(status IN ('failure','timeout')) AS failure_or_timeout
+                FROM tour_matrix_collection_attempts WHERE started_at>=FROM_UNIXTIME(?) AND started_at<FROM_UNIXTIME(?)
+                AND (target_key LIKE 'monthly:%' OR target_key LIKE 'page_gap:%')";
+              $query=$db->prepare($sql);
+              $query->execute($bounds);
+              $row=$query->fetch(PDO::FETCH_ASSOC);
+              $query->closeCursor();
+              $db->rollBack();
+              echo 'ORIGINAL_TOP500_SQL ',json_encode($row,JSON_THROW_ON_ERROR),PHP_EOL;
+          } catch (Throwable $e) {
+              fwrite(STDERR,'original_attempts_read_failed '.get_class($e).PHP_EOL);
+              exit(1);
+          }
+          PHP
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
