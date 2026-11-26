@@ -1,4 +1,4 @@
-name: PRICE continue the eligible stored minima after the first completed pass
+name: PRICE recover the eligible stored minima after a confirmed pre-write read failure
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '269f135b01020a9bc76d2b62f9537e8aae3f68f7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4022e61177046171ce71e575af3e212e1d09fe9c'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -25,6 +25,7 @@ jobs:
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45890253068 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45893732122 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45894670398 --jq .conclusion | grep -Fxq failure
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45885250607 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45883181416 --jq .conclusion | grep -Fxq success
@@ -217,7 +218,7 @@ jobs:
               sys.exit(0)
           if batch == 1:
               check(baseline=={'max':'284f25c626dcd04bff42b3ae768af09e085956de1e7120f77a8b3ffd3445ebce','telegram':'b0877d29102ca3454dec26e57f6a04563cc12c7fac05dbfa17745f91bbd88c62','all':'4a9d0c7e9c80a8e41fc899c012c470e3b310b2450445460231292da63957f522'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45893732122,140162395815,  'prior_pairs_verified=3', 'previous_price_source=45884856726', 'previous_source_terminal_read=45890253068','timer=45893450714','timer_state=recent', 'original_collection_finished=2026-11-26T19:57:38+00:00',flush=True)
+              print('ORIGINAL_READ_ADMISSION',45893732122,140162395815,  'prior_pairs_verified=3', 'previous_price_source=45884856726', 'previous_prewrite_stop=45894670398', 'previous_source_terminal_read=45890253068','timer=45893450714','timer_state=recent', 'original_collection_finished=2026-11-26T19:57:38+00:00',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
