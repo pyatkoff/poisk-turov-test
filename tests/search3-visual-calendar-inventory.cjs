@@ -280,8 +280,8 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
 // Budget recovery needs the sorted comparator minimum, without materializing or
 // sorting every matching offer. Keep native filter length/hole/inheritance facts.
 {
- assert.equal((source.match(/minimumOnly:'raw'/g)||[]).length,1,'both budget-recovery consumers share one raw-minimum inventory');
- assert.equal((source.match(/minimumHotelOfferTotal\(model(?:,hotelMinimums)?\)/g)||[]).length,2,'one owner serves recovery suggestions and budget preview');
+ assert.equal((source.match(/minimumOnly:'raw'/g)||[]).length,1,'rounded recovery keeps one raw-minimum mode');
+ assert.equal((source.match(/minimumHotelOfferTotal\(model(?:,hotelMinimums|,null,budgetPreview)?\)/g)||[]).length,2,'one owner serves recovery suggestions and budget preview');
  let seed=7,reads=0;const random=()=>((seed=seed*48271%2147483647)/2147483647),hs=[];
  for(let hotel=0;hotel<10;hotel++){
   const h=fixture()[1],base=h.offers[2];h.id=hotel+1;h.offers=Array.from({length:100},(_,index)=>{const row={...base,key:hotel+':'+index},total=Math.floor(random()*100000)+index,date=day(index%7);Object.defineProperty(row,'total',{enumerable:true,get(){reads++;return total}});Object.defineProperty(row,'day',{enumerable:true,get(){reads++;return date}});return row;});hs.push(h);
@@ -320,6 +320,9 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
   const matches=rows.flatMap(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,max:null}}));
   const minimum=Math.min(...matches.map(o=>o.total)),ceiling=Math.ceil(minimum/1000)*1000;
   const expected=matches.length&&minimum>max?{ceiling,count:ctx.countAfterApply({...model,filters:{...model.filters,max:ceiling}})}:null;
+  const budgetPreview={count:null},shownMinimum=ctx.minimumHotelOfferTotal(model,null,budgetPreview);
+  assert.equal(budgetPreview.count,ctx.countAfterApply(model),'preview preserves the current in-budget count');
+  assert.equal(shownMinimum,!budgetPreview.count&&matches.length?minimum:null,'preview exposes the exact qualifying price only when nothing fits');
   const selected=ctx.recoverySuggestions(model).find(choice=>choice.key==='budget');
   assert.equal(!!selected,!!expected);
   if(expected){
