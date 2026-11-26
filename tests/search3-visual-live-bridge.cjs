@@ -763,6 +763,8 @@ async function pickerRetainedDraftRegressions(){
  const dateStarts=starts(),dateCards=q('#cards').innerHTML,dateURL=w.location.search;
  const dateScope=()=>q('#compact-details').textContent.split(' · ')[0];
  const allDates=dateScope();assert.match(allDates,/ — /);
+ if(q('#calendar-preview').hidden)click('#price-calendar [data-action="toggle-result-calendar"]');
+ assert.equal(q('#calendar-preview').hidden,false);
  click(`#price-strip [data-date="${day}"]`);
  assert.equal(dateScope(),q('#route-label').textContent.split(' · ')[1],'compact context matches the actual chosen departure');
  assert.doesNotMatch(dateScope(),/ — /);assert.equal(new URL(w.location.href).searchParams.get('date'),day);
