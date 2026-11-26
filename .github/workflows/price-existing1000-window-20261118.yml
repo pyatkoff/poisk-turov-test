@@ -1,4 +1,4 @@
-name: PRICE publish the saved 14:15 TOP500 minima through the existing editor
+name: PRICE close fresh minima and exact independent MAX targets after readback
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'be6af007d15d708efe8d6e7a90e256a065157045'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'dfa186e938bf82629e99775b9b1b3e847c16783b'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,9 +21,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45814777298 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45820143037 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45792507017 --jq .status | grep -Fxq completed
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45810748295 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45815837392 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45812739716 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1741: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
@@ -151,35 +151,41 @@ jobs:
               return proc.returncode,v
           def report(updates=()):
               print('HANDOFF',json.dumps({'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
-          def promoted(mode, expected_hash):
-              proc=subprocess.run(['php',str(app/'tools/apply_promoted_hotel_prices.php'),mode],
-                                  capture_output=True,text=True,timeout=240)
-              raw=proc.stdout.strip()
-              print('PROMOTED_PRICE',datetime.datetime.now(datetime.timezone.utc).isoformat(),raw,flush=True)
+          def promoted_read(mode, publication, hotel, url, baseline):
+              proc=subprocess.run(['php',str(app/'tools/apply_promoted_hotel_prices.php'),mode,str(publication)],
+                                  capture_output=True,text=True,timeout=150)
+              output=proc.stdout.strip()
+              print('PROMOTED_MAX',publication,mode,datetime.datetime.now(datetime.timezone.utc).isoformat(),output,flush=True)
               prefix='PROMOTED_HOTEL_PRICE_RESULT='
-              check(proc.returncode==0 and raw.startswith(prefix),'promoted_original_receipt_missing')
-              receipt=json.loads(raw[len(prefix):])
-              check(receipt.get('feed_sha256')==expected_hash,'promoted_source_changed')
-              return receipt['rows']
+              if proc.returncode!=0 or not output.startswith(prefix): return None
+              receipt=json.loads(output[len(prefix):])
+              check(receipt.get('feed_sha256')==baseline['all'],'promoted_source_changed')
+              rows=receipt.get('rows',[])
+              check(len(rows)==1 and all(rows[0].get(key)==expected for key,expected in
+                    [('hotel',hotel),('platform','max'),('publication',publication),('url',url)]),'promoted_target_mismatch')
+              return rows[0]
           pins()
           baseline=feeds()
           checkpoint=art/'public-hashes.json'
           if batch == "promoted":
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
-              ready=promoted('--inspect',baseline['all'])
-              if any(r.get('result')=='eligible' and r.get('public_verified') is True for r in ready):
-                  applied=promoted('--apply',baseline['all'])
-                  check(not any(r.get('result') in ('unknown_after_write','provider_verified_public_pending') for r in applied),
+              for publication,hotel,url in [[3574, 174, 'https://max.ru/anytour/AaHzN34rD6Q'], [3606, 469, 'https://max.ru/anytour/AZ6sX9HGLTk'], [3607, 12111, 'https://max.ru/anytour/AZ6wa60cTlw'], [3608, 70048, 'https://max.ru/anytour/AZ61r6_QcAI'], [3611, 260, 'https://max.ru/anytour/AZ7UVbXteP8'], [23, 415, 'https://max.ru/anytour/AaFUVxlGPTg'], [3612, 2493, 'https://max.ru/anytour/AZ7Z4K9JJNQ'], [3615, 37668, 'https://max.ru/anytour/AZ8r4R9vT_Q'], [3616, 43676, 'https://max.ru/anytour/AZ9k6MvNF94'], [3618, 73974, 'https://max.ru/anytour/AZ-tLRx7Jzw'], [3619, 74503, 'https://max.ru/anytour/AZ_MDV0gO_I'], [3844, 63674, 'https://max.ru/anytour/AaAuJeZbQAc'], [3846, 358, 'https://max.ru/anytour/AZrE5K3jCFs'], [3863, 954, 'https://max.ru/anytour/AZwpDhM0dC0'], [3614, 4181, 'https://max.ru/anytour/AZ8DSRZpHNw'], [3827, 57028, 'https://max.ru/anytour/AZ9AsoswVYw']]:
+                  before=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
+                  if before is None or before.get('result')!='eligible' or before.get('public_verified') is not True: continue
+                  applied=promoted_read('--apply-max-publication',publication,hotel,url,baseline)
+                  check(applied is not None,'promoted_original_receipt_missing')
+                  if applied.get('result')=='held_before_write': continue
+                  check(applied.get('result')=='updated' and applied.get('public_verified') is True,
                         'promoted_original_requires_readback')
-                  for row in applied:
-                      if row.get('result')=='updated':check(row.get('public_verified') is True,'promoted_public_readback_incomplete')
-                  promoted('--inspect',baseline['all'])
+                  after=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
+                  check(after is not None and after.get('result')=='already_current' and after.get('public_verified') is True,
+                        'promoted_public_readback_incomplete')
               check(feeds()==baseline,'feed_changed_during_promoted_edits')
               print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               sys.exit(0)
           if batch == 1:
-              check(baseline=={'max':'30b34fb3140ea3db5178029071d9038149f64beb6758b8b18bed2c7bd763ac04','telegram':'16fb98bc19d50e9efe4fc89452d911b9c0cd5695738489e36ecc19a973bf17e0','all':'f8cf1ba84f77152a5416028330eb2ef592ad44da9485adcc7754420a0515a778'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45810748295,139877657346, 'previous_pairs_verified=118','native_collection=45814777298','resuming_ready_saved_minima',flush=True)
+              check(baseline=={'max':'1e63bada59c7cbe09a53f447f37157ffd624cfdbc87cd7307766b104977acc94','telegram':'0eb8ef5a9535552bd14952ece3f60813beac64029c502ecdb5a5b35f33fc1f31','all':'96975b90461c35377f4d255cc091c6e728f9a48ab034f286d12f43590851bee0'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45815837392,139895209174, 'previous_pairs_verified=82','independent_readback=45820143037','resuming_ready_saved_minima',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
