@@ -149,6 +149,11 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
     $html = file_get_contents(__DIR__ . '/index.html');
     if ($html === false) throw new RuntimeException('Search3 HTML is unavailable.');
     $graph = v2_visual_search_graph($mode, $html);
+    if ($mode === 'public-review'
+        && ($config['publicBase'] ?? null) === '/_preview/search3-next-candidate/poisk-turov/'
+        && ($config['scenario'] ?? null) === 'family') {
+        $graph = array_values(array_diff($graph, ['./local-db-parser.js', './recorded-data.js']));
+    }
     if ($mode === 'public-live' && ($config['entry'] ?? null) === 'home') {
         // These owners are used after the handoff to the separate results document.
         $graph = array_values(array_diff($graph, [
