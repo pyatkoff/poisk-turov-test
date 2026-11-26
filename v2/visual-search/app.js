@@ -3625,7 +3625,7 @@ function commitSearchDraft(){
  draft.origin=$('#origin').value;const countryChanged=draft.country!==state.search.country;state.search=structuredClone(draft);state.hasSearched=!homeFormOnly;
  if(countryChanged){state.filters.resorts=[];state.filters.hotelId=0;state.filters.hotelIds=[];state.filters.q='';state.onlyFavorites=false;}
  if(draftDestination){state.filters.resorts=[...draftDestination.resorts];state.filters.hotelId=draftDestination.hotelId;state.filters.hotelIds=destinationIds(draftDestination);state.filters.q='';draftDestination=null;}
- rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();if(!homeFormOnly)renderFilters();
+ rememberDestination();state.selectedDate=selectedDay;state.openHotel=null;updateURL();
  return {};
 }
 const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
