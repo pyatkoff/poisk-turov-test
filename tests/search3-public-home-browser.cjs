@@ -138,6 +138,8 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   transport.state.wideFacets=true;
   const csrf='a'.repeat(64),links={telegram:'https://t.me/Any_tour_bot?start=home_fixture_only',max:'https://max.ru/id9704048781_bot?start=home_fixture_only'};
   let frozen,returning=false;
+  const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
+  receipt.cases.push(row);save();
   const context=await owner.newContext({viewport,serviceWorkers:'block'}),page=await context.newPage();page.setDefaultTimeout(15000);
   await context.addInitScript(({retained})=>{
    window.dataLayer=[];window.__homeDocumentId=Date.now()+'-'+Math.random();window.__homePageShows=[];
@@ -162,8 +164,6 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
   page.on('domcontentloaded',()=>documentCommits.push(page.url()));
   page.on('request',request=>network.push({method:request.method(),path:new URL(request.url()).pathname,
    document:request.isNavigationRequest()&&request.frame()===page.mainFrame()}));
-  const row={id,viewport,platform,historyCache,errors,consoleErrors,forbidden,network,navigations,documentCommits,handoffs,externalNavigations,stages:[],status:'running'};
-  receipt.cases.push(row);save();
   const privateRequests=()=>network.filter(request=>request.path===intPath).length;
   const capture=async(name,home=false)=>{
    const value=await geometry(page,viewport,home),file=id+'-'+name+'.png';
@@ -370,10 +370,21 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
  }
  let historyBrowser;
  try{
-  for(const viewport of viewports)await runCase(browser,{viewport});
-  for(const platform of ['telegram','max'])await runCase(browser,{viewport:{width:430,height:932},platform});
-  await runCase(browser,{viewport:{width:1280,height:720},platform:'max',selectedPair:true});
-  for(const retained of ['expired','missing','mismatch'])await runCase(browser,{viewport:{width:390,height:740},platform:'telegram',retained});
+   const cases=[
+    ...viewports.map(viewport=>({viewport})),
+    ...['telegram','max'].map(platform=>({viewport:{width:430,height:932},platform})),
+    {viewport:{width:1280,height:720},platform:'max',selectedPair:true},
+    ...['expired','missing','mismatch'].map(retained=>({viewport:{width:390,height:740},platform:'telegram',retained})),
+   ];
+   const started=performance.now();
+   // Cases own browser contexts, transport ledgers and evidence filenames.
+   // Register receipts in dispatch order and settle each pair before cleanup.
+   for(let index=0;index<cases.length;index+=2){
+    const results=await Promise.allSettled(cases.slice(index,index+2).map(options=>runCase(browser,options)));
+    const rejected=results.filter(result=>result.status==='rejected');
+    if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Public HOME browser cases failed');
+   }
+   console.log('PASS independent public HOME cases',JSON.stringify({cases:cases.length,duration_ms:Math.round(performance.now()-started)}));
   // Default Playwright disables BFCache. Only this bounded extra launch omits
   // that flag; actual pageshow and Navigation Timing explain the observed Back.
   // No synthetic pageshow, response-header changes, or CDP cache intervention.
