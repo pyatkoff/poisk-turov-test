@@ -518,6 +518,9 @@ const {JSDOM}=require('jsdom');
  // The pinned predecessor formatted these labels inline.
  const labels={hotelName:'esc(h.name)',priceText:'money(o.total)',departureText:'dateText(o.day)',stayText:'nightsText(o.nights)',mealText:'esc(mealLabel(o))'};
  const expandedCard=card
+  .replace('returnText=dateText(o.returnDay),','')
+  .replace('${returnText}', '${dateText(o.returnDay)}')
+  .replace('minimumOfferSummary(o,departureText,returnText,stayText)','minimumOfferSummary(o)')
   .replace(' const hotelName=esc(h.name),priceText=money(o.total);\n const departureText=dateText(o.day),stayText=nightsText(o.nights),mealText=esc(mealLabel(o));\n','')
   .replace(/\$\{(hotelName|priceText|departureText|stayText|mealText)\}/g,(_,label)=>'${'+labels[label]+'}');
  const previousCard=expandedCard.replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating);",",ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);").replace(' const currentHTML=currentCardSelectionHTML(h,offers);',selectedBody);

@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {spawn} = require('node:child_process');
 const {canonicalLogoFixture} = require('./search3-visual-live-fixture.cjs');
 
 async function checkPhoneFlightOptions(evaluate) {
@@ -228,42 +229,51 @@ async function saveJourney(context, frames, width, evidence, options = {}) {
  } finally { await sheet.close(); }
 }
 
+async function runBrowserJourney(root, temp, name, output, timeout, ...scenario) {
+ const log = path.join(temp, name + '.log');
+ const fd = fs.openSync(log, 'wx');
+ try {
+  await new Promise((resolve, reject) => {
+   const child = spawn('xvfb-run', [
+    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
+    path.join(__dirname, 'search3-visual-' + name + '.cjs'), root, output, ...scenario,
+   ], {stdio:['ignore', fd, fd], timeout});
+   child.once('error', reject);
+   child.once('close', (code, signal) => {
+    if (code === 0) resolve();
+    else reject(new Error(name + ' exited with ' + (signal || code)));
+   });
+  });
+ } finally {
+  fs.closeSync(fd);
+  process.stdout.write(fs.readFileSync(log));
+ }
+}
+
 module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  if (process.platform === 'linux') {
   const root = process.env.SEARCH3_VISUAL_ASSET_ROOT || path.resolve(__dirname, '../v2');
+  if (process.env.SEARCH3_VISUAL_PERFORMANCE_LANE !== 'separate') {
+   require('./search3-visual-performance-suite.cjs')(root);
+  }
   const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'search3-rdm-'));
   const raw = path.join(temp, 'firefox-rdm');
   const retained = path.join(evidence, 'firefox-rdm');
   fs.mkdirSync(retained, {recursive:true});
   try {
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-first-open.cjs'), root, path.join(temp,'first-open'),
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-first-tours.cjs'), root, path.join(temp,'first-tours'),
-   ], {stdio:'inherit', timeout:240000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-room-ready.cjs'), root, path.join(temp,'room-ready'),
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-single-quote.cjs'), root, path.join(temp,'single-quote'), '1',
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-family-250.cjs'), root, path.join(temp,'family-250'), 'summary-first',
-   ], {stdio:'inherit', timeout:180000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-picker-recovery.cjs'), root, path.join(temp,'pickers'),
-   ], {stdio:'inherit', timeout:90000});
-   require('node:child_process').execFileSync('xvfb-run', [
-    '-a', '--server-args=-screen 0 1366x1400x24', process.execPath,
-    path.join(__dirname, 'search3-visual-firefox-rdm.cjs'), root, temp,
-   ], {stdio:'inherit', timeout:180000});
+   // Each subprocess gets its own display, profile, and loopback port.
+   // Wait for both groups before reading receipts or cleaning up evidence.
+   const started = performance.now();
+   const outcomes = await Promise.allSettled([
+    runBrowserJourney(root, temp, 'firefox-rdm', temp, 180000),
+    (async () => {
+     await runBrowserJourney(root, temp, 'family-250', path.join(temp,'family-250'), 180000, 'summary-first');
+     await runBrowserJourney(root, temp, 'picker-recovery', path.join(temp,'pickers'), 90000);
+    })(),
+   ]);
+   const failures = outcomes.filter(result => result.status === 'rejected');
+   if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Independent browser journeys failed');
+   console.log('PASS independent browser journeys', JSON.stringify({duration_ms:Math.round(performance.now()-started)}));
    const report = JSON.parse(fs.readFileSync(path.join(raw, 'result.json'), 'utf8'));
    const labels = ['Параметры поиска', 'Выдача с фильтром 4★', 'Номера и питание',
     'Выбор перелёта', 'Итог тура и заявка', 'Цена при возврате к туру'];
@@ -300,7 +310,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
  for(const width of [430,1280]){
   const context=await browser.newContext({viewport:{width,height:width===430?900:800},reducedMotion:'reduce'});
   const page=await context.newPage();
-  const failures=[],external=[],frames=[];
+  const failures=[],external=[],archiveRequests=[],frames=[];
   const frame=async (label,collection=frames,file)=>{
    await page.evaluate(()=>document.fonts.ready.then(()=>true));
    assert.equal(await page.evaluate(()=>{
@@ -312,6 +322,10 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
   };
   const sum=async locator=>(await locator.innerText()).replace(/\s+/g,' ').trim();
   page.on('pageerror',error=>failures.push(error.message));
+  page.on('request',request=>{
+   const url=new URL(request.url());
+   if(url.origin===origin&&url.pathname===base+'visual-search/fixtures/live-search-2026-09-23.json')archiveRequests.push(url.pathname);
+  });
   try{
    await page.route('**/*',async route=>{
     const logo=canonicalLogoFixture(route.request(),origin);if(logo){await route.fulfill(logo);return;}
@@ -324,6 +338,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
    const response=await page.goto(origin+base+'visual-search/?scenario=journey');
    assert.equal(response.status(),200);
    await page.locator('.search-submit:not(:disabled)').waitFor();
+   assert.deepEqual(archiveRequests,[],'the public journey enables Find without the saved archive');
    const stars=page.locator('#quick-stars [data-value="4"]');
    await stars.click();
    assert.equal(await stars.getAttribute('aria-pressed'),'true');
@@ -451,6 +466,7 @@ module.exports = async function wholeSearch({browser,origin,base,evidence}) {
     await saveJourney(context,familyFrames,width,evidence,{filename:'family-edit-journey-1280.webp'});
     assert.deepEqual(external,[]);assert.deepEqual(failures,[]);
    }
+   assert.deepEqual(archiveRequests,[],'the public journey and family return stay independent of the saved archive');
    console.log('PASS complete Search3 journey at '+width+'px from blank form to selected room, flight, contacts and return');
   } finally { await context.close(); }
  }

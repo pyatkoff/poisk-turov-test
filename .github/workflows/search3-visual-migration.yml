@@ -58,7 +58,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   focused-presentation:
-    # Drafts retain affected-owner checks without installing a browser matrix.
+    # Every source receives the focused checks, even before release admission.
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -88,6 +88,7 @@ jobs:
           node tests/search3-visual-calendar-inventory.cjs
           node tests/search3-visual-flight-filter-work.cjs
           node tests/search3-visual-results-rendering.cjs
+          node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-offer-list-lazy.cjs
           node tests/search3-visual-hotel-details-lazy.cjs
           node tests/search3-visual-hotel-content-text.cjs
@@ -97,7 +98,7 @@ jobs:
           node tests/local-tv-catalog-browser.cjs
   integration-contracts:
     # Raw-source contracts run independently of the compiled browser matrix.
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event.action == 'ready_for_review' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -112,16 +113,84 @@ jobs:
       - name: Verify complete raw-source integration contracts
         run: |
           export NODE_PATH="$RUNNER_TEMP/contract-tools/node_modules"
-          node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
           node tests/search3-visual-anex-flight-continuation.cjs
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
           python3 -B tests/search3_public_entry_test.py
+  browser-smoke:
+    # The full matrix runs this same compiled smoke for release candidates.
+    if: ${{ github.event.action != 'ready_for_review' || github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save playwright@1.55.0
+      - name: Inspect installed Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu package mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
+      - name: Install missing Chromium system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Playwright Chromium
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"
+      - name: Build the exact compiled visual fixture graph
+        run: |
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          cp -a v2 "$RUNNER_TEMP/visual-compiled"
+          node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Verify terminal offer recovery on mobile and desktop
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled
+        run: node tests/search3-visual-terminal-offer-browser.cjs
+  browser-performance:
+    # Keep latency samples isolated from the functional browser workloads.
+    if: ${{ github.event.action == 'ready_for_review' && !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save playwright@1.55.0
+      - name: Inspect installed Chromium system dependencies
+        id: browser-deps
+        run: node scripts/ci/search3_visual_browser_dependencies.cjs "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright"
+      - name: Prefer the existing HTTPS Ubuntu package mirror
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: sudo -- "$(command -v node)" scripts/ci/search3_visual_browser_dependencies.cjs --prefer-ubuntu-mirror
+      - name: Install missing Chromium system dependencies
+        if: ${{ steps.browser-deps.outputs.ready != 'true' }}
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install-deps chromium"
+      - name: Install pinned Playwright Chromium
+        run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install chromium"
+      - name: Build the exact compiled visual fixture graph
+        run: |
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          cp -a v2 "$RUNNER_TEMP/visual-compiled"
+          node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
+      - name: Verify compiled Chromium and Firefox performance
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+        run: node tests/search3-visual-performance-suite.cjs "$RUNNER_TEMP/visual-compiled"
   browser-matrix:
-    # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
-    if: ${{ !github.event.pull_request.draft }}
+    # Draft → Ready requests full acceptance for the event's exact source SHA.
+    if: ${{ github.event.action == 'ready_for_review' && !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     # Existing full journey plus the five-width LOCAL SQL/API/browser acceptance.
     timeout-minutes: 40
@@ -240,6 +309,8 @@ jobs:
           wait "$hotel_and_catalog" || result=1
           exit "$result"
       - name: Full transferred UI and isolated live integration
+        env:
+          SEARCH3_VISUAL_PERFORMANCE_LANE: separate
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
@@ -363,19 +434,26 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
   visual-migration:
-    # Preserve the existing required status; every exact-source lane must pass.
-    needs: [focused-presentation, integration-contracts, browser-matrix]
-    if: ${{ always() && !github.event.pull_request.draft }}
+    # Quick runs explicitly block publication. A skipped gate can count as green.
+    needs: [focused-presentation, browser-smoke, integration-contracts, browser-matrix, browser-performance]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require every full visual acceptance lane
         env:
+          RELEASE_CANDIDATE: ${{ github.event.action == 'ready_for_review' && !github.event.pull_request.draft }}
           FOCUSED_RESULT: ${{ needs.focused-presentation.result }}
           CONTRACTS_RESULT: ${{ needs.integration-contracts.result }}
           BROWSER_RESULT: ${{ needs.browser-matrix.result }}
+          PERFORMANCE_RESULT: ${{ needs.browser-performance.result }}
         run: |
           set -euo pipefail
+          if [[ "$RELEASE_CANDIDATE" != true ]]; then
+            echo "::error::Full acceptance pending for this commit. Convert the PR to draft, then mark it Ready when the release candidate is final."
+            exit 1
+          fi
           test "$FOCUSED_RESULT" = success
           test "$CONTRACTS_RESULT" = success
           test "$BROWSER_RESULT" = success
+          test "$PERFORMANCE_RESULT" = success

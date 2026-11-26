@@ -259,36 +259,48 @@ class PublicCandidateTest(unittest.TestCase):
         self.assert_refused(self.run_tool(main=self.commit(), output=output, extra=("--profile", "live")),
                             output, "overwrite a protected main file: prototype-search/data.js")
 
-    def test_actual_served_family_adapter_local_photos_are_in_payload(self) -> None:
+    def test_actual_served_family_assets_and_journey_archive_read(self) -> None:
         # The previous live-only asset closure omitted the demo photos even
         # though the actual offline adapter returned their URLs. Execute that
         # served owner with a filesystem-only fixture read, then resolve every
-        # local photo against the final document root (no HTTP/browser needed).
+        # family photo against the final document root. The journey is exercised
+        # for its archive requests since this package contains only family assets.
         program = r"""
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const root=path.resolve(process.argv[1]),reads=[];
+const root=path.resolve(process.argv[1]),scenario=process.argv[2],reads=[];
 const context={structuredClone,URLSearchParams,location:{search:'?scenario=journey&profile=live'},
  AnyTourPublicConfigV1:{valid:true,profile:'review',asset:name=>'/visual-search/'+name},
- V2_CONFIG:{search3ReviewScenario:'family'},
+ V2_CONFIG:{search3ReviewScenario:scenario},
  fetch:async url=>{reads.push(url);assert.equal(url,'/visual-search/fixtures/live-search-2026-09-23.json');
   return {ok:true,json:async()=>JSON.parse(fs.readFileSync(root+url,'utf8'))};}};
 context.window=context;
 vm.runInNewContext(fs.readFileSync(path.join(root,'visual-search/fixture-data.js'),'utf8'),context);
 (async()=>{const adapter=context.AnyTourPrototypeData;await adapter.init();let hotels;
  await adapter.search(adapter.initialSearch,event=>{if(event.type==='results')hotels=event.hotels;});
- assert.equal(adapter.scenario,'family');assert.equal(hotels.length,1);
+ assert.equal(adapter.scenario,scenario);assert.equal(hotels.length,scenario==='family'?1:4);
  const photos=hotels.flatMap(hotel=>hotel.photos);assert(photos.length>0);
- for(const url of photos){assert(url.startsWith('/visual-search/assets/'));
-  assert(fs.statSync(root+url).isFile(),'missing adapter photo '+url);}
+ for(const url of photos){
+  assert(url.startsWith('/visual-search/assets/'));
+  if(scenario==='family')assert(fs.statSync(root+url).isFile(),'missing adapter photo '+url);
+ }
  assert(fs.existsSync(path.join(root,'visual-search/assets/photo-unavailable.svg')),'missing real app photo fallback');
  process.stdout.write(JSON.stringify({photos,reads}));
 })().catch(error=>{console.error(error);process.exitCode=1;});
 """
-        result = subprocess.run(["node", "-e", program, str(self.review / "site")], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        checked = json.loads(result.stdout)
-        self.assertEqual(len(checked["photos"]), 2)
-        self.assertEqual(checked["reads"], ["/visual-search/fixtures/live-search-2026-09-23.json"])
+        for scenario in ("family", "journey"):
+            with self.subTest(scenario=scenario):
+                result = subprocess.run(
+                    ["node", "-e", program, str(self.review / "site"), scenario],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                checked = json.loads(result.stdout)
+                if scenario == "family":
+                    self.assertEqual(len(checked["photos"]), 2)
+                self.assertEqual(
+                    checked["reads"],
+                    ["/visual-search/fixtures/live-search-2026-09-23.json"] if scenario == "family" else [],
+                )
 
     def test_shared_home_header_closure_and_local_only_canonical_logo(self) -> None:
         for artifact, manifest in ((self.review, self.manifest), (self.live, self.live_manifest)):

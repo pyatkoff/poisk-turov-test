@@ -136,7 +136,7 @@
     return snapshotRequest;
   }
   const nextFamily = reviewScenario === 'family' && window.V2_CONFIG.search3PublicBase === '/_preview/search3-next-candidate/poisk-turov/';
-  const ready = (nextFamily ? Promise.resolve() : loadSnapshot()).then(updateCatalog);
+  const ready = (nextFamily || scenario === 'journey' ? Promise.resolve() : loadSnapshot()).then(updateCatalog);
   const time = minutes => `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
   function segments(tour, i, back = false) {
     const day = back ? tour.returnDay : tour.day, start = (back ? 420 : 300) + (i % 12) * 65;
@@ -187,7 +187,14 @@
       return variants;
     },
     variantPrice: (tour, v) => amount(v?.price), fuel: (tour, v) => v?.fuelCharge ?? null,
-    async setScenario(value) {if (reviewScenario||!scenarios.has(value)) return; generation++; scenario = value; await ready; updateCatalog();},
+    async setScenario(value) {
+      if (reviewScenario || !scenarios.has(value)) return;
+      generation++;
+      scenario = value;
+      await ready;
+      if (scenario !== 'journey') await loadSnapshot();
+      updateCatalog();
+    },
     get metadata() {return snapshot ? {capturedAt: snapshot.capturedAt, hotels: rows.length, offers: snapshot.capturedOfferCount, sourceOffers: snapshot.visibleTotalOffers} : null;}
   });
 })();
