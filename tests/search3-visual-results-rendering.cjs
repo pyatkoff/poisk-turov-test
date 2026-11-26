@@ -127,6 +127,7 @@ function observe(source,s){
   addDays:call('addDays',d=>new Date(Date.parse(d)+86400000).toISOString().slice(0,10)),
   calendarMinimum:call('calendarMinimum',day=>s.prices?.[Number(day.slice(-2))-14]??null),
   calendarSourceLabel:call('calendarSourceLabel',()=> 'Найденные цены'),calendarScope:call('calendarScope',()=>({destination:'Кемер',filters:s.noFilters?[]:['meal']})),money:call('money',n=>n+' ₽'),
+  catalogReady:false,urlStateHydrated:false,catalogError:"",publicUrlFailure:null,
   optionalShortlistEnabled:!!s.shortlist,innerWidth:s.mobile?390:1280,
   offerView:{id:1,departure:s.departure||'',flight:s.flight||'',room:s.room||'',meal:s.meal||'',sort:s.sort||'price',open:['r1-AI'],limits:{'r1-AI':1}},
   offerRefinementFields:['departure','flight','room','meal'],mealNames:{AI:'Всё включено'},comparisonQuotes:[{key:'old'}]
@@ -219,6 +220,16 @@ function observe(source,s){
    const simple=receive();
    for(const name of ['results','renderCalendarStrip','renderFilters','updateCompactSearch'])assert(simple.includes(name),name+' is still refreshed');
    assert(!simple.includes('updateSearchUI'),'ordinary live inventory does not rewrite a hidden draft');
+   ctx.innerWidth=430;
+   const closedMobile=receive();
+   assert(closedMobile.includes('cardHTML'),'the closed mobile drawer does not delay cards');
+   assert(!closedMobile.includes('renderFilters'),'the closed mobile drawer postpones facet presentation');
+   ctx.filterDraft={};
+   const openMobile=receive();
+   assert(openMobile.includes('renderFilters'),'progressive results refresh the open mobile drawer');
+   assert(openMobile.includes('updateDrawerPreview'),'the open drawer keeps its current matching count');
+   ctx.filterDraft=null;
+   ctx.innerWidth=1280;
    for(const [name,open,close] of [
     ['open form',()=>{node('#search-form').hidden=false;},()=>{node('#search-form').hidden=true;}],
     ['edited form',()=>{ctx.searchEditSession={};},()=>{ctx.searchEditSession=null;}],
