@@ -771,21 +771,32 @@
     }
     return ()=>({...s,ages:ages.slice()});
   }
-  function offer(t, h, s, index, indexes=mealIndexes(), copySearch=()=>structuredClone(s)) {
+  function projectReturnDays() {
+    const dates=new Map();
+    return (day,nights)=>{
+      const key=day+':'+nights;
+      const known=dates.get(key);
+      if(known!==undefined)return known;
+      const result=plus(day,nights);
+      if(dates.size<256)dates.set(key,result);
+      return result;
+    };
+  }
+  function offer(t, h, s, index, indexes=mealIndexes(), copySearch=()=>structuredClone(s), returnDay=plus) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
     const provider=String(t.provider||'tourvisor').toLowerCase(),plan=mealPlan(t,provider,indexes);
     const rawMeal=[text(t.meal),text(t.meal?.fullName),text(t.meal?.russianName)].map(value=>value.trim()).find(Boolean)||'';
     const displayMeal=indexedMeal(t.meal,indexes)||rawMeal,localMeal=localStayName(t,h,'meal'),localRoom=localStayName(t,h,'room');
-    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
+    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:returnDay(day,nights),room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
       mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:localMeal||plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
       operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:copySearch(),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) {
-    const result=[],indexes=mealIndexes(),copySearch=projectSearchCopier(s);
+    const result=[],indexes=mealIndexes(),copySearch=projectSearchCopier(s),returnDay=projectReturnDays();
     list.forEach(rawHotel=>{
       const h=hotel(rawHotel,s),offers=[];
-      (rawHotel.tours||[]).forEach((t,i)=>{const item=offer(t,h,s,i,indexes,copySearch);if(item)offers.push(item);});
+      (rawHotel.tours||[]).forEach((t,i)=>{const item=offer(t,h,s,i,indexes,copySearch,returnDay);if(item)offers.push(item);});
       h.offers=offers;if(offers.length)result.push(h);
     });
     return result;
