@@ -1,4 +1,4 @@
-name: PRICE apply the fresh saved minimum after the 36-hour cutoff
+name: PRICE install the accepted #1745 hook and use the existing publisher
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4d80ae934bc35594d47aafb0c0a49bbf7c549aff'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '63006e1394ce7fe90e70d8e481fe069f8390aa04'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -43,6 +43,30 @@ jobs:
           assert 'общий редактор возвращён PRICE' in body
           assert 'writer пилота завершён' in body and 'Повторных запусков нет' in body
           PY
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain the validated, immutable PRICE sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/max-search-bot
+          ref: e18a5acdfbd303e741217277f20f95cd4ad3391d
+          path: hotel-price-publisher
+          persist-credentials: false
+      - name: Verify the accepted bundle and code-only installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/pyatkoff/poisk-turov-test/pulls/5244 --jq 'select(.merged and .merge_commit_sha == "1aab940db71ec55a1ba03b978ae5830413b6d8ca") | .merge_commit_sha' | grep -Fxq 1aab940db71ec55a1ba03b978ae5830413b6d8ca
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863446634 --jq 'select(.head_sha == "b6fed75bc32d8418e3af5dc7bfd3155e99accae2" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863446609 --jq 'select(.head_sha == "b6fed75bc32d8418e3af5dc7bfd3155e99accae2" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq 'select(.head_sha == "d38679bb0fbd11b26ad74a20163b400055b63cc8" and .conclusion == "success") | .conclusion' | grep -Fxq success
+          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
+          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 6dd5e20b1d74e5969beba0c89bb76b9b4492083f0226300213582ade5f230190
+          php -l "$RUNNER_TEMP/monitor-price-hook.php"
+          php -l tools/price-hook-reviewed-pass/install.php
+          php tools/price-hook-reviewed-pass/install.php --self-test
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -68,6 +92,31 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
+      - name: Install accepted code under the existing PRICE journal lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          check_window() {
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq 'select(.updated_at == "2026-11-26T16:39:07Z" and .body == "PR1745: установлено, выпуск свободен") | .id' | grep -Fxq 7077907800
+            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq 'select(.updated_at == "2026-11-26T12:01:20Z" and .body == "PR1741: установлено, выпуск свободен") | .id' | grep -Fxq 6818332618
+            gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
+          }
+          check_window
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          remote="$DEPLOY_USER@$DEPLOY_HOST"
+          stage="$(ssh "${opts[@]}" "$remote" 'umask 077 && mktemp -d /var/www/anytoour/data/channel-post-operations/price-hook-1745-staged.XXXXXXXX')"
+          [[ "$stage" =~ ^/var/www/anytoour/data/channel-post-operations/price-hook-1745-staged[.][A-Za-z0-9]{8}$ ]]
+          scp "${opts[@]}" tools/price-hook-reviewed-pass/install.php "$RUNNER_TEMP/monitor-price-hook.php" "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-old $stage/monitor-price-hook.php" > "$RUNNER_TEMP/price-install-admission.json"
+          cat "$RUNNER_TEMP/price-install-admission.json"
+          scp "${opts[@]}" "$RUNNER_TEMP/price-install-admission.json" "$remote:$stage/"
+          check_window
+          ssh "${opts[@]}" "$remote" "php $stage/install.php install $stage/monitor-price-hook.php $stage/price-install-admission.json"
+          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-new $stage/monitor-price-hook.php"
       - name: Continue the verified roster with the installed PRICE writer
         env:
           GH_TOKEN: ${{ github.token }}
@@ -117,7 +166,7 @@ jobs:
           def check(condition, message):
               if not condition: raise RuntimeError(message)
           def pins():
-              for name,sha in [('monitor-price-hook.php','1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
+              for name,sha in [('monitor-price-hook.php','6dd5e20b1d74e5969beba0c89bb76b9b4492083f0226300213582ade5f230190'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
               check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='d38679bb0fbd11b26ad74a20163b400055b63cc8','runtime_changed')
