@@ -2859,6 +2859,7 @@ const terminalHotelRecovery=async(browser,origin,base,evidence)=>{
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+ await require('./search3-visual-first-card-batch.cjs')({browser,origin,base,evidence,canonicalLogoFixture});
    })(),
    (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');
