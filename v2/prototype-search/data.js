@@ -806,14 +806,29 @@
   }
   function canonicalUnion(){
     if(!owner||!context)return {hotels:0,offers:0,hotelsByProvider:{},offersByProvider:{},providerSets:{}};
-    const rows=project(owner.read(raw,{}),context),hotelsByProvider={},offersByProvider={},providerSets={};let offers=0;
-    for(const row of rows){
-      const providers=[...new Set(row.offers.map(o=>o.provider).filter(Boolean))].sort();
-      if(providers.length)providerSets[providers.join('+')]=(providerSets[providers.join('+')]||0)+1;
-      for(const provider of providers)hotelsByProvider[provider]=(hotelsByProvider[provider]||0)+1;
-      for(const rowOffer of row.offers){offers++;offersByProvider[rowOffer.provider]=(offersByProvider[rowOffer.provider]||0)+1;}
-    }
-    return {hotels:rows.length,offers,hotelsByProvider,offersByProvider,providerSets};
+    const hotelsByProvider={},offersByProvider={},providerSets={},returnDay=projectReturnDays();
+    let hotels=0,offers=0;
+    owner.read(raw,{}).forEach(hotel=>{
+      const providers=new Set(),start=offers;
+      (hotel.tours||[]).forEach(tour=>{
+        const price=amount(tour.price),day=date(tour.date),nights=Number(tour.nights);
+        if(!price || !day || !Number.isInteger(nights) || nights<1)return;
+        const provider=String(tour.provider||'tourvisor').toLowerCase();
+        // The summary keeps the key and date validation of published offers.
+        encodeURIComponent(`${provider}:${String(tour.id)}`);
+        returnDay(day,nights);
+        offers++;
+        offersByProvider[provider]=(offersByProvider[provider]||0)+1;
+        if(provider)providers.add(provider);
+      });
+      if(offers===start)return;
+      hotels++;
+      if(!providers.size)return;
+      const ordered=[...providers].sort(),set=ordered.join('+');
+      providerSets[set]=(providerSets[set]||0)+1;
+      for(const provider of ordered)hotelsByProvider[provider]=(hotelsByProvider[provider]||0)+1;
+    });
+    return {hotels,offers,hotelsByProvider,offersByProvider,providerSets};
   }
   function publish(){
     if(!owner||!context||!activeSearch||!current(activeSearch))return;
