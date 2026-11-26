@@ -59,7 +59,13 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
         <h1 id="home-title">Ваш следующий<br>отдых — здесь</h1>
         <p class="home-lead">Море, новый город или отпуск всей семьёй. Выберите тур, сравните условия и продолжите с менеджером.</p>
       </div>
-      <div class="home-hero-image"><img src="<?=home_e(v2_asset('home-hero-v1.jpg'))?>" alt="Песчаный берег и море в мягком вечернем свете" width="1100" height="731" fetchpriority="high"><span>Пора сменить вид из окна</span></div>
+      <div class="home-hero-image">
+        <picture>
+          <source media="(max-width: 760px)" srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+          <img src="<?=home_e(v2_asset('home-hero-v1.jpg'))?>" alt="Песчаный берег и море в мягком вечернем свете" width="1100" height="731" fetchpriority="high">
+        </picture>
+        <span>Пора сменить вид из окна</span>
+      </div>
       <div class="home-search-surface">
         <?php if ($homeSearch !== null): ?>
           <?= $homeSearch['form'] ?>

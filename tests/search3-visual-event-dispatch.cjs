@@ -180,6 +180,12 @@ function records(source){return scenarios.map(s=>{const result=characterize(sour
  // Assert its target/order before projecting only that call and mock DOM node;
  // the historical digest still covers every prior state, callback and control.
  if(['click:top','click:edit-search'].includes(s.name)&&source.includes(headerMenuClose))projectHeaderMenuClose(result,s.name);
+ // Typing or clearing the query affects the available labels, not the selected meals.
+ if(['input:meal-query','click:clear-meal-query'].includes(s.name)&&source.includes('function updateMealPicker(selectedCount=null,queryOnly=false)')){
+  const picker=result.trace.find(call=>call[0]==='updateMealPicker');
+  assert.deepEqual(picker,['updateMealPicker',null,true],s.name+' keeps the previously calculated inventory');
+  picker.splice(1);
+ }
  // Explicit month navigation now resets its new month independently of focus.
  // Assert the exact added call and unchanged state, then project only that call
  // to retain the historical observations for every other dispatcher boundary.
