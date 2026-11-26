@@ -73,6 +73,22 @@ function verifyJoin(join){
  assert.equal(execute(success).status,0,'aggregate accepts all-success source');
  for(const variable of Object.keys(success))for(const status of ['failure','cancelled','skipped'])assert.notEqual(execute({...success,[variable]:status}).status,0,'aggregate rejects '+variable+'='+status);
 }
+function verifyBrowserWorkers(browser){
+ const workers=browser.match(/      - name: Independent compiled browser scenarios\n([\s\S]*?)(?=      - name:|$)/);
+ assert(workers,'independent browser workers are present');
+ assert(workers[1].includes('        shell: bash\n'),'worker subshells inherit errexit and pipefail');
+ assert(workers[1].includes('SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled'),'workers use the same compiled graph');
+ assert(workers.index<browser.indexOf('      - name: Full transferred UI and isolated live integration\n'),'workers finish before the full matrix and its performance samples');
+ const script=workers[1].split('        run: |\n')[1];
+ const fakeNode='node() { echo "$1"; [[ "$1" != "$FAIL_COMMAND" ]]; }\n';
+ for(const fail of ['', 'tests/search3-visual-offer-list-browser.cjs', 'tests/local-tv-catalog-browser.cjs']){
+  const run=spawnSync('bash',['-e','-o','pipefail','-c',fakeNode+script],{env:{...process.env,FAIL_COMMAND:fail},encoding:'utf8',timeout:5000});
+  assert.equal(run.status,fail?1:0,'the worker step must surface either worker failure');
+  assert(run.stdout.includes('tests/search3-visual-offer-list-browser.cjs'),'offer-list worker ran');
+  assert(run.stdout.includes('tests/local-tv-catalog-browser.cjs'),'hotel/catalog worker ran');
+  assert.equal(run.stdout.includes('tests/search3-visual-terminal-offer-browser.cjs'),!fail.includes('local-tv'),'the other worker still finishes when offer-list fails');
+ }
+}
 function verify(workflow,bootstrap,html){
  const rules=patterns(workflow),deps=dependencies(bootstrap,html);
  assert(deps.length>=16,'nonempty actual graph');
@@ -111,6 +127,7 @@ function verify(workflow,bootstrap,html){
  return deps;
 }
 const deps=verify(workflow,bootstrap,html);
+verifyBrowserWorkers(job(workflow,'browser-matrix'));
 assert.throws(()=>verify(workflow.replace("      - 'v2/prototype-search/data.js'\n",''),bootstrap,html),/every entry dependency/,'missing data owner detected');
 assert.throws(()=>verify(workflow.replace("      - 'v2/prototype-search/source-receipt-v1.js'\n",''),bootstrap,html),/every entry dependency/,'missing receipt owner detected');
 assert.throws(()=>verify(workflow,bootstrap.replace("'../prototype-search/data.js'","'../prototype-search/future-owner.js'"),html),/every entry dependency/,'future unregistered owner detected');
