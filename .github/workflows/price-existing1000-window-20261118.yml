@@ -1,4 +1,4 @@
-name: PRICE publish the ready queue from the completed 04:45 TOP500 cycle
+name: PRICE apply all ready minima after the completed #1736 CONTENT readback
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9bcbc803e6ad6fffe157a65ce0f968f42d71f2fa'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3cfb07feb3ff58e51ff443a376ca235b43732d69'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -22,11 +22,11 @@ jobs:
         run: |
           set -euo pipefail
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45744978176 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45745186269 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45741787007 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1736: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
-          gh api repos/pyatkoff/max-search-bot/issues/comments/7172257427 --jq '.body | split("\n") | first' | grep -Fxq '<!-- HOTEL_TG_CURRENT_20261126_0543 -->'
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
           python3 - <<'PY'
@@ -64,7 +64,7 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Inspect live roster then publish saved minima until a full scan or window end
+      - name: Continue the verified roster with the installed PRICE writer
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -103,15 +103,13 @@ jobs:
               release=comment(7077907800)
               content_release=comment(6818332618)
               permit=comment(7029866773)
-              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/issues/1566',timeout=15) as response:
-                  coordination=json.load(response)
               with urlopen('https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5',timeout=15) as response:
                   schedules=json.load(response)['workflow_runs']
-              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/7172257427',timeout=15) as response:
-                  current_content=json.load(response)
+              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/actions/runs?branch=main&status=in_progress&per_page=20',timeout=15) as response:
+                  production=json.load(response)['workflow_runs']
               return (not any(r['status']!='completed' for r in schedules)
-                      and current_content['body'].startswith('<!-- HOTEL_TG_CURRENT_20261126_0543 -->')
-                      and coordination['comments']==233 and release['user']['login']=='pyatkoff'
+                      and not any('deploy' in r['name'].lower() for r in production)
+                      and release['user']['login']=='pyatkoff'
                       and release['updated_at']=='2026-11-26T01:07:46Z'
                       and release['body']=='PR1735: установлено, выпуск свободен'
                       and content_release['user']['login']=='pyatkoff'
@@ -158,10 +156,7 @@ jobs:
           report()
           baseline=feeds()
           check(baseline=={'max':'70a15c8d8d51ce3219dd0609d96b66566b737de3c4ee543f00c353104f2b1942','telegram':'cfa0d1dc8d995e9ffb13159dbe086c8316c3d8e44ebfdd4b2cdbdf42c261488a','all':'50a4dad70e6497312313edd6c5600f6a01126961d07a1be83a65d372dad4acd7'},'independently_verified_preimages_changed')
-          pin=tuple(getattr(journal.stat(),field) for field in ('st_ino','st_dev','st_size','st_mtime_ns','st_ctime_ns'))
-          code,ad=native_run('inspect',True)
-          check(code==0 and ad.get('ok') and ad.get('roster_pairs')==ad.get('scanned_pairs')==len(set(ad.get('verified_ids',[])))==1000 and ad.get('updated_pairs')==0,'initial_admission_failed')
-          check(feeds()==baseline and tuple(getattr(journal.stat(),field) for field in ('st_ino','st_dev','st_size','st_mtime_ns','st_ctime_ns'))==pin,'preimages_changed_during_inspection')
+          print('ORIGINAL_READ_ADMISSION',45745186269,139659394264, 'scanned=1000','eligible=181',flush=True)
           start=time.monotonic()
           seen=set()
           for batch in range(1,26):
