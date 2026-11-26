@@ -1,6 +1,8 @@
 'use strict';
 (() => {
 const roomLayouts=new Map();
+const deferredRoomOfferKeys=new WeakMap();
+const largeRoomInventory=100;
 const bedroomForms={one:'спальня',few:'спальни',many:'спален',other:'спальни'};
 const bedroomCountRules=new Intl.PluralRules('ru');
 function create(context){
@@ -239,6 +241,10 @@ function syncRoomPriceComparison(cards,offers,comparison=roomPriceComparison(off
  const {prices,minimum,sharedDemoNote}=comparison;
  for(const card of cards.querySelectorAll('.hotel-room-card')){
   let groupMinimum=Infinity;
+  for(const key of deferredRoomOfferKeys.get(card)||[]){
+   const price=prices.get(key);
+   if(price)groupMinimum=Math.min(groupMinimum,price.pending?NaN:price.total);
+  }
   for(const row of card.querySelectorAll('.room-offer-choice')){
    const price=prices.get(row.dataset.offerKey);if(!price)continue;
    groupMinimum=Math.min(groupMinimum,price.pending?NaN:price.total);
@@ -282,7 +288,7 @@ function roomSharedFacts(first,terms,inventoryTerms=null,demoNote=''){
  ].filter(Boolean);
  return facts.length?`<div class="room-shared-facts${inventoryTerms?'':' room-inventory-facts'}" aria-label="Общие условия вариантов">${facts.map(fact=>`<span>${fact}</span>`).join('')}</div>`:'';
 }
-function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
+function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null,{expandedMore=[],preferredOfferKey=''}={}){
  const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;
  const allOffers=initialOffers||hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];
  let mealControl=$('#hotel-room-meal');
@@ -302,19 +308,43 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  const inventoryTerms=commonRoomTerms(offers),searchParty=guestsText();
  const comparison=roomPriceComparison(offers),{prices,minimum,sharedDemoNote}=comparison;
  const inventoryFacts=roomSharedFacts(offers[0],inventoryTerms,null,sharedDemoNote);
- roomCards.innerHTML=inventoryFacts+rooms.map(({room,offers:rows})=>{
+ const deferred=[];
+ const selectedKey=context.hotelOfferDraft?.key;
+ roomCards.innerHTML=inventoryFacts+rooms.map(({room,offers:rows},index)=>{
   const roomTerms=commonRoomTerms(rows);
   const common={dates:inventoryTerms.dates||roomTerms.dates,flight:inventoryTerms.flight||roomTerms.flight,operator:inventoryTerms.operator||roomTerms.operator};
   const firstLayoutId=roomLayoutId(rows[0]);
   const sharedLayoutId=firstLayoutId&&rows.every(o=>roomLayoutId(o)===firstLayoutId)?firstLayoutId:null;
   const choice=o=>roomOfferChoiceHTML(o,{common:{...common,party:guestsText(o)===searchParty},sharedDemoNote,minimum,priceInfo:prices.get(o.key),layoutId:sharedLayoutId?null:roomLayoutId(o)});
-  const choices=roomSharedFacts(rows[0],roomTerms,inventoryTerms)+`<div class="room-offer-list">${rows.slice(0,2).map(choice).join('')}${rows.length>2?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(rows.length-2)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${rows.slice(2).map(choice).join('')}</details>`:''}</div>`;
+  const extra=rows.slice(2);
+  const moreOpen=expandedMore.includes(String(room));
+  // Load a deep link or restored list immediately. Keep individual layout IDs available to the layout control.
+  const defer=offers.length>=largeRoomInventory&&extra.length>0&&!moreOpen&&extra.every(o=>
+   o.key!==selectedKey&&o.key!==preferredOfferKey&&(sharedLayoutId||!roomLayoutId(o)));
+  if(defer)deferred.push({index,keys:extra.map(o=>o.key),html:()=>extra.map(choice).join('')});
+  const more=extra.length?`<details class="hotel-room-more"><summary><span class="room-more-closed">Ещё ${offerCountText(extra.length)}</span><span class="room-more-open">Скрыть остальные туры</span></summary>${defer?'':extra.map(choice).join('')}</details>`:'';
+  const choices=roomSharedFacts(rows[0],roomTerms,inventoryTerms)+`<div class="room-offer-list">${rows.slice(0,2).map(choice).join('')}${more}</div>`;
   const title=`<h4>${esc(roomLabel({room}))}</h4>`;
   const layoutNote=roomLayoutNote(sharedLayoutId),header=layoutNote?'<div>'+title+layoutNote+'</div>':title;
   if(rooms.length===1||rows.length===1)return `<article class="hotel-room-card" data-room="${esc(room)}"><header class="room-choice-main">${header}<span class="room-choice-label">${offerCountText(rows.length)}</span></header>${choices}</article>`;
   const meals=[...new Set(rows.map(displayMealLabel))].map(esc).join(' · '),min=Math.min(...rows.map(o=>{const p=prices.get(o.key);return p.pending?NaN:p.total;}));
   return `<details class="hotel-room-card room-overview" data-room="${esc(room)}" ${restoredRooms?.includes(room)?'open':''}><summary class="room-overview-toggle"><span class="room-overview-name">${title}${layoutNote}<span class="room-overview-meals">${meals}</span></span><span class="room-overview-bottom"><strong class="room-overview-price">${Number.isFinite(min)?'от '+money(min):'Цена уточняется'}</strong>${roomPriceDifferenceHTML(min,minimum)}<span class="room-overview-action"><span class="room-overview-closed">${offerCountText(rows.length)}</span><span class="room-overview-open">Свернуть</span><span class="rotate-arrow" aria-hidden="true">⌄</span></span></span></summary>${choices}</details>`;
  }).join('')||(meal&&allOffers.length?'<p class="tour-missing">С выбранным питанием сейчас нет подходящих вариантов в этом отеле.</p>':'<p class="tour-missing">По текущим условиям предложений нет. Измените даты или фильтры поиска.</p>');
+ if(deferred.length){
+  const cards=roomCards.querySelectorAll('.hotel-room-card'),dialog=$('#modal');
+  for(const plan of deferred){
+   const card=cards[plan.index],more=card.querySelector('.hotel-room-more');
+   deferredRoomOfferKeys.set(card,plan.keys);
+   const showOffers=()=>{
+    if(!more.open||!dialog.open||!more.isConnected)return;
+    more.removeEventListener('toggle',showOffers);
+    more.insertAdjacentHTML('beforeend',plan.html());
+    deferredRoomOfferKeys.delete(card);
+    syncHotelOfferSelection(id,allOffers,{meal,preserveFlights:true});
+   };
+   more.addEventListener('toggle',showOffers);
+  }
+ }
  const control=$('#hotel-room-meal');if(control){control.value=meal;[...control.options].forEach(option=>option.defaultSelected=option.value===meal);}
  if(typeof data?.readRoomLayouts==='function')paintRoomLayouts(roomCards.closest('.hotel-room-section'));
  syncHotelOfferSelection(id,allOffers,{meal,comparison});
@@ -322,7 +352,7 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  rememberUIRoute();
  return {hotel:h,offers:allOffers};
 }
-function openHotelDetails(id){
+function openHotelDetails(id,roomState){
  const h=hotels.find(h=>h.id===id);if(!h)return;
  const offers=hotelOffers(h),meals=[...new Set(offers.map(o=>o.meal))];
  mountedProfile=hotelProfileHTML(h);
@@ -334,7 +364,7 @@ function openHotelDetails(id){
  if(layoutControl)layoutControl.addEventListener('click',()=>loadRoomLayouts(layoutControl.closest('.hotel-room-section'),layoutControl));
  $('#modal').classList.add('hotel-details-dialog');
  if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>Весь тур · ${guestsText()}</span><strong id="hotel-detail-min"></strong><small id="hotel-detail-price-status"></small></div><button id="hotel-detail-offers" class="primary" data-action="hotel-detail-offers" data-id="${id}"></button>`;}
- renderHotelRooms(id,'',null,offers);
+ renderHotelRooms(id,'',null,offers,roomState);
  return offers;
 }
 return {openHotelDetails,refreshHotelProfile,renderHotelRooms,syncRoomPriceComparison};
