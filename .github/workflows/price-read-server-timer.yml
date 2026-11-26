@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '2512cd1e63e1882aaebfdba20719b40bae9eccc2'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd0825f1e8a721cf89f48848bf2499d151db41e26'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -175,49 +175,46 @@ jobs:
           }
           PHP
 
-      - name: Read original PRICE journal tail and current editor lock
+      - name: Read the original hold on two exact Telegram publications
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'python3 -' <<'PY'
-          import datetime, fcntl, json, os
-          path='/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl'
-          with open(path,'rb') as handle:
-              try:
-                  fcntl.flock(handle,fcntl.LOCK_SH | fcntl.LOCK_NB)
-                  fcntl.flock(handle,fcntl.LOCK_UN)
-                  locked=False
-              except BlockingIOError:
-                  locked=True
-              size=os.fstat(handle.fileno()).st_size
-              handle.seek(max(0,size-2097152))
-              tail=handle.read(min(size,2097152))
-          lines=tail.splitlines()
-          if size>2097152: lines=lines[1:]
-          state=next((json.loads(row) for row in reversed(lines) if row.endswith(b'}') and row.startswith(b'{')), {})
-          pending=state.get('pending') or {}
-          import re, pathlib
-          op=pending.get('operation') or ''
-          original=[]
-          if re.fullmatch(r'commercial-monitor-price-h[1-9][0-9]*-[a-f0-9]{64}',op):
-              p=pathlib.Path(path).parent/op/'receipt.jsonl'
-              if p.is_file() and p.stat().st_size<10_000_000:
-                  for line in p.read_text().splitlines():
-                      row=json.loads(line)
-                      posts=row.get('posts',{})
-                      original.append({'complete':row.get('complete'),'post_states':{k:{'state':v.get('state'),'post_url':(v.get('receipt') or {}).get('post_url')} for k,v in (posts.items() if isinstance(posts,dict) else enumerate(posts))},'preflight_error':row.get('preflight_error'),'terminal':bool(row.get('terminal'))})
-          print('ORIGINAL_PRICE_PROGRESS',json.dumps({'hotel':pending.get('tourvisor_hotel_id'),'phase':pending.get('phase'),'child_failure':pending.get('child_failure'),'operation':op if re.fullmatch(r'commercial-monitor-price-h[1-9][0-9]*-[a-f0-9]{64}',op) else None,'post_receipts':original[-8:]}),flush=True)
-          cycle=state.get('nightly_cycle') or {}
-          print('PRICE_EDITOR_OBSERVATION',json.dumps({
-              'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              'locked':locked,
-              'journal_bytes':size,
-              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
-              'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
-          }),flush=True)
-          PY
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/app.anytoour.ru && php -d display_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          try {
+              ob_start();
+              try {
+                  require 'config.php';
+                  require_once 'services/ChannelPostRuntime.php';
+                  require_once 'integrations/ChannelPostApiTransport.php';
+              } finally {
+                  ob_end_clean();
+              }
+              $db=ConversationDb::connection();
+              $db->exec('START TRANSACTION READ ONLY');
+              $registry=new ChannelPostRegistryService($db);
+              $claims=$db->prepare("SELECT id,state,claimed_at,claim_token IS NOT NULL AS token_present FROM post_versions WHERE publication_id=? AND (state IN ('claimed','write_started','unknown') OR claim_token IS NOT NULL OR claimed_at IS NOT NULL) ORDER BY id");
+              $out=[];
+              foreach ([3631=>'414',3673=>'579'] as $id=>$mid) {
+                  $post=$registry->publication($id);
+                  if (!is_array($post) || $post['project_key']!=='anytour' || $post['platform']!=='telegram' || $post['snapshot']['post_url']!=='https://t.me/anytour/'.$mid) {
+                      throw new RuntimeException('target_registry_identity_changed');
+                  }
+                  $claims->execute([$id]);
+                  $versions=$claims->fetchAll(PDO::FETCH_ASSOC);
+                  $claims->closeCursor();
+                  $out[]=['publication'=>$id,'post'=>$mid,'state'=>$post['state'],'current_version'=>$post['version_id'],'claims'=>$versions];
+              }
+              $db->rollBack();
+              echo 'TELEGRAM_ORIGINAL_HOLDS ',json_encode(['at'=>gmdate('c'),'rows'=>$out],JSON_THROW_ON_ERROR),PHP_EOL;
+          } catch (Throwable $e) {
+              echo 'TELEGRAM_HOLD_READ_FAILED ',get_class($e),PHP_EOL;
+              exit(1);
+          }
+          PHP
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
