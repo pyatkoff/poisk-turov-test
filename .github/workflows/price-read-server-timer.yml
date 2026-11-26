@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5369bdeb74d0cbe54050f873a415259becf95e0c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '96ec6aea27fefbc85f200689057f532ec4dd20c6'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -206,6 +206,21 @@ jobs:
               'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
               'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
           }),flush=True)
+          import subprocess
+          names=('sync-priority-hotels-v1.php','top500-coverage-v1.php','top500-daily-collector-v1.php',
+                 'monitor-price-hook.php','apply_promoted_hotel_prices.php','rollup-price-daily-v1.php',
+                 'rollup-price-daily-exact-v1.php','build-seo-offer-snapshots-v1.php')
+          active=[]
+          table=subprocess.check_output(['ps','-u',str(os.getuid()),'-o','etimes=,comm=,args='],text=True)
+          for row in table.splitlines():
+              fields=row.strip().split(maxsplit=2)
+              if len(fields)<3 or fields[1] not in ('php','php8.1','php8.2','php8.3','php8.4'):continue
+              command=fields[2].split()
+              for token in command[1:3]:
+                  filename=os.path.basename(token)
+                  if filename in names:
+                      active.append({'step':filename,'elapsed_seconds':int(fields[0])})
+          print('PRICE_RELATED_STEPS',json.dumps(active),flush=True)
           PY
       - name: Cleanup connection material
         if: always()
