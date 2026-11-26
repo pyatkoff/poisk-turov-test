@@ -597,6 +597,15 @@ const {JSDOM}=require('jsdom');
  hotel.beach=null;
  assert.deepEqual(reasons(render({amenities:['3:99'],beach:true,spa:true})),[]);
  assert.equal(render({meals:['Завтраки'],stars:[4]}).querySelector('.hotel-facts').textContent,'Пляж рядом');
+ let extraReads=0;
+ hotel.amenities.push(
+  {key:'3:12',label:'Детский клуб',filterable:true},
+  {key:'2:11',label:'Бассейн',filterable:true},
+  {get key(){extraReads++;return '2:12';},label:'Детский бассейн',filterable:true}
+ );
+ const limited=render({amenities:['3:11','3:12','1:22','2:11','2:12'],family:true});
+ assert.deepEqual(reasons(limited),['Детский клуб','Пляж <&','Бассейн']);
+ assert.equal(extraReads,0,'three distinct visible reasons are sufficient even when more amenities are selected');
 }
 
 // Site224 card entry: presentation must retain the representative exact key and
