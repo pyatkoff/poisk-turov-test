@@ -1,4 +1,4 @@
-name: Read installed hotel price timer receipts
+name: Price public evidence for original Telegram holds
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -6,215 +6,133 @@ on:
 permissions:
   contents: read
 jobs:
-  read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '191e209ebeccf33234714842e9c45e8e41140503'
+  public-read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '565df4d488932fd434170199a84a411b00ce9fbb'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
-      - name: Prepare unchanged server connection and host pin
-        env:
-          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        shell: bash
+      - name: Read the two exact posts on both channels and current XML
         run: |
-          set -euo pipefail
-          umask 077
-          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
-            if [[ "$KEY_VALUE" == *'\n'* ]]; then printf '%b\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; else printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$RUNNER_TEMP/channel_key"; fi
-          else printf '%s' "$KEY_VALUE" | base64 --decode > "$RUNNER_TEMP/channel_key"; fi
-          ssh-keygen -y -f "$RUNNER_TEMP/channel_key" >/dev/null
           python3 - <<'PY'
-          import os,re,subprocess,base64,hashlib,pathlib
-          host=os.environ['DEPLOY_HOST'];user=os.environ['DEPLOY_USER'];assert re.fullmatch(r'[A-Za-z0-9_.:-]+',host) and not host.startswith('-') and re.fullmatch(r'[A-Za-z0-9_-]+',user)
-          scan=subprocess.run(['ssh-keyscan','-T','10','-t','ed25519,ecdsa,rsa',host],capture_output=True,text=True,timeout=35);matches=[]
-          for line in scan.stdout.splitlines():
-            f=line.split()
-            if len(f)<3 or f[0].startswith('#'):continue
-            try:fp='SHA256:'+base64.b64encode(hashlib.sha256(base64.b64decode(f[2])).digest()).decode().rstrip('=')
-            except Exception:continue
-            if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
-          assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
+          from concurrent.futures import ThreadPoolExecutor
+          from datetime import datetime
+          from hashlib import sha256
+          from html import unescape
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.error import URLError
+          from urllib.request import Request, urlopen
+          from xml.etree import ElementTree as ET
+          from zoneinfo import ZoneInfo
+          import json
+          import re
+          import sys
+          TARGETS=json.loads(r'''[{"hotel":4181,"platform":"telegram","publication":3629,"url":"https://t.me/anytour/204"},{"hotel":99713,"platform":"telegram","publication":3634,"url":"https://t.me/anytour/483"},{"hotel":4181,"platform":"max","publication":3614,"url":"https://max.ru/anytour/AZ8DSRZpHNw"},{"hotel":99713,"platform":"max","publication":3620,"url":"https://max.ru/anytour/AZ_RB3FVXFc"}]''')
+          
+          base = "https://app.anytoour.ru/feed/hotel-posts-"
+          rows = json.loads(Path(sys.argv[1]).read_text()) if len(sys.argv)>1 else TARGETS
+          quoted = r'"(?:[^"\\]|\\.)*"'
+          max_pattern = re.compile(r'\bmessage:\{id:([0-9]+),link:(' + quoted + r'),createdAt:' + quoted
+                                   + r',updatedAt:(?:' + quoted + r'|null),text:(' + quoted + ')')
+          stamp_pattern = re.compile(r"Цена найдена мониторингом (\d{2}\.\d{2}\.\d{4}),?\s+(\d{2}:\d{2}) МСК")
+          price_pattern = re.compile(r"От ([\d \u00a0\u202f]+(?:[.,]\d{2})?) ₽")
+          headers = {"User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache"}
+          
+          def get(url):
+              with urlopen(Request(url, headers=headers), timeout=12) as response:
+                  assert response.status == 200
+                  return response.read().decode()
+          
+          class TelegramPost(HTMLParser):
+              def __init__(self, wanted):
+                  super().__init__()
+                  self.wanted = wanted
+                  self.depth = 0
+                  self.root = None
+                  self.caption_depth = None
+                  self.caption = []
+                  self.seen = 0
+                  self.photo = False
+                  self.button = False
+              def handle_starttag(self, tag, pairs):
+                  attrs = dict(pairs)
+                  classes = set(attrs.get('class', '').split())
+                  void = tag in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
+                  if not void: self.depth += 1
+                  if attrs.get('data-post') == self.wanted and tag == 'div':
+                      self.root = self.depth
+                      self.seen += 1
+                  if self.root is None: return
+                  if 'tgme_widget_message_text' in classes and not void: self.caption_depth = self.depth
+                  if tag == 'br' and self.caption_depth is not None: self.caption.append('\n')
+                  if 'tgme_widget_message_photo_wrap' in classes: self.photo |= 'background-image' in attrs.get('style','')
+                  if 'tgme_widget_message_inline_button' in classes: self.button |= bool(attrs.get('href'))
+              def handle_endtag(self, tag):
+                  if tag in {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}: return
+                  if self.depth == self.caption_depth: self.caption_depth = None
+                  if self.depth == self.root: self.root = None
+                  self.depth -= 1
+              def handle_data(self, data):
+                  if self.caption_depth is not None: self.caption.append(data)
+          
+          def offer_rows(xml):
+              items = ET.fromstring(xml).findall('./shop/offers/offer')
+              result = {o.attrib['id']:o for o in items}
+              assert len(result)==len(items)
+              return result
+          
+          with ThreadPoolExecutor(3) as e:
+              snapshots=dict(zip(('max','telegram','all'),e.map(lambda kind:get(base+kind+'.xml'),('max','telegram','all'))))
+          feeds={kind:offer_rows(raw) for kind,raw in snapshots.items()}
+          
+          def normalized_price(s):
+              return re.sub(r"[ \u00a0\u202f]", "", s).replace(",", ".").removesuffix(".00") if s else None
+          
+          def price_text(text):
+              p=price_pattern.search(text)
+              t=stamp_pattern.search(text)
+              return normalized_price(p[1]) if p else None, " ".join(t.groups()) if t else None
+          
+          def read(row):
+              platform,hotel,url=row['platform'],row['hotel'],row['url']
+              pref={'max':'max','telegram':'tg'}[platform]
+              exact=f'{pref}_{hotel}'
+              published=feeds[platform][exact]
+              combined=feeds['all'][exact]
+              expected=price_text(published.findtext('description',''))
+              assert normalized_price(published.findtext('price'))==expected[0]
+              assert price_text(combined.findtext('description',''))==expected
+              attempts=[url] if platform=='max' else [url+'?embed=1',url.replace('t.me/','t.me/s/')]
+              matches=[]
+              results=[]
+              for address in attempts:
+                  try:
+                      document=get(address)
+                      if platform=='max':
+                          selected=[m for m in max_pattern.finditer(document) if json.loads(m[2])==url]
+                          if len(selected)!=1: raise ValueError('caption_identity')
+                          m=selected[0]
+                          tail=document[m.end():].split("},posts:[",1)[0]
+                          value=price_text(unescape(json.loads(m[3])))
+                          media=bool(re.search(r'\bphotoId:\d+',tail))
+                          button='attachmentType:"INLINE_KEYBOARD"' in tail
+                      else:
+                          tg=TelegramPost('anytour/'+url.rsplit('/',1)[1])
+                          tg.feed(document)
+                          if tg.seen!=1 or not tg.caption: raise ValueError('caption_identity')
+                          value=price_text(''.join(tg.caption))
+                          media,button=tg.photo,tg.button
+                      results.append({'view':('embed' if '?embed' in address else ('archive' if platform=='telegram' else 'max')),
+                                      'value':value,'photo':media,'button':button})
+                      matches.append(value==expected and expected[0] is not None and expected[1] is not None and media and button)
+                  except (OSError, URLError, ValueError, AssertionError) as error:
+                      results.append({'error':type(error).__name__,'detail':str(error)[:80]})
+              return {**row,'expected':expected,'public_match':any(matches),'reads':results}
+          
+          with ThreadPoolExecutor(4) as e:
+              result=list(e.map(read,rows))
+          print('INDEPENDENT_PROMOTED_PUBLIC',json.dumps({
+              'at':datetime.now(ZoneInfo('Europe/Moscow')).isoformat(),
+              'all_sha':sha256(snapshots['all'].encode()).hexdigest(),
+              'rows':result},ensure_ascii=False),flush=True)
           PY
-      - name: Read the installed timer receipt, SQL lock and stored attempt queue
-        env:
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
-          <?php
-          declare(strict_types=1);
-          try {
-              require_once 'db-v1.php';
-              $pdo = v2_data_db();
-              $check = $pdo->prepare('SELECT IS_USED_LOCK(?) IS NOT NULL');
-              $limit = microtime(true);
-              $previous = null;
-              do {
-                  $check->execute(['anytour_top500_monthly_v1']);
-                  $state = $check->fetchColumn();
-                  $check->closeCursor();
-                  if (!in_array((string)$state, ['0','1'], true)) throw new RuntimeException('missing_lock_state');
-                  $busy = (bool)$state;
-                  if ($busy !== $previous) {
-                      echo 'COLLECTOR_LOCK ', json_encode(['checked_at'=>gmdate('c'), 'busy'=>$busy], JSON_THROW_ON_ERROR), PHP_EOL;
-                      $previous = $busy;
-                  }
-                  if (!$busy || microtime(true) >= $limit) break;
-                  sleep(10);
-              } while (true);
-          } catch (Throwable $e) {
-              fwrite(STDERR, 'lock_read_failed '.get_class($e).PHP_EOL);
-              exit(1);
-          }
-          PHP
-          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" '/usr/bin/php /var/www/anytoour/data/www/anytoour.ru/data/hotel-price-timer-v1.php --status' > "$RUNNER_TEMP/native-receipt.json"
-          python3 - <<'PY'
-          import datetime, json, os, pathlib
-          r=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'native-receipt.json').read_text())
-          print('SERVER_TIMER_STATUS', json.dumps(r,ensure_ascii=False))
-          assert r.get('registered') is True
-          collection = r.get('last-collection')
-          bounds = [0, 0] if collection is None else [
-              int(datetime.datetime.fromisoformat(collection[key]).timestamp())
-              for key in ('started_at', 'finished_at')
-          ]
-          assert 0 <= bounds[0] <= bounds[1]
-          pathlib.Path(os.environ['RUNNER_TEMP'], 'collection-window').write_text(f'{bounds[0]} {bounds[1]}\n')
-          PY
-          read -r cycle_from cycle_to < "$RUNNER_TEMP/collection-window"
-          [[ "$cycle_from" =~ ^[0-9]+$ && "$cycle_to" =~ ^[0-9]+$ ]]
-          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0 -- $cycle_from $cycle_to" <<'PHP'
-          <?php
-          declare(strict_types=1);
-          try {
-              require_once 'db-v1.php';
-              require_once 'published-hotels-monitor-v1.php';
-              require_once 'top500-monthly-plan-v1.php';
-              $pdo = v2_data_db();
-              $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-              $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
-              $clock = $pdo->query('SELECT CURDATE() AS today, UNIX_TIMESTAMP() AS epoch')->fetch();
-              $registry = v2_top500_registry($pdo);
-              if ($registry === null) throw new RuntimeException('identity_registry_unavailable');
-              $ids = v2_all_hotel_monitor_input_ids($registry);
-              $top = array_values(array_diff(v2_priority_hotel_ids($registry), v2_collection_priority_hotel_ids()));
-              $catalog = $pdo->query('SELECT id,country_id,country_name,is_active FROM catalog_hotels WHERE id IN ('.implode(',',array_map('intval',$ids)).') ORDER BY id')->fetchAll();
-              $routes = $pdo->query('SELECT dc.departure_id,dc.country_id,dc.is_active FROM catalog_departure_countries dc JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1 JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1 WHERE dc.is_active=1 ORDER BY dc.country_id,dc.departure_id')->fetchAll();
-              $plan = v2_top500_monthly_plan($top, $catalog, $routes, $clock['today'], 12, 1, true);
-              $plan = v2_append_published_hotel_monthly_plan($plan, $catalog, $routes, $clock['today'], 12, 1, true);
-              $attempts = $pdo->query("SELECT a.id,a.target_key,a.status,a.search_id,UNIX_TIMESTAMP(a.started_at) AS started_epoch,UNIX_TIMESTAMP(a.finished_at) AS finished_epoch,a.error_text FROM tour_matrix_collection_attempts a JOIN (SELECT target_key,MAX(id) AS id FROM tour_matrix_collection_attempts WHERE target_key LIKE 'monthly:%' AND started_at>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY target_key) last_attempt ON a.id=last_attempt.id")->fetchAll();
-              $recent = $pdo->query("SELECT hotel_ids_json FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND departure_id=1 AND date_to>CURDATE() AND nights_from=5 AND nights_to=14 AND status IN ('success','empty') AND finished_at>DATE_SUB(NOW(),INTERVAL 36 HOUR) AND finished_at<=NOW() AND search_id>0")->fetchAll(PDO::FETCH_COLUMN);
-              $activity = $pdo->query("SELECT UNIX_TIMESTAMP(MAX(started_at)) AS last_start, UNIX_TIMESTAMP(MAX(finished_at)) AS last_finish, IS_USED_LOCK('anytour_top500_monthly_v1') IS NOT NULL AS lock_busy FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND target_key LIKE 'monthly:%' AND started_at >= DATE_SUB(NOW(),INTERVAL 6 HOUR)")->fetch();
-              $incomplete = $pdo->prepare("SELECT country_id,date_from,date_to,status,search_id,rows_received,observations_written,error_text,UNIX_TIMESTAMP(finished_at) AS finished_epoch FROM tour_matrix_collection_attempts WHERE (target_key LIKE 'monthly:%' OR target_key LIKE 'page_gap:%') AND status IN ('failure','timeout') AND finished_at BETWEEN FROM_UNIXTIME(?) AND FROM_UNIXTIME(?) ORDER BY id");
-              $incomplete->execute([(int)$argv[1],(int)$argv[2]]);
-              $incompleteRows = $incomplete->fetchAll(PDO::FETCH_ASSOC);
-              $pdo->exec('ROLLBACK');
-              $diagnoses = [];
-              foreach ($incompleteRows as $row) {
-                  $error = (string)$row['error_text'];
-                  $kind = 'other';
-                  if (preg_match('/^Tourvisor HTTP ([0-9]{3}) after [0-9]+ attempt\\(s\\)$/D',$error,$matched)) $kind = 'http_'.$matched[1];
-                  elseif (str_starts_with($error,'Tourvisor connection error')) $kind = 'connection';
-                  elseif ($error === 'partial results saved; resume existing search') $kind = 'partial_saved';
-                  elseif ($error === 'no searchId') $kind = 'no_search_id';
-                  elseif ($error === 'Invalid Tourvisor JSON response') $kind = 'invalid_json';
-                  elseif ($error === 'unrecognized Tourvisor result shape; not an empty search') $kind = 'unrecognized_shape';
-                  $diagnoses[] = [
-                      'country_id'=>(int)$row['country_id'], 'date_from'=>$row['date_from'], 'date_to'=>$row['date_to'],
-                      'status'=>$row['status'], 'cause'=>$kind, 'has_saved_search_id'=>(int)$row['search_id']>0,
-                      'rows_received'=>(int)$row['rows_received'], 'attempt_observations_written'=>(int)$row['observations_written'],
-                      'finished_at'=>gmdate('c',(int)$row['finished_epoch']),
-                  ];
-              }
-              echo 'CYCLE_INCOMPLETE_ATTEMPTS ',json_encode(['from_epoch'=>(int)$argv[1],'to_epoch'=>(int)$argv[2],'logical_attempts'=>$diagnoses],JSON_THROW_ON_ERROR),PHP_EOL;
-              echo 'COLLECTOR_ACTIVITY ', json_encode([
-                  'checked_at' => gmdate('c',(int)$clock['epoch']),
-                  'last_start' => $activity['last_start'] === null ? null : gmdate('c',(int)$activity['last_start']),
-                  'last_finish' => $activity['last_finish'] === null ? null : gmdate('c',(int)$activity['last_finish']),
-                  'lock_busy' => (bool)$activity['lock_busy'],
-              ], JSON_THROW_ON_ERROR), PHP_EOL;
-              $searched = [];
-              foreach ($recent as $raw) foreach (json_decode($raw,true,512,JSON_THROW_ON_ERROR) as $id) $searched[(int)$id] = true;
-              $planned = [];
-              $directions = [];
-              foreach ($plan['targets'] as $target) {
-                  $direction = $target['departure_id'].'/'.$target['country_id'].' '.$target['country_name'];
-                  $directions[$direction][] = $target;
-                  foreach ($target['hotel_ids'] as $id) $planned[(int)$id] = true;
-              }
-              if (count($planned) !== $plan['hotel_count']) throw new RuntimeException('plan_identity_count');
-              $pending = [];
-              foreach ($directions as $direction => $targets) {
-                  $q = v2_top500_monthly_queue($targets, $attempts, (int)$clock['epoch'], 24);
-                  $pending[$direction] = array_map(static fn(array $m): int => $m['pending'], $q['months']);
-              }
-              $q = v2_top500_monthly_queue($plan['targets'], $attempts, (int)$clock['epoch'], 24);
-              if (array_sum(array_map('array_sum',$pending)) !== $q['pending']) throw new RuntimeException('pending_total_mismatch');
-              $retainedSearches = [];
-              $retainedTargets = 0;
-              foreach ($q['targets'] as $target) {
-                  $searchId = $target['resume_search_id'] ?? null;
-                  if ($searchId === null) continue;
-                  $retainedSearches[$searchId] = true;
-                  $retainedTargets++;
-              }
-              echo 'RETAINED_SEARCH_QUEUE ', json_encode([
-                  'as_of'=>gmdate('c',(int)$clock['epoch']),
-                  'ready_logical_targets_with_search_id'=>$retainedTargets,
-                  'distinct_saved_search_ids'=>count($retainedSearches),
-                  'deferred_logical_targets'=>$q['deferred'],
-              ], JSON_THROW_ON_ERROR), PHP_EOL;
-              foreach (['PLAN_IDS'=>array_keys($planned),'COMPLETED_MONTHLY_IDS_36H'=>array_keys($searched),'PENDING_BY_ROUTE_MONTH'=>$pending,'NATIVE_QUEUE'=>['as_of'=>gmdate('c',(int)$clock['epoch']),'targets'=>$plan['batch_count'],'fresh'=>$q['fresh'],'pending'=>$q['pending'],'deferred'=>$q['deferred']]] as $label=>$data)
-                  echo $label, ' ', json_encode($data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR), PHP_EOL;
-          } catch (Throwable $e) {
-              fwrite(STDERR, 'queue_read_failed '.get_class($e).' '.basename($e->getFile()).':'.$e->getLine().PHP_EOL);
-              exit(1);
-          }
-          PHP
-
-      - name: Read the original hold on two exact Telegram publications
-        env:
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/app.anytoour.ru && php -d display_errors=0' <<'PHP'
-          <?php
-          declare(strict_types=1);
-          try {
-              ob_start();
-              try {
-                  require 'config.php';
-                  require_once 'services/ChannelPostRuntime.php';
-                  require_once 'integrations/ChannelPostApiTransport.php';
-              } finally {
-                  ob_end_clean();
-              }
-              $db=ConversationDb::connection();
-              $db->exec('START TRANSACTION READ ONLY');
-              $registry=new ChannelPostRegistryService($db);
-              $claims=$db->prepare("SELECT id,state,claimed_at,claim_token IS NOT NULL AS token_present FROM post_versions WHERE publication_id=? AND (state IN ('claimed','write_started','unknown') OR claim_token IS NOT NULL OR claimed_at IS NOT NULL) ORDER BY id");
-              $out=[];
-              foreach ([3629=>'204',3634=>'483'] as $id=>$mid) {
-                  $post=$registry->publication($id);
-                  if (!is_array($post) || $post['project_key']!=='anytour' || $post['platform']!=='telegram' || $post['snapshot']['post_url']!=='https://t.me/anytour/'.$mid) {
-                      throw new RuntimeException('target_registry_identity_changed');
-                  }
-                  $claims->execute([$id]);
-                  $versions=$claims->fetchAll(PDO::FETCH_ASSOC);
-                  $claims->closeCursor();
-                  $out[]=['publication'=>$id,'post'=>$mid,'state'=>$post['state'],'current_version'=>$post['version_id'],'claims'=>$versions];
-              }
-              $db->rollBack();
-              echo 'TELEGRAM_ORIGINAL_HOLDS ',json_encode(['at'=>gmdate('c'),'rows'=>$out],JSON_THROW_ON_ERROR),PHP_EOL;
-          } catch (Throwable $e) {
-              echo 'TELEGRAM_HOLD_READ_FAILED ',get_class($e),PHP_EOL;
-              exit(1);
-          }
-          PHP
-      - name: Cleanup connection material
-        if: always()
-        run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
