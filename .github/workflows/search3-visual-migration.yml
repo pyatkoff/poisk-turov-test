@@ -211,7 +211,7 @@ jobs:
           path: visual-live-evidence/messenger-entry/
           compression-level: 0
           if-no-files-found: error
-      - name: Full transferred UI and isolated live integration
+      - name: Source contracts for transferred UI
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           node tests/search3-visual-lifecycle-scheduling.cjs
@@ -219,10 +219,29 @@ jobs:
           node tests/search3-visual-data-orchestration.cjs
           node tests/search3-visual-modal-history.cjs
           node tests/search3-visual-hotel-details-rendering.cjs
-          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
-          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
-          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/local-tv-catalog-browser.cjs --browser
-          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
+      - name: Independent compiled browser scenarios
+        shell: bash
+        env:
+          NODE_PATH: ${{ runner.temp }}/visual-tools/node_modules
+          SEARCH3_VISUAL_ASSET_ROOT: ${{ runner.temp }}/visual-compiled
+        run: |
+          (
+            node tests/search3-visual-offer-list-browser.cjs
+          ) &
+          offer_list=$!
+          (
+            node tests/search3-visual-hotel-details-browser.cjs
+            node tests/local-tv-catalog-browser.cjs --browser
+            node tests/search3-visual-terminal-offer-browser.cjs
+          ) &
+          hotel_and_catalog=$!
+          result=0
+          wait "$offer_list" || result=1
+          wait "$hotel_and_catalog" || result=1
+          exit "$result"
+      - name: Full transferred UI and isolated live integration
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
           php -l v2/visual-search/index.php
           php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'

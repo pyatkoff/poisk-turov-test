@@ -96,13 +96,13 @@ function verifyBoundedPackaging(){
   fs.writeFileSync(path.join(directory,'frame.png'),image.bytes);fs.writeFileSync(path.join(directory,'nested','frame.png'),image.bytes);
   fs.writeFileSync(path.join(directory,'facts.json'),json);fs.writeFileSync(path.join(directory,'tiny.json'),small);fs.writeFileSync(path.join(directory,'receipt.json'),receipt);
   fs.writeFileSync(path.join(directory,'messenger-entry','frame.png'),messenger);fs.writeFileSync(path.join(directory,'messenger-entry','facts.json'),messenger);fs.writeFileSync(path.join(directory,'unchanged.txt'),messenger);
-  await retain(directory);
+  await injectedEncoder(()=>{throw Error('Evidence that fits must keep original PNG bytes');})(directory);
   const png=readJson(path.join(directory,'png-retention.json.gz')),facts=readJson(path.join(directory,'json-retention.json.gz'));
   assert.equal(png.frames,2);assert.equal(png.pixel_streams_identical,true);assert.equal(png.dimensions_and_other_chunks_unchanged,true);assert.equal(png.messenger_artifact_unchanged,true);
   for(const row of png.files){
    const bytes=fs.readFileSync(path.join(directory,row.path)),decoded=unpack(bytes);
    assert(decoded.pixels.equals(image.pixels),'all filtered RGBA bytes survive');assert.deepEqual(decoded.other,unpack(image.bytes).other,'dimensions and ancillary chunks survive byte for byte');
-   assert(bytes.length<=image.bytes.length);assert.equal(row.original_sha256,sha(image.bytes));assert.equal(row.retained_sha256,sha(bytes));assert.equal(row.filtered_pixel_sha256,sha(image.pixels));assert.equal(row.original_bytes,image.bytes.length);assert.equal(row.retained_bytes,bytes.length);
+   assert(bytes.equals(image.bytes),'PNG bytes are unchanged when the raw evidence fits');assert.equal(row.original_sha256,sha(image.bytes));assert.equal(row.retained_sha256,sha(bytes));assert.equal(row.filtered_pixel_sha256,sha(image.pixels));assert.equal(row.original_bytes,image.bytes.length);assert.equal(row.retained_bytes,bytes.length);
   }
   assert.equal(facts.files.length,2);for(const row of facts.files){const bytes=fs.readFileSync(path.join(directory,row.retained_path)),original=row.path==='facts.json'?json:small;assert.equal(row.original_sha256,sha(original));assert.equal(row.retained_sha256,sha(bytes));assert((row.encoding==='gzip'?zlib.gunzipSync(bytes):bytes).equals(original));}
   assert.equal(fs.existsSync(path.join(directory,'facts.json')),false);assert(fs.readFileSync(path.join(directory,'tiny.json')).equals(small));
@@ -118,12 +118,25 @@ function verifyBoundedPackaging(){
   // One failure must not resolve/reject the archive while its other worker is
   // still running; no next file or output is touched before both settle.
   const failure=folder('encoder-failure'),entered=deferred(),encoders=[];fs.writeFileSync(path.join(failure,'a.png'),image.bytes);fs.writeFileSync(path.join(failure,'b.png'),image.bytes);
+  const payload=fs.openSync(path.join(failure,'payload.bin'),'w');
+  fs.ftruncateSync(payload,24*1024*1024);
+  fs.closeSync(payload);
   const owner=injectedEncoder((input,options,callback)=>{encoders.push({input,options,callback});if(encoders.length===2)entered.resolve();});
   let outcome='pending';const completion=owner(failure).then(()=>{outcome='resolved';},error=>{outcome='rejected';return error;});
   await entered.promise;assert.equal(encoders.length,2,'only the two strategies of one image are submitted');encoders[0].callback(Error('encoder failed'));
   await tick();assert.equal(outcome,'pending');assert.equal(encoders.length,2);assert(fs.readFileSync(path.join(failure,'a.png')).equals(image.bytes));
   encoders[1].callback(null,zlib.deflateSync(encoders[1].input,encoders[1].options));const error=await completion;
   assert.equal(outcome,'rejected');assert.equal(error.name,'AggregateError');assert.equal(error.errors[0].message,'encoder failed');assert.equal(encoders.length,2);assert.equal(fs.existsSync(path.join(failure,'png-retention.json.gz')),false);
+  await retain(failure);
+  const recompressed=readJson(path.join(failure,'png-retention.json.gz'));
+  assert.equal(recompressed.frames,2);
+  for(const row of recompressed.files){
+   const bytes=fs.readFileSync(path.join(failure,row.path)),decoded=unpack(bytes);
+   assert(decoded.pixels.equals(image.pixels),'recompression preserves the original pixel stream');
+   assert.deepEqual(decoded.other,unpack(image.bytes).other,'recompression preserves all other chunks');
+   assert.equal(row.retained_sha256,sha(bytes));
+   assert(bytes.length<=image.bytes.length);
+  }
   // The real browser owner must await the moved asynchronous archive before
   // returning success to the existing artifact-packaging step.
   const {parse}=require('../scripts/build/search3-js/node_modules/acorn'),ast=parse(fs.readFileSync(path.join(__dirname,'search3-visual-live-browser.cjs'),'utf8'),{ecmaVersion:'latest'}),calls=[];
