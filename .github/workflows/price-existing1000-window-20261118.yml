@@ -1,4 +1,4 @@
-name: PRICE install the accepted #1745 hook and use the existing publisher
+name: PRICE apply the saved minima from the native 20:15 TOP500 cycle
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '63006e1394ce7fe90e70d8e481fe069f8390aa04'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3b7bdb3b906f567d7e2d304f3fa954eb3b12347d'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,10 +21,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45862326092 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45871351566 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45862562098/jobs --jq '.jobs[0].steps[2].conclusion' | grep -Fxq skipped
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45855128675 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863751839 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45860439903 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq .conclusion | grep -Fxq success
@@ -43,30 +42,6 @@ jobs:
           assert 'общий редактор возвращён PRICE' in body
           assert 'writer пилота завершён' in body and 'Повторных запусков нет' in body
           PY
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Obtain the validated, immutable PRICE sources
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          repository: pyatkoff/max-search-bot
-          ref: e18a5acdfbd303e741217277f20f95cd4ad3391d
-          path: hotel-price-publisher
-          persist-credentials: false
-      - name: Verify the accepted bundle and code-only installer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/pulls/5244 --jq 'select(.merged and .merge_commit_sha == "1aab940db71ec55a1ba03b978ae5830413b6d8ca") | .merge_commit_sha' | grep -Fxq 1aab940db71ec55a1ba03b978ae5830413b6d8ca
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863446634 --jq 'select(.head_sha == "b6fed75bc32d8418e3af5dc7bfd3155e99accae2" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45863446609 --jq 'select(.head_sha == "b6fed75bc32d8418e3af5dc7bfd3155e99accae2" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq 'select(.head_sha == "d38679bb0fbd11b26ad74a20163b400055b63cc8" and .conclusion == "success") | .conclusion' | grep -Fxq success
-          python3 hotel-price-publisher/tools/direct_demand/operations/build-monitor-price-hook.py "$RUNNER_TEMP/monitor-price-hook.php"
-          test "$(sha256sum "$RUNNER_TEMP/monitor-price-hook.php" | cut -d' ' -f1)" = 6dd5e20b1d74e5969beba0c89bb76b9b4492083f0226300213582ade5f230190
-          php -l "$RUNNER_TEMP/monitor-price-hook.php"
-          php -l tools/price-hook-reviewed-pass/install.php
-          php tools/price-hook-reviewed-pass/install.php --self-test
       - name: Prepare unchanged server connection and host pin
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -92,31 +67,6 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Install accepted code under the existing PRICE journal lock
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          check_window() {
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq 'select(.updated_at == "2026-11-26T16:39:07Z" and .body == "PR1745: установлено, выпуск свободен") | .id' | grep -Fxq 7077907800
-            gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq 'select(.updated_at == "2026-11-26T12:01:20Z" and .body == "PR1741: установлено, выпуск свободен") | .id' | grep -Fxq 6818332618
-            gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
-          }
-          check_window
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30)
-          remote="$DEPLOY_USER@$DEPLOY_HOST"
-          stage="$(ssh "${opts[@]}" "$remote" 'umask 077 && mktemp -d /var/www/anytoour/data/channel-post-operations/price-hook-1745-staged.XXXXXXXX')"
-          [[ "$stage" =~ ^/var/www/anytoour/data/channel-post-operations/price-hook-1745-staged[.][A-Za-z0-9]{8}$ ]]
-          scp "${opts[@]}" tools/price-hook-reviewed-pass/install.php "$RUNNER_TEMP/monitor-price-hook.php" "$remote:$stage/"
-          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-old $stage/monitor-price-hook.php" > "$RUNNER_TEMP/price-install-admission.json"
-          cat "$RUNNER_TEMP/price-install-admission.json"
-          scp "${opts[@]}" "$RUNNER_TEMP/price-install-admission.json" "$remote:$stage/"
-          check_window
-          ssh "${opts[@]}" "$remote" "php $stage/install.php install $stage/monitor-price-hook.php $stage/price-install-admission.json"
-          ssh "${opts[@]}" "$remote" "php $stage/install.php inspect-new $stage/monitor-price-hook.php"
       - name: Continue the verified roster with the installed PRICE writer
         env:
           GH_TOKEN: ${{ github.token }}
@@ -265,8 +215,8 @@ jobs:
               print('PRICE_PROMOTED_SEQUENCE_COMPLETE',datetime.datetime.now(datetime.timezone.utc).isoformat(),flush=True)
               sys.exit(0)
           if batch == 1:
-              check(baseline=={'max':'79caa2c5426c782d4676c93a04df0298097fbfeb9afd850a1ce7d4f662bbbc40','telegram':'5eddaeea2739d2925aefebcad7eaae494ef36b2f9867b7b6fa6670391e0dc3db','all':'c02f1e0ca872fee4107019e51d8a54dc9df85c7df52228c27fb265e05108cadc'},'independently_verified_preimages_changed')
-              print('ORIGINAL_READ_ADMISSION',45855128675,140031380161, 'prior_pairs_verified=33','timer=45862326092','rolled_over_hotel=46670',flush=True)
+              check(baseline=={'max':'da43f35109baf0565c8c878418712ffd9ad7d9787e069b28effb58cfb80f0a6f','telegram':'8498a73a552808ffd242a46ac49346bf961b09c475b04e33dee49db61916dc77','all':'84e2229da4569e3f7dde27d9f35e18b2a4ee4d470bc3b4fbeafb32673dcb4ef8'},'independently_verified_preimages_changed')
+              print('ORIGINAL_READ_ADMISSION',45863751839,140061183023, 'prior_pairs_verified=1','timer=45871351566','native_cycle=2026-11-26T17:15:02Z',flush=True)
           else:
               check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
           code,r=native_run('pass-'+str(batch))
