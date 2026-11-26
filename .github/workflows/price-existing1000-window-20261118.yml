@@ -1,4 +1,4 @@
-name: PRICE continue saved minimum queue after confirmed TV64957
+name: PRICE continue confirmed nightly queue after 45727781490
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3200587557cbb6e6a88a0f44515fcf1b3ba549a9'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'db1d0eaef0accea9414f73cf9f03cdb074ff421e'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,8 +21,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45725469708 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/max-search-bot/actions/runs/45722339567 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45727781490 --jq .conclusion | grep -Fxq cancelled
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45731344989 --jq .conclusion | grep -Fxq success
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
           python3 - <<'PY'
@@ -90,7 +90,7 @@ jobs:
               for name,sha in [('monitor-price-hook.php','1b42c413b0d5763d02ac7fdd62218245e9577f969cf6ec34b3b5514bbc67a1c5'),('published-hotels-monitor-v1.php','918ad7401632de3bfce5e349627ed7b8449b10c9a8c5b0aa0014511ecc9e7c06'),('top500-daily-collector-v1.php','2236c151e284221b16bf19b6f42db36de5741b45108bd6a87b5d1726871d8ed9')]:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
-              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='c1a445f48fd514b9a4f883faecd20e5ecf1bc4fb','runtime_changed')
+              check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='53c7a0c0a9162ab31a88325790be52df2c2ecbde','runtime_changed')
           def window_open():
               base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
               def comment(comment_id):
@@ -101,12 +101,18 @@ jobs:
               permit=comment(7029866773)
               with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/issues/1566',timeout=15) as response:
                   coordination=json.load(response)
-              return (coordination['comments']==233 and release['user']['login']=='pyatkoff'
-                      and release['updated_at']=='2026-11-25T23:52:30Z'
-                      and release['body']=='PR1733: установлено, выпуск свободен'
+              with urlopen('https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5',timeout=15) as response:
+                  schedules=json.load(response)['workflow_runs']
+              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/7172257427',timeout=15) as response:
+                  current_content=json.load(response)
+              return (not any(r['status']!='completed' for r in schedules)
+                      and current_content['updated_at']=='2026-11-26T01:23:58Z'
+                      and coordination['comments']==233 and release['user']['login']=='pyatkoff'
+                      and release['updated_at']=='2026-11-26T01:07:46Z'
+                      and release['body']=='PR1735: установлено, выпуск свободен'
                       and content_release['user']['login']=='pyatkoff'
-                      and content_release['updated_at']=='2026-11-25T21:27:18Z'
-                      and content_release['body']=='PR1729: установлено, выпуск свободен'
+                      and content_release['updated_at']=='2026-11-26T00:36:16Z'
+                      and content_release['body']=='PR1734: установлено, выпуск свободен'
                       and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
           def feeds(updates=()):
               info={}
@@ -147,7 +153,7 @@ jobs:
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
           baseline=feeds()
-          check(baseline=={'max':'36827bf3332f3e03113fbead80ee7c1a11234cee31e0fd9b2c7d09ab58db7784','telegram':'83fd08ad857d1ae8001129bcdb6a205602e5466ce79881eb4e8b37b823648687','all':'91473336886ae6eec61cbb1b4c6dc22299533544591a967d7074d521568b3cd8'},'independently_verified_preimages_changed')
+          check(baseline=={'max':'a5b11245ff9c1da2b154a89d586a9e27ed14fc259047054b2e509f58fb870b5d','telegram':'be9eb6576ebca6649ce8225a4af701030a67bc427d671c4a6399deba30257447','all':'0c6399f88289056b7a69729679971722616bc79619b9eed91ba46f03b957028b'},'independently_verified_preimages_changed')
           pin=tuple(getattr(journal.stat(),field) for field in ('st_ino','st_dev','st_size','st_mtime_ns','st_ctime_ns'))
           code,ad=native_run('inspect',True)
           check(code==0 and ad.get('ok') and ad.get('roster_pairs')==ad.get('scanned_pairs')==len(set(ad.get('verified_ids',[])))==1000 and ad.get('updated_pairs')==0,'initial_admission_failed')
@@ -157,7 +163,7 @@ jobs:
           for batch in range(1,26):
               if time.monotonic()-start>3000: break
               local=datetime.datetime.now(ZoneInfo('Europe/Moscow'))
-              if local >= local.replace(hour=3, minute=21, second=0, microsecond=0):
+              if local >= local.replace(hour=4, minute=52, second=0, microsecond=0):
                   print('WINDOW_YIELD_TO_ORDINARY_TOP500_TIMER',batch,local.isoformat(),flush=True)
                   break
               if not window_open():
