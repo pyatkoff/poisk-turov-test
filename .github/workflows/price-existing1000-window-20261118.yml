@@ -1,4 +1,4 @@
-name: PRICE apply the saved minima from the 09:15 TOP500 collection
+name: PRICE apply the saved minima from the 10:45 TOP500 collection
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7fa3f7a216bf0881ac1123037096b5c331224d50'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '3862f44790ba65e0798e54ff8672a7f51abea193'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -21,9 +21,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45770868667 --jq .conclusion | grep -Fxq success
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45759316449 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45780716545 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45771026714 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45756160505 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45769734530 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45777003288 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1737: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
@@ -154,13 +156,44 @@ jobs:
               return proc.returncode,v
           def report(updates=()):
               print('HANDOFF',json.dumps({'hook':digest(hook),'cohort':digest(native/'published-hotels-monitor-v1.php'),'feeds':feeds(updates)}),flush=True)
+          def promoted_read(mode, publication, hotel, url, baseline):
+              proc=subprocess.run(['php',str(app/'tools/apply_promoted_hotel_prices.php'),mode,str(publication)],
+                                  capture_output=True,text=True,timeout=150)
+              output=proc.stdout.strip()
+              print('PROMOTED_MAX',publication,mode,datetime.datetime.now(datetime.timezone.utc).isoformat(),output,flush=True)
+              prefix='PROMOTED_HOTEL_PRICE_RESULT='
+              if proc.returncode!=0 or not output.startswith(prefix): return None
+              receipt=json.loads(output[len(prefix):])
+              check(receipt.get('feed_sha256')==baseline['all'],'promoted_source_changed')
+              rows=receipt.get('rows',[])
+              check(len(rows)==1 and all(rows[0].get(key)==expected for key,expected in
+                    [('hotel',hotel),('platform','max'),('publication',publication),('url',url)]),'promoted_target_mismatch')
+              return rows[0]
           check(window_open(),'price_editor_window_closed')
           pins()
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
           baseline=feeds()
-          check(baseline=={'max':'7ab2b7e50dd3117dd2abd9cb94a725b9efa5fd16a845e92c16da37c0ecf2fba5','telegram':'25d99b58868fdcdc2a50bce14e025589c605c9d9cfda68c32a1bb188b6439e36','all':'d14a0fdc4b86734cc6fd8e34ab8250928ac0489ee6edbef01fe62e0c67ead556'},'independently_verified_preimages_changed')
-          print('ORIGINAL_READ_ADMISSION',45759316449,139705308361, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
+          check(baseline=={'max':'aeb805b1f2935516079271bdd48f23f43ad8953b2dbc411821ed05284da4deff','telegram':'a1981b66356eb7420f15237b7e99b5ec1e93697a49fb67b45d91216d425ae93c','all':'ea1edbdb492bb297469459339e42d23007d51559f9bf7618ae96d753b7848483'},'independently_verified_preimages_changed')
+          print('ORIGINAL_READ_ADMISSION',45771026714,139743425530, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
+          for publication,hotel,slug in [(3604,12107,'AZwjaZt4Kz8'),(3607,12111,'AZ6wa60cTlw'),
+                                       (3611,260,'AZ7UVbXteP8'),(3617,64895,'AZ-OUsaPJjg'),
+                                       (3862,107938,'AZwEq2zVLGY')]:
+              if not window_open():
+                  print('WINDOW_HANDOFF_CHANGED','promoted_max',publication,flush=True)
+                  break
+              pins()
+              url='https://max.ru/anytour/'+slug
+              before=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
+              if before is None or before.get('result')!='eligible' or before.get('public_verified') is not True: continue
+              applied=promoted_read('--apply-max-publication',publication,hotel,url,baseline)
+              check(applied is not None,'promoted_original_receipt_missing')
+              if applied.get('result')=='held_before_write': continue
+              check(applied.get('result')=='updated' and applied.get('public_verified') is True,'promoted_original_requires_readback')
+              after=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
+              check(after is not None and after.get('result')=='already_current' and after.get('public_verified') is True,
+                    'promoted_public_readback_incomplete')
+          check(feeds()==baseline,'feed_changed_during_promoted_edits')
           start=time.monotonic()
           seen=set()
           for batch in range(1,26):
