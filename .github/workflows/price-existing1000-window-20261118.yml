@@ -1,4 +1,4 @@
-name: PRICE close the saved minima and resume the promoted targets after the original release
+name: PRICE resume the promoted targets after the completed CONTENT transfer
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '65383acc8de77ce57d284b110d415eac0835da83'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '283bd3b82c8d2203aeb74fd889a6c3740ab8ce99'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -24,7 +24,9 @@ jobs:
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45900467299 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45890253068 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
-          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45895285539 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45901186850 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45901348579 --jq .conclusion | grep -Fxq success
+          gh api repos/pyatkoff/max-search-bot/actions/runs/45901632421 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45894670398 --jq .conclusion | grep -Fxq failure
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45900908430 --jq .conclusion | grep -Fxq success
@@ -69,7 +71,7 @@ jobs:
             if fp=='SHA256:/5mPWmGBQ6UPnNQDEHLOCy7dCpxdz+FxQ4zVOjqE0F0':matches.append(line)
           assert matches,'HOST_CONTINUITY_PIN_MISMATCH_STOP';pathlib.Path(os.environ['RUNNER_TEMP']+'/channel_known_hosts').write_text('\n'.join(matches)+'\n')
           PY
-      - name: Continue the verified roster with the installed PRICE writer
+      - name: Continue the original promoted targets with the installed PRICE writer
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -85,8 +87,8 @@ jobs:
             gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE || { echo "PRICE_WINDOW_HOLD feed_permit"; return 1; }
             test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA" || { echo "PRICE_WINDOW_HOLD branch_head"; return 1; }
           }
-          complete=0
-          for batch in $(seq 1 25) promoted; do
+          complete=1
+          for batch in promoted; do
             if [[ "$batch" == promoted && "$complete" != 1 ]]; then
               echo "PRICE_SEQUENCE_REACHED_PASS_LIMIT"
               break
@@ -173,7 +175,7 @@ jobs:
           baseline=feeds()
           checkpoint=art/'public-hashes.json'
           if batch == "promoted":
-              check(baseline==json.loads(checkpoint.read_text()),'between_pass_feed_changed')
+              check(baseline=={'max': '968bb53dd9e979f23bad851d2db08c2295ce8415ca4de4f2dae455c7c4f340d5', 'telegram': 'f6f5bdc03991302cf8b16896fc7aefa88f52825c08f7458352469e65bc5d8f63', 'all': '2fc03be6de6431937fb754075e756424996737ea69b96a581a3411357ac455c3'},'previous_verified_stock_result_changed')
               carry=[(3604, 12107, 'https://max.ru/anytour/AZwjaZt4Kz8'), (3605, 132, 'https://max.ru/anytour/AZ5qgiujRlo'), (3606, 469, 'https://max.ru/anytour/AZ6sX9HGLTk'), (23, 415, 'https://max.ru/anytour/AaFUVxlGPTg'), (3661, 12125, 'https://max.ru/anytour/AaDIF63rXLg'), (3665, 325, 'https://max.ru/anytour/AaB25lWLB5Y'), (3667, 4079, 'https://max.ru/anytour/AaD8zg3FDHM'), (3670, 352, 'https://max.ru/anytour/AaCF4YtORgI'), (3671, 132016, 'https://max.ru/anytour/AaDtMfpbMO0'), (3834, 139, 'https://max.ru/anytour/AaCAxCRDffc'), (3835, 2470, 'https://max.ru/anytour/AaC42fW_AY0')]
               targets=json.loads((app/'config/promoted_hotel_price_targets.json').read_text())
               target_set={(row['publication_id'],row['hotel_id'],row['url']) for row in targets if row['platform']=='max'}
