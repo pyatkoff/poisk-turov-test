@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'f3da21d309aefbfb76eb5fadf0bc8cc82d6dccc9'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5369bdeb74d0cbe54050f873a415259becf95e0c'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -175,6 +175,38 @@ jobs:
           }
           PHP
 
+      - name: Read original PRICE journal tail and current editor lock
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'python3 -' <<'PY'
+          import datetime, fcntl, json, os
+          path='/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl'
+          with open(path,'rb') as handle:
+              try:
+                  fcntl.flock(handle,fcntl.LOCK_SH | fcntl.LOCK_NB)
+                  fcntl.flock(handle,fcntl.LOCK_UN)
+                  locked=False
+              except BlockingIOError:
+                  locked=True
+              size=os.fstat(handle.fileno()).st_size
+              handle.seek(max(0,size-2097152))
+              tail=handle.read(min(size,2097152))
+          lines=tail.splitlines()
+          if size>2097152: lines=lines[1:]
+          state=next((json.loads(row) for row in reversed(lines) if row.endswith(b'}') and row.startswith(b'{')), {})
+          pending=state.get('pending') or {}
+          cycle=state.get('nightly_cycle') or {}
+          print('PRICE_EDITOR_OBSERVATION',json.dumps({
+              'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'locked':locked,
+              'journal_bytes':size,
+              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
+              'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
+          }),flush=True)
+          PY
       - name: Cleanup connection material
         if: always()
         run: rm -f "$RUNNER_TEMP/channel_key" "$RUNNER_TEMP/channel_known_hosts"
