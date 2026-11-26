@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '1d402edc89b610d15b55e783c6034d751b4e3d1c'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4d80ae934bc35594d47aafb0c0a49bbf7c549aff'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -23,12 +23,13 @@ jobs:
           set -euo pipefail
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45862326092 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq .body | grep -Fxq 'PR1744: установлено, выпуск свободен'
+          gh api repos/pyatkoff/poisk-turov-test/actions/runs/45862562098/jobs --jq '.jobs[0].steps[2].conclusion' | grep -Fxq skipped
           gh api repos/pyatkoff/poisk-turov-test/actions/runs/45855128675 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45861102873 --jq .status | grep -Fxq completed
           gh api repos/pyatkoff/max-search-bot/actions/runs/45860439903 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/actions/runs/45857590637 --jq .conclusion | grep -Fxq success
           gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq .body | grep -Fxq 'PR1741: установлено, выпуск свободен'
-          gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1735: установлено, выпуск свободен'
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq .body | grep -Fxq 'PR1745: установлено, выпуск свободен'
           gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
           test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           gh api repos/pyatkoff/max-search-bot/issues/comments/6997426347 > "$RUNNER_TEMP/price-handoff.json"
@@ -79,7 +80,7 @@ jobs:
             gh api 'repos/pyatkoff/max-search-bot/actions/runs?status=in_progress&per_page=50' --jq 'all(.workflow_runs[]; ((.head_branch | startswith("ops/anytour-hotel-ranked-plan-")) or (.name | ascii_downcase | test("deploy production|approved hotel|transfer .+ existing anytour|apply .+ hotel"))) | not)' | grep -Fxq true || { echo "PRICE_WINDOW_HOLD content_or_deploy"; return 1; }
             gh api repos/pyatkoff/max-search-bot/issues/comments/6682640708 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T15:57:19Z\tPR1744: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD accepted_release"; return 1; }
             gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T12:01:20Z\tPR1741: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD publisher_release"; return 1; }
-            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T01:07:46Z\tPR1735: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD original_release"; return 1; }
+            gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T16:39:07Z\tPR1745: установлено, выпуск свободен' || { echo "PRICE_WINDOW_HOLD original_release"; return 1; }
             gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE || { echo "PRICE_WINDOW_HOLD feed_permit"; return 1; }
             test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA" || { echo "PRICE_WINDOW_HOLD branch_head"; return 1; }
           }
