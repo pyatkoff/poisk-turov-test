@@ -9,7 +9,7 @@ permissions:
   actions: read
 jobs:
   apply:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '0b9455053a70d519f9437ad7c140b2bb75532f02'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '26c5f390f151a0823d808dc6902741fe3a0a204a'
     concurrency:
       group: anytour-scheduled-tour-collector
       cancel-in-progress: false
@@ -68,10 +68,18 @@ jobs:
           PY
       - name: Complete the verified TV12107 update with the installed PRICE writer
         env:
+          GH_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
+          gh api 'repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5' --jq 'all(.workflow_runs[]; .status == "completed")' | grep -Fxq true
+          gh api 'repos/pyatkoff/max-search-bot/actions/runs?branch=main&status=in_progress&per_page=20' --jq 'all(.workflow_runs[]; (.name | ascii_downcase | contains("deploy")) | not)' | grep -Fxq true
+          gh api 'repos/pyatkoff/max-search-bot/actions/runs?status=in_progress&per_page=30' --jq 'all(.workflow_runs[]; ((.head_branch | startswith("ops/anytour-hotel-ranked-plan-")) or (.name | ascii_downcase | contains("approved hotel"))) | not)' | grep -Fxq true
+          gh api repos/pyatkoff/max-search-bot/issues/comments/6818332618 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T04:56:38Z\tPR1737: установлено, выпуск свободен'
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7077907800 --jq '[.user.login,.updated_at,.body] | @tsv' | grep -Fxq $'pyatkoff\t2026-11-26T01:07:46Z\tPR1735: установлено, выпуск свободен'
+          gh api repos/pyatkoff/max-search-bot/issues/comments/7029866773 --jq .body | jq -er '.state' | grep -Fxq FEED55_PERMIT_NONE
+          test "$(gh api repos/pyatkoff/poisk-turov-test/git/ref/heads/ops/price-hook-reviewed-pass-20261117 --jq .object.sha)" = "$GITHUB_SHA"
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "python3 - '$GITHUB_RUN_ID'" <<'PY'
           import base64, datetime, gzip, hashlib, json, os, pathlib, re, subprocess, sys, time
           import xml.etree.ElementTree as ET
@@ -97,31 +105,6 @@ jobs:
                   p=native/name
                   check(p.resolve()==p and digest(p)==sha,'native_component_changed_'+name)
               check(subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD']).decode().strip()=='69e41c8011b4c67692f631cf435dd20d90676c72','runtime_changed')
-          def window_open():
-              base='https://api.github.com/repos/pyatkoff/max-search-bot/issues/comments/'
-              def comment(comment_id):
-                  with urlopen(base+str(comment_id),timeout=15) as response:
-                      return json.load(response)
-              release=comment(7077907800)
-              content_release=comment(6818332618)
-              permit=comment(7029866773)
-              with urlopen('https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/workflows/346454799/runs?event=schedule&per_page=5',timeout=15) as response:
-                  schedules=json.load(response)['workflow_runs']
-              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/actions/runs?branch=main&status=in_progress&per_page=20',timeout=15) as response:
-                  production=json.load(response)['workflow_runs']
-              with urlopen('https://api.github.com/repos/pyatkoff/max-search-bot/actions/runs?status=in_progress&per_page=30',timeout=15) as response:
-                  content_runs=json.load(response)['workflow_runs']
-              return (not any(r['status']!='completed' for r in schedules)
-                      and not any('deploy' in r['name'].lower() for r in production)
-                      and not any(r['head_branch'].startswith('ops/anytour-hotel-ranked-plan-') or 'approved hotel' in r['name'].lower()
-                                  for r in content_runs)
-                      and release['user']['login']=='pyatkoff'
-                      and release['updated_at']=='2026-11-26T01:07:46Z'
-                      and release['body']=='PR1735: установлено, выпуск свободен'
-                      and content_release['user']['login']=='pyatkoff'
-                      and content_release['updated_at']=='2026-11-26T04:56:38Z'
-                      and content_release['body']=='PR1737: установлено, выпуск свободен'
-                      and json.loads(permit['body'])['state']=='FEED55_PERMIT_NONE')
           def feeds(updates=()):
               info={}
               for key,size in [('telegram',1055),('max',1055),('all',2110)]:
@@ -160,7 +143,6 @@ jobs:
               check(len(rows)==1 and all(rows[0].get(key)==expected for key,expected in
                     [('hotel',hotel),('platform','max'),('publication',publication),('url',url)]),'promoted_target_mismatch')
               return rows[0]
-          check(window_open(),'price_editor_window_closed')
           pins()
           print('TIMER',subprocess.check_output(['php',str(native/'hotel-price-timer-v1.php'),'--status']).decode().strip(),flush=True)
           report()
@@ -168,9 +150,6 @@ jobs:
           check(baseline=={'max':'69fda1dd31fa5eacbf68776244322395c826e22a150fd6b7def1a128ebefb574','telegram':'fca099123d96f9b9b4411efb228b8e88289efe042d52624964cfa37faa8203bf','all':'6500b735740896c8741cad69ec7e34f41d8dd1d6169c554c8f491f57eb712446'},'independently_verified_preimages_changed')
           print('ORIGINAL_READ_ADMISSION',45780967090,139776024259, 'last_scanned=1000','resuming_after_verified_native_collection',flush=True)
           for publication,hotel,slug in [(3604,12107,'AZwjaZt4Kz8')]:
-              if not window_open():
-                  print('WINDOW_HANDOFF_CHANGED','promoted_max',publication,flush=True)
-                  break
               pins()
               url='https://max.ru/anytour/'+slug
               before=promoted_read('--inspect-max-publication',publication,hotel,url,baseline)
