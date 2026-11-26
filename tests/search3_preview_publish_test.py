@@ -187,6 +187,15 @@ class Artifacts(unittest.TestCase):
             publish.prepare_zip(z,q,TREE,remote.digest(z),Path(d)/'bad')
 
 
+class LiveChecks(unittest.TestCase):
+    def test_search3_review_robots_are_exact_and_legacy_routes_stay_strict(self):
+        self.assertEqual(publish.preview_robots_marker('poisk-turov/'), publish.REVIEW_ROBOTS)
+        for route in ('', 'poisk-turov-old/', 'country/', 'contacts/'):
+            with self.subTest(route=route):
+                self.assertEqual(publish.preview_robots_marker(route), publish.LEGACY_ROBOTS)
+        self.assertNotEqual(publish.REVIEW_ROBOTS, publish.LEGACY_ROBOTS)
+
+
 class Transaction(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
