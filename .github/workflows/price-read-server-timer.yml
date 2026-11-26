@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7e5456a31761740ca699692710e70b2b3493eded'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '2512cd1e63e1882aaebfdba20719b40bae9eccc2'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -207,7 +207,7 @@ jobs:
                   for line in p.read_text().splitlines():
                       row=json.loads(line)
                       posts=row.get('posts',{})
-                      original.append({'complete':row.get('complete'),'post_states':{k:{'state':v.get('state'),'post_url':(v.get('receipt') or {}).get('post_url')} for k,v in posts.items()},'preflight_error':row.get('preflight_error'),'terminal':bool(row.get('terminal'))})
+                      original.append({'complete':row.get('complete'),'post_states':{k:{'state':v.get('state'),'post_url':(v.get('receipt') or {}).get('post_url')} for k,v in (posts.items() if isinstance(posts,dict) else enumerate(posts))},'preflight_error':row.get('preflight_error'),'terminal':bool(row.get('terminal'))})
           print('ORIGINAL_PRICE_PROGRESS',json.dumps({'hotel':pending.get('tourvisor_hotel_id'),'phase':pending.get('phase'),'child_failure':pending.get('child_failure'),'operation':op if re.fullmatch(r'commercial-monitor-price-h[1-9][0-9]*-[a-f0-9]{64}',op) else None,'post_receipts':original[-8:]}),flush=True)
           cycle=state.get('nightly_cycle') or {}
           print('PRICE_EDITOR_OBSERVATION',json.dumps({
