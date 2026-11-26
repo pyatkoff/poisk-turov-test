@@ -1,4 +1,4 @@
-name: Follow the 23:45 native TOP500 collector by its original receipt
+name: Read the original collection observed during the completed PRICE pass
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7c8e8754ae0e33d32681cf25302de77462bf0b98'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c7136414a57c07736a6049e1098cfb58af6dffd9'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
