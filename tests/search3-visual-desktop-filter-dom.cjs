@@ -16,8 +16,8 @@ function measurePanel() {
     configurable:true,
     get:()=>adapter,
     set(owner) {
-      adapter = Object.create(owner,{
-        search:{value(criteria,emit,...rest) {
+      const descriptors=Object.getOwnPropertyDescriptors(owner);
+      descriptors.search.value=function(criteria,emit,...rest) {
           return owner.search(criteria,event=>{
             if (mark.received!==undefined || event.type!=='results' || !event.hotels?.length) return emit(event);
             const seed = event.hotels.find(hotel=>hotel.offers?.length), example = seed.offers[0];
@@ -37,8 +37,8 @@ function measurePanel() {
             mark.received = performance.now();
             return emit({...event,hotels});
           },...rest);
-        }},
-      });
+      };
+      adapter=Object.create(Object.getPrototypeOf(owner),descriptors);
     },
   });
   Object.defineProperty(window,'AnyTourFilterPanelV1',{
@@ -84,7 +84,12 @@ async function check({browser,origin,base},panelSource,variant,checkNarrow) {
     });
     const response=await page.goto(origin+base+'visual-search/?scenario=journey');
     assert.equal(response.status(),200);
-    await page.locator('.search-submit:not(:disabled)').click();
+    const submit=page.locator('.search-submit:not(:disabled)');
+    try { await submit.click({timeout:8000}); }
+    catch (error) {
+      error.message+=`\n${variant} fixture errors: ${JSON.stringify({errors,forbidden})}`;
+      throw error;
+    }
     await page.waitForFunction(()=>Number.isFinite(window.desktopFilterTiming?.frameMs));
     await page.evaluate(()=>document.fonts.ready.then(()=>true));
     const result=await page.evaluate(()=>{
@@ -150,3 +155,4 @@ module.exports = async function compareDesktopFilters(options) {
   fs.writeFileSync(path.join(options.evidence,'desktop-filter-timing.json'),JSON.stringify(payload,null,2)+'\n');
   console.log('PASS paired desktop filter timing',JSON.stringify(payload));
 };
+
