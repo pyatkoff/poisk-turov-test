@@ -2,6 +2,30 @@
 // Resolves the public URL before the app applies any part of its conditions.
 (function(root){
  const cfg=root.V2_CONFIG||{},selected=!!root.AnyTourPublicConfigV1;
+ const handoffAssets=root.document?.currentScript?.dataset?.search3HandoffPrefetch;
+ if(handoffAssets&&root.AnyTourPublicConfigV1?.valid===true&&cfg.search3FormOnly===true
+     &&root.navigator?.connection?.saveData!==true){
+  const form=root.document.getElementById('search-form'),button=form?.querySelector('.search-submit');
+  if(button){
+   let scheduled=false;
+   const ready=()=>!button.disabled&&form.getAttribute('aria-busy')!=='true';
+   const observer=new root.MutationObserver(()=>{
+    if(scheduled||!ready())return;
+    scheduled=true;
+    root.requestAnimationFrame(()=>root.requestAnimationFrame(()=>{
+     scheduled=false;
+     if(!ready()||!form.isConnected)return;
+     observer.disconnect();
+     for(const href of handoffAssets.split(' ')){
+      const hint=root.document.createElement('link');
+      hint.rel='prefetch';hint.as='script';hint.fetchPriority='low';hint.href=href;
+      root.document.head.append(hint);
+     }
+    }));
+   });
+   observer.observe(form,{subtree:true,attributes:true,attributeFilter:['disabled','aria-busy']});
+  }
+ }
  function reject(reason,query){
   const error=new Error('Не удалось перенести все условия этой ссылки. Исходная ссылка сохранена.');
   error.publicSearchURL=true;error.reason=String(reason||'unavailable');
