@@ -10,7 +10,9 @@ const fields=['yclid','utm_source','utm_medium','utm_campaign','utm_content','ut
 const plain=value=>JSON.parse(JSON.stringify(value));
 function owner(first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first+' owner found');return source.slice(a,b);}
 const homeMode=source.match(/^const homeFormOnly=[^\n]+/m);assert(homeMode,'actual guarded HOME mode owner found');
-const code=[homeMode[0],owner('function searchURLParameters(','const generatedRootBindings='),
+const homeAgeReview=source.match(/^const homeAgeReviewKey=[^\n]+/m);assert(homeAgeReview,'actual Home age reminder key');
+const draftPlace=source.match(/^function currentDraftDestination\([^\n]+/m);assert(draftPlace,'actual Home destination owner');
+const code=[homeMode[0],homeAgeReview[0],draftPlace[0],owner('function searchURLParameters(','const generatedRootBindings='),
  owner('function editSearch(){','const hotelPlaces='),
  owner('function commitSearchDraft(){','const searchLifecycle='),
  owner('function restoreHistoryView(route){','function updateModalBack(){')].join('\n');
@@ -23,7 +25,7 @@ function setup(href,{home=false}={}){
  const history={state:{unchanged:'retained'},replaceState(state,title,href){this.state=state;url=new URL(href,url);writes.push(['replace',url.href]);},pushState(state,title,href){this.state=state;url=new URL(href,url);writes.push(['push',url.href]);}};
  const state={search:{origin:'Москва',country:'turkey',from:'2026-12-01',to:'2026-12-07',minNights:7,maxNights:7,adults:2,ages:[0,8]},
   filters:{stars:[4,5],meals:['AI'],resorts:[],operators:[],flight:[],amenities:[],beach:false,rating:false,family:false,spa:false,hotelId:0,hotelIds:[],q:'',min:0,max:null},selectedDate:null,hasSearched:true,onlyFavorites:false,sort:'recommended'};
- const context={URL,URLSearchParams,structuredClone,location,history,state,searchEditSession:null,mobileFiltersNeedRefresh:false,urlStateHydrated:true,data:{scenario:'live'},
+ const context={URL,URLSearchParams,structuredClone,location,history,state,searchEditSession:null,mobileFiltersNeedRefresh:false,urlStateHydrated:true,catalogReady:true,data:{scenario:'live'},
   destinationIds:f=>f.hotelIds,amenityLabel:()=>'',searchResponse:{pending:false},innerWidth:430,scrollY:37,actionTrigger:null,draft:structuredClone(state.search),draftDestination:null,
   $:node,focusReference:()=>({id:'fixture-focus'}),scrollBehavior:()=> 'instant',requestAnimationFrame:fn=>fn(),
   agesNeedReview:false,filterBudgetEdit:null,urlPartyIssues:[],currentFilterBudgetEdit:()=>false,draftSelectedDate:()=>state.selectedDate,
