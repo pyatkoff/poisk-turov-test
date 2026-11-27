@@ -1,4 +1,4 @@
-name: Read native 23:45 TOP500 timer and retained queue
+name: Read native 00:00 TOP500 receipt and retained attempts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '345aca9bab7ea9c6f29fd51f3ce8dc803fd18fa8'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'a9b783a90ff0776899e4adb1cb0b9becdb967d94'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
