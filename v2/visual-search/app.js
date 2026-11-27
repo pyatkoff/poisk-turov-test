@@ -187,12 +187,16 @@ const appliedPartyLabel=s=>s.ages.length?`${partyLabel(s)} (${childAgesText(s.ag
 function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
 function searchURLParameters(searched=state.hasSearched){
- const p=new URLSearchParams(),f=state.filters,current=new URLSearchParams(location.search);
- // Confirmed Home dates and family survive refresh without starting a search.
+ const p=new URLSearchParams(),current=new URLSearchParams(location.search);
+ const place=homeFormOnly&&!state.hasSearched?currentDraftDestination():null;
+ const countryChanged=place&&place.country!==state.search.country;
+ const f=place&&(draftDestination||countryChanged)
+  ?{...state.filters,resorts:place.resorts,hotelId:place.hotelId,hotelIds:place.hotelIds,q:''}:state.filters;
+ // Confirmed Home conditions survive refresh without starting a search.
  const search=state.hasSearched?state.search:{...state.search,adults:draft.adults,ages:draft.ages};
- if(homeFormOnly&&!state.hasSearched){
-  const {from,to,minNights,maxNights}=draft;
-  Object.assign(search,{from,to,minNights,maxNights});
+ if(place){
+  const {origin,from,to,minNights,maxNights}=draft;
+  Object.assign(search,{origin,country:place.country,from,to,minNights,maxNights});
  }
  // The canonical lead payload reads these existing attribution fields from the current URL.
  for(const key of ['yclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(current.has(key))p.set(key,current.get(key));
@@ -200,7 +204,7 @@ function searchURLParameters(searched=state.hasSearched){
  for(const [k,v] of Object.entries(search))p.set(k,Array.isArray(v)?v.join(','):v);
  if(state.selectedDate)p.set('date',state.selectedDate);
  if(searched)p.set('searched','1');
- if(state.onlyFavorites)p.set('favorites','1');
+ if(state.onlyFavorites&&!countryChanged)p.set('favorites','1');
  for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));
  const labels=f.amenities.map(key=>[key,amenityLabel(key)]).filter(([,label])=>label);
  if(labels.length)p.set('amenityLabels',JSON.stringify(Object.fromEntries(labels)));
@@ -214,7 +218,7 @@ function searchURLParameters(searched=state.hasSearched){
  return p;
 }
 function updateURL(){
- if(searchEditSession||!urlStateHydrated)return;
+ if(searchEditSession||!urlStateHydrated||homeFormOnly&&!catalogReady)return;
  const query='?'+searchURLParameters(state.hasSearched&&!homeFormOnly).toString();
  const current=history.state,ageReview=homeFormOnly&&agesNeedReview&&draft.ages.length>0;
  const reviewChanged=homeFormOnly&&(current?.[homeAgeReviewKey]===true)!==ageReview;
@@ -4022,7 +4026,7 @@ async function loadCountries(origin){
   const c=await data.countries(origin);if(!c||run!==catalogLoadGeneration||draft.origin!==origin)return;
   applyCatalog(c);updateSearchUI();await loadResorts(draft.country);
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
-  catalogReady=true;catalogDeparture='';updateSearchUI();
+  catalogReady=true;catalogDeparture='';updateSearchUI();if(homeFormOnly)updateURL();
   if(modalType==='destination'){destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}
   if(modalType==='dates'){dateContext=createDateContext(dateContext.source);renderCalendarScope();loadCalendarPrices();}
  }catch(error){

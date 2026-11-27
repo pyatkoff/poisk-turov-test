@@ -111,8 +111,9 @@ const homeModeOwner=source=>{const declaration=source.match(/^const homeFormOnly
  context.searchEditSession=null;context.urlStateHydrated=false;state.hasSearched=false;vm.runInContext('updateURL()',context);
  assert.equal(context.location.search,appliedURL,'unhydrated state cannot overwrite the incoming link');
  const homeSearch={...structuredClone(trip),adults:3,ages:[0,12]};
- const home={...context,state:{search:homeSearch,filters:defaults(),hasSearched:false,selectedDate:null,sort:'recommended'},
-  draft:{...structuredClone(homeSearch),from:'2026-10-03',to:'2026-10-08',minNights:10,maxNights:10},agesNeedReview:true,
+ const home={...context,state:{search:homeSearch,filters:{...defaults(),hotelId:7,hotelIds:[7],q:'old hotel'},hasSearched:false,onlyFavorites:true,selectedDate:null,sort:'recommended'},
+  draft:{...structuredClone(homeSearch),origin:'Санкт-Петербург',country:'5',from:'2026-10-03',to:'2026-10-08',minNights:10,maxNights:10},agesNeedReview:true,
+  draftDestination:null,catalogReady:true,currentDraftDestination:()=>({country:'5',resorts:['Хургада'],hotelIds:[],hotelId:0}),
   window:{AnyTourPublicConfigV1:{valid:true},V2_CONFIG:{search3FormOnly:true}},searchEditSession:null,urlStateHydrated:true,
   location:{search:'?utm_source=home-reload',hash:''},history:{state:{retained:'UI route'},replaceState(next,_,query){this.state=next;home.location.search=query;}}
  };
@@ -120,9 +121,9 @@ const homeModeOwner=source=>{const declaration=source.match(/^const homeFormOnly
  vm.createContext(home);
  vm.runInContext(homeModeOwner(source)+ageReviewKey+'\n'+extract('searchURLParameters')+'\n'+extract('updateURL')+'\nupdateURL()',home);
  const homeQuery=new URLSearchParams(home.location.search);
- for(const [key,value]of Object.entries({from:'2026-10-03',to:'2026-10-08',minNights:'10',maxNights:'10',ages:'0,12',utm_source:'home-reload'}))
+ for(const [key,value]of Object.entries({origin:'Санкт-Петербург',country:'5',resorts:'Хургада',from:'2026-10-03',to:'2026-10-08',minNights:'10',maxNights:'10',ages:'0,12',utm_source:'home-reload'}))
   assert.equal(homeQuery.get(key),value,'confirmed HOME '+key+' survives through its URL');
- assert.equal(homeQuery.has('searched'),false);
+ for(const key of ['searched','favorites','hotel','hotels','q'])assert.equal(homeQuery.has(key),false,'HOME handoff omits the old '+key);
  assert.equal(homeQuery.has('anytour.search3.home-age-review.v1'),false,'the age reminder is local history state');
  assert.equal(home.history.state.retained,'UI route');
  assert.equal(vm.runInContext('history.state[homeAgeReviewKey]',home),true);
@@ -130,6 +131,10 @@ const homeModeOwner=source=>{const declaration=source.match(/^const homeFormOnly
  home.agesNeedReview=false;vm.runInContext('updateURL()',home);
  assert.equal(vm.runInContext('history.state[homeAgeReviewKey]',home),false,'confirmed ages clear the reminder even when the URL is identical');
  assert.equal(home.location.search,'?'+homeQuery);
+ home.catalogReady=false;home.draft.origin='Казань';vm.runInContext('updateURL()',home);
+ assert.equal(home.location.search,'?'+homeQuery,'pending catalogue keeps the last confirmed link');
+ home.catalogReady=true;vm.runInContext('updateURL()',home);
+ assert.equal(new URLSearchParams(home.location.search).get('origin'),'Казань');
  console.log('PASS initial family URL: confirmed zero/order round-trip, no autostart, applied identity and editor/hydration guards retained');
  console.log('PASS shared search URL: flight and hotel restrictions round-trip, unknown values rejected');
 }
