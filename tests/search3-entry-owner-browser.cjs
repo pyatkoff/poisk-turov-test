@@ -869,6 +869,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
           .map(viewport=>runCanonicalHome(browser,viewport,nextHome)));
         const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
         if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
+        await require('./search3-visual-next-home-timing.cjs')(browser,nextHome,base,output);
       } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
       return;
