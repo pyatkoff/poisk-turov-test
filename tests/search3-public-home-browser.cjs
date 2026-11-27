@@ -362,14 +362,33 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(privateRequests(),beforeCold,'an incomplete age starts no supplier preparation');assert.deepEqual(counts(transport,tv),{tv:2,anex:2});
     row.incompleteAge={url:page.url(),applyDisabled:true};await capture('incomplete-age');
     if([430,1280].includes(viewport.width)){
+     const pickKazan=async()=>{
+      await page.locator('#search-form [data-action="departure"]').click();
+      await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
+      await page.locator('[data-action="apply-departure"]').click();await idleModal(page);
+     };
+     await page.goto(origin+'/?'+initial);await readyHome(page);
+     const regionRequests=()=>transport.calls.filter(call=>call.action==='regions').length;
+     const beforeRegions=regionRequests();
+     let releaseRegions;
+     transport.state.regionsGate=new Promise(resolve=>{releaseRegions=resolve;});
+     try{
+      await pickKazan();await readyHome(page);
+      assert.equal(new URL(page.url()).searchParams.get('origin'),'Казань');
+      assert.equal(new URL(page.url()).searchParams.get('resorts'),null);
+      assert.equal(regionRequests(),beforeRegions,'whole-country Find never waits for the resort list');
+      await page.locator('#search-form [data-action="destination"]').click();
+      releaseRegions();
+      await page.locator('[data-action="destination-resort"][data-value="Белек"]').waitFor();
+      assert.equal(regionRequests(),beforeRegions+1,'opening destination loads its resorts once');
+      assert.equal(privateRequests(),beforeCold,'whole-country departure change starts no supplier preparation');
+     }finally{releaseRegions();transport.state.regionsGate=null;}
      await page.goto(origin+'/?'+initial);await readyHome(page);
      await page.locator('#search-form [data-action="destination"]').click();
      await page.locator('[data-action="destination-resort"][data-value="Белек"]').click();
      await page.locator('[data-action="apply-destination"]').click();await idleModal(page);
      assert.equal(new URL(page.url()).searchParams.get('resorts'),'Белек');
-     await page.locator('#search-form [data-action="departure"]').click();
-     await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
-     await page.locator('[data-action="apply-departure"]').click();await idleModal(page);
+     await pickKazan();
      await readyHome(page);
      const selected=new URL(page.url()).searchParams;
      assert.equal(selected.get('origin'),'Казань');assert.equal(selected.get('resorts'),'Белек');
