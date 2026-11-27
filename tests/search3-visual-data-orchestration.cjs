@@ -69,7 +69,7 @@ const previousMealPlan=`function(t,provider=String(t?.provider||'tourvisor').toL
  const matches=catalog.mealPlans.filter(plan=>plan.nativeIds.includes(native));
  return matches.length===1?Object.freeze({id:matches[0].id,code:matches[0].code,nameRu:matches[0].nameRu}):null;
 }`;
-function harness(source,{providers=false,destinationFetch}={}){
+function harness(source,{providers=false,destinationFetch,homeForm=false}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
   // Freeze entropy with the existing clock/transport so the original trace stays exact.
@@ -78,6 +78,10 @@ function harness(source,{providers=false,destinationFetch}={}){
   V2Runtime:{setSearchId(value){log.push(['searchId',value]);},async api(action,body){calls.push({action,body:copy(body)});log.push(['api',action,copy(body)]);if(respond)return respond(action,body);if(action==='search_start')return{searchId:17};if(action==='search_status')return status;if(action==='search_results')return inventory;if(action==='search_continue')return{};throw Error('Unexpected API '+action);}},
   Search3CanonicalProfilesV1:{create(publish){return {reset(){log.push(['reset']);},read(value){log.push(['read',value.length]);return value;},clearOffers(value){log.push(['clearOffers',value]);},refresh(){log.push(['refresh']);publish();}}; }},
   dispatchEvent(event){log.push(['dispatch',event.type,copy(event.detail)]);}};
+ if(homeForm){
+  window.AnyTourPublicConfigV1={valid:true,entry:'home'};
+  window.V2_CONFIG.search3FormOnly=true;
+ }
  const context=vm.createContext({window,URL,URLSearchParams,AbortController,Map,Set,WeakMap,Promise,structuredClone,
   Date:class extends Date{static now(){return clock;}},
   CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},
@@ -144,6 +148,63 @@ async function verifyCurrentDepartureCatalogue(source){
  assert.deepEqual(h.calls,[]);
  assert.deepEqual(h.http,[]);
  console.log('PASS catalogue reuse: exact city joins, stale result ignored, settled and failed requests read again');
+}
+
+async function verifyRetainedRegionCatalogue(source){
+ const requests=[];
+ let countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
+ let regionId=41,regionFailure=false;
+ const destinationFetch=async raw=>{
+  const url=new URL(raw,'https://anytoour.ru');
+  assert.match(url.pathname,/\/data\/search3-destination-read-v1\.php$/);
+  const query=url.searchParams,action=query.get('action');
+  assert(['countries','regions'].includes(action));
+  const id=query.get(action==='countries'?'departureId':'countryId');
+  requests.push([action,id]);
+  if(action==='regions'&&regionFailure)return {ok:false,json:async()=>({ok:false})};
+  const items=action==='countries'
+   ?countries
+   :[{id:regionId,kind:'region',name:'Учебный курорт',parentId:4,tourvisorIds:[String(regionId)],subregions:[]}];
+  return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',items})};
+ };
+ const h=harness(source,{destinationFetch,homeForm:true});
+ h.api.catalog.departures.push({id:2,name:'Казань'});
+ await h.api.countries('Москва');
+ const regions=await h.api.regions('4');
+ await h.api.countries('Казань');
+ assert.equal(await h.api.regions('4'),regions,'a completed region catalogue is kept for the same canonical country');
+ assert.deepEqual(requests,[['countries','1'],['regions','4'],['countries','2']]);
+
+ countries=[{id:4,name:'Турция',tourvisorIds:['400']}];
+ await h.api.countries('Москва');
+ regionFailure=true;
+ await assert.rejects(h.api.regions('4'),/временно недоступен/);
+ assert.equal(h.api.catalog.regions['4'],undefined,'a failed refresh never exposes the former mapping');
+ regionFailure=false;regionId=42;
+ assert.equal((await h.api.regions('4'))[0].id,'42','retry reads a fresh region list for the remapped country');
+
+ countries=[{id:5,name:'Египет',tourvisorIds:['5']}];
+ await h.api.countries('Казань');
+ await assert.rejects(h.api.regions('4'),/Выберите страну/);
+ assert.equal(h.api.catalog.regions['4'],undefined,'an unavailable country loses its cached list');
+ countries=[{id:4,name:'Турция',tourvisorIds:['400']}];
+ await h.api.countries('Москва');
+ regionId=43;
+ assert.equal((await h.api.regions('4'))[0].id,'43','a returning country reads its list afresh');
+ assert.equal(requests.filter(([action])=>action==='regions').length,4);
+ assert.deepEqual(h.calls,[]);
+ assert.deepEqual(h.http,[]);
+ requests.length=0;
+ const results=harness(source,{destinationFetch});
+ results.api.catalog.departures.push({id:2,name:'Казань'});
+ await results.api.countries('Москва');
+ const previousList=await results.api.regions('4');
+ await results.api.countries('Казань');
+ assert.notEqual(await results.api.regions('4'),previousList,'results editing still refreshes the region list');
+ assert.deepEqual(requests,[['countries','1'],['regions','4'],['countries','2'],['regions','4']]);
+ assert.deepEqual(results.calls,[]);
+ assert.deepEqual(results.http,[]);
+ console.log('PASS settled region catalogue: same country, remapping, error retry, and unavailable country');
 }
 
 function dataWorkOracles(source){
@@ -908,6 +969,7 @@ async function boundedFlightRepricing(source){
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
  const source=fs.readFileSync(sourcePath,'utf8');
  await verifyCurrentDepartureCatalogue(source);
+ await verifyRetainedRegionCatalogue(source);
  const work=dataWorkOracles(source),records=await characterize(source);
  verifiedFlightPairBinding(source);
  await safeAndromedaFailureDiagnostics(source);
