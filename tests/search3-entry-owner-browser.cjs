@@ -798,14 +798,20 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   };
   try {
-    const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
-    assert.equal((await page.goto(origin + home + '?' + new URLSearchParams({ ...initial, searched: '1' }), { waitUntil: 'domcontentloaded' })).status(), 200);
-    await requested;
-    assert.equal(await page.locator('#search-form .search-submit').isDisabled(), true, 'catalog pending blocks Find');
-    await submitTwice();
-    assert.deepEqual(documents, [home], 'early double submit cannot navigate');
-    assert.deepEqual(await search(), []);
-    releaseFixture();
+    const url = origin + home + '?' + new URLSearchParams({...initial,searched:'1'});
+    if (nextHome) {
+      releaseFixture();
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+    } else {
+      const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+      await requested;
+      assert.equal(await page.locator('#search-form .search-submit').isDisabled(),true,'catalog pending blocks Find');
+      await submitTwice();
+      assert.deepEqual(documents,[home],'early double submit cannot navigate');
+      assert.deepEqual(await search(),[]);
+      releaseFixture();
+    }
     await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
     await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
@@ -851,7 +857,10 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
       for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
       const nextHome = prepareNextHome(base);
       try {
-        for (const viewport of [{width:430,height:932},{width:1280,height:720}]) await runCanonicalHome(browser, viewport, nextHome);
+        const results = await Promise.allSettled([{width:430,height:932},{width:1280,height:720}]
+          .map(viewport=>runCanonicalHome(browser,viewport,nextHome)));
+        const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
+        if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
       } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
       return;
