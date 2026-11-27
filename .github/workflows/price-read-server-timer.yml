@@ -1,4 +1,4 @@
-name: Preview the exact MAX confirmation for pending TV61623 without writes
+name: Confirm the original TV61623 MAX edit by the exact provider GET
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5c2f31014168424a2088eb660e533e28884b6e5d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'e84494ad32ca76a64e4df15f0de17311538fc406'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -87,7 +87,7 @@ jobs:
               assert approved.resolve()==approved and approved.stat().st_size<=1000000
               proof=json.loads(approved.read_bytes())['receipt']
               refs[channel]=int(proof['publication_id'])
-          bundle={'refs':refs,'text':plans[0]['text'],'urls':{'max':'https://max.ru/channel_anytour/AaHqSmdWAtI','telegram':'https://t.me/any_toour/871'}}
+          bundle={'refs':refs,'text':plans[0]['text'],'plan':plans[0],'urls':{'max':'https://max.ru/channel_anytour/AaHqSmdWAtI','telegram':'https://t.me/any_toour/871'}}
           php=r'''<?php
           $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root); ob_start(); require $root.'/config.php'; require_once $root.'/services/ChannelPostRuntime.php'; require_once $root.'/services/ChannelPostEntryService.php'; require_once $root.'/services/ChannelPostReconciliationService.php'; ob_end_clean();
           $bundle=json_decode(base64_decode((string)getenv('PRICE_READ_ONLY_BUNDLE'),true),true,256,JSON_THROW_ON_ERROR);
@@ -99,12 +99,32 @@ jobs:
               if (!$p || $p['platform']!==$platform || ($p['snapshot']['post_url']??null)!==$bundle['urls'][$platform]) throw new RuntimeException('existing_post_identity_changed');
               echo 'PRICE_REGISTRY_READ ',json_encode(['platform'=>$platform,'publication_id'=>$id,'version_id'=>(int)$p['version_id'],'state'=>$p['state'],'reason'=>$p['error_reason'],'write_attempts'=>$p['write_attempts'],'claimed'=>!empty($p['claim_token']),'intended_text'=>$platform==='max'&&($p['snapshot']['text']??null)===$bundle['text']],JSON_THROW_ON_ERROR),PHP_EOL;
               if ($platform!=='max') continue;
-              if (($p['state']??null)==='sent') {$preview=['ok'=>true,'state'=>'already_sent','reason'=>'registry_already_sent','provider_writes'=>0];}
-              else {
-                $fingerprint=ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']);
-                $preview=(new ChannelPostReconciliationService($db))->confirmReadFailure(ChannelPostRuntime::identity('max'),(string)$p['channel_id'],$id,(int)$p['version_id'],(int)$p['channel']['config_version'],$fingerprint,false);
+              $plan=$bundle['plan'];
+              $mid=$plan['message_id']??'';
+              if (!preg_match('/\\A[A-Za-z0-9_.-]{1,191}\\z/D',$mid) || $p['external_message_id']!==$mid
+                  || (int)$p['version_id']!==(int)$plan['old_version_id'] || (int)$p['publication_id']!==1905) throw new RuntimeException('original_max_binding_changed');
+              $resp=ChannelPostApiTransport::buttonRequest('max','GET','/messages/'.$mid,[],null);
+              $body=$resp['data']??null;
+              $observed=is_array($body)?ChannelPostIncomingAdapter::maxSnapshot($body):null;
+              $photos=$observed['attachments']??[];
+              $actualPhoto=count($photos)===1&&($photos[0]['type']??null)==='image'?(string)($photos[0]['provider']??'').':'.(string)($photos[0]['photo_id']??$photos[0]['file_unique_id']??''):'';
+              $link=$plan['price_link'];
+              $links=0; $conflicts=0;
+              foreach (($body['body']['markup']??[]) as $entity) {
+                if (($entity['type']??null)!=='link') continue;
+                $offset=$entity['from']??null; $length=$entity['length']??null;
+                if (!is_int($offset)||!is_int($length)||$offset<0||$length<1) {$conflicts++;continue;}
+                if ($offset>=$link['offset']+$link['length']||$offset+$length<=$link['offset']) continue;
+                if ($offset===$link['offset']&&$length===$link['length']&&($entity['url']??null)===$link['url']) $links++;
+                else $conflicts++;
               }
-              echo 'PRICE_MAX_CONFIRM_PREVIEW ',json_encode(array_intersect_key($preview,array_flip(['ok','state','reason','provider_writes','database_writes'])),JSON_THROW_ON_ERROR),PHP_EOL;
+              $freshLink=$links===1&&$conflicts===0;
+              $proof=['http'=>(int)($resp['http']??0),'transport_error'=>!empty($resp['transport_error']),
+                 'expected_identity'=>($body['body']['mid']??null)===$mid&&(string)($body['recipient']['chat_id']??'')===(string)$p['channel_id']&&($observed['post_url']??null)===$plan['post_url'],
+                 'intended_text'=>($observed['text']??null)===$plan['text'],'same_photo'=>$actualPhoto!==''&&hash_equals($plan['photo_signature'],$actualPhoto),
+                 'same_cta'=>is_array($observed)&&ChannelPostIncomingAdapter::containsOnlyButton($observed,ChannelPostButtonTransport::buttonUrl($p),'✈️ Узнать стоимость тура'),
+                 'expected_price_link'=>$freshLink,'provider_writes'=>0];
+              echo 'PRICE_MAX_ORIGINAL_GET ',json_encode($proof,JSON_THROW_ON_ERROR),PHP_EOL;
             }
           } finally {if ($db->inTransaction()) $db->rollBack();}
           ?>'''
