@@ -510,16 +510,19 @@ function homeDestinationWaitingForCatalogue(){
  return homeFormOnly&&!catalogReady&&Boolean(catalogDeparture);
 }
 function lookupDestination(){
- const q=$('#destination-query').value.trim(),country=destinationChoice.country,generation=catalogLoadGeneration;
+ const rawQuery=$('#destination-query').value,q=rawQuery.trim(),country=destinationChoice.country,generation=catalogLoadGeneration;
  const {status,requestQuery}=destinationLookup;
  if(!destinationCountryList&&!homeDestinationWaitingForCatalogue()&&(status==='loading'||status==='complete')
-  &&requestQuery===q&&destinationLookup.country===country&&destinationLookup.generation===generation&&!destinationRequest?.signal.aborted)return;
+  &&requestQuery===q&&destinationLookup.rawQuery!==rawQuery&&destinationLookup.country===country
+  &&destinationLookup.generation===generation&&!destinationRequest?.signal.aborted){
+  destinationLookup.rawQuery=rawQuery;return;
+ }
  destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;
  if(homeDestinationWaitingForCatalogue()){renderDestination();return;}
  if(!countryNames[country]||q.length<2){renderDestination();return;}
- const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[],requestQuery:q,country,generation};renderDestination();
+ const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[],requestQuery:q,rawQuery,country,generation};renderDestination();
  const current=()=>{const parent=modalHistory.at(-1),query=modalType==='destination'?$('#destination-query')?.value:modalType==='destination-replace'&&parent?.type==='destination'&&parent.route?.choice?.country===country?parent.route.query:null;return destinationRequest===request&&generation===catalogLoadGeneration&&destinationChoice?.country===country&&typeof query==='string'&&query.trim()===q;};
- const receive=rows=>{if(request.signal.aborted||!current())return;rows.forEach(h=>destinationHotels.set(h.id,h));destinationLookup={status:'complete',rows,query:normalizeSearch(q),requestQuery:q,country,generation};};
+ const receive=rows=>{if(request.signal.aborted||!current())return;rows.forEach(h=>destinationHotels.set(h.id,h));destinationLookup={status:'complete',rows,query:normalizeSearch(q),requestQuery:q,rawQuery:destinationLookup.rawQuery,country,generation};};
  destinationTimer=setTimeout(async()=>{const timeout=setTimeout(()=>request.abort(),15000);try{
   const rows=await data.lookupHotels(q,country,request.signal,rows=>{receive(rows);if(current()&&modalType==='destination')renderDestination();});receive(rows);
  }catch(error){if(!current())return;destinationLookup={status:'error',rows:[]};}

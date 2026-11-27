@@ -62,7 +62,9 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <div class="home-hero-image">
         <picture>
           <source media="(max-width: 760px)" srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
-          <source media="(min-width: 761px) and (max-resolution: 1dppx)" srcset="<?=home_e(v2_asset('home-hero-v1-680.jpg'))?>">
+          <?php if (is_file(__DIR__ . '/home-hero-v1-680.jpg')): ?>
+            <source media="(min-width: 761px) and (max-resolution: 1dppx)" srcset="<?=home_e(v2_asset('home-hero-v1-680.jpg'))?>">
+          <?php endif; ?>
           <img src="<?=home_e(v2_asset('home-hero-v1.jpg'))?>" alt="Песчаный берег и море в мягком вечернем свете" width="1100" height="731" fetchpriority="high">
         </picture>
         <span>Пора сменить вид из окна</span>
