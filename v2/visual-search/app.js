@@ -173,7 +173,8 @@ function restoreURL(tripOnly=false,query=location.search){
  state.hasSearched=false;draft=structuredClone(s);
 }
 let compactSearchFrame=0;
-let searchEditSession=null,agesNeedReview=false,urlPartyIssues=[],departureChoice='',destinationPending=null,destinationCountryList=false,ageChoice=null;
+const homeAgeReviewKey='anytour.search3.home-age-review.v1';
+let searchEditSession=null,agesNeedReview=homeFormOnly&&history.state?.[homeAgeReviewKey]===true,urlPartyIssues=[],departureChoice='',destinationPending=null,destinationCountryList=false,ageChoice=null;
 const destinationIds=d=>validIds(d?.hotelIds?.length?d.hotelIds:d?.hotelId?[d.hotelId]:[]);
 function setDestinationIds(d,ids){d.hotelIds=validIds(ids);d.hotelId=d.hotelIds.length===1?d.hotelIds[0]:0;}
 const pickerFilters=()=>state.filters;
@@ -187,9 +188,12 @@ function finishFilterPicker(){applyQuickFilters();}
 function cancelPicker(){if(['child-age','destination-replace'].includes(modalType))modalBack();else closeModal();}
 function searchURLParameters(searched=state.hasSearched){
  const p=new URLSearchParams(),f=state.filters,current=new URLSearchParams(location.search);
- // Before the first search, keep the confirmed family through reloads without
- // changing the applied search identity or treating an open guest picker as saved.
+ // Confirmed Home dates and family survive refresh without starting a search.
  const search=state.hasSearched?state.search:{...state.search,adults:draft.adults,ages:draft.ages};
+ if(homeFormOnly&&!state.hasSearched){
+  const {from,to,minNights,maxNights}=draft;
+  Object.assign(search,{from,to,minNights,maxNights});
+ }
  // The canonical lead payload reads these existing attribution fields from the current URL.
  for(const key of ['yclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(current.has(key))p.set(key,current.get(key));
  p.set('scenario',data.scenario);
@@ -212,7 +216,10 @@ function searchURLParameters(searched=state.hasSearched){
 function updateURL(){
  if(searchEditSession||!urlStateHydrated)return;
  const query='?'+searchURLParameters(state.hasSearched&&!homeFormOnly).toString();
- if(location.search!==query||location.hash)history.replaceState(history.state,'',query);
+ const current=history.state,ageReview=homeFormOnly&&agesNeedReview&&draft.ages.length>0;
+ const reviewChanged=homeFormOnly&&(current?.[homeAgeReviewKey]===true)!==ageReview;
+ if(reviewChanged||location.search!==query||location.hash)
+  history.replaceState(reviewChanged?{...current,[homeAgeReviewKey]:ageReview}:current,'',query);
 }
 const generatedRootBindings=new WeakMap();
 // Bind exact, freshly generated markup to each live root. One observer per
@@ -3819,7 +3826,7 @@ function handleSearchParameterAction(action,b,id){
  case 'cancel-search-edit':cancelSearchEdit();break;
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();revealCalendarMonth();loadCalendarPrices();rememberUIRoute();break}
  case 'day-pick':{const day=b.dataset.date;if(dateDraft.phase===0){dateDraft.from=day;dateDraft.to=day;dateDraft.phase=1}else{const range={from:day<dateDraft.from?day:dateDraft.from,to:day<dateDraft.from?dateDraft.from:day};if(dateRangeError(range)){$('#date-error').textContent='Период может включать не больше 22 дат. Осталась выбрана первая дата.';break;}dateDraft.from=range.from;dateDraft.to=range.to;dateDraft.phase=0}updateDateSelection();rememberUIRoute();break}
- case 'apply-dates':{const {from,to}=dateDraft;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return true}const refreshResults=dateContext.source==='results'&&(from!==dateContext.search.from||to!==dateContext.search.to);agesNeedReview=agesNeedReview||draft.ages.length>0&&(draft.from!==from||draft.to!==to);draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();if(refreshResults)searchLifecycle.requestSubmit();break}
+ case 'apply-dates':{const {from,to}=dateDraft;if(!from||!to||from<startDay||to>endDay||from>to||(dateObj(to)-dateObj(from))/86400000>21){$('#date-error').textContent='Выберите корректный диапазон не больше 21 дня между датами.';return true}const refreshResults=dateContext.source==='results'&&(from!==dateContext.search.from||to!==dateContext.search.to);agesNeedReview=agesNeedReview||draft.ages.length>0&&(draft.from!==from||draft.to!==to);draft.from=from;draft.to=to;if(dateContext.source==='results'){state.search.from=from;state.search.to=to;state.selectedDate=from===to?from:null;state.openHotel=null;renderResults({keepFilters:true})}else if(state.selectedDate){state.selectedDate=null;renderResults({keepFilters:true})}closeModal();updateSearchUI();if(homeFormOnly)updateURL();if(refreshResults)searchLifecycle.requestSubmit();break}
  case 'adults-minus':guestDraft.adults=Math.max(1,guestDraft.adults-1);renderGuests();break;
  case 'adults-plus':guestDraft.adults=Math.min(6,guestDraft.adults+1);renderGuests();break;
  case 'children-minus':guestDraft.ages.pop();renderGuests();break;
@@ -3835,7 +3842,7 @@ function handleSearchParameterAction(action,b,id){
 
  case 'night-pick':{const n=+b.dataset.value;if(nightsDraft.phase===1&&Math.abs(n-nightsDraft.min)>10){nightsDraft.error=`Слишком широкий диапазон. Выберите вторую границу от ${Math.max(1,nightsDraft.min-10)} до ${Math.min(28,nightsDraft.min+10)} ночей.`;renderNightSelection();break;}nightsDraft.error='';if(nightsDraft.phase===0){nightsDraft.min=n;nightsDraft.max=n;nightsDraft.phase=1}else{nightsDraft.max=Math.max(nightsDraft.min,n);nightsDraft.min=Math.min(nightsDraft.min,n);nightsDraft.phase=0}renderNightSelection();break}
  case 'night-preset':nightsDraft={min:+b.dataset.value,max:+b.dataset.value,phase:0};renderNightSelection();break;
- case 'apply-nights':agesNeedReview=agesNeedReview||draft.ages.length>0&&(draft.minNights!==nightsDraft.min||draft.maxNights!==nightsDraft.max);draft.minNights=nightsDraft.min;draft.maxNights=nightsDraft.max;closeModal();updateSearchUI();break;
+ case 'apply-nights':agesNeedReview=agesNeedReview||draft.ages.length>0&&(draft.minNights!==nightsDraft.min||draft.maxNights!==nightsDraft.max);draft.minNights=nightsDraft.min;draft.maxNights=nightsDraft.max;closeModal();updateSearchUI();if(homeFormOnly)updateURL();break;
  default:return false;
  }
  return true;
