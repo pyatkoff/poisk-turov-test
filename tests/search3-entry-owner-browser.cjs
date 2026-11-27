@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {execFileSync} = require('node:child_process');
+const prepareNextHome = require('./search3-visual-next-home-renderer.cjs');
 const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
@@ -690,42 +690,6 @@ async function runHomeRanges(browser, width) {
     fs.writeFileSync(path.join(output, `home-range-${width}.json`), JSON.stringify({ width, catalogs, handoffs, unexpected, errors, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
   } finally { await page.close(); }
 }
-// Render a private copy of the compiled payload using the same route rewrites as
-// the NEXT publisher. This process starts no additional HTTP service.
-function prepareNextHome() {
-  const sitePrefix = new URL(base).pathname;
-  assert.equal(sitePrefix, '/_preview/search3-site-candidate');
-  const nextPrefix = '/_preview/search3-next-candidate';
-  const build = path.join(process.env.RUNNER_TEMP, 'search3-site-docroot', sitePrefix.slice(1));
-  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'search3-next-home-'));
-  const payload = path.join(temporary, 'payload'), documentRoot = path.join(temporary, 'empty-document-root');
-  const clean = () => fs.rmSync(temporary, {recursive:true,force:true});
-  try {
-    fs.cpSync(build, payload, {recursive:true});
-    fs.mkdirSync(documentRoot);
-    const rewrite = (name, from, to, count) => {
-      const file = path.join(payload, name), input = fs.readFileSync(file, 'utf8');
-      assert.equal(input.split(from).length - 1, count, 'NEXT route source ' + name);
-      fs.writeFileSync(file, input.replaceAll(from, to));
-    };
-    rewrite('site-path-v1.php', '#^(' + sitePrefix + ')(?:/|$)#', '#^(' + nextPrefix + ')(?:/|$)#', 1);
-    for (const [name, count] of Object.entries({
-      'poisk-turov/index.php':3, 'visual-search/public-entry-v1.php':3,
-      'visual-search/entry-v1.php':2, 'visual-search/public-config-v1.js':2,
-    })) rewrite(name, sitePrefix, nextPrefix, count);
-    const php = "$_SERVER['DOCUMENT_ROOT']=$argv[1]; $_SERVER['HTTP_HOST']='anytoour.ru'; $_SERVER['SCRIPT_NAME']=$argv[2]; include $argv[3];";
-    const html = new Map();
-    for (const entry of ['index.php','poisk-turov/index.php']) {
-      const pathname = nextPrefix + '/' + entry.replace(/index\.php$/, '');
-      const rendered = execFileSync('php', ['-d','display_errors=1','-r',php,
-        documentRoot,nextPrefix+'/'+entry,path.join(payload,entry)], {encoding:'utf8',timeout:20000});
-      assert(rendered.includes('id="search-form"') && !rendered.includes(sitePrefix), pathname);
-      html.set(pathname, rendered);
-    }
-    return {prefix:nextPrefix,payload,html,clean};
-  } catch (error) { clean(); throw error; }
-}
-
 // Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
 async function runCanonicalHome(browser, viewport, nextHome = null) {
   const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
@@ -784,8 +748,10 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
     if (nextHome) {
       const document = nextHome.html.get(url.pathname);
       if (document !== undefined) return route.fulfill({contentType:'text/html; charset=utf-8',body:document});
-      const local = path.resolve(nextHome.payload, url.pathname.slice(prefix.length + 1));
-      if (!local.startsWith(nextHome.payload + path.sep) || !fs.existsSync(local) || !fs.statSync(local).isFile()) {
+      const asset = url.pathname.slice(prefix.length + 1);
+      const local = path.resolve(nextHome.payload, asset);
+      const staticFile = /\.(?:css|js|json|svg|ico|png|jpg|jpeg|webp|woff2?)$/i.test(asset);
+      if (!staticFile || !local.startsWith(nextHome.payload + path.sep) || !fs.existsSync(local) || !fs.statSync(local).isFile()) {
         unexpected.push(url.pathname); return route.abort();
       }
       return route.fulfill({path:local});
@@ -883,7 +849,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
   try {
     if (process.argv.includes('--canonical-home')) {
       for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
-      const nextHome = prepareNextHome();
+      const nextHome = prepareNextHome(base);
       try {
         for (const viewport of [{width:430,height:932},{width:1280,height:720}]) await runCanonicalHome(browser, viewport, nextHome);
       } finally { nextHome.clean(); }
