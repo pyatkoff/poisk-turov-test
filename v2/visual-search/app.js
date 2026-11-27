@@ -415,11 +415,11 @@ function renderCatalogError(regionsMissing){
  const focus=focusReference(document.activeElement,node),retrying=node.dataset.catalogRetry==='pending',bootstrapPending=retrying&&!catalogReady&&!catalogError;
  const bootstrapFailed=!!catalogError&&!urlStateHydrated,countryFailed=!!catalogError&&!!catalogDeparture,hotelMissing=urlStateHydrated&&!data.preview&&destinationIds(currentDraftDestination()).some(id=>!destinationHotel(id)?.legacyIds.length);
  const restoring=hotelMissing&&hotelRestorePending&&!countryFailed;
- const regionsLoading=regionsMissing&&resortLoads.get(currentDraftDestination().country)!=='error';
+ const regionsLoading=!countryFailed&&regionsMissing&&resortLoads.get(currentDraftDestination().country)!=='error';
  const waiting=bootstrapPending||restoring||regionsLoading;
  node.hidden=!bootstrapPending&&!bootstrapFailed&&!countryFailed&&!hotelMissing&&!regionsMissing;node.setAttribute('role',waiting?'status':'alert');node.classList.toggle('error-text',!waiting);node.classList.toggle('picker-caption',waiting);
  node.innerHTML=node.hidden?'':bootstrapPending?'Загружаем направления. Параметры поездки сохранены.':bootstrapFailed?'Не удалось загрузить направления. Параметры поездки сохранены. <button type="button" class="secondary" data-action="retry-catalog">Повторить загрузку</button>':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
- if(regionsMissing)node.innerHTML=regionsLoading?'Загружаем выбранные курорты…':'Не удалось загрузить курорты. Выбор сохранён. <button type="button" class="text-button" data-action="retry-selected-resorts">Повторить загрузку курортов</button>';
+ if(regionsMissing&&!countryFailed)node.innerHTML=regionsLoading?'Загружаем выбранные курорты…':'Не удалось загрузить курорты. Выбор сохранён. <button type="button" class="text-button" data-action="retry-selected-resorts">Повторить загрузку курортов</button>';
  if(retrying&&!bootstrapPending)delete node.dataset.catalogRetry;
  if(focus)restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
@@ -4020,12 +4020,23 @@ function applyCatalog(c){
  draftDestination=null;
 }
 async function loadCountries(origin){
+ const previousDestination=homeFormOnly?currentDraftDestination():null;
  const run=++catalogLoadGeneration;catalogReady=false;catalogError='';catalogDeparture=origin;updateSearchUI();
  if(modalType==='destination')renderDestination();
  try{
   const c=await data.countries(origin);if(!c||run!==catalogLoadGeneration||draft.origin!==origin)return;
-  applyCatalog(c);updateSearchUI();await loadResorts(draft.country);
+  applyCatalog(c);
+  const carryResorts=previousDestination?.country===draft.country&&previousDestination.resorts.length>0;
+  if(carryResorts)draftDestination=previousDestination;
+  updateSearchUI();await loadResorts(draft.country);
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
+  if(carryResorts){
+   const regions=data.catalog.regions[draft.country];
+   if(!Array.isArray(regions))throw new Error('Не удалось проверить выбранные курорты.');
+   const available=new Set(regions.map(region=>region.name));
+   const resorts=previousDestination.resorts.filter(name=>available.has(name));
+   draftDestination={...previousDestination,resorts};
+  }
   catalogReady=true;catalogDeparture='';updateSearchUI();if(homeFormOnly)updateURL();
   if(modalType==='destination'){destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}
   if(modalType==='dates'){dateContext=createDateContext(dateContext.source);renderCalendarScope();loadCalendarPrices();}

@@ -361,6 +361,23 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(new URL(page.url()).pathname,'/','an incomplete child age blocks navigation');
     assert.equal(privateRequests(),beforeCold,'an incomplete age starts no supplier preparation');assert.deepEqual(counts(transport,tv),{tv:2,anex:2});
     row.incompleteAge={url:page.url(),applyDisabled:true};await capture('incomplete-age');
+    if([430,1280].includes(viewport.width)){
+     await page.goto(origin+'/?'+initial);await readyHome(page);
+     await page.locator('#search-form [data-action="destination"]').click();
+     await page.locator('[data-action="destination-resort"][data-value="Белек"]').click();
+     await page.locator('[data-action="apply-destination"]').click();await idleModal(page);
+     assert.equal(new URL(page.url()).searchParams.get('resorts'),'Белек');
+     await page.locator('#search-form [data-action="departure"]').click();
+     await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
+     await page.locator('[data-action="apply-departure"]').click();await idleModal(page);
+     await readyHome(page);
+     const selected=new URL(page.url()).searchParams;
+     assert.equal(selected.get('origin'),'Казань');assert.equal(selected.get('resorts'),'Белек');
+     assert.equal((await page.locator('#destination-detail').textContent()).trim(),'Белек');
+     assert.equal(privateRequests(),beforeCold,'changing departure on HOME starts no supplier preparation');
+     row.retainedResort={city:selected.get('origin'),resort:selected.get('resorts')};
+     await capture('retained-resort',true);
+    }
    }
    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
    row.status='passed';save();
