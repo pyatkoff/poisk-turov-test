@@ -130,10 +130,12 @@ modalViewportRegressions();
 function searchDeliveryPresentationRegressions(){
  const app=source('visual-search/app.js'),start=app.indexOf('function renderSearchStatus(items,total){'),end=app.indexOf('\nfunction prepareSearchRun(',start);
  assert(start>0&&end>start,'one current search status owner');
+ const rootsStart=app.indexOf('const generatedRootBindings='),rootsEnd=app.indexOf('function appendGeneratedRoots(',rootsStart);
+ assert(rootsStart>0&&rootsEnd>rootsStart,'one generated root painter');
  const local=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div><button id="outside">Outside</button>',{runScripts:'outside-only'}),win=local.window,doc=win.document,get=s=>doc.querySelector(s);
  // These retained receipt/missing/zero cases use the saved-data presentation.
  // Current live/progressive/concrete counts are exercised by results-rendering.
- win.eval(`const $=s=>document.querySelector(s),state={hasSearched:true},data={live:false},hotels=[];let searchResponse={};const icon=()=>'<svg aria-hidden="true"></svg>',needsRefresh=()=>false;${app.split('\n').find(line=>line.startsWith('function sameSelectedTourConditions('))}${app.split('\n').find(line=>line.startsWith('const esc = '))}\n${app.slice(start,end)}\nwindow.__searchStatus=(response,items)=>{searchResponse=response;renderSearchStatus(items,0);};`);
+ win.eval(`const $=s=>document.querySelector(s),state={hasSearched:true},data={live:false},hotels=[];let searchResponse={};const icon=()=>'<svg aria-hidden="true"></svg>',needsRefresh=()=>false;${app.split('\n').find(line=>line.startsWith('function sameSelectedTourConditions('))}${app.split('\n').find(line=>line.startsWith('const esc = '))}\n${app.slice(rootsStart,rootsEnd)}\n${app.slice(start,end)}\nwindow.__searchStatus=(response,items)=>{searchResponse=response;renderSearchStatus(items,0);};`);
  const render=(patch={},visible=true)=>win.__searchStatus({phase:'complete',key:'current',pending:false,canContinue:false,providers:{tourvisor:'complete',anex:'error'},sources:{tourvisor:{status:'complete',offers:40},anex:{status:'error',offers:0},andromeda:{status:'skipped',offers:0}},...patch},visible?[{offers:[]}]:[]),row=key=>get(`[data-search-source="${key}"]`);
  render();assert.match(get('#search-status summary').textContent,/ANEX/,'partial delivery identifies the failed source in its visible summary');assert.match(row('tourvisor').textContent,/40/);assert.match(row('anex').textContent,/не загрузились/);assert.equal(row('andromeda'),null,'paused/unrequested SAMO is not an active source');
  render({providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{status:'complete',offers:40},anex:{status:'partial',offers:10}},canContinue:true});
