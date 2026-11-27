@@ -506,8 +506,13 @@ window.visualViewport?.addEventListener('resize',syncDestinationViewport);
 window.visualViewport?.addEventListener('scroll',syncDestinationViewport);
 $('#modal').addEventListener('focusin',syncDestinationViewport);
 if(window.ResizeObserver)new ResizeObserver(syncDestinationViewport).observe($('#modal-body'));
+function homeDestinationWaitingForCatalogue(){
+ return homeFormOnly&&!catalogReady&&Boolean(catalogDeparture);
+}
 function lookupDestination(){
- destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;const q=$('#destination-query').value.trim(),country=destinationChoice.country;
+ destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;
+ if(homeDestinationWaitingForCatalogue()){renderDestination();return;}
+ const q=$('#destination-query').value.trim(),country=destinationChoice.country;
  if(!countryNames[country]||q.length<2){renderDestination();return;}
  const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[]};renderDestination();
  const current=()=>{const parent=modalHistory.at(-1),query=modalType==='destination'?$('#destination-query')?.value:modalType==='destination-replace'&&parent?.type==='destination'&&parent.route?.choice?.country===country?parent.route.query:null;return destinationRequest===request&&destinationChoice?.country===country&&typeof query==='string'&&query.trim()===q;};
@@ -608,7 +613,9 @@ function openDestination(restore=null){
  $('#modal').classList.add('destination-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="destination-summary"></strong><small class="destination-apply-context"></small></div><button class="primary picker-apply" data-action="apply-destination">Выбрать направление</button>';
  $('#destination-selection').open=destinationSelectionExpanded;$('#destination-query').value=boundedHistoryText(restore?.query,'');
  if(restore&&$('#destination-query').value.trim().length>=2&&!destinationCountryList){const limit=destinationHotelLimit;lookupDestination();destinationHotelLimit=limit;}else renderDestination();
- loadResorts(destinationChoice.country);if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;if(innerWidth>760)$('#destination-query').focus({preventScroll:true});
+ if(!homeDestinationWaitingForCatalogue())loadResorts(destinationChoice.country);
+ if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;
+ if(innerWidth>760)$('#destination-query').focus({preventScroll:true});
 }
 function requestDestination(next,whole=false){
  const old=destinationChoice,changed=old.country!==next.country||old.resorts.length&&destinationIds(next).length||destinationIds(old).length&&next.resorts.length,qualifiers=old.resorts.length||destinationIds(old).length;
@@ -639,6 +646,23 @@ function renderMoreDestinationHotels(){
  appendGeneratedRoots(section,destinationHotelEntries(destinationMatchItems,next,destinationHotelLimit),more);rememberUIRoute();return next;
 }
 function renderDestination(){
+ const waiting=homeDestinationWaitingForCatalogue();
+ $('#destination-query').disabled=waiting;
+ $('#destination-scope').hidden=waiting;
+ if(waiting){
+  destinationMatchItems=[];
+  $('[data-action="clear-destination-query"]').hidden=true;
+  $('#destination-country-context').replaceChildren();
+  $('#destination-selection').hidden=true;
+  $('#destination-results').innerHTML=catalogError
+   ? `<div class="destination-empty"><p>${esc(catalogError)}</p><button type="button" class="secondary" data-action="retry-countries">Повторить загрузку направлений</button></div>`
+   : '<p role="status">Загружаем направления…</p>';
+  $('#destination-summary').textContent=catalogDeparture;
+  $('.destination-apply-context').textContent='';
+  $('[data-action="apply-destination"]').disabled=true;
+  rememberUIRoute();
+  return;
+ }
  const root=$('#destination-selection').contains(document.activeElement)?$('#destination-selection'):$('#destination-country-context').contains(document.activeElement)?$('#destination-country-context'):$('#destination-results'),focus=focusReference(document.activeElement,root);
  destinationMatchItems=[];
  const d=destinationChoice,q=normalizeSearch($('#destination-query').value),ids=destinationIds(d);

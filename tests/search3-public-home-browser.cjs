@@ -384,6 +384,31 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
       assert.equal(privateRequests(),beforeCold,'whole-country departure change starts no supplier preparation');
      }finally{releaseRegions();transport.state.regionsGate=null;}
      await page.goto(origin+'/?'+initial);await readyHome(page);
+     const requestsBeforeOpen=regionRequests();
+     let releaseCountries;
+     transport.state.countryGates['2']=new Promise(resolve=>{releaseCountries=resolve;});
+     transport.state.countriesFailure='2';
+     try{
+      await pickKazan();
+      await page.locator('#search-form [data-action="destination"]').click();
+      const results=page.locator('#destination-results');
+      await results.getByText('Загружаем направления…',{exact:true}).waitFor();
+      assert(await page.locator('#destination-query').isDisabled());
+      assert(await page.locator('[data-action="apply-destination"]').isDisabled());
+      assert.equal(await results.locator('[data-action="destination-resort"]').count(),0);
+      assert.equal(regionRequests(),requestsBeforeOpen,'opening a pending destination does not read the previous city');
+      await capture('pending-destination');
+      releaseCountries();delete transport.state.countryGates['2'];
+      const retry=results.locator('[data-action="retry-countries"]');
+      await retry.waitFor();
+      transport.state.countriesFailure='';
+      await retry.click();
+      await results.locator('[data-action="destination-resort"][data-value="Белек"]').waitFor();
+      assert(!await page.locator('#destination-query').isDisabled());
+      assert.equal(regionRequests(),requestsBeforeOpen+1,'destination reads the confirmed city once');
+      assert.equal(privateRequests(),beforeCold,'loading and retrying directions starts no supplier preparation');
+     }finally{releaseCountries();delete transport.state.countryGates['2'];transport.state.countriesFailure='';}
+     await page.goto(origin+'/?'+initial);await readyHome(page);
      await page.locator('#search-form [data-action="destination"]').click();
      await page.locator('[data-action="destination-resort"][data-value="Белек"]').click();
      await page.locator('[data-action="apply-destination"]').click();await idleModal(page);
