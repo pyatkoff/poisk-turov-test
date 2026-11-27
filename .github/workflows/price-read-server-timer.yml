@@ -1,4 +1,4 @@
-name: Read the native TOP500 timer at 02:45 and the saved search IDs
+name: Read the original 03:30 TOP500 collection receipt
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'c87bc1a543388c60a914d1babcb44fb64936efb7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '131a9f1e45222fcc6c8a9f035a12e5333d374134'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
