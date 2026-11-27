@@ -93,7 +93,13 @@ async function sample(browser,nextHome,fixture,viewport,origin){
     const timing=await page.evaluate(()=>window.search3HomeTiming);
     assert(timing.visible,'the enabled button is actually visible and hit-testable');
     assert.deepEqual(blocked,[]);assert.deepEqual(errors,[]);
-    const form=await page.locator('#search-form').evaluate(node=>node.outerHTML);
+    // Read the form after the document settles without changing the button measurements above.
+    await page.waitForLoadState('load');
+    const form=await page.locator('#search-form').evaluate(async node=>{
+      await document.fonts.ready;
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      return node.outerHTML;
+    });
     return {...timing,requests,form:sha(form)};
   }finally{await context.close();}
 }

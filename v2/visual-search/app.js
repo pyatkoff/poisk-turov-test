@@ -4028,7 +4028,7 @@ async function loadCountries(origin){
   applyCatalog(c);
   const carryResorts=previousDestination?.country===draft.country&&previousDestination.resorts.length>0;
   if(carryResorts)draftDestination=previousDestination;
-  updateSearchUI();await loadResorts(draft.country);
+  if(!homeFormOnly||!data.live||carryResorts){updateSearchUI();await loadResorts(draft.country);}
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
   if(carryResorts){
    const regions=data.catalog.regions[draft.country];
@@ -4038,7 +4038,11 @@ async function loadCountries(origin){
    draftDestination={...previousDestination,resorts};
   }
   catalogReady=true;catalogDeparture='';updateSearchUI();if(homeFormOnly)updateURL();
-  if(modalType==='destination'){destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}
+  if(modalType==='destination'){
+   destinationChoice=structuredClone(currentDraftDestination());
+   if(!resortLoads.has(destinationChoice.country))loadResorts(destinationChoice.country);
+   lookupDestination();
+  }
   if(modalType==='dates'){dateContext=createDateContext(dateContext.source);renderCalendarScope();loadCalendarPrices();}
  }catch(error){
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
