@@ -68,7 +68,7 @@ function characterize(source, scenario) {
     dateContext:{source:'results',search:{from:'2026-10-14',to:'2026-10-20'}},
     calendarMonth:'2026-10-01',startDay:'2026-10-01',endDay:'2026-12-31',
     nightsDraft:{min:7,max:10,phase:0},modalHistory:[],modalType:'',optionalShortlistEnabled:false,
-    nextSearchForm:null,inlineSearchPicker:null,
+    nextSearchForm:null,inlineSearchPicker:null,homeFormOnly:false,
     editingFilterModel:()=>model,defaultFilters:filters,
     appliedFilterModel:()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate}),
     data:{catalog:{departures:[{name:'Moscow'},{name:'Kazan'}]},text:x=>x.name,continueSearch:()=>trace.push(['continueSearch'])},

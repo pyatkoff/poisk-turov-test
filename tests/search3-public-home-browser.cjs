@@ -343,6 +343,10 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
     assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');await capture('back',true);
     await page.locator('#search-form [data-action="nights"]').click();await page.locator('[data-action="night-pick"][data-value="8"]').click();
     await page.locator('[data-action="apply-nights"]').click();await idleModal(page);
+    const beforeTripReload=privateRequests();
+    await page.reload();await readyHome(page);checkTrip(page.url(),8,false);
+    assert.equal(await page.locator('#form-ages-recheck').isVisible(),true,'departure review survives reload before Find');
+    assert.equal(privateRequests(),beforeTripReload,'refresh never starts a search from HOME');
     await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="apply-guests"]').click();await idleModal(page);
     await submit(8,2);
     const beforeCold=privateRequests();await page.goBack();await readyHome(page);
