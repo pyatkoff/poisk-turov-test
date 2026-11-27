@@ -1,0 +1,112 @@
+name: Export bounded PRICE pilot sample
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths:
+      - '.github/workflows/price-pilot-bounded-sample.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read and encrypt up to 5000 PRICE observations from one day
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          scratch=$(mktemp -d)
+          trap 'rm -rf "$scratch"' EXIT
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_KEY"
+          if [[ "$DEPLOY_KEY" = '-----BEGIN '* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$scratch/key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$scratch/key"
+          fi
+          ssh-keygen -y -f "$scratch/key" >/dev/null
+          ssh-keyscan -T 8 -t ed25519,rsa "$DEPLOY_HOST" > "$scratch/known_hosts" 2>/dev/null
+          test -s "$scratch/known_hosts"
+          cat > "$scratch/cert.pem" <<'PILOT_CERT'
+          -----BEGIN CERTIFICATE-----
+          MIIEHTCCAoWgAwIBAgIUFrXNs5PKLdm4RjpIGbUCxyA8MjAwDQYJKoZIhvcNAQEL
+          BQAwHjEcMBoGA1UEAwwTQW55VG91ciBQUklDRSBwaWxvdDAeFw0yNjExMjcyMTQ1
+          MDlaFw0yNjExMzAyMTQ1MDlaMB4xHDAaBgNVBAMME0FueVRvdXIgUFJJQ0UgcGls
+          b3QwggGiMA0GCSqGSIb3DQEBAQUAA4IBjwAwggGKAoIBgQDitmPIJfnbBfF8GyWm
+          F5tpStpNdxkfXskQR5DCZHrFPBUXYbtJ2Qk5A2uzf+nG0AwY5IhcLviYJa7fs47c
+          NIb9AHOR7bSSG80OIY5lVt01ZHSkhB1CH/tTfGiwEjIhLcOMuE9PjJRz1hKw7bE1
+          gxWP3A9dG6q5ryoV0OZRo4ks8W54jpV37ecDZnx2Ytbv3XOViqeE1ZmdDF0nwbD2
+          uOqO8q8DwB/w0JgeaRyl6bZuwRyFTfxspPQarycwkk3SkGwzYRzwq/Z4lbRIbU7l
+          GXJ74vDV8aHVxkaaFFPC5yFzwTMvUXKmp4P3VQUc5t2s/3BgP+5cjikUUt5GbSgy
+          Dkv2YB0hPawisuaP1AH15zY4L/notUmnijZ6Ubqgo/k2+y4qYkUq/Ka1hMlLrWA0
+          gHdx1FsSfVJEIJT1f0CFyjOlhFmC07rskiTZgMy372jHeU1zy1oP0fTs5K/afGJt
+          zQ3QiB7K8HXqJGu0OrSE4EIrlqivG5DByOPwJEfadPYQOAcCAwEAAaNTMFEwHQYD
+          VR0OBBYEFMLpixX3Of1HOAp0CiGXKLFBg50RMB8GA1UdIwQYMBaAFMLpixX3Of1H
+          OAp0CiGXKLFBg50RMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggGB
+          AKmJTvfSZ8/nHEmkhlXadAOIl4sM4URxLDz7PcQxNaefJO7D7CYZST0Sc5uxaxy4
+          juyZxOYHKO7EmHKT7f909GmMX9rxrr5oxWrmuA12LyvyQr1+3Eqoqlne97OFVKW3
+          JQNXbo6oq3Zbx+PQ3/GnfkOHevOcNyLAfUzksGDa6vdLDMD2Nh4NEtYR3Xhry+OU
+          5JFG6817ppV22Iug2dt7dPmrsxXID4P2hKC4t4Fg0qbH3yxTAK16INUH2Zm7urvc
+          Cr9BtmczoAKS171OoUgI9wktmIv2cyCYaoCMPzO7iluYH6kc9KFMmAcVv9K0QvPp
+          Rtgsk8ruZ60MaGaePwctiV24RW+v4tY3WCSZeb0axkH0XzOIQY9gO+073BiPpoCO
+          gNADFPB1n2dJfe5dnFs++Tby9474EAl9LonSk9I4WJrV6WB/9/KlP8ldBJ67HHZv
+          yjRcTb45nBUZS24apSISfG86BY93duezUDIEx9Ipnc+G2jOMzrErpfY3WRmDq7WM
+          Ig==
+          -----END CERTIFICATE-----
+          PILOT_CERT
+          ssh -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o ConnectTimeout=8 -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" \
+            'php -f /dev/stdin -- "$HOME/www/anytoour.ru/data" 2026-11-26' <<'PRICE_PHP' \
+              | gzip -c | openssl cms -encrypt -binary -aes-256-cbc -outform DER \
+                -out "$RUNNER_TEMP/price-pilot-sample.csv.gz.cms" "$scratch/cert.pem"
+          <?php
+          declare(strict_types=1);
+          date_default_timezone_set('UTC');
+          try {
+              require $argv[1] . '/db-v1.php';
+              $db = v2_data_db();
+              $version = (string)$db->query('SELECT VERSION()')->fetchColumn();
+              $db->exec(stripos($version, 'mariadb') === false
+                  ? 'SET SESSION MAX_EXECUTION_TIME=8000' : 'SET SESSION max_statement_time=8');
+              $db->exec('START TRANSACTION READ ONLY');
+              $query = $db->prepare("SELECT id, observed_at, source, search_id, departure_id, country_id,
+                  region_id, subregion_id, hotel_id, departure_date, departure_year, departure_month,
+                  nights, adults, children_count, child_ages_signature, meal_id, room_id, room_type,
+                  operator_id, price, fuel_charge, currency
+                  FROM tour_price_observations
+                  WHERE observed_at >= :start AND observed_at < :stop AND price > 0
+                  ORDER BY observed_at, id
+                  LIMIT 5000");
+              $start = new DateTimeImmutable($argv[2]);
+              $query->execute(['start' => $start->format('Y-m-d H:i:s'),
+                  'stop' => $start->modify('+1 day')->format('Y-m-d H:i:s')]);
+              $count = 0;
+              while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
+                  if ($count === 0) fputcsv(STDOUT, array_keys($row), ',', '"', '');
+                  fputcsv(STDOUT, $row, ',', '"', '');
+                  ++$count;
+              }
+              $db->exec('ROLLBACK');
+              fwrite(STDERR, "PRICE_SAMPLE_ROWS=" . $count . "\n");
+              if ($count === 0) exit(2);
+          } catch (Throwable $error) {
+              fwrite(STDERR, "PRICE_SAMPLE_SOURCE_READ_FAILED\n");
+              exit(1);
+          }
+          PRICE_PHP
+      - name: Retain only the encrypted sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-pilot-encrypted-sample-20261126
+          path: ${{ runner.temp }}/price-pilot-sample.csv.gz.cms
+          if-no-files-found: error
+          retention-days: 1
