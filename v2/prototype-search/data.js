@@ -1708,7 +1708,14 @@
       const native=tourvisorIds(row);if(native.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
       seen.add(id);items.push({id,name,russianName:name,tourvisorIds:native});
     }
-    catalog.countries=items;catalog.regions={};regionRequests.clear();return {departures:catalog.departures,countries:items,origin:text(departure)};
+    const previousCountries=new Map(catalog.countries.map(row=>[String(row.id),row]));
+    const cachedRegions={};
+    for(const row of items){
+      const previous=previousCountries.get(row.id);
+      const regions=catalog.regions[row.id];
+      if(Array.isArray(regions)&&previous?.tourvisorIds?.length===1&&String(previous.tourvisorIds[0])===row.tourvisorIds[0])cachedRegions[row.id]=regions;
+    }
+    catalog.countries=items;catalog.regions=cachedRegions;regionRequests.clear();return {departures:catalog.departures,countries:items,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
   async function lookupHotels(q,country,signal,onContent){
