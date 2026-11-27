@@ -1,0 +1,188 @@
+name: Install scoped PRICE export key
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths:
+      - '.github/workflows/price-source-read-key.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Install only the approved VPS key and forced PRICE command
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          scratch=$(mktemp -d)
+          trap 'rm -rf "$scratch"' EXIT
+          test -n "$DEPLOY_HOST" && test "$DEPLOY_USER" = anytoour && test -n "$DEPLOY_KEY"
+          target_ip=$(getent ahostsv4 "$DEPLOY_HOST" | awk 'NR==1 { value=$1 } END { print value }')
+          test -n "$target_ip"
+          getent ahostsv4 anytoour.ru | awk '{ print $1 }' | grep -Fx "$target_ip" >/dev/null || {
+            echo PRICE_SOURCE_PUBLIC_ALIAS_NOT_CONFIRMED
+            exit 12
+          }
+          if [[ "$DEPLOY_KEY" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$scratch/key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$scratch/key"
+          fi
+          ssh-keygen -y -f "$scratch/key" >/dev/null
+          ssh-keyscan -T 8 -t ed25519 "$DEPLOY_HOST" > "$scratch/known_hosts" 2>/dev/null
+          test -s "$scratch/known_hosts"
+          ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o ConnectTimeout=8 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$scratch/known_hosts" \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'python3 -' <<'PRICE_INSTALL'
+          import fcntl
+          import os
+          from pathlib import Path
+          import stat
+          import subprocess
+          import tempfile
+          
+          home = Path.home()
+          if subprocess.check_output(["id", "-un"], text=True).strip() != "anytoour":
+              raise SystemExit("PRICE_SOURCE_ACCOUNT_UNEXPECTED")
+          hostkey = Path("/etc/ssh/ssh_host_ed25519_key.pub").read_text().split()
+          if len(hostkey) < 2 or hostkey[0] != "ssh-ed25519":
+              raise SystemExit("PRICE_SOURCE_HOST_KEY_UNEXPECTED")
+          
+          def private_directory(path):
+              path.mkdir(mode=0o700, exist_ok=True)
+              if path.is_symlink() or not path.is_dir() or path.stat().st_uid != os.getuid():
+                  raise SystemExit("PRICE_SOURCE_DIRECTORY_UNEXPECTED")
+              if stat.S_IMODE(path.stat().st_mode) & 0o022:
+                  raise SystemExit("PRICE_SOURCE_DIRECTORY_IS_WRITABLE_BY_OTHERS")
+          
+          def atomic_write(path, data):
+              fd, name = tempfile.mkstemp(dir=path.parent)
+              try:
+                  with os.fdopen(fd, "wb") as stream:
+                      stream.write(data)
+                      stream.flush()
+                      os.fsync(stream.fileno())
+                  os.replace(name, path)
+              finally:
+                  if os.path.exists(name):
+                      os.unlink(name)
+          
+          app = home / ".anytour-price-source"
+          ssh = home / ".ssh"
+          private_directory(app)
+          private_directory(ssh)
+          program = app / "export.php"
+          keyfile = ssh / "authorized_keys"
+          key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMTxpMshZmZ0JcQoLFE5LWU06UtRkR9aCnx7qhyfKly anytour-price-vps-read-20261128"
+          line = f'from="45.67.128.147",restrict,command="/usr/bin/php {program}" {key}'.encode()
+          identity = key.split()[1].encode()
+          code = r'''<?php
+          declare(strict_types=1);
+          
+          date_default_timezone_set('UTC');
+          $command = getenv('SSH_ORIGINAL_COMMAND') ?: '';
+          if ($command === 'probe') {
+              echo "{\"service\":\"anytour-price-read\",\"version\":1}\n";
+              exit(0);
+          }
+          
+          $state = preg_match('/\Astate ([0-9]{4}-[0-9]{2}-[0-9]{2})\z/D', $command, $args) === 1;
+          if (!$state && preg_match('/\Apage ([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{2}:[0-9]{2}:[0-9]{2}) ([0-9]{1,18}) ([0-9]{1,18}) ([0-9]{1,5})\z/D', $command, $args) !== 1) {
+              fwrite(STDERR, "PRICE_EXPORT_COMMAND_DENIED\n");
+              exit(2);
+          }
+          $day = DateTimeImmutable::createFromFormat('!Y-m-d', $args[1]);
+          $today = new DateTimeImmutable('today');
+          if (!$day || $day->format('Y-m-d') !== $args[1] || $day < $today->modify('-31 days') || $day > $today) {
+              fwrite(STDERR, "PRICE_EXPORT_DATE_DENIED\n");
+              exit(2);
+          }
+          if (!$state) {
+              $cursor = DateTimeImmutable::createFromFormat('!H:i:s', $args[2]);
+              $limit = (int) $args[5];
+              if (!$cursor || $cursor->format('H:i:s') !== $args[2] || $limit < 1 || $limit > 20000 || (int) $args[3] > (int) $args[4]) {
+                  fwrite(STDERR, "PRICE_EXPORT_CURSOR_DENIED\n");
+                  exit(2);
+              }
+          }
+          $lock = fopen(__DIR__ . '/export.lock', 'c');
+          if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+              fwrite(STDERR, "PRICE_EXPORT_BUSY\n");
+              exit(3);
+          }
+          
+          try {
+              require getenv('HOME') . '/www/anytoour.ru/data/db-v1.php';
+              $db = v2_data_db();
+              $version = (string)$db->query('SELECT VERSION()')->fetchColumn();
+              $db->exec(stripos($version, 'mariadb') === false
+                  ? 'SET SESSION MAX_EXECUTION_TIME=5000' : 'SET SESSION max_statement_time=5');
+              $db->exec('START TRANSACTION READ ONLY');
+              $bounds = [
+                  'start' => $day->format('Y-m-d H:i:s'),
+                  'end' => $day->modify('+1 day')->format('Y-m-d H:i:s'),
+              ];
+              if ($state) {
+                  $query = $db->prepare('SELECT COUNT(*) AS observations, COALESCE(MAX(id),0) AS upper_id
+                      FROM tour_price_observations WHERE observed_at >= :start AND observed_at < :end');
+                  $query->execute($bounds);
+                  $result = $query->fetch(PDO::FETCH_ASSOC);
+                  echo json_encode(['date' => $args[1], 'observations' => (int)$result['observations'], 'upper_id' => (string)$result['upper_id']], JSON_THROW_ON_ERROR) . PHP_EOL;
+              } else {
+                  $query = $db->prepare('SELECT id,fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,
+                      departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,
+                      operator_id,price,fuel_charge,currency
+                      FROM tour_price_observations
+                      WHERE observed_at >= :start AND observed_at < :end AND id <= :upper
+                          AND (observed_at > :after_time OR (observed_at = :equal_time AND id > :after_id))
+                      ORDER BY observed_at,id LIMIT ' . $limit);
+                  $stamp = $args[1] . ' ' . $args[2];
+                  $query->execute($bounds + ['upper' => $args[4], 'after_time' => $stamp, 'equal_time' => $stamp, 'after_id' => $args[3]]);
+                  $columns = explode(',', 'id,fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,price,fuel_charge,currency');
+                  fputcsv(STDOUT, $columns, ',', '"', '');
+                  while (($row = $query->fetch(PDO::FETCH_ASSOC)) !== false) {
+                      fputcsv(STDOUT, $row, ',', '"', '');
+                  }
+              }
+              $db->exec('ROLLBACK');
+          } catch (Throwable $error) {
+              fwrite(STDERR, "PRICE_EXPORT_READ_FAILED\n");
+              exit(4);
+          }
+          '''.encode()
+          
+          with (app / "install.lock").open("a") as lock:
+              fcntl.flock(lock, fcntl.LOCK_EX)
+              if program.is_symlink() or keyfile.is_symlink():
+                  raise SystemExit("PRICE_SOURCE_SYMLINK_DENIED")
+              existing = keyfile.read_bytes() if keyfile.exists() else b""
+              matching = [entry for entry in existing.splitlines() if identity in entry.split()]
+              if matching and matching != [line]:
+                  raise SystemExit("PRICE_SOURCE_PUBLIC_KEY_CONFLICT")
+              if program.exists() and program.read_bytes() != code:
+                  raise SystemExit("PRICE_SOURCE_EXPORTER_CONFLICT")
+              if not program.exists():
+                  atomic_write(program, code)
+              subprocess.run(["/usr/bin/php", "-l", str(program)], check=True)
+              if not matching:
+                  sep = b"" if not existing or existing.endswith(b"\n") else b"\n"
+                  atomic_write(keyfile, existing + sep + line + b"\n")
+              elif stat.S_IMODE(keyfile.stat().st_mode) & 0o077:
+                  raise SystemExit("PRICE_SOURCE_AUTHORIZED_KEYS_PERMISSIONS_UNEXPECTED")
+              after = keyfile.read_bytes().splitlines()
+              if [entry for entry in after if identity in entry.split()] != [line]:
+                  raise SystemExit("PRICE_SOURCE_AUTHORIZED_KEY_READBACK_FAILED")
+          print("PRICE_SOURCE_AUTHORIZED_KEY_OK ip_restricted=1 forced_command=1 forwarding_disabled=1")
+          print("PRICE_SOURCE_PUBLIC_HOST_KEY=" + " ".join(hostkey[:2]))
+          
+          PRICE_INSTALL
