@@ -69,7 +69,7 @@ const previousMealPlan=`function(t,provider=String(t?.provider||'tourvisor').toL
  const matches=catalog.mealPlans.filter(plan=>plan.nativeIds.includes(native));
  return matches.length===1?Object.freeze({id:matches[0].id,code:matches[0].code,nameRu:matches[0].nameRu}):null;
 }`;
-function harness(source,{providers=false}={}){
+function harness(source,{providers=false,destinationFetch}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
   // Freeze entropy with the existing clock/transport so the original trace stays exact.
@@ -82,6 +82,7 @@ function harness(source,{providers=false}={}){
   Date:class extends Date{static now(){return clock;}},
   CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},
   fetch:async(url,options)=>{
+   if(destinationFetch)return destinationFetch(url,options);
    assert(providers&&String(url).includes('api-andromeda-search3-preview.php'),'no unexpected network path');
    const body=JSON.parse(options.body);http.push(copy(body));log.push(['http',copy(body)]);
    if(fetchGate)await fetchGate;
@@ -104,6 +105,47 @@ function harness(source,{providers=false}={}){
   advance:ms=>clock+=ms,
   capture(){const run=window.__test.run();return {log,events,calls,http,state:copy(window.__test.state()),run:run?copy({generation:run.generation,search:run.search,hotelIds:run.hotelIds,filters:run.filters,pending:run.pending,searchId:run.searchId,resumeOnly:run.resumeOnly,continued:run.continued,expired:run.expired,canContinue:run.canContinue,tvCanContinue:run.tvCanContinue,andromedaCanContinue:run.andromedaCanContinue,continueBaseline:run.continueBaseline,continueBaselineTourvisor:run.continueBaselineTourvisor,lastProgress:run.lastProgress,lastRead:run.lastRead,deadline:run.deadline,sourceCounts:run.sourceCounts,aborted:run.controller.signal.aborted}):null,timers:[...timers.keys()]};}};
 }
+async function verifyCurrentDepartureCatalogue(source){
+ const requests=[];
+ const h=harness(source,{destinationFetch:async(url,options)=>{
+  const request=new URL(url,'https://anytoour.ru');
+  assert.match(request.pathname,/\/data\/search3-destination-read-v1\.php$/);
+  assert.equal(request.searchParams.get('action'),'countries');
+  assert.equal(options.cache,'no-store');
+  const result=gate(),id=request.searchParams.get('departureId');
+  requests.push({...result,id});
+  return result.promise;
+ }});
+ h.api.catalog.departures.push({id:2,name:'Казань'});
+ const response=id=>({ok:true,json:async()=>({
+  ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',
+  items:[{id,name:'Fixture '+id,tourvisorIds:[String(id)]}],
+ })});
+ const initial=h.api.countries('Казань');
+ const intervening=h.api.countries('Москва');
+ const latest=h.api.countries('Казань');
+ assert.deepEqual(requests.map(row=>row.id),['2','1'],'only one current request per canonical city');
+ requests[0].resolve(response(4));
+ assert.equal(await initial,null,'only the latest selection can publish reused data');
+ assert.equal((await latest).origin,'Казань');
+ requests[1].resolve(response(6));
+ assert.equal(await intervening,null,'a late different city cannot publish');
+ assert.equal(h.api.catalog.countries[0].id,'4');
+ const failed=h.api.countries('Казань');
+ const joined=h.api.countries('Казань',{departureId:2});
+ assert.deepEqual(requests.map(row=>row.id),['2','1','2'],'a settled response must not be reused');
+ requests[2].reject(new Error('fixture catalogue unavailable'));
+ assert.equal(await failed,null);
+ await assert.rejects(joined,/fixture catalogue unavailable/);
+ const retry=h.api.countries('Казань');
+ assert.deepEqual(requests.map(row=>row.id),['2','1','2','2'],'retry reads again after failure');
+ requests[3].resolve(response(5));
+ assert.equal((await retry).countries[0].id,'5');
+ assert.deepEqual(h.calls,[]);
+ assert.deepEqual(h.http,[]);
+ console.log('PASS catalogue reuse: exact city joins, stale result ignored, settled and failed requests read again');
+}
+
 function dataWorkOracles(source){
  const h=harness(source),s=trip();let nameReads=0;
  const regions=Array.from({length:80},(_,i)=>({get name(){nameReads++;return 'Resort '+i;},kind:i%2?'subregion':'region',tourvisorIds:[String(i+1)]}));
@@ -864,7 +906,9 @@ async function boundedFlightRepricing(source){
 (async()=>{
  await selectedHotelRestoration();
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
- const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
+ const source=fs.readFileSync(sourcePath,'utf8');
+ await verifyCurrentDepartureCatalogue(source);
+ const work=dataWorkOracles(source),records=await characterize(source);
  verifiedFlightPairBinding(source);
  await safeAndromedaFailureDiagnostics(source);
  await boundedFlightRepricing(source);
