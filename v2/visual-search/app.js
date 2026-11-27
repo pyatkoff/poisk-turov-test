@@ -915,7 +915,7 @@ function compareMealLabels(a,b){
  const order=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'],rank=label=>order.includes(label)?order.indexOf(label):100;
  return rank(a)-rank(b)||a.localeCompare(b,'ru');
 }
-const {facetQueries,expandedFilterSections,syncFilterSections,setFilterSectionOpen,applyFacetSearch,updateFacetCounts,settleFilterRoots,renderFilterNavigation,jumpToFilterSection,renderFilters}=homeFormOnly?{}:window.AnyTourFilterPanelV1.create({
+const {facetQueries,expandedFilterSections,syncFilterSections,setFilterSectionOpen,applyFacetSearch,updateFacetCounts,settleFilterRoots,renderFilterNavigation,jumpToFilterSection,renderFilters}=homeFormOnly&&!window.AnyTourFilterPanelV1?{}:window.AnyTourFilterPanelV1.create({
  $,$$,esc,icon,state,data,compareMealLabels,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,countFacetOptionGroups,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,
  getHotels:()=>hotels,getFilterDraft:()=>filterDraft,getViewportWidth:()=>innerWidth
 });
