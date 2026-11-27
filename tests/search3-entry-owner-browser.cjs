@@ -691,15 +691,16 @@ async function runHomeRanges(browser, width) {
   } finally { await page.close(); }
 }
 // Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
-async function runCanonicalHome(browser, viewport, nextHome = null) {
-  const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleFactor = 1) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor, serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const prefix = nextHome?.prefix || new URL(base).pathname, origin = new URL(base).origin;
   const home = prefix + '/', target = prefix + '/poisk-turov/';
   const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
-  const id = viewport.width + 'x' + viewport.height;
-  const errors = [], unexpected = [], documents = [], evidence = { viewport, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
+  const dimensions = viewport.width + 'x' + viewport.height;
+  const id = deviceScaleFactor === 1 ? dimensions : 'dpr' + deviceScaleFactor + '-' + dimensions;
+  const errors = [], unexpected = [], documents = [], evidence = { viewport, deviceScaleFactor, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
   const heroRequests = [];
   const evidencePrefix = nextHome ? 'canonical-next-home-' : 'canonical-home-';
   const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
@@ -823,17 +824,25 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
       const hero = page.locator('.home-hero-image img');
       const selected = await hero.evaluate(async image => {
         await image.decode();
-        return { src:image.currentSrc, width:image.naturalWidth, dpr:window.devicePixelRatio };
+        return { src:image.currentSrc, width:image.naturalWidth, height:image.naturalHeight, dpr:window.devicePixelRatio };
       });
-      assert.equal(selected.dpr,1);
+      assert.equal(selected.dpr,deviceScaleFactor);
       if (viewport.width <= 760) {
         assert.match(selected.src,/^data:image\/gif;/);
         assert.deepEqual(heroRequests,[],'no desktop image is fetched on mobile');
       } else {
-        const asset = prefix + '/home-hero-v1-680.jpg';
-        assert.equal(new URL(selected.src).pathname,asset);
-        assert.equal(selected.width,680);
-        assert.deepEqual(heroRequests,[asset],'desktop uses one smaller image request');
+        const highDensity = deviceScaleFactor > 1;
+        const imageFile = highDensity ? 'home-hero-v1.jpg' : 'home-hero-v1-680.jpg';
+        const asset = prefix + '/' + imageFile;
+        const imageURL = new URL(selected.src);
+        assert.equal(imageURL.pathname,asset);
+        assert.equal(selected.width,highDensity ? 1100 : 680);
+        if (highDensity) {
+          assert.equal(selected.height,731);
+          const digest = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(nextHome.payload,imageFile))).digest('hex');
+          assert.equal(imageURL.searchParams.get('v'),digest.slice(0,16),'desktop caches the exact compiled full-resolution image');
+        }
+        assert.deepEqual(heroRequests,[asset],'desktop requests only the image for its density');
       }
       evidence.hero = {width:selected.width,requests:[...heroRequests]};
     }
@@ -891,6 +900,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
         const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
         if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
         await require('./search3-visual-next-home-timing.cjs')(browser,nextHome,base,output);
+        await runCanonicalHome(browser,{width:1280,height:720},nextHome,2);
       } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
       return;
