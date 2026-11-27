@@ -144,17 +144,34 @@ function v2_visual_search_replace(string $html, string $old, string $new): strin
     return str_replace($old, $new, $html);
 }
 
+function v2_visual_search_public_asset_url(string $ref, array $config): string
+{
+    $path = __DIR__ . '/' . $ref;
+    if (!preg_match('/^\.\.?\/[\w.\/-]+$/D', $ref) || str_contains($ref, '/../') || !is_file($path)) {
+        throw new RuntimeException('Missing or unbounded public Search3 asset.');
+    }
+    $resourceBase = $config['resourceBase'];
+    $prefix = substr($resourceBase, 0, -strlen('/visual-search/'));
+    $url = str_starts_with($ref, './') ? $resourceBase . substr($ref, 2) : $prefix . '/' . substr($ref, 3);
+    $extension = strtolower(pathinfo($ref, PATHINFO_EXTENSION));
+    if (in_array($extension, ['js', 'css'], true)) $url .= '?v=' . substr(hash_file('sha256', $path), 0, 12);
+    return $url;
+}
+
 function v2_visual_search_render(string $mode, array $config = [], array $siteParams = []): string
 {
     $html = file_get_contents(__DIR__ . '/index.html');
     if ($html === false) throw new RuntimeException('Search3 HTML is unavailable.');
     $graph = v2_visual_search_graph($mode, $html);
+    $handoffAssets = [];
     if ($mode === 'public-review'
         && ($config['publicBase'] ?? null) === '/_preview/search3-next-candidate/poisk-turov/'
         && ($config['scenario'] ?? null) === 'family') {
         $graph = array_values(array_diff($graph, ['./local-db-parser.js', './recorded-data.js']));
         if (($config['entry'] ?? null) === 'home') {
-            $graph = array_values(array_diff($graph, ['./flight-picker-v18.js', './preview-lead.js', './filter-panel-v1.js']));
+            $searchOnly = ['./flight-picker-v18.js', './preview-lead.js', './filter-panel-v1.js'];
+            $graph = array_values(array_diff($graph, $searchOnly));
+            $handoffAssets = array_map(fn($ref) => v2_visual_search_public_asset_url($ref, $config), $searchOnly);
         }
     }
     if ($mode === 'public-live' && ($config['entry'] ?? null) === 'home') {
@@ -185,6 +202,9 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
             if ($src === './public-config-v1.js') {
                 $json = json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                 $attributes = ' data-search3-public-config="' . htmlspecialchars($json, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+            }
+            if ($src === './public-bootstrap-v1.js' && $handoffAssets) {
+                $attributes .= ' data-search3-handoff-prefetch="' . htmlspecialchars(implode(' ', $handoffAssets), ENT_QUOTES, 'UTF-8') . '"';
             }
             $tags[] = '<script src="' . $src . '"' . $attributes . ' defer></script>';
         }
@@ -229,13 +249,6 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
                 if (!in_array($extension, ['js', 'css'], true) || !is_file($path)) return $match[0];
                 return $match[1] . '="' . $ref . '?v=' . substr(hash_file('sha256', $path), 0, 12) . '"';
             }
-            if (!preg_match('/^\.\.?\/[\w.\/-]+$/D', $ref) || str_contains($ref, '/../') || !is_file($path)) {
-                throw new RuntimeException('Missing or unbounded public Search3 asset.');
-            }
-            $resourceBase = $config['resourceBase'];
-            $prefix = substr($resourceBase, 0, -strlen('/visual-search/'));
-            $url = str_starts_with($ref, './') ? $resourceBase . substr($ref, 2) : $prefix . '/' . substr($ref, 3);
-            if (in_array($extension, ['js', 'css'], true)) $url .= '?v=' . substr(hash_file('sha256', $path), 0, 12);
-            return $match[1] . '="' . $url . '"';
+            return $match[1] . '="' . v2_visual_search_public_asset_url($ref, $config) . '"';
         }, $html);
 }
