@@ -2,7 +2,7 @@
 (function(){
 // Owns facet markup, section navigation and retained filter editors. Matching
 // and draft application stay in the host; replaced inputs are read on demand.
-function create({$,$$,esc,icon,state,data,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,countFacetOptionGroups,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,getHotels,getFilterDraft,getViewportWidth}){
+function create({$,$$,esc,icon,state,data,compareMealLabels,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,countFacetOptionGroups,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,getHotels,getFilterDraft,getViewportWidth}){
 const expandedFacets=new Set(),facetQueries=new Map();
 let facetQueryScope='';
 const expandedFilterSections=new Set();
@@ -39,10 +39,6 @@ function setFilterSectionOpen(group,open){
  const key=group.dataset.filterSection;if(open)expandedFilterSections.add(key);else expandedFilterSections.delete(key);
  group.classList.toggle('section-open',open);group.querySelector('.filter-section-toggle').setAttribute('aria-expanded',String(open));
  if(key==='Туроператор'&&getFilterDraft()&&getViewportWidth()<=1100){const panel=$('#filter-panel');if(open)panel.dataset.overviewScroll=String(panel.scrollTop);syncFilterSections();panel.scrollTop=open?0:Number(panel.dataset.overviewScroll)||0;(open?$('#filter-detail-back'):group.querySelector('.filter-section-toggle')).focus({preventScroll:true});}
-}
-function compareMealLabels(a,b){
- const order=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'],rank=label=>order.includes(label)?order.indexOf(label):100;
- return rank(a)-rank(b)||a.localeCompare(b,'ru');
 }
 function comparePopularFacetOptions(a,b){return b[2]-a[2]||a[1].localeCompare(b[1],'ru');}
 function checkRows(group,options,counts=null){const model=editingFilterModel();counts??=countFacetOptions(model,group,options.map(([value])=>value));const selected=model.filters[group]||[],ordered=options.map(([val,label],index)=>[val,label,counts.get(val),index]).sort((a,b)=>group==='meals'?compareMealLabels(a[1],b[1]):['resorts','operators'].includes(group)?comparePopularFacetOptions(a,b):Number(selected.includes(b[0]))-Number(selected.includes(a[0]))||Number(b[2]>0)-Number(a[2]>0)||a[3]-b[3]);if(options.length<=7)return fullCheckRows(group,ordered);const label={resorts:'Найти курорт',operators:'Найти туроператора',meals:'Найти питание'}[group]||'Найти вариант';return `<div class="facet-options" data-facet-options="${group}"><div class="facet-search"><label><span class="sr-only">${label} в списке фильтра</span><input type="search" data-facet-search="${group}" value="${esc(facetQueries.get(group)||'')}" placeholder="${label}" autocomplete="off"></label><button type="button" class="icon-button" data-action="clear-facet-query" aria-label="Очистить поиск в списке" hidden>${icon('x')}</button></div><div class="facet-picked" role="group" aria-label="Выбрано в этом разделе"></div><p class="facet-search-status" aria-live="polite" hidden></p>${fullCheckRows(group,ordered.slice(0,7))}<details class="facet-more" data-facet="${group}" ${expandedFacets.has(group)?'open':''}><summary></summary>${fullCheckRows(group,ordered.slice(7))}</details></div>`;}
