@@ -48,8 +48,12 @@ function startupMeasure(name,fn){
 }`);
  const marker="const initialUIRoute=history.state?.[uiHistoryKey];";
  source=one(source,marker,[
- "restoreURL","renderResults","renderCalendarStrip","refreshResultFilters","renderFilters","updateSearchUI","applyCatalog"
+ "restoreURL","renderResults","renderCalendarStrip","refreshResultFilters","updateSearchUI","applyCatalog"
  ].map(name=>name+'=startupMeasure('+JSON.stringify(name)+','+name+');').join('\n')+'\n'+marker);
+ source=one(source,'jumpToFilterSection,renderFilters}=homeFormOnly',
+  'jumpToFilterSection,renderFilters:baseRenderFilters}=homeFormOnly');
+ source=one(source,'getHotels:()=>hotels,getFilterDraft:()=>filterDraft,getViewportWidth:()=>innerWidth\n});',
+  "getHotels:()=>hotels,getFilterDraft:()=>filterDraft,getViewportWidth:()=>innerWidth\n});\nconst renderFilters=baseRenderFilters&&startupMeasure('renderFilters',baseRenderFilters);");
  source=one(source," prepare:prepareSearchRun,"," prepare:startupMeasure('prepareSearchRun',prepareSearchRun),");
  source=one(source,"hydrate();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults({deferFilterPanel:!homeFormOnly&&innerWidth<=1100});bootRealData();",
  "startupMeasure('hydrate',hydrate)();if(!window.AnyTourPublicBootstrapV1?.selected)restoreURL(true);renderResults({deferFilterPanel:!homeFormOnly&&innerWidth<=1100});bootRealData();");
@@ -189,7 +193,11 @@ async function sample(browser, server, origin, paths, profile, mode, trace) {
       }catch(error){traceState=error.message;}
     }
     assert.equal((await page.goto(origin+paths.home+'?'+fixtureQuery,{waitUntil:'commit',timeout:15000})).status(),200);
-    await page.waitForFunction(()=>window.search3ReleasePairTiming?.ready>0,{},{timeout:12000});
+    try {
+      await page.waitForFunction(()=>window.search3ReleasePairTiming?.ready>0,{},{timeout:8000});
+    } catch(error) {
+      throw new Error('Ready '+profile.name+'/'+mode+': '+JSON.stringify({errors,rejected:server.rejected,blocked}),{cause:error});
+    }
     const ready = await page.evaluate(()=>({
       button:window.search3ReleasePairTiming.ready, dpr:devicePixelRatio, width:innerWidth, height:innerHeight,
       touch:navigator.maxTouchPoints>0, form:{
@@ -206,7 +214,11 @@ async function sample(browser, server, origin, paths, profile, mode, trace) {
       page.waitForURL(url=>url.pathname===paths.search,{timeout:12000}),
       profile.touch ? button.tap({timeout:8000}) : button.click({timeout:8000})
     ]);
-    await page.waitForFunction(()=>window.search3ReleasePairTiming?.firstCard>0,{},{timeout:12000});
+    try {
+      await page.waitForFunction(()=>window.search3ReleasePairTiming?.firstCard>0,{},{timeout:8000});
+    } catch(error) {
+      throw new Error('First card '+profile.name+'/'+mode+': '+JSON.stringify({errors,rejected:server.rejected,blocked}),{cause:error});
+    }
     const {firstCard,phase,transfer,encoding,cpu}=await page.evaluate(()=>{
 
       const timing=window.search3ReleasePairTiming, marks=timing.first;
