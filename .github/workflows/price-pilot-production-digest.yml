@@ -1,0 +1,39 @@
+name: Read PRICE production day digest
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths:
+      - '.github/workflows/price-pilot-production-digest.yml'
+permissions:
+  contents: read
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read the digest of one closed PRICE day
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          scratch=$(mktemp -d)
+          trap 'rm -rf "$scratch"' EXIT
+          test -n "$DEPLOY_HOST" && test "$DEPLOY_USER" = anytoour && test -n "$DEPLOY_KEY"
+          if [[ "$DEPLOY_KEY" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$scratch/key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$scratch/key"
+          fi
+          printf '%s %s\n' "$DEPLOY_HOST" 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXxjWqpuN07MTGcXrRnshpTX3KKK/wvQeaYl03RY8DA' > "$scratch/known_hosts"
+          curl -fsSL --proto '=https' --max-time 25 https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/b7b11a503038ee1bf308628aa0da749bc307dc9b/ops/price-pilot/daily-digest-v1.php -o "$scratch/digest.php"
+          php -l "$scratch/digest.php"
+          timeout 35 ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
+              -o ConnectTimeout=8 -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+              -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" \
+              'php -f /dev/stdin -- "$HOME/www/anytoour.ru/data/db-v1.php" 2026-11-26' < "$scratch/digest.php"
