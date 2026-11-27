@@ -1,4 +1,4 @@
-name: Read the current TOP500 receipt and original stopped PRICE journal
+name: Read the current TOP500 timer and unresolved PRICE transaction
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7b5cf8b592529843f700a49073eff1595b8c50d7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '6d227d1fe539dc9139c05491d9ecdf0720133562'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
