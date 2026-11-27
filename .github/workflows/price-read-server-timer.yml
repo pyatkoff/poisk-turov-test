@@ -1,4 +1,4 @@
-name: Read native 00:00 TOP500 receipt and retained attempts
+name: Read the current TOP500 receipt and original stopped PRICE journal
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'a9b783a90ff0776899e4adb1cb0b9becdb967d94'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7b5cf8b592529843f700a49073eff1595b8c50d7'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
@@ -176,6 +176,80 @@ jobs:
               exit(1);
           }
           PHP
+
+      - name: Read the installed PRICE journal and the original child outcome
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=25 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" python3 - <<'PY'
+          import fcntl, hashlib, json, os, pathlib, re, subprocess
+          root = pathlib.Path('/var/www/anytoour/data')
+          journal = root/'channel-post-operations'/'monitor-price-after-collection-v1.jsonl'
+          app = root/'www/app.anytoour.ru'
+          native = root/'www/anytoour.ru/data'
+
+          def open_read(path):
+              if path.resolve(strict=True) != path:
+                  raise RuntimeError('journal_path_changed')
+              stream = path.open('rb')
+              fcntl.flock(stream, fcntl.LOCK_SH | fcntl.LOCK_NB)
+              before, named = os.fstat(stream.fileno()), path.stat()
+              if (before.st_dev, before.st_ino) != (named.st_dev, named.st_ino):
+                  raise RuntimeError('journal_identity_changed')
+              return stream, before
+
+          def last_record(stream, stat):
+              limit = 8388608
+              offset = max(0, stat.st_size - limit)
+              stream.seek(offset)
+              raw = stream.read(limit)
+              if len(raw) != stat.st_size - offset or not raw.endswith(b'\n'):
+                  raise RuntimeError('journal_tail_incomplete')
+              lines = raw.rstrip(b'\n').rsplit(b'\n', 1)
+              if offset and len(lines) != 2:
+                  raise RuntimeError('journal_record_exceeds_bound')
+              return json.loads(lines[-1])
+
+          with open_read(journal)[0] as global_file:
+              state = last_record(global_file, os.fstat(global_file.fileno()))
+              pending = state.get('pending')
+              cycle = state.get('nightly_cycle')
+              result = {
+                  'application_head': subprocess.check_output(['git','-C',str(app),'rev-parse','HEAD'],text=True).strip(),
+                  'native_hook_sha256': hashlib.sha256((native/'monitor-price-hook.php').read_bytes()).hexdigest(),
+                  'nightly_cycle': {k:cycle.get(k) for k in ('collector_run_id','state','started_at','finished_at','updated_pairs','scanned_pairs')} if cycle else None,
+                  'pending': None,
+              }
+              if pending:
+                  operation = pending['operation']
+                  if not re.fullmatch(r'commercial-monitor-price-h[1-9][0-9]*-[a-f0-9]{64}',operation):
+                      raise RuntimeError('pending_operation_invalid')
+                  child_path = journal.parent/operation/'receipt.jsonl'
+                  failure = pending.get('child_failure') or {}
+                  result['pending'] = {k:pending.get(k) for k in ('tourvisor_hotel_id','operation','phase')}
+                  result['pending']['child_failure'] = {k:failure.get(k) for k in ('error','class','exit_code')}
+                  result['pending']['child'] = None
+                  if child_path.exists():
+                      child_file, child_stat = open_read(child_path)
+                      with child_file:
+                          if child_stat.st_size > 10485760:
+                              raise RuntimeError('child_journal_exceeds_bound')
+                          raw = child_file.read()
+                          if len(raw) != child_stat.st_size or not raw.endswith(b'\n'):
+                              raise RuntimeError('child_journal_incomplete')
+                          child = json.loads(raw.rstrip(b'\n').rsplit(b'\n',1)[-1])
+                          posts = child.get('posts') or {}
+                          result['pending']['child'] = {
+                              'sha256':hashlib.sha256(raw).hexdigest(),
+                              'complete':child.get('complete'),
+                              'terminal':(child.get('terminal') or {}).get('state'),
+                              'posts':{key.split(':',1)[0]: val.get('state') for key,val in posts.items()},
+                          }
+              print('PRICE_CURRENT_JOURNAL',json.dumps(result,sort_keys=True))
+          PY
 
       - name: Cleanup connection material
         if: always()
