@@ -1650,12 +1650,13 @@
     return null;
   }
   let catalogGeneration=0,catalogBootstrap=null;
+  const publicHomeForm=()=>root.AnyTourPublicConfigV1?.valid===true&&root.AnyTourPublicConfigV1.entry==='home'&&root.V2_CONFIG?.search3FormOnly===true;
   function init(origin='Москва',options={}) {
     if(!catalogBootstrap){
       const departures=loadDepartures();
       // The public HOME form reads canonical names. Offer normalization and
       // the other meal mappings belong to the document that receives its search.
-      const homeForm=root.AnyTourPublicConfigV1?.valid===true&&root.AnyTourPublicConfigV1.entry==='home'&&root.V2_CONFIG?.search3FormOnly===true;
+      const homeForm=publicHomeForm();
       // Older links can name meals by a supplier label absent from the built-in aliases.
       const savedMeals=homeForm?new URLSearchParams(root.location.search).get('meals'):null;
       const needsLegacy=!homeForm||savedMeals?.split('|').some(value=>value.trim()&&!mealAlias(value.trim()));
@@ -1708,12 +1709,13 @@
       const native=tourvisorIds(row);if(native.length!==1)throw new Error('Для страны нет однозначного соответствия Tourvisor.');
       seen.add(id);items.push({id,name,russianName:name,tourvisorIds:native});
     }
-    const previousCountries=new Map(catalog.countries.map(row=>[String(row.id),row]));
     const cachedRegions={};
-    for(const row of items){
-      const previous=previousCountries.get(row.id);
-      const regions=catalog.regions[row.id];
-      if(Array.isArray(regions)&&previous?.tourvisorIds?.length===1&&String(previous.tourvisorIds[0])===row.tourvisorIds[0])cachedRegions[row.id]=regions;
+    if(publicHomeForm()){
+      const previousCountries=new Map(catalog.countries.map(row=>[String(row.id),row]));
+      for(const row of items){
+        const previous=previousCountries.get(row.id),regions=catalog.regions[row.id];
+        if(Array.isArray(regions)&&previous?.tourvisorIds?.length===1&&String(previous.tourvisorIds[0])===row.tourvisorIds[0])cachedRegions[row.id]=regions;
+      }
     }
     catalog.countries=items;catalog.regions=cachedRegions;regionRequests.clear();return {departures:catalog.departures,countries:items,origin:text(departure)};
   }

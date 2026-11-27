@@ -69,7 +69,7 @@ const previousMealPlan=`function(t,provider=String(t?.provider||'tourvisor').toL
  const matches=catalog.mealPlans.filter(plan=>plan.nativeIds.includes(native));
  return matches.length===1?Object.freeze({id:matches[0].id,code:matches[0].code,nameRu:matches[0].nameRu}):null;
 }`;
-function harness(source,{providers=false,destinationFetch}={}){
+function harness(source,{providers=false,destinationFetch,homeForm=false}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
   // Freeze entropy with the existing clock/transport so the original trace stays exact.
@@ -78,6 +78,10 @@ function harness(source,{providers=false,destinationFetch}={}){
   V2Runtime:{setSearchId(value){log.push(['searchId',value]);},async api(action,body){calls.push({action,body:copy(body)});log.push(['api',action,copy(body)]);if(respond)return respond(action,body);if(action==='search_start')return{searchId:17};if(action==='search_status')return status;if(action==='search_results')return inventory;if(action==='search_continue')return{};throw Error('Unexpected API '+action);}},
   Search3CanonicalProfilesV1:{create(publish){return {reset(){log.push(['reset']);},read(value){log.push(['read',value.length]);return value;},clearOffers(value){log.push(['clearOffers',value]);},refresh(){log.push(['refresh']);publish();}}; }},
   dispatchEvent(event){log.push(['dispatch',event.type,copy(event.detail)]);}};
+ if(homeForm){
+  window.AnyTourPublicConfigV1={valid:true,entry:'home'};
+  window.V2_CONFIG.search3FormOnly=true;
+ }
  const context=vm.createContext({window,URL,URLSearchParams,AbortController,Map,Set,WeakMap,Promise,structuredClone,
   Date:class extends Date{static now(){return clock;}},
   CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},
@@ -150,7 +154,7 @@ async function verifyRetainedRegionCatalogue(source){
  const requests=[];
  let countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
  let regionId=41,regionFailure=false;
- const h=harness(source,{destinationFetch:async raw=>{
+ const destinationFetch=async raw=>{
   const url=new URL(raw,'https://anytoour.ru');
   assert.match(url.pathname,/\/data\/search3-destination-read-v1\.php$/);
   const query=url.searchParams,action=query.get('action');
@@ -162,7 +166,8 @@ async function verifyRetainedRegionCatalogue(source){
    ?countries
    :[{id:regionId,kind:'region',name:'Учебный курорт',parentId:4,tourvisorIds:[String(regionId)],subregions:[]}];
   return {ok:true,json:async()=>({ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',items})};
- }});
+ };
+ const h=harness(source,{destinationFetch,homeForm:true});
  h.api.catalog.departures.push({id:2,name:'Казань'});
  await h.api.countries('Москва');
  const regions=await h.api.regions('4');
@@ -189,6 +194,16 @@ async function verifyRetainedRegionCatalogue(source){
  assert.equal(requests.filter(([action])=>action==='regions').length,4);
  assert.deepEqual(h.calls,[]);
  assert.deepEqual(h.http,[]);
+ requests.length=0;
+ const results=harness(source,{destinationFetch});
+ results.api.catalog.departures.push({id:2,name:'Казань'});
+ await results.api.countries('Москва');
+ const previousList=await results.api.regions('4');
+ await results.api.countries('Казань');
+ assert.notEqual(await results.api.regions('4'),previousList,'results editing still refreshes the region list');
+ assert.deepEqual(requests,[['countries','1'],['regions','4'],['countries','2'],['regions','4']]);
+ assert.deepEqual(results.calls,[]);
+ assert.deepEqual(results.http,[]);
  console.log('PASS settled region catalogue: same country, remapping, error retry, and unavailable country');
 }
 
