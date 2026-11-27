@@ -700,6 +700,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
   const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
   const id = viewport.width + 'x' + viewport.height;
   const errors = [], unexpected = [], documents = [], evidence = { viewport, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
+  const heroRequests = [];
   const evidencePrefix = nextHome ? 'canonical-next-home-' : 'canonical-home-';
   const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
   let releaseFixture, held = false;
@@ -730,6 +731,8 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
   page.on('pageerror', error => errors.push(String(error)));
   page.on('request', request => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(new URL(request.url()).pathname);
+    const asset = new URL(request.url()).pathname;
+    if (/\/home-hero-v1(?:-680)?\.jpg$/.test(asset)) heroRequests.push(asset);
   });
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
@@ -816,6 +819,24 @@ async function runCanonicalHome(browser, viewport, nextHome = null) {
       releaseFixture();
     }
     await ready(); checkURL(false);
+    if (nextHome) {
+      const hero = page.locator('.home-hero-image img');
+      const selected = await hero.evaluate(async image => {
+        await image.decode();
+        return { src:image.currentSrc, width:image.naturalWidth, dpr:window.devicePixelRatio };
+      });
+      assert.equal(selected.dpr,1);
+      if (viewport.width <= 760) {
+        assert.match(selected.src,/^data:image\/gif;/);
+        assert.deepEqual(heroRequests,[],'no desktop image is fetched on mobile');
+      } else {
+        const asset = prefix + '/home-hero-v1-680.jpg';
+        assert.equal(new URL(selected.src).pathname,asset);
+        assert.equal(selected.width,680);
+        assert.deepEqual(heroRequests,[asset],'desktop uses one smaller image request');
+      }
+      evidence.hero = {width:selected.width,requests:[...heroRequests]};
+    }
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
     await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
     await Promise.all([page.waitForURL(url => url.pathname === target), submitTwice()]);

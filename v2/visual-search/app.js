@@ -510,13 +510,16 @@ function homeDestinationWaitingForCatalogue(){
  return homeFormOnly&&!catalogReady&&Boolean(catalogDeparture);
 }
 function lookupDestination(){
+ const q=$('#destination-query').value.trim(),country=destinationChoice.country,generation=catalogLoadGeneration;
+ const {status,requestQuery}=destinationLookup;
+ if(!destinationCountryList&&!homeDestinationWaitingForCatalogue()&&(status==='loading'||status==='complete')
+  &&requestQuery===q&&destinationLookup.country===country&&destinationLookup.generation===generation&&!destinationRequest?.signal.aborted)return;
  destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;
  if(homeDestinationWaitingForCatalogue()){renderDestination();return;}
- const q=$('#destination-query').value.trim(),country=destinationChoice.country;
  if(!countryNames[country]||q.length<2){renderDestination();return;}
- const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[]};renderDestination();
- const current=()=>{const parent=modalHistory.at(-1),query=modalType==='destination'?$('#destination-query')?.value:modalType==='destination-replace'&&parent?.type==='destination'&&parent.route?.choice?.country===country?parent.route.query:null;return destinationRequest===request&&destinationChoice?.country===country&&typeof query==='string'&&query.trim()===q;};
- const receive=rows=>{if(request.signal.aborted||!current())return;rows.forEach(h=>destinationHotels.set(h.id,h));destinationLookup={status:'complete',rows,query:normalizeSearch(q),country};};
+ const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[],requestQuery:q,country,generation};renderDestination();
+ const current=()=>{const parent=modalHistory.at(-1),query=modalType==='destination'?$('#destination-query')?.value:modalType==='destination-replace'&&parent?.type==='destination'&&parent.route?.choice?.country===country?parent.route.query:null;return destinationRequest===request&&generation===catalogLoadGeneration&&destinationChoice?.country===country&&typeof query==='string'&&query.trim()===q;};
+ const receive=rows=>{if(request.signal.aborted||!current())return;rows.forEach(h=>destinationHotels.set(h.id,h));destinationLookup={status:'complete',rows,query:normalizeSearch(q),requestQuery:q,country,generation};};
  destinationTimer=setTimeout(async()=>{const timeout=setTimeout(()=>request.abort(),15000);try{
   const rows=await data.lookupHotels(q,country,request.signal,rows=>{receive(rows);if(current()&&modalType==='destination')renderDestination();});receive(rows);
  }catch(error){if(!current())return;destinationLookup={status:'error',rows:[]};}
@@ -613,7 +616,7 @@ function openDestination(restore=null){
  $('#modal').classList.add('destination-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="picker-summary"><strong id="destination-summary"></strong><small class="destination-apply-context"></small></div><button class="primary picker-apply" data-action="apply-destination">Выбрать направление</button>';
  $('#destination-selection').open=destinationSelectionExpanded;$('#destination-query').value=boundedHistoryText(restore?.query,'');
  if(restore&&$('#destination-query').value.trim().length>=2&&!destinationCountryList){const limit=destinationHotelLimit;lookupDestination();destinationHotelLimit=limit;}else renderDestination();
- if(!homeDestinationWaitingForCatalogue())loadResorts(destinationChoice.country);
+ if(!homeDestinationWaitingForCatalogue()&&!Array.isArray(data.catalog.regions[destinationChoice.country]))loadResorts(destinationChoice.country);
  if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;
  if(innerWidth>760)$('#destination-query').focus({preventScroll:true});
 }
