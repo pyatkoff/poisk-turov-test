@@ -1,4 +1,4 @@
-name: Read the original 45930672851 PRICE journal and current server stage
+name: Read the pending PRICE receipt for TV61623 from original run 45930672851
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '47529dd0f178953769f80fe570c556f744dc59f5'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd29fd190825158fd0627e0a1082adacf42a25af6'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -64,9 +64,34 @@ jobs:
               'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'locked':locked,
               'journal_bytes':size,
-              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','finished_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
+              'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
               'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
           }),flush=True)
+          import pathlib, re, hashlib
+          if cycle.get('collector_run_id') != '45930672851' or pending.get('tourvisor_hotel_id') != 61623:
+              print('ORIGINAL_PENDING_ALREADY_CHANGED', flush=True)
+          else:
+              operation=pending.get('operation','')
+              assert re.fullmatch(r'commercial-monitor-price-h61623-[a-f0-9]{64}',operation)
+              private=pathlib.Path(path).parent
+              child=private/operation/'receipt.jsonl'
+              assert child.resolve()==child
+              failure=pending.get('child_failure') or {}
+              out={'operation':operation,'child_exists':child.is_file(),'parent_error':failure.get('error'),'parent_child_exit':failure.get('exit_code')}
+              if child.is_file():
+                  with child.open('rb') as local:
+                      try:
+                          fcntl.flock(local,fcntl.LOCK_SH | fcntl.LOCK_NB)
+                          out['locked']=False
+                      except BlockingIOError:
+                          out['locked']=True
+                      raw=local.read(10000001)
+                      assert len(raw)<=10000000 and raw.endswith(bytes([10]))
+                      end=json.loads(raw.splitlines()[-1])
+                      assert end.get('operation')==operation
+                      out.update(child_sha256=hashlib.sha256(raw).hexdigest(),child_bytes=len(raw),complete=end.get('complete'),terminal=(end.get('terminal') or {}).get('reason'),
+                         posts=[{**{k:item.get(k) for k in ('state','button_result','last_error','error','reason')},'platform':(item.get('plan') or {}).get('platform'),'provider_response_saved':bool(item.get('provider_response')),'receipt_saved':bool(item.get('receipt')),'planned_price':((item.get('plan') or {}).get('monitor_price') or {}).get('price')} for item in (end.get('posts') or {}).values()])
+              print('PRICE_PENDING_61623',json.dumps(out),flush=True)
           import subprocess
           names=('sync-priority-hotels-v1.php','top500-coverage-v1.php','top500-daily-collector-v1.php',
                  'monitor-price-hook.php','apply_promoted_hotel_prices.php','rollup-price-daily-v1.php',
