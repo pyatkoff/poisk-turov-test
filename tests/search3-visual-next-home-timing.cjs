@@ -20,7 +20,9 @@ const fixtureQuery=new URLSearchParams({scenario:'family',origin:'Москва',
 
 async function versions(nextHome){
   const before={},after={};
-  const home=nextHome.html.get(nextHome.prefix+'/');
+  // This historical comparison isolates the earlier filter-script change.
+  // The separate cached journey test exercises the current prefetch behavior.
+  const home=nextHome.html.get(nextHome.prefix+'/')?.replace(/ data-search3-handoff-prefetch="[^"]+"/,'');
   assert(home&&!home.includes('/filter-panel-v1.js?'),'candidate Home omits the filter script');
   for(const name of assetNames){
     const original=execFileSync('git',['cat-file','blob',previous[name].blob],{cwd:root,encoding:'utf8',maxBuffer:1024*1024});

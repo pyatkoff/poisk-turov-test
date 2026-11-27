@@ -43,7 +43,7 @@ const contentTypes = {
 async function versions(nextHome) {
   const tracked = execFileSync('git',['diff','--name-only',commits.after,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
   assert.deepEqual(tracked,[
-    'tests/search3-entry-owner-browser.cjs','tests/search3-next-cached-card-benchmark.cjs',
+    'tests/search3-entry-owner-browser.cjs','tests/search3-next-cached-card-benchmark.cjs','tests/search3-visual-next-home-timing.cjs',
     'v2/visual-search/entry-v1.php','v2/visual-search/migration-manifest.json','v2/visual-search/public-bootstrap-v1.js'
   ]);
   const commonFiles = {
