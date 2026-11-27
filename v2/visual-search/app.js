@@ -4044,14 +4044,18 @@ function applyCatalog(c){
  draftDestination=null;
 }
 async function loadCountries(origin){
+ const explicitDestination=homeFormOnly?draftDestination:null;
  const previousDestination=homeFormOnly?currentDraftDestination():null;
  const run=++catalogLoadGeneration;catalogReady=false;catalogError='';catalogDeparture=origin;updateSearchUI();
  if(modalType==='destination')renderDestination();
  try{
   const c=await data.countries(origin);if(!c||run!==catalogLoadGeneration||draft.origin!==origin)return;
   applyCatalog(c);
-  const carryResorts=previousDestination?.country===draft.country&&previousDestination.resorts.length>0;
-  if(carryResorts)draftDestination=previousDestination;
+  const sameCountry=previousDestination&&previousDestination.country===draft.country;
+  const carryResorts=sameCountry&&previousDestination.resorts.length>0;
+  if(explicitDestination||carryResorts){
+   draftDestination=sameCountry?previousDestination:{country:draft.country,resorts:[],hotelId:0,hotelIds:[]};
+  }
   if(!homeFormOnly||!data.live||carryResorts){updateSearchUI();await loadResorts(draft.country);}
   if(run!==catalogLoadGeneration||draft.origin!==origin)return;
   if(carryResorts){

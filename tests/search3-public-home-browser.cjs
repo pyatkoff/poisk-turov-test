@@ -2,7 +2,7 @@
 // Invoked by the existing native public LIVE owner after its Search3 corpus.
 // The server, PHP root alias, manifest and compiled bytes belong to that owner.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
 const {privateTVFixture}=require('./search3-visual-messenger-browser.cjs');
 const intPath='/_preview/search3-anex-candidate/api-anex-search3-preview.php';
 const dataPaths=new Set(['/api-v2.php','/data/departures-v1.php','/data/hotel-search-v1.php',
@@ -421,6 +421,23 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      assert.equal(privateRequests(),beforeCold,'changing departure on HOME starts no supplier preparation');
      row.retainedResort={city:selected.get('origin'),resort:selected.get('resorts')};
      await capture('retained-resort',true);
+     transport.state.hotelCatalogue=hotelCatalogue().filter(hotel=>[2002,2004].includes(hotel.id));
+     await page.goto(origin+'/?'+initial);await readyHome(page);
+     await page.locator('#search-form [data-action="destination"]').click();
+     await page.locator('#destination-query').fill('Rixos Fictional');
+     for(const id of [2002,2004]){
+      await page.locator('[data-action="destination-hotel"][data-id="'+id+'"]').click();
+     }
+     await page.locator('[data-action="apply-destination"]').click();await idleModal(page);
+     assert.equal(new URL(page.url()).searchParams.get('hotels'),'2002|2004');
+     await pickKazan();await readyHome(page);
+     const hotelConditions=new URL(page.url()).searchParams;
+     assert.equal(hotelConditions.get('origin'),'Казань');
+     assert.equal(hotelConditions.get('hotels'),'2002|2004');
+     assert.match(await page.locator('#destination-detail').textContent(),/Belek 02.*Belek 04/);
+     assert.equal(privateRequests(),beforeCold,'retaining exact hotels starts no supplier preparation');
+     row.retainedHotels={city:hotelConditions.get('origin'),hotels:hotelConditions.get('hotels')};
+     await capture('retained-hotels',true);
     }
    }
    assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
