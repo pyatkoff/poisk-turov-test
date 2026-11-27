@@ -3,6 +3,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {execFileSync} = require('node:child_process');
 const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
@@ -689,17 +690,54 @@ async function runHomeRanges(browser, width) {
     fs.writeFileSync(path.join(output, `home-range-${width}.json`), JSON.stringify({ width, catalogs, handoffs, unexpected, errors, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
   } finally { await page.close(); }
 }
+// Render a private copy of the compiled payload using the same route rewrites as
+// the NEXT publisher. This process starts no additional HTTP service.
+function prepareNextHome() {
+  const sitePrefix = new URL(base).pathname;
+  assert.equal(sitePrefix, '/_preview/search3-site-candidate');
+  const nextPrefix = '/_preview/search3-next-candidate';
+  const build = path.join(process.env.RUNNER_TEMP, 'search3-site-docroot', sitePrefix.slice(1));
+  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'search3-next-home-'));
+  const payload = path.join(temporary, 'payload'), documentRoot = path.join(temporary, 'empty-document-root');
+  const clean = () => fs.rmSync(temporary, {recursive:true,force:true});
+  try {
+    fs.cpSync(build, payload, {recursive:true});
+    fs.mkdirSync(documentRoot);
+    const rewrite = (name, from, to, count) => {
+      const file = path.join(payload, name), input = fs.readFileSync(file, 'utf8');
+      assert.equal(input.split(from).length - 1, count, 'NEXT route source ' + name);
+      fs.writeFileSync(file, input.replaceAll(from, to));
+    };
+    rewrite('site-path-v1.php', '#^(' + sitePrefix + ')(?:/|$)#', '#^(' + nextPrefix + ')(?:/|$)#', 1);
+    for (const [name, count] of Object.entries({
+      'poisk-turov/index.php':3, 'visual-search/public-entry-v1.php':3,
+      'visual-search/entry-v1.php':2, 'visual-search/public-config-v1.js':2,
+    })) rewrite(name, sitePrefix, nextPrefix, count);
+    const php = "$_SERVER['DOCUMENT_ROOT']=$argv[1]; $_SERVER['HTTP_HOST']='anytoour.ru'; $_SERVER['SCRIPT_NAME']=$argv[2]; include $argv[3];";
+    const html = new Map();
+    for (const entry of ['index.php','poisk-turov/index.php']) {
+      const pathname = nextPrefix + '/' + entry.replace(/index\.php$/, '');
+      const rendered = execFileSync('php', ['-d','display_errors=1','-r',php,
+        documentRoot,nextPrefix+'/'+entry,path.join(payload,entry)], {encoding:'utf8',timeout:20000});
+      assert(rendered.includes('id="search-form"') && !rendered.includes(sitePrefix), pathname);
+      html.set(pathname, rendered);
+    }
+    return {prefix:nextPrefix,payload,html,clean};
+  } catch (error) { clean(); throw error; }
+}
+
 // Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
-async function runCanonicalHome(browser, viewport) {
+async function runCanonicalHome(browser, viewport, nextHome = null) {
   const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
-  const prefix = new URL(base).pathname, origin = new URL(base).origin;
+  const prefix = nextHome?.prefix || new URL(base).pathname, origin = new URL(base).origin;
   const home = prefix + '/', target = prefix + '/poisk-turov/';
   const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
   const id = viewport.width + 'x' + viewport.height;
   const errors = [], unexpected = [], documents = [], evidence = { viewport, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
-  const save = () => fs.writeFileSync(path.join(output, 'canonical-home-' + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
+  const evidencePrefix = nextHome ? 'canonical-next-home-' : 'canonical-home-';
+  const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
   let releaseFixture, held = false;
   const gate = new Promise(resolve => { releaseFixture = resolve; });
   const { canonicalLogoFixture } = require('./search3-visual-live-fixture.cjs');
@@ -743,6 +781,15 @@ async function runCanonicalHome(browser, viewport) {
     }
     if (request.isNavigationRequest() && ![home, target].includes(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
     if (url.pathname === fixture && !held) { held = true; await gate; }
+    if (nextHome) {
+      const document = nextHome.html.get(url.pathname);
+      if (document !== undefined) return route.fulfill({contentType:'text/html; charset=utf-8',body:document});
+      const local = path.resolve(nextHome.payload, url.pathname.slice(prefix.length + 1));
+      if (!local.startsWith(nextHome.payload + path.sep) || !fs.existsSync(local) || !fs.statSync(local).isFile()) {
+        unexpected.push(url.pathname); return route.abort();
+      }
+      return route.fulfill({path:local});
+    }
     return route.continue();
   });
   const initial = { scenario: 'family', origin: 'Москва', country: '4', from: '2026-10-01', to: '2026-10-07',
@@ -770,14 +817,16 @@ async function runCanonicalHome(browser, viewport) {
     assert.deepEqual(await search(), [], 'HOME never starts a search');
     assert.equal(await form.locator('#quick-stars').isVisible(), true);
     assert.equal(await form.locator('#quick-meal').isVisible(), true);
-    const budget = form.locator('#quick-meal + #quick-budget');
-    assert.equal(await budget.isVisible(), true, 'budget is visible beside meals');
-    assert.equal(await budget.locator('xpath=ancestor::details').count(), 0, 'budget is directly accessible');
-    const [mealsBox, budgetBox] = await Promise.all([form.locator('#quick-meal').boundingBox(), budget.boundingBox()]);
-    assert.ok(mealsBox && budgetBox && budgetBox.x >= mealsBox.x + mealsBox.width - 1,
-      'budget is to the right of meals');
-    assert.ok(Math.abs(budgetBox.y - mealsBox.y) <= 1 && budgetBox.height >= 44,
-      'budget and meals share the same row and meet the tap target size');
+    if (nextHome) {
+      const budget = form.locator('#quick-meal + #quick-budget');
+      assert.equal(await budget.isVisible(), true, 'NEXT budget is visible beside meals');
+      const [mealBox, budgetBox] = await Promise.all([form.locator('#quick-meal').boundingBox(),budget.boundingBox()]);
+      assert(mealBox && budgetBox && budgetBox.x >= mealBox.x + mealBox.width - 1);
+      assert(Math.abs(budgetBox.y - mealBox.y) <= 1 && budgetBox.height >= 44, 'NEXT budget shares the meal row');
+      evidence.budgetPlacement = {meal:mealBox,budget:budgetBox};
+    } else {
+      assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    }
     const submit = await form.locator('.search-submit').boundingBox();
     assert.ok(submit && submit.height >= 44 && submit.y >= 0 && submit.y + submit.height <= viewport.height + 1, 'Find fits the first viewport');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
@@ -793,7 +842,7 @@ async function runCanonicalHome(browser, viewport) {
     releaseFixture();
     await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
-    await page.screenshot({ path: path.join(output, 'canonical-home-ready-' + id + '.png') });
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
     await Promise.all([page.waitForURL(url => url.pathname === target), submitTwice()]);
     await page.locator('.hotel-card').first().waitFor();
     checkURL(true);
@@ -806,7 +855,7 @@ async function runCanonicalHome(browser, viewport) {
     assert.deepEqual(calls[0].filters.meals, ['Всё включено']);
     assert.equal(calls[0].filters.max, 240000);
     evidence.receiver = calls[0];
-    await page.screenshot({ path: path.join(output, 'canonical-home-receiver-' + id + '.png') });
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'receiver-' + id + '.png') });
     await page.goBack(); await ready(); checkURL(false);
     await page.reload(); await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
@@ -824,7 +873,7 @@ async function runCanonicalHome(browser, viewport) {
     save();
   } catch (error) {
     evidence.status = 'failed'; evidence.error = error.stack || String(error); save();
-    await page.screenshot({ path: path.join(output, 'canonical-home-failure-' + id + '.png') }).catch(() => {});
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'failure-' + id + '.png') }).catch(() => {});
     throw error;
   } finally { releaseFixture(); await context.close(); }
 }
@@ -834,6 +883,10 @@ async function runCanonicalHome(browser, viewport) {
   try {
     if (process.argv.includes('--canonical-home')) {
       for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
+      const nextHome = prepareNextHome();
+      try {
+        for (const viewport of [{width:430,height:932},{width:1280,height:720}]) await runCanonicalHome(browser, viewport, nextHome);
+      } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
       return;
     }
