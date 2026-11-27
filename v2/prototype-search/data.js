@@ -1672,6 +1672,7 @@
     }
     return countries(origin,options);
   }
+  const countryRequests=new Map();
   async function countryOptions(origin,run,bootstrap,options) {
     if(bootstrap)await bootstrap.departures;
     if(run!==catalogGeneration)return null;
@@ -1681,8 +1682,13 @@
       if(matches.length!==1||!text(matches[0])){const error=new Error('Город вылета из ссылки недоступен.');error.code='PUBLIC_DEPARTURE_UNMAPPED';throw error;}
       departure=matches[0];
     }else departure=catalog.departures.find(x=>text(x)===origin)||catalog.departures[0];
-    const rows=await destinationCatalog('countries',{departureId:departure.id});
-    return {rows,departure};
+    const key=String(departure.id);
+    let request=countryRequests.get(key);
+    if(!request){
+      request=destinationCatalog('countries',{departureId:departure.id}).finally(()=>countryRequests.delete(key));
+      countryRequests.set(key,request);
+    }
+    return {rows:await request,departure};
   }
   async function countries(origin,options={}) {
     const run=++catalogGeneration,bootstrap=catalogBootstrap;
