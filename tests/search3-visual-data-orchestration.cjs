@@ -392,7 +392,7 @@ async function selectedHotelRestoration(){
  const start=app.indexOf('async function restoreURLHotel(){'),end=app.indexOf('\nasync function bootRealData()',start);
  assert(start>=0&&end>start,'existing URL hotel restoration owner');
  const calls=[],cache=new Map(),selected={country:'4',hotelId:0,hotelIds:[2001,2002]},context={
-  state:{filters:selected,search:{country:'4'}},draft:{origin:'Москва'},catalogLoadGeneration:0,
+  state:{filters:selected,search:{country:'4'}},draft:{origin:'Москва'},catalogLoadGeneration:0,homeFormOnly:false,
   currentDraftDestination:()=>selected,destinationIds:d=>d.hotelIds?.length?d.hotelIds:d.hotelId?[d.hotelId]:[],
   destinationHotel:id=>cache.get(id),destinationHotels:cache,hotelRestorePending:false,modalType:'',
   updateSearchUI(){},renderResults(){},renderDestination(){},
@@ -416,6 +416,7 @@ async function selectedHotelRestoration(){
  assert.equal(disabled(false,true),true,'pending Home navigation blocks repeat submit even after every identity resolves');
  assert.equal(disabled(true),true,'an outstanding region identity still blocks submit');
  cache.clear();calls.length=0;let pending=gate();context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);await pending.promise;return {id,country,legacyIds:[String(id+5000)]};};
+ context.homeFormOnly=true;
  const restoring=context.restoreURLHotel();await flush();const duplicated=context.restoreURLHotel();await duplicated;
  assert.equal(calls.length,2,'duplicate restoration shares the bounded in-progress work');
  selected.country='100';selected.hotelIds=[3001];pending.resolve();await restoring;
@@ -423,6 +424,17 @@ async function selectedHotelRestoration(){
  selected.country='4';selected.hotelIds=[2001];selected.hotelId=2001;pending=gate();
  const changedSelection=context.restoreURLHotel();await flush();selected.hotelIds=[2002];selected.hotelId=2002;pending.resolve();await changedSelection;
  assert.equal(cache.size,0,'late former-selection profiles never enter the current selection cache');
+ for(const home of [true,false]){
+  cache.clear();calls.length=0;pending=gate();
+  context.homeFormOnly=home;
+  const changingDeparture=context.restoreURLHotel();await flush();
+  context.catalogLoadGeneration++;
+  context.draft.origin=home?'Казань':'Москва';
+  pending.resolve();await changingDeparture;
+  assert.deepEqual(calls,[[2002,'4']],'a city change does not restart an in-progress hotel lookup');
+  assert.equal(cache.has(2002),home,'only HOME can retain the exact hotel profile across a city change');
+  assert.equal(disabled(),!home,'HOME can submit after the original lookup when the hotel still matches');
+ }
  context.data.restoreHotel=async()=>({id:9999,country:'4',legacyIds:['8999']});await context.restoreURLHotel();
  assert.equal(cache.size,0,'a different own ID cannot substitute the requested selection');
  context.data.restoreHotel=async()=>({id:2002,country:'100',legacyIds:['7002']});await context.restoreURLHotel();
@@ -437,7 +449,7 @@ async function selectedHotelRestoration(){
  context.countryNames={'4':'Турция'};context.catalogReady=true;cache.set(2002,{id:2002,country:'100',legacyIds:['7002']});
  assert.deepEqual(restored({...selected,resorts:[]}).hotelIds,[2001],'known foreign-country metadata never joins the restored draft');
  assert.equal(restored({country:'javascript:4',hotelIds:[2001],resorts:[]}).country,'4');
- console.log('PASS selected hotel URL restoration: multi-ID, partial failure/retry, duplicate and stale context, exact ID/country; supplierHTTP0');
+ console.log('PASS selected hotel URL restoration: multi-ID, partial failure/retry, duplicate and stale context, HOME departure change, exact ID/country; supplierHTTP0');
 }
 function verifiedFlightPairBinding(source){
  const start=source.indexOf('  function andromedaPoint('),end=source.indexOf('  function hasAndromedaQuoteAttempt(',start);
