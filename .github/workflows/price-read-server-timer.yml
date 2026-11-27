@@ -1,4 +1,4 @@
-name: Read the native 08:45 TOP500 cycle and attempt queue
+name: Resume reading the original 08:45 TOP500 cycle after SSH reset
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ad8669172b63d41e07112814a58287f3caef3ef7'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ff5791a516157c303478701aa9678e9259c9a946'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
@@ -42,7 +42,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15)
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=25 -o ServerAliveCountMax=4)
           ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'cd /var/www/anytoour/data/www/anytoour.ru/data && /usr/bin/php -d display_errors=0' <<'PHP'
           <?php
           declare(strict_types=1);
@@ -52,15 +52,17 @@ jobs:
               $check = $pdo->prepare('SELECT IS_USED_LOCK(?) IS NOT NULL');
               $limit = microtime(true) + 1200;
               $previous = null;
+              $lastOutput = 0.0;
               do {
                   $check->execute(['anytour_top500_monthly_v1']);
                   $state = $check->fetchColumn();
                   $check->closeCursor();
                   if (!in_array((string)$state, ['0','1'], true)) throw new RuntimeException('missing_lock_state');
                   $busy = (bool)$state;
-                  if ($busy !== $previous) {
+                  if ($busy !== $previous || microtime(true) - $lastOutput >= 25) {
                       echo 'COLLECTOR_LOCK ', json_encode(['checked_at'=>gmdate('c'), 'busy'=>$busy], JSON_THROW_ON_ERROR), PHP_EOL;
                       $previous = $busy;
+                      $lastOutput = microtime(true);
                   }
                   if (!$busy || microtime(true) >= $limit) break;
                   sleep(10);
