@@ -4,7 +4,7 @@ const app=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),start=
 const loaderStart=app.indexOf('function createPresentationLoader(');assert(loaderStart>=0&&loaderStart<start,'actual shared presentation loader');
 const source=app.slice(loaderStart,start)+app.slice(start,end),names=source.slice(source.indexOf('.create({')+9,source.indexOf('});}',source.indexOf('.create({'))).replace(/get hotelOfferDraft\(\)\{[^}]*\},set hotelOfferDraft\(value\)\{[^}]*\},get selectedOffer\(\)\{[^}]*\},/,'').split(','),flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(){
- const scripts=[],timers=new Map(),renders=[],roomInputs=[],load={innerHTML:'old'},body={scrollTop:0},modal={open:true,classList:{add(){}}},nav={dataset:{hotelId:'1'}},rooms=[{dataset:{room:'Standard'},querySelector:()=>more}],more={open:false},offerRows=[{meal:'BB'}];let timer=0,ready=false,remembers=0,offerInventories=0;
+ const scripts=[],timers=new Map(),renders=[],roomInputs=[],mountInputs=[],load={innerHTML:'old'},body={scrollTop:0},modal={open:true,classList:{add(){}}},nav={dataset:{hotelId:'1'}},rooms=[{dataset:{room:'Standard'},querySelector:()=>more}],more={open:false},offerRows=[{meal:'BB'}];let timer=0,ready=false,remembers=0,offerInventories=0;
  const ctx={window:{},Promise,Error,Number,Array,modalType:'hotel-details',state:{search:{country:'4'},filters:{meals:[]},selectedDate:null,onlyFavorites:false},hotelOfferDraft:null,selectedOffer:null,hotels:[{id:1,name:'One',resort:'Place',stars:5},{id:2,name:'Two',resort:'Place',stars:4}],
   document:{head:{dataset:{hotelDetailsSrc:'./hotel-details-v1.js?v=exact'},append:s=>scripts.push(s)},createElement:()=>({remove(){this.removed=true;}})},
   setTimeout:(fn,delay)=>{assert.equal(delay,15000,'hotel module keeps its bounded load timeout');timers.set(++timer,fn);return timer;},clearTimeout:id=>timers.delete(id),
@@ -13,8 +13,8 @@ function fixture(){
   hotelOffers:()=>{offerInventories++;return offerRows;},rememberUIRoute:()=>remembers++
  };for(const name of names)if(!(name in ctx))ctx[name]=()=>{};
  vm.createContext(ctx);vm.runInContext(source,ctx);
- const owner={create:()=>({openHotelDetails:id=>{const offers=ctx.hotelOffers();renders.push(['mount',id]);ready=true;return offers;},renderHotelRooms:(id,meal,restoredRooms,initialOffers)=>{const offers=initialOffers??ctx.hotelOffers();roomInputs.push(initialOffers);renders.push(['rooms',id,meal,restoredRooms]);return {hotel:ctx.hotels.find(h=>h.id===id),offers};}})};
- return {ctx,scripts,timers,renders,roomInputs,load,modal,body,more,offerRows,owner,remembers:()=>remembers,inventories:()=>offerInventories};
+ const owner={create:()=>({openHotelDetails:(id,roomState)=>{const offers=ctx.hotelOffers();mountInputs.push(roomState);renders.push(['mount',id]);ready=true;return offers;},renderHotelRooms:(id,meal,restoredRooms,initialOffers)=>{const offers=initialOffers??ctx.hotelOffers();roomInputs.push(initialOffers);renders.push(['rooms',id,meal,restoredRooms]);return {hotel:ctx.hotels.find(h=>h.id===id),offers};}})};
+ return {ctx,scripts,timers,renders,roomInputs,mountInputs,load,modal,body,more,offerRows,owner,remembers:()=>remembers,inventories:()=>offerInventories};
 }
 function profileFixture(warm=true){
  const f=fixture(),pending=[],profiles=[],renders=[],groups=[],create=f.owner.create;
@@ -51,17 +51,17 @@ function profileFixture(warm=true){
  assert.equal(meals.inventories(),3,'new raw inventory is recalculated');
  meals.ctx.hotels=[...meals.ctx.hotels];meals.ctx.refineHotelRoomMeal(1,'BB');
  assert.equal(meals.inventories(),4,'new supplier generation is recalculated');
- const h=fixture();h.ctx.openHotelDetails(1,{meal:'BB',rooms:['Standard'],more:['Standard'],scroll:713});h.ctx.renderHotelRooms(1,'BB');assert.equal(h.renders.length,0,'room refresh waits for mounted DOM');h.ctx.window.AnyTourHotelDetails=h.owner;h.scripts[0].onload();await flush();assert.deepEqual(h.renders,[['mount',1],['rooms',1,'BB',['Standard']]]);assert.equal(h.inventories(),1,'history restore hands one exact owner inventory to validation and room rendering');assert.strictEqual(h.roomInputs[0],h.offerRows,'history room restoration receives the exact mounted offer array');assert.equal(h.more.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1);
+ const h=fixture();h.ctx.openHotelDetails(1,{meal:'BB',rooms:['Standard'],more:['Standard'],scroll:713});h.ctx.renderHotelRooms(1,'BB');assert.equal(h.renders.length,0,'room refresh waits for mounted DOM');h.ctx.window.AnyTourHotelDetails=h.owner;h.scripts[0].onload();await flush();assert.deepEqual(h.renders,[['mount',1]],'restored rooms are rendered in the first mount');assert.equal(h.inventories(),1,'history restore reads the inventory once');assert.deepEqual(JSON.parse(JSON.stringify(h.mountInputs[0])),{meal:'BB',rooms:['Standard'],expandedMore:['Standard']});assert.strictEqual(vm.runInContext('hotelDetailsView.roomInventory.offers',h.ctx),h.offerRows,'history room restoration caches the exact mounted offer array');assert.equal(h.more.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1);
  const c=fixture();c.ctx.openHotelDetails(1);c.modal.open=false;const pending=c.load.innerHTML;c.scripts[0].onerror();await flush();assert.equal(c.load.innerHTML,pending);
  for(const warm of [false,true]){
   const f=profileFixture(warm);f.offerRows[0]={key:'selected-group',meal:'BB',provider:'anex',raw:{anexKind:'group_minimum'}};
   f.ctx.openHotelDetails(1,{entryOfferKey:'selected-group',meal:'BB',scroll:123});
   if(!warm){f.ctx.window.AnyTourHotelDetails=f.owner;f.scripts[0].onload();await flush();}
-  assert.deepEqual(f.renders,[['mount',1],['rooms',1,'BB',null]],'exact rooms are available with the profile held');assert.deepEqual(f.groups,[1]);
+  assert.deepEqual(f.renders,[['mount',1]],'exact rooms are available with the profile held');assert.deepEqual(JSON.parse(JSON.stringify(f.mountInputs[0])),{meal:'BB',rooms:null,expandedMore:[],preferredOfferKey:'selected-group'});assert.deepEqual(f.groups,[1]);
   const selection=f.ctx.selectedOffer,draft=f.ctx.hotelOfferDraft;f.pending[0].resolve(true);await flush();
   assert.deepEqual(f.profiles,[[1,'Updated 1',123]]);assert.deepEqual(f.cards,['cards']);assert.strictEqual(f.ctx.hotels[0].offers,f.offerRows);
   assert.strictEqual(f.ctx.selectedOffer,selection);assert.strictEqual(f.ctx.hotelOfferDraft,draft);assert.deepEqual(f.groups,[1],'late profile must never re-enter group expansion');
-  assert.equal(f.renders.length,2,'late presentation does not remount the hotel or rooms');
+  assert.equal(f.renders.length,1,'late presentation does not remount the hotel or rooms');
   const inventoryCount=f.inventories();f.ctx.refineHotelRoomMeal(1,'BB');assert.equal(f.inventories(),inventoryCount+1,'a replaced profile invalidates eligibility even with an unchanged offers array');
  }
  const early=profileFixture(false);early.ctx.openHotelDetails(1);early.pending[0].resolve(true);await flush();assert.equal(early.ctx.hotels[0].name,'Updated 1');assert.deepEqual(early.profiles,[]);

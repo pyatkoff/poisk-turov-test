@@ -1365,14 +1365,11 @@ function renderHotelDetails(){
   const hotel=hotels.find(h=>h.id===view.id);if(!hotel)return;
   mountedOwner=hotelDetailsOwner();
   const restored=view.restored;
-  const roomState={expandedMore:Array.isArray(restored?.more)?restored.more:[],preferredOfferKey:restored?.entryOfferKey};
+  const roomState={meal:restored?.meal,rooms:Array.isArray(restored?.rooms)?restored.rooms:null,expandedMore:Array.isArray(restored?.more)?restored.more:[],preferredOfferKey:restored?.entryOfferKey};
   const initialOffers=mountedOwner.openHotelDetails(view.id,roomState);
   view.roomInventory=captureOfferInventory(hotel,initialOffers);
   view.restored=null;
   if(restored){
-   const meal=restored.meal&&initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'';
-   const rooms=Array.isArray(restored.rooms)?restored.rooms:null;
-   if(meal||rooms?.length)renderHotelRooms(view.id,meal,rooms,initialOffers,roomState);
    for(const room of $$('.hotel-room-card[data-room]'))if(Array.isArray(restored.more)&&restored.more.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
    if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;
   }

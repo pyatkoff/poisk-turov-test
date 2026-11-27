@@ -5,6 +5,21 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('playwright');
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2'));
 const base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence/hotel-details-lazy');fs.mkdirSync(evidence,{recursive:true});
+async function trackRoomReturn(page){
+ await page.evaluate(()=>{
+  const binding=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+  let writes=0;
+  Object.defineProperty(Element.prototype,'innerHTML',{...binding,set(value){
+   if(this.classList.contains('hotel-room-cards'))writes++;
+   binding.set.call(this,value);
+  }});
+  window.__takeRoomReturnPaints=()=>{
+   Object.defineProperty(Element.prototype,'innerHTML',binding);
+   delete window.__takeRoomReturnPaints;
+   return writes;
+  };
+ });
+}
 async function galleryAcceptance(browser,width,port){
  const context=await browser.newContext({viewport:{width,height:800}}),page=await context.newPage(),errors=[],external=[];let permitFirst=false,releaseLast,holdLast=true,releaseSecond,holdSecond=true,photoCount=24,heroPhase=false;
  const lastPhoto=new Promise(resolve=>{releaseLast=resolve;}),secondPhoto=new Promise(resolve=>{releaseSecond=resolve;}),historyKey='anytour.prototype.v18.ui.v1';
@@ -144,8 +159,8 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="modal-back"]').click();await page.locator('#hotel-room-count').waitFor();assert.equal(await currentRoom().getAttribute('data-room'),selected,'nested Back keeps the exact chosen room');assert(await currentRoom().evaluate(el=>el.tagName!=='DETAILS'||el.open),'existing room disclosure remains open when applicable');
    assert.equal(await currentRoom().locator('[data-action="select-hotel-offer"]').first().getAttribute('data-key'),key);
    assert.deepEqual(await toggleNames(),namesBefore,'Back rebuilds the same exact stable names for the selected and unselected rows');
-   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#hotel-room-count').waitFor();assert.equal(await currentRoom().getAttribute('data-room'),selected,'Forward restores the exact room');assert(await currentRoom().evaluate(el=>el.tagName!=='DETAILS'||el.open),'Forward retains disclosure when applicable');assert.equal(requests,2);
-   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);const gallery=await galleryAcceptance(browser,width,server.address().port);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,nested_exact_offer_back:true,supplier_requests:0,lead_requests:0,gallery});
+   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await trackRoomReturn(page);await page.goForward();await page.locator('#hotel-room-count').waitFor();const roomReturnPaints=await page.evaluate(()=>window.__takeRoomReturnPaints());assert.equal(roomReturnPaints,1,'Forward paints the already restored room list once');assert.equal(await currentRoom().getAttribute('data-room'),selected,'Forward restores the exact room');assert(await currentRoom().evaluate(el=>el.tagName!=='DETAILS'||el.open),'Forward retains disclosure when applicable');assert.equal(requests,2);
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);const gallery=await galleryAcceptance(browser,width,server.address().port);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,history_room_paints:roomReturnPaints,nested_exact_offer_back:true,supplier_requests:0,lead_requests:0,gallery});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled cold hotel-details browser',JSON.stringify(receipts));

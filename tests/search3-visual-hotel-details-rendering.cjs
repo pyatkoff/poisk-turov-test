@@ -66,6 +66,17 @@ function records(code,baseline=false,requestPlaceholder=false){const output=[],c
    h.raw.description='Профиль после входа по названию';owner.refreshHotelProfile(h,null);assert.equal(body.scrollTop,0,'opening the hotel itself stays at the top as its profile arrives');
   }
   if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}
+  if(checkInvocation&&mode==='many'&&long&&meal==='BB'){
+   const previousRoomMarkup=doc.querySelector('.hotel-room-section').innerHTML;
+   const visitsBefore={offerInventories,remembered,observed,synced};
+   const restoredOffers=owner.openHotelDetails(1,{meal,rooms:['Standard<&']});
+   assert.strictEqual(restoredOffers,offers,'a room return preserves the exact input inventory');
+   assert.equal(doc.querySelector('.hotel-room-section').innerHTML,previousRoomMarkup,'restored meal and room disclosure appear in the first room paint');
+   assert.equal(offerInventories,visitsBefore.offerInventories+1);
+   assert.equal(remembered,visitsBefore.remembered+1,'the room owner publishes the final route once');
+   assert.equal(observed,visitsBefore.observed+1,'the room observer runs once for the restored list');
+   assert.equal(synced,visitsBefore.synced+1);
+  }
   if(checkInvocation&&mode==='many'&&!long&&!meal){
    const standard=offers[0];
    const cards=doc.querySelector('.hotel-room-cards'),shared=cards.querySelector('.room-inventory-facts');
