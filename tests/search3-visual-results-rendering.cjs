@@ -13,11 +13,12 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
 // terminal/raw-source receipt. Execute the real presentation owner without HTTP.
 {
  const {JSDOM}=require('jsdom'),dom=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div>'),d=dom.window.document;
- const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
+ const context={document:d,MutationObserver:dom.window.MutationObserver,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
   searchResponse:{phase:'complete',pending:false,canContinue:true,currentInventory:true,providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{offers:99},anex:{offers:88}},union:{offersByProvider:{tourvisor:7,anex:6}}},
   sameSelectedTourConditions:()=>false,needsRefresh:()=>false,icon:()=>'',esc,
   clearSearchTimers(){this.stops=(this.stops||0)+1;},searchLifecycle:{invalidate(){}},renderResults(){}};
- vm.createContext(context);vm.runInContext(section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
+ vm.createContext(context);
+ vm.runInContext(section(app,'const generatedRootBindings=','function appendGeneratedRoots(')+section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
  const render=(items=[{}])=>context.renderSearchStatus(items,3),notice=()=>d.querySelector('#search-status');
  let providerReads=0;
  Object.defineProperty(context.hotels[0].offers[0],'provider',{get(){providerReads++;return 'tourvisor';}});
@@ -49,7 +50,14 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  context.stopSearch();render();assert.match(notice().textContent,/Поиск остановлен/,'explicit Stop remains truthful');
  context.searchResponse={phase:'complete',canContinue:true,providers:{tourvisor:'partial'}};render();notice().querySelector('[data-action="continue-search"]').focus();
  context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
- const placeholder=d.querySelector('#cards .search-skeleton');assert(placeholder);render([]);assert.strictEqual(d.querySelector('#cards .search-skeleton'),placeholder,'progress updates retain the existing loading placeholder');
+ const placeholder=d.querySelector('#cards .search-skeleton'),spinner=notice().querySelector('.search-progress-spinner'),stop=d.activeElement;
+ assert(placeholder&&spinner);
+ const waitingChanges=new dom.window.MutationObserver(()=>{});waitingChanges.observe(notice(),{subtree:true,childList:true});
+ for(const progress of [15,30,45,60]){context.searchResponse.message='Получаем предложения · '+progress+'%';render([]);}
+ assert.strictEqual(d.querySelector('#cards .search-skeleton'),placeholder,'progress retains the skeleton');
+ assert.strictEqual(notice().querySelector('.search-progress-spinner'),spinner,'equivalent progress retains its spinner');
+ assert.strictEqual(d.activeElement,stop,'equivalent progress retains the focused element');
+ assert.equal(waitingChanges.takeRecords().length,0,'equivalent progress does not replace status markup');waitingChanges.disconnect();
  assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
  assert.doesNotMatch(notice().textContent,/Вариантов до фильтров/,'retained previous-run offers cannot become current source counts before this generation receives results');context.searchResponse.currentInventory=true;render([]);assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'accepted progressive inventory supplies counts during loading');context.hotels=[];
  const cardAction=d.createElement('button');d.body.append(cardAction);cardAction.focus();
@@ -57,13 +65,30 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  context.searchResponse.currentInventory=true;render();
  assert.equal(notice().querySelector('details').open,false);assert.match(notice().querySelector('summary').textContent,/Туры найдены, поиск продолжается/);
  assert.strictEqual(d.activeElement,cardAction);assert(notice().querySelector('[data-action="stop-search"]'));assert(notice().querySelector('[data-action="edit-search"]'));assert.equal(notice().querySelector('[data-action="retry-search"]'),null);
- notice().querySelector('details').open=true;notice().querySelector('[data-action="stop-search"]').focus();render();
- assert(notice().querySelector('details').open);assert.equal(d.activeElement.dataset.action,'stop-search','progress preserves the open details and keyboard action');
+ const progressDetails=notice().querySelector('details');progressDetails.open=true;
+ const stopWhilePartial=progressDetails.querySelector('[data-action="stop-search"]');stopWhilePartial.focus();render();
+ assert.strictEqual(notice().querySelector('details'),progressDetails);assert(progressDetails.open);
+ assert.strictEqual(d.activeElement,stopWhilePartial,'progress retains the open details and focused action');
  context.searchResponse.providers.anex='error';render();assert.equal(notice().querySelector('details'),null);assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/не загрузились/);assert.equal(d.activeElement.dataset.action,'stop-search');
  delete context.searchResponse.providers.anex;render();assert(notice().querySelector('details').open,'a focused action remains visible when the panel becomes compact');assert.equal(d.activeElement.dataset.action,'stop-search');
  context.searchResponse.exactRefresh=true;render();assert.equal(notice().querySelector('details'),null,'a pending exact refresh keeps its full context');
  for(const status of ['unknown','error','partial']){context.searchResponse={phase:'error',pending:false,providers:{tourvisor:status}};render([]);assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'unconfirmed empty source is not reported as received zero: '+status);}
  context.searchResponse={phase:'complete',providers:{tourvisor:'complete',anex:'error'}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 0$/,'completed empty source has a known zero');
+ context.searchResponse={phase:'complete',currentInventory:true,canContinue:true,retryRead:true,providers:{tourvisor:'partial'}};
+ render([{}]);
+ d.querySelector('#search-more [data-action="continue-search"]').focus();
+ d.querySelector('#cards').innerHTML='<div class="recovery-empty"><button data-action="continue-search">Проверить результат</button></div>';
+ render([]);
+ assert.equal(d.querySelectorAll('[data-action="continue-search"]').length,1,'a settled empty result has one recovery action');
+ assert.equal(d.activeElement,d.querySelector('#cards button'),'moving recovery into the empty result preserves focus');
+ assert.equal(d.activeElement.textContent,'Проверить результат','uncertain submission still recovers by read');
+ assert.equal(notice().querySelector('[data-action="edit-search"]').textContent,'Изменить условия');
+ d.querySelector('#cards').innerHTML='<div class="recovery-empty"><button data-action="retry-search">Повторить поиск</button></div>';
+ context.searchResponse.canContinue=false;render([]);
+ assert.equal(d.querySelectorAll('[data-action="retry-search"]').length,1,'retry also belongs to the empty result');
+ d.querySelector('#cards').replaceChildren();
+ context.searchResponse={phase:'error',providers:{tourvisor:'error'}};render([]);
+ assert.equal(notice().querySelector('[data-action="retry-search"]').textContent,'Повторить поиск','without an empty-state action the status owns recovery');
  context.data.live=false;context.searchResponse={phase:'complete',pending:false,canContinue:true,providers:{tourvisor:'partial'},sources:{tourvisor:{offers:4}}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 4$/,'offline fixtures retain their recorded source scope');
  dom.window.close();console.log('PASS current result status: canonical progressive/concrete counts, colocated continuation, retained/user-stop distinction, focus and recovery labels; no HTTP');
 }
