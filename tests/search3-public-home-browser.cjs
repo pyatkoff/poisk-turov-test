@@ -197,7 +197,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      assert.equal(url.origin,origin,'external supplier, bot and analytics traffic is forbidden');
      const favicon=faviconResponse(url,request.method());if(favicon){await route.fulfill(favicon);return;}
      if(request.method()==='GET'&&(publicRoutes.has(url.pathname)||staticPaths.has(url.pathname))){await route.continue();return;}
-     if(url.pathname==='/test-photo.svg'&&request.method()==='GET'){
+     if(['/test-photo.svg','/test-missing-photo.svg'].includes(url.pathname)&&request.method()==='GET'){
       await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;
      }
      const body=request.postData()?JSON.parse(request.postData()):{},action=url.searchParams.get('action')||body.action;let value;
@@ -440,7 +440,7 @@ module.exports=async function publicHomeJourney({browser,origin,manifest,manifes
      await capture('retained-hotels',true);
     }
    }
-   assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(failures,[]);
+   assert.deepEqual(forbidden,[]);assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);assert.deepEqual(failures,[]);
    row.status='passed';save();
   }catch(error){
    row.status='failed';row.error=error.stack||error.message;
