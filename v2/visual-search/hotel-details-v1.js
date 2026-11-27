@@ -352,7 +352,7 @@ function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null,{expa
  rememberUIRoute();
  return {hotel:h,offers:allOffers};
 }
-function openHotelDetails(id,roomState){
+function openHotelDetails(id,roomState={}){
  const h=hotels.find(h=>h.id===id);if(!h)return;
  const offers=hotelOffers(h),meals=[...new Set(offers.map(o=>o.meal))];
  mountedProfile=hotelProfileHTML(h);
@@ -364,7 +364,8 @@ function openHotelDetails(id,roomState){
  if(layoutControl)layoutControl.addEventListener('click',()=>loadRoomLayouts(layoutControl.closest('.hotel-room-section'),layoutControl));
  $('#modal').classList.add('hotel-details-dialog');
  if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>Весь тур · ${guestsText()}</span><strong id="hotel-detail-min"></strong><small id="hotel-detail-price-status"></small></div><button id="hotel-detail-offers" class="primary" data-action="hotel-detail-offers" data-id="${id}"></button>`;}
- renderHotelRooms(id,'',null,offers,roomState);
+ const meal=roomState.meal&&offers.some(o=>o.meal===roomState.meal)?roomState.meal:'';
+ renderHotelRooms(id,meal,roomState.rooms,offers,roomState);
  return offers;
 }
 return {openHotelDetails,refreshHotelProfile,renderHotelRooms,syncRoomPriceComparison};
