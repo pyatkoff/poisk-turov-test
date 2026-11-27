@@ -1,4 +1,4 @@
-name: Read the pending PRICE receipt for TV61623 from original run 45930672851
+name: Preview the exact MAX confirmation for pending TV61623 without writes
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'd29fd190825158fd0627e0a1082adacf42a25af6'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '5c2f31014168424a2088eb660e533e28884b6e5d'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'python3 -' <<'PY'
-          import datetime, fcntl, json, os
+          import datetime, fcntl, json, os, pathlib, hashlib, subprocess, base64
           path='/var/www/anytoour/data/channel-post-operations/monitor-price-after-collection-v1.jsonl'
           with open(path,'rb') as handle:
               try:
@@ -67,46 +67,51 @@ jobs:
               'cycle':{k:cycle.get(k) for k in ('collector_run_id','state','collection_started_at','started_at','completed_at','updated_pairs','scanned_pairs','remaining_unscanned_pairs')},
               'pending':{k:pending.get(k) for k in ('tourvisor_hotel_id','phase','at')},
           }),flush=True)
-          import pathlib, re, hashlib
-          if cycle.get('collector_run_id') != '45930672851' or pending.get('tourvisor_hotel_id') != 61623:
-              print('ORIGINAL_PENDING_ALREADY_CHANGED', flush=True)
-          else:
-              operation=pending.get('operation','')
-              assert re.fullmatch(r'commercial-monitor-price-h61623-[a-f0-9]{64}',operation)
-              private=pathlib.Path(path).parent
-              child=private/operation/'receipt.jsonl'
-              assert child.resolve()==child
-              failure=pending.get('child_failure') or {}
-              out={'operation':operation,'child_exists':child.is_file(),'parent_error':failure.get('error'),'parent_child_exit':failure.get('exit_code')}
-              if child.is_file():
-                  with child.open('rb') as local:
-                      try:
-                          fcntl.flock(local,fcntl.LOCK_SH | fcntl.LOCK_NB)
-                          out['locked']=False
-                      except BlockingIOError:
-                          out['locked']=True
-                      raw=local.read(10000001)
-                      assert len(raw)<=10000000 and raw.endswith(bytes([10]))
-                      end=json.loads(raw.splitlines()[-1])
-                      assert end.get('operation')==operation
-                      out.update(child_sha256=hashlib.sha256(raw).hexdigest(),child_bytes=len(raw),complete=end.get('complete'),terminal=(end.get('terminal') or {}).get('reason'),
-                         posts=[{**{k:item.get(k) for k in ('state','button_result','last_error','error','reason')},'platform':(item.get('plan') or {}).get('platform'),'provider_response_saved':bool(item.get('provider_response')),'receipt_saved':bool(item.get('receipt')),'planned_price':((item.get('plan') or {}).get('monitor_price') or {}).get('price')} for item in (end.get('posts') or {}).values()])
-              print('PRICE_PENDING_61623',json.dumps(out),flush=True)
-          import subprocess
-          names=('sync-priority-hotels-v1.php','top500-coverage-v1.php','top500-daily-collector-v1.php',
-                 'monitor-price-hook.php','apply_promoted_hotel_prices.php','rollup-price-daily-v1.php',
-                 'rollup-price-daily-exact-v1.php','build-seo-offer-snapshots-v1.php')
-          active=[]
-          table=subprocess.check_output(['ps','-u',str(os.getuid()),'-o','etimes=,comm=,args='],text=True)
-          for row in table.splitlines():
-              fields=row.strip().split(maxsplit=2)
-              if len(fields)<3 or fields[1] not in ('php','php8.1','php8.2','php8.3','php8.4'):continue
-              command=fields[2].split()
-              for token in command[1:3]:
-                  filename=os.path.basename(token)
-                  if filename in names:
-                      active.append({'step':filename,'elapsed_seconds':int(fields[0])})
-          print('PRICE_RELATED_STEPS',json.dumps(active),flush=True)
+          assert not locked and cycle.get('collector_run_id')=='45930672851' and pending.get('tourvisor_hotel_id')==61623
+          operation='commercial-monitor-price-h61623-ca67adee35e5a6b8a38fd7dcd705f5ccf3cb2326c27041e4224627c3709218c8'
+          assert pending.get('operation')==operation and (pending.get('child_failure') or {}).get('error')=='max_read_failed'
+          app='/var/www/anytoour/data/www/app.anytoour.ru'
+          assert subprocess.check_output(['git','-C',app,'rev-parse','HEAD']).decode().strip()=='263cc9a7855bd11f3597572d08c7f463faebdbd6'
+          private=pathlib.Path(path).parent
+          child=private/operation/'receipt.jsonl'
+          assert child.resolve()==child and child.stat().st_size==21985
+          raw=child.read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='24863d0c50ed86c299056e18d7de2e2f3f5d3cab80c41ab4f7f7c8fed0f9e85d'
+          leaf=json.loads(raw.splitlines()[-1])
+          assert leaf['operation']==operation
+          plans=[x['plan'] for x in leaf['posts'].values() if x.get('state')=='text_edit_returned' and x.get('plan',{}).get('platform')=='max']
+          assert len(plans)==1 and plans[0]['monitor_price']['price']==268242
+          refs={}
+          for channel in ('max','telegram'):
+              approved=private/'commercial-hotel-batch-20261117-24-v1'/(channel+'-commercial-hotel-61623-v1-approved.json')
+              assert approved.resolve()==approved and approved.stat().st_size<=1000000
+              proof=json.loads(approved.read_bytes())['receipt']
+              refs[channel]=int(proof['publication_id'])
+          bundle={'refs':refs,'text':plans[0]['text'],'urls':{'max':'https://max.ru/channel_anytour/AaHqSmdWAtI','telegram':'https://t.me/any_toour/871'}}
+          php=r'''<?php
+          $root='/var/www/anytoour/data/www/app.anytoour.ru'; chdir($root); ob_start(); require $root.'/config.php'; require_once $root.'/services/ChannelPostRuntime.php'; require_once $root.'/services/ChannelPostEntryService.php'; require_once $root.'/services/ChannelPostReconciliationService.php'; ob_end_clean();
+          $bundle=json_decode(base64_decode((string)getenv('PRICE_READ_ONLY_BUNDLE'),true),true,256,JSON_THROW_ON_ERROR);
+          $db=ConversationDb::connection(); $db->exec('START TRANSACTION READ ONLY');
+          try {
+            $r=new ChannelPostRegistryService($db);
+            foreach ($bundle['refs'] as $platform=>$id) {
+              $p=$r->publication($id);
+              if (!$p || $p['platform']!==$platform || ($p['snapshot']['post_url']??null)!==$bundle['urls'][$platform]) throw new RuntimeException('existing_post_identity_changed');
+              echo 'PRICE_REGISTRY_READ ',json_encode(['platform'=>$platform,'publication_id'=>$id,'version_id'=>(int)$p['version_id'],'state'=>$p['state'],'reason'=>$p['error_reason'],'write_attempts'=>$p['write_attempts'],'claimed'=>!empty($p['claim_token']),'intended_text'=>$platform==='max'&&($p['snapshot']['text']??null)===$bundle['text']],JSON_THROW_ON_ERROR),PHP_EOL;
+              if ($platform!=='max') continue;
+              if (($p['state']??null)==='sent') {$preview=['ok'=>true,'state'=>'already_sent','reason'=>'registry_already_sent','provider_writes'=>0];}
+              else {
+                $fingerprint=ChannelPostIncomingAdapter::contentFingerprint($p['snapshot']);
+                $preview=(new ChannelPostReconciliationService($db))->confirmReadFailure(ChannelPostRuntime::identity('max'),(string)$p['channel_id'],$id,(int)$p['version_id'],(int)$p['channel']['config_version'],$fingerprint,false);
+              }
+              echo 'PRICE_MAX_CONFIRM_PREVIEW ',json_encode(array_intersect_key($preview,array_flip(['ok','state','reason','provider_writes','database_writes'])),JSON_THROW_ON_ERROR),PHP_EOL;
+            }
+          } finally {if ($db->inTransaction()) $db->rollBack();}
+          ?>'''
+          env=dict(os.environ); env['PRICE_READ_ONLY_BUNDLE']=base64.b64encode(json.dumps(bundle).encode()).decode()
+          proc=subprocess.run(['php'],input=php,text=True,capture_output=True,env=env,timeout=75)
+          print(proc.stdout,end='',flush=True)
+          if proc.returncode!=0:raise RuntimeError('read_only_preview_failed')
           PY
       - name: Cleanup connection material
         if: always()
