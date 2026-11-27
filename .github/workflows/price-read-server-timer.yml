@@ -1,4 +1,4 @@
-name: Read the native TOP500 receipt after PRICE SQL lock deferral
+name: Read the native 16:30 TOP500 receipt and queued attempts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '662c840b3755d27a36e7130c68b9158a80c6123a'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '685a8c7caafddc30fdb49d96cd39c0049e823e20'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
