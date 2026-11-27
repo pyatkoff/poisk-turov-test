@@ -4120,7 +4120,13 @@ async function bootRealData(){
   // A whole-country search binds only the country ID. Restored resorts need their native IDs before search.
   if(!data.live||state.filters.resorts.length){updateSearchUI();await loadResorts(state.search.country);}
   if(run!==catalogLoadGeneration)return;
-  catalogReady=true;updateSearchUI();renderResults();
+  catalogReady=true;updateSearchUI();
+  // The first search paints its own loading state once all linked conditions are ready.
+  const renderWhileRestoring=homeFormOnly||prepared?.autoSearch!==true||messengerReturn||history.state?.[uiHistoryKey]
+   ||state.hasSearched||urlPartyIssues.length||modalType||inlineSearchPicker||filterDraft
+   ||state.filters.resorts.length||destinationIds(currentDraftDestination()).length
+   ||(!data.live&&validIds(getStored('anytour.prototype.v18.favorites.v1',[])).length);
+  if(renderWhileRestoring)renderResults();
   if(modalType==='destination'){
    if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());
    if(!resortLoads.has(destinationChoice.country))loadResorts(destinationChoice.country);
@@ -4135,7 +4141,9 @@ async function bootRealData(){
   if(messengerReturn){showMessengerReturn();return;}
   if(state.hasSearched)return;
   if(data.live||data.scenario==='journey'){
-   const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();
+   const requestedSearch=prepared?prepared.autoSearch:new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;
+   if(requestedSearch)runSearch();
+   else{renderFilters();renderResults();updateSearchUI();}
   }else{state.hasSearched=true;runSearch();}
  }
  catch(error){if(run!==catalogLoadGeneration)return;publicUrlFailure=error.publicSearchURL===true?error:null;catalogError=error.message;updateSearchUI();$('#cards').innerHTML=publicUrlFailure?`<div class="empty"><h3>Не удалось открыть условия ссылки</h3><p>${publicUrlFailureHTML()}</p></div>`:`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
