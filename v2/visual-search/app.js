@@ -4086,7 +4086,11 @@ async function restoreURLHotel(){
  const place=currentDraftDestination(),ids=destinationIds(place),country=place.country;
  if(!ids.length||hotelRestorePending)return;
  const origin=draft.origin,generation=catalogLoadGeneration,key=JSON.stringify(ids);
- const current=()=>generation===catalogLoadGeneration&&draft.origin===origin&&currentDraftDestination().country===country&&JSON.stringify(destinationIds(currentDraftDestination()))===key;
+ const current=()=>{
+  const currentPlace=currentDraftDestination();
+  const sameSelection=currentPlace.country===country&&JSON.stringify(destinationIds(currentPlace))===key;
+  return sameSelection&&(homeFormOnly||generation===catalogLoadGeneration&&draft.origin===origin);
+ };
  hotelRestorePending=true;updateSearchUI();renderResults();
  try{await Promise.all(ids.filter(id=>!destinationHotel(id)?.legacyIds.length).map(async id=>{
   try{const h=await data.restoreHotel(id,country);if(current()&&h.id===id&&String(h.country)===String(country)&&h.legacyIds?.length)destinationHotels.set(id,h);}
