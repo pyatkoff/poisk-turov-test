@@ -19,7 +19,7 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
         shell: bash
         run: |
           set -euo pipefail
