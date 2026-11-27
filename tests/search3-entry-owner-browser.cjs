@@ -770,7 +770,14 @@ async function runCanonicalHome(browser, viewport) {
     assert.deepEqual(await search(), [], 'HOME never starts a search');
     assert.equal(await form.locator('#quick-stars').isVisible(), true);
     assert.equal(await form.locator('#quick-meal').isVisible(), true);
-    assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    const budget = form.locator('#quick-meal + #quick-budget');
+    assert.equal(await budget.isVisible(), true, 'budget is visible beside meals');
+    assert.equal(await budget.locator('xpath=ancestor::details').count(), 0, 'budget is directly accessible');
+    const [mealsBox, budgetBox] = await Promise.all([form.locator('#quick-meal').boundingBox(), budget.boundingBox()]);
+    assert.ok(mealsBox && budgetBox && budgetBox.x >= mealsBox.x + mealsBox.width - 1,
+      'budget is to the right of meals');
+    assert.ok(Math.abs(budgetBox.y - mealsBox.y) <= 1 && budgetBox.height >= 44,
+      'budget and meals share the same row and meet the tap target size');
     const submit = await form.locator('.search-submit').boundingBox();
     assert.ok(submit && submit.height >= 44 && submit.y >= 0 && submit.y + submit.height <= viewport.height + 1, 'Find fits the first viewport');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);

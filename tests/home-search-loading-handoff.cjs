@@ -104,7 +104,13 @@ try {
         'the shared form is composed into the hero');
       assert.equal(form(html).replace(/<details class="home-search-more"><summary>Дополнительные параметры<\/summary>([\s\S]*?)<\/details>/, '$1'),
         form(receiving.html), 'all form controls come from the canonical Search3 renderer');
-      assert.match(form(html), /<details class="home-search-more"><summary>Дополнительные параметры<\/summary><button\b[^>]*id="quick-budget"/);
+      const wrappedBudget = /<details class="home-search-more"><summary>Дополнительные параметры<\/summary><button\b[^>]*id="quick-budget"/;
+      if (prefix) {
+        assert.doesNotMatch(form(html), wrappedBudget, 'the compiled preview uses the NEXT budget row');
+        assert.match(form(html), /<button\b[^>]*id="quick-meal"[^>]*>[\s\S]*?<\/button>\s*<button\b[^>]*id="quick-budget"/);
+      } else {
+        assert.match(form(html), wrappedBudget, 'the production home retains the disclosure');
+      }
       for (const id of ['quick-stars', 'quick-meal']) assert.ok(form(html).includes(`id="${id}"`));
       assert.ok(html.includes('<div hidden inert data-home-search-support>'), 'result support is hidden and inert');
       assert.equal((html.match(/<dialog\b[^>]*id="modal"/g) || []).length, 1, 'one shared picker dialog');

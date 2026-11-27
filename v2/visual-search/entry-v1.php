@@ -118,7 +118,10 @@ function v2_visual_search_home_parts(array $config, array $siteParams = []): arr
     $form = substr($body[2], 0, $boundary);
     $form = v2_visual_search_replace($form, '<h1 id="page-title">Подберём ваш отдых</h1>',
         '<h2 id="page-title">Найти тур</h2>');
-    $budgetMarkup = $prefix === '/_preview/search3-next-candidate'
+    // The compiled review route must show the same budget row as NEXT.
+    $showBudgetBesideMeals = $prefix === '/_preview/search3-next-candidate'
+        || str_ends_with($prefix, '/search3-site-candidate');
+    $budgetMarkup = $showBudgetBesideMeals
         ? '$1'
         : '<details class="home-search-more"><summary>Дополнительные параметры</summary>$1</details>';
     $form = preg_replace('/(<button\b[^>]*\bid="quick-budget"[^>]*>.*?<\/button>)/s',
