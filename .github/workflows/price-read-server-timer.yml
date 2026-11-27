@@ -1,4 +1,4 @@
-name: Resume reading the original 08:45 TOP500 cycle after SSH reset
+name: Read the native 09:45 TOP500 timer and saved attempts
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ff5791a516157c303478701aa9678e9259c9a946'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '363999c8d4913fc92a499c8db3b2561493f0455f'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
