@@ -3,6 +3,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const prepareNextHome = require('./search3-visual-next-home-renderer.cjs');
 const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
@@ -690,16 +691,17 @@ async function runHomeRanges(browser, width) {
   } finally { await page.close(); }
 }
 // Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
-async function runCanonicalHome(browser, viewport) {
+async function runCanonicalHome(browser, viewport, nextHome = null) {
   const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
-  const prefix = new URL(base).pathname, origin = new URL(base).origin;
+  const prefix = nextHome?.prefix || new URL(base).pathname, origin = new URL(base).origin;
   const home = prefix + '/', target = prefix + '/poisk-turov/';
   const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
   const id = viewport.width + 'x' + viewport.height;
   const errors = [], unexpected = [], documents = [], evidence = { viewport, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
-  const save = () => fs.writeFileSync(path.join(output, 'canonical-home-' + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
+  const evidencePrefix = nextHome ? 'canonical-next-home-' : 'canonical-home-';
+  const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
   let releaseFixture, held = false;
   const gate = new Promise(resolve => { releaseFixture = resolve; });
   const { canonicalLogoFixture } = require('./search3-visual-live-fixture.cjs');
@@ -743,6 +745,17 @@ async function runCanonicalHome(browser, viewport) {
     }
     if (request.isNavigationRequest() && ![home, target].includes(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
     if (url.pathname === fixture && !held) { held = true; await gate; }
+    if (nextHome) {
+      const document = nextHome.html.get(url.pathname);
+      if (document !== undefined) return route.fulfill({contentType:'text/html; charset=utf-8',body:document});
+      const asset = url.pathname.slice(prefix.length + 1);
+      const local = path.resolve(nextHome.payload, asset);
+      const staticFile = /\.(?:css|js|json|svg|ico|png|jpg|jpeg|webp|woff2?)$/i.test(asset);
+      if (!staticFile || !local.startsWith(nextHome.payload + path.sep) || !fs.existsSync(local) || !fs.statSync(local).isFile()) {
+        unexpected.push(url.pathname); return route.abort();
+      }
+      return route.fulfill({path:local});
+    }
     return route.continue();
   });
   const initial = { scenario: 'family', origin: 'Москва', country: '4', from: '2026-10-01', to: '2026-10-07',
@@ -770,23 +783,38 @@ async function runCanonicalHome(browser, viewport) {
     assert.deepEqual(await search(), [], 'HOME never starts a search');
     assert.equal(await form.locator('#quick-stars').isVisible(), true);
     assert.equal(await form.locator('#quick-meal').isVisible(), true);
-    assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    if (nextHome) {
+      const budget = form.locator('#quick-meal + #quick-budget');
+      assert.equal(await budget.isVisible(), true, 'NEXT budget is visible beside meals');
+      const [mealBox, budgetBox] = await Promise.all([form.locator('#quick-meal').boundingBox(),budget.boundingBox()]);
+      assert(mealBox && budgetBox && budgetBox.x >= mealBox.x + mealBox.width - 1);
+      assert(Math.abs(budgetBox.y - mealBox.y) <= 1 && budgetBox.height >= 44, 'NEXT budget shares the meal row');
+      evidence.budgetPlacement = {meal:mealBox,budget:budgetBox};
+    } else {
+      assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    }
     const submit = await form.locator('.search-submit').boundingBox();
     assert.ok(submit && submit.height >= 44 && submit.y >= 0 && submit.y + submit.height <= viewport.height + 1, 'Find fits the first viewport');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   };
   try {
-    const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
-    assert.equal((await page.goto(origin + home + '?' + new URLSearchParams({ ...initial, searched: '1' }), { waitUntil: 'domcontentloaded' })).status(), 200);
-    await requested;
-    assert.equal(await page.locator('#search-form .search-submit').isDisabled(), true, 'catalog pending blocks Find');
-    await submitTwice();
-    assert.deepEqual(documents, [home], 'early double submit cannot navigate');
-    assert.deepEqual(await search(), []);
-    releaseFixture();
+    const url = origin + home + '?' + new URLSearchParams({...initial,searched:'1'});
+    if (nextHome) {
+      releaseFixture();
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+    } else {
+      const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+      await requested;
+      assert.equal(await page.locator('#search-form .search-submit').isDisabled(),true,'catalog pending blocks Find');
+      await submitTwice();
+      assert.deepEqual(documents,[home],'early double submit cannot navigate');
+      assert.deepEqual(await search(),[]);
+      releaseFixture();
+    }
     await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
-    await page.screenshot({ path: path.join(output, 'canonical-home-ready-' + id + '.png') });
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
     await Promise.all([page.waitForURL(url => url.pathname === target), submitTwice()]);
     await page.locator('.hotel-card').first().waitFor();
     checkURL(true);
@@ -799,7 +827,7 @@ async function runCanonicalHome(browser, viewport) {
     assert.deepEqual(calls[0].filters.meals, ['Всё включено']);
     assert.equal(calls[0].filters.max, 240000);
     evidence.receiver = calls[0];
-    await page.screenshot({ path: path.join(output, 'canonical-home-receiver-' + id + '.png') });
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'receiver-' + id + '.png') });
     await page.goBack(); await ready(); checkURL(false);
     await page.reload(); await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
@@ -817,7 +845,7 @@ async function runCanonicalHome(browser, viewport) {
     save();
   } catch (error) {
     evidence.status = 'failed'; evidence.error = error.stack || String(error); save();
-    await page.screenshot({ path: path.join(output, 'canonical-home-failure-' + id + '.png') }).catch(() => {});
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'failure-' + id + '.png') }).catch(() => {});
     throw error;
   } finally { releaseFixture(); await context.close(); }
 }
@@ -827,6 +855,13 @@ async function runCanonicalHome(browser, viewport) {
   try {
     if (process.argv.includes('--canonical-home')) {
       for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
+      const nextHome = prepareNextHome(base);
+      try {
+        const results = await Promise.allSettled([{width:430,height:932},{width:1280,height:720}]
+          .map(viewport=>runCanonicalHome(browser,viewport,nextHome)));
+        const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
+        if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
+      } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
       return;
     }
