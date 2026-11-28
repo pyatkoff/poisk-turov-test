@@ -2,6 +2,7 @@ import datetime as dt
 import json
 import pathlib
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -25,23 +26,42 @@ now = dt.datetime.now(dt.timezone.utc)
 observation = timestamp(sample["observation_latest"])
 seo_observed = timestamp(sample["seo_observed"])
 seo_expires = timestamp(sample["seo_expires"])
+failed = False
 if not dt.timedelta(0) <= now - observation < dt.timedelta(hours=2):
-    raise RuntimeError("latest source observation exceeds one collection cycle plus one retry")
+    print(f"PRICE_SOURCE_STALE latest={observation.isoformat()} age_minutes={int((now-observation).total_seconds()//60)}")
+    failed = True
+else:
+    print(f"PRICE_SOURCE_FRESH latest={observation.isoformat()}")
 if not dt.timedelta(0) <= now - seo_observed < dt.timedelta(hours=72) or seo_expires <= now:
-    raise RuntimeError("SEO country snapshot is outside the existing freshness window")
+    print(f"PRICE_SEO_SNAPSHOT_STALE observed={seo_observed.isoformat()} expires={seo_expires.isoformat()}")
+    failed = True
 
-query = urllib.parse.urlencode(sample["query"])
-history = json.loads(get("/data/price-intelligence-read-v1.php?" + query))
-if history.get("source") != "anytour-first-party-price-history" or history.get("cachedPriceIsFinal") is not False:
-    raise RuntimeError("Search3 history endpoint returned an unexpected price contract")
-if history.get("segment") != sample["query"]["segment"] or history.get("windowDays") != 31:
-    raise RuntimeError("Search3 history endpoint did not return the queried segment and window")
-if (history.get("ok") is not True or history.get("observedDays") != sample["history_points"]
-        or max(point["date"] for point in history["series"]) != sample["history_latest"]):
-    raise RuntimeError("Search3 price-history dates do not match production storage")
-print(f"PRICE_SEARCH3_FRESHNESS_OK latest_history={sample['history_latest']} points={sample['history_points']}")
+try:
+    query = urllib.parse.urlencode(sample["query"])
+    history = json.loads(get("/data/price-intelligence-read-v1.php?" + query))
+    assert history.get("source") == "anytour-first-party-price-history"
+    assert history.get("cachedPriceIsFinal") is False
+    assert history.get("segment") == sample["query"]["segment"] and history.get("windowDays") == 31
+    assert history.get("ok") is True and history.get("observedDays") == sample["history_points"]
+    assert max(point["date"] for point in history["series"]) == sample["history_latest"]
+    print(f"PRICE_SEARCH3_FRESHNESS_OK latest_history={sample['history_latest']} points={sample['history_points']}")
+except urllib.error.HTTPError as error:
+    print(f"PRICE_SEARCH3_FRESHNESS_FAILED http_status={error.code}")
+    failed = True
+except (AssertionError, KeyError, ValueError, OSError, RuntimeError):
+    print("PRICE_SEARCH3_FRESHNESS_FAILED reason=consumer_contract")
+    failed = True
+
 for slug in ("turkey", "egypt"):
-    page = get(f"/country/{slug}/")
-    if "свеж" not in page.lower() or "/poisk-turov/" not in page:
-        raise RuntimeError(f"SEO price evidence entry points are missing on {slug}")
-print(f"PRICE_SEO_FRESHNESS_OK observed={sample['seo_observed']} expires={sample['seo_expires']}")
+    try:
+        page = get(f"/country/{slug}/")
+        assert "свеж" in page.lower() and "/poisk-turov/" in page
+        print(f"PRICE_SEO_RENDER_OK country={slug}")
+    except urllib.error.HTTPError as error:
+        print(f"PRICE_SEO_RENDER_FAILED country={slug} http_status={error.code}")
+        failed = True
+    except (AssertionError, OSError, RuntimeError):
+        print(f"PRICE_SEO_RENDER_FAILED country={slug} reason=consumer_contract")
+        failed = True
+print(f"PRICE_SEO_SNAPSHOT observed={sample['seo_observed']} expires={sample['seo_expires']}")
+raise SystemExit(int(failed))
