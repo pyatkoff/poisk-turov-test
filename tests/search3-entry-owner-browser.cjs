@@ -914,6 +914,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleF
         await require('./search3-visual-next-home-timing.cjs')(browser,nextHome,base,output);
         await require('./search3-next-compact-calendar.cjs')(browser,nextHome,output);
         await require('./search3-next-photo-priority.cjs')(browser,nextHome,output);
+        await require('./search3-next-budget-history-ab.cjs')(browser,nextHome,output);
         const captureJourney = require('./capture-canonical-next-journey.cjs');
         await runCanonicalHome(browser,{width:430,height:932},nextHome,3,captureJourney);
         await runCanonicalHome(browser,{width:1280,height:720},nextHome,1,captureJourney);
