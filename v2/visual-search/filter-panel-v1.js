@@ -30,7 +30,7 @@ function syncFilterSections(){
   button.querySelector('.filter-section-value').textContent=summary;button.classList.toggle('has-selection',active);
   const open=expandedFilterSections.has(key);button.setAttribute('aria-expanded',String(open));group.classList.toggle('section-open',open);
  });
- const detail=!!getFilterDraft()&&getViewportWidth()<=1100&&expandedFilterSections.has('Туроператор'),panel=$('#filter-panel');
+ const detail=!!getFilterDraft()&&expandedFilterSections.has('Туроператор')&&getViewportWidth()<=1100,panel=$('#filter-panel');
  panel.classList.toggle('filter-detail-open',detail);panel.querySelector('.filter-top h3').textContent=detail?'Туроператор':'Фильтры';$('#filter-detail-back').hidden=!detail;
  const summary=$('.filter-operator-context');if(summary)summary.textContent=f.operators.length?`Выбрано: ${f.operators.length}. Вернитесь в фильтры, чтобы применить все условия.`:'Можно выбрать несколько. Условия применятся вместе с остальными фильтрами.';
 }
