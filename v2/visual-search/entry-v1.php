@@ -241,6 +241,14 @@ function v2_visual_search_render(string $mode, array $config = [], array $sitePa
         }
         $html = v2_visual_search_replace($html, '</head>', '<link rel="canonical" href="https://anytoour.ru/poisk-turov/">' . "\n</head>");
     }
+    if ($mode === 'public-review'
+        && ($config['entry'] ?? 'search') === 'search'
+        && ($config['publicBase'] ?? null) === '/_preview/search3-next-candidate/poisk-turov/'
+        && ($config['scenario'] ?? null) === 'family') {
+        $anchor = '<link rel="stylesheet" href="../site-header-v2.css">';
+        $preload = '<link rel="preload" as="script" href="./app.js" fetchpriority="high">';
+        $html = v2_visual_search_replace($html, $anchor, $anchor . "\n" . $preload);
+    }
     return preg_replace_callback('/\b(src|href|data-offer-list-src|data-hotel-details-src|data-flight-picker-src)="(\.\.?\/[^"?]+\.([a-zA-Z0-9]+))"/',
         function ($match) use ($public, $config) {
             $ref = $match[2]; $extension = strtolower($match[3]);
