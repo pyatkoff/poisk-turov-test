@@ -637,6 +637,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .hotel-description{border-block:1px solid var(--line);padding:14px 0;margin:18px 0}.hotel-description summary{cursor:pointer;font-weight:600;min-height:30px}.hotel-description[open] summary{margin-bottom:10px}
 .hotel-room-section{max-width:44rem;margin:26px auto 0;padding-top:4px;border-top:1px solid var(--line)}
 .hotel-room-context{font-size:14px;line-height:1.5;color:var(--muted);margin:6px 0 12px}
+.hotel-price>[data-hotel-age-policy]{order:3;flex-basis:100%;margin:0}
 .hotel-room-cards{display:grid;gap:12px}
 .hotel-room-card p{font-size:14px;line-height:1.6;margin-top:7px;color:var(--muted)}
 @media(max-width:760px){.hotel-key-facts{grid-template-columns:1fr;padding:13px}.hotel-details-dialog .hotel-detail-photos{grid-template-rows:110px 110px}}

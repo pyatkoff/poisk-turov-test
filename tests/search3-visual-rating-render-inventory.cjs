@@ -11,7 +11,7 @@ const plain=value=>JSON.parse(JSON.stringify(value));
 const filters=rating=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating,beach:false,family:false,spa:false});
 const offer=(valid,index)=>({search:{origin:valid?'Москва':'Другой город',country:'4'},adults:2,ages:[],day:'2026-10-14',nights:7,meal:'AI',total:100000+index,operator:'TV',flight:'regular'});
 const makeHotel=(id,rating,validIndex=49)=>({id,country:'4',rating,resort:'Кемер',region:'Анталья',subRegion:'',stars:5,amenities:[],beach:50,family:true,spa:true,offers:Array.from({length:50},(_,index)=>offer(index===validIndex,index))});
-function environment(code,hotels,rating=false){const work={hotelVisits:0,predicates:0,offerChecks:0,lengthReads:0},ctx={Array,JSON,Math,Number,Object,Proxy,Reflect,Set,String,hotels,work,popularity:{boost:()=>0,rank:()=>null},state:{search,filters:filters(rating),favorites:[],selectedDate:null,onlyFavorites:false,sort:'price'},matchesHotelQuery:()=>true,matchesMeal:()=>true};vm.createContext(ctx);vm.runInContext(owner(code),ctx);return ctx;}
+function environment(code,hotels,rating=false){const work={hotelVisits:0,predicates:0,offerChecks:0,lengthReads:0},ctx={hotelAgeConflict:()=>null,Array,JSON,Math,Number,Object,Proxy,Reflect,Set,String,hotels,work,popularity:{boost:()=>0,rank:()=>null},state:{search,filters:filters(rating),favorites:[],selectedDate:null,onlyFavorites:false,sort:'price'},matchesHotelQuery:()=>true,matchesMeal:()=>true};vm.createContext(ctx);vm.runInContext(owner(code),ctx);return ctx;}
 const reset=work=>{work.hotelVisits=work.predicates=work.offerChecks=work.lengthReads=0;};
 const snapshot=work=>({...work});
 function assertRows(actual,expected,label){

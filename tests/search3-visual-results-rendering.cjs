@@ -507,7 +507,7 @@ function cardRatingOwner(code){
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  const infantChargeSource=code.match(/^const unknownInfantCharge=[^\n]+/m)[0];
- vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
+ ctx.hotelAgeNoticeHTML=()=>'';vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  ctx.offerCountText=n=>n+' тура';
  return {work,render,card:row=>ctx.cardHTML(row),context:ctx,setFilters:f=>{state.filters=f;}};
@@ -549,6 +549,7 @@ const {JSDOM}=require('jsdom');
  // The pinned predecessor formatted these labels inline.
  const labels={hotelName:'esc(h.name)',priceText:'money(o.total)',departureText:'dateText(o.day)',stayText:'nightsText(o.nights)',mealText:'esc(mealLabel(o))'};
  const expandedCard=card
+  .replace('${hotelAgeNoticeHTML(h,o.ages)}','')
   .replace(',priorityPhoto=false','')
   .replace(`loading="\${priorityPhoto?'eager':'lazy'}"\${priorityPhoto?' fetchpriority="high"':''}`,'loading="lazy"')
   .replace(`\${priorityPhoto?' fetchpriority="low"':''}`,'')

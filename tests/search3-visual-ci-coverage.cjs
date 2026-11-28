@@ -41,7 +41,7 @@ function job(workflow,name){
  return next<0?tail:tail.slice(0,next+1);
 }
 // The pre-split workflow had 46 Node test invocations and 37 distinct commands.
-// Keep every original argv once, plus the extracted performance suite.
+// Keep each required command and its arguments exactly once.
 const requiredCommands=[
  'search3-public-entry.cjs','search3-public-bindings.cjs','search3-public-review-browser.cjs','search3-public-live-browser.cjs',
  'local-tv-catalog-browser.cjs','local-tv-catalog-browser.cjs --browser',
@@ -49,7 +49,7 @@ const requiredCommands=[
  'search3-visual-anex-flight-continuation.cjs','search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"',
  'search3-visual-browser-dependencies.cjs','search3-visual-calendar-inventory.cjs','search3-visual-ci-coverage.cjs',
  'search3-visual-data-orchestration.cjs','search3-visual-event-dispatch.cjs','search3-visual-evidence-retention.cjs',
- 'search3-visual-facet-presentation.cjs','search3-visual-flight-filter-work.cjs','search3-visual-flight-rendering.cjs',
+ 'search3-visual-facet-presentation.cjs','search3-visual-family-price-return-browser.cjs','search3-visual-flight-filter-work.cjs','search3-visual-flight-rendering.cjs',
  'search3-visual-formatting.cjs','search3-visual-hotel-content-text.cjs','search3-visual-hotel-details-browser.cjs',
  'search3-visual-hotel-details-lazy.cjs','search3-visual-hotel-details-rendering.cjs','search3-visual-lifecycle-scheduling.cjs',
  'search3-visual-live-bridge.cjs','search3-visual-live-browser.cjs','search3-visual-live-browser.cjs --messenger-only',

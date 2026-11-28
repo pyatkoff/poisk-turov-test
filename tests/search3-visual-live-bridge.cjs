@@ -206,9 +206,9 @@ for(const file of scripts){
  }
  let code=source(file);
  if(file==='visual-search/app.js'){
-  const marker=`function offerFromKey(key){\n for(let i=0,length=hotels.length;i<length;i++){\n  if(!(i in hotels))continue;\n  const offers=hotels[i].offers||[];\n  for(let j=0,count=offers.length;j<count;j++)if(j in offers&&offers[j].key===key)return offers[j];\n }\n return null;\n}`;
-  assert.equal(code.split(marker).length,2,'one actual offer-key lookup owner');
-  code=code.replace(marker,marker+`\nwindow.__offerLookupProbe={find:offerFromKey,swap(value){const previous=hotels;hotels=value;return previous;}};`);
+  const lookupBinding='function flightAllowanceText(';
+  assert.equal(code.split(lookupBinding).length,2,'one actual offer-key lookup owner boundary');
+  code=code.replace(lookupBinding,`window.__offerLookupProbe={find:offerFromKey,swap(value){const previous=hotels;hotels=value;return previous;}};\n`+lookupBinding);
  }
  w.eval(code);
  if(file==='prototype-search/config.js'){
@@ -238,6 +238,17 @@ function offerLookupWork(){
  }
  const duplicate=make(),first=duplicate.rows[0].offers[0],second=duplicate.rows[1].offers[0];Object.defineProperty(first,'key',{value:'duplicate'});Object.defineProperty(second,'key',{value:'duplicate'});
  const restore=probe.swap(duplicate.rows);assert.strictEqual(probe.find('duplicate'),first,'first duplicate-key offer identity is retained');probe.swap(restore);
+ const hotel={name:'Example Adults Only 16+', raw:{description:'Отель только для взрослых!'}};
+ for(const [age,expected] of [[8,false],[15,false],[16,true],[17,true]]){
+  const offer={key:'age-case',ages:[age]};
+  const reset=probe.swap([{...hotel,offers:[offer]}]);
+  assert.strictEqual(probe.find(offer.key),expected?offer:null,'exact selection follows the property minimum at age '+age);
+  probe.swap(reset);
+ }
+ const uncertain={key:'no-confirmed-age',ages:[8]};
+ const reset=probe.swap([{...hotel,name:'Example Adults Only',offers:[uncertain]}]);
+ assert.strictEqual(probe.find(uncertain.key),uncertain,'unqualified property wording does not invent a numeric restriction');
+ probe.swap(reset);
  return results;
 }
 const offerLookupEvidence=offerLookupWork();
@@ -874,7 +885,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('[data-action="start-lead"]')&&q('[data-action="start-tour-flights"]'),'application and optional flight check are separate actions');
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
- assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
+ assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/Цена тура проверена · рейс уточнит менеджер/);
  assert.match(q('.application-summary .application-flight-overview').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('.tour-fuel-disclosure').textContent,/включён в цену/,'known Tourvisor fuel belongs to the unchanged supplier total');
  assert.match(q('#modal-footer').textContent,/Цена предложения/,'tour details do not claim cart actualization');
