@@ -207,7 +207,7 @@ function asPhases(row){
 module.exports=async function measurePhotoPriority(browser,nextHome,output){
  const root=path.resolve(__dirname,'..');
  const changed=execFileSync('git',['diff','--name-only',source,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
- assert.deepEqual(changed,['tests/search3-entry-owner-browser.cjs','tests/search3-next-compact-calendar.cjs','tests/search3-next-photo-priority.cjs','v2/visual-search/app.js','v2/visual-search/migration-manifest.json']);
+ assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-next-photo-priority.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json"]);
  const after=exactAssets(nextHome),paths={home:nextHome.prefix+'/',search:nextHome.prefix+'/poisk-turov/'};
  const sha=value=>createHash('sha256').update(value).digest('hex');
  const raw=execFileSync('git',['show',source+':v2/visual-search/app.js'],{cwd:root,encoding:'utf8'});
