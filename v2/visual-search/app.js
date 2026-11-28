@@ -951,7 +951,7 @@ function revealFilteredResults(){
  const results=$('#results');
  if(results.getBoundingClientRect().top<0)results.scrollIntoView({behavior:scrollBehavior(),block:'start'});
 }
-function filterEdited(rebuild=false){if(filterDraft){updateDrawerPreview(rebuild?renderFilters():updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));revealFilteredResults();}
+function filterEdited(rebuild=false){if(filterDraft){updateDrawerPreview(rebuild?renderFilters():updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters({reuseFilteredCards:true});else{renderResults({keepFilters:true,reuseFilteredCards:true});updateSearchUI()}settleFilterRoots($('#filters'));revealFilteredResults();}
 function compareMealLabels(a,b){
  const order=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'],rank=label=>order.includes(label)?order.indexOf(label):100;
  return rank(a)-rank(b)||a.localeCompare(b,'ru');
@@ -1539,7 +1539,7 @@ function paintResultCards(cards,entries,sameScope){
  const replacesPlaceholder=sameScope&&entries[0]?.id&&cards.childElementCount>0&&!cards.querySelector('.hotel-card');
  paintGeneratedRoots(cards,entries,sameScope&&!replacesPlaceholder);
 }
-function renderResultCards(items,{selectionOnly=false}={}){
+function renderResultCards(items,{selectionOnly=false,reuseFilteredCards=false}={}){
  // Share selection markup with the full card renderer, retaining cards, controls and focus.
  // Closing a tour is a passive presentation update, never a new search.
  if(selectionOnly){
@@ -1582,7 +1582,11 @@ function renderResultCards(items,{selectionOnly=false}={}){
   if(markup)entries.push({id:'',markup});
  }
  if(items.length>renderedCardLimit)entries.push({id:'',markup:`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`});
- paintResultCards(cards,entries,sameCardScope);
+ if(reuseFilteredCards&&!sameCardScope){
+  const visibleIds=new Set(entries.map(entry=>entry.id));
+  for(const card of [...cards.children])if(card.id&&!visibleIds.has(card.id))card.remove();
+ }
+ paintResultCards(cards,entries,sameCardScope||reuseFilteredCards);
  if(prioritizePhoto){
   const image=cards.firstElementChild?.querySelector('.hotel-image');
   if(image?.complete&&image.naturalWidth>0)releaseFirstCardThumbnails(image);
@@ -1616,9 +1620,10 @@ function renderResults(options={}){
  }
  // Keep source order for ties independent of whichever order is currently displayed.
  const inventory=resultInventory({sort:false}),items=sortResultItems(inventory.items.slice()),total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;
+ const reuseFilteredCards=options.reuseFilteredCards===true&&renderedResultSource?.hotels===hotels;
  renderedResultSource={hotels,items:inventory.items};renderedResultItems=items;
  renderResultHeadings(items,total,pristine);
- renderResultCards(items);
+ if(reuseFilteredCards)renderResultCards(items,{reuseFilteredCards});else renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
  renderCalendarStrip(items,options.reuseCalendarBase);renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();
  const drawerCount=refreshResultFilters(options,inventory.ratingCounts);
@@ -1626,7 +1631,7 @@ function renderResults(options={}){
  renderSearchStatus(items,total);refreshResultPickerPreviews(drawerCount);
  renderedSearchStatus={response:searchResponse,total};
 }
-function syncFilters(){renderResults();updateSearchUI();}
+function syncFilters(options){renderResults(options);updateSearchUI();}
 function applyQuickFilters(){
  const showResults=state.hasSearched&&$('#search-form').hidden;
  if(showResults)pageReturn=null;
@@ -3604,7 +3609,7 @@ function renderFavorites(){
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="only-favorites">Избранное в выдаче</button>`;
 }
 function openFilters(restore=null){if(innerWidth>1100){$('#results').classList.add('filters-requested');$('#filter-panel').scrollIntoView({behavior:scrollBehavior(),block:'start'});$('#hotel-query').focus({preventScroll:true});return}if(filterDraft)return;enterUIHistory();const restored=restoreFilterHistoryModel(restore?.draft);expandedFilterSections.clear();const sections=boundedHistoryStrings(restore?.sections,{max:30});if(restored&&sections)sections.forEach(key=>expandedFilterSections.add(key));filterDraft=restored||structuredClone(appliedFilterModel());const budget=restored&&restore?.budget&&typeof restore.budget==='object'?restore.budget:null;if(budget){filterBudgetEdit={filters:filterDraft.filters,scope:searchKey(state.search),appliedMin:filterDraft.filters.min,appliedMax:filterDraft.filters.max,minText:boundedHistoryText(budget.minText,String(filterDraft.filters.min),32),maxText:boundedHistoryText(budget.maxText,String(filterDraft.filters.max??''),32)}}updateDrawerPreview(renderFilters());mobileFiltersNeedRefresh=false;$('#filter-panel').classList.add('open');$('#filter-panel').setAttribute('role','dialog');$('#filter-panel').setAttribute('aria-modal','true');$('#filter-backdrop').hidden=false;document.body.style.overflow='hidden';$('main>.search-section').inert=true;$('.header').inert=true;$('.results-heading').inert=true;$('.results-main').inert=true;$('.footer').inert=true;$('.mobile-bottom').inert=true;$('#compact-search').inert=true;$('#filter-panel').scrollTop=restored&&Number.isFinite(restore?.scroll)&&restore.scroll>=0?restore.scroll:0;$('.mobile-close').focus({preventScroll:true});syncDestinationViewport();queueMicrotask(rememberUIRoute);}
-function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasOpen=$('#filter-panel').classList.contains('open');if(!wasOpen)return;let budget=null;if(apply){budget=editFilterBudget();if(!budget.valid&&!adapt){$(budget.invalidMin?'#min-price':'#max-price').focus();return;}}leaveUIHistory(fromHistory);const next=apply?filterDraft:null;filterDraft=null;drawerSuggestions=[];facetQueries.clear();$('#filter-panel').classList.remove('open');$('#filter-panel').removeAttribute('role');$('#filter-panel').removeAttribute('aria-modal');$('#filter-backdrop').hidden=true;document.body.style.overflow='';$$('[inert]').forEach(e=>e.inert=false);if(next){pageReturn=null;state.filters=next.filters;state.onlyFavorites=next.onlyFavorites;state.selectedDate=next.selectedDate;syncFilters();if(budget&&!budget.valid){$(budget.invalidMin?'#min-price':'#max-price').focus({preventScroll:true})}else{const pristine=!!searchEditSession||!state.hasSearched&&!state.onlyFavorites;$(pristine?'#search':'#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$(pristine?'.search-submit':'#results').focus({preventScroll:true})}}else{renderFilters();restorePageReturn();}syncDestinationViewport();}
+function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasOpen=$('#filter-panel').classList.contains('open');if(!wasOpen)return;let budget=null;if(apply){budget=editFilterBudget();if(!budget.valid&&!adapt){$(budget.invalidMin?'#min-price':'#max-price').focus();return;}}leaveUIHistory(fromHistory);const next=apply?filterDraft:null;filterDraft=null;drawerSuggestions=[];facetQueries.clear();$('#filter-panel').classList.remove('open');$('#filter-panel').removeAttribute('role');$('#filter-panel').removeAttribute('aria-modal');$('#filter-backdrop').hidden=true;document.body.style.overflow='';$$('[inert]').forEach(e=>e.inert=false);if(next){pageReturn=null;state.filters=next.filters;state.onlyFavorites=next.onlyFavorites;state.selectedDate=next.selectedDate;syncFilters({reuseFilteredCards:true});if(budget&&!budget.valid){$(budget.invalidMin?'#min-price':'#max-price').focus({preventScroll:true})}else{const pristine=!!searchEditSession||!state.hasSearched&&!state.onlyFavorites;$(pristine?'#search':'#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$(pristine?'.search-submit':'#results').focus({preventScroll:true})}}else{renderFilters();restorePageReturn();}syncDestinationViewport();}
 $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=!fromMonth&&state.selectedDate===day?null:day;updateSearchUI();renderResults({keepFilters:true,reuseCalendarBase:!fromMonth});updateURL();if(fromMonth)closeModal();else $(`#price-strip [data-date="${day}"]`)?.focus({preventScroll:true});}
 function resetFilters(){
