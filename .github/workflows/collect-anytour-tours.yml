@@ -646,8 +646,12 @@ jobs:
             fi
             rm -f \"\$collector_log\"
             trap - EXIT
-            php \"\$root/rollup-price-daily-v1.php\" --days=31
-            php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
+            if [ -s \"\$HOME/.anytour-price-result/active-release\" ]; then
+              bash \"\$HOME/.anytour-price-result/dispatch-rolling-price.sh\" \"\$root\" both 31
+            else
+              php \"\$root/rollup-price-daily-v1.php\" --days=31
+              php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
+            fi
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             exit \"\$collector_status\"
           "

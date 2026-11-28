@@ -312,7 +312,11 @@ jobs:
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru\"
             php -l \"\$root/data/rollup-price-daily-v1.php\" >/dev/null
-            php \"\$root/data/rollup-price-daily-v1.php\" --days='$DAYS_VALUE'
+            if [ -s \"\$HOME/.anytour-price-result/active-release\" ]; then
+              bash \"\$HOME/.anytour-price-result/dispatch-rolling-price.sh\" \"\$root/data\" coarse '$DAYS_VALUE'
+            else
+              php \"\$root/data/rollup-price-daily-v1.php\" --days='$DAYS_VALUE'
+            fi
             php \"\$root/data/data-doctor-v1.php\"
           "
           echo "ANYTOUR_PRICE_ROLLUP_OK days=$DAYS_VALUE"
