@@ -1,4 +1,4 @@
-name: Read TOP500 state after original run 46104980062
+name: Read native 08:30 TOP500 receipt and PRICE admission
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '502e01f3d55aaad625e4b6074f14452936d16eb0'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'af5c9aff9b1f358d231ded8b1396befab011f4fa'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
