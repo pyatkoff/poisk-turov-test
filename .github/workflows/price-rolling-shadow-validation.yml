@@ -136,14 +136,7 @@ jobs:
             (SELECT COUNT(*) FROM tour_price_daily WHERE price_date='$fixture_day' AND hotel_id=2);
           FIXTURE
           )
-          [[ "$unchanged" == 
-          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' rehearsed.txt
-          php apply-rolling-result.php "${args[@]}" --apply | tee applied.txt
-          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' applied.txt
-          php apply-rolling-result.php "${args[@]}" --apply | tee retried.txt
-          grep -q '"exact":{"old_only":0,"changed":0},"coarse":{"old_only":0,"changed":0}' retried.txt
-          echo PRICE_ROLLING_APPLY_FIXTURE_OK
-0\t1\t1' ]]
+          [[ "$unchanged" == $'0\t1\t1' ]]
           sql <<< "DELETE FROM tour_price_daily WHERE price_date='$fixture_day' AND hotel_id=2;"
           php apply-rolling-result.php "${args[@]}" --rehearse | tee rehearsed.txt
           grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' rehearsed.txt
