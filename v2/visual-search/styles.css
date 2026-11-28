@@ -2971,3 +2971,24 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
 .messenger-entry h3{margin:0 0 12px}.messenger-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0 12px}.messenger-methods>[data-action="messenger-open"]{min-width:0;min-height:52px}.messenger-methods .text-button{grid-column:1/-1;justify-self:center;min-height:52px}.messenger-entry [hidden],[data-messenger-phone-submit][hidden]{display:none!important}
 .messenger-entry[data-search3-public-contact="messenger-only"] .messenger-recovery-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
 .messenger-recovery-actions>.text-button{min-height:44px;max-width:100%;white-space:normal;text-align:left}
+
+/* The desktop date summary leaves the first offer in view for a one-day search. */
+.result-calendar-single-summary,.result-calendar-single-price,.result-calendar-single-action{display:none}
+@media(min-width:761px){
+ #price-calendar.calendar-single-day{padding:0}
+ #price-calendar.calendar-single-day .result-calendar-disclosure:not([hidden]){
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;
+  width:100%;padding:9px 14px;border:0;border-radius:inherit;background:transparent;text-align:start;color:inherit
+ }
+ #price-calendar.calendar-single-day .result-calendar-disclosure>:is(svg,[data-icon],.result-calendar-context,.chevron){display:none}
+ #price-calendar.calendar-single-day :is(.result-calendar-single-summary,.result-calendar-single-price){display:grid;gap:2px;min-width:0}
+ .result-calendar-single-summary>strong,.result-calendar-single-price>strong{line-height:1.25}
+ :is(#result-calendar-compact-note,#result-calendar-compact-day){font-size:12px;line-height:1.35}
+ #result-calendar-compact-note{color:var(--muted)}
+ #price-calendar.calendar-single-day .result-calendar-single-price{padding:4px 9px;border:1px solid #bfe3ca;border-radius:7px;background:#eef8f1;color:#216444}
+ #price-calendar.calendar-single-day .result-calendar-single-action{display:flex;align-items:center;gap:5px;color:var(--brand,#2743cb);font-weight:650}
+ .result-calendar-disclosure[aria-expanded="true"] .result-calendar-single-action>span[aria-hidden]{transform:rotate(180deg)}
+ #price-calendar.calendar-single-day.calendar-expanded .result-date-heading{border-top:1px solid #e1e7f0}
+ #price-calendar.calendar-single-day.calendar-expanded :is(.result-date-heading,#calendar-preview){padding-inline:16px}
+ #price-calendar.calendar-single-day.calendar-expanded #calendar-preview{padding-bottom:12px}
+}

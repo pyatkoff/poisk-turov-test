@@ -198,6 +198,12 @@ function observe(source,s){
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
  vm.createContext(ctx);vm.runInContext(section(app,'const dayFormatter=','const money =')+'\n'+app.match(/^const formatDate=[^\n]+/m)[0]+'\n'+app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
+ // Compare the fully expanded price strip to the historical data oracle.
+ // The compact summary and its toggle are exercised by the canonical browser route.
+ if(s.kind==='calendar'&&s.singleDay&&!s.mobile&&observedOwner.includes("let expandedResultCalendarDay=")){
+  vm.runInContext('expandedResultCalendarDay=state.search.from;',ctx);
+  ctx.syncSingleDayCalendarSummary=()=>{};
+ }
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
@@ -924,7 +930,14 @@ const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[k
   for(let round=0;round<90;round++){
    const length=1+Math.floor(random()*31),prices=Array.from({length},()=>random()<.2?null:Math.floor(random()*20)*1000+.5);
    current.ctx.state.search.to=new Date(Date.parse('2026-10-01T00:00:00Z')+(length-1)*86400000).toISOString().slice(0,10);current.ctx.state.selectedDate=random()<.5?null:'2026-10-'+String(1+Math.floor(random()*length)).padStart(2,'0');current.ctx.resultCalendar.phase=['loading','error','partial','complete'][round%4];current.setPrices(prices);
-   const before=JSON.stringify(prices);current.render();expected.innerHTML=current.markup();assert.equal(current.strip.innerHTML,expected.innerHTML,'progressive calendar DOM equals uncached full markup');assert.equal(JSON.stringify(prices),before,'calendar rendering preserves price inputs');
+   const before=JSON.stringify(prices);current.render();
+   const singleDay=length===1&&typeof current.ctx.toggleResultCalendarDisclosure==='function';
+   if(singleDay){
+    assert.equal(current.ctx.document.querySelector('.result-calendar-disclosure').getAttribute('aria-expanded'),'false');
+    current.ctx.toggleResultCalendarDisclosure();
+   }
+   expected.innerHTML=current.markup();assert.equal(current.strip.innerHTML,expected.innerHTML,'progressive calendar DOM equals uncached full markup');assert.equal(JSON.stringify(prices),before,'calendar rendering preserves price inputs');
+   if(singleDay)current.ctx.toggleResultCalendarDisclosure();
   }
  }finally{current.close();reference.window.close();}
  console.log('PASS calendar DOM parity: 90 ranges/price-null/minimum/selection/phase sequences; raw price order unchanged; supplier/lead HTTP 0');
