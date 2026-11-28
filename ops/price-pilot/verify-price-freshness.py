@@ -1,14 +1,9 @@
-import datetime as dt
 import json
 import pathlib
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-
-
-def timestamp(value):
-    return dt.datetime.fromisoformat(value).replace(tzinfo=dt.timezone.utc)
 
 
 def get(path):
@@ -22,18 +17,17 @@ def get(path):
 
 
 sample = json.loads(pathlib.Path(sys.argv[1]).read_text())
-now = dt.datetime.now(dt.timezone.utc)
-observation = timestamp(sample["observation_latest"])
-seo_observed = timestamp(sample["seo_observed"])
-seo_expires = timestamp(sample["seo_expires"])
+age = sample["observation_age_minutes"]
+latest = sample["observation_latest"]
 failed = False
-if not dt.timedelta(0) <= now - observation < dt.timedelta(hours=2):
-    print(f"PRICE_SOURCE_STALE latest={observation.isoformat()} age_minutes={int((now-observation).total_seconds()//60)}")
+print(f"PRICE_SOURCE_CLOCK database_offset_minutes={sample['database_offset_minutes']} rollup_timezone={sample['rollup_timezone']}")
+if not 0 <= age < 120:
+    print(f"PRICE_SOURCE_STALE latest_local={latest} age_minutes={age}")
     failed = True
 else:
-    print(f"PRICE_SOURCE_FRESH latest={observation.isoformat()}")
-if not dt.timedelta(0) <= now - seo_observed < dt.timedelta(hours=72) or seo_expires <= now:
-    print(f"PRICE_SEO_SNAPSHOT_STALE observed={seo_observed.isoformat()} expires={seo_expires.isoformat()}")
+    print(f"PRICE_SOURCE_FRESH latest_local={latest} age_minutes={age}")
+if not 0 <= sample["seo_age_minutes"] < 72 * 60 or sample["seo_remaining_seconds"] <= 0:
+    print(f"PRICE_SEO_SNAPSHOT_STALE observed={sample['seo_observed']} expires={sample['seo_expires']}")
     failed = True
 
 try:
