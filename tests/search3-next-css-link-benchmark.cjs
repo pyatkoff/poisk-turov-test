@@ -36,7 +36,7 @@ function exactFixture(nextHome) {
   const revision='30fb66d69f09754fbc70cec0df3da56d4262722a';
   const diff=execFileSync('git',['diff','--name-only',revision,'HEAD'],
     {cwd:root,encoding:'utf8'}).trim().split('\n').sort();
-  assert.deepEqual(diff,['tests/search3-entry-css-link-browser.cjs','tests/search3-next-css-link-benchmark.cjs']);
+  assert.deepEqual(diff,['tests/search3-entry-owner-browser.cjs','tests/search3-next-css-link-benchmark.cjs']);
   const base=nextHome.prefix+'/', home=nextHome.html.get(base), search=nextHome.html.get(base+'poisk-turov/');
   const sheet=fs.readFileSync(path.join(nextHome.payload,'visual-search','styles.css'));
   assert.equal(digest(sheet),'544533a067bb7f9d70f83c56aeb78ccdb8fb38522ce2668ed32b57f28c822e44');
