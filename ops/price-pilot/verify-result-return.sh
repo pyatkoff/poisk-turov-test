@@ -11,7 +11,7 @@ trap 'rm -rf -- "$tmp"' EXIT
 host=45.67.128.147
 printf '%s %s\n' "$host" "$host_key" > "$tmp/known_hosts"
 call_price() {
-    timeout 90 ssh -4 -T -F /dev/null -i "$dir/return_ed25519" \
+    timeout 90 ssh -4 -n -T -F /dev/null -i "$dir/return_ed25519" \
         -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=8 \
         -o HostKeyAlgorithms=ssh-ed25519 -o StrictHostKeyChecking=yes \
         -o UserKnownHostsFile="$tmp/known_hosts" -o GlobalKnownHostsFile=/dev/null \
