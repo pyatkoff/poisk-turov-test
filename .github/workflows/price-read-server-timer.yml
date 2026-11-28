@@ -1,4 +1,4 @@
-name: Read native 05:30 TOP500 receipt and PRICE journal
+name: Read exact native MAX effect from original PRICE TV61623
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'bde5ab83df1a28a813ef11421aeadcccbd8e3a6d'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ed91f0d13617f69eeac2ea1167f81a8139bf6440'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
@@ -270,6 +270,7 @@ jobs:
                   require $app.'/config.php';
                   require_once $app.'/services/ChannelPostRuntime.php';
                   require_once $app.'/services/ChannelPostAdminService.php';
+                  require_once $app.'/services/ChannelPostEntryService.php';
               } finally { ob_end_clean(); }
               $pdo = ConversationDb::connection();
               $pdo->exec('START TRANSACTION READ ONLY');
@@ -280,6 +281,7 @@ jobs:
                   if (!is_array($p) || $p['project_key'] !== 'anytour' || $p['platform'] !== $platform) {
                       throw new RuntimeException('original_publication_identity_changed');
                   }
+                  if ($platform === 'max') $maxPublication = $p;
                   $meta = $p['snapshot']['metadata'] ?? [];
                   $rows[$platform] = [
                       'publication_id'=>(int)$p['publication_id'],
@@ -293,6 +295,63 @@ jobs:
               }
               $pdo->rollBack();
               echo 'PRICE_ORIGINAL_REGISTRY ', json_encode($rows, JSON_THROW_ON_ERROR), PHP_EOL;
+              if ($rows['max']['version_id'] !== 15457 || $rows['telegram']['version_id'] !== 15458) {
+                  throw new RuntimeException('original_registry_version_changed');
+              }
+              $path = '/var/www/anytoour/data/channel-post-operations/commercial-monitor-price-h61623-ca67adee35e5a6b8a38fd7dcd705f5ccf3cb2326c27041e4224627c3709218c8/receipt.jsonl';
+              if (realpath($path) !== $path || !is_file($path)) throw new RuntimeException('original_journal_path_changed');
+              $journal = fopen($path, 'rb');
+              if (!is_resource($journal) || !flock($journal, LOCK_SH | LOCK_NB)) {
+                  throw new RuntimeException('original_journal_busy');
+              }
+              try {
+                  $raw = stream_get_contents($journal, 10485761);
+                  if (!is_string($raw) || !str_ends_with($raw, "\n")
+                      || hash('sha256', $raw) !== '24863d0c50ed86c299056e18d7de2e2f3f5d3cab80c41ab4f7f7c8fed0f9e85d') {
+                      throw new RuntimeException('original_child_changed');
+                  }
+                  $lines = explode("\n", rtrim($raw, "\n"));
+                  $child = json_decode(end($lines), true, 64, JSON_THROW_ON_ERROR);
+                  $posts = $child['posts'] ?? [];
+                  $entry = reset($posts);
+                  $plan = $entry['plan'] ?? null;
+                  if (count($posts) !== 1 || ($entry['state'] ?? null) !== 'text_edit_returned'
+                      || !is_array($plan) || ($plan['platform'] ?? null) !== 'max' || (int)($plan['publication_id'] ?? 0) !== 1905
+                      || ($plan['post_url'] ?? null) !== 'https://max.ru/channel_anytour/AaHqSmdWAtI') {
+                      throw new RuntimeException('original_post_plan_changed');
+                  }
+                  $mid = (string)($maxPublication['external_message_id'] ?? '');
+                  if (!preg_match('/\A[A-Za-z0-9_.-]{1,191}\z/D', $mid) || $mid !== (string)($plan['message_id'] ?? '')) {
+                      throw new RuntimeException('original_max_identity_changed');
+                  }
+                  $response = ChannelPostApiTransport::buttonRequest('max', 'GET', '/messages/'.$mid, [], null);
+                  $proof = [
+                      'http' => $response['http'] ?? null,
+                      'provider_edit_returned' => ($entry['provider_edit_returned'] ?? null) === true,
+                      'original_record_observed_at' => $plan['monitor_price']['observed_at'] ?? null,
+                      'original_record_price' => $plan['monitor_price']['price'] ?? null,
+                      'same_post' => null, 'matches_original_caption' => null, 'matches_registry_caption' => null,
+                      'same_photo' => null, 'same_button' => null,
+                  ];
+                  if (($response['http'] ?? null) === 200 && is_array($response['data'] ?? null)) {
+                      $native = ChannelPostIncomingAdapter::maxSnapshot($response['data']);
+                      if (is_array($native)) {
+                          $image = $native['attachments'][0] ?? [];
+                          $signature = ($image['provider'] ?? '').':'.($image['photo_id'] ?? $image['file_unique_id'] ?? '');
+                          $proof['same_post'] = ($native['post_url'] ?? null) === $plan['post_url'];
+                          $proof['matches_original_caption'] = ($native['text'] ?? null) === $plan['text'];
+                          $proof['matches_registry_caption'] = ($native['text'] ?? null) === $maxPublication['snapshot']['text'];
+                          $proof['same_photo'] = count($native['attachments'] ?? []) === 1 && $signature === ($plan['photo_signature'] ?? null);
+                          $proof['same_button'] = ChannelPostIncomingAdapter::containsOnlyButton(
+                              $native, ChannelPostButtonTransport::buttonUrl($maxPublication), (string)$maxPublication['channel']['button_text']
+                          );
+                      }
+                  }
+                  echo 'PRICE_ORIGINAL_MAX_EFFECT ', json_encode($proof, JSON_THROW_ON_ERROR), PHP_EOL;
+              } finally {
+                  fclose($journal);
+              }
+
           } catch (Throwable $e) {
               if ($pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
               fwrite(STDERR, 'registry_read_failed '.get_class($e).PHP_EOL);
