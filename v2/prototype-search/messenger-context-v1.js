@@ -76,7 +76,8 @@
     const base=readContext({...input,application:undefined,price:{state:'unknown',currency:'RUB',description:''}},capturedAt,now,helpers);
     const binding=JSON.stringify([base.value,money(o.total),r.offerRef,r.searchRef,r.generation,r.localHotelId,r.choiceRef]);
     const value=base.value;
-    value.stay={room:text(r.room,500),meal:text(r.meal,300),placement:text(o.placement,500),operator:text(r.operator,300)};
+    const sourceMeal=verified?text(raw.anexSourceMeal,300):'';
+    value.stay={room:text(r.room,500),meal:sourceMeal||text(r.meal,300),placement:text(o.placement,500),operator:text(r.operator,300)};
     if(!value.stay.meal||!value.stay.operator)invalid();
     value.flights=verified?{state:'selected',outward:[{label:text(r.flights[0].name,1000)}],inward:[{label:text(r.flights[1].name,1000)}]}
       :{state:'manager-deferred',outward:[],inward:[]};
