@@ -2992,3 +2992,8 @@ body.mobile-bottom-suspended .mobile-bottom {visibility:hidden;pointer-events:no
  #price-calendar.calendar-single-day.calendar-expanded :is(.result-date-heading,#calendar-preview){padding-inline:16px}
  #price-calendar.calendar-single-day.calendar-expanded #calendar-preview{padding-bottom:12px}
 }
+
+/* Keep the thumbnail buttons available while the first main photo arrives. */
+@media(min-width:761px){
+ #cards.lead-photo-pending>.hotel-card:first-child .card-thumb img{display:none}
+}

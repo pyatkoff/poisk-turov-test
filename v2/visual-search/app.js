@@ -1527,6 +1527,12 @@ function renderResultHeadings(items,total,pristine){
  renderResultSummary(items,total,pristine);
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
+function releaseFirstCardThumbnails(image){
+ const cards=image.closest('#cards');
+ if(cards?.classList.contains('lead-photo-pending')&&image.closest('.hotel-card')===cards.firstElementChild){
+  cards.classList.remove('lead-photo-pending');
+ }
+}
 function paintResultCards(cards,entries,sameScope){
  // The loading or empty placeholder cannot be reused as a hotel card. Insert
  // the first populated set in one parse, then retain keys on later updates.
@@ -1565,8 +1571,10 @@ function renderResultCards(items,{selectionOnly=false}={}){
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
  const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
  if(!sameCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
+ const prioritizePhoto=items[0]?.hotel.photos?.length>1&&innerWidth>760;
+ if(prioritizePhoto||cards.classList.contains('lead-photo-pending'))cards.classList.toggle('lead-photo-pending',prioritizePhoto);
  const entries=items.slice(0,renderedCardLimit).map((item,index)=>{
-  const priorityPhoto=index===0&&item.hotel.photos?.length>1&&innerWidth>760;
+  const priorityPhoto=index===0&&prioritizePhoto;
   return {id:`hotel-${item.hotel.id}`,markup:priorityPhoto?cardHTML(item,true):cardHTML(item)};
  });
  if(!items.length){
@@ -1575,6 +1583,10 @@ function renderResultCards(items,{selectionOnly=false}={}){
  }
  if(items.length>renderedCardLimit)entries.push({id:'',markup:`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`});
  paintResultCards(cards,entries,sameCardScope);
+ if(prioritizePhoto){
+  const image=cards.firstElementChild?.querySelector('.hotel-image');
+  if(image?.complete&&image.naturalWidth>0)releaseFirstCardThumbnails(image);
+ }
  if(focus){
   const nextAnchor=anchorId?document.getElementById(anchorId):null,fallback=nextAnchor?.querySelector(focusAction?`[data-action="${CSS.escape(focusAction)}"]`:'button')||nextAnchor?.querySelector('button')||cards.querySelector('[data-action="more-cards"]')||$('#results');
   restoreFocus(focus,fallback,cards);
@@ -4183,8 +4195,8 @@ function setHotelProfilePhotoState(image,state){
  tile.setAttribute('aria-label',state==='failed'?label+failure:label.replace(/ · Фото не загрузилось$/,''));
  tile.querySelector('.hotel-profile-photo-status span').textContent=state==='failed'?'Фото не загрузилось':'Загружаем фото';
 }
-document.addEventListener('load',event=>{const img=event.target;if(img.tagName!=='IMG'||!img.isConnected||img.naturalWidth<=0)return;setHotelProfilePhotoState(img,'ready');if(img.classList.contains('hotel-image')){const photos=img.closest('.hotel-photos');if(photos?.matches('.photo-loading,.photo-failed')){photos.classList.remove('photo-loading','photo-failed');photos.querySelector('.hotel-image-wrap').setAttribute('aria-busy','false');}}if(img.parentElement?.classList.contains('tour-hero')&&img.hidden){const fallback=img.nextElementSibling;if(fallback?.classList.contains('tour-photo-missing')){img.hidden=false;fallback.hidden=true;}}if(img.parentElement?.classList.contains('card-thumb')){img.hidden=false;img.parentElement.setAttribute('aria-label',img.parentElement.getAttribute('aria-label').replace(/ · Фото не загрузилось$/,''));}},true);
-document.addEventListener('error',event=>{const img=event.target;if(img.tagName==='IMG'&&img.isConnected)setHotelProfilePhotoState(img,'failed');if(img.tagName==='IMG'&&img.isConnected&&img.parentElement?.classList.contains('tour-hero')){const fallback=img.nextElementSibling;if(fallback?.classList.contains('tour-photo-missing')){img.hidden=true;fallback.hidden=false;}return;}if(img.tagName==='IMG'&&img.classList.contains('destination-hotel-image')){img.hidden=true;return;}if(img.tagName==='IMG'&&img.classList.contains('hotel-image')&&img.isConnected){const photos=img.closest('.hotel-photos');if(!photos||photos.classList.contains('photo-unavailable'))return;photos.classList.remove('photo-loading');photos.classList.add('photo-failed');photos.querySelector('.hotel-image-wrap').setAttribute('aria-busy','false');photos.querySelector('.photo-missing-label').innerHTML=icon('image')+'Фото не загрузилось';}if(img.tagName==='IMG'&&img.parentElement?.classList.contains('card-thumb')){if(!img.hidden)img.parentElement.setAttribute('aria-label',img.parentElement.getAttribute('aria-label')+' · Фото не загрузилось');img.hidden=true;}},true);
+document.addEventListener('load',event=>{const img=event.target;if(img.tagName!=='IMG'||!img.isConnected||img.naturalWidth<=0)return;setHotelProfilePhotoState(img,'ready');if(img.classList.contains('hotel-image')){releaseFirstCardThumbnails(img);const photos=img.closest('.hotel-photos');if(photos?.matches('.photo-loading,.photo-failed')){photos.classList.remove('photo-loading','photo-failed');photos.querySelector('.hotel-image-wrap').setAttribute('aria-busy','false');}}if(img.parentElement?.classList.contains('tour-hero')&&img.hidden){const fallback=img.nextElementSibling;if(fallback?.classList.contains('tour-photo-missing')){img.hidden=false;fallback.hidden=true;}}if(img.parentElement?.classList.contains('card-thumb')){img.hidden=false;img.parentElement.setAttribute('aria-label',img.parentElement.getAttribute('aria-label').replace(/ · Фото не загрузилось$/,''));}},true);
+document.addEventListener('error',event=>{const img=event.target;if(img.tagName==='IMG'&&img.isConnected)setHotelProfilePhotoState(img,'failed');if(img.tagName==='IMG'&&img.isConnected&&img.parentElement?.classList.contains('tour-hero')){const fallback=img.nextElementSibling;if(fallback?.classList.contains('tour-photo-missing')){img.hidden=true;fallback.hidden=false;}return;}if(img.tagName==='IMG'&&img.classList.contains('destination-hotel-image')){img.hidden=true;return;}if(img.tagName==='IMG'&&img.classList.contains('hotel-image')&&img.isConnected){releaseFirstCardThumbnails(img);const photos=img.closest('.hotel-photos');if(!photos||photos.classList.contains('photo-unavailable'))return;photos.classList.remove('photo-loading');photos.classList.add('photo-failed');photos.querySelector('.hotel-image-wrap').setAttribute('aria-busy','false');photos.querySelector('.photo-missing-label').innerHTML=icon('image')+'Фото не загрузилось';}if(img.tagName==='IMG'&&img.parentElement?.classList.contains('card-thumb')){if(!img.hidden)img.parentElement.setAttribute('aria-label',img.parentElement.getAttribute('aria-label')+' · Фото не загрузилось');img.hidden=true;}},true);
 
 async function switchFixture(value){
  if(window.AnyTourPublicBootstrapV1?.selected)return;

@@ -6,6 +6,7 @@ const path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const {exactAssets,startServer}=require('./search3-next-compact-calendar.cjs');
 const {compile}=require('../scripts/build/search3-js/visual-entry.cjs');
+const {printCSS}=require('../scripts/build/search3-js/compact-css.cjs');
 const {createHash}=require('node:crypto');
 
 const source='007bf45644e827c400b91719778b8ab5defe8e62';
@@ -168,8 +169,15 @@ async function sample(browser,server,paths,screen,net,mode,exercise=false){
   assert.deepEqual(measured.attributes.thumbs,active?['low','low']:[null,null]);
   assert(measured.home.resources['app.js'].transferred>0);
   assert(measured.home.resources['styles.css'].transferred>0);
+  if(active)await page.waitForFunction(()=>performance.getEntriesByType('resource').some(row=>new URL(row.name).pathname.endsWith('/photo-2.jpg')),{},{timeout:12000});
   const photoTrace=[...tracked.values()];
-  assert.equal(photoTrace.filter(p=>p.name==='photo-1.jpg'&&p.finish>=p.start).length,1);
+  const primary=photoTrace.filter(p=>p.name==='photo-1.jpg'&&p.finish>=p.start);
+  assert.equal(primary.length,1);
+  if(active){
+   const thumbnails=photoTrace.filter(p=>p.name==='photo-2.jpg');
+   assert.equal(thumbnails.length,1);
+   assert(thumbnails[0].start>=primary[0].finish-0.001,'the secondary photo waits for the first response to complete');
+  }
   if(exercise){
    const item=page.locator('#cards .hotel-card').first();
    const arrow=item.locator('.card-photo-arrow.next');
@@ -207,17 +215,21 @@ function asPhases(row){
 module.exports=async function measurePhotoPriority(browser,nextHome,output){
  const root=path.resolve(__dirname,'..');
  const changed=execFileSync('git',['diff','--name-only',source,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
- assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-next-photo-priority.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json"]);
+ assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-next-photo-priority.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json","v2/visual-search/styles.css"]);
  const after=exactAssets(nextHome),paths={home:nextHome.prefix+'/',search:nextHome.prefix+'/poisk-turov/'};
  const sha=value=>createHash('sha256').update(value).digest('hex');
  const raw=execFileSync('git',['show',source+':v2/visual-search/app.js'],{cwd:root,encoding:'utf8'});
  assert.equal(sha(raw),'92af33ac613b5591bd4f4a25d2861e3a0fd9d7d864a4d27d57b4a064932e1534');
  const prior=await compile(raw,{privateFunctions:true});
  assert.equal(sha(prior),pinned.appSha);
- assert.equal(after.sheetSha,pinned.sheetSha);
- const appUrl=after.appUrl.replace(after.appSha.slice(0,12),pinned.appSha.slice(0,12));
- const before={...after,appSha:pinned.appSha,code:Buffer.from(prior),appUrl,
-  home:after.home.replace(after.appUrl,appUrl),search:after.search.replace(after.appUrl,appUrl)};
+ const rawSheet=execFileSync('git',['show',source+':v2/visual-search/styles.css'],{cwd:root,encoding:'utf8'});
+ const sheet=Buffer.from(printCSS(rawSheet));
+ assert.equal(sha(sheet),pinned.sheetSha);
+ const shaUrl=(url,from,to)=>url.replace(from.slice(0,12),to.slice(0,12));
+ const appUrl=shaUrl(after.appUrl,after.appSha,pinned.appSha),url=shaUrl(after.url,after.sheetSha,pinned.sheetSha);
+ const rewrite=html=>html.replace(after.appUrl,appUrl).replace(after.url,url);
+ const before={...after,appSha:pinned.appSha,sheetSha:pinned.sheetSha,code:Buffer.from(prior),sheet,appUrl,url,
+  home:rewrite(after.home),search:rewrite(after.search)};
  const servers={before:await startServer(nextHome,before,paths),after:await startServer(nextHome,after,paths)};
  const groups=[];
  try{
