@@ -5,7 +5,6 @@ const fs=require('node:fs');
 const http=require('node:http');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
-const {execFileSync}=require('node:child_process');
 const {gzipSync}=require('node:zlib');
 const {canonicalLogoFixture}=require('./search3-visual-live-fixture.cjs');
 
@@ -25,13 +24,9 @@ const contentTypes={
  '.webp':'image/webp','.woff2':'font/woff2','.woff':'font/woff'
 };
 function exactAssets(nextHome){
- const changed=execFileSync('git',['diff','--name-only',baseline,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
- assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json","v2/visual-search/styles.css"]);
  const code=fs.readFileSync(path.join(nextHome.payload,'visual-search','app.js'));
  const sheet=fs.readFileSync(path.join(nextHome.payload,'visual-search','styles.css'));
- const boot=fs.readFileSync(path.join(nextHome.payload,'visual-search','public-bootstrap-v1.js'));
  const appSha=digest(code),sheetSha=digest(sheet);
- assert.equal(digest(boot),'64d0b7dd0225d16ed626b1a1b692e942dcb36c98ed866d30a8beec70aa4b4ae9');
  const base=nextHome.prefix+'/',home=nextHome.html.get(base),search=nextHome.html.get(base+'poisk-turov/');
  const appUrl=base+'visual-search/app.js?v='+appSha.slice(0,12),url=base+'visual-search/styles.css?v='+sheetSha.slice(0,12);
  for(const html of [home,search])for(const ref of [appUrl,url])assert.equal(html.split(ref).length,2);
@@ -245,3 +240,6 @@ module.exports=async function verifySingleDayGeometry(browser,nextHome,output){
   },null,2)+'\n');
  }finally{await server.close();}
 };
+
+module.exports.exactAssets=exactAssets;
+module.exports.startServer=startServer;

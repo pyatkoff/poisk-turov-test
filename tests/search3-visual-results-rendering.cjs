@@ -493,7 +493,7 @@ const previousRatingValue='const ratingValue=h=>Number.isFinite(h.rating)&&h.rat
 const previousRatingText="const ratingText=h=>ratingValue(h)===null?'—':ratingFormatter.format(ratingValue(h));";
 function previousCardSource(code){
  const card=section(code,'function cardHTML(','function refreshOpenHotelRooms('),legacy=card
-  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers}){')
+  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)},priorityPhoto=false){','function cardHTML({hotel:h,offers},priorityPhoto=false){')
   .replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating)",'')
   .replace('${rating!==null?', '${ratingValue(h)!==null?')
   .replaceAll('${ratingLabel}', '${ratingText(h)}')
@@ -525,7 +525,7 @@ console.log('PASS card rating snapshot: 1000 exact markup references; ratingValu
 // exact standalone normalization fallback characterized above.
 function previousInventoryCardSource(code){
  const card=section(code,'function cardHTML(','function refreshOpenHotelRooms('),legacy=card
-  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers}){')
+  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)},priorityPhoto=false){','function cardHTML({hotel:h,offers},priorityPhoto=false){')
   .replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating)",",rating=ratingValue(h),ratingLabel=rating===null?'—':ratingFormatter.format(rating)");
  assert.notEqual(card,legacy,'previous inventory-to-card owner reconstructed');
  return code.replace(card,legacy);
@@ -535,8 +535,8 @@ for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equa
 previousInventoryCard.work.evaluations=previousInventoryCard.work.reads=inventoryCard.work.evaluations=inventoryCard.work.reads=0;
 for(let index=0;index<1000;index++)assert.equal(inventoryCard.render(4.5,index,true),previousInventoryCard.render(4.5,index,true),'inventory rated card markup '+index);
 assert.deepEqual(previousInventoryCard.work,{evaluations:1000,reads:1000});assert.deepEqual(inventoryCard.work,{evaluations:0,reads:0});
-assert(source.includes('markup:cardHTML(item)'),'result rendering passes the complete inventory row to the card owner');
-assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers,rating=null}){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
+assert(source.includes('markup:priorityPhoto?cardHTML(item,true):cardHTML(item)'),'first-result rendering retains the complete inventory row when prioritizing its image');
+assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)},priorityPhoto=false){','function cardHTML({hotel:h,offers,rating=null},priorityPhoto=false){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
 console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
 
@@ -549,6 +549,9 @@ const {JSDOM}=require('jsdom');
  // The pinned predecessor formatted these labels inline.
  const labels={hotelName:'esc(h.name)',priceText:'money(o.total)',departureText:'dateText(o.day)',stayText:'nightsText(o.nights)',mealText:'esc(mealLabel(o))'};
  const expandedCard=card
+  .replace(',priorityPhoto=false','')
+  .replace(`loading="\${priorityPhoto?'eager':'lazy'}"\${priorityPhoto?' fetchpriority="high"':''}`,'loading="lazy"')
+  .replace(`\${priorityPhoto?' fetchpriority="low"':''}`,'')
   .replace('returnText=dateText(o.returnDay),','')
   .replace('${returnText}', '${dateText(o.returnDay)}')
   .replace('minimumOfferSummary(o,departureText,returnText,stayText)','minimumOfferSummary(o)')
