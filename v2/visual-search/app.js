@@ -1075,13 +1075,41 @@ function calendarStripEntries({days,prices,min}){
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
 function paintCalendarStrip(strip,entries){paintGeneratedRoots(strip,entries,true,'day');}
 let resultCalendarExpanded=false;
+let expandedResultCalendarDay='';
+let compactResultCalendarSummary=null;
 let deferredCalendarStrip=null;
+function isResultCalendarCollapsed(){
+ const {from,to}=state.search;
+ return innerWidth<=760?!resultCalendarExpanded:from===to&&expandedResultCalendarDay!==from;
+}
+function syncSingleDayCalendarSummary(button,day,expanded){
+ if(!button.querySelector('.result-calendar-single-summary')){
+  button.insertAdjacentHTML('beforeend','<span class="result-calendar-single-summary"><strong>Даты и цены</strong><span id="result-calendar-compact-note"></span></span><span class="result-calendar-single-price"><span id="result-calendar-compact-day"></span><strong id="result-calendar-compact-price"></strong></span><span class="result-calendar-single-action"><span id="result-calendar-compact-action"></span><span aria-hidden="true">⌄</span></span>');
+ }
+ const summary=compactResultCalendarSummary?.day===day?compactResultCalendarSummary:null;
+ $('#result-calendar-compact-note').textContent=summary?.note||'';
+ $('#result-calendar-compact-day').textContent=dateText(day);
+ $('#result-calendar-compact-price').textContent=Number.isFinite(summary?.price)?'от '+money(summary.price):'Цена уточняется';
+ $('#result-calendar-compact-action').textContent=expanded?'Свернуть':'Календарь';
+}
+function toggleResultCalendarDisclosure(){
+ const {from,to}=state.search;
+ if(innerWidth<=760)resultCalendarExpanded=!resultCalendarExpanded;
+ else if(from===to)expandedResultCalendarDay=expandedResultCalendarDay===from?'':from;
+ syncResultCalendarDisclosure();
+}
 function syncResultCalendarDisclosure(){
- const mobile=innerWidth<=760,expanded=!mobile||resultCalendarExpanded,button=$('.result-calendar-disclosure');
- button.hidden=!mobile;button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',(expanded?'Свернуть':'Развернуть')+' даты и цены');
+ const s=state.search,mobile=innerWidth<=760,singleDay=!mobile&&s.from===s.to;
+ if(s.from!==s.to)expandedResultCalendarDay='';
+ const expanded=!isResultCalendarCollapsed(),button=$('.result-calendar-disclosure');
+ button.hidden=!mobile&&!singleDay;button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',(expanded?'Свернуть':'Развернуть')+' даты и цены');
+ button.setAttribute('aria-describedby',singleDay?'result-calendar-compact-note result-calendar-compact-day result-calendar-compact-price':'result-calendar-range');
  $('#calendar-preview').hidden=!expanded;$('#price-calendar .result-date-heading').hidden=!expanded;
- $('#price-calendar').classList.toggle('calendar-expanded',expanded);
- const s=state.search,from=state.selectedDate||s.from,to=state.selectedDate||s.to;
+ const calendar=$('#price-calendar');
+ calendar.classList.toggle('calendar-expanded',expanded);
+ calendar.classList.toggle('calendar-single-day',singleDay);
+ if(singleDay)syncSingleDayCalendarSummary(button,s.from,expanded);
+ const from=state.selectedDate||s.from,to=state.selectedDate||s.to;
  $('#result-calendar-range').textContent=departureRangeText(from,to)+(from.slice(0,4)===to.slice(0,4)?' · '+from.slice(0,4):'');
  if(expanded&&deferredCalendarStrip){
   paintCalendarStrip($('#price-strip'),calendarStripEntries(deferredCalendarStrip));
@@ -1092,14 +1120,16 @@ function renderCalendarStrip(items=null,reuseBase=false){
  loadResultCalendar();
  // Date selection only narrows the cards. The strip keeps the full search range.
  if(items&&(!reuseBase||!resultCalendar.basePrices.length))prepareResultCalendarBase(items);
- const model=resultCalendarModel(),{s,source,scope}=model;
- $('#calendar-units').textContent=calendarPriceUnits(s);
+ const model=resultCalendarModel(),{s,source,scope}=model,units=calendarPriceUnits(s);
+ const caption=source==='Демонстрационная цена'?'Демо-цены':source;
+ compactResultCalendarSummary=s.from===s.to?{day:s.from,price:model.prices[0],note:[caption,units.split(' · ')[1]].filter(Boolean).join(' · ')}:null;
+ $('#calendar-units').textContent=units;
  const monthName=day=>formatDate(calendarMonthFormatter,dateObj(day)),fromYear=s.from.slice(0,4),toYear=s.to.slice(0,4);
  const monthRange=s.from.slice(0,7)===s.to.slice(0,7)?`${monthName(s.from)} ${fromYear}`:fromYear===toYear?`${monthName(s.from)} — ${monthName(s.to)} ${toYear}`:`${monthName(s.from)} ${fromYear} — ${monthName(s.to)} ${toYear}`;
  $('#calendar-month-label').textContent=monthRange.charAt(0).toLocaleUpperCase('ru-RU')+monthRange.slice(1);
- $('#calendar-caption').textContent=source==='Демонстрационная цена'?'Демо-цены':source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
+ $('#calendar-caption').textContent=caption;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
  const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
- if(innerWidth<=760&&!resultCalendarExpanded)deferredCalendarStrip=model;
+ if(isResultCalendarCollapsed())deferredCalendarStrip=model;
  else{
   paintCalendarStrip(strip,calendarStripEntries(model));
   deferredCalendarStrip=null;
@@ -3918,7 +3948,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  if(handleSearchParameterAction(action,b,id))return;
  if(handleResultFilterAction(action,b,id))return;
  switch(action){
- case 'toggle-result-calendar':resultCalendarExpanded=!resultCalendarExpanded;syncResultCalendarDisclosure();break;
+ case 'toggle-result-calendar':toggleResultCalendarDisclosure();break;
  case 'choose-flight':openFlightPicker();break;case 'apply-flight':applyFlightPair();break;
  case 'select-anex-tour':if(selectedOffer)refreshLiveHotel(selectedOffer.hotelId,{selectFlights:true});break;
  case 'retry-flight-picker':if(modalType==='flights')renderFlightPicker();break;
