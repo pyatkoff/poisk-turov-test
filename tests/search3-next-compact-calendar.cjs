@@ -127,7 +127,10 @@ async function sample(browser,server,paths,profile,entry,output){
   assert.equal(view.expanded,compact||profile.touch?'false':'true');
   assert.equal(!!view.disclosure,compact||profile.touch);
   assert.equal(view.visibleDates,compact||profile.touch?0:7);
-  if(compact)assert.match(view.displayedPrice,/^от 186\s400 ₽$/);
+  if(compact){
+   assert.match(view.displayedPrice,/^от 186\s400 ₽$/);
+   assert(view.calendar.height<=100,'the desktop summary stays on a single compact row');
+  }
 
   const screenshot='canonical-next-compact-calendar-'+profile.width+'-'+entry.name+'.png';
   const shot=await page.screenshot({path:path.join(output,screenshot),animations:'disabled'});
