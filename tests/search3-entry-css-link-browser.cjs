@@ -1,0 +1,929 @@
+/* Focused exact-artifact native entry check; no supplier or lead requests. */
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const prepareNextHome = require('./search3-visual-next-home-renderer.cjs');
+const {setParty,setNights,checkMobileParameters}=require('./search3-mobile-parameters.cjs');
+const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
+assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
+fs.mkdirSync(output, { recursive: true });
+async function checkCategoryChoices(page, width) {
+  if(width!==375)return;
+  const radios=page.getByRole('radiogroup',{name:'Категория отеля'}),native=page.locator('#tourSearch [name=stars]');
+  assert.deepEqual(await radios.getByRole('radio').allTextContents(),['Любая','2★+','3★+','4★+','5★']);
+  assert.equal(await native.isVisible(),false,'the enhanced mobile category has one visible editor');
+  await page.evaluate(()=>{
+    const field=document.forms.tourSearch.elements.stars;
+    window.__categoryAudit={value:field.value,changes:0,submits:0};
+    field.addEventListener('change',window.__categoryChange=()=>window.__categoryAudit.changes++);
+    document.forms.tourSearch.addEventListener('submit',window.__categorySubmit=()=>window.__categoryAudit.submits++);
+  });
+  await radios.getByRole('radio',{name:'4★ и выше',exact:true}).click();
+  assert.equal(await native.inputValue(),'4','4★+ keeps the existing minimum-category value');
+  assert.equal(await page.evaluate(()=>new FormData(document.forms.tourSearch).get('stars')),'4','the hidden native field remains submitted');
+  assert.deepEqual(await page.evaluate(()=>[window.__categoryAudit.changes,window.__categoryAudit.submits]),[1,0],'one choice emits one canonical change and no form submit');
+  await page.keyboard.press('End');assert.equal(await native.inputValue(),'5');
+  await page.keyboard.press('Home');assert.equal(await native.inputValue(),'');
+  await page.keyboard.press('ArrowRight');assert.equal(await native.inputValue(),'2');
+  await page.setViewportSize({width:1440,height:1000});
+  await radios.waitFor({state:'hidden'});
+  assert.equal(await radios.isVisible(),false);assert.equal(await native.isVisible(),true);
+  assert.equal(await native.evaluate(node=>node===document.activeElement),true,'resize returns focus to the visible canonical editor');
+  await native.selectOption('3');
+  await page.setViewportSize({width,height:1000});
+  await radios.waitFor({state:'visible'});
+  assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).getAttribute('aria-checked'),'true');
+  assert.equal(await radios.getByRole('radio',{name:'3★ и выше',exact:true}).evaluate(node=>node===document.activeElement),true,'resize keeps category focus usable');
+  await page.evaluate(()=>{
+    const field=document.forms.tourSearch.elements.stars;
+    field.removeEventListener('change',window.__categoryChange);
+    document.forms.tourSearch.removeEventListener('submit',window.__categorySubmit);
+    field.value=window.__categoryAudit.value;field.dispatchEvent(new Event('change',{bubbles:true}));
+    delete window.__categoryAudit;delete window.__categoryChange;delete window.__categorySubmit;
+  });
+}
+async function checkSubmittedTripContext(page, width) {
+  const expected = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch');
+    const set = (name, value, label) => {
+      const field = form.elements[name];
+      if (label) {
+        let option = [...field.options].find(item => item.value === value);
+        if (!option) { option = new Option(label, value); field.add(option); }
+        option.textContent = label;
+      }
+      field.value = value;
+    };
+    set('from', '1', 'Москва'); set('country', '4', 'Турция');
+    set('from', '2', 'Санкт-Петербург'); set('country', '1', 'Египет');
+    set('from', '1'); set('country', '4');
+    const date = new Date(); date.setDate(date.getDate() + 3);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    set('dateFrom', iso); set('dateTo', iso); set('daysFrom', '7'); set('daysTill', '10'); set('count_people', '2');
+    set('child_count', '1'); window.V2Catalogs.renderChildAges();
+    form.querySelector('[name="child_age[]"]').value = '0';
+    const hotel = { id: 'trip-context-fixture', name: 'Отель для проверки параметров поиска', country: { name: 'Турция' }, category: 4, price: 150000,
+      tours: [{ id: 'trip-context-tour', date: iso, nights: 7, price: 150000, adults: 2, childs: 1, meal: { name: 'AI' }, roomType: 'STANDARD' }] };
+    const audit = window.__tripContextAudit = { originalApi: window.V2Runtime.api, calls: [], hotel };
+    window.V2Runtime.api = async (action, params) => {
+      audit.calls.push({ action, params });
+      if (action === 'search_start') return { searchId: 800 + audit.calls.length };
+      if (action === 'search_status') return { progress: 100, status: 'complete' };
+      if (action === 'search_results') return [audit.hotel];
+      if (action === 'countries') return [{ id: 1, russianName: 'Египет' }, { id: 4, russianName: 'Турция' }];
+      if (['regions', 'subregions', 'meals', 'arrivals', 'operators', 'hotel_types', 'hotel_services', 'hotels'].includes(action)) return [];
+      throw new Error('Unexpected trip-context supplier action: ' + action);
+    };
+    const submitted = window.V2SearchLifecycle.params();
+    await window.V2SearchLifecycle.submit();
+    return { submitted, date: iso.split('-').reverse().join('.') };
+  });
+  await page.waitForFunction(() => !window.V2SearchLifecycle.pending && !!document.querySelector('#results .hotel-card'));
+  const context = page.locator('#resultsTripContext');
+  assert.equal(await context.isVisible(), true, 'successful submitted search keeps trip context beside the results');
+  assert.equal(await page.locator('#tourSearch').isVisible(), false, 'populated results retain the existing collapsed editor');
+  assert.equal(await context.locator('[data-search3-trip-route]').innerText(), 'Москва → Турция');
+  const firstText = `Вылет ${expected.date} · 7–10 ночей · 2 взрослых · 1 ребёнок`;
+  assert.equal(await context.locator('[data-search3-trip-details]').innerText(), firstText);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.snapshot), expected.submitted, 'summary leaves the canonical submitted snapshot unchanged');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'submitted context fits the viewport');
+  await page.locator('#resultsTools').screenshot({ path: path.join(output, `submitted-trip-context-${width}.png`), animations: 'disabled' });
+  await page.locator('#resultsSearchEdit').click();
+  assert.equal(await context.isVisible(), false, 'the existing editor replaces the compact context without duplicate controls');
+  const collapse = page.locator('.search-editor-collapse');
+  assert.equal(await collapse.isVisible(), true, 'populated editor exposes a close action at the start of the form');
+  assert.equal(await collapse.innerText(), 'К результатам');
+  assert.ok(await collapse.evaluate(node => node.getBoundingClientRect().height >= 44), 'the close action remains a mobile touch target');
+  assert.ok(await page.locator('#tourSearch > .search-section-title').evaluate(node => node.getBoundingClientRect().height <= 60), 'the form heading and result return action stay in one compact row');
+  await page.locator('#tourSearch').screenshot({ path: path.join(output, `search-editor-open-${width}.png`), animations: 'disabled' });
+  if (width <= 700) {
+    await page.evaluate(() => { const form = document.getElementById('tourSearch'); scrollTo(0, form.offsetTop + form.offsetHeight / 2); });
+    const sticky = await collapse.evaluate(node => { const rect = node.closest('.search-section-title').getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, scrollY }; });
+    await page.screenshot({ path: path.join(output, `search-editor-scrolled-${width}.png`), animations: 'disabled' });
+    fs.writeFileSync(path.join(output, `search-editor-scrolled-${width}.json`), JSON.stringify(sticky, null, 2) + '\n');
+    assert.ok(sticky.top >= -2 && sticky.top <= 20, `the mobile result return remains pinned during deep form scroll: ${JSON.stringify(sticky)}`);
+  }
+  const formData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
+  await collapse.click();
+  assert.equal(await page.locator('#tourSearch').isVisible(), false, 'the in-form action returns to the compact result context');
+  assert.equal(await page.locator('#resultsSearchEdit').evaluate(node => node === document.activeElement), true, 'closing restores focus to the result edit action');
+  await page.locator('#resultsSearchEdit').click();
+  assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]), formData, 'closing and reopening preserves every search parameter');
+  await page.locator('[name=from]').selectOption('2');
+  await page.waitForFunction(() => [...document.getElementById('tourSearch').elements.country.options].some(option => option.value === '1'));
+  await page.locator('[name=country]').selectOption('1');
+  await setParty(page,1,[]);
+  await page.evaluate(() => window.V2Results.rerender());
+  assert.equal(await page.locator('#tourSearch').isVisible(), true, 'retained-results rerender does not close the unsent draft');
+  assert.equal(await context.locator('[data-search3-trip-details]').textContent(), firstText, 'unsent edits cannot relabel the previous result set');
+  assert.equal(await context.locator('[data-search3-trip-route]').textContent(), 'Москва → Турция');
+  await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch');
+    form.elements.daysFrom.value = '1'; form.elements.daysTill.value = '1';
+    const hotel = window.__tripContextAudit.hotel;
+    hotel.country.name = 'Египет'; Object.assign(hotel.tours[0], { nights: 1, adults: 1, childs: 0 });
+    await window.V2SearchLifecycle.submit();
+  });
+  await page.waitForFunction(() => !window.V2SearchLifecycle.pending && !!document.querySelector('#results .hotel-card'));
+  assert.equal(await context.isVisible(), true);
+  assert.equal(await context.locator('[data-search3-trip-route]').innerText(), 'Санкт-Петербург → Египет');
+  assert.equal(await context.locator('[data-search3-trip-details]').innerText(), `Вылет ${expected.date} · 1 ночь · 1 взрослый`, 'next successful search replaces route/night/party and removes old children');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'updated context also fits the viewport');
+  const calls = await page.evaluate(() => {
+    const audit = window.__tripContextAudit;
+    window.V2Runtime.api = audit.originalApi;
+    delete window.__tripContextAudit;
+    return audit.calls;
+  });
+  assert.deepEqual(calls.filter(call => call.action.startsWith('search_')).map(call => call.action), ['search_start', 'search_status', 'search_results', 'search_start', 'search_status', 'search_results'], 'summary adds no request to either canonical fixture search; route edits use their existing catalog requests');
+  fs.writeFileSync(path.join(output, `submitted-trip-context-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, firstSnapshot: expected.submitted, calls, supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+}
+async function checkLocalHistory(page) {
+  const documents = [];
+  const trackDocument = request => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url());
+  };
+  page.on('request', trackDocument);
+  try {
+    const before = await page.evaluate(() => {
+      const lifecycle = window.V2SearchLifecycle, form = document.getElementById('tourSearch');
+      const field = form.elements.price_from, original = field.value;
+      field.value = String(Number(original || 0) + 1);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      window.__localHistoryAudit = { lifecycle, form, original, api: window.V2Runtime.api, calls: 0, traversals: 0, historyPops: [] };
+      window.addEventListener('v2:search-history-pop', event => window.__localHistoryAudit?.historyPops.push(event.detail?.state ?? null));
+      window.V2Runtime.api = async () => { window.__localHistoryAudit.calls++; throw new Error('Unexpected local-history supplier call'); };
+      const before = { url: location.href, state: history.state, params: lifecycle.params(), generation: lifecycle.generation, dirty: lifecycle.dirty };
+      history.pushState({ localHistoryFixture: true }, '', location.href);
+      location.hash = 'search3-history-check';
+      return before;
+    });
+    await page.waitForFunction(() => location.hash === '#search3-history-check');
+    const historyPopBaseline = await page.evaluate(() => window.__localHistoryAudit.historyPops.length);
+    const states = [];
+    // Native fragment Back/Forward, then a same-URL history.state Back/Forward.
+    // Finish on the original entry so subsequent different-query checks keep their meaning.
+    for (const direction of ['back', 'forward', 'back', 'back', 'forward', 'back']) {
+      states.push(await page.evaluate(async direction => {
+        await new Promise(resolve => {
+          window.addEventListener('popstate', () => requestAnimationFrame(() => requestAnimationFrame(resolve)), { once: true });
+          history[direction]();
+        });
+        const audit = window.__localHistoryAudit;
+        audit.traversals++;
+        return { url: location.href, state: history.state, sameDocument: audit.form === document.getElementById('tourSearch'), sameLifecycle: audit.lifecycle === window.V2SearchLifecycle, params: window.V2SearchLifecycle.params(), generation: window.V2SearchLifecycle.generation, dirty: window.V2SearchLifecycle.dirty, calls: audit.calls, historyPops: audit.historyPops.length };
+      }, direction));
+    }
+    for (const state of states) {
+      assert.equal(state.sameDocument, true, 'local history retains the native form document');
+      assert.equal(state.sameLifecycle, true, 'local history retains the existing lifecycle instance');
+      assert.deepEqual(state.params, before.params, 'local history preserves unsubmitted form edits');
+      assert.equal(state.generation, before.generation, 'local history does not restart search generation');
+      assert.equal(state.dirty, before.dirty, 'local history preserves the current search state');
+      assert.equal(state.calls, 0, 'local history does not call the supplier boundary');
+    }
+    assert.equal(new URL(states[1].url).hash, '#search3-history-check');
+    assert.deepEqual(states[3].state, before.state, 'same-URL Back restores the original history state');
+    assert.deepEqual(states[4].state, { localHistoryFixture: true }, 'same-URL Forward reaches the local state');
+    assert.equal(states[5].url, before.url);
+    assert.deepEqual(states[5].state, before.state);
+    const historyPopCounts = states.map(state => state.historyPops);
+    assert.deepEqual(historyPopCounts, [1, 2, 3, 4, 5, 6].map(count => count + historyPopBaseline), 'the single lifecycle popstate owner emits every same-query history transition once; baseline=' + historyPopBaseline + ' actual=' + JSON.stringify(historyPopCounts));
+    assert.deepEqual(documents, [], 'fragment and same-query navigation sends no document request');
+    await page.evaluate(() => {
+      const audit = window.__localHistoryAudit;
+      audit.form.elements.price_from.value = audit.original;
+      window.V2Runtime.api = audit.api;
+      delete window.__localHistoryAudit;
+    });
+    return { before, states, documentRequests: documents.length };
+  } finally { page.off('request', trackDocument); }
+}
+async function checkUrlRoundTrip(page, width, blocked) {
+  const submitted = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
+    const date = new Date(); date.setDate(date.getDate() + 3);
+    const future = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const values = { from: '1', country: '4', dateFrom: future, dateTo: future, daysFrom: '8', daysTill: '9', count_people: '4', arrival: '77', region: '11', subregion: '12', hotel: '123', operator: '42', hotel_type: '2', stars: '4', rating: '5', food: '7', price_from: '155500', price_till: '200750' };
+    for (const [name, value] of Object.entries(values)) {
+      const field = form.elements[name];
+      if (field.tagName === 'SELECT' && ![...field.options].some(option => option.value === value)) field.add(new Option('Проверочный вариант ' + value, value));
+      field.value = value;
+    }
+    form.elements.child_count.value = '2'; window.V2Catalogs.renderChildAges();
+    [...form.querySelectorAll('[name="child_age[]"]')].forEach((field, i) => field.value = ['0', '17'][i]);
+    form.elements.onlyDirect.checked = true; form.elements.onlyCharter.checked = false;
+    document.getElementById('hotelServices').innerHTML = '<input type="checkbox" name="hotel_service[]" value="9" checked><input type="checkbox" name="hotel_service[]" value="10" checked>';
+    for (const name of ['phone', 'email', 'consent']) {
+      const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = 'fixture-private'; form.append(field);
+    }
+    history.replaceState({ retained: 'entry-fixture' }, '', location.pathname + '?utm_source=entry-fixture&date_from=2000-01-01&days_from=1&child_age=9&only_charter=1&phone=query-private&consent=1&random_secret=drop-me#parameters');
+    const historyLength = history.length, expected = lifecycle.params(), calls = [];
+    window.V2Runtime.api = async (action, params) => { calls.push({ action, params }); return { searchId: 701 }; };
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    return { values, expected, calls, historyLength, afterLength: history.length, state: history.state, url: location.href };
+  });
+  assert.deepEqual(submitted.calls, [{ action: 'search_start', params: submitted.expected }], 'URL persistence preserves exactly one canonical supplier boundary call and its payload');
+  assert.equal(submitted.afterLength, submitted.historyLength + 1, 'a changed valid search creates one navigation entry');
+  assert.deepEqual(submitted.state, { retained: 'entry-fixture' }, 'existing history state is retained');
+  const saved = new URL(submitted.url);
+  for (const [name, value] of Object.entries(submitted.values)) {
+    assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
+  }
+  assert.deepEqual(saved.searchParams.getAll('child_age[]'), ['0', '17'], 'both boundary child ages retain their order');
+  assert.deepEqual(saved.searchParams.getAll('hotel_service[]'), ['9', '10'], 'all selected services are retained');
+  assert.equal(saved.searchParams.get('onlyDirect'), '1');
+  assert.equal(saved.searchParams.get('child_count'), '2');
+  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'phone', 'email', 'consent', 'random_secret']) assert.equal(saved.searchParams.has(name), false, 'stale alias or private field is excluded: ' + name);
+  assert.equal(saved.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(saved.hash, '#parameters');
+  const firstLocalHistory = await checkLocalHistory(page);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle && document.querySelectorAll('#childAges select').length === 2 && document.querySelector('#childAges select').value === '0');
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  const submittedReload = submitted.expected;
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions including the explicitly chosen advanced operator');
+  if(width<=700)assert.equal(await page.locator('.search-category-choices [data-category="4"]').getAttribute('aria-checked'),'true','URL hydration restores the visible minimum category');
+  await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
+  // Clear the restored hotel through its visible control, keeping the native
+  // canonical ID and the query consistent before testing history denial.
+  await page.locator('[data-v2-hotel-query]').fill('');
+  const cleared = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
+    const optional = ['arrival', 'region', 'subregion', 'hotel', 'operator', 'hotel_type', 'stars', 'rating', 'food', 'price_from', 'price_till'];
+    optional.forEach(name => form.elements[name].value = '');
+    form.elements.child_count.value = '0'; window.V2Catalogs.renderChildAges();
+    form.querySelectorAll('[name="hotel_service[]"]').forEach(field => field.checked = false);
+    form.elements.onlyDirect.checked = false; form.elements.onlyCharter.checked = false;
+    const before = location.href, date = form.elements.dateFrom.value, calls = [];
+    window.V2Runtime.api = async (action, params) => { calls.push({ action, params }); return { searchId: 702 }; };
+    form.elements.dateFrom.value = '';
+    await lifecycle.submit();
+    const invalid = { calls: calls.length, unchanged: location.href === before };
+    form.elements.dateFrom.value = date;
+    const push = history.pushState;
+    history.pushState = () => { throw new DOMException('Fixture history denial', 'SecurityError'); };
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    const historyDenied = { calls: calls.length, unchanged: location.href === before };
+    history.pushState = push;
+    const expected = lifecycle.params();
+    const historyLength = history.length;
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    return { optional, invalid, historyDenied, expected, calls, historyLength, afterLength: history.length, state: history.state, url: location.href };
+  });
+  assert.deepEqual(cleared.invalid, { calls: 0, unchanged: true }, 'invalid conditions do not update URL or start supplier search');
+  assert.deepEqual(cleared.historyDenied, { calls: 1, unchanged: true }, 'unavailable browser history does not interrupt the ordinary search');
+  assert.deepEqual(cleared.calls, Array.from({ length: 2 }, () => ({ action: 'search_start', params: cleared.expected })), 'history availability does not alter the supplier payload or duplicate a submission');
+  assert.equal(cleared.historyLength, submitted.afterLength + 2, 'the local-history fixture leaves exactly two forward entries');
+  assert.equal(cleared.afterLength, submitted.afterLength + 1, 'the second distinct search replaces the two local forward entries with exactly one search entry');
+  assert.deepEqual(cleared.state, { retained: 'entry-fixture' }, 'the second search also retains existing history state');
+  const reset = new URL(cleared.url);
+  for (const name of [...cleared.optional, 'child_age[]', 'hotel_service[]', 'onlyDirect', 'onlyCharter']) assert.equal(reset.searchParams.has(name), false, 'cleared restriction cannot return from URL: ' + name);
+  assert.equal(reset.searchParams.get('child_count'), '0');
+  assert.equal(reset.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(reset.hash, '#parameters');
+  const secondLocalHistory = await checkLocalHistory(page);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'second reload retains zero children and cleared secondary filters');
+  if(width<=700)assert.equal(await page.locator('.search-category-choices [data-category=""]').getAttribute('aria-checked'),'true','cleared category cannot reappear after reload');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    page.evaluate(() => history.back()),
+  ]);
+  await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, saved.href);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'Back restores the previous shareable search including its explicit advanced operator');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    page.evaluate(() => history.forward()),
+  ]);
+  await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, cleared.url);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'Forward restores the newer cleared search exactly once');
+  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, submittedReload, cleared, firstLocalHistory, secondLocalHistory, blocked, navigation: ['reload', 'back', 'forward'], supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+}
+async function run(browser, width, servicesOnly = false) {
+  const page = await browser.newPage({ viewport: { width, height: 1000 } });
+  const errors = [], blocked = [];
+  page.on('pageerror', error => errors.push(String(error)));
+  await page.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) {
+      blocked.push(`${request.method()} ${url.pathname}`);
+      return route.abort();
+    }
+    return route.continue();
+  });
+  try {
+    const response = await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' });
+    assert.equal(response.status(), 200);
+    // The presentation-ready flag precedes async catalog boot and URL hydration.
+    // Even the deliberately blocked catalog fixture must settle before editing.
+    await page.waitForFunction(() => {
+      const form = document.getElementById('tourSearch');
+      return form?.dataset.search3Ready === '1' && form.dataset.catalogSource && window.V2SearchLifecycle;
+    });
+    // Exercise the actual served shared header; retired fabricated fixtures stay retired.
+    await page.evaluate(() => document.fonts.ready);
+    if(!servicesOnly)await checkCategoryChoices(page,width);
+    assert.equal(await page.locator('.at-global-header').count(), 1, 'one current shared header');
+    const headerGeometry = await page.evaluate(() => {
+      const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, width: r.width, height: r.height }; };
+      return {
+        inner: box(document.querySelector('.at-global-header__inner')),
+        actions: box(document.querySelector('.at-global-header__actions')),
+        menu: box(document.querySelector('.at-global-header__mobile > summary')),
+        nav: box(document.querySelector('.at-global-header__nav')),
+        links: [...document.querySelectorAll('.at-global-header__nav a')].map(box),
+      };
+    });
+    assert.equal(headerGeometry.links.length, 6, 'all current navigation destinations remain');
+    if (width > 1024) {
+      assert.ok(headerGeometry.links.every(link => link.height >= 44), 'desktop menu targets stay >=44px');
+      assert.ok(headerGeometry.links.every(link => link.right <= headerGeometry.actions.left - 8), 'desktop menu stays clear of phone/actions');
+      assert.ok(headerGeometry.actions.right <= headerGeometry.inner.right + 1, 'desktop actions remain inside the shell');
+      assert.equal(new Set(headerGeometry.links.map(link => Math.round(link.top))).size, 1, 'ordinary desktop navigation stays in one row');
+      assert.equal(headerGeometry.menu.width, 0, 'no second visible desktop menu');
+    } else {
+      assert.equal(headerGeometry.nav.width, 0, 'native menu replaces the desktop links');
+      assert.ok(headerGeometry.menu.width >= 44 && headerGeometry.menu.height >= 44, 'native menu target stays >=44px');
+      const menu = page.locator('.at-global-header__mobile'), toggle = menu.locator('summary');
+      await toggle.focus();
+      assert.ok(parseFloat(await toggle.evaluate(node => getComputedStyle(node).outlineWidth)) >= 3, 'menu keyboard focus stays visible');
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), true, 'native menu opens with the keyboard');
+      const panel = await menu.locator('.at-global-header__mobile-panel').boundingBox();
+      assert.ok(panel.x >= 0 && panel.x + panel.width <= width + 1, 'menu panel stays inside the viewport');
+      for (const link of await menu.locator('.at-global-header__mobile-panel > a').all()) assert.ok((await link.boundingBox()).height >= 44, 'menu links keep full targets');
+      await page.screenshot({ path: path.join(output, `header-menu-${width}.png`), fullPage: true });
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), false, 'native menu closes without another handler');
+      // A short visual viewport must still expose the last contact destination.
+      await page.setViewportSize({ width, height: 320 });
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      const links = menu.locator('.at-global-header__mobile-panel > a');
+      for (let i = 0; i < await links.count(); i++) await page.keyboard.press('Tab');
+      assert.equal(await links.last().evaluate(node => node === document.activeElement), true, 'keyboard reaches the last menu destination');
+      const shortMenu = await menu.locator('.at-global-header__mobile-panel').evaluate(node => {
+        const panel = node.getBoundingClientRect(), last = node.lastElementChild.getBoundingClientRect();
+        return { top: panel.top, bottom: panel.bottom, scrollTop: node.scrollTop, lastTop: last.top, lastBottom: last.bottom, viewport: innerHeight, pageScroll: scrollY };
+      });
+      assert.ok(shortMenu.bottom <= shortMenu.viewport && shortMenu.top >= 0, 'short-screen menu fits vertically');
+      assert.ok(shortMenu.scrollTop > 0, 'overflow scroll belongs to the existing menu');
+      assert.ok(shortMenu.lastTop >= shortMenu.top && shortMenu.lastBottom <= shortMenu.bottom, 'last focused destination is fully visible');
+      assert.equal(shortMenu.pageScroll, 0, 'menu keyboard navigation does not move the background page');
+      fs.writeFileSync(path.join(output, `header-short-${width}.json`), JSON.stringify(shortMenu, null, 2) + '\n');
+      await page.screenshot({ path: path.join(output, `header-short-${width}.png`), fullPage: false });
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), false, 'short-screen menu closes natively');
+      await page.setViewportSize({ width, height: 1000 });
+    }
+    fs.writeFileSync(path.join(output, `header-${width}.json`), JSON.stringify(headerGeometry, null, 2) + '\n');
+    await page.screenshot({ path: path.join(output, `header-${width}.png`), fullPage: true });
+    const recovery = page.locator('.catalog-recovery'), recoveryCopy = recovery.locator('.search-progress-error-copy'), recoveryRetry = recovery.locator('.catalog-retry');
+    assert.equal(await recovery.isVisible(), true, 'blocked catalog fixture exposes the existing recovery owner');
+    const recoveryGeometry = await page.evaluate(() => {
+      const root = document.querySelector('.catalog-recovery'), copy = root.querySelector('.search-progress-error-copy'), title = copy.querySelector('strong'), message = copy.querySelector('span'), retry = root.querySelector('.catalog-retry');
+      const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      return { root: box(root), title: box(title), message: box(message), retry: box(retry), copyDisplay: getComputedStyle(copy).display };
+    });
+    assert.equal(recoveryGeometry.copyDisplay, 'grid', 'recovery heading and explanation use one readable copy owner');
+    assert.ok(recoveryGeometry.message.top >= recoveryGeometry.title.bottom, 'recovery explanation starts below its heading');
+    assert.ok(recoveryGeometry.retry.height >= 44, 'recovery action keeps a full touch target');
+    assert.ok(recoveryGeometry.root.width <= width, 'recovery card stays inside the viewport');
+    if (width <= 560) assert.ok(recoveryGeometry.retry.width >= recoveryGeometry.root.width - 30, 'mobile recovery action spans the card');
+    await page.screenshot({ path: path.join(output, `catalog-recovery-${width}.png`), fullPage: true });
+    const adults = page.locator('#tourSearch select[name=count_people]'), children = page.locator('#tourSearch select[name=child_count]');
+    assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
+    assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
+    assert.equal(await page.locator('#childAges select').inputValue(), '8', 'URL child age survives');
+    for (const selector of ['input[type=date]', 'select[name=daysFrom]', 'select[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
+      for (const control of await page.locator('#tourSearch ' + selector).all()) {
+        assert.equal(await control.isVisible(), selector==='.search-submit', selector + ' uses the canonical field with one visible compact editor');
+        if(await control.isVisible())assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
+      }
+    }
+    assert.equal(await page.locator('.search3-composite,.search3-direct-control,.search3-primary-grid,.search3-quality,.search3-quick,.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0,
+      'retired entry projection is absent');
+    assert.equal(await page.locator('#tourSearch > details.extras').count(), 1, 'canonical advanced filters remain');
+    assert.equal(await page.locator('#v2-search-title').textContent(), 'Поиск туров', 'candidate has the compact reference heading');
+    assert.equal(await page.locator('#tourSearch .search-group legend span').count(), 0, 'decorative numbered steps are removed');
+    const formGeometry = await page.evaluate(() => {
+      const box = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width }; };
+      return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
+    });
+    assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
+    assert.equal(await page.locator('[data-search3-parameter]:visible').count(),4,'each compact parameter has one visible editor');
+    const party=await page.locator('[data-search3-parameter=party]').boundingBox();
+    const group=await page.locator('.search-group--party').boundingBox();
+    assert.ok(Math.abs(party.width-group.width)<2,'tourist summary fills its current grid cell');
+    const nights=await page.locator('.search-group--nights').boundingBox();
+    assert.ok(Math.abs(group.y-nights.y)<2&&group.x>=nights.x+nights.width,'tourists share a non-overlapping row with nights');
+    if(!servicesOnly)await checkMobileParameters(page,width,output);
+    if(width>=1100){
+      const rows=await page.locator('#tourSearch .search-group').evaluateAll(nodes=>new Set(nodes.map(node=>Math.round(node.getBoundingClientRect().top))).size);
+      assert.equal(rows,1,'desktop trip parameters fit one row');
+    }
+    await page.locator('#tourSearch .search-more-filters').click();
+    const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
+    const openSubmit = await page.locator('.search-submit').boundingBox();
+    assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
+    assert.ok(openSubmit.y >= openExtras.y + openExtras.height, 'primary action remains below expanded fields');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'expanded form has no horizontal overflow');
+    const flightTargets = page.locator('#tourSearch .toggle');
+    assert.equal(await flightTargets.count(), 2, 'original two flight switches stay the only owners');
+    // Wait for the real catalog promises (including bounded retries) before
+    // injecting services, so a late blocked-country reply cannot erase them.
+    await page.evaluate(()=>{
+      const audit=window.__flightCatalogAudit={api:window.V2Runtime.api,pending:0};
+      window.V2Runtime.api=async(...args)=>{audit.pending++;try{return await audit.api(...args)}finally{audit.pending--}};
+    });
+    for (const target of await flightTargets.all()) {
+      assert.ok((await target.boundingBox()).height >= 44, 'flight option has a full 44px label target');
+      const input = target.locator('input');
+      await target.locator('span').click();
+      assert.equal(await input.isChecked(), true, 'clicking the flight label changes its canonical checkbox');
+      await input.focus();
+      await page.keyboard.press('Space');
+      assert.equal(await input.isChecked(), false, 'native keyboard toggle stays intact');
+    }
+    await page.waitForFunction(()=>window.__flightCatalogAudit.pending===0);
+    await page.evaluate(()=>{window.V2Runtime.api=window.__flightCatalogAudit.api;delete window.__flightCatalogAudit});
+    const servicePicker = page.locator('#tourSearch .service-picker'), serviceSummary = servicePicker.locator('summary');
+    await page.evaluate(() => {
+      const groups = ['Пляж и бассейн', 'Для семьи', 'В номере', 'Спорт и отдых'];
+      let index = 0;
+      document.getElementById('hotelServices').innerHTML = groups.map((name, groupIndex) => {
+        const size = groupIndex === groups.length - 1 ? 7 : 8;
+        const items = Array.from({ length: size }, () => {
+          index += 1;
+          return `<label class="service-check"><input type="checkbox" name="hotel_service[]" value="${index}"><span>Услуга отеля ${index} с понятным названием</span></label>`;
+        }).join('');
+        return `<div class="service-group"><strong>${name}</strong><div class="service-items">${items}</div></div>`;
+      }).join('');
+      window.V2Catalogs.updateServiceCount();
+    });
+    await serviceSummary.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await servicePicker.evaluate(node => node.open), true, 'hotel services open through the existing native disclosure');
+    const serviceTargets = servicePicker.locator('.service-check');
+    assert.equal(await serviceTargets.count(), 31, 'all available hotel services stay reachable');
+    for (const target of await serviceTargets.all()) assert.ok((await target.boundingBox()).height >= 44, 'hotel service label has a full 44px target');
+    const firstService = serviceTargets.first(), firstServiceInput = firstService.locator('input');
+    await firstServiceInput.focus();
+    assert.ok(parseFloat(await firstService.evaluate(node => getComputedStyle(node).outlineWidth)) >= 3, 'hotel service keyboard focus is visible on its full label');
+    await page.keyboard.press('Space');
+    assert.equal(await firstServiceInput.isChecked(), true, 'native keyboard toggles the existing service checkbox');
+    assert.equal(await page.locator('#serviceCount').textContent(), '1 выбрано', 'existing live service count follows the checkbox');
+    const serviceGeometry = await servicePicker.evaluate(node => {
+      const groups = [...node.querySelectorAll('.service-group')], labels = [...node.querySelectorAll('.service-check')];
+      const root = node.getBoundingClientRect();
+      return { width: root.width, columns: new Set(groups.map(group => Math.round(group.getBoundingClientRect().left))).size,
+        minimumTarget: Math.min(...labels.map(label => label.getBoundingClientRect().height)), overflow: document.documentElement.scrollWidth > innerWidth + 2 };
+    });
+    assert.equal(serviceGeometry.overflow, false, 'expanded services do not create horizontal overflow');
+    if (width <= 700) assert.equal(serviceGeometry.columns, 1, 'mobile services use one readable stack');
+    else assert.ok(serviceGeometry.columns >= 2, 'non-mobile services use a balanced multi-column layout');
+    await page.screenshot({ path: path.join(output, `services-open-${width}.png`), fullPage: true, animations: 'disabled' });
+    await firstServiceInput.focus();
+    await page.keyboard.press('Space');
+    assert.equal(await page.locator('#serviceCount').textContent(), 'не выбраны', 'service count returns to its clean state');
+    await serviceSummary.click();
+    assert.equal(await servicePicker.evaluate(node => node.open), false, 'nested service disclosure closes natively');
+    if (servicesOnly) {
+      assert.deepEqual(errors, [], 'service-only visual acceptance has no page errors');
+      fs.writeFileSync(path.join(output, `services-open-${width}.json`), JSON.stringify({ width, ...serviceGeometry, services: 31, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
+      return;
+    }
+    await flightTargets.first().locator('span').click();
+    await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
+    await flightTargets.first().locator('span').click();
+    await page.locator('#tourSearch .search-more-filters').click();
+    await setParty(page,4,['8','6']);
+    const resultsLayout = await page.evaluate(() => {
+      const results = document.querySelector('#results');
+      const probe = document.createElement('div'); results.append(probe);
+      const value = { form: getComputedStyle(document.querySelector('#tourSearch')).display, results: getComputedStyle(probe).display };
+      probe.remove();
+      return value;
+    });
+    assert.deepEqual(resultsLayout, { form: 'grid', results: 'block' }, 'the canonical form remains visible beside populated results without a retired editing class');
+    assert.equal(await page.locator('#childAges select').count(),2);
+    for (const [name, value] of [['daysFrom', '7'], ['daysTill', '10']]) {
+      const control = page.locator(`#tourSearch select[name=${name}]`);
+      assert.equal(await control.count(), 1, 'one native nights owner');
+      assert.equal(await control.inputValue(), value, 'URL nights survive on the native picker');
+      assert.deepEqual(await control.locator('option').evaluateAll(options => options.map(option => option.value)), Array.from({ length: 28 }, (_, i) => String(i + 1)), 'all supported nights are selectable');
+    }
+    await setNights(page,8,9);
+    const payload = await page.evaluate(() => {
+      const data = new FormData(document.getElementById('tourSearch'));
+      return { adults: data.get('count_people'), children: data.get('child_count'), ages: data.getAll('child_age[]'), from: data.get('daysFrom'), till: data.get('daysTill') };
+    });
+    assert.deepEqual(payload, { adults: '4', children: '2', ages: ['8', '6'], from: '8', till: '9' }, 'native changes retain canonical form field mapping');
+    const nightsContract = await page.evaluate(() => {
+      const lifecycle = window.V2SearchLifecycle, originalUrl = location.href;
+      const date = new Date(); date.setDate(date.getDate() + 2);
+      const future = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const valid = { ...lifecycle.params(), departureId: '1', countryId: '4', dateFrom: future, dateTo: future };
+      const rejected = [[0, 7], [7, 29], [1.5, 7], [9, 8], [1, 12]].map(([nightsFrom, nightsTo]) => !!lifecycle.validate({ ...valid, nightsFrom, nightsTo }));
+      history.replaceState(null, '', location.pathname + '?days_from=28&days_till=28');
+      lifecycle.hydrateUrlState();
+      const aliases = [document.forms.tourSearch.elements.daysFrom.value, document.forms.tourSearch.elements.daysTill.value];
+      history.replaceState(null, '', location.pathname + '?daysFrom=0&daysTill=29');
+      lifecycle.hydrateUrlState();
+      const invalidUrlRejected = !!lifecycle.validate({ ...valid, nightsFrom: document.forms.tourSearch.elements.daysFrom.value, nightsTo: document.forms.tourSearch.elements.daysTill.value });
+      for (const name of ['daysFrom', 'daysTill']) {
+        const control = document.forms.tourSearch.elements[name];
+        [...control.options].filter(option => Number(option.value) < 1 || Number(option.value) > 28).forEach(option => option.remove());
+      }
+      document.forms.tourSearch.elements.daysFrom.value = '8';
+      document.forms.tourSearch.elements.daysTill.value = '9';
+      history.replaceState(null, '', originalUrl);
+      return { valid: lifecycle.validate(valid), rejected, aliases, invalidUrlRejected, pending: lifecycle.pending };
+    });
+    assert.deepEqual(nightsContract, { valid: '', rejected: [true, true, true, true, true], aliases: ['28', '28'], invalidUrlRejected: true, pending: false }, 'native picker retains canonical range validation and URL aliases without auto-search');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'entry has no horizontal overflow');
+    assert.deepEqual(errors, []);
+    fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, payload, blocked, lead_sent: 0 }, null, 2) + '\n');
+    await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true });
+    const calendarItems = [{ tours: [
+      { date: '2026-09-12', price: 132500 },
+      { date: '2026-09-13', price: 118900 },
+      { date: '2026-09-14', price: 126000 },
+    ] }];
+    await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
+    const calendar = page.locator('#currentPriceCalendar'), disclosure = calendar.locator('details'), summary = disclosure.locator('summary');
+    assert.equal(await calendar.count(), 1, 'one existing calendar owner');
+    assert.equal(await disclosure.evaluate(node => node.open), true, 'Search3 calendar starts open at every width');
+    assert.ok((await summary.boundingBox()).height >= 44, 'calendar disclosure target >=44px');
+    assert.ok(await summary.evaluate(node => parseFloat(getComputedStyle(node).paddingRight) >= 32), 'disclosure reserves room for its indicator');
+    assert.equal(await page.evaluate(() => {
+      const form = document.getElementById('tourSearch'), calendar = document.getElementById('currentPriceCalendar'), tools = document.getElementById('resultsTools');
+      return !!(form.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(calendar.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), true, 'calendar stays between the form and result toolbar');
+    await page.screenshot({ path: path.join(output, `calendar-initial-${width}.png`), fullPage: true });
+    await summary.focus();
+    await page.keyboard.press('Space');
+    assert.equal(await disclosure.evaluate(node => node.open), false, 'native keyboard toggle closes the initially open calendar');
+    await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
+    assert.equal(await disclosure.evaluate(node => node.open), false, 'rerender preserves the user disclosure choice');
+    if (!(await disclosure.evaluate(node => node.open))) await summary.click();
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'existing minimum-price selection is unchanged');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'open calendar does not overflow the page');
+    await page.screenshot({ path: path.join(output, `calendar-open-${width}.png`), fullPage: true });
+    await page.evaluate(() => {
+      window.__calendarSubmitCount = 0;
+      window.__calendarOriginalSubmit = window.V2SearchLifecycle.submit;
+      window.V2SearchLifecycle.submit = () => window.__calendarSubmitCount++;
+    });
+    await calendar.locator('[data-calendar-date="2026-09-13"]').click();
+    assert.equal(await page.evaluate(() => window.__calendarSubmitCount), 0, 'choosing a calendar date waits for confirmation');
+    await calendar.locator('[data-calendar-apply]').click();
+    const calendarAction = await page.evaluate(() => {
+      const form = document.getElementById('tourSearch');
+      window.V2SearchLifecycle.submit = window.__calendarOriginalSubmit;
+      return [form.elements.dateFrom.value, form.elements.dateTo.value, window.__calendarSubmitCount];
+    });
+    assert.deepEqual(calendarAction, ['2026-09-13', '2026-09-13', 1], 'confirming the date retains one canonical submit with exact dates');
+    await page.evaluate(() => window.V2CurrentPriceCalendar.render([{ tours: [{ date: '2026-09-13', price: 118900 }] }]));
+    assert.equal(await calendar.isVisible(), false, 'one date does not invent a price comparison');
+    await require('./search3-calendar-readability.cjs')(page, width, output);
+    assert.deepEqual(errors, [], 'calendar interaction has no page errors');
+    if ([375, 1440].includes(width)) await checkUrlRoundTrip(page, width, blocked);
+    assert.deepEqual(errors, [], 'URL round trip has no page errors');
+    if ([375, 430, 1024, 1440].includes(width)) await checkSubmittedTripContext(page, width);
+    assert.deepEqual(errors, [], 'submitted trip context has no page errors');
+  } finally { await page.close(); }
+}
+// Existing homepage controls, offline catalogs, no real search/lead navigation.
+async function runHomeRanges(browser, width) {
+  const page = await browser.newPage({ viewport: { width, height: 1000 } });
+  const errors = [], handoffs = [], unexpected = [], catalogs = [];
+  const origin = new URL(base).origin, target = new URL(base + '/poisk-turov/').pathname;
+  page.on('pageerror', error => errors.push(String(error)));
+  await page.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== origin) return route.abort();
+    if (request.method() !== 'GET') { unexpected.push(request.method() + ' ' + url.pathname); return route.abort(); }
+    if (url.pathname === '/api-v2.php') {
+      const action = url.searchParams.get('action');
+      const rows = action === 'departures' ? [{ id: 1, name: 'Москва' }] : action === 'countries' ? [{ id: 4, name: 'Турция' }] : null;
+      if (!rows) { unexpected.push(action); return route.abort(); }
+      catalogs.push(action);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
+    }
+    if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
+    if (request.isNavigationRequest() && url.pathname === target) {
+      handoffs.push([...url.searchParams]);
+      return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Captured handoff fixture</title>' });
+    }
+    return route.continue();
+  });
+  const initial = base + '/?from=1&country=4&dateFrom=2099-09-10&dateTo=2099-09-20&daysFrom=7&daysTill=10&count_people=3&child_age%5B%5D=8&child_age%5B%5D=6';
+  try {
+    assert.equal((await page.goto(initial, { waitUntil: 'domcontentloaded' })).status(), 200);
+    assert.equal(await page.locator('[data-home-search]').count(), 1, 'legacy range test requires the pinned legacy HOME fixture');
+    assert.equal(await page.locator('#search-form').count(), 0, 'canonical HOME must not enter the legacy range test');
+    await page.waitForFunction(() => document.querySelector('[data-home-search]')?.dataset.countriesBusy === 'false');
+    const form = page.locator('[data-home-search]'), feedback = form.locator('[data-home-range-feedback]');
+    const dateFrom = form.locator('[name=dateFrom]'), dateTo = form.locator('[name=dateTo]');
+    const daysFrom = form.locator('[name=daysFrom]'), daysTill = form.locator('[name=daysTill]');
+    const submit = form.locator('[type=submit]'), more = form.locator('.at-home-search__more');
+    const retry = form.locator('[data-home-catalog-retry]');
+    assert.equal(await retry.evaluate(node => node.hidden), true, 'successful catalog owner hides retry');
+    assert.equal(await retry.isVisible(), false, 'shared display rule must honor native hidden');
+    await retry.evaluate(node => { node.hidden = false; });
+    assert.equal(await retry.isVisible(), true, 'visible recovery action retains its normal styling');
+    assert.ok((await retry.boundingBox()).height >= 44, 'recovery action keeps its full target');
+    await retry.evaluate(node => { node.hidden = true; });
+    assert.equal(await retry.isVisible(), false, 'recovery can return to a truly hidden state');
+    assert.deepEqual(catalogs, ['departures', 'countries']);
+    assert.equal(await feedback.isVisible(), false, 'valid initial form has no error');
+    await dateFrom.fill('2099-09-21');
+    assert.equal(await dateTo.inputValue(), '2099-09-20', 'end date is not silently rewritten');
+    assert.equal(await dateTo.getAttribute('min'), '2099-09-21');
+    assert.equal(await dateTo.getAttribute('aria-invalid'), 'true');
+    assert.equal(await dateTo.getAttribute('aria-describedby'), 'home-range-feedback');
+    assert.equal(await feedback.isVisible(), true);
+    await submit.click();
+    assert.equal(await dateTo.evaluate(node => node === document.activeElement), true, 'native invalid submit focuses the date to repair');
+    await more.click();
+    assert.equal(page.url(), initial, 'both invalid handoffs stay on the original page');
+    assert.equal(handoffs.length, 0);
+    await daysFrom.selectOption('11');
+    assert.equal(await daysTill.inputValue(), '10', 'night range is never silently rewritten');
+    assert.equal(await daysTill.getAttribute('aria-invalid'), 'true');
+    const text = await feedback.textContent();
+    assert.match(text, /Вылет до/); assert.match(text, /ночей/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    await form.screenshot({ path: path.join(output, `home-range-errors-${width}.png`) });
+    await dateFrom.fill('2099-09-10');
+    assert.equal(await dateTo.getAttribute('aria-invalid'), null);
+    assert.match(await feedback.textContent(), /ночей/, 'date repair retains the night warning');
+    await daysFrom.selectOption('7');
+    assert.equal(await feedback.isVisible(), false);
+    assert.equal(await daysTill.getAttribute('aria-invalid'), null);
+    assert.equal(await form.evaluate(node => node.checkValidity()), true);
+    for (const control of await form.locator('input,select,button[type=submit]').all()) {
+      assert.ok((await control.boundingBox()).height >= 44, 'home native controls retain full targets');
+    }
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    const expected = await form.evaluate(node => [...new FormData(node)]);
+    assert.deepEqual(expected, [['from','1'],['country','4'],['dateFrom','2099-09-10'],['dateTo','2099-09-20'],['daysFrom','7'],['daysTill','10'],['count_people','3'],['child_age[]','8'],['child_age[]','6']]);
+    // Observe one valid native submit without leaving the fixture or sending a search.
+    await form.evaluate(node => {
+      window.__homeNative = null;
+      node.addEventListener('submit', event => { window.__homeNative = { blocked: event.defaultPrevented, fields: [...new FormData(node)] }; event.preventDefault(); }, { once: true });
+    });
+    await submit.click();
+    assert.deepEqual(await page.evaluate(() => window.__homeNative), { blocked: false, fields: expected });
+    await form.screenshot({ path: path.join(output, `home-range-repaired-${width}.png`) });
+    await more.click();
+    await page.waitForURL(url => url.pathname === target);
+    assert.deepEqual(handoffs, [expected], 'advanced GET retains exact original field mapping');
+    assert.deepEqual(catalogs, ['departures', 'countries'], 'range editing makes no new catalog request');
+    assert.deepEqual(unexpected, []); assert.deepEqual(errors, []);
+    fs.writeFileSync(path.join(output, `home-range-${width}.json`), JSON.stringify({ width, catalogs, handoffs, unexpected, errors, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
+  } finally { await page.close(); }
+}
+// Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
+async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleFactor = 1, captureJourney = null) {
+  const touch = Boolean(captureJourney && viewport.width === 430);
+  const context = await browser.newContext({ viewport, deviceScaleFactor, hasTouch: touch, isMobile: touch, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  const prefix = nextHome?.prefix || new URL(base).pathname, origin = new URL(base).origin;
+  const home = prefix + '/', target = prefix + '/poisk-turov/';
+  const fixture = prefix + '/visual-search/fixtures/live-search-2026-09-23.json';
+  const dimensions = viewport.width + 'x' + viewport.height;
+  const id = deviceScaleFactor === 1 ? dimensions : 'dpr' + deviceScaleFactor + '-' + dimensions;
+  const errors = [], unexpected = [], documents = [], evidence = { viewport, deviceScaleFactor, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
+  const heroRequests = [];
+  const evidencePrefix = captureJourney ? 'canonical-next-journey-' : (nextHome ? 'canonical-next-home-' : 'canonical-home-');
+  const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
+  let releaseFixture, held = false;
+  const gate = new Promise(resolve => { releaseFixture = resolve; });
+  const { canonicalLogoFixture } = require('./search3-visual-live-fixture.cjs');
+  await context.addInitScript(() => {
+    // Count starts at the lifecycle boundary. Data owners compose in layers
+    // (recorded -> fixture); wrapping each assignment would count one logical
+    // start once per delegated layer instead of once per submitted search.
+    window.__homeReviewSearches = [];
+    let lifecycleOwner;
+    Object.defineProperty(window, 'AnyTourPrototypeSearchLifecycleV1', {
+      configurable: true, get: () => lifecycleOwner, set(value) {
+        const descriptors = Object.getOwnPropertyDescriptors(value), create = descriptors.create.value;
+        descriptors.create = { ...descriptors.create, value: function (options) {
+          const data = options.data, dataDescriptors = Object.getOwnPropertyDescriptors(data), search = dataDescriptors.search.value;
+          dataDescriptors.search = { ...dataDescriptors.search, value: function (...args) {
+            window.__homeReviewSearches.push({ trip: structuredClone(args[0]), filters: structuredClone(args[3] || {}) });
+            return Reflect.apply(search, data, args);
+          }};
+          const observed = Object.freeze(Object.create(Object.getPrototypeOf(data), dataDescriptors));
+          return Reflect.apply(create, value, [{ ...options, data: observed }]);
+        }};
+        lifecycleOwner = Object.freeze(Object.create(Object.getPrototypeOf(value), descriptors));
+      }
+    });
+  });
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('request', request => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(new URL(request.url()).pathname);
+    const asset = new URL(request.url()).pathname;
+    if (/\/home-hero-v1(?:-680)?\.jpg$/.test(asset)) heroRequests.push(asset);
+  });
+  await context.route('**/*', async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== origin || request.method() !== 'GET') { unexpected.push(request.method() + ' ' + url.origin + url.pathname); return route.abort(); }
+    const logo = canonicalLogoFixture(request, origin);
+    if (logo) return route.fulfill(logo);
+    if (/^\/favicon\.(?:svg|ico|png)$/.test(url.pathname)) {
+      const file = path.join(__dirname, '../v2', url.pathname.slice(1));
+      if (fs.existsSync(file)) return route.fulfill({ path: file });
+    }
+    if (!url.pathname.startsWith(prefix + '/') || /\/(?:api[^/]*|lead[^/]*|preview-lead-disabled|.*read-v1)\.php$/.test(url.pathname)) {
+      unexpected.push(url.pathname); return route.abort();
+    }
+    if (request.isNavigationRequest() && ![home, target].includes(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
+    if (url.pathname === fixture && !held) { held = true; await gate; }
+    if (nextHome) {
+      const document = nextHome.html.get(url.pathname);
+      if (document !== undefined) return route.fulfill({contentType:'text/html; charset=utf-8',body:document});
+      const asset = url.pathname.slice(prefix.length + 1);
+      const local = path.resolve(nextHome.payload, asset);
+      const staticFile = /\.(?:css|js|json|svg|ico|png|jpg|jpeg|webp|woff2?)$/i.test(asset);
+      if (!staticFile || !local.startsWith(nextHome.payload + path.sep) || !fs.existsSync(local) || !fs.statSync(local).isFile()) {
+        unexpected.push(url.pathname); return route.abort();
+      }
+      return route.fulfill({path:local});
+    }
+    return route.continue();
+  });
+  const initial = { scenario: 'family', origin: 'Москва', country: '4', from: '2026-10-01', to: '2026-10-07',
+    minNights: '7', maxNights: '7', adults: '3', ages: '0,12', stars: '4|5', meals: 'Всё включено', max: '240000',
+    yclid: 'offline-home-review', utm_source: 'ci-fixture' };
+  const search = () => page.evaluate(() => window.__homeReviewSearches);
+  const submitTwice = () => page.evaluate(() => {
+    const form = document.querySelector('#search-form'); form.requestSubmit(); form.requestSubmit();
+  });
+  const checkURL = searched => {
+    const params = new URL(page.url()).searchParams;
+    for (const [key, value] of Object.entries(initial)) assert.equal(params.get(key), value, 'retained ' + key);
+    assert.equal(params.get('searched'), searched ? '1' : null);
+  };
+  const ready = async () => {
+    const form = page.locator('.home-hero #search-form');
+    await form.locator('.search-submit:not(:disabled)').waitFor();
+    assert.equal(await page.locator('form').count(), 1);
+    assert.equal(await page.locator('[data-home-search],#tourSearch').count(), 0);
+    assert.equal(await form.getAttribute('aria-busy'), 'false');
+    assert.deepEqual(await page.evaluate(() => {
+      const c = window.AnyTourPublicConfigV1, v = window.V2_CONFIG;
+      return { valid: c.valid, entry: c.entry, profile: c.profile, formOnly: v.search3FormOnly, api: v.api, anexApi: v.anexApi, counter: v.metrikaCounter };
+    }), { valid: true, entry: 'home', profile: 'review', formOnly: true, api: null, anexApi: null, counter: 0 });
+    assert.deepEqual(await search(), [], 'HOME never starts a search');
+    assert.equal(await form.locator('#quick-stars').isVisible(), true);
+    assert.equal(await form.locator('#quick-meal').isVisible(), true);
+    if (nextHome) {
+      const panelModule = page.locator('script[src*="/filter-panel-v1.js"]');
+      assert.equal(await panelModule.count(), 0, 'NEXT home skips the result filter script');
+      assert.equal(await page.evaluate(()=>typeof window.AnyTourFilterPanelV1), 'undefined');
+      const budget = form.locator('#quick-meal + #quick-budget');
+      assert.equal(await budget.isVisible(), true, 'NEXT budget is visible beside meals');
+      const [mealBox, budgetBox] = await Promise.all([form.locator('#quick-meal').boundingBox(),budget.boundingBox()]);
+      assert(mealBox && budgetBox && budgetBox.x >= mealBox.x + mealBox.width - 1);
+      assert(Math.abs(budgetBox.y - mealBox.y) <= 1 && budgetBox.height >= 44, 'NEXT budget shares the meal row');
+      evidence.budgetPlacement = {meal:mealBox,budget:budgetBox};
+    } else {
+      assert.equal(await form.locator('.home-search-more #quick-budget').isVisible(), false);
+    }
+    const submit = await form.locator('.search-submit').boundingBox();
+    assert.ok(submit && submit.height >= 44 && submit.y >= 0 && submit.y + submit.height <= viewport.height + 1, 'Find fits the first viewport');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+  };
+  try {
+    const url = origin + home + '?' + new URLSearchParams({...initial,searched:'1'});
+    if (nextHome) {
+      releaseFixture();
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+    } else {
+      const requested = page.waitForRequest(request => new URL(request.url()).pathname === fixture);
+      assert.equal((await page.goto(url,{waitUntil:'domcontentloaded'})).status(),200);
+      await requested;
+      assert.equal(await page.locator('#search-form .search-submit').isDisabled(),true,'catalog pending blocks Find');
+      await submitTwice();
+      assert.deepEqual(documents,[home],'early double submit cannot navigate');
+      assert.deepEqual(await search(),[]);
+      releaseFixture();
+    }
+    await ready(); checkURL(false);
+    if (nextHome) {
+      const hero = page.locator('.home-hero-image img');
+      const selected = await hero.evaluate(async image => {
+        await image.decode();
+        return { src:image.currentSrc, width:image.naturalWidth, height:image.naturalHeight, dpr:window.devicePixelRatio };
+      });
+      assert.equal(selected.dpr,deviceScaleFactor);
+      if (viewport.width <= 760) {
+        assert.match(selected.src,/^data:image\/gif;/);
+        assert.deepEqual(heroRequests,[],'no desktop image is fetched on mobile');
+      } else {
+        const highDensity = deviceScaleFactor > 1;
+        const imageFile = highDensity ? 'home-hero-v1.jpg' : 'home-hero-v1-680.jpg';
+        const asset = prefix + '/' + imageFile;
+        const imageURL = new URL(selected.src);
+        assert.equal(imageURL.pathname,asset);
+        assert.equal(selected.width,highDensity ? 1100 : 680);
+        if (highDensity) {
+          assert.equal(selected.height,731);
+          const digest = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(nextHome.payload,imageFile))).digest('hex');
+          assert.equal(imageURL.searchParams.get('v'),digest.slice(0,16),'desktop caches the exact compiled full-resolution image');
+        }
+        assert.deepEqual(heroRequests,[asset],'desktop requests only the image for its density');
+      }
+      evidence.hero = {width:selected.width,requests:[...heroRequests]};
+    }
+    assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
+    const find = page.locator('#search-form .search-submit');
+    await Promise.all([page.waitForURL(url => url.pathname === target),
+      captureJourney ? (touch ? find.tap() : find.click()) : submitTwice()]);
+    await page.locator('.hotel-card').first().waitFor();
+    if (nextHome) {
+      assert.equal(await page.locator('script[src*="/filter-panel-v1.js"]').count(), 1,
+        'the NEXT receiver loads the one result filter script');
+      assert.equal(await page.evaluate(()=>typeof window.AnyTourFilterPanelV1?.create), 'function');
+    }
+    checkURL(true);
+    assert.deepEqual(documents, [home, target], 'one real document handoff');
+    assert.deepEqual(await page.evaluate(() => ({ valid: AnyTourPublicConfigV1.valid, entry: AnyTourPublicConfigV1.entry, profile: AnyTourPublicConfigV1.profile, formOnly: V2_CONFIG.search3FormOnly === true })), { valid: true, entry: 'search', profile: 'review', formOnly: false });
+    const calls = await search();
+    assert.equal(calls.length, 1, 'receiver starts exactly one real fixture search');
+    assert.deepEqual(calls[0].trip, { origin: 'Москва', country: '4', from: initial.from, to: initial.to, minNights: 7, maxNights: 7, adults: 3, ages: [0, 12] });
+    assert.deepEqual(calls[0].filters.stars, [4, 5]);
+    assert.deepEqual(calls[0].filters.meals, ['Всё включено']);
+    assert.equal(calls[0].filters.max, 240000);
+    evidence.receiver = calls[0];
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'receiver-' + id + '.png') });
+    if (captureJourney) {
+      evidence.journey = await captureJourney(page, output, viewport);
+      evidence.journey.frames.unshift({stage:'home',name:evidencePrefix + 'ready-' + id + '.png'});
+      assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
+      assert.deepEqual(documents, [home, target]);
+      evidence.status = 'passed'; evidence.supplierRequests = 0; evidence.leadSent = 0;
+      save();
+      return;
+    }
+    await page.goBack(); await ready(); checkURL(false);
+    await page.reload(); await ready(); checkURL(false);
+    assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
+    await page.goto(origin + home + '?' + new URLSearchParams({ ...initial, ages: '0,' }), { waitUntil: 'domcontentloaded' });
+    await ready();
+    const count = documents.length;
+    await submitTwice();
+    await page.locator('#modal[open] [data-action="apply-guests"]').waitFor();
+    assert.equal(await page.locator('[data-action="apply-guests"]').isDisabled(), true, 'missing age blocks handoff');
+    assert.equal(documents.length, count);
+    assert.equal(new URL(page.url()).pathname, home);
+    assert.deepEqual(await search(), []);
+    assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
+    evidence.status = 'passed'; evidence.supplierRequests = 0; evidence.leadSent = 0;
+    save();
+  } catch (error) {
+    evidence.status = 'failed'; evidence.error = error.stack || String(error); save();
+    await page.screenshot({ path: path.join(output, evidencePrefix + 'failure-' + id + '.png') }).catch(() => {});
+    throw error;
+  } finally { releaseFixture(); await context.close(); }
+}
+
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    if (process.argv.includes('--canonical-home')) {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }, { width: 1280, height: 720 }, { width: 390, height: 740 }]) await runCanonicalHome(browser, viewport);
+      const nextHome = prepareNextHome(base);
+      try {
+        const results = await Promise.allSettled([{width:430,height:932},{width:1280,height:720}]
+          .map(viewport=>runCanonicalHome(browser,viewport,nextHome)));
+        const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
+        if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
+        await require('./search3-visual-next-home-timing.cjs')(browser,nextHome,base,output);
+        await require('./search3-next-css-link-benchmark.cjs')(browser,nextHome,output);
+        const captureJourney = require('./capture-canonical-next-journey.cjs');
+        await runCanonicalHome(browser,{width:430,height:932},nextHome,3,captureJourney);
+        await runCanonicalHome(browser,{width:1280,height:720},nextHome,1,captureJourney);
+        await runCanonicalHome(browser,{width:1280,height:720},nextHome,2);
+      } finally { nextHome.clean(); }
+      console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
+      return;
+    }
+    for (const width of [375, 430, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
+    for (const width of [320, 700, 1363]) await run(browser, width, true);
+    for (const width of [375, 768, 1440]) await runHomeRanges(browser, width);
+  } finally { await browser.close(); }
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=320,375,430,700,1024,1025,1101,1199,1200,1363,1440 submitted_trip_context=375,430,1024,1440 hotel_services=31 service_targets=44px home_ranges=375,768,1440 lead_sent=0');
+})().catch(error => { console.error(error); process.exitCode = 1; });
