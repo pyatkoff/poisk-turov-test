@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/price-rolling-readback.yml'
       - 'ops/price-pilot/rolling-window-days.txt'
+      - 'ops/price-pilot/verify-price-freshness.*'
 
 permissions:
   contents: read
