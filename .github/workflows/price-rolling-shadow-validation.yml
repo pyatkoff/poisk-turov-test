@@ -1,0 +1,88 @@
+name: Validate rolling PRICE shadow calculation
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths:
+      - 'ops/price-pilot/rolling-*'
+      - 'ops/price-pilot/sync-day.php'
+      - '.github/workflows/price-rolling-shadow-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      maria:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: fixture-root
+          MARIADB_DATABASE: anytour_price_pilot
+          MARIADB_USER: fixture
+          MARIADB_PASSWORD: fixture-password
+        ports:
+          - 33067:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate both canonical rollups and the archive manifest
+        env:
+          DB_CONTAINER: ${{ job.services.maria.id }}
+          ANYTOUR_DATA_DSN: 'mysql:host=127.0.0.1;port=33067;dbname=anytour_price_pilot;charset=utf8mb4'
+          ANYTOUR_DATA_DB_USER: fixture
+          ANYTOUR_DATA_DB_PASSWORD: fixture-password
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ops/price-pilot
+          bash -n rolling-day.sh
+          php -l sync-day.php
+          php -l rolling-digest.php
+          for file in db-v1.php price-segment-v1.php rollup-price-daily-exact-v1.php rollup-price-daily-v1.php schema-v1.sql; do
+            curl -fsSL --proto '=https' --max-time 30 "https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/e527e41ffd95d4170e13276fea22b17e021b80a6/v2/data/$file" -o "$file"
+          done
+          docker exec -i "$DB_CONTAINER" mariadb -ufixture -pfixture-password anytour_price_pilot < schema-v1.sql
+          docker exec -i "$DB_CONTAINER" mariadb -ufixture -pfixture-password anytour_price_pilot <<'FIXTURE'
+          INSERT INTO tour_price_observations
+            (fingerprint,observed_at,source,search_id,departure_id,country_id,hotel_id,
+             departure_date,departure_year,departure_month,nights,adults,price)
+          VALUES
+            (SHA2('a',256),'2026-11-26 10:00:00','scheduled_monitor',1,1,4,1,'2026-12-01',2026,12,7,2,100),
+            (SHA2('b',256),'2026-11-26 10:01:00','scheduled_monitor',2,1,4,1,'2026-12-01',2026,12,7,2,120),
+            (SHA2('c',256),'2026-11-27 10:00:00','scheduled_monitor',4,1,4,1,'2026-12-01',2026,12,7,2,999);
+          FIXTURE
+          for script in rollup-price-daily-exact-v1.php rollup-price-daily-v1.php; do
+            php -d date.timezone=UTC "$script" --date=2026-11-26
+          done
+          php rolling-digest.php db-v1.php 2026-11-26 > digest.json
+          php rolling-digest.php db-v1.php 2026-11-26 "$PWD/price-return-ready/2026-11-26" > published.json
+          php rolling-digest.php db-v1.php 2026-11-26 "$PWD/price-return-ready/2026-11-26" > retried.json
+          cmp published.json retried.json
+          python3 - <<'PY'
+          import gzip
+          import hashlib
+          import json
+          from pathlib import Path
+
+          published = json.loads(Path('published.json').read_text())
+          digest = json.loads(Path('digest.json').read_text())
+          assert published['date'] == digest['date'] == '2026-11-26'
+          for item, reference in ((published, digest), (published['coarse'], digest['coarse'])):
+              assert item['groups'] == reference['groups'] == 1
+              assert item['observations'] == reference['observations'] == 2
+              assert item['sha256'] == reference['sha256']
+              archive = Path('price-return-ready/2026-11-26', item['sha256'] + '.jsonl.gz')
+              assert hashlib.sha256(archive.read_bytes()).hexdigest() == item['gzip_sha256']
+              content = gzip.decompress(archive.read_bytes())
+              assert hashlib.sha256(content).hexdigest() == item['sha256']
+              assert json.loads(content)[-3 if len(json.loads(content)) == 21 else -2] == '120.00'
+          print('PRICE_ROLLING_FIXTURE_OK')
+          PY

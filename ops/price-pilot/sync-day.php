@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 $work = __DIR__;
 $day = $argv[1] ?? '';
-if (!preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $day)) {
+$date = DateTimeImmutable::createFromFormat('!Y-m-d', $day, new DateTimeZone('UTC'));
+if (!$date || $date->format('Y-m-d') !== $day) {
     fwrite(STDERR, "PRICE_DAY_ARGUMENT_INVALID\n");
     exit(2);
 }
@@ -14,7 +15,7 @@ if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
     exit(3);
 }
 $endpoint = [
-    '/usr/bin/timeout', '25', '/usr/bin/ssh', '-4', '-T', '-F', '/dev/null',
+    '/usr/bin/timeout', '25', '/usr/bin/ssh', '-4', '-n', '-T', '-F', '/dev/null',
     '-i', "$work/source_ed25519", '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
     '-o', 'ConnectTimeout=8', '-o', 'StrictHostKeyChecking=yes',
     '-o', "UserKnownHostsFile=$work/source-known-hosts", '-o', 'GlobalKnownHostsFile=/dev/null',
@@ -40,7 +41,12 @@ function callSource(array $endpoint, string $input, string $output, string $erro
     $child = proc_open([...$endpoint, $input], $io, $pipes, __DIR__, ['PATH'=>'/usr/bin:/bin']);
     if (!is_resource($child)) throw new RuntimeException('SOURCE_CLIENT_UNAVAILABLE');
     $code = proc_close($child);
-    if ($code !== 0) throw new RuntimeException("SOURCE_CLIENT_EXIT_$code");
+    if ($code !== 0) {
+        $reason = trim((string)file_get_contents($errors)) === 'PRICE_EXPORT_BUSY'
+            ? 'SOURCE_BUSY'
+            : "SOURCE_CLIENT_EXIT_$code";
+        throw new RuntimeException($reason);
+    }
 }
 
 function readSourceState(array $endpoint, string $day, string $output, string $errors): array
@@ -48,7 +54,8 @@ function readSourceState(array $endpoint, string $day, string $output, string $e
     callSource($endpoint, "state $day", $output, $errors);
     $state = json_decode(file_get_contents($output), true, 8, JSON_THROW_ON_ERROR);
     if (($state['date'] ?? '') !== $day || !is_int($state['observations'] ?? null)
-        || $state['observations'] < 1 || !preg_match('/\A[0-9]{1,18}\z/D', $state['upper_id'] ?? '')) {
+        || $state['observations'] < 0 || !preg_match('/\A(?:0|[1-9][0-9]{0,17})\z/D', $state['upper_id'] ?? '')
+        || (($state['observations'] === 0) !== ($state['upper_id'] === '0'))) {
         throw new RuntimeException('SOURCE_STATE_INVALID');
     }
     return $state;
@@ -63,16 +70,32 @@ function saveCheckpoint(string $path, array $state): void
     }
 }
 
+function assertAppendOnlyState(array $previous, array $latest): void
+{
+    if ($previous === $latest) return;
+    if ($latest['date'] !== $previous['date'] || $latest['observations'] <= $previous['observations']
+        || (int)$latest['upper_id'] <= (int)$previous['upper_id']) {
+        throw new RuntimeException('SOURCE_SNAPSHOT_CONFLICT');
+    }
+}
+
 try {
     $db = v2_data_db();
     if ($db->query('SELECT DATABASE()')->fetchColumn() !== 'anytour_price_pilot') {
         throw new RuntimeException('TARGET_SCOPE_INVALID');
     }
-    $source = readSourceState($endpoint, $day, $sourcePage, $sourceErrors);
+    $latest = readSourceState($endpoint, $day, $sourcePage, $sourceErrors);
     $current = is_file($checkpoint)
         ? json_decode(file_get_contents($checkpoint), true, 8, JSON_THROW_ON_ERROR)
-        : ['source'=>$source, 'observed_at'=>"$day 00:00:00", 'id'=>0, 'rows'=>0];
-    if (($current['source'] ?? null) !== $source) throw new RuntimeException('SOURCE_SNAPSHOT_CHANGED');
+        : ['source'=>$latest, 'observed_at'=>"$day 00:00:00", 'id'=>0, 'rows'=>0];
+    $previous = $current['source'];
+    assertAppendOnlyState($previous, $latest);
+    if ($current['rows'] === $previous['observations']) {
+        $current['source'] = $latest;
+    }
+    $source = $current['source'];
+    // Persist the upper boundary before writing the first page of this snapshot.
+    saveCheckpoint($checkpoint, $current);
 
     echo 'PRICE_FULL_DAY_BEGIN expected=' . $source['observations'] . ' resumed=' . $current['rows'] . PHP_EOL;
     $columns = explode(',', 'id,fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,price,fuel_charge,currency');
@@ -113,6 +136,11 @@ try {
             $db->commit();
         } catch (Throwable $error) {
             $db->rollBack();
+            if ($error instanceof RuntimeException && $error->getMessage() === 'SOURCE_PAGE_INCOMPLETE') {
+                // A late observation may sort before an earlier cursor. Re-read this
+                // frozen snapshot from the beginning on the next run.
+                saveCheckpoint($checkpoint, ['source'=>$source, 'observed_at'=>"$day 00:00:00", 'id'=>0, 'rows'=>0]);
+            }
             throw $error;
         } finally {
             fclose($file);
@@ -123,13 +151,18 @@ try {
         }
         usleep(500000);
     }
-    if (readSourceState($endpoint, $day, $sourcePage, $sourceErrors) !== $source) {
-        throw new RuntimeException('SOURCE_SNAPSHOT_CHANGED_AFTER_IMPORT');
-    }
+    assertAppendOnlyState($source, readSourceState($endpoint, $day, $sourcePage, $sourceErrors));
+    $count = $db->prepare('SELECT COUNT(*) FROM tour_price_observations
+        WHERE observed_at >= ? AND observed_at < DATE_ADD(?, INTERVAL 1 DAY) AND id <= ?');
+    $count->execute([$day, $day, $source['upper_id']]);
+    if ((int)$count->fetchColumn() !== $source['observations']) throw new RuntimeException('TARGET_DAY_ROW_COUNT_MISMATCH');
+    // The date-specific rollups do not have an ID filter. Detect rows beyond
+    // the verified watermark before allowing them to read this day.
     $count = $db->prepare('SELECT COUNT(*) FROM tour_price_observations WHERE observed_at >= ? AND observed_at < DATE_ADD(?, INTERVAL 1 DAY)');
     $count->execute([$day, $day]);
-    if ((int)$count->fetchColumn() !== $source['observations']) throw new RuntimeException('TARGET_DAY_ROW_COUNT_MISMATCH');
+    if ((int)$count->fetchColumn() !== $source['observations']) throw new RuntimeException('TARGET_DAY_WATERMARK_MISMATCH');
     echo 'PRICE_FULL_DAY_IMPORT_VERIFIED rows=' . $source['observations'] . PHP_EOL;
+    echo 'PRICE_DAY_SOURCE ' . json_encode($source, JSON_THROW_ON_ERROR) . PHP_EOL;
 } catch (RuntimeException $error) {
     fwrite(STDERR, 'PRICE_FULL_DAY_FAILED reason=' . preg_replace('/[^A-Z_0-9]/', '', $error->getMessage()) . PHP_EOL);
     exit(5);
