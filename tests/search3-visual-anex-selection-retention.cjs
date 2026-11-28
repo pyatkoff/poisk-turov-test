@@ -33,6 +33,7 @@ async function run(){
  };
  vm.createContext(c);
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../v2/prototype-search/search-lifecycle-v1.js'),'utf8'),c);
+ c.hotelAgeConflict=()=>null;
  const owners=[slice('function offerFromKey(','function flightAllowanceText('),
   slice('function hotelOfferCheckActive(','function contactFlightActive('),slice('function isCurrentOfferRequest(','function terminalOfferQuote('),
   slice('function continueHotelOffer(','function acceptSelectedOfferPrice('),slice('async function refreshLiveHotel(','function refreshHotel('),

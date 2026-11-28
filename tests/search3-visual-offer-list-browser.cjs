@@ -241,7 +241,7 @@ const server=http.createServer((req,res)=>{
      assert.equal(await page.locator('#price-strip .date-price').count(),7);assert.match(range,/2026/);
      await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await capture('results-calendar');
      const profile=page.locator('#hotel-900001 h3 [data-action="hotel-details"]');await profile.scrollIntoViewIfNeeded();
-     const anchor=await profile.evaluate(el=>({cardTop:el.closest('.hotel-card').getBoundingClientRect().top,scrollY}));
+     const anchor=await profile.evaluate(el=>({cardTop:el.querySelector('.hotel-card-name').getBoundingClientRect().top,scrollY}));
      await profile.click();const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();
      await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
      await contact().waitFor();await total(186400);assert.equal(await page.locator('[data-action="start-lead"]').count(),0,'room footer reaches contacts without an intermediate tour action');
@@ -271,9 +271,9 @@ const server=http.createServer((req,res)=>{
      await page.locator('#modal-footer [data-action="modal-back"]').click();await page.locator('[data-action="confirm-tour"]').waitFor();await total(189000);
      await page.locator('#modal-back').click();await page.locator('#hotel-room-count').waitFor();assert.equal(await page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]').getAttribute('aria-pressed'),'true');
      await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
-     await page.waitForFunction(()=>document.activeElement?.dataset.action==='hotel-details');
-     const returned=await profile.evaluate(el=>({cardTop:el.closest('.hotel-card').getBoundingClientRect().top,active:document.activeElement===el,scrollY}));
-     assert.equal(returned.active,true,'Close returns focus to the original hotel');assert(Math.abs(returned.cardTop-anchor.cardTop)<=2,'Close retains the original card position');
+     await page.waitForFunction(()=>history.scrollRestoration==='auto'&&document.activeElement?.dataset.action==='hotel-details');
+     const returned=await profile.evaluate(el=>({cardTop:el.querySelector('.hotel-card-name').getBoundingClientRect().top,active:document.activeElement===el,scrollY}));
+     assert.equal(returned.active,true,'Close returns focus to the original hotel');assert(Math.abs(returned.cardTop-anchor.cardTop)<=2,'Close retains the original card title position after adding the selected tour');
      const current=page.locator('#hotel-900001 .current-card-selection');await current.waitFor();assert.equal(await current.getAttribute('data-selected-key'),'demo-flight-24');assert.match(await current.textContent(),/189[\s\u00a0\u202f]*000/);
      await current.locator('[data-action="offer"]').click();await page.locator('[data-action="confirm-tour"]').waitFor();await total(189000);await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();
      await party('.application-review-card');await assertDraft();await total(189000);assert.equal(await contact().locator('[name="consent"]').isChecked(),true,'same conditions retain explicit demo consent');assert.equal(await contact().getAttribute('data-checked'),null,'passive reopen does not repeat local validation');

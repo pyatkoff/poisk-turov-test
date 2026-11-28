@@ -134,7 +134,7 @@ const facetSection=source=>section(source,source.includes('function facetCountPl
 const matchingCountSection=source=>source.includes('function matchingHotelPlan(')?section(source,'function matchingHotelPlan(','// Facet counts'):source.match(/^const countMatchingHotels=[^\n]+/m)[0];
 function make(source,hotels){
  const state={search:{origin:'Москва',country:'4',from:day(0),to:day(6),minNights:7,maxNights:7,adults:2,ages:[0,17]},filters:defaultFilters(),selectedDate:day(2),onlyFavorites:true,favorites:[1]};
- const context={hotels,state,data:{live:false,observationScopeSupported:()=>context.supported},supported:true,mealNames:{AI:7,BB:3},matchesHotelQuery:(h,q)=>!q||h.name.includes(q),ratingValue:h=>h.rating};
+ const context={plainHotelText:value=>String(value||''),hotels,state,data:{live:false,observationScopeSupported:()=>context.supported},supported:true,mealNames:{AI:7,BB:3},matchesHotelQuery:(h,q)=>!q||h.name.includes(q),ratingValue:h=>h.rating};
  context.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
  vm.createContext(context);
  vm.runInContext(source.match(/^const matchesMeal=[^\n]+/m)[0]+'\n'+section(source,'const hotelPlaces=','function recommendedHotelScore('),context);

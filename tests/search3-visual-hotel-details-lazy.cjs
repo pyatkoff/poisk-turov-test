@@ -18,7 +18,7 @@ function fixture(){
 }
 function profileFixture(warm=true){
  const f=fixture(),pending=[],profiles=[],renders=[],groups=[],create=f.owner.create;
- f.ctx.window.V2_CONFIG={localTvCatalogEnabled:true};f.ctx.state={search:{country:'4'}};
+ f.ctx.window.V2_CONFIG={localTvCatalogEnabled:true};f.ctx.state={search:{country:'4'}};f.ctx.hotelAgeNoticeHTML=()=>'';
  f.ctx.hotels.forEach(h=>{h.raw={id:h.id};h.offers=f.offerRows;});
  f.ctx.data={refreshHotelContent:ids=>new Promise((resolve,reject)=>pending.push({ids,resolve,reject})),
   hotelPresentation:raw=>({id:raw.id,name:'Updated '+raw.id,offers:[]})};

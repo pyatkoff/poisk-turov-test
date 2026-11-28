@@ -6,7 +6,7 @@ const largeRoomInventory=100;
 const bedroomForms={one:'спальня',few:'спальни',many:'спален',other:'спальни'};
 const bedroomCountRules=new Intl.PluralRules('ru');
 function create(context){
-const {$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel=mealLabel,roomLabel=o=>o.room||'Номер уточняется',dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText}=context;
+const {$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel=mealLabel,roomLabel=o=>o.room||'Номер уточняется',dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,ageNotice=()=>'',roomContactHint=()=>'',roomQuoteActionLabel=()=> 'Проверить цену',sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText}=context;
 function hotelTextExcerpt(text,limit){
  if(text.length<=limit)return {start:text,rest:''};
  const space=text.lastIndexOf(' ',limit),cut=space>limit/2?space:limit;
@@ -183,7 +183,7 @@ function roomOfferChoiceHTML(o,{common={},sharedDemoNote='',minimum=null,priceIn
   </div>
   <div class="hotel-room-price" ${selected?'hidden':''}>
    <strong>${price}</strong>${common.party?'':`<small class="room-offer-party">${esc(guestsText(o))}</small>`}
-   <button type="button" class="${selected?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${key}" aria-pressed="${selected}" aria-label="Проверить цену: ${description}">${selected?'✓ Ваш выбранный тур':'Проверить цену'}</button>
+   <button type="button" class="${selected?'secondary':'primary'}" data-action="select-hotel-offer" data-key="${key}" aria-pressed="${selected}" aria-label="${roomQuoteActionLabel(o)}: ${description}"${roomContactHint(o)?' data-quote-label="'+roomQuoteActionLabel(o)+'" aria-describedby="hotel-contact-next"':''}>${selected?'✓ Ваш выбранный тур':roomQuoteActionLabel(o)}</button>
    ${roomPriceDifferenceHTML(priceInfo.total,minimum)}
    ${note&&note!==sharedDemoNote?`<small class="room-offer-price-status">${esc(note)}</small>`:''}
   </div></div>`;
@@ -253,7 +253,8 @@ function syncRoomPriceComparison(cards,offers,comparison=roomPriceComparison(off
    if(amount.textContent!==copy)amount.textContent=copy;
    const description=roomOfferDescription(price.offer,copy),details=row.querySelector('[data-action="offer"]'),choose=row.querySelector('[data-action="select-hotel-offer"]');
    if(details.getAttribute('aria-label')!=='Подробности тура: '+description)details.setAttribute('aria-label','Подробности тура: '+description);
-   if(choose.getAttribute('aria-label')!=='Проверить цену: '+description)choose.setAttribute('aria-label','Проверить цену: '+description);
+   const quoteLabel=roomQuoteActionLabel(price.offer)+': '+description;
+   if(choose.getAttribute('aria-label')!==quoteLabel)choose.setAttribute('aria-label',quoteLabel);
    updatePriceNote(panel,'room-offer-price-status',price.note===sharedDemoNote?'':price.note);
    updatePriceNote(panel,'room-price-difference',roomPriceDifference(price.total,minimum),panel.querySelector('.room-offer-price-status'));
   }
@@ -291,6 +292,9 @@ function roomSharedFacts(first,terms,inventoryTerms=null,demoNote=''){
 function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null,{expandedMore=[],preferredOfferKey=''}={}){
  const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;
  const allOffers=initialOffers||hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];
+ const ageNode=$('#hotel-age-notice'),contactNode=$('#hotel-contact-next');
+ if(ageNode){const notice=ageNotice(h);if(ageNode.innerHTML!==notice)ageNode.innerHTML=notice;}
+ if(contactNode){const hint=roomContactHint(allOffers.find(o=>roomContactHint(o)));contactNode.hidden=!hint;if(contactNode.textContent!==hint)contactNode.textContent=hint;}
  let mealControl=$('#hotel-room-meal');
  if(!mealControl&&meals.length>1&&allOffers.length>2){$('#hotel-room-count').insertAdjacentHTML('beforebegin',`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"></select></label>`);mealControl=$('#hotel-room-meal');}
  if(mealControl){const values=['',...meals];if(meal&&!values.includes(meal))values.push(meal);if(JSON.stringify([...mealControl.options].map(o=>o.value))!==JSON.stringify(values))mealControl.innerHTML=values.map(value=>`<option value="${esc(value)}">${esc(value?displayMealLabel({meal:value}):'Любое питание')}</option>`).join('');}
@@ -359,7 +363,7 @@ function openHotelDetails(id,roomState={}){
  $('#modal-body').innerHTML=`${mountedProfile}
  <section class="hotel-room-section" aria-labelledby="hotel-rooms-heading"><h3 id="hotel-rooms-heading" class="detail-section-title hotel-section-anchor" tabindex="-1">Номера и питание</h3><p class="hotel-room-context">${departureScopeText()} · ${durationText()} · ${guestsText()}</p>
  ${meals.length>1&&offers.length>2?`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"><option value="">Любое питание</option>${meals.map(meal=>`<option value="${esc(meal)}">${esc(displayMealLabel({meal}))}</option>`).join('')}</select></label>`:''}
- <p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p>${typeof data?.readRoomLayouts==='function'?'<div class="room-layout-controls" hidden><button class="secondary" type="button">Показать планировки</button><span role="status" tabindex="-1" hidden></span></div>':''}<div class="hotel-room-cards"></div></section>`;
+ <div id="hotel-age-notice">${ageNotice(h)}</div><p id="hotel-contact-next" class="hotel-room-context" hidden></p><p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p>${typeof data?.readRoomLayouts==='function'?'<div class="room-layout-controls" hidden><button class="secondary" type="button">Показать планировки</button><span role="status" tabindex="-1" hidden></span></div>':''}<div class="hotel-room-cards"></div></section>`;
  const layoutControl=$('.room-layout-controls button');
  if(layoutControl)layoutControl.addEventListener('click',()=>loadRoomLayouts(layoutControl.closest('.hotel-room-section'),layoutControl));
  $('#modal').classList.add('hotel-details-dialog');

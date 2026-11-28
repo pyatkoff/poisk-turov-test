@@ -507,7 +507,7 @@ function cardRatingOwner(code){
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  const infantChargeSource=code.match(/^const unknownInfantCharge=[^\n]+/m)[0];
- vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
+ ctx.hotelAgeNoticeHTML=()=>'';vm.createContext(ctx);vm.runInContext(section(code,'function cardOpensRooms(','function cardHTML(')+infantChargeSource+'\n'+ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[],offers:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  ctx.offerCountText=n=>n+' тура';
  return {work,render,card:row=>ctx.cardHTML(row),context:ctx,setFilters:f=>{state.filters=f;}};
@@ -549,6 +549,7 @@ const {JSDOM}=require('jsdom');
  // The pinned predecessor formatted these labels inline.
  const labels={hotelName:'esc(h.name)',priceText:'money(o.total)',departureText:'dateText(o.day)',stayText:'nightsText(o.nights)',mealText:'esc(mealLabel(o))'};
  const expandedCard=card
+  .replace('${hotelAgeNoticeHTML(h,o.ages)}','')
   .replace(',priorityPhoto=false','')
   .replace(`loading="\${priorityPhoto?'eager':'lazy'}"\${priorityPhoto?' fetchpriority="high"':''}`,'loading="lazy"')
   .replace(`\${priorityPhoto?' fetchpriority="low"':''}`,'')
@@ -744,6 +745,27 @@ function summaryDOM({full=false,code=source}={}){
  }finally{current.close();}
 }
 const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
+{
+ const current=summaryDOM(),{ctx}=current;
+ try{
+  ctx.document.body.insertAdjacentHTML('beforeend','<p id="results-summary" aria-live="polite"></p>');
+  Object.assign(ctx,{hotelCountText:n=>n===1?'1 отель':n+' отелей',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых'});
+  vm.runInContext(section(app,'function renderResultSummary(','function renderResultHeadings('),ctx);
+  const render=(response,items=[],total=0)=>{
+   ctx.responseFor=()=>response;
+   ctx.renderResultSummary(items,total,false);
+   return ctx.$('#results-summary').textContent;
+  };
+  assert.equal(render({phase:'loading',pending:true}),'');
+  assert.equal(render({phase:'complete',providers:{anex:'loading'}}),'');
+  assert.equal(render({phase:'loading',pending:true},[{}],2),'1 отель · 2 варианта тура');
+  assert.equal(render({phase:'complete',providers:{anex:'partial'}}),'');
+  assert.equal(render({phase:'cancelled'}),'');
+  assert.equal(render({phase:'complete',hotelProfiles:'unavailable'}),'Итог поиска пока не подтверждён');
+  assert.equal(render({phase:'complete',providers:{anex:'complete'}}),'0 отелей · 0 вариантов тура');
+  assert.match(render({phase:'complete',providers:{anex:'error'}}),/^Результаты не получены/);
+ }finally{current.close();}
+}
 {
  const current=summaryDOM(),{ctx,summary}=current,hotel='Coast Club <b>Семейный</b> & "Spa"';
  try{

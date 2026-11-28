@@ -302,6 +302,7 @@ jobs:
             node tests/search3-visual-hotel-details-browser.cjs
             node tests/local-tv-catalog-browser.cjs --browser
             node tests/search3-visual-terminal-offer-browser.cjs
+            node tests/search3-visual-family-price-return-browser.cjs
           ) &
           hotel_and_catalog=$!
           result=0
