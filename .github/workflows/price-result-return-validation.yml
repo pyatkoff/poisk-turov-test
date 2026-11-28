@@ -3,7 +3,10 @@ name: Validate PRICE result read-only exporter
 on:
   push:
     branches: [ops/price-pilot-sample-20261127]
-    paths: ['.github/workflows/price-result-return-validation.yml']
+    paths:
+      - '.github/workflows/price-result-return-validation.yml'
+      - 'ops/price-pilot/daily-digest-v1.php'
+      - 'ops/price-pilot/test-daily-digest.sh'
 
 permissions:
   contents: read
@@ -47,3 +50,12 @@ jobs:
           fi
           grep -qx PRICE_RESULT_NOT_READY result.err
           echo PRICE_RETURN_INSTALLER_FIXTURE_CHECK_OK
+  closed-day-publication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repeatable publication of a reconciled closed day
+        run: |
+          php -l ops/price-pilot/daily-digest-v1.php
+          bash ops/price-pilot/test-daily-digest.sh

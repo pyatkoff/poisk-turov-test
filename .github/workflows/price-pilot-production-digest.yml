@@ -36,4 +36,4 @@ jobs:
           timeout 110 ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
               -o ConnectTimeout=8 -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
               -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" \
-              'php -f /dev/stdin -- "$HOME/www/anytoour.ru/data/db-v1.php" 2026-11-26' < "$scratch/digest.php"
+              'php -f /dev/stdin -- "$HOME/www/anytoour.ru/data/db-v1.php" 2026-11-27' < "$scratch/digest.php"
