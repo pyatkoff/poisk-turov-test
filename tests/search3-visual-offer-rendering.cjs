@@ -35,6 +35,7 @@ function observe(source,s){
   money:call('money',v=>moneyFormat.format(Number(v))+' ₽'),
   guestsText:call('guestsText',()=> '2 взрослых · 2 ребёнка'),nightsText:call('nightsText',n=>n+' ночей'),
   photoUrl:call('photoUrl',h=>h.photos[0]),icon:call('icon',n=>'<i>'+n+'</i>'),
+  messengerContactOnly:()=>s.publicContact===true,
   window:{AnyTourPrototypeLead:{unavailableMarkup:call('unavailableMarkup',()=>'<offline-unavailable>')}}
  };
  for(const name of ['selectionStepsHTML','quotePriceChangeHTML','hotelStarsHTML','refreshOfferNotice','priceNote','chosenStayHTML','flightSummaryHTML','fuelDisclosureHTML','selectedPriceStatus','refreshOfferActionLabel'])ctx[name]=call(name);
@@ -86,6 +87,19 @@ if(i>=0)assert.deepEqual(approvedFrame(actual),expectedDelta(approvedFrame(recor
 const verified=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:16});
 assert(verified.calls.some(c=>c[0]==='rememberProviderView'));
 assert(verified.calls.find(c=>c[0]==='showModal')[4].includes('tour-layout'));
+{
+ const contactDOM=new JSDOM(''),document=contactDOM.window.document;
+ for(const [flags,action] of [[0,'start-lead'],[16,'confirm-tour']]){
+  const state={provider:'tourvisor',live:true,unavailable:false,flags};
+  const footer=record=>record.dom.find(([key])=>key==='#modal-footer')[1].html;
+  assert.doesNotMatch(footer(observe(source,state)),/tour-contact-next/,'telephone fixture keeps its own contact path');
+  document.body.innerHTML=footer(observe(source,{...state,publicContact:true}));
+  const button=document.querySelector(`[data-action="${action}"]`);
+  assert.equal(button.getAttribute('aria-describedby'),'tour-contact-next');
+  assert.match(button.previousElementSibling.textContent,/Telegram или MAX.*Номер телефона не нужен/);
+ }
+ contactDOM.window.close();
+}
 for(const flags of [0,1]){
  const direct=observe(source,{provider:'anex',live:true,unavailable:true,flags,session:true});
  const footer=direct.dom.find(([key])=>key==='#modal-footer')[1].html;

@@ -6,7 +6,7 @@ const app=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8');
 const start=app.indexOf('function openFlightPicker('),end=app.indexOf('function updateFlightPreview(){',start);assert(start>=0&&end>start);
 const stayStart=app.indexOf('function chosenStayHTML('),stayEnd=app.indexOf('\nfunction ',stayStart);assert(stayStart>=0&&stayEnd>stayStart,'actual chosen-stay owner extraction');
 assert(app.slice(stayEnd+1).startsWith('function offerSelectionHint('),'chosen-stay extraction ends at the next actual owner');
-const staySource=app.slice(stayStart,stayEnd);
+const staySource=app.slice(app.indexOf('function tourPlacementLabel('),stayEnd);
 const terminalStart=app.indexOf('function terminalOfferQuote('),terminalEnd=app.indexOf('function offerQuoteFailure(',terminalStart);assert(terminalStart>=0&&terminalEnd>terminalStart,'actual terminal-quote guard extraction');
 const loaderStart=app.indexOf('function createPresentationLoader('),loaderEnd=app.indexOf('// The hotel shell enters history immediately;',loaderStart);assert(loaderStart>=0&&loaderEnd>loaderStart,'actual shared presentation loader');
 const source=app.slice(loaderStart,loaderEnd)+app.slice(terminalStart,terminalEnd)+app.slice(start,end),flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
@@ -64,7 +64,7 @@ async function actualSession(){
 function fixture(){
  const dom=new JSDOM('<head data-flight-picker-src="./flight-picker-ui-v1.js?v=exact"></head><dialog id="modal" open><h2 id="modal-title"></h2><div id="modal-body"></div><footer id="modal-footer"></footer></dialog>'),document=dom.window.document;
  const scripts=[],timers=new Map(),renders=[],binds=[];let nextTimer=0,history=0,previews=0;
- const ctx={window:{},Promise,Error,document,$:s=>document.querySelector(s),modalType:'offer',flightDraft:null,selectedOffer:{key:'fixture-exact-tv-501',hotelId:501,flightChoiceId:'0',variants:[{}],provider:'fixture',room:'Fictional STANDARD SEA VIEW',meal:'AI · fictional meal',operator:'Fictional TV operator',tour:{id:'fixture-exact-tv-501',placement:'DBL exact quote fixture'}},hotels:[{id:501,name:'Вымышленный отель'}],esc:String,money:String,data:{text:String,variantPrice:()=>{throw Error('loader cannot calculate a price')}},legHTML:()=>'',fuelText:()=>{throw Error('loader cannot read fuel')},mealLabel:o=>o.meal,displayMealLabel:o=>o.meal,roomLabel:o=>o.room,selectionStepsHTML:()=>'<steps>',rangeText:()=> 'Даты',nightsText:()=> '7 ночей',guestsText:()=> '2 взрослых',
+ const ctx={window:{},Promise,Error,document,$:s=>document.querySelector(s),modalType:'offer',flightDraft:null,selectedOffer:{key:'fixture-exact-tv-501',hotelId:501,flightChoiceId:'0',variants:[{}],provider:'fixture',room:'Fictional STANDARD SEA VIEW',meal:'AI · fictional meal',operator:'Fictional TV operator',tour:{id:'fixture-exact-tv-501',placement:'DBL exact quote fixture'}},hotels:[{id:501,name:'Вымышленный отель'}],esc:String,money:String,data:{text:value=>String(value??''),variantPrice:()=>{throw Error('loader cannot calculate a price')}},legHTML:()=>'',fuelText:()=>{throw Error('loader cannot read fuel')},mealLabel:o=>o.meal,displayMealLabel:o=>o.meal,roomLabel:o=>o.room,selectionStepsHTML:()=>'<steps>',rangeText:()=> 'Даты',nightsText:()=> '7 ночей',guestsText:()=> '2 взрослых',
   setTimeout:(fn,delay)=>{assert.equal(delay,15000,'flight module keeps its bounded load timeout');const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   showModal:(type,title,kicker,body)=>{ctx.modalType=type;ctx.$('#modal').open=true;ctx.$('#modal-body').innerHTML=body;ctx.$('#modal-footer').hidden=true;},
   retainedProviderView:()=>null,selectedTourHotel:()=>ctx.hotels[0],offerDetailBodyHTML:(o,h,a,b,c,editing)=>'<section class="flight-picker-context">'+ctx.chosenStayHTML(o)+'</section><div id="tour-flight-options">'+ctx.window.AnyTourFlightPickerUIV1.render(o,ctx.flightDraft.id)+'</div>',offerDetailFooterHTML:(o,actions)=>'<div class="footer-total"><strong>Current total</strong><span class="footer-price-status"></span></div>'+actions,syncDestinationViewport:()=>{},updateFlightPreview:()=>previews++,rememberUIRoute:()=>history++};
@@ -74,6 +74,15 @@ function fixture(){
  return {ctx,dom,scripts,timers,renders,binds,owner,history:()=>history,previews:()=>previews,close:()=>dom.window.close()};
 }
 (async()=>{
+ const placement=fixture(),label=placement.ctx.tourPlacementLabel;
+ const offer=Object.freeze({placement:'DBL + 1 CHD',adults:2,ages:[8]});
+ assert.equal(label(offer),'2 взрослых и 1 ребёнок');
+ assert.equal(label({...offer,tour:{placement:'2 взрослых + ребенок'}}),label(offer));
+ assert.equal(label({...offer,tour:{placement:'3 взрослых'}}),'3 взрослых','supplier-confirmed placement wins over the listing and requested party');
+ assert.equal(label({...offer,placement:'DBL + XYZ'}),'Размещение уточняется');
+ assert.equal(label({...offer,placement:'Villa with private pool'}),'Villa with private pool');
+ assert.equal(offer.placement,'DBL + 1 CHD','display never replaces the raw placement');
+ placement.close();
  for(const retained of [false,true]){
   const denied=fixture();if(retained)denied.ctx.retainedProviderView=()=>({offer:{quoteErrorTerminal:true}});else denied.ctx.selectedOffer.quoteErrorTerminal=true;
   denied.ctx.openFlightPicker();assert.equal(denied.scripts.length,0,'a direct or retained terminal denial cannot load the flight picker');assert.equal(denied.ctx.flightDraft,null);denied.close();

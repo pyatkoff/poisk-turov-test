@@ -745,6 +745,27 @@ function summaryDOM({full=false,code=source}={}){
 }
 const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
 {
+ const current=summaryDOM(),{ctx}=current;
+ try{
+  ctx.document.body.insertAdjacentHTML('beforeend','<p id="results-summary" aria-live="polite"></p>');
+  Object.assign(ctx,{hotelCountText:n=>n===1?'1 отель':n+' отелей',durationText:()=> '7 ночей',guestsText:()=> '2 взрослых'});
+  vm.runInContext(section(app,'function renderResultSummary(','function renderResultHeadings('),ctx);
+  const render=(response,items=[],total=0)=>{
+   ctx.responseFor=()=>response;
+   ctx.renderResultSummary(items,total,false);
+   return ctx.$('#results-summary').textContent;
+  };
+  assert.equal(render({phase:'loading',pending:true}),'');
+  assert.equal(render({phase:'complete',providers:{anex:'loading'}}),'');
+  assert.equal(render({phase:'loading',pending:true},[{}],2),'1 отель · 2 варианта тура');
+  assert.equal(render({phase:'complete',providers:{anex:'partial'}}),'');
+  assert.equal(render({phase:'cancelled'}),'');
+  assert.equal(render({phase:'complete',hotelProfiles:'unavailable'}),'Итог поиска пока не подтверждён');
+  assert.equal(render({phase:'complete',providers:{anex:'complete'}}),'0 отелей · 0 вариантов тура');
+  assert.match(render({phase:'complete',providers:{anex:'error'}}),/^Результаты не получены/);
+ }finally{current.close();}
+}
+{
  const current=summaryDOM(),{ctx,summary}=current,hotel='Coast Club <b>Семейный</b> & "Spa"';
  try{
   ctx.document.body.insertAdjacentHTML('beforeend','<div id="compact-search"><strong id="compact-route"></strong><span id="compact-details"></span><button class="secondary" data-action="top"></button></div><div id="results"><span id="route-label"></span><h2 id="results-title"></h2><p id="results-summary"></p><span class="sort-label"></span><span class="mobile-sort"></span></div>');
