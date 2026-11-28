@@ -40,7 +40,9 @@ try {
     }
 
     foreach (['tour_price_daily_exact', 'tour_price_daily'] as $table) {
-        $db->exec("CREATE TEMPORARY TABLE $table LIKE $table");
+        $db->exec("CREATE TEMPORARY TABLE price_bench_template LIKE $table");
+        $db->exec("CREATE TEMPORARY TABLE $table LIKE price_bench_template");
+        $db->exec("DROP TEMPORARY TABLE price_bench_template");
         if ((int)$db->query("SELECT COUNT(*) FROM $table")->fetchColumn() !== 0) {
             throw new RuntimeException('TEMPORARY_TABLE_NOT_EMPTY');
         }
@@ -83,7 +85,7 @@ try {
     ], JSON_THROW_ON_ERROR) . PHP_EOL;
 } catch (Throwable $error) {
     $reason = $error instanceof PDOException
-        ? 'DATABASE_' . $error->getCode()
+        ? 'DATABASE_' . $error->getCode() . '_' . ($error->errorInfo[1] ?? 'UNKNOWN')
         : ($error instanceof RuntimeException ? $error->getMessage() : get_class($error));
     fwrite(STDERR, 'PRICE_ROLLUP_BENCHMARK_FAILED reason=' . preg_replace('/[^A-Z_0-9]/i', '', $reason) . PHP_EOL);
     exit(5);
