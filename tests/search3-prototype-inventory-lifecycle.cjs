@@ -2078,7 +2078,7 @@ test('accepted LOCAL stay labels survive actual tour selection without changing 
   esc:value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
   rangeText:(a,b)=>a+' → '+b,nightsText:n=>n+' ночей',guestsText:()=> '2 взрослых',icon:()=>'',
   offerQuoteFailure:(o,error)=>{throw error;}});
- vm.runInContext(block('const mealLabel=','const matchesMeal=')+block('function chosenStayHTML(','function offerSelectionHint(')
+ vm.runInContext(block('const mealLabel=','const matchesMeal=')+block('function tourPlacementLabel(','function offerSelectionHint(')
   +block('async function quoteSelectedOffer(','async function openOffer('),ctx);
  const before=ctx.chosenStayHTML(initial),calls=h.calls.length;
  await ctx.quoteSelectedOffer(initial,1);
