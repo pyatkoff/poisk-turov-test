@@ -130,6 +130,18 @@ test('Canonical ANEX chosen pair preserves supplied direction labels without man
   assert.equal(s.price.finalPriceVerified,false);assert.equal(s.price.authority,'browser-observation-only');assert.equal(session.isCurrent(s),true);assert.deepEqual(plain(input),before);
   assert.doesNotMatch(JSON.stringify(s),/PRIVATE_PAIR|anex_online:|offerRef|searchRef|choiceRef|generation|SECRET_|localHotelId/);
 });
+test('ANEX compares the retained meal with its exact source label, not the translated display label',()=>{
+  const input=applicationFixture(true,'anex_quote:'+'c'.repeat(64));
+  input.offer.meal='Завтраки';
+  input.application={...input.application,meal:'Завтраки'};
+  input.offer.raw.anexSourceMeal='BB';
+  const session=api.createSession(()=>input,()=>time),snapshot=session.capture();
+  assert.equal(snapshot.stay.meal,'BB');
+  assert.equal(input.application.meal,'Завтраки');
+  assert.ok(session.anexSelector(snapshot));
+  input.offer.raw.anexSourceMeal='HB';
+  assert.equal(session.isCurrent(snapshot),false);
+});
 test('Application receipt replacement, source row, revision and original terms invalidate pending results',()=>{
   for(const change of [d=>d.application={...d.application},d=>d.offer.raw={...d.offer.raw},d=>d.revision++,d=>d.offer.meal='BB',d=>d.offer.placement='Different',d=>d.offer.total++,d=>d.hotel.resort='Other']){
     const input=applicationFixture(true),session=api.createSession(()=>input,()=>time),s=session.capture();change(input);assert.equal(session.isCurrent(s),false);

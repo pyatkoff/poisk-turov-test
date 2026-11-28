@@ -901,7 +901,7 @@
     if(selectedMeals.length&&!selectedMeals.includes(mealName)){onReject?.('selected_meal');return null;}
     const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
     return {id:offerRef,offerRef,offerIdentityDigest,searchRef,provider:'anex',price:total,date:day,nights,
-      meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
+      meal:{name:mealName},anexSourceMeal:text(tour.meal),roomType:text(tour.room)||'Номер уточняется',placement:'',
       ...(plan?{searchMealPlan:Object.freeze({id:plan.id,code:plan.code,nameRu:plan.nameRu}),searchMealPlanSource:plan.source,searchMealPlanRevision:plan.revision}:{}),
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
