@@ -1,4 +1,4 @@
-name: Read 15:45 server timer and original PRICE state
+name: Read TOP500 and PRICE state after original 46147179099
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '4c46f7d3518a8e0c53f0527eb733149d667acac9'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ef022f1191b58eea5dabaeb98f02101631ffc6cf'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
