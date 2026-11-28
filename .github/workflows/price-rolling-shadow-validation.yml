@@ -116,6 +116,35 @@ jobs:
           UPDATE tour_price_daily SET min_price=99 WHERE price_date='$fixture_day';
           FIXTURE
           args=(db-v1.php staged.json "$directory/$exact.jsonl.gz" "$directory/$coarse.jsonl.gz")
+          sql() {
+            docker exec -i "$DB_CONTAINER" mariadb -N -ufixture -pfixture-password anytour_price_pilot
+          }
+          sql <<FIXTURE
+          INSERT INTO tour_price_daily
+            (price_date,departure_id,country_id,hotel_id,departure_year,departure_month,nights,adults,
+             min_price,median_price,max_price,observation_count,calculated_at)
+          VALUES ('$fixture_day',1,4,2,2026,12,7,2,70,70,70,1,NOW());
+          FIXTURE
+          if php apply-rolling-result.php "${args[@]}" --apply > failed.txt 2>&1; then
+            echo 'Publication unexpectedly removed a historical result' >&2
+            exit 2
+          fi
+          grep -qx 'PRICE_ROLLING_APPLY_FAILED WOULD_REMOVE_HISTORY' failed.txt
+          unchanged=$(sql <<FIXTURE
+          SELECT (SELECT COUNT(*) FROM tour_price_daily_exact WHERE price_date='$fixture_day'),
+            (SELECT COUNT(*) FROM tour_price_daily_exact WHERE price_date='2026-11-26'),
+            (SELECT COUNT(*) FROM tour_price_daily WHERE price_date='$fixture_day' AND hotel_id=2);
+          FIXTURE
+          )
+          [[ "$unchanged" == 
+          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' rehearsed.txt
+          php apply-rolling-result.php "${args[@]}" --apply | tee applied.txt
+          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' applied.txt
+          php apply-rolling-result.php "${args[@]}" --apply | tee retried.txt
+          grep -q '"exact":{"old_only":0,"changed":0},"coarse":{"old_only":0,"changed":0}' retried.txt
+          echo PRICE_ROLLING_APPLY_FIXTURE_OK
+0\t1\t1' ]]
+          sql <<< "DELETE FROM tour_price_daily WHERE price_date='$fixture_day' AND hotel_id=2;"
           php apply-rolling-result.php "${args[@]}" --rehearse | tee rehearsed.txt
           grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' rehearsed.txt
           php apply-rolling-result.php "${args[@]}" --apply | tee applied.txt
