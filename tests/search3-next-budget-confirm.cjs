@@ -72,6 +72,13 @@ function fixtureInBrowser({rows,searchPath}){
 }
 
 function instrument(source){
+ const branch=' if(changed)filterEdited();else if(filterDraft)updateDrawerPreview();';
+ const label=' showFilterBudgetValidity(budget);syncFilterSections();syncFilterResetState();if(filterDraft)rememberUIRoute();return budget;';
+ assert.equal(source.split(branch).length,2);
+ assert.equal(source.split(label).length,2);
+ source=source.replace(branch," const tailTiming=window.budgetDiagnostic;const tailStart=tailTiming?.running?performance.now():0;\n"+branch);
+ source=source.replace(label,label.replace('return budget;',
+  'if(tailStart){tailTiming.parts.budgetTail={ms:performance.now()-tailStart,calls:1};}return budget;'));
  const entries=[];
  function visit(node){
   if(!node||typeof node!=='object')return;
@@ -263,18 +270,18 @@ module.exports=async function measureMobileBudgetConfirm(browser,nextHome,output
    for(let i=0;i<4;i++)samples.push(await runOne(browser,lab,paths.search,rows,cpu));
    const edit=median(samples.map(x=>x.metrics.parts.editFilterBudget.ms));
    const preview=median(samples.map(x=>x.metrics.parts.updateDrawerPreview?.ms??0));
+   const tail=median(samples.map(x=>x.metrics.parts.budgetTail.ms));
    const dispatch=median(samples.map(x=>x.metrics.dispatch));
    const frame=median(samples.map(x=>x.metrics.frame));
    assert(samples.every(x=>x.metrics.parts.editFilterBudget.calls===1));
    assert(samples.every(x=>x.metrics.parts.updateDrawerPreview.calls===1));
-   attribution.push({cpu,edit,preview,dispatch,frame,warm,samples});
+   attribution.push({cpu,edit,preview,tail,dispatch,frame,warm,samples});
   }
  }finally{await lab.close();}
  const report={source:process.env.SEARCH3_SOURCE_SHA,baseline:installed,app:appSha,css:cssSha,fixture:digest(fixture),
   browser:browser.version(),size:[430,932],throttling:'Chromium CDP CPU slowdown, not a physical device',attribution,groups:[]};
- // Only run the alternative when an otherwise hidden intermediate render is
- // measurable at the slower interactive profile.
- if(attribution.some(row=>row.preview>=(row.cpu===1?3:8))){
+ // The alternative skips the tail, including visibility and history work.
+ if(attribution.some(row=>row.cpu===4&&row.edit>=12||row.tail>=4)){
   const raw=candidate(source),built=assetsFor(base,await compile(raw,{privateFunctions:true}));
   report.candidate={raw:digest(raw),app:built.appSha};
   const servers={before:await startServer(nextHome,base,paths),after:await startServer(nextHome,built,paths)};
@@ -295,7 +302,7 @@ module.exports=async function measureMobileBudgetConfirm(browser,nextHome,output
   }finally{await Promise.all(Object.values(servers).map(server=>server.close()));}
  }
  console.log('SEARCH3_BUDGET_CONFIRM '+JSON.stringify({
-  attribution:attribution.map(({cpu,edit,preview,dispatch,frame})=>({cpu,edit,preview,dispatch,frame})),
+  attribution:attribution.map(({cpu,edit,preview,tail,dispatch,frame})=>({cpu,edit,preview,tail,dispatch,frame})),
   groups:report.groups.map(({cpu,summary})=>({cpu,summary}))}));
  fs.writeFileSync(path.join(output,'canonical-next-budget-confirm.json'),JSON.stringify(report,null,2)+'\n');
 };
