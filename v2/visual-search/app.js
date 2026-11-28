@@ -1078,9 +1078,13 @@ let resultCalendarExpanded=false;
 let expandedResultCalendarDay='';
 let compactResultCalendarSummary=null;
 let deferredCalendarStrip=null;
+let resultCalendarMobile;
+function isResultCalendarMobile(){
+ return resultCalendarMobile??=(innerWidth<=760);
+}
 function isResultCalendarCollapsed(){
  const {from,to}=state.search;
- return innerWidth<=760?!resultCalendarExpanded:from===to&&expandedResultCalendarDay!==from;
+ return isResultCalendarMobile()?!resultCalendarExpanded:from===to&&expandedResultCalendarDay!==from;
 }
 function syncSingleDayCalendarSummary(button,day,expanded){
  if(!button.querySelector('.result-calendar-single-summary')){
@@ -1094,12 +1098,12 @@ function syncSingleDayCalendarSummary(button,day,expanded){
 }
 function toggleResultCalendarDisclosure(){
  const {from,to}=state.search;
- if(innerWidth<=760)resultCalendarExpanded=!resultCalendarExpanded;
+ if(isResultCalendarMobile())resultCalendarExpanded=!resultCalendarExpanded;
  else if(from===to)expandedResultCalendarDay=expandedResultCalendarDay===from?'':from;
  syncResultCalendarDisclosure();
 }
 function syncResultCalendarDisclosure(){
- const s=state.search,mobile=innerWidth<=760,singleDay=!mobile&&s.from===s.to;
+ const s=state.search,mobile=isResultCalendarMobile(),singleDay=!mobile&&s.from===s.to;
  if(s.from!==s.to)expandedResultCalendarDay='';
  const expanded=!isResultCalendarCollapsed(),button=$('.result-calendar-disclosure');
  button.hidden=!mobile&&!singleDay;button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',(expanded?'Свернуть':'Развернуть')+' даты и цены');
@@ -4047,6 +4051,7 @@ $('#modal-body').addEventListener('touchstart',e=>{touchStart=null;if(modalType=
 $('#modal-body').addEventListener('touchcancel',()=>{touchStart=null;},{passive:true});
 $('#modal-body').addEventListener('touchend',e=>{const start=touchStart;touchStart=null;if(modalType!=='gallery'||!start||start.id!==gallery.id||!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5)stepGallery(dx<0?1:-1);},{passive:true});
 window.addEventListener('resize',()=>{
+ resultCalendarMobile=undefined;
  syncResultCalendarDisclosure();
  if(innerWidth>1100&&!homeFormOnly&&!filterDraft&&(mobileFiltersNeedRefresh||!catalogReady&&!$('#filters').childElementCount)){
   renderFilters();mobileFiltersNeedRefresh=false;
