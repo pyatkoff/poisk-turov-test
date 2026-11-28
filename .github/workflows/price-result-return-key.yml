@@ -1,0 +1,67 @@
+name: Create old server PRICE result reader key
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths: ['.github/workflows/price-result-return-key.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Create a separate key locally on the old server
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          scratch=$(mktemp -d)
+          trap 'rm -rf "$scratch"' EXIT
+          test "$DEPLOY_USER" = anytoour && test -n "$DEPLOY_HOST" && test -n "$DEPLOY_KEY"
+          if [[ "$DEPLOY_KEY" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$scratch/key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$scratch/key"
+          fi
+          ssh-keygen -y -f "$scratch/key" >/dev/null
+          printf '%s %s\n' "$DEPLOY_HOST" 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXxjWqpuN07MTGcXrRnshpTX3KKK/wvQeaYl03RY8DA' > "$scratch/known_hosts"
+          ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=8 \
+            -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'PRICE_READER_BOOTSTRAP'
+          set -euo pipefail
+          umask 077
+          test "$(id -un)" = anytoour
+          dir="$HOME/.anytour-price-result"
+          mkdir -p -m 700 "$dir"
+          test ! -L "$dir" && test -O "$dir" && test "$(stat -c %a "$dir")" = 700
+          exec 9>"$dir/bootstrap.lock"
+          flock -w 5 9
+          key="$dir/return_ed25519"
+          if test ! -e "$key"; then
+            ssh-keygen -q -t ed25519 -N '' -C anytour-price-result-read-20261128 -f "$key"
+          fi
+          test ! -L "$key" && test -O "$key" && test "$(stat -c %a "$key")" = 600
+          public_key=$(ssh-keygen -y -f "$key" | awk '{print $1 " " $2}')
+          printf 'PRICE_RETURN_PUBLIC_KEY=%s\n' "$public_key"
+          outgoing=$(ip -4 route get 45.67.128.147 | awk '{for(i=1;i<NF;i++) if($i=="src") {print $(i+1);exit}}')
+          if ! getent ahostsv4 anytoour.ru | awk '{ print $1 }' | grep -Fx "$outgoing" > /dev/null; then
+            echo PRICE_RETURN_OUTGOING_IP_NOT_CONFIRMED
+            exit 4
+          fi
+          printf 'PRICE_RETURN_CONFIRMED_IP=%s\n' "$outgoing"
+          if timeout 10 ssh-keyscan -4 -T 6 -t ed25519 45.67.128.147 > "$dir/new-key-observed.txt" 2>/dev/null; then
+            test -s "$dir/new-key-observed.txt"
+            echo PRICE_RETURN_TCP_REACHABLE
+          else
+            echo PRICE_RETURN_TCP_UNREACHABLE
+            exit 5
+          fi
+          PRICE_READER_BOOTSTRAP
