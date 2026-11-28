@@ -12,7 +12,7 @@ async function ordinaryRegularRoutingVM(){
   const calls={current:0,additional:0,quote:0},raw={anexKind:'concrete',anexSessionCurrent:true},search={adults:2,ages:[]};
   const listing={key:'regular-room',hotelId:1,provider:'anex',flight,raw,search,total:121000,adults:2,ages:[]},views=new Map();
   if(type)views.set(listing.key,{offer:{...listing},type,result:{state:'current'},error:'',pending:false,...extra});
-  const modal={open:true},nav={dataset:{hotelId:'1'}},c=vm.createContext({selectedOffer:{...listing},listing,providerViews:views,
+  const modal={open:true},nav={dataset:{hotelId:'1'}},c=vm.createContext({hotelAgeConflict:()=>null,selectedOffer:{...listing},listing,providerViews:views,
    selectionGeneration:0,modalType:'hotel-details',hotelDetailsView:{id:1,checkKey:null},hotelOfferDraft:{hotelId:1,key:listing.key},state:{search},anexCurrentDraft:null,
    $:s=>s==='.hotel-section-nav'?nav:s==='#modal'?modal:{textContent:'',disabled:false},
    offerFromKey:key=>key===listing.key?listing:null,selectedTourHotel:()=>({id:1}),needsRefresh:()=>true,
