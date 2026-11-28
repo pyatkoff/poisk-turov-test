@@ -320,7 +320,7 @@ module.exports=async function messengerJourney({browser,origin,base,evidence}){
        assert.deepEqual(body,{action,...selector,csrf},'only exact retained identity pins enter the dispatcher');
        // One retained fictional server observation per operation, never a DOM snapshot.
        observation=observation||{schema:1,kind:'search3_browser_observation',capturedAt:Date.now(),source:'anex',hotel:{uiId:profile.id,namespace:'search3-ui',name:profile.name,resort:'Белек'},
-        trip:{origin:'Москва',departure:day,nights:7,stayEnd:back,stayEndBasis:'shown-stay-end',adults:2,childAges:[]},stay:{room:'ANEX CONCRETE',meal:'Всё включено',placement:'',operator:''},
+        trip:{origin:'Москва',departure:day,nights:7,stayEnd:back,stayEndBasis:'shown-stay-end',adults:2,childAges:[]},stay:{room:'ANEX CONCRETE',meal:'AI',placement:'',operator:''},
         flights:{state:'selected',outward:[selected.choice.legs[0]],inward:[selected.choice.legs[1]]},
         price:{amount:selected.price.amount,currency:'RUB',state:'checked',basis:'selected-pair',description:'Цена с выбранными рейсами',expiresAt:selected.expires_at,finalPriceVerified:false,authority:'browser-observation-only'}};
        await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,data:{operation_id:operation,state:'prepared',observation}})});return;
