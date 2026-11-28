@@ -3,7 +3,9 @@ name: Verify live PRICE result SSH return channel
 on:
   push:
     branches: [ops/price-pilot-sample-20261127]
-    paths: ['ops/price-pilot/return-vps-host-key.pub']
+    paths:
+      - 'ops/price-pilot/return-vps-host-key.pub'
+      - '.github/workflows/price-result-return-live-probe.yml'
 permissions:
   contents: read
 
@@ -34,9 +36,11 @@ jobs:
           host_key=$(curl -fsSL --proto '=https' --max-time 25 "https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/$COMMIT/ops/price-pilot/return-vps-host-key.pub")
           [[ "$host_key" =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+$ ]]
           printf '%s %s\n' "$DEPLOY_HOST" 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXxjWqpuN07MTGcXrRnshpTX3KKK/wvQeaYl03RY8DA' > "$scratch/known_hosts"
-          curl -fsSL --proto '=https' --max-time 25 https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/acebc2e9ad8752d35ea715cbde44ab78f933acd4/ops/price-pilot/verify-result-return.sh -o "$scratch/verify.sh"
+          curl -fsSL --proto '=https' --max-time 25 https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/ca19d2e33ec840037d3d4c173a5128b55b3c03b4/ops/price-pilot/verify-result-return.sh -o "$scratch/verify.sh"
           bash -n "$scratch/verify.sh"
           timeout 220 ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
             -o ConnectTimeout=8 -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
             -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash -s -- '$host_key'" < "$scratch/verify.sh"
+            "bash -s -- '$host_key'" < "$scratch/verify.sh" | tee "$scratch/result"
+          grep -qxF 'PRICE_RETURN_RESTRICTION_VERIFIED' "$scratch/result"
+          grep -qxF 'PRICE_RETURN_FULL_DAY_VERIFIED rows=638682 observations=699238 digest=ffead7fd573b2a3c9a530b1a31c3bde06efc34f94954b360a9fb7111e9493c9b' "$scratch/result"
