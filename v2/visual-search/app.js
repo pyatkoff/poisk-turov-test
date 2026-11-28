@@ -3313,7 +3313,7 @@ function openAnexPackageQuote(o,result,error='',pending=false){
  const content=providerTourBodyHTML(o,h,flights,price,choices.length>0);
  showModal('anex-quote',verified?'Цена тура подтверждена':'Перелёт и цена тура','ANEX · АКТУАЛИЗАЦИЯ',content,true);
  const applicationLabel=verified&&messengerAvailable(anexApplicationDraft)?'Продолжить':'К заявке';
- const applicationAction=messengerContactOnly()?tourContactActionHTML('anex-application-preview',applicationLabel):`<button class="primary" data-action="anex-application-preview">${applicationLabel}</button>`;
+ const applicationAction=window.V2_CONFIG?.search3ContactMode==='messenger-only'?tourContactActionHTML('anex-application-preview',applicationLabel):`<button class="primary" data-action="anex-application-preview">${applicationLabel}</button>`;
  $('#modal').classList.add('tour-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=offerDetailFooterHTML({total:price,pricePending:price===null},verified?(repricing&&!view?.editing&&result.choices?.length>1?'<button class="secondary" data-action="edit-anex-flights">Изменить рейсы</button>':'')+applicationAction:choices.length&&(repricing||!error)&&!view?.sealed?`<button class="primary" data-action="anex-package-calculate" ${pending?'disabled':''}>Уточнить цену с этими рейсами</button>`:`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button>`,status);
  if(choices.length){$('#modal').classList.add('tour-flight-editing');syncDestinationViewport();}
  if(samePicker&&(repricing?view?.editing:pending||error)){
