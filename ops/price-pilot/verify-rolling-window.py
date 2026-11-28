@@ -3,7 +3,9 @@
 import argparse
 import datetime as dt
 import json
+import os
 import pathlib
+import pwd
 import re
 import subprocess
 import tempfile
@@ -40,7 +42,8 @@ def main():
     if not re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]+", args.pinned_host_key):
         raise ValueError("invalid VPS host key")
     home = pathlib.Path.home()
-    if home.name != "anytoour":
+    account = pwd.getpwuid(os.getuid())
+    if account.pw_name != "anytoour" or home.resolve() != pathlib.Path(account.pw_dir).resolve():
         raise RuntimeError("unexpected production account")
     key = home / ".anytour-price-result/return_ed25519"
     if key.is_symlink() or not key.is_file() or key.stat().st_mode & 0o777 != 0o600:
