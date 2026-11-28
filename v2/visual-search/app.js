@@ -1956,7 +1956,7 @@ function closeModal({fromHistory=false}={}){
  const m=$('#modal');if(!m.open)return;
  clearTimeout(providerQuoteExpiryTimer);leaveUIHistory(fromHistory);modalType='';hotelOfferDraft=null;destinationPending=null;modalHistory.length=0;m.close();syncDestinationViewport();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';renderResultCards(renderedResultItems,{selectionOnly:true});restorePageReturn();
 }
-function modalBack(){
+function modalBack(renderSelectedTour=null){
  cancelHotelOfferCheck();
  if(modalType==='flights')uiRoute();
  let previous=modalHistory.pop();
@@ -1965,7 +1965,13 @@ function modalBack(){
  if(['selected-tour','flights'].includes(previous.type)&&terminalOfferQuote(previous.offer)){
   selectedOffer=previous.offer;restoringModal=true;renderRealOffer();restoringModal=false;rememberUIRoute();return;
  }
- restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
+ restoringModal=true;
+ if(previous.type==='selected-tour'&&renderSelectedTour){
+  gallery=previous.gallery;
+  try{renderSelectedTour();}finally{restoringModal=false;}
+  $('#modal-title').focus({preventScroll:true});rememberUIRoute();return true;
+ }
+ showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
  restoreModalStepSnapshot(previous);
  if(previous.type==='offer')renderRealOffer();
  if(previous.type==='flights')openFlightPicker(previous.route);
@@ -2906,9 +2912,13 @@ function applyFlightPair(){
    if(previous.type==='offer'&&o?.key===next.key&&o.raw===next.raw&&sameSelectedTourConditions(o,next)&&searchKey(o.search||{})===searchKey(next.search||{}))previous.offer=next;
   }
  }
- flightDraft=null;modalBack();selectedOffer=next;
- if(next.provider==='tourvisor'&&!next.loading&&!next.flightsLoading&&data.amount(next.tour?.price)>0&&!needsRefresh(next)&&!next.quoteError)rememberProviderView(next,'tourvisor-selection');
- if(contactReturn)openLeadPreview(next);else renderOfferProgress();
+ flightDraft=null;
+ const renderAppliedSelection=()=>{
+  selectedOffer=next;
+  if(next.provider==='tourvisor'&&!next.loading&&!next.flightsLoading&&data.amount(next.tour?.price)>0&&!needsRefresh(next)&&!next.quoteError)rememberProviderView(next,'tourvisor-selection');
+  if(contactReturn)openLeadPreview(next);else renderOfferProgress();
+ };
+ if(!modalBack(contactReturn?renderAppliedSelection:null))renderAppliedSelection();
  window.AnyTourPublicAnalyticsV1?.flight(next,flightPairFor(next),Number(next.flightChoiceId));
 }
 function flightConnectionText(segments){return (segments||[]).slice(0,-1).map((segment,i)=>[...new Set([data.text(segment.arrival?.port),data.text(segments[i+1]?.departure?.port)].filter(Boolean))].join(' / ')||'Аэропорт уточняется').join('; ');}
