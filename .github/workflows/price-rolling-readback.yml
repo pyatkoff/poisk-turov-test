@@ -50,7 +50,7 @@ jobs:
           python3 verify-price-freshness.py "$scratch/sample.json"
           if test -s rolling-window-days.txt; then
             read -r days < rolling-window-days.txt
-            case "$days" in 1|2|3|30) ;; *) exit 2 ;; esac
+            case "$days" in 1|2|3|31) ;; *) exit 2 ;; esac
             host_key=$(cat return-vps-host-key.pub)
             [[ "$host_key" =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+$ ]]
             {
@@ -64,7 +64,7 @@ jobs:
               printf "cat > \"\$d/verify-rolling-window.py\" <<'PRICE_VERIFY'\n"
               cat verify-rolling-window.py
               echo PRICE_VERIFY
-              printf 'python3 "$d/verify-rolling-window.py" %q "$d/rolling-digest.php" --closed-days %q\n' "$host_key" "$days"
+              printf 'python3 "$d/verify-rolling-window.py" %q "$d/rolling-digest.php" --days %q\n' "$host_key" "$days"
             } > "$scratch/remote.sh"
             bash -n "$scratch/remote.sh"
             timeout 1100 "${ssh_old[@]}" 'bash -s' < "$scratch/remote.sh"

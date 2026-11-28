@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("pinned_host_key")
     parser.add_argument("digest_script", type=pathlib.Path)
-    parser.add_argument("--closed-days", type=int, choices=(1, 2, 3, 30), default=2)
+    parser.add_argument("--days", type=int, choices=(1, 2, 3, 31), default=2)
     args = parser.parse_args()
     host = "45.67.128.147"
     if not re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]+", args.pinned_host_key):
@@ -49,7 +49,9 @@ def main():
     if key.is_symlink() or not key.is_file() or key.stat().st_mode & 0o777 != 0o600:
         raise RuntimeError("unexpected PRICE SSH identity")
     config = home / "www/anytoour.ru/data/db-v1.php"
-    dates = [dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=i) for i in range(1, args.closed_days + 1)]
+    today = dt.datetime.now(dt.timezone.utc).date()
+    offsets = range(30, -1, -1) if args.days == 31 else range(args.days, 0, -1)
+    dates = [today - dt.timedelta(days=i) for i in offsets]
     with tempfile.TemporaryDirectory(prefix="price-window-") as tmp:
         hosts = pathlib.Path(tmp, "known_hosts")
         hosts.write_text(f"{host} {args.pinned_host_key}\n")
@@ -60,15 +62,26 @@ def main():
             "-o", f"UserKnownHostsFile={hosts}", "-o", "GlobalKnownHostsFile=/dev/null",
             f"fastuser@{host}",
         ]
+        candidates = {}
         for day in dates:
             try:
                 candidate = json.loads(run(ssh + [f"manifest {day}"], 15))
             except (subprocess.TimeoutExpired, RuntimeError):
-                print(f"PRICE_PARITY_PENDING day={day} reason=shadow_manifest_unavailable", flush=True)
-                return 2
+                continue
             if candidate.get("date") != str(day) or "coarse" not in candidate or "source" not in candidate:
-                print(f"PRICE_PARITY_PENDING day={day} reason=shadow_manifest_incomplete", flush=True)
+                continue
+            candidates[day] = candidate
+        if len(candidates) != len(dates):
+            missing = ",".join(str(day) for day in dates if day not in candidates)
+            print(f"PRICE_PARITY_PENDING ready={len(candidates)} days={len(dates)} missing={missing}", flush=True)
+            return 2
+        if today in candidates:
+            generated = dt.datetime.fromisoformat(candidates[today]["generated_at"])
+            age = dt.datetime.now(dt.timezone.utc) - generated
+            if not dt.timedelta() <= age < dt.timedelta(hours=2):
+                print(f"PRICE_PARITY_PENDING day={today} reason=shadow_manifest_not_fresh", flush=True)
                 return 2
+        for day, candidate in candidates.items():
             reference = json.loads(run(["php", str(args.digest_script), str(config), str(day)], 35))
             expected, actual = normalized(reference), normalized(candidate)
             if actual != expected:
@@ -86,7 +99,7 @@ def main():
                 f"exact_sha256={actual['exact']['sha256']} coarse_sha256={actual['coarse']['sha256']}",
                 flush=True,
             )
-    print(f"PRICE_PARITY_CLOSED_WINDOW_OK days={len(dates)}", flush=True)
+    print(f"PRICE_PARITY_WINDOW_OK days={len(dates)}", flush=True)
     return 0
 
 
