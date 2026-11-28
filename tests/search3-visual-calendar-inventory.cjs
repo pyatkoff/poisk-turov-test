@@ -6,6 +6,12 @@ const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators
 const day=i=>new Date(Date.UTC(2026,9,28+i)).toISOString().slice(0,10);
 function fixture(){return Array.from({length:12},(_,i)=>({id:i+1,country:i===11?'9':'4',name:'Hotel '+i,subRegion:i%2?'Кемер':'Анталья',region:'Анталья',resort:'Кемер',stars:i%4+2,rating:i%3?4.8:3.2,beach:i%2?100:null,family:!!(i%2),spa:!!(i%3),amenities:i%2?[{key:'pool'}]:[],offers:Array.from({length:18},(_,j)=>({key:i+':'+j,search:{origin:j===17?'Казань':'Москва',country:j===16?'9':'4'},adults:j===15?3:2,ages:j===14?[0]:j===13?['17',0]:j===12?[17,0]:[0,17],day:day(j%7),nights:j===11?10:7,meal:j%2?'AI':'BB',mealPlanId:j%2?7:3,total:j===0?0:j===1?Infinity:100000+i*100+j*10,operator:j%2?'A':'B',flight:j%2?'charter':'regular'}))}));}
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first);return source.slice(a,b);}
+const resizeStart="window.addEventListener('resize',()=>{\n";
+const resizeResultCalendar=section(source,resizeStart," if(innerWidth>1100").slice(resizeStart.length);
+function setResultCalendarWidth(context,width){
+ context.innerWidth=width;
+ vm.runInContext(resizeResultCalendar,context);
+}
 // Freeze the real clock, but retain native local calendar fields in each zone.
 // Execute both connected owners; neither bootstrap nor a supplier runs here.
 {
@@ -44,15 +50,15 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  const button=nodes.get('.result-calendar-disclosure'),preview=nodes.get('#calendar-preview'),heading=nodes.get('#price-calendar .result-date-heading');
  const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);assert(toggle,'existing action dispatcher owns the disclosure');
  const act=()=>vm.runInContext(toggle[1],context);
- for(const width of [360,390,430]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,false);assert.equal(button.attrs['aria-expanded'],'false');assert.equal(preview.hidden,true);assert.equal(heading.hidden,true);assert.match(nodes.get('#result-calendar-range').textContent,/2026/);}
+ for(const width of [360,390,430,760]){setResultCalendarWidth(context,width);assert.equal(button.hidden,false);assert.equal(button.attrs['aria-expanded'],'false');assert.equal(preview.hidden,true);assert.equal(heading.hidden,true);assert.match(nodes.get('#result-calendar-range').textContent,/2026/);}
  act();assert.equal(button.attrs['aria-expanded'],'true');assert.equal(preview.hidden,false);assert.equal(heading.hidden,false);
  context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false,'late data/rerender keeps explicit expansion');
- for(const width of [768,1280]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,true);assert.equal(preview.hidden,false,'desktop rail stays open');}
- context.innerWidth=390;context.syncResultCalendarDisclosure();assert.equal(button.attrs['aria-expanded'],'true','return to mobile retains the explicit preference');
- act();assert.equal(preview.hidden,true);context.innerWidth=1280;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false);context.innerWidth=360;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,true,'desktop does not rewrite collapsed mobile preference');
+ for(const width of [761,768,1280]){setResultCalendarWidth(context,width);assert.equal(button.hidden,true);assert.equal(preview.hidden,false,'desktop rail stays open');}
+ setResultCalendarWidth(context,390);assert.equal(button.attrs['aria-expanded'],'true','return to mobile retains the explicit preference');
+ act();assert.equal(preview.hidden,true);setResultCalendarWidth(context,1280);assert.equal(preview.hidden,false);setResultCalendarWidth(context,360);assert.equal(preview.hidden,true,'desktop does not rewrite collapsed mobile preference');
  assert.equal(JSON.stringify(state),before);assert.equal(context.location.href,'unchanged');
  state.selectedDate='2026-10-29';context.syncResultCalendarDisclosure();assert.match(nodes.get('#result-calendar-range').textContent,/2026-10-29 — 2026-10-29/,'collapsed context follows the actual applied single date');assert.equal(preview.hidden,true);
- console.log('PASS result calendar disclosure: five ordinary widths, default collapsed/current range, explicit toggle, late rerender, responsive preference, selected-day context; source data/URL/supplier operations unchanged');
+ console.log('PASS result calendar disclosure: seven widths including the 760px breakpoint, default collapsed/current range, explicit toggle, late rerender, responsive preference, selected-day context; source data/URL/supplier operations unchanged');
 }
 {
  const nodes=new Map(),node=key=>{
@@ -80,7 +86,7 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  assert.deepEqual(painted.at(-1),prices,'updated prices paint immediately while visible');
  act();prices=[161000,180000,177000];context.renderCalendarStrip();
  assert.equal(painted.length,2);
- context.innerWidth=1280;context.syncResultCalendarDisclosure();assert.deepEqual(painted.at(-1),prices,'resizing to desktop restores current prices');
+ setResultCalendarWidth(context,1280);assert.deepEqual(painted.at(-1),prices,'resizing to desktop restores current prices');
  assert.equal(loads,4,'the disclosure and resize do not repeat price requests');assert.equal(emptyRefreshes,4);
 }
 // Keep a flight card visible on a short viewport by moving the existing price
