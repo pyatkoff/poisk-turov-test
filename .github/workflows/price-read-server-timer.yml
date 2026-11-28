@@ -1,4 +1,4 @@
-name: Read exact native MAX effect from original PRICE TV61623
+name: Verify PRICE journal and TOP500 timer on current AnyTour release
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == 'ed91f0d13617f69eeac2ea1167f81a8139bf6440'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7a2b663ba61bf5f83fda1f7cd4b227f169fefb8f'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
