@@ -19,7 +19,7 @@ while read -r checksum file release; do
 done <<'PINS'
 d796dc600061e8a8ddcd7a24d6993801e3355364e8210a12bb897a9991413ec6 rollup-price-daily-exact-v1.php
 0dcf8291126b3cfb018906eb7e26e512fc42ef7dccbe4a52525600c3b6c4a425 rollup-price-daily-exact-batch.php f1885d56ce74980a274791cbdc99c46b8a3e2a99
-ce9c693f3b60a05c4b79d1bf3ce4fe601d90d8a091241ff9e41cd0ceb58b7b2c benchmark-price-rollup.php e8667b381fc6a09e964ba084e04d68da44d38634
+ecf58835516ca22c470f783c9c03fda09ea5beaf3ba319e36dd82f8680938d8d benchmark-price-rollup.php 43a501d6a76d303dcd2c3c866efc79dbbf2d9c96
 PINS
 for mode in single batch; do
     /usr/bin/timeout 12m /usr/bin/nice -n 10 /usr/bin/php -d memory_limit=1024M "$stage/benchmark-price-rollup.php" "$PWD" "$mode"
