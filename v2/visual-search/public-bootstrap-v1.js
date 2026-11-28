@@ -2,11 +2,24 @@
 // Resolves the public URL before the app applies any part of its conditions.
 (function(root){
  const cfg=root.V2_CONFIG||{},selected=!!root.AnyTourPublicConfigV1;
- const handoffAssets=root.document?.currentScript?.dataset?.search3HandoffPrefetch;
+ const script=root.document?.currentScript,handoffAssets=script?.dataset?.search3HandoffPrefetch;
  if(handoffAssets&&root.AnyTourPublicConfigV1?.valid===true&&cfg.search3FormOnly===true
      &&root.navigator?.connection?.saveData!==true){
   const form=root.document.getElementById('search-form'),button=form?.querySelector('.search-submit');
   if(button){
+   const pending=new Set(handoffAssets.split(' '));
+   const prefetch=href=>{
+    if(!pending.delete(href))return;
+    const hint=root.document.createElement('link');
+    hint.rel='prefetch';hint.as='script';hint.fetchPriority='low';hint.href=href;
+    root.document.head.append(hint);
+   };
+   const filter=[...pending].find(href=>/\/filter-panel-v1\.js\?v=[0-9a-f]{12}$/.test(href));
+   const app=script.nextElementSibling;
+   // The filter panel blocks results. Start its hint once app.js has loaded.
+   if(filter&&app?.tagName==='SCRIPT'&&/\/app\.js\?v=[0-9a-f]{12}$/.test(app.getAttribute('src')||'')){
+    app.addEventListener('load',()=>{if(form.isConnected)prefetch(filter);},{once:true});
+   }
    let scheduled=false;
    const ready=()=>!button.disabled&&form.getAttribute('aria-busy')!=='true';
    const observer=new root.MutationObserver(()=>{
@@ -16,11 +29,7 @@
      scheduled=false;
      if(!ready()||!form.isConnected)return;
      observer.disconnect();
-     for(const href of handoffAssets.split(' ')){
-      const hint=root.document.createElement('link');
-      hint.rel='prefetch';hint.as='script';hint.fetchPriority='low';hint.href=href;
-      root.document.head.append(hint);
-     }
+     for(const href of pending)prefetch(href);
     }));
    });
    observer.observe(form,{subtree:true,attributes:true,attributeFilter:['disabled','aria-busy']});
