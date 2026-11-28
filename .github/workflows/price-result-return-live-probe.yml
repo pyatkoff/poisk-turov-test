@@ -1,0 +1,42 @@
+name: Verify live PRICE result SSH return channel
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths: ['ops/price-pilot/return-vps-host-key.pub']
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify the old server receives the complete known day
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          scratch=$(mktemp -d)
+          trap 'rm -rf "$scratch"' EXIT
+          test "$DEPLOY_USER" = anytoour && test -n "$DEPLOY_HOST" && test -n "$DEPLOY_KEY"
+          if [[ "$DEPLOY_KEY" == *'PRIVATE KEY'* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$scratch/key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$scratch/key"
+          fi
+          host_key=$(curl -fsSL --proto '=https' --max-time 25 "https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/$COMMIT/ops/price-pilot/return-vps-host-key.pub")
+          [[ "$host_key" =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+$ ]]
+          printf '%s %s\n' "$DEPLOY_HOST" 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXxjWqpuN07MTGcXrRnshpTX3KKK/wvQeaYl03RY8DA' > "$scratch/known_hosts"
+          curl -fsSL --proto '=https' --max-time 25 https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/acebc2e9ad8752d35ea715cbde44ab78f933acd4/ops/price-pilot/verify-result-return.sh -o "$scratch/verify.sh"
+          bash -n "$scratch/verify.sh"
+          timeout 220 ssh -4 -i "$scratch/key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o ConnectTimeout=8 -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o UserKnownHostsFile="$scratch/known_hosts" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash -s -- '$host_key'" < "$scratch/verify.sh"
