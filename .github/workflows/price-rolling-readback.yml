@@ -7,6 +7,7 @@ on:
       - '.github/workflows/price-rolling-readback.yml'
       - 'ops/price-pilot/rolling-window-days.txt'
       - 'ops/price-pilot/verify-price-freshness.*'
+      - 'ops/price-pilot/verify-rolling-window.py'
 
 permissions:
   contents: read
