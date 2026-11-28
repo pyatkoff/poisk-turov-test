@@ -70,6 +70,20 @@ function saveCheckpoint(string $path, array $state): void
     }
 }
 
+function insertPriceObservationBatch(PDO $db, array $columns, array &$statements, array $rows): void
+{
+    $rowCount = count($rows);
+    if (!isset($statements[$rowCount])) {
+        $placeholders = '(' . implode(',', array_fill(0, count($columns), '?')) . ')';
+        $statements[$rowCount] = $db->prepare(
+            'INSERT INTO tour_price_observations (' . implode(',', $columns) . ') VALUES ' .
+            implode(',', array_fill(0, $rowCount, $placeholders)) .
+            ' ON DUPLICATE KEY UPDATE fingerprint=VALUES(fingerprint)'
+        );
+    }
+    $statements[$rowCount]->execute(array_merge(...$rows));
+}
+
 function assertAppendOnlyState(array $previous, array $latest): void
 {
     if ($previous === $latest) return;
@@ -100,9 +114,8 @@ try {
     echo 'PRICE_FULL_DAY_BEGIN expected=' . $source['observations'] . ' resumed=' . $current['rows'] . PHP_EOL;
     $columns = explode(',', 'id,fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,price,fuel_charge,currency');
     $nullable = ['search_id','region_id','subregion_id','meal_id','room_id','room_type','operator_id','fuel_charge'];
-    $insert = $db->prepare('INSERT INTO tour_price_observations (' . implode(',', $columns) .
-        ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) .
-        ') ON DUPLICATE KEY UPDATE fingerprint=VALUES(fingerprint)');
+    $statements = [];
+    $batchSize = 500;
     $pages = 0;
     while ($current['rows'] < $source['observations']) {
         $time = substr($current['observed_at'], 11);
@@ -112,6 +125,7 @@ try {
         if (!$file || fgetcsv($file, 0, ',', '"', '') !== $columns) throw new RuntimeException('SOURCE_HEADER_INVALID');
         $db->beginTransaction();
         $pageRows = 0;
+        $batch = [];
         try {
             while (($row = fgetcsv($file, 0, ',', '"', '')) !== false) {
                 if (count($row) !== count($columns) || ++$pageRows > $limit || !str_starts_with($row[2], "$day ")
@@ -127,12 +141,17 @@ try {
                 foreach ($columns as $index => $name) {
                     if ($row[$index] === '' && in_array($name, $nullable, true)) $row[$index] = null;
                 }
-                $insert->execute($row);
+                $batch[] = $row;
+                if (count($batch) === $batchSize) {
+                    insertPriceObservationBatch($db, $columns, $statements, $batch);
+                    $batch = [];
+                }
                 $current['observed_at'] = $stamp;
                 $current['id'] = $id;
                 ++$current['rows'];
             }
             if ($pageRows !== $limit) throw new RuntimeException('SOURCE_PAGE_INCOMPLETE');
+            if ($batch !== []) insertPriceObservationBatch($db, $columns, $statements, $batch);
             $db->commit();
         } catch (Throwable $error) {
             $db->rollBack();
