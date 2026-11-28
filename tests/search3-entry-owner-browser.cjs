@@ -691,8 +691,9 @@ async function runHomeRanges(browser, width) {
   } finally { await page.close(); }
 }
 // Actual compiled REVIEW routes; do not substitute the separate native LIVE journey.
-async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleFactor = 1) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor, serviceWorkers: 'block' });
+async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleFactor = 1, captureJourney = null) {
+  const touch = Boolean(captureJourney && viewport.width === 430);
+  const context = await browser.newContext({ viewport, deviceScaleFactor, hasTouch: touch, isMobile: touch, serviceWorkers: 'block' });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const prefix = nextHome?.prefix || new URL(base).pathname, origin = new URL(base).origin;
@@ -702,7 +703,7 @@ async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleF
   const id = deviceScaleFactor === 1 ? dimensions : 'dpr' + deviceScaleFactor + '-' + dimensions;
   const errors = [], unexpected = [], documents = [], evidence = { viewport, deviceScaleFactor, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, status: 'running' };
   const heroRequests = [];
-  const evidencePrefix = nextHome ? 'canonical-next-home-' : 'canonical-home-';
+  const evidencePrefix = captureJourney ? 'canonical-next-journey-' : (nextHome ? 'canonical-next-home-' : 'canonical-home-');
   const save = () => fs.writeFileSync(path.join(output, evidencePrefix + id + '.json'), JSON.stringify({ ...evidence, errors, unexpected, documents }, null, 2) + '\n');
   let releaseFixture, held = false;
   const gate = new Promise(resolve => { releaseFixture = resolve; });
@@ -848,7 +849,9 @@ async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleF
     }
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
     await page.screenshot({ path: path.join(output, evidencePrefix + 'ready-' + id + '.png') });
-    await Promise.all([page.waitForURL(url => url.pathname === target), submitTwice()]);
+    const find = page.locator('#search-form .search-submit');
+    await Promise.all([page.waitForURL(url => url.pathname === target),
+      captureJourney ? (touch ? find.tap() : find.click()) : submitTwice()]);
     await page.locator('.hotel-card').first().waitFor();
     if (nextHome) {
       assert.equal(await page.locator('script[src*="/filter-panel-v1.js"]').count(), 1,
@@ -866,6 +869,15 @@ async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleF
     assert.equal(calls[0].filters.max, 240000);
     evidence.receiver = calls[0];
     await page.screenshot({ path: path.join(output, evidencePrefix + 'receiver-' + id + '.png') });
+    if (captureJourney) {
+      evidence.journey = await captureJourney(page, output, viewport);
+      evidence.journey.frames.unshift({stage:'home',name:evidencePrefix + 'ready-' + id + '.png'});
+      assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
+      assert.deepEqual(documents, [home, target]);
+      evidence.status = 'passed'; evidence.supplierRequests = 0; evidence.leadSent = 0;
+      save();
+      return;
+    }
     await page.goBack(); await ready(); checkURL(false);
     await page.reload(); await ready(); checkURL(false);
     assert.equal(await page.locator('#guests-detail').textContent(), 'До 1 года и 12 лет');
@@ -900,7 +912,10 @@ async function runCanonicalHome(browser, viewport, nextHome = null, deviceScaleF
         const failures = results.filter(result=>result.status==='rejected').map(result=>result.reason);
         if (failures.length) throw new AggregateError(failures,'NEXT canonical home evidence');
         await require('./search3-visual-next-home-timing.cjs')(browser,nextHome,base,output);
-        await require('./search3-next-cached-card-benchmark.cjs')(browser,nextHome,output);
+        await require('./search3-visual-next-hero-transfer.cjs')(browser,nextHome,output);
+        const captureJourney = require('./capture-canonical-next-journey.cjs');
+        await runCanonicalHome(browser,{width:430,height:932},nextHome,3,captureJourney);
+        await runCanonicalHome(browser,{width:1280,height:720},nextHome,1,captureJourney);
         await runCanonicalHome(browser,{width:1280,height:720},nextHome,2);
       } finally { nextHome.clean(); }
       console.log('SEARCH3_CANONICAL_HOME_REVIEW_OK ready=4 handoff=4 back_reload=4 incomplete_age=4 supplier_requests=0 lead_sent=0');
