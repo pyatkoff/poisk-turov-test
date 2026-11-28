@@ -2041,7 +2041,7 @@ const tvCardRoomsJourney=async(browser,origin,base,evidence)=>{
    await page.locator('[name="phone"]').fill('70000001234');await page.locator('[name="comment"]').fill('Fictional retained card draft');await page.locator('[name="consent"]').click();
    const manager=await capture('manager-contact'),beforeReturn=transport.calls.length;
    await page.locator('#modal-back').click();await row().waitFor({state:'visible'});assert.equal(await row().getAttribute('aria-current'),'true');
-   assert.equal(await page.locator('#hotel-detail-offers').textContent(),'Продолжить');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/Цена тура проверена · рейс уточнит менеджер/);const checkedRooms=await capture('checked-rooms');
+   assert.equal(await page.locator('#hotel-detail-offers').textContent(),'Продолжить');assert.match(await page.locator('#hotel-detail-price-status').textContent(),/Цена предложения проверена · рейс уточнит менеджер/);const checkedRooms=await capture('checked-rooms');
    await row().locator('[data-action="hotel-flights"]').click();await row().locator('.hotel-flight-inline [name="flight-pair"]').first().waitFor();
    assert.equal(flightCalls(),1);assert.equal(quoteCalls(),1);assert.equal(await row().locator('[name="flight-pair"]:checked').count(),0);
    await row().locator('[name="flight-pair"][value="1"]').click();assert.match(await page.locator('#hotel-detail-min').textContent(),/133\s*500/);assert.equal(await row().locator('.hotel-room-price').isVisible(),false);const pairRooms=await capture('pair-rooms');

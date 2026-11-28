@@ -885,7 +885,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('[data-action="start-lead"]')&&q('[data-action="start-tour-flights"]'),'application and optional flight check are separate actions');
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
- assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/Цена тура проверена · рейс уточнит менеджер/);
+ assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/Цена предложения проверена · рейс уточнит менеджер/);
  assert.match(q('.application-summary .application-flight-overview').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('.tour-fuel-disclosure').textContent,/включён в цену/,'known Tourvisor fuel belongs to the unchanged supplier total');
  assert.match(q('#modal-footer').textContent,/Цена предложения/,'tour details do not claim cart actualization');

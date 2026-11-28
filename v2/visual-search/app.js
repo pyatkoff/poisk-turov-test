@@ -2523,7 +2523,7 @@ function selectedPriceStatus(o,includeFuel=true){
  if(o.provider==='recorded')return 'Цена из записи';
  if(o.quoteError)return 'Цена из выдачи · не подтверждена';
  if(!o.tour)return 'Цена из выдачи · требует проверки';
- if(!flightPairFor(o))return o.provider==='tourvisor'&&!o.cached&&data.amount(o.tour.price)>0?'Цена тура проверена · рейс уточнит менеджер':'Цена предложения · перелёт уточняется';
+ if(!flightPairFor(o))return o.provider==='tourvisor'&&!o.cached&&data.amount(o.tour.price)>0?'Цена предложения проверена · рейс уточнит менеджер':'Цена предложения · перелёт уточняется';
  if(!includeFuel)return 'Цена с выбранными рейсами';
  const fuel=fuelAmount(o);
  return fuel===0?'Цена с выбранными рейсами · без топливной доплаты':fuel===null?'Цена с выбранными рейсами':fuelIncludedInPrice(o)?'Цена с выбранными рейсами · сбор включён':'Цена с выбранными рейсами · включение сбора уточняется';
