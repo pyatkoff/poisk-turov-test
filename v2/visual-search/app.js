@@ -303,8 +303,8 @@ function hotelAgePolicy(h){
  const title=plainHotelText(name).replace(/\(\s*(?:ex|бывш)\.[^)]*\)/gi,'');
  const about=plainHotelText(description);
  // Only property-level adults-only labels can establish a minimum age.
- const titleRule=title.match(/\bADULTS[\s-]*ONLY\b\s*(?:[-–—:(]\s*)?(?:(\d{1,2})\s*\+)?/i);
- const descriptionRule=about.match(/(?:отель\s*[-—:]?\s*только для взрослых|\b(?:this|the) hotel is adults[\s-]*only\b)\s*[:(]?\s*(?:(\d{1,2})\s*\+)?/i);
+ const titleRule=title.match(/\bADULTS?[\s-]*ONLY\b\s*(?:[-–—:(]\s*)?(?:(\d{1,2})\s*\+)?/i);
+ const descriptionRule=about.match(/(?:отель\s*[-—:]?\s*только для взрослых|\b(?:this|the) hotel is adults?[\s-]*only\b)\s*[:(]?\s*(?:(\d{1,2})\s*\+)?/i);
  const titleAge=Number(titleRule?.[1])||null,descriptionAge=Number(descriptionRule?.[1])||null;
  const minimum=titleAge&&descriptionAge?Math.min(titleAge,descriptionAge):titleAge??descriptionAge;
  const reason=titleAge&&descriptionAge&&titleAge!==descriptionAge?'age-policy-conflict':minimum===null&&(titleRule||descriptionRule)?'age-limit-unknown':null;

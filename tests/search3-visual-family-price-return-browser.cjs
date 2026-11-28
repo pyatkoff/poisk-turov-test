@@ -37,7 +37,9 @@ const fixture = `
             [930002,'KLEOPATRA ATLAS ADULTS ONLY 16+','Отель только для взрослых (16+).'],
             [930003,'Hotel Adults Only 16+ · conflicting rule','Отель только для взрослых (18+).'],
             [930004,'Hotel without an age limit in the feed','Отель только для взрослых!'],
-            [930005,'Family hotel with a restricted pool','Бассейн только для взрослых 18+.']
+            [930005,'Family hotel with a restricted pool','Бассейн только для взрослых 18+.'],
+            [930006,'TUI MAGIC LIFE BODRUM ADULT ONLY 16+ (EX. ERSAN EXCLUSIVE RESORT & SPA)',''],
+            [930007,'LURES HOTEL (EX. THE LURE) ADULT ONLY 16+','']
           ].map(([id,name,description])=>({...structuredClone(source),id,name,raw:{description},offers:source.offers.map(o=>({...o,hotelId:id,key:'test-'+id}))}));
           event.hotels.push(...extras);
           event.hotels.forEach(h=>h.offers.forEach(o=>{o.provider='tourvisor';o.placement='DBL + 1 CHD';}));
@@ -137,15 +139,21 @@ async function run(browser, origin, width, height) {
     await goto(15);
     assert.equal(await getCard(930001).count(),0);
     assert.equal(await getCard(930002).count(),0);
+    assert.equal(await getCard(930006).count(),0);
+    assert.equal(await getCard(930007).count(),0);
     await goto(16);
     assert.equal(await getCard(930001).count(),1);
     assert.equal(await getCard(930002).count(),1);
+    assert.equal(await getCard(930006).count(),1);
+    assert.equal(await getCard(930007).count(),1);
     assert.equal(await getCard(930003).locator('[data-hotel-age-policy="age-policy-conflict"]').count(),1);
     await goto(17);
     assert.equal(await getCard(930001).count(),1);
     await goto(8);
     assert.equal(await getCard(930001).count(),0);
     assert.equal(await getCard(930002).count(),0);
+    assert.equal(await getCard(930006).count(),0);
+    assert.equal(await getCard(930007).count(),0);
     assert.equal(await getCard(930004).locator('[data-hotel-age-policy="age-limit-unknown"]').count(),1);
     assert.equal(await getCard(930005).count(),1);
     const searchURL=page.url();

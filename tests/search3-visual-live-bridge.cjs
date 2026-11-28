@@ -238,15 +238,19 @@ function offerLookupWork(){
  }
  const duplicate=make(),first=duplicate.rows[0].offers[0],second=duplicate.rows[1].offers[0];Object.defineProperty(first,'key',{value:'duplicate'});Object.defineProperty(second,'key',{value:'duplicate'});
  const restore=probe.swap(duplicate.rows);assert.strictEqual(probe.find('duplicate'),first,'first duplicate-key offer identity is retained');probe.swap(restore);
- const hotel={name:'Example Adults Only 16+', raw:{description:'Отель только для взрослых!'}};
- for(const [age,expected] of [[8,false],[15,false],[16,true],[17,true]]){
+ const policyHotels=[
+  {name:'Example Adults Only 16+',raw:{description:'Отель только для взрослых!'}},
+  {name:'LURES HOTEL (EX. THE LURE) ADULT ONLY 16+',raw:{description:''}},
+  {name:'Example',raw:{description:'This hotel is adult only (16+).'}},
+ ];
+ for(const hotel of policyHotels)for(const [age,expected] of [[8,false],[15,false],[16,true],[17,true]]){
   const offer={key:'age-case',ages:[age]};
   const reset=probe.swap([{...hotel,offers:[offer]}]);
   assert.strictEqual(probe.find(offer.key),expected?offer:null,'exact selection follows the property minimum at age '+age);
   probe.swap(reset);
  }
  const uncertain={key:'no-confirmed-age',ages:[8]};
- const reset=probe.swap([{...hotel,name:'Example Adults Only',offers:[uncertain]}]);
+ const reset=probe.swap([{name:'Example Adults Only',offers:[uncertain]}]);
  assert.strictEqual(probe.find(uncertain.key),uncertain,'unqualified property wording does not invent a numeric restriction');
  probe.swap(reset);
  return results;
