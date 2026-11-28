@@ -18,7 +18,7 @@ while read -r digest file source; do
         *.sh) bash -n "$stage/$file" ;;
     esac
 done <<'RELEASE'
-3ca03b8963f13028dd5a600e0344dfa7cdfbf9656bb1155b0cbfc6aea57d3e49 sync-day.php 65226ca0687f6b8f21d5fe15ca28bfe358339ad2/ops/price-pilot/sync-day.php
+0f3ee58b1c6907f184c57323911afa2dddd76303f692fe518226571f35ba7e28 sync-day.php a90268893f95279af7709752d1f1dee868366637/ops/price-pilot/sync-day.php
 5ed83f21e7c30531491837597c59752cdd85fbbdff1adc473c9374f2d8229b10 rolling-daily-schema.sql 65226ca0687f6b8f21d5fe15ca28bfe358339ad2/ops/price-pilot/rolling-daily-schema.sql
 0901560d73fd6ca1672402d94882aa4090750c45e767f340689644e5a4f60406 rolling-digest.php 65226ca0687f6b8f21d5fe15ca28bfe358339ad2/ops/price-pilot/rolling-digest.php
 970ccd1d18c5efa469ba3f46c87bc07476159f73d54850f3407d692bea9558ef rolling-day.sh 65226ca0687f6b8f21d5fe15ca28bfe358339ad2/ops/price-pilot/rolling-day.sh
@@ -41,6 +41,6 @@ for file in "$stage"/*; do
         mv -T -- "$file" "$target"
     fi
 done
-echo '65226ca0687f6b8f21d5fe15ca28bfe358339ad2' > "$stage/release"
+echo 'a90268893f95279af7709752d1f1dee868366637' > "$stage/release"
 mv -T -- "$stage/release" rolling-release
-echo "PRICE_ROLLING_INSTALLED 65226ca0687f6b8f21d5fe15ca28bfe358339ad2"
+echo "PRICE_ROLLING_INSTALLED a90268893f95279af7709752d1f1dee868366637"
