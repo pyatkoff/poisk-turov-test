@@ -6,6 +6,7 @@ on:
     paths:
       - 'ops/price-pilot/rolling-*'
       - 'ops/price-pilot/sync-day.php'
+      - 'ops/price-pilot/rollup-price-daily-exact-batch.php'
       - 'ops/price-pilot/apply-rolling-result.php'
       - '.github/workflows/price-rolling-shadow-validation.yml'
 
@@ -145,3 +146,24 @@ jobs:
           php apply-rolling-result.php "${args[@]}" --apply | tee retried.txt
           grep -q '"exact":{"old_only":0,"changed":0},"coarse":{"old_only":0,"changed":0}' retried.txt
           echo PRICE_ROLLING_APPLY_FIXTURE_OK
+
+          php -l rollup-price-daily-exact-batch.php
+          compare_day=2026-09-01
+          sql <<SQL
+          INSERT INTO tour_price_observations
+            (fingerprint,observed_at,source,search_id,departure_id,country_id,hotel_id,
+             departure_date,departure_year,departure_month,nights,adults,price)
+          SELECT SHA2(CONCAT('batch-fixture-', seq),256),'$compare_day 10:00:00',
+            'scheduled_monitor',seq,1,4,seq,'2026-12-01',2026,12,7,2,100+seq
+          FROM seq_1_to_502;
+          SQL
+          php -d date.timezone=UTC rollup-price-daily-exact-v1.php "--date=$compare_day"
+          php -d date.timezone=UTC rollup-price-daily-v1.php "--date=$compare_day"
+          php rolling-digest.php db-v1.php "$compare_day" > single.json
+          sql <<< "DELETE FROM tour_price_daily_exact WHERE price_date='$compare_day';"
+          for pass in insert replay; do
+            php -d date.timezone=UTC rollup-price-daily-exact-batch.php "--date=$compare_day"
+            php rolling-digest.php db-v1.php "$compare_day" > "$pass.json"
+            cmp single.json "$pass.json"
+          done
+          echo PRICE_ROLLUP_BATCH_PARITY_OK
