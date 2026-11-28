@@ -1,4 +1,4 @@
-name: Verify PRICE journal and TOP500 timer on current AnyTour release
+name: Read TOP500 state after original run 46104980062
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '7a2b663ba61bf5f83fda1f7cd4b227f169fefb8f'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '502e01f3d55aaad625e4b6074f14452936d16eb0'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
