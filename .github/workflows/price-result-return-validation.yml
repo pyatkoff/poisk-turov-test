@@ -1,0 +1,49 @@
+name: Validate PRICE result read-only exporter
+
+on:
+  push:
+    branches: [ops/price-pilot-sample-20261127]
+    paths: ['.github/workflows/price-result-return-validation.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate pinned installer and the exact permitted SSH requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cd "$RUNNER_TEMP"
+          curl -fsSL --proto '=https' --max-time 25 https://raw.githubusercontent.com/pyatkoff/poisk-turov-test/e9f99a51b4ccf745f7660c748eef1e80e00b4e54/ops/price-pilot/install-result-return.sh -o install.sh
+          echo 'ef07db1f93854b1b1bc50b59465299a83399403b4b21c67d8febef8e1db53bde  install.sh' | sha256sum -c
+          bash -n install.sh
+          awk '/<</ && /PRICE_EXPORT_PHP/{on=1;next} /^PRICE_EXPORT_PHP$/{on=0} on' install.sh > price-result-export.php
+          awk '/<</ && /PRICE_PUBLISH_PHP/{on=1;next} /^PRICE_PUBLISH_PHP$/{on=0} on' install.sh > price-result-publish.php
+          test -s price-result-export.php && test -s price-result-publish.php
+          php -l price-result-export.php
+          php -l price-result-publish.php
+          mkdir -p price-return-ready/2026-11-26
+          digest=$(printf '%064d' 0)
+          expected='{"contract":1,"date":"2026-11-26"}'
+          printf '%s\n' "$expected" > price-return-ready/2026-11-26/manifest.json
+          printf '%s\n' "fixture-data" | gzip > "price-return-ready/2026-11-26/$digest.jsonl.gz"
+          test "$(SSH_ORIGINAL_COMMAND=probe php price-result-export.php)" = '{"service":"anytour-price-result-read","version":1}'
+          test "$(SSH_ORIGINAL_COMMAND='manifest 2026-11-26' php price-result-export.php)" = "$expected"
+          test "$(SSH_ORIGINAL_COMMAND="snapshot 2026-11-26 $digest" php price-result-export.php | gzip -dc)" = fixture-data
+          for rejected in 'id' 'manifest ../etc/passwd' 'snapshot 2026-11-26 invalid' 'manifest 2026-11-26; id'; do
+            if SSH_ORIGINAL_COMMAND="$rejected" php price-result-export.php >/dev/null 2>result.err; then
+              echo PRICE_RESULT_WRONG_COMMAND_UNEXPECTEDLY_ACCEPTED
+              exit 1
+            fi
+            grep -qx PRICE_RESULT_COMMAND_DENIED result.err
+          done
+          if SSH_ORIGINAL_COMMAND='manifest 2026-11-27' php price-result-export.php >/dev/null 2>result.err; then
+            exit 1
+          fi
+          grep -qx PRICE_RESULT_NOT_READY result.err
+          echo PRICE_RETURN_INSTALLER_FIXTURE_CHECK_OK
