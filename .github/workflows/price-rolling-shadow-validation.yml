@@ -6,6 +6,7 @@ on:
     paths:
       - 'ops/price-pilot/rolling-*'
       - 'ops/price-pilot/sync-day.php'
+      - 'ops/price-pilot/apply-rolling-result.php'
       - '.github/workflows/price-rolling-shadow-validation.yml'
 
 permissions:
@@ -86,3 +87,39 @@ jobs:
               assert json.loads(content)[-3 if len(json.loads(content)) == 21 else -2] == '120.00'
           print('PRICE_ROLLING_FIXTURE_OK')
           PY
+          php -l apply-rolling-result.php
+          fixture_day=$(date -u +%F)
+          docker exec -i "$DB_CONTAINER" mariadb -ufixture -pfixture-password anytour_price_pilot <<FIXTURE
+          INSERT INTO tour_price_observations
+            (fingerprint,observed_at,source,search_id,departure_id,country_id,hotel_id,
+             departure_date,departure_year,departure_month,nights,adults,price)
+          VALUES
+            (SHA2('active-a',256),'$fixture_day 10:00:00','scheduled_monitor',1,1,4,1,'2026-12-01',2026,12,7,2,100),
+            (SHA2('active-b',256),'$fixture_day 10:01:00','scheduled_monitor',2,1,4,1,'2026-12-01',2026,12,7,2,120);
+          FIXTURE
+          php -d date.timezone=UTC rollup-price-daily-exact-v1.php "--date=$fixture_day"
+          php -d date.timezone=UTC rollup-price-daily-v1.php "--date=$fixture_day"
+          php rolling-digest.php db-v1.php "$fixture_day" "$PWD/price-return-ready/$fixture_day" > staged.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          state = Path('staged.json')
+          data = json.loads(state.read_text())
+          data['source'] = {'date': data['date'], 'observations': 2, 'upper_id': '5'}
+          state.write_text(json.dumps(data))
+          PY
+          directory="price-return-ready/$fixture_day"
+          exact=$(php -r 'echo json_decode(file_get_contents("staged.json"),true)["sha256"];')
+          coarse=$(php -r 'echo json_decode(file_get_contents("staged.json"),true)["coarse"]["sha256"];')
+          docker exec -i "$DB_CONTAINER" mariadb -ufixture -pfixture-password anytour_price_pilot <<FIXTURE
+          DELETE FROM tour_price_daily_exact WHERE price_date='$fixture_day';
+          UPDATE tour_price_daily SET min_price=99 WHERE price_date='$fixture_day';
+          FIXTURE
+          args=(db-v1.php staged.json "$directory/$exact.jsonl.gz" "$directory/$coarse.jsonl.gz")
+          php apply-rolling-result.php "${args[@]}" --rehearse | tee rehearsed.txt
+          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' rehearsed.txt
+          php apply-rolling-result.php "${args[@]}" --apply | tee applied.txt
+          grep -q '"exact":{"old_only":0,"changed":1},"coarse":{"old_only":0,"changed":1}' applied.txt
+          php apply-rolling-result.php "${args[@]}" --apply | tee retried.txt
+          grep -q '"exact":{"old_only":0,"changed":0},"coarse":{"old_only":0,"changed":0}' retried.txt
+          echo PRICE_ROLLING_APPLY_FIXTURE_OK
