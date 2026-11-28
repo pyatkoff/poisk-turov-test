@@ -43,8 +43,11 @@ import gzip, hashlib, json, pathlib, re, sys
 manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
 archive = pathlib.Path(sys.argv[2])
 assert archive.stat().st_size == manifest["bytes"]
+archive_digest = hashlib.sha256()
 with archive.open("rb") as source:
-    assert hashlib.file_digest(source, "sha256").hexdigest() == manifest["gzip_sha256"]
+    for chunk in iter(lambda: source.read(1024*1024), b""):
+        archive_digest.update(chunk)
+assert archive_digest.hexdigest() == manifest["gzip_sha256"]
 rows = observations = 0
 last = ""
 digest = hashlib.sha256()
