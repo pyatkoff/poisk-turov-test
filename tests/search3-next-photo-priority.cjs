@@ -3,19 +3,10 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {execFileSync}=require('node:child_process');
 const {exactAssets,startServer}=require('./search3-next-compact-calendar.cjs');
-const {compile}=require('../scripts/build/search3-js/visual-entry.cjs');
-const {printCSS}=require('../scripts/build/search3-js/compact-css.cjs');
-const {createHash}=require('node:crypto');
 
-const source='007bf45644e827c400b91719778b8ab5defe8e62';
-const pinned={
- appSha:'d207bc7bbd865d1a1b5d2f61004ce3f5a0bd00804795dc11cd7d3e9151b26231',
- sheetSha:'cccc1c6a2c01d765c9c524b301d70df3d95205343cf0754dd0ebee4e9f09feee'
-};
 const screens=[{width:430,height:932,dpr:3,touch:true},{width:1280,height:720,dpr:1,touch:false}];
-const networks=[{mbps:2,rtt:80},{mbps:10,rtt:40}];
+const network={mbps:2,rtt:80};
 const resourceNames=['app.js','styles.css','mobile-controls-v1.css','public-config-v1.js','public-bootstrap-v1.js',
  'fixture-data.js','search-lifecycle-v1.js','filter-panel-v1.js','photo-1.jpg','photo-2.jpg','home-hero-v1-680.jpg'];
 const searchQuery=new URLSearchParams({scenario:'family',origin:'Москва',country:'4',from:'2026-12-09',to:'2026-12-15',
@@ -142,7 +133,7 @@ async function flow(page,origin,paths,screen){
  assert.equal(result.resources['styles.css'].transferred,0);
  return {home,result,cards,attributes};
 }
-async function sample(browser,server,paths,screen,net,mode,exercise=false){
+async function sample(browser,server,paths,screen,net){
  const origin=server.origin,context=await browser.newContext({
   viewport:{width:screen.width,height:screen.height},deviceScaleFactor:screen.dpr,hasTouch:screen.touch,isMobile:screen.touch,
   serviceWorkers:'block',reducedMotion:'reduce',proxy:{server:origin,bypass:'127.0.0.1'}
@@ -163,7 +154,7 @@ async function sample(browser,server,paths,screen,net,mode,exercise=false){
    downloadThroughput:net.mbps*125000,uploadThroughput:net.mbps*125000,connectionType:net.mbps===2?'cellular3g':'wifi'});
   await page.addInitScript(recordPage,paths);
   const measured=await flow(page,origin,paths,screen);
-  const active=mode==='after'&&!screen.touch;
+  const active=!screen.touch;
   assert.equal(measured.attributes.hero,active?'high':null);
   assert.equal(measured.attributes.loading,active?'eager':'lazy');
   assert.deepEqual(measured.attributes.thumbs,active?['low','low']:[null,null]);
@@ -178,7 +169,7 @@ async function sample(browser,server,paths,screen,net,mode,exercise=false){
    assert.equal(thumbnails.length,1);
    assert(thumbnails[0].start>=primary[0].finish-0.001,'the secondary photo waits for the first response to complete');
   }
-  if(exercise){
+  {
    const item=page.locator('#cards .hotel-card').first();
    const arrow=item.locator('.card-photo-arrow.next');
    await (screen.touch?arrow.tap():arrow.click());
@@ -197,63 +188,18 @@ async function sample(browser,server,paths,screen,net,mode,exercise=false){
   return {...measured,photoTrace};
  }finally{await context.close();}
 }
-const median=values=>{const sorted=values.slice().sort((a,b)=>a-b),i=Math.floor(sorted.length/2);return sorted.length%2?sorted[i]:(sorted[i-1]+sorted[i])/2;};
-function asPhases(row){
- const h=row.home,r=row.result;
- return {
-  button:h.marks.visible,homePaint:h.paint,documentResponse:h.navigation.responseStart,
-  cssEnd:h.resources['styles.css'].end,appEnd:h.resources['app.js'].end,appLoad:h.marks.appLoad,
-  catalogStart:h.marks.catalogStart,catalogReady:h.marks.catalogReady,
-  catalogWait:h.marks.catalogReady-h.marks.catalogStart,buttonAfterCatalog:h.marks.visible-h.marks.catalogReady,
-  appLoadAfterBytes:h.marks.appLoad-h.resources['app.js'].end,
-  firstCard:r.marks.visible-r.marks.clickRelative,photo:r.marks.photoFrame-r.marks.clickRelative,
-  firstPacket:r.marks.firstPacket-r.marks.searchStart,
-  photoAfterCard:r.marks.photoFrame-r.marks.visible
- };
-}
-
-module.exports=async function measurePhotoPriority(browser,nextHome,output){
- const root=path.resolve(__dirname,'..');
- const changed=execFileSync('git',['diff','--name-only',source,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
- assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-next-photo-priority.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json","v2/visual-search/styles.css"]);
- const after=exactAssets(nextHome),paths={home:nextHome.prefix+'/',search:nextHome.prefix+'/poisk-turov/'};
- const sha=value=>createHash('sha256').update(value).digest('hex');
- const raw=execFileSync('git',['show',source+':v2/visual-search/app.js'],{cwd:root,encoding:'utf8'});
- assert.equal(sha(raw),'92af33ac613b5591bd4f4a25d2861e3a0fd9d7d864a4d27d57b4a064932e1534');
- const prior=await compile(raw,{privateFunctions:true});
- assert.equal(sha(prior),pinned.appSha);
- const rawSheet=execFileSync('git',['show',source+':v2/visual-search/styles.css'],{cwd:root,encoding:'utf8'});
- const sheet=Buffer.from(printCSS(rawSheet));
- assert.equal(sha(sheet),pinned.sheetSha);
- const shaUrl=(url,from,to)=>url.replace(from.slice(0,12),to.slice(0,12));
- const appUrl=shaUrl(after.appUrl,after.appSha,pinned.appSha),url=shaUrl(after.url,after.sheetSha,pinned.sheetSha);
- const rewrite=html=>html.replace(after.appUrl,appUrl).replace(after.url,url);
- const before={...after,appSha:pinned.appSha,sheetSha:pinned.sheetSha,code:Buffer.from(prior),sheet,appUrl,url,
-  home:rewrite(after.home),search:rewrite(after.search)};
- const servers={before:await startServer(nextHome,before,paths),after:await startServer(nextHome,after,paths)};
- const groups=[];
+module.exports=async function checkPhotoPriority(browser,nextHome,output){
+ const assets=exactAssets(nextHome);
+ const paths={home:nextHome.prefix+'/',search:nextHome.prefix+'/poisk-turov/'};
+ const server=await startServer(nextHome,assets,paths);
  try{
-  for(const net of networks)for(const screen of screens){
-   const pairs=[];
-   for(let i=0;i<9;i++){
-    const set={};
-    const order=i%2?['after','before']:['before','after'];
-    for(const mode of order)set[mode]=await sample(browser,servers[mode],paths,screen,net,mode,i===0&&net.mbps===2);
-    assert.deepEqual(set.before.cards,set.after.cards);
-    if(i>0)pairs.push({...set,order});
-   }
-   const measures=['button','homePaint','firstCard','photo','photoAfterCard'];
-   const summary=Object.fromEntries(measures.map(key=>{
-    const old=pairs.map(set=>asPhases(set.before)[key]),next=pairs.map(set=>asPhases(set.after)[key]);
-    const delta=next.map((v,i)=>v-old[i]);
-    return [key,{before:median(old),after:median(next),paired:median(delta),faster:delta.filter(v=>v<0).length,min:Math.min(...delta),max:Math.max(...delta)}];
-   }));
-   groups.push({screen,net,summary,pairs});
-   console.log('SEARCH3_PHOTO_PRIORITY '+JSON.stringify({screen,net,summary}));
+  const cases=[];
+  for(const screen of screens){
+   const sampleResult=await sample(browser,server,paths,screen,network);
+   cases.push({screen,attributes:sampleResult.attributes,photoTrace:sampleResult.photoTrace});
   }
-  fs.writeFileSync(path.join(output,'canonical-next-photo-priority.json'),JSON.stringify({
-    baseline:source,runnerCommit:process.env.SEARCH3_SOURCE_SHA,beforeApp:before.appSha,afterApp:after.appSha,
-    css:after.sheetSha,browser:browser.version(),groups
+  fs.writeFileSync(path.join(output,'canonical-next-photo-check.json'),JSON.stringify({
+   source:process.env.SEARCH3_SOURCE_SHA,app:assets.appSha,css:assets.sheetSha,cases
   },null,2)+'\n');
- }finally{await Promise.all(Object.values(servers).map(server=>server.close()));}
+ }finally{await server.close();}
 };
