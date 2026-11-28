@@ -1,4 +1,4 @@
-name: Read the current TOP500 timer and unresolved PRICE transaction
+name: Read 03:45 TOP500 timer and test TV61623 recovery eligibility
 on:
   push:
     branches: ['ops/price-hook-reviewed-pass-20261117']
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   read:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '6d227d1fe539dc9139c05491d9ecdf0720133562'
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event_name == 'push' && github.run_attempt == 1 && github.event.before == '9a15b7d329c4354ef0e45ba9abc4e71e3486471d'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
@@ -250,6 +250,55 @@ jobs:
                           }
               print('PRICE_CURRENT_JOURNAL',json.dumps(result,sort_keys=True))
           PY
+
+      - name: Compare the original TV61623 registry versions with the installed recovery contract
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/channel_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/channel_known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=25 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" 'php -d display_errors=0 -d log_errors=0' <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $pdo = null;
+          try {
+              $app = '/var/www/anytoour/data/www/app.anytoour.ru';
+              if (realpath($app) !== $app || !chdir($app)) throw new RuntimeException('app_path_changed');
+              ob_start();
+              try {
+                  require $app.'/config.php';
+                  require_once $app.'/services/ChannelPostRuntime.php';
+                  require_once $app.'/services/ChannelPostAdminService.php';
+              } finally { ob_end_clean(); }
+              $pdo = ConversationDb::connection();
+              $pdo->exec('START TRANSACTION READ ONLY');
+              $registry = new ChannelPostRegistryService($pdo);
+              $rows = [];
+              foreach (['max'=>1905,'telegram'=>1895] as $platform=>$id) {
+                  $p = $registry->publication($id);
+                  if (!is_array($p) || $p['project_key'] !== 'anytour' || $p['platform'] !== $platform) {
+                      throw new RuntimeException('original_publication_identity_changed');
+                  }
+                  $meta = $p['snapshot']['metadata'] ?? [];
+                  $rows[$platform] = [
+                      'publication_id'=>(int)$p['publication_id'],
+                      'version_id'=>(int)$p['version_id'],
+                      'state'=>$p['state'],
+                      'read_failure_confirmation_eligible'=>$platform === 'max'
+                          ? ChannelPostRegistryService::maxReadFailureConfirmationEligible($p) : null,
+                      'retained_record_id'=>$meta['monitor_price_record_id'] ?? null,
+                      'observed_at'=>$meta['monitor_price_observed_at_relative'] ?? null,
+                  ];
+              }
+              $pdo->rollBack();
+              echo 'PRICE_ORIGINAL_REGISTRY ', json_encode($rows, JSON_THROW_ON_ERROR), PHP_EOL;
+          } catch (Throwable $e) {
+              if ($pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+              fwrite(STDERR, 'registry_read_failed '.get_class($e).PHP_EOL);
+              exit(1);
+          }
+          PHP
 
       - name: Cleanup connection material
         if: always()
