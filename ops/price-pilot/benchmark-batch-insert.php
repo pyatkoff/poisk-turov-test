@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// rolling-digest.php requires a database bootstrap file. Use this one
-// again so the digest shares the connection and its temporary tables.
-if (defined('PRICE_BATCH_BENCHMARK_RUNNING')) return;
-define('PRICE_BATCH_BENCHMARK_RUNNING', true);
-
 function insertPriceObservationBatch(PDO $db, array $columns, array &$statements, array $rows): void
 {
     $rowCount = count($rows);
@@ -147,9 +142,14 @@ try {
     foreach (['rollup-price-daily-exact-v1.php', 'rollup-price-daily-v1.php'] as $script) {
         runPriceBenchmarkScript("$root/$script", [$script, "--date=$day"]);
     }
+    // The canonical digest requires a bootstrap path. The connection is already open.
+    $bootstrap = tmpfile();
+    if ($bootstrap === false) throw new RuntimeException('DIGEST_BOOTSTRAP');
+    $bootstrapPath = stream_get_meta_data($bootstrap)['uri'];
     ob_start();
-    runPriceBenchmarkScript("$root/rolling-digest.php", ['rolling-digest.php', __FILE__, $day]);
+    runPriceBenchmarkScript("$root/rolling-digest.php", ['rolling-digest.php', $bootstrapPath, $day]);
     $actual = json_decode(ob_get_clean(), true, 16, JSON_THROW_ON_ERROR);
+    fclose($bootstrap);
     foreach ([[$actual, $reference], [$actual['coarse'], $reference['coarse']]] as [$set, $expectedSet]) {
         foreach (['sha256', 'groups', 'observations'] as $key) {
             if ($set[$key] !== $expectedSet[$key]) throw new RuntimeException('AGGREGATE_PARITY');
