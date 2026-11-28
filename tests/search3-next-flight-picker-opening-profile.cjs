@@ -49,7 +49,8 @@ function observeOpen(modulePath){
     if(!Number.isFinite(result.shell)&&document.querySelector('#modal-title')?.textContent==='Выберите перелёт')result.shell=performance.now()-result.start;
     const items=body.querySelectorAll('#tour-flight-options [name="flight-pair"]');
     const choose=footer.querySelector('[data-action="apply-flight"]');
-    if(items.length!==3||!choose||choose.disabled||footer.hidden)return;
+    if(items.length!==3||[...items].some(option=>option.disabled)||!choose||footer.hidden)return;
+    result.applyEnabled=choose.disabled===false;
     result.dom=performance.now()-result.start;
     observer.disconnect();
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -118,10 +119,18 @@ async function sample(browser,server,paths,screen,profile,moduleSha,warmup){
       await settle(page);
       await page.evaluate(observeOpen,modulePath);
       await action(choice);
-      await page.waitForFunction(()=>Number.isFinite(window.flightOpeningProbe?.frame),null,{timeout:12000});
+      try{await page.waitForFunction(()=>Number.isFinite(window.flightOpeningProbe?.frame),null,{timeout:12000});}
+      catch(error){
+        const state=await page.evaluate(()=>({
+          stage:window.flightOpeningProbe,hasModule:!!window.AnyTourFlightPickerUIV1,
+          options:document.querySelectorAll('#tour-flight-options [name="flight-pair"]').length,
+          applyDisabled:document.querySelector('#modal [data-action="apply-flight"]')?.disabled,
+        }));
+        throw new Error(JSON.stringify({screen,profile,cold,requests,errors,state}),{cause:error});
+      }
       const data=await page.evaluate(()=>window.flightOpeningProbe);
       assert(data.dom>=data.shell&&data.frame>=data.dom);
-      assert.equal(await page.locator('#modal[open] [data-action="apply-flight"]').isEnabled(),true);
+      assert.equal(await page.locator('#tour-flight-options [name="flight-pair"][value="2"]').isEnabled(),true);
       assert.equal(await page.locator('#modal[open] [data-action="apply-flight"]').isVisible(),true);
       assert.equal(data.focusInside,true);
       if(cold)assert.equal(data.focus,'modal-title');
