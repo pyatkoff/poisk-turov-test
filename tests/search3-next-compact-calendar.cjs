@@ -26,7 +26,7 @@ const contentTypes={
 };
 function exactAssets(nextHome){
  const changed=execFileSync('git',['diff','--name-only',baseline,'HEAD'],{cwd:root,encoding:'utf8'}).trim().split('\n').sort();
- assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json","v2/visual-search/styles.css"]);
+ assert.deepEqual(changed,["tests/search3-entry-owner-browser.cjs","tests/search3-next-compact-calendar.cjs","tests/search3-visual-results-rendering.cjs","v2/visual-search/app.js","v2/visual-search/migration-manifest.json","v2/visual-search/styles.css"]);
  const code=fs.readFileSync(path.join(nextHome.payload,'visual-search','app.js'));
  const sheet=fs.readFileSync(path.join(nextHome.payload,'visual-search','styles.css'));
  const boot=fs.readFileSync(path.join(nextHome.payload,'visual-search','public-bootstrap-v1.js'));
